@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_waitqueue.h>
+#include <arch_cpu_irq.h>
 
 u32 vmm_waitqueue_count(struct vmm_waitqueue *wq) 
 {
@@ -121,6 +122,7 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue *wq)
 
 	/* Sanity checks */
 	BUG_ON(!wq);
+	BUG_ON(arch_cpu_irq_disabled());
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);
@@ -139,6 +141,7 @@ int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq, u64 *timeout_usecs)
 
 	/* Sanity checks */
 	BUG_ON(!wq);
+	BUG_ON(arch_cpu_irq_disabled());
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);

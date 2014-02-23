@@ -38,7 +38,7 @@
 #define	MODULE_INIT			cmd_heap_init
 #define	MODULE_EXIT			cmd_heap_exit
 
-void cmd_heap_usage(struct vmm_chardev *cdev)
+static void cmd_heap_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   heap help\n");
@@ -46,7 +46,7 @@ void cmd_heap_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   heap state\n");
 }
 
-int cmd_heap_info(struct vmm_chardev *cdev)
+static int cmd_heap_info(struct vmm_chardev *cdev)
 {
 	int rc;
 	char heap_alloc_name[32];
@@ -112,12 +112,12 @@ int cmd_heap_info(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_heap_state(struct vmm_chardev *cdev)
+static int cmd_heap_state(struct vmm_chardev *cdev)
 {
 	return vmm_heap_print_state(cdev);
 }
 
-int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

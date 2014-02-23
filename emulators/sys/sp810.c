@@ -24,9 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 
 #define MODULE_DESC			"SP810 Serial Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -41,24 +39,21 @@ struct sp810_state {
 	u32 sysctrl;
 };
 
-static int sp810_emulator_read(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int sp810_reg_read(struct sp810_state *s,
+			  u32 offset, u32 *dst)
 {
 	int rc = VMM_OK;
-	u32 regval = 0x0;
-	struct sp810_state * s = edev->priv;
 
 	vmm_spin_lock(&s->lock);
 
 	if (offset >= 0xfe0 && offset < 0x1000) {
 		/* it is not clear what ID shall be returned by the sp810 */
 		/* for now we return 0. It seems to work for linux */
-		regval = 0;
+		*dst = 0;
 	} else {
-		switch (offset & ~0x3) {
+		switch (offset >> 2) {
 		case 0x00: /* SYSCTRL */
-			regval = s->sysctrl;
+			*dst = s->sysctrl;
 			break;
 		default:
 			rc = VMM_EFAIL;
@@ -68,61 +63,17 @@ static int sp810_emulator_read(struct vmm_emudev *edev,
 
 	vmm_spin_unlock(&s->lock);
 
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
-	}
-
 	return rc;
 }
 
-static int sp810_emulator_write(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				void *src, u32 src_len)
+static int sp810_reg_write(struct sp810_state *s,
+			   u32 offset, u32 regmask, u32 regval)
 {
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct sp810_state * s = edev->priv;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc = VMM_OK;
 
 	vmm_spin_lock(&s->lock);
 
-	switch (offset & ~0x3) {
+	switch (offset >> 2) {
 	case 0x00: /* SYSCTRL */
 		s->sysctrl &= regmask;
 		s->sysctrl |= regval;
@@ -135,6 +86,64 @@ static int sp810_emulator_write(struct vmm_emudev *edev,
 	vmm_spin_unlock(&s->lock);
 
 	return rc;
+}
+
+static int sp810_emulator_read8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = sp810_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int sp810_emulator_read16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = sp810_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int sp810_emulator_read32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 *dst)
+{
+	return sp810_reg_read(edev->priv, offset, dst);
+}
+
+static int sp810_emulator_write8(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u8 src)
+{
+	return sp810_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int sp810_emulator_write16(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u16 src)
+{
+	return sp810_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int sp810_emulator_write32(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u32 src)
+{
+	return sp810_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int sp810_emulator_reset(struct vmm_emudev *edev)
@@ -194,9 +203,14 @@ static struct vmm_devtree_nodeid sp810_emuid_table[] = {
 static struct vmm_emulator sp810_emulator = {
 	.name = "sp810",
 	.match_table = sp810_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = sp810_emulator_probe,
-	.read = sp810_emulator_read,
-	.write = sp810_emulator_write,
+	.read8 = sp810_emulator_read8,
+	.write8 = sp810_emulator_write8,
+	.read16 = sp810_emulator_read16,
+	.write16 = sp810_emulator_write16,
+	.read32 = sp810_emulator_read32,
+	.write32 = sp810_emulator_write32,
 	.reset = sp810_emulator_reset,
 	.remove = sp810_emulator_remove,
 };

@@ -25,43 +25,62 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <arch_atomic.h>
+#include <arch_barrier.h>
 
-/* FIXME: Need memory barrier for this. */
+#if defined(CONFIG_SMP)
+#define LOCK_PREFIX "lock;\n"
+#else
+#define LOCK_PREFIX ""
+#endif
+
 long  __lock arch_atomic_read(atomic_t *atom)
 {
-	return atom->counter;
+	long ret = atom->counter;
+	arch_rmb();
+	return ret;
 }
 
-/* FIXME: Need memory barrier for this. */
 void  __lock arch_atomic_write(atomic_t *atom, long value)
 {
 	atom->counter = value;
+	arch_wmb();
 }
 
-/* FIXME: Implement This. */
 void __lock arch_atomic_add(atomic_t *atom, long value)
 {
+	asm volatile(LOCK_PREFIX " addl %k1,%k0\n\t"
+		     :"+m"(atom->counter)
+		     :"ir"(value));
 }
 
-/* FIXME: Implement This. */
 void __lock arch_atomic_sub(atomic_t *atom, long value)
 {
+	asm volatile (LOCK_PREFIX " subl %k1,%k0\n\t"
+		      :"+m"(atom->counter)
+		      :"ir"(value));
 }
 
-/* FIXME: Implement This. */
 long __lock arch_atomic_add_return(atomic_t *atom, long value)
 {
-	return 0;
+	long oval;
+	asm volatile(LOCK_PREFIX " xaddl %k0,%k1\n\t"
+		     :"=r"(oval),"+m"(atom->counter)
+		     :"0"(value):"cc");
+
+	return value + oval;
 }
 
-/* FIXME: Implement This. */
 long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 {
-	return 0;
+	return arch_atomic_add_return(atom, -value);
 }
 
-/* FIXME: Implement This. */
 long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 {
-	return 0;
+	long ret;
+	asm volatile(LOCK_PREFIX "cmpxchgl %k2,%k1\n\t"
+		     :"=a"(ret),"+m"(atom->counter)
+		     :"r"(newval), "0"(oldval)
+		     :"memory");
+	return ret;
 }

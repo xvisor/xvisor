@@ -38,6 +38,22 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 	u16 data16;
 	u32 data32;
 	physical_addr_t guest_pa;
+	enum vmm_devemu_endianness data_endian;
+
+	/* Determine data endianness */
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	}
 
 	/* Determine guest physical address */
 	va2pa_at(VA2PA_STAGE1, VA2PA_EL1, VA2PA_RD, addr);
@@ -48,18 +64,21 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 	/* Do guest memory read */
 	switch (dst_len) {
 	case 1:
-		rc = vmm_devemu_emulate_read(vcpu, guest_pa, 
-					     &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_read(vcpu, guest_pa,
+					     &data8, sizeof(data8),
+					     data_endian);
 		*((u8 *)dst) = (!rc) ? data8 : 0;
 		break;
 	case 2:
-		rc = vmm_devemu_emulate_read(vcpu, guest_pa, 
-					     &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_read(vcpu, guest_pa,
+					     &data16, sizeof(data16),
+					     data_endian);
 		*((u16 *)dst) = (!rc) ? data16 : 0;
 		break;
 	case 4:
-		rc = vmm_devemu_emulate_read(vcpu, guest_pa, 
-					     &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_read(vcpu, guest_pa,
+					     &data32, sizeof(data32),
+					     data_endian);
 		*((u32 *)dst) = (!rc) ? data32 : 0;
 		break;
 	default:
@@ -81,6 +100,22 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 	u16 data16;
 	u32 data32;
 	physical_addr_t guest_pa;
+	enum vmm_devemu_endianness data_endian;
+
+	/* Determine data endianness */
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	}
 
 	/* Determine guest physical address */
 	va2pa_at(VA2PA_STAGE1, VA2PA_EL1, VA2PA_WR, addr);
@@ -92,18 +127,21 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 	switch (src_len) {
 	case 1:
 		data8 = *((u8 *)src);
-		rc = vmm_devemu_emulate_write(vcpu, guest_pa, 
-					     &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_write(vcpu, guest_pa,
+					      &data8, sizeof(data8),
+					      data_endian);
 		break;
 	case 2:
 		data16 = *((u16 *)src);
-		rc = vmm_devemu_emulate_write(vcpu, guest_pa, 
-					     &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_write(vcpu, guest_pa,
+					      &data16, sizeof(data16),
+					      data_endian);
 		break;
 	case 4:
 		data32 = *((u32 *)src);
-		rc = vmm_devemu_emulate_write(vcpu, guest_pa, 
-					     &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_write(vcpu, guest_pa,
+					      &data32, sizeof(data32),
+					      data_endian);
 		break;
 	default:
 		rc = VMM_EFAIL;

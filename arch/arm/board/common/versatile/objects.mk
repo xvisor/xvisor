@@ -21,6 +21,5 @@
 # @brief list of versatile platform objects.
 # */
 
-board-common-objs-$(CONFIG_VERSATILE_CLOCK)+= versatile/clock.o
 board-common-objs-$(CONFIG_VERSATILE_CLCD)+= versatile/clcd.o
 

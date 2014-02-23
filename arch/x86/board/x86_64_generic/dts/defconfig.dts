@@ -6,7 +6,6 @@
 	#size-cells = <2>;
 	model = "x86_64_generic";
 
-	chosen { };
 	aliases { };
 
 	cpus {
@@ -22,13 +21,39 @@
 	};
 
 	motherboard {
-		#address-cells = <2>;
-		#size-cells = <2>;
+		#address-cells = <1>;
+		#size-cells = <1>;
 		compatible = "simple-bus";
 
 		ps2 {
 			device_type = "serio";
 			compatible = "i8042";
+		};
+
+		ide {
+			device_type = "ide";
+			compatible = "piix3_ide";
+		};
+
+		STDOUT: vga {
+		};
+
+		SERIAL0: uart0 {
+			device_type = "serial";
+			compatible = "ns8250";
+			reg = <0x3f8 0x0>;
+			baudrate = <115200>;
+			interrupts = <4>;
+			clock-frequency = <24000000>;
+		};
+
+		SERIAL1: uart1 {
+			device_type = "serial";
+			compatible = "ns8250";
+			reg = <0x2f8 0x0>;
+			baudrate = <115200>;
+			interrupts = <3>;
+			clock-frequency = <24000000>;
 		};
 	};
 
@@ -36,4 +61,20 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
+
+	chosen {
+		console = &SERIAL0;
+		/*console = &STDOUT;*/
+		bootcmd = /* Copy guest0 device tree from templates */
+			  "devtree node copy /guests guest0 /templates/x86_64_generic",
+			  /* Create guest0 */
+			  "guest create guest0";
+
+	};
+
+	/* empty guest node */
+	guests {
+	};
 };
+
+/include/ "../../common/guests/x86_64_guest.dtsi"

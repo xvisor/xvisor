@@ -18,7 +18,7 @@
  *
  * @file vmm_delay.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source file for soft delay susbsystem
+ * @brief source file for soft delay subsystem
  */
 
 #include <vmm_error.h>
@@ -34,24 +34,40 @@ static u32 loops_per_usec[CONFIG_CPU_COUNT];
 
 void vmm_udelay(u32 usecs)
 {
+	u32 lpusec;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
-
-	arch_delay_loop(usecs * loops_per_usec[vmm_smp_processor_id()]);
-
+	lpusec = loops_per_usec[vmm_smp_processor_id()];
 	arch_cpu_irq_restore(flags);
+
+	arch_delay_loop(usecs * lpusec);
 }
 
 void vmm_mdelay(u32 msecs)
 {
+	u32 lpmsec;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
-
-	arch_delay_loop(msecs * loops_per_msec[vmm_smp_processor_id()]);
-
+	lpmsec = loops_per_msec[vmm_smp_processor_id()];
 	arch_cpu_irq_restore(flags);
+
+	arch_delay_loop(msecs * lpmsec);
+}
+
+void vmm_sdelay(u32 secs)
+{
+	u32 i, lpmsec;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	lpmsec = loops_per_msec[vmm_smp_processor_id()];
+	arch_cpu_irq_restore(flags);
+
+	for (i = 0; i < secs; i++) {
+		arch_delay_loop(1000 * lpmsec);
+	}
 }
 
 u32 vmm_delay_estimate_cpu_mhz(u32 cpu)
@@ -84,11 +100,11 @@ void vmm_delay_recaliberate(void)
 	arch_cpu_irq_restore(flags);
 }
 
-int vmm_delay_init(void)
+int __cpuinit vmm_delay_init(void)
 {
-	u32 i, cpu = vmm_smp_processor_id();
+	u32 i;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
 			loops_per_msec[i] = 0;
 			loops_per_usec[i] = 0;

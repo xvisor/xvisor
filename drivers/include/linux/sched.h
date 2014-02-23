@@ -6,10 +6,13 @@
 
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
+#include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 
 #define in_atomic()			1
+#define in_interrupt()  vmm_scheduler_irq_context()
+
 
 typedef struct vmm_waitqueue wait_queue_head_t;
 

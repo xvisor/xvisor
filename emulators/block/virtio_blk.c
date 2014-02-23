@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
@@ -32,6 +33,14 @@
 
 #include <emu/virtio.h>
 #include <emu/virtio_blk.h>
+
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
 
 #define MODULE_DESC			"VirtIO Block Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -171,6 +180,7 @@ static void virtio_blk_req_done(struct virtio_blk_dev_req *req, u8 status)
 		req->read_iov_cnt = 0;
 	}
 
+	req->r.type = VMM_REQUEST_UNKNOWN;
 	if (req->r.data) {
 		vmm_free(req->r.data);
 		req->r.data = NULL;
@@ -187,11 +197,15 @@ static void virtio_blk_req_done(struct virtio_blk_dev_req *req, u8 status)
 
 static void virtio_blk_req_completed(struct vmm_request *r)
 {
+	DPRINTF("%s: lba=0x%llx bcnt=%d\n",
+		__func__, (u64)r->lba, r->bcnt);
 	virtio_blk_req_done(r->priv, VIRTIO_BLK_S_OK);
 }
 
 static void virtio_blk_req_failed(struct vmm_request *r)
 {
+	DPRINTF("%s: lba=0x%llx bcnt=%d\n",
+		__func__, (u64)r->lba, r->bcnt);
 	virtio_blk_req_done(r->priv, VIRTIO_BLK_S_IOERR);
 }
 
@@ -243,6 +257,8 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			req->r.type = VMM_REQUEST_READ;
 			req->r.lba  = hdr.sector;
 			req->r.bcnt = udiv32(req->len, bdev->config.blk_size);
+			DPRINTF("%s: IN lba=0x%llx bcnt=%d req_len=%d\n",
+				__func__, (u64)req->r.lba, req->r.bcnt, req->len);
 			req->r.data = vmm_malloc(req->len);
 			if (!req->r.data) {
 				virtio_blk_req_done(req, VIRTIO_BLK_S_IOERR);
@@ -271,6 +287,8 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			req->r.type = VMM_REQUEST_WRITE;
 			req->r.lba  = hdr.sector;
 			req->r.bcnt = udiv32(req->len, bdev->config.blk_size);
+			DPRINTF("%s: OUT lba=0x%llx bcnt=%d req_len=%d\n",
+				__func__, (u64)req->r.lba, req->r.bcnt, req->len);
 			req->r.data = vmm_malloc(req->len);
 			if (!req->r.data) {
 				virtio_blk_req_done(req, VIRTIO_BLK_S_IOERR);
@@ -291,6 +309,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			vmm_blockdev_submit_request(blk, &req->r);
 			break;
 		case VIRTIO_BLK_T_FLUSH:
+			DPRINTF("%s: FLUSH\n", __func__);
 			req->r.type = VMM_REQUEST_WRITE;
 			req->r.lba  = 0;
 			req->r.bcnt = 0;
@@ -305,6 +324,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			}
 			break;
 		case VIRTIO_BLK_T_GET_ID:
+			DPRINTF("%s: GET_ID\n", __func__);
 			req->len = VIRTIO_BLK_ID_BYTES;
 			req->r.type = VMM_REQUEST_READ;
 			req->r.lba = 0;
@@ -378,8 +398,18 @@ static int virtio_blk_write_config(struct virtio_device *dev,
 
 static int virtio_blk_reset(struct virtio_device *dev)
 {
-	int rc;
+	int i, rc;
+	struct virtio_blk_dev_req *req;
 	struct virtio_blk_dev *bdev = dev->emu_data;
+
+	for (i = 0; i < VIRTIO_BLK_QUEUE_SIZE; i++) {
+		req = &bdev->reqs[i];
+		if (req->r.type != VMM_REQUEST_UNKNOWN) {
+			vmm_blockdev_abort_request(&req->r);
+		}
+		memset(req, 0, sizeof(*req));
+		req->r.type = VMM_REQUEST_UNKNOWN;
+	}
 
 	rc = virtio_queue_cleanup(&bdev->vqs[VIRTIO_BLK_IO_QUEUE]);
 	if (rc) {
@@ -430,7 +460,7 @@ static int virtio_blk_connect(struct virtio_device *dev,
 			      struct virtio_emulator *emu)
 {
 	int rc;
-	char *attr;
+	const char *attr;
 	struct virtio_blk_dev *bdev;
 
 	bdev = vmm_zalloc(sizeof(struct virtio_blk_dev));
@@ -450,9 +480,9 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	INIT_SPIN_LOCK(&bdev->blk_lock);
 
-	attr = vmm_devtree_attrval(dev->edev->node, "blkdev");
-	if (attr) {
-		if (strlcpy(bdev->blk_name,attr, sizeof(bdev->blk_name)) >=
+	if (vmm_devtree_read_string(dev->edev->node,
+				    "blkdev", &attr) == VMM_OK) {
+		if (strlcpy(bdev->blk_name, attr, sizeof(bdev->blk_name)) >=
 		    sizeof(bdev->blk_name)) {
 			vmm_free(bdev);
 			return VMM_EOVERFLOW;

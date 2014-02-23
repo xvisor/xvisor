@@ -37,6 +37,38 @@
 #define vmm_smp_processor_id()	arch_smp_id()
 #endif
 
+/** Get SMP processor ID for Boot CPU
+ *  Note: Boot CPU is the CPU on which we started booting.
+ *  Note: To ease development, this function returns 0 on UP systems.
+ */
+#if !defined(CONFIG_SMP)
+#define vmm_smp_bootcpu_id()	0
+#else
+u32 vmm_smp_bootcpu_id(void);
+#endif
+
+/** Set current SMP processor as Boot CPU
+ *  Note: Boot CPU is the CPU on which we started booting.
+ *  Note: This will work for first CPU calling this function and for
+ *  subsequent CPUs it is ignored.
+ *  Note: To ease development, this function does nothing on UP systems.
+ */
+#if !defined(CONFIG_SMP)
+#define vmm_smp_set_bootcpu()
+#else
+void vmm_smp_set_bootcpu(void);
+#endif
+
+/** Check if current SMP processor is our Boot CPU.
+ *  Note: Boot CPU is the CPU on which we started booting.
+ *  Note: To ease development, this function returns TRUE on UP systems.
+ */
+#if !defined(CONFIG_SMP)
+#define vmm_smp_is_bootcpu()	TRUE
+#else
+bool vmm_smp_is_bootcpu(void);
+#endif
+
 /** Execute IPI on current processor triggered by 
  *  some other processor
  *  Note: This is only available for SMP systems.

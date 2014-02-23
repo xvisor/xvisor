@@ -27,7 +27,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
-#include <cpu_vcpu_spr.h>
+#include <cpu_vcpu_excep.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_defines.h>

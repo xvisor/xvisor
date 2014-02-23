@@ -27,7 +27,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
 #include <cpu_inline_asm.h>
-#include <cpu_vcpu_cp15.h>
+#include <cpu_vcpu_excep.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_helper.h>
 
@@ -202,7 +202,7 @@ void do_hyp_trap(arch_regs_t *regs)
 		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
 		fipa = fipa << HPFAR_FIPA_PAGE_SHIFT;
 		fipa = fipa | (far & HPFAR_FIPA_PAGE_MASK);
-		rc = cpu_vcpu_cp15_inst_abort(vcpu, regs, il, iss, far, fipa);
+		rc = cpu_vcpu_inst_abort(vcpu, regs, il, iss, far, fipa);
 		break;
 	case EC_TRAP_STAGE1_INST_ABORT:
 		/* We dont expect to get this trap so error */
@@ -214,7 +214,7 @@ void do_hyp_trap(arch_regs_t *regs)
 		fipa = (read_hpfar() & HPFAR_FIPA_MASK) >> HPFAR_FIPA_SHIFT;
 		fipa = fipa << HPFAR_FIPA_PAGE_SHIFT;
 		fipa = fipa | (far & HPFAR_FIPA_PAGE_MASK);
-		rc = cpu_vcpu_cp15_data_abort(vcpu, regs, il, iss, far, fipa);
+		rc = cpu_vcpu_data_abort(vcpu, regs, il, iss, far, fipa);
 		break;
 	case EC_TRAP_STAGE1_DATA_ABORT:
 		/* We dont expect to get this trap so error */

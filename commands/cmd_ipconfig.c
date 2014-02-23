@@ -39,7 +39,7 @@
 #define	MODULE_INIT			cmd_ipconfig_init
 #define	MODULE_EXIT			cmd_ipconfig_exit
 
-void cmd_ipconfig_usage(struct vmm_chardev *cdev)
+static void cmd_ipconfig_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   ipconfig help\n");
@@ -121,7 +121,7 @@ static int cmd_ipconfig_update(struct vmm_chardev *cdev, int argc, char **argv)
 	return rc;
 }
 
-int cmd_ipconfig_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_ipconfig_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

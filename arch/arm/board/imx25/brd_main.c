@@ -29,23 +29,8 @@
 #include <arch_board.h>
 #include <arch_timer.h>
 
+#include <imx/avic.h>
 #include <imx/epit.h>
-
-/*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	/* FIXME: Don't know how to reset !!!!! */
-	return VMM_EFAIL;
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: Don't know how to poweroff !!!!! */
-	return VMM_EFAIL;
-}
 
 /*
  * Print board information
@@ -59,6 +44,30 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 /*
  * Initialization functions
  */
+
+int __cpuinit arch_host_irq_init(void)
+{
+	int rc;
+	virtual_addr_t avic_base;
+	struct vmm_devtree_node *vnode;
+
+	vnode = vmm_devtree_find_compatible(NULL, NULL, "freescale,avic");
+	if (!vnode) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regmap(vnode, &avic_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = avic_init(avic_base);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
 
 int __init arch_board_early_init(void)
 {

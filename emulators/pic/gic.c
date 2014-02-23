@@ -18,11 +18,9 @@
  *
  * @file gic.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Realview GIC (Generic Interrupt Controller) Emulator.
- * @details This source file implements the Realview GIC (Generic Interrupt
- * Controller) emulator.
+ * @brief GIC (Generic Interrupt Controller) Emulator.
  *
- * The source has been largely adapted from QEMU 0.14.xx hw/arm_gic.c
+ * The source has been largely adapted from QEMU hw/intc/arm_gic.c
  * 
  * ARM Generic/Distributed Interrupt Controller. 
  *
@@ -38,8 +36,6 @@
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
-#include <vmm_host_irq.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
 #include <emu/gic_emulator.h>
@@ -54,48 +50,56 @@
 #define GIC_MAX_NCPU			8
 #define GIC_MAX_NIRQ			128
 
+struct memory_region {
+	u32 offset;
+	u16 length;
+};
+
 struct gic_irq_state {
 	u32 enabled:GIC_MAX_NCPU;
 	u32 pending:GIC_MAX_NCPU;
 	u32 active:GIC_MAX_NCPU;
 	u32 level:GIC_MAX_NCPU;
+	u32 target:GIC_MAX_NCPU;
+	u32 priority:8;
 	u32 model:1; /* 0 = N:N, 1 = 1:N */
 	u32 trigger:1; /* nonzero = edge triggered.  */
 };
 
+struct gic_cpu_state {
+	vmm_rwlock_t cpu_lock;
+	u8 parent_irq;
+	bool enabled;
+	u16 priority_mask;
+	u16 running_irq;
+	u16 running_priority;
+	u16 current_pending;
+	u16 last_active[GIC_MAX_NIRQ];
+	u8 priority[32];
+};
+
 struct gic_state {
 	struct vmm_guest *guest;
-	vmm_spinlock_t lock;
 
 	/* Configuration */
 	enum gic_type type;
-	u8 id[8];
-	u32 num_cpu;
-	u32 num_irq;
-	u32 base_irq;
 	bool is_child_pic;
-	u32 parent_irq[GIC_MAX_NCPU];
 
 	/* Chip Info */
-	u32 enabled;
+	bool enabled;
+	u8 id[8];
 
 	/* CPU Interface */
-	u32 cpu_offset;
-	u32 cpu_length;
-	u32 cpu_enabled[GIC_MAX_NCPU];
-	u32 priority_mask[GIC_MAX_NCPU];
-	u32 running_irq[GIC_MAX_NCPU];
-	u32 running_priority[GIC_MAX_NCPU];
-	u32 current_pending[GIC_MAX_NCPU];
+	u8 num_cpu;
+	struct memory_region cpu;
+	struct gic_cpu_state cpu_state[GIC_MAX_NCPU];
 
 	/* Distribution Control */
-	u32 dist_offset;
-	u32 dist_length;
+	u8 num_irq;
+	u8 base_irq;
+	struct memory_region dist;
+	vmm_rwlock_t dist_lock;
 	struct gic_irq_state irq_state[GIC_MAX_NIRQ];
-	int irq_target[GIC_MAX_NIRQ];
-	int priority1[32][GIC_MAX_NCPU];
-	int priority2[GIC_MAX_NIRQ - 32];
-	int last_active[GIC_MAX_NIRQ][GIC_MAX_NCPU];	
 };
 
 #define GIC_ALL_CPU_MASK(s) ((1 << (s)->num_cpu) - 1)
@@ -114,41 +118,46 @@ struct gic_state {
 #define GIC_SET_MODEL(s, irq) (s)->irq_state[irq].model = 1
 #define GIC_CLEAR_MODEL(s, irq) (s)->irq_state[irq].model = 0
 #define GIC_TEST_MODEL(s, irq) (s)->irq_state[irq].model
-#define GIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level = (cm)
+#define GIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level |= (cm)
 #define GIC_CLEAR_LEVEL(s, irq, cm) (s)->irq_state[irq].level &= ~(cm)
 #define GIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
 #define GIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define GIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
 #define GIC_TEST_TRIGGER(s, irq) (s)->irq_state[irq].trigger
 #define GIC_GET_PRIORITY(s, irq, cpu) \
-  (((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
-#define GIC_TARGET(s, irq) (s)->irq_target[irq]
+  (((irq) < 32) ? (s)->cpu_state[cpu].priority[irq] : (s)->irq_state[irq].priority)
+#define GIC_TARGET(s, irq) (s)->irq_state[irq].target
 
 /* Update interrupt status after enabled or pending bits have been changed. */
 static void gic_update(struct gic_state *s)
 {
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
 	int best_irq, best_prio;
 	int irq, level, cpu, cm;
 	struct vmm_vcpu *vcpu;
-
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	struct gic_cpu_state *cpu_state;
 
 	for (cpu = 0; cpu < GIC_NUM_CPU(s); cpu++) {
+		cpu_state = &s->cpu_state[cpu];
 		cm = 1 << cpu;
-		s->current_pending[cpu] = 1023;
-		if (!s->enabled || !s->cpu_enabled[cpu]) {
+
+		vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
+
+		cpu_state->current_pending = 1023;
+		if (!s->enabled || !cpu_state->enabled) {
+			vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
 			if (s->is_child_pic) {
-				vmm_spin_unlock_irqrestore(&s->lock, flags);
 				vmm_devemu_emulate_percpu_irq(s->guest, 
-						       s->parent_irq[cpu], 
+						       cpu_state->parent_irq,
 						       cpu, 0);
-				vmm_spin_lock_irqsave(&s->lock, flags);
 			}
-			goto done;
+			break;
 		}
 		best_prio = 0x100;
 		best_irq = 1023;
+
+		vmm_read_lock_irqsave(&s->dist_lock, dist_flags);
+
 		for (irq = 0; irq < GIC_NUM_IRQ(s); irq++) {
 			if (GIC_TEST_ENABLED(s, irq, cm) && 
 			    GIC_TEST_PENDING(s, irq, cm)) {
@@ -159,41 +168,38 @@ static void gic_update(struct gic_state *s)
 				}
 			}
 		}
+
+		vmm_read_unlock_irqrestore(&s->dist_lock, dist_flags);
+
 		level = 0;
-		if (best_prio < s->priority_mask[cpu]) {
-			s->current_pending[cpu] = best_irq;
-			if (best_prio < s->running_priority[cpu]) {
+		if (best_prio < cpu_state->priority_mask) {
+			cpu_state->current_pending = best_irq;
+			if (best_prio < cpu_state->running_priority) {
 				level = 1;
 			}
 		}
+
+		vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
 		if (s->is_child_pic) {
 			/* Assert irq to Parent PIC */
-			vmm_spin_unlock_irqrestore(&s->lock, flags);
 			vmm_devemu_emulate_percpu_irq(s->guest, 
-						      s->parent_irq[cpu], 
+						      cpu_state->parent_irq,
 						      cpu, level);
-			vmm_spin_lock_irqsave(&s->lock, flags);
 		} else {
 			vcpu = vmm_manager_guest_vcpu(s->guest, cpu);
 			if (level && vcpu) {
 				/* Assert irq to VCPU */
-				vmm_spin_unlock_irqrestore(&s->lock, flags);
 				vmm_vcpu_irq_assert(vcpu, 
-						    s->parent_irq[cpu], 0x0);
-				vmm_spin_lock_irqsave(&s->lock, flags);
+						    cpu_state->parent_irq, 0x0);
 			} 
 			if (!level && vcpu) {
 				/* Deassert irq to VCPU */
-				vmm_spin_unlock_irqrestore(&s->lock, flags);
 				vmm_vcpu_irq_deassert(vcpu, 
-						      s->parent_irq[cpu]);
-				vmm_spin_lock_irqsave(&s->lock, flags);
+						      cpu_state->parent_irq);
 			}
 		}
 	}
-
-done:
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
 }
 
 /* Process IRQ asserted via device emulation framework */
@@ -214,10 +220,10 @@ static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		target = GIC_TARGET(s, irq);
 	}	
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_write_lock_irqsave(&s->dist_lock, flags);
 
 	if (level == GIC_TEST_LEVEL(s, irq, cm)) {
-		vmm_spin_unlock_irqrestore(&s->lock, flags);
+		vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 		return;
 	}
 
@@ -230,53 +236,59 @@ static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		GIC_CLEAR_LEVEL(s, irq, cm);
 	}
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 
 	gic_update(s);
 }
 
 static void gic_set_running_irq(struct gic_state *s, int cpu, int irq)
 {
-	irq_flags_t flags;
+	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
-
-	s->running_irq[cpu] = irq;
+	cpu_state->running_irq = irq;
 	if (irq == 1023) {
-		s->running_priority[cpu] = 0x100;
+		cpu_state->running_priority = 0x100;
 	} else {
-		s->running_priority[cpu] = GIC_GET_PRIORITY(s, irq, cpu);
+		cpu_state->running_priority = GIC_GET_PRIORITY(s, irq, cpu);
 	}
-
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
-
-	gic_update(s);
 }
 
 static u32 gic_acknowledge_irq(struct gic_state *s, int cpu)
 {
 	int new_irq;
 	int cm = 1 << cpu;
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
+	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
 
-	new_irq = s->current_pending[cpu];
+	vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
+
+	new_irq = cpu_state->current_pending;
+
 	if ((new_irq == 1023) ||
-	    GIC_GET_PRIORITY(s, new_irq, cpu) >= s->running_priority[cpu]) {
-		return 1023;
+	    GIC_GET_PRIORITY(s, new_irq, cpu) >= cpu_state->running_priority) {
+		new_irq = 1023;
+		goto release_lock;
 	}
 
-	s->last_active[new_irq][cpu] = s->running_irq[cpu];
+	cpu_state->last_active[new_irq] = cpu_state->running_irq;
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_write_lock_irqsave(&s->dist_lock, dist_flags);
 
 	/* Clear pending flags for both level and edge triggered interrupts.
 	 * Level triggered IRQs will be reasserted once they become inactive. */
 	GIC_CLEAR_PENDING(s, new_irq, 
 			  GIC_TEST_MODEL(s, new_irq) ? GIC_ALL_CPU_MASK(s) : cm);
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, dist_flags);
 
 	gic_set_running_irq(s, cpu, new_irq);
+
+ release_lock:
+	vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
+	if (new_irq != 1023) {
+		gic_update(s);
+	}
 
 	return new_irq;
 }
@@ -285,12 +297,16 @@ static void gic_complete_irq(struct gic_state *s, int cpu, int irq)
 {
 	int update = 0;
 	int cm = 1 << cpu;
-	irq_flags_t flags;
+	irq_flags_t dist_flags, cpu_flags;
+	struct gic_cpu_state *cpu_state = &s->cpu_state[cpu];
 
-	if (s->running_irq[cpu] == 1023)
-		return; /* No active IRQ.  */
+	vmm_write_lock_irqsave(&cpu_state->cpu_lock, cpu_flags);
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	if (cpu_state->running_irq == 1023) {
+		goto release_lock;
+	}
+
+	vmm_write_lock_irqsave(&s->dist_lock, dist_flags);
 
 	/* Mark level triggered interrupts as pending if 
 	 * they are still raised. */
@@ -302,26 +318,34 @@ static void gic_complete_irq(struct gic_state *s, int cpu, int irq)
 		update = 1;
 	}
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, dist_flags);
 
-	if (irq != s->running_irq[cpu]) {
+	if (irq != cpu_state->running_irq) {
 		/* Complete an IRQ that is not currently running.  */
-		int tmp = s->running_irq[cpu];
-		while (s->last_active[tmp][cpu] != 1023) {
-			if (s->last_active[tmp][cpu] == irq) {
-				s->last_active[tmp][cpu] = 
-						s->last_active[irq][cpu];
+		int tmp = cpu_state->running_irq;
+		while (cpu_state->last_active[tmp] != 1023) {
+			if (cpu_state->last_active[tmp] == irq) {
+				cpu_state->last_active[tmp] =
+						cpu_state->last_active[irq];
 				break;
 			}
-			tmp = s->last_active[tmp][cpu];
+			tmp = cpu_state->last_active[tmp];
 		}
 		if (update) {
-			gic_update(s);
+			update = 2;
 		}
 	} else {
 		/* Complete the current running IRQ.  */
 		gic_set_running_irq(s, cpu, 
-				s->last_active[s->running_irq[cpu]][cpu]);
+				cpu_state->last_active[cpu_state->running_irq]);
+		update = 2;
+	}
+
+ release_lock:
+	vmm_write_unlock_irqrestore(&cpu_state->cpu_lock, cpu_flags);
+
+	if (update == 2) {
+		gic_update(s);
 	}
 }
 
@@ -468,7 +492,7 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 	switch (offset - (offset & 0x3)) {
 	case 0x000: /* Distributor control */
 		if (offset == 0x000) {
-			s->enabled = src & 0x1;
+			s->enabled = src & 0x1 ? TRUE : FALSE;
 		}
 		break;
 	case 0x004: /* Controller type */
@@ -575,9 +599,9 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 				break;
 			}
 			if (irq < 32) {
-				s->priority1[irq][cpu] = src >> 4;
+				s->cpu_state[cpu].priority[irq] = src >> 4;
 			} else {
-				s->priority2[irq - 32] = src >> 4;
+				s->irq_state[irq].priority = src >> 4;
 			}
 			break;
 		case 0x8: /* CPU targets */
@@ -591,7 +615,7 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 			} else if (irq < 32) {
 				src = GIC_ALL_CPU_MASK(s);
 			}
-			s->irq_target[irq] = src & GIC_ALL_CPU_MASK(s);
+			s->irq_state[irq].target = src & GIC_ALL_CPU_MASK(s);
 			break;
 		case 0xC: /* Configuration */
 			irq = (offset - 0xC00) * 4;
@@ -638,7 +662,7 @@ static int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_read_lock_irqsave(&s->dist_lock, flags);
 
 	*dst = 0;
 	for (i = 0; i < 4; i++) {
@@ -648,7 +672,7 @@ static int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
 		*dst |= val << (i * 8);
 	}
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_read_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -663,7 +687,7 @@ static int gic_dist_write(struct gic_state *s, int cpu, u32 offset,
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_write_lock_irqsave(&s->dist_lock, flags);
 
 	if (offset == 0xF00) {
 		/* Software Interrupt */
@@ -697,7 +721,7 @@ static int gic_dist_write(struct gic_state *s, int cpu, u32 offset,
 		}
 	}
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 
 	gic_update(s);
 
@@ -717,10 +741,10 @@ static int gic_cpu_read(struct gic_state *s, u32 cpu, u32 offset, u32 *dst)
 
 	switch (offset) {
 	case 0x00: /* Control */
-		*dst = s->cpu_enabled[cpu];
+		*dst = s->cpu_state[cpu].enabled;
 		break;
 	case 0x04: /* Priority mask */
-		*dst = s->priority_mask[cpu];
+		*dst = s->cpu_state[cpu].priority_mask;
 		break;
 	case 0x08: /* Binary Point */
 		/* ??? Not implemented.  */
@@ -729,10 +753,10 @@ static int gic_cpu_read(struct gic_state *s, u32 cpu, u32 offset, u32 *dst)
 		*dst = gic_acknowledge_irq(s, cpu);
 		break;
 	case 0x14: /* Runing Priority */
-		*dst = s->running_priority[cpu];
+		*dst = s->cpu_state[cpu].running_priority;
 		break;
 	case 0x18: /* Highest Pending Interrupt */
-		*dst = s->current_pending[cpu];
+		*dst = s->cpu_state[cpu].current_pending;
 		break;
 	default:
 		rc = VMM_EFAIL;
@@ -758,11 +782,11 @@ static int gic_cpu_write(struct gic_state *s, u32 cpu, u32 offset,
 
 	switch (offset) {
 	case 0x00: /* Control */
-		s->cpu_enabled[cpu] = src & 0x1;
+		s->cpu_state[cpu].enabled = src & 0x1 ? TRUE : FALSE;
 		gic_update(s);
 		break;
 	case 0x04: /* Priority mask */
-		s->priority_mask[cpu] = src & 0xFF;
+		s->cpu_state[cpu].priority_mask = src & 0xFF;
 		gic_update(s);
 		break;
 	case 0x08: /* Binary Point */
@@ -791,12 +815,12 @@ int gic_reg_read(struct gic_state *s, physical_addr_t offset, u32 *dst)
 		return VMM_EFAIL;
 	}
 
-	if ((offset >= s->cpu_offset) && 
-	    (offset < (s->cpu_offset + s->cpu_length))) {
+	if ((offset >= s->cpu.offset) &&
+	    (offset < (s->cpu.offset + s->cpu.length))) {
 		/* Read CPU Interface */
 		return gic_cpu_read(s, vcpu->subid, offset & 0xFC, dst);
-	} else if ((offset >= s->dist_offset) && 
-		   (offset < (s->dist_offset + s->dist_length)))  {
+	} else if ((offset >= s->dist.offset) &&
+		   (offset < (s->dist.offset + s->dist.length)))  {
 		/* Read Distribution Control */
 		return gic_dist_read(s, vcpu->subid, offset & 0xFFC, dst);
 	}
@@ -818,13 +842,13 @@ int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 		return VMM_EFAIL;
 	}
 
-	if ((offset >= s->cpu_offset) && 
-	    (offset < (s->cpu_offset + s->cpu_length))) {
+	if ((offset >= s->cpu.offset) &&
+	    (offset < (s->cpu.offset + s->cpu.length))) {
 		/* Write CPU Interface */
 		return gic_cpu_write(s, vcpu->subid, 
 				   offset & 0xFC, src_mask, src);
-	} else if ((offset >= s->dist_offset) && 
-		   (offset < (s->dist_offset + s->dist_length)))  {
+	} else if ((offset >= s->dist.offset) &&
+		   (offset < (s->dist.offset + s->dist.length)))  {
 		/* Write Distribution Control */
 		return gic_dist_write(s, vcpu->subid, 
 				    offset & 0xFFC, src_mask, src);
@@ -834,68 +858,62 @@ int gic_reg_write(struct gic_state *s, physical_addr_t offset,
 }
 VMM_EXPORT_SYMBOL(gic_reg_write);
 
-static int gic_emulator_read(struct vmm_emudev *edev,
-			     physical_addr_t offset, 
-			     void *dst, u32 dst_len)
+static int gic_emulator_read8(struct vmm_emudev *edev,
+			      physical_addr_t offset, 
+			      u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct gic_state *s = edev->priv;
 
-	rc = gic_reg_read(s, offset, &regval);
+	rc = gic_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int gic_emulator_write(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
-			      void *src, u32 src_len)
+static int gic_emulator_read16(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct gic_state *s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = gic_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
 
-	return gic_reg_write(s, offset, regmask, regval);
+	return rc;
+}
+
+static int gic_emulator_read32(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u32 *dst)
+{
+	return gic_reg_read(edev->priv, offset, dst);
+}
+
+static int gic_emulator_write8(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u8 src)
+{
+	return gic_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int gic_emulator_write16(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u16 src)
+{
+	return gic_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int gic_emulator_write32(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u32 src)
+{
+	return gic_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 int gic_state_reset(struct gic_state *s)
@@ -903,7 +921,7 @@ int gic_state_reset(struct gic_state *s)
 	u32 i;
 	irq_flags_t flags;
 
-	vmm_spin_lock_irqsave(&s->lock, flags);
+	vmm_write_lock_irqsave(&s->dist_lock, flags);
 
 	/*
 	 * We should not reset level as for host to guest IRQ might
@@ -918,24 +936,26 @@ int gic_state_reset(struct gic_state *s)
 	}
 
 	for (i = 0; i < GIC_NUM_CPU(s); i++) {
+		struct gic_cpu_state *cpu_state = &s->cpu_state[i];
+
 		if (s->type == GIC_TYPE_ARM11MPCORE) {
-			s->priority_mask[i] = 0xf0;
+			cpu_state->priority_mask = 0xf0;
 		} else {
-			s->priority_mask[i] = 0x0;
+			cpu_state->priority_mask = 0x0;
 		}
-		s->current_pending[i] = 1023;
-		s->running_irq[i] = 1023;
-		s->running_priority[i] = 0x100;
-		s->cpu_enabled[i] = 0;
+		cpu_state->current_pending = 1023;
+		cpu_state->running_irq = 1023;
+		cpu_state->running_priority = 0x100;
+		cpu_state->enabled = FALSE;
 	}
 	/* */
 	for (i = 0; i < 16; i++) {
 		GIC_SET_ENABLED(s, i, GIC_ALL_CPU_MASK(s));
 		GIC_SET_TRIGGER(s, i);
 	}
-	s->enabled = 0;
+	s->enabled = FALSE;
 
-	vmm_spin_unlock_irqrestore(&s->lock, flags);
+	vmm_write_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -1051,19 +1071,20 @@ struct gic_state *gic_state_alloc(const char *name,
 	s->id[5] = gic_configs[type][7];
 	s->id[6] = gic_configs[type][8];
 	s->id[7] = gic_configs[type][9];
-	s->cpu_offset = gic_configs[type][10];
-	s->cpu_length = gic_configs[type][11];
-	s->dist_offset = gic_configs[type][12];
-	s->dist_length = gic_configs[type][13];
+	s->cpu.offset = gic_configs[type][10];
+	s->cpu.length = gic_configs[type][11];
+	s->dist.offset = gic_configs[type][12];
+	s->dist.length = gic_configs[type][13];
 
 	s->is_child_pic = is_child_pic;
 
 	for (i = 0; i < s->num_cpu; i++) {
-		s->parent_irq[i] = parent_irq;
+		INIT_RW_LOCK(&s->cpu_state[i].cpu_lock);
+		s->cpu_state[i].parent_irq = parent_irq;
 	}
 
 	s->guest = guest;
-	INIT_SPIN_LOCK(&s->lock);
+	INIT_RW_LOCK(&s->dist_lock);
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
 		vmm_devemu_register_irq_handler(guest, i, 
@@ -1096,7 +1117,7 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 			      struct vmm_emudev *edev,
 			      const struct vmm_devtree_nodeid *eid)
 {
-	const char *attr;
+	int rc;
 	struct gic_state *s;
 	bool is_child_pic;
 	enum gic_type type;
@@ -1106,41 +1127,36 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "child_pic");
-	if (attr) {
+	if (vmm_devtree_getattr(edev->node, "child_pic")) {
 		is_child_pic = TRUE;
 	} else {
 		is_child_pic = FALSE;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (!attr) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &parent_irq);
+	if (rc) {
+		return rc;
 	}
-	parent_irq = *((u32 *)attr);
 	
 	type = (enum gic_type)(eid->data);
 
-	attr = vmm_devtree_attrval(edev->node, "base_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "base_irq", &base_irq)) {
 		base_irq = gic_configs[type][1];
-	} else {
-		base_irq = *((u32 *)attr);
 	}
 	
-	attr = vmm_devtree_attrval(edev->node, "num_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "num_irq", &num_irq)) {
 		num_irq = gic_configs[type][0];
-	} else {
-		num_irq = *((u32 *)attr);
-		if (num_irq > GIC_MAX_NIRQ) {
-			num_irq = GIC_MAX_NIRQ;
-		}
+	}
+	if (num_irq > GIC_MAX_NIRQ) {
+		num_irq = GIC_MAX_NIRQ;
 	}
 	
 	s = gic_state_alloc(edev->node->name, guest, type, 
 			    guest->vcpu_count, is_child_pic,
 			    base_irq, num_irq, parent_irq);
+	if (!s) {
+		return VMM_ENOMEM;
+	}
 
 	edev->priv = s;
 
@@ -1180,9 +1196,14 @@ static struct vmm_devtree_nodeid gic_emuid_table[] = {
 static struct vmm_emulator gic_emulator = {
 	.name = "gic",
 	.match_table = gic_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = gic_emulator_probe,
-	.read = gic_emulator_read,
-	.write = gic_emulator_write,
+	.read8 = gic_emulator_read8,
+	.write8 = gic_emulator_write8,
+	.read16 = gic_emulator_read16,
+	.write16 = gic_emulator_write16,
+	.read32 = gic_emulator_read32,
+	.write32 = gic_emulator_write32,
 	.reset = gic_emulator_reset,
 	.remove = gic_emulator_remove,
 };

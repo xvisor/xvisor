@@ -1,0 +1,42 @@
+
+/ {
+	templates {
+		x86_64_generic {
+			model = "x86_64_generic";
+			device_type = "guest";
+			guest_asid = <1>;
+
+			vcpus {
+				vcpu0 {
+					device_type = "vcpu";
+					compatible = "amd-k6";
+					start_pc = <0xff00>;
+				};
+			};
+
+			aspace {
+				guest_irq_count = <256>;
+
+				mem0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00000000>;
+					host_physical_addr = <0x0c000000>;
+					physical_size = <0x04000000>;
+					device_type = "ram";
+				};
+
+				uart0 {
+					device_type = "serial";
+					compatible = "ns16550a";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x2f8>;
+					physical_size = <0x100>;
+					fifo_size = <64>;
+					interrupts = <12>;
+				};
+			};
+		};
+	};
+};

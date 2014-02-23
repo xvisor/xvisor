@@ -66,4 +66,16 @@ static inline virtual_size_t arch_init_size(void)
 	return (virtual_size_t) (&_init_end - &_init_start);
 }
 
+/** Device tree nodeid table */
+extern u8 _nidtbl_start;
+extern u8 _nidtbl_end;
+static inline virtual_addr_t arch_nidtbl_vaddr(void)
+{
+	return (virtual_addr_t) &_nidtbl_start;
+}
+static inline virtual_size_t arch_nidtbl_size(void)
+{
+	return (virtual_size_t) (&_nidtbl_end - &_nidtbl_start);
+}
+
 #endif

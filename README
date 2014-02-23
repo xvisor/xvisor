@@ -28,7 +28,7 @@ WHAT IS XVISOR?
   Threading framework, Host device driver framework, IO device emulation 
   framework, Runtime loadable modules, Pass through hardware access, Dynamic 
   guest creation/destruction, Managment terminal, Network virtualization,
-  and many more.
+  Input device virtualization, Display device virtualization and many more.
 
   It is distributed under the GNU General Public License - see the
   accompanying COPYING file for more details.

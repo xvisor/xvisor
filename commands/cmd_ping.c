@@ -38,13 +38,13 @@
 #define	MODULE_INIT			cmd_ping_init
 #define	MODULE_EXIT			cmd_ping_exit
 
-void cmd_ping_usage(struct vmm_chardev *cdev)
+static void cmd_ping_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   ping <ipaddr> [<count>] [<size>]\n");
 }
 
-int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u16 sent, rcvd, count = 1, size = 56;
 	struct netstack_echo_reply reply;

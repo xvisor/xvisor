@@ -126,6 +126,9 @@ bool virtio_queue_should_signal(struct virtio_queue *vq);
 struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
 						   u32 head, u32 len);
 
+/** Check whether queue setup is done by guest or not */
+bool virtio_queue_setup_done(struct virtio_queue *vq);
+
 /** Cleanup or reset the queue 
  *  Note: After cleanup we need to setup queue before reusing it.
  */

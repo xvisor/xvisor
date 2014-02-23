@@ -26,7 +26,7 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <input/vmm_input.h>
+#include <drv/input.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command input"
@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_input_init
 #define	MODULE_EXIT			cmd_input_exit
 
-void cmd_input_usage(struct vmm_chardev *cdev)
+static void cmd_input_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   input help\n");
@@ -44,33 +44,35 @@ void cmd_input_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   input handlers\n");
 }
 
-void cmd_input_devices(struct vmm_chardev *cdev)
+static void cmd_input_devices(struct vmm_chardev *cdev)
 {
 	int num, count;
-	struct vmm_input_dev *idev;
+	char id[27];
+	struct input_dev *idev;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-18s %-24s %-8s %-8s %-8s %-8s\n", 
-			  "Phys", "Name", "BusType", 
-			  "Vendor", "Product", "Version");
+	vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
+			  "Phys", "Name", "Bus:Vendor:Product:Version");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_input_count_device();
+	count = input_count_device();
 	for (num = 0; num < count; num++) {
-		idev = vmm_input_get_device(num);
-		vmm_cprintf(cdev, " %-18s %-24s 0x%-6x 0x%-6x 0x%-6x 0x%-6x\n", 
-				  idev->phys, idev->name, 
-				  idev->id.bustype, idev->id.vendor, 
-				  idev->id.product, idev->id.version);
+		idev = input_get_device(num);
+		vmm_snprintf(id, sizeof(id),
+				"0x%02x:0x%02x:0x%02x:0x%04x",
+				idev->id.bustype, idev->id.vendor, 
+				idev->id.product, idev->id.version);
+		vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
+				  idev->phys, idev->name, id);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }
 
-void cmd_input_handlers(struct vmm_chardev *cdev)
+static void cmd_input_handlers(struct vmm_chardev *cdev)
 {
 	int num, count;
-	struct vmm_input_handler *ihnd;
+	struct input_handler *ihnd;
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -78,9 +80,9 @@ void cmd_input_handlers(struct vmm_chardev *cdev)
 			  "Num", "Name");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_input_count_handler();
+	count = input_count_handler();
 	for (num = 0; num < count; num++) {
-		ihnd = vmm_input_get_handler(num);
+		ihnd = input_get_handler(num);
 		vmm_cprintf(cdev, " %-10d %-67s\n", num, ihnd->name);
 	}
 
@@ -88,7 +90,7 @@ void cmd_input_handlers(struct vmm_chardev *cdev)
 			  "----------------------------------------\n");
 }
 
-int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_input_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

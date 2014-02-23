@@ -13,11 +13,13 @@
 #include <libs/stacktrace.h>
 
 static char x86_stack_ids[][8] = {
-	[ STACKFAULT_STACK -1           ]       = "#SF",
-	[ DEBUG_STACK-1			]	= "#DB",
-	[ NMI_STACK-1			]	= "NMI",
-	[ DOUBLEFAULT_STACK-1		]	= "#DF",
-	[ MCE_STACK-1			]	= "#MC",
+	[ REGULAR_INT_STACK		]	= "INT",
+	[ STACKFAULT_STACK		]       = "#SF",
+	[ DEBUG_STACK			]	= "#DB",
+	[ NMI_STACK			]	= "NMI",
+	[ DOUBLEFAULT_STACK		]	= "#DF",
+	[ MCE_STACK			]	= "#MC",
+	[ EXCEPTION_STACK		]	= "EXC",
 };
 
 extern u8 _ist_stacks_start, _ist_stacks_end, _stack_start, _stack_end;

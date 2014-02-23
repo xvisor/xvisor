@@ -149,6 +149,11 @@ static inline s32 smod32(s32 value, s32 divisor)
 
 #endif
 
+/* Unsigned integer round-up macros */
+#define DIV_ROUND_UP(n,d)	udiv64(((n) + (d) - 1), (d))
+#define DIV_ROUND_UP_ULL(ll,d) \
+	({ unsigned long long _tmp = (ll)+(d)-1; udiv64(_tmp, d); _tmp; })
+
 /**
  * Rough approximation to sqrt
  * @x: integer of which to calculate the sqrt

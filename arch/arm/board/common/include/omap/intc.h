@@ -107,7 +107,6 @@
 #define INTC_ILR_FIQNIRQ_S			1
 #define INTC_ILR_FIQNIRQ_M			0x00000001
 
-u32 intc_active_irq(u32 cpu_irq);
 int intc_init(physical_addr_t base, u32 nrirq);
 
 #endif

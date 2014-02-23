@@ -43,60 +43,63 @@ static int __init vmm_net_init(void)
 
 	rc = vmm_mbufpool_init();
 	if (rc) {
-		vmm_printf("Failed to init mbuf pool\n");
-		goto vmm_mbufpool_init_failed;
+		vmm_printf("%s: Failed to init mbuf pool\n", __func__);
+		goto mbufpool_init_failed;
 	}
 
 	rc = vmm_netswitch_init();
 	if (rc) {
-		vmm_printf("Failed to init vmm net switch layer\n");
-		goto vmm_netswitch_init_failed;
-	}
-
-	rc = vmm_netbridge_init();
-	if (rc) {
-		vmm_printf("Failed to init vmm netbridge layer\n");
-		goto vmm_netbridge_init_failed;
+		vmm_printf("%s: Failed to init netswitch\n", __func__);
+		goto netswitch_init_failed;
 	}
 
 	rc = vmm_netport_init();
 	if (rc) {
-		vmm_printf("Failed to init vmm net port layer\n");
-		goto vmm_netport_init_failed;
+		vmm_printf("%s: Failed to init netport\n", __func__);
+		goto netport_init_failed;
 	}
 
+	rc = vmm_bridge_init();
+	if (rc) {
+		vmm_printf("%s: Failed to init bridge\n", __func__);
+		goto bridge_init_failed;
+	}
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_VMMINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "net");
 	if (!node) {
-		vmm_printf("VMM_NET: devtree node not found\n");
-		goto vmm_net_devtree_probe_failed;
+		vmm_printf("%s: devtree node not found\n", __func__);
+		goto net_devtree_probe_failed;
 	}
+
 	rc = vmm_devdrv_probe(node);
 	if (rc) {
-		vmm_printf("VMM_NET: devtree node probe failed\n");
-		goto vmm_net_devtree_probe_failed;
+		vmm_printf("%s: devtree node probe failed\n", __func__);
+		goto net_devtree_probe_failed;
 	}
-	goto vmm_net_init_done;
 
-vmm_net_devtree_probe_failed:
+	goto net_init_done;
+
+net_devtree_probe_failed:
+	vmm_bridge_exit();
+bridge_init_failed:
 	vmm_netport_exit();
-vmm_netport_init_failed:
-	vmm_netbridge_exit();
-vmm_netbridge_init_failed:
+netport_init_failed:
 	vmm_netswitch_exit();
-vmm_netswitch_init_failed:
+netswitch_init_failed:
 	vmm_mbufpool_exit();
-vmm_mbufpool_init_failed:
-vmm_net_init_done:
+mbufpool_init_failed:
+
+net_init_done:
 	return rc;
 }
 
 static void __exit vmm_net_exit(void)
 {
+	vmm_bridge_exit();
+
 	vmm_netport_exit();
-	vmm_netbridge_exit();
 	vmm_netswitch_exit();
 	vmm_mbufpool_exit();
 }

@@ -26,8 +26,8 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <fb/vmm_fb.h>
 #include <libs/stringlib.h>
+#include <drv/fb.h>
 
 #define MODULE_DESC			"Command fb"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_fb_init
 #define	MODULE_EXIT			cmd_fb_exit
 
-void cmd_fb_usage(struct vmm_chardev *cdev)
+static void cmd_fb_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   fb help\n");
@@ -44,40 +44,44 @@ void cmd_fb_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   fb info <fb_name>\n");
 }
 
-void cmd_fb_list(struct vmm_chardev *cdev)
+static void cmd_fb_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-16s %-20s %-40s\n", 
 			  "Name", "ID", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_fb_count();
+	count = fb_count();
 	for (num = 0; num < count; num++) {
-		info = vmm_fb_get(num);
-		vmm_devtree_getpath(path, info->dev->node);
+		info = fb_get(num);
+		if (info->dev.parent && info->dev.parent->node) {
+			vmm_devtree_getpath(path, info->dev.parent->node);
+		} else {
+			strcpy(path, "-----");
+		}
 		vmm_cprintf(cdev, " %-16s %-20s %-40s\n", 
-				  info->dev->node->name, info->fix.id, path);
+				  info->name, info->fix.id, path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }
 
-int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
+static int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
 {
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 	const char *str;
 
-	info = vmm_fb_find(fb_name);
+	info = fb_find(fb_name);
 	if (!info) {
 		vmm_cprintf(cdev, "Error: Invalid FB %s\n", fb_name);
 		return VMM_EFAIL;
 	}
 
-	vmm_cprintf(cdev, "Name   : %s\n", info->dev->node->name);
+	vmm_cprintf(cdev, "Name   : %s\n", info->name);
 	vmm_cprintf(cdev, "ID     : %s\n", info->fix.id);
 
 	switch (info->fix.type) {
@@ -134,7 +138,7 @@ int cmd_fb_info(struct vmm_chardev *cdev, const char *fb_name)
 	return VMM_OK;
 }
 
-int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

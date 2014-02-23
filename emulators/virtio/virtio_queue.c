@@ -175,6 +175,12 @@ struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
 }
 VMM_EXPORT_SYMBOL(virtio_queue_set_used_elem);
 
+bool virtio_queue_setup_done(struct virtio_queue *vq)
+{
+	return (vq) ? ((vq->addr) ? TRUE : FALSE) : FALSE;
+}
+VMM_EXPORT_SYMBOL(virtio_queue_setup_done);
+
 int virtio_queue_cleanup(struct virtio_queue *vq)
 {
 	int rc = VMM_OK;
@@ -357,8 +363,8 @@ u32 virtio_iovec_to_buf_read(struct virtio_device *dev,
 		len = ((buf_len - pos) < iov[i].len) ?
 						(buf_len - pos) : iov[i].len;
 
-		len = vmm_guest_memory_read(dev->guest,
-					    iov[i].addr, buf + pos, len);
+		len = vmm_guest_memory_read(dev->guest, iov[i].addr,
+					    buf + pos, len, TRUE);
 		if (!len) {
 			break;
 		}
@@ -381,8 +387,8 @@ u32 virtio_buf_to_iovec_write(struct virtio_device *dev,
 		len = ((buf_len - pos) < iov[i].len) ?
 					(buf_len - pos) : iov[i].len;
 
-		len = vmm_guest_memory_write(dev->guest,
-					     iov[i].addr, buf + pos, len);
+		len = vmm_guest_memory_write(dev->guest, iov[i].addr,
+					     buf + pos, len, TRUE);
 		if (!len) {
 			break;
 		}
@@ -405,8 +411,8 @@ void virtio_iovec_fill_zeros(struct virtio_device *dev,
 
 	while (i < iov_cnt) {
 		len = (iov[i].len < 16) ? iov[i].len : 16;
-		len = vmm_guest_memory_write(dev->guest, 
-					     iov[i].addr + pos, zeros, len);
+		len = vmm_guest_memory_write(dev->guest, iov[i].addr + pos,
+					     zeros, len, TRUE);
 		if (!len) {
 			break;
 		}

@@ -84,119 +84,66 @@ u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
 	}
 }
 
+static struct vmm_class chardev_class = {
+	.name = VMM_CHARDEV_CLASS_NAME,
+};
+
 int vmm_chardev_register(struct vmm_chardev *cdev)
 {
-	int rc;
-	struct vmm_classdev *cd;
-
 	if (!(cdev && cdev->read && cdev->write)) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_zalloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		return VMM_EFAIL;
+	vmm_devdrv_initialize_device(&cdev->dev);
+	if (strlcpy(cdev->dev.name, cdev->name, sizeof(cdev->dev.name)) >=
+	    sizeof(cdev->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
-
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, cdev->name, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_classdev;
-	}
-	cd->dev = cdev->dev;
-	cd->priv = cdev;
-
-	rc = vmm_devdrv_register_classdev(VMM_CHARDEV_CLASS_NAME, cd);
-	if (rc != VMM_OK) {
-		goto free_classdev;
-	}
-
-	return rc;
-
-free_classdev:
-	vmm_free(cd);
-	return rc;
-
+	cdev->dev.class = &chardev_class;
+	vmm_devdrv_set_data(&cdev->dev, cdev);
+	
+	return vmm_devdrv_class_register_device(&chardev_class, &cdev->dev);
 }
 
 int vmm_chardev_unregister(struct vmm_chardev *cdev)
 {
-	int rc;
-	struct vmm_classdev *cd;
-
 	if (!cdev) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_devdrv_find_classdev(VMM_CHARDEV_CLASS_NAME, cdev->name);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(VMM_CHARDEV_CLASS_NAME, cd);
-	if (rc == VMM_OK) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&chardev_class, &cdev->dev);
 }
 
 struct vmm_chardev *vmm_chardev_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(VMM_CHARDEV_CLASS_NAME, name);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&chardev_class, name);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 
 struct vmm_chardev *vmm_chardev_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(VMM_CHARDEV_CLASS_NAME, num);
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&chardev_class, num);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 
 u32 vmm_chardev_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_CHARDEV_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&chardev_class);
 }
 
 int __init vmm_chardev_init(void)
 {
-	int rc;
-	struct vmm_class *c;
-
-	c = vmm_zalloc(sizeof(struct vmm_class));
-	if (!c) {
-		return VMM_EFAIL;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, VMM_CHARDEV_CLASS_NAME, sizeof(c->name)) >=
-	    sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
-	if (rc != VMM_OK) {
-		goto free_class;
-	}
-
-	return rc;
-
-free_class:
-	vmm_free(c);
-	return rc;
+	return vmm_devdrv_register_class(&chardev_class);
 }

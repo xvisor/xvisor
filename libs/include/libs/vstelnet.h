@@ -26,11 +26,12 @@
 
 #include <vmm_types.h>
 #include <vmm_threads.h>
-#include <vmm_vserial.h>
+#include <vio/vmm_vserial.h>
 #include <libs/list.h>
 #include <libs/netstack.h>
 
-#define VSTELNET_IPRIORITY			(NETSTACK_IPRIORITY + 1)
+#define VSTELNET_IPRIORITY			(VMM_VSERIAL_IPRIORITY + \
+						 NETSTACK_IPRIORITY + 1)
 #define VSTELNET_TXBUF_SIZE			4096
 #define VSTELNET_RXTIMEOUT_MS			400
 

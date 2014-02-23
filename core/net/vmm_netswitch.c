@@ -20,7 +20,7 @@
  * @file vmm_netswitch.c
  * @author Pranav Sawargaonkar <pranav.sawargaonkar@gmail.com>
  * @author Sukanto Ghosh <sukantoghosh@gmail.com>
- * @brief NetSwitch framework.
+ * @brief Generic netswitch implementation.
  */
 
 #include <vmm_error.h>
@@ -455,68 +455,52 @@ int vmm_netswitch_port_remove(struct vmm_netport *port)
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_port_remove);
 
+static struct vmm_class nsw_class = {
+	.name = VMM_NETSWITCH_CLASS_NAME,
+};
+
 int vmm_netswitch_register(struct vmm_netswitch *nsw, 
-			   struct vmm_device *dev,
+			   struct vmm_device *parent,
 			   void *priv)
 {
 	int rc;
-	struct vmm_classdev *cd;
 
 	if (!nsw) {
 		return VMM_EFAIL;
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		rc = VMM_EFAIL;
-		goto ret;
+	vmm_devdrv_initialize_device(&nsw->dev);
+	if (strlcpy(nsw->dev.name, nsw->name, sizeof(nsw->dev.name)) >=
+	    sizeof(nsw->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
+	nsw->dev.parent = parent;
+	nsw->dev.class = &nsw_class;
+	vmm_devdrv_set_data(&nsw->dev, nsw);
 
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, nsw->name, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto fail_nsw_reg;
-	}
-	cd->dev = nsw->dev;
-	cd->priv = nsw;
-
-	rc = vmm_devdrv_register_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
+	rc = vmm_devdrv_class_register_device(&nsw_class, &nsw->dev);
 	if (rc != VMM_OK) {
 		vmm_printf("%s: Failed to class register network switch %s "
 			   "with err 0x%x\n", __func__, nsw->name, rc);
-		goto fail_nsw_reg;
+		return rc;
 	}
 
-	nsw->dev = dev;
 	nsw->priv = priv;
 
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("Successfully registered VMM net switch: %s\n", nsw->name);
 #endif
 
-	return rc;
-
-fail_nsw_reg:
-	vmm_free(cd);
-ret:
-	return rc;
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_register);
 
 int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 {
-	int rc;
 	irq_flags_t f;
 	struct vmm_netport *port;
-	struct vmm_classdev *cd;
 
 	if (!nsw) {
-		return VMM_EFAIL;
-	}
-
-	cd = vmm_devdrv_find_classdev(VMM_NETSWITCH_CLASS_NAME, nsw->name);
-	if (!cd) {
 		return VMM_EFAIL;
 	}
 
@@ -532,44 +516,39 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 
 	vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
 
-	rc = vmm_devdrv_unregister_classdev(VMM_NETSWITCH_CLASS_NAME, cd);
-	if (!rc) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&nsw_class, &nsw->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_unregister);
 
 struct vmm_netswitch *vmm_netswitch_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(VMM_NETSWITCH_CLASS_NAME, name);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&nsw_class, name);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_find);
 
 struct vmm_netswitch *vmm_netswitch_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(VMM_NETSWITCH_CLASS_NAME, num);
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&nsw_class, num);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_get);
 
 u32 vmm_netswitch_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_NETSWITCH_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&nsw_class);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_count);
 
@@ -609,28 +588,14 @@ static void __init vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
 int __init vmm_netswitch_init(void)
 {
 	int rc;
-	struct vmm_class *c;
 
 	vmm_printf("Initialize Network Switch Framework\n");
 
-	c = vmm_malloc(sizeof(struct vmm_class));
-	if (!c) {
-		return VMM_EFAIL;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, VMM_NETSWITCH_CLASS_NAME, sizeof(c->name)) >=
-	    sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
+	rc = vmm_devdrv_register_class(&nsw_class);
 	if (rc) {
 		vmm_printf("Failed to register %s class\n",
 			VMM_NETSWITCH_CLASS_NAME);
-		goto free_class;
+		return rc;
 	}
 
 	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
@@ -638,10 +603,6 @@ int __init vmm_netswitch_init(void)
 			      NULL, NULL, NULL);
 
 	return VMM_OK;
-
-free_class:
-	vmm_free(c);
-	return rc;
 }
 
 static void __exit vmm_netswitch_percpu_exit(void *a1, void *a2, void *a3)

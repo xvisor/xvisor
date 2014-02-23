@@ -62,7 +62,7 @@ CONFIG_STATIC=y
 # CONFIG_FEATURE_SHARED_BUSYBOX is not set
 CONFIG_LFS=y
 CONFIG_CROSS_COMPILER_PREFIX="arm-none-linux-gnueabi-"
-CONFIG_EXTRA_CFLAGS="-marm -msoft-float -mabi=aapcs-linux"
+CONFIG_EXTRA_CFLAGS="-marm -mabi=aapcs-linux"
 
 #
 # Debugging Options

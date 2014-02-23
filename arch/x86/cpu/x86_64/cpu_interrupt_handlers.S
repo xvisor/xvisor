@@ -61,12 +61,21 @@
  *      +---------------+
  */
 EXCEPTION_HANDLER(_exception_div_error) /* division error */
+	movq $0, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_debug) /* debug exception */
+	movq $1, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_nmi) /* NMI */
+	movq $2, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 .extern do_breakpoint
@@ -77,30 +86,57 @@ EXCEPTION_HANDLER(_exception_bp) /* Breat point */
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_ovf) /* overflow */
+	movq $4, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_bounds) /* bounds */
+	movq $5, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_inval_opc) /* invalid opc. */
+	movq $6, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_no_dev) /* dev not avail */
+	movq $7, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_double_fault) /* double fault */
+	movq $8, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_coproc_overrun) /* coproc seg overrn */
+	movq $9, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_inval_tss) /* invalid tss */
+	movq $10, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_missing_seg) /* seg not present */
+	movq $11, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_missing_stack) /* stack seg. */
+	movq $12, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_gpf) /* GPF */
@@ -117,15 +153,27 @@ EXCEPTION_HANDLER(_exception_page_fault) /* page fault */
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_coproc_err) /* coproc error */
+	movq $15, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_align_check) /* alignment check */
+	movq $16, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_machine_check) /* machine check */
+	movq $17, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 EXCEPTION_HANDLER(_exception_simd_err) /* SIMD coproc error */
+	movq $18, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
 .extern do_generic_int_handler

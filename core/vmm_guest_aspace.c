@@ -98,7 +98,7 @@ done:
 
 u32 vmm_guest_memory_read(struct vmm_guest *guest, 
 			  physical_addr_t gphys_addr, 
-			  void *dst, u32 len)
+			  void *dst, u32 len, bool cacheable)
 {
 	u32 bytes_read = 0, to_read;
 	physical_addr_t hphys_addr;
@@ -120,7 +120,8 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 		to_read = ((len - bytes_read) < to_read) ? 
 			  (len - bytes_read) : to_read;
 
-		to_read = vmm_host_memory_read(hphys_addr, dst, to_read);
+		to_read = vmm_host_memory_read(hphys_addr,
+					       dst, to_read, cacheable);
 		if (!to_read) {
 			break;
 		}
@@ -135,7 +136,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 
 u32 vmm_guest_memory_write(struct vmm_guest *guest, 
 			   physical_addr_t gphys_addr, 
-			   void *src, u32 len)
+			   void *src, u32 len, bool cacheable)
 {
 	u32 bytes_written = 0, to_write;
 	physical_addr_t hphys_addr;
@@ -157,7 +158,8 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 		to_write = ((len - bytes_written) < to_write) ? 
 			   (len - bytes_written) : to_write;
 
-		to_write = vmm_host_memory_write(hphys_addr, src, to_write);
+		to_write = vmm_host_memory_write(hphys_addr,
+						 src, to_write, cacheable);
 		if (!to_write) {
 			break;
 		}
@@ -246,60 +248,71 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 
 bool is_region_node_valid(struct vmm_devtree_node *rnode)
 {
-	const char *attrval;
+	u32 order;
+	const char *aval;
 	bool is_real = FALSE;
 	bool is_alias = FALSE;
+	physical_addr_t addr;
+	physical_size_t size;
 
-	attrval = vmm_devtree_attrval(rnode, 
-				      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
-	if (!attrval) {
+	if (vmm_devtree_read_string(rnode, 
+			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
-	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
-	    strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
-	    strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
+	if (strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
+	    strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
+	    strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
 		return FALSE;
 	}
-	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
+	if (strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
 		is_real = TRUE;
 	}
-	if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+	if (strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
 		is_alias = TRUE;
 	}
 
-	attrval = vmm_devtree_attrval(rnode,
-				      VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
-	if (!attrval) {
+	if (vmm_devtree_read_string(rnode,
+			VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
-	if (strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) != 0 &&
-	    strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_MEMORY) != 0) {
+	if (strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) != 0 &&
+	    strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_MEMORY) != 0) {
 		return FALSE;
 	}
 
-	attrval = vmm_devtree_attrval(rnode, VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
-	if (!attrval) {
+	if (vmm_devtree_read_physaddr(rnode,
+			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
 		return FALSE;
 	}
 
 	if (is_real) {
-		attrval = vmm_devtree_attrval(rnode, 
-					      VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
-		if (!attrval) {
+		if (vmm_devtree_read_physaddr(rnode,
+			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
 		}
 	}
 
 	if (is_alias) {
-		attrval = vmm_devtree_attrval(rnode, 
-					     VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
-		if (!attrval) {
+		if (vmm_devtree_read_physaddr(rnode, 
+			VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
 		}
 	}
 
-	attrval = vmm_devtree_attrval(rnode, VMM_DEVTREE_PHYS_SIZE_ATTR_NAME);
-	if (!attrval) {
+	if (vmm_devtree_read_physsize(rnode,
+			VMM_DEVTREE_PHYS_SIZE_ATTR_NAME, &size)) {
+		return FALSE;
+	}
+
+	if (vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &order)) {
+		order = 0;
+	}
+
+	if (BITS_PER_LONG <= order) {
+		return FALSE;
+	}
+	if (size & order_mask(order)) {
 		return FALSE;
 	}
 
@@ -343,7 +356,7 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 int vmm_guest_aspace_init(struct vmm_guest *guest)
 {
 	int rc;
-	const char *attrval;
+	const char *aval;
 	struct dlist *l;
 	struct vmm_devtree_node *gnode;
 	struct vmm_devtree_node *rnode = NULL;
@@ -363,7 +376,8 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	guest->aspace.node = vmm_devtree_getchild(gnode, 
 					VMM_DEVTREE_ADDRSPACE_NODE_NAME);
 	if (!guest->aspace.node) {
-		vmm_printf("%s: %s/aspace node not found\n", __func__, gnode->name);
+		vmm_printf("%s: %s/aspace node not found\n",
+			   __func__, gnode->name);
 		return VMM_EFAIL;
 	}
 
@@ -400,45 +414,58 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		reg->aspace = &guest->aspace;
 		reg->flags = 0x0;
 
-		attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
-		if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) == 0) {
+		if (!strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL)) {
 			reg->flags |= VMM_REGION_REAL;
-		} else if (strcmp(attrval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) == 0) {
+		} else if (!strcmp(aval,
+				VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS)) {
 			reg->flags |= VMM_REGION_ALIAS;
 		} else {
 			reg->flags |= VMM_REGION_VIRTUAL;
 		}
 
-		attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
-		if (strcmp(attrval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO) == 0) {
+		if (!strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
 			reg->flags |= VMM_REGION_IO;
 		} else {
 			reg->flags |= VMM_REGION_MEMORY;
 		}
 
-		attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_string(rnode,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval);
+		if (rc) {
+			return rc;
 		}
 
-		if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) == 0) {
+		if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
+		    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM)) {
 			reg->flags |= VMM_REGION_ISRAM;
-		} else if (strcmp(attrval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) == 0) {
+		} else if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) ||
+		      !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
 			reg->flags |= VMM_REGION_READONLY;
 			reg->flags |= VMM_REGION_ISROM;
 		} else {
 			reg->flags |= VMM_REGION_ISDEVICE;
+		}
+
+		if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
+		    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM)) {
+			reg->flags |= VMM_REGION_ISRESERVED;
+		}
+
+		if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM) ||
+		    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
+			reg->flags |= VMM_REGION_ISALLOCED;
 		}
 
 		if ((reg->flags & VMM_REGION_REAL) &&
@@ -448,41 +475,44 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			reg->flags |= VMM_REGION_BUFFERABLE;
 		}
 
-		attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_physaddr(rnode,
+				VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
+				&reg->gphys_addr);
+		if (rc) {
+			return rc;
 		}
 
-		reg->gphys_addr = *((physical_addr_t *) attrval);
-
 		if (reg->flags & VMM_REGION_REAL) {
-			attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
-			if (!attrval) {
-				return VMM_EINVALID;
+			rc = vmm_devtree_read_physaddr(rnode,
+					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					&reg->hphys_addr);
+			if (rc) {
+				return rc;
 			}
-
-			reg->hphys_addr = *((physical_addr_t *) attrval);
 		} else if (reg->flags & VMM_REGION_ALIAS){
-			attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME);
-			if (!attrval) {
-				return VMM_EINVALID;
+			rc = vmm_devtree_read_physaddr(rnode,
+					VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
+					&reg->hphys_addr);
+			if (rc) {
+				return rc;
 			}
-
-			reg->hphys_addr = *((physical_addr_t *) attrval);
 		} else {
 			reg->hphys_addr = reg->gphys_addr;
 		}
 
-		attrval = vmm_devtree_attrval(rnode,
-					      VMM_DEVTREE_PHYS_SIZE_ATTR_NAME);
-		if (!attrval) {
-			return VMM_EINVALID;
+		rc = vmm_devtree_read_physsize(rnode,
+				VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
+				&reg->phys_size);
+		if (rc) {
+			return rc;
 		}
 
-		reg->phys_size = *((physical_size_t *) attrval);
+		rc = vmm_devtree_read_u32(rnode,
+				VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
+				&reg->align_order);
+		if (rc) {
+			reg->align_order = 0;
+		}
 
 		reg->devemu_priv = NULL;
 
@@ -494,20 +524,44 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 			return VMM_EINVALID;
 		}
 
-		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) && 
-		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
-			rc = vmm_host_ram_reserve(reg->hphys_addr, 
+		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+		    (reg->flags & VMM_REGION_ISRESERVED)) {
+			rc = vmm_host_ram_reserve(reg->hphys_addr,
 						  reg->phys_size);
 			if (rc) {
 				vmm_printf("%s: Failed to reserve "
-					   "physical region for %s/%s\n", 
-					   __func__, gnode->name, rnode->name);
+					   "host RAM for %s/%s\n",
+					   __func__, gnode->name,
+					   rnode->name);
 				vmm_free(reg);
 				return rc;
+			} else {
+				reg->flags |= VMM_REGION_ISHOSTRAM;
 			}
 		}
 
 		list_add_tail(&reg->head, &guest->aspace.reg_list);
+	}
+
+	/* Allocate host RAM for alloced RAM/ROM regions */
+	list_for_each(l, &guest->aspace.reg_list) {
+		reg = list_entry(l, struct vmm_region, head);
+		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+		    (reg->flags & VMM_REGION_ISALLOCED)) {
+			if (!vmm_host_ram_alloc(&reg->hphys_addr,
+						reg->phys_size,
+						reg->align_order)) {
+				vmm_printf("%s: Failed to alloc "
+					   "host RAM for %s/%s\n",
+					   __func__, gnode->name,
+					   rnode->name);
+				return VMM_ENOMEM;
+			} else {
+				reg->flags |= VMM_REGION_ISHOSTRAM;
+			}
+		}
 	}
 
 	/* Probe device emulation for virtual regions */
@@ -552,8 +606,9 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 		l = list_pop(&guest->aspace.reg_list);
 		reg = list_entry(l, struct vmm_region, head);
 
-		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) && 
-		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
+		if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+		    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+		    (reg->flags & VMM_REGION_ISHOSTRAM)) {
 			rc = vmm_host_ram_free(reg->hphys_addr, 
 						reg->phys_size);
 			if (rc) {

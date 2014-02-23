@@ -97,8 +97,8 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 {
-	bool wfi_state;
 	irq_flags_t flags;
+	bool try_vcpu_resume = FALSE;
 
 	if (!vcpu) {
 		return;
@@ -108,8 +108,9 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
 	/* If VCPU was in wfi state then update state. */
-	wfi_state = vcpu->irqs.wfi.state;
-	if (wfi_state) {
+	if (vcpu->irqs.wfi.state) {
+		try_vcpu_resume = TRUE;
+
 		/* Clear wait for irq state */
 		vcpu->irqs.wfi.state = FALSE;
 
@@ -121,7 +122,7 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock, flags);
 
 	/* Try to resume the VCPU */
-	if (wfi_state) {
+	if (try_vcpu_resume) {
 		vmm_manager_vcpu_resume(vcpu);
 	}
 }
@@ -206,29 +207,37 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 {
 	irq_flags_t flags;
+	bool try_vcpu_pause = FALSE;
 
 	/* Sanity Checks */
 	if (!vcpu || !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
 
-	/* Try to pause the VCPU */
-	vmm_manager_vcpu_pause(vcpu);
-
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
-	/* Set wait for irq state */
-	vcpu->irqs.wfi.state = TRUE;
+	if (!vcpu->irqs.wfi.state &&
+	    !arch_atomic_read(&vcpu->irqs.execute_pending)) {
+		try_vcpu_pause = TRUE;
 
-	/* Start wait for irq timeout event */
-	if (!nsecs) {
-		nsecs = CONFIG_WFI_TIMEOUT_SECS * 1000000000ULL;
+		/* Set wait for irq state */
+		vcpu->irqs.wfi.state = TRUE;
+
+		/* Start wait for irq timeout event */
+		if (!nsecs) {
+			nsecs = CONFIG_WFI_TIMEOUT_SECS * 1000000000ULL;
+		}
+		vmm_timer_event_start(vcpu->irqs.wfi.priv, nsecs);
 	}
-	vmm_timer_event_start(vcpu->irqs.wfi.priv, nsecs);
 
 	/* Unlock VCPU WFI */
 	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock, flags);
+
+	/* Try to pause the VCPU */
+	if (try_vcpu_pause) {
+		vmm_manager_vcpu_pause(vcpu);
+	}
 
 	return VMM_OK;
 }

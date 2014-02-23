@@ -25,6 +25,7 @@
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
+#include <arm_math.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
@@ -95,18 +96,19 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <src>   = source address in hex\n");
 	arm_puts("            <count> = byte count in hex\n");
 	arm_puts("\n");
-	arm_puts("start_linux - Start linux kernel\n");
-	arm_puts("            Usage: start_linux <kernel_addr> <initrd_addr> <initrd_size>\n");
+	arm_puts("start_linux - Start linux kernel (device-tree mechanism)\n");
+	arm_puts("            Usage: start_linux <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
 	arm_puts("            <kernel_addr>  = kernel load address\n");
-	arm_puts("            <initrd_addr>  = initrd load address\n");
-	arm_puts("            <initrd_size>  = initrd size\n");
+	arm_puts("            <fdt_addr>     = fdt blob address\n");
+	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
+	arm_puts("            <initrd_size>  = initrd size (optional)\n");
 	arm_puts("\n");
 	arm_puts("linux_cmdline - Show/Update linux command line\n");
-	arm_puts("            Usage: linux_cmdline <new_linux_cmdline> \n");
+	arm_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
 	arm_puts("            <new_linux_cmdline>  = linux command line\n");
 	arm_puts("\n");
 	arm_puts("linux_memory_size - Show/Update linux memory size\n");
-	arm_puts("            Usage: linux_memory_size <memory_size> \n");
+	arm_puts("            Usage: linux_memory_size [<memory_size>]\n");
 	arm_puts("            <memory_size>  = memory size in hex\n");
 	arm_puts("\n");
 	arm_puts("autoexec    - autoexec command list from flash\n");
@@ -360,11 +362,12 @@ void arm_cmd_copy(int argc, char **argv)
 		dest[i] = src[i];
 	}
 	tstamp = arm_board_timer_timestamp() - tstamp;
+	tstamp = arm_udiv64(tstamp, 1000);
 	arm_board_timer_enable();
 	arm_ulonglong2str(time, tstamp);
 	arm_puts("copy took ");
 	arm_puts(time);
-	arm_puts(" ns for ");
+	arm_puts(" usecs for ");
 	arm_puts(argv[3]);
 	arm_puts(" bytes\n");
 }
@@ -385,16 +388,25 @@ void arm_cmd_start_linux(int argc, char **argv)
 	char cfg_str[10];
 	u64 meminfo[2];
 
-	if (argc != 5) {
-		arm_puts ("start_linux: must provide <kernel_addr>, <initrd_addr>, <initrd_size> and <fdt_addr>\n");
+	if (argc < 3) {
+		arm_puts ("start_linux: must provide <kernel_addr> and <fdt_addr>\n");
+		arm_puts ("start_linux: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
 	/* Parse the arguments from command line */
 	kernel_addr = arm_hexstr2ulonglong(argv[1]);
-	initrd_addr = arm_hexstr2ulonglong(argv[2]);
-	initrd_size = arm_hexstr2ulonglong(argv[3]);
-	fdt_addr = arm_hexstr2ulonglong(argv[4]);
+	fdt_addr = arm_hexstr2ulonglong(argv[2]);
+	if (argc > 3) {
+		initrd_addr = arm_hexstr2ulonglong(argv[3]);
+	} else {
+		initrd_addr = 0;
+	}
+	if (argc > 4) {
+		initrd_size = arm_hexstr2ulonglong(argv[4]);
+	} else {
+		initrd_size = 0;
+	}
 
 	meminfo[0] = arm_board_ram_start();
 	meminfo[1] = arm_board_ram_size();
@@ -404,8 +416,8 @@ void arm_cmd_start_linux(int argc, char **argv)
 	 * 		- number of cpus   */
 	if ((err = fdt_fixup_memory_banks((void *)fdt_addr, (&meminfo[0]), 
 							(&meminfo[1]), 1))) {
-		arm_printf("%s: fdt_fixup_memory_banks() failed: %s\n", __func__, 
-				fdt_strerror(err));
+		arm_printf("%s: fdt_fixup_memory_banks() failed: %s\n",
+			   __func__, fdt_strerror(err));
 		return;
 	}
 	sprintf(cfg_str, " mem=%dM maxcpus=%d", 
@@ -416,11 +428,13 @@ void arm_cmd_start_linux(int argc, char **argv)
 				fdt_strerror(err));
 		return;
 	}
-	if ((err = fdt_initrd((void *)fdt_addr, initrd_addr, 
+	if (initrd_size) {
+		if ((err = fdt_initrd((void *)fdt_addr, initrd_addr, 
 					initrd_addr + initrd_size, 1))) {
-		arm_printf("%s: fdt_initrd() failed: %s\n", __func__, 
-				fdt_strerror(err));
-		return;
+			arm_printf("%s: fdt_initrd() failed: %s\n",
+				   __func__, fdt_strerror(err));
+			return;
+		}
 	}
 
 	/* Disable interrupts and timer */
@@ -480,11 +494,12 @@ void arm_exec(char *line);
 
 void arm_cmd_autoexec(int argc, char **argv)
 {
+#define ARM_CMD_AUTOEXEC_BUF_SIZE	4096
 	static int lock = 0;
-	int len;
+	int len, pos = 0;
 	/* commands to execute are stored in NOR flash */
 	char *ptr = (char *)(arm_board_flash_addr() + 0xFF000);
-	char buffer[4096];
+	char buffer[ARM_CMD_AUTOEXEC_BUF_SIZE];
 
 	if (argc != 1) {
 		arm_puts ("autoexec: no parameters required\n");
@@ -499,33 +514,46 @@ void arm_cmd_autoexec(int argc, char **argv)
 
 	lock = 1;
 
-	if ((len = arm_strlen(ptr))) {
-		int pos = 0;
+	/* determine length of command list */
+	len = 0;
+	while ((len < ARM_CMD_AUTOEXEC_BUF_SIZE) &&
+	       arm_isprintable(ptr[len])) {
+		len++;
+	}
 
-		/* copy commands from NOR flash */
-		arm_strcpy(buffer, ptr);
+	/* sanity check on command list */
+	if (!len) {
+		arm_puts("command list not found !!!\n");
+		return;
+	}
+	if (len >= ARM_CMD_AUTOEXEC_BUF_SIZE) {
+		arm_printf("command list len=%d too big !!!\n", len);
+		return;
+	}
 
-		/* now we process them */
-		while (pos < len) {
-			ptr = &buffer[pos];
+	/* copy commands from NOR flash */
+	arm_memcpy(buffer, ptr, len);
+	buffer[len] = '\0';
 
-			/* We need to separate the commands */
-			while ((buffer[pos] != '\r') &&
-				(buffer[pos] != '\n') &&
-				(buffer[pos] != 0)) {
-				pos++;
-			}
-			buffer[pos] = '\0';
+	/* now we process them */
+	while (pos < len) {
+		ptr = &buffer[pos];
+
+		/* We need to separate the commands */
+		while ((buffer[pos] != '\r') &&
+			(buffer[pos] != '\n') &&
+			(buffer[pos] != 0)) {
 			pos++;
-
-			/* print the command */
-			arm_puts("autoexec(");
-			arm_puts(ptr);
-			arm_puts(")\n");
-			/* execute it */
-			arm_exec(ptr);
 		}
+		buffer[pos] = '\0';
+		pos++;
 
+		/* print the command */
+		arm_puts("autoexec(");
+		arm_puts(ptr);
+		arm_puts(")\n");
+		/* execute it */
+		arm_exec(ptr);
 	}
 
 	lock = 0;

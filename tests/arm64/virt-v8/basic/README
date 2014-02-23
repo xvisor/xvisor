@@ -15,13 +15,13 @@ Please follow the steps below to build & run Basic Firmware on Virt-v8
 Guest with Xvisor running on Foundation v8 Model:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=aarch64-none-linux-gnu-
+  # CROSS_COMPILE=aarch64-linux-gnu-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Generic-v8 default settings]
-  # make ARCH=arm generic-v8-defconfig 
+  # make ARCH=arm generic-v8-defconfig
 
   [4. Build Xvisor]
   # make
@@ -32,30 +32,36 @@ Guest with Xvisor running on Foundation v8 Model:
   [6. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
 
-  [7. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
-  # ./tools/scripts/memimg.py -a 0x80010000 -o ./build/foundation_v8_boot.img ./build/vmm.bin@0x80010000 ./build/tests/arm64/virt-v8/basic/firmware.bin@0x81000000
+  [7. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/basic/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+
+  [8. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
+  # ./tools/scripts/memimg.py -a 0x80010000 -o ./build/foundation_v8_boot.img ./build/vmm.bin@0x80010000 ./build/disk.img@0x81000000
   # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=./build/foundation_v8_boot.img -DDTB=./build/arch/arm/board/generic-v8/dts/foundation-v8/one_guest_virt_v8.dtb ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
 
-  [8. Launch Foundation v8 Model]
-  # <foundation_v8_install_directory>/models/Linux64_GCC-4.1/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
+  [9. Launch Foundation v8 Model]
+  # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
 
-  [9. Kick Guest0 for starting Basic Firmware]
+  [10. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [10. Bind to VirtIO Console]
+  [11. Bind to VirtIO Console]
   XVisor# vserial bind guest0/virtio-con0
 
-  [11. Say 'hi' to Basic Firmware]
-  [guest0/uart0] basic# hi
+  [12. Say 'hi' to Basic Firmware]
+  [guest0/virtio-con0] basic# hi
 
-  [12. Say 'hello' to Basic Firmware]
-  [guest0/uart0] basic# hello
+  [13. Say 'hello' to Basic Firmware]
+  [guest0/virtio-con0] basic# hello
 
-  [13. Check various commands of Basic Firmware]
-  [guest0/uart0] basic# help
+  [14. Check various commands of Basic Firmware]
+  [guest0/virtio-con0] basic# help
 
-  [14. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] basic# 
+  [15. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/virtio-con0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
 

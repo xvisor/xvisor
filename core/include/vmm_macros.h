@@ -180,6 +180,11 @@
 #define __align_vmm(x, a)		__align_vmm_mask(x, (typeof(x))(a) - 1)
 #define __align_vmm_mask(x, mask)	(((x) + (mask)) & ~(mask))
 #define align(x, a)			__align_vmm((x), (a))
+#define __align_mask(x, mask)		__align_vmm_mask((x), (mask))
+#define ptr_align(p, a)			((typeof(p))align((unsigned long)(p), (a)))
+#define is_aligned(x, a)		(((x) & ((typeof(x))(a) - 1)) == 0)
+
+#define repeat_byte(x)			((~0ul / 0xff) * (x))
 
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -192,8 +197,36 @@
 	const typeof(((type *)0)->member) * __mptr = (ptr);	\
 	(type *)((char *)__mptr - offsetof(type, member)); })
 
-#define array_size(x) (sizeof(x) / sizeof((x)[0]))
+#define array_size(x) 			(sizeof(x) / sizeof((x)[0]))
 
-#define field_sizeof(t, f) (sizeof(((t*)0)->f))
+#define field_sizeof(t, f)		(sizeof(((t*)0)->f))
+
+/*
+ * This looks more complex than it should be. But we need to
+ * get the type for the ~ right in round_down (it needs to be
+ * as wide as the result!), and we want to evaluate the macro
+ * arguments just once each.
+ */
+#define __round_mask(x, y) ((__typeof__(x))((y)-1))
+#define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
+#define round_down(x, y) ((x) & ~__round_mask(x, y))
+
+/** Size of 2^order sized chunk */
+#define order_size(order)		(0x01UL << (order))
+
+/** Mask of 2^order sized chunk */
+#define order_mask(order)		(order_size(order) - 1)
+
+/** Convert address x to 2^order aligned address */
+#define order_align(x, order)		((x) & ~order_mask(order))
+
+/** Roundup size x to multiple of 2^order */
+#define roundup2_order_size(x, order)	\
+			(((x) & order_mask(order)) ? \
+			 order_align(x, order) + order_size(order) : (x))
+
+/** Calulate number of 2^order sized chunks required to cover size x */
+#define size_to_order(x, order)		(((x) >> (order)) + \
+					 (((x) & order_mask(order)) ? 1:0))
 
 #endif /* __VMM_MACROS_H__ */

@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.3
-# Fri Sep 27 23:01:30 2013
+# Sat Jan 11 23:18:42 2014
 #
 # CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
@@ -10,12 +10,14 @@ CONFIG_ARCH_x86=y
 CONFIG_ARCH="x86"
 CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=16
+CONFIG_HOST_IRQ_COUNT=224
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_64BIT=y
 CONFIG_BOARD="x86_64_generic"
 CONFIG_CPU_X86_64=y
+CONFIG_VEXT=y
 
 #
 # x86 Machine Features
@@ -36,8 +38,8 @@ CONFIG_ACPI=y
 CONFIG_X86_L1_SHIFT=6
 CONFIG_LOCAL_APIC=y
 # CONFIG_8259A is not set
-CONFIG_VEXT_AMD_V=y
-# CONFIG_VEXT_INTEL_VT_X is not set
+CONFIG_VEXT_AMD_SVM=y
+CONFIG_VEXT_INTEL_VTX=y
 CONFIG_BOARD_X86_64_GENERIC=y
 CONFIG_X86_64_GENERIC=y
 
@@ -51,10 +53,12 @@ CONFIG_X86_64_GENERIC=y
 MODULES=y
 CONFIG_VERBOSE_MODE=y
 # CONFIG_BANNER_NONE is not set
-CONFIG_BANNER_BANNER4=y
+# CONFIG_BANNER_BANNER3 is not set
+# CONFIG_BANNER_BANNER4 is not set
 # CONFIG_BANNER_COLOSSAL is not set
+# CONFIG_BANNER_GRAFFITI is not set
 # CONFIG_BANNER_O8 is not set
-# CONFIG_BANNER_ROMAN is not set
+CONFIG_BANNER_ROMAN=y
 CONFIG_IRQ_STACK_SIZE=4096
 CONFIG_THREAD_STACK_SIZE=8192
 CONFIG_MAX_VCPU_COUNT=64
@@ -82,27 +86,24 @@ CONFIG_TSLICE_MS=10
 #
 # Load Balancer Configuration
 #
+CONFIG_LOADBAL_PERIOD_SECS=5
 
 #
 # Device Support
 #
-# CONFIG_RTC is not set
-CONFIG_INPUT=y
-CONFIG_FB=y
-CONFIG_FB_CFB_FILLRECT=y
-CONFIG_FB_CFB_COPYAREA=y
-CONFIG_FB_CFB_IMAGEBLIT=y
-# CONFIG_FB_CFB_REV_PIXELS_IN_BYTE is not set
-# CONFIG_FB_SYS_FILLRECT is not set
-# CONFIG_FB_SYS_COPYAREA is not set
-# CONFIG_FB_SYS_IMAGEBLIT is not set
-# CONFIG_FB_FOREIGN_ENDIAN is not set
-# CONFIG_FB_MODE_HELPERS is not set
-# CONFIG_FB_TILEBLITTING is not set
-# CONFIG_BLOCK is not set
+CONFIG_BLOCK=y
+CONFIG_BLOCKPART=y
+CONFIG_BLOCKPART_DOS=y
 # CONFIG_NET is not set
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+
+#
+# Virtual IO Support
+#
+CONFIG_VSERIAL=y
+# CONFIG_VDISPLAY is not set
+# CONFIG_VINPUT is not set
 
 #
 # Command Options
@@ -117,13 +118,15 @@ CONFIG_CMD_GUEST=y
 CONFIG_CMD_MEMORY=y
 CONFIG_CMD_THREAD=y
 CONFIG_CMD_CHARDEV=y
-CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+CONFIG_CMD_VSERIAL=y
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
+CONFIG_CMD_BLOCKDEV=y
+CONFIG_CMD_VFS=y
 
 #
 # Daemon Options
@@ -153,17 +156,41 @@ CONFIG_VTEMU_FONT_PEARL_8x8=y
 CONFIG_VTEMU_FONT_MINI_8x8=y
 
 #
+# Virtual FileSystem Options
+#
+CONFIG_VFS=y
+# CONFIG_VFS_CPIO is not set
+# CONFIG_VFS_EXT4 is not set
+CONFIG_VFS_FAT=y
+
+#
 # Device Drivers
 #
 
 #
 # Serial Port Drivers
 #
-# CONFIG_SERIAL is not set
+CONFIG_SERIAL=y
+CONFIG_SERIAL_8250_UART=y
+# CONFIG_SERIAL_OMAP_UART is not set
+# CONFIG_SERIAL_PL01X is not set
+# CONFIG_SERIAL_SAMSUNG is not set
+# CONFIG_SERIAL_IMX is not set
 
 #
 # RTC Drivers
 #
+# CONFIG_RTC is not set
+
+#
+# Block Drivers
+#
+# CONFIG_BLOCK_RBD is not set
+
+#
+# MMC/SD/SDIO drivers
+#
+# CONFIG_MMC is not set
 
 #
 # USB drivers
@@ -173,6 +200,7 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 #
 # Input Device Support
 #
+CONFIG_INPUT=y
 
 #
 # Input Device Drivers
@@ -180,6 +208,7 @@ CONFIG_VTEMU_FONT_MINI_8x8=y
 CONFIG_INPUT_KEYBOARD=y
 CONFIG_KEYBOARD_ATKBD=y
 # CONFIG_KEYBOARD_ATKBD_HP_KEYCODES is not set
+# CONFIG_INPUT_MOUSEDEV is not set
 
 #
 # Hardware I/O ports
@@ -192,6 +221,17 @@ CONFIG_SERIO_I8042=y
 #
 # Graphics Drivers
 #
+CONFIG_FB=y
+CONFIG_FB_CFB_FILLRECT=y
+CONFIG_FB_CFB_COPYAREA=y
+CONFIG_FB_CFB_IMAGEBLIT=y
+# CONFIG_FB_CFB_REV_PIXELS_IN_BYTE is not set
+# CONFIG_FB_SYS_FILLRECT is not set
+# CONFIG_FB_SYS_COPYAREA is not set
+# CONFIG_FB_SYS_IMAGEBLIT is not set
+# CONFIG_FB_FOREIGN_ENDIAN is not set
+# CONFIG_FB_MODE_HELPERS is not set
+# CONFIG_FB_TILEBLITTING is not set
 CONFIG_FB_VESA=y
 
 #
@@ -202,6 +242,24 @@ CONFIG_FB_VESA=y
 # Clock Drivers
 #
 # CONFIG_CLKDEV_LOOKUP is not set
+# CONFIG_COMMON_CLK is not set
+
+#
+# Multifunction device drivers
+#
+# CONFIG_REALVIEW_CONFIG is not set
+# CONFIG_VEXPRESS_CONFIG is not set
+
+#
+# IDE Driver
+#
+CONFIG_IDE=y
+# CONFIG_ATAPI is not set
+
+#
+# IDE Host Controllers
+#
+CONFIG_PIIX3_IDE=y
 
 #
 # Device Emulators
@@ -223,6 +281,21 @@ CONFIG_FB_VESA=y
 # CONFIG_EMU_PIC is not set
 
 #
+# Timer Emulators
+#
+# CONFIG_EMU_TIMER is not set
+
+#
+# Cache Controller Emulators
+#
+# CONFIG_EMU_CACHE_L2X0 is not set
+
+#
+# Miscellaneous Emulators
+#
+# CONFIG_EMU_MISC_ZERO is not set
+
+#
 # Network Interface Controller Emulators
 #
 # CONFIG_EMU_NET is not set
@@ -233,19 +306,24 @@ CONFIG_FB_VESA=y
 # CONFIG_EMU_BLOCK is not set
 
 #
-# Console Emulators
+# Display Emulators
 #
-# CONFIG_EMU_CONSOLE is not set
 
 #
-# Timer Emulators
+# Input Device Emulators
 #
-# CONFIG_EMU_TIMER is not set
 
 #
 # Serial Port Emulators
 #
-# CONFIG_EMU_SERIAL is not set
+CONFIG_EMU_SERIAL=y
+# CONFIG_EMU_SERIAL_PL011 is not set
+CONFIG_EMU_SERIAL_NS16550=y
+
+#
+# Console Emulators
+#
+# CONFIG_EMU_CONSOLE is not set
 
 #
 # Real-Time Clock Emulators
@@ -253,19 +331,9 @@ CONFIG_FB_VESA=y
 # CONFIG_EMU_RTC is not set
 
 #
-# Cache Controller Emulators
-#
-# CONFIG_EMU_CACHE_L2X0 is not set
-
-#
 # GPIO Emulators
 #
 # CONFIG_EMU_GPIO is not set
-
-#
-# Miscellaneous Emulators
-#
-# CONFIG_EMU_MISC_ZERO is not set
 
 #
 # Tool Options

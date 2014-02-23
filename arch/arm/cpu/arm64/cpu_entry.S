@@ -26,6 +26,7 @@
 	/* 
 	 * _start: Primary CPU startup code
 	 * _start_secondary: Secondary CPU startup code
+	 * _start_secondary_nopen: Secondary CPU startup code without holding pen
 	 *
 	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor exectues from intended
@@ -34,6 +35,7 @@
 	.section .entry, "ax", %progbits
 	.globl _start
 	.globl _start_secondary
+	.globl _start_secondary_nopen
 _start:
 	/*
 	 * x4 -> load start
@@ -234,12 +236,14 @@ _start_mmu_init:
 	sub	x0, x0, x6
 	add	x0, x0, x4
 	str	x0, [x1]
-	b	_common_init
+
+	b	_start_secondary_nopen
 
 #ifdef CONFIG_SMP
 	.align	3
-1:	.dword	.
-	.dword	secondary_holding_pen_release
+__start_secondary_pen_release:
+	.dword	.
+	.dword	start_secondary_pen_release
 
 #define MPIDR_HWID_BITMASK	0xff00ffffff
 
@@ -256,7 +260,7 @@ _start_secondary:
 	and	x0, x0, x1
 
 	/* Calculate load address of secondary_holding_pen_release */
-	adr	x1, 1b
+	adr	x1, __start_secondary_pen_release
 	ldp	x2, x3, [x1]
 	sub	x1, x1, x2
 	add	x3, x3, x1
@@ -270,7 +274,7 @@ pen:	wfe
 	/*
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
-_common_init:
+_start_secondary_nopen:
 	/* Disable IRQ & FIQ */
 	msr	daifset, #3
 
@@ -303,25 +307,26 @@ _common_init:
 	ldr	x0, __vbar_val
 	msr    	vbar_el2, x0
 
-	/* Set Hypervisor Stack */
-	ldr	x0,	__hvc_stack_end
 #ifdef CONFIG_SMP
-	mov	x1, #CONFIG_IRQ_STACK_SIZE
-	mrs	x10, mpidr_el1
-	ldr     x2, =MPIDR_HWID_BITMASK
-	and	x10, x2, x10
-	mul	x1, x1, x10
-	sub	x0, x0, x1
+	/* Setup SMP ID for current processor */
+	bl      proc_setup_smp_id
 #endif
-	mov	sp, x0
 
 	/* Setup Hypervisor System Control Register */
-	ldr	x1, __hsctlr_set
-	mrs	x3, sctlr_el2
-	orr	x3, x3, x1
-	msr     sctlr_el2, x3
+	bl	proc_setup
+	msr     sctlr_el2, x0
 	dsb	sy
 	isb
+
+	/* Set Hypervisor Stack */
+	ldr	x2,	__hvc_stack_end
+#ifdef CONFIG_SMP
+	mov	x1, #CONFIG_IRQ_STACK_SIZE
+	bl	arch_smp_id
+	mul	x1, x1, x0
+	sub	x2, x2, x1
+#endif
+	mov	sp, x2
 
 	ldr	x0, __cpu_init
 	blr	x0
@@ -344,12 +349,10 @@ __htcr_set:
 	.dword ((0x19 << TCR_T0SZ_SHIFT) | (0x2 << TCR_PS_SHIFT) | (0x3 << TCR_SH0_SHIFT) | (0x1 << TCR_ORGN0_SHIFT) | (0x1 << TCR_IRGN0_SHIFT))
 __vtcr_set:
 	.dword ((0x1 << VTCR_SL0_SHIFT) | (0x19 << VTCR_T0SZ_SHIFT) | (0x2 << VTCR_PS_SHIFT) | (0x3 << VTCR_SH0_SHIFT) | (0x1 << VTCR_ORGN0_SHIFT) | (0x1 << VTCR_IRGN0_SHIFT))
-__hsctlr_clear:
-	.dword ~(SCTLR_A_MASK)
-__hsctlr_set:
-	.dword (SCTLR_M_MASK | SCTLR_C_MASK | SCTLR_I_MASK)
 __hcr_set:
 	.dword (HCR_AMO_MASK | HCR_IMO_MASK | HCR_FMO_MASK | HCR_VM_MASK)
+__hsctlr_clear:
+	.dword ~(SCTLR_A_MASK)
 __exec_start:
 	.dword _code_start
 __exec_end:
@@ -503,28 +506,28 @@ _copy_end:
 
 /* Pull registers from stack */
 .macro	PULL_REGS
-	ldp	x21, x22, [sp, #0x100]		/* load ELR, SPSR */
-	msr	elr_el2, x21
-	msr	spsr_el2, x22
-	pop	x0, x1
-	pop	x2, x3				
-	pop	x4, x5
-	pop	x6, x7
-	pop	x8, x9
-	pop	x10, x11
-	pop	x12, x13
-	pop	x14, x15
-	pop	x16, x17
-	pop	x18, x19
-	pop	x20, x21
-	pop	x22, x23
-	pop	x24, x25
-	pop	x26, x27
-	pop	x28, x29
-	msr	tpidr_el2, x24
-	ldp	x30, x24, [sp]
-	mov	sp, x24
-	mrs	x24, tpidr_el2
+	ldp	x22, x23, [sp, #0x100]		/* load ELR, SPSR */
+	ldp	x30, x28, [sp, #0xF0]		/* load LR, SP */
+	msr	elr_el2, x22
+	msr	spsr_el2, x23
+	mov	x29, sp
+	mov	sp, x28
+	ldp	x0, x1, [x29], #16
+	ldp	x2, x3, [x29], #16
+	ldp	x4, x5, [x29], #16
+	ldp	x6, x7, [x29], #16
+	ldp	x8, x9, [x29], #16
+	ldp	x10, x11, [x29], #16
+	ldp	x12, x13, [x29], #16
+	ldp	x14, x15, [x29], #16
+	ldp	x16, x17, [x29], #16
+	ldp	x18, x19, [x29], #16
+	ldp	x20, x21, [x29], #16
+	ldp	x22, x23, [x29], #16
+	ldp	x24, x25, [x29], #16
+	ldp	x26, x27, [x29], #16
+	ldr	x28, [x29], #8
+	ldr	x29, [x29]
 	eret
 .endm
 

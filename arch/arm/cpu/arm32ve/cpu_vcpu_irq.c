@@ -24,9 +24,9 @@
 #include <vmm_error.h>
 #include <vmm_scheduler.h>
 #include <vmm_vcpu_irq.h>
-#include <arch_cpu.h>
+#include <arch_vcpu.h>
 #include <cpu_inline_asm.h>
-#include <cpu_vcpu_helper.h>
+#include <cpu_vcpu_inject.h>
 #include <cpu_defines.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)

@@ -28,22 +28,8 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+
 #include <sunxi/timer.h>
-
-/*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	return aw_timer_force_reset();
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: Don't know how to poweroff !!!!! */
-	return VMM_EFAIL;
-}
 
 /*
  * Print board information
@@ -66,16 +52,6 @@ int __init arch_board_early_init(void)
 	 */
 
 	return 0;
-}
-
-int __init arch_clocksource_init(void)
-{
-	return aw_timer_clocksource_init();
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	return aw_timer_clockchip_init();
 }
 
 int __init arch_board_final_init(void)

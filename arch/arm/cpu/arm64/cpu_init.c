@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_smp.h>
 #include <vmm_main.h>
 #include <vmm_params.h>
 #include <vmm_devtree.h>
@@ -50,7 +49,7 @@ virtual_size_t arch_code_size(void)
 
 int __init arch_cpu_early_init(void)
 {
-	char *attr;
+	const char *options;
 	struct vmm_devtree_node *node;
 
 	/*
@@ -65,9 +64,9 @@ int __init arch_cpu_early_init(void)
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTARGS_ATTR_NAME);
-	if (attr) {
-		vmm_parse_early_options(attr);
+	if (vmm_devtree_read_string(node,
+		VMM_DEVTREE_BOOTARGS_ATTR_NAME, &options) == VMM_OK) {
+		vmm_parse_early_options(options);
 	}
 
 	return VMM_OK;
@@ -87,18 +86,8 @@ int __init arch_cpu_final_init(void)
 
 void __init cpu_init(void)
 {
-#if defined(CONFIG_SMP)
-	u32 cpu = vmm_smp_processor_id();
-
-	if (!cpu) { /* Primary CPU */
-		vmm_init();
-	} else { /* Secondary CPUs */
-		vmm_init_secondary();
-	}
-#else
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
-#endif
 
 	/* We will never come back here. */
 	vmm_hang();

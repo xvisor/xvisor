@@ -22,4 +22,13 @@
 # */
 
 drivers-objs-$(CONFIG_CLKDEV_LOOKUP) += clk/clkdev.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-divider.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-fixed-factor.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-fixed-rate.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-gate.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-mux.o
+drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-composite.o
+
+drivers-objs-$(CONFIG_COMMON_CLK_BCM2835) += clk/clk-bcm2835.o
 

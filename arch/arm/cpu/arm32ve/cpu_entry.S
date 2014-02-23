@@ -26,6 +26,7 @@
 	/* 
 	 * _start: Primary CPU startup code
 	 * _start_secondary: Secondary CPU startup code
+	 * _start_secondary_nopen: Secondary CPU startup code without holding pen
 	 *
 	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor exectues from intended
@@ -34,6 +35,7 @@
 	.section .entry, "ax", %progbits
 	.globl _start
 	.globl _start_secondary
+	.globl _start_secondary_nopen
 _start:
 	/* r4 -> load start
 	 * r5 -> load end
@@ -210,13 +212,44 @@ _start_mmu_init:
 	sub	r0, r0, r6
 	add	r0, r0, r4
 	str	r0, __httbr_set
+	b	_start_secondary_nopen
+
+#ifdef CONFIG_SMP
+	.align	3
+__start_secondary_pen_release:
+	.word	start_secondary_pen_release
+
+#define MPIDR_HWID_BITMASK	0xFFFFFF
 
 	/*
 	 * Secondary CPU startup code 
-	 *
-	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary:
+	/*
+	 * This provides a "holding pen" for platforms to hold all secondary
+	 * cores are held until we're ready for them to initialise.
+	 */
+	mrc     p15, 0, r0, c0, c0, 5
+	ldr     r1, =MPIDR_HWID_BITMASK
+	and	r0, r0, r1
+
+	/* Calculate load address of secondary_holding_pen_release */
+	ldr	r1, __start_secondary_pen_release
+	ldr	r2, __exec_start
+	ldr	r3, _load_start
+	sub	r1, r1, r2
+	add	r1, r1, r3
+	sev
+pen:	wfe
+	ldr	r4, [r1]
+	cmp	r4, r0
+	bne	pen
+#endif
+
+	/*
+	 * Note: From this point primary CPU startup is same as secondary CPU
+	 */
+_start_secondary_nopen:
 	/* Ensure that we are in hypervisor mode */
 	mrs	r0, cpsr_all
 	and	r0, r0, #(CPSR_MODE_MASK)
@@ -245,13 +278,13 @@ _start_secondary:
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c1, 2
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	bl	proc_setup_smp_id
+#endif
 	/* Setup Hypervisor System Control Register */
-	ldr	r1, __hsctlr_set
-	ldr	r2, __hsctlr_clear
-	mrc     p15, 4, r3, c1, c0, 0
-	and	r3, r3, r2
-	orr	r3, r3, r1
-	mcr     p15, 4, r3, c1, c0, 0
+	bl	proc_setup
+	mcr     p15, 4, r0, c1, c0, 0
 	/* Jump to reset code */
 	ldr	pc, __reset
 
@@ -280,10 +313,6 @@ __vtcr_clear:
 	.word ~(0x0)
 __vtcr_set:
 	.word ((0x1 << VTCR_SL0_SHIFT) | (0x3 << VTCR_ORGN0_SHIFT) | (0x3 << VTCR_IRGN0_SHIFT))
-__hsctlr_clear:
-	.word ~(HSCTLR_A_MASK)
-__hsctlr_set:
-	.word (HSCTLR_M_MASK | HSCTLR_C_MASK | HSCTLR_I_MASK)
 __boot_reg0:
 	.word _boot_reg0
 __boot_reg1:
@@ -446,8 +475,7 @@ _reset:
 	/* Set Hypervisor Mode Stack */
 	ldr	sp, __hvc_stack_end
 #ifdef CONFIG_SMP
-	mrc     p15, 0, r0, c0, c0, 5
-	ands	r0, r0, #0xFF
+	bl	arch_smp_id
 	mov	r1, #CONFIG_IRQ_STACK_SIZE
 	mul	r1, r1, r0
 	sub	sp, sp, r1

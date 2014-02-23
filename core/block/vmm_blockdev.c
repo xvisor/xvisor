@@ -116,9 +116,9 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 
 	if (bdev->rq->make_request) {
 		r->bdev = bdev;
-		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
-		rc = r->bdev->rq->make_request(r->bdev->rq, r);
-		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->make_request(bdev->rq, r);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
 		if (rc) {
 			r->bdev = NULL;
 			return rc;
@@ -140,15 +140,17 @@ int vmm_blockdev_abort_request(struct vmm_request *r)
 {
 	int rc;
 	irq_flags_t flags;
+	struct vmm_blockdev *bdev;
 
 	if (!r || !r->bdev || !r->bdev->rq) {
 		return VMM_EFAIL;
 	}
+	bdev = r->bdev;
 
-	if (r->bdev->rq->abort_request) {
-		vmm_spin_lock_irqsave(&r->bdev->rq->lock, flags);
-		rc = r->bdev->rq->abort_request(r->bdev->rq, r);
-		vmm_spin_unlock_irqrestore(&r->bdev->rq->lock, flags);
+	if (bdev->rq->abort_request) {
+		vmm_spin_lock_irqsave(&bdev->rq->lock, flags);
+		rc = bdev->rq->abort_request(bdev->rq, r);
+		vmm_spin_unlock_irqrestore(&bdev->rq->lock, flags);
 		if (rc) {
 			return rc;
 		}
@@ -411,10 +413,13 @@ void vmm_blockdev_free(struct vmm_blockdev *bdev)
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_free);
 
+static struct vmm_class bdev_class = {
+	.name = VMM_BLOCKDEV_CLASS_NAME,
+};
+
 int vmm_blockdev_register(struct vmm_blockdev *bdev)
 {
 	int rc;
-	struct vmm_classdev *cd;
 	struct vmm_blockdev_event event;
 
 	if (!bdev) {
@@ -426,24 +431,17 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 		return VMM_EINVALID;
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		rc = VMM_ENOMEM;
-		goto fail;
+	vmm_devdrv_initialize_device(&bdev->dev);
+	if (strlcpy(bdev->dev.name, bdev->name, sizeof(bdev->dev.name)) >=
+	    sizeof(bdev->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
+	bdev->dev.class = &bdev_class;
+	vmm_devdrv_set_data(&bdev->dev, bdev);
 
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, bdev->name, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_classdev;
-	}
-	cd->dev = bdev->dev;
-	cd->priv = bdev;
-
-	rc = vmm_devdrv_register_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
+	rc = vmm_devdrv_class_register_device(&bdev_class, &bdev->dev);
 	if (rc) {
-		goto free_classdev;
+		return rc;
 	}
 
 	/* Broadcast register event */
@@ -454,11 +452,6 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 				   &event);
 
 	return VMM_OK;
-
-free_classdev:
-	vmm_free(cd);
-fail:
-	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_register);
 
@@ -485,6 +478,7 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 
 	child_bdev = __blockdev_alloc(FALSE);
 	child_bdev->parent = bdev;
+	child_bdev->dev.parent = &bdev->dev;
 	vmm_mutex_lock(&bdev->child_lock);
 	vmm_snprintf(child_bdev->name, sizeof(child_bdev->name),
 			"%sp%d", bdev->name, bdev->child_count);
@@ -525,7 +519,6 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 	struct dlist *l;
 	struct vmm_blockdev *child_bdev;
 	struct vmm_blockdev_event event;
-	struct vmm_classdev *cd;
 
 	if (!bdev) {
 		return VMM_EFAIL;
@@ -551,105 +544,52 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 				   VMM_BLOCKDEV_EVENT_UNREGISTER, 
 				   &event);
 
-	cd = vmm_devdrv_find_classdev(VMM_BLOCKDEV_CLASS_NAME, bdev->name);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(VMM_BLOCKDEV_CLASS_NAME, cd);
-	if (!rc) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&bdev_class, &bdev->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_unregister);
 
 struct vmm_blockdev *vmm_blockdev_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(VMM_BLOCKDEV_CLASS_NAME, name);
-	if (!cd) {
+	dev = vmm_devdrv_class_find_device(&bdev_class, name);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_find);
 
 struct vmm_blockdev *vmm_blockdev_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(VMM_BLOCKDEV_CLASS_NAME, num);
-
-	if (!cd) {
+	dev = vmm_devdrv_class_device(&bdev_class, num);
+	if (!dev) {
 		return NULL;
 	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_get);
 
 u32 vmm_blockdev_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_BLOCKDEV_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&bdev_class);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_count);
 
 static int __init vmm_blockdev_init(void)
 {
-	int rc;
-	struct vmm_class *c;
-
 	vmm_printf("Initialize Block Device Framework\n");
 
-	c = vmm_malloc(sizeof(struct vmm_class));
-	if (!c) {
-		rc = VMM_ENOMEM;
-		goto fail;
-	}
-
-	INIT_LIST_HEAD(&c->head);
-
-	if (strlcpy(c->name, VMM_BLOCKDEV_CLASS_NAME, sizeof(c->name)) >=
-	    sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
-	if (rc) {
-		goto free_class;
-	}
-
-	return VMM_OK;
-
-free_class:
-	vmm_free(c);
-fail:
-	return rc;
+	return vmm_devdrv_register_class(&bdev_class);
 }
 
 static void __exit vmm_blockdev_exit(void)
 {
-	int rc;
-	struct vmm_class *c;
-
-	c = vmm_devdrv_find_class(VMM_BLOCKDEV_CLASS_NAME);
-	if (!c) {
-		return;
-	}
-
-	rc = vmm_devdrv_unregister_class(c);
-	if (rc) {
-		return;
-	}
-
-	vmm_free(c);
+	vmm_devdrv_unregister_class(&bdev_class);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

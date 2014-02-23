@@ -8,14 +8,43 @@
 	aliases { };
 
 	cpus {
-		cpu0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
 			device_type = "cpu";
-			model = "Cortex-A9";
+			compatible = "arm,cortex-a9";
+			reg = <0>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
 		};
 
-		cpu1 {
+		cpu@1 {
 			device_type = "cpu";
-			model = "Cortex-A9";
+			compatible = "arm,cortex-a9";
+			reg = <1>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <2>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <3>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
 		};
 	};
 
@@ -41,102 +70,256 @@
 	twd-timer { /* Local Timer */
       		device_type = "timer";
       		compatible = "arm,cortex-a9-twd-timer";
-      		reg = <0x1E000600 0x1000>;
+      		reg = <0x1E000600 0x1000	/* Local timer registers */
+		       0x1000005C 0x1000>;	/* Reference counter address */
+		ref-counter-freq = <24000000>;	/* Reference counter frequency */
 		interrupts = <29>;
 	};
 
-	motherboard {
+	dcc {
+		compatible = "arm,vexpress,config-bus";
+		arm,vexpress,config-bridge = <&v2m_sysreg>;
+
+		osc@0 {
+			/* ACLK clock to the AXI master port on the test chip */
+			compatible = "arm,vexpress-osc";
+			arm,vexpress-sysreg,func = <1 0>;
+			freq-range = <30000000 50000000>;
+			#clock-cells = <0>;
+			clock-output-names = "extsaxiclk";
+		};
+
+		oscclk1: osc@1 {
+			/* Reference clock for the CLCD */
+			compatible = "arm,vexpress-osc";
+			arm,vexpress-sysreg,func = <1 1>;
+			freq-range = <10000000 80000000>;
+			#clock-cells = <0>;
+			clock-output-names = "clcdclk";
+		};
+
+		smbclk: oscclk2: osc@2 {
+			/* Reference clock for the test chip internal PLLs */
+			compatible = "arm,vexpress-osc";
+			arm,vexpress-sysreg,func = <1 2>;
+			freq-range = <33000000 100000000>;
+			#clock-cells = <0>;
+			clock-output-names = "tcrefclk";
+		};
+	};
+
+	smb {
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		eth0 {
-			device_type = "nic";
-			compatible = "smc911x";
-			reg = <0x4E000000 0x1000>;
-			smsc,irq-active-high;
-			interrupts = <47>;
-			switch = "netbridge0";
-		};
-
-		iofpga {
+		motherboard {
 			#address-cells = <1>;
 			#size-cells = <1>;
+			compatible = "simple-bus";
 
-			sysreg { /* System Registers */
-		      		device_type = "sys";
-		      		compatible = "arm,vexpress-sysreg";
-		      		reg = <0x10000000 0x1000>;
+			eth0 {
+				device_type = "nic";
+				compatible = "smc911x";
+				reg = <0x4E000000 0x1000>;
+				smsc,irq-active-high;
+				interrupts = <47>;
+				switch = "br0";
 			};
 
-			sysctl { /* System Controller */
-		      		device_type = "sys";
-		      		compatible = "arm,sp810";
-		      		reg = <0x10001000 0x1000>;
+			iofpga {
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				v2m_sysreg: sysreg@00000 { /* System Registers */
+			      		device_type = "sys";
+			      		compatible = "arm,vexpress-sysreg";
+			      		reg = <0x10000000 0x1000>;
+				};
+
+				v2m_sysctl: sysctl@01000 { /* System Controller */
+			      		device_type = "sys";
+			      		compatible = "arm,sp810";
+			      		reg = <0x10001000 0x1000>;
+					clocks = <&v2m_refclk32khz>, <&v2m_refclk1mhz>, <&smbclk>;
+					clock-names = "refclk", "timclk", "apb_pclk";
+					#clock-cells = <1>;
+					clock-output-names = "timerclken0", "timerclken1", "timerclken2", "timerclken3";
+				};
+
+				mmci@05000 { /* Multimedia Card Interface */
+			      		device_type = "mmc";
+			      		compatible = "arm,pl180";
+			      		reg = <0x10005000 0x1000>;
+					interrupts = <41 42>;
+					clocks = <&v2m_clk24mhz>, <&smbclk>;
+					clock-names = "mclk", "apb_pclk";
+				};
+
+				kmi@06000 { /* Keyboard */
+			      		device_type = "serio";
+			      		compatible = "arm,pl050";
+			      		reg = <0x10006000 0x1000>;
+					interrupts = <44>;
+					clocks = <&v2m_clk24mhz>, <&smbclk>;
+					clock-names = "KMIREFCLK", "apb_pclk";
+				};
+
+				kmi@07000 { /* Mouse */
+			      		device_type = "serio";
+			      		compatible = "arm,pl050";
+			      		reg = <0x10007000 0x1000>;
+					interrupts = <45>;
+					clocks = <&v2m_clk24mhz>, <&smbclk>;
+					clock-names = "KMIREFCLK", "apb_pclk";
+				};
+
+				SERIAL0: v2m_serial0: uart@09000 {
+			      		device_type = "serial";
+			      		compatible = "arm,pl011";
+			      		reg = <0x10009000 0x1000>;
+					clock-frequency = <24000000>;
+			      		baudrate = <115200>;
+					interrupts = <37>;
+					clocks = <&v2m_oscclk2>, <&smbclk>;
+					clock-names = "uartclk", "apb_pclk";
+				};
+
+				v2m_timer01: timer@11000 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10011000 0x1000>;
+					interrupts = <34>;
+					clocks = <&v2m_sysctl 0>, <&v2m_sysctl 1>, <&smbclk>;
+					clock-names = "timclken1", "timclken2", "apb_pclk";
+				};
+
+				v2m_timer23: timer@12000 {
+			      		device_type = "timer";
+			      		compatible = "arm,sp804";
+			      		reg = <0x10012000 0x1000>;
+					interrupts = <35>;
+					clocks = <&v2m_sysctl 2>, <&v2m_sysctl 3>, <&smbclk>;
+					clock-names = "timclken1", "timclken2", "apb_pclk";
+				};
+
+				RTC0: v2m_rtc0: rtc@17000 {
+			      		device_type = "rtc";
+			      		compatible = "arm,pl031";
+			      		reg = <0x10017000 0x1000>;
+					interrupts = <36>;
+				};
+
+				clcd@1f000 {
+			      		device_type = "fb";
+			      		compatible = "arm,pl111";
+			      		reg = <0x10020000 0x1000>;
+					clocks = <&v2m_oscclk1>, <&smbclk>;
+					clock-names = "clcdclk", "apb_pclk";
+					use_dma = <0>;
+					framebuffer = <0x4C000000 0x00180000>;
+				};
 			};
 
-			mmci0 { /* Multimedia Card Interface */
-		      		device_type = "mmc";
-		      		compatible = "arm,pl180";
-		      		reg = <0x10005000 0x1000>;
-				interrupts = <41 42>;
-			};
-
-			kmi0 { /* Keyboard */
-		      		device_type = "serio";
-		      		compatible = "ambakmi";
-		      		reg = <0x10006000 0x1000>;
-				interrupts = <44>;
-			};
-
-			kmi1 { /* Mouse */
-		      		device_type = "serio";
-		      		compatible = "ambakmi";
-		      		reg = <0x10007000 0x1000>;
-				interrupts = <45>;
-			};
-
-			SERIAL0: uart0 {
-		      		device_type = "serial";
-		      		compatible = "arm,pl011";
-		      		reg = <0x10009000 0x1000>;
+			v2m_clk24mhz: clk24mhz {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
 				clock-frequency = <24000000>;
-		      		baudrate = <115200>;
-				interrupts = <37>;
+				clock-output-names = "v2m:clk24mhz";
 			};
 
-			timer01 {
-		      		device_type = "timer";
-		      		compatible = "arm,sp804";
-		      		reg = <0x10011000 0x1000>;
-				interrupts = <34>;
+			v2m_refclk1mhz: refclk1mhz {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <1000000>;
+				clock-output-names = "v2m:refclk1mhz";
 			};
 
-			timer23 {
-		      		device_type = "timer";
-		      		compatible = "arm,sp804";
-		      		reg = <0x10012000 0x1000>;
-				interrupts = <35>;
+			v2m_refclk32khz: refclk32khz {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <32768>;
+				clock-output-names = "v2m:refclk32khz";
 			};
 
-			RTC0: rtc0 {
-		      		device_type = "rtc";
-		      		compatible = "arm,pl031";
-		      		reg = <0x10017000 0x1000>;
-				interrupts = <36>;
-			};
+			mcc {
+				compatible = "arm,vexpress,config-bus";
+				arm,vexpress,config-bridge = <&v2m_sysreg>;
 
-			clcd {
-		      		device_type = "fb";
-		      		compatible = "arm,pl111";
-		      		reg = <0x10020000 0x1000>;
+				osc@0 {
+					/* MCC static memory clock */
+					compatible = "arm,vexpress-osc";
+					arm,vexpress-sysreg,func = <1 0>;
+					freq-range = <25000000 60000000>;
+					#clock-cells = <0>;
+					clock-output-names = "v2m:oscclk0";
+				};
+
+				v2m_oscclk1: osc@1 {
+					/* CLCD clock */
+					compatible = "arm,vexpress-osc";
+					arm,vexpress-sysreg,func = <1 1>;
+					freq-range = <23750000 63500000>;
+					#clock-cells = <0>;
+					clock-output-names = "v2m:oscclk1";
+				};
+
+				v2m_oscclk2: osc@2 {
+					/* IO FPGA peripheral clock */
+					compatible = "arm,vexpress-osc";
+					arm,vexpress-sysreg,func = <1 2>;
+					freq-range = <24000000 24000000>;
+					#clock-cells = <0>;
+					clock-output-names = "v2m:oscclk2";
+				};
+
+				volt@0 {
+					/* Logic level voltage */
+					compatible = "arm,vexpress-volt";
+					arm,vexpress-sysreg,func = <2 0>;
+					regulator-name = "VIO";
+					regulator-always-on;
+					label = "VIO";
+				};
+
+				temp@0 {
+					/* MCC internal operating temperature */
+					compatible = "arm,vexpress-temp";
+					arm,vexpress-sysreg,func = <4 0>;
+					label = "MCC";
+				};
+
+				reset@0 {
+					compatible = "arm,vexpress-reset";
+					arm,vexpress-sysreg,func = <5 0>;
+				};
+
+				muxfpga@0 {
+					compatible = "arm,vexpress-muxfpga";
+					arm,vexpress-sysreg,func = <7 0>;
+				};
+
+				shutdown@0 {
+					compatible = "arm,vexpress-shutdown";
+					arm,vexpress-sysreg,func = <8 0>;
+				};
+
+				reboot@0 {
+					compatible = "arm,vexpress-reboot";
+					arm,vexpress-sysreg,func = <9 0>;
+				};
+
+				dvimode@0 {
+					compatible = "arm,vexpress-dvimode";
+					arm,vexpress-sysreg,func = <11 0>;
+				};
 			};
 		};
 	};
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

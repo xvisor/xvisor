@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
@@ -84,10 +85,9 @@ static int mterm_main(void *udata)
 
 static int __init daemon_mterm_init(void)
 {
-	u8 mterm_priority;
+	u32 mterm_priority;
 	u32 mterm_time_slice;
-	struct vmm_devtree_node * node;
-	const char * attrval;
+	struct vmm_devtree_node *node;
 
 	/* Reset the control structure */
 	memset(&mtctrl, 0, sizeof(mtctrl));
@@ -103,18 +103,12 @@ static int __init daemon_mterm_init(void)
 	if (!node) {
 		return VMM_EFAIL;
 	}
-	attrval = vmm_devtree_attrval(node,
-				      "mterm_priority");
-	if (attrval) {
-		mterm_priority = *((u32 *) attrval);
-	} else {
+	if (vmm_devtree_read_u32(node,
+				 "mterm_priority", &mterm_priority)) {
 		mterm_priority = VMM_THREAD_DEF_PRIORITY;
 	}
-	attrval = vmm_devtree_attrval(node,
-				      "mterm_time_slice");
-	if (attrval) {
-		mterm_time_slice = *((u32 *) attrval);
-	} else {
+	if (vmm_devtree_read_u32(node,
+				 "mterm_time_slice", &mterm_time_slice)) {
 		mterm_time_slice = VMM_THREAD_DEF_TIME_SLICE;
 	}
 

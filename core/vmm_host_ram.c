@@ -42,32 +42,36 @@ struct vmm_host_ram_ctrl {
 
 static struct vmm_host_ram_ctrl rctrl;
 
-int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
+physical_size_t vmm_host_ram_alloc(physical_addr_t *pa,
+				   physical_size_t sz,
+				   u32 align_order)
 {
-	u32 i, found, binc, bcnt, bpos, bfree;
 	irq_flags_t flags;
+	u32 i, found, binc, bcnt, bpos, bfree;
 
+	if ((sz == 0) ||
+	    (align_order < VMM_PAGE_SHIFT) ||
+	    (BITS_PER_LONG <= align_order)) {
+		return 0;
+	}
+
+	sz = roundup2_order_size(sz, align_order);
 	bcnt = VMM_SIZE_TO_PAGE(sz);
 
 	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
 	if (rctrl.ram_bmap_free < bcnt) {
 		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
-		return VMM_EFAIL;
+		return 0;
 	}
 
 	found = 0;
-	if (aligned && (sz > VMM_PAGE_SIZE)) {
-		bpos = umod32(rctrl.ram_start, sz);
-		if (bpos) {
-			bpos = VMM_SIZE_TO_PAGE(sz);
-		}
-		binc = bcnt;
-	} else {
-		bpos = 0;
-		binc = 1;
+	binc = order_size(align_order) >> VMM_PAGE_SHIFT;
+	bpos = rctrl.ram_start & order_mask(align_order);
+	if (bpos) {
+		bpos = VMM_SIZE_TO_PAGE(order_size(align_order) - bpos);
 	}
-	for ( ; bpos < (rctrl.ram_size >> VMM_PAGE_SHIFT); bpos += binc) {
+	for (; bpos < (rctrl.ram_size >> VMM_PAGE_SHIFT); bpos += binc) {
 		bfree = 0;
 		for (i = bpos; i < (bpos + bcnt); i++) {
 			if (bitmap_isset(rctrl.ram_bmap, i)) {
@@ -82,7 +86,7 @@ int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 	}
 	if (!found) {
 		vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
-		return VMM_EFAIL;
+		return 0;
 	}
 
 	*pa = rctrl.ram_start + bpos * VMM_PAGE_SIZE;
@@ -91,7 +95,7 @@ int vmm_host_ram_alloc(physical_addr_t *pa, physical_size_t sz, bool aligned)
 
 	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);
 
-	return VMM_OK;
+	return sz;
 }
 
 int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
@@ -100,7 +104,7 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 	irq_flags_t flags;
 
 	if ((pa < rctrl.ram_start) ||
-	    ((rctrl.ram_start + rctrl.ram_size) <= pa)) {
+	    ((rctrl.ram_start + rctrl.ram_size) < (pa + sz))) {
 		return VMM_EFAIL;
 	}
 
@@ -140,8 +144,8 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 	u32 bcnt, bpos;
 	irq_flags_t flags;
 
-	if (pa < rctrl.ram_start ||
-	    (rctrl.ram_start + rctrl.ram_size) <= pa) {
+	if ((pa < rctrl.ram_start) ||
+	    ((rctrl.ram_start + rctrl.ram_size) < (pa + sz))) {
 		return VMM_EFAIL;
 	}
 
@@ -166,11 +170,11 @@ physical_addr_t vmm_host_ram_base(void)
 bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 {
 	u32 bpos;
-	bool ret = TRUE;
+	bool ret = FALSE;
 	irq_flags_t flags;
 
-	if (pa < rctrl.ram_start ||
-	    (rctrl.ram_start + rctrl.ram_size) <= pa) {
+	if ((pa < rctrl.ram_start) ||
+	    ((rctrl.ram_start + rctrl.ram_size) <= pa)) {
 		return ret;
 	}
 
@@ -178,8 +182,8 @@ bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 
 	vmm_spin_lock_irqsave_lite(&rctrl.ram_bmap_lock, flags);
 
-	if (bitmap_isset(rctrl.ram_bmap, bpos)) {
-		ret = FALSE;
+	if (!bitmap_isset(rctrl.ram_bmap, bpos)) {
+		ret = TRUE;
 	}
 
 	vmm_spin_unlock_irqrestore_lite(&rctrl.ram_bmap_lock, flags);

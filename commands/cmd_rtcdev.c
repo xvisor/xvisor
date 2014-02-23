@@ -26,17 +26,17 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
-#include <rtc/vmm_rtcdev.h>
 #include <libs/stringlib.h>
+#include <drv/rtc.h>
 
 #define MODULE_DESC			"Command rtcdev"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(RTC_DEVICE_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			cmd_rtcdev_init
 #define	MODULE_EXIT			cmd_rtcdev_exit
 
-void cmd_rtcdev_usage(struct vmm_chardev *cdev)
+static void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   rtcdev help\n");
@@ -58,34 +58,35 @@ void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   <year>    = any value greater than 1970\n");
 }
 
-void cmd_rtcdev_list(struct vmm_chardev *cdev)
+static void cmd_rtcdev_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	char path[1024];
-	struct vmm_rtcdev *rd;
-	count = vmm_rtcdev_count();
+	struct rtc_device *rd;
+	count = rtc_device_count();
 	for (num = 0; num < count; num++) {
-		rd = vmm_rtcdev_get(num);
-		if (!rd->dev) {
-			vmm_cprintf(cdev, "%s: ---\n", rd->name);
-		} else {
-			vmm_devtree_getpath(path, rd->dev->node);
+		rd = rtc_device_get(num);
+		if (rd->dev.parent && rd->dev.parent->node) {
+			vmm_devtree_getpath(path, rd->dev.parent->node);
 			vmm_cprintf(cdev, "%s: %s\n", rd->name, path);
+		} else {
+			vmm_cprintf(cdev, "%s: ---\n", rd->name);
 		}
 	}
 }
 
-int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev,
+				     const char * name)
 {
 	int rc;
-	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+	struct rtc_device *rtc = rtc_device_find(name);
 
 	if (!rtc) {
 		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_rtcdev_sync_wallclock(rtc);
+	rc = rtc_device_sync_wallclock(rtc);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: sync_wallclock failed for rtc %s\n", 
 									 name);
@@ -95,38 +96,38 @@ int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev, const char * name)
 	return VMM_OK;
 }
 
-int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_sync_device(struct vmm_chardev *cdev, const char *name)
 {
 	int rc;
-	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+	struct rtc_device *rtc = rtc_device_find(name);
 
 	if (!rtc) {
 		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_rtcdev_sync_device(rtc);
+	rc = rtc_device_sync_device(rtc);
 	if (rc) {
-		vmm_cprintf(cdev, "Error: sync_device failed for rtc %s\n", 
-									 name);
+		vmm_cprintf(cdev, "Error: sync_device failed for rtc %s\n",
+			    name);
 		return rc;
 	}
 
 	return VMM_OK;
 }
 
-int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
+static int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char *name)
 {
 	int rc;
-	struct vmm_rtc_time tm;
-	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+	struct rtc_time tm;
+	struct rtc_device *rtc = rtc_device_find(name);
 
 	if (!rtc) {
 		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_rtcdev_get_time(rtc, &tm);
+	rc = rtc_device_get_time(rtc, &tm);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: get_time failed for rtc %s\n", name);
 		return rc;
@@ -208,13 +209,13 @@ int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char * name)
 	return VMM_OK;
 }
 
-int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
-			int targc, char **targv)
+static int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char *name,
+				int targc, char **targv)
 {
 	int rc;
 	char * s;
-	struct vmm_rtc_time tm;
-	struct vmm_rtcdev * rtc = vmm_rtcdev_find(name);
+	struct rtc_time tm;
+	struct rtc_device *rtc = rtc_device_find(name);
 
 	if (!rtc) {
 		vmm_cprintf(cdev, "Error: cannot find rtc %s\n", name);
@@ -278,12 +279,12 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 	}
 	tm.tm_year = atoi(targv[3]) - 1900;
 
-	if (!vmm_rtc_valid_tm(&tm)) {
+	if (!rtc_valid_tm(&tm)) {
 		vmm_cprintf(cdev, "Error: invalid date-time\n");
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_rtcdev_set_time(rtc, &tm);
+	rc = rtc_device_set_time(rtc, &tm);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: set_time failed for rtc %s\n", name);
 		return rc;
@@ -292,7 +293,7 @@ int cmd_rtcdev_set_time(struct vmm_chardev *cdev, const char * name,
 	return VMM_OK;
 }
 
-int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_rtcdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

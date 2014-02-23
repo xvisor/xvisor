@@ -21,7 +21,6 @@
 # @brief list of Versatile board objects.
 # */
 
-board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_VERSATILEPB_ONE_GUEST_VPB_DTS)+=dts/pb/one_guest_versatile.o
 board-objs-$(CONFIG_VERSATILEPB_TWO_GUEST_VPB_DTS)+=dts/pb/two_guest_versatile.o

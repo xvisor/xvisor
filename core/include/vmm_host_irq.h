@@ -25,6 +25,7 @@
 
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
+#include <vmm_devtree.h>
 #include <libs/list.h>
 
 /**
@@ -130,6 +131,13 @@ struct vmm_host_irq {
 	struct dlist action_list;
 };
 
+/* nodeid table based host irq initialization callback */
+typedef int (*vmm_host_irq_init_t)(struct vmm_devtree_node *);
+
+/* declare nodeid table based initialization for host irq */
+#define VMM_HOST_IRQ_INIT_DECLARE(name, compat, fn)	\
+VMM_DEVTREE_NIDTBL_ENTRY(name, "host_irq", "", "", compat, fn)
+
 /** Explicity report a host irq 
  * (Note: To be called from architecture specific code)
  * (Note: This will be typically called by nested/secondary PICs) 
@@ -140,6 +148,9 @@ int vmm_host_generic_irq_exec(u32 hirq_no);
  * (Note: To be called from architecture specific code) 
  */
 int vmm_host_irq_exec(u32 cpu_irq_no);
+
+/** Set callback for retriving active host irq number */
+void vmm_host_irq_set_active_callback(u32 (*active)(u32));
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);

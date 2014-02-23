@@ -28,7 +28,6 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 #include <arch_host_irq.h>
-#include <sunxi/intc.h>
 
 static virtual_addr_t aw_vic_base;
 
@@ -36,6 +35,9 @@ static virtual_addr_t aw_vic_base;
 #define __p(off)		((void *)(aw_vic_base + (off)))
 #define readl(off)		vmm_readl(__p(off))
 #define writel(val, off)	vmm_writel((val), __p(off))
+
+/* Max number of irqs */
+#define AW_NR_IRQS			  96
 
 /* Interrupt controller registers */
 #define AW_INT_VECTOR_REG                 (0x00)
@@ -139,7 +141,7 @@ static struct vmm_host_irq_chip aw_vic_chip = {
 	.irq_unmask = aw_irq_unmask,
 };
 
-u32 aw_intc_irq_active(u32 cpu_irq_no)
+static u32 aw_intc_irq_active(u32 cpu_irq_no)
 {
 	register u32 i, s;
 
@@ -162,19 +164,13 @@ u32 aw_intc_irq_active(u32 cpu_irq_no)
 	/* Did not find any pending irq 
 	 * so return invalid irq number 
 	 */
-	return ARCH_HOST_IRQ_COUNT;
+	return AW_NR_IRQS;
 }
 
-int __cpuinit aw_intc_devtree_init(void)
+static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 i = 0;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, "allwinner,sunxi-ic");
-	if (!node) {
-		return VMM_ENODEV;
-	}
 
 	rc = vmm_devtree_regmap(node, &aw_vic_base, 0);
 	if (rc) {
@@ -202,11 +198,17 @@ int __cpuinit aw_intc_devtree_init(void)
 	/*config the external interrupt source type*/
 	writel(0x00, AW_INT_NMI_CTRL_REG);
 
-	for (i = 0; i < ARCH_HOST_IRQ_COUNT; i++) {
+	for (i = 0; i < AW_NR_IRQS; i++) {
 		vmm_host_irq_set_chip(i, &aw_vic_chip);
 		vmm_host_irq_set_handler(i, vmm_handle_level_irq);
 	}
 
+	/* Set active irq callback */
+	vmm_host_irq_set_active_callback(aw_intc_irq_active);
+
 	return VMM_OK;
 }
 
+VMM_HOST_IRQ_INIT_DECLARE(sunxiintc,
+			  "allwinner,sunxi-ic",
+			  aw_intc_devtree_init);

@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_module_init
 #define	MODULE_EXIT			cmd_module_exit
 
-void cmd_module_usage(struct vmm_chardev *cdev)
+static void cmd_module_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   module help\n");
@@ -46,7 +46,7 @@ void cmd_module_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   module unload <index>\n");
 }
 
-void cmd_module_list(struct vmm_chardev *cdev)
+static void cmd_module_list(struct vmm_chardev *cdev)
 {
 	int num, count;
 	struct vmm_module *mod;
@@ -69,7 +69,7 @@ void cmd_module_list(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Total %d modules\n", count);
 }
 
-int cmd_module_info(struct vmm_chardev *cdev, u32 index)
+static int cmd_module_info(struct vmm_chardev *cdev, u32 index)
 {
 	struct vmm_module *mod;
 
@@ -89,8 +89,9 @@ int cmd_module_info(struct vmm_chardev *cdev, u32 index)
 	return VMM_OK;
 }
 
-int cmd_module_load(struct vmm_chardev *cdev, 
-		    physical_addr_t phys_addr, physical_size_t phys_size)
+static int cmd_module_load(struct vmm_chardev *cdev, 
+			   physical_addr_t phys_addr,
+			   physical_size_t phys_size)
 {
 	int rc;
 	virtual_addr_t mod_va;
@@ -114,7 +115,7 @@ int cmd_module_load(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
-int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
+static int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
 {
 	int rc = VMM_OK;
 	struct vmm_module *mod;
@@ -138,7 +139,7 @@ int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
 	return rc;
 }
 
-int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int index;
 	physical_addr_t addr;

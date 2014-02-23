@@ -24,7 +24,7 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 3
+RELEASE = 4
 
 # Find out source & build directories
 src_dir=$(CURDIR)
@@ -140,6 +140,8 @@ ldflags+=$(cpu-ldflags)
 ldflags+=$(libs-ldflags-y) 
 merge=$(CROSS_COMPILE)ld
 mergeflags=-r
+data=$(CROSS_COMPILE)ld
+dataflags=-r -b binary
 objcopy=$(CROSS_COMPILE)objcopy
 nm=$(CROSS_COMPILE)nm
 
@@ -174,14 +176,14 @@ compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     $(cc) $(cflags) -I`dirname $(2)` -MM $(2) >> $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
-	     $(cc) $(cflags) -DVMM_MODNAME=\"$(shell basename $(1))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(cc) $(cflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1); \
 	     $(as) $(asflags) -I`dirname $(2)` -MM $(2) >> $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
-	     $(as) $(asflags) -DVMM_MODNAME=\"$(shell basename $(1))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(as) $(asflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
 	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
@@ -370,7 +372,7 @@ $(build_dir)/%.o: $(src_dir)/%.c
 	$(call compile_cc,$@,$<)
 
 $(build_dir)/%.o: $(build_dir)/%.c
-	$(call compile_cp,$@,$<)
+	$(call compile_cc,$@,$<)
 
 $(build_dir)/%.xo: $(build_dir)/%.o
 	$(call copy_file,$@,$^)

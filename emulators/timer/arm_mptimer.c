@@ -38,7 +38,6 @@
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>

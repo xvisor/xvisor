@@ -22,169 +22,60 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_smp.h>
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_delay.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
 #include <libs/vtemu.h>
+#include <drv/clk-provider.h>
+#include <drv/vexpress.h>
+
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
+
 #include <versatile/clcd.h>
-#include <versatile/clock.h>
-#include <motherboard.h>
-#include <sp810.h>
-#include <sp804_timer.h>
-#include <smp_twd.h>
-#include <generic_timer.h>
 
 /*
  * Global board context
  */
 
-static virtual_addr_t v2m_sys_base;
-static virtual_addr_t v2m_sys_24mhz;
-static virtual_addr_t v2m_sctl_base;
-static virtual_addr_t v2m_sp804_base;
-static u32 v2m_sp804_irq;
-static vmm_spinlock_t v2m_cfg_lock;
+static struct vexpress_config_func *reboot_func;
+static struct vexpress_config_func *shutdown_func;
+static struct vexpress_config_func *muxfpga_func;
+static struct vexpress_config_func *dvimode_func;
 
 #if defined(CONFIG_VTEMU)
 struct vtemu *v2m_vt;
 #endif
 
-void v2m_flags_set(u32 addr)
-{
-	vmm_writel(~0x0, (void *)(v2m_sys_base + V2M_SYS_FLAGSCLR));
-	vmm_writel(addr, (void *)(v2m_sys_base + V2M_SYS_FLAGSSET));
-
-	arch_mb();
-}
-
-int v2m_cfg_write(u32 devfn, u32 data)
-{
-	u32 val;
-	irq_flags_t flags;
-
-	devfn |= SYS_CFG_START | SYS_CFG_WRITE;
-
-	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
-	val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	vmm_writel(val & ~SYS_CFG_COMPLETE, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-
-	vmm_writel(data, (void *)(v2m_sys_base + V2M_SYS_CFGDATA));
-	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
-
-	do {
-		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	} while (val == 0);
-	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
-
-	return !!(val & SYS_CFG_ERR);
-}
-
-int v2m_cfg_read(u32 devfn, u32 *data)
-{
-	u32 val;
-	irq_flags_t flags;
-
-	devfn |= SYS_CFG_START;
-
-	vmm_spin_lock_irqsave(&v2m_cfg_lock, flags);
-	vmm_writel(0, (void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	vmm_writel(devfn, (void *)(v2m_sys_base + V2M_SYS_CFGCTRL));
-
-	arch_mb();
-
-	do {
-		/* FIXME: cpu_relax() */
-		val = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGSTAT));
-	} while (val == 0);
-
-	*data = vmm_readl((void *)(v2m_sys_base + V2M_SYS_CFGDATA));
-	vmm_spin_unlock_irqrestore(&v2m_cfg_lock, flags);
-
-	return !!(val & SYS_CFG_ERR);
-}
-
 /*
  * Reset & Shutdown
  */
 
-int arch_board_reset(void)
+static int v2m_reset(void)
 {
-	if (v2m_cfg_write(SYS_CFG_REBOOT | SYS_CFG_SITE_MB, 0)) {
-		vmm_panic("Unable to reboot\n");
+	int err = VMM_EFAIL;
+	if (reboot_func) {
+		err = vexpress_config_write(reboot_func, 0, 0);
+		vmm_mdelay(1000);
 	}
-	return VMM_OK;
+	return err;
 }
 
-int arch_board_shutdown(void)
+static int v2m_shutdown(void)
 {
-	if (v2m_cfg_write(SYS_CFG_SHUTDOWN | SYS_CFG_SITE_MB, 0)) {
-		vmm_panic("Unable to shutdown\n");
+	int err = VMM_EFAIL;
+	if (shutdown_func) {
+		err = vexpress_config_write(shutdown_func, 0, 0);
+		vmm_mdelay(1000);
 	}
-	return VMM_OK;
-}
-
-/*
- * Clocking support
- */
-
-static long ct_round(struct arch_clk *clk, unsigned long rate)
-{
-	return rate;
-}
-
-static int ct_set(struct arch_clk *clk, unsigned long rate)
-{
-	return v2m_cfg_write(SYS_CFG_OSC | SYS_CFG_SITE_DB1 | 1, rate);
-}
-
-static const struct arch_clk_ops osc1_clk_ops = {
-	.round	= ct_round,
-	.set	= ct_set,
-};
-
-static struct arch_clk osc1_clk = {
-	.ops	= &osc1_clk_ops,
-	.rate	= 24000000,
-};
-
-static struct arch_clk clk24mhz = {
-	.rate	= 24000000,
-};
-
-int arch_clk_prepare(struct arch_clk *clk)
-{
-	/* Ignore it. */
-	return 0;
-}
-
-void arch_clk_unprepare(struct arch_clk *clk)
-{
-	/* Ignore it. */
-}
-
-struct arch_clk *arch_clk_get(struct vmm_device *dev, const char *id)
-{
-	if (strcmp(dev->node->name, "clcd") == 0) {
-		return &osc1_clk;
-	}
-
-	if (strcmp(id, "KMIREFCLK") == 0) {
-		return &clk24mhz;
-	}
-
-	return NULL;
-}
-
-void arch_clk_put(struct arch_clk *clk)
-{
-	/* Ignore it. */
+	return err;
 }
 
 /*
@@ -193,8 +84,8 @@ void arch_clk_put(struct arch_clk *clk)
 
 static void vexpress_clcd_enable(struct clcd_fb *fb)
 {
-	v2m_cfg_write(SYS_CFG_MUXFPGA | SYS_CFG_SITE_DB1, 0);
-	v2m_cfg_write(SYS_CFG_DVIMODE | SYS_CFG_SITE_DB1, 2);
+	vexpress_config_write(muxfpga_func, 0, 0);
+	vexpress_config_write(dvimode_func, 0, 2);
 }
 
 static int vexpress_clcd_setup(struct clcd_fb *fb)
@@ -233,8 +124,6 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 
 int __init arch_board_early_init(void)
 {
-	int rc;
-	u32 val;
 	struct vmm_devtree_node *node;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -246,56 +135,55 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
-	/* Map sysreg */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-sysreg");
+	/* Sysreg early init */
+	vexpress_sysreg_of_early_init();
+
+	/* Initialize clocking framework */
+	of_clk_init(NULL);
+
+	/* Determine reboot function */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-reboot");
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &v2m_sys_base, 0);
-	if (rc) {
-		return rc;
+	reboot_func = vexpress_config_func_get_by_node(node);
+	if (!reboot_func) {
+		return VMM_ENODEV;
 	}
 
-	/* Get address of 24mhz counter */
-	v2m_sys_24mhz = v2m_sys_base + V2M_SYS_24MHZ;
-
-	/* Map sysctl */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp810");
+	/* Determine shutdown function */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-shutdown");
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &v2m_sctl_base, 0);
-	if (rc) {
-		return rc;
+	shutdown_func = vexpress_config_func_get_by_node(node);
+	if (!shutdown_func) {
+		return VMM_ENODEV;
 	}
 
-	/* Select reference clock for sp804 timers: 
-	 *      REFCLK is 32KHz
-	 *      TIMCLK is 1MHz
-	 */
-	val = vmm_readl((void *)v2m_sctl_base) | 
-				SCCTRL_TIMEREN0SEL_TIMCLK |
-				SCCTRL_TIMEREN1SEL_TIMCLK;
-	vmm_writel(val, (void *)v2m_sctl_base);
-
-	/* Map sp804 registers */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,sp804");
+	/* Determine muxfpga function */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-muxfpga");
 	if (!node) {
 		return VMM_ENODEV;
 	}
-	rc = vmm_devtree_regmap(node, &v2m_sp804_base, 0);
-	if (rc) {
-		return rc;
+	muxfpga_func = vexpress_config_func_get_by_node(node);
+	if (!muxfpga_func) {
+		return VMM_ENODEV;
 	}
 
-	/* Get sp804 irq */
-	rc = vmm_devtree_irq_get(node, &v2m_sp804_irq, 0);
-	if (rc) {
-		return rc;
+	/* Determine dvimode function */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-dvimode");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+	dvimode_func = vexpress_config_func_get_by_node(node);
+	if (!dvimode_func) {
+		return VMM_ENODEV;
 	}
 
-	/* Init config lock */
-	INIT_SPIN_LOCK(&v2m_cfg_lock);
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(v2m_reset);
+	vmm_register_system_shutdown(v2m_shutdown);
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
@@ -306,73 +194,12 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-int __init arch_clocksource_init(void)
-{
-	int rc;
-
-	/* Initialize sp804 timer0 as clocksource */
-	rc = sp804_clocksource_init(v2m_sp804_base, 
-				    "sp804_timer0", 1000000);
-	if (rc) {
-		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
-			   __func__, rc);
-	}
-
-#if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clocksource_init();
-	if (rc) {
-		vmm_printf("%s: generic clocksource init failed (error %d)\n",
-			   __func__, rc);
-	}
-#endif
-
-	return VMM_OK;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	int rc;
-	u32 cpu = vmm_smp_processor_id();
-
-	if (!cpu) {
-		/* Initialize sp804 timer1 as clockchip */
-		rc = sp804_clockchip_init(v2m_sp804_base + 0x20, 
-					  "sp804_timer1", v2m_sp804_irq, 
-					  1000000, 0);
-		if (rc) {
-			vmm_printf("%s: sp804 clockchip init failed "
-				   "(error %d)\n", __func__, rc);
-		}
-	}
-
-#if defined(CONFIG_ARM_TWD)
-	/* Initialize SMP twd local timer as clockchip */
-	rc = twd_clockchip_init(v2m_sys_24mhz, 24000000);
-	if (rc) {
-		vmm_printf("%s: local timer init failed (error %d)\n", 
-			   __func__, rc);
-	}
-#endif
-
-#if defined(CONFIG_ARM_GENERIC_TIMER)
-	/* Initialize generic timer as clock source */
-	rc = generic_timer_clockchip_init();
-	if (rc) {
-		vmm_printf("%s: generic clockchip init failed (error %d)\n", 
-			   __func__, rc);
-	}
-#endif
-
-	return VMM_OK;
-}
-
 int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
 #if defined(CONFIG_VTEMU)
-	struct vmm_fb_info *info;
+	struct fb_info *info;
 #endif
 
 	/* All VMM API's are available here */
@@ -392,13 +219,9 @@ int __init arch_board_final_init(void)
 
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	info = vmm_fb_find(node->name);
+	info = fb_get(0);
 	if (info) {
-		v2m_vt = vtemu_create(node->name, info, NULL);
+		v2m_vt = vtemu_create(info->name, info, NULL);
 	}
 #endif
 

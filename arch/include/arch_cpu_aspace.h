@@ -59,7 +59,7 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va,
  */
 int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
 				physical_addr_t src, 
-				void *dst, u32 len);
+				void *dst, u32 len, bool cacheable);
 
 /** Write data to memory with given physical adress
  *  NOTE: This arch function is optional.
@@ -72,6 +72,6 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
  */
 int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
 				 physical_addr_t dst, 
-				 void *src, u32 len);
+				 void *src, u32 len, bool cacheable);
 
 #endif

@@ -1,0 +1,72 @@
+			Xvisor v0.2.4
+		(Last Commit: ------------)
+		(Release Date: 23-Feb-2014)
+
+In this release, we add lot of new features, drivers, and emulators.
+There are no new board supports in this release.
+
+New Features:
+ - Generic pluggable loadbalancer (EXPERIMENTAL)
+ - Device tree NodeID table APIs
+ - Device tree based probing of clocksource
+ - Device tree based probing of clockchip
+ - Device tree based probing of host interrupt controller
+ - Virtual input framework for keyboard/mouse emulation
+ - Virtual display framework for framebuffer emulation
+ - BootCPU APIs for SMP host
+ - Generic and unix-like device driver model
+ - Virtual screen capturing library
+
+New Commands:
+ - vinput command
+ - vdisplay command
+ - vfs host_load, host_load_list, guest_load, and
+   guest_load_list sub-commands
+ - vscreen command
+
+New Drivers:
+ - Common device tree based clocking framework
+ - Clocking driver for Realview, Integrator, and VExpress
+ - Clocking driver for BCM2835 SOC
+ - Clocking driver for SunXi SOCs
+ - Multifunction driver for VExpress sysregs
+ - IDE/ATA disk drive framework (EXPERIMENTAL)
+ - PIIX3 IDE driver
+ - Linux compatible PHY, MDIO, and MII driver framework (EXPERIMENTAL)
+
+New Emulators:
+ - NS16550 compliant UART emulator
+ - PS2 keyboard/mouse emulation library
+ - PL050 AMBA KMI emulator
+ - PL110/PL111 AMBA CLCD emulator
+
+ARM Ports:
+ - Common defterm for all ARM boards
+ - Common SMP IPI for all ARM boards
+ - Common SMP Operations for all ARM boards
+ - Load guest images from disk for pre-configured
+   guest on all ARM boards
+ - Improve arch_smp_id() to handle multiple affinity levels
+
+ARM 32-bit Port:
+ - Added VFP save/restore for ARMv5, ARMv6, and ARMv7
+ - Added ThumbEE save/restore for ARMv7
+
+ARM 32-bit with VE Port:
+ - Added VFP save/restore for ARMv7 with virtualization extension
+ - Added ThumbEE save/restore for ARMv7 with virtualization extension
+
+ARM 64-bit Port:
+ - Added VFP save/restore for ARMv8
+
+x86_64 Port:
+ - Major fix in host page tables where vga base was overlapping with Xvisor code
+ - Support for AMD SVM
+ - Framework for Intel VT added
+ - Support for booting guest in paged real mode
+ - Xvisor specific Seabios port on GITHUB (see docs) for testing purposes
+ - Support for paged real mode shadow page tables
+ - Support for 32-bit shadow page tables
+ - Support for guest I/O port intercepts
+ - Able to get prints from SeaBIOS running inside x86_64 guest
+

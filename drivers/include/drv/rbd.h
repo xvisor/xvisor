@@ -25,12 +25,15 @@
 #define __RBD_H_
 
 #include <vmm_types.h>
+#include <libs/list.h>
 #include <block/vmm_blockdev.h>
 
-#define RBD_BLOCK_SIZE				512
+#define RBD_IPRIORITY			(VMM_BLOCKDEV_CLASS_IPRIORITY+1)
+#define RBD_BLOCK_SIZE			512
 
 /* RAM backed device (RBD) context */
 struct rbd {
+	struct dlist head;
 	struct vmm_blockdev *bdev;
 	physical_addr_t addr;
 	physical_size_t size;
@@ -43,5 +46,14 @@ struct rbd *rbd_create(const char *name,
 
 /** Destroy RBD instance */
 void rbd_destroy(struct rbd *d);
+
+/** Find a RBD instance with given name */
+struct rbd *rbd_find(const char *name);
+
+/** Get RBD instance with given index */
+struct rbd *rbd_get(int index);
+
+/** Count number of RBD instances */
+u32 rbd_count(void);
 
 #endif /* __RBD_H_ */

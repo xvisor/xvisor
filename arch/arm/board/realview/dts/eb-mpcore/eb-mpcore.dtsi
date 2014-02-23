@@ -8,9 +8,43 @@
 	aliases { };
 
 	cpus {
-		cpu0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
 			device_type = "cpu";
 			model = "ARM11MPCore";
+			reg = <0>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <1>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <2>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			model = "ARM11MPCore";
+			reg = <3>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
 		};
 	};
 
@@ -28,6 +62,7 @@
 	      		device_type = "fb";
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
+			use_dma = <1>;
 		};
 
 		eth0 {
@@ -36,7 +71,7 @@
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
 			interrupts = <41>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 
 		sbridge {
@@ -60,7 +95,9 @@
 			twd-timer { /* Local Timer */
 		      		device_type = "timer";
 		      		compatible = "arm,arm11mp-twd-timer";
-		      		reg = <0x10100600 0x1000>;
+		      		reg = <0x10100600 0x1000	/* Local timer registers */
+				       0x1000005C 0x1000>;	/* Reference counter address */
+				ref-counter-freq = <24000000>;	/* Reference counter frequency */
 				interrupts = <29>;
 			};
 
@@ -70,10 +107,14 @@
 		      		reg = <0x10000000 0x1000>;
 			};
 
-			sysctl0 { /* System Controller */
+			sysctl: sysctl0 { /* System Controller */
 		      		device_type = "sys";
 		      		compatible = "arm,sp810";
 		      		reg = <0x10001000 0x1000>;
+				clocks = <&refclk32khz>, <&refclk1mhz>;
+				clock-names = "refclk", "timclk", "apb_pclk";
+				#clock-cells = <1>;
+				clock-output-names = "timerclken0", "timerclken1", "timerclken2", "timerclken3";
 			};
 
 			mmci0 { /* Multimedia Card Interface */
@@ -111,6 +152,8 @@
 		      		compatible = "arm,sp804";
 		      		reg = <0x10011000 0x1000>;
 				interrupts = <33>;
+				clocks = <&sysctl 0>, <&sysctl 1>;
+				clock-names = "timclken1", "timclken2";
 			};
 
 			timer23 {
@@ -118,6 +161,8 @@
 		      		compatible = "arm,sp804";
 		      		reg = <0x10012000 0x1000>;
 				interrupts = <34>;
+				clocks = <&sysctl 2>, <&sysctl 3>;
+				clock-names = "timclken1", "timclken2";
 			};
 
 			RTC0: rtc0 {
@@ -126,18 +171,26 @@
 		      		reg = <0x10017000 0x1000>;
 				interrupts = <38>;
 			};
-
-			sysctl1 { /* System Controller */
-		      		device_type = "sys";
-		      		compatible = "arm,sp810";
-		      		reg = <0x1001A000 0x1000>;
-			};
 		};
+	};
+
+	refclk1mhz: refclk1mhz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <1000000>;
+		clock-output-names = "refclk1mhz";
+	};
+
+	refclk32khz: refclk32khz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "refclk32khz";
 	};
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

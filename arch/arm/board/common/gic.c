@@ -39,7 +39,7 @@ struct gic_chip_data {
 };
 
 #ifndef GIC_MAX_NR
-#define GIC_MAX_NR	1
+#define GIC_MAX_NR	2
 #endif
 
 static struct gic_chip_data gic_data[GIC_MAX_NR];
@@ -65,14 +65,12 @@ static inline u32 gic_irq(struct vmm_host_irq *irq)
 	return irq->num - gic_data->irq_offset;
 }
 
-u32 gic_active_irq(u32 gic_nr)
+static u32 gic_active_irq(u32 cpu_irq_nr)
 {
 	u32 ret;
 
-	BUG_ON(gic_nr >= GIC_MAX_NR);
-
-	ret = gic_read(gic_data[gic_nr].cpu_base + GIC_CPU_INTACK) & 0x3FF;
-	ret += gic_data[gic_nr].irq_offset;
+	ret = gic_read(gic_data[0].cpu_base + GIC_CPU_INTACK) & 0x3FF;
+	ret += gic_data[0].irq_offset;
 
 	return ret;
 }
@@ -288,8 +286,8 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	 * Limit number of interrupts registered to the platform maximum
 	 */
 	irq_limit = gic->irq_offset + max_irq;
-	if (WARN_ON(irq_limit > GIC_NR_IRQS)) {
-		irq_limit = GIC_NR_IRQS;
+	if (WARN_ON(irq_limit > CONFIG_HOST_IRQ_COUNT)) {
+		irq_limit = CONFIG_HOST_IRQ_COUNT;
 	}
 
 	/*
@@ -374,7 +372,7 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 			    struct vmm_devtree_node *parent)
 {
 	int rc;
-	u32 *aval, irq;
+	u32 irq;
 	virtual_addr_t cpu_base;
 	virtual_addr_t dist_base;
 
@@ -388,19 +386,40 @@ int __init gic_devtree_init(struct vmm_devtree_node *node,
 	rc = vmm_devtree_regmap(node, &cpu_base, 1);
 	WARN(rc, "unable to map gic cpu registers\n");
 
-	aval = vmm_devtree_attrval(node, "irq_start");
-	WARN(!aval, "unable to get gic irq_start\n");
-	irq = (aval) ? *aval : 0;
+	if (vmm_devtree_read_u32(node, "irq_start", &irq)) {
+		WARN(1, "unable to get gic irq_start\n");
+		irq = 0;
+	}
 	gic_init_bases(gic_cnt, irq, cpu_base, dist_base);
 
 	if (parent) {
-		aval = vmm_devtree_attrval(node, "parent_irq");
-		irq = (aval) ? *aval : 1020;
+		if (vmm_devtree_read_u32(node, "parent_irq", &irq)) {
+			irq = 1020;
+		}
 		gic_cascade_irq(gic_cnt, irq);
+	} else {
+		vmm_host_irq_set_active_callback(gic_active_irq);
 	}
 
 	gic_cnt++;
 
 	return VMM_OK;
 }
+
+static int __cpuinit gic_init(struct vmm_devtree_node *node)
+{
+	int rc;
+
+	if (vmm_smp_is_bootcpu()) {
+		rc = gic_devtree_init(node, NULL);
+	} else {
+		gic_secondary_init(0);
+		rc = VMM_OK;
+	}
+
+	return rc;
+}
+VMM_HOST_IRQ_INIT_DECLARE(rvgic, "arm,realview-gic", gic_init);
+VMM_HOST_IRQ_INIT_DECLARE(ca9gic, "arm,cortex-a9-gic", gic_init);
+VMM_HOST_IRQ_INIT_DECLARE(ca15gic, "arm,cortex-a15-gic", gic_init);
 

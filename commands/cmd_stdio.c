@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_stdio_init
 #define	MODULE_EXIT			cmd_stdio_exit
 
-void cmd_stdio_usage(struct vmm_chardev *cdev)
+static void cmd_stdio_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   stdio help\n");
@@ -44,7 +44,7 @@ void cmd_stdio_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   stdio chdev <chardev_name>\n");
 }
 
-int cmd_stdio_curdev(struct vmm_chardev *cdev)
+static int cmd_stdio_curdev(struct vmm_chardev *cdev)
 {
 	struct vmm_chardev *cd;
 	cd = vmm_stdio_device();
@@ -56,7 +56,7 @@ int cmd_stdio_curdev(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
+static int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 {
 	int ret;
 	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
@@ -77,7 +77,7 @@ int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 	return VMM_OK;
 }
 
-int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {

@@ -8,11 +8,36 @@ created for embedded operating systems with very limited resources. It is
 released under the terms of the GNU General Public License. For more info
 read the BusyBox wiki page http://en.wikipedia.org/wiki/BusyBox
 
-Please follow the steps below to build a RAMDISK using BusyBox, to be used as 
+The toolchain to be used for compiling BusyBox rootfs must have C library
+support. Currently, we have two options from freely available toolchains:
+1. CodeSourcery Lite ARM GNU/Linux Toolchain
+(Cross-compile prefix arm-none-linux-gnueabi-)
+(For more info, http://www.mentor.com/embedded-software/sourcery-tools/sourcery-codebench/editions/lite-edition/)
+2. Linaro ARM Toolchain
+(Cross-compile prefix arm-linux-gnueabihf-)
+(For more info, https://launchpad.net/linaro-toolchain-binaries)
+
+The CodeSourcery Lite ARM GNU/Linux Toolchain (arm-none-linux-gnueabi-)
+is soft-float toolchain for ARMv5 or higher processors. It is build with
+default options: -mfloat-abi=soft and -march=armv5te.
+
+The Linaro ARM Toolchain (arm-linux-gnueabihf-) is hard-float toolchain
+for ARMv7 processors. It is build with default options: -mfloat-abi=hard,
+-mfpu-name=vfpv3-d16 and -march=armv7.
+
+Generally it is advisable that we build BusyBox with soft-float and armv5te
+toolchain so that resulting root filesystem works for ARMv5, ARMv6, and ARMv7
+guests. In real-world scenarios we need a hard-float toolchain for ARMv5 or
+higher processors but such toolchain is not freely available and we need to
+build this manually using cross-tool scripts.
+
+Please follow the steps below to build a RAMDISK using BusyBox, to be used as
 RootFS for ARM Linux guest:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-none-linux-gnueabi-
+  OR
+  # CROSS_COMPILE=arm-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

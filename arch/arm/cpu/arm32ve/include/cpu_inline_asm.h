@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
 #define rev32(val)		({ u32 rval; asm volatile(\
 				" rev     %0, %1\n\t" : "=r" (rval) : \
@@ -46,8 +47,40 @@
 
 #define clrex()			asm volatile("clrex\n\t")
 
+/* General CP14 Register Read/Write */
+
+#define read_teecr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teecr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_teehbr()		({ u32 rval; asm volatile(\
+				" mrc     p14, 6, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_teehbr(val)	asm volatile(\
+				" mcr     p14, 6, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+/* General CP15 Register Read/Write */
+
+#define read_ctr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mpidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
 #define read_ccsidr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 1, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_clidr()		({ u32 rval; asm volatile(\
+				" mrc     p15, 1, %0, c0, c0, 1\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
 #define read_csselr()		({ u32 rval; asm volatile(\
@@ -58,16 +91,60 @@
 				" mcr     p15, 2, %0, c0, c0, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#define read_clidr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 1, %0, c0, c0, 1\n\t" \
+#define read_pfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 0\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define read_ctr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c0, c0, 1\n\t" \
+#define read_pfr1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 1\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
-#define read_mpidr()		({ u32 rval; asm volatile(\
-				" mrc     p15, 0, %0, c0, c0, 5\n\t" \
+#define read_dfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_afr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 5\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr2()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 6\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_mmfr3()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c1, 7\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar0()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar1()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 1\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar2()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 2\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar3()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 3\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar4()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 4\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define read_isar5()		({ u32 rval; asm volatile(\
+				" mrc     p15, 0, %0, c0, c2, 5\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
@@ -102,6 +179,16 @@
 				" mcr     p15, 0, %0, c2, c0, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
+#define read_ttbr0_long()	({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 0, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_ttbr0_long(val)	asm volatile(\
+				" mcrr     p15, 0, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
+
 #define read_ttbr1()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 1\n\t" \
 				: "=r" (rval) : : "memory", "cc"); rval;})
@@ -109,6 +196,16 @@
 #define write_ttbr1(val)	asm volatile(\
 				" mcr     p15, 0, %0, c2, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
+
+#define read_ttbr1_long()	({ u32 v1, v2; asm volatile(\
+				" mrrc     p15, 1, %0, %1, c2\n\t" \
+				: "=r" (v1), "=r" (v2) : : "memory", "cc"); \
+				(((u64)v2 << 32) + (u64)v1);})
+
+#define write_ttbr1_long(val)	asm volatile(\
+				" mcrr     p15, 1, %0, %1, c2\n\t" \
+				:: "r" ((val) & 0xFFFFFFFF), "r" ((val) >> 32) \
+				: "memory", "cc")
 
 #define read_ttbcr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 2\n\t" \
@@ -337,6 +434,64 @@
 #define va2pa_hw(va)		asm volatile(\
 				" mcr     p15, 4, %0, c7, c8, 1\n\t" \
 				:: "r" ((va)) : "memory", "cc")
+
+/* VFP Control Register Read/Write */
+
+#define read_fpexc()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c8, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpexc(val)	asm volatile(\
+				" mcr p10, 7, %0, c8, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpscr()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c1, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpscr(val)	asm volatile(\
+				" mcr p10, 7, %0, c1, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpsid()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c0, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpsid(val)	asm volatile(\
+				" mcr p10, 7, %0, c0, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpinst()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c9, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpinst(val)	asm volatile(\
+				" mcr p10, 7, %0, c9, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_fpinst2()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c10, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_fpinst2(val)	asm volatile(\
+				" mcr p10, 7, %0, c10, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_mvfr0()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c7, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_mvfr0(val)	asm volatile(\
+				" mcr p10, 7, %0, c7, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
+
+#define read_mvfr1()		({ u32 rval; asm volatile(\
+				" mrc p10, 7, %0, c6, c0, 0\n\t" \
+				: "=r" (rval) : : "memory", "cc"); rval;})
+
+#define write_mvfr1(val)	asm volatile(\
+				" mcr p10, 7, %0, c6, c0, 0\n\t" \
+				:: "r" ((val)) : "memory", "cc")
 
 /* Virtualization Extension Register Read/Write */
 
@@ -659,7 +814,13 @@
 
 #endif
 
-#define cpu_supports_securex()	({ u32 pfr1; asm volatile("mrc p15, 0, %0, c0, c1, 1": "=r"(pfr1)); \
-					(pfr1 & ID_PFR1_SECUREX_MASK); })
+/* CPU feature checking macros */
+
+#define cpu_supports_thumbee()	(((read_pfr0() & ID_PFR0_STATE3_MASK) \
+					>> ID_PFR0_STATE3_SHIFT) == 0x1)
+
+#define cpu_supports_securex()	(read_pfr1() & ID_PFR1_SECUREX_MASK)
+
+#define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
 
 #endif

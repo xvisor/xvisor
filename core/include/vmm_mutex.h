@@ -60,6 +60,11 @@ struct vmm_vcpu *vmm_mutex_owner(struct vmm_mutex *mut);
 /** Unlock mutex */
 int vmm_mutex_unlock(struct vmm_mutex *mut);
 
+/** Try to lock mutex without sleeping 
+ *  NOTE: Returns 1 upon success and 0 on failure
+ */
+int vmm_mutex_trylock(struct vmm_mutex *mut);
+
 /** Lock mutex */
 int vmm_mutex_lock(struct vmm_mutex *mut);
 

@@ -23,6 +23,11 @@
 #ifndef __CPU_MMU_H_
 #define __CPU_MMU_H_
 
+#define NR_PML4_PAGES		1
+#define NR_PGDP_PAGES		4
+#define NR_PGDI_PAGES		8
+#define NR_PGTI_PAGES		32
+
 #define VMM_CODE_SEG_SEL	0x08
 #define VMM_DATA_SEG_SEL	0x10
 #define VMM_TSS_SEG_SEL		0x18
@@ -72,6 +77,31 @@
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
+extern struct pgtbl_ctrl host_pgtbl_ctl;
+
+static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
+{
+	__asm__ __volatile__("invlpg (%0)\n\t"
+			     ::"r"(vaddr):"memory");
+}
+
+union page32 {
+	u32 _val;
+	struct {
+		u32 present:1;
+		u32 rw:1;
+		u32 priviledge:1;
+		u32 write_through:1;
+		u32 cache_disable:1;
+		u32 accessed:1;
+		u32 dirty:1;
+		u32 pat:1;
+		u32 global:1;
+		u32 avl:3;
+		u32 paddr:20;
+	};
+};
+
 union page {
 	u64 _val;
 	struct {
@@ -106,6 +136,27 @@ struct page_table {
 	u32 child_cnt;
 	struct dlist child_list;
 };
+
+union seg_attrs {
+	u16 bytes;
+	struct {
+		u16 type:4;
+		u16 s:1;
+		u16 dpl:2;
+		u16 p:1;
+		u16 avl:1;
+		u16 l:1;
+		u16 db:1;
+		u16 g:1;
+	} fields;
+} __packed;
+
+struct seg_selector {
+	u16		sel;
+	union seg_attrs	attrs;
+	u32		limit;
+	u64		base;
+} __packed;
 
 #endif
 

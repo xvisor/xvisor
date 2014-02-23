@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_main.h>
 #include <vmm_smp.h>
 #include <vmm_delay.h>
 #include <vmm_stdio.h>
@@ -34,21 +35,20 @@
 #include <arch_timer.h>
 
 #include <exynos/plat/cpu.h>
-
 #include <exynos/mct_timer.h>
-
 #include <exynos/regs-watchdog.h>
 #include <exynos/regs-clock.h>
 
 /*
  * Global board context
  */
+static virtual_addr_t pmu_base;
 
 /*
  * Reset & Shutdown
  */
 
-int arch_board_reset(void)
+static int exynos4_reset(void)
 {
 #if 0
 	void *wdt_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_WATCHDOG, 0x100);
@@ -92,38 +92,26 @@ int arch_board_reset(void)
 		vmm_host_iounmap((virtual_addr_t) wdt_ptr, 0x100);
 	}
 #else
-	void *pmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_PMU + EXYNOS_SWRESET,
-					       sizeof(u32));
-	if (pmu_ptr) {
+	if (pmu_base) {
 		/* Trigger a Software reset */
-		vmm_writel(0x1, pmu_ptr);
-
-		vmm_host_iounmap((virtual_addr_t) pmu_ptr, sizeof(u32));
+		vmm_writel(0x1, (void *)(pmu_base + EXYNOS_SWRESET));
 	}
 #endif
 
 	vmm_mdelay(500);
 
-	vmm_printf("%s: failed\n", __func__);
-
 	return VMM_EFAIL;
 }
 
-int arch_board_shutdown(void)
+static int exynos4_shutdown(void)
 {
 	/* FIXME: For now we do a soft reset */
-	void *pmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_PMU + EXYNOS_SWRESET,
-					       sizeof(u32));
-	if (pmu_ptr) {
+	if (pmu_base) {
 		/* Trigger a Software reset */
-		vmm_writel(0x1, pmu_ptr);
-
-		vmm_host_iounmap((virtual_addr_t) pmu_ptr, sizeof(u32));
+		vmm_writel(0x1, (void *)(pmu_base + EXYNOS_SWRESET));
 	}
 
 	vmm_mdelay(500);
-
-	vmm_printf("%s: failed\n", __func__);
 
 	return VMM_EFAIL;
 }
@@ -145,6 +133,13 @@ int __init arch_board_early_init(void)
 {
 	/* Initalize some code that will help determine the SOC type */
 	exynos_init_cpu(EXYNOS_PA_CHIPID);
+
+	/* Map PMU base */
+	pmu_base = vmm_host_iomap(EXYNOS4_PA_PMU, 0x1000);
+
+	/* Register reset & shutdown callbacks */
+	vmm_register_system_reset(exynos4_reset);
+	vmm_register_system_shutdown(exynos4_shutdown);
 
 	/*
 	 * TODO:
@@ -197,9 +192,9 @@ int __cpuinit arch_clockchip_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
-	u32 val, cpu = vmm_smp_processor_id();
+	u32 val;
 
-	if (!cpu) {
+	if (vmm_smp_is_bootcpu()) {
 		/* Map timer0 registers */
 		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 					   "mct");

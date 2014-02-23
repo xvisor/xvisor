@@ -27,11 +27,6 @@
 #include <vmm_cpumask.h>
 #include <vmm_devtree.h>
 
-/* Include GIC configuration defines/macros 
- * provided by board specific code 
- */
-#include <gic_config.h>
-
 #define GIC_CPU_CTRL			0x00
 #define GIC_CPU_PRIMASK			0x04
 #define GIC_CPU_BINPOINT		0x08
@@ -51,8 +46,6 @@
 #define GIC_DIST_TARGET			0x800
 #define GIC_DIST_CONFIG			0xc00
 #define GIC_DIST_SOFTINT		0xf00
-
-u32 gic_active_irq(u32 gic_nr);
 
 void gic_enable_ppi(u32 irq);
 

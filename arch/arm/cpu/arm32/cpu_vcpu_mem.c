@@ -37,20 +37,21 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 			bool force_unpriv)
 {
 	struct cpu_page pg;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 	register int rc = VMM_OK;
 	register u32 vind, ecode;
 	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-	    arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
+		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
+							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
 						     CP15_ACCESS_READ,
 						     force_unpriv, &pg))) {
 			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-						   (ecode >> 4), (ecode & 0xF),
-						   0, 1);
+					(ecode >> 4), (ecode & 0xF), 0, 1);
 			return VMM_EFAIL;
 		}
 		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
@@ -58,7 +59,7 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 		case 4:
 			vind &= ~(0x4 - 1);
 			vind /= 0x4;
-			*((u32 *) dst) = arm_guest_priv(vcpu->guest)->ovect[vind];
+			*((u32 *)dst) = arm_guest_priv(vcpu->guest)->ovect[vind];
 			break;
 		case 2:
 			vind &= ~(0x2 - 1);
@@ -75,30 +76,24 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 			break;
 		};
 	} else {
-		if (arm_priv(vcpu)->cp15.virtio_active) {
-			pgp = &arm_priv(vcpu)->cp15.virtio_page;
+		if (cp15->virtio_active) {
+			pgp = &cp15->virtio_page;
 			rc = VMM_OK;
 		} else {
-			rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, addr,
-					      &pg);
+			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
 		}
 		if (rc == VMM_ENOTAVAIL) {
 			if (pgp->va) {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-							       addr,
-							       DFSR_FS_TRANS_FAULT_PAGE,
-							       0, 0, 1,
-							       force_unpriv);
+					addr, DFSR_FS_TRANS_FAULT_PAGE,
+					0, 0, 1, force_unpriv);
 			} else {
 				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-							       addr,
-							       DFSR_FS_TRANS_FAULT_SECTION,
-							       0, 0, 1,
-							       force_unpriv);
+					addr, DFSR_FS_TRANS_FAULT_SECTION,
+					0, 0, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1,
-						      addr, pgp);
+				rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
 			}
 		}
 		if (rc) {
@@ -112,19 +107,20 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 		case TTBL_AP_SRW_U:
 			return vmm_devemu_emulate_read(vcpu,
 						       (addr - pgp->va) +
-						       pgp->pa, dst, dst_len);
+						       pgp->pa, dst, dst_len,
+						       VMM_DEVEMU_NATIVE_ENDIAN);
 			break;
 		case TTBL_AP_SRW_UR:
 		case TTBL_AP_SRW_URW:
 			switch (dst_len) {
 			case 4:
-				*((u32 *) dst) = *((u32 *) addr);
+				*((u32 *) dst) = *((u32 *)addr);
 				break;
 			case 2:
-				*((u16 *) dst) = *((u16 *) addr);
+				*((u16 *) dst) = *((u16 *)addr);
 				break;
 			case 1:
-				*((u8 *) dst) = *((u8 *) addr);
+				*((u8 *) dst) = *((u8 *)addr);
 				break;
 			default:
 				if (dst_len > 4) {
@@ -146,7 +142,7 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 			 * Doing this will force us to do TTBL walk If MMU 
 			 * is enabled then appropriate fault will be generated 
 			 */
-			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
+			cpu_vcpu_cp15_vtlb_flush_va(cp15, addr);
 			return VMM_EFAIL;
 			break;
 		};
@@ -161,12 +157,14 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 			bool force_unpriv)
 {
 	struct cpu_page pg;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 	register int rc = VMM_OK;
 	register u32 vind, ecode;
 	register struct cpu_page *pgp = &pg;
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == 
-	    arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
+		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
+							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
@@ -199,28 +197,24 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 			break;
 		};
 	} else {
-		if (arm_priv(vcpu)->cp15.virtio_active) {
-			pgp = &arm_priv(vcpu)->cp15.virtio_page;
+		if (cp15->virtio_active) {
+			pgp = &cp15->virtio_page;
 			rc = VMM_OK;
 		} else {
-			rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1, addr,
-					      &pg);
+			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
 		}
 		if (rc == VMM_ENOTAVAIL) {
 			if (pgp->va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr,
-							       DFSR_FS_TRANS_FAULT_PAGE,
-							       0, 1, 1,
-							       force_unpriv);
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+					addr, DFSR_FS_TRANS_FAULT_PAGE,
+					0, 1, 1, force_unpriv);
 			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs, addr,
-							       DFSR_FS_TRANS_FAULT_SECTION,
-							       0, 1, 1,
-							       force_unpriv);
+				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+					addr, DFSR_FS_TRANS_FAULT_SECTION,
+					0, 1, 1, force_unpriv);
 			}
 			if (!rc) {
-				rc = cpu_mmu_get_page(arm_priv(vcpu)->cp15.l1,
-						      addr, pgp);
+				rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
 			}
 		}
 		if (rc) {
@@ -231,7 +225,8 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 		case TTBL_AP_SRW_U:
 			return vmm_devemu_emulate_write(vcpu,
 							(addr - pgp->va) +
-							pgp->pa, src, src_len);
+							pgp->pa, src, src_len,
+							VMM_DEVEMU_NATIVE_ENDIAN);
 			break;
 		case TTBL_AP_SRW_URW:
 			switch (src_len) {
@@ -264,7 +259,7 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 			 * Doing this will force us to do TTBL walk If MMU 
 			 * is enabled then appropriate fault will be generated 
 			 */
-			cpu_vcpu_cp15_vtlb_flush_va(vcpu, addr);
+			cpu_vcpu_cp15_vtlb_flush_va(cp15, addr);
 			return VMM_EFAIL;
 			break;
 		};
@@ -281,10 +276,11 @@ int cpu_vcpu_mem_readex(struct vmm_vcpu *vcpu,
 	register int ecode;
 	struct cpu_page pg;
 	u32 vind, data;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-			arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
+		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
+							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
@@ -330,10 +326,11 @@ int cpu_vcpu_mem_writeex(struct vmm_vcpu *vcpu,
 	register int ecode;
 	struct cpu_page pg;
 	u32 vind, data;
+	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
-	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) ==
-			arm_priv(vcpu)->cp15.ovect_base) {
-		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
+	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
+		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
+							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,

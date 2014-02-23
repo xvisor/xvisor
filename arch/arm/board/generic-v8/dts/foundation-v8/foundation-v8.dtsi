@@ -55,7 +55,7 @@
 
 	gic { /* Generic Interrupt Controller */
 		device_type = "pic";
-		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+		compatible = "arm,cortex-a15-gic";
       		reg = <0x0 0x2C001000 0x0 0x1000   /* Dist Interface */
 		       0x0 0x2C002000 0x0 0x1000   /* CPU Interface */
 		       0x0 0x2C004000 0x0 0x2000   /* VCPU Control Interface */
@@ -81,7 +81,7 @@
 			compatible = "smc91x";
 			reg = <0x1A000000 0x10000>;
 			interrupts = <47>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 
 		sysreg { /* System Registers */
@@ -102,7 +102,7 @@
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

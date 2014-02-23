@@ -47,7 +47,7 @@
 #define MODULE_DESC			"VESA 2.0 Framebuffer Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_FB_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(FB_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			vesafb_init
 #define	MODULE_EXIT			vesafb_exit
 
@@ -261,7 +261,7 @@ static int vesafb_probe(struct vmm_device *dev,
 {
 	struct fb_info *info;
 	int i, err;
-	char *options = NULL;
+	const char *options = NULL;
 	unsigned int size_vmode;
 	unsigned int size_remap;
 	unsigned int size_total;
@@ -269,11 +269,11 @@ static int vesafb_probe(struct vmm_device *dev,
 	if (screen_info.orig_video_isVGA != VIDEO_TYPE_VLFB)
 		return -ENODEV;
 
-	options = vmm_devtree_attrval(dev->node, "options");
+	vmm_devtree_read_string(dev->node, "options", &options);
 	if (!options) {
 		return -ENODEV;
 	}
-	err = vesafb_setup(options);
+	err = vesafb_setup((char *)options);
 	if (err) {
 		return err;
 	}
@@ -537,7 +537,7 @@ static int vesafb_probe(struct vmm_device *dev,
 		goto err;
 	}
 	printk(KERN_INFO "vesafb: registered %s frame buffer device\n",
-	       info->dev->node->name);
+	       dev_name(&info->dev));
 	return 0;
 err:
 	if (info->screen_base)

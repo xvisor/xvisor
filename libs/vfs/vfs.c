@@ -137,6 +137,7 @@ static int vfs_fd_alloc(void)
 
 	for (i = 0; i < VFS_MAX_FD; i++) {
 		if (!bitmap_isset(vfsc.fd_bmap, i)) {
+			bitmap_setbit(vfsc.fd_bmap, i);
 			ret = i;
 			break;
 		}
@@ -158,7 +159,7 @@ static void vfs_fd_free(int fd)
 			vfsc.fd[fd].f_offset = 0;
 			vfsc.fd[fd].f_vnode = NULL;
 			vmm_mutex_unlock(&vfsc.fd[fd].f_lock);
-			bitmap_clear(vfsc.fd_bmap, fd, 1);
+			bitmap_clearbit(vfsc.fd_bmap, fd);
 		}
 
 		vmm_mutex_unlock(&vfsc.fd_bmap_lock);
@@ -181,7 +182,7 @@ static u32 vfs_vnode_hash(struct mount *m, const char *path)
 		}
 	}
 
-	return (val ^ (u32)m) & (VFS_VNODE_HASH_SIZE - 1);
+	return (val ^ (u32)(unsigned long)m) & (VFS_VNODE_HASH_SIZE - 1);
 }
 
 static struct vnode *vfs_vnode_vget(struct mount *m, const char *path)
@@ -292,7 +293,7 @@ static int vfs_vnode_stat(struct vnode *v, struct stat *st)
 
 	memset(st, 0, sizeof(struct stat));
 
-	st->st_ino = (u32)v;
+	st->st_ino = (u64)(unsigned long)v;
 	vmm_mutex_lock(&v->v_lock);
 	st->st_size = v->v_size;
 	mode = v->v_mode & (S_IRWXU|S_IRWXG|S_IRWXO);
@@ -329,7 +330,7 @@ static int vfs_vnode_stat(struct vnode *v, struct stat *st)
 	st->st_mode = mode;
 
 	if (v->v_type == VCHR || v->v_type == VBLK)
-		st->st_dev = (u32)v->v_data;
+		st->st_dev = (u64)(unsigned long)v->v_data;
 
 	st->st_uid = 0;
 	st->st_gid = 0;

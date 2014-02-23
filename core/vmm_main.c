@@ -18,7 +18,7 @@
  *
  * @file vmm_main.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief main file for core code
+ * @brief main source file to start, stop and reset hypervisor
  */
 
 #include <vmm_error.h>
@@ -45,13 +45,12 @@
 #include <vmm_cmdmgr.h>
 #include <vmm_wallclock.h>
 #include <vmm_chardev.h>
-#include <vmm_vserial.h>
 #include <vmm_modules.h>
 #include <arch_cpu.h>
 #include <arch_board.h>
 
 /* Optional includes */
-#include <rtc/vmm_rtcdev.h>
+#include <drv/rtc.h>
 
 void __noreturn vmm_hang(void)
 {
@@ -67,9 +66,43 @@ static void system_init_work(struct vmm_work *work)
 	u32 c, freed;
 	struct vmm_chardev *cdev;
 #if defined(CONFIG_RTC)
-	struct vmm_rtcdev *rdev;
+	struct rtc_device *rdev;
 #endif
 	struct vmm_devtree_node *node, *node1;
+
+#if defined(CONFIG_SMP)
+	/* Initialize secondary CPUs */
+	vmm_printf("Initialize Secondary CPUs\n");
+	ret = arch_smp_init_cpus();
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+
+	/* Prepare secondary CPUs */
+	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+
+	/* Start each present secondary CPUs */
+	for_each_present_cpu(c) {
+		if (c == vmm_smp_bootcpu_id()) {
+			continue;
+		}
+		ret = arch_smp_start_cpu(c);
+		if (ret) {
+			vmm_printf("Failed to start CPU%d (error %d)\n",
+				   c, ret);
+		}
+	}
+
+	/* Initialize hypervisor load balancer */
+	vmm_printf("Initialize Hypervisor Load Balancer\n");
+	ret = vmm_loadbal_init();
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+#endif
 
 	/* Initialize command manager */
 	vmm_printf("Initialize Command Manager\n");
@@ -95,13 +128,6 @@ static void system_init_work(struct vmm_work *work)
 	/* Initialize character device framework */
 	vmm_printf("Initialize Character Device Framework\n");
 	ret = vmm_chardev_init();
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
-
-	/* Initialize virtual serial port framework */
-	vmm_printf("Initialize Virtual Serial Port Framework\n");
-	ret = vmm_vserial_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
 	}
@@ -172,7 +198,9 @@ static void system_init_work(struct vmm_work *work)
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (node) {
 		/* Find character device based on console attribute */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_CONSOLE_ATTR_NAME, &str);
 		if (!(cdev = vmm_chardev_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
 				cdev = vmm_chardev_find(node1->name);
@@ -185,16 +213,18 @@ static void system_init_work(struct vmm_work *work)
 		}
 
 #if defined(CONFIG_RTC)
-		/* Find rtc device based on rtcdev attribute */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_RTCDEV_ATTR_NAME);
-		if (!(rdev = vmm_rtcdev_find(str))) {
+		/* Find rtc device based on rtc_device attribute */
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_RTCDEV_ATTR_NAME, &str);
+		if (!(rdev = rtc_device_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
-				rdev = vmm_rtcdev_find(node1->name);
+				rdev = rtc_device_find(node1->name);
 			}
 		}
 		/* Syncup wallclock time with chosen rtc device */
 		if (rdev) {
-			ret = vmm_rtcdev_sync_wallclock(rdev);
+			ret = rtc_device_sync_wallclock(rdev);
 			vmm_printf("Syncup wallclock using %s", rdev->name);
 			if (ret) {
 				vmm_printf("(error %d)", ret);
@@ -204,14 +234,13 @@ static void system_init_work(struct vmm_work *work)
 #endif
 
 		/* Execute boot commands */
-		str = vmm_devtree_attrval(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
-		if (str) {
-			c = vmm_devtree_attrlen(node, VMM_DEVTREE_BOOTCMD_ATTR_NAME);
+		if (vmm_devtree_read_string(node,
+			VMM_DEVTREE_BOOTCMD_ATTR_NAME, &str) == VMM_OK) {
+			c = vmm_devtree_attrlen(node,
+						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
 			while (c) {
-#if defined(CONFIG_VERBOSE_MODE)
 				/* Print boot command */
 				vmm_printf("bootcmd: %s\n", str);
-#endif
 				/* Execute boot command */
 				strlcpy(bcmd, str, sizeof(bcmd));
 				cdev = vmm_stdio_device();
@@ -224,18 +253,19 @@ static void system_init_work(struct vmm_work *work)
 	}
 }
 
-void vmm_init(void)
+static void __init init_bootcpu(void)
 {
 	int ret;
-#if defined(CONFIG_SMP)
-	u32 c;
-#endif
-	u32 cpu = vmm_smp_processor_id();
 	struct vmm_work sysinit;
 
+	/* Sanity check on SMP processor id */
+	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
+		vmm_hang();
+	}
+
 	/* Mark this CPU possible & present */
-	vmm_set_cpu_possible(cpu, TRUE);
-	vmm_set_cpu_present(cpu, TRUE);
+	vmm_set_cpu_possible(vmm_smp_processor_id(), TRUE);
+	vmm_set_cpu_present(vmm_smp_processor_id(), TRUE);
 
 	/* Print version string */
 	vmm_printf("\n");
@@ -365,37 +395,6 @@ void vmm_init(void)
 	if (ret) {
 		vmm_hang();
 	}
-
-	/* Initialize secondary CPUs */
-	vmm_printf("Initialize Secondary CPUs\n");
-	ret = arch_smp_init_cpus();
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
-
-	/* Prepare secondary CPUs */
-	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
-
-	/* Start each present secondary CPUs */
-	for_each_present_cpu(c) {
-		if (c == cpu) {
-			continue;
-		}
-		ret = arch_smp_start_cpu(c);
-		if (ret) {
-			vmm_printf("Failed to start CPU%d\n", ret);
-		}
-	}
-
-	/* Initialize hypervisor load balancer */
-	vmm_printf("Initialize Hypervisor Load Balancer\n");
-	ret = vmm_loadbal_init();
-	if (ret) {
-		vmm_panic("Error %d\n", ret);
-	}
 #endif
 
 	/* Initialize workqueue framework */
@@ -424,9 +423,19 @@ void vmm_init(void)
 }
 
 #if defined(CONFIG_SMP)
-void vmm_init_secondary(void)
+static void __cpuinit init_secondary(void)
 {
 	int ret;
+
+	/* Sanity check on SMP processor ID */
+	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
+		vmm_hang();
+	}
+
+	/* This function should not be called by Boot CPU */
+	if (vmm_smp_is_bootcpu()) {
+		vmm_hang();
+	}
 
 	/* Initialize host virtual address space */
 	ret = vmm_host_aspace_init();
@@ -470,6 +479,9 @@ void vmm_init_secondary(void)
 		vmm_hang();
 	}
 
+	/* Inform architecture code about secondary cpu */
+	arch_smp_postboot();
+
 	/* Start timer (Must be last step) */
 	vmm_timer_start();
 
@@ -478,40 +490,86 @@ void vmm_init_secondary(void)
 }
 #endif
 
-void vmm_reset(void)
+void __cpuinit vmm_init(void)
 {
-	int rc;
+#if defined(CONFIG_SMP)
+	/* Mark this CPU as Boot CPU
+	 * Note: This will only work on first CPU.
+	 */
+	vmm_smp_set_bootcpu();
 
+	if (vmm_smp_is_bootcpu()) { /* Boot CPU */
+		init_bootcpu();
+	} else { /* Secondary CPUs */
+		init_secondary();
+	}
+#else
+	/* Boot CPU */
+	init_bootcpu();
+#endif
+}
+
+static void system_stop(void)
+{
 	/* Stop scheduler */
 	vmm_printf("Stopping Hypervisor Timer\n");
 	vmm_timer_stop();
 
 	/* FIXME: Do other cleanup stuff. */
+}
 
-	/* Issue board reset */
-	vmm_printf("Issuing Board Reset\n");
-	if ((rc = arch_board_reset())) {
-		vmm_panic("Error: Board reset failed.\n");
+static int (*system_reset)() = NULL;
+
+void vmm_register_system_reset(int (*callback)())
+{
+	system_reset = callback;
+}
+
+void vmm_reset(void)
+{
+	int rc;
+
+	/* Stop the system */
+	system_stop();
+
+	/* Issue system reset */
+	if (!system_reset) {
+		vmm_printf("Error: no system reset callback.\n");
+		vmm_printf("Please reset system manually ...\n");
+	} else {
+		vmm_printf("Issuing System Reset\n");
+		if ((rc = system_reset())) {
+			vmm_printf("Error: reset failed (error %d)\n", rc);
+		}
 	}
 
 	/* Wait here. Nothing else to do. */
 	vmm_hang();
 }
 
+static int (*system_shutdown)() = NULL;
+
+void vmm_register_system_shutdown(int (*callback)())
+{
+	system_shutdown = callback;
+}
+
 void vmm_shutdown(void)
 {
 	int rc;
 
-	/* Stop scheduler */
-	vmm_printf("Stopping Hypervisor Timer Subsytem\n");
-	vmm_timer_stop();
+	/* Stop the system */
+	system_stop();
 
-	/* FIXME: Do other cleanup stuff. */
-
-	/* Issue board shutdown */
-	vmm_printf("Issuing Board Shutdown\n");
-	if ((rc = arch_board_shutdown())) {
-		vmm_panic("Error: Board shutdown failed.\n");
+	/* Issue system shutdown */
+	if (!system_shutdown) {
+		vmm_printf("Error: no system shutdown callback.\n");
+		vmm_printf("Please shutdown system manually ...\n");
+	} else {
+		vmm_printf("Issuing System Shutdown\n");
+		if ((rc = system_shutdown())) {
+			vmm_printf("Error: shutdown failed (error %d)\n", rc);
+		}
 	}
 
 	/* Wait here. Nothing else to do. */

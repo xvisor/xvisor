@@ -46,5 +46,9 @@
 #define VMM_EILSEQ		-19
 #define VMM_EOPNOTSUPP		-20
 #define VMM_ENOSPC		-21
+#define VMM_ENODATA		-22
+#define VMM_EFAULT		-23
+#define VMM_ENXIO		-24
+#define VMM_EPROTONOSUPPORT	-25
 
 #endif

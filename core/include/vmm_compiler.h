@@ -41,6 +41,7 @@
 #define __read_mostly		__section(".readmostly.data")
 #define __lock			__section(".spinlock.text")
 #define __modtbl		__section(".modtbl")
+#define __nidtbl		__section(".nidtbl")
 #define __symtbl		__section(".symtbl")
 #define __percpu		__section(".percpu")
 #define __init			__section(".init.text")

@@ -117,14 +117,19 @@
 /*
  * EXT_CSD fields
  */
+#define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
+#define EXT_CSD_PARTITIONS_ATTRIBUTE	156	/* R/W */
 #define EXT_CSD_PARTITIONING_SUPPORT	160	/* RO */
+#define EXT_CSD_RPMB_MULT		168	/* RO */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
+#define EXT_CSD_BOOT_BUS_WIDTH		177
 #define EXT_CSD_PART_CONF		179	/* R/W */
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
 #define EXT_CSD_REV			192	/* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
 #define EXT_CSD_SEC_CNT			212	/* RO, 4 bytes */
+#define EXT_CSD_HC_WP_GRP_SIZE		221	/* RO */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224	/* RO */
 #define EXT_CSD_BOOT_MULT		226	/* RO */
 
@@ -142,6 +147,15 @@
 #define EXT_CSD_BUS_WIDTH_1		0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4		1	/* Card is in 4 bit mode */
 #define EXT_CSD_BUS_WIDTH_8		2	/* Card is in 8 bit mode */
+
+#define EXT_CSD_BOOT_ACK_ENABLE			(1 << 6)
+#define EXT_CSD_BOOT_PARTITION_ENABLE		(1 << 3)
+#define EXT_CSD_PARTITION_ACCESS_ENABLE		(1 << 0)
+#define EXT_CSD_PARTITION_ACCESS_DISABLE	(0 << 0)
+
+#define EXT_CSD_BOOT_ACK(x)		(x << 6)
+#define EXT_CSD_BOOT_PART_NUM(x)	(x << 3)
+#define EXT_CSD_PARTITION_ACCESS(x)	(x << 0)
 
 #define R1_ILLEGAL_COMMAND		(1 << 22)
 #define R1_APP_CMD			(1 << 5)
@@ -241,6 +255,10 @@ struct mmc_card {
 	u32 write_bl_len;
 	u32 erase_grp_size;
 	u64 capacity;
+	u64 capacity_user;
+	u64 capacity_boot;
+	u64 capacity_rpmb;
+	u64 capacity_gp[4];
 
 	struct vmm_blockdev *bdev;
 };
@@ -316,7 +334,7 @@ struct mmc_host {
 
 #define mmc_host_is_spi(mmc)	((mmc)->caps & MMC_CAP_MODE_SPI)
 
-#define mmc_hostname(mmc)	((mmc)->dev->node->name)
+#define mmc_hostname(mmc)	((mmc)->dev->name)
 
 /** Detect card status change
  *  Note: This function can be called from any context.

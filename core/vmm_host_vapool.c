@@ -99,7 +99,7 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 	irq_flags_t flags;
 
 	if ((va < vpctrl.vapool_start) ||
-	    ((vpctrl.vapool_start + vpctrl.vapool_size) <= va)) {
+	    ((vpctrl.vapool_start + vpctrl.vapool_size) < (va + sz))) {
 		return VMM_EFAIL;
 	}
 
@@ -139,8 +139,8 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 	u32 bcnt, bpos;
 	irq_flags_t flags;
 
-	if (va < vpctrl.vapool_start ||
-	    (vpctrl.vapool_start + vpctrl.vapool_size) <= va) {
+	if ((va < vpctrl.vapool_start) ||
+	    ((vpctrl.vapool_start + vpctrl.vapool_size) < (va + sz))) {
 		return VMM_EFAIL;
 	}
 
@@ -160,11 +160,11 @@ int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 bool vmm_host_vapool_page_isfree(virtual_addr_t va)
 {
 	u32 bpos;
-	bool ret = TRUE;
+	bool ret = FALSE;
 	irq_flags_t flags;
 
-	if (va < vpctrl.vapool_start ||
-	    (vpctrl.vapool_start + vpctrl.vapool_size) <= va) {
+	if ((va < vpctrl.vapool_start) ||
+	    ((vpctrl.vapool_start + vpctrl.vapool_size) <= va)) {
 		return ret;
 	}
 
@@ -172,8 +172,8 @@ bool vmm_host_vapool_page_isfree(virtual_addr_t va)
 
 	vmm_spin_lock_irqsave_lite(&vpctrl.vapool_bmap_lock, flags);
 
-	if (bitmap_isset(vpctrl.vapool_bmap, bpos)) {
-		ret = FALSE;
+	if (!bitmap_isset(vpctrl.vapool_bmap, bpos)) {
+		ret = TRUE;
 	}
 
 	vmm_spin_unlock_irqrestore_lite(&vpctrl.vapool_bmap_lock, flags);

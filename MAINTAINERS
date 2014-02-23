@@ -1,18 +1,14 @@
-			Xvisor Initiators
+			Xvisor History
 
-This project was started by Anup Patel as an experimental test code.
-Later, Himanshu, Pranav, and Sukanto joined Anup to re-designed/re-write it
-from scratch and make it flexible & portable accross architectures.
-
-  - Anup Patel (anup@brainfault.org)
-  - Himanshu Chauhan (hschauhan@nulltrace.org)
-  - Sukanto Ghosh (sukantoghosh@gmail.com)
-  - Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
+This project was started by Anup Patel as an experimental test code. Later,
+Himanshu Chauhan, Pranav Sawargaonkar, Sukanto Ghosh, Jean-Christophe Dubois,
+and others joined Anup to re-designed/re-write it from scratch and make it
+flexible & portable accross architectures.
 
 
 	Maintainers List (try to look for most precise areas first)
 
-Note: This list is meant to remain in alphabetical order. If you could 
+Note: This list is meant to remain in alphabetical order. If you could
 add yourselves to it in alphabetical order that would be so much easier [Ed]
 
 P: Person
@@ -45,16 +41,21 @@ X: Files and directories that are NOT maintained, same rules as F:
 	X:	net/ipv6/
    matches all files in and below net excluding net/ipv6/
 
-BEAGLE BOARD
+ARM64
 P:	Sukanto Ghosh
 M:	sukantoghosh@gmail.com
-P:	Pranav Sawargaonkar
-M:	pranav.sawargaonkar@gmail.com
 S:	Maintained
 L:	xvisor-devel@googlegroups.com
-F:	arch/arm/board/beagle/*
-F:	arch/arm/board/common/omap3/*
-F:	arch/arm/board/common/include/omap3/*
+F:	arch/arm64/*
+
+HEAP MANAGMENT
+P:	Himanshu Chauhan
+M:	hschauhan@nulltrace.org
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	core/mm/*
+F:	core/include/mm/*
+F:	core/include/vmm_heap.h
 
 HOST ADDRESS SPACE APIs
 P:	Himanshu Chauhan
@@ -71,16 +72,6 @@ S:	Maintained
 L:	xvisor-devel@googlegroups.com
 F:	core/include/vmm_host_io.h
 
-HYPERVISOR THREADS
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-P:	Anup Patel
-M:	anup@brainfault.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	core/include/vmm_threads.h
-F:	core/vmm_threads.c
-
 HYPERVISOR PROFILER
 P:	Jean-Christophe Dubois
 M:	jcd@tribudubois.net
@@ -89,32 +80,39 @@ L:	xvisor-devel@googlegroups.com
 F:	core/include/vmm_profiler.h
 F:	core/vmm_profiler.c
 
-MANAGMENT TERMINAL DAEMON
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-P:	Anup Patel
-M:	anup@brainfault.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	daemons/mterm.c
-
-MEMORY MANAGMENT
-P:	Himanshu Chauhan
-M:	hschauhan@nulltrace.org
-S:	Maintained
-L:	xvisor-devel@googlegroups.com
-F:	core/mm/*
-F:	core/include/mm/*
-F:	core/include/vmm_heap.h
-
 INTEL64(x86-64)
 P:	Himanshu Chauhan
 M:	hschauhan@nulltrace.org
-P:	Tushar Jagad
-M:	thjagad@gmail.com
 S:	Maintained
 L:	xvisor-devel@googlegroups.com
 F:	arch/x86/*
+
+NETWORK CORE
+P:	Pranavkumar Sawargaonkar
+M:	pranav.sawargaonkar@gmail.com
+P:	Sukanto Ghosh
+M:	sukantoghosh@gmail.com
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	core/net/*
+
+NETWORK DRIVERS
+P:	Pranavkumar Sawargaonkar
+M:	pranav.sawargaonkar@gmail.com
+P:	Sukanto Ghosh
+M:	sukantoghosh@gmail.com
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	drivers/net/*
+
+NETWORK EMULATORS
+P:	Pranavkumar Sawargaonkar
+M:	pranav.sawargaonkar@gmail.com
+P:	Sukanto Ghosh
+M:	sukantoghosh@gmail.com
+S:	Maintained
+L:	xvisor-devel@googlegroups.com
+F:	emulators/net/*
 
 THE REST
 P:	Anup Patel

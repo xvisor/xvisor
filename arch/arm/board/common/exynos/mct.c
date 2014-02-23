@@ -259,6 +259,8 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 {
 	int rc;
 
+	exynos4_sys_timer = (void *)base;
+
 	mct_comp_device.name = name;
 	mct_comp_device.hirq = hirq;
 	mct_comp_device.rating = rating;
@@ -417,7 +419,13 @@ static int exynos4_mct_tick_clear(struct mct_clock_event_clockchip *mevt)
 
 static vmm_irq_return_t exynos4_mct_tick_isr(int irq_no, void *dev_id)
 {
+	u32 cpu = vmm_smp_processor_id();
 	struct mct_clock_event_clockchip *mevt = dev_id;
+
+	/* If we got MCT interrupt on wrong CPU then ignore it. */
+	if (!vmm_cpumask_test_cpu(cpu, mevt->clkchip.cpumask)) {
+		return VMM_IRQ_NONE;
+	}
 
 	exynos4_mct_tick_clear(mevt);
 
@@ -434,6 +442,8 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 	struct mct_clock_event_clockchip *mevt;
 	struct vmm_clockchip *evt;
 	u32 cpu = vmm_smp_processor_id();
+
+	exynos4_sys_timer = (void *)timer_base;
 
 	if (mct_int_type == MCT_INT_UNKNOWN) {
 		exynos4_timer_init();
@@ -464,10 +474,10 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
-		if (cpu == 0) {
+		if (vmm_smp_is_bootcpu()) {
 			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
-						   "mct_tick0_irq",
-						    exynos4_mct_tick_isr, mevt);
+						   mevt->name,
+						   exynos4_mct_tick_isr, mevt);
 			if (rc) {
 				return rc;
 			}
@@ -481,7 +491,7 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 			}
 		} else {
 			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L1,
-						   "mct_tick1_irq",
+						   mevt->name,
 						   exynos4_mct_tick_isr, mevt);
 			if (rc) {
 				return rc;
@@ -497,7 +507,7 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 		}
 	} else {
 		rc = vmm_host_irq_register(EXYNOS_IRQ_MCT_LOCALTIMER,
-					   "mct_tick_irq",
+					   "mct_tick_local",
 					   exynos4_mct_tick_isr, mevt);
 		if (rc) {
 			return rc;

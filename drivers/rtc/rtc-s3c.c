@@ -59,7 +59,7 @@
 #define MODULE_DESC                     "S3C RTC Driver"
 #define MODULE_AUTHOR                   "Jean-Christophe Dubois"
 #define MODULE_LICENSE                  "GPL"
-#define MODULE_IPRIORITY                (VMM_RTCDEV_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY                (RTC_DEVICE_CLASS_IPRIORITY+1)
 #define MODULE_INIT                     s3c_rtc_driver_init
 #define MODULE_EXIT                     s3c_rtc_driver_exit
 
@@ -85,8 +85,7 @@ static DEFINE_SPINLOCK(s3c_rtc_pie_lock);
  * This is a temporary solution until we have a clock management
  * API
  */
-#undef clk_enable
-static void clk_enable(struct clk *clk)
+int clk_enable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
 
@@ -95,14 +94,15 @@ static void clk_enable(struct clk *clk)
 
 		vmm_writel(perir_reg, (void *)clk);
 	}
+
+	return 0;
 }
 
 /**
  * This is a temporary solution until we have a clock management
  * API
  */
-#undef clk_disable
-static void clk_disable(struct clk *clk)
+void clk_disable(struct clk *clk)
 {
 	u32 perir_reg = vmm_readl((void *)clk);
 
@@ -117,8 +117,7 @@ static void clk_disable(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
-#undef clk_put
-static void clk_put(struct clk *clk)
+void clk_put(struct clk *clk)
 {
 	vmm_host_iounmap((virtual_addr_t) clk, sizeof(u32));
 }
@@ -127,8 +126,7 @@ static void clk_put(struct clk *clk)
  * This is a temporary solution until we have a clock management
  * API
  */
-#undef clk_get
-static struct clk *clk_get(struct vmm_device *dev, const char *name)
+struct clk *clk_get(struct vmm_device *dev, const char *name)
 {
 	void *cmu_ptr = (void *)vmm_host_iomap(EXYNOS4_PA_CMU +
 					       EXYNOS4_CLKGATE_IP_PERIR,
@@ -307,7 +305,7 @@ static int s3c_rtc_settime(struct rtc_device *dev, struct rtc_time *tm)
 	/* we get around y2k by simply not supporting it */
 
 	if (year < 0 || year >= 100) {
-		dev_err(dev->dev, "rtc only supports 100 years\n");
+		dev_err(&dev->dev, "rtc only supports 100 years\n");
 		return -EINVAL;
 	}
 
@@ -475,7 +473,7 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 	vmm_host_irq_unregister(s3c_rtc_tickno, rtc);
 
 	dev->priv = NULL;
-	vmm_rtcdev_unregister(rtc);
+	rtc_device_unregister(rtc);
 
 	s3c_rtc_setaie(rtc, 0);
 
@@ -536,9 +534,9 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	/* register RTC and exit */
 
-	s3c_rtcops.dev = pdev;
+	s3c_rtcops.dev.parent = pdev;
 
-	rc = vmm_rtcdev_register(&s3c_rtcops);
+	rc = rtc_device_register(&s3c_rtcops);
 
 	if (rc) {
 		dev_err(pdev, "cannot attach rtc\n");
@@ -605,7 +603,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
  err_alarm_irq:
 	pdev->priv = NULL;
-	vmm_rtcdev_unregister(&s3c_rtcops);
+	rtc_device_unregister(&s3c_rtcops);
 
  err_nortc:
 	s3c_rtc_enable(pdev, 0);

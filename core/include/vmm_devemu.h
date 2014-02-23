@@ -31,19 +31,46 @@
 struct vmm_emudev;
 struct vmm_emulator;
 
+enum vmm_devemu_endianness {
+	VMM_DEVEMU_UNKNOWN_ENDIAN=0,
+	VMM_DEVEMU_NATIVE_ENDIAN=1,
+	VMM_DEVEMU_LITTLE_ENDIAN=2,
+	VMM_DEVEMU_BIG_ENDIAN=3,
+	VMM_DEVEMU_MAX_ENDIAN=4,
+};
+
 struct vmm_emulator {
 	struct dlist head;
 	char name[VMM_FIELD_NAME_SIZE];
 	const struct vmm_devtree_nodeid *match_table;
+	enum vmm_devemu_endianness endian;
 	int (*probe) (struct vmm_guest *guest,
 		      struct vmm_emudev *edev,
 		      const struct vmm_devtree_nodeid *nodeid);
-	int (*read) (struct vmm_emudev *edev,
-		     physical_addr_t offset, 
-		     void *dst, u32 dst_len);
-	int (*write) (struct vmm_emudev *edev,
-		      physical_addr_t offset, 
-		      void *src, u32 src_len);
+	int (*read8) (struct vmm_emudev *edev,
+		      physical_addr_t offset,
+		      u8 *dst);
+	int (*write8) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u8 src);
+	int (*read16) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u16 *dst);
+	int (*write16) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u16 src);
+	int (*read32) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u32 *dst);
+	int (*write32) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u32 src);
+	int (*read64) (struct vmm_emudev *edev,
+		       physical_addr_t offset,
+		       u64 *dst);
+	int (*write64) (struct vmm_emudev *edev,
+		        physical_addr_t offset,
+		        u64 src);
 	int (*reset) (struct vmm_emudev *edev);
 	int (*remove) (struct vmm_emudev *edev);
 };
@@ -58,22 +85,26 @@ struct vmm_emudev {
 /** Emulate memory read to virtual device for given VCPU */
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
-			    void *dst, u32 dst_len);
+			    void *dst, u32 dst_len,
+			    enum vmm_devemu_endianness dst_endian);
 
 /** Emulate memory write to virtual device for given VCPU */
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
 			     physical_addr_t gphys_addr,
-			     void *src, u32 src_len);
+			     void *src, u32 src_len,
+			     enum vmm_devemu_endianness src_endian);
 
 /** Emulate IO read to virtual device for given VCPU */
 int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
 			      physical_addr_t gphys_addr,
-			      void *dst, u32 dst_len);
+			      void *dst, u32 dst_len,
+			      enum vmm_devemu_endianness dst_endian);
 
 /** Emulate IO write to virtual device for given VCPU */
 int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
 			       physical_addr_t gphys_addr,
-			       void *src, u32 src_len);
+			       void *src, u32 src_len,
+			       enum vmm_devemu_endianness src_endian);
 
 /** Internal function to emulate irq (should not be called directly) */
 extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 
@@ -89,14 +120,14 @@ extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 
 /** Register guest irq handler */
 int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
-				    const char *name, 
-				    void (*handle) (u32 irq, int cpu, int level, void *opaque),
-				    void *opaque);
+		const char *name,
+		void (*handle) (u32 irq, int cpu, int level, void *opaque),
+		void *opaque);
 
 /** Unregister guest irq handler */
 int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
-				      void (*handle) (u32 irq, int cpu, int level, void *opaque),
-				      void *opaque);
+		void (*handle) (u32 irq, int cpu, int level, void *opaque),
+		void *opaque);
 
 /** Count available irqs of a guest */
 u32 vmm_devemu_count_irqs(struct vmm_guest *guest);

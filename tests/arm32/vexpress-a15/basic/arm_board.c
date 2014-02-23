@@ -28,7 +28,7 @@
 #include <arm_board.h>
 #include <arm_plat.h>
 #include <pic/gic.h>
-#include <timer/sp804.h>
+#include <timer/generic_timer.h>
 #include <serial/pl01x.h>
 
 void arm_board_reset(void)
@@ -167,52 +167,37 @@ int arm_board_pic_unmask(u32 irq)
 
 void arm_board_timer_enable(void)
 {
-	return sp804_enable();
+	return generic_timer_enable();
 }
 
 void arm_board_timer_disable(void)
 {
-	return sp804_disable();
+	return generic_timer_disable();
 }
 
 u64 arm_board_timer_irqcount(void)
 {
-	return sp804_irqcount();
+	return generic_timer_irqcount();
 }
 
 u64 arm_board_timer_irqdelay(void)
 {
-	return sp804_irqdelay();
+	return generic_timer_irqdelay();
 }
 
 u64 arm_board_timer_timestamp(void)
 {
-	return sp804_timestamp();
+	return generic_timer_timestamp();
 }
 
 void arm_board_timer_change_period(u32 usecs)
 {
-	return sp804_change_period(usecs);
+	return generic_timer_change_period(usecs);
 }
 
 int arm_board_timer_init(u32 usecs)
 {
-	u32 val, irq;
-	u64 counter_mult, counter_shift, counter_mask;
-
-	counter_mask = 0xFFFFFFFFULL;
-	counter_shift = 20;
-	counter_mult = ((u64)1000000) << counter_shift;
-	counter_mult += (((u64)1000) >> 1);
-	counter_mult = arm_udiv64(counter_mult, ((u64)1000));
-
-	irq = IRQ_V2M_TIMER0;
-
-	val = arm_readl((void *)V2M_SYSCTL) | SCCTRL_TIMEREN0SEL_TIMCLK;
-	arm_writel(val, (void *)V2M_SYSCTL);
-
-	return sp804_init(usecs, V2M_TIMER0, irq, 
-			  counter_mask, counter_mult, counter_shift);
+	return generic_timer_init(usecs, 27);
 }
 
 #define	CA15X4_UART_BASE		V2M_UART0

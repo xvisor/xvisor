@@ -18,7 +18,7 @@
  *
  * @file vmm_main.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief main header file for vmm
+ * @brief main header file to start, stop and reset hypervisor
  */
 #ifndef _VMM_MAIN_H__
 #define _VMM_MAIN_H__
@@ -32,15 +32,16 @@ void __noreturn vmm_hang(void);
 /** Initialize hypervisor */
 void vmm_init(void);
 
-#if defined(CONFIG_SMP)
-/** Initialize hypervisor for secondary CPUs */
-void vmm_init_secondary(void);
-#endif
+/** Register system reset callback function */
+void vmm_register_system_reset(int (*callback)());
 
-/** Reset hypervisor */
+/** Do system reset */
 void vmm_reset(void);
 
-/** Shutdown hypervisor */
+/** Register system shutdown callback function */
+void vmm_register_system_shutdown(int (*callback)());
+
+/** Do system shutdown */
 void vmm_shutdown(void);
 
 #endif

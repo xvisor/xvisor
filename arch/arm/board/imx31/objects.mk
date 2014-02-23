@@ -21,7 +21,6 @@
 # @brief list of i.MX31 board objects.
 # */
 
-board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
 board-objs-$(CONFIG_KZM_ONE_GUEST_EBMP_DTS)+=dts/kzm/one_guest_ebmp.o
 

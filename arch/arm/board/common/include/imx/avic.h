@@ -67,8 +67,6 @@
 
 #define AVIC_NUM_IRQS 64
 
-u32 avic_active_irq(void);
-
 int avic_init(virtual_addr_t base);
 
 #endif /* __AVIC_H__ */

@@ -50,6 +50,11 @@ int arch_smp_prepare_cpus(unsigned int max_cpus);
  */
 int arch_smp_start_cpu(u32 cpu);
 
+/** Completed booting on a secondary CPU
+ *  Note: This function is called from secondary CPU after its done booting
+ */
+void arch_smp_postboot(void);
+
 /** Trigger inter-processor interrupt
  *  Note: This function is called on any CPU at runtime
  */

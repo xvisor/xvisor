@@ -37,6 +37,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
 #include <libs/mathlib.h>
+#include <drv/clk.h>
 #include <drv/mmc/sdhci.h>
 
 #define MODULE_DESC			"BCM2835 SDHCI Driver"
@@ -51,6 +52,7 @@
 
 struct bcm2835_sdhci_host {
 	struct sdhci_host host;
+	struct clk *clk;
 	u32 irq;
 	u32 clock_freq;
 	virtual_addr_t base;
@@ -178,12 +180,14 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	rc = vmm_devtree_clock_frequency(dev->node, &bcm_host->clock_freq);
-	if (rc) {
+	bcm_host->clk = clk_get(dev, NULL);
+	if (!bcm_host->clk) {
+		rc = VMM_ENODEV;
 		goto free_reg;
 	}
+	bcm_host->clock_freq = clk_get_rate(bcm_host->clk);
 
-	host->hw_name = dev->node->name;
+	host->hw_name = dev->name;
 	host->irq = (bcm_host->irq) ? bcm_host->irq : -1;
 	host->ioaddr = (void *)bcm_host->base;
 	host->quirks = SDHCI_QUIRK_BROKEN_VOLTAGE |
@@ -203,13 +207,15 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 
 	rc = sdhci_add_host(host);
 	if (rc) {
-		goto free_reg;
+		goto free_clk;
 	}
 
 	dev->priv = host;
 
 	return VMM_OK;
 
+free_clk:
+	clk_put(bcm_host->clk);
 free_reg:
 	vmm_devtree_regunmap(dev->node, bcm_host->base, 0);
 free_host:

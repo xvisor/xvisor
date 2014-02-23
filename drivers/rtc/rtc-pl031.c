@@ -46,7 +46,7 @@
 #define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_RTCDEV_CLASS_IPRIORITY+1)
+#define MODULE_IPRIORITY		(RTC_DEVICE_CLASS_IPRIORITY+1)
 #define	MODULE_INIT			pl031_driver_init
 #define	MODULE_EXIT			pl031_driver_exit
 
@@ -133,7 +133,7 @@ static int pl031_stv2_tm_to_time(struct rtc_device *rd,
 
 	/* wday masking is not working in hardware so wday must be valid */
 	if (wday < -1 || wday > 6) {
-		dev_err(rd->dev, "invalid wday value %d\n", tm->tm_wday);
+		dev_err(&rd->dev, "invalid wday value %d\n", tm->tm_wday);
 		return -EINVAL;
 	} else if (wday == -1) {
 		/* wday is not provided, calculate it here */
@@ -348,17 +348,17 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		rc = VMM_EFAIL;
 		goto free_reg;
 	}
-	if ((rc = vmm_host_irq_register(ldata->irq, dev->node->name,
+	if ((rc = vmm_host_irq_register(ldata->irq, dev->name,
 					pl031_irq_handler, ldata))) {
 		goto free_reg;
 	}
 
-	if (strlcpy(ldata->rtc.name, dev->node->name, sizeof(ldata->rtc.name))
+	if (strlcpy(ldata->rtc.name, dev->name, sizeof(ldata->rtc.name))
 	    >= sizeof(ldata->rtc.name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_irq;
 	}
-	ldata->rtc.dev = dev;
+	ldata->rtc.dev.parent = dev;
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
 		/* ARM variant */
@@ -387,7 +387,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	}
 	ldata->rtc.priv = ldata;
 
-	rc = vmm_rtcdev_register(&ldata->rtc);
+	rc = rtc_device_register(&ldata->rtc);
 	if (rc) {
 		goto free_irq;
 	}
@@ -411,7 +411,7 @@ static int pl031_driver_remove(struct vmm_device *dev)
 	struct pl031_local *ldata = dev->priv;
 
 	if (ldata) {
-		vmm_rtcdev_unregister(&ldata->rtc);
+		rtc_device_unregister(&ldata->rtc);
 		vmm_host_irq_unregister(ldata->irq, ldata);
 		vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
 		vmm_free(ldata);

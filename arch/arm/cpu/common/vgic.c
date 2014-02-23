@@ -166,7 +166,7 @@ struct vgic_guest_state {
 #define VGIC_SET_MODEL(s, irq) (s)->irq_state[irq].model = 1
 #define VGIC_CLEAR_MODEL(s, irq) (s)->irq_state[irq].model = 0
 #define VGIC_TEST_MODEL(s, irq) (s)->irq_state[irq].model
-#define VGIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level = (cm)
+#define VGIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level |= (cm)
 #define VGIC_CLEAR_LEVEL(s, irq, cm) (s)->irq_state[irq].level &= ~(cm)
 #define VGIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
@@ -1097,14 +1097,10 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 	return rc;
 }
 
-static int vgic_emulator_read(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
-			       void *dst, u32 dst_len)
+static int vgic_reg_read(struct vgic_guest_state *s,
+			 u32 offset, u32 *dst)
 {
-	int rc = VMM_OK;
-	u32 regval = 0x0;
 	struct vmm_vcpu *vcpu;
-	struct vgic_guest_state *s = edev->priv;
 
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu || !vcpu->guest) {
@@ -1114,79 +1110,89 @@ static int vgic_emulator_read(struct vmm_emudev *edev,
 		return VMM_EFAIL;
 	}
 
-	/* Read Distribution Control */
-	rc = vgic_dist_read(s, vcpu->subid, offset & 0xFFC, &regval);
-	if (rc) {
-		return rc;
+	return vgic_dist_read(s, vcpu->subid, offset & 0xFFC, dst);
+}
+
+static int vgic_reg_write(struct vgic_guest_state *s,
+			  u32 offset, u32 regmask, u32 regval)
+{
+	struct vmm_vcpu *vcpu;
+
+	vcpu = vmm_scheduler_current_vcpu();
+	if (!vcpu || !vcpu->guest) {
+		return VMM_EFAIL;
+	}
+	if (s->guest->id != vcpu->guest->id) {
+		return VMM_EFAIL;
 	}
 
-	regval = (regval >> ((offset & 0x3) * 8));
-	switch (dst_len) {
-	case 1:
-		*(u8 *)dst = regval & 0xFF;
-		break;
-	case 2:
-		*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-		break;
-	case 4:
-		*(u32 *)dst = vmm_cpu_to_le32(regval);
-		break;
-	default:
-		rc = VMM_EFAIL;
-		break;
-	};
+	return vgic_dist_write(s, vcpu->subid, 
+			       offset & 0xFFC, regmask, regval);
+}
+
+static int vgic_emulator_read8(struct vmm_emudev *edev,
+			       physical_addr_t offset, 
+			       u8 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = vgic_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
 
 	return rc;
 }
 
-static int vgic_emulator_write(struct vmm_emudev *edev,
+static int vgic_emulator_read16(struct vmm_emudev *edev,
 				physical_addr_t offset, 
-				void *src, u32 src_len)
+				u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct vgic_guest_state *s = edev->priv;
-	struct vmm_vcpu *vcpu;
+	int rc;
+	u32 regval = 0x0;
 
-	vcpu = vmm_scheduler_current_vcpu();
-	if (!vcpu || !vcpu->guest) {
-		return VMM_EFAIL;
-	}
-	if (s->guest->id != vcpu->guest->id) {
-		return VMM_EFAIL;
+	rc = vgic_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
-
-	return vgic_dist_write(s, vcpu->subid, 
-				offset & 0xFFC, regmask, regval);
+	return rc;
 }
 
-static int vgic_state_reset(struct vgic_guest_state *s)
+static int vgic_emulator_read32(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u32 *dst)
+{
+	return vgic_reg_read(edev->priv, offset, dst);
+}
+
+static int vgic_emulator_write8(struct vmm_emudev *edev,
+				physical_addr_t offset, 
+				u8 src)
+{
+	return vgic_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int vgic_emulator_write16(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u16 src)
+{
+	return vgic_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int vgic_emulator_write32(struct vmm_emudev *edev,
+				 physical_addr_t offset, 
+				 u32 src)
+{
+	return vgic_reg_write(edev->priv, offset, 0x00000000, src);
+}
+
+static int vgic_emulator_reset(struct vmm_emudev *edev)
 {
 	u32 i, j;
 	irq_flags_t flags;
+	struct vgic_guest_state *s = edev->priv;
 
 	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
@@ -1236,13 +1242,6 @@ static int vgic_state_reset(struct vgic_guest_state *s)
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	return VMM_OK;
-}
-
-static int vgic_emulator_reset(struct vmm_emudev *edev)
-{
-	struct vgic_guest_state *s = edev->priv;
-	
-	return vgic_state_reset(s);
 }
 
 static struct vgic_guest_state *vgic_state_alloc(const char *name,
@@ -1331,7 +1330,7 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
 				const struct vmm_devtree_nodeid *eid)
 {
-	const char *attr;
+	int rc;
 	u32 parent_irq, num_irq;
 	struct vgic_guest_state *s;
 
@@ -1342,20 +1341,16 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (!attr) {
-		return VMM_EFAIL;
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &parent_irq);
+	if (rc) {
+		return rc;
 	}
-	parent_irq = *((u32 *)attr);
 
-	attr = vmm_devtree_attrval(edev->node, "num_irq");
-	if (!attr) {
+	if (vmm_devtree_read_u32(edev->node, "num_irq", &num_irq)) {
 		num_irq = VGIC_MAX_NIRQ;
-	} else {
-		num_irq = *((u32 *)attr);
-		if (num_irq > VGIC_MAX_NIRQ) {
-			num_irq = VGIC_MAX_NIRQ;
-		}
+	}
+	if (num_irq > VGIC_MAX_NIRQ) {
+		num_irq = VGIC_MAX_NIRQ;
 	}
 
 	s = vgic_state_alloc(edev->node->name,
@@ -1394,9 +1389,14 @@ static struct vmm_devtree_nodeid vgic_emuid_table[] = {
 static struct vmm_emulator vgic_emulator = {
 	.name = "vgic",
 	.match_table = vgic_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = vgic_emulator_probe,
-	.read = vgic_emulator_read,
-	.write = vgic_emulator_write,
+	.read8 = vgic_emulator_read8,
+	.write8 = vgic_emulator_write8,
+	.read16 = vgic_emulator_read16,
+	.write16 = vgic_emulator_write16,
+	.read32 = vgic_emulator_read32,
+	.write32 = vgic_emulator_write32,
 	.reset = vgic_emulator_reset,
 	.remove = vgic_emulator_remove,
 };

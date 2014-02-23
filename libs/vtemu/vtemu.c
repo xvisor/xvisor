@@ -31,8 +31,8 @@
 #define MODULE_DESC			"VTEMU library"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VMM_INPUT_IPRIORITY + \
-					 VMM_FB_CLASS_IPRIORITY + 1)
+#define MODULE_IPRIORITY		(INPUT_IPRIORITY + \
+					 FB_CLASS_IPRIORITY + 1)
 #define	MODULE_INIT			NULL
 #define	MODULE_EXIT			NULL
 
@@ -340,8 +340,8 @@ static int vtemu_add_input(struct vtemu *v, char *str)
 	return VMM_OK;
 }
 
-static int vtemu_key_event(struct vmm_input_handler *ihnd, 
-			   struct vmm_input_dev *idev, 
+static int vtemu_key_event(struct input_handler *ihnd, 
+			   struct input_dev *idev, 
 			   unsigned int type, unsigned int code, int value)
 {
 	int rc;
@@ -349,7 +349,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 	u32 key_flags;
 	struct vtemu *v = ihnd->priv;
 
-	if (value) { /* value=1 (key-up) or value=2 (auto-repeat) */
+	if (value) { /* value=1 (key-press) or value=2 (auto-repeat) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if ((key_flags & VTEMU_KEYFLAG_LOCKS) &&
@@ -367,7 +367,7 @@ static int vtemu_key_event(struct vmm_input_handler *ihnd,
 
 		/* Add input key string to input buffer */
 		vtemu_add_input(v, str);
-	} else { /* value=0 (key-down) */
+	} else { /* value=0 (key-release) */
 		/* Update input key flags */
 		key_flags = vtemu_key2flags(code);
 		if (!(key_flags & VTEMU_KEYFLAG_LOCKS)) {
@@ -406,9 +406,26 @@ static u32 vtemu_read(struct vmm_chardev *cdev,
 #define VTEMU_ERASE_CHAR			'\0'
 #define VTEMU_TABSPACE_COUNT			5
 
+static void vtemu_blank_display(struct vtemu *v)
+{
+	struct fb_fillrect rect;
+
+	/* Blank frame buffer */
+	rect.dx = 0;
+	rect.dy = 0;
+	rect.width = v->info->var.xres_virtual;
+	rect.height = v->info->var.yres_virtual;
+	rect.color = v->bc;
+	rect.rop = ROP_COPY;
+
+	if (!v->freeze) {
+		v->info->fbops->fb_fillrect(v->info, &rect);
+	}
+}
+
 static void vtemu_cell_draw(struct vtemu *v, struct vtemu_cell *vcell)
 {
-	struct vmm_fb_image img;
+	struct fb_image img;
 
 	if ((vcell->y < v->start_y) ||
 	    ((v->start_y + v->h) <= vcell->y)) {
@@ -430,7 +447,9 @@ static void vtemu_cell_draw(struct vtemu *v, struct vtemu_cell *vcell)
 	img.cmap.blue = NULL;
 	img.cmap.transp = NULL;
 
-	v->info->fbops->fb_imageblit(v->info, &img);
+	if (!v->freeze) {
+		v->info->fbops->fb_imageblit(v->info, &img);
+	}
 }
 
 static void vtemu_cursor_erase(struct vtemu *v)
@@ -449,14 +468,16 @@ static void vtemu_cursor_erase(struct vtemu *v)
 	fboffset = fboffset / 8;
 	fbdst = (u8 *)v->info->screen_base + fboffset;
 
-	fb_memcpy_tofb(fbdst, v->cursor_bkp, v->cursor_bkp_size);
+	if (!v->freeze) {
+		fb_memcpy_tofb(fbdst, v->cursor_bkp, v->cursor_bkp_size);
+	}
 }
 
 static void vtemu_cursor_draw(struct vtemu *v)
 {
 	u8 *fbsrc;
 	u32 fboffset;
-	struct vmm_fb_fillrect rect;
+	struct fb_fillrect rect;
 
 	if ((v->start_y + v->h) <= v->y) {
 		return;
@@ -473,15 +494,17 @@ static void vtemu_cursor_draw(struct vtemu *v)
 						v->info->var.bits_per_pixel;
 	fboffset = fboffset / 8;
 	fbsrc = (u8 *)v->info->screen_base + fboffset;
-	fb_memcpy_fromfb(v->cursor_bkp, fbsrc, v->cursor_bkp_size);
 
-	v->info->fbops->fb_fillrect(v->info, &rect);
+	if (!v->freeze) {
+		fb_memcpy_fromfb(v->cursor_bkp, fbsrc, v->cursor_bkp_size);
+		v->info->fbops->fb_fillrect(v->info, &rect);
+	}
 }
 
 static void vtemu_cursor_clear_down(struct vtemu *v)
 {
 	u32 pos, c;
-	struct vmm_fb_fillrect rect;
+	struct fb_fillrect rect;
 
 	if ((v->start_y + v->h) <= v->y) {
 		return;
@@ -494,7 +517,9 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 	rect.color = v->bc;
 	rect.rop = ROP_COPY;
 
-	v->info->fbops->fb_fillrect(v->info, &rect);
+	if (!v->freeze) {
+		v->info->fbops->fb_fillrect(v->info, &rect);
+	}
 
 	vtemu_cursor_draw(v);
 
@@ -514,8 +539,8 @@ static void vtemu_cursor_clear_down(struct vtemu *v)
 static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 {
 	u32 c, pos;
-	struct vmm_fb_copyarea reg;
-	struct vmm_fb_fillrect rect;
+	struct fb_copyarea reg;
+	struct fb_fillrect rect;
 
 	if (!lines) {
 		return;
@@ -528,7 +553,9 @@ static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 	reg.sx = 0;
 	reg.sy = lines * v->font->height;
 
-	v->info->fbops->fb_copyarea(v->info, &reg);
+	if (!v->freeze) {
+		v->info->fbops->fb_copyarea(v->info, &reg);
+	}
 
 	rect.dx = 0;
 	rect.dy = (v->h - lines) * v->font->height;
@@ -537,7 +564,9 @@ static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 	rect.color = v->bc;
 	rect.rop = ROP_COPY;
 
-	v->info->fbops->fb_fillrect(v->info, &rect);
+	if (!v->freeze) {
+		v->info->fbops->fb_fillrect(v->info, &rect);
+	}
 
 	v->start_y += lines;
 
@@ -551,6 +580,27 @@ static void vtemu_scroll_down(struct vtemu *v, u32 lines)
 			pos = 0;
 		}
 	}
+}
+
+static void vtemu_redraw_display(struct vtemu *v)
+{
+	u32 c, pos;
+
+	/* Blank frame buffer */
+	vtemu_blank_display(v);
+
+	/* Redraw all cells */
+	pos = v->cell_head;
+	for (c = 0; c < v->cell_count; c++) {
+		vtemu_cell_draw(v, &v->cell[pos]);
+		pos++;
+		if (pos == v->cell_len) {
+			pos = 0;
+		}
+	}
+
+	/* Draw cursor */
+	vtemu_cursor_draw(v);
 }
 
 static int vtemu_putchar(struct vtemu *v, u8 ch)
@@ -897,7 +947,7 @@ unhandled:
 	return VMM_OK;
 }
 
-static u32 vtemu_write (struct vmm_chardev *cdev,
+static u32 vtemu_write(struct vmm_chardev *cdev,
 			 u8 *src, u32 len, bool sleep)
 {
 	int rc;
@@ -924,8 +974,45 @@ static u32 vtemu_write (struct vmm_chardev *cdev,
 	return i;
 }
 
+static void vtemu_save(struct fb_info *info, void *priv)
+{
+	struct vtemu *v = priv;
+
+	/* Disconnect input handler */
+	input_disconnect_handler(&v->hndl);
+
+	/* Erase display */
+	vtemu_blank_display(v);
+
+	/* Set freeze state (Must be last step) */
+	v->freeze = TRUE;
+}
+
+static void vtemu_restore(struct fb_info *info, void *priv)
+{
+	struct vtemu *v = priv;
+
+	/* Clear freeze state (Must be first step) */
+	v->freeze = FALSE;
+
+	/* Set current variable screen info */
+	fb_set_var(v->info, &v->var);
+
+	/* Set current color map (if required) */
+	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
+	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
+		fb_set_cmap(&v->cmap, v->info);
+	}
+
+	/* Redraw display */
+	vtemu_redraw_display(v);
+
+	/* Connect input handler */
+	input_connect_handler(&v->hndl);
+}
+
 struct vtemu *vtemu_create(const char *name, 
-			   struct vmm_fb_info *info,
+			   struct fb_info *info,
 			   const char *font_name)
 {
 	u32 c;
@@ -947,7 +1034,6 @@ struct vtemu *vtemu_create(const char *name,
 	    sizeof(v->cdev.name)) {
 		goto free_vtemu;
 	}
-	v->cdev.dev = NULL; 
 	v->cdev.read = vtemu_read;
 	v->cdev.write = vtemu_write;
 	v->cdev.priv = v;
@@ -960,37 +1046,47 @@ struct vtemu *vtemu_create(const char *name,
 	v->hndl.evbit[0] |= BIT_MASK(EV_KEY);
 	v->hndl.event = vtemu_key_event;
 	v->hndl.priv = v;
-	if (vmm_input_register_handler(&v->hndl)) {
-		goto free_vtemu;
+	if (input_register_handler(&v->hndl)) {
+		goto unreg_chardev;
 	}
 
 	/* Connect input handler */
-	if (vmm_input_connect_handler(&v->hndl)) {
+	if (input_connect_handler(&v->hndl)) {
 		goto unreg_ihndl;
 	}
 
 	/* Open frame buffer*/
 	v->info = info;
-	if (vmm_fb_open(v->info)) {
+	if (fb_open(v->info, vtemu_save, vtemu_restore, v)) {
 		goto discon_ihndl;
 	}
 
-	/* Find video mode */
-	v->mode = vmm_fb_find_best_mode(&v->info->var, &v->info->modelist);
+	/* Find video mode with equal or greater resolution */
+	v->mode = fb_find_best_mode(&v->info->var, &v->info->modelist);
 	if (!v->mode) {
-		goto close_fb;
+		goto release_fb;
 	}
 
-	/* Set video mode */
-	if (v->info->fbops->fb_set_par(v->info)) {
-		goto close_fb;
+	/* Convert video mode to variable screen info */
+	fb_videomode_to_var(&v->var, v->mode);
+	v->var.bits_per_pixel = v->info->var.bits_per_pixel;
+	v->var.activate = FB_ACTIVATE_NOW;
+
+	/* Check and update variable screen info */
+	if (fb_check_var(v->info, &v->var)) {
+		goto release_fb;
 	}
 
-	/* Find color map */
+	/* Set current variable screen info */
+	if (fb_set_var(v->info, &v->var)) {
+		goto release_fb;
+	}
+
+	/* Alloc color map (if required) */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
-		if (vmm_fb_alloc_cmap(&v->cmap, 8, 0)) {
-			goto close_fb;
+		if (fb_alloc_cmap(&v->cmap, 8, 0)) {
+			goto release_fb;
 		}
 		v->cmap.red[VTEMU_COLOR_BLACK] = 0x0000;
 		v->cmap.green[VTEMU_COLOR_BLACK] = 0x0000;
@@ -1019,7 +1115,7 @@ struct vtemu *vtemu_create(const char *name,
 		v->fc = VTEMU_DEFAULT_FC;
 		v->bc = VTEMU_DEFAULT_BC;
 	} else {
-		/* Don't require color map for 32-bit colors */
+		/* Don't require color map for pseudo colors */
 		v->fc = 0xFFFFFFFF; /* White foreground color (default) */
 		v->bc = 0x00000000; /* Black background color (default) */
 	}
@@ -1027,12 +1123,12 @@ struct vtemu *vtemu_create(const char *name,
 	/* Set color map (if required) */
 	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
-		if (vmm_fb_set_cmap(&v->cmap, v->info)) {
+		if (fb_set_cmap(&v->cmap, v->info)) {
 			goto dealloc_cmap;
 		}
 	}
 
-	/* Find monochrome fonts */
+	/* Find suitable monochrome fonts */
 	if (font_name) {
 		v->font = vtemu_find_font(font_name);
 	} else {
@@ -1093,6 +1189,9 @@ struct vtemu *vtemu_create(const char *name,
 	}
 	INIT_COMPLETION(&v->in_done);
 
+	/* Erase everything */
+	vtemu_blank_display(v);
+
 	/* Draw cursor */
 	vtemu_cursor_draw(v);
 
@@ -1103,13 +1202,18 @@ free_cursor_bkp:
 free_cells:
 	vmm_free(v->cell);
 dealloc_cmap:
-	vmm_fb_dealloc_cmap(&v->cmap);
-close_fb:
-	vmm_fb_close(v->info);
+	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
+	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
+		fb_dealloc_cmap(&v->cmap);
+	}
+release_fb:
+	fb_release(v->info);
 discon_ihndl:
-	vmm_input_disconnect_handler(&v->hndl);
+	input_disconnect_handler(&v->hndl);
 unreg_ihndl:
-	vmm_input_unregister_handler(&v->hndl);
+	input_unregister_handler(&v->hndl);
+unreg_chardev:
+	vmm_chardev_unregister(&v->cdev);
 free_vtemu:
 	vmm_free(v);
 	return NULL;
@@ -1124,14 +1228,33 @@ int vtemu_destroy(struct vtemu *v)
 		return VMM_EFAIL;
 	}
 
+	/* Set freeze state (for sanity) */
+	v->freeze = TRUE;
+
+	/* Free input FIFO and screen data */
 	fifo_free(v->in_fifo);
 	vmm_free(v->cursor_bkp);
 	vmm_free(v->cell);
-	vmm_fb_dealloc_cmap(&v->cmap);
-	rc = vmm_fb_close(v->info);
-	rc1 = vmm_chardev_unregister(&v->cdev);
-	rc2 = vmm_input_disconnect_handler(&v->hndl);
-	rc3 = vmm_input_unregister_handler(&v->hndl);
+
+	/* Dealloc color map (if required) */
+	if (v->info->fix.visual == FB_VISUAL_TRUECOLOR ||
+	    v->info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
+		fb_dealloc_cmap(&v->cmap);
+	}
+
+	/* Release frame buffer */
+	rc = fb_release(v->info);
+
+	/* Disconnect input handler */
+	rc1 = input_disconnect_handler(&v->hndl);
+
+	/* Unregister input handler */
+	rc2 = input_unregister_handler(&v->hndl);
+
+	/* Unregister character device */
+	rc3 = vmm_chardev_unregister(&v->cdev);
+
+	/* Free video terminal */
 	vmm_free(v);
 
 	if (rc) {

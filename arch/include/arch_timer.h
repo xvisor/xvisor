@@ -25,12 +25,21 @@
 
 #include <vmm_types.h>
 
-/** Initialize clockchip devices 
+/** Initialize clockchip devices
  * Note: In-case of SMP this function is called for each CPU
+ * Note: This function is optional.
+ * Note: The macros VMM_CLOCKCHIP_INIT_DECLARE can also
+ * be used to provide device tree node based host irq
+ * initialization function.
  */
 int arch_clockchip_init(void);
 
-/** Initialize clocksource devices */
+/** Initialize clocksource devices
+ * Note: This function is optional.
+ * Note: The macros VMM_CLOCKSOURCE_INIT_DECLARE can also
+ * be used to provide device tree node based host irq
+ * initialization function.
+ */
 int arch_clocksource_init(void);
 
 #endif

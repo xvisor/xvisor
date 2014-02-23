@@ -26,8 +26,8 @@
 
 #include <vmm_types.h>
 #include <arch_config.h>
+#include <libs/ctype.h>
 
-#define isspace(c) (c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v')
 
 /** Some of the string APIs (e.g. memset(), memcpy(), etc) can be 
  *  optionally implemented in arch code by specifying #define ARCH_HAS_XXXX 
@@ -59,11 +59,15 @@ int strcmp(const char *a, const char *b);
 
 int strncmp(const char *a, const char *b, size_t n);
 
+int strcasecmp(const char *s1, const char *s2);
+
 char *strchr(const char *s, int c);
 
 char *strrchr(const char *s, int c);
 
 char *strnchr(const char *s, size_t n, int c);
+
+const char *strstr(const char *string, const char *substring);
 
 void str2lower(char * s);
 

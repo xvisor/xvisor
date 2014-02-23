@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_percpu.h>
 #include <vmm_smp.h>
 #include <vmm_delay.h>
@@ -30,6 +31,33 @@
 #include <vmm_completion.h>
 #include <vmm_manager.h>
 #include <libs/fifo.h>
+
+/* SMP processor ID for Boot CPU */
+static u32 smp_bootcpu_id = UINT_MAX;
+
+u32 vmm_smp_bootcpu_id(void)
+{
+	return smp_bootcpu_id;
+}
+
+void vmm_smp_set_bootcpu(void)
+{
+	u32 cpu = vmm_smp_processor_id();
+
+	if ((smp_bootcpu_id == UINT_MAX) &&
+	    (cpu < CONFIG_CPU_COUNT)) {
+		smp_bootcpu_id = cpu;
+	}
+}
+
+bool vmm_smp_is_bootcpu(void)
+{
+	if (smp_bootcpu_id == UINT_MAX) {
+		return FALSE;
+	}
+
+	return (smp_bootcpu_id == vmm_smp_processor_id()) ? TRUE : FALSE;
+}
 
 /* Theoretically, number of host CPUs making Sync IPI 
  * simultaneously to a host CPU should not be more than 

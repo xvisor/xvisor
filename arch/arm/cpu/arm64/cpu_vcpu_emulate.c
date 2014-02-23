@@ -30,7 +30,8 @@
 #include <vmm_devemu.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
-#include <cpu_vcpu_spr.h>
+#include <cpu_vcpu_sysregs.h>
+#include <cpu_vcpu_inject.h>
 #include <cpu_vcpu_emulate.h>
 #include <arm_features.h>
 #include <generic_timer.h>
@@ -40,7 +41,7 @@
  * A conditional instruction can trap, even though its condition was
  * FALSE. Hence emulate condition checking in software!
  */
-static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu, 
+static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu,
 				     arch_regs_t *regs,
 				     u32 iss)
 {
@@ -123,7 +124,7 @@ static bool cpu_vcpu_condition_check(struct vmm_vcpu *vcpu,
  * When IO abort occurs from Thumb IF-THEN blocks, the ITSTATE field 
  * of the CPSR is not updated, so we do this manually.
  */
-static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu, 
+static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu,
 				    arch_regs_t *regs)
 {
 	u32 itbits, cond;
@@ -148,7 +149,7 @@ static void cpu_vcpu_update_itstate(struct vmm_vcpu *vcpu,
 	regs->pstate |= (itbits & 0x3) << 25;
 }
 
-int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 			     arch_regs_t *regs,
 			     u32 il, u32 iss)
 {
@@ -185,13 +186,12 @@ done:
 	return VMM_OK;
 }
 
-int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
 				  u32 il, u32 iss)
 {
 	int rc = VMM_OK;
-	u32 opc2, opc1, CRn, Rt, CRm;
-	u64 t;
+	u32 opc2, opc1, CRn, Rt, CRm, t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
@@ -236,19 +236,19 @@ done:
 }
 
 /* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
-/* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t * regs,
 				  u32 il, u32 iss)
 {
-	u32 Rt;
+	int rc = VMM_OK;
+	u32 opc2, opc1, CRn, Rt, CRm, t;
 
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
@@ -257,75 +257,83 @@ int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
 	}
 
 	/* More MCR/MRC parameters */
+	opc2 = (iss & ISS_MCR_MRC_OPC2_MASK) >> ISS_MCR_MRC_OPC2_SHIFT;
+	opc1 = (iss & ISS_MCR_MRC_OPC1_MASK) >> ISS_MCR_MRC_OPC1_SHIFT;
+	CRn  = (iss & ISS_MCR_MRC_CRN_MASK) >> ISS_MCR_MRC_CRN_SHIFT;
 	Rt   = (iss & ISS_MCR_MRC_RT_MASK) >> ISS_MCR_MRC_RT_SHIFT;
+	CRm  = (iss & ISS_MCR_MRC_CRM_MASK) >> ISS_MCR_MRC_CRM_SHIFT;
 
 	if (iss & ISS_MCR_MRC_DIR_MASK) {
 		/* MRC CP14 */
-		/* Read always zero. */
-		cpu_vcpu_reg64_write(vcpu, regs, Rt, 0x0);
+		if (!cpu_vcpu_cp14_read(vcpu, regs, opc1, opc2, CRn, CRm, &t)) {
+			rc = VMM_EFAIL;
+		}
+		if (!rc) {
+			cpu_vcpu_reg64_write(vcpu, regs, Rt, t);
+		}
 	} else {
 		/* MCR CP14 */
-		/* Ignore it. */
+		t = cpu_vcpu_reg64_read(vcpu, regs, Rt);
+		if (!cpu_vcpu_cp14_write(vcpu, regs, opc1, opc2, CRn, CRm, t)) {
+			rc = VMM_EFAIL;
+		}
 	}
 
 done:
-	/* Next instruction */
-	regs->pc += (il) ? 4 : 2;
-	/* Update ITSTATE for Thumb mode */
-	if (regs->pstate & PSR_THUMB_ENABLED) {
-		cpu_vcpu_update_itstate(vcpu, regs);
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
 	}
 
-	return VMM_OK;
+	return rc;
 }
 
 /* TODO: To be implemented later */
-int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
-				  u32 il, u32 iss)
-{
-	return VMM_EFAIL;
-}
-
-int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
-				  u32 il, u32 iss)
-{
-	msr_sync(cptr_el2, CPTR_TTA_MASK | CPTR_RES1_MASK);
-	/* TFA bit should be removed before we try to restore the FP-state */
-	vfp_simd_restore_regs(arm_priv(vcpu)->fpregs);
-	msr(fpexc32_el2, arm_priv(vcpu)->fpexc);
-	msr(fpcr, arm_priv(vcpu)->fpcr);
-	msr(fpsr, arm_priv(vcpu)->fpsr);
-	return VMM_OK;
-}
-
-/* TODO: Can we optimize this by determining the source and target registers
- * and avoid copying all the FPU-regs  */
-int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
-			  arch_regs_t *regs, 
-			  u32 il, u32 iss)
-{
-	vmm_printf("\n\n%s\n", __func__);
-	msr(cptr_el2, CPTR_TTA_MASK | CPTR_RES1_MASK);
-	/* TFA bit should be removed before we try to restore the FP-state */
-	vfp_simd_restore_regs(arm_priv(vcpu)->fpregs);
-	msr(fpexc32_el2, arm_priv(vcpu)->fpexc);
-	msr(fpcr, arm_priv(vcpu)->fpcr);
-	msr(fpsr, arm_priv(vcpu)->fpsr);
-	return VMM_OK;
-}
-
-/* TODO: To be implemented later */
-int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
 	return VMM_EFAIL;
 }
 
-static int do_psci_call(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs, 
+/* TODO: To be implemented later */
+int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
+				  u32 il, u32 iss)
+{
+	return VMM_EFAIL;
+}
+
+int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
+				  u32 il, u32 iss)
+{
+	/* We don't trap SIMD & VFP access so, we should never
+	 * reach here.
+	 *
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
+}
+
+int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs,
+			  u32 il, u32 iss)
+{
+	/* We don't trap VMRS/VMSR instructions so, we should
+	 * never reach here.
+	 *
+	 * For now, just return failure so that VCPU is halted.
+	 */
+	return VMM_EFAIL;
+}
+
+static int do_psci_call(struct vmm_vcpu *vcpu,
+			arch_regs_t *regs,
 			u32 il, u32 iss,
 			bool is_smc)
 {
@@ -341,78 +349,65 @@ static int do_psci_call(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, FALSE);
 }
 
-int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, FALSE);
 }
 
-int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
-int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss)
 {
 	return do_psci_call(vcpu, regs, il, iss, TRUE);
 }
 
-/* TODO: To be implemented later */
-int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss)
 {
+	u64 data;
+	int rc = VMM_OK;
+	int Xt = ((iss & ISS_RT_MASK) >> ISS_RT_SHIFT);
 	bool read = (!!(iss & ISS_SYSREG_READ));
-	int rt = ((iss & ISS_RT_MASK) >> ISS_RT_SHIFT);
 
-	switch (iss & ISS_SYSREG_MASK) {
-		case ISS_CPACR_EL1:
-			vmm_printf("Trying to access CPACR_EL1\n");
-			break;
-		case ISS_CNTFRQ_EL0:
-			vmm_printf("Trying to access CNTFRQ_EL0  \n");
-			break;
-		case ISS_CNTPCT_EL0:
-			vmm_printf("Trying to access CNTPCT_EL0  \n");
-			break;
-		case ISS_CNTKCTL_EL1:
-			vmm_printf("Trying to access CNTKCTL_EL1  \n");
-			break;
-		case ISS_CNTP_TVAL_EL0:
-			vmm_printf("Trying to access CNTP_TVAL_EL0  \n");
-			break;
-		case ISS_CNTP_CTL_EL0:
-			vmm_printf("Trying to access CNTP_CTL_EL0  \n");
-			break;
-		case ISS_CNTP_CVAL_EL0:
-			vmm_printf("Trying to access CNTP_CVAL_EL0  \n");
-			break;
-		case ISS_ACTLR_EL1:
-			if (read) {
-				cpu_vcpu_reg64_write(vcpu, regs, rt, arm_priv(vcpu)->actlr);
-			} else {
-				arm_priv(vcpu)->actlr = cpu_vcpu_reg64_read(vcpu, regs, rt);
-			}
-			regs->pc += 4;
-			return VMM_OK;
-			break;
-		default:
-			vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
-			break;
+	if (read) {
+		if (!cpu_vcpu_sysregs_read(vcpu, regs,
+				iss & ISS_SYSREG_MASK, &data)) {
+			rc = VMM_ENOTAVAIL;
+		}
+		if (!rc) {
+			cpu_vcpu_reg64_write(vcpu, regs, Xt, data);
+		}
+	} else {
+		data = cpu_vcpu_reg64_read(vcpu, regs, Xt);
+		if (!cpu_vcpu_sysregs_write(vcpu, regs,
+				iss & ISS_SYSREG_MASK, data)) {
+			rc = VMM_ENOTAVAIL;
+		}
 	}
-	return VMM_EFAIL;
+
+	if (!rc) {
+		/* Next instruction */
+		regs->pc += 4;
+	}
+
+	return rc;
 }
 
 static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
@@ -423,7 +418,7 @@ static inline u32 arm_sign_extend(u32 imm, u32 len, u32 bits)
 	return imm & ((1 << bits) - 1);
 }
 
-int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 il, u32 iss,
 			  physical_addr_t ipa)
@@ -432,6 +427,21 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u8 data8;
 	u16 data16;
 	u32 data32, sas, sse, srt;
+	enum vmm_devemu_endianness data_endian;
+
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
 	sse = (iss & ISS_ABORT_SSE_MASK) >> ISS_ABORT_SSE_SHIFT;
@@ -441,8 +451,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 
 	switch (sas) {
 	case 0:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data8, sizeof(data8),
+					     data_endian);
 		if (!rc) {
 			if (sse) {
 				cpu_vcpu_reg64_write(vcpu, regs, srt, 
@@ -453,8 +464,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		}
 		break;
 	case 1:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data16, sizeof(data16),
+					     data_endian);
 		if (!rc) {
 			if (sse) {
 				cpu_vcpu_reg64_write(vcpu, regs, srt, 
@@ -465,8 +477,9 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		}
 		break;
 	case 2:
-		rc = vmm_devemu_emulate_read(vcpu, ipa, 
-					     &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_read(vcpu, ipa,
+					     &data32, sizeof(data32),
+					     data_endian);
 		if (!rc) {
 			cpu_vcpu_reg64_write(vcpu, regs, srt, data32);
 		}
@@ -488,7 +501,7 @@ int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa)
@@ -497,6 +510,21 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	u8 data8;
 	u16 data16;
 	u32 data32, sas, srt;
+	enum vmm_devemu_endianness data_endian;
+
+	if (regs->pstate & PSR_MODE32) { /* Aarch32 VCPU */
+		if (regs->pstate & CPSR_BE_ENABLED) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	} else { /* Aarch64 VCPU */
+		if (arm_priv(vcpu)->sysregs.sctlr_el1 & SCTLR_EE_MASK) {
+			data_endian = VMM_DEVEMU_BIG_ENDIAN;
+		} else {
+			data_endian = VMM_DEVEMU_LITTLE_ENDIAN;
+		}
+	}
 
 	sas = (iss & ISS_ABORT_SAS_MASK) >> ISS_ABORT_SAS_SHIFT;
 	srt = (iss & ISS_ABORT_SRT_MASK) >> ISS_ABORT_SRT_SHIFT;
@@ -504,18 +532,21 @@ int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	switch (sas) {
 	case 0:
 		data8 = cpu_vcpu_reg64_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data8, sizeof(data8));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data8, sizeof(data8),
+					      data_endian);
 		break;
 	case 1:
 		data16 = cpu_vcpu_reg64_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data16, sizeof(data16));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data16, sizeof(data16),
+					      data_endian);
 		break;
 	case 2:
 		data32 = cpu_vcpu_reg64_read(vcpu, regs, srt);
-		rc = vmm_devemu_emulate_write(vcpu, ipa, 
-					      &data32, sizeof(data32));
+		rc = vmm_devemu_emulate_write(vcpu, ipa,
+					      &data32, sizeof(data32),
+					      data_endian);
 		break;
 	default:
 		rc = VMM_EFAIL;

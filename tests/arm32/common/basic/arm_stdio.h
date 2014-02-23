@@ -26,6 +26,7 @@
 
 #include <arm_types.h>
 
+bool arm_isprintable(char ch);
 void arm_putc(char ch);
 char arm_getc(void);
 void arm_stdio_init(void);

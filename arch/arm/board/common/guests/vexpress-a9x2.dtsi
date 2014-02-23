@@ -88,22 +88,24 @@
 					compatible = "zero";
 				};
 
-				kmi0 { /* No Keyboard/Mouse Interface */
+				kmi0 {
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10006000>;
 					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "input";
+					compatible = "primecell,arm,pl050,keyboard";
+					interrupts = <44>;
 				};
 
-				kmi1 { /* No Keyboard/Mouse Interface */
+				kmi1 {
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10007000>;
 					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "input";
+					compatible = "primecell,arm,pl050,mouse";
+					interrupts = <45>;
 				};
 
 				uart0 {
@@ -217,13 +219,14 @@
 					compatible = "zero";
 				};
 
-				clcd { /* No Color LCD */
+				clcd {
 					manifest_type = "virtual";
 					address_type = "memory";
 					guest_physical_addr = <0x10020000>;
 					physical_size = <0x1000>;
-					device_type = "misc";
-					compatible = "zero";
+					device_type = "display";
+					compatible = "primecell,pl111";
+					interrupts = <46>;
 				};
 
 				dmc { /* No DMC */
@@ -324,6 +327,24 @@
 					physical_size = <0x1000000>; /* 16 MB */
 					device_type = "misc";
 					compatible = "zero";
+				};
+
+				sram {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x48000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
+				};
+
+				videoram {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x4C000000>;
+					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					physical_size = <0x00000000>; /* To be set by DTS including this file */
+					device_type = "ram";
 				};
 
 				lan9118 { /* Ethernet Controller */

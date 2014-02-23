@@ -26,27 +26,7 @@
 #include <vmm_devdrv.h>
 #include <arch_board.h>
 #include <arch_timer.h>
-
-#include <bcm2835_pm.h>
-#include <bcm2835_timer.h>
-
-/*
- * Reset & Shutdown
- */
-
-int arch_board_reset(void)
-{
-	bcm2835_pm_reset();
-
-	return VMM_OK;
-}
-
-int arch_board_shutdown(void)
-{
-	bcm2835_pm_poweroff();
-
-	return VMM_OK;
-}
+#include <drv/clk-provider.h>
 
 /*
  * Print board information
@@ -63,30 +43,15 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 
 int __init arch_board_early_init(void)
 {
-	int rc;
-
 	/* Host virtual memory, device tree, heap is up.
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
 
-	/* Initialize PM and Watchdog interface */
-	rc = bcm2835_pm_init();
-	if (rc) {
-		return rc;
-	}
+	/* Initialize clock framework */
+	of_clk_init(NULL);
 
 	return VMM_OK;
-}
-
-int __init arch_clocksource_init(void)
-{
-	return bcm2835_clocksource_init();
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	return bcm2835_clockchip_init();
 }
 
 int __init arch_board_final_init(void)

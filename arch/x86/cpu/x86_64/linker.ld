@@ -88,6 +88,15 @@ SECTIONS
 		PROVIDE(_modtbl_end = .);
 	}
 
+	.nidtbl :
+	{
+                . = ALIGN(4096);
+		PROVIDE(_nidtbl_start = .);
+		*(.nidtbl)
+                . = ALIGN(4096);
+		PROVIDE(_nidtbl_end = .);
+	}
+
 	.percpu :
 	{
                 . = ALIGN(4096);

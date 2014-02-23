@@ -39,6 +39,23 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct arm_priv_vfp {
+	/* Control Registers */
+	u32 fpexc;
+	u32 fpscr;
+	u32 fpinst;
+	u32 fpinst2;
+	/* General Purpose Registers */
+	u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
+	u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
+};
+
+struct arm_priv_cp14 {
+	/* ThumbEE Registers */
+	u32 teecr;
+	u32 teehbr;
+};
+
 struct arm_vtlb_entry {
 	u8 valid;
 	u8 ng;
@@ -49,6 +66,77 @@ struct arm_vtlb_entry {
 struct arm_vtlb {
 	struct arm_vtlb_entry table[CPU_VCPU_VTLB_ENTRY_COUNT];
 	u32 victim[CPU_VCPU_VTLB_ZONE_COUNT];
+};
+
+struct arm_priv_cp15 {
+	/* Shadow L1 */
+	struct cpu_l1tbl *l1;
+	/* Shadow DACR */
+	u32 dacr;
+	/* Virtual TLB */
+	struct arm_vtlb vtlb;
+	/* Overlapping vector page base */
+	u32 ovect_base;
+	/* Virtual IO */
+	bool virtio_active;
+	struct cpu_page virtio_page;
+	/* Invalidate i-cache */
+	bool inv_icache;
+	/* Coprocessor Registers */
+	u32 c0_midr;
+	u32 c0_mpidr;
+	u32 c0_cachetype;
+	u32 c0_pfr0;
+	u32 c0_pfr1;
+	u32 c0_dfr0;
+	u32 c0_afr0;
+	u32 c0_mmfr0;
+	u32 c0_mmfr1;
+	u32 c0_mmfr2;
+	u32 c0_mmfr3;
+	u32 c0_isar0;
+	u32 c0_isar1;
+	u32 c0_isar2;
+	u32 c0_isar3;
+	u32 c0_isar4;
+	u32 c0_isar5;
+	u32 c0_ccsid[16]; /* Cache size. */
+	u32 c0_clid; /* Cache level. */
+	u32 c0_cssel; /* Cache size selection. */
+	u32 c1_sctlr; /* System control register. */
+	u32 c1_cpacr; /* Coprocessor access register.  */
+	u32 c2_ttbr0; /* MMU translation table base 0. */
+	u32 c2_ttbr1; /* MMU translation table base 1. */
+	u32 c2_ttbcr; /* MMU translation table base control. */
+	u32 c2_mask; /* MMU translation table base selection mask. */
+	u32 c2_base_mask; /* MMU translation table base 0 mask. */
+	u32 c3_dacr; /* MMU domain access control register */
+	u32 c5_ifsr; /* Fault status registers. */
+	u32 c5_dfsr; /* Fault status registers. */
+	u32 c5_aifsr; /* Auxillary fault status registers. */
+	u32 c5_adfsr; /* Auxillary fault status registers. */
+	u32 c6_ifar; /* Fault address registers. */
+	u32 c6_dfar; /* Fault address registers. */
+	u32 c7_par; /* Translation result. */
+	u32 c7_par64; /* Translation result. (To be used in future) */
+	u32 c9_insn; /* Cache lockdown registers. */
+	u32 c9_data;
+	u32 c9_pmcr; /* performance monitor control register */
+	u32 c9_pmcnten; /* perf monitor counter enables */
+	u32 c9_pmovsr; /* perf monitor overflow status */
+	u32 c9_pmxevtyper; /* perf monitor event type */
+	u32 c9_pmuserenr; /* perf monitor user enable */
+	u32 c9_pminten; /* perf monitor interrupt enables */
+	u32 c12_vbar; /* non-secure vector base addr */
+	u32 c10_prrr;
+	u32 c10_nmrr;
+	u32 c13_fcse; /* FCSE PID. */
+	u32 c13_context; /* Context ID. */
+	u32 c13_tls1; /* User RW Thread register. */
+	u32 c13_tls2; /* User RO Thread register. */
+	u32 c13_tls3; /* Privileged Thread register. */
+	u32 c15_i_max; /* Maximum D-cache dirty line index. */
+	u32 c15_i_min; /* Minimum D-cache dirty line index. */
 };
 
 struct arm_priv {
@@ -79,92 +167,28 @@ struct arm_priv {
 	u32 spsr_fiq;
 	/* Internal CPU feature flags. */
 	u64 features;
-	/* System control coprocessor (cp15) */
-	struct {
-		/* Shadow L1 */
-		struct cpu_l1tbl *l1;
-		/* Shadow DACR */
-		u32 dacr;
-		/* Virtual TLB */
-		struct arm_vtlb vtlb;
-		/* Overlapping vector page base */
-		u32 ovect_base;
-		/* Virtual IO */
-		bool virtio_active;
-		struct cpu_page virtio_page;
-		/* Invalidate i-cache */
-		bool inv_icache;
-		/* Coprocessor Registers */
-		u32 c0_cpuid;
-		u32 c0_cachetype;
-		u32 c0_pfr0;
-		u32 c0_pfr1;
-		u32 c0_dfr0;
-		u32 c0_afr0;
-		u32 c0_mmfr0;
-		u32 c0_mmfr1;
-		u32 c0_mmfr2;
-		u32 c0_mmfr3;
-		u32 c0_isar0;
-		u32 c0_isar1;
-		u32 c0_isar2;
-		u32 c0_isar3;
-		u32 c0_isar4;
-		u32 c0_isar5;
-		u32 c0_ccsid[16]; /* Cache size. */
-		u32 c0_clid; /* Cache level. */
-		u32 c0_cssel; /* Cache size selection. */
-		u32 c1_sctlr; /* System control register. */
-		u32 c1_coproc; /* Coprocessor access register.  */
-		u32 c2_ttbr0; /* MMU translation table base 0. */
-		u32 c2_ttbr1; /* MMU translation table base 1. */
-		u32 c2_ttbcr; /* MMU translation table base control. */
-		u32 c2_mask; /* MMU translation table base selection mask. */
-		u32 c2_base_mask; /* MMU translation table base 0 mask. */
-		u32 c3; /* MMU domain access control register */
-		u32 c5_ifsr; /* Fault status registers. */
-		u32 c5_dfsr; /* Fault status registers. */
-		u32 c6_ifar; /* Fault address registers. */
-		u32 c6_dfar; /* Fault address registers. */
-		u32 c7_par; /* Translation result. */
-		u32 c9_insn; /* Cache lockdown registers. */
-		u32 c9_data;
-		u32 c9_pmcr; /* performance monitor control register */
-		u32 c9_pmcnten; /* perf monitor counter enables */
-		u32 c9_pmovsr; /* perf monitor overflow status */
-		u32 c9_pmxevtyper; /* perf monitor event type */
-		u32 c9_pmuserenr; /* perf monitor user enable */
-		u32 c9_pminten; /* perf monitor interrupt enables */
-		u32 c12_vbar; /* non-secure vector base addr */
-		u32 c10_prrr;
-		u32 c10_nmrr;
-		u32 c13_fcse; /* FCSE PID. */
-		u32 c13_context; /* Context ID. */
-		u32 c13_tls1; /* User RW Thread register. */
-		u32 c13_tls2; /* User RO Thread register. */
-		u32 c13_tls3; /* Privileged Thread register. */
-		u32 c15_i_max; /* Maximum D-cache dirty line index. */
-		u32 c15_i_min; /* Minimum D-cache dirty line index. */
-	} cp15;
-
+	/* VFP context (cp10 & cp11 coprocessors) */
+	struct arm_priv_vfp vfp;
+	/* Debug, Trace, and ThumbEE (cp14 coprocessor) */
+	struct arm_priv_cp14 cp14;
+	/* System control (cp15 coprocessor) */
+	struct arm_priv_cp15 cp15;
 } __attribute((packed));
 
-typedef struct arm_priv arm_priv_t;
-
-struct arm_guest_priv
-{
+struct arm_guest_priv {
 	/* Overlapping vector page */
 	u32 *ovect;
-}__attribute((packed));
-
-typedef struct arm_guest_priv arm_guest_priv_t;
+} __attribute((packed));
 
 #define arm_regs(vcpu)		(&((vcpu)->regs))
-#define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
-#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
+#define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((struct arm_guest_priv *)((guest)->arch_priv))
 
-#define arm_cpuid(vcpu) (arm_priv(vcpu)->cp15.c0_cpuid)
-#define arm_set_feature(vcpu, feat) (arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_cpuid(vcpu)		(arm_priv(vcpu)->cp15.c0_midr)
+#define arm_set_feature(vcpu, feat) \
+				(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_clear_feature(vcpu, feat) \
+				(arm_priv(vcpu)->features &= ~(0x1ULL << (feat)))
 #define arm_feature(vcpu, feat) (arm_priv(vcpu)->features & (0x1ULL << (feat)))
 
 /**

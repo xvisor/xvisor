@@ -19,15 +19,9 @@
 		reg = <0x80000000 0x04000000>; /* 64 MB */
 	};
 
-	soc {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "simple-bus";
-	};
-
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

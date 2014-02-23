@@ -49,6 +49,6 @@ struct vmm_setup_param {
         __setup_param(str, fn, fn, 1)
 
 /* Parse boot time or early parameters */
-void vmm_parse_early_options(char *cmdline);
+void vmm_parse_early_options(const char *cmdline);
 
 #endif /* _VMM_PARAMS_H__ */

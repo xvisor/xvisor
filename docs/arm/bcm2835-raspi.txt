@@ -4,8 +4,7 @@ This section of readme explains how to build & run Xvisor on actual
 Raspberry Pi board using SD booting feature of Raspberry Pi (or BCM2835 SOC).
 
 By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
-show how to run Basic Firmware on Realview-EB-MPCore guest. For more info 
-refer, <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
+show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
 
 As first step of SD booting on BCM2835 SOC, we prepare a SD card (> 4GB) with
 Uboot. To do this,
@@ -16,16 +15,15 @@ Uboot. To do this,
     u-boot prompt whenever you power-on Raspberry Pi
     (For detailed steps, http://elinux.org/RPi_U-Boot)
 
-Once we have SD card prepared for SD booting with u-boot, we add 2 images to 
+Once we have SD card prepared for SD booting with u-boot, we add 2 images to
 the boot partition of SD card:
- 1) Xvisor binary (vmm.bin)
- 2) Patched guest binary 
-    (Patched Realview-eb-mpcore Basic Firmware image, firmware.bin.patched)
+ 1) U-Boot compatible Xvisor binary (uvmm.bin).
+ 2) Disk image containing guest binaries (disk.img).
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -42,84 +40,75 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   [6. Build Basic Firmware for Realview-EB-MPCore Guest, this creates firmware.bin.patched]
   # make -C tests/arm32/realview-eb-mpcore/basic
   
-  [7. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
+  [7. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [8. Mount boot partition (or partition 0) of SD card on your development machine]
+  (Note: For creating <linux_build_directory>/arch/arm/boot/Image refer
+   <xvisor_source_directory>/tests/arm32/realview-eb-mpcore/linux/README)
+  (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
+   <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [9. Copy uvmm.bin to boot partition of SD card]
-  # cp uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+  [8. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
 
-  [10. Copy firmware.bin.patched to boot partition of SD card]
-  # cp build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_sd_card>/arm.bin
+  [9. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  (Note: If you want additional images like cmdlist, patched zImage, 
-   rootfs.img etc. then you should copy these images to boot partition
-   of SD card after above step.)
-  (Note: For more info on images required for linux on Realview-EB-MPCore guest 
-   refer to <xvisor_source>/tests/arm32/realview-eb-mpcore/linux/README.)
+  [10. Copy uvmm.bin to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
-  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [11. Copy disk image to boot partition of SD card]
+  # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [12. Unplug SD card from your development machine and plug it back on Raspberry Pi]
+  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [13. Connect to serial port of Raspberry Pi using Putty or Minicom]
+  [13. Unplug SD card from your development machine and plug it back on Raspberry Pi]
 
-  [14. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+  [14. Connect to serial port of Raspberry Pi using Putty or Minicom]
 
-  [15. Enable MMC interface from U-Boot command line]
+  [15. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+
+  [16. Enable MMC interface from U-Boot command line]
   U-Boot> mmc dev 0:0
 
-  [16. Copy Xvisor from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x00200000 vmm.bin
+  [17. Copy Xvisor from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x00200000 uvmm.bin
 
-  [17. Copy Guest image from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x01000000 arm.bin
+  [18. Copy disk image from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x01000000 disk.img
 
-  (Note: If you want to load additional images like cmdlist, patched zImage, 
-   rootfs.img, etc. from SD card then load these images at address 
-   0x01000000 or higher using fatload command of U-Boot after above step.)
-  (Note: The default DTS used by Xvisor for BCM2835 has one pre-configured
-   Realview-EB-MPCore guest. The NOR flash of the guest is 16 MB in size and is
-   mapped to 0x01000000 host physical address. The guest boots from start of 
-   NOR flash so we put Basic Firmware arm.bin at start of NOR flash and rest of
-   the guest images like cmdlist, patched zImage, rootfs.img, etc. after it.)
-  (Note: For e.g. if we want to load cmdlist, patched zImage and rootfs image
-   into guest NOR flash then use:
-   U-Boot> fatload mmc 0 0x010FF000 cmdlist
-   U-Boot> fatload mmc 0 0x01100000 zImage
-   U-Boot> fatload mmc 0 0x01600000 rootfs.img )
-
-  [18. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [19. Jump into Xvisor after disabling MMU, interrupts, etc]
   U-Boot> bootm 0x00200000
 
-  (Note: Raspberry Pi (or BCM2835 SOC) U-Boot runs with mmu disabled so we 
-   don't need to use bootm for booting Xvisor. In future, we might use bootm 
-   to boot Xvisor from U-Boot)
-
-  [18. Kick Guest0 for starting Basic Firmware]
+  [20. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [19. Bind to virtual UART]
+  [21. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [20. Say 'hi' to Basic Firmware]
+  [22. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  (Note: If you had linux images loaded in guest NOR flash then instead of 
-   above step you can start booting linux,
-   basic# copy 0x00008000 0x40100000 0x4F8000
-   basic# copy 0x00500000 0x40600000 0x600000
-   basic# start_linux 0x00008000 0x00500000 0x600000
-   OR
+  (Note: If you had linux images loaded in guest NOR flash then
+   instead of above step you can start booting linux,
    basic# autoexec)
 
-  [21. Say 'hello' to Basic Firmware]
+  [23. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [22. Check various commands of Basic Firmware]
+  [24. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [23. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [25. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
@@ -127,24 +116,23 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
 	Xvisor on QEMU Raspberry-Pi (or BCM2835 SOC) Host
 
-This section of readme explains how to build & run Xvisor on 
-Raspberry-Pi QEMU (https://github.com/Torlus/qemu.git). 
+This section of readme explains how to build & run Xvisor on Raspberry-Pi QEMU
+(Raspberry-Pi QEMU source, https://github.com/Torlus/qemu.git).
 
-By default, Xvisor for Raspberry-Pi supports Realview-EB-MPCore guest so 
-we will show how to run Basic Firmware on Raspberry-Pi guest. For more info
-refer, <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
+By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
+show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
 
 Please follow the steps below to build & run Basic Firmware on 
 Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-none-linux-gnueabi-
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Raspberry Pi (or BCM2835 SOC) default settings]
-  # make ARCH=arm bcm2835-raspi-defconfig 
+  # make ARCH=arm bcm2835-raspi-defconfig
 
   [4. Build Xvisor]
   # make
@@ -152,28 +140,51 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic
 
-  [6. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched@0x01000000
+  [6. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [7. Launch QEMU]
-  # qemu-system-arm -M raspi -display none -serial stdio -kernel build/qemu.img
+  (Note: For creating <linux_build_directory>/arch/arm/boot/Image refer
+   <xvisor_source_directory>/tests/arm32/realview-eb-mpcore/linux/README)
+  (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
+   <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [8. Kick Guest0 for starting Basic Firmware]
+  [7. Create qemu.img for running it on QEMU]
+  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
+
+  [8. Launch QEMU]
+  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/qemu.img
+
+  [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [9. Bind to virtual UART]
+  [10. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [10. Say 'hi' to Basic Firmware]
+  [11. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
-  [11. Say 'hello' to Basic Firmware]
+  (Note: If you had linux images loaded in guest NOR flash then
+   instead of above step you can start booting linux,
+   basic# autoexec)
+
+  [12. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [12. Check various commands of Basic Firmware]
+  [13. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [14. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)

@@ -21,9 +21,7 @@
 # @brief list of Generic ARMv8 board objects.
 # */
 
-board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
-board-objs-$(CONFIG_SMP)+=brd_smp.o
 board-objs-y+=dts/skeleton.o
 
 board-dtbs-$(CONFIG_FOUNDATION_V8_ONE_GUEST_PB_A8_DTS)+=dts/foundation-v8/one_guest_pb-a8.dtb

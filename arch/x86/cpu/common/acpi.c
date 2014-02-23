@@ -35,7 +35,7 @@
 #include <arch_cpu.h>
 #include <cpu_mmu.h>
 #include <cpu_apic.h>
-#include <cpu_private.h>
+#include <cpu_features.h>
 #include <acpi.h>
 
 struct acpi_search_area acpi_areas[] = {

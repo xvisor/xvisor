@@ -24,6 +24,7 @@
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
+#include <libs/ctype.h>
 #include <libs/stringlib.h>
 
 size_t strlen(const char *s)
@@ -133,6 +134,17 @@ int strncmp(const char *a, const char *b, size_t n)
 	}
 }
 
+int strcasecmp(const char *s1, const char *s2)
+{
+	int c1, c2;
+
+	do {
+		c1 = tolower(*s1++);
+		c2 = tolower(*s2++);
+	} while (c1 == c2 && c1 != 0);
+	return c1 - c2;
+}
+
 char *strchr(const char *s, int c)
 {
 	/* search for the c char starting left */
@@ -155,7 +167,39 @@ char *strnchr(const char *s, size_t n, int c)
 	return *s == '\0' || n == 0 ? NULL : (char *)s;
 }
 
-void str2lower(char * s)
+const char *strstr(const char *string, const char *substring)
+{
+	const char *a, *b;
+
+	/* First scan quickly through the two strings looking for a
+	 * single-character match.  When it's found, then compare the
+	 * rest of the substring.
+	 */
+
+	b = substring;
+	if (*b == 0) {
+		return string;
+	}
+	for ( ; *string != 0; string += 1) {
+		if (*string != *b) {
+			continue;
+		}
+		a = string;
+		while (1) {
+			if (*b == 0) {
+				return string;
+			}
+			if (*a++ != *b++) {
+				break;
+			}
+		}
+		b = substring;
+	}
+
+	return NULL;
+}
+
+void str2lower(char *s)
 {
 	if (s) {
 		for (; *s != '\0'; s++) {
@@ -166,7 +210,7 @@ void str2lower(char * s)
 	}
 }
 
-void str2upper(char * s)
+void str2upper(char *s)
 {
 	if (s) {
 		for (; *s != '\0'; s++) {

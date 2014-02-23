@@ -21,9 +21,7 @@
 # @brief list of Exynos4 board objects.
 # */
 
-board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
-board-objs-$(CONFIG_SMP)+=brd_smp.o
 board-objs-$(CONFIG_SMDKC210_ONE_GUEST_PBA8_DTS)+=dts/smdkc210/one_guest_pb-a8.o
 board-objs-$(CONFIG_SMDKC210_TWO_GUEST_PBA8_DTS)+=dts/smdkc210/two_guest_pb-a8.o
 board-objs-$(CONFIG_SMDKC210_ONE_GUEST_VEXPRESSA9_DTS)+=dts/smdkc210/one_guest_vexpress-a9.o

@@ -21,9 +21,7 @@
 # @brief list of Realview board objects.
 # */
 
-board-objs-y+=brd_defterm.o
 board-objs-y+=brd_main.o
-board-objs-$(CONFIG_SMP)+=brd_smp.o
 board-objs-$(CONFIG_REALVIEW_EBMP_ONE_GUEST_EBMP_DTS)+=dts/eb-mpcore/one_guest_ebmp.o
 board-objs-$(CONFIG_REALVIEW_EBMP_TWO_GUEST_EBMP_DTS)+=dts/eb-mpcore/two_guest_ebmp.o
 board-objs-$(CONFIG_REALVIEW_PBA8_ONE_GUEST_PBA8_DTS)+=dts/pb-a8/one_guest_pb-a8.o

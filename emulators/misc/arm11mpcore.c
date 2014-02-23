@@ -35,11 +35,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <libs/stringlib.h>
 #include <emu/arm_mptimer_emulator.h>
 #include <emu/gic_emulator.h>
 
@@ -142,89 +138,100 @@ static int arm11mpcore_scu_write(struct arm11mpcore_priv_state *s,
 	return rc;
 }
 
-static int arm11mpcore_emulator_read(struct vmm_emudev *edev,
-				     physical_addr_t offset, 
-				     void *dst, u32 dst_len)
+static int arm11mpcore_reg_read(struct arm11mpcore_priv_state *s,
+				u32 offset, u32 *dst)
 {
-	struct arm11mpcore_priv_state *s = edev->priv;
-	int rc = VMM_OK;
-	u32 regval = 0x0;
+	int rc;
 
 	if (offset < 0x100) {
 		/* Read SCU block */
-		rc = arm11mpcore_scu_read(s, offset & 0xFC, &regval);
+		rc = arm11mpcore_scu_read(s, offset & 0xFC, dst);
 	} else if (0x600 <= offset && offset < 0x700) {
 		/* Read Private & Watchdog Timer blocks */
-		rc = mptimer_reg_read(s->mpt, offset & 0xFC, &regval);
+		rc = mptimer_reg_read(s->mpt, offset & 0xFC, dst);
 	} else {
 		/* Read GIC */
-		rc = gic_reg_read(s->gic, offset, &regval);
-	}
-
-	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		rc = gic_reg_read(s->gic, offset, dst);
 	}
 
 	return rc;
 }
 
-static int arm11mpcore_emulator_write(struct vmm_emudev *edev,
-				      physical_addr_t offset, 
-				      void *src, u32 src_len)
+static int arm11mpcore_reg_write(struct arm11mpcore_priv_state *s,
+				 u32 offset, u32 src_mask, u32 src)
 {
-	struct arm11mpcore_priv_state *s = edev->priv;
-	int rc = VMM_OK, i;
-	u32 regmask = 0x0, regval = 0x0;
-
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
-	}
-	regval = (regval << ((offset & 0x3) * 8));
+	int rc;
 
 	if (offset < 0x100) {
 		/* Write SCU */
-		rc = arm11mpcore_scu_write(s, offset & 0xFC, regmask, regval);
+		rc = arm11mpcore_scu_write(s, offset & 0xFC, src_mask, src);
 	} else if (0x600 <= offset && offset < 0x700) {
 		/* Write Private & Watchdog Timer blocks */
-		rc = mptimer_reg_write(s->mpt, offset & 0xFC, regmask, regval);
+		rc = mptimer_reg_write(s->mpt, offset & 0xFC, src_mask, src);
 	} else {
 		/* Write GIC */
-		rc = gic_reg_write(s->gic, offset, regmask, regval);
+		rc = gic_reg_write(s->gic, offset, src_mask, src);
 	}
 
 	return rc;
+}
+
+static int arm11mpcore_emulator_read8(struct vmm_emudev *edev,
+				      physical_addr_t offset, 
+				      u8 *dst)
+{	
+	int rc;
+	u32 regval = 0x0;
+
+	rc = arm11mpcore_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFF;
+	}
+
+	return rc;
+}
+
+static int arm11mpcore_emulator_read16(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u16 *dst)
+{
+	int rc;
+	u32 regval = 0x0;
+
+	rc = arm11mpcore_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
+	}
+
+	return rc;
+}
+
+static int arm11mpcore_emulator_read32(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u32 *dst)
+{
+	return arm11mpcore_reg_read(edev->priv, offset, dst);
+}
+
+static int arm11mpcore_emulator_write8(struct vmm_emudev *edev,
+				       physical_addr_t offset, 
+				       u8 src)
+{
+	return arm11mpcore_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int arm11mpcore_emulator_write16(struct vmm_emudev *edev,
+				        physical_addr_t offset, 
+				        u16 src)
+{
+	return arm11mpcore_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int arm11mpcore_emulator_write32(struct vmm_emudev *edev,
+				        physical_addr_t offset, 
+				        u32 src)
+{
+	return arm11mpcore_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int arm11mpcore_emulator_reset(struct vmm_emudev *edev)
@@ -249,33 +256,31 @@ static int arm11mpcore_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	struct arm11mpcore_priv_state *s;
-	const char *attr;
-	u32 parent_irq, timer_irq, wdt_irq;
+	u32 parent_irq, timer_irq[2];
 
 	s = vmm_zalloc(sizeof(struct arm11mpcore_priv_state));
 	if (!s) {
-		rc = VMM_EFAIL;
+		rc = VMM_ENOMEM;
 		goto arm11mp_probe_done;
 	}
 
 	s->num_cpu = guest->vcpu_count;
 
-	attr = vmm_devtree_attrval(edev->node, "parent_irq");
-	if (!attr) {
+	rc = vmm_devtree_read_u32(edev->node, "parent_irq", &parent_irq);
+	if (rc) {
 		goto arm11mp_probe_failed;
 	}
-	parent_irq = *((u32 *)attr);
 
-	attr = vmm_devtree_attrval(edev->node, "timer_irq");
-	if (!attr) {
+	rc = vmm_devtree_read_u32_array(edev->node, "timer_irq",
+					timer_irq, array_size(timer_irq));
+	if (rc) {
 		goto arm11mp_probe_failed;
 	}
-	timer_irq = ((u32 *)attr)[0];
-	wdt_irq = ((u32 *)attr)[1];
 
 	/* Allocate and init MPT state */
 	if (!(s->mpt = mptimer_state_alloc(guest, edev, s->num_cpu, 1000000,
-				 	  timer_irq, wdt_irq))) {
+				 	   timer_irq[0], timer_irq[1]))) {
+		rc = VMM_ENOMEM;
 		goto arm11mp_probe_failed;
 	}
 
@@ -283,6 +288,7 @@ static int arm11mpcore_emulator_probe(struct vmm_guest *guest,
 	if (!(s->gic = gic_state_alloc(edev->node->name, guest, 
 				       GIC_TYPE_ARM11MPCORE, s->num_cpu,
 				       FALSE, 0, 96, parent_irq))) {
+		rc = VMM_ENOMEM;
 		goto arm11mp_gic_alloc_failed;
 	}
 
@@ -298,7 +304,6 @@ arm11mp_gic_alloc_failed:
 
 arm11mp_probe_failed:
 	vmm_free(s);
-	rc = VMM_EFAIL;
 
 arm11mp_probe_done:
 	return rc;
@@ -333,9 +338,14 @@ static struct vmm_devtree_nodeid arm11mpcore_emuid_table[] = {
 static struct vmm_emulator arm11mpcore_emulator = {
 	.name = "arm11mpcore",
 	.match_table = arm11mpcore_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = arm11mpcore_emulator_probe,
-	.read = arm11mpcore_emulator_read,
-	.write = arm11mpcore_emulator_write,
+	.read8 = arm11mpcore_emulator_read8,
+	.write8 = arm11mpcore_emulator_write8,
+	.read16 = arm11mpcore_emulator_read16,
+	.write16 = arm11mpcore_emulator_write16,
+	.read32 = arm11mpcore_emulator_read32,
+	.write32 = arm11mpcore_emulator_write32,
 	.reset = arm11mpcore_emulator_reset,
 	.remove = arm11mpcore_emulator_remove,
 };

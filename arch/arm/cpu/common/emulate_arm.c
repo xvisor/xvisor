@@ -3102,6 +3102,7 @@ static int arm_inst_stcx(u32 inst,
 					return rc;
 				}
 				address += 4;
+				i++;
 			}
 			if (wback) {
 				cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
@@ -3171,6 +3172,7 @@ static int arm_inst_ldcx_i(u32 inst,
 				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
+				i++;
 			}
 			if (wback) {
 				cpu_vcpu_reg_write(vcpu, regs, Rn, offset_addr);
@@ -3237,6 +3239,7 @@ static int arm_inst_ldcx_l(u32 inst,
 				cp->ldcstc_write(vcpu, regs, i, D, 
 							CRd, uopt, imm8, data);
 				address += 4;
+				i++;
 			}
 		}
 	}
@@ -3537,10 +3540,22 @@ static int arm_instgrp_coproc(u32 inst,
 		case 0B101111:
 			if (inst & ARM_INST_COPROC_OP_MASK) {
 				/* FIXME:
-				 * Advanced SIMD, VFP 8, 16, & 32-bit transfer
-				 * transfer between ARM core and extension 
-				 * registers 
+				 * Advanced SIMD, VFP 8, 16, & 32-bit
+				 * transfer between ARM core and extension
+				 * registers
 				 */
+				if (cpro == 10) {
+					switch (op1 & 0xF) {
+					case 0xF:
+						return arm_inst_mrcx(inst, 
+								regs, vcpu);
+					case 0xE:
+						return arm_inst_mcrx(inst, 
+								regs, vcpu);
+					default:
+						break;
+					};
+				}
 			} else {
 				/* FIXME:
 				 * VFP data-processing instructions 

@@ -38,6 +38,53 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct arm_priv_vfp {
+	/* 64bit EL1/EL0 registers */
+	u32 mvfr0;
+	u32 mvfr1;
+	u32 mvfr2;
+	u32 fpcr;
+	u32 fpsr;
+	u64 fpregs[64]; /* 32x 128bit floating point registers. */
+	/* 32bit only registers */
+	u32 fpexc32;
+};
+
+struct arm_priv_sysregs {
+	/* 64bit EL1/EL0 registers */
+	u64 sp_el0;
+	u64 sp_el1;
+	u64 elr_el1;
+	u64 spsr_el1;
+	u64 midr_el1;	
+	u64 mpidr_el1;
+	u64 sctlr_el1; 	/* System control register. */
+	u64 actlr_el1;	/* Auxillary control register. */
+	u64 cpacr_el1; 	/* Coprocessor access register.  */
+	u64 ttbr0_el1;	/* MMU translation table base 0. */
+	u64 ttbr1_el1;	/* MMU translation table base 1. */
+	u64 tcr_el1; 	/* MMU translation control register. */
+	u64 esr_el1;	/* Exception status register. */
+	u64 far_el1; 	/* Fault address register. */
+	u64 par_el1;	/* Translation result. */
+	u64 mair_el1;	/* Memory attribute Index Register */
+	u64 vbar_el1; 	/* Vector base address register */
+	u64 contextidr_el1; /* Context ID. */
+	u64 tpidr_el0; /* User RW Thread register. */
+	u64 tpidr_el1; /* Privileged Thread register. */
+	u64 tpidrro_el0; 	/* User RO Thread register. */
+	/* 32bit only registers */
+	u32 spsr_abt;
+	u32 spsr_und;
+	u32 spsr_irq;
+	u32 spsr_fiq;
+	u32 dacr32_el2;	/* MMU domain access control register */
+	u32 ifsr32_el2; 	/* Fault status registers. */
+	/* 32bit only ThumbEE registers */
+	u64 teecr32_el1;
+	u32 teehbr32_el1;
+};
+
 struct arm_priv {
 	/* Internal CPU feature flags. */
 	u32 cpuid;
@@ -47,45 +94,10 @@ struct arm_priv {
 	u64 hcr;	/* Hypervisor Configuration */
 	u64 cptr;	/* Coprocessor Trap Register */
 	u64 hstr;	/* Hypervisor System Trap Register */
-	/* EL1 Registers */
-	u64 sp_el0;
-	u64 sp_el1;
-	u64 elr_el1;
-	u64 spsr_el1;
-	u32 spsr_abt;
-	u32 spsr_und;
-	u32 spsr_irq;
-	u32 spsr_fiq;
-	u64 midr;	
-	u64 mpidr;
-	u64 sctlr; 	/* System control register. */
-	u64 actlr;	/* Auxillary control register. */
-	u64 cpacr; 	/* Coprocessor access register.  */
-	u64 ttbr0;	/* MMU translation table base 0. */
-	u64 ttbr1;	/* MMU translation table base 1. */
-	u64 tcr; 	/* MMU translation control register. */
-	u64 esr;	/* Exception status register. */
-	u64 far; 	/* Fault address register. */
-	u64 par;	/* Translation result. */
-	u64 mair;	/* Memory attribute Index Register */
-	u64 vbar; 	/* Vector base address register */
-	u64 contextidr; /* Context ID. */
-	u64 tpidr_el0; /* User RW Thread register. */
-	u64 tpidr_el1; /* Privileged Thread register. */
-	u64 tpidrro; 	/* User RO Thread register. */
-	/* ThumbEE registers */
-	u64 teecr;
-	u32 teehbr;
+	/* EL1/EL0 system registers */
+	struct arm_priv_sysregs sysregs;
 	/* VFP & SMID registers */
-	u32 fpexc;
-	u32 fpcr;
-	u32 fpsr;
-	u64 fpregs[128]; /* 32x32 floating point registers. */
-	/* 32bit only registers */
-	u32 cp15_c0_c1[8];  
-	u32 cp15_c0_c2[8];  
-	u32 dacr;	/* MMU domain access control register */
-	u32 ifsr; 	/* Fault status registers. */
+	struct arm_priv_vfp vfp;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */
@@ -97,22 +109,20 @@ struct arm_priv {
 	void *vgic_priv;
 } __attribute((packed));
 
-typedef struct arm_priv arm_priv_t;
-
 struct arm_guest_priv {
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
 };
 
-typedef struct arm_guest_priv arm_guest_priv_t;
-
 #define arm_regs(vcpu)		(&((vcpu)->regs))
-#define arm_priv(vcpu)		((arm_priv_t *)((vcpu)->arch_priv))
-#define arm_guest_priv(guest)	((arm_guest_priv_t *)((guest)->arch_priv))
+#define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
+#define arm_guest_priv(guest)	((struct arm_guest_priv *)((guest)->arch_priv))
 
 #define arm_cpuid(vcpu)		(arm_priv(vcpu)->cpuid)
 #define arm_set_feature(vcpu, feat) \
 			(arm_priv(vcpu)->features |= (0x1ULL << (feat)))
+#define arm_clear_feature(vcpu, feat) \
+			(arm_priv(vcpu)->features &= ~(0x1ULL << (feat)))
 #define arm_feature(vcpu, feat)	\
 			(arm_priv(vcpu)->features & (0x1ULL << (feat)))
 

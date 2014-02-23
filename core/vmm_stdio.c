@@ -23,12 +23,15 @@
 
 #include <vmm_error.h>
 #include <vmm_main.h>
+#include <vmm_chardev.h>
+#include <vmm_spinlocks.h>
 #include <vmm_stdio.h>
-#include <stdarg.h>
-#include <libs/stringlib.h>
-#include <libs/mathlib.h>
 #include <arch_config.h>
 #include <arch_defterm.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+
+#include <stdarg.h>
 
 #define PAD_RIGHT	1
 #define PAD_ZERO	2

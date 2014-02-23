@@ -28,6 +28,7 @@
 	      		device_type = "fb";
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
+			use_dma = <1>;
 		};
 
 		eth0 {
@@ -36,7 +37,7 @@
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
 			interrupts = <60>;
-			switch = "netbridge0";
+			switch = "br0";
 		};
 
 		sbridge {
@@ -57,10 +58,14 @@
 		      		reg = <0x10000000 0x1000>;
 			};
 
-			sysctl0 { /* System Controller */
+			sysctl: sysctl0 { /* System Controller */
 		      		device_type = "sys";
 		      		compatible = "arm,sp810";
 		      		reg = <0x10001000 0x1000>;
+				clocks = <&refclk32khz>, <&refclk1mhz>;
+				clock-names = "refclk", "timclk", "apb_pclk";
+				#clock-cells = <1>;
+				clock-output-names = "timerclken0", "timerclken1", "timerclken2", "timerclken3";
 			};
 
 			mmci0 { /* Multimedia Card Interface */
@@ -98,6 +103,8 @@
 		      		compatible = "arm,sp804";
 		      		reg = <0x10011000 0x1000>;
 				interrupts = <36>;
+				clocks = <&sysctl 0>, <&sysctl 1>;
+				clock-names = "timclken1", "timclken2";
 			};
 
 			timer23 {
@@ -105,6 +112,8 @@
 		      		compatible = "arm,sp804";
 		      		reg = <0x10012000 0x1000>;
 				interrupts = <37>;
+				clocks = <&sysctl 2>, <&sysctl 3>;
+				clock-names = "timclken1", "timclken2";
 			};
 
 			RTC0: rtc0 {
@@ -113,18 +122,26 @@
 		      		reg = <0x10017000 0x1000>;
 				interrupts = <42>;
 			};
-
-			sysctl1 { /* System Controller */
-		      		device_type = "sys";
-		      		compatible = "arm,sp810";
-		      		reg = <0x1001A000 0x1000>;
-			};
 		};
+	};
+
+	refclk1mhz: refclk1mhz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <1000000>;
+		clock-output-names = "refclk1mhz";
+	};
+
+	refclk32khz: refclk32khz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "refclk32khz";
 	};
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

@@ -36,10 +36,7 @@
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
 #include <vmm_stdio.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
@@ -312,453 +309,6 @@ static void smc91c111_queue_tx(smc91c111_state *s, int packet)
 	smc91c111_do_tx(s);
 }
 
-static int smc91c111_reset(smc91c111_state *s)
-{
-	s->bank = 0;
-	s->tx_fifo_len = 0;
-	s->tx_fifo_done_len = 0;
-	s->rx_fifo_len = 0;
-	s->allocated = 0;
-	s->packet_num = 0;
-	s->tx_alloc = 0;
-	s->tcr = 0;
-	s->rcr = 0;
-	s->cr = 0xa0b1;
-	s->ctr = 0x1210;
-	s->ptr = 0;
-	s->ercv = 0x1f;
-	s->int_level = INT_TX_EMPTY;
-	s->int_mask = 0;
-	smc91c111_update(s);
-
-	return VMM_OK;
-}
-
-static int smc91c111_emulator_reset(struct vmm_emudev *edev)
-{
-	smc91c111_state *s = edev->priv;
-
-	return smc91c111_reset(s);
-}
-
-#define SET_LOW(name, val) s->name = (s->name & 0xff00) | val
-#define SET_HIGH(name, val) s->name = (s->name & 0xff) | (val << 8)
-
-static void smc91c111_writeb(void *opaque, physical_addr_t offset,
-		u32 value)
-{
-	smc91c111_state *s = (smc91c111_state *)opaque;
-
-	offset = offset & 0xf;
-	if (offset == 14) {
-		s->bank = value;
-		return;
-	}
-	if (offset == 15)
-		return;
-	switch (s->bank) {
-		case 0:
-			switch (offset) {
-				case 0: /* TCR */
-					SET_LOW(tcr, value);
-					return;
-				case 1:
-					SET_HIGH(tcr, value);
-					return;
-				case 4: /* RCR */
-					SET_LOW(rcr, value);
-					return;
-				case 5:
-					SET_HIGH(rcr, value);
-					if (s->rcr & RCR_SOFT_RST)
-						smc91c111_reset(s);
-					return;
-				case 10: case 11: /* RPCR */
-					/* Ignored */
-					return;
-				case 12: case 13: /* Reserved */
-					return;
-			}
-			break;
-
-		case 1:
-			switch (offset) {
-				case 0: /* CONFIG */
-					SET_LOW(cr, value);
-					return;
-				case 1:
-					SET_HIGH(cr,value);
-					return;
-				case 2: case 3: /* BASE */
-				case 4: case 5: case 6: case 7: case 8: case 9: /* IA */
-					/* Not implemented.  */
-					return;
-				case 10: /* Genral Purpose */
-					SET_LOW(gpr, value);
-					return;
-				case 11:
-					SET_HIGH(gpr, value);
-					return;
-				case 12: /* Control */
-					if (value & 1)
-						vmm_printf("smc91c111:EEPROM store not implemented\n");
-					if (value & 2)
-						vmm_printf("smc91c111:EEPROM reload not implemented\n");
-					value &= ~3;
-					SET_LOW(ctr, value);
-					return;
-				case 13:
-					SET_HIGH(ctr, value);
-					return;
-			}
-			break;
-
-		case 2:
-			switch (offset) {
-				case 0: /* MMU Command */
-					switch (value >> 5) {
-						case 0: /* no-op */
-							break;
-						case 1: /* Allocate for TX.  */
-							s->tx_alloc = 0x80;
-							s->int_level &= ~INT_ALLOC;
-							smc91c111_update(s);
-							smc91c111_tx_alloc(s);
-							break;
-						case 2: /* Reset MMU.  */
-							s->allocated = 0;
-							s->tx_fifo_len = 0;
-							s->tx_fifo_done_len = 0;
-							s->rx_fifo_len = 0;
-							s->tx_alloc = 0;
-							break;
-						case 3: /* Remove from RX FIFO.  */
-							smc91c111_pop_rx_fifo(s);
-							break;
-						case 4: /* Remove from RX FIFO and release.  */
-							if (s->rx_fifo_len > 0) {
-								smc91c111_release_packet(s, s->rx_fifo[0]);
-							}
-							smc91c111_pop_rx_fifo(s);
-							break;
-						case 5: /* Release.  */
-							smc91c111_release_packet(s, s->packet_num);
-							break;
-						case 6: /* Add to TX FIFO.  */
-							smc91c111_queue_tx(s, s->packet_num);
-							break;
-						case 7: /* Reset TX FIFO.  */
-							s->tx_fifo_len = 0;
-							s->tx_fifo_done_len = 0;
-							break;
-					}
-					return;
-				case 1:
-					/* Ignore.  */
-					return;
-				case 2: /* Packet Number Register */
-					s->packet_num = value;
-					return;
-				case 3: case 4: case 5:
-					/* Should be readonly, but linux writes to them anyway. Ignore.  */
-					return;
-				case 6: /* Pointer */
-					SET_LOW(ptr, value);
-					return;
-				case 7:
-					SET_HIGH(ptr, value);
-					return;
-				case 8: case 9: case 10: case 11: /* Data */
-					{
-						int p;
-						int n;
-
-						if (s->ptr & 0x8000)
-							n = s->rx_fifo[0];
-						else
-							n = s->packet_num;
-						p = s->ptr & 0x07ff;
-						if (s->ptr & 0x4000) {
-							s->ptr = (s->ptr & 0xf800) | ((s->ptr + 1) & 0x7ff);
-						} else {
-							p += (offset & 3);
-						}
-						s->data[n][p] = value;
-					}
-					return;
-				case 12: /* Interrupt ACK.  */
-					s->int_level &= ~(value & 0xd6);
-					if (value & INT_TX)
-						smc91c111_pop_tx_fifo_done(s);
-					smc91c111_update(s);
-					return;
-				case 13: /* Interrupt mask.  */
-					s->int_mask = value;
-					smc91c111_update(s);
-					return;
-			}
-			break;
-
-		case 3:
-			switch (offset) {
-				case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-					/* Multicast table.  */
-					/* Not implemented.  */
-					return;
-				case 8: case 9: /* Management Interface.  */
-					/* Not implemented.  */
-					return;
-				case 12: /* Early receive.  */
-					s->ercv = value & 0x1f;
-				case 13:
-					/* Ignore.  */
-					return;
-			}
-			break;
-	}
-	vmm_printf("smc91c111_write: Bad reg %d:%x\n", s->bank, (int)offset);
-}
-
-static u32 smc91c111_readb(void *opaque, physical_addr_t offset)
-{
-	smc91c111_state *s = (smc91c111_state *)opaque;
-
-	offset = offset & 0xf;
-	if (offset == 14) {
-		return s->bank;
-	}
-	if (offset == 15)
-		return 0x33;
-	switch (s->bank) {
-		case 0:
-			switch (offset) {
-				case 0: /* TCR */
-					return s->tcr & 0xff;
-				case 1:
-					return s->tcr >> 8;
-				case 2: /* EPH Status */
-					return 0;
-				case 3:
-					return 0x40;
-				case 4: /* RCR */
-					return s->rcr & 0xff;
-				case 5:
-					return s->rcr >> 8;
-				case 6: /* Counter */
-				case 7:
-					/* Not implemented.  */
-					return 0;
-				case 8: /* Memory size.  */
-					return NUM_PACKETS;
-				case 9: /* Free memory available.  */
-					{
-						int i;
-						int n;
-						n = 0;
-						for (i = 0; i < NUM_PACKETS; i++) {
-							if (s->allocated & (1 << i))
-								n++;
-						}
-						return n;
-					}
-				case 10: case 11: /* RPCR */
-					/* Not implemented.  */
-					return 0;
-				case 12: case 13: /* Reserved */
-					return 0;
-			}
-			break;
-
-		case 1:
-			switch (offset) {
-				case 0: /* CONFIG */
-					return s->cr & 0xff;
-				case 1:
-					return s->cr >> 8;
-				case 2: case 3: /* BASE */
-					/* Not implemented.  */
-					return 0;
-				case 4: case 5: case 6: case 7: case 8: case 9: /* IA */
-					//TBD
-					//return s->conf.macaddr.a[offset - 4];
-					return s->mac[offset -4];
-					vmm_printf("Mac address read offset %d\n", offset);
-					return 0;
-				case 10: /* General Purpose */
-					return s->gpr & 0xff;
-				case 11:
-					return s->gpr >> 8;
-				case 12: /* Control */
-					return s->ctr & 0xff;
-				case 13:
-					return s->ctr >> 8;
-			}
-			break;
-
-		case 2:
-			switch (offset) {
-				case 0: case 1: /* MMUCR Busy bit.  */
-					return 0;
-				case 2: /* Packet Number.  */
-					return s->packet_num;
-				case 3: /* Allocation Result.  */
-					return s->tx_alloc;
-				case 4: /* TX FIFO */
-					if (s->tx_fifo_done_len == 0)
-						return 0x80;
-					else
-						return s->tx_fifo_done[0];
-				case 5: /* RX FIFO */
-					if (s->rx_fifo_len == 0)
-						return 0x80;
-					else
-						return s->rx_fifo[0];
-				case 6: /* Pointer */
-					return s->ptr & 0xff;
-				case 7:
-					return (s->ptr >> 8) & 0xf7;
-				case 8: case 9: case 10: case 11: /* Data */
-					{
-						int p;
-						int n;
-
-						if (s->ptr & 0x8000)
-							n = s->rx_fifo[0];
-						else
-							n = s->packet_num;
-						p = s->ptr & 0x07ff;
-						if (s->ptr & 0x4000) {
-							s->ptr = (s->ptr & 0xf800) | ((s->ptr + 1) & 0x07ff);
-						} else {
-							p += (offset & 3);
-						}
-						return s->data[n][p];
-					}
-				case 12: /* Interrupt status.  */
-					return s->int_level;
-				case 13: /* Interrupt mask.  */
-					return s->int_mask;
-			}
-			break;
-
-		case 3:
-			switch (offset) {
-				case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-					/* Multicast table.  */
-					/* Not implemented.  */
-					return 0;
-				case 8: /* Management Interface.  */
-					/* Not implemented.  */
-					return 0x30;
-				case 9:
-					return 0x33;
-				case 10: /* Revision.  */
-					return 0x91;
-				case 11:
-					return 0x33;
-				case 12:
-					return s->ercv;
-				case 13:
-					return 0;
-			}
-			break;
-	}
-	vmm_printf("smc91c111_read: Bad reg %d:%x\n", s->bank, (int)offset);
-	return 0;
-}
-
-static void smc91c111_writew(void *opaque, physical_addr_t offset,
-		u32 value)
-{
-	smc91c111_writeb(opaque, offset, value & 0xff);
-	smc91c111_writeb(opaque, offset + 1, value >> 8);
-}
-
-static void smc91c111_writel(void *opaque, physical_addr_t offset,
-		u32 value)
-{
-	/* 32-bit writes to offset 0xc only actually write to the bank select
-	   register (offset 0xe)  */
-	if (offset != 0xc)
-		smc91c111_writew(opaque, offset, value & 0xffff);
-	smc91c111_writew(opaque, offset + 2, value >> 16);
-}
-
-static int smc91c111_emulator_write(struct vmm_emudev *edev,
-		physical_addr_t offset,
-		void *src, u32 src_len)
-{
-	struct smc91c111_state *opaque = edev->priv;
-	u32 regval = 0;
-
-	switch(src_len) {
-		case 1:
-			regval = *(u8 *) src;
-			smc91c111_writeb(opaque, offset, regval);
-			break;
-		case 2:
-			regval = *(u16 *) src;
-			smc91c111_writew(opaque, offset, regval);
-			break;
-		case 4:
-			regval = *(u32 *) src;
-			smc91c111_writel(opaque, offset, regval);
-			break;
-		default:
-			return VMM_EFAIL;
-
-	}
-
-	return VMM_OK;
-
-}
-
-static u32 smc91c111_readw(void *opaque, physical_addr_t offset)
-{
-	u32 val;
-	val = smc91c111_readb(opaque, offset);
-	val |= smc91c111_readb(opaque, offset + 1) << 8;
-	return val;
-}
-
-static u32 smc91c111_readl(void *opaque, physical_addr_t offset)
-{
-	u32 val;
-	val = smc91c111_readw(opaque, offset);
-	val |= smc91c111_readw(opaque, offset + 2) << 16;
-	return val;
-}
-
-static int smc91c111_emulator_read(struct vmm_emudev *edev,
-		physical_addr_t offset,
-		void *dst, u32 dst_len)
-{
-	struct smc91c111_state *opaque = edev->priv;
-
-
-	*(u32 *) dst = 0;
-
-	switch (dst_len) {
-		case 1:
-			*(u8 *) dst = smc91c111_readb(opaque, offset);
-			break;
-		case 2:
-			*(u16 *) dst = vmm_cpu_to_le16(smc91c111_readw(opaque, offset));
-			break;
-		case 4:
-			*(u32 *) dst = vmm_cpu_to_le32(
-					smc91c111_readl(opaque, offset));
-			break;
-		default:
-			return VMM_EFAIL;
-	}
-
-	//vmm_printf("%s: **************Returning 0x%x len %d offset 0x%x\n", __func__, *(u32 *) dst, dst_len, offset);
-
-	return VMM_OK;
-}
-
-
 static int smc91c111_can_receive(struct vmm_netport *port)
 {
 	smc91c111_state *s = port->priv;
@@ -860,14 +410,14 @@ static void smc91c111_set_link(struct vmm_netport *port)
 }
 
 static int smc91c111_switch2port_xfer(struct vmm_netport *port,
-		struct vmm_mbuf *mbuf)
+				      struct vmm_mbuf *mbuf)
 {
 	int rc = VMM_OK;
 	smc91c111_state *s = port->priv;
 	char *buf;
 	int len;
 
-	if(mbuf->m_next) {
+	if (mbuf->m_next) {
 		/* Cannot avoid a copy in case of fragmented mbuf data */
 		len = min(SMC91C111_MTU, mbuf->m_pktlen);
 		buf = vmm_malloc(len);
@@ -884,13 +434,546 @@ static int smc91c111_switch2port_xfer(struct vmm_netport *port,
 	return rc;
 }
 
+static int smc91c111_reset(smc91c111_state *s)
+{
+	s->bank = 0;
+	s->tx_fifo_len = 0;
+	s->tx_fifo_done_len = 0;
+	s->rx_fifo_len = 0;
+	s->allocated = 0;
+	s->packet_num = 0;
+	s->tx_alloc = 0;
+	s->tcr = 0;
+	s->rcr = 0;
+	s->cr = 0xa0b1;
+	s->ctr = 0x1210;
+	s->ptr = 0;
+	s->ercv = 0x1f;
+	s->int_level = INT_TX_EMPTY;
+	s->int_mask = 0;
+	smc91c111_update(s);
+
+	return VMM_OK;
+}
+
+static int smc91c111_emulator_read8(struct vmm_emudev *edev,
+				    physical_addr_t offset,
+				    u8 *dst)
+{
+	int rc = VMM_OK;
+	smc91c111_state *s = (smc91c111_state *)edev->priv;
+
+	offset = offset & 0xf;
+	if (offset == 14) {
+		*dst = s->bank;
+		return rc;
+	}
+	if (offset == 15) {
+		*dst = 0x33;
+		return rc;
+	}
+
+	switch (s->bank) {
+	case 0:
+		switch (offset) {
+		case 0: /* TCR */
+			*dst = s->tcr & 0xff;
+			break;
+		case 1:
+			*dst = s->tcr >> 8;
+			break;
+		case 2: /* EPH Status */
+			*dst = 0;
+			break;
+		case 3:
+			*dst = 0x40;
+			break;
+		case 4: /* RCR */
+			*dst = s->rcr & 0xff;
+			break;
+		case 5:
+			*dst = s->rcr >> 8;
+			break;
+		case 6: /* Counter */
+		case 7:
+			/* Not implemented.  */
+			*dst = 0;
+			break;
+		case 8: /* Memory size.  */
+			*dst = NUM_PACKETS;
+			break;
+		case 9: /* Free memory available.  */
+			{
+				int i, n;
+				n = 0;
+				for (i = 0; i < NUM_PACKETS; i++) {
+					if (s->allocated & (1 << i))
+						n++;
+				}
+				*dst = n;
+				break;
+			}
+		case 10: case 11: /* RPCR */
+			/* Not implemented.  */
+			*dst = 0;
+			break;
+		case 12: case 13: /* Reserved */
+			*dst = 0;
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 1:
+		switch (offset) {
+		case 0: /* CONFIG */
+			*dst = s->cr & 0xff;
+			break;
+		case 1:
+			*dst = s->cr >> 8;
+			break;
+		case 2: case 3: /* BASE */
+			/* Not implemented.  */
+			*dst = 0;
+			break;
+		case 4: case 5: case 6: case 7: case 8: case 9: /* IA */
+			*dst = s->mac[offset -4];
+			break;
+		case 10: /* General Purpose */
+			*dst = s->gpr & 0xff;
+			break;
+		case 11:
+			*dst = s->gpr >> 8;
+			break;
+		case 12: /* Control */
+			*dst = s->ctr & 0xff;
+			break;
+		case 13:
+			*dst = s->ctr >> 8;
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 2:
+		switch (offset) {
+		case 0: case 1: /* MMUCR Busy bit.  */
+			*dst = 0;
+			break;
+		case 2: /* Packet Number.  */
+			*dst = s->packet_num;
+			break;
+		case 3: /* Allocation Result.  */
+			*dst = s->tx_alloc;
+			break;
+		case 4: /* TX FIFO */
+			if (s->tx_fifo_done_len == 0)
+				*dst = 0x80;
+			else
+				*dst = s->tx_fifo_done[0];
+			break;
+		case 5: /* RX FIFO */
+			if (s->rx_fifo_len == 0)
+				*dst = 0x80;
+			else
+				*dst = s->rx_fifo[0];
+			break;
+		case 6: /* Pointer */
+			*dst = s->ptr & 0xff;
+			break;
+		case 7:
+			*dst = (s->ptr >> 8) & 0xf7;
+			break;
+		case 8: case 9: case 10: case 11: /* Data */
+			{
+				int p, n;
+
+				if (s->ptr & 0x8000)
+					n = s->rx_fifo[0];
+				else
+					n = s->packet_num;
+				p = s->ptr & 0x07ff;
+				if (s->ptr & 0x4000) {
+					s->ptr = (s->ptr & 0xf800) | ((s->ptr + 1) & 0x07ff);
+				} else {
+					p += (offset & 3);
+				}
+				*dst = s->data[n][p];
+				break;
+			}
+		case 12: /* Interrupt status.  */
+			*dst = s->int_level;
+			break;
+		case 13: /* Interrupt mask.  */
+			*dst = s->int_mask;
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 3:
+		switch (offset) {
+		case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+			/* Multicast table.  */
+			/* Not implemented.  */
+			*dst = 0;
+			break;
+		case 8: /* Management Interface.  */
+			/* Not implemented.  */
+			*dst = 0x30;
+			break;
+		case 9:
+			*dst = 0x33;
+			break;
+		case 10: /* Revision.  */
+			*dst = 0x91;
+			break;
+		case 11:
+			*dst = 0x33;
+			break;
+		case 12:
+			*dst = s->ercv;
+			break;
+		case 13:
+			*dst = 0;
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		}
+		break;
+
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	if (rc == VMM_EINVALID) {
+		vmm_printf("%s: Bad reg %d:%x\n",
+			   __func__, s->bank, (int)offset);
+	}
+	return rc;
+}
+
+static int smc91c111_emulator_read16(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u16 *dst)
+{
+	int rc;
+	u8 val;
+
+	rc = smc91c111_emulator_read8(edev, offset, &val);
+	if (rc) {
+		return rc;
+	}
+	*dst = val;
+
+	rc = smc91c111_emulator_read8(edev, offset + 1, &val);
+	if (rc) {
+		return rc;
+	}
+	*dst |= ((u16)val << 8);
+
+	return VMM_OK;
+}
+
+static int smc91c111_emulator_read32(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u32 *dst)
+{
+	int rc;
+	u16 val;
+
+	rc = smc91c111_emulator_read16(edev, offset, &val);
+	if (rc) {
+		return rc;
+	}
+	*dst = val;
+
+	rc = smc91c111_emulator_read16(edev, offset + 2, &val);
+	if (rc) {
+		return rc;
+	}
+	*dst |= ((u32)val << 16);
+
+	return VMM_OK;
+}
+
+#define SET_LOW(name, val) s->name = (s->name & 0xff00) | val
+#define SET_HIGH(name, val) s->name = (s->name & 0xff) | (val << 8)
+
+static int smc91c111_emulator_write8(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u8 value)
+{
+	int rc = VMM_OK;
+	smc91c111_state *s = (smc91c111_state *)edev->priv;
+
+	offset = offset & 0xf;
+	if (offset == 14) {
+		s->bank = value;
+		return rc;
+	}
+	if (offset == 15) {
+		/* Igonre it. */
+		return rc;
+	}
+
+	switch (s->bank) {
+	case 0:
+		switch (offset) {
+		case 0: /* TCR */
+			SET_LOW(tcr, value);
+			break;
+		case 1:
+			SET_HIGH(tcr, value);
+			break;
+		case 4: /* RCR */
+			SET_LOW(rcr, value);
+			break;
+		case 5:
+			SET_HIGH(rcr, value);
+			if (s->rcr & RCR_SOFT_RST)
+				smc91c111_reset(s);
+			break;
+		case 10: case 11: /* RPCR */
+			/* Ignored */
+			break;
+		case 12: case 13: /* Reserved */
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 1:
+		switch (offset) {
+		case 0: /* CONFIG */
+			SET_LOW(cr, value);
+			break;
+		case 1:
+			SET_HIGH(cr,value);
+			break;
+		case 2: case 3: /* BASE */
+		case 4: case 5: case 6: case 7: case 8: case 9: /* IA */
+			/* Not implemented.  */
+			break;
+		case 10: /* Genral Purpose */
+			SET_LOW(gpr, value);
+			break;
+		case 11:
+			SET_HIGH(gpr, value);
+			break;
+		case 12: /* Control */
+			if (value & 1)
+				vmm_printf("smc91c111:EEPROM store "
+					   "not implemented\n");
+			if (value & 2)
+				vmm_printf("smc91c111:EEPROM reload "
+					   "not implemented\n");
+			value &= ~3;
+			SET_LOW(ctr, value);
+			break;
+		case 13:
+			SET_HIGH(ctr, value);
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 2:
+		switch (offset) {
+		case 0: /* MMU Command */
+			switch (value >> 5) {
+			case 0: /* no-op */
+				break;
+			case 1: /* Allocate for TX.  */
+				s->tx_alloc = 0x80;
+				s->int_level &= ~INT_ALLOC;
+				smc91c111_update(s);
+				smc91c111_tx_alloc(s);
+				break;
+			case 2: /* Reset MMU.  */
+				s->allocated = 0;
+				s->tx_fifo_len = 0;
+				s->tx_fifo_done_len = 0;
+				s->rx_fifo_len = 0;
+				s->tx_alloc = 0;
+				break;
+			case 3: /* Remove from RX FIFO.  */
+				smc91c111_pop_rx_fifo(s);
+				break;
+			case 4: /* Remove from RX FIFO and release.  */
+				if (s->rx_fifo_len > 0) {
+					smc91c111_release_packet(s,
+							s->rx_fifo[0]);
+				}
+				smc91c111_pop_rx_fifo(s);
+				break;
+			case 5: /* Release.  */
+				smc91c111_release_packet(s, s->packet_num);
+				break;
+			case 6: /* Add to TX FIFO.  */
+				smc91c111_queue_tx(s, s->packet_num);
+				break;
+			case 7: /* Reset TX FIFO.  */
+				s->tx_fifo_len = 0;
+				s->tx_fifo_done_len = 0;
+				break;
+			default:
+				rc = VMM_EINVALID;
+				break;
+			}
+			break;
+		case 1:
+			/* Ignore.  */
+			break;
+		case 2: /* Packet Number Register */
+			s->packet_num = value;
+			break;
+		case 3: case 4: case 5:
+			/* Should be readonly, but linux writes to them anyway.
+			 * Ignore it.
+			 */
+			break;
+		case 6: /* Pointer */
+			SET_LOW(ptr, value);
+			break;
+		case 7:
+			SET_HIGH(ptr, value);
+			break;
+		case 8: case 9: case 10: case 11: /* Data */
+			{
+				int p, n;
+				if (s->ptr & 0x8000) {
+					n = s->rx_fifo[0];
+				} else {
+					n = s->packet_num;
+				}
+				p = s->ptr & 0x07ff;
+				if (s->ptr & 0x4000) {
+					s->ptr = (s->ptr & 0xf800) |
+						 ((s->ptr + 1) & 0x7ff);
+				} else {
+					p += (offset & 3);
+				}
+				s->data[n][p] = value;
+			}
+			break;
+		case 12: /* Interrupt ACK.  */
+			s->int_level &= ~(value & 0xd6);
+			if (value & INT_TX)
+				smc91c111_pop_tx_fifo_done(s);
+			smc91c111_update(s);
+			break;
+		case 13: /* Interrupt mask.  */
+			s->int_mask = value;
+			smc91c111_update(s);
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	case 3:
+		switch (offset) {
+		case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+			/* Multicast table.  */
+			/* Not implemented.  */
+			break;
+		case 8: case 9: /* Management Interface.  */
+			/* Not implemented.  */
+			break;
+		case 12: /* Early receive.  */
+			s->ercv = value & 0x1f;
+		case 13:
+			/* Ignore.  */
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
+		break;
+
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	if (rc == VMM_EINVALID) {
+		vmm_printf("%s: Bad reg %d:%x\n",
+			   __func__, s->bank, (int)offset);
+	}
+	return rc;
+}
+
+static int smc91c111_emulator_write16(struct vmm_emudev *edev,
+				      physical_addr_t offset,
+				      u16 value)
+{
+	int rc;
+
+	rc = smc91c111_emulator_write8(edev, offset, value & 0xff);
+	if (rc) {
+		return rc;
+	}
+
+	rc = smc91c111_emulator_write8(edev, offset + 1, value >> 8);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int smc91c111_emulator_write32(struct vmm_emudev *edev,
+				      physical_addr_t offset,
+				      u32 value)
+{
+	int rc;
+
+	/* 32-bit writes to offset 0xc only actually
+	 * write to the bank select register (offset 0xe)
+	 */
+	if (offset != 0xc) {
+		rc = smc91c111_emulator_write16(edev, offset, value & 0xffff);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	rc = smc91c111_emulator_write16(edev, offset + 2, value >> 16);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+static int smc91c111_emulator_reset(struct vmm_emudev *edev)
+{
+	smc91c111_state *s = edev->priv;
+
+	return smc91c111_reset(s);
+}
+
 static int smc91c111_emulator_probe(struct vmm_guest *guest,
 				    struct vmm_emudev *edev,
 				    const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK, i = 0;
 	char tname[64];
-	void *attr;
+	const char *attr;
 	struct vmm_netswitch *nsw;
 	smc91c111_state *s = NULL;
 
@@ -933,11 +1016,12 @@ static int smc91c111_emulator_probe(struct vmm_guest *guest,
 		goto smc91c111_probe_netport_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "switch");
-	if (attr) {
-		nsw = vmm_netswitch_find((char *)attr);
+	if (vmm_devtree_read_string(edev->node,
+				    "switch", &attr) == VMM_OK) {
+		nsw = vmm_netswitch_find(attr);
 		if(!nsw) {
-			vmm_panic("smc91c111: Cannot find netswitch \"%s\"\n", (char *)attr);
+			vmm_panic("smc91c111: Cannot find netswitch \"%s\"\n",
+				  attr);
 		}
 		vmm_netswitch_port_add(nsw, s->port);
 	}
@@ -981,9 +1065,14 @@ static struct vmm_devtree_nodeid smc91c111_emuid_table[] = {
 static struct vmm_emulator smc91c111_emulator = {
 	.name = "smc91c111",
 	.match_table = smc91c111_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = smc91c111_emulator_probe,
-	.read = smc91c111_emulator_read,
-	.write = smc91c111_emulator_write,
+	.read8 = smc91c111_emulator_read8,
+	.write8 = smc91c111_emulator_write8,
+	.read16 = smc91c111_emulator_read16,
+	.write16 = smc91c111_emulator_write16,
+	.read32 = smc91c111_emulator_read32,
+	.write32 = smc91c111_emulator_write32,
 	.reset = smc91c111_emulator_reset,
 	.remove = smc91c111_emulator_remove,
 };

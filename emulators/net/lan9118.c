@@ -38,17 +38,13 @@
 #include <vmm_timer.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
-#include <vmm_host_io.h>
 #include <vmm_devemu.h>
-#include <vmm_manager.h>
-#include <vmm_scheduler.h>
 #include <vmm_stdio.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_net.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
-#include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
 #define MODULE_DESC			"SMSC LAN9118 Emulator"
@@ -1340,69 +1336,62 @@ static int lan9118_reg_read(struct lan9118_state *s,
 	return VMM_OK;
 }
 
-static int lan9118_emulator_read(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
-				 void *dst, u32 dst_len)
+static int lan9118_emulator_read8(struct vmm_emudev *edev,
+				  physical_addr_t offset, 
+				  u8 *dst)
 {
-	int rc = VMM_OK;
+	int rc;
 	u32 regval = 0x0;
-	struct lan9118_state *s = edev->priv;
-	
-	rc = lan9118_reg_read(s, offset, &regval);
 
+	rc = lan9118_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
-		regval = (regval >> ((offset & 0x3) * 8));
-		switch (dst_len) {
-		case 1:
-			*(u8 *)dst = regval & 0xFF;
-			break;
-		case 2:
-			*(u16 *)dst = vmm_cpu_to_le16(regval & 0xFFFF);
-			break;
-		case 4:
-			*(u32 *)dst = vmm_cpu_to_le32(regval);
-			break;
-		default:
-			rc = VMM_EFAIL;
-			break;
-		};
+		*dst = regval & 0xFF;
 	}
 
 	return rc;
 }
 
-static int lan9118_emulator_write(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
-				  void *src, u32 src_len)
+static int lan9118_emulator_read16(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u16 *dst)
 {
-	int i;
-	u32 regmask = 0x0, regval = 0x0;
-	struct lan9118_state * s = edev->priv;
+	int rc;
+	u32 regval = 0x0;
 
-	switch (src_len) {
-	case 1:
-		regmask = 0xFFFFFF00;
-		regval = *(u8 *)src;
-		break;
-	case 2:
-		regmask = 0xFFFF0000;
-		regval = vmm_le16_to_cpu(*(u16 *)src);
-		break;
-	case 4:
-		regmask = 0x00000000;
-		regval = vmm_le32_to_cpu(*(u32 *)src);
-		break;
-	default:
-		return VMM_EFAIL;
-		break;
-	};
-
-	for (i = 0; i < (offset & 0x3); i++) {
-		regmask = (regmask << 8) | ((regmask >> 24) & 0xFF);
+	rc = lan9118_reg_read(edev->priv, offset, &regval);
+	if (!rc) {
+		*dst = regval & 0xFFFF;
 	}
-	regval = (regval << ((offset & 0x3) * 8));
 
-	return lan9118_reg_write(s, offset, regmask, regval);
+	return rc;
+}
+
+static int lan9118_emulator_read32(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u32 *dst)
+{
+	return lan9118_reg_read(edev->priv, offset, dst);
+}
+
+static int lan9118_emulator_write8(struct vmm_emudev *edev,
+				   physical_addr_t offset, 
+				   u8 src)
+{
+	return lan9118_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+}
+
+static int lan9118_emulator_write16(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u16 src)
+{
+	return lan9118_reg_write(edev->priv, offset, 0xFFFF0000, src);
+}
+
+static int lan9118_emulator_write32(struct vmm_emudev *edev,
+				    physical_addr_t offset, 
+				    u32 src)
+{
+	return lan9118_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
 static int lan9118_emulator_probe(struct vmm_guest *guest,
@@ -1411,7 +1400,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 {
 	int i, rc = VMM_OK;
 	char tname[64];
-	void *attr;
+	const char *attr;
 	struct vmm_netswitch *nsw;
 	struct lan9118_state *s = NULL;
 
@@ -1452,8 +1441,8 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		goto lan9118_emulator_probe_freeport_failed;
 	}
 
-	attr = vmm_devtree_attrval(edev->node, "switch");
-	if (attr) {
+	if (vmm_devtree_read_string(edev->node,
+				    "switch", &attr) == VMM_OK) {
 		nsw = vmm_netswitch_find((char *)attr);
 		if (!nsw) {
 			vmm_panic("%s: Cannot find netswitch \"%s\"\n", 
@@ -1514,9 +1503,14 @@ static struct vmm_devtree_nodeid lan9118_emuid_table[] = {
 static struct vmm_emulator lan9118_emulator = {
 	.name = "lan9118",
 	.match_table = lan9118_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
 	.probe = lan9118_emulator_probe,
-	.read = lan9118_emulator_read,
-	.write = lan9118_emulator_write,
+	.read8 = lan9118_emulator_read8,
+	.write8 = lan9118_emulator_write8,
+	.read16 = lan9118_emulator_read16,
+	.write16 = lan9118_emulator_write16,
+	.read32 = lan9118_emulator_read32,
+	.write32 = lan9118_emulator_write32,
 	.reset = lan9118_emulator_reset,
 	.remove = lan9118_emulator_remove,
 };

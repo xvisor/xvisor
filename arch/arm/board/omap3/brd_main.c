@@ -36,24 +36,36 @@
 #include <omap/s32k-timer.h>
 
 /*
- * Reset & Shutdown
+ * Print board information
  */
 
-int arch_board_reset(void)
+void arch_board_print_info(struct vmm_chardev *cdev)
 {
-	/* FIXME: TBD */
-	return VMM_OK;
-}
-
-int arch_board_shutdown(void)
-{
-	/* FIXME: TBD */
-	return VMM_OK;
+	/* FIXME: To be implemented. */
 }
 
 /*
  * Initialization functions
  */
+
+int __cpuinit arch_host_irq_init(void)
+{
+	int rc;
+	physical_addr_t intc_pa;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_find_compatible(NULL, NULL, "ti,omap2-intc");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_regaddr(node, &intc_pa, 0);
+	if (rc) {
+		return rc;
+	}
+
+	return intc_init(intc_pa, OMAP3_MPU_INTC_NRIRQ);
+}
 
 /* Micron MT46H32M32LF-6 */
 /* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
@@ -90,19 +102,6 @@ static struct sdrc_params mt46h32m32lf6_sdrc_params[] = {
 		.rate	     = 0
 	},
 };
-
-/*
- * Print board information
- */
-
-void arch_board_print_info(struct vmm_chardev *cdev)
-{
-	/* FIXME: To be implemented. */
-}
-
-/*
- * Initialization functions
- */
 
 int __init arch_board_early_init(void)
 {

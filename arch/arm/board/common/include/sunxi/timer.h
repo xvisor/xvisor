@@ -23,12 +23,6 @@
 #ifndef __SUNXI_TIMER_H__
 #define __SUNXI_TIMER_H__
 
-/** Initialize Sunxi timer clocksource */
-int aw_timer_clocksource_init(void);
-
-/** Initialize Sunxi timer clockchip */
-int aw_timer_clockchip_init(void);
-
 /** Possible Sunxi chip versions */
 enum aw_chip_ver {
 	AW_CHIP_VER_A = 0,
@@ -38,9 +32,6 @@ enum aw_chip_ver {
 
 /** Get chip version */
 enum aw_chip_ver aw_timer_chip_ver(void);
-
-/** Force reset using Sunxi timer watchdog */
-int aw_timer_force_reset(void);
 
 /** Initialize Sunxi timer misc APIs */
 int aw_timer_misc_init(void);

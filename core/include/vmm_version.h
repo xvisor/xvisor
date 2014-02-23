@@ -28,7 +28,18 @@
 #define VMM_VERSION_MINOR		CONFIG_MINOR
 #define VMM_VERSION_RELEASE		CONFIG_RELEASE
 
-#if defined(CONFIG_BANNER_BANNER4)
+#if defined(CONFIG_BANNER_BANNER3)
+/** Banner string in ASCII Banner3 font */
+#define VMM_BANNER_STRING	"\n" \
+"##     ## ##     ## ####  ######   #######  ########  \n" \
+" ##   ##  ##     ##  ##  ##    ## ##     ## ##     ## \n" \
+"  ## ##   ##     ##  ##  ##       ##     ## ##     ## \n" \
+"   ###    ##     ##  ##   ######  ##     ## ########  \n" \
+"  ## ##    ##   ##   ##        ## ##     ## ##   ##   \n" \
+" ##   ##    ## ##    ##  ##    ## ##     ## ##    ##  \n" \
+"##     ##    ###    ####  ######   #######  ##     ## \n" \
+"\n"
+#elif defined(CONFIG_BANNER_BANNER4)
 /** Banner string in ASCII Banner4 font */
 #define VMM_BANNER_STRING	"\n" \
 ".##.....##.##.....##.####..######...#######..########.\n" \
@@ -50,6 +61,16 @@
 "  d88888b     Y88o88P     888         888 888     888 888 T88b   \n" \
 " d88P Y88b     Y888P      888  Y88b  d88P Y88b. .d88P 888  T88b  \n" \
 "d88P   Y88b     Y8P     8888888  Y8888P     Y88888P   888   T88b \n" \
+"\n"
+#elif defined(CONFIG_BANNER_GRAFFITI)
+/** Banner string in Graffiti font */
+#define VMM_BANNER_STRING	"\n" \
+"____  _______   ____.___   _________________   __________ \n" \
+"\\   \\/  /\\   \\ /   /|   | /   _____/\\_____  \\  \\______   \\\n" \
+" \\     /  \\   Y   / |   | \\_____  \\  /   |   \\  |       _/\n" \
+" /     \\   \\     /  |   | /        \\/    |    \\ |    |   \\\n" \
+"/___/\\  \\   \\___/   |___|/_______  /\\_______  / |____|_  /\n" \
+"      \\_/                        \\/         \\/         \\/ \n" \
 "\n"
 #elif defined(CONFIG_BANNER_O8)
 /** Banner string in ASCII O8 font */

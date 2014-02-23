@@ -27,6 +27,7 @@ CMDS=`sed -n -e 's/\(^[^#].*\)/\1/p' test.script`
 emulate () {
 	qemu-system-arm \
 		-M versatilepb \
+		-m 256M \
 		-kernel $1 \
 		-serial stdio \
 		-parallel none \

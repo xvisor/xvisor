@@ -30,6 +30,7 @@
 	/* 
 	 * _start: Primary CPU startup code
 	 * _start_secondary: Secondary CPU startup code
+	 * _start_secondary_nopen: Secondary CPU startup code without holding pen
 	 *
 	 * Note: Xvisor could be loaded any where in memory by boot loaders.
 	 * The _start ensures that Xvisor executes from intended base address 
@@ -38,6 +39,7 @@
 	.section .entry, "ax", %progbits
 	.globl _start
 	.globl _start_secondary
+	.globl _start_secondary_nopen
 _start:
 	/* r4 -> load start
 	 * r5 -> load end
@@ -252,13 +254,44 @@ _start_mmu_tmpl1_set:
 	add	r1, r1, #4
 	cmp	r1, r2
 	blt	_start_mmu_tmpl1_set
+	b	_start_secondary_nopen
+
+#ifdef CONFIG_SMP
+	.align	3
+__start_secondary_pen_release:
+	.word	start_secondary_pen_release
+
+#define MPIDR_HWID_BITMASK	0xFFFFFF
 
 	/*
 	 * Secondary CPU startup code 
-	 *
-	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary:
+	/*
+	 * This provides a "holding pen" for platforms to hold all secondary
+	 * cores are held until we're ready for them to initialise.
+	 */
+	mrc     p15, 0, r0, c0, c0, 5
+	ldr     r1, =MPIDR_HWID_BITMASK
+	and	r0, r0, r1
+
+	/* Calculate load address of secondary_holding_pen_release */
+	ldr	r1, __start_secondary_pen_release
+	ldr	r2, __exec_start
+	ldr	r3, _load_start
+	sub	r1, r1, r2
+	add	r1, r1, r3
+	sev
+pen:	wfe
+	ldr	r4, [r1]
+	cmp	r4, r0
+	bne	pen
+#endif
+
+	/*
+	 * Note: From this point primary CPU startup is same as secondary CPU
+	 */
+_start_secondary_nopen:
 	/* Setup Translation Table Base Register 0 */
 	ldr	r0, __tmpl1_mem
 	mcr	p15, 0, r0, c2, c0, 0
@@ -266,6 +299,11 @@ _start_secondary:
 	/* Setup Domain Control Register */
 	ldr	r1, __dacr_mmu_val
 	mcr	p15, 0, r1, c3, c0, 0
+
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	bl	proc_setup_smp_id
+#endif
 
 	/* Setup System Control Register */
 	bl	proc_setup
@@ -492,8 +530,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	ldr	sp, __svc_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #CONFIG_IRQ_STACK_SIZE
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -502,8 +540,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_UNDEFINED
 	ldr	sp, __und_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -512,8 +550,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_ABORT
 	ldr	sp, __abt_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -522,8 +560,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_IRQ
 	ldr	sp, __irq_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9
@@ -532,8 +570,8 @@ _reset:
 	CMODE	r8, CPSR_MODE_FIQ
 	ldr	sp, __fiq_stack_end
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r10, c0, c0, 5
-	ands	r10, r10, #0xFF
+	bl	arch_smp_id
+	mov	r10, r0
 	mov	r9, #0x100
 	mul	r9, r9, r10
 	sub	sp, sp, r9

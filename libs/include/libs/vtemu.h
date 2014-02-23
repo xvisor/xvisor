@@ -25,13 +25,12 @@
 #define __VTEMU_H_
 
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
 #include <vmm_completion.h>
 #include <vmm_chardev.h>
-#include <input/vmm_input.h>
-#include <fb/vmm_fb.h>
 #include <libs/fifo.h>
 #include <libs/vtemu_font.h>
+#include <drv/input.h>
+#include <drv/fb.h>
 
 #define VTEMU_NAME_SIZE		VMM_CHARDEV_NAME_SIZE
 #define VTEMU_INBUF_SIZE	32
@@ -51,8 +50,7 @@ typedef enum {
 #define VTEMU_DEFAULT_FC	VTEMU_COLOR_WHITE
 #define VTEMU_DEFAULT_BC	VTEMU_COLOR_BLACK
 
-struct vtemu_cell
-{
+struct vtemu_cell {
 	/* char value */
 	u8 ch;
 
@@ -82,16 +80,19 @@ struct vtemu {
 	struct vmm_chardev cdev;
 
 	/* underlying input handler */
-	struct vmm_input_handler hndl;
+	struct input_handler hndl;
 
-	/* underlying frame buffer*/
-	struct vmm_fb_info *info;
+	/* underlying frame buffer */
+	struct fb_info *info;
 
 	/* video mode to be used */
-	const struct vmm_fb_videomode *mode;
+	const struct fb_videomode *mode;
+
+	/* variable screen info */
+	struct fb_var_screeninfo var;
 
 	/* color map to be used */
-	struct vmm_fb_cmap cmap;
+	struct fb_cmap cmap;
 
 	/* fonts to be used */
 	const struct vtemu_font *font;
@@ -136,7 +137,7 @@ struct vtemu {
 	struct vmm_completion in_done;
 };
 
-static inline struct vmm_fb_info *vtemu_fbinfo(struct vtemu *v)
+static inline struct fb_info *vtemu_fbinfo(struct vtemu *v)
 {
 	return (v) ? v->info : NULL;
 }
@@ -154,7 +155,7 @@ int vtemu_key2str(unsigned int code, u32 flags, char *out);
 
 /* Create vtemu instance */
 struct vtemu *vtemu_create(const char *name, 
-			   struct vmm_fb_info *info,
+			   struct fb_info *info,
 			   const char *font_name);
 
 /* Destroy vtemu instance */

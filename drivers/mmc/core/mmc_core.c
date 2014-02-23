@@ -53,6 +53,14 @@
  */
 #undef CONFIG_MMC_TRACE
 
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 /* 
  * Set block count limit because of 16 bit register limit on some hardware
  */
@@ -355,7 +363,7 @@ static int __mmc_send_if_cond(struct mmc_host *host, struct mmc_card *card)
 static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 {
 	int err;
-	int timeout = 1000;
+	int timeout = 10;
 	struct mmc_cmd cmd;
 
 	do {
@@ -370,6 +378,7 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 
 		cmd.cmdidx = SD_CMD_APP_SEND_OP_COND;
 		cmd.resp_type = MMC_RSP_R3;
+		cmd.response[0] = 0;
 
 		/*
 		 * Most cards do not answer if some reserved bits
@@ -390,11 +399,21 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 			return err;
 		}
 
-		vmm_udelay(1000);
+		/* If card is powered-up then check whether
+		 * it has any valid voltages as-per SD spec
+		 */
+		if (!mmc_host_is_spi(host) &&
+		    (cmd.response[0] & OCR_BUSY) &&
+		    !(cmd.response[0] & OCR_VOLTAGE_MASK)) {
+			/* No valid voltages hence this is not a SD card */
+			return VMM_ENODEV;
+		}
+
+		vmm_udelay(10000);
 	} while ((!(cmd.response[0] & OCR_BUSY)) && timeout--);
 
 	if (timeout <= 0) {
-		return VMM_EIO;
+		return VMM_ETIMEDOUT;
 	}
 
 	if (card->version != SD_VERSION_2) {
@@ -422,7 +441,7 @@ static int __sd_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 {
 	int err;
-	int timeout = 10000;
+	int timeout = 10;
 	struct mmc_cmd cmd;
 
 	/* Some cards seem to need this */
@@ -432,13 +451,14 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
  	cmd.cmdidx = MMC_CMD_SEND_OP_COND;
  	cmd.resp_type = MMC_RSP_R3;
  	cmd.cmdarg = 0;
+	cmd.response[0] = 0;
 
  	err = __mmc_send_cmd(host, &cmd, NULL);
  	if (err) {
  		return err;
 	}
 
- 	vmm_udelay(1000);
+	vmm_udelay(1000);
 
 	do {
 		cmd.cmdidx = MMC_CMD_SEND_OP_COND;
@@ -447,10 +467,10 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 				(host->voltages &
 				(cmd.response[0] & OCR_VOLTAGE_MASK)) |
 				(cmd.response[0] & OCR_ACCESS_MODE));
-
 		if (host->caps & MMC_CAP_MODE_HC) {
 			cmd.cmdarg |= OCR_HCS;
 		}
+		cmd.response[0] = 0;
 
 		err = __mmc_send_cmd(host, &cmd, NULL);
 		if (err) {
@@ -461,7 +481,7 @@ static int __mmc_send_op_cond(struct mmc_host *host, struct mmc_card *card)
 	} while (!(cmd.response[0] & OCR_BUSY) && timeout--);
 
 	if (timeout <= 0) {
-		return VMM_EIO;
+		return VMM_ETIMEDOUT;
 	}
 
 	if (mmc_host_is_spi(host)) { /* read OCR for spi */
@@ -696,9 +716,35 @@ static int __mmc_change_freq(struct mmc_host *host, struct mmc_card *card)
 	return VMM_OK;
 }
 
+static int __mmc_set_capacity(struct mmc_card *card, int part_num)
+{
+	switch (part_num) {
+	case 0:
+		card->capacity = card->capacity_user;
+		break;
+	case 1:
+	case 2:
+		card->capacity = card->capacity_boot;
+		break;
+	case 3:
+		card->capacity = card->capacity_rpmb;
+		break;
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+		card->capacity = card->capacity_gp[part_num - 4];
+		break;
+	default:
+		return VMM_EINVALID;
+	}
+
+	return VMM_OK;
+}
+
 static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 {
-	int err;
+	int err, i;
 	u32 mult, freq;
 	u64 cmult, csize, capacity;
 	struct mmc_cmd cmd;
@@ -777,25 +823,25 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		int version = (cmd.response[0] >> 26) & 0xf;
 
 		switch (version) {
-			case 0:
-				card->version = MMC_VERSION_1_2;
-				break;
-			case 1:
-				card->version = MMC_VERSION_1_4;
-				break;
-			case 2:
-				card->version = MMC_VERSION_2_2;
-				break;
-			case 3:
-				card->version = MMC_VERSION_3;
-				break;
-			case 4:
-				card->version = MMC_VERSION_4;
-				break;
-			default:
-				card->version = MMC_VERSION_1_2;
-				break;
-		}
+		case 0:
+			card->version = MMC_VERSION_1_2;
+			break;
+		case 1:
+			card->version = MMC_VERSION_1_4;
+			break;
+		case 2:
+			card->version = MMC_VERSION_2_2;
+			break;
+		case 3:
+			card->version = MMC_VERSION_3;
+			break;
+		case 4:
+			card->version = MMC_VERSION_4;
+			break;
+		default:
+			card->version = MMC_VERSION_1_2;
+			break;
+		};
 	}
 
 	/* Determine card parameters */
@@ -817,8 +863,13 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 			| (card->csd[2] & 0xc0000000) >> 30;
 		cmult = (card->csd[2] & 0x00038000) >> 15;
 	}
-	card->capacity = (csize + 1) << (cmult + 2);
-	card->capacity *= card->read_bl_len;
+	card->capacity_user = (csize + 1) << (cmult + 2);
+	card->capacity_user *= card->read_bl_len;
+	card->capacity_boot = 0;
+	card->capacity_rpmb = 0;
+	for (i = 0; i < 4; i++) {
+		card->capacity_gp[i] = 0;
+	}
 	if (card->read_bl_len > 512) {
 		card->read_bl_len = 512;
 	}
@@ -857,7 +908,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 					| (u64)(ext_csd[EXT_CSD_SEC_CNT + 3]) << 24;
 			capacity *= 512;
 			if ((capacity >> 20) > 2 * 1024) {
-				card->capacity = capacity;
+				card->capacity_user = capacity;
 			}
 		}
 
@@ -877,7 +928,7 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		case 6:
 			card->version = MMC_VERSION_4_5;
 			break;
-		}
+		};
 
 		/*
 		 * Check whether GROUP_DEF is set, if yes, read out
@@ -900,14 +951,33 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		    ext_csd[EXT_CSD_BOOT_MULT]) {
 			card->part_config = ext_csd[EXT_CSD_PART_CONF];
 		}
+
+		card->capacity_boot = ext_csd[EXT_CSD_BOOT_MULT] << 17;
+
+		card->capacity_rpmb = ext_csd[EXT_CSD_RPMB_MULT] << 17;
+
+		for (i = 0; i < 4; i++) {
+			int idx = EXT_CSD_GP_SIZE_MULT + i * 3;
+			card->capacity_gp[i] = (ext_csd[idx + 2] << 16) +
+				(ext_csd[idx + 1] << 8) + ext_csd[idx];
+			card->capacity_gp[i] *=
+				ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
+			card->capacity_gp[i] *= ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
+		}
 	}
 
+	/* Set card capacity based on current partition */
+	err = __mmc_set_capacity(card, card->part_num);
+	if (err) {
+		return err;
+	}
+
+	/* Change card frequency and update capablities */
 	if (IS_SD(card)) {
 		err = __sd_change_freq(host, card);
 	} else {
 		err = __mmc_change_freq(host, card);
 	}
-
 	if (err) {
 		return err;
 	}
@@ -1095,26 +1165,21 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 
 	/* Test for SD version 2 */
 	rc = __mmc_send_if_cond(host, host->card);
-	if (rc) {
-		goto detect_freecard_fail;
-	}
 
 	/* Now try to get the SD card's operating condition */
 	rc = __sd_send_op_cond(host, host->card);
 
-	/* If the command timed out, we check for an MMC card */
-	if (rc == VMM_ETIMEDOUT) {
+	/* If the command timed out, we check for MMC card */
+	if ((rc == VMM_ETIMEDOUT) || (rc == VMM_ENODEV)) {
 		rc = __mmc_send_op_cond(host, host->card);
 		if (rc) {
-			vmm_printf("%s: No response to voltage select!\n", 
-				   __func__);
 			goto detect_freecard_fail;
 		}
 	} else if (rc) {
 		goto detect_freecard_fail;
 	}
 
-	/* Startup mmc card */
+	/* Startup mmc/sd card */
 	rc = __mmc_startup(host, host->card);
 	if (rc) {
 		goto detect_freecard_fail;
@@ -1139,7 +1204,7 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 		     ((card->cid[1] >> 8) & 0xff), (card->cid[1] & 0xff),
 		     ((card->cid[2] >> 24) & 0xff), ((card->cid[2] >> 20) & 0xf),
 		     ((card->cid[2] >> 16) & 0xf));
-	bdev->dev = host->dev;
+	bdev->dev.parent = host->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
 	if (card->read_bl_len < card->write_bl_len) {
 		bdev->block_size = card->write_bl_len;
@@ -1196,6 +1261,8 @@ static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
 	struct mmc_cmd cmd;
 	struct mmc_data data;
 	int timeout = 1000;
+
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
@@ -1267,6 +1334,8 @@ static u32 __mmc_read_blocks(struct mmc_host *host, struct mmc_card *card,
 {
 	struct mmc_cmd cmd;
 	struct mmc_data data;
+
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;

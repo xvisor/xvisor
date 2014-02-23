@@ -10,23 +10,18 @@
 
 	memory {
 		device_type = "memory"; 
-		reg = <0x80000000 0x08000000>; /* 128 MB */
+		reg = <0x80000000 0x10000000>; /* 256 MB */
 	};
 
 	soc {
 		eth0 {
-			device_type = "nic";
-			compatible = "smc911x";
-			reg = <0xb6000000 0x1000>;
-			interrupts = <52>;
-			switch = "netbridge0";
-			smsc,irq-active-high;
+			switch = "br0";
 		};
 	};
 
 	vmm {
 		net {
-			netbridge0 {
+			br0 {
 				device_type = "netswitch";
 				compatible = "bridge";
 			};

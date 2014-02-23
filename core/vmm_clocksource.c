@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
+#include <vmm_stdio.h>
 #include <vmm_clocksource.h>
 #include <arch_timer.h>
 #include <libs/stringlib.h>
@@ -32,6 +33,7 @@
 struct vmm_clocksource_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist clksrc_list;
+	const struct vmm_devtree_nodeid *clksrc_matches;
 };
 
 static struct vmm_clocksource_ctrl csctrl;
@@ -297,19 +299,63 @@ u32 vmm_clocksource_count(void)
 	return retval;
 }
 
+int __init __weak arch_clocksource_init(void)
+{
+	/* Default weak implementation in-case
+	 * architecture does not provide one.
+	 */
+	return VMM_OK;
+}
+
+static void __init clocksource_nidtbl_found(struct vmm_devtree_node *node,
+					const struct vmm_devtree_nodeid *match,
+					void *data)
+{
+	int err;
+	vmm_clocksource_init_t init_fn = match->data;
+
+	if (!init_fn) {
+		return;
+	}
+
+	err = init_fn(node);
+#ifdef CONFIG_VERBOSE_MODE
+	if (err) {
+		vmm_printf("%s: Init %s node failed (error %d)\n", 
+			   __func__, node->name, err);
+	}
+#else
+	(void)err;
+#endif
+}
+
 int __init vmm_clocksource_init(void)
 {
 	int rc;
 
-	/* Initialize clock source list lock */
+	/* Initialize clocksource list lock */
 	INIT_SPIN_LOCK(&csctrl.lock);
 
-	/* Initialize clock source list */
+	/* Initialize clocksource list */
 	INIT_LIST_HEAD(&csctrl.clksrc_list);
 
-	/* Initialize arch specific clock sources */
+	/* Determine clocksource matches from nodeid table */
+	csctrl.clksrc_matches = 
+		vmm_devtree_nidtbl_create_matches("clocksource");
+
+	/* Initialize arch specific clocksources */
 	if ((rc = arch_clocksource_init())) {
 		return rc;
+	}
+
+	/* Probe all device tree nodes matching 
+	 * clocksource nodeid table enteries.
+	 */
+	if (csctrl.clksrc_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     csctrl.clksrc_matches,
+					     clocksource_nidtbl_found,
+					     NULL);
 	}
 
 	return VMM_OK;

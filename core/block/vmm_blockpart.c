@@ -53,11 +53,24 @@ struct blockpart_ctrl {
 	vmm_spinlock_t work_list_lock;
 	struct dlist work_list;
 	struct vmm_completion work_avail;
+	u32 work_count;
 	struct vmm_thread *work_thread;
 	struct vmm_notifier_block client;
 };
 
 static struct blockpart_ctrl bpctrl;
+
+static u32 blockpart_count_work(void)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave(&bpctrl.work_list_lock, flags);
+	ret = bpctrl.work_count;
+	vmm_spin_unlock_irqrestore(&bpctrl.work_list_lock, flags);
+
+	return ret;
+}
 
 static struct blockpart_work *blockpart_pop_work(void)
 {
@@ -70,6 +83,7 @@ static struct blockpart_work *blockpart_pop_work(void)
 	if (!list_empty(&bpctrl.work_list)) {
 		l = list_pop(&bpctrl.work_list);
 		w = list_entry(l, struct blockpart_work, head);
+		bpctrl.work_count--;
 	}
 
 	vmm_spin_unlock_irqrestore(&bpctrl.work_list_lock, flags);
@@ -106,6 +120,7 @@ static void blockpart_add_work(enum blockpart_work_type type,
 			w->type = type;
 			w->bdev = bdev;
 			list_add_tail(&w->head, &bpctrl.work_list);
+			bpctrl.work_count++;
 		}
 	}
 
@@ -136,6 +151,7 @@ static void blockpart_del_work(enum blockpart_work_type type,
 	}
 	if (found) {
 		list_del(&w->head);
+		bpctrl.work_count--;
 		vmm_free(w);
 	}
 
@@ -144,44 +160,48 @@ static void blockpart_del_work(enum blockpart_work_type type,
 
 static int blockpart_thread_main(void *udata)
 {
-	int rc, i, cnt;
 	bool parsed;
+	int rc, i, j, cnt, wcnt;
 	struct blockpart_work *w;
 	struct vmm_blockpart_manager *m;
 
 	while (1) {
 		vmm_completion_wait(&bpctrl.work_avail);
 
-		w = blockpart_pop_work();
-		if (!w) {
-			continue;
-		}
+		wcnt = blockpart_count_work();
+		for (i = 0; i < wcnt; i++) {
+			w = blockpart_pop_work();
+			if (!w) {
+				continue;
+			}
 
-		switch(w->type) {
-		case BLOCKPART_WORK_PARSE:
-			parsed = FALSE;
-			cnt = vmm_blockpart_manager_count();
-			for (i = 0; i < cnt; i++) {
-				m = vmm_blockpart_manager_get(i);
-				if (!m || !m->parse_part) {
-					continue;
-				}
-				rc = m->parse_part(w->bdev);
-				if (!rc) {
-					w->bdev->part_manager_sign = m->sign;
+			switch(w->type) {
+			case BLOCKPART_WORK_PARSE:
+				parsed = FALSE;
+				cnt = vmm_blockpart_manager_count();
+				for (j = 0; j < cnt; j++) {
+					m = vmm_blockpart_manager_get(j);
+					if (!m || !m->parse_part) {
+						continue;
+					}
+					rc = m->parse_part(w->bdev);
+					if (rc) {
+						continue;
+					}
 					parsed = TRUE;
+					w->bdev->part_manager_sign = m->sign;
 					break;
 				}
-			}
-			if (!parsed) {
-				blockpart_add_work(w->type, w->bdev);
-			}
-			break;
-		default:
-			break;
-		};
+				if (!parsed) {
+					blockpart_add_work(w->type, w->bdev);
+				}
+				break;
+			default:
+				break;
+			};
 
-		vmm_free(w);
+			vmm_free(w);
+		}
 	};
 
 	return VMM_OK;
@@ -403,6 +423,9 @@ static int __init vmm_blockpart_init(void)
 
 	/* Initialize work available completion */
 	INIT_COMPLETION(&bpctrl.work_avail);
+
+	/* Initialize work count */
+	bpctrl.work_count = 0;
 
 	/* Register client for block device notifications */
 	bpctrl.client.notifier_call = &blockpart_blk_notification;

@@ -29,7 +29,7 @@
 #include <asm/io.h>
 
 #define MODULE_DESC			"i8042 keyboard and mouse controller driver"
-#define MODULE_AUTHOR			"Vojtech Pavlik <vojtech@suse.cz>"
+#define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(SERIO_IPRIORITY + 1)
 #define	MODULE_INIT			i8042_init
@@ -596,8 +596,13 @@ static int i8042_enable_mux_ports(void)
 	int i;
 
 	for (i = 0; i < I8042_NUM_MUX_PORTS; i++) {
-		i8042_command(&param, I8042_CMD_MUX_PFX + i);
-		i8042_command(&param, I8042_CMD_AUX_ENABLE);
+		if (i8042_command(&param, I8042_CMD_MUX_PFX + i)) {
+			pr_err("Failed to set port %d in MUX\n", i);
+			continue;
+		}
+		if (i8042_command(&param, I8042_CMD_AUX_ENABLE)) {
+			pr_err("Failed to enable port %d\n", i);
+		}
 	}
 
 	return i8042_enable_aux_port();

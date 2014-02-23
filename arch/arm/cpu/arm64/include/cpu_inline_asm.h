@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <cpu_defines.h>
 
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \
@@ -101,8 +102,8 @@
 					"at " stage el rw ", %0" \
 					: : "r"(va) : "memory", "cc");
 
+/* CPU feature checking macros */
 
-/* Features */
 #define cpu_supports_thumbee()	({ u64 pfr0; \
 				   asm volatile("mrs %0, id_pfr0_el1" \
 						: "=r"(pfr0)); \
@@ -192,52 +193,5 @@
 						: "=r"(pfr0)); \
 				   (pfr0 & ID_AA64PFR0_EL3_MASK); \
 				})
-
-#define vfp_simd_save_regs(addr)	{				\
-		asm volatile("stnp	 Q0,  Q1, [%0, #0x00]\n\t"	\
-			     "stnp	 Q2,  Q3, [%0, #0x20]\n\t"	\
-			     "stnp	 Q4,  Q5, [%0, #0x40]\n\t"	\
-			     "stnp	 Q6,  Q7, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x000));		\
-		asm volatile("stnp	 Q8,  Q9, [%0, #0x00]\n\t"	\
-			     "stnp	Q10, Q11, [%0, #0x20]\n\t"	\
-			     "stnp	Q12, Q13, [%0, #0x40]\n\t"	\
-			     "stnp	Q14, Q15, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x080));		\
-		asm volatile("stnp	Q16, Q17, [%0, #0x00]\n\t"	\
-			     "stnp	Q18, Q19, [%0, #0x20]\n\t"	\
-			     "stnp	Q20, Q21, [%0, #0x40]\n\t"	\
-			     "stnp	Q22, Q23, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x100));		\
-		asm volatile("stnp	Q24, Q25, [%0, #0x00]\n\t"	\
-			     "stnp	Q26, Q27, [%0, #0x20]\n\t"	\
-			     "stnp	Q28, Q29, [%0, #0x40]\n\t"	\
-			     "stnp	Q30, Q31, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x180));		\
-		}
-
-
-#define vfp_simd_restore_regs(addr)	{				\
-		asm volatile("ldnp	 Q0,  Q1, [%0, #0x00]\n\t"	\
-			     "ldnp	 Q2,  Q3, [%0, #0x20]\n\t"	\
-			     "ldnp	 Q4,  Q5, [%0, #0x40]\n\t"	\
-			     "ldnp	 Q6,  Q7, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x000));		\
-		asm volatile("ldnp	 Q8,  Q9, [%0, #0x00]\n\t"	\
-			     "ldnp	Q10, Q11, [%0, #0x20]\n\t"	\
-			     "ldnp	Q12, Q13, [%0, #0x40]\n\t"	\
-			     "ldnp	Q14, Q15, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x080));		\
-		asm volatile("ldnp	Q16, Q17, [%0, #0x00]\n\t"	\
-			     "ldnp	Q18, Q19, [%0, #0x20]\n\t"	\
-			     "ldnp	Q20, Q21, [%0, #0x40]\n\t"	\
-			     "ldnp	Q22, Q23, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x100));		\
-		asm volatile("ldnp	Q24, Q25, [%0, #0x00]\n\t"	\
-			     "ldnp	Q26, Q27, [%0, #0x20]\n\t"	\
-			     "ldnp	Q28, Q29, [%0, #0x40]\n\t"	\
-			     "ldnp	Q30, Q31, [%0, #0x60]\n\t"	\
-			     :: "r"((char *)(addr) + 0x180));		\
-		}
 
 #endif

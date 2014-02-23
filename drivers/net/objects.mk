@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Himanshu Chauhan.
+# Copyright (c) 2014 Pranavkumar Sawargaonkar.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,9 +17,12 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
+# @author Pranavkumar Sawargaonkar (pranav.sawargaonkar@gmail.com)
 # @brief list of driver objects
 # */
 
-drivers-objs-$(CONFIG_ETHER_SMSC_911x)+= net/smc911x.o
-drivers-objs-$(CONFIG_ETHER_SMSC_91x)+= net/smc91x.o
+drivers-objs-$(CONFIG_NET_DEVICES)+= net/mdio.o
+drivers-objs-$(CONFIG_NET_DEVICES)+= net/mii.o
+drivers-objs-$(CONFIG_NET_DEVICES)+= net/netdevice.o
+drivers-objs-$(CONFIG_NET_DEVICES)+= net/ethtool.o
+drivers-objs-$(CONFIG_NET_DEVICES)+= net/of_net.o

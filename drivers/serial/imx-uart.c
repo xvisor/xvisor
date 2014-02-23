@@ -421,7 +421,6 @@ static int imx_driver_probe(struct vmm_device *dev,
 			    const struct vmm_devtree_nodeid *devid)
 {
 	int rc = VMM_EFAIL;
-	const char *attr = NULL;
 	struct imx_port *port = NULL;
 
 	port = vmm_zalloc(sizeof(struct imx_port));
@@ -430,13 +429,13 @@ static int imx_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	if (strlcpy(port->cd.name, dev->node->name, sizeof(port->cd.name)) >=
+	if (strlcpy(port->cd.name, dev->name, sizeof(port->cd.name)) >=
 	    sizeof(port->cd.name)) {
 		rc = VMM_EOVERFLOW;
 		goto free_port;
 	}
 
-	port->cd.dev = dev;
+	port->cd.dev.parent = dev;
 	port->cd.ioctl = NULL;
 	port->cd.read = imx_read;
 	port->cd.write = imx_write;
@@ -460,28 +459,24 @@ static int imx_driver_probe(struct vmm_device *dev,
 
 	vmm_writel(port->mask, (void *)port->base + UCR1);
 
-	attr = vmm_devtree_attrval(dev->node, "baudrate");
-	if (!attr) {
-		rc = VMM_EFAIL;
+	rc = vmm_devtree_read_u32(dev->node, "baudrate",
+				  &port->baudrate);
+	if (rc) {
 		goto free_reg;
 	}
-	port->baudrate = *((u32 *) attr);
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
-	if (!attr) {
-		rc = VMM_EFAIL;
+	if (rc) {
 		goto free_reg;
 	}
 
 	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
 	if (rc) {
-		rc = VMM_EFAIL;
 		goto free_reg;
 	}
 
-	if ((rc =
-	     vmm_host_irq_register(port->irq, dev->node->name,
-				   imx_irq_handler, port))) {
+	if ((rc = vmm_host_irq_register(port->irq, dev->name,
+					imx_irq_handler, port))) {
 		goto free_reg;
 	}
 

@@ -302,7 +302,7 @@ static int virtio_net_connect(struct virtio_device *dev,
 			      struct virtio_emulator *emu)
 {
 	int i, rc;
-	char *attr;
+	const char *attr;
 	struct virtio_net_dev *ndev;
 	struct vmm_netswitch *nsw;
 
@@ -328,12 +328,12 @@ static int virtio_net_connect(struct virtio_device *dev,
 		return rc;
 	}
 
-	attr = vmm_devtree_attrval(dev->edev->node, "switch");
-	if (attr) {
-		nsw = vmm_netswitch_find((char *)attr);
+	if (vmm_devtree_read_string(dev->edev->node,
+				    "switch", &attr) == VMM_OK) {
+		nsw = vmm_netswitch_find(attr);
 		if (!nsw) {
 			vmm_printf("%s: Cannot find netswitch \"%s\"\n",
-					__func__, (char *)attr);
+					__func__, attr);
 		} else {
 			vmm_netswitch_port_add(nsw, ndev->port);
 		}

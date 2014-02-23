@@ -33,20 +33,23 @@ cpu-asflags += $(arch-y) $(tune-y)
 cpu-ldflags +=
 
 cpu-objs-y+= cpu_entry.o
+cpu-objs-y+= cpu_proc.o
 cpu-objs-y+= cpu_cache.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
 cpu-objs-y+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM64_STACKTRACE)+= cpu_stacktrace.o
-cpu-objs-$(CONFIG_SMP)+= cpu_smp.o
 cpu-objs-$(CONFIG_SMP)+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_atomic64.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
-cpu-objs-y+= cpu_vcpu_spr.o
-cpu-objs-y+= cpu_vcpu_mem.o
-cpu-objs-y+= cpu_vcpu_irq.o
+cpu-objs-y+= cpu_vcpu_excep.o
+cpu-objs-y+= cpu_vcpu_inject.o
 cpu-objs-y+= cpu_vcpu_emulate.o
+cpu-objs-y+= cpu_vcpu_mem.o
+cpu-objs-y+= cpu_vcpu_vfp.o
+cpu-objs-y+= cpu_vcpu_sysregs.o
+cpu-objs-y+= cpu_vcpu_irq.o
 

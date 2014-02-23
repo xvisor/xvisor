@@ -55,10 +55,6 @@ enum gen_timer_type {
 	GENERIC_VIRTUAL_TIMER,
 };
 
-int generic_timer_clocksource_init(void); 
-
-int generic_timer_clockchip_init(void);
-
 u64 generic_timer_wakeup_timeout(void);
 
 struct generic_timer_context {

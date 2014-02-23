@@ -127,6 +127,7 @@ struct usb_device {
 
 	int maxchild;			/* Number of ports if hub */
 	struct usb_device *parent;
+	vmm_spinlock_t children_lock;
 	struct usb_device *children[USB_MAXCHILDREN];
 
 	u32	devnum;		/* Device number on USB bus */

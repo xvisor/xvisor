@@ -838,7 +838,7 @@ int __init vmm_modules_init(void)
 		/* Initialize module if required */
 		if (mwrap->mod.init) {
 #if defined(CONFIG_VERBOSE_MODE)
-			vmm_printf("Initialize %s\n", mwrap->mod.name);
+			vmm_printf("Module Init %s\n", mwrap->mod.name);
 #endif
 			if ((ret = mwrap->mod.init())) {
 				vmm_printf("%s: %s init error %d\n", 

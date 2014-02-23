@@ -27,78 +27,78 @@
 #include <vmm_manager.h>
 
 /** Emulate WFI/WFE instruction */
-int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 			     arch_regs_t * regs,
 			     u32 il, u32 iss);
 
 /** Emulate MCR/MRC CP15 instruction */
-int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp15(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
 				  u32 il, u32 iss);
 
 /** Emulate MCRR/MRRC CP15 instruction */
-int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp15(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss);
 
 /** Emulate MCR/MRC CP14 instruction */
-int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t * regs, 
+int cpu_vcpu_emulate_mcr_mrc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t * regs,
 				  u32 il, u32 iss);
 
 /** Emulate LDC/STC CP14 instruction */
-int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
+int cpu_vcpu_emulate_ldc_stc_cp14(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
 				  u32 il, u32 iss);
 
 /** Emulate Advanced SIMD or FPU register access */
-int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu, 
-				  arch_regs_t *regs, 
+int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
 				  u32 il, u32 iss);
 
 /** Emulate MRC (or VMRS) to CP10 instruction */
-int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
-			  arch_regs_t *regs, 
+int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs,
 			  u32 il, u32 iss);
 
 /** Emulate MCRR/MRRC to CP14 instruction */
-int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_mcrr_mrrc_cp14(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss);
 
 /** Emulate HVC instruction for A32 guest */
-int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss);
 
 /** Emulate HVC instruction for A64 guest */
-int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_hvc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss);
 
 /** Emulate SMC instruction for A32 guest */
-int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc32(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss);
 
 /** Emulate SMC instruction for A64 guest */
-int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu, 
-			   arch_regs_t *regs, 
+int cpu_vcpu_emulate_smc64(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
 			   u32 il, u32 iss);
 
 /** Emulate MRS/MSR/System Regs access */
-int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu, 
-				    arch_regs_t *regs, 
+int cpu_vcpu_emulate_msr_mrs_system(struct vmm_vcpu *vcpu,
+				    arch_regs_t *regs,
 				    u32 il, u32 iss);
 
 /** Emulate Load instruction */
-int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 il, u32 iss,
 			  physical_addr_t ipa);
 
 /** Emulate Store instruction */
-int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
 			   u32 il, u32 iss,
 			   physical_addr_t ipa);

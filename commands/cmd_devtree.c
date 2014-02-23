@@ -36,7 +36,7 @@
 #define	MODULE_INIT			cmd_devtree_init
 #define	MODULE_EXIT			cmd_devtree_exit
 
-void cmd_devtree_usage(struct vmm_chardev *cdev)
+static void cmd_devtree_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   devtree help\n");
@@ -60,9 +60,9 @@ void cmd_devtree_usage(struct vmm_chardev *cdev)
 					   "virtaddr|virtsize\n");
 }
 
-void cmd_devtree_print_attribute(struct vmm_chardev *cdev, 
-				 struct vmm_devtree_attr *attr, 
-				 int indent)
+static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
+					struct vmm_devtree_attr *attr,
+					int indent)
 {
 	int i;
 	char *str;
@@ -166,10 +166,10 @@ void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 	}
 }
 
-void cmd_devtree_print_node(struct vmm_chardev *cdev, 
-			    struct vmm_devtree_node *node, 
-			    bool showattr,
-			    int indent)
+static void cmd_devtree_print_node(struct vmm_chardev *cdev, 
+				   struct vmm_devtree_node *node, 
+				   bool showattr,
+				   int indent)
 {
 	int i;
 	bool braceopen;
@@ -220,7 +220,7 @@ void cmd_devtree_print_node(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, ";\n");
 }
 
-int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
+static int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 {
 	struct dlist *l;
 	struct vmm_devtree_attr *attr;
@@ -239,8 +239,9 @@ int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
-			 char *type, int valc, char **valv)
+static int cmd_devtree_attr_set(struct vmm_chardev *cdev,
+				char *path, char *name,
+				char *type, int valc, char **valv)
 {
 	int i, rc = VMM_OK;
 	u32 val_type = VMM_DEVTREE_ATTRTYPE_UNKNOWN, val_len = 0;
@@ -329,7 +330,8 @@ int cmd_devtree_attr_set(struct vmm_chardev *cdev, char *path, char *name,
 	return rc;
 }
 
-int cmd_devtree_attr_get(struct vmm_chardev *cdev, char *path, char *name)
+static int cmd_devtree_attr_get(struct vmm_chardev *cdev,
+				char *path, char *name)
 {
 	struct vmm_devtree_attr *attr;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
@@ -350,7 +352,8 @@ int cmd_devtree_attr_get(struct vmm_chardev *cdev, char *path, char *name)
 	return VMM_OK;
 }
 
-int cmd_devtree_attr_del(struct vmm_chardev *cdev, char *path, char *name)
+static int cmd_devtree_attr_del(struct vmm_chardev *cdev,
+				char *path, char *name)
 {
 	int rc;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
@@ -369,7 +372,7 @@ int cmd_devtree_attr_del(struct vmm_chardev *cdev, char *path, char *name)
 	return VMM_OK;
 }
 
-int cmd_devtree_node_show(struct vmm_chardev *cdev, char *path)
+static int cmd_devtree_node_show(struct vmm_chardev *cdev, char *path)
 {
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
@@ -383,7 +386,7 @@ int cmd_devtree_node_show(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_node_dump(struct vmm_chardev *cdev, char *path)
+static int cmd_devtree_node_dump(struct vmm_chardev *cdev, char *path)
 {
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
@@ -397,7 +400,8 @@ int cmd_devtree_node_dump(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
+static int cmd_devtree_node_add(struct vmm_chardev *cdev,
+				char *path, char *name)
 {
 	struct vmm_devtree_node *parent = vmm_devtree_getnode(path);
 	struct vmm_devtree_node *node = NULL;
@@ -417,8 +421,8 @@ int cmd_devtree_node_add(struct vmm_chardev *cdev, char *path, char *name)
 	return VMM_OK;
 }
 
-int cmd_devtree_node_copy(struct vmm_chardev *cdev, 
-			  char *path, char *name, char *src_path)
+static int cmd_devtree_node_copy(struct vmm_chardev *cdev, 
+				 char *path, char *name, char *src_path)
 {
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 	struct vmm_devtree_node *src = vmm_devtree_getnode(src_path);
@@ -436,7 +440,7 @@ int cmd_devtree_node_copy(struct vmm_chardev *cdev,
 	return vmm_devtree_copynode(node, name, src);
 }
 
-int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
+static int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
 {
 	int rc;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
@@ -455,7 +459,7 @@ int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
 	return VMM_OK;
 }
 
-int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_devtree_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc < 2) {
 		cmd_devtree_usage(cdev);

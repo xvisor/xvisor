@@ -118,9 +118,12 @@ int vmm_netport_free(struct vmm_netport *port)
 }
 VMM_EXPORT_SYMBOL(vmm_netport_free);
 
+static struct vmm_class netport_class = {
+	.name = VMM_NETPORT_CLASS_NAME,
+};
+
 int vmm_netport_register(struct vmm_netport *port)
 {
-	struct vmm_classdev *cd;
 	int rc;
 
 	if (port == NULL)
@@ -131,45 +134,32 @@ int vmm_netport_register(struct vmm_netport *port)
 		random_ether_addr(port->macaddr);
 	}
 
-	cd = vmm_malloc(sizeof(struct vmm_classdev));
-	if (!cd) {
-		rc = VMM_EFAIL;
-		goto ret;
+	vmm_devdrv_initialize_device(&port->dev);
+	if (strlcpy(port->dev.name, port->name, sizeof(port->dev.name)) >=
+	    sizeof(port->dev.name)) {
+		return VMM_EOVERFLOW;
 	}
+	port->dev.class = &netport_class;
+	vmm_devdrv_set_data(&port->dev, port);
 
-	INIT_LIST_HEAD(&cd->head);
-	if (strlcpy(cd->name, port->name, sizeof(cd->name)) >=
-	    sizeof(cd->name)) {
-		rc = VMM_EOVERFLOW;
-		goto fail_port_reg;
-	}
-	cd->dev = port->dev;
-	cd->priv = port;
-
-	rc = vmm_devdrv_register_classdev(VMM_NETPORT_CLASS_NAME, cd);
+	rc = vmm_devdrv_class_register_device(&netport_class, &port->dev);
 	if (rc != VMM_OK) {
 		vmm_printf("%s: Failed to register %s %s (error %d)\n",
 			   __func__, VMM_NETPORT_CLASS_NAME, port->name, rc);
-		goto fail_port_reg;
+		return rc;
 	}
 
 #ifdef CONFIG_VERBOSE_MODE
 	vmm_printf("%s: Registered netport %s\n", __func__, port->name);
 #endif
 
-	return rc;
-
-fail_port_reg:
-	vmm_free(cd);
-ret:
-	return rc;
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_netport_register);
 
 int vmm_netport_unregister(struct vmm_netport *port)
 {
 	int rc;
-	struct vmm_classdev *cd;
 
 	if (!port) {
 		return VMM_EFAIL;
@@ -180,102 +170,68 @@ int vmm_netport_unregister(struct vmm_netport *port)
 		return rc;
 	}
 
-	cd = vmm_devdrv_find_classdev(VMM_NETPORT_CLASS_NAME, port->name);
-	if (!cd) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_unregister_classdev(VMM_NETPORT_CLASS_NAME, cd);
-	if (!rc) {
-		vmm_free(cd);
-	}
-
-	return rc;
+	return vmm_devdrv_class_unregister_device(&netport_class, &port->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_unregister);
 
 struct vmm_netport *vmm_netport_find(const char *name)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_find_classdev(VMM_NETPORT_CLASS_NAME, name);
-
-	if (!cd)
+	dev = vmm_devdrv_class_find_device(&netport_class, name);
+	if (!dev) {
 		return NULL;
+	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_find);
 
 struct vmm_netport *vmm_netport_get(int num)
 {
-	struct vmm_classdev *cd;
+	struct vmm_device *dev;
 
-	cd = vmm_devdrv_classdev(VMM_NETPORT_CLASS_NAME, num);
-
-	if (!cd)
+	dev = vmm_devdrv_class_device(&netport_class, num);
+	if (!dev) {
 		return NULL;
+	}
 
-	return cd->priv;
+	return vmm_devdrv_get_data(dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_get);
 
 u32 vmm_netport_count(void)
 {
-	return vmm_devdrv_classdev_count(VMM_NETPORT_CLASS_NAME);
+	return vmm_devdrv_class_device_count(&netport_class);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_count);
 
 int __init vmm_netport_init(void)
 {
 	int rc;
-	struct vmm_class *c;
 
 	vmm_printf("Initialize Network Port Framework\n");
 
-	c = vmm_malloc(sizeof(struct vmm_class));
-	if (!c)
-		return VMM_EFAIL;
-
-	INIT_LIST_HEAD(&c->head);
-	if (strlcpy(c->name, VMM_NETPORT_CLASS_NAME, sizeof(c->name)) >=
-	    sizeof(c->name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_class;
-	}
-	INIT_LIST_HEAD(&c->classdev_list);
-
-	rc = vmm_devdrv_register_class(c);
+	rc = vmm_devdrv_register_class(&netport_class);
 	if (rc) {
 		vmm_printf("Failed to register %s class\n",
 			VMM_NETPORT_CLASS_NAME);
-		goto free_class;
+		return rc;
 	}
 
 	return VMM_OK;
-
-free_class:
-	vmm_free(c);
-	return rc;
 }
 
 int __exit vmm_netport_exit(void)
 {
 	int rc;
-	struct vmm_class *c;
 
-	c = vmm_devdrv_find_class(VMM_NETPORT_CLASS_NAME);
-	if (!c)
-		return VMM_OK;
-
-	rc = vmm_devdrv_unregister_class(c);
+	rc = vmm_devdrv_unregister_class(&netport_class);
 	if (rc) {
 		vmm_printf("Failed to unregister %s class",
 			VMM_NETPORT_CLASS_NAME);
 		return rc;
 	}
-
-	vmm_free(c);
 
 	return VMM_OK;
 }

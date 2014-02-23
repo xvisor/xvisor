@@ -150,6 +150,16 @@
 							 SCTLR_AFE_MASK | \
 							 SCTLR_U_MASK)
 
+/* CPACR related macros & define */
+#define CPACR_ASEDIS_MASK				0x80000000
+#define CPACR_ASEDIS_SHIFT				31
+#define CPACR_D32DIS_MASK				0x40000000
+#define CPACR_D32DIS_SHIFT				30
+#define CPACR_TRCDIS_MASK				0x10000000
+#define CPACR_TRCDIS_SHIFT				28
+#define CPACR_CP_MASK(n)				(0x3 << ((n)*2))
+#define CPACR_CP_SHIFT(n)				((n)*2)
+
 /* CTR related macros & defines */
 #define CTR_FORMAT_MASK					0xE0000000
 #define CTR_FORMAT_SHIFT				29
@@ -467,5 +477,79 @@
 #define PAR64_SH_SHIFT					7
 #define PAR64_F_MASK					0x0000000000000001ULL
 #define PAR64_F_SHIFT					0
+
+/* MIDR */
+#define MIDR_IMPLEMENTER_MASK				0xFF000000
+#define MIDR_IMPLEMENTER_SHIFT				24
+#define MIDR_VARIANT_MASK				0x00F00000
+#define MIDR_VARIANT_SHIFT				20
+#define MIDR_ARCHITECTURE_MASK				0x000F0000
+#define MIDR_ARCHITECTURE_SHIFT				16
+#define MIDR_PARTNUM_MASK				0x0000FFF0
+#define MIDR_PARTNUM_SHIFT				4
+#define MIDR_REVISON_MASK				0x0000000F
+#define MIDR_REVISON_SHIFT				0
+
+/* FPEXC */
+#define FPEXC_EX_MASK					(1u << 31)
+#define FPEXC_EX_SHIFT					31
+#define FPEXC_EN_MASK					(1u << 30)
+#define FPEXC_EN_SHIFT					30
+#define FPEXC_FP2V_MASK					(1u << 28)
+#define FPEXC_FP2V_SHIFT				28
+
+/* FPSID */
+#define FPSID_IMPLEMENTER_MASK				(0xff << 24)
+#define FPSID_IMPLEMENTER_SHIFT				(24)
+#define FPSID_SW_MASK					(0x1 << 23)
+#define FPSID_SW_SHIFT					(23)
+#define FPSID_ARCH_MASK					(0x7f << 16)
+#define FPSID_ARCH_SHIFT				(16)
+#define FPSID_PART_MASK					(0xff << 8)
+#define FPSID_PART_SHIFT				(8)
+#define FPSID_VARIANT_MASK				(0xf << 4)
+#define FPSID_VARIANT_SHIFT				(4)
+#define FPSID_REV_MASK					(0xf << 0)
+#define FPSID_REV_SHIFT					(0)
+
+/* MVFR0 */
+#define MVFR0_VFP_ROUND_MODES_MASK			(0xf << 28)
+#define MVFR0_VFP_ROUND_MODES_SHIFT			28
+#define MVFR0_SHORT_VECTORS_MASK			(0xf << 24)
+#define MVFR0_SHORT_VECTORS_SHIFT			24
+#define MVFR0_SQUARE_ROOT_MASK				(0xf << 20)
+#define MVFR0_SQUARE_ROOT_SHIFT				20
+#define MVFR0_DIVIDE_MASK				(0xf << 16)
+#define MVFR0_DIVIDE_SHIFT				16
+#define MVFR0_VFP_EXEC_TRAP_MASK			(0xf << 12)
+#define MVFR0_VFP_EXEC_TRAP_SHIFT			12
+#define MVFR0_DOUBLE_PREC_MASK				(0xf << 8)
+#define MVFR0_DOUBLE_PREC_SHIFT				8
+#define MVFR0_SINGLE_PREC_MASK				(0xf << 4)
+#define MVFR0_SINGLE_PREC_SHIFT				4
+#define MVFR0_A_SIMD_MASK				(0xf << 0)
+#define MVFR0_A_SIMD_SHIFT				0
+
+/* ID_PFR0 */
+#define ID_PFR0_STATE3_MASK				0x0000f000
+#define ID_PFR0_STATE3_SHIFT				12
+#define ID_PFR0_STATE2_MASK				0x00000f00
+#define ID_PFR0_STATE2_SHIFT				8
+#define ID_PFR0_STATE1_MASK				0x000000f0
+#define ID_PFR0_STATE1_SHIFT				4
+#define ID_PFR0_STATE0_MASK				0x00000000
+#define ID_PFR0_STATE0_SHIFT				0
+
+/* ID_PFR1 */
+#define ID_PFR1_GEN_TIMER_MASK				0x000f0000
+#define ID_PFR1_GEN_TIMER_SHIFT				16
+#define ID_PFR1_VIRTEX_MASK				0x0000f000
+#define ID_PFR1_VIRTEX_SHIFT				12
+#define ID_PFR1_M_PROFILE_MASK				0x00000f00
+#define ID_PFR1_M_PROFILE_SHIFT				8
+#define ID_PFR1_SECUREX_MASK				0x000000f0
+#define ID_PFR1_SECUREX_SHIFT				4
+#define ID_PFR1_PRG_MODEL_MASK				0x0000000f
+#define ID_PFR1_PRG_MODEL_SHIFT				0
 
 #endif

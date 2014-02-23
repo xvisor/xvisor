@@ -18,7 +18,7 @@
 #
 # @file objects.mk
 # @author Jean-Christophe Dubois (jcd@tribudubois.net)
-# @brief list of core objects to be build
+# @brief list of loadbal objects to be build
 # */
 
 core-objs-$(CONFIG_LOADBAL_CRUDE) += loadbal/vmm_loadbal_crude.o

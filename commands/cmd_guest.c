@@ -38,7 +38,7 @@
 #define	MODULE_INIT			cmd_guest_init
 #define	MODULE_EXIT			cmd_guest_exit
 
-void cmd_guest_usage(struct vmm_chardev *cdev)
+static void cmd_guest_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   guest help\n");
@@ -57,7 +57,7 @@ void cmd_guest_usage(struct vmm_chardev *cdev)
 			  "device tree node\n");
 }
 
-void cmd_guest_list(struct vmm_chardev *cdev)
+static void cmd_guest_list(struct vmm_chardev *cdev)
 {
 	int id, count;
 	char path[256];
@@ -83,7 +83,7 @@ void cmd_guest_list(struct vmm_chardev *cdev)
 			  "---------------------------------------\n");
 }
 
-int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
 {
 	struct vmm_guest *guest = NULL;
 	struct vmm_devtree_node *node = NULL;
@@ -110,7 +110,7 @@ int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
 	return VMM_OK;
 }
 
-int cmd_guest_destroy(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_destroy(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -129,7 +129,7 @@ int cmd_guest_destroy(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_reset(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_reset(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -148,7 +148,7 @@ int cmd_guest_reset(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_kick(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_kick(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -167,7 +167,7 @@ int cmd_guest_kick(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_pause(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_pause(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -186,7 +186,7 @@ int cmd_guest_pause(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_resume(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_resume(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -205,7 +205,7 @@ int cmd_guest_resume(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_halt(struct vmm_chardev *cdev, const char *name)
+static int cmd_guest_halt(struct vmm_chardev *cdev, const char *name)
 {
 	int ret;
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
@@ -224,8 +224,8 @@ int cmd_guest_halt(struct vmm_chardev *cdev, const char *name)
 	return ret;
 }
 
-int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
-		      physical_addr_t gphys_addr, u32 len)
+static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
+			     physical_addr_t gphys_addr, u32 len)
 {
 #define BYTES_PER_LINE 16
 	u8 buf[BYTES_PER_LINE];
@@ -249,7 +249,7 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	}
 	while (total_loaded < len) {
 		loaded = vmm_guest_memory_read(guest, gphys_addr,
-					       buf, BYTES_PER_LINE);
+					       buf, BYTES_PER_LINE, FALSE);
 		if (loaded != BYTES_PER_LINE) {
 			break;
 		}
@@ -272,8 +272,7 @@ int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	return VMM_EFAIL;
 }
 
-
-int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 size;
 	physical_addr_t src_addr;

@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
@@ -237,9 +238,13 @@ static void telnetd_fill_rx_buffer(void)
 
 	/* Recieve netstack socket buffer */
 	rc = netstack_socket_recv(tdctrl.active_sk, &buf, -1);
-	if (rc) {
+	if (rc == VMM_ETIMEDOUT) {
+		TELNETD_DPRINTF("%s: Socket read timedout\n", __func__);
+		return;
+	} else if (rc) {
 		telnetd_set_disconnected();
-		TELNETD_DPRINTF("%s: Socket read failed\n", __func__);
+		TELNETD_DPRINTF("%s: Socket read failed (error %d)\n",
+				__func__, rc);
 		return;
 	}
 
@@ -474,10 +479,9 @@ fail:
 
 static int __init daemon_telnetd_init(void)
 {
-	u8 telnetd_priority;
+	u32 telnetd_priority;
 	u32 telnetd_time_slice;
 	struct vmm_devtree_node *node;
-	const char *attrval;
 
 	/* Reset telnetd control information */
 	memset(&tdctrl, 0, sizeof(tdctrl));
@@ -493,25 +497,16 @@ static int __init daemon_telnetd_init(void)
 	if (!node) {
 		return VMM_EFAIL;
 	}
-	attrval = vmm_devtree_attrval(node,
-				      "telnetd_priority");
-	if (attrval) {
-		telnetd_priority = *((u32 *) attrval);
-	} else {
+	if (vmm_devtree_read_u32(node,
+				 "telnetd_priority", &telnetd_priority)) {
 		telnetd_priority = VMM_THREAD_DEF_PRIORITY;
 	}
-	attrval = vmm_devtree_attrval(node,
-				      "telnetd_time_slice");
-	if (attrval) {
-		telnetd_time_slice = *((u32 *) attrval);
-	} else {
+	if (vmm_devtree_read_u32(node,
+				 "telnetd_time_slice", &telnetd_time_slice)) {
 		telnetd_time_slice = VMM_THREAD_DEF_TIME_SLICE;
 	}
-	attrval = vmm_devtree_attrval(node,
-				      "telnetd_port");
-	if (attrval) {
-		tdctrl.port = *((u32 *) attrval);
-	} else {
+	if (vmm_devtree_read_u32(node,
+				 "telnetd_port", &tdctrl.port)) {
 		tdctrl.port = 23;
 	}
 
@@ -539,10 +534,8 @@ static int __init daemon_telnetd_init(void)
 	tdctrl.cdev_ingets = FALSE;
 	tdctrl.cdev_incmdexec = FALSE;
 	strcpy(tdctrl.cdev.name, "telnetd");
-	tdctrl.cdev.dev = NULL;
 	tdctrl.cdev.read = telnetd_chardev_read;
 	tdctrl.cdev.write = telnetd_chardev_write;
-	tdctrl.cdev.ioctl = NULL;
 
 	/* Note: We don't register telnetd dummy character device so that
 	 * it is not visible to other part of hypervisor. This way we can
