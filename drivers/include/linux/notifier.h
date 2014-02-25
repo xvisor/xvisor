@@ -17,4 +17,6 @@
 
 /* FIXME: This file just a place holder for most cases */
 
+#define	notifier_block			vmm_notifier_block
+
 #endif /* _LINUX_NOTIFIER_H */

@@ -45,6 +45,9 @@
 #define dev_get_drvdata(dev)		vmm_devdrv_get_data(dev)
 #define dev_set_drvdata(dev, data)	vmm_devdrv_set_data(dev, data)
 
+#define	platform_set_drvdata(pdev, data)	pdev->priv = (void *) data
+#define	platform_get_drvdata(pdev)		pdev->priv
+
 static inline struct device *bus_find_device(struct bus_type *bus,
 					struct device *start,
 					void *data,

@@ -82,12 +82,6 @@ static const char version[] =
 
 #include "smc91x.h"
 
-#define cpu_relax()
-#define tasklet_schedule(x)
-#define tasklet_hi_schedule(x)
-#define tasklet_kill(x)
-#define platform_set_drvdata(pdev, data) pdev->priv = (void *)data
-
 #ifndef SMC_NOWAIT
 # define SMC_NOWAIT		0
 #endif
