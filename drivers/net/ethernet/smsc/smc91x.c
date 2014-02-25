@@ -2601,8 +2601,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	release_mem_region(res->start, SMC_IO_EXTENT);
 #endif
  out_free_netdev:
- 	/* TBD:: Add free_netdev support */
-	//free_netdev(ndev);
+	free_netdev(ndev);
  out:
 	printk("%s: not found (%d).\n", CARDNAME, ret);
 
