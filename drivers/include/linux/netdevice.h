@@ -36,6 +36,7 @@
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
 #include <linux/device.h>
+#include <uapi/linux/if.h>
 #include <uapi/linux/if_ether.h>
 
 #define MAX_NETDEV_NAME_LEN			32
@@ -73,6 +74,11 @@ struct net_device_ops {
 	int (*ndo_open) (struct net_device *ndev);
 	int (*ndo_stop) (struct net_device *ndev);
 	int (*ndo_start_xmit) (struct sk_buff *buf, struct net_device *ndev);
+	int (*ndo_validate_addr)(struct net_device *dev);
+	void (*ndo_tx_timeout) (struct net_device *dev);
+	int (*ndo_do_ioctl)(struct net_device *dev,
+			    struct ifreq *ifr, int cmd);
+	int (*ndo_change_mtu)(struct net_device *dev, int new_mtu);
 };
 
 struct net_device_stats {
@@ -129,6 +135,9 @@ struct net_device {
 	unsigned char	dma;	/* DMA channel		*/
 	struct net_device_stats stats;
 	struct phy_device *phydev;
+	unsigned long		trans_start;
+	int			watchdog_timeo;
+
 	struct vmm_device *vmm_dev;
 };
 
@@ -201,6 +210,14 @@ static inline void ether_setup(struct net_device *dev)
 {
 	dev->hw_addr_len = ETH_ALEN;
 	dev->mtu = ETH_DATA_LEN;
+}
+
+static inline int eth_change_mtu(struct net_device *dev, int new_mtu)
+{
+	if (new_mtu < 68 || new_mtu > ETH_DATA_LEN)
+		return -EINVAL;
+	dev->mtu = new_mtu;
+	return 0;
 }
 
 static inline void netdev_set_priv(struct net_device *ndev, void *priv)

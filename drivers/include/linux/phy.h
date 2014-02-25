@@ -589,10 +589,13 @@ static inline int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd
 	return 0;
 }
 
-#if 0
-int phy_mii_ioctl(struct phy_device *phydev,
-		struct ifreq *ifr, int cmd);
-#endif
+/* Placeholder for phy_mii_ioctl */
+static inline int phy_mii_ioctl(struct phy_device *phydev,
+		struct ifreq *ifr, int cmd)
+{
+	return 0;
+}
+
 int phy_start_interrupts(struct phy_device *phydev);
 void phy_print_status(struct phy_device *phydev);
 void phy_device_free(struct phy_device *phydev);

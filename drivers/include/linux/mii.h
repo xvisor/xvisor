@@ -7,8 +7,7 @@
 #ifndef __LINUX_MII_H__
 #define __LINUX_MII_H__
 
-
-//#include <uapi/linux/if.h>
+#include <uapi/linux/if.h>
 #include <uapi/linux/mii.h>
 
 struct ethtool_cmd;
