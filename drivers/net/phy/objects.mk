@@ -22,10 +22,12 @@
 # */
 
 drivers-objs-$(CONFIG_PHYLIB)+= net/phy/libphy.o
+drivers-objs-$(CONFIG_MDIO_SUN4I)+= net/phy/mdio-sun4i.o
 
 libphy-y += phy.o
 libphy-y += mdio_bus.o
 libphy-y += phy_device.o
+libphy-y += of_mdio.o
 
 %/libphy.o: $(foreach obj,$(libphy-y),%/$(obj))
 	$(call merge_objs,$@,$^)
