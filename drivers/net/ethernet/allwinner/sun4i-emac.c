@@ -12,7 +12,6 @@
  * warranty of any kind, whether express or implied.
  */
 
-#include <vmm_modules.h>
 #include <asm/errno.h>
 #include <linux/mii.h>
 #include <linux/spinlock.h>
@@ -29,9 +28,7 @@
 #include <linux/clk.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
-#if 0
 #include <linux/gpio.h>
-#endif
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -43,9 +40,7 @@
 #include <linux/of_mdio.h>
 #include <linux/of_net.h>
 #include <linux/of_platform.h>
-#if 0
 #include <linux/platform_device.h>
-#endif
 #include <linux/phy.h>
 
 #include "sun4i-emac.h"
@@ -62,12 +57,10 @@
 
 #define EMAC_MAX_FRAME_LEN	0x0600
 
-#if 0
 /* Transmit timeout, default 5 seconds. */
 static int watchdog = 5000;
 module_param(watchdog, int, 0400);
 MODULE_PARM_DESC(watchdog, "transmit timeout in milliseconds");
-#endif
 
 #define platform_set_drvdata(pdev, data) pdev->priv = (void *) data
 
@@ -235,7 +228,6 @@ static void emac_inblk_32bit(void __iomem *reg, void *data, int count)
 	readsl(reg, data, round_up(count, 4) / 4);
 }
 
-#if 0
 static int emac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct emac_board_info *dm = netdev_priv(dev);
@@ -249,7 +241,6 @@ static int emac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 
 	return phy_mii_ioctl(phydev, rq, cmd);
 }
-#endif
 
 /* ethtool ops */
 static void emac_get_drvinfo(struct net_device *dev,
@@ -434,7 +425,6 @@ static void emac_init_device(struct net_device *dev)
 	spin_unlock_irqrestore(&db->lock, flags);
 }
 
-#if 0
 /* Our watchdog timed out. Called by the networking layer */
 static void emac_timeout(struct net_device *dev)
 {
@@ -442,7 +432,7 @@ static void emac_timeout(struct net_device *dev)
 	unsigned long flags;
 
 	if (netif_msg_timer(db))
-		dev_err(db->dev, "tx time out.\n");
+		dev_err(db->pdev, "tx time out.\n");
 
 	/* Save previous register address */
 	spin_lock_irqsave(&db->lock, flags);
@@ -457,7 +447,6 @@ static void emac_timeout(struct net_device *dev)
 	/* Restore previous register address */
 	spin_unlock_irqrestore(&db->lock, flags);
 }
-#endif
 
 /* Hardware start transmission.
  * Send a packet to media from the upper layer.
@@ -493,10 +482,8 @@ static int emac_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		writel(readl(db->membase + EMAC_TX_CTL0_REG) | 1,
 		       db->membase + EMAC_TX_CTL0_REG);
 
-#if 0
 		/* save the time stamp */
 		dev->trans_start = jiffies;
-#endif
 	} else if (channel == 1) {
 		/* set TX len */
 		writel(skb_len(skb), db->membase + EMAC_TX_PL1_REG);
@@ -505,10 +492,8 @@ static int emac_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		writel(readl(db->membase + EMAC_TX_CTL1_REG) | 1,
 		       db->membase + EMAC_TX_CTL1_REG);
 
-#if 0
 		/* save the time stamp */
 		dev->trans_start = jiffies;
-#endif
 	}
 
 	if ((db->tx_fifo_stat & 3) == 3) {
@@ -835,11 +820,11 @@ static const struct net_device_ops emac_netdev_ops = {
 	.ndo_open		= emac_open,
 	.ndo_stop		= emac_stop,
 	.ndo_start_xmit		= emac_start_xmit,
-#if 0
 	.ndo_tx_timeout		= emac_timeout,
 	.ndo_do_ioctl		= emac_ioctl,
 	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
+#if 0
 	.ndo_set_mac_address	= emac_set_mac_address,
 #ifdef CONFIG_NET_POLL_CONTROLLER
 	.ndo_poll_controller	= emac_poll_controller,
@@ -923,9 +908,7 @@ static int emac_probe(struct vmm_device *pdev,
 	ether_setup(ndev);
 
 	ndev->netdev_ops = &emac_netdev_ops;
-#if 0
 	ndev->watchdog_timeo = msecs_to_jiffies(watchdog);
-#endif
 	ndev->ethtool_ops = &emac_ethtool_ops;
 
 	platform_set_drvdata(pdev, ndev);
