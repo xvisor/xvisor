@@ -87,7 +87,6 @@ static int netdev_register_port(struct net_device *ndev)
         return VMM_OK;
 }
 
-
 int register_netdev(struct net_device *ndev)
 {
 	int rc = VMM_OK;
@@ -135,9 +134,13 @@ void netdev_set_link(struct vmm_netport *port)
 	struct net_device *dev = (struct net_device *)port->priv;
 
 	if (port->flags & VMM_NETPORT_LINK_UP) {
-		dev->netdev_ops->ndo_open(dev);
+		if (!dev->netdev_ops->ndo_open(dev))
+			dev->state |= NETDEV_OPEN;
+		else
+			dev->state &= ~NETDEV_OPEN;
 	} else {
 		dev->netdev_ops->ndo_stop(dev);
+		dev->state &= ~NETDEV_OPEN;
 	}
 }
 

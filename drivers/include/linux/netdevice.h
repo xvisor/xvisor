@@ -47,7 +47,8 @@
 enum netdev_status {
 	NETDEV_UNINITIALIZED = 0x1,
 	NETDEV_REGISTERED = 0x2,
-	NETDEV_TX_ALLOWED = 0x4,
+	NETDEV_OPEN	  = 0x4,
+	NETDEV_TX_ALLOWED = 0x8,
 };
 
 enum netdev_link_state {
@@ -135,6 +136,18 @@ struct net_device {
 
 #include <linux/ethtool.h>
 
+/* No harm in enabling these debug messages. */
+#define	netif_msg_ifup(db)		1
+#define	netif_msg_ifdown(db)		1
+#define netif_msg_timer(db)		1
+#define	netif_msg_rx_err(db)		1
+
+/* These debug messages will throw too may prints, disabling them by default */
+#define	netif_msg_intr(db)		0
+#define	netif_msg_tx_done(db)		0
+#define	netif_msg_rx_status(db)		0
+
+
 static inline int netif_carrier_ok(const struct net_device *dev)
 {
 	if (dev->link_state == NETDEV_LINK_STATE_PRESENT)
@@ -176,6 +189,14 @@ static inline int netif_queue_stopped(struct net_device *dev)
 		return 1;
 }
 
+static inline bool netif_running(struct net_device *dev)
+{
+	if (dev->state & NETDEV_OPEN)
+		return true;
+
+	return false;
+}
+
 static inline void ether_setup(struct net_device *dev)
 {
 	dev->hw_addr_len = ETH_ALEN;
@@ -212,8 +233,14 @@ static inline int netif_rx(struct sk_buff *mb, struct net_device *dev)
 	return VMM_OK;
 }
 
-#define netif_msg_link(x)	0
-#define SET_NETDEV_DEV(ndev, pdev) ndev->vmm_dev = (void *) pdev
+static inline void free_netdev(struct net_device *dev)
+{
+	vmm_free(dev);
+}
+
+#define	netif_msg_link(x)		0
+#define	SET_NETDEV_DEV(ndev, pdev)	ndev->vmm_dev = (void *) pdev
+#define	unregister_netdev(ndev)		netdev_unregister(ndev)
 
 /** Allocate new network device */
 struct net_device *netdev_alloc(const char *name);
