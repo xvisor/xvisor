@@ -391,7 +391,7 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
  */
 const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 				const struct vmm_devtree_nodeid *matches,
-				struct vmm_devtree_node *node);
+				const struct vmm_devtree_node *node);
 
 /** Find node matching nodeid table starting from given node 
  *  Note: If node == NULL then node == root
@@ -417,6 +417,10 @@ struct vmm_devtree_node *vmm_devtree_find_compatible(
 				struct vmm_devtree_node *node,
 				const char *device_type,
 				const char *compatible);
+
+/** Check if node is compatible to given compatibility string */
+bool vmm_devtree_is_compatible(const struct vmm_devtree_node *node,
+			       const char *compatible);
 
 /** Find a node with given phandle value
  *  Note: This is based on 'phandle' attributes of device tree node

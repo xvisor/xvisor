@@ -1003,7 +1003,7 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 
 const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 					const struct vmm_devtree_nodeid *matches,
-					struct vmm_devtree_node *node)
+					const struct vmm_devtree_node *node)
 {
 	const char *type;
 
@@ -1118,6 +1118,25 @@ struct vmm_devtree_node *vmm_devtree_find_compatible(
 	}
 
 	return vmm_devtree_find_matching(node, id);
+}
+
+bool vmm_devtree_is_compatible(const struct vmm_devtree_node *node,
+			       const char *compatible)
+{
+	struct vmm_devtree_nodeid id[2];
+
+	if (!node || !compatible) {
+		return FALSE;
+	}
+
+	memset(id, 0, sizeof(id));
+
+	if (strlcpy(id[0].compatible, compatible, sizeof(id[0].compatible)) >=
+		    sizeof(id[0].compatible)) {
+		return FALSE;
+	}
+
+	return vmm_devtree_match_node(id, node) ? TRUE : FALSE;
 }
 
 static struct vmm_devtree_node *recursive_find_node_by_phandle(
