@@ -154,6 +154,8 @@ static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
 	return size;
 }
 
+static void virtio_net_tx_poke(struct virtio_net_dev *ndev);
+
 static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 {
 	u16 head = 0;
@@ -188,6 +190,18 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 	if (virtio_queue_should_signal(vq)) {
 		dev->tra->notify(dev, VIRTIO_NET_TX_QUEUE);
 	}
+
+	virtio_net_tx_poke(ndev);
+}
+
+static void virtio_net_tx_poke(struct virtio_net_dev *ndev)
+{
+	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
+
+	if (virtio_queue_available(vq)) {
+		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
+					  ndev, VIRTIO_NET_TX_LAZY_BUDGET);
+	}
 }
 
 static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
@@ -197,8 +211,7 @@ static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 
 	switch (vq) {
 	case VIRTIO_NET_TX_QUEUE:
-		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
-					  ndev, VIRTIO_NET_TX_LAZY_BUDGET);
+		virtio_net_tx_poke(ndev);
 		break;
 	case VIRTIO_NET_RX_QUEUE:
 		break;
@@ -217,7 +230,10 @@ static void virtio_net_set_link(struct vmm_netport *p)
 
 static int virtio_net_can_receive(struct vmm_netport *p)
 {
-	return 1;
+	struct virtio_net_dev *ndev = p->priv;
+	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_RX_QUEUE];
+
+	return virtio_queue_setup_done(vq) ? 1 : 0;
 }
 
 static int virtio_net_switch2port_xfer(struct vmm_netport *p,
@@ -314,7 +330,7 @@ static int virtio_net_connect(struct virtio_device *dev,
 
 	ndev->vdev = dev;
 	vmm_snprintf(ndev->name, VIRTIO_DEVICE_MAX_NAME_LEN, "%s", dev->name);
-	ndev->port = vmm_netport_alloc(ndev->name, VMM_NETPORT_DEF_QUEUE_SIZE);
+	ndev->port = vmm_netport_alloc(ndev->name, VIRTIO_NET_QUEUE_SIZE);
 	ndev->port->mtu = VIRTIO_NET_MTU;
 	ndev->port->link_changed = virtio_net_set_link;
 	ndev->port->can_receive = virtio_net_can_receive;
