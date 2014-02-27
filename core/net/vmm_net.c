@@ -59,6 +59,12 @@ static int __init vmm_net_init(void)
 		goto netport_init_failed;
 	}
 
+	rc = vmm_hub_init();
+	if (rc) {
+		vmm_printf("%s: Failed to init hub\n", __func__);
+		goto bridge_init_failed;
+	}
+
 	rc = vmm_bridge_init();
 	if (rc) {
 		vmm_printf("%s: Failed to init bridge\n", __func__);
@@ -98,6 +104,7 @@ net_init_done:
 static void __exit vmm_net_exit(void)
 {
 	vmm_bridge_exit();
+	vmm_hub_exit();
 
 	vmm_netport_exit();
 	vmm_netswitch_exit();
