@@ -409,6 +409,7 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 {.type = "serial",.compatible = "ns16550",.data = &uart8250_ops},
 {.type = "serial",.compatible = "ns16750",.data = &uart8250_ops},
 {.type = "serial",.compatible = "ns16850",.data = &uart8250_ops},
+{.type = "serial",.compatible = "snps,dw-apb-uart",.data = &uart8250_ops},
 {.type = "serial",.compatible = "st16654",.data = &omapuart_ops},
 {.type = "serial",.compatible = "freescale",.data = &imx_ops},
 {.type = "serial",.compatible = "imx-uart",.data = &imx_ops},

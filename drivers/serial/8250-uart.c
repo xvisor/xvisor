@@ -405,6 +405,7 @@ static struct vmm_devtree_nodeid uart_8250_devid_table[] = {
 	{ .type = "serial", .compatible = "ns16550"},
 	{ .type = "serial", .compatible = "ns16750"},
 	{ .type = "serial", .compatible = "ns16850"},
+	{ .type = "serial", .compatible = "snps,dw-apb-uart"},
 	{ /* end of list */ },
 };
 
