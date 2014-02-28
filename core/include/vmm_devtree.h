@@ -72,6 +72,7 @@
 #define VMM_DEVTREE_CPU_RELEASE_ADDR_ATTR_NAME	"cpu-release-addr"
 
 #define VMM_DEVTREE_GUESTINFO_NODE_NAME		"guests"
+#define VMM_DEVTREE_TEMPLATEINFO_NODE_NAME	"templates"
 #define VMM_DEVTREE_VCPUS_NODE_NAME		"vcpus"
 #define VMM_DEVTREE_ENDIANNESS_ATTR_NAME	"endianness"
 #define VMM_DEVTREE_ENDIANNESS_VAL_BIG		"big"
@@ -507,8 +508,10 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 					const char *cells_name);
 
 /** Add new node to device tree
- *  NOTE: vmm_devtree_addnode() allows parent == NULL to enable creation
- *  of root node using vmm_devtree_addnode().
+ *  NOTE: This function allows parent == NULL to enable creation of
+ *  root node but only once.
+ *  NOTE: Once root node is created, subsequent calls to this function
+ *  with parent == NULL will add nodes under root node.
  */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name);

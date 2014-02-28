@@ -1359,6 +1359,10 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 		return NULL;
 	}
 
+	if (!parent) {
+		parent = dtree_ctrl.root;
+	}
+
 	if (parent) {
 		list_for_each(l, &parent->child_list) {
 			node = list_entry(l, struct vmm_devtree_node, head);
