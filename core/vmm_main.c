@@ -193,6 +193,18 @@ static void system_init_work(struct vmm_work *work)
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
 
+	/* Make sure /guests and /templates nodes are present */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	}
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
+	}
+
 	/* Process attributes in chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
