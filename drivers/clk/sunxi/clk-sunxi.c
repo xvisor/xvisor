@@ -89,7 +89,7 @@ static void __init sun4i_osc_clk_setup(struct vmm_devtree_node *node)
 			&gate->hw, &clk_gate_ops,
 			CLK_IS_ROOT);
 
-	if (!clk) {
+	if (clk) {
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 		clk_register_clkdev(clk, clk_name, NULL);
 	}
@@ -347,7 +347,7 @@ static void __init sunxi_factors_clk_setup(struct vmm_devtree_node *node,
 	clk = clk_register_factors(NULL, clk_name, parent, 0, reg,
 				   data->table, data->getter, &clk_lock);
 
-	if (!clk) {
+	if (clk) {
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 		clk_register_clkdev(clk, clk_name, NULL);
 	}
