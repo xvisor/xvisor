@@ -57,11 +57,6 @@
 		};
 	};
 
-	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
-
 	chosen {
 		console = &SERIAL0;
 		/*console = &STDOUT;*/
@@ -70,10 +65,6 @@
 			  /* Create guest0 */
 			  "guest create guest0";
 
-	};
-
-	/* empty guest node */
-	guests {
 	};
 };
 

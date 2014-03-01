@@ -13,12 +13,5 @@
 		device_type = "memory"; 
 		reg = <0x0 0x0 0x0 0x0>;
 	};
-
-	vmm {
-	};
-
-	/* Empty guests node */
-	guests {
-	};
 };
 

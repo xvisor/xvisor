@@ -27,10 +27,6 @@
 			};
 		};
 	};
-
-	/* Empty guests node */
-	guests {
-	};
 };
 
 /* Add guest templates */
