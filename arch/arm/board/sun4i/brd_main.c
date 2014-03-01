@@ -29,7 +29,9 @@
 #include <arch_board.h>
 #include <arch_timer.h>
 
-#include <sunxi/timer.h>
+#include <drv/clk-provider.h>
+
+#include <sunxi/sun4i_timer.h>
 
 /*
  * Print board information
@@ -46,10 +48,17 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 
 int __init arch_board_early_init(void)
 {
-	/* Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
+	/* Host aspace, Heap, Device tree, and Host IRQ available.
+	 *
+	 * Do necessary early stuff like:
+	 * iomapping devices, 
+	 * SOC clocking init, 
+	 * Setting-up system data in device tree nodes,
+	 * ....
 	 */
+
+	/* Initialize clocking framework */
+	of_clk_init(NULL);
 
 	return 0;
 }

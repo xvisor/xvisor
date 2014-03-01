@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file timer.c
+ * @file sun4i_timer.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Allwinner Sunxi timer
+ * @brief Allwinner Sun4i timer
  */
 
 #include <vmm_error.h>
@@ -31,23 +31,26 @@
 #include <vmm_host_aspace.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
-#include <sunxi/timer.h>
+
+#include <drv/clk.h>
+
+#include <sunxi/sun4i_timer.h>
 
 /* Register read/write macros */
 #define readl(addr)		vmm_readl((void *)(addr))
 #define writel(val, addr)	vmm_writel((val), (void *)(addr))
 
 /* Define timer clock source */
-#define AW_TMR_CLK_SRC_32KLOSC     (0)
-#define AW_TMR_CLK_SRC_24MHOSC     (1)
-#define AW_TMR_CLK_SRC_PLL         (2)
+#define AW_TMR_CLK_SRC_32KLOSC			(0)
+#define AW_TMR_CLK_SRC_24MHOSC			(1)
+#define AW_TMR_CLK_SRC_PLL			(2)
 
 /* Config clock frequency   */
-#define AW_HPET_CLK_SRC     AW_TMR_CLK_SRC_24MHOSC
-#define AW_HPET_CLOCK_SOURCE_HZ         (24000000)
+#define AW_HPET_CLK_SRC     			AW_TMR_CLK_SRC_24MHOSC
+#define AW_HPET_CLOCK_SOURCE_HZ         	(24000000)
 
-#define AW_HPET_CLK_EVT     AW_TMR_CLK_SRC_24MHOSC
-#define AW_HPET_CLOCK_EVENT_HZ          (24000000)
+#define AW_HPET_CLK_EVT     			AW_TMR_CLK_SRC_24MHOSC
+#define AW_HPET_CLOCK_EVENT_HZ          	(24000000)
 
 /* AW timer registers offsets */
 #define AW_TMR_REG_IRQ_EN			(0x0000)
@@ -55,8 +58,6 @@
 #define AW_TMR_REG_CTL(off)			((off) + 0x0)
 #define AW_TMR_REG_INTV(off)			((off) + 0x4)
 #define AW_TMR_REG_CUR(off)			((off) + 0x8)
-#define AW_TMR_REG_WDT_CTRL			(0x0090)
-#define AW_TMR_REG_WDT_MODE			(0x0094)
 #define AW_TMR_REG_CNT64_CTL			(0x00A0)
 #define AW_TMR_REG_CNT64_LO			(0x00A4)
 #define AW_TMR_REG_CNT64_HI			(0x00A8)
@@ -80,6 +81,10 @@
 #define CPU_CFG_L1_CACHE_INV			(1 << 1)
 #define CPU_CFG_CHIP_VER_SHIFT			6
 #define CPU_CFG_CHIP_VER_MASK			0x3
+
+/* AW watchdog registers offsets */
+#define AW_WDT_REG_CTRL				(0x0000)
+#define AW_WDT_REG_MODE				(0x0004)
 
 struct aw_clocksource {
 	virtual_addr_t base;
@@ -115,8 +120,21 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 tmp;
+	unsigned long rate = 0;
+	struct clk *clk;
 	struct aw_clocksource *acs;
 
+	/* Find clock for timer */
+	clk = of_clk_get(node, 0);
+	if (!clk) {
+		vmm_panic("Can't get timer clock");
+	}
+
+	/* Enable clock and get rate */
+	clk_prepare_enable(clk);
+	rate = clk_get_rate(clk);
+
+	/* Alloc clocksource instance */
 	acs = vmm_zalloc(sizeof(struct aw_clocksource));
 	if (!acs) {
 		return VMM_ENOMEM;
@@ -146,12 +164,11 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 
 	/* Setup clocksource */
 	acs->clksrc.name = "aw-clksrc";
-	acs->clksrc.rating = 300;
+	acs->clksrc.rating = 350;
 	acs->clksrc.read = aw_clksrc_read;
 	acs->clksrc.mask = VMM_CLOCKSOURCE_MASK(64);
 	acs->clksrc.shift = 10;
-	acs->clksrc.mult = vmm_clocksource_hz2mult(AW_HPET_CLOCK_SOURCE_HZ, 
-						   acs->clksrc.shift);
+	acs->clksrc.mult = vmm_clocksource_hz2mult(rate, acs->clksrc.shift);
 	acs->clksrc.priv = acs;
 
 	/* Register clocksource */
@@ -165,8 +182,8 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 }
 
-VMM_CLOCKSOURCE_INIT_DECLARE(sunxiclksrc,
-			     "allwinner,sunxi-timer",
+VMM_CLOCKSOURCE_INIT_DECLARE(sun4iclksrc,
+			     "allwinner,sun4i-timer",
 			     aw_timer_clocksource_init);
 
 struct aw_clockchip {
@@ -249,8 +266,21 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hirq, tmp;
+	unsigned long rate = 0;
+	struct clk *clk;
 	struct aw_clockchip *acc;
 
+	/* Find clock for timer */
+	clk = of_clk_get(node, 0);
+	if (!clk) {
+		vmm_panic("Can't get timer clock");
+	}
+
+	/* Enable clock and get rate */
+	clk_prepare_enable(clk);
+	rate = clk_get_rate(clk);
+
+	/* Alloc clockchip instance */
 	acc = vmm_zalloc(sizeof(struct aw_clockchip));
 	if (!acc) {
 		return VMM_ENOMEM;
@@ -299,11 +329,11 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	/* Setup clockchip */
 	acc->clkchip.name = "aw-clkchip";
 	acc->clkchip.hirq = hirq;
-	acc->clkchip.rating = 300;
+	acc->clkchip.rating = 350;
 	acc->clkchip.cpumask = vmm_cpumask_of(0);
 	acc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	acc->clkchip.mult = vmm_clockchip_hz2mult(AW_HPET_CLOCK_EVENT_HZ, 32);
+	acc->clkchip.mult = vmm_clockchip_hz2mult(rate, 32);
 	acc->clkchip.shift = 32;
 	acc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(1, &acc->clkchip) + 100000;
 	acc->clkchip.max_delta_ns = vmm_clockchip_delta2ns((0x80000000), &acc->clkchip);
@@ -332,8 +362,8 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 }
 
-VMM_CLOCKCHIP_INIT_DECLARE(sunxiclkchip,
-			   "allwinner,sunxi-timer",
+VMM_CLOCKCHIP_INIT_DECLARE(sun4iclkchip,
+			   "allwinner,sun4i-timer",
 			   aw_timer_clockchip_init);
 
 static virtual_addr_t aw_base = 0;
@@ -367,11 +397,11 @@ static int aw_timer_force_reset(void)
 	}
 
 	/* Clear & disable watchdog */
-	writel(0, aw_base + AW_TMR_REG_WDT_MODE);
+	writel(0, aw_base + AW_WDT_REG_MODE);
 
 	/* Force reset by configuring watchdog with minimum interval */
 	mode = WDT_MODE_RESET | WDT_MODE_ENABLE;
-	writel(mode, aw_base + AW_TMR_REG_WDT_MODE);
+	writel(mode, aw_base + AW_WDT_REG_MODE);
 
 	/* FIXME: Wait for watchdog to expire ??? */
 
@@ -384,7 +414,7 @@ int __init aw_timer_misc_init(void)
 	struct vmm_devtree_node *node;
 
 	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "allwinner,sunxi-timer");
+					   "allwinner,sun4i-wdt");
 	if (!node) {
 		return VMM_ENODEV;
 	}

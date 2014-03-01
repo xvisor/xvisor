@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file intc.c
+ * @file irq-sun4i.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Allwinner Sunxi interrupt controller
+ * @brief Allwinner Sun4i interrupt controller
  */
 
 #include <vmm_types.h>
@@ -210,5 +210,5 @@ static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(sunxiintc,
-			  "allwinner,sunxi-ic",
+			  "allwinner,sun4i-ic",
 			  aw_intc_devtree_init);

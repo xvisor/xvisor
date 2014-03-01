@@ -21,6 +21,6 @@
 # @brief list of sunxi platform objects.
 # */
 
-board-common-objs-$(CONFIG_SUNXI)+= sunxi/intc.o
-board-common-objs-$(CONFIG_SUNXI)+= sunxi/timer.o
+board-common-objs-$(CONFIG_SUNXI)+= sunxi/irq-sun4i.o
+board-common-objs-$(CONFIG_SUNXI)+= sunxi/sun4i_timer.o
 

@@ -697,9 +697,15 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 		host->mmc_no = 0;
 	}
 
-	host->host_type = ((const u32 *)devid->data)[0];
-	host->des_num_shift = ((const u32 *)devid->data)[1];
-	host->des_max_len = ((const u32 *)devid->data)[2];
+	if (vmm_devtree_is_compatible(dev->node, "allwinner,sun4i-a10-mmc")) {
+		host->host_type = SUNXI_SUN4I_MMC;
+		host->des_num_shift = 13;
+		host->des_max_len = (1 << 13);
+	} else {
+		host->host_type = SUNXI_SUN5I_MMC;
+		host->des_num_shift = 16;
+		host->des_max_len = (1 << 16);
+	}
 
 	/* Acquire resources */
 	rc = vmm_devtree_regmap(dev->node, &base, 0);
@@ -851,30 +857,10 @@ static int sunxi_mmc_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static u32 sun4i_mmc[]= {
-	SUNXI_SUN4I_MMC,	/* host_type */
-	13,			/* des_num_shift */
-	(1 << 13),		/* des_max_len */
-};
-
-static u32 sun5i_mmc[]= {
-	SUNXI_SUN5I_MMC,	/* host_type */
-	16,			/* des_num_shift */
-	(1 << 16),		/* des_max_len */
-};
-
-static struct vmm_devtree_nodeid sunxi_mmc_devid_table[] = {
-	{
-		.type = "mmc",
-		.compatible = "allwinner,sun4i-mmc", 
-		.data = &sun4i_mmc
-	},
-	{
-		.type = "mmc",
-		.compatible = "allwinner,sun5i-mmc",
-		.data = &sun5i_mmc
-	},
-	{ /* end of list */ },
+static const struct vmm_devtree_nodeid sunxi_mmc_devid_table[] = {
+	{ .compatible = "allwinner,sun4i-a10-mmc", },
+	{ .compatible = "allwinner,sun5i-a13-mmc", },
+	{ /* sentinel */ }
 };
 
 static struct vmm_driver sunxi_mmc_driver = {

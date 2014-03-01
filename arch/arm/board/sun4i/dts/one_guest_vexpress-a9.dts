@@ -1,11 +1,11 @@
 
 /dts-v1/;
 
-/include/ "sun4i.dtsi"
+/include/ "sun4i-a10.dtsi"
 
 / {
 	chosen {
-		console = &SERIAL0;
+		console = &uart0;
 		bootcmd = /* Create rbd0 device */
 			  "rbd create rbd0 0x41000000 0x01000000",
 
