@@ -13,7 +13,7 @@
 #define	KERN_DEBUG
 
 #define printk(args...) vmm_printf(args)
-#define no_printk(args...) vmm_printf(args)
+#define no_printk(args...)
 
 #if defined(DEV_DEBUG)
 #define dev_dbg(args...) vmm_printf(args)
