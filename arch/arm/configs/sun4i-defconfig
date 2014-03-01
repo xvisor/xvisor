@@ -2,9 +2,8 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Thu Feb 13 01:47:36 2014
+# Fri Feb 28 21:06:38 2014
 #
-# CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
@@ -15,7 +14,6 @@ CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 # CONFIG_CPU_GENERIC_V8 is not set
-CONFIG_CPU_COUNT=1
 # CONFIG_ARMV5 is not set
 # CONFIG_ARMV6 is not set
 # CONFIG_ARMV6K is not set
@@ -29,6 +27,8 @@ CONFIG_ARM32=y
 #
 # ARM Options
 #
+# CONFIG_SMP is not set
+CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_HOST_IRQ_COUNT=1024
 # CONFIG_ARM_MMU_LPAE is not set
@@ -128,6 +128,7 @@ CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+CONFIG_NET_BH_TIMEOUT_SECS=30
 
 #
 # Virtual IO Support
@@ -301,13 +302,26 @@ CONFIG_MMC_SUNXI=y
 #
 # Network Device Support
 #
-# CONFIG_NET_DEVICES is not set
+CONFIG_NET_DEVICES=y
+CONFIG_ETHERNET_DRIVERS=y
+# CONFIG_ETHER_SMSC_911x is not set
+# CONFIG_ETHER_SMSC_91x is not set
+CONFIG_ETHER_ALLWINNER_SUN4I_EMAC=y
+CONFIG_PHYLIB=y
+
+#
+# MII PHY device drivers
+#
+CONFIG_MDIO_SUN4I=y
 
 #
 # Clock Drivers
 #
-# CONFIG_CLKDEV_LOOKUP is not set
-# CONFIG_COMMON_CLK is not set
+CONFIG_CLKDEV_LOOKUP=y
+CONFIG_COMMON_CLK=y
+# CONFIG_COMMON_CLK_VERSATILE is not set
+# CONFIG_COMMON_CLK_BCM2835 is not set
+CONFIG_COMMON_CLK_SUNXI=y
 
 #
 # Multifunction device drivers
