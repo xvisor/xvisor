@@ -200,19 +200,19 @@ static u32 omap_defterm_baud;
 
 static int omap_defterm_putc(u8 ch)
 {
-	if (!omap_uart_lowlevel_can_putc(omap_defterm_base, 4)) {
+	if (!omap_uart_lowlevel_can_putc(omap_defterm_base, 2)) {
 		return VMM_EFAIL;
 	}
-	omap_uart_lowlevel_putc(omap_defterm_base, 4, ch);
+	omap_uart_lowlevel_putc(omap_defterm_base, 2, ch);
 	return VMM_OK;
 }
 
 static int omap_defterm_getc(u8 *ch)
 {
-	if (!omap_uart_lowlevel_can_getc(omap_defterm_base, 4)) {
+	if (!omap_uart_lowlevel_can_getc(omap_defterm_base, 2)) {
 		return VMM_EFAIL;
 	}
-	*ch = omap_uart_lowlevel_getc(omap_defterm_base, 4);
+	*ch = omap_uart_lowlevel_getc(omap_defterm_base, 2);
 	return VMM_OK;
 }
 
@@ -236,8 +236,8 @@ static int __init omap_defterm_init(struct vmm_devtree_node *node)
 		omap_defterm_baud = 115200;
 	}
 
-	omap_uart_lowlevel_init(omap_defterm_base, 4, 
-				omap_defterm_baud, 
+	omap_uart_lowlevel_init(omap_defterm_base, 2,
+				omap_defterm_baud,
 				omap_defterm_inclk);
 
 	return VMM_OK;
