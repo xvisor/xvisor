@@ -329,9 +329,6 @@
 			/* Only for Xvisor */
 			device_type = "serial";
 			clock-frequency = <24000000>;
-			baudrate = <115200>;
-			reg_offset = <0x0>;
-			reg_align = <0x4>;
 		};
 
 		uart1: serial@01c28400 {
@@ -344,9 +341,6 @@
 			/* Only for Xvisor */
 			device_type = "serial";
 			clock-frequency = <24000000>;
-			baudrate = <115200>;
-			reg_offset = <0x0>;
-			reg_align = <0x4>;
 		};
 
 		mmc0: mmc@01c0f000 {

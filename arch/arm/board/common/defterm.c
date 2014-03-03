@@ -160,13 +160,18 @@ static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
-				&uart8250_port.baudrate)) {
+				 &uart8250_port.baudrate)) {
 		uart8250_port.baudrate = 115200;
 	}
 
-	if (vmm_devtree_read_u32(node, "reg_align",
-				&uart8250_port.reg_align)) {
-		uart8250_port.reg_align = 4;
+	if (vmm_devtree_read_u32(node, "reg-shift",
+				 &uart8250_port.reg_shift)) {
+		uart8250_port.reg_shift = 2;
+	}
+
+	if (vmm_devtree_read_u32(node, "reg-io-width",
+				 &uart8250_port.reg_width)) {
+		uart8250_port.reg_width = 1;
 	}
 
 	uart_8250_lowlevel_init(&uart8250_port);

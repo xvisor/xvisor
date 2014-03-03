@@ -73,7 +73,8 @@ struct uart_8250_port {
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
-	u32 reg_align;
+	u32 reg_shift;
+	u32 reg_width;
 	u32 irq;
 	u32 ier;
 	u32 lcr_last;
