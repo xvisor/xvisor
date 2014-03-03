@@ -459,14 +459,13 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg_shift",
+	if (vmm_devtree_read_u32(dev->node, "reg-shift",
 				 &port->reg_shift)) {
-		port->reg_shift = 1;
+		port->reg_shift = 0;
 	}
 
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
 		port->baudrate = 115200;
 	}
 
