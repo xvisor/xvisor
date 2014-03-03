@@ -71,7 +71,6 @@
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
 			clock-frequency = <100000000>;
-			baudrate = <115200>;
 			interrupts = <84>;
 		};
 
@@ -80,7 +79,6 @@
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
 			clock-frequency = <100000000>;
-			baudrate = <115200>;
 			interrupts = <85>;
 		};
 
@@ -89,7 +87,6 @@
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
 			clock-frequency = <100000000>;
-			baudrate = <115200>;
 			interrupts = <86>;
 		};
 
@@ -98,7 +95,6 @@
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
 			clock-frequency = <100000000>;
-			baudrate = <115200>;
 			interrupts = <87>;
 		};
 
@@ -107,7 +103,6 @@
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
 			clock-frequency = <100000000>;
-			baudrate = <115200>;
 			interrupts = <88>;
 		};
 

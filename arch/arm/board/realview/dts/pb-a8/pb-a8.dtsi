@@ -94,7 +94,6 @@
 		      		compatible = "arm,pl011";
 		      		reg = <0x10009000 0x1000>;
 				clock-frequency = <24000000>;
-		      		baudrate = <115200>;
 				interrupts = <44>;
 			};
 

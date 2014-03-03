@@ -86,7 +86,6 @@
 			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
-			baudrate = <115200>;
 			interrupts = <84>;
 		};
 
@@ -94,7 +93,6 @@
 			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
-			baudrate = <115200>;
 			interrupts = <85>;
 		};
 
@@ -102,7 +100,6 @@
 			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
-			baudrate = <115200>;
 			interrupts = <86>;
 		};
 
@@ -110,7 +107,6 @@
 			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
-			baudrate = <115200>;
 			interrupts = <87>;
 		};
 
@@ -118,7 +114,6 @@
 			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
-			baudrate = <115200>;
 			interrupts = <88>;
 		};
 
