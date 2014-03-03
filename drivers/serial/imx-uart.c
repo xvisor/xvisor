@@ -459,10 +459,9 @@ static int imx_driver_probe(struct vmm_device *dev,
 
 	vmm_writel(port->mask, (void *)port->base + UCR1);
 
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
-		goto free_reg;
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
+		port->baudrate = 115200;
 	}
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);

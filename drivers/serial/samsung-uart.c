@@ -312,10 +312,9 @@ static int samsung_driver_probe(struct vmm_device *dev,
 
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
 
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
-		goto free_reg;
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
+		port->baudrate = 115200;
 	}
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
