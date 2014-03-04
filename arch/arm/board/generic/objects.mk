@@ -18,7 +18,7 @@
 #
 # @file objects.mk
 # @author Sukanto Ghosh (sukantoghosh@gmail.com)
-# @brief list of Generic ARMv8 board objects.
+# @brief list of Generic board objects.
 # */
 
 board-objs-y+=brd_main.o

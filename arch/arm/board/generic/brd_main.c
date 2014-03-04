@@ -30,7 +30,8 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <arch_board.h>
-#include <arch_timer.h>
+
+#include <drv/clk-provider.h>
 
 /*
  * Print board information
@@ -55,6 +56,9 @@ int __init arch_board_early_init(void)
 	 * Setting-up system data in device tree nodes,
 	 * ....
 	 */
+
+	/* Initialize clocking framework */
+	of_clk_init(NULL);
 
 	return VMM_OK;
 }
