@@ -36,7 +36,11 @@
 
 #include <gic.h>
 #include <smp_ops.h>
-#include <smp_scu.h>
+
+#define SCU_PM_NORMAL	0
+#define SCU_PM_EINVAL	1
+#define SCU_PM_DORMANT	2
+#define SCU_PM_POWEROFF	3
 
 #define SCU_CTRL		0x00
 #define SCU_CONFIG		0x04
