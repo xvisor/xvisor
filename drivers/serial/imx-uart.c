@@ -519,18 +519,8 @@ static int imx_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid imx_devid_table[] = {
-	{
-	 .type = "serial",
-	 .compatible = "freescale"},
-	{
-	 .type = "serial",
-	 .compatible = "imx-uart"},
-	{
-	 .type = "serial",
-	 .compatible = "freescale,imx-uart"},
-	{
-	 /* end of list */
-	 },
+	{.compatible = "freescale,imx-uart" },
+	{ /* end of list */ },
 };
 
 static struct vmm_driver imx_driver = {

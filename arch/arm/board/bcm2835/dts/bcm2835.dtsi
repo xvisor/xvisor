@@ -44,7 +44,6 @@
 		};
 
 		SERIAL0: uart0 {
-	      		device_type = "serial";
 	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
 	      		reg = <0x20201000 0x1000>;
 			clock-frequency = <3000000>;

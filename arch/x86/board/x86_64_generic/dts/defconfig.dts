@@ -39,7 +39,6 @@
 		};
 
 		SERIAL0: uart0 {
-			device_type = "serial";
 			compatible = "ns8250";
 			reg = <0x3f8 0x0>;
 			baudrate = <115200>;
@@ -48,7 +47,6 @@
 		};
 
 		SERIAL1: uart1 {
-			device_type = "serial";
 			compatible = "ns8250";
 			reg = <0x2f8 0x0>;
 			baudrate = <115200>;

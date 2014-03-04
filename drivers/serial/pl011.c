@@ -368,7 +368,7 @@ static int pl011_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid pl011_devid_table[] = {
-	{.type = "serial",.compatible = "arm,pl011"},
+	{ .compatible = "arm,pl011" },
 	{ /* end of list */ },
 };
 

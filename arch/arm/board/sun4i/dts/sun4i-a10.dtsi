@@ -327,7 +327,6 @@
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 16>;
 			/* Only for Xvisor */
-			device_type = "serial";
 			clock-frequency = <24000000>;
 		};
 
@@ -339,7 +338,6 @@
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 17>;
 			/* Only for Xvisor */
-			device_type = "serial";
 			clock-frequency = <24000000>;
 		};
 

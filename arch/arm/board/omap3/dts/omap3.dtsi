@@ -39,7 +39,6 @@
 		};
 
 		SERIAL0: uart0 {
-			device_type = "serial";
 			compatible = "st16654";
 			reg = <0x49020000 0x1000>;
 			clock-frequency = <48000000>;

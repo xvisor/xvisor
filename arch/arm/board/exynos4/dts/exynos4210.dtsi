@@ -67,7 +67,6 @@
 		};
 
 		SERIAL0: uart@13800000 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
 			clock-frequency = <100000000>;
@@ -75,7 +74,6 @@
 		};
 
 		SERIAL1: uart@13810000 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
 			clock-frequency = <100000000>;
@@ -83,7 +81,6 @@
 		};
 
 		SERIAL2: uart@13820000 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
 			clock-frequency = <100000000>;
@@ -91,7 +88,6 @@
 		};
 
 		SERIAL3: uart@13830000 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
 			clock-frequency = <100000000>;
@@ -99,7 +95,6 @@
 		};
 
 		SERIAL4: uart@13840000 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
 			clock-frequency = <100000000>;

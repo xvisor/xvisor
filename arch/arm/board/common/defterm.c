@@ -407,22 +407,22 @@ static struct defterm_ops samsung_ops = {
 #endif
 
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
-{.type = "serial",.compatible = "arm,pl011",.data = &pl011_ops},
-{.type = "serial",.compatible = "ns8250",.data = &uart8250_ops},
-{.type = "serial",.compatible = "ns16450",.data = &uart8250_ops},
-{.type = "serial",.compatible = "ns16550a",.data = &uart8250_ops},
-{.type = "serial",.compatible = "ns16550",.data = &uart8250_ops},
-{.type = "serial",.compatible = "ns16750",.data = &uart8250_ops},
-{.type = "serial",.compatible = "ns16850",.data = &uart8250_ops},
-{.type = "serial",.compatible = "snps,dw-apb-uart",.data = &uart8250_ops},
-{.type = "serial",.compatible = "st16654",.data = &omapuart_ops},
-{.type = "serial",.compatible = "freescale",.data = &imx_ops},
-{.type = "serial",.compatible = "imx-uart",.data = &imx_ops},
-{.type = "serial",.compatible = "freescale,imx-uart",.data = &imx_ops},
-{.type = "serial",.compatible = "samsung",.data = &samsung_ops},
-{.type = "serial",.compatible = "exynos4210-uart",.data = &samsung_ops},
-{.type = "serial",.compatible = "samsung,exynos4210-uart",.data = &samsung_ops},
-{ /* end of list */ },
+	{ .compatible = "arm,pl011", .data = &pl011_ops },
+	{ .compatible = "ns8250", .data = &uart8250_ops },
+	{ .compatible = "ns16450", .data = &uart8250_ops },
+	{ .compatible = "ns16550a", .data = &uart8250_ops },
+	{ .compatible = "ns16550", .data = &uart8250_ops },
+	{ .compatible = "ns16750", .data = &uart8250_ops },
+	{ .compatible = "ns16850", .data = &uart8250_ops },
+	{ .compatible = "snps,dw-apb-uart", .data = &uart8250_ops },
+	{ .compatible = "st16654", .data = &omapuart_ops },
+	{ .compatible = "freescale", .data = &imx_ops },
+	{ .compatible = "imx-uart", .data = &imx_ops },
+	{ .compatible = "freescale,imx-uart", .data = &imx_ops },
+	{ .compatible = "samsung", .data = &samsung_ops },
+	{ .compatible = "exynos4210-uart", .data = &samsung_ops },
+	{ .compatible = "samsung,exynos4210-uart", .data = &samsung_ops },
+	{ /* end of list */ },
 };
 
 static const struct defterm_ops *ops = NULL;

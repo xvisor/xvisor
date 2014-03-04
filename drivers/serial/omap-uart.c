@@ -521,7 +521,7 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid omap_uart_devid_table[] = {
-	{ .type = "serial", .compatible = "st16654"},
+	{ .compatible = "st16654" },
 	{ /* end of list */ },
 };
 

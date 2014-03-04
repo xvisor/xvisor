@@ -90,7 +90,6 @@
 			};
 
 			SERIAL0: uart0 {
-		      		device_type = "serial";
 		      		compatible = "arm,pl011";
 		      		reg = <0x10009000 0x1000>;
 				clock-frequency = <24000000>;

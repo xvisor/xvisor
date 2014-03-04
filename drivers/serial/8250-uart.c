@@ -422,13 +422,13 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid uart_8250_devid_table[] = {
-	{ .type = "serial", .compatible = "ns8250"},
-	{ .type = "serial", .compatible = "ns16450"},
-	{ .type = "serial", .compatible = "ns16550a"},
-	{ .type = "serial", .compatible = "ns16550"},
-	{ .type = "serial", .compatible = "ns16750"},
-	{ .type = "serial", .compatible = "ns16850"},
-	{ .type = "serial", .compatible = "snps,dw-apb-uart"},
+	{ .compatible = "ns8250" },
+	{ .compatible = "ns16450" },
+	{ .compatible = "ns16550a" },
+	{ .compatible = "ns16550" },
+	{ .compatible = "ns16750" },
+	{ .compatible = "ns16850" },
+	{ .compatible = "snps,dw-apb-uart" },
 	{ /* end of list */ },
 };
 

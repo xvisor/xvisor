@@ -369,18 +369,8 @@ static int samsung_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid samsung_devid_table[] = {
-	{
-	 .type = "serial",
-	 .compatible = "samsung"},
-	{
-	 .type = "serial",
-	 .compatible = "exynos4210-uart"},
-	{
-	 .type = "serial",
-	 .compatible = "samsung,exynos4210-uart"},
-	{
-	 /* end of list */
-	 },
+	{ .compatible = "samsung,exynos4210-uart" },
+	{ /* end of list */ },
 };
 
 static struct vmm_driver samsung_driver = {
