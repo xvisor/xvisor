@@ -35,6 +35,8 @@ typedef long long s64;
 typedef unsigned long long u64;
 
 typedef unsigned int bool;
+typedef unsigned long size_t;
+typedef signed long ssize_t;
 typedef unsigned long ulong;
 typedef signed int off_t;
 typedef signed long long loff_t;
