@@ -36,7 +36,7 @@
 #include <vmm_devemu.h>
 #include <vmm_modules.h>
 #include <arch_regs.h>
-#include <gic.h>
+#include <drv/gic.h>
 
 #define MODULE_DESC			"GICv2 HW-assisted Emulator"
 #define MODULE_AUTHOR			"Anup Patel"

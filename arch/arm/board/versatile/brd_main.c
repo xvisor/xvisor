@@ -31,12 +31,11 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <arch_timer.h>
+#include <drv/vic.h>
 #include <drv/clk-provider.h>
 
 #include <versatile_plat.h>
 #include <versatile_board.h>
-
-#include <vic.h>
 
 static virtual_addr_t versatile_sys_base;
 

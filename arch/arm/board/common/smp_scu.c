@@ -33,8 +33,8 @@
 #include <vmm_cache.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <drv/gic.h>
 
-#include <gic.h>
 #include <smp_ops.h>
 
 #define SCU_PM_NORMAL	0

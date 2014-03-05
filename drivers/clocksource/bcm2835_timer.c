@@ -21,8 +21,8 @@
  * @brief BCM2835 timer implementation
  */
 
-#include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_types.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>

@@ -24,13 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_host_io.h>
-#include <vmm_host_aspace.h>
 #include <arch_board.h>
-#include <arch_timer.h>
-
-#include <imx/avic.h>
-#include <imx/epit.h>
 
 /*
  * Print board information
@@ -45,30 +39,6 @@ void arch_board_print_info(struct vmm_chardev *cdev)
  * Initialization functions
  */
 
-int __cpuinit arch_host_irq_init(void)
-{
-	int rc;
-	virtual_addr_t avic_base;
-	struct vmm_devtree_node *vnode;
-
-	vnode = vmm_devtree_find_compatible(NULL, NULL, "freescale,avic");
-	if (!vnode) {
-		return VMM_ENODEV;
-	}
-
-	rc = vmm_devtree_regmap(vnode, &avic_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	rc = avic_init(avic_base);
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
 int __init arch_board_early_init(void)
 {
 	/* Host virtual memory, device tree, heap is up.
@@ -77,16 +47,6 @@ int __init arch_board_early_init(void)
 	 */
 
 	return 0;
-}
-
-int __init arch_clocksource_init(void)
-{
-	return epit_clocksource_init();
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	return epit_clockchip_init();
 }
 
 int __init arch_board_final_init(void)

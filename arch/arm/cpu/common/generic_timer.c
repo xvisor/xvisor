@@ -37,7 +37,7 @@
 #include <generic_timer.h>
 #include <cpu_generic_timer.h>
 #include <libs/mathlib.h>
-#include <gic.h>
+#include <drv/gic.h>
 
 static u32 generic_timer_hz = 0;
 

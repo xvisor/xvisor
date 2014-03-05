@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file avic.c
+ * @file irq-avic.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
- * @brief source file for AVIC interrupt conctoler support.
+ * @brief source file for AVIC interrupt controller support.
  *
  * Based on linux/arch/arm/mach-imx/avic.c
  *
@@ -41,10 +41,33 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
+#include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 
-#include <imx/avic.h>
+#define AVIC_INTCNTL		0x00	/* int control reg */
+#define AVIC_NIMASK		0x04	/* int mask reg */
+#define AVIC_INTENNUM		0x08	/* int enable number reg */
+#define AVIC_INTDISNUM		0x0C	/* int disable number reg */
+#define AVIC_INTENABLEH		0x10	/* int enable reg high */
+#define AVIC_INTENABLEL		0x14	/* int enable reg low */
+#define AVIC_INTTYPEH		0x18	/* int type reg high */
+#define AVIC_INTTYPEL		0x1C	/* int type reg low */
+#define AVIC_NIPRIORITY(x)	(0x20 + 4 * (7 - (x))) /* int priority */
+#define AVIC_NIVECSR		0x40	/* norm int vector/status */
+#define AVIC_FIVECSR		0x44	/* fast int vector/status */
+#define AVIC_INTSRCH		0x48	/* int source reg high */
+#define AVIC_INTSRCL		0x4C	/* int source reg low */
+#define AVIC_INTFRCH		0x50	/* int force reg high */
+#define AVIC_INTFRCL		0x54	/* int force reg low */
+#define AVIC_NIPNDH		0x58	/* norm int pending high */
+#define AVIC_NIPNDL		0x5C	/* norm int pending low */
+#define AVIC_FIPNDH		0x60	/* fast int pending high */
+#define AVIC_FIPNDL		0x64	/* fast int pending low */
+
+#define AVIC_NUM_IRQS 64
 
 static virtual_addr_t avic_base = 0;
 
@@ -106,15 +129,17 @@ static struct vmm_host_irq_chip avic_chip = {
 	.irq_set_type	= avic_set_type,
 };
 
-int __init avic_init(virtual_addr_t base)
+static int __init avic_init(struct vmm_devtree_node *node)
 {
+	int rc;
 	u32 i;
 
-	if (!base) {
-		return VMM_EFAIL;
+	/* Map AVIC registers */
+	rc = vmm_devtree_regmap(node, &avic_base, 0);
+	WARN(rc, "unable to map avic registers\n");
+	if (rc) {
+		return rc;
 	}
-
-	avic_base = base;
 
 	/* put the AVIC into the reset value with
 	 * all interrupts disabled
@@ -146,3 +171,5 @@ int __init avic_init(virtual_addr_t base)
 
 	return VMM_OK;
 }
+VMM_HOST_IRQ_INIT_DECLARE(favic, "freescale,avic", avic_init);
+

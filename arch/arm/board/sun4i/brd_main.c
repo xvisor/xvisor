@@ -27,11 +27,8 @@
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
-#include <arch_timer.h>
-
 #include <drv/clk-provider.h>
-
-#include <sunxi/sun4i_timer.h>
+#include <drv/sun4i_timer.h>
 
 /*
  * Print board information

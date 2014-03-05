@@ -33,8 +33,7 @@
 #include <vmm_clockchip.h>
 
 #include <drv/clk.h>
-
-#include <sunxi/sun4i_timer.h>
+#include <drv/sun4i_timer.h>
 
 /* Register read/write macros */
 #define readl(addr)		vmm_readl((void *)(addr))

@@ -303,7 +303,7 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 #ifdef CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
 
 #include <vmm_percpu.h>
-#include <gic.h>
+#include <drv/gic.h>
 
 enum {
 	MCT_INT_SPI = 0,

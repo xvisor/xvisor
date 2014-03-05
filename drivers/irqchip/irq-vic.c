@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file pl190.c
+ * @file irq-vic.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief PL190 Vectored Interrupt Controller source
  */
@@ -24,7 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vic.h>
+#include <drv/vic.h>
 
 struct vic_chip_data {
 	u32 irq_offset;

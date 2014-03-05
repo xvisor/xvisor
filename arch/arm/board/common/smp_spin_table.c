@@ -33,8 +33,8 @@
 #include <vmm_delay.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
+#include <drv/gic.h>
 
-#include <gic.h>
 #include <smp_ops.h>
 
 static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];

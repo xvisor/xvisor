@@ -25,7 +25,6 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <arch_board.h>
-#include <arch_timer.h>
 #include <drv/clk-provider.h>
 
 /*

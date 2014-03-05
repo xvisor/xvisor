@@ -34,8 +34,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/clk.h>
-
-#include <gic.h>
+#include <drv/gic.h>
 
 #define TWD_TIMER_LOAD			0x00
 #define TWD_TIMER_COUNTER		0x04

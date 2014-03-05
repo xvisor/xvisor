@@ -39,20 +39,15 @@
  * MA 02110-1301, USA.
  */
 
+#include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_compiler.h>
-#include <vmm_stdio.h>
-#include <vmm_smp.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
-#include <vmm_wallclock.h>
-#include <vmm_heap.h>
-#include <vmm_error.h>
-#include <vmm_delay.h>
-
-#include <linux/clk.h>
 
 #define EPITCR				(0x00)
 #define EPITSR				(0x04)
@@ -122,18 +117,11 @@ static u64 epit_clksrc_read(struct vmm_clocksource *cs)
 	return (((u64) ecs->cnt_high) << 32) | ecs->cnt_low;
 }
 
-int __init epit_clocksource_init(void)
+static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 {
-	int rc = VMM_ENODEV;
+	int rc;
 	u32 clock;
-	struct vmm_devtree_node *node;
 	struct epit_clocksource *ecs;
-
-	/* find a epit compatible node */
-	node = vmm_devtree_find_compatible(NULL, NULL, "freescale,epit-timer");
-	if (!node) {
-		goto fail;
-	}
 
 	/* Read clock frequency from node */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -179,6 +167,9 @@ int __init epit_clocksource_init(void)
  fail:
 	return rc;
 }
+VMM_CLOCKSOURCE_INIT_DECLARE(fepitclksrc,
+			     "freescale,epit-timer",
+			     epit_clocksource_init);
 
 struct epit_clockchip {
 	u32 match_mask;
@@ -300,18 +291,11 @@ static vmm_irq_return_t epit_timer_interrupt(int irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-int __cpuinit epit_clockchip_init(void)
+static int __cpuinit epit_clockchip_init(struct vmm_devtree_node *node)
 {
-	int rc = VMM_ENODEV;
+	int rc;
 	u32 clock, hirq, timer_num;
-	struct vmm_devtree_node *node;
 	struct epit_clockchip *ecc;
-
-	/* find the first epit compatible node */
-	node = vmm_devtree_find_compatible(NULL, NULL, "freescale,epit-timer");
-	if (!node) {
-		goto fail;
-	}
 
 	/* Read clock frequency */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -403,3 +387,7 @@ int __cpuinit epit_clockchip_init(void)
  fail:
 	return rc;
 }
+VMM_CLOCKCHIP_INIT_DECLARE(fepitclkchip,
+			   "freescale,epit-timer",
+			   epit_clockchip_init);
+

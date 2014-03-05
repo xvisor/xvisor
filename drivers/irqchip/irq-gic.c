@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file gic.c
+ * @file irq-gic.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Generic Interrupt Controller Implementation
  */
@@ -29,7 +29,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <arch_barrier.h>
-#include <gic.h>
+#include <drv/gic.h>
 
 struct gic_chip_data {
 	u32 irq_offset;

@@ -27,7 +27,6 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
-#include <arch_host_irq.h>
 
 static virtual_addr_t aw_vic_base;
 

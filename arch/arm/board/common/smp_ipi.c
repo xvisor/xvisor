@@ -26,8 +26,7 @@
 #include <vmm_smp.h>
 #include <vmm_compiler.h>
 #include <vmm_host_irq.h>
-
-#include <gic.h>
+#include <drv/gic.h>
 
 static vmm_irq_return_t smp_ipi_handler(int irq_no, void *dev)
 {

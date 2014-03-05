@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file bcm2835_intc.c
+ * @file irq-bcm2835.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief BCM2835 intc implementation
+ * @brief BCM2835 intc driver
  */
 
 #include <vmm_error.h>
@@ -28,7 +28,6 @@
 #include <vmm_host_irq.h>
 #include <vmm_devtree.h>
 #include <libs/bitops.h>
-#include <arch_host_irq.h>
 
 /** Maximum number of IRQs in bcm2835 intc */
 #define BCM2835_INTC_MAX_IRQ		96
