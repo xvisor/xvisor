@@ -31,6 +31,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <cpu_inline_asm.h>
+#include <cpu_cache.h>
 #include <cpu_vcpu_vfp.h>
 #include <cpu_vcpu_cp14.h>
 #include <cpu_vcpu_cp15.h>
