@@ -22,16 +22,24 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_smp.h>
-#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_host_io.h>
-#include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <arch_board.h>
-
+#include <libs/vtemu.h>
 #include <drv/clk-provider.h>
+
+#include <generic_board.h>
+
+/*
+ * Global board context
+ */
+
+#if defined(CONFIG_VTEMU)
+struct vtemu *generic_vt;
+#endif
+
+static const struct vmm_devtree_nodeid *generic_board_matches;
 
 /*
  * Print board information
@@ -46,6 +54,24 @@ void arch_board_print_info(struct vmm_chardev *cdev)
  * Initialization functions
  */
 
+static void __init generic_board_early(struct vmm_devtree_node *node,
+				       const struct vmm_devtree_nodeid *match,
+				       void *data)
+{
+	int err;
+	const struct generic_board *brd = match->data;
+
+	if (!brd || !brd->early_init) {
+		return;
+	}
+
+	err = brd->early_init(node);
+	if (err) {
+		vmm_printf("%s: Early init %s node failed (error %d)\n", 
+			   __func__, node->name, err);
+	}
+}
+
 int __init arch_board_early_init(void)
 {
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
@@ -57,16 +83,51 @@ int __init arch_board_early_init(void)
 	 * ....
 	 */
 
+	/* Determine generic board matches from nodeid table */
+	generic_board_matches = 
+		vmm_devtree_nidtbl_create_matches("generic_board");
+
+	/* Early init of generic boards with 
+	 * matching nodeid table enteries.
+	 */
+	if (generic_board_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     generic_board_matches,
+					     generic_board_early,
+					     NULL);
+	}
+
 	/* Initialize clocking framework */
 	of_clk_init(NULL);
 
 	return VMM_OK;
 }
 
+static void __init generic_board_final(struct vmm_devtree_node *node,
+				       const struct vmm_devtree_nodeid *match,
+				       void *data)
+{
+	int err;
+	const struct generic_board *brd = match->data;
+
+	if (!brd || !brd->final_init) {
+		return;
+	}
+
+	err = brd->final_init(node);
+	if (err) {
+		vmm_printf("%s: Final init %s node failed (error %d)\n",
+			   __func__, node->name, err);
+	}
+}
+
 int __init arch_board_final_init(void)
 {
 	int rc;
 	struct vmm_devtree_node *node;
+#if defined(CONFIG_VTEMU)
+	struct fb_info *info;
+#endif
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
@@ -81,6 +142,24 @@ int __init arch_board_final_init(void)
 	rc = vmm_devdrv_probe(node);
 	if (rc) {
 		return rc;
+	}
+
+	/* Create VTEMU instace if available */
+#if defined(CONFIG_VTEMU)
+	info = fb_get(0);
+	if (info) {
+		generic_vt = vtemu_create(info->name, info, NULL);
+	}
+#endif
+
+	/* Final init of generic boards with 
+	 * matching nodeid table enteries.
+	 */
+	if (generic_board_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     generic_board_matches,
+					     generic_board_final,
+					     NULL);
 	}
 
 	return VMM_OK;

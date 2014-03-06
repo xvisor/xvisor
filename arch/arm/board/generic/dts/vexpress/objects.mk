@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Sukanto Ghosh.
+# Copyright (c) 2014 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,11 +17,13 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Sukanto Ghosh (sukantoghosh@gmail.com)
-# @brief list of Generic board objects.
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of VExpress DTBs.
 # */
 
-board-objs-y+= brd_main.o
-board-objs-y+= dts/skeleton.o
-board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
-board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o
+board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/a9/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/a9/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/two_guest_pb-a8.dtb

@@ -30,6 +30,7 @@ arch-$(CONFIG_ARMV7A_VE) += -mno-thumb-interwork
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_CORTEX_A15) += -mcpu=cortex-a15
+tune-$(CONFIG_CPU_GENERIC_V7_VE) += -mcpu=cortex-a15
 
 # Need -Uarm for gcc < 3.x
 cpu-cppflags+=-DTEXT_START=0x00000000
