@@ -51,7 +51,7 @@ cpu-objs-y += cpu_mmu.o
 cpu-objs-y += cpu_atomic.o
 cpu-objs-y += cpu_atomic64.o
 
-cpu-objs-$(CONFIG_CPU_ARM926T)+= cpu_proc_arm926.o
+cpu-objs-$(CONFIG_ARMV5)+= cpu_proc_v5.o
 cpu-objs-$(CONFIG_ARMV6)+= cpu_proc_v6.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_proc_v7.o
 

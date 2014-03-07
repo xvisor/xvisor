@@ -16,9 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_proc_arm926.S
+ * @file cpu_proc_v5.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief Low-level implementation of ARM926 specific quirky functions
+ * @brief Low-level implementation of ARMv5 specific quirky functions
+ *
+ * Please note that these functions are primarily for ARM926.
  */
 
 #include <cpu_defines.h>

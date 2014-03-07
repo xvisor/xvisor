@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Sukanto Ghosh.
+# Copyright (c) 2014 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,12 +17,10 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Sukanto Ghosh (sukantoghosh@gmail.com)
-# @brief list of Generic board objects.
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of Versatile DTBs.
 # */
 
-board-objs-y+= brd_main.o
-board-objs-y+= dts/skeleton.o
-board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
-board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
-board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o
+board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/pb/one_guest_versatile.dtb
+board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/pb/two_guest_versatile.dtb
+
