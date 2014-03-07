@@ -22,12 +22,35 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
+#include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <drv/vic.h>
+
+#define VIC_IRQ_STATUS			0x00
+#define VIC_FIQ_STATUS			0x04
+#define VIC_RAW_STATUS			0x08
+#define VIC_INT_SELECT			0x0c	/* 1 = FIQ, 0 = IRQ */
+#define VIC_INT_ENABLE			0x10	/* 1 = enable, 0 = disable */
+#define VIC_INT_ENABLE_CLEAR		0x14
+#define VIC_INT_SOFT			0x18
+#define VIC_INT_SOFT_CLEAR		0x1c
+#define VIC_PROTECT			0x20
+#define VIC_PL190_VECT_ADDR		0x30	/* PL190 only */
+#define VIC_PL190_DEF_VECT_ADDR		0x34	/* PL190 only */
+
+#define VIC_VECT_ADDR0			0x100	/* 0 to 15 (0..31 PL192) */
+#define VIC_VECT_CNTL0			0x200	/* 0 to 15 (0..31 PL192) */
+#define VIC_ITCR			0x300	/* VIC test control register */
+
+#define VIC_VECT_CNTL_ENABLE		(1 << 5)
+
+#define VIC_PL192_VECT_ADDR		0xF00
 
 struct vic_chip_data {
 	u32 irq_offset;
+	struct vmm_devtree_node *node;
 	virtual_addr_t cpu_base;
 };
 
@@ -36,7 +59,6 @@ struct vic_chip_data {
 #endif
 
 static struct vic_chip_data vic_data[VIC_MAX_NR];
-
 
 static inline virtual_addr_t vic_cpu_base(struct vmm_host_irq *irq)
 {
@@ -52,11 +74,11 @@ static inline u32 vic_irq(struct vmm_host_irq *irq)
 	return irq->num - v_data->irq_offset;
 }
 
-u32 vic_active_irq(u32 vic_nr)
+static u32 vic_active_irq(u32 cpu_nr)
 {
 	u32 ret = 0;
 	u32 int_status;
-	volatile void *base = (volatile void *) vic_data[vic_nr].cpu_base;
+	volatile void *base = (volatile void *)vic_data[0].cpu_base;
 
 	int_status = vmm_readl(base + VIC_IRQ_STATUS);
 
@@ -67,7 +89,7 @@ u32 vic_active_irq(u32 vic_nr)
 			}
 		}
 
-		ret += vic_data[vic_nr].irq_offset;
+		ret += vic_data[0].irq_offset;
 	}
 
 	return ret;
@@ -142,10 +164,22 @@ static void vic_init2(void *base)
 	vmm_writel(32, base + VIC_PL190_DEF_VECT_ADDR);
 }
 
-void __init vic_cpu_init(struct vic_chip_data *v_data)
+static int __cpuinit vic_devtree_init(struct vmm_devtree_node *node,
+				      struct vmm_devtree_node *parent)
 {
-	int i;
-	void *base = (void *) v_data->cpu_base;
+	int i, rc;
+	virtual_addr_t base;
+	struct vic_chip_data *v_data;
+
+	rc = vmm_devtree_regmap(node, &base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	v_data = &vic_data[0];
+	v_data->node = node;
+	v_data->cpu_base = base;
+	v_data->irq_offset = 0;
 
 	for (i = v_data->irq_offset; i < v_data->irq_offset + 32; i++) {
 		vmm_host_irq_set_chip(i, &vic_chip);
@@ -154,27 +188,22 @@ void __init vic_cpu_init(struct vic_chip_data *v_data)
 	}
 
 	/* Disable all interrupts initially. */
-	vic_disable(base);
+	vic_disable((void *)v_data->cpu_base);
 
 	/* Make sure we clear all existing interrupts */
-	vic_clear_interrupts(base);
+	vic_clear_interrupts((void *)v_data->cpu_base);
 
-	vic_init2(base);
-}
+	vic_init2((void *)v_data->cpu_base);
 
-int __init vic_init(u32 vic_nr, u32 irq_start, virtual_addr_t cpu_base)
-{
-	struct vic_chip_data *v_data;
-
-	if (vic_nr >= VIC_MAX_NR) {
-		return VMM_EFAIL;
-	}
-
-	v_data = &vic_data[vic_nr];
-	v_data->cpu_base = cpu_base;
-	v_data->irq_offset = irq_start;
-
-	vic_cpu_init(v_data);
+	vmm_host_irq_set_active_callback(vic_active_irq);
 
 	return VMM_OK;
 }
+
+static int __cpuinit vic_init(struct vmm_devtree_node *node)
+{
+	BUG_ON(!vmm_smp_is_bootcpu());
+
+	return vic_devtree_init(node, NULL);
+}
+VMM_HOST_IRQ_INIT_DECLARE(vvic, "arm,versatile-vic", vic_init);
