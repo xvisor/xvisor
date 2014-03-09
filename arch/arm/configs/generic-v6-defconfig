@@ -2,19 +2,19 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Thu Mar  6 21:20:02 2014
+# Sun Mar  9 22:30:46 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
 # CONFIG_CPU_ARM926T is not set
 # CONFIG_CPU_ARM11 is not set
-CONFIG_CPU_ARM11MP=y
+# CONFIG_CPU_ARM11MP is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 # CONFIG_CPU_GENERIC_V5 is not set
-# CONFIG_CPU_GENERIC_V6 is not set
+CONFIG_CPU_GENERIC_V6=y
 # CONFIG_CPU_GENERIC_V7 is not set
 # CONFIG_CPU_GENERIC_V7_VE is not set
 # CONFIG_CPU_GENERIC_V8 is not set
