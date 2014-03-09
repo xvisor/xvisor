@@ -34,7 +34,6 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/clk.h>
-#include <drv/gic.h>
 
 #define TWD_TIMER_LOAD			0x00
 #define TWD_TIMER_COUNTER		0x04
@@ -228,25 +227,12 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	cc->clkchip.set_next_event = &twd_clockchip_set_next_event;
 	cc->clkchip.priv = cc;
 
-	if (vmm_smp_is_bootcpu()) {
-		/* Register interrupt handler */
-		if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
-						&twd_clockchip_irq_handler, 
-						cc))) {
-			
-			goto fail_regunmap;
-		}
-
-		/* Mark interrupt as per-cpu */
-		if ((rc = vmm_host_irq_mark_per_cpu(twd_ppi_irq))) {
-			goto fail_unreg_irq;
-		}
+	/* Register interrupt handler */
+	if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
+					&twd_clockchip_irq_handler, 
+					cc))) {
+		goto fail_regunmap;
 	}
-
-	/* Explicitly enable local timer PPI in GIC 
-	 * Note: Local timer requires PPI support hence requires GIC
-	 */
-	gic_enable_ppi(twd_ppi_irq);
 
 	rc = vmm_clockchip_register(&cc->clkchip);
 	if (rc) {
@@ -256,9 +242,7 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 
 fail_unreg_irq:
-	if (vmm_smp_is_bootcpu()) {
-		vmm_host_irq_unregister(twd_ppi_irq, cc);
-	}
+	vmm_host_irq_unregister(twd_ppi_irq, cc);
 fail_regunmap:
 	vmm_devtree_regunmap(node, twd_base, 0);
 fail:

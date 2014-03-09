@@ -37,7 +37,6 @@
 #include <generic_timer.h>
 #include <cpu_generic_timer.h>
 #include <libs/mathlib.h>
-#include <drv/gic.h>
 
 static u32 generic_timer_hz = 0;
 
@@ -362,54 +361,33 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 		goto fail_free_cc;
 	}
 
-	if (vmm_smp_is_bootcpu()) {
-		/* Register irq handler for hypervisor timer */
-		rc = vmm_host_irq_register(irq[GENERIC_HYPERVISOR_TIMER],
-					   "gen-hyp-timer", 
-					   &generic_hyp_timer_handler, cc);
-		if (rc) {
-			goto fail_unreg_cc;
-		}
+	/* Register irq handler for hypervisor timer */
+	rc = vmm_host_irq_register(irq[GENERIC_HYPERVISOR_TIMER],
+				   "gen-hyp-timer", 
+				   &generic_hyp_timer_handler, cc);
+	if (rc) {
+		goto fail_unreg_cc;
+	}
 
-		/* Mark hypervisor timer irq as per-CPU */
-		if ((rc = vmm_host_irq_mark_per_cpu(cc->hirq))) {
+	if (num_irqs > 1) {
+		/* Register irq handler for physical timer */
+		rc = vmm_host_irq_register(irq[GENERIC_PHYSICAL_TIMER],
+					   "gen-phys-timer",
+					   &generic_phys_timer_handler,
+					   NULL);
+		if (rc) {
 			goto fail_unreg_htimer;
 		}
+	}
 
-		if (num_irqs > 1) {
-			/* Register irq handler for physical timer */
-			rc = vmm_host_irq_register(irq[GENERIC_PHYSICAL_TIMER],
-						   "gen-phys-timer",
-						   &generic_phys_timer_handler,
-						   NULL);
-			if (rc) {
-				goto fail_unreg_htimer;
-			}
-
-			/* Mark physical timer irq as per-CPU */
-			rc = vmm_host_irq_mark_per_cpu(
-						irq[GENERIC_PHYSICAL_TIMER]);
-			if (rc)	{
-				goto fail_unreg_ptimer;
-			}
-		}
-
-		if (num_irqs > 2) {
-			/* Register irq handler for virtual timer */
-			rc = vmm_host_irq_register(irq[GENERIC_VIRTUAL_TIMER],
-						   "gen-virt-timer",
-						   &generic_virt_timer_handler,
-						   NULL);
-			if (rc) {
-				goto fail_unreg_ptimer;
-			}
-
-			/* Mark virtual timer irq as per-CPU */
-			rc = vmm_host_irq_mark_per_cpu(
-						irq[GENERIC_VIRTUAL_TIMER]);
-			if (rc) {
-				goto fail_unreg_vtimer;
-			}
+	if (num_irqs > 2) {
+		/* Register irq handler for virtual timer */
+		rc = vmm_host_irq_register(irq[GENERIC_VIRTUAL_TIMER],
+					   "gen-virt-timer",
+					   &generic_virt_timer_handler,
+					   NULL);
+		if (rc) {
+			goto fail_unreg_ptimer;
 		}
 	}
 
@@ -420,27 +398,16 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 		generic_timer_reg_write(GENERIC_TIMER_REG_HCTL, val);
 	}
 
-	for (val = 0; val < num_irqs; val++) {
-		gic_enable_ppi(irq[val]);
-	}
-
 	return VMM_OK;
 
-fail_unreg_vtimer:
-	if (vmm_smp_is_bootcpu() && num_irqs > 2) {
-		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
-					&generic_virt_timer_handler);
-	}
 fail_unreg_ptimer:
-	if (vmm_smp_is_bootcpu() && num_irqs > 1) {
+	if (num_irqs > 1) {
 		vmm_host_irq_unregister(irq[GENERIC_PHYSICAL_TIMER],
 					&generic_phys_timer_handler);
 	}
 fail_unreg_htimer:
-	if (vmm_smp_is_bootcpu()) {
-		vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
+	vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
 					&generic_hyp_timer_handler);
-	}
 fail_unreg_cc:
 	vmm_clockchip_register(cc);
 fail_free_cc:

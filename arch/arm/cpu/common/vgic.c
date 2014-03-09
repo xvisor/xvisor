@@ -36,7 +36,6 @@
 #include <vmm_devemu.h>
 #include <vmm_modules.h>
 #include <arch_regs.h>
-#include <drv/gic.h>
 
 #define MODULE_DESC			"GICv2 HW-assisted Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -1408,8 +1407,14 @@ static const struct vmm_devtree_nodeid vgic_host_match[] = {
 
 static void vgic_enable_maint_irq(void *arg0, void *arg1, void *arg3)
 {
-	if (vgich.avail) {
-		gic_enable_ppi(vgich.maint_irq);
+	int rc;
+	u32 maint_irq = (u32)(unsigned long)arg0;
+
+	rc = vmm_host_irq_register(maint_irq, "vGIC", 
+				   arg1, NULL);
+	if (rc) {
+		vmm_printf("%s: cpu=%d maint_irq=%d failed (error %d)\n",
+			   __func__, vmm_smp_processor_id(), maint_irq, rc);
 	}
 }
 
@@ -1452,20 +1457,9 @@ static int __init vgic_emulator_init(void)
 		goto fail_unmap_vcpu;
 	}
 
-	rc = vmm_host_irq_register(vgich.maint_irq, "vGIC", 
-				   vgic_maint_irq, NULL);
-	if (rc) {
-		goto fail_unmap_vcpu;
-	}
-
-	rc = vmm_host_irq_mark_per_cpu(vgich.maint_irq);
-	if (rc) {
-		goto fail_unreg_irq;
-	}
-
 	rc = vmm_devemu_register_emulator(&vgic_emulator);
 	if (rc) {
-		goto fail_unmark_irq;
+		goto fail_unmap_vcpu;
 	}
 
 	vgich.avail = TRUE;
@@ -1473,8 +1467,9 @@ static int __init vgic_emulator_init(void)
 	vgich.lr_cnt = vmm_readl((void *)vgich.hctrl_va + GICH_VTR);
 	vgich.lr_cnt = (vgich.lr_cnt & GICH_VTR_LRCNT_MASK) + 1;
 
-	vmm_smp_ipi_async_call(cpu_possible_mask, vgic_enable_maint_irq,
-				NULL, NULL, NULL);
+	vmm_smp_ipi_async_call(cpu_online_mask, vgic_enable_maint_irq,
+			       (void *)(unsigned long)vgich.maint_irq,
+			       vgic_maint_irq, NULL);
 
 	DPRINTF("VGIC: HCTRL=0x%lx VCPU=0x%lx LR_CNT=%d\n", 
 		(unsigned long)vgich.hctrl_pa, 
@@ -1482,16 +1477,24 @@ static int __init vgic_emulator_init(void)
 
 	return VMM_OK;
 
-fail_unmark_irq:
-	vmm_host_irq_unmark_per_cpu(vgich.maint_irq);
-fail_unreg_irq:
-	vmm_host_irq_unregister(vgich.maint_irq, NULL);
 fail_unmap_vcpu:
 	vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 fail_unmap_hctrl:
 	vmm_devtree_regunmap(node, vgich.hctrl_va, 2);
 fail:
 	return rc;
+}
+
+static void vgic_disable_maint_irq(void *arg0, void *arg1, void *arg3)
+{
+	int rc;
+	u32 maint_irq = (u32)(unsigned long)arg0;
+
+	rc = vmm_host_irq_unregister(maint_irq, NULL);
+	if (rc) {
+		vmm_printf("%s: cpu=%d maint_irq=%d failed (error %d)\n",
+			   __func__, vmm_smp_processor_id(), maint_irq, rc);
+	}
 }
 
 static void __exit vgic_emulator_exit(void)
@@ -1505,11 +1508,11 @@ static void __exit vgic_emulator_exit(void)
 	}
 
 	if (node && vgich.avail) {
+		vmm_smp_ipi_async_call(cpu_online_mask, vgic_disable_maint_irq,
+				       (void *)(unsigned long)vgich.maint_irq,
+				       NULL, NULL);
+
 		vmm_devemu_unregister_emulator(&vgic_emulator);
-
-		vmm_host_irq_unmark_per_cpu(vgich.maint_irq);
-
-		vmm_host_irq_unregister(vgich.maint_irq, NULL);
 
 		vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 

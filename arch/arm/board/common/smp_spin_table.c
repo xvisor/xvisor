@@ -32,9 +32,8 @@
 #include <vmm_smp.h>
 #include <vmm_delay.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
-#include <drv/gic.h>
-
 #include <smp_ops.h>
 
 static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];
@@ -100,7 +99,7 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 	asm volatile ("sev");
 #else
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
-	gic_raise_softirq(mask, 0);
+	vmm_host_irq_raise(0, mask);
 #endif
 
 	return VMM_OK;

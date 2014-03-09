@@ -303,7 +303,6 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 #ifdef CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
 
 #include <vmm_percpu.h>
-#include <drv/gic.h>
 
 enum {
 	MCT_INT_SPI = 0,
@@ -512,15 +511,6 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 		if (rc) {
 			return rc;
 		}
-
-		rc = vmm_host_irq_mark_per_cpu(EXYNOS_IRQ_MCT_LOCALTIMER);
-		if (rc) {
-			vmm_host_irq_unregister(EXYNOS_IRQ_MCT_LOCALTIMER,
-						mevt);
-			return rc;
-		}
-
-		gic_enable_ppi(EXYNOS_IRQ_MCT_LOCALTIMER);
 	}
 
 	return vmm_clockchip_register(evt);

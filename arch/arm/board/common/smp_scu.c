@@ -32,8 +32,8 @@
 #include <vmm_smp.h>
 #include <vmm_cache.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
-#include <drv/gic.h>
 
 #include <smp_ops.h>
 
@@ -229,7 +229,7 @@ static int __init scu_cpu_boot(unsigned int cpu)
 	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
 
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
-	gic_raise_softirq(mask, 0);
+	vmm_host_irq_raise(0, mask);
 
 	return VMM_OK;
 }

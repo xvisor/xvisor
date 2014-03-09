@@ -29,7 +29,26 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <arch_barrier.h>
-#include <drv/gic.h>
+
+#define GIC_CPU_CTRL			0x00
+#define GIC_CPU_PRIMASK			0x04
+#define GIC_CPU_BINPOINT		0x08
+#define GIC_CPU_INTACK			0x0c
+#define GIC_CPU_EOI			0x10
+#define GIC_CPU_RUNNINGPRI		0x14
+#define GIC_CPU_HIGHPRI			0x18
+
+#define GIC_DIST_CTRL			0x000
+#define GIC_DIST_CTR			0x004
+#define GIC_DIST_ENABLE_SET		0x100
+#define GIC_DIST_ENABLE_CLEAR		0x180
+#define GIC_DIST_PENDING_SET		0x200
+#define GIC_DIST_PENDING_CLEAR		0x280
+#define GIC_DIST_ACTIVE_BIT		0x300
+#define GIC_DIST_PRI			0x400
+#define GIC_DIST_TARGET			0x800
+#define GIC_DIST_CONFIG			0xc00
+#define GIC_DIST_SOFTINT		0xf00
 
 struct gic_chip_data {
 	u32 irq_offset;
@@ -42,6 +61,7 @@ struct gic_chip_data {
 #define GIC_MAX_NR	2
 #endif
 
+static int gic_cnt = 0;
 static struct gic_chip_data gic_data[GIC_MAX_NR];
 
 #define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
@@ -92,15 +112,6 @@ static void gic_unmask_irq(struct vmm_host_irq *irq)
 		  GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
 }
 
-void gic_enable_ppi(u32 irq)
-{
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-	gic_unmask_irq(vmm_host_irq_get(irq));
-	arch_cpu_irq_restore(flags);
-}
-
 static int gic_set_type(struct vmm_host_irq *irq, u32 type)
 {
 	virtual_addr_t base = gic_dist_base(irq);
@@ -148,7 +159,8 @@ static int gic_set_type(struct vmm_host_irq *irq, u32 type)
 }
 
 #ifdef CONFIG_SMP
-void gic_raise_softirq(const struct vmm_cpumask *mask, u32 irq)
+static void gic_raise(struct vmm_host_irq *irq,
+		      const struct vmm_cpumask *mask)
 {
 	unsigned long map = *vmm_cpumask_bits(mask);
 
@@ -159,7 +171,8 @@ void gic_raise_softirq(const struct vmm_cpumask *mask, u32 irq)
 	arch_wmb();
 
 	/* This always happens on GIC0 */
-	gic_write(map << 16 | irq, gic_data[0].dist_base + GIC_DIST_SOFTINT);
+	gic_write(map << 16 | irq->num,
+		  gic_data[0].dist_base + GIC_DIST_SOFTINT);
 }
 
 static int gic_set_affinity(struct vmm_host_irq *irq, 
@@ -212,10 +225,11 @@ static struct vmm_host_irq_chip gic_chip = {
 	.irq_set_type		= gic_set_type,
 #ifdef CONFIG_SMP
 	.irq_set_affinity	= gic_set_affinity,
+	.irq_raise		= gic_raise,
 #endif
 };
 
-void __init gic_cascade_irq(u32 gic_nr, u32 irq)
+static void __init gic_cascade_irq(u32 gic_nr, u32 irq)
 {
 	if (gic_nr >= GIC_MAX_NR)
 		BUG();
@@ -300,6 +314,10 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
 		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
+		/* Mark per-CPU IRQs */
+		if (i < 32) {
+			vmm_host_irq_mark_per_cpu(i);
+		}
 	}
 
 	/* Enable IRQ distribution */
@@ -329,7 +347,7 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	gic_write(1, gic->cpu_base + GIC_CPU_CTRL);
 }
 
-int __init gic_init_bases(u32 gic_nr, u32 irq_start, 
+static int __init gic_init_bases(u32 gic_nr, u32 irq_start, 
 			  virtual_addr_t cpu_base, 
 			  virtual_addr_t dist_base)
 {
@@ -359,17 +377,15 @@ int __init gic_init_bases(u32 gic_nr, u32 irq_start,
 	return VMM_OK;
 }
 
-void __cpuinit gic_secondary_init(u32 gic_nr)
+static void __cpuinit gic_secondary_init(u32 gic_nr)
 {
 	BUG_ON(gic_nr >= GIC_MAX_NR);
 
 	gic_cpu_init(&gic_data[gic_nr]);
 }
 
-static int gic_cnt = 0;
-
-int __init gic_devtree_init(struct vmm_devtree_node *node, 
-			    struct vmm_devtree_node *parent)
+static int __init gic_devtree_init(struct vmm_devtree_node *node, 
+				   struct vmm_devtree_node *parent)
 {
 	int rc;
 	u32 irq;
