@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Thu Mar  6 21:12:54 2014
+# Mon Mar 10 21:48:26 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -389,6 +389,19 @@ CONFIG_COMMON_CLK=y
 CONFIG_COMMON_CLK_VERSATILE=y
 # CONFIG_COMMON_CLK_BCM2835 is not set
 CONFIG_COMMON_CLK_SUNXI=y
+
+#
+# Power Supply Drivers
+#
+CONFIG_POWER_SUPPLY=y
+
+#
+# Power-off or Reset Drivers
+#
+CONFIG_POWER_RESET=y
+CONFIG_POWER_RESET_VEXPRESS=y
+# CONFIG_POWER_RESET_BCM2835 is not set
+# CONFIG_POWER_RESET_SUN4I is not set
 
 #
 # Multifunction device drivers
