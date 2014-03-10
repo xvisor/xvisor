@@ -22,9 +22,7 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_main.h>
 #include <vmm_devtree.h>
-#include <vmm_delay.h>
 #include <drv/vexpress.h>
 
 #include <generic_board.h>
@@ -38,34 +36,8 @@
  * Global board context
  */
 
-static struct vexpress_config_func *reboot_func;
-static struct vexpress_config_func *shutdown_func;
 static struct vexpress_config_func *muxfpga_func;
 static struct vexpress_config_func *dvimode_func;
-
-/*
- * Reset & Shutdown
- */
-
-static int v2m_reset(void)
-{
-	int err = VMM_EFAIL;
-	if (reboot_func) {
-		err = vexpress_config_write(reboot_func, 0, 0);
-		vmm_mdelay(1000);
-	}
-	return err;
-}
-
-static int v2m_shutdown(void)
-{
-	int err = VMM_EFAIL;
-	if (shutdown_func) {
-		err = vexpress_config_write(shutdown_func, 0, 0);
-		vmm_mdelay(1000);
-	}
-	return err;
-}
 
 /*
  * CLCD support.
@@ -107,26 +79,6 @@ static int __init vexpress_early_init(struct vmm_devtree_node *node)
 	/* Sysreg early init */
 	vexpress_sysreg_of_early_init();
 
-	/* Determine reboot function */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-reboot");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	reboot_func = vexpress_config_func_get_by_node(node);
-	if (!reboot_func) {
-		return VMM_ENODEV;
-	}
-
-	/* Determine shutdown function */
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-shutdown");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-	shutdown_func = vexpress_config_func_get_by_node(node);
-	if (!shutdown_func) {
-		return VMM_ENODEV;
-	}
-
 	/* Determine muxfpga function */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-muxfpga");
 	if (!node) {
@@ -146,10 +98,6 @@ static int __init vexpress_early_init(struct vmm_devtree_node *node)
 	if (!dvimode_func) {
 		return VMM_ENODEV;
 	}
-
-	/* Register reset & shutdown callbacks */
-	vmm_register_system_reset(v2m_reset);
-	vmm_register_system_shutdown(v2m_shutdown);
 
 	/* Setup CLCD (before probing) */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");

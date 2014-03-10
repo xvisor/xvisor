@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_main.h>
 #include <vmm_smp.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
@@ -48,15 +47,6 @@
 #if defined(CONFIG_VTEMU)
 struct vtemu *realview_vt;
 #endif
-
-/*
- * Reset & Shutdown
- */
-
-static int realview_reset(void)
-{
-	return realview_system_reset();
-}
 
 /*
  * CLCD support.
@@ -138,9 +128,6 @@ int __init arch_board_early_init(void)
 
 	/* Initialize sysreg */
 	realview_sysreg_of_early_init();
-
-	/* Register reset & shutdown callbacks */
-	vmm_register_system_reset(realview_reset);
 
 	/* Intialize realview clocking */
 	of_clk_init(NULL);

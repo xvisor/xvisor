@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Anup Patel.
+# Copyright (c) 2014 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,12 +18,11 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of BCM2835 SOC objects.
+# @brief list of driver objects.
 # */
 
-board-objs-y+=brd_main.o
-board-objs-$(CONFIG_BCM2835_ONE_GUEST_EBMP_DTS)+=dts/one_guest_ebmp.o
-board-objs-$(CONFIG_BCM2835_TWO_GUEST_EBMP_DTS)+=dts/two_guest_ebmp.o
+drivers-objs-$(CONFIG_POWER_RESET_REALVIEW)+= power/reset/realview-reboot.o
+drivers-objs-$(CONFIG_POWER_RESET_VEXPRESS)+= power/reset/vexpress-poweroff.o
+drivers-objs-$(CONFIG_POWER_RESET_BCM2835)+= power/reset/bcm2835-poweroff.o
+drivers-objs-$(CONFIG_POWER_RESET_SUN4I)+= power/reset/sun4i-reboot.o
 
-board-dtbs-y+=dts/one_guest_ebmp.dtb
-board-dtbs-y+=dts/two_guest_ebmp.dtb

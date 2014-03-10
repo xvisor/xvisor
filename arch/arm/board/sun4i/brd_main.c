@@ -28,7 +28,6 @@
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
 #include <drv/clk-provider.h>
-#include <drv/sun4i_timer.h>
 
 /*
  * Print board information
@@ -67,12 +66,6 @@ int __init arch_board_final_init(void)
 
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
-
-	/* Initialize timer misc APIs */
-	rc = aw_timer_misc_init();
-	if (rc) {
-		return rc;
-	}
 
 	/* Find simple-bus node */
 	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");

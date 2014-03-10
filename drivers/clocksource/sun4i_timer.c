@@ -31,9 +31,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
-
 #include <drv/clk.h>
-#include <drv/sun4i_timer.h>
 
 /* Register read/write macros */
 #define readl(addr)		vmm_readl((void *)(addr))
@@ -68,9 +66,6 @@
 #define TMRx_CTL_SRC_24MHOSC			(1 << 2)
 #define TMRx_CTL_ONESHOT			(1 << 7)
 
-#define WDT_MODE_ENABLE				(1 << 0)
-#define WDT_MODE_RESET				(1 << 1)
-
 #define CNT64_CTL_LATCH				(1 << 1)
 #define CNT64_CTL_SRC_24MHOSC			(0 << 2)
 #define CNT64_CTL_SRC_PLL6			(1 << 2)
@@ -80,10 +75,6 @@
 #define CPU_CFG_L1_CACHE_INV			(1 << 1)
 #define CPU_CFG_CHIP_VER_SHIFT			6
 #define CPU_CFG_CHIP_VER_MASK			0x3
-
-/* AW watchdog registers offsets */
-#define AW_WDT_REG_CTRL				(0x0000)
-#define AW_WDT_REG_MODE				(0x0004)
 
 struct aw_clocksource {
 	virtual_addr_t base;
@@ -364,69 +355,4 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 VMM_CLOCKCHIP_INIT_DECLARE(sun4iclkchip,
 			   "allwinner,sun4i-timer",
 			   aw_timer_clockchip_init);
-
-static virtual_addr_t aw_base = 0;
-
-enum aw_chip_ver aw_timer_chip_ver(void)
-{
-	u32 cfg;
-
-	if (!aw_base) {
-		return AW_CHIP_VER_C;
-	}
-
-	cfg = readl(aw_base + AW_TMR_REG_CPU_CFG);
-	cfg = (cfg >> CPU_CFG_CHIP_VER_SHIFT) & CPU_CFG_CHIP_VER_MASK;
-
-	if (cfg == 0x00) {
-		return AW_CHIP_VER_A;
-	} else if(cfg == 0x03) {
-		return AW_CHIP_VER_B;
-	}
-
-	return AW_CHIP_VER_C;
-}
-
-static int aw_timer_force_reset(void)
-{
-	u32 mode;
-
-	if (!aw_base) {
-		return VMM_EFAIL;
-	}
-
-	/* Clear & disable watchdog */
-	writel(0, aw_base + AW_WDT_REG_MODE);
-
-	/* Force reset by configuring watchdog with minimum interval */
-	mode = WDT_MODE_RESET | WDT_MODE_ENABLE;
-	writel(mode, aw_base + AW_WDT_REG_MODE);
-
-	/* FIXME: Wait for watchdog to expire ??? */
-
-	return VMM_OK;
-}
-
-int __init aw_timer_misc_init(void)
-{
-	int rc;
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_compatible(NULL, NULL, 
-					   "allwinner,sun4i-wdt");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	/* Map timer registers */
-	rc = vmm_devtree_regmap(node, &aw_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	/* Register reset callbacks */
-	vmm_register_system_reset(aw_timer_force_reset);
-
-	return VMM_OK;
-}
 

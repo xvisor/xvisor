@@ -314,8 +314,8 @@
 			clocks = <&osc24M>;
 		};
 
-		wdt: watchdog@01c20c90 {
-			compatible = "allwinner,sun4i-wdt";
+		reboot@01c20c90 {
+			compatible = "allwinner,sun4i-reboot";
 			reg = <0x01c20c90 0x10>;
 		};
 

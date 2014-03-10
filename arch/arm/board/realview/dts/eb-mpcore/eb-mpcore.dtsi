@@ -107,6 +107,10 @@
 		      		reg = <0x10000000 0x1000>;
 			};
 
+			reboot {
+		      		compatible = "arm,realview-reboot";
+			};
+
 			sysctl: sysctl0 { /* System Controller */
 		      		device_type = "sys";
 		      		compatible = "arm,sp810";

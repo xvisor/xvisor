@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013 Anup Patel.
+ * Copyright (c) 2014 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file bcm2835_pm.c
+ * @file bcm2835-poweroff.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief BCM2835 PM and Watchdog implementation
+ * @brief BCM2835 power-off & reboot driver
  */
 
 #include <vmm_error.h>
@@ -30,12 +30,12 @@
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
 
-#define MODULE_DESC			"BCM2835 PM and Watchdog Driver"
+#define MODULE_DESC			"BCM2835 Power-off/Reboot Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
-#define	MODULE_INIT			bcm2835_pm_init
-#define	MODULE_EXIT			bcm2835_pm_exit
+#define	MODULE_INIT			bcm2835_poweroff_init
+#define	MODULE_EXIT			bcm2835_poweroff_exit
 
 static virtual_addr_t pm_base_va;
 
@@ -102,8 +102,8 @@ static int bcm2835_pm_poweroff(void)
 	return bcm2835_pm_reset();
 }
 
-static int __init bcm2835_pm_driver_probe(struct vmm_device *dev,
-					  const struct vmm_devtree_nodeid *devid)
+static int __init bcm2835_poweroff_driver_probe(struct vmm_device *dev,
+					const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 
@@ -126,7 +126,7 @@ static int __init bcm2835_pm_driver_probe(struct vmm_device *dev,
 	return VMM_OK;
 }
 
-static int __exit bcm2835_pm_driver_remove(struct vmm_device *dev)
+static int __exit bcm2835_poweroff_driver_remove(struct vmm_device *dev)
 {
 	int rc;
 
@@ -142,26 +142,26 @@ static int __exit bcm2835_pm_driver_remove(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static struct vmm_devtree_nodeid bcm2835_pm_devid_table[] = {
-	{.compatible = "brcm,bcm2835-pm-wdt"},
+static struct vmm_devtree_nodeid bcm2835_poweroff_devid_table[] = {
+	{ .compatible = "brcm,bcm2835-poweroff" },
 	{ /* end of list */ },
 };
 
-static struct vmm_driver bcm2835_pm_driver = {
-	.name = "bcm2835_pm",
-	.match_table = bcm2835_pm_devid_table,
-	.probe = bcm2835_pm_driver_probe,
-	.remove = bcm2835_pm_driver_remove,
+static struct vmm_driver bcm2835_poweroff_driver = {
+	.name = "bcm2835-poweroff",
+	.match_table = bcm2835_poweroff_devid_table,
+	.probe = bcm2835_poweroff_driver_probe,
+	.remove = bcm2835_poweroff_driver_remove,
 };
 
-static int __init bcm2835_pm_init(void)
+static int __init bcm2835_poweroff_init(void)
 {
-	return vmm_devdrv_register_driver(&bcm2835_pm_driver);
+	return vmm_devdrv_register_driver(&bcm2835_poweroff_driver);
 }
 
-static void __exit bcm2835_pm_exit(void)
+static void __exit bcm2835_poweroff_exit(void)
 {
-	vmm_devdrv_unregister_driver(&bcm2835_pm_driver);
+	vmm_devdrv_unregister_driver(&bcm2835_poweroff_driver);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

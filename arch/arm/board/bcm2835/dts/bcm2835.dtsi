@@ -38,8 +38,8 @@
 			reg = <0x2000b200 0x200>;
 		};
 
-		watchdog {
-			compatible = "brcm,bcm2835-pm-wdt";
+		poweroff {
+			compatible = "brcm,bcm2835-poweroff";
 			reg = <0x20100000 0x28>;
 		};
 

@@ -22,7 +22,6 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_main.h>
 #include <drv/realview.h>
 #include <drv/clk-provider.h>
 #include <drv/platform_data/clk-realview.h>
@@ -33,15 +32,6 @@
 #include <linux/amba/clcd.h>
 
 #include <versatile/clcd.h>
-
-/*
- * Reset & Shutdown
- */
-
-static int realview_reset(void)
-{
-	return realview_system_reset();
-}
 
 /*
  * CLCD support.
@@ -103,9 +93,6 @@ static int __init realview_early_init(struct vmm_devtree_node *node)
 {
 	/* Initialize sysreg */
 	realview_sysreg_of_early_init();
-
-	/* Register reset & shutdown callbacks */
-	vmm_register_system_reset(realview_reset);
 
 	/* Intialize realview clocking */
 	realview_clk_init((void *)realview_system_base(), FALSE);
