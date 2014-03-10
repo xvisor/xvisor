@@ -40,7 +40,7 @@ Guest with Xvisor running on Foundation v8 Model:
 
   [8. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
   # ./tools/scripts/memimg.py -a 0x80010000 -o ./build/foundation_v8_boot.img ./build/vmm.bin@0x80010000 ./build/disk.img@0x81000000
-  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=./build/foundation_v8_boot.img -DDTB=./build/arch/arm/board/generic-v8/dts/foundation-v8/one_guest_virt_v8.dtb ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=./build/foundation_v8_boot.img -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt_v8.dtb ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
 
   [9. Launch Foundation v8 Model]
   # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
