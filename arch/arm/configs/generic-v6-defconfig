@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Mon Mar 10 21:45:20 2014
+# Tue Mar 11 20:33:22 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -43,15 +43,13 @@ CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_ARM_ERRATA_411920 is not set
+CONFIG_ARM_ERRATA_411920=y
 # CONFIG_BOARD_VERSATILE is not set
 # CONFIG_BOARD_IMX25 is not set
 # CONFIG_BOARD_BCM2835 is not set
 # CONFIG_BOARD_IMX31 is not set
-# CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
 # CONFIG_BOARD_SUN4I is not set
-# CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
 CONFIG_BOARD_GENERIC=y
 CONFIG_BOARD="generic"
