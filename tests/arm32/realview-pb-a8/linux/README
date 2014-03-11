@@ -21,11 +21,11 @@ Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-PB-A8 default settings]
-  # make ARCH=arm realview-pb-a8-defconfig
+  [3. Configure Xvisor with Generic v7 default settings]
+  # make ARCH=arm generic-v7-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
@@ -67,8 +67,8 @@ Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [15. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/disk.img@0x71000000
 
-  [16. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/qemu.img
+  [16. Launch QEMU 1.7.xx or higher]
+  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
@@ -90,9 +90,10 @@ Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on Realview-PB-A8 host emulated
-   by QEMU 0.14.xx or higher. For other types of ARM host some of the above 
-   steps will need to be adapted for that specfic ARM host. For more info on 
+  (Note: the above steps assumes Xvisor running on Realview-PB-A8 host
+   emulated by QEMU. For other types of ARM host some of the above steps
+   will need to be adapted for that specfic ARM host. For more info on
    your desired ARM host refer docs/arm/)
-  (Note: you are free to change the ordering of above steps based on your workspace)
+  (Note: you are free to change the ordering of above steps based on
+   your workspace)
 

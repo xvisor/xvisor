@@ -21,11 +21,11 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with VersatilePB default settings]
-  # make ARCH=arm versatilepb-defconfig
+  [3. Configure Xvisor with Generic v5 default settings]
+  # make ARCH=arm generic-v5-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/versatilepb/basic
@@ -67,8 +67,8 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [15. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
 
-  [16. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/qemu.img
+  [16. Launch QEMU 1.7.xx or higher]
+  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/versatile/pb/one_guest_versatile.dtb
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
@@ -90,9 +90,9 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on VersatilePB host emulated
-   by QEMU 0.14.xx or higher. For other types of ARM host some of the above
-   steps will need to be adapted for that specfic ARM host. For more info on
-   your desired ARM host refer docs/arm/)
-  (Note: you are free to change the ordering of above steps based on your
-   workspace)
+  (Note: the above steps assumes Xvisor running on VersatilePB host
+   emulated by QEMU. For other types of ARM host some of the above
+   steps will need to be adapted for that specfic ARM host. For more
+   info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based on
+   your workspace)

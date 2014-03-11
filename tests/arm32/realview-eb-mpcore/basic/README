@@ -20,11 +20,11 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-EB-MPCore default settings]
-  # make ARCH=arm realview-eb-mpcore-defconfig
+  [3. Configure Xvisor with Generic v6 default settings]
+  # make ARCH=arm generic-v6-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic
@@ -38,8 +38,8 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [7. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
 
-  [8. Launch QEMU 0.14.xx or higher]
-  # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/qemu.img
+  [8. Launch QEMU 1.7.xx or higher]
+  # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/realview/eb-mpcore/one_guest_ebmp.dtb
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
@@ -61,7 +61,7 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
 
   (Note: replace all <> brackets based on your workspace)
   (Note: the above steps assumes Xvisor running on Realview-EB-MPCore host 
-   emulated by QEMU 0.14.xx or higher. For other types of ARM host some of the 
+   emulated by QEMU 1.7.xx or higher. For other types of ARM host some of the 
    above steps will need to be adapted for that specfic ARM host. For more info
    on your desired ARM host refer docs/arm/)
 
