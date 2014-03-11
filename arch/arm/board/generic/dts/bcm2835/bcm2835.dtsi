@@ -1,0 +1,104 @@
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "Raspberry Pi Model B";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			model = "ARM1176JZ(F)-S";
+			reg = <0>;
+		};
+	};
+
+	memory { 
+		device_type = "memory"; 
+		reg = <0x00000000 0x20000000>; /* 512 MB */
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		timer {
+	      		device_type = "timer";
+			compatible = "brcm,bcm2835-system-timer";
+			reg = <0x20003000 0x1000>;
+			clock-frequency = <1000000>;
+			interrupts = <32 33 34 35>;
+		};
+
+		intc {
+	      		device_type = "pic";
+			compatible = "brcm,bcm2835-armctrl-ic";
+			reg = <0x2000b200 0x200>;
+		};
+
+		poweroff {
+			compatible = "brcm,bcm2835-poweroff";
+			reg = <0x20100000 0x28>;
+		};
+
+		SERIAL0: uart0 {
+	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
+	      		reg = <0x20201000 0x1000>;
+			clock-frequency = <3000000>;
+			interrupts = <89>;
+		};
+
+		sdhci {
+	      		device_type = "mmc";
+			compatible = "brcm,bcm2835-sdhci";
+			reg = <0x20300000 0x1000>;
+			clocks = <&clk_mmc>;
+			interrupts = <94>;
+		};
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk_mmc: mmc {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>;
+		};
+
+		clk_i2c: i2c {
+			compatible = "fixed-clock";
+			reg = <1>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+
+		clk_spi: spi {
+			compatible = "fixed-clock";
+			reg = <2>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+	};
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-eb-mpcore.dtsi"
+
