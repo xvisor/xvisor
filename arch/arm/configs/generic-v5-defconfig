@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Fri Mar  7 20:56:05 2014
+# Tue Mar 11 20:44:27 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -41,14 +41,7 @@ CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_IMX25 is not set
-# CONFIG_BOARD_BCM2835 is not set
-# CONFIG_BOARD_IMX31 is not set
-# CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
-# CONFIG_BOARD_SUN4I is not set
-# CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
 CONFIG_BOARD_GENERIC=y
 CONFIG_BOARD="generic"
@@ -240,7 +233,7 @@ CONFIG_VFS_FAT=y
 # Interrupt Controller Drivers
 #
 CONFIG_ARM_VIC=y
-CONFIG_ARM_GIC=y
+# CONFIG_ARM_GIC is not set
 CONFIG_MXC_AVIC=y
 # CONFIG_BCM2835_INTC is not set
 # CONFIG_SUN4I_VIC is not set
@@ -319,6 +312,11 @@ CONFIG_COMMON_CLK=y
 CONFIG_COMMON_CLK_VERSATILE=y
 # CONFIG_COMMON_CLK_BCM2835 is not set
 # CONFIG_COMMON_CLK_SUNXI is not set
+
+#
+# Power Supply Drivers
+#
+# CONFIG_POWER_SUPPLY is not set
 
 #
 # Multifunction device drivers
