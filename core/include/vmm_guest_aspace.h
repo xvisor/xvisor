@@ -55,6 +55,21 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 			     physical_addr_t gphys_addr,
 			     physical_size_t gphys_size);
 
+/** Add new guest region */
+int vmm_guest_aspace_add_region(struct vmm_guest *guest,
+				const char *name,
+				const char *device_type,
+				const char *mainfest_type,
+				const char *address_type,
+				const char *compatible,
+				physical_addr_t gphys_addr,
+				physical_addr_t hphys_addr,
+				physical_size_t phys_size);
+
+/** Delete guest region */
+int vmm_guest_aspace_del_region(struct vmm_guest *guest,
+				struct vmm_region *reg);
+
 /** Reset Guest Address space */
 int vmm_guest_aspace_reset(struct vmm_guest *guest);
 

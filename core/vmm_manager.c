@@ -824,6 +824,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 	memset(&guest->aspace, 0, sizeof(guest->aspace));
+	INIT_RW_LOCK(&guest->aspace.reg_list_lock);
 	INIT_LIST_HEAD(&guest->aspace.reg_list);
 	guest->arch_priv = NULL;
 
@@ -1004,14 +1005,16 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 					vmm_cpumask_set_cpu(cpu,
 							    affinity_mask);
 				} else {
+					vmm_manager_vcpu_set_state(vcpu,
+						VMM_VCPU_STATE_UNKNOWN);
 					vmm_vcpu_irq_deinit(vcpu);
 					arch_vcpu_deinit(vcpu);
 					vmm_free((void *)vcpu->stack_va);
 					vmm_printf(
 						"%s: CPU%d is out of bound"
-						" (%d) for vcpu %s\n",
-						__func__, cpu, vmm_cpu_count,
-						vcpu->name);
+						" (%d <) or not online for"
+						" %s\n", __func__, cpu,
+						CONFIG_CPU_COUNT, vcpu->name);
 					mngr.vcpu_avail_array[vcpu->id] = TRUE;
 					goto fail_release_lock;
 				}
@@ -1021,6 +1024,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			/* Set hcpu as the first CPU in the mask */
 			vcpu->hcpu = vmm_cpumask_first(affinity_mask);
 			if (vcpu->hcpu > CONFIG_CPU_COUNT) {
+				vmm_manager_vcpu_set_state(vcpu,
+						VMM_VCPU_STATE_UNKNOWN);
 				vmm_vcpu_irq_deinit(vcpu);
 				arch_vcpu_deinit(vcpu);
 				vmm_free((void *)vcpu->stack_va);

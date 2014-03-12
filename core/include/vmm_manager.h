@@ -75,6 +75,7 @@ struct vmm_region {
 struct vmm_guest_aspace {
 	struct vmm_devtree_node *node;
 	struct vmm_guest *guest;
+	vmm_rwlock_t reg_list_lock;
 	struct dlist reg_list;
 	void *devemu_priv;
 };
