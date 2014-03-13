@@ -481,7 +481,6 @@ static struct defterm_ops uart8250_ops = {
 
 #endif
 
-#ifdef ARCH_HAS_DEFTERM_EARLY_PRINT
 int init_early_vga_console(void)
 {
 	settextcolor(15 /* White foreground */, 0 /* Black background */);
@@ -504,7 +503,6 @@ static int __init setup_early_print(char *buf)
 }
 
 vmm_early_param("earlyprint", setup_early_print);
-#endif
 
 static int __init set_default_console(char *buf)
 {
@@ -514,6 +512,7 @@ static int __init set_default_console(char *buf)
 }
 
 vmm_early_param("console", set_default_console);
+
 /*-------------- UART DEFTERM --------------- */
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "ns8250", .data = &uart8250_ops },

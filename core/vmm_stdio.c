@@ -22,11 +22,11 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_main.h>
 #include <vmm_chardev.h>
 #include <vmm_spinlocks.h>
 #include <vmm_stdio.h>
-#include <arch_config.h>
 #include <arch_defterm.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
@@ -38,10 +38,6 @@
 #define PAD_ALTERNATE	4
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN	64
-/* size of early buffer.
- * This should be enough to hold 80x25 characters
- */
-#define EARLY_BUF_SZ	2048
 
 struct vmm_stdio_ctrl {
         vmm_spinlock_t lock;
@@ -50,10 +46,6 @@ struct vmm_stdio_ctrl {
 
 static struct vmm_stdio_ctrl stdio_ctrl;
 static bool stdio_init_done = FALSE;
-#if !defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
-static u32 stdio_early_count = 0;
-static char stdio_early_buffer[EARLY_BUF_SZ];
-#endif
 
 bool vmm_iscontrol(char c)
 {
@@ -91,14 +83,7 @@ int vmm_printchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 		}
 	} else {
 		for (i = 0; i < num_ch; i++) {
-#if defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
 			arch_defterm_early_putc(ch[i]);
-#else
-			if (stdio_early_count < EARLY_BUF_SZ) {
-				stdio_early_buffer[stdio_early_count] = ch[i];
-				stdio_early_count++;
-			}
-#endif
 		}
 		rc = VMM_OK;
 	}
@@ -133,21 +118,6 @@ void vmm_cputs(struct vmm_chardev *cdev, char *str)
 void vmm_puts(char *str)
 {
 	vmm_cputs(stdio_ctrl.dev, str);
-}
-
-static void flush_early_buffer(void)
-{
-#if !defined(ARCH_HAS_DEFTERM_EARLY_PRINT)
-	int i;
-
-	if (!stdio_init_done) {
-		return;
-	}
-
-	for (i = 0; i < stdio_early_count; i++) {
-		vmm_putc(stdio_early_buffer[i]);
-	}
-#endif
 }
 
 static void printc(char **out, u32 *out_len, struct vmm_chardev *cdev, char ch)
@@ -708,6 +678,34 @@ int vmm_stdio_change_device(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
+/* size of early buffer.
+ * This should be enough to hold 80x25 characters
+ */
+#define EARLY_BUF_SZ	2048
+static u32 __initdata stdio_early_count = 0;
+static char __initdata stdio_early_buffer[EARLY_BUF_SZ];
+
+void __weak __init arch_defterm_early_putc(u8 ch)
+{
+	if (stdio_early_count < EARLY_BUF_SZ) {
+		stdio_early_buffer[stdio_early_count] = ch;
+		stdio_early_count++;
+	}
+}
+
+static void __init flush_early_buffer(void)
+{
+	int i;
+
+	if (!stdio_init_done) {
+		return;
+	}
+
+	for (i = 0; i < stdio_early_count; i++) {
+		vmm_putc(stdio_early_buffer[i]);
+	}
+}
+
 int __init vmm_stdio_init(void)
 {
 	int rc;
@@ -721,7 +719,7 @@ int __init vmm_stdio_init(void)
 	/* Set current device to NULL */
 	stdio_ctrl.dev = NULL;
 
-	/* Initialize default serial terminal (board specific) */
+	/* Initialize default serial terminal */
 	if ((rc = arch_defterm_init())) {
 		return rc;
 	}
