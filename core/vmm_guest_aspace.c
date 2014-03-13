@@ -45,6 +45,9 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	if (!guest) {
 		return NULL;
 	}
+	if (!guest->aspace.initialized) {
+		return NULL;
+	}
 	aspace = &guest->aspace;
 
 	/* Determine flags we need to compare */
@@ -111,7 +114,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
-	if (!guest || !dst || !len) {
+	if (!guest || !guest->aspace.initialized || !dst || !len) {
 		return 0;
 	}
 
@@ -149,7 +152,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
-	if (!guest || !src || !len) {
+	if (!guest || !guest->aspace.initialized || !src || !len) {
 		return 0;
 	}
 
@@ -191,6 +194,9 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 
 	if (!guest || !hphys_addr) {
 		return VMM_EFAIL;
+	}
+	if (!guest->aspace.initialized) {
+		return VMM_ENOTAVAIL;
 	}
 
 	reg = vmm_guest_find_region(guest, gphys_addr, 
@@ -568,7 +574,7 @@ static int region_del(struct vmm_guest *guest,
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
 	    (reg->flags & VMM_REGION_ISHOSTRAM)) {
-		rc = vmm_host_ram_free(reg->hphys_addr, 
+		rc = vmm_host_ram_free(reg->hphys_addr,
 					reg->phys_size);
 		if (rc) {
 			vmm_printf("%s: Failed to free host RAM "
@@ -595,6 +601,9 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	if (!guest) {
 		return VMM_EFAIL;
 	}
+	if (!guest->aspace.initialized) {
+		return VMM_ENOTAVAIL;
+	}
 	aspace = &guest->aspace;
 
 	/* Reset device emulation for virtual regions */
@@ -613,15 +622,16 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	return vmm_devemu_reset_context(guest);
 }
 
-int vmm_guest_aspace_add_region(struct vmm_guest *guest,
-				const char *name,
-				const char *device_type,
-				const char *mainfest_type,
-				const char *address_type,
-				const char *compatible,
-				physical_addr_t gphys_addr,
-				physical_addr_t hphys_addr,
-				physical_size_t phys_size)
+int vmm_guest_add_region(struct vmm_guest *guest,
+			 const char *name,
+			 const char *device_type,
+			 const char *mainfest_type,
+			 const char *address_type,
+			 const char *compatible,
+			 physical_addr_t gphys_addr,
+			 physical_addr_t hphys_addr,
+			 physical_size_t phys_size,
+			 u32 align_order)
 {
 	int rc;
 	struct vmm_devtree_node *rnode;
@@ -630,6 +640,10 @@ int vmm_guest_aspace_add_region(struct vmm_guest *guest,
 	if (!guest || !guest->aspace.node ||
 	    !name || !device_type|| !mainfest_type || !address_type) {
 		rc = VMM_EINVALID;
+		goto failed;
+	}
+	if (!guest->aspace.initialized) {
+		rc = VMM_ENOTAVAIL;
 		goto failed;
 	}
 
@@ -682,6 +696,59 @@ int vmm_guest_aspace_add_region(struct vmm_guest *guest,
 		}
 	}
 
+	/* Set guest physical address */
+	rc = vmm_devtree_setattr(rnode,
+				 VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
+				 &gphys_addr,
+				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+				 sizeof(gphys_addr));
+	if (rc) {
+		goto failed_delnode;
+	}
+
+	if (!strcmp(mainfest_type, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL)) {
+		/* Set host physical address */
+		rc = vmm_devtree_setattr(rnode,
+					 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					 &hphys_addr,
+					 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+					 sizeof(hphys_addr));
+		if (rc) {
+			goto failed_delnode;
+		}
+	} else if (!strcmp(mainfest_type,
+			   VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS)) {
+		/* Set alias physical address */
+		rc = vmm_devtree_setattr(rnode,
+					 VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
+					 &hphys_addr,
+					 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+					 sizeof(hphys_addr));
+		if (rc) {
+			goto failed_delnode;
+		}
+	}
+
+	/* Set physical size */
+	rc = vmm_devtree_setattr(rnode,
+				 VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
+				 &phys_size,
+				 VMM_DEVTREE_ATTRTYPE_PHYSSIZE,
+				 sizeof(phys_size));
+	if (rc) {
+		goto failed_delnode;
+	}
+
+	/* Set alignment order */
+	rc = vmm_devtree_setattr(rnode,
+				 VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
+				 &align_order,
+				 VMM_DEVTREE_ATTRTYPE_UINT32,
+				 sizeof(align_order));
+	if (rc) {
+		goto failed_delnode;
+	}
+
 	/* Add region */
 	rc = region_add(guest, rnode, NULL);
 	if (rc) {
@@ -697,8 +764,8 @@ failed:
 	
 }
 
-int vmm_guest_aspace_del_region(struct vmm_guest *guest,
-				struct vmm_region *reg)
+int vmm_guest_del_region(struct vmm_guest *guest,
+			 struct vmm_region *reg)
 {
 	int rc;
 	struct vmm_devtree_node *rnode;
@@ -709,6 +776,9 @@ int vmm_guest_aspace_del_region(struct vmm_guest *guest,
 	}
 	if (reg->aspace->guest != guest) {
 		return VMM_EINVALID;
+	}
+	if (!guest->aspace.initialized) {
+		return VMM_ENOTAVAIL;
 	}
 	rnode = reg->node;
 
@@ -734,6 +804,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	/* Sanity Check */
 	if (!guest) {
 		return VMM_EFAIL;
+	}
+	if (guest->aspace.initialized) {
+		return VMM_EINVALID;
 	}
 	aspace = &guest->aspace;
 
@@ -771,6 +844,9 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		}
 	}
 
+	/* Mark address space as initialized */
+	aspace->initialized = TRUE;
+
 	return VMM_OK;
 }
 
@@ -787,6 +863,9 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 		return VMM_EFAIL;
 	}
 	aspace = &guest->aspace;
+
+	/* Mark address space as uninitialized */
+	aspace->initialized = FALSE;
 
 	/* Lock region list */
 	vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);

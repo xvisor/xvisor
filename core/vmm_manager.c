@@ -824,6 +824,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
 	memset(&guest->aspace, 0, sizeof(guest->aspace));
+	guest->aspace.initialized = FALSE;
 	INIT_RW_LOCK(&guest->aspace.reg_list_lock);
 	INIT_LIST_HEAD(&guest->aspace.reg_list);
 	guest->arch_priv = NULL;
