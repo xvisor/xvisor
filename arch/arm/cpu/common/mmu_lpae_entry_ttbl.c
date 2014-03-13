@@ -28,6 +28,9 @@
 
 extern u8 def_ttbl[];
 extern int def_ttbl_tree[];
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+extern u8 defterm_early_base[];
+#endif
 
 /* Note: This function must be called with MMU disabled from 
  * primary CPU only.
@@ -52,6 +55,7 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 	u32 ttbl_count = 0;
 	u64 *ttbl, *nttbl;
 	virtual_addr_t ttbl_base, page_addr;
+	physical_addr_t page_pa;
 
 	ttbl = NULL;
 	ttbl_base = to_load_pa((virtual_addr_t)&def_ttbl);
@@ -127,15 +131,33 @@ _setup_initial_ttbl(virtual_addr_t load_start,
 		index = (page_addr & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
 		if (!(ttbl[index] & TTBL_VALID_MASK)) {
 			/* Update level3 table */
-			if (map_exec) {
-				ttbl[index] |= (to_load_pa(page_addr) & TTBL_OUTADDR_MASK);
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+			if (page_addr == (virtual_addr_t)&defterm_early_base) {
+				page_pa = CONFIG_DEFTERM_EARLY_BASE_PA;
 			} else {
-				ttbl[index] |= (page_addr & TTBL_OUTADDR_MASK);
+#endif
+			if (map_exec) {
+				page_pa = to_load_pa(page_addr);
+			} else {
+				page_pa = page_addr;
 			}
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+			}
+#endif
+			ttbl[index] |= (page_pa & TTBL_OUTADDR_MASK);
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |= (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+			if (page_addr == (virtual_addr_t)&defterm_early_base) {
+			ttbl[index] |= (AINDEX_SO << TTBL_STAGE1_LOWER_AINDEX_SHIFT)
+					& TTBL_STAGE1_LOWER_AINDEX_MASK;
+			} else {
+#endif
 			ttbl[index] |= (AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT)
 					& TTBL_STAGE1_LOWER_AINDEX_MASK;
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+			}
+#endif
 			ttbl[index] |= TTBL_STAGE1_LOWER_NS_MASK;
 			ttbl[index] |= (TTBL_SH_INNER_SHAREABLE 
 					<< TTBL_STAGE1_LOWER_SH_SHIFT);
