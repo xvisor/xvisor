@@ -65,7 +65,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
 
   [14. Create fast_model_boot.axf for running it on ARM Fast Models]
   # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/disk.img@0x81000000
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 -DIMAGE=build/fast_model_boot.img -DDTB=build/arch/arm/board/generic/dts/vexpress/a15/one_guest_vexpress-a15.dtb ./docs/arm/fast_model_boot.S -o build/fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x14000000 -DVEXPRESS_A15 -DIMAGE=build/fast_model_boot.img -DDTB=build/arch/arm/board/generic/dts/vexpress/a15/one_guest_vexpress-a15.dtb ./docs/arm/fast_model_boot.S -o build/fast_model_boot.axf
 
   [15. Launch ARM fast models 8.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<yyyy>/cadi_system_Linux-Debug-GCC-<yyyy>.so build/fast_model_boot.axf
