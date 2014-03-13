@@ -380,12 +380,12 @@ int __cpuinit arch_cpu_irq_setup(void)
 #if defined(CONFIG_ARM32_HIGHVEC)
 	/* Enable high vectors in SCTLR */
 	write_sctlr(read_sctlr() | SCTLR_V_MASK);
-	vectors = (u32 *) CPU_IRQ_HIGHVEC_BASE;
+	vectors = (u32 *)CPU_IRQ_HIGHVEC_BASE;
 #else
-#if defined(CONFIG_ARMV7A_SECUREX)
-	write_vbar(CPU_IRQ_LOWVEC_BASE);
-#endif
-	vectors = (u32 *) CPU_IRQ_LOWVEC_BASE;
+	if (cpu_supports_securex()) {
+		write_vbar(CPU_IRQ_LOWVEC_BASE);
+	}
+	vectors = (u32 *)CPU_IRQ_LOWVEC_BASE;
 #endif
 	vectors_data = vectors + CPU_IRQ_NR;
 
