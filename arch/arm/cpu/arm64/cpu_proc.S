@@ -38,6 +38,10 @@
  */
 	.globl proc_setup
 proc_setup:
+	ic	iallu				/* I+BTB cache invalidate */
+	tlbi	alle2is				/* invalidate I + D TLBs */
+	dsb	sy
+
 	adr	x5, v8_crval
 	ldr	x6, [x5, #0]
 	ldr	x7, [x5, #8]
