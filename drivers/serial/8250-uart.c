@@ -84,16 +84,18 @@ static void uart_8250_out(struct uart_8250_port *port, u32 offset, u8 val)
 	}
 }
 
+#ifndef UART_POLLING
 static void uart_8250_clear_errors(struct uart_8250_port *port)
 {
 	/* If there was a RX FIFO error (because of framing, parity, 
 	 * break error) keep removing entries from RX FIFO until
 	 * LSR does not show this bit set
 	 */
-        while(uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
+        while (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
 		uart_8250_in(port, UART_RBR_OFFSET);
 	};
 }
+#endif
 
 bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port)
 {
@@ -183,7 +185,7 @@ static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 					port->rxtail = 
 					((port->rxtail + 1) % UART_RXBUF_SIZE);
 				} else {
-					break;
+					continue;
 				}
 			} while (uart_8250_in(port, UART_LSR_OFFSET) & 
 					      (UART_LSR_DR | UART_LSR_OE));
