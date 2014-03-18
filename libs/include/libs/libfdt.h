@@ -84,10 +84,11 @@ struct fdt_property {
 
 struct fdt_fileinfo {
 	struct fdt_header header;
-	char * data;
+	char *data;
 	size_t data_size;
-	char * str;
+	char *str;
 	size_t str_size;
+	char *mem_rsvmap;
 };
 
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 

@@ -170,14 +170,15 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 	}
 
 	/* Compute data location & size */
-	fdt->data = (char *)fdt_addr;
-	fdt->data += sizeof(struct fdt_header);
-	fdt->data += sizeof(struct fdt_reserve_entry);
+	fdt->data = (char *)fdt_addr + fdt->header.off_dt_struct;
 	fdt->data_size = fdt->header.size_dt_struct;
 
 	/* Compute strings location & size */
-	fdt->str = fdt->data + fdt->data_size;
+	fdt->str = (char *)fdt_addr + fdt->header.off_dt_strings;
 	fdt->str_size = fdt->header.size_dt_strings;
+
+	/* Compute location of reserved memory map */
+	fdt->mem_rsvmap = (char *)fdt_addr + fdt->header.off_mem_rsvmap;
 
 	return VMM_OK;
 }
@@ -296,8 +297,9 @@ static struct fdt_node_header *libfdt_find_node_recursive(char **data,
 		node_path++;
 	}
 
-	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE)
+	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE) {
 		return NULL;
+	}
 
 	*data += sizeof(fdt_cell_t);
 
