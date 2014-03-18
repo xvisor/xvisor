@@ -116,8 +116,8 @@ void __attribute__ ((section(".entry")))
 		index = (page_addr & TTBL_L3_INDEX_MASK) >> TTBL_L3_INDEX_SHIFT;
 		if (!(ttbl[index] & TTBL_VALID_MASK)) {
 			/* Update level3 table */
-			ttbl[index] |=
-			    ((page_addr - map_start + pa_start) &
+			ttbl[index] =
+			    (((page_addr - map_start) + pa_start) &
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
 			ttbl[index] |=
@@ -136,9 +136,9 @@ void __attribute__ ((section(".entry")))
 	}
 }
 
-/* Note: This function must be called with MMU disabled from
+/* Note: This functions must be called with MMU disabled from
  * primary CPU only.
- * Note: This function cannot refer to any global variable &
+ * Note: This functions cannot refer to any global variable &
  * functions to ensure that it can execute from anywhere.
  */
 #define to_load_pa(va)	({ \
@@ -148,17 +148,27 @@ void __attribute__ ((section(".entry")))
 			} \
 			_tva; \
 			})
+#define to_exec_va(va)	({ \
+			virtual_addr_t _tva = (va); \
+			if (load_start <= _tva && _tva < load_end) { \
+				_tva = _tva - load_start + exec_start; \
+			} \
+			_tva; \
+			})
 
 void __attribute__ ((section(".entry")))
     _setup_initial_ttbl(virtual_addr_t load_start, virtual_addr_t load_end,
 		    virtual_addr_t exec_start, virtual_addr_t exec_end)
 {
 	u32 i;
+#ifdef CONFIG_DEFTERM_EARLY_PRINT
+	virtual_addr_t defterm_early_va;
+#endif
 	struct mmu_lpae_entry_ctrl lpae_entry = { 0, NULL, NULL, 0 };
 
 	/* Init ttbl_base, ttbl_tree, and next_ttbl */
 	lpae_entry.ttbl_tree =
-	    (int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
+		(int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
 
 	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
 		lpae_entry.ttbl_tree[i] = -1;
@@ -179,10 +189,10 @@ void __attribute__ ((section(".entry")))
 	/* Map UART for early defterm
 	 * Note: This is for early debug purpose
 	 */
+	defterm_early_va = to_exec_va((virtual_addr_t)&defterm_early_base);
 	__setup_initial_ttbl(&lpae_entry,
-			     (virtual_addr_t)&defterm_early_base,
-			     (virtual_addr_t)&defterm_early_base +
-					     TTBL_L3_BLOCK_SIZE,
+			     defterm_early_va,
+			     defterm_early_va + TTBL_L3_BLOCK_SIZE,
 			     (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
 			     AINDEX_SO);
 #endif
