@@ -60,4 +60,16 @@ static inline long arch_atomic_dec_if_positive(atomic_t * atom)
 	return dec;
 }
 
+/** Add unless the number is already having given value */
+static inline int atomic_add_unless(atomic_t *atom, int a, int u)
+{
+	int c, old;
+
+	c = arch_atomic_read(atom);
+	while (c != u && (old = arch_atomic_cmpxchg((atom), c, c + a)) != c)
+		c = old;
+
+	return c != u;
+}
+
 #endif
