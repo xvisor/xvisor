@@ -1,13 +1,13 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.3
-# Sat Jan 11 23:18:42 2014
+# Version: 0.2.4
+# Wed Mar 19 00:40:20 2014
 #
-# CONFIG_SMP is not set
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
 CONFIG_ARCH="x86"
+# CONFIG_SMP is not set
 CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=16
 CONFIG_HOST_IRQ_COUNT=224
@@ -97,6 +97,7 @@ CONFIG_BLOCKPART_DOS=y
 # CONFIG_NET is not set
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+CONFIG_NET_BH_TIMEOUT_SECS=30
 
 #
 # Virtual IO Support
@@ -107,6 +108,10 @@ CONFIG_VSERIAL=y
 
 #
 # Command Options
+#
+
+#
+# General Commands
 #
 CONFIG_CMD_VERSION=y
 CONFIG_CMD_RESET=y
@@ -122,10 +127,26 @@ CONFIG_CMD_STDIO=y
 CONFIG_CMD_HEAP=y
 CONFIG_CMD_WALLCLOCK=y
 CONFIG_CMD_MODULE=y
+
+#
+# Virtual I/O Commands
+#
 CONFIG_CMD_VSERIAL=y
+
+#
+# Device Driver Commands
+#
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
+
+#
+# Networking Commands
+#
+
+#
+# Miscellenous Commands
+#
 CONFIG_CMD_VFS=y
 
 #
@@ -166,6 +187,24 @@ CONFIG_VFS_FAT=y
 #
 # Device Drivers
 #
+
+#
+# Interrupt Controller Drivers
+#
+# CONFIG_ARM_VIC is not set
+# CONFIG_ARM_GIC is not set
+# CONFIG_MXC_AVIC is not set
+# CONFIG_BCM2835_INTC is not set
+# CONFIG_SUN4I_VIC is not set
+
+#
+# Clocksource Drivers
+#
+# CONFIG_ARM_TIMER_SP804 is not set
+# CONFIG_ARM_TWD is not set
+# CONFIG_MXC_EPIT is not set
+# CONFIG_BCM2835_TIMER is not set
+# CONFIG_SUN4I_TIMER is not set
 
 #
 # Serial Port Drivers
@@ -235,7 +274,7 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 CONFIG_FB_VESA=y
 
 #
-# Network Drivers
+# Network Device Support
 #
 
 #
@@ -243,6 +282,11 @@ CONFIG_FB_VESA=y
 #
 # CONFIG_CLKDEV_LOOKUP is not set
 # CONFIG_COMMON_CLK is not set
+
+#
+# Power Supply Drivers
+#
+# CONFIG_POWER_SUPPLY is not set
 
 #
 # Multifunction device drivers
@@ -294,6 +338,7 @@ CONFIG_PIIX3_IDE=y
 # Miscellaneous Emulators
 #
 # CONFIG_EMU_MISC_ZERO is not set
+CONFIG_EMU_MISC_PSM=y
 
 #
 # Network Interface Controller Emulators
@@ -334,6 +379,16 @@ CONFIG_EMU_SERIAL_NS16550=y
 # GPIO Emulators
 #
 # CONFIG_EMU_GPIO is not set
+
+#
+# Bus Emulators
+#
+CONFIG_EMU_PCI=y
+
+#
+# PCI Host Controllers
+#
+CONFIG_EMU_I440FX=y
 
 #
 # Tool Options

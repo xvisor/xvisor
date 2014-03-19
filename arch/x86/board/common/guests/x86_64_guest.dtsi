@@ -36,6 +36,29 @@
 					fifo_size = <64>;
 					interrupts = <12>;
 				};
+
+				i440fx0 {
+					device_type = "pci-host-controller";
+					compatible = "i440fx";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0xcf8>;
+					physical_size = <4>;
+					nr_buses = <1>;
+					bus_start_id = <1>;
+
+					pci_bus1 {
+						devices {
+							psm {
+								device_type = "psm"; /* PCI Shared Memory */
+								compatible = "xpsm"; /* Xvisor PCI Shared Memory device */
+								manifest_type = "virtual";
+								address_type = "memory";
+								device_id = <1>;
+							};
+						};
+					};
+				};
 			};
 		};
 	};
