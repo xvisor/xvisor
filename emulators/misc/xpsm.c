@@ -26,6 +26,8 @@
 #include <vmm_modules.h>
 #include <emu/pci/pci_emu_core.h>
 
+#define XPSM_EMU_IPRIORITY		(PCI_EMU_CORE_IPRIORITY + 1)
+
 #define MODULE_DESC			"PCI Shared Memory Device"
 #define MODULE_AUTHOR			"Himanshu"
 #define MODULE_LICENSE			"GPL"

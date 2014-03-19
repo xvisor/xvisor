@@ -34,6 +34,8 @@
 #include <emu/pci/pci_emu_core.h>
 #include <emu/pci/pci_ids.h>
 
+#define I440FX_EMU_IPRIORITY		(PCI_EMU_CORE_IPRIORITY + 1)
+
 #define MODULE_DESC			"i440FX Emulator"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_LICENSE			"GPL"
