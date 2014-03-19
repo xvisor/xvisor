@@ -68,6 +68,7 @@ proc_setup:
 
 3:	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
+	mcr     p15, 4, r10, c8, c3, 0		@ invalidate all hyp TLBs
 	dsb
 
 	adr	r5, v7_hcrval
