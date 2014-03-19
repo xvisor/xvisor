@@ -24,4 +24,4 @@
 emulators-objs-$(CONFIG_EMU_MISC_ZERO)+= misc/zero.o
 emulators-objs-$(CONFIG_EMU_MISC_A9MPCORE)+= misc/a9mpcore.o
 emulators-objs-$(CONFIG_EMU_MISC_ARM11MPCORE)+= misc/arm11mpcore.o
-
+emulators-objs-$(CONFIG_EMU_MISC_PSM)+= misc/xpsm.o
