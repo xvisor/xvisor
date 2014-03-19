@@ -20,6 +20,8 @@ typedef unsigned char		unchar;
 typedef unsigned short		ushort;
 typedef unsigned int		uint;
 
+typedef unsigned short          umode_t;
+
 #ifndef __BIT_TYPES_DEFINED__
 #define __BIT_TYPES_DEFINED__
 
@@ -81,6 +83,12 @@ typedef unsigned long blkcnt_t;
 #endif
 
 #endif /* __KERNEL__ */
+
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+typedef u64 dma_addr_t;
+#else
+typedef u32 dma_addr_t;
+#endif /* dma_addr_t */
 
 /*
  * Below are truly Linux-specific types that should never collide with
