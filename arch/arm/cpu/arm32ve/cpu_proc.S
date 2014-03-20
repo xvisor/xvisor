@@ -73,7 +73,7 @@ proc_setup:
 
 	adr	r5, v7_hcrval
 	ldmia	r5, {r5, r6}
-   	mrc	p15, 0, r0, c1, c0, 0		@ read control register
+	mrc	p15, 4, r0, c1, c0, 0		@ read HSCTLR register
 	bic	r0, r0, r5			@ clear bits them
 	orr	r0, r0, r6			@ set them
 	mov	pc, lr
@@ -81,13 +81,13 @@ proc_setup:
 	/*                W                B
 	 *  T     E    F  X                E
 	 * .E.. ..E. ..I. N... ...I .... ..N. .CAM
-	 * 0x11 00x0 11x0 0101 000x 1000 01x1 1xxx < forced
-	 *             0  0       1        1   101 < we want
+	 * 0x11 00x0 11x0 x101 000x 1000 01x1 1xxx < forced
+	 *  0     0    0  0       1        1   101 < we want
 	 */
 	.align	2
 	.type	v7_hcrval, #object
 v7_hcrval:
-	.word	0x00280002 /* clear */
+	.word	0x42280002 /* clear */
 	.word	0x00001025 /* mmuset */
 
 #ifdef CONFIG_SMP
