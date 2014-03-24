@@ -75,6 +75,16 @@ _zeroing_loop:
 	b	_zeroing_loop
 _zeroing_done:
 
+	/*
+	 * Enable I-Cache
+	 */
+	mrc	p15, 0, r0, c1, c0, 0
+	ldr	r1, __sctlr_mmu_clear
+	ldr	r2, __sctlr_mmu_set
+	and	r0, r0, r1
+	orr	r0, r0, r2
+	mcr	p15, 0, r0, c1, c0, 0
+
 _jump_to_exec:
 	ldr	pc, __reset
 
@@ -92,6 +102,10 @@ __heap_start:
 	.word _heap_start
 __heap_end:
 	.word _heap_end
+__sctlr_mmu_clear:
+	.word ~(SCTLR_A_MASK)
+__sctlr_mmu_set:
+	.word (SCTLR_I_MASK)
 
 	/* 
 	 * Copies data from source to destination taking care of even

@@ -22,6 +22,7 @@
  */
 
 #include <arm_io.h>
+#include <arm_cache.h>
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
@@ -348,22 +349,51 @@ void arm_cmd_copy(int argc, char **argv)
 	u64 tstamp;
 	char time[256];
 	u64 *dest, *src;
+	virtual_addr_t dest_va;
 	u32 i, count;
+
+	/* Determine copy args */
 	if (argc != 4) {
 		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
 	dest = (u64 *)arm_hexstr2ulonglong(argv[1]);
+	if (((virtual_addr_t)dest) & 0x7) {
+		arm_puts ("copy: <dest> should be 8-byte aligned\n");
+		return;
+	}
+	dest_va = (virtual_addr_t)dest;
 	src = (u64 *)arm_hexstr2ulonglong(argv[2]);
+	if (((virtual_addr_t)src) & 0x7) {
+		arm_puts ("copy: <src> should be 8-byte aligned\n");
+		return;
+	}
 	count = arm_hexstr2uint(argv[3]);
+
+	/* Disable timer and get start timestamp */
 	arm_board_timer_disable();
 	tstamp = arm_board_timer_timestamp();
+
+	/* It might happen that we are running Basic firmware
+	 * after a reboot from Guest Linux in which case both
+	 * I-Cache and D-Cache will have stale contents. We need
+	 * to cleanup these stale contents while copying so that
+	 * we see correct contents of destination even after
+	 * MMU ON.
+	 */
+	arm_clean_invalidate_dcache_mva_range(dest_va, dest_va + count);
+
+	/* Copy contents */
 	for (i = 0; i < (count/sizeof(*dest)); i++) {
 		dest[i] = src[i];
 	}
+
+	/* Enable timer and get end timestamp */
 	tstamp = arm_board_timer_timestamp() - tstamp;
 	tstamp = arm_udiv64(tstamp, 1000);
 	arm_board_timer_enable();
+
+	/* Print time taken */
 	arm_ulonglong2str(time, tstamp);
 	arm_puts("copy took ");
 	arm_puts(time);
@@ -384,13 +414,16 @@ void arm_cmd_start_linux(int argc, char **argv)
 {
 	u64 kernel_addr, fdt_addr;
 	u64 initrd_addr, initrd_size;
+	virtual_addr_t nuke_va;
 	int err;
 	char cfg_str[10];
 	u64 meminfo[2];
 
 	if (argc < 3) {
-		arm_puts ("start_linux: must provide <kernel_addr> and <fdt_addr>\n");
-		arm_puts ("start_linux: <initrd_addr> and <initrd_size> are optional\n");
+		arm_puts ("start_linux: must provide <kernel_addr> and "
+			  "<fdt_addr>\n");
+		arm_puts ("start_linux: <initrd_addr> and <initrd_size> "
+			  "are optional\n");
 		return;
 	}
 
@@ -407,6 +440,24 @@ void arm_cmd_start_linux(int argc, char **argv)
 	} else {
 		initrd_size = 0;
 	}
+
+	/* Linux ARM64 kernel expects us to boot from 0x80000
+	 * aligned address, perferrably RAM start + 0x80000 address.
+	 * The 0x80000 bytes above kernel start address is used by
+	 * Linux ARM64 kernel to setup boot page tables.
+	 *
+	 * It might happen that we are running Basic firmware
+	 * after a reboot from Guest Linux in which case both
+	 * I-Cache and D-Cache will have stale contents. If we
+	 * don't cleanup these stale contents then Linux kernel
+	 * will not see correct contents boot page tables after
+	 * MMU ON.
+	 *
+	 * To take care of above described issue, we nuke the
+	 * 2MB area containing kernel start and boot page tables.
+	 */
+	nuke_va = kernel_addr & ~(0x200000 - 1);
+	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x200000);
 
 	meminfo[0] = arm_board_ram_start();
 	meminfo[1] = arm_board_ram_size();

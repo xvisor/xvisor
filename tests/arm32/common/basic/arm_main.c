@@ -22,6 +22,7 @@
  */
 
 #include <arm_io.h>
+#include <arm_cache.h>
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
@@ -347,23 +348,52 @@ void arm_cmd_copy(int argc, char **argv)
 {
 	u64 tstamp;
 	char time[256];
-	u8 *dest, *src;
+	u32 *dest, *src;
+	virtual_addr_t dest_va;
 	u32 i, count;
+
+	/* Determine copy args */
 	if (argc != 4) {
 		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
-	dest = (u8 *)arm_hexstr2uint(argv[1]);
-	src = (u8 *)arm_hexstr2uint(argv[2]);
+	dest = (u32 *)arm_hexstr2uint(argv[1]);
+	if (((virtual_addr_t)dest) & 0x3) {
+		arm_puts ("copy: <dest> should be 4-byte aligned\n");
+		return;
+	}
+	dest_va = (virtual_addr_t)dest;
+	src = (u32 *)arm_hexstr2uint(argv[2]);
+	if (((virtual_addr_t)src) & 0x3) {
+		arm_puts ("copy: <src> should be 4-byte aligned\n");
+		return;
+	}
 	count = arm_hexstr2uint(argv[3]);
+
+	/* Disable timer and get start timestamp */
 	arm_timer_disable();
 	tstamp = arm_timer_timestamp();
-	for (i = 0; i < count; i++) {
+
+	/* It might happen that we are running Basic firmware
+	 * after a reboot from Guest Linux in which case both
+	 * I-Cache and D-Cache will have stale contents. We need
+	 * to cleanup these stale contents while copying so that
+	 * we see correct contents of destination even after
+	 * MMU ON.
+	 */
+	arm_clean_invalidate_dcache_mva_range(dest_va, dest_va + count);
+
+	/* Copy contents */
+	for (i = 0; i < (count/sizeof(*dest)); i++) {
 		dest[i] = src[i];
 	}
+
+	/* Enable timer and get end timestamp */
 	tstamp = arm_timer_timestamp() - tstamp;
 	tstamp = arm_udiv64(tstamp, 1000);
 	arm_timer_enable();
+
+	/* Print time taken */
 	arm_ulonglong2str(time, tstamp);
 	arm_puts("copy took ");
 	arm_puts(time);
@@ -374,14 +404,15 @@ void arm_cmd_copy(int argc, char **argv)
 
 static char  cmdline[1024];
 
-typedef void (* linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
+typedef void (*linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
 
 void arm_cmd_start_linux(int argc, char **argv)
 {
 	char cfg_str[32];
-	u32 * kernel_args = (u32 *)(arm_board_ram_start() + 0x1000);
+	u32 *kernel_args = (u32 *)(arm_board_ram_start() + 0x1000);
 	u32 cmdline_size, p;
 	u32 kernel_addr, initrd_addr, initrd_size;
+	virtual_addr_t nuke_va;
 
 	if (argc < 2) {
 		arm_puts ("start_linux: must provide <kernel_addr>\n");
@@ -401,6 +432,24 @@ void arm_cmd_start_linux(int argc, char **argv)
 	} else {
 		initrd_size = 0;
 	}
+
+	/* Linux ARM32 kernel expects us to boot from 0x8000
+	 * aligned address, perferrably RAM start + 0x8000 address.
+	 * The 0x8000 bytes above kernel start address is used by
+	 * Linux ARM32 kernel to setup boot page tables.
+	 *
+	 * It might happen that we are running Basic firmware
+	 * after a reboot from Guest Linux in which case both
+	 * I-Cache and D-Cache will have stale contents. If we
+	 * don't cleanup these stale contents then Linux kernel
+	 * will not see correct contents boot page tables after
+	 * MMU ON.
+	 *
+	 * To take care of above described issue, we nuke the
+	 * 1MB area containing kernel start and boot page tables.
+	 */
+	nuke_va = kernel_addr & ~(0x100000 - 1);
+	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Setup kernel args */
 	for (p = 0; p < 128; p++) {
@@ -467,6 +516,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	u32 kernel_addr, fdt_addr;
 	u32 initrd_addr, initrd_size;
 	char cfg_str[32];
+	virtual_addr_t nuke_va;
 
 	if (argc < 3) {
 		arm_puts ("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
@@ -487,6 +537,24 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	} else {
 		initrd_size = 0;
 	}
+
+	/* Linux ARM32 kernel expects us to boot from 0x8000
+	 * aligned address, perferrably RAM start + 0x8000 address.
+	 * The 0x8000 bytes above kernel start address is used by
+	 * Linux ARM32 kernel to setup boot page tables.
+	 *
+	 * It might happen that we are running Basic firmware
+	 * after a reboot from Guest Linux in which case both
+	 * I-Cache and D-Cache will have stale contents. If we
+	 * don't cleanup these stale contents then Linux kernel
+	 * will not see correct contents boot page tables after
+	 * MMU ON.
+	 *
+	 * To take care of above described issue, we nuke the
+	 * 1MB area containing kernel start and boot page tables.
+	 */
+	nuke_va = kernel_addr & ~(0x100000 - 1);
+	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Pass memory size via kernel command line */
 	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
