@@ -288,38 +288,9 @@ void __bus_shutdown(struct vmm_bus *bus)
 		list_del(&dev->bus_head);
 		dev->is_registered = FALSE;
 
-		/* Update parent */
-		if (dev->parent) {
-			vmm_mutex_lock(&dev->parent->child_list_lock);
-			list_del(&dev->child_head);
-			vmm_mutex_unlock(&dev->parent->child_list_lock);
-			vmm_devdrv_free_device(dev->parent);
-		}
-
 		/* Decrement reference count of device */
 		vmm_devdrv_free_device(dev);
 	}
-}
-
-/* Note: Must be called with cls->lock held */
-static void __class_release_device_driver(struct vmm_class *cls,
-					  struct vmm_device *dev)
-{
-	if (cls->release) {
-#if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("devdrv: class=\"%s\" device=\"%s\" "
-			   "release\n",
-			   cls->name, dev->name);
-#endif
-		cls->release(dev);
-	}
-}
-
-/* Note: Must be called with cls->lock held */
-static void __class_release_this_device(struct vmm_class *cls,
-				        struct vmm_device *dev)
-{
-	__class_release_device_driver(cls, dev);
 }
 
 /* Note: Must be called with cls->lock held */
@@ -333,20 +304,9 @@ void __class_release(struct vmm_class *cls)
 		l = list_first(&cls->device_list);
 		dev = list_entry(l, struct vmm_device, class_head);
 
-		/* Class release this device */
-		__class_release_this_device(cls, dev);
-
 		/* Unregister from device list */
 		list_del(&dev->class_head);
 		dev->is_registered = FALSE;
-
-		/* Update parent */
-		if (dev->parent) {
-			vmm_mutex_lock(&dev->parent->child_list_lock);
-			list_del(&dev->child_head);
-			vmm_mutex_unlock(&dev->parent->child_list_lock);
-			vmm_devdrv_free_device(dev->parent);
-		}
 
 		/* Decrement reference count of device */
 		vmm_devdrv_free_device(dev);
@@ -641,13 +601,6 @@ int vmm_devdrv_class_unregister_device(struct vmm_class *cls,
 
 	list_del(&d->class_head);
 	d->is_registered = FALSE;
-
-	if (d->parent) {
-		vmm_mutex_lock(&d->parent->child_list_lock);
-		list_del(&d->child_head);
-		vmm_mutex_unlock(&d->parent->child_list_lock);
-		vmm_devdrv_free_device(d->parent);
-	}
 
 	vmm_mutex_unlock(&cls->lock);
 
@@ -994,13 +947,6 @@ int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
 	list_del(&d->bus_head);
 	d->is_registered = FALSE;
 
-	if (d->parent) {
-		vmm_mutex_lock(&d->parent->child_list_lock);
-		list_del(&d->child_head);
-		vmm_mutex_unlock(&d->parent->child_list_lock);
-		vmm_devdrv_free_device(d->parent);
-	}
-
 	vmm_mutex_unlock(&bus->lock);
 
 	return VMM_OK;
@@ -1323,6 +1269,8 @@ void vmm_devdrv_ref_device(struct vmm_device *dev)
 
 void vmm_devdrv_free_device(struct vmm_device *dev)
 {
+	bool released;
+
 	if (!dev) {
 		return;
 	}
@@ -1331,11 +1279,26 @@ void vmm_devdrv_free_device(struct vmm_device *dev)
 		return;
 	}
 
-	WARN_ON(!dev->release);
+	/* Update parent */
+	if (dev->parent) {
+		vmm_mutex_lock(&dev->parent->child_list_lock);
+		list_del(&dev->child_head);
+		vmm_mutex_unlock(&dev->parent->child_list_lock);
+		vmm_devdrv_free_device(dev->parent);
+	}
 
+	released = TRUE;
 	if (dev->release) {
 		dev->release(dev);
+	} else if (dev->type && dev->type->release) {
+		dev->type->release(dev);
+	} else if (dev->class && dev->class->release) {
+		dev->class->release(dev);
+	} else {
+		released = FALSE;
 	}
+
+	WARN_ON(!released);
 }
 
 bool vmm_devdrv_isregistered_device(struct vmm_device *dev)

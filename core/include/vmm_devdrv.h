@@ -60,6 +60,11 @@ struct vmm_bus {
 	void (*shutdown) (struct vmm_device *);
 };
 
+struct vmm_device_type {
+	const char *name;
+	void (*release) (struct vmm_device *);
+};
+
 struct vmm_device {
 	/* Private fields (for device driver framework) */
 	struct dlist bus_head;
@@ -72,6 +77,7 @@ struct vmm_device {
 	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
+	struct vmm_device_type *type;
 	struct vmm_devtree_node *node;
 	struct vmm_device *parent;
 	struct vmm_class *class;
