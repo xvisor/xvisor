@@ -13,6 +13,7 @@
 #include <linux/module.h>
 
 #define bus_type			vmm_bus
+#define device_type			vmm_device_type
 #define device				vmm_device
 #define device_driver			vmm_driver
 #define device_node			vmm_devtree_node
