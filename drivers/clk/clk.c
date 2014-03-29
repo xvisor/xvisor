@@ -1522,7 +1522,7 @@ static int _clk_register(struct vmm_device *dev, struct clk_hw *hw, struct clk *
 	/* allocate local copy in case parent_names is __initdata */
 	clk->parent_names = vmm_zalloc(sizeof(char*) * clk->num_parents);
 
-	if (!clk->parent_names) {
+	if (!clk->parent_names && clk->num_parents) {
 		vmm_printf("%s: could not allocate clk->parent_names\n", __func__);
 		ret = VMM_ENOMEM;
 		goto fail_parent_names;
