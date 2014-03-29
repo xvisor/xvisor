@@ -27,7 +27,7 @@
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_ARMV8) += -mgeneral-regs-only -mlittle-endian
 
-cpu-cppflags+=-DTEXT_START=0x00000000
+cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-y) $(tune-y)
 cpu-asflags += $(arch-y) $(tune-y)
 cpu-ldflags +=
