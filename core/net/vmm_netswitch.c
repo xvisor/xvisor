@@ -193,7 +193,7 @@ static void netswitch_bh_ring_port_flush(struct vmm_netswitch_bh_ctrl *nbp,
 
 	for (index = 0; index < NETSWITCH_BH_XFER_RING_SZ; index++) {
 		xfer = nbp->ring[index];
-		if (xfer->port == port) {
+		if (xfer && xfer->port == port) {
 			nbp->ring[index] = NULL;
 			if (xfer->mbuf) {
 				m_freem(xfer->mbuf);
