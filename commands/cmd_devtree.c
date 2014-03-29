@@ -153,7 +153,7 @@ static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 			}
 		}
 		vmm_cprintf(cdev, ">;\n", attr->name);
-	} else {
+	} else if (attr->value) {
 		vmm_cprintf(cdev, "\t%s = <", attr->name);
 		for (i = 0; i < attr->len; i += sizeof(u32)) {
 			if (i > 0) {
@@ -163,6 +163,8 @@ static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 					((u32 *)attr->value)[i >> 2]);
 		}
 		vmm_cprintf(cdev, ">;\n", attr->name);
+	} else {
+		vmm_cprintf(cdev, "\t%s;\n", attr->name);
 	}
 }
 
