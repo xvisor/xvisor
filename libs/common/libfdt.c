@@ -216,11 +216,15 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			type = vmm_devtree_estimate_attrtype(name);
 			alen = libfdt_property_len(name, addr_cells, 
 						   size_cells, len);
-			val = vmm_zalloc(alen);
-			libfdt_property_read(name, val, *data,
+			val = (alen) ? vmm_zalloc(alen) : NULL;
+			if (val) {
+				libfdt_property_read(name, val, *data,
 					     addr_cells, size_cells, len);
+			}
 			vmm_devtree_setattr(node, name, val, type, alen);
-			vmm_free(val);
+			if (val) {
+				vmm_free(val);
+			}
 			*data += len;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;
