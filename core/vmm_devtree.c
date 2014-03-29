@@ -240,7 +240,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	struct dlist *l;
 	struct vmm_devtree_attr *attr;
 
-	if (!node || !name || !value) {
+	if (!node || !name || (len && !value)) {
 		return VMM_EFAIL;
 	}
 
@@ -268,26 +268,40 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			return VMM_ENOMEM;
 		}
 		strcpy(attr->name, name);
-		attr->value = vmm_malloc(attr->len);
-		if (!attr->value) {
-			vmm_free(attr->name);
-			vmm_free(attr);
-			return VMM_ENOMEM;
-		}
-		memcpy(attr->value, value, attr->len);
-		list_add_tail(&attr->head, &node->attr_list);
-	} else {
-		if (attr->len != len) {
-			void *ptr = vmm_malloc(len);
-			if (!ptr) {
+		if (attr->len) {
+			attr->value = vmm_malloc(attr->len);
+			if (!attr->value) {
+				vmm_free(attr->name);
+				vmm_free(attr);
 				return VMM_ENOMEM;
 			}
-			attr->len = len;
-			vmm_free(attr->value);
-			attr->value = ptr;
+			memcpy(attr->value, value, attr->len);
+		} else {
+			attr->value = NULL;
 		}
+		list_add_tail(&attr->head, &node->attr_list);
+	} else {
 		attr->type = type;
-		memcpy(attr->value, value, attr->len);
+		if (attr->len != len) {
+			if (attr->len) {
+				vmm_free(attr->value);
+				attr->value = NULL;
+				attr->len = 0;
+			}
+			attr->len = len;
+			if (attr->len) {
+				attr->value = vmm_malloc(attr->len);
+				if (!attr->value) {
+					attr->len = 0;
+					return VMM_ENOMEM;
+				}
+			} else {
+				attr->value = NULL;
+			}
+		}
+		if (attr->len) {
+			memcpy(attr->value, value, attr->len);
+		}
 	}
 
 	return VMM_OK;
