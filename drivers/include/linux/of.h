@@ -32,6 +32,13 @@ static inline unsigned int irq_of_parse_and_map(struct device_node *dev,
 	return irq;
 }
 
+/**
+ * NOTE: of_get_property in linux keeps device tree in big-endian
+ * format whereas we have device tree in native/host endian format.
+ * Due to this we should use of_get_property with caution and never
+ * use endianness conversion such as be32_to_cpu() on pointer returned
+ * by of_get_property().
+ */
 static inline const void *of_get_property(const struct device_node *np,
 					  const char *name, int *lenp)
 {
