@@ -21,7 +21,10 @@
 # @brief list of Sun4i DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/one_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/cubieboard/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/cubieboard/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/cubieboard/two_guest_pb-a8.dtb
 
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/hackberry/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/hackberry/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/sun4i/hackberry/two_guest_pb-a8.dtb

@@ -4,8 +4,6 @@
 	#size-cells = <1>;
 	model = "allwinner,sun4i";
 
-	chosen { };
-	aliases { };
 
 	cpus {
 		#address-cells = <1>;
