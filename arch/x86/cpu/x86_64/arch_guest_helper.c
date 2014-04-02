@@ -93,7 +93,9 @@ int arch_guest_deinit(struct vmm_guest * guest)
  *---------------------------------*/
 physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context, virtual_addr_t vaddr)
 {
-	/* If guest is in real or paged real mode, virtual = physical. */
+	u32 tcr3 = (u32)context->vmcb->cr3;
+
+	/* If guest is in real or paged real/protected mode, virtual = physical. */
 	if (!(context->vmcb->cr0 & X86_CR0_PG)
 	    ||((context->vmcb->cr0 & X86_CR0_PG)
 	       && !(context->vmcb->cr0 & X86_CR0_PE)))
@@ -110,20 +112,20 @@ physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context, virtu
 	physical_addr_t pte_addr, pde_addr;
 
         /* page directory entry */
-        pde_addr = (context->vmcb->cr3 & ~0xfff) + ((vaddr >> 20) & 0xffc);
+        pde_addr = (tcr3 & ~0xfff) + (4 * ((vaddr >> 22) & 0x3ff));
 	/* FIXME: Should we always do cacheable memory access here ?? */
-	if (vmm_guest_memory_read(context->assoc_vcpu->guest, pde_addr, &pde,
-				  sizeof(pde), TRUE) < sizeof(pde))
+	if (vmm_host_memory_read(pde_addr, &pde,
+				 sizeof(pde), TRUE) < sizeof(pde))
 		return 0;
 
         if (!(pde & 0x1))
 		return 0;
 
 	/* page directory entry */
-	pte_addr = ((pde & ~0xfff) + ((vaddr >> 10) & 0xffc));
+	pte_addr = (((u32)(pde & ~0xfff)) + (4 * ((vaddr >> 12) & 0x3ff)));
 	/* FIXME: Should we always do cacheable memory access here ?? */
-	if (vmm_guest_memory_read(context->assoc_vcpu->guest, pte_addr, &pte,
-				  sizeof(pte), TRUE) < sizeof(pte))
+	if (vmm_host_memory_read(pte_addr, &pte,
+				 sizeof(pte), TRUE) < sizeof(pte))
 		return 0;
 
 	if (!(pte & 0x1))
@@ -136,12 +138,12 @@ int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			physical_addr_t paddr, size_t size)
 {
 	union page32 pde, pte;
-	union page32 *pde_addr;
+	union page32 *pde_addr, *temp;
 	physical_addr_t tpaddr, pte_addr;
 	virtual_addr_t tvaddr;
 	u32 index, boffs;
 
-	pde_addr = &context->shadow32_pgt[((vaddr >> 20) & 0xffc)];
+	pde_addr = &context->shadow32_pgt[((vaddr >> 22) & 0x3ff)];
 	pde = *pde_addr;
 
 	if (!pde.present) {
@@ -164,7 +166,9 @@ int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 		pde_addr->paddr = (tpaddr >> PAGE_SHIFT);
 	}
 
-	pte_addr = ((pde_addr->paddr << PAGE_SHIFT) + ((vaddr >> 10) & 0xffc));
+	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
+	pte_addr = (physical_addr_t)(temp + ((vaddr >> 12) & 0x3ff));
+	/*pte_addr = ((pde_addr->paddr << PAGE_SHIFT) + ((vaddr >> 10) & 0xffc));*/
 	/* FIXME: Should this be cacheable memory access ? */
 	if (vmm_host_memory_read(pte_addr, (void *)&pte,
 				 sizeof(pte), TRUE) < sizeof(pte))
