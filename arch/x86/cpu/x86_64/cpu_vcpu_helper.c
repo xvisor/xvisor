@@ -322,7 +322,32 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	/* For now no arch specific stats */
 }
 
+static const char *g_regs_names [] = {
+	"RAX", "RCX", "RDX", "RBX",
+	"RSP", "RBP", "RSI", "RDI",
+	" R8", " R9", "R10", "R11",
+	"R12", "R13", "R13", "R14",
+	"R15", "RIP", "CR0", "CR1",
+	"CR2", "CR3", "CR4", "GDTR",
+	"LDTR"," TR", "IDTR" };
+
+static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
+{
+	int i;
+
+	vmm_printf("GUEST %s/%s dump state:\n",
+		   context->assoc_vcpu->guest->name,
+		   context->assoc_vcpu->name);
+
+	for (i = 0; i < NR_GUEST_REGS; i++) {
+		vmm_printf("%s: 0x%lx ", g_regs_names[i],
+			   context->g_regs[i]);
+		if (!i && i % 3) vmm_printf("\n");
+	}
+}
+
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
 {
+	dump_guest_vcpu_state(context);
 	arch_guest_halt(context->assoc_vcpu->guest);
 }
