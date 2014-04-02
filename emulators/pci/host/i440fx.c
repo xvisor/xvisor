@@ -219,7 +219,7 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 
 	/* initialize class */
 	class = (struct pci_class *)s->controller;
-	INIT_MUTEX(class->lock);
+	INIT_SPIN_LOCK(&class->lock);
 	class->conf_header.vendor_id = PCI_VENDOR_ID_INTEL;
 	class->conf_header.device_id = PCI_DEVICE_ID_INTEL_82441;
 	class->config_read = i440fx_config_read;

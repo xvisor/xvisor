@@ -56,13 +56,18 @@ static struct pci_bus *pci_find_bus_by_id(struct pci_host_controller *controller
 					      u32 bus_id)
 {
 	struct dlist *l;
-	struct pci_bus *bus;
+	struct pci_bus *bus = NULL;
+
+	vmm_mutex_lock(&controller->lock);
 
 	list_for_each(l, &controller->attached_buses) {
 		bus = list_entry(l, struct pci_bus, head);
 		if (bus->bus_id == bus_id)
+			vmm_mutex_unlock(&controller->lock);
 			return bus;
 	}
+
+	vmm_mutex_unlock(&controller->lock);
 
 	return bus;
 }
@@ -71,7 +76,10 @@ static int pci_emu_attach_pci_device(struct pci_host_controller *controller,
 					 struct pci_device *dev, u32 bus_id)
 {
 	struct pci_bus *bus = pci_find_bus_by_id(controller, bus_id);
+
+	vmm_mutex_lock(&bus->lock);
 	list_add_tail(&dev->head, &bus->attached_devices);
+	vmm_mutex_unlock(&bus->lock);
 
 	return VMM_OK;
 }
@@ -205,7 +213,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 					return VMM_EFAIL;
 				}
-				INIT_SPIN_LOCK(&pdev->lock);
+				INIT_MUTEX(&pdev->lock);
 				pdev->node = bus_node;
 				pdev->priv = NULL;
 				if((rc = vmm_devtree_read_u32(bus_node, "device_id", &pdev->device_id))) {
@@ -261,10 +269,16 @@ int pci_emu_attach_new_pci_bus(struct pci_host_controller *controller, u32 bus_i
 	struct pci_bus *nbus = vmm_zalloc(sizeof(struct pci_bus));
 
 	if (nbus) {
+		vmm_mutex_lock(&controller->lock);
+
+		INIT_MUTEX(&nbus->lock);
 		nbus->bus_id = bus_id;
 		INIT_LIST_HEAD(&nbus->attached_devices);
 		nbus->host_controller = controller;
 		list_add(&nbus->head, &controller->attached_buses);
+
+		vmm_mutex_unlock(&controller->lock);
+
 		return VMM_OK;
 	}
 
@@ -276,27 +290,40 @@ int pci_emu_detach_pci_bus(struct pci_host_controller *controller, u32 bus_id)
 	struct dlist *l;
 	struct pci_bus *bus;
 
+	vmm_mutex_lock(&controller->lock);
+
 	list_for_each(l, &controller->attached_buses) {
 		bus = list_entry(l, struct pci_bus, head);
 		if (bus->bus_id == bus_id) {
 			list_del(&bus->head);
 			vmm_free(bus);
+			vmm_mutex_unlock(&controller->lock);
 			return VMM_OK;
 		}
 	}
+
+	vmm_mutex_unlock(&controller->lock);
 
 	return VMM_EFAIL;
 }
 
 int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val)
 {
+	int retv = 0;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave(&class->lock, flags);
+
 	if (reg_offs > PCI_CONFIG_HEADER_END) {
-		if (class->config_write)
-			return class->config_write(class, reg_offs, val);
-		else {
+		if (class->config_write) {
+			retv = class->config_write(class, reg_offs, val);
+			vmm_spin_unlock_irqrestore(&class->lock, flags);
+			return retv;
+		} else {
 			vmm_printf("%s: Access to register 0x%x but not "
 				   "implemented outside class.\n",
 				   __func__, reg_offs);
+			vmm_spin_unlock_irqrestore(&class->lock, flags);
 			return VMM_EINVALID;
 		}
 	}
@@ -403,125 +430,35 @@ int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val)
 		break;
 	}
 
+	vmm_spin_unlock_irqrestore(&class->lock, flags);
+
 	return VMM_OK;
 }
 
-u32 pci_emu_read_config_space(struct pci_class *class, u32 reg_offs)
+u32 pci_emu_read_config_space(struct pci_class *class, u32 reg_offs, u32 size)
 {
 	u32 ret = 0;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave(&class->lock, flags);
 
 	if (reg_offs > PCI_CONFIG_HEADER_END) {
-		if (class->config_read)
-			return class->config_read(class, reg_offs);
-		else {
+		if (class->config_read) {
+			ret = class->config_read(class, reg_offs);
+			vmm_spin_unlock_irqrestore(&class->lock, flags);
+			return ret;
+		} else {
 			vmm_printf("%s: Access to register 0x%x but not "
 				   "implemented outside class.\n",
 				   __func__, reg_offs);
+			vmm_spin_unlock_irqrestore(&class->lock,flags);
 			return VMM_EINVALID;
 		}
 	}
 
-	switch(reg_offs) {
-	case PCI_CONFIG_VENDOR_ID_OFFS:
-		ret = class->conf_header.vendor_id;
-		break;
+	memcpy(&ret, (const void *)(((u8 *)(&class->conf_header)) + reg_offs), size);
 
-	case PCI_CONFIG_DEVICE_ID_OFFS:
-		ret = class->conf_header.device_id;
-		break;
-
-	case PCI_CONFIG_COMMAND_REG_OFFS:
-		ret = class->conf_header.command;
-		break;
-
-	case PCI_CONFIG_STATUS_REG_OFFS:
-		ret = class->conf_header.status;
-		break;
-
-	case PCI_CONFIG_REVISION_ID_OFFS:
-		ret = class->conf_header.revision;
-		break;
-
-	case PCI_CONFIG_CLASS_CODE_OFFS:
-		ret = class->conf_header.class;
-		break;
-
-	case PCI_CONFIG_CACHE_LINE_OFFS:
-		ret = class->conf_header.cache_line_sz;
-		break;
-
-	case PCI_CONFIG_LATENCY_TMR_OFFS:
-		ret = class->conf_header.latency_timer;
-		break;
-
-	case PCI_CONFIG_HEADER_TYPE_OFFS:
-		ret = class->conf_header.header_type;
-		break;
-
-	case PCI_CONFIG_BIST_OFFS:
-		ret = class->conf_header.bist;
-		break;
-
-	case PCI_CONFIG_BAR0_OFFS:
-		ret = class->conf_header.bars[0];
-		break;
-
-	case PCI_CONFIG_BAR1_OFFS:
-		ret = class->conf_header.bars[1];
-		break;
-
-	case PCI_CONFIG_BAR2_OFFS:
-		ret = class->conf_header.bars[2];
-		break;
-
-	case PCI_CONFIG_BAR3_OFFS:
-		ret = class->conf_header.bars[3];
-		break;
-
-	case PCI_CONFIG_BAR4_OFFS:
-		ret = class->conf_header.bars[4];
-		break;
-
-	case PCI_CONFIG_BAR5_OFFS:
-		ret = class->conf_header.bars[5];
-		break;
-
-	case PCI_CONFIG_CARD_BUS_PTR_OFFS:
-		ret = class->conf_header.card_bus_ptr;
-		break;
-
-	case PCI_CONFIG_SUBSYS_VID:
-		ret = class->conf_header.subsystem_vendor_id;
-		break;
-
-	case PCI_CONFIG_SUBSYS_DID:
-		ret = class->conf_header.subsystem_device_id;
-		break;
-
-	case PCI_CONFIG_EROM_OFFS:
-		ret = class->conf_header.expansion_rom_base;
-		break;
-
-	case PCI_CONFIG_CAP_PTR_OFFS:
-		ret = class->conf_header.cap_pointer;
-		break;
-
-	case PCI_CONFIG_INT_LINE_OFFS:
-		ret = class->conf_header.int_line;
-		break;
-
-	case PCI_CONFIG_INT_PIN_OFFS:
-		ret = class->conf_header.int_pin;
-		break;
-
-	case PCI_CONFIG_MIN_GNT_OFFS:
-		ret = class->conf_header.min_gnt;
-		break;
-
-	case PCI_CONFIG_MAX_LAT_OFFS:
-		ret = class->conf_header.max_lat;
-		break;
-	}
+	vmm_spin_unlock_irqrestore(&class->lock, flags);
 
 	return ret;
 }
