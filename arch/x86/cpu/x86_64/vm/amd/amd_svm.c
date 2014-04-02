@@ -459,6 +459,9 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	enable_ioport_intercept(context, 0x2fd);
 	enable_ioport_intercept(context, 0x2fe);
 	enable_ioport_intercept(context, 0x2ff);
+	enable_ioport_intercept(context, 0xcf8);
+	enable_ioport_intercept(context, 0xcf9);
+	enable_ioport_intercept(context, 0xcfc);
 
 	/*
 	 * FIXME: VM: What state to load should come from VMCB.
