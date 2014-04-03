@@ -341,8 +341,8 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		      : ((context->vmcb->exitinfo1 & (0x1 << 5)) ? 16
 			 : 32));
 	u8 seg_num = (context->vmcb->exitinfo1 >> 10) & 0x7;
-	u8 guest_rd;
-	u8 wval;
+	u32 guest_rd;
+	u32 wval;
 
 	VM_LOG(LVL_VERBOSE, "RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
 	VM_LOG(LVL_VERBOSE, "IOPort: %d is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
@@ -350,7 +350,7 @@ void __handle_ioio(struct vcpu_hw_context *context)
 
 	if (in_inst) {
 		if (vmm_devemu_emulate_ioread(context->assoc_vcpu, io_port,
-					      &guest_rd, sizeof(guest_rd),
+					      &guest_rd, op_size/8,
 					      VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
 			vmm_printf("Failed to emulate IO instruction in guest.\n");
 			goto _fail;
@@ -359,9 +359,9 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RAX] = guest_rd;
 		context->vmcb->rax = guest_rd;
 	} else {
-		wval = (u8)context->vmcb->rax;
+		wval = (u32)context->vmcb->rax;
 		if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, io_port,
-					       &wval, sizeof(wval),
+					       &wval, op_size/8,
 					       VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
 			vmm_printf("Failed to emulate IO instruction in guest.\n");
 			goto _fail;

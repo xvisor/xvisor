@@ -90,6 +90,7 @@ struct pci_conf_header {
 
 struct pci_class {
 	struct pci_conf_header conf_header;
+	vmm_spinlock_t lock;
 	pci_config_read_t config_read;
 	pci_config_write_t config_write;
 };
@@ -99,6 +100,7 @@ struct pci_host_controller {
 	u8 name[VMM_FIELD_NAME_SIZE];
 	u16 nr_buses;
 	u16 bus_start;
+	struct vmm_mutex lock;
 	struct dlist attached_buses;
 	struct dlist head;
 	struct vmm_guest *guest;
@@ -107,6 +109,7 @@ struct pci_host_controller {
 struct pci_bus {
 	struct dlist head;
 	u16 bus_id;
+	struct vmm_mutex lock;
 	struct pci_host_controller *host_controller;
 	struct dlist attached_devices;
 };
@@ -118,7 +121,7 @@ struct pci_device {
 	struct pci_bus *pci_bus;
 	struct vmm_guest *guest;
 	struct vmm_devtree_node *node;
-	vmm_spinlock_t lock;
+	struct vmm_mutex lock;
 	void *priv;
 };
 
@@ -143,8 +146,8 @@ int pci_emu_register_controller(struct vmm_devtree_node *node, struct vmm_guest 
 				struct pci_host_controller *controller);
 int pci_emu_attach_new_pci_bus(struct pci_host_controller *controller, u32 bus_id);
 int pci_emu_detach_pci_bus(struct pci_host_controller *controller, u32 bus_id);
-int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val);
-u32 pci_emu_read_config_space(struct pci_class *class, u32 reg_offs);
+int pci_emu_config_space_write(struct pci_class *class, u32 reg_offs, u32 val);
+u32 pci_emu_config_space_read(struct pci_class *class, u32 reg_offs, u32 size);
 int __init pci_devemu_init(void);
 
 #endif /* __PCI_EMU_CORE_H */

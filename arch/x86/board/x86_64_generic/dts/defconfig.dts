@@ -55,6 +55,9 @@
 		};
 	};
 
+    vmm {
+    };
+
 	chosen {
 		console = &SERIAL0;
 		/*console = &STDOUT;*/
