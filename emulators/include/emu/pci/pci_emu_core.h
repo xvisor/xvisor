@@ -146,8 +146,8 @@ int pci_emu_register_controller(struct vmm_devtree_node *node, struct vmm_guest 
 				struct pci_host_controller *controller);
 int pci_emu_attach_new_pci_bus(struct pci_host_controller *controller, u32 bus_id);
 int pci_emu_detach_pci_bus(struct pci_host_controller *controller, u32 bus_id);
-int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val);
-u32 pci_emu_read_config_space(struct pci_class *class, u32 reg_offs, u32 size);
+int pci_emu_config_space_write(struct pci_class *class, u32 reg_offs, u32 val);
+u32 pci_emu_config_space_read(struct pci_class *class, u32 reg_offs, u32 size);
 int __init pci_devemu_init(void);
 
 #endif /* __PCI_EMU_CORE_H */

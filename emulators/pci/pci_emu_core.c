@@ -307,7 +307,7 @@ int pci_emu_detach_pci_bus(struct pci_host_controller *controller, u32 bus_id)
 	return VMM_EFAIL;
 }
 
-int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val)
+int pci_emu_config_space_write(struct pci_class *class, u32 reg_offs, u32 val)
 {
 	int retv = 0;
 	irq_flags_t flags;
@@ -435,7 +435,7 @@ int pci_emu_write_config_space(struct pci_class *class, u32 reg_offs, u32 val)
 	return VMM_OK;
 }
 
-u32 pci_emu_read_config_space(struct pci_class *class, u32 reg_offs, u32 size)
+u32 pci_emu_config_space_read(struct pci_class *class, u32 reg_offs, u32 size)
 {
 	u32 ret = 0;
 	irq_flags_t flags;
