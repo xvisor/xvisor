@@ -30,7 +30,7 @@ typedef struct vmm_waitqueue wait_queue_head_t;
 do {									\
 	if (condition)	 						\
 		break;							\
-	vmm_waitqueue_sleep_event(condition);				\
+	vmm_waitqueue_sleep_event(wq, condition);			\
 } while (0)
 
 /**

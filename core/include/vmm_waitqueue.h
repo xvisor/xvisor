@@ -102,13 +102,13 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue *wq);
  * Sleep until a condition gets true
  * @condition: a C expression for the event to wait for
  */
-#define vmm_waitqueue_sleep_event(condition)				\
+#define vmm_waitqueue_sleep_event(wq, condition)			\
 do {									\
 	BUG_ON(!vmm_scheduler_orphan_context());			\
 	for (;;) {							\
 		if (condition)						\
 			break;						\
-		vmm_scheduler_yield();					\
+		vmm_waitqueue_sleep_timeout((wq), NULL);		\
 	}								\
 } while (0)
 
