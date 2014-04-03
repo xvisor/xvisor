@@ -1718,6 +1718,14 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	p.s = 0;
 #endif
 
+	/* Force non-cacheable non-bufferable memory
+	 * when dma-coherent memory is required.
+	 */
+	if (mem_flags & VMM_MEMORY_DMACOHERENT) {
+		p.c = 0;
+		p.b = 0;
+	}
+
 	return cpu_mmu_map_reserved_page(&p);
 }
 
