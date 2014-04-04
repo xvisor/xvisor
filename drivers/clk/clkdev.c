@@ -33,6 +33,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
+#include <vmm_devdrv.h>
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 #include <libs/stringlib.h>

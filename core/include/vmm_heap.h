@@ -24,7 +24,8 @@
 #define _VMM_HEAP_H__
 
 #include <vmm_types.h>
-#include <vmm_chardev.h>
+
+struct vmm_chardev;
 
 /** Allocate memory */
 void *vmm_malloc(virtual_size_t size);

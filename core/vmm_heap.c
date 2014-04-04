@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
+#include <libs/stringlib.h>
 #include <libs/buddy.h>
 
 struct vmm_heap_control {
@@ -140,7 +141,7 @@ int vmm_heap_print_state(struct vmm_chardev *cdev)
 			    buddy_bins_block_count(&heap.ba, idx));
 	}
 
-	vmm_cprintf(cdev, "House-Keeping State\n");
+	vmm_cprintf(cdev, "Heap House-Keeping State\n");
 	vmm_cprintf(cdev, "  Buddy Areas: %d free out of %d\n",
 		    buddy_hk_area_free(&heap.ba),
 		    buddy_hk_area_total(&heap.ba));
