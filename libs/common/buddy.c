@@ -645,7 +645,7 @@ int buddy_mem_alloc(struct buddy_allocator *ba,
 		    unsigned long size,
 		    unsigned long *addr)
 {
-	struct buddy_area *a;
+	struct buddy_area *a, *t;
 	unsigned long bin_num, blk_count;
 
 	/* Sanity checks */
@@ -653,8 +653,7 @@ int buddy_mem_alloc(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p size=%d\n",
-		__func__, ba, size);
+	DPRINTF("%s: ba=%p size=%d\n", __func__, ba, size);
 
 	/* Estimated bin number and block count */
 	bin_num = buddy_estimate_bin(ba, size);
@@ -669,6 +668,27 @@ int buddy_mem_alloc(struct buddy_allocator *ba,
 		return VMM_ENOMEM;
 	}
 
+	/* Downgrade to smallest bin */
+	a->blk_count = a->blk_count * (0x1UL << (a->bin_num - ba->min_bin));
+	a->bin_num = ba->min_bin;
+
+	/* Try to reduce memory wastage */
+	blk_count = BLOCK_COUNT(size, a->bin_num);
+	if ((blk_count * BLOCK_SIZE(a->bin_num)) < size) {
+		blk_count++;
+	}
+	if (blk_count < a->blk_count) {
+		t = buddy_hk_alloc(ba,
+			AREA_START(a) + blk_count * BLOCK_SIZE(a->bin_num),
+			a->bin_num, a->blk_count - blk_count);
+		if (!t) {
+			goto skip;
+		}
+		a->blk_count = blk_count;
+		buddy_bins_put(ba, t);
+	}
+
+skip:
 	/* Add buddy area to alloc tree */
 	buddy_alloc_add(ba, a);
 
@@ -739,6 +759,26 @@ int buddy_mem_aligned_alloc(struct buddy_allocator *ba,
 			a->blk_count = blk_count;
 			buddy_bins_put(ba, t);
 		}
+	}
+
+	/* Downgrade to smallest bin */
+	a->blk_count = a->blk_count * (0x1UL << (a->bin_num - ba->min_bin));
+	a->bin_num = ba->min_bin;
+
+	/* Try to reduce memory wastage */
+	blk_count = BLOCK_COUNT(size, a->bin_num);
+	if ((blk_count * BLOCK_SIZE(a->bin_num)) < size) {
+		blk_count++;
+	}
+	if (blk_count < a->blk_count) {
+		t = buddy_hk_alloc(ba,
+			AREA_START(a) + blk_count * BLOCK_SIZE(a->bin_num),
+			a->bin_num, a->blk_count - blk_count);
+		if (!t) {
+			goto skip;
+		}
+		a->blk_count = blk_count;
+		buddy_bins_put(ba, t);
 	}
 
 skip:
