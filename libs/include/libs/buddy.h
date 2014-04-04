@@ -85,11 +85,22 @@ int buddy_mem_aligned_alloc(struct buddy_allocator *ba,
 
 /** Reserve memory in buddy allocator */
 int buddy_mem_reserve(struct buddy_allocator *ba,
-		      unsigned long size,
-		      unsigned long addr);
+		      unsigned long addr,
+		      unsigned long size);
+
+/** Find alloced/reserved memory from buddy allocator */
+int buddy_mem_find(struct buddy_allocator *ba,
+		   unsigned long addr,
+		   unsigned long *alloc_addr,
+		   unsigned long *alloc_bin,
+		   unsigned long *alloc_size);
 
 /** Free memory to buddy allocator */
 int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr);
+
+/** Partially free memory to buddy allocator */
+int buddy_mem_partial_free(struct buddy_allocator *ba,
+			   unsigned long addr, unsigned long size);
 
 /** Initialize buddy allocator */
 int buddy_allocator_init(struct buddy_allocator *ba,

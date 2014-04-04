@@ -149,7 +149,10 @@ unsigned long buddy_hk_area_total(struct buddy_allocator *ba)
 }
 
 static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
-					   unsigned long addr)
+					   unsigned long addr,
+					   unsigned long *alloc_map,
+					   unsigned long *alloc_bin,
+					   unsigned long *alloc_blk_count)
 {
 	irq_flags_t f;
 	struct rb_node *n = ba->alloc.rb_node;
@@ -167,6 +170,16 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
   		struct buddy_area *a = rb_entry(n, struct buddy_area, hk_rb);
 
 		if ((AREA_START(a) <= addr) && (addr < AREA_END(a))) {
+			if (alloc_map) {
+				*alloc_map = a->map;
+			}
+			if (alloc_bin) {
+				*alloc_bin = a->bin_num;
+			}
+			if (alloc_blk_count) {
+				*alloc_blk_count = a->blk_count;
+			}
+
 			vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 			return a;
 		}
@@ -469,35 +482,36 @@ skip:
 static struct buddy_area *buddy_bins_reserve(struct buddy_allocator *ba,
 					     unsigned long bin_num,
 					     unsigned long addr,
-					     unsigned long blk_count)
+					     unsigned long size)
 {
 	bool found;
 	irq_flags_t f;
-	unsigned long size;
-	struct buddy_area *a, *b, *residue, *ret;
+	unsigned long blk_count;
+	struct buddy_area *a, *b, *ret = NULL;
 
 	/* Sanity checks */
-	if (!ba || !blk_count ||
+	if (!ba || !size ||
 	    (bin_num < ba->min_bin) ||
 	    (bin_num > ba->max_bin)) {
 		return NULL;
 	}
-	if (addr & BLOCK_MASK(bin_num)) {
-		return NULL;
-	}
 
-	DPRINTF("%s: ba=%p bin_num=%d addr=0x%x blk_count=%d\n",
-		__func__, ba, bin_num, addr, blk_count);
+	DPRINTF("%s: ba=%p bin_num=%d addr=0x%x size=0x%x\n",
+		__func__, ba, bin_num, addr, size);
+
+	/* Align address to block boundary */
+	size = size + (addr - (addr & ~BLOCK_MASK(bin_num)));
+	addr = addr & ~BLOCK_MASK(bin_num);
+
+	/* Compute block count */
+	blk_count = BLOCK_COUNT(size, bin_num);
+	if ((blk_count * BLOCK_SIZE(bin_num)) < size) {
+		blk_count++;
+	}
+	size = blk_count * BLOCK_SIZE(bin_num);
 
 	/* Lock desired bin */
 	vmm_spin_lock_irqsave_lite(&ba->bins_lock[bin_num], f);
-
-	/* Precompute size of desired memory */
-	size = blk_count * BLOCK_SIZE(bin_num);
-
-	/* Initialize return value */
-	ret = NULL;
-	residue = NULL;
 
 	/* Try to find existing buddy area of desired bin */
 	found = FALSE;
@@ -505,79 +519,48 @@ static struct buddy_area *buddy_bins_reserve(struct buddy_allocator *ba,
 		if ((AREA_START(a) <= addr) &&
 		    (addr < AREA_END(a)) &&
 		    (AREA_START(a) <= (addr + size)) &&
-		    ((addr + size) < AREA_END(a))) {
+		    ((addr + size) <= AREA_END(a))) {
 			found = TRUE;
 			break;
 		}
 	}
 
-	if (found) {
-		/* Create a buddy area from desired bin */
-		ret = buddy_hk_alloc(ba, addr, bin_num, blk_count);
-		if (!ret) {
-			goto skip;
-		}
+	if (!found) {
+		goto skip;
+	}
 
-		/* If we have few blocks between ret area end and
-		 * found area end them add them back after found area.
-		 */
-		if (BLOCK_COUNT(AREA_END(a) - AREA_END(ret), bin_num)) {
-			b = buddy_hk_alloc(ba, AREA_END(ret), bin_num,
+	/* Create a buddy area from desired bin */
+	ret = buddy_hk_alloc(ba, addr, bin_num, blk_count);
+	if (!ret) {
+		goto skip;
+	}
+
+	/* If we have few blocks between ret area end and
+	 * found area end them add them back after found area.
+	 */
+	if (BLOCK_COUNT(AREA_END(a) - AREA_END(ret), bin_num)) {
+		b = buddy_hk_alloc(ba, AREA_END(ret), bin_num,
 			BLOCK_COUNT(AREA_END(a) - AREA_END(ret), bin_num));
-			if (!b) {
-				buddy_hk_free(ba, ret);
-				ret = NULL;
-				goto skip;
-			}
-			list_add(&b->hk_head, &a->hk_head);
-		}
-
-		/* Update existing buddy area */
-		a->blk_count =
-			BLOCK_COUNT(AREA_START(a) - AREA_START(ret), bin_num);
-
-		/* If existing buddy area is empty then free it */
-		if (!a->blk_count) {
-			list_del(&a->hk_head);
-			buddy_hk_free(ba, a);
-		}
-	} else {
-		/* Create a buddy area from bigger bin */
-		ret = buddy_bins_reserve(ba, bin_num + 1,
-					 addr, (blk_count + 1) >> 1);
-		if (!ret) {
+		if (!b) {
+			buddy_hk_free(ba, ret);
+			ret = NULL;
 			goto skip;
 		}
+		list_add(&b->hk_head, &a->hk_head);
+	}
 
-		/* Downgrade bigger bin to desired bin */
-		ret->bin_num = ret->bin_num - 1;
-		ret->blk_count = ret->blk_count * 2;
+	/* Update existing buddy area */
+	a->blk_count = BLOCK_COUNT(AREA_START(ret) - AREA_START(a), bin_num);
 
-		/* If we have desired buddy area then return else
-		 * create new buddy area for residue blocks
-		 */
-		if (ret->blk_count == blk_count) {
-			goto skip;
-		}
-		residue = buddy_hk_alloc(ba,
-				ret->map + blk_count * BLOCK_SIZE(bin_num),
-				bin_num, ret->blk_count - blk_count);
-		if (!residue) {
-			goto skip;
-		}
-
-		/* Make sure we return only requested number of blocks */
-		ret->blk_count = blk_count;
+	/* If existing buddy area is empty then free it */
+	if (!a->blk_count) {
+		list_del(&a->hk_head);
+		buddy_hk_free(ba, a);
 	}
 
 skip:
 	/* Unlock desired bin */
 	vmm_spin_unlock_irqrestore_lite(&ba->bins_lock[bin_num], f);
-
-	/* Put back residuce blocks */
-	if (residue) {
-		buddy_bins_put(ba, residue);
-	}
 
 	return ret;
 }
@@ -769,11 +752,11 @@ skip:
 }
 
 int buddy_mem_reserve(struct buddy_allocator *ba,
-		      unsigned long size,
-		      unsigned long addr)
+		      unsigned long addr,
+		      unsigned long size)
 {
-	struct buddy_area *a;
-	unsigned long bin_addr, bin_size, blk_count;
+	struct buddy_area *a, *b;
+	unsigned long bin, tsz;
 
 	/* Sanity checks */
 	if (!ba || !size ||
@@ -782,25 +765,93 @@ int buddy_mem_reserve(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p size=%d addr=0x%x\n",
-		__func__, ba, size, addr);
+	DPRINTF("%s: ba=%p addr=0x%x size=0x%x\n",
+		__func__, ba, addr, size);
 
-	/* Determine address & size suitable to minimum sized bin */
-	bin_addr = addr & ~BLOCK_MASK(ba->min_bin);
-	bin_size = size + (addr - bin_addr);
-	blk_count = BLOCK_COUNT(bin_size, ba->min_bin);
-	if ((blk_count * BLOCK_SIZE(ba->min_bin)) < size) {
-		blk_count++;
+	/* Try to reserve from smallest bin to biggest bin */
+	for (bin = ba->min_bin; bin <= ba->max_bin; bin++) {
+		a = buddy_bins_reserve(ba, bin, addr, size);
+		if (a) {
+			break;
+		}
 	}
-
-	/* Try to reserve blocks in minimum sized bin */
-	a = buddy_bins_reserve(ba, ba->min_bin, bin_addr, blk_count);
 	if (!a) {
 		return VMM_ENOTAVAIL;
 	}
 
+	/* Downgrade to smallest bin */
+	a->blk_count = a->blk_count * (0x1UL << (a->bin_num - ba->min_bin));
+	a->bin_num = ba->min_bin;
+
+	/* Collect residue from start of reserved buddy area */
+	if (BLOCK_COUNT(addr - AREA_START(a), a->bin_num)) {
+		b = buddy_hk_alloc(ba, AREA_START(a), a->bin_num,
+			BLOCK_COUNT(addr - AREA_START(a), a->bin_num));
+		if (!b) {
+			goto skip;
+		}
+		a->map = a->map + AREA_SIZE(b);
+		a->blk_count = a->blk_count - b->blk_count;
+		buddy_bins_put(ba, b);
+	}
+
+	/* Collect residue from end of reserved buddy area */
+	tsz = (addr + size) & BLOCK_MASK(a->bin_num);
+	if (tsz) {
+		tsz = size + (BLOCK_SIZE(a->bin_num) - tsz);
+	} else {
+		tsz = size;
+	}
+	if (BLOCK_COUNT(AREA_END(a) - (addr + tsz), a->bin_num)) {
+		b = buddy_hk_alloc(ba, (addr + tsz), a->bin_num,
+			BLOCK_COUNT(AREA_END(a) - (addr + tsz), a->bin_num));
+		if (!b) {
+			goto skip;
+		}
+		a->blk_count = a->blk_count - b->blk_count;
+		buddy_bins_put(ba, b);
+	}
+
+skip:
 	/* Add buddy area to alloc tree */
 	buddy_alloc_add(ba, a);
+
+	return VMM_OK;
+}
+
+int buddy_mem_find(struct buddy_allocator *ba,
+		   unsigned long addr,
+		   unsigned long *alloc_addr,
+		   unsigned long *alloc_bin,
+		   unsigned long *alloc_size)
+{
+	struct buddy_area *a;
+	unsigned long a_addr, a_bin, a_blk_count;
+
+	/* Sanity checks */
+	if (!ba || (addr < ba->mem_start) ||
+	    ((ba->mem_start + ba->mem_size) <= addr)) {
+		return VMM_EINVALID;
+	}
+
+	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+
+	/* Find buddy area from alloc tree */
+	a = buddy_alloc_find(ba, addr, &a_addr, &a_bin, &a_blk_count);
+	if (!a) {
+		return VMM_ENOTAVAIL;
+	}
+
+	/* Fill-up return values */
+	if (alloc_addr) {
+		*alloc_addr = a_addr;
+	}
+	if (alloc_bin) {
+		*alloc_bin = a_bin;
+	}
+	if (alloc_size) {
+		*alloc_size = BLOCK_SIZE(a_bin) * a_blk_count;
+	}
 
 	return VMM_OK;
 }
@@ -815,11 +866,10 @@ int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p addr=%p\n",
-		__func__, ba, (void *)addr);
+	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
 
 	/* Find buddy area from alloc tree */
-	a = buddy_alloc_find(ba, addr);
+	a = buddy_alloc_find(ba, addr, NULL, NULL, NULL);
 	if (!a) {
 		return VMM_ENOTAVAIL;
 	}
@@ -827,6 +877,82 @@ int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 	/* Delete buddy area from alloc tree */
 	buddy_alloc_del(ba, a);
 
+	/* Put back blocks to bins */
+	buddy_bins_put(ba, a);
+
+	return VMM_OK;
+}
+
+int buddy_mem_partial_free(struct buddy_allocator *ba,
+			   unsigned long addr, unsigned long size)
+{
+	struct buddy_area *a, *b;
+	unsigned long old_bin_num, old_blk_count;
+
+	/* Sanity checks */
+	if (!ba || (addr < ba->mem_start) ||
+	    ((ba->mem_start + ba->mem_size) <= addr)) {
+		return VMM_EINVALID;
+	}
+
+	DPRINTF("%s: ba=%p addr=0x%x size=0x%x\n",
+		__func__, ba, addr, size);
+
+	/* Find buddy area from alloc tree */
+	a = buddy_alloc_find(ba, addr, NULL, NULL, NULL);
+	if (!a) {
+		return VMM_ENOTAVAIL;
+	}
+
+	/* Downgrade to smallest bin */
+	old_bin_num = a->bin_num;
+	old_blk_count = a->blk_count;
+	a->blk_count = a->blk_count * (0x1UL << (a->bin_num - ba->min_bin));
+	a->bin_num = ba->min_bin;
+
+	/* More sanity checks */
+	if (BLOCK_COUNT(addr - AREA_START(a), a->bin_num) &&
+	    (addr & BLOCK_MASK(a->bin_num))) {
+		a->blk_count = old_blk_count;
+		a->bin_num = old_bin_num;
+		return VMM_EINVALID;
+	}
+	if (BLOCK_COUNT(AREA_END(a) - (addr + size), a->bin_num) &&
+	    ((addr + size) & BLOCK_MASK(a->bin_num))) {
+		a->blk_count = old_blk_count;
+		a->bin_num = old_bin_num;
+		return VMM_EINVALID;
+	}
+
+	/* Delete buddy area from alloc tree */
+	buddy_alloc_del(ba, a);
+
+	/* Collect residue from start of freed buddy area */
+	if (BLOCK_COUNT(addr - AREA_START(a), a->bin_num) &&
+	    !(addr & BLOCK_MASK(a->bin_num))) {
+		b = buddy_hk_alloc(ba, AREA_START(a), a->bin_num,
+			BLOCK_COUNT(addr - AREA_START(a), a->bin_num));
+		if (!b) {
+			goto skip;
+		}
+		a->map = a->map + AREA_SIZE(b);
+		a->blk_count = a->blk_count - b->blk_count;
+		buddy_alloc_add(ba, b);
+	}
+
+	/* Collect residue from end of freed buddy area */
+	if (BLOCK_COUNT(AREA_END(a) - (addr + size), a->bin_num) &&
+	    !((addr + size) & BLOCK_MASK(a->bin_num))) {
+		b = buddy_hk_alloc(ba, (addr + size), a->bin_num,
+			BLOCK_COUNT(AREA_END(a) - (addr + size), a->bin_num));
+		if (!b) {
+			goto skip;
+		}
+		a->blk_count = a->blk_count - b->blk_count;
+		buddy_alloc_add(ba, b);
+	}
+
+skip:
 	/* Put back blocks to bins */
 	buddy_bins_put(ba, a);
 
