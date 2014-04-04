@@ -27,7 +27,7 @@
 #include <libs/stringlib.h>
 #include <libs/mempool.h>
 
-struct mempool *mempool_create(u32 buf_size, u32 buf_count)
+struct mempool *mempool_create(u32 buf_size, u32 buf_count, u32 mem_flags)
 {
 	u32 b;
 	virtual_addr_t va;
@@ -44,12 +44,13 @@ struct mempool *mempool_create(u32 buf_size, u32 buf_count)
 		return NULL;
 	}
 
+	mp->mem_flags = mem_flags;
 	mp->buf_count = buf_count;
 	mp->buf_size = buf_size;
 
 	mp->page_count = VMM_SIZE_TO_PAGE(buf_size * buf_count);
-	mp->page_base = vmm_host_alloc_pages(mp->page_count, 
-					     VMM_MEMORY_FLAGS_NORMAL);
+	mp->page_base = vmm_host_alloc_pages(mp->page_count,
+					     mp->mem_flags);
 	if (!mp->page_base) {
 		fifo_free(mp->f);
 		vmm_free(mp);

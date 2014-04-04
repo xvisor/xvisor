@@ -31,6 +31,7 @@
 struct mempool {
 	struct fifo *f;
 
+	u32 mem_flags;
 	u32 buf_size;
 	u32 buf_count;
 
@@ -39,7 +40,7 @@ struct mempool {
 };
 
 /** Create a new MEMPOOL */
-struct mempool *mempool_create(u32 buf_size, u32 buf_count);
+struct mempool *mempool_create(u32 buf_size, u32 buf_count, u32 mem_flags);
 
 /** Destroy a MEMPOOL */
 int mempool_destroy(struct mempool *mp);

@@ -89,6 +89,7 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <net/vmm_mbuf.h>
 #include <libs/list.h>
@@ -171,7 +172,8 @@ int __init vmm_mbufpool_init(void)
 
 	/* Create mbuf pool */
 	mbpctrl.mpool = mempool_create(sizeof(struct vmm_mbuf), 
-					CONFIG_NET_MBUF_POOL_SIZE);
+					CONFIG_NET_MBUF_POOL_SIZE,
+					VMM_MEMORY_FLAGS_NORMAL);
 	if (!mbpctrl.mpool) {
 		return VMM_ENOMEM;
 	}
@@ -183,7 +185,8 @@ int __init vmm_mbufpool_init(void)
 		buf_count = epool_slab_buf_count(epool_sz, slab);
 		if (buf_count && buf_size) {
 			mbpctrl.epool_slabs[slab] = 
-					mempool_create(buf_size, buf_count);
+				mempool_create(buf_size, buf_count,
+						VMM_MEMORY_FLAGS_NORMAL);
 		} else {
 			mbpctrl.epool_slabs[slab] = NULL;
 		}
