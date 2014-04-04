@@ -23,6 +23,10 @@
 #ifndef __PCI_EMU_CORE_H
 #define __PCI_EMU_CORE_H
 
+#include <vmm_types.h>
+#include <vmm_mutex.h>
+#include <vmm_manager.h>
+
 #define PCI_EMU_CORE_IPRIORITY		1
 
 #define PCI_CONFIG_HEADER_END	0x3f
