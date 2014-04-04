@@ -58,8 +58,6 @@ virtual_size_t vmm_host_ram_estimate_hksize(physical_size_t ram_size);
 /* Initialize RAM managment */
 int vmm_host_ram_init(physical_addr_t base, 
 		      physical_size_t size,
-		      virtual_addr_t hkbase, 
-		      physical_addr_t resv_pa, 
-		      virtual_size_t resv_sz);
+		      virtual_addr_t hkbase);
 
 #endif /* __VMM_HOST_RAM_H_ */

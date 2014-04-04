@@ -26,10 +26,11 @@
 
 #include <vmm_types.h>
 
+struct vmm_chardev;
+
 /** Allocate virtual space from virtual address pool */
 int vmm_host_vapool_alloc(virtual_addr_t *va, 
-			  virtual_size_t sz, 
-			  bool aligned);
+			  virtual_size_t sz);
 
 /** Reserve a portion of virtual space forcefully */
 int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz);
@@ -60,11 +61,12 @@ bool vmm_host_vapool_isvalid(virtual_addr_t addr);
 /** Estimate house-keeping size of virtual address pool */
 virtual_size_t vmm_host_vapool_estimate_hksize(virtual_size_t size);
 
+/** Print virtual address pool state */
+int vmm_host_vapool_print_state(struct vmm_chardev *cdev);
+
 /* Initialize virtual address pool managment */
 int vmm_host_vapool_init(virtual_addr_t base,
 			 virtual_size_t size, 
-			 virtual_addr_t hkbase, 
-			 virtual_addr_t resv_va, 
-			 virtual_size_t resv_sz);
+			 virtual_addr_t hkbase);
 
 #endif /* __VMM_HOST_VAPOOL_H_ */
