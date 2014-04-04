@@ -52,9 +52,10 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host info\n");
 	vmm_cprintf(cdev, "   host cpu info\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
-	vmm_cprintf(cdev, "   host ram stats\n");
+	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
-	vmm_cprintf(cdev, "   host vapool stats\n");
+	vmm_cprintf(cdev, "   host vapool info\n");
+	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
 }
 
@@ -150,7 +151,7 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "\n");
 }
 
-static void cmd_host_ram_stats(struct vmm_chardev *cdev)
+static void cmd_host_ram_info(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_ram_free_frame_count();
 	u32 total = vmm_host_ram_total_frame_count();
@@ -191,7 +192,7 @@ static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
-static void cmd_host_vapool_stats(struct vmm_chardev *cdev)
+static void cmd_host_vapool_info(struct vmm_chardev *cdev)
 {
 	u32 free = vmm_host_vapool_free_page_count();
 	u32 total = vmm_host_vapool_total_page_count();
@@ -205,6 +206,11 @@ static void cmd_host_vapool_stats(struct vmm_chardev *cdev)
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Free Pages   : %d (0x%08x)\n", free, free);
 	vmm_cprintf(cdev, "Total Pages  : %d (0x%08x)\n", total, total);
+}
+
+static int cmd_host_vapool_state(struct vmm_chardev *cdev)
+{
+	return vmm_host_vapool_print_state(cdev);
 }
 
 static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
@@ -251,8 +257,8 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			}
 		} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
-			if (strcmp(argv[2], "stats") == 0) {
-				cmd_host_ram_stats(cdev);
+			if (strcmp(argv[2], "info") == 0) {
+				cmd_host_ram_info(cdev);
 				return VMM_OK;
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
@@ -264,9 +270,11 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				return VMM_OK;
 			}
 		} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
-			if (strcmp(argv[2], "stats") == 0) {
-				cmd_host_vapool_stats(cdev);
+			if (strcmp(argv[2], "info") == 0) {
+				cmd_host_vapool_info(cdev);
 				return VMM_OK;
+			} else if (strcmp(argv[2], "state") == 0) {
+				return cmd_host_vapool_state(cdev);
 			} else if (strcmp(argv[2], "bitmap") == 0) {
 				if (3 < argc) {
 					colcnt = atoi(argv[3]);
