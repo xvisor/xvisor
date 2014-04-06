@@ -172,7 +172,7 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 		}
 #else
 		rc = arch_cpu_aspace_memory_read(tmp_va, hpa,
-						 dst, len, cacheable);
+						 dst, page_read, cacheable);
 		if (rc) {
 			break;
 		}
