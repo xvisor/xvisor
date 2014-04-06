@@ -29,6 +29,9 @@
 #include <vmm_devtree.h>
 #include <vmm_mutex.h>
 #include <libs/list.h>
+#include <vmm_error.h>
+
+#define VMM_DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 
 struct vmm_class;
 struct vmm_classdev;
@@ -75,6 +78,7 @@ struct vmm_device {
 	struct vmm_mutex child_list_lock;
 	struct dlist child_list;
 	/* Public fields */
+	u64 *dma_mask;
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
 	struct vmm_device_type *type;
@@ -111,6 +115,25 @@ static inline void vmm_devdrv_set_data(struct vmm_device *dev, void *data)
 	if (dev) {
 		dev->priv = data;
 	}
+}
+
+/** get the dma_mask from device */
+static inline u64 vmm_dma_get_mask(struct vmm_device *dev)
+{
+	if (dev && dev->dma_mask && *dev->dma_mask) {
+		return *dev->dma_mask;
+	}
+	return VMM_DMA_BIT_MASK(32);
+}
+
+/** set the dma_mask in device */
+static inline int vmm_dma_set_mask(struct vmm_device *dev, u64 mask)
+{
+	if (!dev->dma_mask) {
+		return VMM_EIO;
+	}	
+	*dev->dma_mask = mask;
+	return VMM_OK;
 }
 
 /** Probe device instances under a given device tree node */
