@@ -215,6 +215,12 @@ static int devemu_doread(struct vmm_emudev *edev,
 		break;
 	};
 
+	if (rc) {
+		vmm_printf("%s: edev=%s offset=0x%llx dst_len=%d "
+			   "failed (error %d)\n", __func__,
+			   edev->node->name, (u64)offset, dst_len, rc);
+	}
+
 	return rc;
 }
 
@@ -341,6 +347,12 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		break;
 	};
 
+	if (rc) {
+		vmm_printf("%s: edev=%s offset=0x%llx src_len=%d "
+			   "failed (error %d)\n", __func__,
+			   edev->node->name, (u64)offset, src_len, rc);
+	}
+
 	return rc;
 }
 
@@ -349,12 +361,12 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 			    void *dst, u32 dst_len,
 			    enum vmm_devemu_endianness dst_endian)
 {
-	u32 ite;
+	int ite, rc;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_region *reg;
 
-	if (!vcpu || !(vcpu->guest)) {
+	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
@@ -374,7 +386,8 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
 				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
-			return VMM_EFAIL;
+			rc = VMM_ENOTAVAIL;
+			goto skip;
 		}
 		ev->rd_mem_gstart[ev->rd_mem_victim] = reg->gphys_addr;
 		ev->rd_mem_gend[ev->rd_mem_victim] = 
@@ -387,9 +400,17 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	return devemu_doread(reg->devemu_priv,
-			     gphys_addr - reg->gphys_addr,
-			     dst, dst_len, dst_endian);
+	rc = devemu_doread(reg->devemu_priv,
+			   gphys_addr - reg->gphys_addr,
+			   dst, dst_len, dst_endian);
+skip:
+	if (rc) {
+		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
+			   "failed (error %d)\n", __func__,
+			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+	}
+
+	return rc;
 }
 
 int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
@@ -397,12 +418,12 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			     void *src, u32 src_len,
 			     enum vmm_devemu_endianness src_endian)
 {
-	u32 ite;
+	int ite, rc;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_region *reg;
 
-	if (!vcpu || !(vcpu->guest)) {
+	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
@@ -422,7 +443,8 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
 				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
-			return VMM_EFAIL;
+			rc = VMM_ENOTAVAIL;
+			goto skip;
 		}
 		ev->wr_mem_gstart[ev->wr_mem_victim] = reg->gphys_addr;
 		ev->wr_mem_gend[ev->wr_mem_victim] = 
@@ -435,9 +457,17 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	return devemu_dowrite(reg->devemu_priv,
-			      gphys_addr - reg->gphys_addr,
-			      src, src_len, src_endian);
+	rc = devemu_dowrite(reg->devemu_priv,
+			    gphys_addr - reg->gphys_addr,
+			    src, src_len, src_endian);
+skip:
+	if (rc) {
+		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
+			   "failed (error %d)\n", __func__,
+			   vcpu->name, (u64)gphys_addr, src_len, rc);
+	}
+
+	return rc;
 }
 
 int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
@@ -445,12 +475,12 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 			      void *dst, u32 dst_len,
 			      enum vmm_devemu_endianness dst_endian)
 {
-	u32 ite;
+	int ite, rc;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_region *reg;
 
-	if (!vcpu || !(vcpu->guest)) {
+	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
@@ -470,7 +500,8 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
 				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
 		if (!reg) {
-			return VMM_EFAIL;
+			rc = VMM_ENOTAVAIL;
+			goto skip;
 		}
 		ev->rd_io_gstart[ev->rd_io_victim] = reg->gphys_addr;
 		ev->rd_io_gend[ev->rd_io_victim] = 
@@ -483,9 +514,17 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	return devemu_doread(reg->devemu_priv,
-			     gphys_addr - reg->gphys_addr,
-			     dst, dst_len, dst_endian);
+	rc = devemu_doread(reg->devemu_priv,
+			   gphys_addr - reg->gphys_addr,
+			   dst, dst_len, dst_endian);
+skip:
+	if (rc) {
+		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
+			   "failed (error %d)\n", __func__,
+			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+	}
+
+	return rc;
 }
 
 int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
@@ -493,12 +532,12 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 			       void *src, u32 src_len,
 			       enum vmm_devemu_endianness src_endian)
 {
-	u32 ite;
+	int ite, rc;
 	bool found;
 	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_region *reg;
 
-	if (!vcpu || !(vcpu->guest)) {
+	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
@@ -518,7 +557,8 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
 				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
 		if (!reg) {
-			return VMM_EFAIL;
+			rc = VMM_ENOTAVAIL;
+			goto skip;
 		}
 		ev->wr_io_gstart[ev->wr_io_victim] = reg->gphys_addr;
 		ev->wr_io_gend[ev->wr_io_victim] = 
@@ -531,9 +571,17 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	return devemu_dowrite(reg->devemu_priv,
-			      gphys_addr - reg->gphys_addr,
-			      src, src_len, src_endian);
+	rc = devemu_dowrite(reg->devemu_priv,
+			    gphys_addr - reg->gphys_addr,
+			    src, src_len, src_endian);
+skip:
+	if (rc) {
+		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
+			   "failed (error %d)\n", __func__,
+			   vcpu->name, (u64)gphys_addr, src_len, rc);
+	}
+
+	return rc;
 }
 
 int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
