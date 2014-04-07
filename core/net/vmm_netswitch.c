@@ -549,7 +549,7 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	nsw->dev.class = &nsw_class;
 	vmm_devdrv_set_data(&nsw->dev, nsw);
 
-	rc = vmm_devdrv_class_register_device(&nsw_class, &nsw->dev);
+	rc = vmm_devdrv_register_device(&nsw->dev);
 	if (rc != VMM_OK) {
 		vmm_printf("%s: Failed to class register network switch %s "
 			   "with err 0x%x\n", __func__, nsw->name, rc);
@@ -587,7 +587,7 @@ int vmm_netswitch_unregister(struct vmm_netswitch *nsw)
 
 	vmm_read_unlock_irqrestore_lite(&nsw->port_list_lock, f);
 
-	return vmm_devdrv_class_unregister_device(&nsw_class, &nsw->dev);
+	return vmm_devdrv_unregister_device(&nsw->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_unregister);
 

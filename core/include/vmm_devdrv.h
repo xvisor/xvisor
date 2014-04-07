@@ -154,15 +154,11 @@ struct vmm_class *vmm_devdrv_class(int index);
 /** Count available classes */
 u32 vmm_devdrv_class_count(void);
 
-int vmm_devdrv_class_register_device(struct vmm_class *cls,
-				     struct vmm_device *dev);
-
-int vmm_devdrv_class_unregister_device(struct vmm_class *cls,
-				       struct vmm_device *dev);
-
+/** Find device of a class by name */
 struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
 						const char *dname);
 
+/** Get device of a class */
 struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index);
 
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls);
@@ -181,14 +177,6 @@ struct vmm_bus *vmm_devdrv_bus(int index);
 
 /** Count available buses */
 u32 vmm_devdrv_bus_count(void);
-
-/** Register device on a bus */
-int vmm_devdrv_bus_register_device(struct vmm_bus *bus,
-				   struct vmm_device *dev);
-
-/** Unregister device on a bus */
-int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
-				     struct vmm_device *dev);
 
 /** Find device on a bus */
 struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,

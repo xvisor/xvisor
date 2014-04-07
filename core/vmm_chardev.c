@@ -102,7 +102,7 @@ int vmm_chardev_register(struct vmm_chardev *cdev)
 	cdev->dev.class = &chardev_class;
 	vmm_devdrv_set_data(&cdev->dev, cdev);
 	
-	return vmm_devdrv_class_register_device(&chardev_class, &cdev->dev);
+	return vmm_devdrv_register_device(&cdev->dev);
 }
 
 int vmm_chardev_unregister(struct vmm_chardev *cdev)
@@ -111,7 +111,7 @@ int vmm_chardev_unregister(struct vmm_chardev *cdev)
 		return VMM_EFAIL;
 	}
 
-	return vmm_devdrv_class_unregister_device(&chardev_class, &cdev->dev);
+	return vmm_devdrv_unregister_device(&cdev->dev);
 }
 
 struct vmm_chardev *vmm_chardev_find(const char *name)

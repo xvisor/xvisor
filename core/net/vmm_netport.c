@@ -142,7 +142,7 @@ int vmm_netport_register(struct vmm_netport *port)
 	port->dev.class = &netport_class;
 	vmm_devdrv_set_data(&port->dev, port);
 
-	rc = vmm_devdrv_class_register_device(&netport_class, &port->dev);
+	rc = vmm_devdrv_register_device(&port->dev);
 	if (rc != VMM_OK) {
 		vmm_printf("%s: Failed to register %s %s (error %d)\n",
 			   __func__, VMM_NETPORT_CLASS_NAME, port->name, rc);
@@ -170,7 +170,7 @@ int vmm_netport_unregister(struct vmm_netport *port)
 		return rc;
 	}
 
-	return vmm_devdrv_class_unregister_device(&netport_class, &port->dev);
+	return vmm_devdrv_unregister_device(&port->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_unregister);
 

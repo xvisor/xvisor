@@ -439,7 +439,7 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 	bdev->dev.class = &bdev_class;
 	vmm_devdrv_set_data(&bdev->dev, bdev);
 
-	rc = vmm_devdrv_class_register_device(&bdev_class, &bdev->dev);
+	rc = vmm_devdrv_register_device(&bdev->dev);
 	if (rc) {
 		return rc;
 	}
@@ -544,7 +544,7 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 				   VMM_BLOCKDEV_EVENT_UNREGISTER, 
 				   &event);
 
-	return vmm_devdrv_class_unregister_device(&bdev_class, &bdev->dev);
+	return vmm_devdrv_unregister_device(&bdev->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_unregister);
 

@@ -521,8 +521,8 @@ u32 vmm_devdrv_class_count(void)
 	return retval;
 }
 
-int vmm_devdrv_class_register_device(struct vmm_class *cls,
-				     struct vmm_device *dev)
+static int devdrv_class_register_device(struct vmm_class *cls,
+				        struct vmm_device *dev)
 {
 	bool found;
 	struct dlist *l;
@@ -566,8 +566,8 @@ int vmm_devdrv_class_register_device(struct vmm_class *cls,
 	return VMM_OK;
 }
 
-int vmm_devdrv_class_unregister_device(struct vmm_class *cls,
-				       struct vmm_device *dev)
+static int devdrv_class_unregister_device(struct vmm_class *cls,
+					  struct vmm_device *dev)
 {
 	bool found;
 	struct dlist *l;
@@ -860,8 +860,8 @@ u32 vmm_devdrv_bus_count(void)
 	return retval;
 }
 
-int vmm_devdrv_bus_register_device(struct vmm_bus *bus,
-				   struct vmm_device *dev)
+static int devdrv_bus_register_device(struct vmm_bus *bus,
+				      struct vmm_device *dev)
 {
 	bool found;
 	struct dlist *l;
@@ -908,8 +908,8 @@ int vmm_devdrv_bus_register_device(struct vmm_bus *bus,
 	return VMM_OK;
 }
 
-int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
-				     struct vmm_device *dev)
+static int devdrv_bus_unregister_device(struct vmm_bus *bus,
+				        struct vmm_device *dev)
 {
 	bool found;
 	struct dlist *l;
@@ -1314,9 +1314,9 @@ bool vmm_devdrv_isattached_device(struct vmm_device *dev)
 int vmm_devdrv_register_device(struct vmm_device *dev)
 {
 	if (dev && dev->bus && !dev->class) {
-		return vmm_devdrv_bus_register_device(dev->bus, dev);
+		return devdrv_bus_register_device(dev->bus, dev);
 	} else if (dev && !dev->bus && dev->class) {
-		return vmm_devdrv_class_register_device(dev->class, dev);
+		return devdrv_class_register_device(dev->class, dev);
 	}
 
 	return VMM_EFAIL;
@@ -1365,9 +1365,9 @@ int vmm_devdrv_dettach_device(struct vmm_device *dev)
 int vmm_devdrv_unregister_device(struct vmm_device *dev)
 {
 	if (dev && dev->bus && !dev->class) {
-		return vmm_devdrv_bus_unregister_device(dev->bus, dev);
+		return devdrv_bus_unregister_device(dev->bus, dev);
 	} else if (dev && !dev->bus && dev->class) {
-		return vmm_devdrv_class_unregister_device(dev->class, dev);
+		return devdrv_class_unregister_device(dev->class, dev);
 	}
 
 	return VMM_EFAIL;
