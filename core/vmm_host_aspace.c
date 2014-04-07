@@ -66,7 +66,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 	return va + (pa & VMM_PAGE_MASK);
 }
 
-int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
+static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
 {
 	int rc, ite;
 
@@ -86,6 +86,20 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	}
 
 	return VMM_OK;
+}
+
+int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
+{
+	int rc;
+	virtual_addr_t alloc_va;
+	virtual_size_t alloc_sz;
+
+	rc = vmm_host_vapool_find(va, &alloc_va, &alloc_sz);
+	if (rc) {
+		return rc;
+	}
+
+	return host_memunmap(alloc_va, alloc_sz);
 }
 
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
@@ -112,7 +126,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 		return rc;
 	}
 
-	if ((rc = vmm_host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
+	if ((rc = host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
 		return rc;
 	}
 

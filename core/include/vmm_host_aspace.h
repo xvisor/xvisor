@@ -98,7 +98,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 			       u32 mem_flags);
 
 /** Unmap virtual memory */
-int vmm_host_memunmap(virtual_addr_t va, 
+int vmm_host_memunmap(virtual_addr_t va,
 		      virtual_size_t sz);
 
 /** Map IO physical memory to a virtual memory */
@@ -109,7 +109,7 @@ static inline virtual_addr_t vmm_host_iomap(physical_addr_t pa,
 }
 
 /** Unmap IO virtual memory */
-static inline int vmm_host_iounmap(virtual_addr_t va, 
+static inline int vmm_host_iounmap(virtual_addr_t va,
 				   virtual_size_t sz)
 {
 	return vmm_host_memunmap(va, sz);
