@@ -28,14 +28,19 @@
 
 struct vmm_chardev;
 
-/** Allocate virtual space from virtual address pool */
+/** Allocate virtual space */
 int vmm_host_vapool_alloc(virtual_addr_t *va, 
 			  virtual_size_t sz);
 
-/** Reserve a portion of virtual space forcefully */
+/** Reserve a virtual space forcefully */
 int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz);
 
-/** Free virtual space to virtual address pool */
+/** Find alloced/reserved virtual space covering given virtual address */
+int vmm_host_vapool_find(virtual_addr_t va,
+			 virtual_addr_t *alloc_va,
+			 virtual_size_t *alloc_sz);
+
+/** Free virtual space */
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz);
 
 /** Check if a virtual address is free */

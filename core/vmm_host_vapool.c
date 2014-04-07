@@ -68,6 +68,28 @@ int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz)
 	return buddy_mem_reserve(&vpctrl.ba, va, sz);
 }
 
+int vmm_host_vapool_find(virtual_addr_t va,
+			 virtual_addr_t *alloc_va,
+			 virtual_size_t *alloc_sz)
+{
+	int rc;
+	unsigned long ava, asz;
+
+	rc = buddy_mem_find(&vpctrl.ba, va, &ava, NULL, &asz);
+	if (rc) {
+		return rc;
+	}
+
+	if (alloc_va) {
+		*alloc_va = ava;
+	}
+	if (alloc_sz) {
+		*alloc_sz = asz;
+	}
+
+	return VMM_OK;
+}
+
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz)
 {
 	if ((va < vpctrl.vapool_start) ||
