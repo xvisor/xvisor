@@ -100,13 +100,13 @@ static int cmd_module_load(struct vmm_chardev *cdev,
 	mod_va = vmm_host_iomap(phys_addr, mod_sz);
 
 	if ((rc = vmm_modules_load(mod_va, mod_sz))) {
-		vmm_host_iounmap(mod_va, mod_sz);
+		vmm_host_iounmap(mod_va);
 		return rc;
 	} else {
 		vmm_cprintf(cdev, "Loaded module succesfully\n");
 	}
 
-	rc = vmm_host_iounmap(mod_va, mod_sz);
+	rc = vmm_host_iounmap(mod_va);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 		return rc;

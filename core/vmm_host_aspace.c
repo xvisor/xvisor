@@ -88,7 +88,7 @@ static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	return VMM_OK;
 }
 
-int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
+int vmm_host_memunmap(virtual_addr_t va)
 {
 	int rc;
 	virtual_addr_t alloc_va;
@@ -324,18 +324,19 @@ int __cpuinit vmm_host_aspace_init(void)
 	core_resv_va = vapool_start + arch_code_size();
 	core_resv_sz = hk_total_size;
 
-	/* We cannot estimate the physical address, virtual address, and size 
-	 * of arch reserved space so we set all of them to zero and expect that
-	 * arch_primary_cpu_aspace_init() will update them if arch code is going to use
-	 * the arch reserved space
+	/* We cannot estimate the physical address, virtual address,
+	 * and size of arch reserved space so we set all of them to
+	 * zero and expect that arch_primary_cpu_aspace_init() will
+	 * update them if arch code requires arch reserved space.
 	 */
 	arch_resv_pa = 0x0;
 	arch_resv_va = 0x0;
 	arch_resv_sz = 0x0;
 
-	/* Call arch_primary_cpu_aspace_init() with estimated parameters for core 
-	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
-	 * can change these parameter as per needed.
+	/* Call arch_primary_cpu_aspace_init() with the estimated
+	 * parameters for core reserved space and arch reserved space.
+	 * The arch_primary_cpu_aspace_init() can change these parameter
+	 * as needed.
 	 */
 	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
 						&core_resv_va, 
@@ -370,18 +371,19 @@ int __cpuinit vmm_host_aspace_init(void)
 	}
 
 	/* Reserve all pages covering code space, core reserved space,
-	 * and arch reserved space in VAPOOL & RAM
+	 * and arch reserved space in VAPOOL & RAM.
 	 */
 	if (arch_code_vaddr_start() < core_resv_va) {
 		core_resv_va = arch_code_vaddr_start();
 	}
-	if (arch_resv_va < core_resv_va) {
+	if ((arch_resv_sz > 0) && (arch_resv_va < core_resv_va)) {
 		core_resv_va = arch_resv_va;
 	}
 	if (arch_code_paddr_start() < core_resv_pa) {
 		core_resv_pa = arch_code_paddr_start();
 	}
-	if (arch_resv_pa < core_resv_pa) {
+	if ((arch_resv_sz > 0) && 
+	    (arch_resv_pa < core_resv_pa)) {
 		core_resv_pa = arch_resv_pa;
 	}
 	if ((core_resv_va + core_resv_sz) <
@@ -389,7 +391,8 @@ int __cpuinit vmm_host_aspace_init(void)
 		core_resv_sz =
 		(arch_code_vaddr_start() + arch_code_size()) - core_resv_va;
 	}
-	if ((core_resv_va + core_resv_sz) < (arch_resv_va + arch_resv_sz)) {
+	if ((arch_resv_sz > 0) && 
+	    ((core_resv_va + core_resv_sz) < (arch_resv_va + arch_resv_sz))) {
 		core_resv_sz = (arch_resv_va + arch_resv_sz) - core_resv_va;
 	}
 	if ((rc = vmm_host_vapool_reserve(core_resv_va,

@@ -25,6 +25,7 @@
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
 #include <arch_sections.h>
@@ -1642,9 +1643,12 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
 		         virtual_addr_t addr, int regset)
 {
+	int rc;
 	const char *aval;
 	physical_addr_t pa;
 	physical_size_t sz;
+	virtual_addr_t vva;
+	virtual_size_t vsz;
 
 	if (!node || regset < 0) {
 		return VMM_EFAIL;
@@ -1661,7 +1665,14 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 		pa = *((physical_addr_t *)aval);
 		aval += sizeof(pa);
 		sz = *((physical_size_t *)aval);
-		return vmm_host_iounmap(addr, sz);
+		rc = vmm_host_vapool_find(addr, &vva, &vsz);
+		if (rc) {
+			return rc;
+		}
+		if (sz != vsz) {
+			return VMM_EINVALID;
+		}
+		return vmm_host_iounmap(addr);
 	}
 
 	return VMM_EFAIL;

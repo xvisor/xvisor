@@ -85,11 +85,10 @@ static int exynos4_reset(void)
 
 			vmm_writel(0x2025, wdt_ptr + S3C2410_WTCON);
 
-			vmm_host_iounmap((virtual_addr_t) cmu_ptr,
-					 sizeof(perir_reg));
+			vmm_host_iounmap((virtual_addr_t)cmu_ptr);
 		}
 
-		vmm_host_iounmap((virtual_addr_t) wdt_ptr, 0x100);
+		vmm_host_iounmap((virtual_addr_t)wdt_ptr);
 	}
 #else
 	if (pmu_base) {

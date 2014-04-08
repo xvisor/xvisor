@@ -156,8 +156,7 @@ static virtual_addr_t __init find_root_system_descriptor(void)
 
 		rsdp_base = 0;
 		carea++;
-		vmm_host_iounmap(area_map,
-				 (carea->phys_end - carea->phys_start));
+		vmm_host_iounmap(area_map);
 		vmm_printf("not found.\n");
 	}
 
@@ -363,21 +362,21 @@ int __init acpi_init(void)
 		sign[SDT_SIGN_LEN] = 0;
 
 		if (process_acpi_sdt_table((char *)sign, (u32 *)hdr) != VMM_OK) {
-			vmm_host_iounmap((virtual_addr_t)hdr, PAGE_SIZE);
+			vmm_host_iounmap((virtual_addr_t)hdr);
 			goto sdt_fail;
 		}
 
-		vmm_host_iounmap((virtual_addr_t)hdr, PAGE_SIZE);
+		vmm_host_iounmap((virtual_addr_t)hdr);
 	}
 
 	ret = VMM_OK;
 
  sdt_fail:
-	vmm_host_iounmap((virtual_addr_t)prsdt, PAGE_SIZE);
+	vmm_host_iounmap((virtual_addr_t)prsdt);
 
  rsdt_fail:
 
-	vmm_host_iounmap((virtual_addr_t)root_desc, PAGE_SIZE);
+	vmm_host_iounmap((virtual_addr_t)root_desc);
  rdesc_fail:
 
 	return ret;
