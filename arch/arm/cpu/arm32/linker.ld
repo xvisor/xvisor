@@ -29,7 +29,7 @@ SECTIONS
 {
 	. = CPU_TEXT_START;
 
-	. = ALIGN(0x100000); /* Need this to create proper sections */
+	. = ALIGN(0x1000); /* Need this to create proper pages */
 	
 	PROVIDE(_code_start = .);
 
@@ -149,7 +149,7 @@ SECTIONS
 		PROVIDE(_fiq_stack_end = .);
 	}
 
-	. = ALIGN(0x100000); /* Need this to create proper sections */
+	. = ALIGN(0x1000); /* Need this to create proper pages */
 	
 	PROVIDE(_code_end = .);
 }

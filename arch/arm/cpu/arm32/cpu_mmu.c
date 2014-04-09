@@ -26,6 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
+#include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <arch_barrier.h>
 #include <arch_cpu_irq.h>
@@ -49,18 +50,25 @@
 				  (TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE))) / \
 				 TTBL_L2TBL_SIZE)
 
-u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) tmpl1_mem[TTBL_L1TBL_SIZE];
-u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_mem[TTBL_L1TBL_SIZE];
+#define TTBL_MAX_L2TBL_SIZE	(TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT)
+
+u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_ttbl[TTBL_L1TBL_SIZE];
+u8 __attribute__ ((aligned(TTBL_L2TBL_SIZE))) defl2_ttbl[TTBL_INITIAL_L2TBL_SIZE] = { 0 };
+int defl2_ttbl_used[TTBL_INITIAL_L2TBL_COUNT];
+virtual_addr_t defl2_ttbl_mapva[TTBL_INITIAL_L2TBL_COUNT];
 
 struct cpu_mmu_ctrl {
 	vmm_spinlock_t defl1_lock;
 	struct cpu_l1tbl defl1;
 	virtual_addr_t l1_base_va;
 	physical_addr_t l1_base_pa;
-	struct cpu_l1tbl *l1_array;
+	struct cpu_l1tbl l1_array[TTBL_MAX_L1TBL_COUNT];
 	virtual_addr_t l2_base_va;
 	physical_addr_t l2_base_pa;
-	struct cpu_l2tbl *l2_array;
+	virtual_addr_t il2_base_va;
+	physical_addr_t il2_base_pa;
+	struct cpu_l2tbl l2_array[TTBL_MAX_L2TBL_COUNT];
+	struct cpu_l2tbl il2_array[TTBL_INITIAL_L2TBL_COUNT];
 	vmm_spinlock_t l1_alloc_lock;
 	u32 l1_next_contextid;
 	u32 l1_alloc_count;
@@ -83,10 +91,26 @@ static inline void cpu_mmu_sync_tte(u32 *tte)
 /** Find L2 page table at given physical address from L1 page table */
 static struct cpu_l2tbl *cpu_mmu_l2tbl_find_tbl_pa(physical_addr_t tbl_pa)
 {
-	u32 tmp = (tbl_pa - mmuctrl.l2_base_pa) >> TTBL_L2TBL_SIZE_SHIFT;
+	int index;
 
-	if (tmp < TTBL_MAX_L2TBL_COUNT) {
-		return &mmuctrl.l2_array[tmp];
+	tbl_pa &= ~(TTBL_L2TBL_SIZE - 1);
+
+	if ((mmuctrl.il2_base_pa <= tbl_pa) &&
+	    (tbl_pa < (mmuctrl.il2_base_pa + TTBL_INITIAL_L2TBL_SIZE))) {
+		tbl_pa = tbl_pa - mmuctrl.il2_base_pa;
+		index = tbl_pa >> TTBL_L2TBL_SIZE_SHIFT;
+		if (index < TTBL_INITIAL_L2TBL_COUNT) {
+			return &mmuctrl.il2_array[index];
+		}
+	}
+
+	if ((mmuctrl.l2_base_pa <= tbl_pa) &&
+	    (tbl_pa < (mmuctrl.l2_base_pa + TTBL_MAX_L2TBL_SIZE))) {
+		tbl_pa = tbl_pa - mmuctrl.l2_base_pa;
+		index = tbl_pa >> TTBL_L2TBL_SIZE_SHIFT;
+		if (index < TTBL_MAX_L2TBL_COUNT) {
+			return &mmuctrl.l2_array[index];
+		}
 	}
 
 	return NULL;
@@ -916,180 +940,6 @@ mmu_map_return:
 	return rc;
 }
 
-static int cpu_mmu_split_reserved_page(struct cpu_page *pg, virtual_size_t rsize)
-{
-	int rc = VMM_EFAIL;
-	int i, count;
-	u32 *l2_tte;
-	struct cpu_l1tbl *l1;
-	struct cpu_l2tbl *l2;
-	virtual_addr_t va;
-	physical_addr_t pa;
-
-	if (pg == NULL) {
-		goto error;
-	}
-
-	l1 = &mmuctrl.defl1;
-
-#if defined(CONFIG_ARMV5)
-	/* XXX Currently, this function handles only
-	 *     Section -> Pages splitting case.
-	 */
-	/* TODO Add other cases:
-	 *        Section      -> Large Pages
-	 *        Large Page   -> Pages
-	 */
-	switch (pg->sz) {
-	case TTBL_L1TBL_SECTION_PAGE_SIZE:
-		switch (rsize) {
-		case TTBL_L2TBL_SMALL_PAGE_SIZE:
-			count = TTBL_L1TBL_SECTION_PAGE_SIZE /
-			    TTBL_L2TBL_SMALL_PAGE_SIZE;
-
-			if (!(l2 = cpu_mmu_l2tbl_alloc())) {
-				rc = VMM_EFAIL;
-				goto error;
-			}
-
-			va = pg->va;
-			pa = pg->pa;
-
-			for (i = 0; i < count; i++) {
-				l2_tte = (u32 *)
-				    ((va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
-				     TTBL_L2TBL_TTE_OFFSET_SHIFT);
-				l2_tte =
-				    (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
-
-				*l2_tte = pa & TTBL_L2TBL_TTE_BASE12_MASK;
-				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL;
-				*l2_tte |=
-				    (pg->ap << TTBL_L2TBL_TTE_V5_AP0_SHIFT) &
-				    TTBL_L2TBL_TTE_V5_AP0_MASK;
-				*l2_tte |=
-				    (pg->ap << TTBL_L2TBL_TTE_V5_AP1_SHIFT) &
-				    TTBL_L2TBL_TTE_V5_AP1_MASK;
-				*l2_tte |=
-				    (pg->ap << TTBL_L2TBL_TTE_V5_AP2_SHIFT) &
-				    TTBL_L2TBL_TTE_V5_AP2_MASK;
-				*l2_tte |=
-				    (pg->ap << TTBL_L2TBL_TTE_V5_AP3_SHIFT) &
-				    TTBL_L2TBL_TTE_V5_AP3_MASK;
-				*l2_tte |=
-				    (pg->c << TTBL_L2TBL_TTE_C_SHIFT) &
-				    TTBL_L2TBL_TTE_C_MASK;
-				*l2_tte |=
-				    (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
-				    TTBL_L2TBL_TTE_B_MASK;
-
-				cpu_mmu_sync_tte(l2_tte);
-
-				l2->tte_cnt++;
-
-				va += TTBL_L2TBL_SMALL_PAGE_SIZE;
-				pa += TTBL_L2TBL_SMALL_PAGE_SIZE;
-			}
-
-			cpu_mmu_l2tbl_attach(l1, l2, 0, pg->dom, pg->va, TRUE);
-
-			invalid_tlb();
-
-			break;
-		default:
-			vmm_printf("%s: Unimplemented (target size 0x%x)\n",
-			       __func__, rsize);
-			BUG();
-			break;
-		}
-		break;
-	default:
-		vmm_printf("%s: Unimplemented (source size 0x%x)\n", __func__,
-		       pg->sz);
-		BUG();
-		break;
-	}
-#else
-	/* XXX Currently, this function handles only
-	 *     Section -> Pages splitting case.
-	 */
-	/* TODO Add other cases:
-	 *        Supersection -> Sections
-	 *        Supersection -> Large Pages
-	 *        Supersection -> Pages
-	 *        Section      -> Large Pages
-	 *        Large Page   -> Pages
-	 */
-	switch (pg->sz) {
-	case TTBL_L1TBL_SECTION_PAGE_SIZE:
-		switch (rsize) {
-		case TTBL_L2TBL_SMALL_PAGE_SIZE:
-			count = TTBL_L1TBL_SECTION_PAGE_SIZE /
-				TTBL_L2TBL_SMALL_PAGE_SIZE;
-
-			l2 = cpu_mmu_l2tbl_alloc();
-			if (l2 == NULL) {
-				rc = VMM_EFAIL;
-				goto error;
-			}
-			va = pg->va;
-			pa = pg->pa;
-
-			for (i = 0; i < count; i++) {
-				l2_tte = (u32 *)
-					 ((va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
-					  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-				l2_tte = (u32 *)(l2->tbl_va + ((u32)l2_tte << 2));
-
-				*l2_tte = pa & TTBL_L2TBL_TTE_BASE12_MASK;
-				*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
-				*l2_tte |= (pg->tex << TTBL_L2TBL_TTE_STEX_SHIFT) &
-						TTBL_L2TBL_TTE_STEX_MASK;
-				*l2_tte |= (pg->ng << TTBL_L2TBL_TTE_NG_SHIFT) &
-						TTBL_L2TBL_TTE_NG_MASK;
-				*l2_tte |= (pg->s << TTBL_L2TBL_TTE_S_SHIFT) &
-						TTBL_L2TBL_TTE_S_MASK;
-				*l2_tte |= (pg->ap << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
-						TTBL_L2TBL_TTE_AP2_MASK;
-				*l2_tte |= (pg->ap << TTBL_L2TBL_TTE_AP_SHIFT) &
-						TTBL_L2TBL_TTE_AP_MASK;
-				*l2_tte |= (pg->c << TTBL_L2TBL_TTE_C_SHIFT) &
-						TTBL_L2TBL_TTE_C_MASK;
-				*l2_tte |= (pg->b << TTBL_L2TBL_TTE_B_SHIFT) &
-						TTBL_L2TBL_TTE_B_MASK;
-				cpu_mmu_sync_tte(l2_tte);
-				l2->tte_cnt++;
-
-				va += TTBL_L2TBL_SMALL_PAGE_SIZE;
-				pa += TTBL_L2TBL_SMALL_PAGE_SIZE;
-			}
-
-			cpu_mmu_l2tbl_attach(l1, l2, pg->imp, pg->dom, pg->va,
-					     TRUE);
-			invalid_tlb();
-			dsb();
-			isb();
-			break;
-		default:
-			vmm_printf("%s: Unimplemented (target size 0x%x)\n",
-					__func__, rsize);
-			BUG();
-			break;
-		}
-		break;
-	default:
-		vmm_printf("%s: Unimplemented (source size 0x%x)\n", __func__,
-				pg->sz);
-		BUG();
-		break;
-	}
-#endif
-
-	rc = VMM_OK;
-error:
-	return rc;
-}
-
 int cpu_mmu_get_reserved_page(virtual_addr_t va, struct cpu_page *pg)
 {
 	int rc;
@@ -1167,11 +1017,12 @@ int cpu_mmu_map_reserved_page(struct cpu_page *pg)
 
 struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 {
-	u32 i, *nl1_tte;
+	u32 i, *nl1_tte, *nl2_tte, *l2_tte;
 	irq_flags_t flags;
 	struct cpu_l1tbl *nl1 = NULL;
 	struct dlist *le;
 	struct cpu_l2tbl *l2, *nl2;
+	virtual_addr_t l2_tte_va;
 
 	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 	if (list_empty(&mmuctrl.free_l1tbl_list)) {
@@ -1209,16 +1060,38 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 		*nl1_tte = 0x0;
 		cpu_mmu_sync_tte(nl1_tte);
 		nl1->tte_cnt--;
+
 		nl2 = cpu_mmu_l2tbl_alloc();
 		if (!nl2) {
 			vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
 			goto l1tbl_alloc_fail;
 		}
+
 		for (i = 0; i < (TTBL_L2TBL_SIZE / 4); i++) {
-			((u32 *)nl2->tbl_va)[i] = ((u32 *)l2->tbl_va)[i];
-			cpu_mmu_sync_tte(&((u32 *)nl2->tbl_va)[i]);
+			nl2_tte = &((u32 *)nl2->tbl_va)[i];
+			l2_tte = &((u32 *)l2->tbl_va)[i];
+			l2_tte_va = l2->map_va + TTBL_L2TBL_SMALL_PAGE_SIZE * i;
+
+			/* Don't copy l2 tables enteries for identity mappings */
+			if (!vmm_host_vapool_isvalid(l2_tte_va) &&
+			    (l2_tte_va != CPU_IRQ_LOWVEC_BASE) &&
+			    (l2_tte_va != CPU_IRQ_HIGHVEC_BASE)) {
+				*nl2_tte = 0x0;
+			} else {
+				*nl2_tte = *l2_tte;
+			}
+
+			if ((*nl2_tte & TTBL_L2TBL_TTE_TYPE_MASK) != 0x0) {
+				nl2->tte_cnt++;
+			}
+			cpu_mmu_sync_tte(nl2_tte);
 		}
-		nl2->tte_cnt = l2->tte_cnt;
+
+		if (!nl2->tte_cnt) {
+			cpu_mmu_l2tbl_free(nl2);
+			continue;
+		}
+
 		if (cpu_mmu_l2tbl_attach
 		    (nl1, nl2, l2->imp, l2->domain, l2->map_va, FALSE)) {
 			vmm_spin_unlock_irqrestore(&mmuctrl.defl1_lock, flags);
@@ -1739,17 +1612,6 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va)
 		return rc;
 	}
 
-	if (p.sz > VMM_PAGE_SIZE) {
-		rc = cpu_mmu_split_reserved_page(&p, VMM_PAGE_SIZE);
-		if (rc) {
-			return rc;
-		}
-		rc = cpu_mmu_get_reserved_page(page_va, &p);
-		if (rc) {
-			return rc;
-		}
-	}
-
 	return cpu_mmu_unmap_reserved_page(&p);
 }
 
@@ -1773,10 +1635,11 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 					virtual_size_t *arch_resv_sz)
 {
 	int rc = VMM_EFAIL;
-	u32 i, val;
+	u32 i, j, val;
 	virtual_addr_t va, resv_va = *core_resv_va;
 	virtual_size_t sz, resv_sz = *core_resv_sz;
 	physical_addr_t pa, resv_pa = *core_resv_pa;
+	struct cpu_l2tbl *l2;
 	struct cpu_page respg;
 
 	/* Reset the memory of MMU control structure */
@@ -1790,49 +1653,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	INIT_SPIN_LOCK(&mmuctrl.l2_alloc_lock);
 	INIT_LIST_HEAD(&mmuctrl.free_l2tbl_list);
 
-	/* Copy default (or master) ttbl from temporary ttbl */
-	memcpy(defl1_mem, tmpl1_mem, TTBL_L1TBL_SIZE);
-	clean_invalidate_dcache_mva_range((virtual_addr_t)defl1_mem, 
-			(virtual_addr_t)defl1_mem + TTBL_L1TBL_SIZE);
-
-	/* Handcraft default (or master) ttbl */
-	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
-	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
-	mmuctrl.defl1.contextid = mmuctrl.l1_next_contextid;
-	mmuctrl.l1_next_contextid++;
-	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_mem;
-	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
-			       ((virtual_addr_t)&defl1_mem - arch_code_vaddr_start());
-
-	/* Switch over to default (or master) ttbl
-	 * Note: Low-level code will set temporary ttbl during boot-up
-	 */
-	proc_mmu_switch(mmuctrl.defl1.tbl_pa, mmuctrl.defl1.contextid & 0xFF);
-
-	/* Remove all TLB enteries to start using default (or master) ttbl */
-	invalid_tlb();
-
-	/* If possible remove boot-time identity mappings */
-	if (arch_code_paddr_start() != arch_code_vaddr_start()) {
-		val = arch_code_paddr_start() >> TTBL_L1TBL_TTE_OFFSET_SHIFT;
-		val = val << 2;
-		*((u32 *)(mmuctrl.defl1.tbl_va + val)) = 0x0;
-		invalid_tlb();
-		dsb();
-		isb();
-	}
-
-	/* Sync count default (or master) ttbl enteries */
-	mmuctrl.defl1.tte_cnt = 0;
-	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {
-		val = *((u32 *)(mmuctrl.defl1.tbl_va + i));
-		if ((val & TTBL_L1TBL_TTE_TYPE_MASK) != 
-				TTBL_L1TBL_TTE_TYPE_FAULT) {
-			mmuctrl.defl1.tte_cnt++;
-		}
-	}
-	mmuctrl.defl1.l2tbl_cnt = 0;
-
 	/* Check & setup core reserved space and update the 
 	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
 	 * to inform host aspace about correct placement of the
@@ -1841,25 +1661,19 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pa = arch_code_paddr_start();
 	va = arch_code_vaddr_start();
 	sz = arch_code_size();
-	if ((va <= resv_va) && (resv_va < (va + sz))) {
-		resv_va = va + sz;
-	} else if ((va <= (resv_va + resv_sz)) && 
-		   ((resv_va + resv_sz) < (va + sz))) {
-		resv_va = va + sz;
+	resv_va = va + sz;
+	resv_pa = pa + sz;
+	if (resv_va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
+		resv_va += TTBL_L2TBL_SMALL_PAGE_SIZE - 
+			    (resv_va & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
 	}
-	if ((pa <= resv_pa) && (resv_pa < (pa + sz))) {
-		resv_pa = pa + sz;
-	} else if ((pa <= (resv_pa + resv_sz)) && 
-		   ((resv_pa + resv_sz) < (pa + sz))) {
-		resv_pa = pa + sz;
+	if (resv_pa & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
+		resv_pa += TTBL_L2TBL_SMALL_PAGE_SIZE - 
+			    (resv_pa & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
 	}
-	if (resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		resv_va += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (resv_va & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
-	}
-	if (resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		resv_pa += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (resv_pa & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	if (resv_sz & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
+		resv_sz += TTBL_L2TBL_SMALL_PAGE_SIZE - 
+			    (resv_sz & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
 	}
 	*core_resv_pa = resv_pa;
 	*core_resv_va = resv_va;
@@ -1869,72 +1683,29 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	 * *arch_resv_va, and *arch_resv_sz parameters to inform host
 	 * aspace about the arch reserved space.
 	 */
+	if ((resv_pa + resv_sz) & (TTBL_L1TBL_SIZE - 1)) {
+		resv_sz += TTBL_L1TBL_SIZE - 
+			((resv_pa + resv_sz) & (TTBL_L1TBL_SIZE - 1));
+	}
 	*arch_resv_va = (resv_va + resv_sz);
 	*arch_resv_pa = (resv_pa + resv_sz);
 	*arch_resv_sz = resv_sz;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l1_array = (struct cpu_l1tbl *)(resv_va + resv_sz);
-	resv_sz += sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	mmuctrl.l2_array = (struct cpu_l2tbl *)(resv_va + resv_sz);
-	resv_sz += sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT;
-	resv_sz = (resv_sz & 0x3) ? (resv_sz & ~0x3) + 0x4 : resv_sz;
-	if (resv_sz & (TTBL_L1TBL_SIZE - 1)) {
-		resv_sz += TTBL_L1TBL_SIZE - 
-			    (resv_sz & (TTBL_L1TBL_SIZE - 1));
-	}
 	mmuctrl.l1_base_va = resv_va + resv_sz;
 	mmuctrl.l1_base_pa = resv_pa + resv_sz;
 	resv_sz += TTBL_L1TBL_SIZE * TTBL_MAX_L1TBL_COUNT;
 	mmuctrl.l2_base_va = resv_va + resv_sz;
 	mmuctrl.l2_base_pa = resv_pa + resv_sz;
 	resv_sz += TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT;
-	if (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1)) {
-		resv_sz += TTBL_L1TBL_SECTION_PAGE_SIZE - 
-			    (resv_sz & (TTBL_L1TBL_SECTION_PAGE_SIZE - 1));
+	if (resv_sz & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) {
+		resv_sz += TTBL_L2TBL_SMALL_PAGE_SIZE - 
+			    (resv_sz & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1));
 	}
 	*arch_resv_sz = resv_sz - *arch_resv_sz;
+	mmuctrl.il2_base_va = (virtual_addr_t)&defl2_ttbl;
+	mmuctrl.il2_base_pa = mmuctrl.il2_base_va - 
+				arch_code_vaddr_start() + 
+				arch_code_paddr_start();
 	
-	/* Map reserved space (core reserved space + arch reserved space) 
-	 * We have kept our page table pool in reserved area pages
-	 * as cacheable and write-back. We will clean data cache every
-	 * time we modify a page table (or translation table) entry.
-	 */
-	pa = resv_pa;
-	va = resv_va;
-	sz = resv_sz;
-	while (sz) {
-		memset(&respg, 0, sizeof(respg));
-#if defined(CONFIG_ARMV5)
-		respg.pa = pa;
-		respg.va = va;
-		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-		respg.ap = TTBL_AP_SRW_U;
-		respg.c = 1;
-		respg.b = 1;
-#else
-		respg.pa = pa;
-		respg.va = va;
-		respg.sz = TTBL_L1TBL_SECTION_PAGE_SIZE;
-		respg.imp = 0;
-		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-		respg.ap = TTBL_AP_SRW_U;
-		respg.xn = 0;
-		respg.tex = 0;
-		respg.c = 1;
-		respg.b = 1;
-		respg.s = 0;
-		respg.ng = 0;
-#endif
-		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
-			goto mmu_init_error;
-		}
-		sz -= TTBL_L1TBL_SECTION_PAGE_SIZE;
-		pa += TTBL_L1TBL_SECTION_PAGE_SIZE;
-		va += TTBL_L1TBL_SECTION_PAGE_SIZE;
-	}
-
 	/* Setup up l1 array */
 	memset(mmuctrl.l1_array, 0x0, 
 		   sizeof(struct cpu_l1tbl) * TTBL_MAX_L1TBL_COUNT);
@@ -1952,12 +1723,30 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 			      &mmuctrl.free_l1tbl_list);
 	}
 
+	/* Setup up initial l2 array */
+	memset(mmuctrl.il2_array, 0x0, 
+		   sizeof(struct cpu_l2tbl) * TTBL_INITIAL_L2TBL_COUNT);
+	for (i = 0; i < TTBL_INITIAL_L2TBL_COUNT; i++) {
+		if (defl2_ttbl_used[i]) {
+			continue;
+		}
+		INIT_LIST_HEAD(&mmuctrl.il2_array[i].head);
+		mmuctrl.il2_array[i].num = i;
+		mmuctrl.il2_array[i].tbl_pa = mmuctrl.il2_base_pa + 
+						i * TTBL_L2TBL_SIZE;
+		mmuctrl.il2_array[i].tbl_va = mmuctrl.il2_base_va + 
+						i * TTBL_L2TBL_SIZE;
+		mmuctrl.il2_array[i].tte_cnt = 0;
+		list_add_tail(&mmuctrl.il2_array[i].head,
+			      &mmuctrl.free_l2tbl_list);
+	}
+
 	/* Setup up l2 array */
 	memset(mmuctrl.l2_array, 0x0, 
 		   sizeof(struct cpu_l2tbl) * TTBL_MAX_L2TBL_COUNT);
 	for (i = 0; i < TTBL_MAX_L2TBL_COUNT; i++) {
 		INIT_LIST_HEAD(&mmuctrl.l2_array[i].head);
-		mmuctrl.l2_array[i].num = i;
+		mmuctrl.l2_array[i].num = i + TTBL_INITIAL_L2TBL_COUNT;
 		mmuctrl.l2_array[i].tbl_pa = mmuctrl.l2_base_pa + 
 						i * TTBL_L2TBL_SIZE;
 		mmuctrl.l2_array[i].tbl_va = mmuctrl.l2_base_va + 
@@ -1965,6 +1754,98 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		mmuctrl.l2_array[i].tte_cnt = 0;
 		list_add_tail(&mmuctrl.l2_array[i].head,
 			      &mmuctrl.free_l2tbl_list);
+	}
+
+	/* Handcraft default (or master) ttbl */
+	INIT_LIST_HEAD(&mmuctrl.defl1.l2tbl_list);
+	mmuctrl.defl1.num = TTBL_MAX_L1TBL_COUNT;
+	mmuctrl.defl1.contextid = mmuctrl.l1_next_contextid;
+	mmuctrl.l1_next_contextid++;
+	mmuctrl.defl1.tbl_va = (virtual_addr_t)&defl1_ttbl;
+	mmuctrl.defl1.tbl_pa = arch_code_paddr_start() + 
+		       ((virtual_addr_t)&defl1_ttbl - arch_code_vaddr_start());
+	/* Scan table */
+	mmuctrl.defl1.tte_cnt = 0;
+	for (i = 0; i < TTBL_L1TBL_SIZE; i += 4) {
+		val = *((u32 *)(mmuctrl.defl1.tbl_va + i));
+		if ((val & TTBL_L1TBL_TTE_TYPE_MASK) != 
+				TTBL_L1TBL_TTE_TYPE_FAULT) {
+			mmuctrl.defl1.tte_cnt++;
+		}
+	}
+	mmuctrl.defl1.l2tbl_cnt = 0;
+	/* Update MMU control */
+	for (i = 0; i < TTBL_INITIAL_L2TBL_COUNT; i++) {
+		if (!defl2_ttbl_used[i]) {
+			break;
+		}
+		l2 = &mmuctrl.il2_array[i];
+		INIT_LIST_HEAD(&l2->head);
+		l2->num = i;
+		l2->l1 = &mmuctrl.defl1;
+		l2->imp = 0;
+		l2->domain = TTBL_L1TBL_TTE_DOM_RESERVED;
+		l2->tbl_pa = mmuctrl.il2_base_pa + i * TTBL_L2TBL_SIZE;
+		l2->tbl_va = mmuctrl.il2_base_va + i * TTBL_L2TBL_SIZE;
+		l2->map_va = defl2_ttbl_mapva[i];
+		l2->tte_cnt = 0;
+		for (j = 0; j < TTBL_L2TBL_SIZE; j += 4) {
+			val = *((u32 *)(l2->tbl_va + j));
+			if ((val & TTBL_L2TBL_TTE_TYPE_MASK) != 
+					TTBL_L2TBL_TTE_TYPE_FAULT) {
+				l2->tte_cnt++;
+			}
+		}
+		list_add_tail(&l2->head,
+			      &mmuctrl.defl1.l2tbl_list);
+		mmuctrl.defl1.l2tbl_cnt++;
+		mmuctrl.l2_alloc_count++;
+	}
+
+	/* Force switch over to default (or master) ttbl */
+	proc_mmu_switch(mmuctrl.defl1.tbl_pa, mmuctrl.defl1.contextid & 0xFF);
+
+	/* Remove all TLB enteries to start fresh */
+	invalid_tlb();
+
+	/* Map reserved space (core reserved space + arch reserved space) 
+	 * We have kept our page table pool in reserved area pages
+	 * as cacheable and write-back. We will clean data cache every
+	 * time we modify a page table (or translation table) entry.
+	 */
+	pa = resv_pa;
+	va = resv_va;
+	sz = resv_sz;
+	while (sz) {
+		memset(&respg, 0, sizeof(respg));
+#if defined(CONFIG_ARMV5)
+		respg.pa = pa;
+		respg.va = va;
+		respg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+		respg.ap = TTBL_AP_SRW_U;
+		respg.c = 1;
+		respg.b = 1;
+#else
+		respg.pa = pa;
+		respg.va = va;
+		respg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
+		respg.imp = 0;
+		respg.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+		respg.ap = TTBL_AP_SRW_U;
+		respg.xn = 0;
+		respg.tex = 0;
+		respg.c = 1;
+		respg.b = 1;
+		respg.s = 0;
+		respg.ng = 0;
+#endif
+		if ((rc = cpu_mmu_map_reserved_page(&respg))) {
+			goto mmu_init_error;
+		}
+		sz -= TTBL_L2TBL_SMALL_PAGE_SIZE;
+		pa += TTBL_L2TBL_SMALL_PAGE_SIZE;
+		va += TTBL_L2TBL_SMALL_PAGE_SIZE;
 	}
 
 	return VMM_OK;
@@ -1975,12 +1856,10 @@ mmu_init_error:
 
 int __cpuinit arch_cpu_aspace_secondary_init(void)
 {
-	/* Switch over to default (or master) ttbl
-	 * Note: Low-level code will set temporary ttbl during boot-up
-	 */
+	/* Force switch over to default (or master) ttbl */
 	proc_mmu_switch(mmuctrl.defl1.tbl_pa, mmuctrl.defl1.contextid & 0xFF);
 
-	/* Remove all TLB enteries to start using default (or master) ttbl */
+	/* Remove all TLB enteries to start fresh */
 	invalid_tlb();
 
 	return VMM_OK;
