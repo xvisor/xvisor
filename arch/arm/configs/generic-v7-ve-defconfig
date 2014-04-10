@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Mon Mar 10 21:48:26 2014
+# Thu Apr 10 02:53:20 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -29,7 +29,7 @@ CONFIG_ARM32VE=y
 # CONFIG_ARM64 is not set
 
 #
-# ARM Options
+# ARM CPU Options
 #
 CONFIG_SMP=y
 CONFIG_CPU_COUNT=8
@@ -45,26 +45,21 @@ CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_ARM32VE_STACKTRACE=y
 # CONFIG_ARM_ERRATA_773022 is not set
-# CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_IMX25 is not set
-# CONFIG_BOARD_BCM2835 is not set
-# CONFIG_BOARD_IMX31 is not set
-# CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
-# CONFIG_BOARD_SUN4I is not set
-# CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
 CONFIG_BOARD_GENERIC=y
-CONFIG_BOARD="generic"
 
 #
-# Generic Board Options
+# ARM Board Options
 #
+CONFIG_BOARD="generic"
 CONFIG_GENERIC_VEXPRESS=y
-CONFIG_ARM_SMP_OPS=y
-CONFIG_ARM_SMP_IPI=y
-CONFIG_ARM_SMP_SPIN_TABLE=y
+# CONFIG_DEFTERM_EARLY_PRINT is not set
 CONFIG_ARM_SCU=y
+CONFIG_ARM_SMP_OPS=y
+CONFIG_ARM_SMP_SPIN_TABLE=y
+CONFIG_ARM_SMP_PSCI=y
+CONFIG_ARM_SMP_IPI=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
@@ -98,7 +93,6 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
-CONFIG_HEAP_BUDDY=y
 
 #
 # Scheduler Configuration
@@ -508,6 +502,7 @@ CONFIG_EMU_RTC_PL031=y
 #
 CONFIG_EMU_GPIO=y
 CONFIG_EMU_GPIO_PL061=y
+# CONFIG_EMU_PCI is not set
 
 #
 # Tool Options
