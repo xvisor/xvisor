@@ -166,13 +166,15 @@ static u32 epool_slab_buf_count(u32 pool_sz, u32 slab)
 
 int __init vmm_mbufpool_init(void)
 {
-	u32 slab, buf_size, buf_count, epool_sz;
+	u32 slab, b_size, b_count, epool_sz;
 
 	memset(&mbpctrl, 0, sizeof(mbpctrl));
 
 	/* Create mbuf pool */
-	mbpctrl.mpool = mempool_create(sizeof(struct vmm_mbuf), 
-					CONFIG_NET_MBUF_POOL_SIZE,
+	b_size = sizeof(struct vmm_mbuf);
+	b_count = CONFIG_NET_MBUF_POOL_SIZE;
+	mbpctrl.mpool = mempool_ram_create(b_size,
+					VMM_SIZE_TO_PAGE(b_size * b_count),
 					VMM_MEMORY_FLAGS_NORMAL);
 	if (!mbpctrl.mpool) {
 		return VMM_ENOMEM;
@@ -181,12 +183,13 @@ int __init vmm_mbufpool_init(void)
 	/* Create ext slab pools */
 	epool_sz = (CONFIG_NET_MBUF_EXT_POOL_SIZE_KB * 1024);
 	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
-		buf_size = epool_slab_buf_size(slab);
-		buf_count = epool_slab_buf_count(epool_sz, slab);
-		if (buf_count && buf_size) {
+		b_size = epool_slab_buf_size(slab);
+		b_count = epool_slab_buf_count(epool_sz, slab);
+		if (b_count && b_size) {
 			mbpctrl.epool_slabs[slab] = 
-				mempool_create(buf_size, buf_count,
-						VMM_MEMORY_FLAGS_NORMAL);
+				mempool_ram_create(b_size,
+					VMM_SIZE_TO_PAGE(b_size * b_count),
+					VMM_MEMORY_FLAGS_NORMAL);
 		} else {
 			mbpctrl.epool_slabs[slab] = NULL;
 		}
