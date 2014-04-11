@@ -28,6 +28,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <smp_ops.h>
 #include <vmm_stdio.h>
@@ -48,7 +49,7 @@ static u32 psci_function_id[PSCI_FN_MAX];
 #define PSCI_RET_EINVAL			-2
 #define PSCI_RET_EPERM			-3
 
-static int psci_to_xvisor_errno(int errno)
+static int psci_to_xvisor_errno(long errno)
 {
 	switch (errno) {
 	case PSCI_RET_SUCCESS:
@@ -64,34 +65,63 @@ static int psci_to_xvisor_errno(int errno)
 	};
 }
 
-extern int psci_smc(u32 function_id, u32 arg0, u32 arg1, u32 arg2);
-
-static int invoke_psci_fn(u32 function_id, u32 arg0, u32 arg1, u32 arg2)
+static int __noinline invoke_psci_fn_smc(unsigned long func,
+					 unsigned long arg0,
+					 unsigned long arg1,
+					 unsigned long arg2)
 {
-	return psci_to_xvisor_errno(psci_smc(function_id, arg0, arg1, arg2));
+	long ret;
+
+#ifdef CONFIG_ARM64
+	asm volatile(
+		"mov	x0, %1\n\t"
+		"mov	x1, %2\n\t"
+		"mov	x2, %3\n\t"
+		"mov	x3, %4\n\t"
+		"smc	#0    \n\t"
+		"mov	%0, x0\n\t"
+	: "=r" (ret)
+	: "r" (func), "r" (arg0), "r" (arg1), "r" (arg2)
+	: "x0", "x1", "x2", "x3", "cc", "memory");
+#else
+	asm volatile(
+		".arch_extension sec\n\t"
+		"mov	r0, %1\n\t"
+		"mov	r1, %2\n\t"
+		"mov	r2, %3\n\t"
+		"mov	r3, %4\n\t"
+		"smc	#0    \n\t"
+		"mov	%0, r0\n\t"
+	: "=r" (ret)
+	: "r" (func), "r" (arg0), "r" (arg1), "r" (arg2)
+	: "r0", "r1", "r2", "r3", "cc", "memory");
+#endif
+
+	return psci_to_xvisor_errno(ret);
 }
 
 int psci_cpu_suspend(unsigned long power_state, unsigned long entry_point)
 {
-	return invoke_psci_fn(psci_function_id[PSCI_FN_CPU_SUSPEND],
-			      power_state, entry_point, 0);
+	return invoke_psci_fn_smc(psci_function_id[PSCI_FN_CPU_SUSPEND],
+				  power_state, entry_point, 0);
 }
 
 int psci_cpu_off(unsigned long power_state)
 {
-	return invoke_psci_fn(psci_function_id[PSCI_FN_CPU_OFF], power_state, 0,
-			      0);
+	return invoke_psci_fn_smc(psci_function_id[PSCI_FN_CPU_OFF],
+				  power_state, 0, 0);
 }
 
 int psci_cpu_on(unsigned long cpuid, unsigned long entry_point)
 {
-	return invoke_psci_fn(psci_function_id[PSCI_FN_CPU_ON], cpuid,
-			      entry_point, 0);
+	return invoke_psci_fn_smc(psci_function_id[PSCI_FN_CPU_ON],
+				  cpuid, entry_point, 0);
 }
 
 int psci_migrate(unsigned long cpuid)
 {
-	return invoke_psci_fn(psci_function_id[PSCI_FN_MIGRATE], cpuid, 0, 0);
+	return invoke_psci_fn_smc(psci_function_id[PSCI_FN_MIGRATE],
+				  cpuid, 0, 0);
 }
 
 static struct vmm_devtree_nodeid psci_matches[] = {
@@ -102,50 +132,72 @@ static struct vmm_devtree_nodeid psci_matches[] = {
 static int __init psci_smp_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
+	int rc;
+	const char *method;
 	static struct vmm_devtree_node *psci = NULL;
 
+	if (psci) {
+		return VMM_OK;
+	}
+
+	/* look for node with PSCI compatible string */
+	psci = vmm_devtree_find_matching(NULL, psci_matches);
 	if (!psci) {
-		/* look for the /psci node */
-		psci = vmm_devtree_find_matching(NULL, psci_matches);
-		if (!psci) {
-			vmm_printf("%s: Failed to find psci node\n", __func__);
-			return VMM_ENOTAVAIL;
-		}
+		vmm_printf("%s: Failed to find psci node\n", __func__);
+		return VMM_ENOTAVAIL;
+	}
 
-		/* it should have a "compatible" attibute containing "arm,psci" */
-		/* it should have a "method" attibute equal to "smc" */
+	/* it should have a "method" attibute equal to "smc" */
+	rc = vmm_devtree_read_string(psci, "method", &method);
+	if (rc) {
+		vmm_printf("%s: Can't find 'method' attribute\n",
+			   __func__);
+		return rc;
+	}
+#if 0
+	/* For some reason, this does not work for now. */
+	/* To be investigated. */
+	if (strcmp(method, "smc")) {
+		vmm_printf("%s: 'method' is not 'smc'\n",
+			   __func__);
+		return VMM_EINVALID;
+	}
+#endif
 
-		/* retrieve the "cpu_on" attribute */
-		if (vmm_devtree_read_u32
-		    (psci, "cpu_on",
-		     &psci_function_id[PSCI_FN_CPU_ON]) != VMM_OK) {
-			vmm_printf("%s: Can't find PSCI 'on' method\n",
-				   __func__);
-		}
+	/* retrieve the "cpu_on" attribute */
+	rc = vmm_devtree_read_u32(psci, "cpu_on",
+			&psci_function_id[PSCI_FN_CPU_ON]);
+	if (rc) {
+		vmm_printf("%s: Can't find 'cpu_on' attribute\n",
+			   __func__);
+		return rc;
+	}
 
-		/* retrieve the "cpu_suspend" attribute */
-		if (vmm_devtree_read_u32
-		    (psci, "cpu_suspend",
-		     &psci_function_id[PSCI_FN_CPU_SUSPEND]) != VMM_OK) {
-			vmm_printf("%s: Can't find PSCI 'suspend' method\n",
-				   __func__);
-		}
+	/* retrieve the "cpu_suspend" attribute */
+	rc = vmm_devtree_read_u32(psci, "cpu_suspend",
+			&psci_function_id[PSCI_FN_CPU_SUSPEND]);
+	if (rc) {
+		vmm_printf("%s: Can't find 'cpu_suspend' attribute\n",
+			   __func__);
+		return rc;
+	}
 
-		/* retrieve the "cpu_off" attribute */
-		if (vmm_devtree_read_u32
-		    (psci, "cpu_off",
-		     &psci_function_id[PSCI_FN_CPU_OFF]) != VMM_OK) {
-			vmm_printf("%s: Can't find PSCI 'off' method\n",
-				   __func__);
-		}
+	/* retrieve the "cpu_off" attribute */
+	rc = vmm_devtree_read_u32(psci, "cpu_off",
+			&psci_function_id[PSCI_FN_CPU_OFF]);
+	if (rc) {
+		vmm_printf("%s: Can't find 'cpu_off' attribute\n",
+			   __func__);
+		return rc;
+	}
 
-		/* retrieve the "migrate" attribute */
-		if (vmm_devtree_read_u32
-		    (psci, "migrate",
-		     &psci_function_id[PSCI_FN_MIGRATE]) != VMM_OK) {
-			vmm_printf("%s: Can't find PSCI 'migrate' method\n",
-				   __func__);
-		}
+	/* retrieve the "migrate" attribute */
+	rc = vmm_devtree_read_u32(psci, "migrate",
+			&psci_function_id[PSCI_FN_MIGRATE]);
+	if (rc) {
+		vmm_printf("%s: Can't find 'migrate' attribute\n",
+			   __func__);
+		return rc;
 	}
 
 	return VMM_OK;
@@ -153,6 +205,7 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 
 static int __init psci_smp_prepare(unsigned int cpu)
 {
+	/* Nothing to do here. */
 	return VMM_OK;
 }
 
