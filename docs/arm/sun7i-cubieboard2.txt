@@ -98,6 +98,19 @@ A20:
   [20. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun7i# bootm 0x40200000 - 0x40f00000
 
+  (Note: If you want to "autoboot" then you need to create a boot.scr file
+   on the root of the SD card. To do so edit a boot.cmd text file and add all
+   the commmands you want to execute automatically. For example you can put
+   the following commands in the "boot.cmd" file:
+   mmc dev 0:0
+   fatload mmc 0 0x40200000 uvmm.bin
+   fatload mmc 0 0x40f00000 one_guest_pb-a8.dtb
+   fatload mmc 0 0x41000000 firmware.bin
+   bootm 0x40200000 - 0x40f00000
+   Then you can create the boot.scr file wit the following command:
+   # mkimage -C none -A arm -T script -d boot.cmd boot.scr
+   Put the boot.scr file a the root of your SD card.)
+
   [21. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
