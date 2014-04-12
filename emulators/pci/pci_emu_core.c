@@ -358,6 +358,14 @@ int pci_emu_config_space_write(struct pci_class *class, u32 reg_offs, u32 val)
 		class->conf_header.class = val;
 		break;
 
+	case PCI_CONFIG_SUBCLASS_CODE_OFFS:
+		class->conf_header.sub_class = val;
+		break;
+
+	case PCI_CONFIG_PROG_IF_OFFS:
+		class->conf_header.prog_if = val;
+		break;
+
 	case PCI_CONFIG_CACHE_LINE_OFFS:
 		class->conf_header.cache_line_sz = val;
 		break;
