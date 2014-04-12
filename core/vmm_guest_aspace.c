@@ -78,10 +78,10 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 
 	/* Resolve aliased regions */
 	while (reg->flags & VMM_REGION_ALIAS) {
-		reg = NULL;
-		found = FALSE;
 		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
 		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
+		reg = NULL;
+		found = FALSE;
 		list_for_each(l, &aspace->reg_list) {
 			reg = list_entry(l, struct vmm_region, head);
 			if (((reg->flags & cmp_flags) == cmp_flags) &&
