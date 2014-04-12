@@ -62,20 +62,25 @@ static struct pci_bus *pci_find_bus_by_id(struct pci_host_controller *controller
 
 	list_for_each(l, &controller->attached_buses) {
 		bus = list_entry(l, struct pci_bus, head);
-		if (bus->bus_id == bus_id)
+		if (bus->bus_id == bus_id) {
 			vmm_mutex_unlock(&controller->lock);
 			return bus;
+		}
 	}
 
 	vmm_mutex_unlock(&controller->lock);
 
-	return bus;
+	return NULL;
 }
 
 static int pci_emu_attach_pci_device(struct pci_host_controller *controller,
 					 struct pci_device *dev, u32 bus_id)
 {
 	struct pci_bus *bus = pci_find_bus_by_id(controller, bus_id);
+
+	if (!bus) {
+		return VMM_ENODEV;
+	}
 
 	vmm_mutex_lock(&bus->lock);
 	list_add_tail(&dev->head, &bus->attached_devices);
