@@ -53,6 +53,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0;
 				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
@@ -76,6 +77,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			case ARM_CPUID_CORTEXA9:
 				*data = 0x1e000000;
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0x2c000000;
 				break;
@@ -398,6 +400,7 @@ int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		s->midr_el1 &= ~(MIDR_PARTNUM_MASK|MIDR_REVISON_MASK);
 		s->mpidr_el1 = (1 << 31) | vcpu->subid;
 		break;
+	case ARM_CPUID_CORTEXA7:
 	case ARM_CPUID_CORTEXA15:
 		s->midr_el1 = cpuid;
 		s->mpidr_el1 = (1 << 31) | vcpu->subid;

@@ -69,6 +69,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0;
 				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
@@ -114,6 +115,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		case 0:
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* PCR: Power control register */
 				/* Read always zero. */
@@ -129,6 +131,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 				/* CBAR: Configuration Base Address Register */
 				*data = 0x1e000000;
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* CBAR: Configuration Base Address Register */
 				*data = 0x2c000000;
@@ -320,6 +323,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 0:
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* Power Control Register */
 				/* Ignore writes. */;
@@ -583,6 +587,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c0_ccsid[1] = 0x200fe015;	/* 16k L1 icache. */
 		cp15->c1_sctlr = 0x00c50078;
 		break;
+	case ARM_CPUID_CORTEXA7:
 	case ARM_CPUID_CORTEXA15:
 		cp15->c0_midr = cpuid;
 		cp15->c0_mpidr = (1 << 31) | vcpu->subid;

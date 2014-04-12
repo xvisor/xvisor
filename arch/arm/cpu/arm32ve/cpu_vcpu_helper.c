@@ -511,6 +511,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		cpuid = ARM_CPUID_CORTEXA9;
 	} else if (strcmp(attr, "armv7a,cortex-a15") == 0) {
 		cpuid = ARM_CPUID_CORTEXA15;
+	} else if (strcmp(attr, "armv7a,cortex-a7") == 0) {
+		cpuid = ARM_CPUID_CORTEXA7;
 	} else {
 		rc = VMM_EINVALID;
 		goto fail;
@@ -547,6 +549,19 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
+			break;
+		case ARM_CPUID_CORTEXA7:
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA15:
