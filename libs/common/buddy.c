@@ -155,7 +155,7 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
 					   unsigned long *alloc_blk_count)
 {
 	irq_flags_t f;
-	struct rb_node *n = ba->alloc.rb_node;
+	struct rb_node *n;
 
 	if (!ba) {
 		return NULL;
