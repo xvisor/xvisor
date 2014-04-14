@@ -850,6 +850,8 @@ static int emac_probe(struct vmm_device *pdev,
 		return -ENOMEM;
 	}
 
+	strlcpy(ndev->name, pdev->name, sizeof(ndev->name));
+
 	SET_NETDEV_DEV(ndev, pdev);
 
 	db = netdev_priv(ndev);
@@ -896,9 +898,9 @@ static int emac_probe(struct vmm_device *pdev,
 
 	/* Check if the MAC address is valid, if not get a random one */
 	if (!is_valid_ether_addr(ndev->dev_addr)) {
-		//eth_hw_addr_random(ndev);
-		dev_info(pdev, "using random MAC address %pM\n",
-			 ndev->dev_addr);
+		eth_hw_addr_random(ndev);
+		dev_info(pdev, "using random MAC address: ");
+		print_mac_address_fmt(ndev->dev_addr);
 	}
 
 	db->emacrx_completed_flag = 1;
@@ -923,8 +925,9 @@ static int emac_probe(struct vmm_device *pdev,
 		goto out;
 	}
 
-	dev_info(pdev, "%s: at %p, IRQ %d MAC: %pM\n",
-		 ndev->name, db->membase, ndev->irq, ndev->dev_addr);
+	dev_info(pdev, "%s: at %p, IRQ %d MAC: ",
+		 ndev->name, db->membase, ndev->irq);
+	print_mac_address_fmt(ndev->dev_addr);
 
 	return 0;
 
