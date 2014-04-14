@@ -70,6 +70,7 @@
 struct uart_8250_port {
 	struct vmm_completion read_possible;
 	struct vmm_chardev cd;
+	bool use_ioport;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;

@@ -317,7 +317,9 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 {
 	int rc;
 	struct uart_8250_port *port;
-	
+	physical_addr_t ioport;
+	const char *aval;
+
 	port = vmm_zalloc(sizeof(struct uart_8250_port));
 	if(!port) {
 		rc = VMM_ENOMEM;
@@ -338,9 +340,28 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 
 	INIT_COMPLETION(&port->read_possible);
 
-	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
-	if(rc) {
-		goto free_port;
+	if (vmm_devtree_read_string(dev->node,
+				    VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
+				    &aval)) {
+		aval = NULL;
+	}
+	if (aval && !strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
+		port->use_ioport = TRUE;
+	} else {
+		port->use_ioport = FALSE;
+	}
+
+	if (port->use_ioport) {
+		rc = vmm_devtree_regaddr(dev->node, &ioport, 0);
+		if (rc) {
+			goto free_port;
+		}
+		port->base = ioport;
+	} else {
+		rc = vmm_devtree_regmap(dev->node, &port->base, 0);
+		if (rc) {
+			goto free_port;
+		}
 	}
 
 	if (vmm_devtree_read_u32(dev->node, "reg-shift",
@@ -402,7 +423,9 @@ free_all:
 	vmm_free(port->rxbuf);
 #endif
 free_reg:
-	vmm_devtree_regunmap(dev->node, port->base, 0);
+	if (!port->use_ioport) {
+		vmm_devtree_regunmap(dev->node, port->base, 0);
+	}
 free_port:
 	vmm_free(port);
 free_nothing:
@@ -415,7 +438,9 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 
 	if (port) {
 		vmm_chardev_unregister(&port->cd);
-		vmm_devtree_regunmap(dev->node, port->base, 0);
+		if (!port->use_ioport) {
+			vmm_devtree_regunmap(dev->node, port->base, 0);
+		}
 		vmm_free(port);
 		dev->priv = NULL;
 	}
