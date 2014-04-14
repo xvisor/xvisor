@@ -58,4 +58,35 @@
 
 #define	__iomem
 
+#define	__raw_readw			readw
+#define	__raw_readl			readl
+#define	__raw_writew			writew
+#define	__raw_writel			writel
+
+#define ioread8(addr)			inb(addr)
+#define ioread16(addr)			inw(addr)
+#define ioread16be(addr)		vmm_cpu_to_be16(inw(addr))
+#define ioread32(addr)			inl(addr)
+#define ioread32be(addr)		vmm_cpu_to_be32(inl(addr))
+
+#define iowrite8(v, addr)		outb((v), (addr))
+#define iowrite16(v, addr)		outw((v), (addr))
+#define iowrite16be(v, addr)		outw(vmm_cpu_to_be16(v), addr)
+#define iowrite32(v, addr)		outl((v), (addr))
+#define iowrite32be(v, addr)		outl(vmm_cpu_to_be32(v), addr)
+
+#define ioread8_rep(p, dst, count) \
+				insb((unsigned long) (p), (dst), (count))
+#define ioread16_rep(p, dst, count) \
+				insw((unsigned long) (p), (dst), (count))
+#define ioread32_rep(p, dst, count) \
+				insl((unsigned long) (p), (dst), (count))
+
+#define iowrite8_rep(p, src, count) \
+				outsb((unsigned long) (p), (src), (count))
+#define iowrite16_rep(p, src, count) \
+				outsw((unsigned long) (p), (src), (count))
+#define iowrite32_rep(p, src, count) \
+				outsl((unsigned long) (p), (src), (count))
+
 #endif /* _ASM_IO_H_ */
