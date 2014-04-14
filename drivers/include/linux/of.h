@@ -21,6 +21,14 @@
 #define	of_device_is_compatible(device, name)		\
 		vmm_devtree_is_compatible(device, name)
 
+
+#define	MAX_PHANDLE_ARGS	VMM_MAX_PHANDLE_ARGS
+#define	of_phandle_args		vmm_devtree_phandle_args
+#define	of_parse_phandle_with_args \
+				vmm_devtree_parse_phandle_with_args
+#define	of_parse_phandle_with_fixed_args \
+				vmm_devtree_parse_phandle_with_fixed_args
+
 static inline unsigned int irq_of_parse_and_map(struct device_node *dev,
 						int index)
 {

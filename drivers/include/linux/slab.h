@@ -8,6 +8,8 @@
 #define GFP_KERNEL		0x00000001
 #define GFP_ATOMIC		0x00000002
 
+#define kmalloc_track_caller	kmalloc
+
 static inline void *kmalloc(u32 size, u32 flags)
 {
 	return vmm_malloc(size);
