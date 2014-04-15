@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2010 Himanshu Chauhan.
+ * Copyright (c) 2012 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,8 @@
  *
  * @file vmm_heap.c
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Anup Patel (anup@brainfault.org)
+ * @author Ankit Jindal (thatsjindal@gmail.com)
  * @brief heap management using buddy allocator
  */
 
@@ -39,12 +42,14 @@ struct vmm_heap_control {
 	unsigned long heap_size;
 };
 
-static struct vmm_heap_control heap;
+static struct vmm_heap_control normal_heap;
+static struct vmm_heap_control dma_heap;
 
 #define HEAP_MIN_BIN		(VMM_CACHE_LINE_SHIFT)
 #define HEAP_MAX_BIN		(VMM_PAGE_SHIFT)
 
-void *vmm_malloc(virtual_size_t size)
+static void *heap_malloc(struct vmm_heap_control *heap,
+			 virtual_size_t size)
 {
 	int rc;
 	unsigned long addr;
@@ -53,7 +58,7 @@ void *vmm_malloc(virtual_size_t size)
 		return NULL;
 	}
 
-	rc = buddy_mem_alloc(&heap.ba, size, &addr);
+	rc = buddy_mem_alloc(&heap->ba, size, &addr);
 	if (rc) {
 		vmm_printf("%s: Failed to alloc size=%d (error %d)\n",
 			   __func__, size, rc);
@@ -61,6 +66,92 @@ void *vmm_malloc(virtual_size_t size)
 	}
 
 	return (void *)addr;
+}
+
+static void heap_free(struct vmm_heap_control *heap, void *ptr)
+{
+	int rc;
+
+	BUG_ON(!ptr);
+	BUG_ON(ptr < heap->mem_start);
+	BUG_ON((heap->mem_start + heap->mem_size) <= ptr);
+
+	rc = buddy_mem_free(&heap->ba, (unsigned long)ptr);
+	if (rc) {
+		vmm_printf("%s: Failed to free ptr=%p (error %d)\n",
+			   __func__, ptr, rc);
+	}
+}
+
+static int heap_print_state(struct vmm_heap_control *heap,
+			    struct vmm_chardev *cdev, const char *name)
+{
+	unsigned long idx;
+
+	vmm_cprintf(cdev, "%s Heap State\n", name);
+
+	for (idx = HEAP_MIN_BIN; idx <= HEAP_MAX_BIN; idx++) {
+		if (idx < 10) {
+			vmm_cprintf(cdev, "  [BLOCK %4dB]: ", 1<<idx);
+		} else if (idx < 20) {
+			vmm_cprintf(cdev, "  [BLOCK %4dK]: ", 1<<(idx-10));
+		} else {
+			vmm_cprintf(cdev, "  [BLOCK %4dM]: ", 1<<(idx-20));
+		}
+		vmm_cprintf(cdev, "%5d area(s), %5d free block(s)\n",
+			    buddy_bins_area_count(&heap->ba, idx),
+			    buddy_bins_block_count(&heap->ba, idx));
+	}
+
+	vmm_cprintf(cdev, "%s Heap House-Keeping State\n", name);
+	vmm_cprintf(cdev, "  Buddy Areas: %d free out of %d\n",
+		    buddy_hk_area_free(&heap->ba),
+		    buddy_hk_area_total(&heap->ba));
+
+	return VMM_OK;
+}
+
+static int heap_init(struct vmm_heap_control *heap,
+		     bool is_normal, const u32 size_kb, u32 mem_flags)
+{
+	memset(heap, 0, sizeof(*heap));
+
+	heap->heap_size = size_kb * 1024;
+	heap->heap_start = (void *)vmm_host_alloc_pages(
+					VMM_SIZE_TO_PAGE(heap->heap_size),
+					mem_flags);
+	if (!heap->heap_start) {
+		return VMM_ENOMEM;
+	}
+
+	/* 12.5 percent for house-keeping */
+	heap->hk_size = (heap->heap_size) / 8;
+
+	/* Always have book keeping area for
+	 * non-normal heaps in normal heap
+	 */
+	if (is_normal) {
+		heap->hk_start = heap->heap_start;
+		heap->mem_start = heap->heap_start + heap->hk_size;
+		heap->mem_size = heap->heap_size - heap->hk_size;
+	} else {
+		heap->hk_start = vmm_malloc(heap->hk_size);
+		if (!heap->hk_start) {
+			return VMM_ENOMEM;
+		}
+		heap->mem_start = heap->heap_start;
+		heap->mem_size = heap->heap_size;
+	}
+
+	return buddy_allocator_init(&heap->ba,
+			  heap->hk_start, heap->hk_size,
+			  (unsigned long)heap->mem_start, heap->mem_size,
+			  HEAP_MIN_BIN, HEAP_MAX_BIN);
+}
+
+void *vmm_malloc(virtual_size_t size)
+{
+	return heap_malloc(&normal_heap, size);
 }
 
 void *vmm_zalloc(virtual_size_t size)
@@ -76,98 +167,104 @@ void *vmm_zalloc(virtual_size_t size)
 
 void vmm_free(void *ptr)
 {
-	int rc;
-
-	BUG_ON(!ptr);
-	BUG_ON(ptr < heap.mem_start);
-	BUG_ON((heap.mem_start + heap.mem_size) <= ptr);
-
-	rc = buddy_mem_free(&heap.ba, (unsigned long)ptr);
-	if (rc) {
-		vmm_printf("%s: Failed to free ptr=%p (error %d)\n",
-			   __func__, ptr, rc);
-	}
+	heap_free(&normal_heap, ptr);
 }
 
-int vmm_heap_allocator_name(char *name, int name_sz)
+virtual_addr_t vmm_normal_heap_start_va(void)
 {
-	if (!name || name_sz <= 0) {
-		return VMM_EFAIL;
-	}
-
-	if (strlcpy(name, "Buddy System", name_sz) >= name_sz) {
-		return VMM_EOVERFLOW;
-	}
-
-	return VMM_OK;
+	return (virtual_addr_t)normal_heap.heap_start;
 }
 
-virtual_addr_t vmm_heap_start_va(void)
+virtual_size_t vmm_normal_heap_size(void)
 {
-	return (virtual_addr_t)heap.heap_start;
+	return (virtual_size_t)normal_heap.heap_size;
 }
 
-virtual_size_t vmm_heap_size(void)
+virtual_size_t vmm_normal_heap_hksize(void)
 {
-	return (virtual_size_t)heap.heap_size;
+	return normal_heap.hk_size;
 }
 
-virtual_size_t vmm_heap_hksize(void)
+virtual_size_t vmm_normal_heap_free_size(void)
 {
-	return heap.hk_size;
+	return buddy_bins_free_space(&normal_heap.ba);
 }
 
-virtual_size_t vmm_heap_free_size(void)
+int vmm_normal_heap_print_state(struct vmm_chardev *cdev)
 {
-	return buddy_bins_free_space(&heap.ba);
+	return heap_print_state(&normal_heap, cdev, "Normal");
 }
 
-int vmm_heap_print_state(struct vmm_chardev *cdev)
+void *vmm_dma_malloc(virtual_size_t size)
 {
-	unsigned long idx;
+	return heap_malloc(&dma_heap, size);
+}
 
-	vmm_cprintf(cdev, "Heap State\n");
+void *vmm_dma_zalloc(virtual_size_t size)
+{
+	void *ret = vmm_dma_malloc(size);
 
-	for (idx = HEAP_MIN_BIN; idx <= HEAP_MAX_BIN; idx++) {
-		if (idx < 10) {
-			vmm_cprintf(cdev, "  [BLOCK %4dB]: ", 1<<idx);
-		} else if (idx < 20) {
-			vmm_cprintf(cdev, "  [BLOCK %4dK]: ", 1<<(idx-10));
-		} else {
-			vmm_cprintf(cdev, "  [BLOCK %4dM]: ", 1<<(idx-20));
-		}
-		vmm_cprintf(cdev, "%5d area(s), %5d free block(s)\n",
-			    buddy_bins_area_count(&heap.ba, idx),
-			    buddy_bins_block_count(&heap.ba, idx));
+	if (ret) {
+		memset(ret, 0, size);
 	}
 
-	vmm_cprintf(cdev, "Heap House-Keeping State\n");
-	vmm_cprintf(cdev, "  Buddy Areas: %d free out of %d\n",
-		    buddy_hk_area_free(&heap.ba),
-		    buddy_hk_area_total(&heap.ba));
+	return ret;
+}
 
-	return VMM_OK;
+void vmm_dma_free(void *ptr)
+{
+	heap_free(&dma_heap, ptr);
+}
+
+virtual_addr_t vmm_dma_heap_start_va(void)
+{
+	return (virtual_addr_t)dma_heap.heap_start;
+}
+
+virtual_size_t vmm_dma_heap_size(void)
+{
+	return (virtual_size_t)dma_heap.heap_size;
+}
+
+virtual_size_t vmm_dma_heap_hksize(void)
+{
+	return dma_heap.hk_size;
+}
+
+virtual_size_t vmm_dma_heap_free_size(void)
+{
+	return buddy_bins_free_space(&dma_heap.ba);
+}
+
+int vmm_dma_heap_print_state(struct vmm_chardev *cdev)
+{
+	return heap_print_state(&dma_heap, cdev, "DMA");
 }
 
 int __init vmm_heap_init(void)
 {
-	memset(&heap, 0, sizeof(heap));
+	int rc;
 
-	heap.heap_size = CONFIG_HEAP_SIZE_MB * 1024 * 1024;
-	heap.heap_start = (void *)vmm_host_alloc_pages(
-					VMM_SIZE_TO_PAGE(heap.heap_size),
-					VMM_MEMORY_FLAGS_NORMAL);
-	if (!heap.heap_start) {
-		return VMM_ENOMEM;
+	/*
+	 * Always create normal heap first as book keeping area for other heaps
+	 * is allocated from normal heap
+	 */
+
+	/* Create Normal heap */
+	rc = heap_init(&normal_heap, TRUE,
+			CONFIG_HEAP_SIZE_MB * 1024,
+			VMM_MEMORY_FLAGS_NORMAL);
+	if (rc) {
+		return rc;
 	}
 
-	heap.hk_start = heap.heap_start;
-	heap.hk_size = (heap.heap_size) / 8; /* 12.5 percent for house-keeping */
-	heap.mem_start = heap.heap_start + heap.hk_size;
-	heap.mem_size = heap.heap_size - heap.hk_size;
+	/* Create DMA heap */
+	rc= heap_init(&dma_heap, FALSE,
+			CONFIG_DMA_HEAP_SIZE_KB,
+			VMM_MEMORY_FLAGS_DMA);
+	if (rc) {
+		return rc;
+	}
 
-	return buddy_allocator_init(&heap.ba,
-			  heap.hk_start, heap.hk_size,
-			  (unsigned long)heap.mem_start, heap.mem_size,
-			  HEAP_MIN_BIN, HEAP_MAX_BIN);
+	return VMM_OK;
 }

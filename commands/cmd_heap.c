@@ -44,34 +44,28 @@ static void cmd_heap_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   heap help\n");
 	vmm_cprintf(cdev, "   heap info\n");
 	vmm_cprintf(cdev, "   heap state\n");
+	vmm_cprintf(cdev, "   heap dma_info\n");
+	vmm_cprintf(cdev, "   heap dma_state\n");
 }
 
-static int cmd_heap_info(struct vmm_chardev *cdev)
+static int heap_info(struct vmm_chardev *cdev,
+		     bool is_normal, virtual_addr_t heap_va,
+		     u64 heap_sz, u64 heap_hksz, u64 heap_freesz)
 {
 	int rc;
-	char heap_alloc_name[32];
-	virtual_addr_t heap_va;
 	physical_addr_t heap_pa;
-	u64 pre, heap_sz, heap_hksz, heap_usesz, heap_freesz;
+	u64 pre, heap_usesz;
 
-	if ((rc = vmm_heap_allocator_name(heap_alloc_name, 32))) {
-		vmm_cprintf(cdev, "Error: Failed to get "
-						"heap allocator name\n");
-		return rc;
+	if (is_normal) {
+		heap_usesz = heap_sz - heap_hksz - heap_freesz;
+	} else {
+		heap_usesz = heap_sz - heap_freesz;
 	}
-
-	heap_va = vmm_heap_start_va();
-	heap_sz = vmm_heap_size();
-	heap_hksz = vmm_heap_hksize();
-	heap_freesz = vmm_heap_free_size();
-	heap_usesz = heap_sz - heap_hksz - heap_freesz;
 
 	if ((rc = vmm_host_va2pa(heap_va, &heap_pa))) {
 		vmm_cprintf(cdev, "Error: Failed to get heap base PA\n");
 		return rc;
 	}
-
-	vmm_cprintf(cdev, "Allocator Name     : %s\n", heap_alloc_name);
 
 	vmm_cprintf(cdev, "Base Virtual Addr  : ");
 	if (sizeof(virtual_addr_t) == sizeof(u64)) {
@@ -112,9 +106,32 @@ static int cmd_heap_info(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
+static int cmd_heap_info(struct vmm_chardev *cdev)
+{
+	return heap_info(cdev, TRUE,
+			 vmm_normal_heap_start_va(),
+			 vmm_normal_heap_size(),
+			 vmm_normal_heap_hksize(),
+			 vmm_normal_heap_free_size());
+}
+
 static int cmd_heap_state(struct vmm_chardev *cdev)
 {
-	return vmm_heap_print_state(cdev);
+	return vmm_normal_heap_print_state(cdev);
+}
+
+static int cmd_heap_dma_info(struct vmm_chardev *cdev)
+{
+	return heap_info(cdev, FALSE,
+			 vmm_dma_heap_start_va(),
+			 vmm_dma_heap_size(),
+			 vmm_dma_heap_hksize(),
+			 vmm_dma_heap_free_size());
+}
+
+static int cmd_heap_dma_state(struct vmm_chardev *cdev)
+{
+	return vmm_dma_heap_print_state(cdev);
 }
 
 static int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
@@ -127,6 +144,10 @@ static int cmd_heap_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return cmd_heap_info(cdev);
 		} else if (strcmp(argv[1], "state") == 0) {
 			return cmd_heap_state(cdev);
+		} else if (strcmp(argv[1], "dma_info") == 0) {
+			return cmd_heap_dma_info(cdev);
+		} else if (strcmp(argv[1], "dma_state") == 0) {
+			return cmd_heap_dma_state(cdev);
 		}
 	}
 	cmd_heap_usage(cdev);
