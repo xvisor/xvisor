@@ -38,19 +38,18 @@
 #include <cpu_inline_asm.h>
 #include <cpu_mmu.h>
 
-/* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool. 
- * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
- * or 1 MB / 4 KB = 256 translation tables
- */
-#define TTBL_POOL_MAX_SIZE 	(CONFIG_VAPOOL_SIZE_MB << (20 - 3))
-
 #define TTBL_MAX_L1TBL_COUNT	(CONFIG_MAX_VCPU_COUNT)
 
-#define TTBL_MAX_L2TBL_COUNT	(((TTBL_POOL_MAX_SIZE - \
-				  (TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE))) / \
-				 TTBL_L2TBL_SIZE)
+#define TTBL_MAX_L2TBL_COUNT	(TTBL_MAX_L1TBL_COUNT * 16)
 
 #define TTBL_MAX_L2TBL_SIZE	(TTBL_L2TBL_SIZE * TTBL_MAX_L2TBL_COUNT)
+
+#define TTBL_POOL_MAX_SIZE	((TTBL_MAX_L1TBL_COUNT * TTBL_L1TBL_SIZE) + \
+				 TTBL_MAX_L2TBL_SIZE)
+
+#if TTBL_POOL_MAX_SIZE >= (CONFIG_VAPOOL_SIZE_MB * 1024 * 1024)
+#error "TTBL pool too big !!! Please reduce CONFIG_MAX_VCPU_COUNT"
+#endif
 
 u8 __attribute__((aligned(TTBL_L1TBL_SIZE))) defl1_ttbl[TTBL_L1TBL_SIZE];
 u8 __attribute__ ((aligned(TTBL_L2TBL_SIZE))) defl2_ttbl[TTBL_INITIAL_L2TBL_SIZE] = { 0 };
