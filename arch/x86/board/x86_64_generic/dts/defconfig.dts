@@ -64,7 +64,8 @@
 		console = &SERIAL0;
 		/*console = &STDOUT;*/
 		bootcmd = /* Copy guest0 device tree from templates */
-                         "devtree node copy /guests guest0 /templates/x86_64_generic";
+                         "devtree node copy /guests guest0 /templates/x86_64_generic",
+			 "guest create guest0";
 	};
 };
 
