@@ -23,6 +23,7 @@
 
 drivers-objs-$(CONFIG_ARM_VIC)+= irqchip/irq-vic.o
 drivers-objs-$(CONFIG_ARM_GIC)+= irqchip/irq-gic.o
+drivers-objs-$(CONFIG_VERSATILE_FPGA_IRQ)+= irqchip/irq-versatile-fpga.o
 drivers-objs-$(CONFIG_MXC_AVIC)+= irqchip/irq-avic.o
 drivers-objs-$(CONFIG_BCM2835_INTC)+= irqchip/irq-bcm2835.o
 drivers-objs-$(CONFIG_SUN4I_VIC)+= irqchip/irq-sun4i.o
