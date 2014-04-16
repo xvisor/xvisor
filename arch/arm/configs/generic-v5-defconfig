@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Tue Mar 11 20:44:27 2014
+# Wed Apr 16 21:02:45 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -12,6 +12,7 @@ CONFIG_ARCH="arm"
 # CONFIG_CPU_ARM11MP is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
+# CONFIG_CPU_CORTEX_A7 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 CONFIG_CPU_GENERIC_V5=y
 # CONFIG_CPU_GENERIC_V6 is not set
@@ -29,7 +30,7 @@ CONFIG_ARM32=y
 # CONFIG_ARM64 is not set
 
 #
-# ARM Options
+# ARM CPU Options
 #
 CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=12
@@ -44,12 +45,13 @@ CONFIG_ARM32_STACKTRACE=y
 # CONFIG_BOARD_OMAP3 is not set
 # CONFIG_BOARD_EXYNOS4 is not set
 CONFIG_BOARD_GENERIC=y
-CONFIG_BOARD="generic"
 
 #
-# Generic Board Options
+# ARM Board Options
 #
+CONFIG_BOARD="generic"
 CONFIG_GENERIC_VERSATILE=y
+# CONFIG_DEFTERM_EARLY_PRINT is not set
 # CONFIG_VERSATILE_CLCD is not set
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
@@ -83,7 +85,7 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
-CONFIG_HEAP_BUDDY=y
+CONFIG_DMA_HEAP_SIZE_KB=512
 
 #
 # Scheduler Configuration
@@ -186,6 +188,7 @@ CONFIG_CMD_VINPUT=y
 # Device Driver Commands
 #
 CONFIG_CMD_RTCDEV=y
+CONFIG_CMD_INPUT=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_RBD=y
 
@@ -234,6 +237,7 @@ CONFIG_VFS_FAT=y
 #
 CONFIG_ARM_VIC=y
 # CONFIG_ARM_GIC is not set
+CONFIG_VERSATILE_FPGA_IRQ=y
 CONFIG_MXC_AVIC=y
 # CONFIG_BCM2835_INTC is not set
 # CONFIG_SUN4I_VIC is not set
@@ -282,12 +286,31 @@ CONFIG_BLOCK_RBD=y
 #
 # Input Device Support
 #
-# CONFIG_INPUT is not set
+CONFIG_INPUT=y
+
+#
+# Input Device Drivers
+#
+CONFIG_INPUT_KEYBOARD=y
+CONFIG_KEYBOARD_ATKBD=y
+# CONFIG_KEYBOARD_ATKBD_HP_KEYCODES is not set
+CONFIG_INPUT_MOUSEDEV=y
+CONFIG_MOUSE_PS2=y
+# CONFIG_MOUSE_PS2_ALPS is not set
+# CONFIG_MOUSE_PS2_LOGIPS2PP is not set
+# CONFIG_MOUSE_PS2_SYNAPTICS is not set
+# CONFIG_MOUSE_PS2_TRACKPOINT is not set
+# CONFIG_MOUSE_PS2_ELANTECH is not set
+# CONFIG_MOUSE_PS2_SENTELIC is not set
+# CONFIG_MOUSE_PS2_TOUCHKIT is not set
 
 #
 # Hardware I/O ports
 #
-# CONFIG_SERIO is not set
+CONFIG_SERIO=y
+CONFIG_SERIO_AMBAKMI=y
+CONFIG_SERIO_LIBPS2=y
+# CONFIG_SERIO_I8042 is not set
 
 #
 # Graphics Drivers
@@ -421,6 +444,7 @@ CONFIG_EMU_RTC_PL031=y
 #
 CONFIG_EMU_GPIO=y
 CONFIG_EMU_GPIO_PL061=y
+# CONFIG_EMU_PCI is not set
 
 #
 # Tool Options

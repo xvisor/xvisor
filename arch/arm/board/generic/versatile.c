@@ -158,24 +158,9 @@ static int versatile_shutdown(void)
  * Initialization functions
  */
 
-#define SIC_IRQ_STATUS                  0
-#define SIC_IRQ_RAW_STATUS              0x04
-#define SIC_IRQ_ENABLE                  0x08
-#define SIC_IRQ_ENABLE_SET              0x08
-#define SIC_IRQ_ENABLE_CLEAR            0x0C
-#define SIC_INT_SOFT_SET                0x10
-#define SIC_INT_SOFT_CLEAR              0x14
-#define SIC_INT_PIC_ENABLE              0x20	/* read status of pass through mask */
-#define SIC_INT_PIC_ENABLES             0x20	/* set interrupt pass through bits */
-#define SIC_INT_PIC_ENABLEC             0x24	/* Clear interrupt pass through bits */
-
-/* This mask is used to route interrupts 21 to 31 on VIC */
-#define PIC_MASK			0xFFD00000
-
 static int __init versatile_early_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	virtual_addr_t sic_base;
 
 	/* Host aspace, Heap, Device tree, and Host IRQ available.
 	 *
@@ -185,27 +170,6 @@ static int __init versatile_early_init(struct vmm_devtree_node *node)
 	 * Setting-up system data in device tree nodes,
 	 * ....
 	 */
-
-	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sic");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	rc = vmm_devtree_regmap(node, &sic_base, 0);
-	if (rc) {
-		return rc;
-	}
-
-	vmm_writel(~0, (volatile void *)sic_base + SIC_IRQ_ENABLE_CLEAR);
-
-	/*
-	 * Using Linux Method: Interrupts on secondary controller from 0 to 8
-	 * are routed to source 31 on PIC.
-	 * Interrupts from 21 to 31 are routed directly to the VIC on
-	 * the corresponding number on primary controller. This is controlled
-	 * by setting PIC_ENABLEx.
-	 */
-	vmm_writel(PIC_MASK, (volatile void *)sic_base + SIC_INT_PIC_ENABLE);
 
 	/* Map sysreg */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,versatile-sysreg");
