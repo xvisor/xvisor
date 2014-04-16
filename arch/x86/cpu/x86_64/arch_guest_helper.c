@@ -91,15 +91,53 @@ int arch_guest_deinit(struct vmm_guest * guest)
 /*---------------------------------*
  * Guest's vCPU's helper funstions *
  *---------------------------------*/
-physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context, virtual_addr_t vaddr)
+/*!
+ * \fn physical_addr_t gva_to_gp(struct vcpu_hw_context *context, virtual_addr_t vaddr)
+ * \brief Convert a guest virtual address to guest physical
+ *
+ * This function converts a guest virtual address to a guest
+ * physical address. Until the guest enables paging, the conversion
+ * is identical otherwise its page table will be walked.
+ *
+ *\param context The guest VCPU context which has falted.
+ *\param vaddr The guest virtual address which needs translation.
+ *
+ * \return If succeeds, it returns a guest physical address, NULL otherwise.
+ */
+int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_addr_t *gpa)
+{
+	physical_addr_t rva = 0;
+
+	/* If guest hasn't enabled paging, va = pa */
+	if (!(context->g_cr0 & X86_CR0_PG)) {
+		rva = vaddr;
+		/* If still in real mode, apply segmentation */
+		if (!(context->g_cr0 & X86_CR0_PE))
+			rva = (context->vmcb->cs.sel << 4) | vaddr;
+
+		*gpa = rva;
+		vmm_printf("gpa= %08lx\n", rva);
+		return VMM_OK;
+	}
+
+	return VMM_EFAIL;
+}
+
+/*!
+ * \fn physical_addr_t gpa_to_hpa(struct vcpu_hw_context *context, virtual_addr_t vaddr)
+ * \brief Convert a guest physical address to host physical address.
+ *
+ * This function converts a guest physical address to a host physical
+ * address.
+ *
+ *\param context The guest VCPU context which has falted.
+ *\param vaddr The guest physical address which needs translation.
+ *
+ * \return If succeeds, it returns a guest physical address, NULL otherwise.
+ */
+int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, physical_addr_t *hpa)
 {
 	u32 tcr3 = (u32)context->vmcb->cr3;
-
-	/* If guest is in real or paged real/protected mode, virtual = physical. */
-	if (!(context->vmcb->cr0 & X86_CR0_PG)
-	    ||((context->vmcb->cr0 & X86_CR0_PG)
-	       && !(context->vmcb->cr0 & X86_CR0_PE)))
-		return vaddr;
 
 	/*
 	 * FIXME: Check if guest has moved to long mode, in which case
@@ -116,22 +154,24 @@ physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context, virtu
 	/* FIXME: Should we always do cacheable memory access here ?? */
 	if (vmm_host_memory_read(pde_addr, &pde,
 				 sizeof(pde), TRUE) < sizeof(pde))
-		return 0;
+		return VMM_EFAIL;
 
         if (!(pde & 0x1))
-		return 0;
+		return VMM_EFAIL;
 
 	/* page directory entry */
 	pte_addr = (((u32)(pde & ~0xfff)) + (4 * ((vaddr >> 12) & 0x3ff)));
 	/* FIXME: Should we always do cacheable memory access here ?? */
 	if (vmm_host_memory_read(pte_addr, &pte,
 				 sizeof(pte), TRUE) < sizeof(pte))
-		return 0;
+		return VMM_EFAIL;
 
 	if (!(pte & 0x1))
-		return 0;
+		return VMM_EFAIL;
 
-	return ((pte & PAGE_MASK) + (vaddr & ~PAGE_MASK));
+	*hpa = ((pte & PAGE_MASK) + (vaddr & ~PAGE_MASK));
+
+	return VMM_OK;
 }
 
 int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
