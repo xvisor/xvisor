@@ -90,26 +90,25 @@ static inline int guest_in_realmode(struct vcpu_hw_context *context)
 	return (!(context->vmcb->cr0 & X86_CR0_PE));
 }
 
-static u64 guest_read_fault_inst(struct vcpu_hw_context *context)
+static int guest_read_fault_inst(struct vcpu_hw_context *context, u64 *g_ins)
 {
-	u64 g_ins;
-	physical_addr_t rip_phys = guest_virtual_to_physical(context, context->vmcb->rip);
-	if (rip_phys) {
-		rip_phys = (context->vmcb->cs.sel << 4) | rip_phys;
-		/* FIXME: Should we always do cacheable memory access here ?? */
-		if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
-					  &g_ins, sizeof(g_ins), TRUE) < sizeof(g_ins)) {
-			VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
-			       "instruction pointer. (%x)\n", rip_phys);
-			return 0;
-		}
+	physical_addr_t rip_phys;
 
-		return g_ins;
+	if (gva_to_gpa(context, context->vmcb->rip, &rip_phys)) {
+		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%x to guest physical.\n",
+			context->vmcb->rip);
+		return VMM_EFAIL;
 	}
 
-	VM_LOG(LVL_ERR, "Failed to get RIP guest virtual to physical\n");
+	/* FIXME: Should we always do cacheable memory access here ?? */
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
+				  g_ins, sizeof(*g_ins), TRUE) < sizeof(*g_ins)) {
+		VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
+		       "instruction pointer. (%x)\n", rip_phys);
+		return VMM_EFAIL;
+	}
 
-	return 0;
+	return VMM_OK;
 }
 
 void __handle_vm_npf (struct vcpu_hw_context *context)
@@ -232,7 +231,15 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			}
 		} else {
 			u8 reg, ext_reg = 0;
-			u32 g_ins = (u32)guest_read_fault_inst(context);
+			u64 ins64;
+			u32 g_ins;
+			if (guest_read_fault_inst(context, &ins64)) {
+				VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			g_ins = (u32)ins64;
+			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((u8 *)&g_ins)[3] - 0xc0;
 				ext_reg = 1;
@@ -292,7 +299,15 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			}
 		} else {
 			u8 reg, ext_reg = 0;
-			u32 g_ins = (u32)guest_read_fault_inst(context);
+			u64 ins64;
+			u32 g_ins;
+			if (guest_read_fault_inst(context, &ins64)) {
+				VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			g_ins = (u32)ins64;
+			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((((u8 *)&g_ins)[3] - 0xc0) + 8);
 				ext_reg = 1;
