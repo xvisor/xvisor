@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Wed Apr 16 21:02:45 2014
+# Wed Apr 16 22:36:28 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -189,6 +189,7 @@ CONFIG_CMD_VINPUT=y
 #
 CONFIG_CMD_RTCDEV=y
 CONFIG_CMD_INPUT=y
+CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_RBD=y
 
@@ -213,12 +214,28 @@ CONFIG_MTERM_HISTORY_SIZE=10
 #
 # Library Options
 #
+# CONFIG_VSCREEN is not set
 
 #
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
 CONFIG_NET_STACK_LWIP=y
+
+#
+# Virtual Terminal Emulator Options
+#
+CONFIG_VTEMU=y
+CONFIG_VTEMU_FONT_8x8=y
+CONFIG_VTEMU_FONT_8x16=y
+CONFIG_VTEMU_FONT_6x11=y
+CONFIG_VTEMU_FONT_7x14=y
+CONFIG_VTEMU_FONT_10x18=y
+CONFIG_VTEMU_FONT_SUN8x16=y
+CONFIG_VTEMU_FONT_SUN12x22=y
+CONFIG_VTEMU_FONT_ACORN_8x8=y
+CONFIG_VTEMU_FONT_PEARL_8x8=y
+CONFIG_VTEMU_FONT_MINI_8x8=y
 
 #
 # Virtual FileSystem Options
@@ -315,7 +332,18 @@ CONFIG_SERIO_LIBPS2=y
 #
 # Graphics Drivers
 #
-# CONFIG_FB is not set
+CONFIG_FB=y
+CONFIG_FB_CFB_FILLRECT=y
+CONFIG_FB_CFB_COPYAREA=y
+CONFIG_FB_CFB_IMAGEBLIT=y
+# CONFIG_FB_CFB_REV_PIXELS_IN_BYTE is not set
+# CONFIG_FB_SYS_FILLRECT is not set
+# CONFIG_FB_SYS_COPYAREA is not set
+# CONFIG_FB_SYS_IMAGEBLIT is not set
+# CONFIG_FB_FOREIGN_ENDIAN is not set
+# CONFIG_FB_MODE_HELPERS is not set
+# CONFIG_FB_TILEBLITTING is not set
+CONFIG_FB_ARMCLCD=y
 
 #
 # Network Device Support
