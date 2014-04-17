@@ -29,6 +29,7 @@
 #include <vmm_stdio.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <cpu_interrupts.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
@@ -172,6 +173,9 @@ static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	physical_addr_t gcr3_pa;
 	struct vmcb *vmcb = context->vmcb;
 
+	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
+	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
+
 	/*
 	 * NOTE: X86_CR0_PG with disabled PE is a new mode in SVM. Its
 	 * called Paged Real Mode. It helps virtualization of the
@@ -221,9 +225,11 @@ static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	vmcb->ldtr.sel = 0;
 	vmcb->ldtr.base = 0;
 	vmcb->ldtr.limit = 0xFFFF;
+
 	vmcb->tr.sel = 0;
 	vmcb->tr.base = 0;
-	vmcb->tr.limit = 0xFFFF;
+	vmcb->tr.limit = 0xffff;
+	vmcb->tr.attrs.bytes = (1 << 15) | (11 << 8);
 }
 
 static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_mode mode)
@@ -385,6 +391,10 @@ static void svm_run(struct vcpu_hw_context *context)
 			, "rbx", "rcx", "rdx", "rsi", "rdi"
 			, "r8", "r9", "r10", "r11" , "r12", "r13", "r14", "r15"
 		      );
+
+	/* TR is not reloaded back the cpu after VM exit. */
+	reload_host_tss();
+
 	stgi();
 }
 

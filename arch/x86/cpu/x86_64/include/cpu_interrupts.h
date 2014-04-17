@@ -88,11 +88,11 @@ struct idt64_ptr {
 	u64 idt_base;
 } __packed;
 
-#define REGULAR_INT_STACK	0
+#define REGULAR_INT_STACK	4
 #define STACKFAULT_STACK	1
 #define DOUBLEFAULT_STACK	2
 #define NMI_STACK		3
-#define DEBUG_STACK		4
+#define DEBUG_STACK		0
 #define MCE_STACK		5
 #define EXCEPTION_STACK		6
 #define N_EXCEPTION_STACKS	7
@@ -218,4 +218,5 @@ extern void _exception_page_fault(void);
 extern void __IRQ_32(void);
 extern void _generic_handler(void);
 
+extern void reload_host_tss(void);
 #endif /* _CPU_INTERRYPTS_H__ */

@@ -90,26 +90,25 @@ static inline int guest_in_realmode(struct vcpu_hw_context *context)
 	return (!(context->vmcb->cr0 & X86_CR0_PE));
 }
 
-static u64 guest_read_fault_inst(struct vcpu_hw_context *context)
+static int guest_read_fault_inst(struct vcpu_hw_context *context, u64 *g_ins)
 {
-	u64 g_ins;
-	physical_addr_t rip_phys = guest_virtual_to_physical(context, context->vmcb->rip);
-	if (rip_phys) {
-		rip_phys = (context->vmcb->cs.sel << 4) | rip_phys;
-		/* FIXME: Should we always do cacheable memory access here ?? */
-		if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
-					  &g_ins, sizeof(g_ins), TRUE) < sizeof(g_ins)) {
-			VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
-			       "instruction pointer. (%x)\n", rip_phys);
-			return 0;
-		}
+	physical_addr_t rip_phys;
 
-		return g_ins;
+	if (gva_to_gpa(context, context->vmcb->rip, &rip_phys)) {
+		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%x to guest physical.\n",
+			context->vmcb->rip);
+		return VMM_EFAIL;
 	}
 
-	VM_LOG(LVL_ERR, "Failed to get RIP guest virtual to physical\n");
+	/* FIXME: Should we always do cacheable memory access here ?? */
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
+				  g_ins, sizeof(*g_ins), TRUE) < sizeof(*g_ins)) {
+		VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
+		       "instruction pointer. (%x)\n", rip_phys);
+		return VMM_EFAIL;
+	}
 
-	return 0;
+	return VMM_OK;
 }
 
 void __handle_vm_npf (struct vcpu_hw_context *context)
@@ -232,7 +231,15 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			}
 		} else {
 			u8 reg, ext_reg = 0;
-			u32 g_ins = (u32)guest_read_fault_inst(context);
+			u64 ins64;
+			u32 g_ins;
+			if (guest_read_fault_inst(context, &ins64)) {
+				VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			g_ins = (u32)ins64;
+			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((u8 *)&g_ins)[3] - 0xc0;
 				ext_reg = 1;
@@ -243,15 +250,15 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			g_ins &= ~(0xFFFFUL << 16);
 			if (g_ins == 0x200f) { /* mov %cr0, register */
 				if (!reg)
-					context->vmcb->rax = context->vmcb->cr0;
+					context->vmcb->rax = context->g_cr0;
 
-				context->g_regs[reg] = context->vmcb->cr0;
+				context->g_regs[reg] = context->g_cr0;
 				context->vmcb->rip += MOV_CRn_INST_SZ;
 				/* 1 more byte for 64-bit where r8-r15 registers are used. */
 				if (ext_reg) context->vmcb->rip += 1;
-				VM_LOG(LVL_ERR, "GR: CR0= 0x%lx\n", context->vmcb->cr0);
+				VM_LOG(LVL_ERR, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
 			} else {
-				vmm_printf("unknown fault instruction: %x\n", g_ins);
+				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
 				goto guest_bad_fault;
 			}
 		}
@@ -277,6 +284,9 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 {
 	int crn = context->vmcb->exitcode - VMEXIT_CR0_WRITE;
 	int cr_gpr;
+	u32 bits_clrd;
+	u32 bits_set;
+	u64 htr;
 
 	switch(crn) {
 	case 0:
@@ -289,7 +299,15 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			}
 		} else {
 			u8 reg, ext_reg = 0;
-			u32 g_ins = (u32)guest_read_fault_inst(context);
+			u64 ins64;
+			u32 g_ins;
+			if (guest_read_fault_inst(context, &ins64)) {
+				VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			g_ins = (u32)ins64;
+			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((((u8 *)&g_ins)[3] - 0xc0) + 8);
 				ext_reg = 1;
@@ -299,17 +317,38 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			if (ext_reg) g_ins = ((g_ins << 8) >> 8);
 			g_ins &= ~(0xFFFFUL << 16);
 			if (g_ins == 0x220f) { /* mov register, %cr0 */
-				if (!reg)
-					context->vmcb->cr0 = context->vmcb->rax;
-				else
-					context->vmcb->cr0 = context->g_regs[reg];
+				if (!reg) {
+					bits_set = (~context->g_cr0 & context->vmcb->rax);
+					bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
+					context->g_cr0 = context->vmcb->rax;
+				} else {
+					bits_set = (~context->g_cr0 & context->g_regs[reg]);
+					bits_clrd = (context->g_cr0 & ~context->g_regs[reg]);
+					context->g_cr0 = context->g_regs[reg];
+				}
+
+				if (bits_set & X86_CR0_PE)
+					context->vmcb->cr0 |= X86_CR0_PE;
+
+				if (bits_set & X86_CR0_PG)
+					context->vmcb->cr0 |= X86_CR0_PG;
+
+				if (bits_clrd & X86_CR0_CD)
+					context->vmcb->cr0 &= ~X86_CR0_CD;
+
+				if (bits_clrd & X86_CR0_NW)
+					context->vmcb->cr0 &= ~X86_CR0_NW;
 
 				context->vmcb->rip += MOV_CRn_INST_SZ;
 				/* 1 more byte for 64-bit where r8-r15 registers are used. */
 				if (ext_reg) context->vmcb->rip += 1;
-				VM_LOG(LVL_ERR, "GW: CR0= 0x%lx\n", context->vmcb->cr0);
+
+				asm volatile("str %0\n"
+					     :"=r"(htr));
+				VM_LOG(LVL_ERR, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
+				       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
 			} else {
-				vmm_printf("unknown fault instruction: %x\n", g_ins);
+				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
 				goto guest_bad_fault;
 			}
 		}

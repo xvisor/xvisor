@@ -99,6 +99,10 @@ struct vcpu_hw_context {
 	struct vmcs *vmcs;
 	struct vmm_vcpu *assoc_vcpu; /**< vCPU associated to this hardware context */
 	u64 g_regs[NR_GUEST_REGS];
+	u64 g_cr0; /* till g_cr3 is what guest sees */
+	u64 g_cr1;
+	u64 g_cr2;
+	u64 g_cr3;
 
 	unsigned int asid;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
