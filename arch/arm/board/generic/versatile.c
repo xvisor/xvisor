@@ -31,6 +31,14 @@
 
 #include <generic_board.h>
 
+#include <drv/platform_data/clk-versatile.h>
+
+#include <linux/fb.h>
+#include <linux/amba/bus.h>
+#include <linux/amba/clcd.h>
+
+#include <versatile/clcd.h>
+
 /* ------------------------------------------------------------------------
  *  Versatile Registers
  * ------------------------------------------------------------------------
@@ -41,14 +49,10 @@
 #define VERSATILE_SYS_LED_OFFSET              0x08
 #define VERSATILE_SYS_OSC0_OFFSET             0x0C
 
-#if defined(CONFIG_ARCH_VERSATILE_PB)
 #define VERSATILE_SYS_OSC1_OFFSET             0x10
 #define VERSATILE_SYS_OSC2_OFFSET             0x14
 #define VERSATILE_SYS_OSC3_OFFSET             0x18
 #define VERSATILE_SYS_OSC4_OFFSET             0x1C
-#elif defined(CONFIG_MACH_VERSATILE_AB)
-#define VERSATILE_SYS_OSC1_OFFSET             0x1C
-#endif
 
 #define VERSATILE_SYS_OSCCLCD_OFFSET          0x1c
 
@@ -158,6 +162,132 @@ static int versatile_shutdown(void)
  * Initialization functions
  */
 
+/*
+ * CLCD support.
+ */
+#define SYS_CLCD_MODE_MASK	(3 << 0)
+#define SYS_CLCD_MODE_888	(0 << 0)
+#define SYS_CLCD_MODE_5551	(1 << 0)
+#define SYS_CLCD_MODE_565_RLSB	(2 << 0)
+#define SYS_CLCD_MODE_565_BLSB	(3 << 0)
+#define SYS_CLCD_NLCDIOON	(1 << 2)
+#define SYS_CLCD_VDDPOSSWITCH	(1 << 3)
+#define SYS_CLCD_PWR3V5SWITCH	(1 << 4)
+#define SYS_CLCD_ID_MASK	(0x1f << 8)
+#define SYS_CLCD_ID_SANYO_3_8	(0x00 << 8)
+#define SYS_CLCD_ID_UNKNOWN_8_4	(0x01 << 8)
+#define SYS_CLCD_ID_EPSON_2_2	(0x02 << 8)
+#define SYS_CLCD_ID_SANYO_2_5	(0x07 << 8)
+#define SYS_CLCD_ID_VGA		(0x1f << 8)
+
+/*
+ * Disable all display connectors on the interface module.
+ */
+static void versatile_clcd_disable(struct clcd_fb *fb)
+{
+	void *sys_clcd = (void *)versatile_sys_base + VERSATILE_SYS_CLCD_OFFSET;
+	u32 val;
+
+	val = readl(sys_clcd);
+	val &= ~SYS_CLCD_NLCDIOON | SYS_CLCD_PWR3V5SWITCH;
+	writel(val, sys_clcd);
+
+}
+
+/*
+ * Enable the relevant connector on the interface module.
+ */
+static void versatile_clcd_enable(struct clcd_fb *fb)
+{
+	struct fb_var_screeninfo *var = &fb->fb.var;
+	void *sys_clcd = (void *)versatile_sys_base + VERSATILE_SYS_CLCD_OFFSET;
+	u32 val;
+
+	val = vmm_readl(sys_clcd);
+	val &= ~SYS_CLCD_MODE_MASK;
+
+	switch (var->green.length) {
+	case 5:
+		val |= SYS_CLCD_MODE_5551;
+		break;
+	case 6:
+		if (var->red.offset == 0)
+			val |= SYS_CLCD_MODE_565_RLSB;
+		else
+			val |= SYS_CLCD_MODE_565_BLSB;
+		break;
+	case 8:
+		val |= SYS_CLCD_MODE_888;
+		break;
+	}
+
+	/*
+	 * Set the MUX
+	 */
+	vmm_writel(val, sys_clcd);
+
+	/*
+	 * And now enable the PSUs
+	 */
+	val |= SYS_CLCD_NLCDIOON | SYS_CLCD_PWR3V5SWITCH;
+	vmm_writel(val, sys_clcd);
+
+}
+
+/*
+ * Detect which LCD panel is connected, and return the appropriate
+ * clcd_panel structure.  Note: we do not have any information on
+ * the required timings for the 8.4in panel, so we presently assume
+ * VGA timings.
+ */
+static int versatile_clcd_setup(struct clcd_fb *fb)
+{
+	void *sys_clcd = (void *)versatile_sys_base + VERSATILE_SYS_CLCD_OFFSET;
+	const char *panel_name;
+	u32 val;
+
+	val = vmm_readl(sys_clcd) & SYS_CLCD_ID_MASK;
+	if (val == SYS_CLCD_ID_SANYO_3_8)
+		panel_name = "Sanyo TM38QV67A02A";
+	else if (val == SYS_CLCD_ID_SANYO_2_5) {
+		panel_name = "Sanyo QVGA Portrait";
+	} else if (val == SYS_CLCD_ID_EPSON_2_2)
+		panel_name = "Epson L2F50113T00";
+	else if (val == SYS_CLCD_ID_VGA)
+		panel_name = "VGA";
+	else {
+		vmm_printf("CLCD: unknown LCD panel ID 0x%08x, "
+			   "using VGA\n", val);
+		panel_name = "VGA";
+	}
+
+	fb->panel = versatile_clcd_get_panel(panel_name);
+	if (!fb->panel)
+		return VMM_EINVALID;
+
+	return versatile_clcd_setup_dma(fb, 1024 * 1024);
+}
+
+static void versatile_clcd_decode(struct clcd_fb *fb, struct clcd_regs *regs)
+{
+	clcdfb_decode(fb, regs);
+
+	/* Always clear BGR for RGB565: we do the routing externally */
+	if (fb->fb.var.green.length == 6)
+		regs->cntl &= ~CNTL_BGR;
+}
+
+static struct clcd_board clcd_system_data = {
+	.name		= "Versatile",
+	.caps		= CLCD_CAP_5551 | CLCD_CAP_565 | CLCD_CAP_888,
+	.check		= clcdfb_check,
+	.decode		= versatile_clcd_decode,
+	.disable	= versatile_clcd_disable,
+	.enable		= versatile_clcd_enable,
+	.setup		= versatile_clcd_setup,
+	.remove		= versatile_clcd_remove,
+};
+
 static int __init versatile_early_init(struct vmm_devtree_node *node)
 {
 	int rc;
@@ -184,6 +314,15 @@ static int __init versatile_early_init(struct vmm_devtree_node *node)
 	/* Register reset & shutdown callbacks */
 	vmm_register_system_reset(versatile_reset);
 	vmm_register_system_shutdown(versatile_shutdown);
+
+	/* Initialize versatile clocking */
+	versatile_clk_init((void *)versatile_sys_base);
+
+	/* Setup CLCD (before probing) */
+	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl110,versatile");
+	if (node) {
+		node->system_data = &clcd_system_data;
+	}
 
 	return 0;
 }

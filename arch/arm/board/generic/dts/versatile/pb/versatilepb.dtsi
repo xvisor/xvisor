@@ -65,6 +65,14 @@
 				switch = "br0";
 			};
 
+			clcd {
+	     	 		device_type = "fb";
+	      			compatible = "arm,pl110,versatile";
+	      			reg = <0x10120000 0x1000>;
+				interrupts = <16>;
+				use_dma = <1>;
+			};
+
 			sysctl: sysctl0 { /* System Controller */
 		      		device_type = "sys";
 		      		compatible = "arm,sp810";
