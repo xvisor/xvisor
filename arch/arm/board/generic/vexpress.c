@@ -57,7 +57,7 @@ static int vexpress_clcd_setup(struct clcd_fb *fb)
 	if (!fb->panel)
 		return VMM_EINVALID;
 
-	return versatile_clcd_setup(fb, framesize);
+	return versatile_clcd_setup_dma(fb, framesize);
 }
 
 static struct clcd_board clcd_system_data = {

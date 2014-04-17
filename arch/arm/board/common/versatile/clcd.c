@@ -152,7 +152,7 @@ struct clcd_panel *versatile_clcd_get_panel(const char *name)
 	return NULL;
 }
 
-int versatile_clcd_setup(struct clcd_fb *fb, unsigned long framesize)
+int versatile_clcd_setup_dma(struct clcd_fb *fb, unsigned long framesize)
 {
 	int rc;
 	u32 use_dma, val[2];
