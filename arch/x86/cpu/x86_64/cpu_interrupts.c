@@ -54,6 +54,16 @@ extern struct tss64_desc __xvisor_tss_64_desc;
 				pa; \
 				})
 
+void reload_host_tss(void)
+{
+	struct tss64_desc *tss_64_desc = &__xvisor_tss_64_desc;
+
+	tss_64_desc->tbt.bits.type = _GATE_TYPE_TSS_AVAILABLE;
+
+	__asm__ volatile("ltr %w0\n\t"
+			 ::"q"(VMM_TSS_SEG_SEL));
+}
+
 static int install_idt(void)
 {
 	memset(&int_desc_table, 0, sizeof(int_desc_table));

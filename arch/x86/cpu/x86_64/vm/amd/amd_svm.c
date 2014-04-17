@@ -29,6 +29,7 @@
 #include <vmm_stdio.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <cpu_interrupts.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
 
@@ -390,6 +391,10 @@ static void svm_run(struct vcpu_hw_context *context)
 			, "rbx", "rcx", "rdx", "rsi", "rdi"
 			, "r8", "r9", "r10", "r11" , "r12", "r13", "r14", "r15"
 		      );
+
+	/* TR is not reloaded back the cpu after VM exit. */
+	reload_host_tss();
+
 	stgi();
 }
 

@@ -218,4 +218,5 @@ extern void _exception_page_fault(void);
 extern void __IRQ_32(void);
 extern void _generic_handler(void);
 
+extern void reload_host_tss(void);
 #endif /* _CPU_INTERRYPTS_H__ */
