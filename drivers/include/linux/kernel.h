@@ -9,6 +9,8 @@
 #include <linux/err.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>
+#include <linux/interrupt.h>
+#include <linux/string.h>
 #include <asm/atomic.h>
 
 #define ARRAY_SIZE	array_size
@@ -17,6 +19,7 @@
 #define	sprintf		vmm_sprintf
 
 #define might_sleep()	do {} while(0);
+#define might_sleep_if(cond) do{} while(0);
 
 /* FIXME: This file just a place holder for most cases */
 
