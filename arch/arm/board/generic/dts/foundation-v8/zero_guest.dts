@@ -1,0 +1,10 @@
+
+/dts-v1/;
+
+/include/ "foundation-v8.dtsi"
+
+/ {
+	chosen {
+		console = &SERIAL0;
+	};
+};
