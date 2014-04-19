@@ -477,8 +477,13 @@
 #define VTCR_SL0_SHIFT					6
 #define VTCR_S_MASK					0x00000010
 #define VTCR_S_SHIFT					4
-#define VTCR_T0SZ_MASK					0x00000003
+#define VTCR_T0SZ_MASK					0x0000000F
 #define VTCR_T0SZ_SHIFT					0
+
+#define VTCR_SL0_L2					(0 << VTCR_SL0_SHIFT) /* Starting-level: 2 */
+#define VTCR_SL0_L1					(1 << VTCR_SL0_SHIFT) /* Starting-level: 1 */
+#define VTCR_T0SZ_VAL(ipa_bits)				((32 - (ipa_bits)) & VTCR_T0SZ_MASK)
+#define VTCR_S_VAL(ipa_bits)				((VTCR_T0SZ_VAL(ipa_bits) << 1) & VTCR_S_MASK)
 
 /* HMAIR encodings */
 #define AINDEX_SO					0
