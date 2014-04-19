@@ -563,6 +563,14 @@
 #define TCR_T0SZ_MASK					0x0000003f
 #define TCR_T0SZ_SHIFT					0
 
+#define TCR_PS_32BITS					(0 << TCR_PS_SHIFT)
+#define TCR_PS_36BITS					(1 << TCR_PS_SHIFT)
+#define TCR_PS_40BITS					(2 << TCR_PS_SHIFT)
+#define TCR_PS_42BITS					(3 << TCR_PS_SHIFT)
+#define TCR_PS_44BITS					(4 << TCR_PS_SHIFT)
+#define TCR_PS_48BITS					(5 << TCR_PS_SHIFT)
+#define TCR_T0SZ_VAL(in_bits)				((64 - (in_bits)) & TCR_T0SZ_MASK)
+
 /* VTTBR */
 #define VTTBR_INITVAL					0x0000000000000000ULL
 #define VTTBR_VMID_MASK					0x00FF000000000000ULL
@@ -586,6 +594,17 @@
 #define VTCR_SL0_SHIFT					6
 #define VTCR_T0SZ_MASK					0x0000003f
 #define VTCR_T0SZ_SHIFT					0
+
+#define VTCR_PS_32BITS					(0 << VTCR_PS_SHIFT)
+#define VTCR_PS_36BITS					(1 << VTCR_PS_SHIFT)
+#define VTCR_PS_40BITS					(2 << VTCR_PS_SHIFT)
+#define VTCR_PS_42BITS					(3 << VTCR_PS_SHIFT)
+#define VTCR_PS_44BITS					(4 << VTCR_PS_SHIFT)
+#define VTCR_PS_48BITS					(5 << VTCR_PS_SHIFT)
+#define VTCR_SL0_L2					(0 << VTCR_SL0_SHIFT) /* Starting-level: 2 */
+#define VTCR_SL0_L1					(1 << VTCR_SL0_SHIFT) /* Starting-level: 1 */
+#define VTCR_SL0_L0					(2 << VTCR_SL0_SHIFT) /* Starting-level: 0 */
+#define VTCR_T0SZ_VAL(in_bits)				((64 - (in_bits)) & VTCR_T0SZ_MASK)
 
 /* MAIR_EL2 encodings */
 #define AINDEX_SO					0

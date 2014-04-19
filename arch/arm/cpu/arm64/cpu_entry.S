@@ -346,11 +346,23 @@ __max_dtb_size:
 __hmair_set:
 	.dword (MAIR_INITVAL)
 __htcr_set:
-	.dword ((0x19 << TCR_T0SZ_SHIFT) | (0x2 << TCR_PS_SHIFT) | (0x3 << TCR_SH0_SHIFT) | (0x1 << TCR_ORGN0_SHIFT) | (0x1 << TCR_IRGN0_SHIFT))
+	.dword (TCR_T0SZ_VAL(39) | \
+		TCR_PS_40BITS | \
+		(0x3 << TCR_SH0_SHIFT) | \
+		(0x1 << TCR_ORGN0_SHIFT) | \
+		(0x1 << TCR_IRGN0_SHIFT))
 __vtcr_set:
-	.dword ((0x1 << VTCR_SL0_SHIFT) | (0x19 << VTCR_T0SZ_SHIFT) | (0x2 << VTCR_PS_SHIFT) | (0x3 << VTCR_SH0_SHIFT) | (0x1 << VTCR_ORGN0_SHIFT) | (0x1 << VTCR_IRGN0_SHIFT))
+	.dword (VTCR_SL0_L1 | \
+		VTCR_T0SZ_VAL(39) | \
+		VTCR_PS_40BITS | \
+		(0x3 << VTCR_SH0_SHIFT) | \
+		(0x1 << VTCR_ORGN0_SHIFT) | \
+		(0x1 << VTCR_IRGN0_SHIFT))
 __hcr_set:
-	.dword (HCR_AMO_MASK | HCR_IMO_MASK | HCR_FMO_MASK | HCR_VM_MASK)
+	.dword (HCR_AMO_MASK | \
+		HCR_IMO_MASK | \
+		HCR_FMO_MASK | \
+		HCR_VM_MASK)
 __hsctlr_clear:
 	.dword ~(SCTLR_A_MASK)
 __exec_start:
