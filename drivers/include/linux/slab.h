@@ -25,4 +25,33 @@ static inline void kfree(void *ptr)
 	vmm_free(ptr);
 }
 
+static inline size_t ksize(const void *ptr)
+{
+	return vmm_alloc_size(ptr);
+}
+
+static inline void *krealloc(const void *p, size_t new_size, u32 flags)
+{
+	size_t	ks;
+	void *ret;
+
+	if (!new_size) {
+		kfree((void *) p);
+		return NULL;
+	}
+
+	ks = ksize(p);
+
+	if (ks >= new_size) {
+		return (void *) p;
+	}
+
+	ret = vmm_malloc(new_size);
+
+	if (ret && p)
+		memcpy(ret, p, ks);
+
+	return ret;
+}
+
 #endif /* _LINUX_SLAB_H_ */

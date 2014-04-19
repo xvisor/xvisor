@@ -68,6 +68,25 @@ static void *heap_malloc(struct vmm_heap_control *heap,
 	return (void *)addr;
 }
 
+static virtual_size_t heap_alloc_size(struct vmm_heap_control *heap,
+				      const void *ptr)
+{
+	int rc;
+	unsigned long aaddr, asize;
+
+	BUG_ON(!ptr);
+	BUG_ON(ptr < heap->mem_start);
+	BUG_ON((heap->mem_start + heap->mem_size) <= ptr);
+
+	rc = buddy_mem_find(&heap->ba, (unsigned long) ptr,
+					&aaddr, NULL, &asize);
+	if (rc) {
+		return 0;
+	}
+
+	return asize - ((unsigned long)ptr - aaddr);
+}
+
 static void heap_free(struct vmm_heap_control *heap, void *ptr)
 {
 	int rc;
@@ -165,6 +184,11 @@ void *vmm_zalloc(virtual_size_t size)
 	return ret;
 }
 
+virtual_size_t vmm_alloc_size(const void *ptr)
+{
+	return heap_alloc_size(&normal_heap, ptr);
+}
+
 void vmm_free(void *ptr)
 {
 	heap_free(&normal_heap, ptr);
@@ -209,6 +233,11 @@ void *vmm_dma_zalloc(virtual_size_t size)
 	}
 
 	return ret;
+}
+
+virtual_size_t vmm_dma_alloc_size(const void *ptr)
+{
+	return heap_alloc_size(&dma_heap, ptr);
 }
 
 void vmm_dma_free(void *ptr)

@@ -36,8 +36,11 @@ void *vmm_malloc(virtual_size_t size);
 /** Allocate Normal memory and zero set */
 void *vmm_zalloc(virtual_size_t size);
 
+/** Retrieve allocation size from Normal heap */
+virtual_size_t vmm_alloc_size(const void *ptr);
+
 /** Free Normal memory */
-void vmm_free(void *pointer);
+void vmm_free(void *ptr);
 
 /** Starting virtual address of Normal heap */
 virtual_addr_t vmm_normal_heap_start_va(void);
@@ -60,8 +63,11 @@ void *vmm_dma_malloc(virtual_size_t size);
 /** Allocate DMA memory and zero set */
 void *vmm_dma_zalloc(virtual_size_t size);
 
+/** Retrieve allocation size from DMA heap */
+virtual_size_t vmm_dma_alloc_size(const void *ptr);
+
 /** Free DMA memory */
-void vmm_dma_free(void *pointer);
+void vmm_dma_free(void *ptr);
 
 /** Starting virtual address of DMA heap */
 virtual_addr_t vmm_dma_heap_start_va(void);
