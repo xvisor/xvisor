@@ -16,11 +16,11 @@ guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-PB-A8 default settings]
-  # make ARCH=arm realview-pb-a8-defconfig
+  [3. Configure Xvisor with Generic-v7 default settings]
+  # make ARCH=arm generic-v7-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
@@ -35,7 +35,7 @@ guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # ./tools/scripts/memimg.py -a 0x70010000 -o build/qemu.img build/vmm.bin@0x70010000 build/disk.img@0x71000000
 
   [8. Launch QEMU]
-  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

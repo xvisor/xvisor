@@ -1,7 +1,7 @@
 		Xvisor on ARM Fast Models Vexpress-A15 Host
 		     (With Virtualization Extensions)
 
-This section of readme explains how to build & run Xvisor for Vexpress-A15 
+This section of readme explains how to build & run Xvisor for Vexpress-A15
 emulated by ARM Fast Models. 
 
 By default, Xvisor for Vexpress-A15 supports Realview-PB-A8 guest so we will
@@ -17,11 +17,11 @@ Vexpress-A15 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Vexpress-A15 default settings]
-  # make ARCH=arm vexpress-a15-defconfig
+  [3. Configure Xvisor with Generic-v7-ve default settings]
+  # make ARCH=arm generic-v7-ve-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
@@ -34,7 +34,7 @@ Vexpress-A15 Host:
 
   [7. Create fast_model_boot.axf for running it on ARM Fast Models]
   # ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/disk.img@0x81000000
-  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 -DIMAGE=build/fast_model_boot.img ./docs/arm/fast_model_boot.S -o build/fast_model_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x84000000 -DVEXPRESS_A15 -DIMAGE=build/fast_model_boot.img -DDTB=build/arch/arm/board/generic/dts/vexpress/a15/one_guest_pb-a8.dtb ./docs/arm/fast_model_boot.S -o build/fast_model_boot.axf
 
   [8. Launch ARM fast models 8.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<yyyy>/cadi_system_Linux-Debug-GCC-<yyyy>.so build/fast_model_boot.axf
