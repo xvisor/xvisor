@@ -148,13 +148,13 @@ unsigned long buddy_hk_area_total(struct buddy_allocator *ba)
 	return ba->hk_total_count;
 }
 
-static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
-					   unsigned long addr,
-					   unsigned long *alloc_map,
-					   unsigned long *alloc_bin,
-					   unsigned long *alloc_blk_count)
+/* NOTE: This function must be called with ba->alloc_lock held */
+static struct buddy_area *__buddy_alloc_find(struct buddy_allocator *ba,
+					     unsigned long addr,
+					     unsigned long *alloc_map,
+					     unsigned long *alloc_bin,
+					     unsigned long *alloc_blk_count)
 {
-	irq_flags_t f;
 	struct rb_node *n;
 
 	if (!ba) {
@@ -162,8 +162,6 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
 	}
 
 	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
-
-	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
 
 	n = ba->alloc.rb_node;
   	while (n) {
@@ -180,7 +178,6 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
 				*alloc_blk_count = a->blk_count;
 			}
 
-			vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 			return a;
 		}
 
@@ -193,15 +190,36 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
 		}
 	}
 
-	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
-
 	return NULL;
 }
 
-static void buddy_alloc_add(struct buddy_allocator *ba,
-			    struct buddy_area *a)
+static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
+					   unsigned long addr,
+					   unsigned long *alloc_map,
+					   unsigned long *alloc_bin,
+					   unsigned long *alloc_blk_count)
 {
 	irq_flags_t f;
+	struct buddy_area *ret;
+
+	if (!ba) {
+		return NULL;
+	}
+
+	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+
+	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
+	ret = __buddy_alloc_find(ba, addr,
+				 alloc_map, alloc_bin, alloc_blk_count);
+	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
+
+	return ret;
+}
+
+/* NOTE: This function must be called with ba->alloc_lock held */
+static void __buddy_alloc_add(struct buddy_allocator *ba,
+			      struct buddy_area *a)
+{
 	unsigned long depth;
 	struct rb_node **new = NULL, *parent = NULL;
 	struct buddy_area *parent_area = NULL;
@@ -212,8 +230,6 @@ static void buddy_alloc_add(struct buddy_allocator *ba,
 
 	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
-
-	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
 
 	depth = 0;
 	new = &(ba->alloc.rb_node);
@@ -232,11 +248,9 @@ static void buddy_alloc_add(struct buddy_allocator *ba,
 
 	rb_link_node(&a->hk_rb, parent, new);
 	rb_insert_color(&a->hk_rb, &ba->alloc);
-
-	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 }
 
-static void buddy_alloc_del(struct buddy_allocator *ba,
+static void buddy_alloc_add(struct buddy_allocator *ba,
 			    struct buddy_area *a)
 {
 	irq_flags_t f;
@@ -249,10 +263,22 @@ static void buddy_alloc_del(struct buddy_allocator *ba,
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
+	__buddy_alloc_add(ba, a);
+	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
+}
+
+/* NOTE: This function must be called with ba->alloc_lock held */
+static void __buddy_alloc_del(struct buddy_allocator *ba,
+			      struct buddy_area *a)
+{
+	if (!ba || !a) {
+		return;
+	}
+
+	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	rb_erase(&a->hk_rb, &ba->alloc);
-
-	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 }
 
 /* NOTE: Don't call this function directly */
@@ -898,6 +924,7 @@ int buddy_mem_find(struct buddy_allocator *ba,
 
 int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 {
+	irq_flags_t f;
 	struct buddy_area *a;
 
 	/* Sanity checks */
@@ -908,14 +935,21 @@ int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 
 	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
 
+	/* Acquire alloc lock */
+	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
+
 	/* Find buddy area from alloc tree */
-	a = buddy_alloc_find(ba, addr, NULL, NULL, NULL);
+	a = __buddy_alloc_find(ba, addr, NULL, NULL, NULL);
 	if (!a) {
+		vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 		return VMM_ENOTAVAIL;
 	}
 
 	/* Delete buddy area from alloc tree */
-	buddy_alloc_del(ba, a);
+	__buddy_alloc_del(ba, a);
+
+	/* Release alloc lock */
+	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 
 	/* Put back blocks to bins */
 	buddy_bins_put(ba, a);
@@ -926,6 +960,7 @@ int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 int buddy_mem_partial_free(struct buddy_allocator *ba,
 			   unsigned long addr, unsigned long size)
 {
+	irq_flags_t f;
 	struct buddy_area *a, *b;
 	unsigned long old_bin_num, old_blk_count;
 
@@ -938,9 +973,13 @@ int buddy_mem_partial_free(struct buddy_allocator *ba,
 	DPRINTF("%s: ba=%p addr=0x%x size=0x%x\n",
 		__func__, ba, addr, size);
 
+	/* Acquire alloc lock */
+	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
+
 	/* Find buddy area from alloc tree */
-	a = buddy_alloc_find(ba, addr, NULL, NULL, NULL);
+	a = __buddy_alloc_find(ba, addr, NULL, NULL, NULL);
 	if (!a) {
+		vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 		return VMM_ENOTAVAIL;
 	}
 
@@ -955,17 +994,22 @@ int buddy_mem_partial_free(struct buddy_allocator *ba,
 	    (addr & BLOCK_MASK(a->bin_num))) {
 		a->blk_count = old_blk_count;
 		a->bin_num = old_bin_num;
+		vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 		return VMM_EINVALID;
 	}
 	if (BLOCK_COUNT(AREA_END(a) - (addr + size), a->bin_num) &&
 	    ((addr + size) & BLOCK_MASK(a->bin_num))) {
 		a->blk_count = old_blk_count;
 		a->bin_num = old_bin_num;
+		vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 		return VMM_EINVALID;
 	}
 
 	/* Delete buddy area from alloc tree */
-	buddy_alloc_del(ba, a);
+	__buddy_alloc_del(ba, a);
+
+	/* Release alloc lock */
+	vmm_spin_unlock_irqrestore_lite(&ba->alloc_lock, f);
 
 	/* Collect residue from start of freed buddy area */
 	if (BLOCK_COUNT(addr - AREA_START(a), a->bin_num) &&
