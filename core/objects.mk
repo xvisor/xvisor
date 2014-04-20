@@ -25,6 +25,7 @@ core-objs-y+= vmm_main.o
 core-objs-y+= vmm_heap.o
 core-objs-y+= vmm_stdio.o
 core-objs-y+= vmm_cpumask.o
+core-objs-y+= vmm_devres.o
 core-objs-y+= vmm_devtree.o
 core-objs-y+= vmm_host_irq.o
 core-objs-y+= vmm_host_ram.o

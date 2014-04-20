@@ -27,6 +27,7 @@
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
+#include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
 #include <libs/list.h>
 #include <vmm_error.h>
@@ -77,6 +78,8 @@ struct vmm_device {
 	struct dlist child_head;
 	struct vmm_mutex child_list_lock;
 	struct dlist child_list;
+	vmm_spinlock_t devres_lock;
+	struct dlist devres_head;
 	/* Public fields */
 	u64 *dma_mask;
 	char name[VMM_FIELD_NAME_SIZE];

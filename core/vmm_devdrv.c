@@ -25,6 +25,7 @@
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
+#include <vmm_devres.h>
 #include <vmm_devdrv.h>
 #include <vmm_mutex.h>
 #include <libs/stringlib.h>
@@ -177,6 +178,14 @@ static void __bus_remove_device_driver(struct vmm_bus *bus,
 	if (rc) {
 		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
 			   "remove error %d\n",
+			   bus->name, dev->name, rc);
+	}
+
+	/* Purge all managed resources */
+	rc = vmm_devres_release_all(dev);
+	if (rc) {
+		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+			   "resource remove all error %d\n",
 			   bus->name, dev->name, rc);
 	}
 
@@ -1256,6 +1265,8 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 	INIT_LIST_HEAD(&dev->child_head);
 	INIT_MUTEX(&dev->child_list_lock);
 	INIT_LIST_HEAD(&dev->child_list);
+	INIT_SPIN_LOCK(&dev->devres_lock);
+	INIT_LIST_HEAD(&dev->devres_head);
 }
 
 void vmm_devdrv_ref_device(struct vmm_device *dev)
