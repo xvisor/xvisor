@@ -62,8 +62,6 @@ static int watchdog = 5000;
 module_param(watchdog, int, 0400);
 MODULE_PARM_DESC(watchdog, "transmit timeout in milliseconds");
 
-#define platform_set_drvdata(pdev, data) pdev->priv = (void *) data
-
 /* EMAC register address locking.
  *
  * The EMAC uses an address register to control where data written
