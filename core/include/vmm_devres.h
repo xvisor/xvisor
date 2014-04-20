@@ -71,4 +71,22 @@ int vmm_devres_release(struct vmm_device *dev, vmm_dr_release_t release,
 /** Release all managed resources */
 int vmm_devres_release_all(struct vmm_device *dev);
 
+/** Resource-managed malloc */
+void *vmm_devm_malloc(struct vmm_device *dev, size_t size);
+
+/** Resource-managed zalloc */
+void *vmm_devm_zalloc(struct vmm_device *dev, size_t size);
+
+/** Resource-managed malloc array */
+void *vmm_devm_malloc_array(struct vmm_device *dev, size_t n, size_t size);
+
+/** Resource-managed calloc */
+void *vmm_devm_calloc(struct vmm_device *dev, size_t n, size_t size);
+
+/** Allocate resource managed space and copy an existing string into that. */
+char *vmm_devm_strdup(struct vmm_device *dev, const char *s);
+
+/** Resource-managed free */
+void vmm_devm_free(struct vmm_device *dev, void *p);
+
 #endif /* __VMM_DEVRES_H_ */

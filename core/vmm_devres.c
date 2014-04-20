@@ -22,12 +22,14 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_compiler.h>
 #include <vmm_macros.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_devdrv.h>
 #include <vmm_devres.h>
+#include <libs/mathlib.h>
 #include <libs/stringlib.h>
 #include <libs/list.h>
 
@@ -256,5 +258,87 @@ int vmm_devres_release_all(struct vmm_device *dev)
 	if (WARN_ON(dev->devres_head.next == NULL))
 		return VMM_ENODEV;
 	return release_nodes(dev, dev->devres_head.next, &dev->devres_head);
+}
+
+/*
+ * Managed malloc/free
+ */
+
+static void devm_malloc_release(struct vmm_device *dev, void *res)
+{
+	/* noop */
+}
+
+static int devm_malloc_match(struct vmm_device *dev, void *res, void *data)
+{
+	return res == data;
+}
+
+void *vmm_devm_malloc(struct vmm_device *dev, size_t size)
+{
+	struct vmm_devres *dr;
+
+	dr = alloc_dr(devm_malloc_release, size);
+	if (unlikely(!dr))
+		return NULL;
+
+	vmm_devres_add(dev, dr->data);
+
+	return dr->data;
+}
+
+void *vmm_devm_zalloc(struct vmm_device *dev, size_t size)
+{
+	void *ret = vmm_devm_malloc(dev, size);
+
+	if (ret) {
+		memset(ret, 0, size);
+	}
+
+	return ret;
+}
+
+void *vmm_devm_malloc_array(struct vmm_device *dev, size_t n, size_t size)
+{
+	if (size != 0 && n > udiv64(SIZE_MAX, size))
+		return NULL;
+	return vmm_devm_malloc(dev, n * size);
+}
+
+void *vmm_devm_calloc(struct vmm_device *dev, size_t n, size_t size)
+{
+	void *ret = vmm_devm_malloc_array(dev, n, size);
+
+	if (ret) {
+		memset(ret, 0, n * size);
+	}
+
+	return ret;
+}
+
+char *vmm_devm_strdup(struct vmm_device *dev, const char *s)
+{
+	size_t size;
+	char *buf;
+
+	if (!s) {
+		return NULL;
+	}
+
+	size = strlen(s) + 1;
+	buf = vmm_devm_malloc(dev, size);
+	if (buf) {
+		memcpy(buf, s, size);
+	}
+
+	return buf;
+}
+
+void vmm_devm_free(struct vmm_device *dev, void *p)
+{
+	int rc;
+
+	rc = vmm_devres_destroy(dev, devm_malloc_release, devm_malloc_match, p);
+	WARN_ON(rc);
 }
 
