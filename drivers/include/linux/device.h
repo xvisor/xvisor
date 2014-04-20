@@ -78,6 +78,15 @@
 						match, match_data)
 #define devres_release_all(dev)		vmm_devres_release_all(dev)
 
+#define devm_kmalloc(dev, size, gfp)	vmm_devm_malloc(dev, size)
+#define devm_kzalloc(dev, size, gfp)	vmm_devm_zalloc(dev, size)
+#define devm_kmalloc_array(dev, n, size, flags) \
+					vmm_devm_malloc_array(dev, n, size)
+#define devm_kcalloc(dev, n, size, flags) \
+					vmm_devm_calloc(dev, n, size)
+#define devm_kfree(dev, p)		vmm_devm_free(dev, p)
+#define devm_kstrdup(dev, s, gfp)	vmm_devm_strdup(dev, s)
+
 static inline struct device *bus_find_device(struct bus_type *bus,
 					struct device *start,
 					void *data,
