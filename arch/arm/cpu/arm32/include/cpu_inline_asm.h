@@ -528,6 +528,10 @@ extern unsigned int *_ifar;
 
 #endif
 
+#ifdef CONFIG_ARMV5
+#define cpu_supports_fpu()	0
+#else
 #define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
+#endif
 
 #endif
