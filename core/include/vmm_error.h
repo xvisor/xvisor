@@ -50,5 +50,6 @@
 #define VMM_EFAULT		-23
 #define VMM_ENXIO		-24
 #define VMM_EPROTONOSUPPORT	-25
+#define VMM_EPROBE_DEFER	-26
 
 #endif

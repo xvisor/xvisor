@@ -14,7 +14,7 @@
 #define ERESTARTNOHAND  514     /* restart if no handler.. */
 #define ENOIOCTLCMD     515     /* No ioctl command */
 #define ERESTART_RESTARTBLOCK 516 /* restart by calling sys_restart_syscall */
-#define EPROBE_DEFER    517     /* Driver requests probe retry */
+#define EPROBE_DEFER    -(VMM_EPROBE_DEFER)     /* Driver requests probe retry */
 #define EOPENSTALE      518     /* open found a stale dentry */
 
 /* Defined for the NFSv3 protocol */
