@@ -1,63 +1,25 @@
 #ifndef _LINUX_ERR_H
 #define _LINUX_ERR_H
 
-#include <vmm_compiler.h>
-
+#include <linux/printk.h>
 #include <asm/errno.h>
 
 #define __must_check
 
-/*
- * Kernel pointers have redundant information, so we can use a
- * scheme where we can return either an error code or a dentry
- * pointer with the same return value.
- *
- * This should be a per-architecture thing, to allow different
- * error and pointer decisions.
- */
-#define MAX_ERRNO	4095
+#define MAX_ERRNO		VMM_MAX_ERRNO
 
-#define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-MAX_ERRNO)
+#define IS_ERR_VALUE(x) 	VMM_IS_ERR_VALUE(x)
 
-static inline void * __must_check ERR_PTR(long error)
-{
-	return (void *) error;
-}
+#define ERR_PTR(error)		VMM_ERR_PTR(error)
 
-static inline long __must_check PTR_ERR(const void *ptr)
-{
-	return (long) ptr;
-}
+#define PTR_ERR(ptr)		VMM_PTR_ERR(ptr)
 
-static inline long __must_check IS_ERR(const void *ptr)
-{
-	return IS_ERR_VALUE((unsigned long)ptr);
-}
+#define IS_ERR(ptr)		VMM_IS_ERR(ptr)
 
-static inline long __must_check IS_ERR_OR_NULL(const void *ptr)
-{
-	return !ptr || IS_ERR_VALUE((unsigned long)ptr);
-}
+#define IS_ERR_OR_NULL(ptr)	VMM_IS_ERR_OR_NULL(ptr)
 
-/**
- * ERR_CAST - Explicitly cast an error-valued pointer to another pointer type
- * @ptr: The pointer to cast.
- *
- * Explicitly cast an error-valued pointer to another pointer type in such a
- * way as to make it clear that's what's going on.
- */
-static inline void * __must_check ERR_CAST(const void *ptr)
-{
-	/* cast away the const */
-	return (void *) ptr;
-}
+#define ERR_CAST(ptr)		VMM_ERR_CAST(ptr)
 
-static inline int __must_check PTR_RET(const void *ptr)
-{
-	if (IS_ERR(ptr))
-		return PTR_ERR(ptr);
-	else
-		return 0;
-}
+#define PTR_RET(ptr)		VMM_PTR_ERR(ptr)
 
 #endif /* _LINUX_ERR_H */
