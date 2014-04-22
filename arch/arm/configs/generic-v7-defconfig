@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Thu Apr 10 01:48:44 2014
+# Tue Apr 22 21:59:40 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -12,6 +12,7 @@ CONFIG_ARCH="arm"
 # CONFIG_CPU_ARM11MP is not set
 # CONFIG_CPU_CORTEX_A8 is not set
 # CONFIG_CPU_CORTEX_A9 is not set
+# CONFIG_CPU_CORTEX_A7 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
 # CONFIG_CPU_GENERIC_V5 is not set
 # CONFIG_CPU_GENERIC_V6 is not set
@@ -100,6 +101,7 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
+CONFIG_DMA_HEAP_SIZE_KB=512
 
 #
 # Scheduler Configuration
@@ -270,6 +272,7 @@ CONFIG_VFS_FAT=y
 #
 # CONFIG_ARM_VIC is not set
 CONFIG_ARM_GIC=y
+# CONFIG_VERSATILE_FPGA_IRQ is not set
 # CONFIG_MXC_AVIC is not set
 # CONFIG_BCM2835_INTC is not set
 CONFIG_SUN4I_VIC=y
@@ -314,7 +317,7 @@ CONFIG_MMC=y
 # MMC/SD/SDIO Host Controller Drivers
 #
 CONFIG_MMC_ARMMMCI=y
-# CONFIG_MMC_SUNXI is not set
+CONFIG_MMC_SUNXI=y
 # CONFIG_MMC_SDHCI is not set
 
 #
@@ -415,6 +418,16 @@ CONFIG_VEXPRESS_CONFIG=y
 # IDE Driver
 #
 # CONFIG_IDE is not set
+
+#
+# GPIO Device Support
+#
+# CONFIG_GPIOLIB is not set
+
+#
+# PINCTRL infrastructure and drivers
+#
+# CONFIG_PINCTRL is not set
 
 #
 # Device Emulators
