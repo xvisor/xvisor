@@ -176,7 +176,7 @@ struct vmm_devtree_node {
 
 #define VMM_MAX_PHANDLE_ARGS		8
 struct vmm_devtree_phandle_args {
-	struct vmm_devtree_node *node;
+	struct vmm_devtree_node *np;
 	int args_count;
 	u32 args[VMM_MAX_PHANDLE_ARGS];
 };
@@ -374,6 +374,13 @@ int vmm_devtree_count_strings(struct vmm_devtree_node *node,
  */
 int vmm_devtree_string_index(struct vmm_devtree_node *node,
 			     const char *attrib, int index, const char **out);
+
+/** Retrive the next string.
+ *
+ *  Returns NULL when string is not available.
+ */
+const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr, 
+				    const char *cur);
 
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node);

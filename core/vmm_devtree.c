@@ -917,6 +917,23 @@ int vmm_devtree_string_index(struct vmm_devtree_node *node,
 	return VMM_ENODATA;
 }
 
+const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
+				    const char *cur)
+{
+
+	if (!attr)
+		return NULL;
+
+	if (!cur) {
+		return attr->value;
+	} else if (((const char *)attr->value <= cur) &&
+		   (cur < ((const char *)attr->value + attr->len))) {
+		return cur + strlen(cur) + 1;
+	}
+
+	return NULL;
+}
+
 static void recursive_getpath(char **out, const struct vmm_devtree_node *node)
 {
 	if (!node)
@@ -1285,7 +1302,7 @@ static int devtree_parse_phandle_with_args(
 				int i;
 				if (WARN_ON(count > VMM_MAX_PHANDLE_ARGS))
 					count = VMM_MAX_PHANDLE_ARGS;
-				out->node = node;
+				out->np = node;
 				out->args_count = count;
 				for (i = 0; i < count; i++) {
 					out->args[i] = *list;
@@ -1327,7 +1344,7 @@ struct vmm_devtree_node *vmm_devtree_parse_phandle(
 					    0, index, &args))
 		return NULL;
 
-	return args.node;
+	return args.np;
 }
 
 int vmm_devtree_parse_phandle_with_args(const struct vmm_devtree_node *node,
