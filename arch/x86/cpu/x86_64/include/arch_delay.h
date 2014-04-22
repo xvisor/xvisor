@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 
 /** FIXME: Low-level delay loop */
-void arch_delay_loop(u32 count)
+static inline void arch_delay_loop(u32 count)
 {
 	while (--count);
 }
