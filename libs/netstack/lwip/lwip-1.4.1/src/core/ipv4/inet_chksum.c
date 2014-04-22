@@ -41,7 +41,7 @@
 #include "lwip/inet_chksum.h"
 #include "lwip/def.h"
 
-//#include <stddef.h>
+#include <stddef.h>
 #include <libs/stringlib.h>
 
 /* These are some reference implementations of the checksum algorithm, with the
