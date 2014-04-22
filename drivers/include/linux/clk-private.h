@@ -1,26 +1,5 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-provider.h
- * @author Anup Patel (anup@brainfault.org)
- * @brief header for statically initialized clock data
- *
- * Adapted from linux/include/linux/clk-private.h
+/*
+ *  linux/include/linux/clk-private.h
  *
  *  Copyright (c) 2010-2011 Jeremy Kerr <jeremy.kerr@canonical.com>
  *  Copyright (C) 2011-2012 Linaro Ltd <mturquette@linaro.org>
@@ -29,11 +8,16 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#ifndef __CLK_PRIVATE_H
-#define __CLK_PRIVATE_H
+#ifndef __LINUX_CLK_PRIVATE_H
+#define __LINUX_CLK_PRIVATE_H
 
-#include <drv/clk-provider.h>
-#include <libs/list.h>
+#include <linux/clk-provider.h>
+#include <linux/kref.h>
+#include <linux/list.h>
+
+#if 1 /* FIXME: */
+#include <linux/module.h>
+#endif
 
 /*
  * WARNING: Do not include clk-private.h from any file that implements struct
@@ -46,10 +30,13 @@
 
 #ifdef CONFIG_COMMON_CLK
 
+struct module;
+
 struct clk {
 	const char		*name;
 	const struct clk_ops	*ops;
 	struct clk_hw		*hw;
+	struct module		*owner;
 	struct clk		*parent;
 	const char		**parent_names;
 	struct clk		**parents;
@@ -62,9 +49,14 @@ struct clk {
 	unsigned long		flags;
 	unsigned int		enable_count;
 	unsigned int		prepare_count;
+	unsigned long		accuracy;
 	struct hlist_head	children;
 	struct hlist_node	child_node;
 	unsigned int		notifier_count;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry		*dentry;
+#endif
+	struct kref		ref;
 };
 
 /*
@@ -222,9 +214,9 @@ struct clk {
  *
  * Returns 0 on success, otherwise an error code.
  */
-int __clk_init(struct vmm_device *dev, struct clk *clk);
+int __clk_init(struct device *dev, struct clk *clk);
 
-struct clk *__clk_register(struct vmm_device *dev, struct clk_hw *hw);
+struct clk *__clk_register(struct device *dev, struct clk_hw *hw);
 
 #endif /* CONFIG_COMMON_CLK */
-#endif /* __CLK_PRIVATE_H */
+#endif /* CLK_PRIVATE_H */

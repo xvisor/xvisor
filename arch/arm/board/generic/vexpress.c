@@ -23,12 +23,12 @@
 
 #include <vmm_error.h>
 #include <vmm_devtree.h>
-#include <drv/vexpress.h>
 
 #include <generic_board.h>
 
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
+#include <linux/vexpress.h>
 
 #include <versatile/clcd.h>
 

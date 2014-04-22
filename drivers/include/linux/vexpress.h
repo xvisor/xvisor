@@ -34,8 +34,8 @@
  * Copyright (C) 2012 ARM Limited
  */
 
-#ifndef _DRV_VEXPRESS_H
-#define _DRV_VEXPRESS_H
+#ifndef _LINUX_VEXPRESS_H
+#define _LINUX_VEXPRESS_H
 
 #include <vmm_devdrv.h>
 

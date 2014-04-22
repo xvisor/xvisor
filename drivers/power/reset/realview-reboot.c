@@ -28,7 +28,8 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
-#include <drv/realview.h>
+
+#include <linux/realview.h>
 
 #define MODULE_DESC			"ARM Realview Reboot Driver"
 #define MODULE_AUTHOR			"Anup Patel"

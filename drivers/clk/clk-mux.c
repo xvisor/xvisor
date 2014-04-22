@@ -1,39 +1,21 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-mux.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Simple multiplexer clock implementation
- *
- * Adapted from linux/drivers/clk/clk-mux.c
- *
+/*
  * Copyright (C) 2011 Sascha Hauer, Pengutronix <s.hauer@pengutronix.de>
  * Copyright (C) 2011 Richard Zhao, Linaro <richard.zhao@linaro.org>
  * Copyright (C) 2011-2012 Mike Turquette, Linaro Ltd <mturquette@linaro.org>
  *
- * The original source is licensed under GPL.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Simple multiplexer clock implementation
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_modules.h>
-#include <drv/clk.h>
-#include <drv/clk-provider.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include <linux/err.h>
 
 /*
  * DOC: basic adjustable multiplexer clock that cannot gate
@@ -69,7 +51,7 @@ static u8 clk_mux_get_parent(struct clk_hw *hw)
 		for (i = 0; i < num_parents; i++)
 			if (mux->table[i] == val)
 				return i;
-		return VMM_EINVALID;
+		return -EINVAL;
 	}
 
 	if (val && (mux->flags & CLK_MUX_INDEX_BIT))
@@ -79,7 +61,7 @@ static u8 clk_mux_get_parent(struct clk_hw *hw)
 		val--;
 
 	if (val >= num_parents)
-		return VMM_EINVALID;
+		return -EINVAL;
 
 	return val;
 }
@@ -88,7 +70,7 @@ static int clk_mux_set_parent(struct clk_hw *hw, u8 index)
 {
 	struct clk_mux *mux = to_clk_mux(hw);
 	u32 val;
-	irq_flags_t flags = 0;
+	unsigned long flags = 0;
 
 	if (mux->table)
 		index = mux->table[index];
@@ -102,7 +84,7 @@ static int clk_mux_set_parent(struct clk_hw *hw, u8 index)
 	}
 
 	if (mux->lock)
-		vmm_spin_lock_irqsave(mux->lock, flags);
+		spin_lock_irqsave(mux->lock, flags);
 
 	if (mux->flags & CLK_MUX_HIWORD_MASK) {
 		val = mux->mask << (mux->shift + 16);
@@ -114,7 +96,7 @@ static int clk_mux_set_parent(struct clk_hw *hw, u8 index)
 	clk_writel(val, mux->reg);
 
 	if (mux->lock)
-		vmm_spin_unlock_irqrestore(mux->lock, flags);
+		spin_unlock_irqrestore(mux->lock, flags);
 
 	return 0;
 }
@@ -124,17 +106,17 @@ const struct clk_ops clk_mux_ops = {
 	.set_parent = clk_mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate,
 };
-VMM_EXPORT_SYMBOL_GPL(clk_mux_ops);
+EXPORT_SYMBOL_GPL(clk_mux_ops);
 
 const struct clk_ops clk_mux_ro_ops = {
 	.get_parent = clk_mux_get_parent,
 };
-VMM_EXPORT_SYMBOL_GPL(clk_mux_ro_ops);
+EXPORT_SYMBOL_GPL(clk_mux_ro_ops);
 
-struct clk *clk_register_mux_table(struct vmm_device *dev, const char *name,
+struct clk *clk_register_mux_table(struct device *dev, const char *name,
 		const char **parent_names, u8 num_parents, unsigned long flags,
 		void __iomem *reg, u8 shift, u32 mask,
-		u8 clk_mux_flags, u32 *table, vmm_spinlock_t *lock)
+		u8 clk_mux_flags, u32 *table, spinlock_t *lock)
 {
 	struct clk_mux *mux;
 	struct clk *clk;
@@ -144,16 +126,16 @@ struct clk *clk_register_mux_table(struct vmm_device *dev, const char *name,
 	if (clk_mux_flags & CLK_MUX_HIWORD_MASK) {
 		width = fls(mask) - ffs(mask) + 1;
 		if (width + shift > 16) {
-			vmm_printf("mux value exceeds LOWORD field\n");
-			return NULL;
+			pr_err("mux value exceeds LOWORD field\n");
+			return ERR_PTR(-EINVAL);
 		}
 	}
 
 	/* allocate the mux */
-	mux = vmm_zalloc(sizeof(struct clk_mux));
+	mux = kzalloc(sizeof(struct clk_mux), GFP_KERNEL);
 	if (!mux) {
-		vmm_printf("%s: could not allocate mux clk\n", __func__);
-		return NULL;
+		pr_err("%s: could not allocate mux clk\n", __func__);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	init.name = name;
@@ -176,17 +158,17 @@ struct clk *clk_register_mux_table(struct vmm_device *dev, const char *name,
 
 	clk = clk_register(dev, &mux->hw);
 
-	if (!clk)
-		vmm_free(mux);
+	if (IS_ERR(clk))
+		kfree(mux);
 
 	return clk;
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_mux_table);
+EXPORT_SYMBOL_GPL(clk_register_mux_table);
 
-struct clk *clk_register_mux(struct vmm_device *dev, const char *name,
+struct clk *clk_register_mux(struct device *dev, const char *name,
 		const char **parent_names, u8 num_parents, unsigned long flags,
 		void __iomem *reg, u8 shift, u8 width,
-		u8 clk_mux_flags, vmm_spinlock_t *lock)
+		u8 clk_mux_flags, spinlock_t *lock)
 {
 	u32 mask = BIT(width) - 1;
 
@@ -194,4 +176,4 @@ struct clk *clk_register_mux(struct vmm_device *dev, const char *name,
 				      flags, reg, shift, mask, clk_mux_flags,
 				      NULL, lock);
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_mux);
+EXPORT_SYMBOL_GPL(clk_register_mux);

@@ -1,27 +1,4 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file sp810.h
- * @author Anup Patel (anup@brainfault.org)
- * @brief PrimeCell SP810 header file
- *
- * Adapted from linux/include/linux/amba/sp810.h
- *
+/*
  * ARM PrimeXsys System Controller SP810 header file
  *
  * Copyright (C) 2009 ST Microelectronics
@@ -32,10 +9,10 @@
  * warranty of any kind, whether express or implied.
  */
 
-#ifndef __DRV_ARM_SP810_H
-#define __DRV_ARM_SP810_H
+#ifndef __AMBA_SP810_H
+#define __AMBA_SP810_H
 
-#include <vmm_host_io.h>
+#include <linux/io.h>
 
 /* sysctl registers offset */
 #define SCCTRL			0x000
@@ -73,13 +50,13 @@
 
 #define SCCTRL_TIMERENnSEL_SHIFT(n)	(15 + ((n) * 2))
 
-static inline void sysctl_soft_reset(void *base)
+static inline void sysctl_soft_reset(void __iomem *base)
 {
 	/* switch to slow mode */
-	vmm_writel(0x2, base + SCCTRL);
+	writel(0x2, base + SCCTRL);
 
 	/* writing any value to SCSYSSTAT reg will reset system */
-	vmm_writel(0, base + SCSYSSTAT);
+	writel(0, base + SCSYSSTAT);
 }
 
-#endif	/* __DRV_ARM_SP810_H */
+#endif /* __AMBA_SP810_H */

@@ -33,7 +33,7 @@
  */
 
 #include <libs/mathlib.h>
-#include <drv/hardware/icst.h>
+#include <asm/hardware/icst.h>
 
 /*
  * Divisors for each OD setting.

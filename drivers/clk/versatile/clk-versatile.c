@@ -20,12 +20,10 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief ARM Versatile boards clock implementation
  */
-#include <vmm_error.h>
-#include <vmm_compiler.h>
-#include <drv/clk.h>
-#include <drv/clkdev.h>
-#include <drv/clk-provider.h>
-#include <drv/platform_data/clk-versatile.h>
+#include <linux/clk.h>
+#include <linux/clkdev.h>
+#include <linux/clk-provider.h>
+#include <linux/platform_data/clk-versatile.h>
 
 #include "clk-icst.h"
 
@@ -62,7 +60,8 @@ void __init versatile_clk_init(void *sysbase)
 	struct clk *clk;
 
 	/* ICST VCO clock */
-	clk = icst_clk_register(NULL, &versatile_osc4_desc, sysbase);
+	clk = icst_clk_register(NULL, &versatile_osc4_desc,
+				"osc4", NULL, sysbase);
 
 	/* FIXME: Dummy clocks to force match with device tree node names */
 	clk_register_clkdev(clk, NULL, "clcd");

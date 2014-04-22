@@ -22,12 +22,12 @@
  */
 
 #include <vmm_error.h>
-#include <drv/realview.h>
-#include <drv/clk-provider.h>
-#include <drv/platform_data/clk-realview.h>
 
 #include <generic_board.h>
 
+#include <linux/realview.h>
+#include <linux/clk-provider.h>
+#include <linux/platform_data/clk-realview.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
 

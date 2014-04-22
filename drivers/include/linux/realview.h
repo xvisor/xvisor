@@ -21,10 +21,8 @@
  * @brief ARM Realview board interface header
  */
 
-#ifndef _DRV_REALVIEW_H
-#define _DRV_REALVIEW_H
-
-#include <vmm_devdrv.h>
+#ifndef _LINUX_REALVIEW_H
+#define _LINUX_REALVIEW_H
 
 /* ------------------------------------------------------------------------
  *  RealView Registers

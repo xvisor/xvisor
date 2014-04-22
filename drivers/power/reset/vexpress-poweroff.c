@@ -29,7 +29,8 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
-#include <drv/vexpress.h>
+
+#include <linux/vexpress.h>
 
 #define MODULE_DESC		"ARM Versatile Express Power-off/Reboot Driver"
 #define MODULE_AUTHOR		"Anup Patel"

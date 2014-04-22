@@ -36,7 +36,8 @@
 #include <vmm_scheduler.h>
 #include <vmm_manager.h>
 #include <vmm_spinlocks.h>
-#include <drv/clk-private.h>
+
+#include <linux/clk-private.h>
 
 #undef DEBUG
 
@@ -958,7 +959,7 @@ static struct clk *clk_calc_new_rates(struct clk *clk, unsigned long rate)
 	u8 p_index = 0;
 
 	/* sanity */
-	if (!clk)
+	if (VMM_IS_ERR_OR_NULL(clk))
 		return NULL;
 
 	/* save parent rate, if it exists */
@@ -1199,7 +1200,7 @@ static struct clk *__clk_init_parent(struct clk *clk)
 		goto out;
 
 	if (clk->num_parents == 1) {
-		if (!clk->parent)
+		if (VMM_IS_ERR_OR_NULL(clk->parent))
 			ret = clk->parent = __clk_lookup(clk->parent_names[0]);
 		ret = clk->parent;
 		goto out;
@@ -1496,7 +1497,7 @@ struct clk *__clk_register(struct vmm_device *dev, struct clk_hw *hw)
 
 	ret = __clk_init(dev, clk);
 	if (ret)
-		return NULL;
+		return VMM_ERR_PTR(ret);
 
 	return clk;
 }
@@ -1586,11 +1587,12 @@ struct clk *clk_register(struct vmm_device *dev, struct clk_hw *hw)
 
 	vmm_free(clk);
 fail_out:
-	return NULL;
+	return VMM_ERR_PTR(ret);
 }
 VMM_EXPORT_SYMBOL_GPL(clk_register);
 
 /**
+ * FIXME:
  * clk_unregister - unregister a currently registered clock
  * @clk: clock to unregister
  *
@@ -1598,6 +1600,63 @@ VMM_EXPORT_SYMBOL_GPL(clk_register);
  */
 void clk_unregister(struct clk *clk) {}
 VMM_EXPORT_SYMBOL_GPL(clk_unregister);
+
+static void devm_clk_release(struct device *dev, void *res)
+{
+	clk_unregister(res);
+}
+
+/**
+ * devm_clk_register - resource managed clk_register()
+ * @dev: device that is registering this clock
+ * @hw: link to hardware-specific clock data
+ *
+ * Managed clk_register(). Clocks returned from this function are
+ * automatically clk_unregister()ed on driver detach. See clk_register() for
+ * more information.
+ */
+struct clk *devm_clk_register(struct vmm_device *dev, struct clk_hw *hw)
+{
+	struct clk *clk;
+	int ret;
+
+	clk = vmm_devres_alloc(devm_clk_release, sizeof(*clk));
+	if (!clk)
+		return VMM_ERR_PTR(-ENOMEM);
+
+	ret = _clk_register(dev, hw, clk);
+	if (!ret) {
+		vmm_devres_add(dev, clk);
+	} else {
+		vmm_devres_free(clk);
+		clk = VMM_ERR_PTR(ret);
+	}
+
+	return clk;
+}
+VMM_EXPORT_SYMBOL_GPL(devm_clk_register);
+
+static int devm_clk_match(struct vmm_device *dev, void *res, void *data)
+{
+	struct clk *c = res;
+	if (WARN_ON(!c))
+		return 0;
+	return c == data;
+}
+
+/**
+ * devm_clk_unregister - resource managed clk_unregister()
+ * @clk: clock to unregister
+ *
+ * Deallocate a clock allocated with devm_clk_register(). Normally
+ * this function will not need to be called and the resource management
+ * code will ensure that the resource is freed.
+ */
+void devm_clk_unregister(struct vmm_device *dev, struct clk *clk)
+{
+	WARN_ON(vmm_devres_release(dev, devm_clk_release, devm_clk_match, clk));
+}
+VMM_EXPORT_SYMBOL_GPL(devm_clk_unregister);
 
 /***        clk rate change notifiers        ***/
 
@@ -1737,7 +1796,18 @@ struct of_clk_provider {
 };
 
 static LIST_HEAD(of_clk_providers);
-static DEFINE_SPINLOCK(of_clk_lock);
+static DEFINE_SPINLOCK(of_clk_slock);
+
+/* of_clk_provider list locking helpers */
+void of_clk_lock(void)
+{
+	vmm_spin_lock(&of_clk_slock);
+}
+
+void of_clk_unlock(void)
+{
+	vmm_spin_unlock(&of_clk_slock);
+}
 
 struct clk *of_clk_src_simple_get(struct vmm_devtree_phandle_args *clkspec,
 				  void *data)
@@ -1754,7 +1824,7 @@ struct clk *of_clk_src_onecell_get(struct vmm_devtree_phandle_args *clkspec,
 
 	if (idx >= clk_data->clk_num) {
 		vmm_printf("%s: invalid clock index %d\n", __func__, idx);
-		return NULL;
+		return ERR_PTR(VMM_EINVALID);
 	}
 
 	return clk_data->clks[idx];
@@ -1783,9 +1853,9 @@ int of_clk_add_provider(struct vmm_devtree_node *np,
 	cp->data = data;
 	cp->get = clk_src_get;
 
-	vmm_spin_lock(&of_clk_lock);
+	vmm_spin_lock(&of_clk_slock);
 	list_add(&cp->link, &of_clk_providers);
-	vmm_spin_unlock(&of_clk_lock);
+	vmm_spin_unlock(&of_clk_slock);
 	DPRINTF("Added clock from %s\n", np->full_name);
 
 	return 0;
@@ -1800,7 +1870,7 @@ void of_clk_del_provider(struct vmm_devtree_node *np)
 {
 	struct of_clk_provider *cp;
 
-	vmm_spin_lock(&of_clk_lock);
+	vmm_spin_lock(&of_clk_slock);
 	list_for_each_entry(cp, &of_clk_providers, link) {
 		if (cp->node == np) {
 			list_del(&cp->link);
@@ -1808,24 +1878,33 @@ void of_clk_del_provider(struct vmm_devtree_node *np)
 			break;
 		}
 	}
-	vmm_spin_unlock(&of_clk_lock);
+	vmm_spin_unlock(&of_clk_slock);
 }
 VMM_EXPORT_SYMBOL_GPL(of_clk_del_provider);
 
-struct clk *of_clk_get_from_provider(struct vmm_devtree_phandle_args *clkspec)
+struct clk *__of_clk_get_from_provider(struct vmm_devtree_phandle_args *clkspec)
 {
 	struct of_clk_provider *provider;
-	struct clk *clk = NULL;
+	struct clk *clk = VMM_ERR_PTR(-EPROBE_DEFER);
 
 	/* Check if we have such a provider in our array */
-	vmm_spin_lock(&of_clk_lock);
 	list_for_each_entry(provider, &of_clk_providers, link) {
-		if (provider->node == clkspec->node)
+		if (provider->node == clkspec->np)
 			clk = provider->get(clkspec, provider->data);
-		if (clk)
+		if (!VMM_IS_ERR(clk))
 			break;
 	}
-	vmm_spin_unlock(&of_clk_lock);
+
+	return clk;
+}
+
+struct clk *of_clk_get_from_provider(struct vmm_devtree_phandle_args *clkspec)
+{
+	struct clk *clk;
+
+	vmm_spin_lock(&of_clk_slock);
+	clk = __of_clk_get_from_provider(clkspec);
+	vmm_spin_unlock(&of_clk_slock);
 
 	return clk;
 }
@@ -1844,11 +1923,11 @@ const char *of_clk_get_parent_name(struct vmm_devtree_node *np, int index)
 	if (rc)
 		return NULL;
 
-	if (vmm_devtree_string_index(clkspec.node,
+	if (vmm_devtree_string_index(clkspec.np,
 				     "clock-output-names",
 				     clkspec.args_count ? clkspec.args[0] : 0,
 				     &clk_name) < 0)
-		clk_name = clkspec.node->name;
+		clk_name = clkspec.np->name;
 
 	return clk_name;
 }

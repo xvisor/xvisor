@@ -31,11 +31,10 @@
 
 #include <generic_board.h>
 
-#include <drv/platform_data/clk-versatile.h>
-
 #include <linux/fb.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/clcd.h>
+#include <linux/platform_data/clk-versatile.h>
 
 #include <versatile/clcd.h>
 

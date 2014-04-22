@@ -27,9 +27,10 @@
 #include <vmm_stdio.h>
 #include <arch_board.h>
 #include <libs/vtemu.h>
-#include <drv/clk-provider.h>
 
 #include <generic_board.h>
+
+#include <linux/clk-provider.h>
 
 /*
  * Global board context
