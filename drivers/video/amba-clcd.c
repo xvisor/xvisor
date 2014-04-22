@@ -473,7 +473,7 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 	}
 
 	fb->clk = clk_get(fb->dev, NULL);
-	if (!fb->clk) {
+	if (IS_ERR(fb->clk)) {
 		ret = PTR_ERR(fb->clk);
 		goto out;
 	}

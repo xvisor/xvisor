@@ -116,7 +116,7 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 
 	/* Find clock for timer */
 	clk = of_clk_get(node, 0);
-	if (!clk) {
+	if (VMM_IS_ERR(clk)) {
 		vmm_panic("Can't get timer clock");
 	}
 

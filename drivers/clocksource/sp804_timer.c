@@ -240,15 +240,15 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	base += 0x20;
 
 	clk = of_clk_get(node, 1);
-	if (!clk) {
+	if (VMM_IS_ERR(clk)) {
 		clk = of_clk_get(node, 0);
 	}
-	if (!clk) {
+	if (VMM_IS_ERR(clk)) {
 		clk = clk_get_sys("sp804", "arm,sp804");
 	}
-	if (!clk) {
+	if (VMM_IS_ERR(clk)) {
 		vmm_devtree_regunmap(node, base, 0);
-		return VMM_ENODEV;
+		return VMM_PTR_ERR(clk);
 	}
 	hz = sp804_get_clock_rate(clk);
 	if (hz < 0) {

@@ -173,7 +173,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 
 	kmi->clk = clk_get(dev, "KMIREFCLK");
 	if (IS_ERR(kmi->clk)) {
-		ret = -EFAIL;
+		ret = PTR_ERR(kmi->clk);
 		goto unmap;
 	}
 
