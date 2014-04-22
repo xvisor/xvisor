@@ -65,7 +65,7 @@ static inline void *VMM_ERR_PTR(long error)
 
 static inline long VMM_PTR_ERR(const void *ptr)
 {
-	return -((long)ptr);
+	return (ptr) ? -((long)ptr) : VMM_EFAIL;
 }
 
 static inline long VMM_IS_ERR(const void *ptr)
