@@ -2,6 +2,7 @@
 #define __LINUX_GPIO_H
 
 #include <linux/errno.h>
+#include <linux/device.h>
 
 /* see Documentation/gpio.txt */
 

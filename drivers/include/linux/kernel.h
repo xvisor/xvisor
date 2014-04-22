@@ -6,6 +6,8 @@
 #include <vmm_stdio.h>
 #include <libs/mathlib.h>
 
+#include <stdarg.h>
+
 #include <linux/err.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>

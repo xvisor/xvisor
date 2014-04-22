@@ -3,17 +3,16 @@
 
 #include <vmm_modules.h>
 
+#include <linux/export.h>
 #include <linux/init.h>
 
 #define KBUILD_MODNAME			VMM_MODNAME
 #define KBUILD_BASENAME			VMM_MODNAME
 
-#define EXPORT_SYMBOL(sym)		VMM_EXPORT_SYMBOL(sym)
-#define EXPORT_SYMBOL_GPL(sym)		VMM_EXPORT_SYMBOL_GPL(sym)
-
 #define module vmm_module
 
 #define __user
+#define __init_refok
 
 #define MODULE_DEVICE_TABLE(p1,p2)
 

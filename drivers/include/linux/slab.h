@@ -2,11 +2,10 @@
 #define _LINUX_SLAB_H_
 
 #include <vmm_heap.h>
+#include <libs/stringlib.h>
 
+#include <linux/gfp.h>
 #include <linux/bug.h>
-
-#define GFP_KERNEL		0x00000001
-#define GFP_ATOMIC		0x00000002
 
 #define kmalloc_track_caller	kmalloc
 

@@ -217,6 +217,7 @@ struct serio_device_id {
 	__u8 proto;
 };
 
+#if 0
 /*
  * Struct used for matching a device
  */
@@ -227,6 +228,7 @@ struct of_device_id
 	char	compatible[128];
 	void	*data;
 };
+#endif
 
 /* VIO */
 struct vio_device_id {
