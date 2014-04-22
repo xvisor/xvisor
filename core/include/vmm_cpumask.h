@@ -33,7 +33,7 @@
 #include <libs/bitmap.h>
 
 struct vmm_cpumask { 
-	DEFINE_BITMAP(bits, CONFIG_CPU_COUNT); 
+	DECLARE_BITMAP(bits, CONFIG_CPU_COUNT); 
 };
 
 typedef struct vmm_cpumask vmm_cpumask_t;
@@ -622,7 +622,7 @@ static inline void vmm_cpumask_copy(struct vmm_cpumask *dstp,
 
 /* It's common to want to use cpu_all_mask in struct member initializers,
  * so it has to refer to an address rather than a pointer. */
-extern const DEFINE_BITMAP(cpu_all_bits, CONFIG_CPU_COUNT);
+extern const DECLARE_BITMAP(cpu_all_bits, CONFIG_CPU_COUNT);
 #define cpu_all_mask to_cpumask(cpu_all_bits)
 
 /* First bits of cpu_bit_bitmap are in fact unset. */

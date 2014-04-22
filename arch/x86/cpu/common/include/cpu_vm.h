@@ -111,7 +111,7 @@ struct vcpu_hw_context {
 	struct page_table *shadow_pgt; /**< Shadow page table when EPT/NPT is not available in chip */
 	union page32 *shadow32_pg_list; /**< Page list for 32-bit guest and paged real mode. */
 	union page32 *shadow32_pgt; /**<32-bit page table */
-	DEFINE_BITMAP(shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
+	DECLARE_BITMAP(shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
 	u32 pgmap_free_cache;
 
 	struct vcpu_intercept_table icept_table;
