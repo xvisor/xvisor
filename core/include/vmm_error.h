@@ -51,6 +51,7 @@
 #define VMM_ENXIO		-24
 #define VMM_EPROTONOSUPPORT	-25
 #define VMM_EPROBE_DEFER	-26
+#define VMM_ESHUTDOWN		-27
 
 #define VMM_MAX_ERRNO		4095
 
