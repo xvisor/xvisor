@@ -93,11 +93,14 @@ static inline struct property *of_find_property(const struct device_node *np,
 
 	pp = vmm_devtree_getattr(np, name);
 
-	*lenp = pp->len;
+	if (pp)
+		*lenp = pp->len;
 
 	return pp;
 }
 
+#define of_count_phandle_with_args \
+				vmm_devtree_count_phandle_with_args
 #define	of_parse_phandle_with_args \
 				vmm_devtree_parse_phandle_with_args
 #define	of_parse_phandle_with_fixed_args \
@@ -125,7 +128,14 @@ static inline struct property *of_find_property(const struct device_node *np,
 
 #define of_match_node			vmm_devtree_match_node
 
+#define of_prop_next_u32		vmm_devtree_next_u32
 #define	of_prop_next_string		vmm_devtree_next_string
+
+#define of_property_for_each_u32(np, propname, prop, p, u)	\
+	for (prop = of_find_property(np, propname, NULL),	\
+		p = of_prop_next_u32(prop, NULL, &u);		\
+		p;						\
+		p = of_prop_next_u32(prop, p, &u))
 
 #define of_property_for_each_string(np, propname, prop, s)      \
         for (prop = of_find_property(np, propname, NULL),       \

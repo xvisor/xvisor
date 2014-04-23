@@ -917,10 +917,33 @@ int vmm_devtree_string_index(struct vmm_devtree_node *node,
 	return VMM_ENODATA;
 }
 
+const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
+				const u32 *cur, u32 *val)
+{
+	const u32 *ret;
+
+	if (!attr)
+		return NULL;
+
+	if (!cur) {
+		ret = (const u32 *)attr->value;
+	} else if (((const u32 *)attr->value <= cur) &&
+		   (cur < ((const u32 *)attr->value + attr->len / sizeof(u32)))) {
+		ret = cur++;
+	} else {
+		ret = NULL;
+	}
+
+	if (val && ret) {
+		*val = *ret;
+	}
+
+	return ret;
+}
+
 const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 				    const char *cur)
 {
-
 	if (!attr)
 		return NULL;
 

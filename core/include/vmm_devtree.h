@@ -375,6 +375,13 @@ int vmm_devtree_count_strings(struct vmm_devtree_node *node,
 int vmm_devtree_string_index(struct vmm_devtree_node *node,
 			     const char *attrib, int index, const char **out);
 
+/** Retrive the next u32 value.
+ *
+ *  Returns NULL when u32 is not available.
+ */
+const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
+				const u32 *cur, u32 *val);
+
 /** Retrive the next string.
  *
  *  Returns NULL when string is not available.
