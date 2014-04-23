@@ -13,6 +13,10 @@
 
 #include <drv/clk.h>
 
+#include <linux/err.h>
+#include <linux/kernel.h>
+#include <linux/notifier.h>
+
 /* For now this is just place holder header. */
 
 #endif

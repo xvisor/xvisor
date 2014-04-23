@@ -10,6 +10,7 @@
 #define	spin_lock_irq		vmm_spin_lock_irq
 #define	spin_unlock_irq		vmm_spin_unlock_irq
 #define	spin_lock_irqsave	vmm_spin_lock_irqsave
+#define spin_trylock_irqsave	vmm_spin_trylock_irqsave
 #define	spin_unlock_irqrestore	vmm_spin_unlock_irqrestore
 
 #define	spin_lock_init(__lock)	INIT_SPIN_LOCK(__lock)

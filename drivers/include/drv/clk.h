@@ -33,6 +33,7 @@
 
 #include <vmm_types.h>
 #include <vmm_notifier.h>
+#include <libs/list.h>
 
 struct vmm_device;
 struct vmm_devtree_node;
