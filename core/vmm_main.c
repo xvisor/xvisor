@@ -70,6 +70,13 @@ static void system_init_work(struct vmm_work *work)
 #endif
 	struct vmm_devtree_node *node, *node1;
 
+	/* Initialize wallclock */
+	vmm_printf("Initialize Wallclock Subsystem\n");
+	ret = vmm_wallclock_init();
+	if (ret) {
+		vmm_panic("Error %d\n", ret);
+	}
+
 #if defined(CONFIG_SMP)
 	/* Initialize secondary CPUs */
 	vmm_printf("Initialize Secondary CPUs\n");
@@ -412,13 +419,6 @@ static void __init init_bootcpu(void)
 	/* Initialize workqueue framework */
 	vmm_printf("Initialize Workqueue Framework\n");
 	ret = vmm_workqueue_init();
-	if (ret) {
-		goto init_bootcpu_fail;
-	}
-
-	/* Initialize wallclock */
-	vmm_printf("Initialize Wallclock Subsystem\n");
-	ret = vmm_wallclock_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
