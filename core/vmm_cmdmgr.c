@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_mutex.h>
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
 
@@ -33,6 +34,7 @@
 #define VMM_CMD_ARG_DELIM_CHAR1	'\t'
 
 struct vmm_cmdmgr_ctrl {
+	struct vmm_mutex cmd_list_lock;
         struct dlist cmd_list;
 };
 
@@ -41,17 +43,17 @@ static struct vmm_cmdmgr_ctrl cmctrl;
 int vmm_cmdmgr_register_cmd(struct vmm_cmd *cmd)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_cmd *c;
 
-	if (cmd == NULL) {
+	if (!cmd) {
 		return VMM_EFAIL;
 	}
 
+	vmm_mutex_lock(&cmctrl.cmd_list_lock);
+
 	c = NULL;
 	found = FALSE;
-	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, struct vmm_cmd, head);
+	list_for_each_entry(c, &cmctrl.cmd_list, head) {
 		if (strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
@@ -59,6 +61,7 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd *cmd)
 	}
 
 	if (found) {
+		vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 		return VMM_EINVALID;
 	}
 
@@ -66,23 +69,30 @@ int vmm_cmdmgr_register_cmd(struct vmm_cmd *cmd)
 
 	list_add_tail(&cmd->head, &cmctrl.cmd_list);
 
+	vmm_mutex_unlock(&cmctrl.cmd_list_lock);
+
 	return VMM_OK;
 }
 
 int vmm_cmdmgr_unregister_cmd(struct vmm_cmd *cmd)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_cmd *c;
 
-	if (cmd == NULL || list_empty(&cmctrl.cmd_list)) {
+	if (!cmd) {
+		return VMM_EFAIL;
+	}
+
+	vmm_mutex_lock(&cmctrl.cmd_list_lock);
+
+	if (list_empty(&cmctrl.cmd_list)) {
+		vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 		return VMM_EFAIL;
 	}
 
 	c = NULL;
 	found = FALSE;
-	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, struct vmm_cmd, head);
+	list_for_each_entry(c, &cmctrl.cmd_list, head) {
 		if (strcmp(c->name, cmd->name) == 0) {
 			found = TRUE;
 			break;
@@ -90,10 +100,13 @@ int vmm_cmdmgr_unregister_cmd(struct vmm_cmd *cmd)
 	}
 
 	if (!found) {
+		vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 		return VMM_ENOTAVAIL;
 	}
 
 	list_del(&c->head);
+
+	vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 
 	return VMM_OK;
 }
@@ -101,7 +114,6 @@ int vmm_cmdmgr_unregister_cmd(struct vmm_cmd *cmd)
 struct vmm_cmd *vmm_cmdmgr_cmd_find(const char *cmd_name)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_cmd *c;
 
 	if (!cmd_name) {
@@ -111,13 +123,16 @@ struct vmm_cmd *vmm_cmdmgr_cmd_find(const char *cmd_name)
 	found = FALSE;
 	c = NULL;
 
-	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, struct vmm_cmd, head);
+	vmm_mutex_lock(&cmctrl.cmd_list_lock);
+
+	list_for_each_entry(c, &cmctrl.cmd_list, head) {
 		if (strcmp(c->name, cmd_name) == 0) {
 			found = TRUE;
 			break;
 		}
 	}
+
+	vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -129,7 +144,6 @@ struct vmm_cmd *vmm_cmdmgr_cmd_find(const char *cmd_name)
 struct vmm_cmd *vmm_cmdmgr_cmd(int index)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_cmd *c;
 
 	if (index < 0) {
@@ -139,14 +153,17 @@ struct vmm_cmd *vmm_cmdmgr_cmd(int index)
 	c = NULL;
 	found = FALSE;
 
-	list_for_each(l, &cmctrl.cmd_list) {
-		c = list_entry(l, struct vmm_cmd, head);
+	vmm_mutex_lock(&cmctrl.cmd_list_lock);
+
+	list_for_each_entry(c, &cmctrl.cmd_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
 		}
 		index--;
 	}
+
+	vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 
 	if (!found) {
 		return NULL;
@@ -158,20 +175,24 @@ struct vmm_cmd *vmm_cmdmgr_cmd(int index)
 u32 vmm_cmdmgr_cmd_count(void)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_cmd *c;
 
 	retval = 0;
 
-	list_for_each(l, &cmctrl.cmd_list) {
+	vmm_mutex_lock(&cmctrl.cmd_list_lock);
+
+	list_for_each_entry(c, &cmctrl.cmd_list, head) {
 		retval++;
 	}
+
+	vmm_mutex_unlock(&cmctrl.cmd_list_lock);
 
 	return retval;
 }
 
 int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	int ret;
+	int ret = VMM_OK;
 	struct vmm_cmd *cmd = NULL;
 
 	/* Find & execute the commad */
@@ -180,15 +201,14 @@ int vmm_cmdmgr_execute_cmd(struct vmm_chardev *cdev, int argc, char **argv)
 		if ((ret = cmd->exec(cdev, argc, argv))) {
 			vmm_cprintf(cdev, "Error: command %s failed "
 					  "(code %d)\n", argv[0], ret);
-			return ret;
 		}
 	} else {
 		/* Did not find command. */
 		vmm_cprintf(cdev, "Error: unknown command %s\n", argv[0]);
-		return VMM_ENOTAVAIL;
+		ret = VMM_ENOTAVAIL;
 	}
 
-	return VMM_OK;
+	return ret;
 }
 
 int vmm_cmdmgr_execute_cmdstr(struct vmm_chardev *cdev, char *cmds, 
@@ -272,11 +292,16 @@ static int cmd_help_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				vmm_cprintf(cdev, "%-12s - %s\n",
 						  cmd->name, cmd->desc);
 				cmd->usage(cdev);
+			} else {
+				vmm_cprintf(cdev, "Cannot find command %s\n",
+						  argv[i]);
+				return VMM_ENOTAVAIL;
 			}
 			vmm_printf("\n");
 		}
 	}
-	return 0;
+
+	return VMM_OK;
 }
 
 static struct vmm_cmd help_cmd = {
@@ -290,6 +315,7 @@ int __init vmm_cmdmgr_init(void)
 {
 	memset(&cmctrl, 0, sizeof(cmctrl));
 
+	INIT_MUTEX(&cmctrl.cmd_list_lock);
 	INIT_LIST_HEAD(&cmctrl.cmd_list);
 
 	return vmm_cmdmgr_register_cmd(&help_cmd);
