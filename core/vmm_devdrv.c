@@ -22,12 +22,14 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_devres.h>
-#include <vmm_devdrv.h>
 #include <vmm_mutex.h>
+#include <vmm_workqueue.h>
+#include <vmm_devdrv.h>
 #include <libs/stringlib.h>
 
 struct vmm_devdrv_ctrl {
@@ -36,10 +38,90 @@ struct vmm_devdrv_ctrl {
 	struct vmm_mutex bus_lock;
 	struct dlist bus_list;
 
+	struct vmm_mutex deferred_probe_lock;
+	struct dlist deferred_probe_list;
+	struct vmm_work deferred_probe_work;
+
 	struct vmm_bus default_bus;
 };
 
 static struct vmm_devdrv_ctrl ddctrl;
+
+static void __bus_probe_this_device(struct vmm_bus *bus,
+				    struct vmm_device *dev);
+
+static void deferred_probe_work_func(struct vmm_work *work)
+{
+	struct vmm_device *d;
+
+	vmm_mutex_lock(&ddctrl.deferred_probe_lock);
+
+	while (!list_empty(&ddctrl.deferred_probe_list)) {
+		d = list_first_entry(&ddctrl.deferred_probe_list,
+					struct vmm_device, deferred_head);
+		list_del_init(&d->deferred_head);
+
+		vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
+
+		if (d->bus) {
+			vmm_mutex_lock(&d->bus->lock);
+			__bus_probe_this_device(d->bus, d);
+			vmm_mutex_unlock(&d->bus->lock);
+		}
+
+		vmm_mutex_lock(&ddctrl.deferred_probe_lock);
+	}
+
+	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
+}
+
+static void deferred_probe_invoke(void)
+{
+	vmm_workqueue_schedule_work(NULL, &ddctrl.deferred_probe_work);
+}
+
+static void deferred_probe_add(struct vmm_device *dev)
+{
+	bool found = FALSE;
+	struct vmm_device *d;
+
+	vmm_mutex_lock(&ddctrl.deferred_probe_lock);
+
+	found = FALSE;
+	list_for_each_entry(d, &ddctrl.deferred_probe_list, deferred_head) {
+		if (d == dev) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	if (!found) {
+		list_add_tail(&dev->deferred_head,
+			      &ddctrl.deferred_probe_list);
+	}
+
+	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
+
+	if (!found) {
+		deferred_probe_invoke();
+	}
+}
+
+static void deferred_probe_del(struct vmm_device *dev)
+{
+	struct vmm_device *d;
+
+	vmm_mutex_lock(&ddctrl.deferred_probe_lock);
+
+	list_for_each_entry(d, &ddctrl.deferred_probe_list, deferred_head) {
+		if (d == dev) {
+			list_del(&dev->deferred_head);
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
+}
 
 static int default_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 {
@@ -138,9 +220,11 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 
 	if (rc) {
 #if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
-			   "probe error %d\n",
-			   bus->name, dev->name, rc);
+		if (rc != VMM_EPROBE_DEFER) {
+			vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
+				   "probe error %d\n",
+				   bus->name, dev->name, rc);
+		}
 #endif
 		dev->driver = NULL;
 	}
@@ -211,17 +295,27 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 				    struct vmm_device *dev)
 {
 	int rc;
-	struct dlist *l;
 	struct vmm_driver *drv;
 
-	/* Try each and every driver of this bus */
-	list_for_each(l, &bus->driver_list) {
-		drv = list_entry(l, struct vmm_driver, head);
+	/* Try to bind pins for this device */
+	rc = vmm_devdrv_pinctrl_bind(dev);
+	if (rc == VMM_EPROBE_DEFER) {
+		goto done;
+	}
 
+	/* Try each and every driver of this bus */
+	list_for_each_entry(drv, &bus->driver_list, head) {
 		rc = __bus_probe_device_driver(bus, dev, drv);
-		if (!rc) {
+		if (!rc || rc == VMM_EPROBE_DEFER) {
 			break;
 		}
+	}
+
+done:
+	/* Defer device probing if rc == VMM_EPROBE_DEFER */
+	if (rc == VMM_EPROBE_DEFER) {
+		/* Add device to deferred list */
+		deferred_probe_add(dev);
 	}
 }
 
@@ -229,6 +323,9 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 static void __bus_remove_this_device(struct vmm_bus *bus,
 				     struct vmm_device *dev)
 {
+	/* Remove device from deferred list */
+	deferred_probe_del(dev);
+
 	__bus_remove_device_driver(bus, dev);
 }
 
@@ -236,6 +333,9 @@ static void __bus_remove_this_device(struct vmm_bus *bus,
 static void __bus_shutdown_this_device(struct vmm_bus *bus,
 				       struct vmm_device *dev)
 {
+	/* Remove device from deferred list */
+	deferred_probe_del(dev);
+
 	__bus_shutdown_device_driver(bus, dev);
 }
 
@@ -243,33 +343,35 @@ static void __bus_shutdown_this_device(struct vmm_bus *bus,
 static void __bus_probe_this_driver(struct vmm_bus *bus,
 				    struct vmm_driver *drv)
 {
-	struct dlist *l;
+	int rc;
 	struct vmm_device *dev;
 
 	/* Try each and every device of this bus */
-	list_for_each(l, &bus->device_list) {
-		dev = list_entry(l, struct vmm_device, bus_head);
-
+	list_for_each_entry(dev, &bus->device_list, bus_head) {
 		/* If already probed then continue */
 		if (dev->driver) {
 			continue;
 		}
 
-		__bus_probe_device_driver(bus, dev, drv);
+		rc = __bus_probe_device_driver(bus, dev, drv);
+		if (rc == VMM_EPROBE_DEFER) {
+			/* Add device to deferred list */
+			deferred_probe_add(dev);
+		}
 	}
+
+	/* Invoke deferred device probing */
+	deferred_probe_invoke();
 }
 
 /* Note: Must be called with bus->lock held */
 static void __bus_remove_this_driver(struct vmm_bus *bus,
 				     struct vmm_driver *drv)
 {
-	struct dlist *l;
 	struct vmm_device *dev;
 
 	/* Try each and every device of this bus */
-	list_for_each(l, &bus->device_list) {
-		dev = list_entry(l, struct vmm_device, bus_head);
-
+	list_for_each_entry(dev, &bus->device_list, bus_head) {
 		/* If device not probed with this driver then continue */
 		if (dev->driver != drv) {
 			continue;
@@ -282,13 +384,12 @@ static void __bus_remove_this_driver(struct vmm_bus *bus,
 /* Note: Must be called with bus->lock held */
 void __bus_shutdown(struct vmm_bus *bus)
 {
-	struct dlist *l;
 	struct vmm_device *dev;
 
 	/* Forcefully destroy all devices */
 	while (!list_empty(&bus->device_list)) {
-		l = list_first(&bus->device_list);
-		dev = list_entry(l, struct vmm_device, bus_head);
+		dev = list_first_entry(&bus->device_list,
+					struct vmm_device, bus_head);
 
 		/* Bus shutdown/cleanup this device */
 		__bus_shutdown_this_device(bus, dev);
@@ -322,11 +423,17 @@ void __class_release(struct vmm_class *cls)
 	}
 }
 
+int __weak vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
+{
+	/* Nothing to do here. */
+	/* The pinctrl framework will provide actual implementation */
+	return VMM_OK;
+}
+
 static int devdrv_probe(struct vmm_devtree_node *node,
 			struct vmm_device *parent)
 {
 	int rc;
-	struct dlist *l;
 	struct vmm_device *dev;
 	struct vmm_devtree_node *child;
 
@@ -357,8 +464,7 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 		return rc;
 	}
 
-	list_for_each(l, &node->child_list) {
-		child = list_entry(l, struct vmm_devtree_node, head);
+	list_for_each_entry(child, &node->child_list, head) {
 		devdrv_probe(child, dev);
 	}
 
@@ -373,7 +479,6 @@ int vmm_devdrv_probe(struct vmm_devtree_node *node)
 int vmm_devdrv_register_class(struct vmm_class *cls)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_class *c;
 
 	if (cls == NULL) {
@@ -385,8 +490,7 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 
 	vmm_mutex_lock(&ddctrl.class_lock);
 
-	list_for_each(l, &ddctrl.class_list) {
-		c = list_entry(l, struct vmm_class, head);
+	list_for_each_entry(c, &ddctrl.class_list, head) {
 		if (strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
@@ -412,7 +516,6 @@ int vmm_devdrv_register_class(struct vmm_class *cls)
 int vmm_devdrv_unregister_class(struct vmm_class *cls)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_class *c;
 
 	vmm_mutex_lock(&ddctrl.class_lock);
@@ -424,8 +527,7 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 
 	c = NULL;
 	found = FALSE;
-	list_for_each(l, &ddctrl.class_list) {
-		c = list_entry(l, struct vmm_class, head);
+	list_for_each_entry(c, &ddctrl.class_list, head) {
 		if (strcmp(c->name, cls->name) == 0) {
 			found = TRUE;
 			break;
@@ -450,21 +552,19 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 struct vmm_class *vmm_devdrv_find_class(const char *cname)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_class *cls;
+	struct vmm_class *c;
 
 	if (!cname) {
 		return NULL;
 	}
 
 	found = FALSE;
-	cls = NULL;
+	c = NULL;
 
 	vmm_mutex_lock(&ddctrl.class_lock);
 
-	list_for_each(l, &ddctrl.class_list) {
-		cls = list_entry(l, struct vmm_class, head);
-		if (strcmp(cls->name, cname) == 0) {
+	list_for_each_entry(c, &ddctrl.class_list, head) {
+		if (strcmp(c->name, cname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -476,26 +576,24 @@ struct vmm_class *vmm_devdrv_find_class(const char *cname)
 		return NULL;
 	}
 
-	return cls;
+	return c;
 }
 
 struct vmm_class *vmm_devdrv_class(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_class *retval;
+	struct vmm_class *c;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	c = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&ddctrl.class_lock);
 
-	list_for_each(l, &ddctrl.class_list) {
-		retval = list_entry(l, struct vmm_class, head);
+	list_for_each_entry(c, &ddctrl.class_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -509,19 +607,19 @@ struct vmm_class *vmm_devdrv_class(int index)
 		return NULL;
 	}
 
-	return retval;
+	return c;
 }
 
 u32 vmm_devdrv_class_count(void)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_class *c;
 
 	retval = 0;
 
 	vmm_mutex_lock(&ddctrl.class_lock);
 
-	list_for_each(l, &ddctrl.class_list) {
+	list_for_each_entry(c, &ddctrl.class_list, head) {
 		retval++;
 	}
 
@@ -534,7 +632,6 @@ static int devdrv_class_register_device(struct vmm_class *cls,
 				        struct vmm_device *dev)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_device *d;
 
 	if (!dev || !cls || (dev->class != cls)) {
@@ -546,8 +643,7 @@ static int devdrv_class_register_device(struct vmm_class *cls,
 
 	vmm_mutex_lock(&cls->lock);
 
-	list_for_each(l, &cls->device_list) {
-		d = list_entry(l, struct vmm_device, class_head);
+	list_for_each_entry(d, &cls->device_list, class_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
@@ -579,7 +675,6 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 					  struct vmm_device *dev)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_device *d;
 
 	if (!dev || !cls || (dev->class != cls)) {
@@ -595,8 +690,7 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 
 	d = NULL;
 	found = FALSE;
-	list_for_each(l, &cls->device_list) {
-		d = list_entry(l, struct vmm_device, class_head);
+	list_for_each_entry(d, &cls->device_list, class_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
@@ -620,21 +714,19 @@ struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
 						const char *dname)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_device *dev;
+	struct vmm_device *d;
 
 	if (!cls || !dname) {
 		return NULL;
 	}
 
 	found = FALSE;
-	dev = NULL;
+	d = NULL;
 
 	vmm_mutex_lock(&cls->lock);
 
-	list_for_each(l, &cls->device_list) {
-		dev = list_entry(l, struct vmm_device, class_head);
-		if (strcmp(dev->name, dname) == 0) {
+	list_for_each_entry(d, &cls->device_list, class_head) {
+		if (strcmp(d->name, dname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -646,26 +738,24 @@ struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
 		return NULL;
 	}
 
-	return dev;
+	return d;
 }
 
 struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_device *retval;
+	struct vmm_device *d;
 
 	if (!cls || index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	d = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&cls->lock);
 
-	list_for_each(l, &cls->device_list) {
-		retval = list_entry(l, struct vmm_device, class_head);
+	list_for_each_entry(d, &cls->device_list, class_head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -679,13 +769,13 @@ struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index)
 		return NULL;
 	}
 
-	return retval;
+	return d;
 }
 
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_device *d;
 
 	if (!cls) {
 		return 0;
@@ -695,7 +785,7 @@ u32 vmm_devdrv_class_device_count(struct vmm_class *cls)
 
 	vmm_mutex_lock(&cls->lock);
 
-	list_for_each(l, &cls->device_list) {
+	list_for_each_entry(d, &cls->device_list, class_head) {
 		retval++;
 	}
 
@@ -707,7 +797,6 @@ u32 vmm_devdrv_class_device_count(struct vmm_class *cls)
 int vmm_devdrv_register_bus(struct vmm_bus *bus)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_bus *b;
 
 	if (bus == NULL) {
@@ -719,8 +808,7 @@ int vmm_devdrv_register_bus(struct vmm_bus *bus)
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
-	list_for_each(l, &ddctrl.bus_list) {
-		b = list_entry(l, struct vmm_bus, head);
+	list_for_each_entry(b, &ddctrl.bus_list, head) {
 		if (strcmp(b->name, bus->name) == 0) {
 			found = TRUE;
 			break;
@@ -747,7 +835,6 @@ int vmm_devdrv_register_bus(struct vmm_bus *bus)
 int vmm_devdrv_unregister_bus(struct vmm_bus *bus)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_bus *b;
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
@@ -759,8 +846,7 @@ int vmm_devdrv_unregister_bus(struct vmm_bus *bus)
 
 	b = NULL;
 	found = FALSE;
-	list_for_each(l, &ddctrl.bus_list) {
-		b = list_entry(l, struct vmm_bus, head);
+	list_for_each_entry(b, &ddctrl.bus_list, head) {
 		if (strcmp(b->name, bus->name) == 0) {
 			found = TRUE;
 			break;
@@ -789,21 +875,19 @@ int vmm_devdrv_unregister_bus(struct vmm_bus *bus)
 struct vmm_bus *vmm_devdrv_find_bus(const char *bname)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_bus *bus;
+	struct vmm_bus *b;
 
 	if (!bname) {
 		return NULL;
 	}
 
 	found = FALSE;
-	bus = NULL;
+	b = NULL;
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
-	list_for_each(l, &ddctrl.bus_list) {
-		bus = list_entry(l, struct vmm_bus, head);
-		if (strcmp(bus->name, bname) == 0) {
+	list_for_each_entry(b, &ddctrl.bus_list, head) {
+		if (strcmp(b->name, bname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -815,26 +899,24 @@ struct vmm_bus *vmm_devdrv_find_bus(const char *bname)
 		return NULL;
 	}
 
-	return bus;
+	return b;
 }
 
 struct vmm_bus *vmm_devdrv_bus(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_bus *retval;
+	struct vmm_bus *b;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	b = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
-	list_for_each(l, &ddctrl.bus_list) {
-		retval = list_entry(l, struct vmm_bus, head);
+	list_for_each_entry(b, &ddctrl.bus_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -848,19 +930,19 @@ struct vmm_bus *vmm_devdrv_bus(int index)
 		return NULL;
 	}
 
-	return retval;
+	return b;
 }
 
 u32 vmm_devdrv_bus_count(void)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_bus *b;
 
 	retval = 0;
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
-	list_for_each(l, &ddctrl.bus_list) {
+	list_for_each_entry(b, &ddctrl.bus_list, head) {
 		retval++;
 	}
 
@@ -873,7 +955,6 @@ static int devdrv_bus_register_device(struct vmm_bus *bus,
 				      struct vmm_device *dev)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_device *d;
 
 	if (!dev || !bus || (dev->bus != bus)) {
@@ -885,8 +966,7 @@ static int devdrv_bus_register_device(struct vmm_bus *bus,
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->device_list) {
-		d = list_entry(l, struct vmm_device, bus_head);
+	list_for_each_entry(d, &bus->device_list, bus_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
@@ -921,7 +1001,6 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 				        struct vmm_device *dev)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_device *d;
 
 	if (!dev || !bus || (dev->bus != bus)) {
@@ -937,8 +1016,7 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 
 	d = NULL;
 	found = FALSE;
-	list_for_each(l, &bus->device_list) {
-		d = list_entry(l, struct vmm_device, bus_head);
+	list_for_each_entry(d, &bus->device_list, bus_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
@@ -965,21 +1043,19 @@ struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
 			void *data, int (*match) (struct vmm_device *, void *))
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_device *dev;
+	struct vmm_device *d;
 
 	if (!bus || !match) {
 		return NULL;
 	}
 
 	found = FALSE;
-	dev = NULL;
+	d = NULL;
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->device_list) {
-		dev = list_entry(l, struct vmm_device, bus_head);
-		if (match(dev, data)) {
+	list_for_each_entry(d, &bus->device_list, bus_head) {
+		if (match(d, data)) {
 			found = TRUE;
 			break;
 		}
@@ -991,28 +1067,26 @@ struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
 		return NULL;
 	}
 
-	return dev;
+	return d;
 }
 
 struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 					              const char *dname)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_device *dev;
+	struct vmm_device *d;
 
 	if (!bus || !dname) {
 		return NULL;
 	}
 
 	found = FALSE;
-	dev = NULL;
+	d = NULL;
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->device_list) {
-		dev = list_entry(l, struct vmm_device, bus_head);
-		if (strcmp(dev->name, dname) == 0) {
+	list_for_each_entry(d, &bus->device_list, bus_head) {
+		if (strcmp(d->name, dname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1024,26 +1098,24 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 		return NULL;
 	}
 
-	return dev;
+	return d;
 }
 
 struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_device *retval;
+	struct vmm_device *d;
 
 	if (!bus || index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	d = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->device_list) {
-		retval = list_entry(l, struct vmm_device, bus_head);
+	list_for_each_entry(d, &bus->device_list, bus_head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -1057,13 +1129,13 @@ struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index)
 		return NULL;
 	}
 
-	return retval;
+	return d;
 }
 
 u32 vmm_devdrv_bus_device_count(struct vmm_bus *bus)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_device *d;
 
 	if (!bus) {
 		return 0;
@@ -1073,7 +1145,7 @@ u32 vmm_devdrv_bus_device_count(struct vmm_bus *bus)
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->device_list) {
+	list_for_each_entry(d, &bus->device_list, bus_head) {
 		retval++;
 	}
 
@@ -1086,7 +1158,6 @@ int vmm_devdrv_bus_register_driver(struct vmm_bus *bus,
 				   struct vmm_driver *drv)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_driver *d;
 
 	if (!drv || !bus || (drv->bus != bus)) {
@@ -1098,8 +1169,7 @@ int vmm_devdrv_bus_register_driver(struct vmm_bus *bus,
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->driver_list) {
-		d = list_entry(l, struct vmm_driver, head);
+	list_for_each_entry(d, &bus->driver_list, head) {
 		if (strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
@@ -1126,7 +1196,6 @@ int vmm_devdrv_bus_unregister_driver(struct vmm_bus *bus,
 				     struct vmm_driver *drv)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_driver *d;
 
 	if (!drv || !bus || (drv->bus != bus)) {
@@ -1142,8 +1211,7 @@ int vmm_devdrv_bus_unregister_driver(struct vmm_bus *bus,
 
 	d = NULL;
 	found = FALSE;
-	list_for_each(l, &bus->driver_list) {
-		d = list_entry(l, struct vmm_driver, head);
+	list_for_each_entry(d, &bus->driver_list, head) {
 		if (strcmp(d->name, drv->name) == 0) {
 			found = TRUE;
 			break;
@@ -1169,21 +1237,19 @@ struct vmm_driver *vmm_devdrv_bus_find_driver(struct vmm_bus *bus,
 					      const char *dname)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_driver *drv;
+	struct vmm_driver *d;
 
 	if (!bus || !dname) {
 		return NULL;
 	}
 
 	found = FALSE;
-	drv = NULL;
+	d = NULL;
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->driver_list) {
-		drv = list_entry(l, struct vmm_driver, head);
-		if (strcmp(drv->name, dname) == 0) {
+	list_for_each_entry(d, &bus->driver_list, head) {
+		if (strcmp(d->name, dname) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1195,26 +1261,24 @@ struct vmm_driver *vmm_devdrv_bus_find_driver(struct vmm_bus *bus,
 		return NULL;
 	}
 
-	return drv;
+	return d;
 }
 
 struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_driver *retval;
+	struct vmm_driver *d;
 
 	if (!bus || index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	d = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->driver_list) {
-		retval = list_entry(l, struct vmm_driver, head);
+	list_for_each_entry(d, &bus->driver_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -1228,13 +1292,13 @@ struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index)
 		return NULL;
 	}
 
-	return retval;
+	return d;
 }
 
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus)
 {
 	u32 retval;
-	struct dlist *l;
+	struct vmm_driver *d;
 
 	if (!bus) {
 		return 0;
@@ -1244,7 +1308,7 @@ u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus)
 
 	vmm_mutex_lock(&bus->lock);
 
-	list_for_each(l, &bus->driver_list) {
+	list_for_each_entry(d, &bus->driver_list, head) {
 		retval++;
 	}
 
@@ -1267,6 +1331,7 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 	INIT_LIST_HEAD(&dev->child_list);
 	INIT_SPIN_LOCK(&dev->devres_lock);
 	INIT_LIST_HEAD(&dev->devres_head);
+	INIT_LIST_HEAD(&dev->deferred_head);
 }
 
 void vmm_devdrv_ref_device(struct vmm_device *dev)
@@ -1452,6 +1517,10 @@ int __init vmm_devdrv_init(void)
 	INIT_LIST_HEAD(&ddctrl.class_list);
 	INIT_MUTEX(&ddctrl.bus_lock);
 	INIT_LIST_HEAD(&ddctrl.bus_list);
+
+	INIT_MUTEX(&ddctrl.deferred_probe_lock);
+	INIT_LIST_HEAD(&ddctrl.deferred_probe_list);
+	INIT_WORK(&ddctrl.deferred_probe_work, deferred_probe_work_func);
 
 	strcpy(ddctrl.default_bus.name, "default");
 	ddctrl.default_bus.match = default_bus_match;

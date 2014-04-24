@@ -80,6 +80,7 @@ struct vmm_device {
 	struct dlist child_list;
 	vmm_spinlock_t devres_lock;
 	struct dlist devres_head;
+	struct dlist deferred_head;
 	/* Public fields */
 	u64 *dma_mask;
 	char name[VMM_FIELD_NAME_SIZE];
@@ -89,6 +90,7 @@ struct vmm_device {
 	struct vmm_device *parent;
 	struct vmm_class *class;
 	struct vmm_driver *driver;
+	void *pins;
 	void (*release) (struct vmm_device *);
 	void *priv;
 };
@@ -138,6 +140,15 @@ static inline int vmm_dma_set_mask(struct vmm_device *dev, u64 mask)
 	*dev->dma_mask = mask;
 	return VMM_OK;
 }
+
+/** Bind device pins
+ *  Note: The device driver framework only provide dummy weak
+ *  implementation of this function which does nothing.
+ *  Note: The pinctrl framework will provide complete implementation
+ *  of this function. If pinctrl framework is not available then
+ *  this function will do nothing.
+ */
+int vmm_devdrv_pinctrl_bind(struct vmm_device *dev);
 
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(struct vmm_devtree_node *node);
