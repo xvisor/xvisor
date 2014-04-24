@@ -78,13 +78,11 @@ struct vmm_loadbal_algo *vmm_loadbal_current_algo(void)
 static struct vmm_loadbal_algo *__loadbal_best_algo(void)
 {
 	u32 best_rating;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	best_rating = 0;
 	best_algo = NULL;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (best_rating < algo->rating) {
 			best_rating = algo->rating;
 			best_algo = algo;
@@ -97,7 +95,6 @@ static struct vmm_loadbal_algo *__loadbal_best_algo(void)
 int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	/* Sanity checks */
@@ -110,8 +107,7 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 
 	/* Registered algo instance should not be present in algo list */
 	found = FALSE;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (algo == lbalgo) {
 			found = TRUE;
 			break;
@@ -154,7 +150,6 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	/* Sanity checks */
@@ -167,8 +162,7 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 
 	/* Unregistered algo instance should be present in algo list */
 	found = FALSE;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (algo == lbalgo) {
 			found = TRUE;
 			break;

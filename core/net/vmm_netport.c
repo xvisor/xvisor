@@ -33,7 +33,7 @@
 
 struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 {
-	struct dlist *l;
+	struct vmm_netport_xfer *xfer;
 	irq_flags_t flags;
 
 	if (!port) {
@@ -45,11 +45,13 @@ struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 		vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
 		return NULL;
 	}
-	l = list_pop(&port->free_list);
+	xfer = list_first_entry(&port->free_list,
+				struct vmm_netport_xfer, head);
+	list_del(&xfer->head);
 	port->free_count--;
 	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
 
-	return list_entry(l, struct vmm_netport_xfer, head);
+	return xfer;
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
 

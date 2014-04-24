@@ -41,18 +41,17 @@ static struct vmm_host_irqs_ctrl hirqctrl;
 
 void vmm_handle_fast_eoi(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 {
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_host_irq_action *act;
 
 	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
-	list_for_each(l, &irq->action_list[cpu]) {
-		act = list_entry(l, struct vmm_host_irq_action, head);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
 		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
 	vmm_read_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
+
 	if (irq->chip && irq->chip->irq_eoi) {
 		irq->chip->irq_eoi(irq);
 	}
@@ -60,7 +59,6 @@ void vmm_handle_fast_eoi(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 
 void vmm_handle_level_irq(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 {
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_host_irq_action *act;
 
@@ -74,14 +72,15 @@ void vmm_handle_level_irq(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 			irq->chip->irq_ack(irq);
 		}
 	}
+
 	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
-	list_for_each(l, &irq->action_list[cpu]) {
-		act = list_entry(l, struct vmm_host_irq_action, head);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
 		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
 	vmm_read_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
+
 	if (irq->chip && irq->chip->irq_unmask) {
 		irq->chip->irq_unmask(irq);
 	}
@@ -155,6 +154,7 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data)
 		hirqctrl.irq[hirq_num].chip_data = chip_data;
 		return VMM_OK;
 	}
+
 	return VMM_EFAIL;
 }
 
@@ -165,6 +165,7 @@ int vmm_host_irq_set_handler(u32 hirq_num,
 		hirqctrl.irq[hirq_num].handler = handler;
 		return VMM_OK;
 	}
+
 	return VMM_EFAIL;
 }
 
@@ -173,6 +174,7 @@ int vmm_host_irq_set_affinity(u32 hirq_num,
 			      bool force)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (irq->chip && irq->chip->irq_set_affinity) {
@@ -180,6 +182,7 @@ int vmm_host_irq_set_affinity(u32 hirq_num,
 			return irq->chip->irq_set_affinity(irq, dest, force);
 		}
 	}
+
 	return VMM_EFAIL;
 }
 
@@ -187,6 +190,7 @@ int vmm_host_irq_set_type(u32 hirq_num, u32 type)
 {
 	int rc = VMM_EFAIL;
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		type &= VMM_IRQ_TYPE_SENSE_MASK;
@@ -208,34 +212,40 @@ int vmm_host_irq_set_type(u32 hirq_num, u32 type)
 			}
 		}
 	}
+
 	return rc;
 }
 
 int vmm_host_irq_mark_per_cpu(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		irq->state |= VMM_IRQ_STATE_PER_CPU;
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
 int vmm_host_irq_unmark_per_cpu(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		irq->state &= ~VMM_IRQ_STATE_PER_CPU;
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
 int vmm_host_irq_enable(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		irq->state &= ~VMM_IRQ_STATE_DISABLED;
@@ -249,12 +259,14 @@ int vmm_host_irq_enable(u32 hirq_num)
 		irq->state &= ~VMM_IRQ_STATE_MASKED;
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
 int vmm_host_irq_disable(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		irq->state |= VMM_IRQ_STATE_DISABLED;
@@ -268,12 +280,14 @@ int vmm_host_irq_disable(u32 hirq_num)
 		irq->state |= VMM_IRQ_STATE_MASKED;
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
 int vmm_host_irq_unmask(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (irq->chip && irq->chip->irq_unmask) {
@@ -282,12 +296,14 @@ int vmm_host_irq_unmask(u32 hirq_num)
 		}
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
 int vmm_host_irq_mask(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (irq->chip && irq->chip->irq_mask) {
@@ -296,6 +312,7 @@ int vmm_host_irq_mask(u32 hirq_num)
 		}
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
@@ -303,6 +320,7 @@ int vmm_host_irq_raise(u32 hirq_num,
 		       const struct vmm_cpumask *dest)
 {
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (irq->chip && irq->chip->irq_raise) {
@@ -310,6 +328,7 @@ int vmm_host_irq_raise(u32 hirq_num,
 		}
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
@@ -320,13 +339,12 @@ static int host_irq_register(struct vmm_host_irq *irq,
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_host_irq_action *act;
 
 	vmm_write_lock_irqsave_lite(&irq->action_lock[cpu], flags);
+
 	found = FALSE;
-	list_for_each(l, &irq->action_list[cpu]) {
-		act = list_entry(l, struct vmm_host_irq_action, head);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
 		if (act->dev == dev) {
 			found = TRUE;
 			break;
@@ -336,6 +354,7 @@ static int host_irq_register(struct vmm_host_irq *irq,
 		vmm_write_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
 		return VMM_EFAIL;
 	}
+
 	irq->name = name;
 	act = vmm_zalloc(sizeof(struct vmm_host_irq_action));
 	if (!act) {
@@ -345,7 +364,9 @@ static int host_irq_register(struct vmm_host_irq *irq,
 	INIT_LIST_HEAD(&act->head);
 	act->func = func;
 	act->dev = dev;
+
 	list_add_tail(&act->head, &irq->action_list[cpu]);
+
 	vmm_write_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
 
 	return VMM_OK;
@@ -359,6 +380,7 @@ int vmm_host_irq_register(u32 hirq_num,
 	int rc;
 	u32 cpu;
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		if (vmm_host_irq_is_per_cpu(irq)) {
@@ -378,6 +400,7 @@ int vmm_host_irq_register(u32 hirq_num,
 		}
 		return vmm_host_irq_enable(hirq_num);
 	}
+
 	return VMM_ENOTAVAIL;
 }
 
@@ -386,13 +409,11 @@ static int host_irq_unregister(struct vmm_host_irq *irq, void *dev,
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_host_irq_action *act;
 
 	vmm_write_lock_irqsave_lite(&irq->action_lock[cpu], flags);
 	found = FALSE;
-	list_for_each(l, &irq->action_list[cpu]) {
-		act = list_entry(l, struct vmm_host_irq_action, head);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
 		if (act->dev == dev) {
 			found = TRUE;
 			break;
@@ -402,11 +423,13 @@ static int host_irq_unregister(struct vmm_host_irq *irq, void *dev,
 		vmm_write_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
 		return VMM_EFAIL;
 	}
+
 	list_del(&act->head);
 	vmm_free(act);
 	if (list_empty(&irq->action_list[cpu])) {
 		*disable = TRUE;
 	}
+
 	vmm_write_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
 
 	return VMM_OK;
@@ -418,6 +441,7 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 	u32 cpu;
 	bool disable;
 	struct vmm_host_irq *irq;
+
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		irq = &hirqctrl.irq[hirq_num];
 		disable = FALSE;
@@ -443,6 +467,7 @@ int vmm_host_irq_unregister(u32 hirq_num, void *dev)
 		}
 		return VMM_OK;
 	}
+
 	return VMM_ENOTAVAIL;
 }
 

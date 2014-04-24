@@ -195,18 +195,16 @@ struct vmm_thread *vmm_threads_id2thread(u32 tid)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_thread *ret;
+	struct vmm_thread *tinfo;
 
-	ret = NULL;
+	tinfo = NULL;
 	found = FALSE;
 
 	/* Lock threads control */
 	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
-	list_for_each(l, &thctrl.thread_list) {
-		ret = list_entry(l, struct vmm_thread, head);
-		if (ret->tvcpu->id == tid) {
+	list_for_each_entry(tinfo, &thctrl.thread_list, head) {
+		if (tinfo->tvcpu->id == tid) {
 			found = TRUE;
 			break;
 		}
@@ -219,28 +217,26 @@ struct vmm_thread *vmm_threads_id2thread(u32 tid)
 		return NULL;
 	}
 
-	return ret;
+	return tinfo;
 }
 
 struct vmm_thread *vmm_threads_index2thread(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_thread *ret;
+	struct vmm_thread *tinfo;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	ret = NULL;
+	tinfo = NULL;
 	found = FALSE;
 
 	/* Lock threads control */
 	vmm_spin_lock_irqsave(&thctrl.lock, flags);
 
-	list_for_each(l, &thctrl.thread_list) {
-		ret = list_entry(l, struct vmm_thread, head);
+	list_for_each_entry(tinfo, &thctrl.thread_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -255,7 +251,7 @@ struct vmm_thread *vmm_threads_index2thread(int index)
 		return NULL;
 	}
 
-	return ret;
+	return tinfo;
 }
 
 u32 vmm_threads_count(void)

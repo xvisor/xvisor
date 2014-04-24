@@ -98,7 +98,6 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clockchip *cct;
 
 	if (!cc) {
@@ -110,8 +109,7 @@ int vmm_clockchip_register(struct vmm_clockchip *cc)
 
 	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
-	list_for_each(l, &ccctrl.clkchip_list) {
-		cct = list_entry(l, struct vmm_clockchip, head);
+	list_for_each_entry(cct, &ccctrl.clkchip_list, head) {
 		if (cct == cc) {
 			found = TRUE;
 			break;
@@ -136,7 +134,6 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clockchip *cct;
 
 	if (!cc) {
@@ -152,8 +149,7 @@ int vmm_clockchip_unregister(struct vmm_clockchip *cc)
 
 	cct = NULL;
 	found = FALSE;
-	list_for_each(l, &ccctrl.clkchip_list) {
-		cct = list_entry(l, struct vmm_clockchip, head);
+	list_for_each_entry(cct, &ccctrl.clkchip_list, head) {
 		if (cct == cc) {
 			found = TRUE;
 			break;
@@ -176,7 +172,6 @@ struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 {
 	int rating = 0;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clockchip *cc, *best_cc;
 
 	cc = NULL;
@@ -184,8 +179,7 @@ struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask)
 
 	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
-	list_for_each(l, &ccctrl.clkchip_list) {
-		cc = list_entry(l, struct vmm_clockchip, head);
+	list_for_each_entry(cc, &ccctrl.clkchip_list, head) {
 		if ((cc->rating > rating) &&
 		    vmm_cpumask_intersects(cc->cpumask, mask)) {
 			best_cc = cc;
@@ -202,8 +196,7 @@ struct vmm_clockchip *vmm_clockchip_get(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_clockchip *ret;
+	struct vmm_clockchip *cc;
 
 	if (index < 0) {
 		return NULL;
@@ -211,11 +204,10 @@ struct vmm_clockchip *vmm_clockchip_get(int index)
 
 	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
-	ret = NULL;
+	cc = NULL;
 	found = FALSE;
 
-	list_for_each(l, &ccctrl.clkchip_list) {
-		ret = list_entry(l, struct vmm_clockchip, head);
+	list_for_each_entry(cc, &ccctrl.clkchip_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -229,18 +221,18 @@ struct vmm_clockchip *vmm_clockchip_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return cc;
 }
 
 u32 vmm_clockchip_count(void)
 {
 	u32 retval = 0;
 	irq_flags_t flags;
-	struct dlist *l;
+	struct vmm_clockchip *cc;
 
 	vmm_spin_lock_irqsave(&ccctrl.lock, flags);
 
-	list_for_each(l, &ccctrl.clkchip_list) {
+	list_for_each_entry(cc, &ccctrl.clkchip_list, head) {
 		retval++;
 	}
 

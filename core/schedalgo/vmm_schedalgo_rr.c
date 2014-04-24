@@ -71,8 +71,8 @@ int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu *vcpu)
 
 int vmm_schedalgo_rq_length(void *rq, u8 priority)
 {
+	struct vmm_schedalgo_rq_entry *rq_entry;
 	struct vmm_schedalgo_rq *rqi;
-	struct dlist *l;
 	int count = 0;
 
 	if (!rq) {
@@ -81,7 +81,7 @@ int vmm_schedalgo_rq_length(void *rq, u8 priority)
 
 	rqi = rq;
 
-	list_for_each(l, &rqi->list) {
+	list_for_each_entry(rq_entry, &rqi->list, head) {
 		count++;
 	}
 
@@ -112,7 +112,6 @@ int vmm_schedalgo_rq_enqueue(void *rq, struct vmm_vcpu *vcpu)
 
 struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq)
 {
-	struct dlist *l;
 	struct vmm_schedalgo_rq_entry *rq_entry;
 	struct vmm_schedalgo_rq *rqi;
 	
@@ -126,8 +125,9 @@ struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq)
 		return NULL;
 	}
 
-	l = list_pop(&rqi->list);
-	rq_entry = list_entry(l, struct vmm_schedalgo_rq_entry, head);
+	rq_entry = list_first_entry(&rqi->list,
+				struct vmm_schedalgo_rq_entry, head);
+	list_del(&rq_entry->head);
 	
 	return rq_entry->vcpu;
 }

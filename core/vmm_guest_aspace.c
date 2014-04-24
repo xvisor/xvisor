@@ -38,7 +38,6 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	bool found = FALSE;
 	u32 cmp_flags;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
 
@@ -57,8 +56,7 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	reg = NULL;
 	found = FALSE;
 	vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_for_each(l, &aspace->reg_list) {
-		reg = list_entry(l, struct vmm_region, head);
+	list_for_each_entry(reg, &aspace->reg_list, head) {
 		if (((reg->flags & cmp_flags) == cmp_flags) &&
 		    (reg->gphys_addr <= gphys_addr) &&
 		    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
@@ -82,8 +80,7 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
 		reg = NULL;
 		found = FALSE;
-		list_for_each(l, &aspace->reg_list) {
-			reg = list_entry(l, struct vmm_region, head);
+		list_for_each_entry(reg, &aspace->reg_list, head) {
 			if (((reg->flags & cmp_flags) == cmp_flags) &&
 			    (reg->gphys_addr <= gphys_addr) &&
 			    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
@@ -314,7 +311,6 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 				  struct vmm_region *reg)
 {
 	bool ret = FALSE;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *treg = NULL;
@@ -326,8 +322,7 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 	reg_end = reg->gphys_addr + reg->phys_size;
 
 	vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_for_each(l, &aspace->reg_list) {
-		treg = list_entry(l, struct vmm_region, head);
+	list_for_each_entry(treg, &aspace->reg_list, head) {
 		if ((treg->flags & VMM_REGION_MEMORY) && 
 		    !(reg->flags & VMM_REGION_MEMORY)) {
 			continue;
@@ -797,7 +792,6 @@ int vmm_guest_del_region(struct vmm_guest *guest,
 int vmm_guest_aspace_init(struct vmm_guest *guest)
 {
 	int rc;
-	struct dlist *l;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_devtree_node *rnode = NULL;
 
@@ -832,12 +826,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	}
 
 	/* Create regions */
-	list_for_each(l, &aspace->node->child_list) {
-		rnode = list_entry(l, struct vmm_devtree_node, head);
-		if (!rnode) {
-			continue;
-		}
-
+	list_for_each_entry(rnode, &aspace->node->child_list, head) {
 		rc = region_add(guest, rnode, NULL);
 		if (rc) {
 			return rc;
@@ -853,7 +842,6 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 {
 	int rc;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
@@ -872,8 +860,9 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 
 	/* One-by-one remove all regions */
 	while (!list_empty(&guest->aspace.reg_list)) {
-		l = list_pop(&guest->aspace.reg_list);
-		reg = list_entry(l, struct vmm_region, head);
+		reg = list_first_entry(&guest->aspace.reg_list,
+					struct vmm_region, head);
+		list_del(&reg->head);
 
 		/* Delete the region */
 		vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);

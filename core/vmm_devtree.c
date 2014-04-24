@@ -198,14 +198,12 @@ const void *vmm_devtree_attrval(const struct vmm_devtree_node *node,
 				const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
-	struct dlist *l;
 
 	if (!node || !attrib) {
 		return NULL;
 	}
 
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(attr, &node->attr_list, head) {
 		if (strcmp(attr->name, attrib) == 0) {
 			return attr->value;
 		}
@@ -218,14 +216,12 @@ u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node,
 			const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
-	struct dlist *l;
 
 	if (!node || !attrib) {
 		return 0;
 	}
 
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(attr, &node->attr_list, head) {
 		if (strcmp(attr->name, attrib) == 0) {
 			return attr->len;
 		}
@@ -238,7 +234,6 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 			const char *name, void *value, u32 type, u32 len)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_devtree_attr *attr;
 
 	if (!node || !name || (len && !value)) {
@@ -246,8 +241,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	}
 
 	found = FALSE;
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(attr, &node->attr_list, head) {
 		if (strcmp(attr->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -312,15 +306,13 @@ struct vmm_devtree_attr *vmm_devtree_getattr(
 					const struct vmm_devtree_node *node,
 					const char *name)
 {
-	struct dlist *l;
 	struct vmm_devtree_attr *attr;
 
 	if (!node || !name) {
 		return NULL;
 	}
 
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(attr, &node->attr_list, head) {
 		if (strcmp(attr->name, name) == 0) {
 			return attr;
 		}
@@ -997,7 +989,6 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 {
 	u32 len;
 	bool found;
-	struct dlist *l;
 	struct vmm_devtree_node *child;
 
 	if (!path || !node)
@@ -1005,8 +996,7 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 
 	while (*path) {
 		found = FALSE;
-		list_for_each(l, &node->child_list) {
-			child = list_entry(l, struct vmm_devtree_node, head);
+		list_for_each_entry(child, &node->child_list, head) {
 			len = strlen(child->name);
 			if (strncmp(child->name, path, len) == 0) {
 				found = TRUE;
@@ -1090,7 +1080,6 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 				struct vmm_devtree_node *node,
 				const struct vmm_devtree_nodeid *matches)
 {
-	struct dlist *lentry;
 	struct vmm_devtree_node *child, *ret;
 
 	if (!matches) {
@@ -1105,8 +1094,7 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 		return node;
 	}
 
-	list_for_each(lentry, &node->child_list) {
-		child = list_entry(lentry, struct vmm_devtree_node, head);
+	list_for_each_entry(child, &node->child_list, head) {
 		ret = vmm_devtree_find_matching(child, matches);
 		if (ret) {
 			return ret;
@@ -1123,7 +1111,6 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 				      void *data),
 				  void *found_data)
 {
-	struct dlist *lentry;
 	struct vmm_devtree_node *child;
 	const struct vmm_devtree_nodeid *mid;
 
@@ -1140,8 +1127,7 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 		found(node, mid, found_data);
 	}
 
-	list_for_each(lentry, &node->child_list) {
-		child = list_entry(lentry, struct vmm_devtree_node, head);
+	list_for_each_entry(child, &node->child_list, head) {
 		vmm_devtree_iterate_matching(child, matches, 
 					     found, found_data);
 	}
@@ -1200,7 +1186,6 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 {
 	int rc;
 	u32 phnd;
-	struct dlist *lentry;
 	struct vmm_devtree_node *child, *ret;
 
 	if (!node) {
@@ -1213,8 +1198,7 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 	}
 
 	ret = NULL;
-	list_for_each(lentry, &node->child_list) {
-		child = list_entry(lentry, struct vmm_devtree_node, head);
+	list_for_each_entry(child, &node->child_list, head) {
 		ret = recursive_find_node_by_phandle(child, phandle);
 		if (ret) {
 			break;
@@ -1407,7 +1391,6 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name)
 {
 	u32 len;
-	struct dlist *l;
 	struct vmm_devtree_node *node = NULL;
 
 	if (!name) {
@@ -1419,8 +1402,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	}
 
 	if (parent) {
-		list_for_each(l, &parent->child_list) {
-			node = list_entry(l, struct vmm_devtree_node, head);
+		list_for_each_entry(node, &parent->child_list, head) {
 			if (strcmp(node->name, name) == 0) {
 				return NULL;
 			}
@@ -1456,21 +1438,18 @@ static int devtree_copynode_recursive(struct vmm_devtree_node *dst,
 				      struct vmm_devtree_node *src)
 {
 	int rc;
-	struct dlist *l;
 	struct vmm_devtree_attr *sattr = NULL;
 	struct vmm_devtree_node *child = NULL;
 	struct vmm_devtree_node *schild = NULL;
 
-	list_for_each(l, &src->attr_list) {
-		sattr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(sattr, &src->attr_list, head) {
 		if ((rc = vmm_devtree_setattr(dst, sattr->name, 
 				sattr->value, sattr->type, sattr->len))) {
 			return rc;
 		}
 	}
 
-	list_for_each(l, &src->child_list) {
-		schild = list_entry(l, struct vmm_devtree_node, head);
+	list_for_each_entry(schild, &src->child_list, head) {
 		child = vmm_devtree_addnode(dst, schild->name);
 		if (!child) {
 			return VMM_EFAIL;

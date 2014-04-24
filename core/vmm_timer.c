@@ -170,7 +170,6 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 	u32 hcpu;
 	u64 tstamp;
 	bool found_pos = FALSE;
-	struct dlist *l;
 	irq_flags_t flags, flags1;
 	struct vmm_timer_event *e = NULL;
 	struct vmm_timer_local_ctrl *tlcp;
@@ -194,8 +193,7 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 
 	vmm_write_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
 
-	list_for_each(l, &tlcp->event_list) {
-		e = list_entry(l, struct vmm_timer_event, active_head);
+	list_for_each_entry(e, &tlcp->event_list, active_head) {
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			found_pos = TRUE;
 			break;

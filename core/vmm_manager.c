@@ -618,7 +618,6 @@ struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid)
 {
 	bool found = FALSE;
 	irq_flags_t flags;
-	struct dlist *lentry;
 	struct vmm_vcpu *vcpu = NULL;
 
 	if (!guest) {
@@ -627,8 +626,7 @@ struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid)
 
 	vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags);
 
-	list_for_each(lentry, &guest->vcpu_list) {
-		vcpu = list_entry(lentry, struct vmm_vcpu, head);
+	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
 		if (vcpu->subid == subid) {
 			found = TRUE;
 			break;
@@ -650,7 +648,6 @@ int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
 {
 	int rc;
 	irq_flags_t flags;
-	struct dlist *lentry;
 	struct vmm_vcpu *vcpu;
 
 	if (!guest || !iter) {
@@ -659,8 +656,7 @@ int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
 
 	vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags);
 
-	list_for_each(lentry, &guest->vcpu_list) {
-		vcpu = list_entry(lentry, struct vmm_vcpu, head);
+	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
 		rc = iter(vcpu, priv);
 		if (rc) {
 			break;
@@ -754,7 +750,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	u32 val, vnum, gnum;
 	const char *str;
 	irq_flags_t flags, flags1;
-	struct dlist *lentry;
 	struct vmm_devtree_node *vsnode;
 	struct vmm_devtree_node *vnode;
 	struct vmm_guest *guest = NULL;
@@ -776,8 +771,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Ensure guest node uniqueness */
-	list_for_each(lentry, &mngr.guest_list) {
-		guest = list_entry(lentry, struct vmm_guest, head);
+	list_for_each_entry(guest, &mngr.guest_list, head) {
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->name, gnode->name) == 0)) {
 			vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
@@ -846,9 +840,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		goto fail_release_lock;
 	}
 
-	list_for_each(lentry, &vsnode->child_list) {
-		vnode = list_entry(lentry, struct vmm_devtree_node, head);
-
+	list_for_each_entry(vnode, &vsnode->child_list, head) {
 		/* Sanity checks */
 		if (CONFIG_MAX_VCPU_COUNT <= mngr.vcpu_count) {
 			vmm_printf("%s: No more free VCPUs\n"
@@ -1096,7 +1088,6 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 {
 	int rc;
 	irq_flags_t flags, flags1;
-	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 
 	/* Sanity Check */
@@ -1121,18 +1112,19 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	vmm_spin_lock_irqsave_lite(&mngr.lock, flags);
 
 	/* Acquire Guest VCPU lock */
-	vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags1);
+	vmm_write_lock_irqsave_lite(&guest->vcpu_lock, flags1);
 
 	/* Destroy each VCPU of guest */
 	while (!list_empty(&guest->vcpu_list)) {
-		l = list_pop(&guest->vcpu_list);
-		vcpu = list_entry(l, struct vmm_vcpu, head);
+		vcpu = list_first_entry(&guest->vcpu_list,
+					struct vmm_vcpu, head);
+		list_del(&vcpu->head);
 
 		/* Decrement vcpu count */
 		mngr.vcpu_count--;
 
 		/* Release Guest VCPU lock */
-		vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
+		vmm_write_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 
 		/* Notify scheduler about VCPU state change */
 		if ((rc = vmm_manager_vcpu_set_state(vcpu, 
@@ -1162,11 +1154,11 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		mngr.vcpu_avail_array[vcpu->id] = TRUE;
 
 		/* Acquire Guest VCPU lock */
-		vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags1);
+		vmm_write_lock_irqsave_lite(&guest->vcpu_lock, flags1);
 	}
 
 	/* Release Guest VCPU lock */
-	vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
+	vmm_write_unlock_irqrestore_lite(&guest->vcpu_lock, flags1);
 
 	/* Reset guest instance members */
 	guest->node = NULL;

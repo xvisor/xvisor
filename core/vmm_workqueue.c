@@ -153,20 +153,18 @@ struct vmm_workqueue *vmm_workqueue_index2workqueue(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_workqueue *ret;
+	struct vmm_workqueue *wq;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	ret = NULL;
+	wq = NULL;
 	found = FALSE;
 
 	vmm_spin_lock_irqsave(&wqctrl.lock, flags);
 
-	list_for_each(l, &wqctrl.wq_list) {
-		ret = list_entry(l, struct vmm_workqueue, head);
+	list_for_each_entry(wq, &wqctrl.wq_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -180,7 +178,7 @@ struct vmm_workqueue *vmm_workqueue_index2workqueue(int index)
 		return NULL;
 	}
 
-	return ret;
+	return wq;
 }
 
 u32 vmm_workqueue_count(void)
@@ -281,7 +279,6 @@ static int workqueue_main(void *data)
 {
 	bool do_work;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_workqueue *wq = data;
 	struct vmm_work *work = NULL;
 
@@ -293,10 +290,11 @@ static int workqueue_main(void *data)
 		vmm_spin_lock_irqsave(&wq->lock, flags);
 		
 		while (!list_empty(&wq->work_list)) {
-			l = list_pop(&wq->work_list);
+			work = list_first_entry(&wq->work_list,
+						struct vmm_work, head);
+			list_del(&work->head);
 			vmm_spin_unlock_irqrestore(&wq->lock, flags);
 
-			work = list_entry(l, struct vmm_work, head);
 			do_work = FALSE;
 			vmm_spin_lock_irqsave(&work->lock, flags);
 			if (work->flags & VMM_WORK_STATE_SCHEDULED) {

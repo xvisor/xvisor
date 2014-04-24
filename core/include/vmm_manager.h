@@ -81,9 +81,6 @@ struct vmm_guest_aspace {
 	void *devemu_priv;
 };
 
-#define list_for_each_region(curr, aspace)	\
-			list_for_each(curr, &(aspace->reg_list))
-
 struct vmm_vcpu_irq {
 	atomic_t assert;
 	u64 reason;
@@ -124,9 +121,6 @@ struct vmm_guest {
 	/* Architecture specific context */
 	void *arch_priv;
 };
-
-#define list_for_each_vcpu(curr, guest)	\
-			list_for_each(curr, &(guest->vcpu_list))
 
 enum vmm_vcpu_states {
 	VMM_VCPU_STATE_UNKNOWN = 0x01,

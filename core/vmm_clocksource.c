@@ -117,7 +117,6 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cst;
 
 	if (!cs) {
@@ -129,8 +128,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cst = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cst, &csctrl.clksrc_list, head) {
 		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
@@ -154,7 +152,6 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cst;
 
 	if (!cs) {
@@ -170,8 +167,7 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 
 	cst = NULL;
 	found = FALSE;
-	list_for_each(l, &csctrl.clksrc_list) {
-		cst = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cst, &csctrl.clksrc_list, head) {
 		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
@@ -194,7 +190,6 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 {
 	int rating = 0;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cs, *best_cs;
 
 	cs = NULL;
@@ -202,8 +197,7 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cs = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (cs->rating > rating) {
 			best_cs = cs;
 			rating = cs->rating;
@@ -219,7 +213,6 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cs;
 
 	if (!name) {
@@ -231,8 +224,7 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cs = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (strcmp(cs->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -252,20 +244,18 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_clocksource *ret;
+	struct vmm_clocksource *cs;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	ret = NULL;
+	cs = NULL;
 	found = FALSE;
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		ret = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -279,18 +269,18 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return cs;
 }
 
 u32 vmm_clocksource_count(void)
 {
 	u32 retval = 0;
 	irq_flags_t flags;
-	struct dlist *l;
+	struct vmm_clocksource *cs;
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		retval++;
 	}
 
