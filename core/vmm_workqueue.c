@@ -190,20 +190,27 @@ u32 vmm_workqueue_count(void)
 
 int vmm_workqueue_flush(struct vmm_workqueue *wq)
 {
-	int rc;
+	irq_flags_t flags;
 
 	if (!wq) {
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_threads_wakeup(wq->thread))) {
-		return rc;
-	}
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 
 	while (!list_empty(&wq->work_list)) {
+		vmm_spin_unlock_irqrestore(&wq->lock, flags);
+
+		/* Make sure thread is running */
+		vmm_threads_wakeup(wq->thread);
+
 		/* We release the processor to let the wq thread do its job */
 		vmm_scheduler_yield();
+
+		vmm_spin_lock_irqsave(&wq->lock, flags);
 	}
+
+	vmm_spin_unlock_irqrestore(&wq->lock, flags);
 
 	return VMM_OK;
 }
