@@ -35,6 +35,9 @@ void vmm_scheduler_preempt_enable(void);
 /** Preempt Orphan VCPU (Must be called from somewhere) */
 void vmm_scheduler_preempt_orphan(arch_regs_t *regs);
 
+/** Force re-scheduling on given host CPU */
+int vmm_scheduler_force_resched(u32 hcpu);
+
 /** Change the vcpu state 
  *  (Do not call this function directly.)
  *  (Always prefer vmm_manager_vcpu_xxx() APIs for vcpu state change.)

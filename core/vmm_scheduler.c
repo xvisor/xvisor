@@ -278,6 +278,22 @@ static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
 	 */
 }
 
+int vmm_scheduler_force_resched(u32 hcpu)
+{
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		return VMM_EINVALID;
+	}
+	if (!vmm_cpu_online(hcpu)) {
+		return VMM_ENOTAVAIL;
+	}
+
+	vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
+				scheduler_ipi_resched,
+				NULL, NULL, NULL);
+
+	return VMM_OK;
+}
+
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	u64 tstamp;
@@ -409,9 +425,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				arch_vcpu_preempt_orphan();
 			}
 		} else {
-			vmm_smp_ipi_async_call(vmm_cpumask_of(vhcpu),
-						scheduler_ipi_resched,
-						NULL, NULL, NULL);
+			rc = vmm_scheduler_force_resched(vhcpu);
 		}
 	}
 
