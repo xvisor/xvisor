@@ -156,7 +156,6 @@ struct vstelnet *vstelnet_create(u32 port, const char *vser_name)
 {
 	char name[32];
 	bool found;
-	struct dlist *l;
 	struct vstelnet *vst;
 	struct vmm_vserial *vser;
 
@@ -174,8 +173,7 @@ struct vstelnet *vstelnet_create(u32 port, const char *vser_name)
 	vmm_mutex_lock(&vstc.vst_list_lock);
 
 	found = FALSE;
-	list_for_each(l, &vstc.vst_list) {
-		vst = list_entry(l, struct vstelnet, head);
+	list_for_each_entry(vst, &vstc.vst_list, head) {
 		if (vst->vser == vser || vst->port == port) {
 			found = TRUE;
 			break;
@@ -282,8 +280,7 @@ VMM_EXPORT_SYMBOL(vstelnet_destroy);
 struct vstelnet *vstelnet_find(u32 port)
 {
 	bool found;
-	struct dlist *l;
-	struct vstelnet *ret;
+	struct vstelnet *vst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
@@ -293,12 +290,11 @@ struct vstelnet *vstelnet_find(u32 port)
 
 	vmm_mutex_lock(&vstc.vst_list_lock);
 
-	ret = NULL;
+	vst = NULL;
 	found = FALSE;
 
-	list_for_each(l, &vstc.vst_list) {
-		ret = list_entry(l, struct vstelnet, head);
-		if (ret->port == port) {
+	list_for_each_entry(vst, &vstc.vst_list, head) {
+		if (vst->port == port) {
 			found = TRUE;
 			break;
 		}
@@ -310,15 +306,14 @@ struct vstelnet *vstelnet_find(u32 port)
 		return NULL;
 	}
 
-	return ret;
+	return vst;
 }
 VMM_EXPORT_SYMBOL(vstelnet_find);
 
 struct vstelnet *vstelnet_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vstelnet *ret;
+	struct vstelnet *vst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
@@ -328,11 +323,10 @@ struct vstelnet *vstelnet_get(int index)
 
 	vmm_mutex_lock(&vstc.vst_list_lock);
 
-	ret = NULL;
+	vst = NULL;
 	found = FALSE;
 
-	list_for_each(l, &vstc.vst_list) {
-		ret = list_entry(l, struct vstelnet, head);
+	list_for_each_entry(vst, &vstc.vst_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -346,20 +340,20 @@ struct vstelnet *vstelnet_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return vst;
 }
 VMM_EXPORT_SYMBOL(vstelnet_get);
 
 u32 vstelnet_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct vstelnet *vst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_mutex_lock(&vstc.vst_list_lock);
 
-	list_for_each(l, &vstc.vst_list) {
+	list_for_each_entry(vst, &vstc.vst_list, head) {
 		retval++;
 	}
 
@@ -373,7 +367,6 @@ static int vstelnet_vserial_notification(struct vmm_notifier_block *nb,
 					 unsigned long evt, void *data)
 {
 	bool found;
-	struct dlist *l;
 	struct vstelnet *vst;
 	struct vmm_vserial_event *e = data;
 
@@ -388,8 +381,7 @@ static int vstelnet_vserial_notification(struct vmm_notifier_block *nb,
 
 	found = FALSE;
 	vst = NULL;
-	list_for_each(l, &vstc.vst_list) {
-		vst = list_entry(l, struct vstelnet, head);
+	list_for_each_entry(vst, &vstc.vst_list, head) {
 		if (vst->vser == e->vser) {
 			found = TRUE;
 			break;

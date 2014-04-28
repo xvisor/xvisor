@@ -92,7 +92,6 @@ static int count_match(const char *path, char *mount_root)
 
 static int vfs_findroot(const char *path, struct mount **mp, char **root)
 {
-	struct dlist *l;
 	struct mount *m, *tmp;
 	int len, max_len = 0;
 
@@ -105,8 +104,7 @@ static int vfs_findroot(const char *path, struct mount **mp, char **root)
 
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
-	list_for_each(l, &vfsc.mnt_list) {
-		tmp = list_entry(l, struct mount, m_link);
+	list_for_each_entry(tmp, &vfsc.mnt_list, m_link) {
 		len = count_match(path, tmp->m_path);
 		if (len > max_len) {
 			max_len = len;
@@ -230,15 +228,13 @@ static struct vnode *vfs_vnode_lookup(struct mount *m, const char *path)
 {
 	u32 hash;
 	bool found = FALSE;
-	struct dlist *l;
 	struct vnode *v = NULL;
 
 	hash = vfs_vnode_hash(m, path);
 
 	vmm_mutex_lock(&vfsc.vnode_list_lock[hash]);
 
-	list_for_each(l, &vfsc.vnode_list[hash]) {
-		v = list_entry(l, struct vnode, v_link);
+	list_for_each_entry(v, &vfsc.vnode_list[hash], v_link) {
 		if ((v->v_mount == m) && 
 		    (!strncmp(v->v_path, path, VFS_MAX_PATH))) {
 			found = TRUE;
@@ -504,7 +500,6 @@ static void vfs_force_unmount(struct mount *m)
 {
 	int i;
 	bool found;
-	struct dlist *l;
 	struct vnode *v;
 	struct mount *tm;
 
@@ -514,8 +509,7 @@ static void vfs_force_unmount(struct mount *m)
 	while (1) {
 		/* Find temp mount point */
 		found = FALSE;
-		list_for_each(l, &vfsc.mnt_list) {
-			tm = list_entry(l, struct mount, m_link);
+		list_for_each_entry(tm, &vfsc.mnt_list, m_link) {
 			if (tm->m_covered &&
 			    tm->m_covered->v_mount == m) {
 				found = TRUE;
@@ -554,8 +548,7 @@ static void vfs_force_unmount(struct mount *m)
 
 		while (1) {
 			found = FALSE;
-			list_for_each(l, &vfsc.vnode_list[i]) {
-				v = list_entry(l, struct vnode, v_link);
+			list_for_each_entry(v, &vfsc.vnode_list[i], v_link) {
 				if (v->v_mount == m) {
 					found = TRUE;
 					break;
@@ -598,7 +591,6 @@ static int vfs_blockdev_notification(struct vmm_notifier_block *nb,
 				     unsigned long evt, void *data)
 {
 	bool found;
-	struct dlist *l;
 	struct mount *m;
 	struct vmm_blockdev_event *e = data;
 
@@ -614,8 +606,7 @@ static int vfs_blockdev_notification(struct vmm_notifier_block *nb,
 
 	/* Find mount point using block device */
 	found = FALSE;
-	list_for_each(l, &vfsc.mnt_list) {
-		m = list_entry(l, struct mount, m_link);
+	list_for_each_entry(m, &vfsc.mnt_list, m_link) {
 		if (m->m_dev == e->bdev) {
 			found = TRUE;
 			break;
@@ -641,7 +632,6 @@ static int vfs_blockdev_notification(struct vmm_notifier_block *nb,
 int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 {
 	int err;
-	struct dlist *l;
 	struct vmm_blockdev *bdev;
 	struct filesystem *fs;
 	struct mount *m, *tm;
@@ -740,8 +730,7 @@ int vfs_mount(const char *dir, const char *fsname, const char *dev, u32 flags)
 	/* add to mount list */
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
-	list_for_each(l, &vfsc.mnt_list) {
-		tm = list_entry(l, struct mount, m_link);
+	list_for_each_entry(tm, &vfsc.mnt_list, m_link) {
 		if (!strcmp(tm->m_path, dir) ||
 		    ((dev != NULL) && (tm->m_dev == bdev))) {
 			vmm_mutex_unlock(&vfsc.mnt_list_lock);
@@ -769,7 +758,6 @@ int vfs_unmount(const char *path)
 {
 	int err;
 	bool found;
-	struct dlist *l;
 	struct mount *m;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
@@ -777,8 +765,7 @@ int vfs_unmount(const char *path)
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
 	found = FALSE;
-	list_for_each(l, &vfsc.mnt_list) {
-		m = list_entry(l, struct mount, m_link);
+	list_for_each_entry(m, &vfsc.mnt_list, m_link) {
 		if (!strcmp(path, m->m_path)) {
 			found = TRUE;
 			break;
@@ -827,8 +814,7 @@ VMM_EXPORT_SYMBOL(vfs_unmount);
 struct mount *vfs_mount_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct mount *ret;
+	struct mount *m;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
@@ -838,11 +824,10 @@ struct mount *vfs_mount_get(int index)
 
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
-	ret = NULL;
+	m = NULL;
 	found = FALSE;
 
-	list_for_each(l, &vfsc.mnt_list) {
-		ret = list_entry(l, struct mount, m_link);
+	list_for_each_entry(m, &vfsc.mnt_list, m_link) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -856,20 +841,20 @@ struct mount *vfs_mount_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return m;
 }
 VMM_EXPORT_SYMBOL(vfs_mount_get);
 
 u32 vfs_mount_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct mount *m;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_mutex_lock(&vfsc.mnt_list_lock);
 
-	list_for_each(l, &vfsc.mnt_list) {
+	list_for_each_entry(m, &vfsc.mnt_list, m_link) {
 		retval++;
 	}
 
@@ -1886,7 +1871,6 @@ VMM_EXPORT_SYMBOL(vfs_stat);
 int vfs_filesystem_register(struct filesystem *fs)
 {
 	bool found;
-	struct dlist *l;
 	struct filesystem *fst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
@@ -1900,8 +1884,7 @@ int vfs_filesystem_register(struct filesystem *fs)
 
 	vmm_mutex_lock(&vfsc.fs_list_lock);
 
-	list_for_each(l, &vfsc.fs_list) {
-		fst = list_entry(l, struct filesystem, head);
+	list_for_each_entry(fst, &vfsc.fs_list, head) {
 		if (strcmp(fst->name, fs->name) == 0) {
 			found = TRUE;
 			break;
@@ -1925,7 +1908,6 @@ VMM_EXPORT_SYMBOL(vfs_filesystem_register);
 int vfs_filesystem_unregister(struct filesystem *fs)
 {
 	bool found;
-	struct dlist *l;
 	struct filesystem *fst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
@@ -1943,8 +1925,7 @@ int vfs_filesystem_unregister(struct filesystem *fs)
 
 	fst = NULL;
 	found = FALSE;
-	list_for_each(l, &vfsc.fs_list) {
-		fst = list_entry(l, struct filesystem, head);
+	list_for_each_entry(fst, &vfsc.fs_list, head) {
 		if (strcmp(fst->name, fs->name) == 0) {
 			found = TRUE;
 			break;
@@ -1967,8 +1948,7 @@ VMM_EXPORT_SYMBOL(vfs_filesystem_unregister);
 struct filesystem *vfs_filesystem_find(const char *name)
 {
 	bool found;
-	struct dlist *l;
-	struct filesystem *ret;
+	struct filesystem *fst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
@@ -1978,12 +1958,11 @@ struct filesystem *vfs_filesystem_find(const char *name)
 
 	vmm_mutex_lock(&vfsc.fs_list_lock);
 
-	ret = NULL;
+	fst = NULL;
 	found = FALSE;
 
-	list_for_each(l, &vfsc.fs_list) {
-		ret = list_entry(l, struct filesystem, head);
-		if (strcmp(name, ret->name) == 0) {
+	list_for_each_entry(fst, &vfsc.fs_list, head) {
+		if (strcmp(name, fst->name) == 0) {
 			found = TRUE;
 			break;
 		}
@@ -1995,15 +1974,14 @@ struct filesystem *vfs_filesystem_find(const char *name)
 		return NULL;
 	}
 
-	return ret;
+	return fst;
 }
 VMM_EXPORT_SYMBOL(vfs_filesystem_find);
 
 struct filesystem *vfs_filesystem_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct filesystem *ret;
+	struct filesystem *fst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
@@ -2013,11 +1991,10 @@ struct filesystem *vfs_filesystem_get(int index)
 
 	vmm_mutex_lock(&vfsc.fs_list_lock);
 
-	ret = NULL;
+	fst = NULL;
 	found = FALSE;
 
-	list_for_each(l, &vfsc.fs_list) {
-		ret = list_entry(l, struct filesystem, head);
+	list_for_each_entry(fst, &vfsc.fs_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -2031,20 +2008,20 @@ struct filesystem *vfs_filesystem_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return fst;
 }
 VMM_EXPORT_SYMBOL(vfs_filesystem_get);
 
 u32 vfs_filesystem_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct filesystem *fst;
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_mutex_lock(&vfsc.fs_list_lock);
 
-	list_for_each(l, &vfsc.fs_list) {
+	list_for_each_entry(fst, &vfsc.fs_list, head) {
 		retval++;
 	}
 
