@@ -727,7 +727,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	virtual_addr_t va, resv_va = *core_resv_va;
 	virtual_size_t sz, resv_sz = *core_resv_sz;
 	physical_addr_t pa, resv_pa = *core_resv_pa;
-	struct dlist *l;
 	struct cpu_page hyppg;
 	struct cpu_ttbl *ttbl, *parent;
 
@@ -922,8 +921,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	/* Clear memory of free translation tables. This cannot be done before
 	 * we map reserved space (core reserved + arch reserved).
 	 */
-	list_for_each(l, &mmuctrl.free_ttbl_list) {
-		ttbl = list_entry(l, struct cpu_ttbl, head);
+	list_for_each_entry(ttbl, &mmuctrl.free_ttbl_list, head) {
 		memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
 	}
 

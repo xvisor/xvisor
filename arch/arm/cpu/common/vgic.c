@@ -1250,7 +1250,6 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 						 u32 parent_irq)
 {
 	u32 i;
-	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 	struct vgic_guest_state *s = NULL;
 
@@ -1287,8 +1286,7 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 	}
 
 	/* Setup save/restore hooks */
-	list_for_each(l, &guest->vcpu_list) {
-		vcpu = list_entry(l, struct vmm_vcpu, head);
+	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
 		arm_vgic_setup(vcpu, 
 			vgic_save_vcpu_context, 
 			vgic_restore_vcpu_context, s);
@@ -1300,7 +1298,6 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 static int vgic_state_free(struct vgic_guest_state *s)
 {
 	u32 i;
-	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 
 	if (!s) {
@@ -1308,8 +1305,7 @@ static int vgic_state_free(struct vgic_guest_state *s)
 	}
 
 	/* Cleanup save/restore hooks */
-	list_for_each(l, &s->guest->vcpu_list) {
-		vcpu = list_entry(l, struct vmm_vcpu, head);
+	list_for_each_entry(vcpu, &s->guest->vcpu_list, head) {
 		arm_vgic_cleanup(vcpu);
 	}
 

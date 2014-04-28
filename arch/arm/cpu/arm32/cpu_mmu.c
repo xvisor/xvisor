@@ -955,7 +955,6 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 {
 	int rc;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct cpu_l1tbl *l1;
 
 	if (!pg) {
@@ -977,8 +976,7 @@ int cpu_mmu_unmap_reserved_page(struct cpu_page *pg)
 
 	vmm_spin_lock_irqsave(&mmuctrl.l1_alloc_lock, flags);
 
-	list_for_each(l, &mmuctrl.l1tbl_list) {
-		l1 = list_entry(l, struct cpu_l1tbl, head);
+	list_for_each_entry(l1, &mmuctrl.l1tbl_list, head) {
 		rc = cpu_mmu_unmap_page(l1, pg);
 	}
 
@@ -1018,8 +1016,8 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 {
 	u32 i, *nl1_tte, *nl2_tte, *l2_tte;
 	irq_flags_t flags;
-	struct cpu_l1tbl *nl1 = NULL;
 	struct dlist *le;
+	struct cpu_l1tbl *nl1 = NULL;
 	struct cpu_l2tbl *l2, *nl2;
 	virtual_addr_t l2_tte_va;
 
@@ -1052,8 +1050,7 @@ struct cpu_l1tbl *cpu_mmu_l1tbl_alloc(void)
 	}
 	nl1->tte_cnt = mmuctrl.defl1.tte_cnt;
 
-	list_for_each(le, &mmuctrl.defl1.l2tbl_list) {
-		l2 = list_entry(le, struct cpu_l2tbl, head);
+	list_for_each_entry(l2, &mmuctrl.defl1.l2tbl_list, head) {
 		nl1_tte = (u32 *) (nl1->tbl_va +
 			  ((l2->map_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
 		*nl1_tte = 0x0;
@@ -1184,7 +1181,7 @@ int cpu_mmu_change_dacr(u32 new_dacr)
 
 int cpu_mmu_change_ttbr(struct cpu_l1tbl *l1)
 {
-	struct cpu_l1tbl * curr_l1;
+	struct cpu_l1tbl *curr_l1;
 
 	if (!l1) {
 		return VMM_EFAIL;
