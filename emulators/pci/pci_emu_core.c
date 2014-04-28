@@ -55,13 +55,11 @@ static struct pci_devemu_ctrl pci_emu_dectrl;
 static struct pci_bus *pci_find_bus_by_id(struct pci_host_controller *controller,
 					      u32 bus_id)
 {
-	struct dlist *l;
 	struct pci_bus *bus = NULL;
 
 	vmm_mutex_lock(&controller->lock);
 
-	list_for_each(l, &controller->attached_buses) {
-		bus = list_entry(l, struct pci_bus, head);
+	list_for_each_entry(bus, &controller->attached_buses, head) {
 		if (bus->bus_id == bus_id) {
 			vmm_mutex_unlock(&controller->lock);
 			return bus;
@@ -99,16 +97,16 @@ static int pci_emu_detach_pci_device(struct pci_host_controller *controller,
 
 int pci_emu_register_device(struct pci_dev_emulator *emu)
 {
-	struct dlist *l;
 	struct pci_dev_emulator *e;
 
-	if (!emu) return VMM_EFAIL;
+	if (!emu) {
+		return VMM_EFAIL;
+	}
 
 	vmm_mutex_lock(&pci_emu_dectrl.emu_lock);
 
 	e = NULL;
-	list_for_each(l, &pci_emu_dectrl.emu_list) {
-		e = list_entry(l, struct pci_dev_emulator, head);
+	list_for_each_entry(e, &pci_emu_dectrl.emu_list, head) {
 		if (strcmp(e->name, emu->name) == 0) {
 			vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 			return VMM_EINVALID;
@@ -126,18 +124,16 @@ int pci_emu_register_device(struct pci_dev_emulator *emu)
 
 int pci_emu_unregister_device(struct pci_dev_emulator *emu)
 {
-	struct dlist *l;
 	struct pci_dev_emulator *e;
 
-	if (emu == NULL) {
+	if (!emu) {
 		return VMM_EFAIL;
 	}
 
 	vmm_mutex_lock(&pci_emu_dectrl.emu_lock);
 
 	e = NULL;
-	list_for_each(l, &pci_emu_dectrl.emu_list) {
-		e = list_entry(l, struct pci_dev_emulator, head);
+	list_for_each_entry(e, &pci_emu_dectrl.emu_list, head) {
 		if (strcmp(e->name, emu->name) == 0) {
 			vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 			return VMM_ENOTAVAIL;
@@ -153,7 +149,6 @@ int pci_emu_unregister_device(struct pci_dev_emulator *emu)
 
 struct pci_dev_emulator *pci_emu_find_device(const char *name)
 {
-	struct dlist *l;
 	struct pci_dev_emulator *emu;
 
 	if (!name) {
@@ -164,8 +159,7 @@ struct pci_dev_emulator *pci_emu_find_device(const char *name)
 
 	vmm_mutex_lock(&pci_emu_dectrl.emu_lock);
 
-	list_for_each(l, &pci_emu_dectrl.emu_list) {
-		emu = list_entry(l, struct pci_dev_emulator, head);
+	list_for_each_entry(emu, &pci_emu_dectrl.emu_list, head) {
 		if (strcmp(emu->name, name) == 0) {
 			vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 			return emu;
@@ -182,7 +176,6 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 			      struct vmm_devtree_node *node)
 {
 	int rc, bcount;
-	struct dlist *l1;
 	struct pci_device *pdev;
 	struct pci_dev_emulator *emu;
 	struct vmm_devtree_node *bus_node;
@@ -207,53 +200,54 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 			vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 			return VMM_EFAIL;
 		}
-		list_for_each(l1, &pci_emu_dectrl.emu_list) {
-			emu = list_entry(l1, struct pci_dev_emulator,
-					 head);
-			bus_node = vmm_devtree_find_matching(bus_node, emu->match_table);
-			if (bus_node) {
-				pdev = vmm_zalloc(sizeof(struct pci_device));
-				if (pdev == NULL) {
-					/* FIXME: more cleanup to do */
-					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
-					return VMM_EFAIL;
-				}
-				INIT_MUTEX(&pdev->lock);
-				pdev->node = bus_node;
-				pdev->priv = NULL;
-				if((rc = vmm_devtree_read_u32(bus_node, "device_id", &pdev->device_id))) {
-					vmm_printf("%s: error getting device ID information.\n",
-						   __func__);
-					vmm_free(pdev);
-					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
-					return rc;
-				}
-				vmm_printf("Probe emulated PCI device %s/%s on PCI Bus %d\n",
-					   guest->name, pdev->node->name, bcount);
-				if ((rc = emu->probe(pdev, guest, NULL))) {
-					vmm_printf("%s: %s/%s probe error %d\n", 
-						   __func__, guest->name, pdev->node->name, rc);
-					vmm_free(pdev);
-					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
-					return rc;
-				}
-				if ((rc = emu->reset(pdev))) {
-					vmm_printf("%s: %s/%s reset error %d\n", 
-						   __func__, guest->name, pdev->node->name, rc);
-					vmm_free(pdev);
-					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
-					return rc;
-				}
-
+		list_for_each_entry(emu, &pci_emu_dectrl.emu_list, head) {
+			bus_node =
+			 vmm_devtree_find_matching(bus_node, emu->match_table);
+			if (!bus_node) {
+				continue;
+			}
+			pdev = vmm_zalloc(sizeof(struct pci_device));
+			if (!pdev) {
+				/* FIXME: more cleanup to do */
+				vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+				return VMM_EFAIL;
+			}
+			INIT_MUTEX(&pdev->lock);
+			pdev->node = bus_node;
+			pdev->priv = NULL;
+			rc = vmm_devtree_read_u32(bus_node,
+						"device_id", &pdev->device_id);
+			if (rc) {
+				vmm_printf("%s: error getting device ID information.\n",
+					   __func__);
+				vmm_free(pdev);
+				vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+				return rc;
+			}
+			vmm_printf("Probe emulated PCI device %s/%s on PCI Bus %d\n",
+				   guest->name, pdev->node->name, bcount);
+			if ((rc = emu->probe(pdev, guest, NULL))) {
+				vmm_printf("%s: %s/%s probe error %d\n", 
+					   __func__, guest->name, pdev->node->name, rc);
+				vmm_free(pdev);
+				vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+				return rc;
+			}
+			if ((rc = emu->reset(pdev))) {
+				vmm_printf("%s: %s/%s reset error %d\n", 
+					   __func__, guest->name, pdev->node->name, rc);
+				vmm_free(pdev);
+				vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+				return rc;
+			}
 				/* Attach newly found device to its bus */
-				if ((rc = pci_emu_attach_pci_device(controller, pdev,
-									bcount))) {
-					vmm_printf("%s: %s/%s couldn't attach PCI device to bus.\n",
-						   __func__, guest->name, pdev->node->name);
-					vmm_free(pdev);
-					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
-					return rc;
-				}
+			if ((rc = pci_emu_attach_pci_device(controller, pdev,
+								bcount))) {
+				vmm_printf("%s: %s/%s couldn't attach PCI device to bus.\n",
+					   __func__, guest->name, pdev->node->name);
+				vmm_free(pdev);
+				vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+				return rc;
 			}
 		}
 	}
@@ -292,13 +286,11 @@ int pci_emu_attach_new_pci_bus(struct pci_host_controller *controller, u32 bus_i
 
 int pci_emu_detach_pci_bus(struct pci_host_controller *controller, u32 bus_id)
 {
-	struct dlist *l;
 	struct pci_bus *bus;
 
 	vmm_mutex_lock(&controller->lock);
 
-	list_for_each(l, &controller->attached_buses) {
-		bus = list_entry(l, struct pci_bus, head);
+	list_for_each_entry(bus, &controller->attached_buses, head) {
 		if (bus->bus_id == bus_id) {
 			list_del(&bus->head);
 			vmm_free(bus);
