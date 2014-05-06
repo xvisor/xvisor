@@ -117,13 +117,13 @@ _bss_zero:
 
 	/* First check for 4B alignment */
 	tst	r2, #0x3
-	bne	align_1m_boundary
+	bne	align_4k_boundary
 
 	/* Now check for FDT_MAGIC */
 	ldr	r0, [r2]
 	ldr	r1, __fdt_magic
 	cmp	r0, r1
-	bne	align_1m_boundary
+	bne	align_4k_boundary
 
 	/* Now get the dtb total-size */
 	ldrb	r0, [r2, #4]
@@ -137,7 +137,7 @@ _bss_zero:
 	/* Compare with max supported dtb size */
 	ldr	r1, __max_dtb_size
 	cmp	r0, r1
-	bgt	align_1m_boundary
+	bgt	align_4k_boundary
 
 	/* Overwrite the built-in fdt with the one passed */
 	ldr	r1, __builtin_dtb
@@ -154,11 +154,11 @@ dtb_save_loop:
 	subs	r0, r0, #4
 	bgt	dtb_save_loop
 
-align_1m_boundary:
-	/* Relocate code if load start is not 1MB aligned */
+align_4k_boundary:
+	/* Relocate code if load start is not 4KB aligned */
 	mov	r0, r4
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12
 	cmp	r0, r4
 	/* Skip relocation if already aligned */
 	beq	_start_mmu_init
@@ -177,8 +177,8 @@ align_1m_boundary:
 	 */
 	mov	r0, r4		 /* r0 -> load start */
 	mov	r1, r4
-	mov	r1, r1, lsr #20
-	mov	r1, r1, lsl #20	 /* r1 -> load start aligned to 1MB boundary */
+	mov	r1, r1, lsr #12
+	mov	r1, r1, lsl #12	 /* r1 -> load start aligned to 4KB boundary */
 	sub	r2, r5, r4	 /* r2 -> code size */
 	bl	_start_nextpc1
 _start_nextpc1:
@@ -188,8 +188,8 @@ _start_nextpc1:
 	bx	r5		 /* call _copy */
 	/* Update load start and load end */
 	mov	r0, r4
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20  /* r0 -> load_start aligned to 1MB boundary */
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12  /* r0 -> load_start aligned to 4KB boundary */
 	subs	r1, r4, r0	 /* r1 -> offset between load start and aligned address */
 	subs	r4, r4, r1	 /* r4 -> new load start */
 	subs	r5, r5, r1	 /* r5 -> new load end */
