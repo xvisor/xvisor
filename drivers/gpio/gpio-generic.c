@@ -567,3 +567,9 @@ static struct platform_driver bgpio_driver = {
 module_platform_driver(bgpio_driver);
 
 #endif /* CONFIG_GPIO_GENERIC_PLATFORM */
+
+#if 0
+MODULE_DESCRIPTION("Driver for basic memory-mapped GPIO controllers");
+MODULE_AUTHOR("Anton Vorontsov <cbouatmailru@gmail.com>");
+MODULE_LICENSE("GPL");
+#endif

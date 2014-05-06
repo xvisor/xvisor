@@ -15,21 +15,15 @@
 
 #include <linux/kernel.h>
 #include <linux/kref.h>
-#if 0
 #include <linux/export.h>
-#endif
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/list.h>
-#if 0
 #include <linux/sysfs.h>
-#endif
 #include <linux/debugfs.h>
-#if 0
 #include <linux/seq_file.h>
-#endif
 #include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/machine.h>
@@ -135,9 +129,10 @@ struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 	list_for_each_entry(pctldev, &pinctrldev_list, node)
 #if 0
 		if (pctldev->dev->of_node == np) {
-#endif
+#else
 		if (pctldev->dev->node == np) {
 
+#endif
 			mutex_unlock(&pinctrldev_list_mutex);
 			return pctldev;
 		}
@@ -261,8 +256,9 @@ static int pinctrl_register_one_pin(struct pinctrl_dev *pctldev,
 	} else {
 #if 0
 		pindesc->name = kasprintf(GFP_KERNEL, "PIN%u", number);
-#endif
+#else
 		pindesc->name = vmm_zalloc(64);
+#endif
 		if (pindesc->name == NULL) {
 			kfree(pindesc);
 			return -ENOMEM;
@@ -1065,7 +1061,6 @@ unapply_new_state:
 }
 EXPORT_SYMBOL_GPL(pinctrl_select_state);
 
-#if 0
 static void devm_pinctrl_release(struct device *dev, void *res)
 {
 	pinctrl_put(*(struct pinctrl **)res);
@@ -1119,7 +1114,6 @@ void devm_pinctrl_put(struct pinctrl *p)
 			       devm_pinctrl_match, p));
 }
 EXPORT_SYMBOL_GPL(devm_pinctrl_put);
-#endif
 
 int pinctrl_register_map(struct pinctrl_map const *maps, unsigned num_maps,
 			 bool dup, bool locked)

@@ -7,6 +7,7 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/debugfs.h>
+#include <linux/seq_file.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/slab.h>

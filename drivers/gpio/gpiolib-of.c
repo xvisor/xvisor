@@ -37,11 +37,10 @@ static int of_gpiochip_find_and_xlate(struct gpio_chip *gc, void *data)
 	struct gg_data *gg_data = data;
 	int ret;
 
-	if ((gc->of_node != gg_data->gpiospec.node) ||
+	if ((gc->of_node != gg_data->gpiospec.np) ||
 	    (gc->of_gpio_n_cells != gg_data->gpiospec.args_count) ||
 	    (!gc->of_xlate))
 		return false;
-
 
 	ret = gc->of_xlate(gc, &gg_data->gpiospec, gg_data->flags);
 	if (ret < 0)
@@ -80,14 +79,12 @@ int of_get_named_gpio_flags(struct device_node *np, const char *propname,
 	if (ret) {
 		pr_debug("%s: can't parse gpios property of node '%s[%d]'\n",
 			__func__, np->name, index);
-
 		return ret;
 	}
 
 	gpiochip_find(&gg_data, of_gpiochip_find_and_xlate);
 
-	of_node_put(gg_data.gpiospec.node);
-
+	of_node_put(gg_data.gpiospec.np);
 	pr_debug("%s exited with status %d\n", __func__, gg_data.out_gpio);
 	return gg_data.out_gpio;
 }
@@ -157,7 +154,6 @@ int of_mm_gpiochip_add(struct device_node *np,
 	struct gpio_chip *gc = &mm_gc->gc;
 
 	gc->label = kstrdup(np->name, GFP_KERNEL);
-
 	if (!gc->label)
 		goto err0;
 
@@ -184,7 +180,6 @@ err1:
 err0:
 	pr_err("%s: GPIO chip registration failed with status %d\n",
 	       np->name, ret);
-
 	return ret;
 }
 EXPORT_SYMBOL(of_mm_gpiochip_add);
@@ -206,8 +201,7 @@ static void of_gpiochip_add_pin_range(struct gpio_chip *chip)
 		if (ret)
 			break;
 
-		pctldev = of_pinctrl_get(pinspec.node);
-
+		pctldev = of_pinctrl_get(pinspec.np);
 		if (!pctldev)
 			break;
 
@@ -230,7 +224,6 @@ void of_gpiochip_add(struct gpio_chip *chip)
 {
 	if ((!chip->of_node) && (chip->dev))
 		chip->of_node = chip->dev->node;
-
 
 	if (!chip->of_node)
 		return;

@@ -16,20 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef CONFIG_OF
 
 void pinctrl_dt_free_maps(struct pinctrl *p);
 int pinctrl_dt_to_map(struct pinctrl *p);
-
-#else
-
-static inline int pinctrl_dt_to_map(struct pinctrl *p)
-{
-	return 0;
-}
-
-static inline void pinctrl_dt_free_maps(struct pinctrl *p)
-{
-}
-
-#endif

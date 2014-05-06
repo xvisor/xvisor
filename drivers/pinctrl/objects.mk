@@ -22,3 +22,8 @@
 # */
 
 drivers-objs-$(CONFIG_PINCTRL)+= pinctrl/core.o
+drivers-objs-$(CONFIG_PINCTRL)+= pinctrl/pinctrl-utils.o
+drivers-objs-$(CONFIG_PINCTRL)+= pinctrl/devicetree.o
+drivers-objs-$(CONFIG_PINMUX)+= pinctrl/pinmux.o
+drivers-objs-$(CONFIG_PINCONF)+= pinctrl/pinconf.o
+drivers-objs-$(CONFIG_GENERIC_PINCONF)+= pinctrl/pinconf-generic.o
