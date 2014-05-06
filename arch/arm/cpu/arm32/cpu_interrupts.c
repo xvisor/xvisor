@@ -116,7 +116,7 @@ void do_soft_irq(arch_regs_t *regs)
 
 void do_prefetch_abort(arch_regs_t *regs)
 {
-	int rc = VMM_EFAIL;
+	int rc = VMM_OK;
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	struct vmm_vcpu *vcpu;
@@ -173,9 +173,13 @@ void do_prefetch_abort(arch_regs_t *regs)
 	switch(fs) {
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
 	case IFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
 	case IFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case IFSR_FS_TRANS_FAULT_SECTION:
 	case IFSR_FS_TRANS_FAULT_PAGE:
@@ -206,8 +210,12 @@ void do_prefetch_abort(arch_regs_t *regs)
 	case IFSR_FS_IMP_VALID_LOCKDOWN:
 	case IFSR_FS_IMP_VALID_COPROC_ABORT:
 	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	default:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break; 
 	};
 
@@ -224,7 +232,7 @@ void do_prefetch_abort(arch_regs_t *regs)
 
 void do_data_abort(arch_regs_t *regs)
 {
-	int rc = VMM_EFAIL; 
+	int rc = VMM_OK; 
 	bool crash_dump = FALSE;
 	u32 dfsr, dfar, fs, dom, wnr;
 	struct vmm_vcpu *vcpu;
@@ -285,14 +293,22 @@ void do_data_abort(arch_regs_t *regs)
 
 	switch(fs) {
 	case DFSR_FS_ALIGN_FAULT:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_ICACHE_MAINT_FAULT:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_1:
 	case DFSR_FS_TTBL_WALK_SYNC_EXT_ABORT_2:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_1:
 	case DFSR_FS_TTBL_WALK_SYNC_PARITY_ERROR_2:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	case DFSR_FS_TRANS_FAULT_SECTION:
 	case DFSR_FS_TRANS_FAULT_PAGE:
@@ -328,8 +344,12 @@ void do_data_abort(arch_regs_t *regs)
 	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
 	case DFSR_FS_ASYNC_EXT_ABORT:
 	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	default:
+		rc = VMM_EFAIL;
+		crash_dump = TRUE;
 		break;
 	};
 
