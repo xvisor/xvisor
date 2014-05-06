@@ -934,23 +934,45 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(cp15->l1, far, &pg))) {
-		/* Remove fault address from VTLB and restart.
-		 * Doing this will force us to do TTBL walk If MMU 
-		 * is enabled then appropriate fault will be generated.
+		/* Remove fault address from VTLB */
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+
+		/* Force TTBL walk If MMU is enabled so that
+		 * appropriate fault will be generated.
 		 */
-		return cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+					       far, fs, dom, wnr, xn, FALSE);
+		if (rc) {
+			return rc;
+		}
+
+		/* Try again to retrieve the faulting page */
+		rc = cpu_mmu_get_page(cp15->l1, far, &pg);
+		if (rc == VMM_ENOTAVAIL) {
+			return VMM_OK;
+		} else if (rc) {
+			return rc;
+		}
 	}
+
 	if (((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
 	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
-		/* Remove fault address from VTLB and restart.
-		 * Doing this will force us to do TTBL walk If MMU 
-		 * is enabled then appropriate fault will be generated 
+		/* Remove fault address from VTLB */
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+
+		/* Force TTBL walk If MMU is enabled so that
+		 * appropriate fault will be generated.
 		 */
-		rc = cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+					       far, fs, dom, wnr, xn, FALSE);
+		if (rc) {
+			return rc;
+		}
 	} else {
 		cpu_vcpu_halt(vcpu, regs);
 		rc = VMM_EFAIL;
 	}
+
 	return rc;
 }
 
@@ -972,12 +994,27 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 
 	/* Try to retrieve the faulting page */
 	if ((rc = cpu_mmu_get_page(cp15->l1, far, pg))) {
-		/* Remove fault address from VTLB and restart.
-		 * Doing this will force us to do TTBL walk If MMU 
-		 * is enabled then appropriate fault will be generated.
+		/* Remove fault address from VTLB */
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+
+		/* Force TTBL walk If MMU is enabled so that
+		 * appropriate fault will be generated.
 		 */
-		return cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+					       far, fs, dom, wnr, xn, FALSE);
+		if (rc) {
+			return rc;
+		}
+
+		/* Try again to retrieve the faulting page */
+		rc = cpu_mmu_get_page(cp15->l1, far, pg);
+		if (rc == VMM_ENOTAVAIL) {
+			return VMM_OK;
+		} else if (rc) {
+			return rc;
+		}
 	}
+
 	/* Check if vcpu was trying read/write to virtual space */
 	if (xn && ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
 		/* Emulate load/store instructions */
@@ -992,10 +1029,8 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 		cp15->virtio_active = FALSE;
 		return rc;
 	}
-	/* Remove fault address from VTLB and restart.
-	 * Doing this will force us to do TTBL walk If MMU 
-	 * is enabled then appropriate fault will be generated.
-	 */
+
+	/* Remove fault address from VTLB */
 	return cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
 }
 
