@@ -26,13 +26,13 @@
 #include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <arch_defterm.h>
-#include <drv/pl011.h>
-#include <drv/8250-uart.h>
 
 u8 __aligned(0x1000) defterm_early_base[0x1000];
 static void *early_base = &defterm_early_base;
 
 #if defined(CONFIG_DEFTERM_EARLY_PL011)
+
+#include <drv/pl011.h>
 
 /*
  * PL011 single character TX.
@@ -48,6 +48,8 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_UART8250_8BIT)
 
+#include <drv/8250-uart.h>
+
 /*
  * 8250/16550 (8-bit aligned registers) single character TX.
  */
@@ -60,6 +62,8 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_UART8250_32BIT)
 
+#include <drv/8250-uart.h>
+
 /*
  * 8250/16550 (32-bit aligned registers) single character TX.
  */
@@ -68,6 +72,22 @@ void __init arch_defterm_early_putc(u8 ch)
 	while (!(vmm_readl(early_base + (UART_LSR_OFFSET << 2)) & UART_LSR_THRE))
 		;
 	vmm_writel(ch, early_base + (UART_THR_OFFSET << 2));
+}
+
+#elif defined(CONFIG_DEFTERM_EARLY_IMX)
+
+#include <drv/imx-uart.h>
+
+void __init arch_defterm_early_putc(u8 ch)
+{
+	/* Wait until there is space in the FIFO */
+	while (~(vmm_readl(early_base + USR1)) & USR1_TRDY);
+
+	/* Send the character */
+	vmm_writel(ch, early_base + URTX0);
+
+	/* Flush */
+	while (~(vmm_readl(early_base + USR2)) & USR2_TXDC);
 }
 
 #else
