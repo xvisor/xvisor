@@ -91,17 +91,18 @@ struct fdt_fileinfo {
 	char *mem_rsvmap;
 };
 
-int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
+int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 			  struct fdt_fileinfo *fdt);
 
 int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 			 struct vmm_devtree_node **root);
 
-struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt, 
+struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 					 const char *node_path);
 
-int libfdt_get_property(struct fdt_fileinfo *fdt, 
-			struct fdt_node_header *fdt_node, 
+int libfdt_get_property(struct fdt_fileinfo *fdt,
+			struct fdt_node_header *fdt_node,
+			u32 address_cells, u32 size_cells,
 			const char *property,
 			void *property_value);
 

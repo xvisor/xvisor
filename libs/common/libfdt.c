@@ -433,7 +433,8 @@ struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 }
 
 int libfdt_get_property(struct fdt_fileinfo *fdt, 
-			struct fdt_node_header *fdt_node, 
+			struct fdt_node_header *fdt_node,
+			u32 address_cells, u32 size_cells,
 			const char *property,
 			void *property_value)
 {
@@ -486,7 +487,7 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 	}
 
 	libfdt_property_read(property, property_value, &ret->data[0],
-		sizeof(physical_addr_t) / 4, sizeof(physical_size_t) / 4, len);
+			     address_cells, size_cells, len);
 
 	return VMM_OK;
 }
