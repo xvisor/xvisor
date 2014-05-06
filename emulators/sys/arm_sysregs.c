@@ -184,7 +184,7 @@ static int arm_sysregs_reg_read(struct arm_sysregs *s,
 		*dst = 0;
 		break;
 	case 0x5c: /* 24MHz */
-		tdiff = vmm_timer_timestamp() - s->ref_100hz;
+		tdiff = vmm_timer_timestamp() - s->ref_24mhz;
 		/* Note: What we want is the below value 
 		 * *dst = udiv64(tdiff * 24, 1000);
 		 * In integer arithmetic division by constant can be simplified
