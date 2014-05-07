@@ -222,6 +222,30 @@ _start_mmu_init:
 	bl	_setup_initial_ttbl
 	b	_start_secondary_nopen
 
+/*
+ * CMODE - Change processor mode
+ * \rs : the GPR having cpsr value
+ * \mode : target processor mode
+ *
+ * Please note we do *not* read cpsr here
+ * \rs is supposed to have cpsr before calling this
+ * This macro is called from performance critical paths
+ * (read exception entry/exit) and to allow optimizations
+ * we do *not* read cpsr in this macro and instead
+ * expect \rs to have cpsr before calling this.
+ */
+#if (__ARM_ARCH_VERSION__ < 6)
+.macro	CMODE rs mode
+	and	\rs, \rs, #~(CPSR_MODE_MASK)
+	orr	\rs, \rs, #\mode
+	msr	cpsr_c, \rs
+.endm
+#else
+.macro	CMODE rs mode
+	cps	#\mode
+.endm
+#endif
+
 #ifdef CONFIG_SMP
 	.align	3
 __start_secondary_pen_release:
@@ -258,6 +282,15 @@ pen:	wfe
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary_nopen:
+	/*
+	 * Latest ARMv7 bootloaders will enter Xvisor in HYP-mode
+	 * if Virtualization extenstion is available as-per Linux
+	 * ARM32 booting protocol.
+	 *
+	 * For sanity we force-fully switch to SVC mode.
+	 */
+	CMODE	r0, CPSR_MODE_SUPERVISOR
+
 	/* Setup Translation Table Base Register 0 */
 	ldr	r0, __defl1_ttbl
 	mcr	p15, 0, r0, c2, c0, 0
@@ -338,30 +371,6 @@ _ifar:
 	.globl _abort_inst
 _abort_inst:
 	.word 0x0
-#endif
-
-/*
- * CMODE - Change processor mode
- * \rs : the GPR having cpsr value
- * \mode : target processor mode
- *
- * Please note we do *not* read cpsr here
- * \rs is supposed to have cpsr before calling this
- * This macro is called from performance critical paths
- * (read exception entry/exit) and to allow optimizations
- * we do *not* read cpsr in this macro and instead
- * expect \rs to have cpsr before calling this.
- */
-#if (__ARM_ARCH_VERSION__ < 6)
-.macro	CMODE rs mode
-	and	\rs, \rs, #~(CPSR_MODE_MASK)
-	orr	\rs, \rs, #\mode
-	msr	cpsr_c, \rs
-.endm
-#else
-.macro	CMODE rs mode
-	cps	#\mode
-.endm
 #endif
 
 	/*
