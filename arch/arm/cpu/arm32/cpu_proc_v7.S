@@ -185,6 +185,27 @@ arm_cortex_a8_skip:
 #endif
 	b	proc_specific_setup_done
 arm_cortex_a9_skip:
+
+	/* Cortex-A15 Errata */
+	ldr	r10, =0x00000c0f		@ Cortex-A15 primary part number
+	teq	r0, r10
+	bne	arm_cortex_a15_skip
+#ifdef CONFIG_SMP
+	mov	r10, #0
+	mrc	p15, 0, r0, c1, c0, 1
+	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
+	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
+	orreq	r0, r0, r10			@ Enable CPU-specific SMP bits
+	mcreq	p15, 0, r0, c1, c0, 1
+#endif
+#ifdef CONFIG_ARM_ERRATA_773022
+	cmp	r6, #0x4			@ only present up to r0p4
+	mrcle	p15, 0, r10, c1, c0, 1		@ read aux control register
+	orrle	r10, r10, #1 << 1		@ disable loop buffer
+	mcrle	p15, 0, r10, c1, c0, 1		@ write aux control register
+#endif
+arm_cortex_a15_skip:
+
 arm_proc_setup_skip:
 
 proc_specific_setup_done:
@@ -237,11 +258,15 @@ proc_setup_smp_id:
 
 	/* SMP ID setup for:
 	 *   Cortex-A9
+	 *   Cortex-A15
 	 * MPIDR fields:
 	 *   Cluster ID = MPIDR[11:8]
 	 *   CPU ID = MPIDR[1:0]
 	 */
 	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
+	teq	r0, r10
+	beq	arm_cpu_4bit_2bit
+	ldr	r10, =0x00000c0f		@ Cortex-A15 primary part number
 	teq	r0, r10
 	bne	arm_cpu_skip
 arm_cpu_4bit_2bit:
