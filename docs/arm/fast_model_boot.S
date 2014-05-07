@@ -95,11 +95,6 @@ __cpu_gic_base_next:
 	/* Enter hypervisor mode */
 	bl	enter_hvc_mode
 
-#ifdef NON_SECURE_SVC_BOOT
-	/* Enter supervisor mode */
-	cps	#0x13
-#endif
-
 	/* GIC Non-Secured CPU Interface Init */
 	ldr	r0, __cpu_gic_base
 	mov	r1, #0x1
