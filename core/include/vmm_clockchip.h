@@ -52,17 +52,18 @@ struct vmm_clockchip;
  * @hirq:		host irq number
  * @rating:		variable to rate clock event devices
  * @cpumask:		cpumask to indicate for which CPUs this device works
- * @event_handler:	Assigned by the framework to be called by the low
- *			level handler of the event source
- * @set_next_event:	set next event function
- * @next_event:		local storage for the next event in oneshot mode
- * @max_delta_ns:	maximum delta value in ns
- * @min_delta_ns:	minimum delta value in ns
+ * @features:		features
  * @mult:		nanosecond to cycles multiplier
  * @shift:		nanoseconds to cycles divisor (power of two)
- * @mode:		operating mode assigned by the management code
- * @features:		features
+ * @max_delta_ns:	maximum delta value in ns
+ * @min_delta_ns:	minimum delta value in ns
+ * @event_handler:	Assigned by the framework to be called by the low
+ *			level handler of the event source
  * @set_mode:		set mode function
+ * @set_next_event:	set next event function
+ * @mode:		operating mode assigned by the management code
+ * @bound_on:		Bound on host CPU
+ * @next_event:		local storage for the next event in oneshot mode
  */
 struct vmm_clockchip {
 	struct dlist head;
@@ -79,6 +80,7 @@ struct vmm_clockchip {
 	void (*set_mode) (enum vmm_clockchip_mode mode, struct vmm_clockchip *cc);
 	int (*set_next_event) (unsigned long evt, struct vmm_clockchip *cc);
 	enum vmm_clockchip_mode mode;
+	u32 bound_on;
 	u64 next_event;
 	void *priv;
 };
@@ -187,8 +189,11 @@ int vmm_clockchip_register(struct vmm_clockchip *cc);
 /** Register clockchip */
 int vmm_clockchip_unregister(struct vmm_clockchip *cc);
 
-/** Find best rated clockchip with given CPU affinity */
-struct vmm_clockchip *vmm_clockchip_find_best(const struct vmm_cpumask *mask);
+/** Find best rated clockchip for given host CPU and bind it */
+struct vmm_clockchip *vmm_clockchip_bind_best(u32 hcpu);
+
+/** Unbind clockchip from host CPU */
+int vmm_clockchip_unbind(struct vmm_clockchip *cc);
 
 /** Retrive clockchip with given index */
 struct vmm_clockchip *vmm_clockchip_get(int index);

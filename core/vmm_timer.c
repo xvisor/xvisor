@@ -287,9 +287,11 @@ int __cpuinit vmm_timer_init(void)
 	INIT_RW_LOCK(&tlcp->event_list_lock);
 	INIT_LIST_HEAD(&tlcp->event_list);
 
-	/* Find suitable clockchip */
-	if (!(tlcp->cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
-		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
+	/* Bind suitable clockchip to current host CPU */
+	tlcp->cc = vmm_clockchip_bind_best(cpu);
+	if (!tlcp->cc) {
+		vmm_printf("%s: No clockchip for CPU%d\n", __func__, cpu);
+		return VMM_ENODEV;
 	}
 
 	/* Update event handler of clockchip */
@@ -299,7 +301,8 @@ int __cpuinit vmm_timer_init(void)
 	if (vmm_smp_is_bootcpu()) {
 		/* Find suitable clocksource */
 		if (!(cs = vmm_clocksource_best())) {
-			vmm_panic("%s: No clocksource found\n", __func__);
+			vmm_printf("%s: No clocksource found\n", __func__);
+			return VMM_ENODEV;
 		}
 
 		/* Initialize timecounter wrapper */
