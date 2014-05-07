@@ -283,12 +283,22 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	cc->clkchip.priv = cc;
 
 	/* Register interrupt handler */
-	if ((rc = vmm_host_irq_register(hirq, node->name,
-					&sp804_clockchip_irq_handler, cc))) {
+	rc = vmm_host_irq_register(hirq, node->name,
+				   &sp804_clockchip_irq_handler, cc);
+	if (rc) {
+		vmm_free(cc);
 		return rc;
 	}
 
-	return vmm_clockchip_register(&cc->clkchip);
+	/* Register clockchip */
+	rc = vmm_clockchip_register(&cc->clkchip);
+	if (rc) {
+		vmm_host_irq_unregister(hirq, cc);
+		vmm_free(cc);
+		return rc;
+	}
+
+	return VMM_OK;
 }
 VMM_CLOCKCHIP_INIT_DECLARE(sp804clkchip, "arm,sp804", sp804_clockchip_init);
 
