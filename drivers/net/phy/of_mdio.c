@@ -68,13 +68,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 			continue;
 		}
 
-		/* Our of_get_property returns native endian value hence
-		 * no need to use be32_to_cpup to convert value.
-		 */
-		addr = *paddr;
-#if 0
 		addr = be32_to_cpup(paddr);
-#endif
 		if (addr >= 32) {
 			dev_err(&mdio->dev, "%s PHY address %i is too large\n",
 				child->name, addr);
@@ -246,15 +240,7 @@ struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
 	if (!phy_id || sz < sizeof(*phy_id))
 		return NULL;
 
-
-	/* Our of_get_property returns native endian value hence
-	 * no need to use be32_to_cpup to convert value. 
-	 */
-
-	sprintf(bus_id, PHY_ID_FMT, "fixed-0", (phy_id[0]));
-#if 0
 	sprintf(bus_id, PHY_ID_FMT, "fixed-0", be32_to_cpu(phy_id[0]));
-#endif
 
 	phy = phy_connect(dev, bus_id, hndlr, iface);
 	return IS_ERR(phy) ? NULL : phy;

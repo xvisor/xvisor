@@ -187,14 +187,14 @@ static int __init acpi_populate_ioapic_devtree(struct acpi_madt_hdr *madt_hdr,
 
 		if (vmm_devtree_setattr(nnode, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME,
 						&ioapic->address, VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-						sizeof(ioapic->address)) != VMM_OK) {
+						sizeof(ioapic->address), FALSE) != VMM_OK) {
 			ret = VMM_EFAIL;
 			break;
 		}
 
 		if (vmm_devtree_setattr(nnode, VMM_DEVTREE_IOAPIC_GINT_BASE_ATTR_NAME,
 						&ioapic->global_int_base, VMM_DEVTREE_ATTRTYPE_UINT32,
-						sizeof(ioapic->global_int_base)) != VMM_OK) {
+						sizeof(ioapic->global_int_base), FALSE) != VMM_OK) {
 			ret = VMM_EFAIL;
 			break;
 		}
@@ -203,7 +203,7 @@ static int __init acpi_populate_ioapic_devtree(struct acpi_madt_hdr *madt_hdr,
 	}
 
 	vmm_devtree_setattr(cnode, VMM_DEVTREE_NR_IOAPIC_ATTR_NAME,
-			&idx, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(idx));
+			&idx, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(idx), FALSE);
 
 	return ret;
 }
@@ -229,14 +229,14 @@ static int __init acpi_populate_lapic_devtree(struct acpi_madt_hdr *madt_hdr,
 
 		if (vmm_devtree_setattr(nnode, VMM_DEVTREE_LAPIC_CPU_ID_ATTR_NAME,
 						&lapic->acpi_cpu_id, VMM_DEVTREE_ATTRTYPE_UINT32,
-						sizeof(lapic->acpi_cpu_id)) != VMM_OK) {
+						sizeof(lapic->acpi_cpu_id), FALSE) != VMM_OK) {
 			ret = VMM_EFAIL;
 			break;
 		}
 
 		if (vmm_devtree_setattr(nnode, VMM_DEVTREE_LAPIC_LAPIC_ID_ATTR_NAME,
 						&lapic->apic_id, VMM_DEVTREE_ATTRTYPE_UINT32,
-						sizeof(lapic->apic_id)) != VMM_OK) {
+						sizeof(lapic->apic_id), FALSE) != VMM_OK) {
 			ret = VMM_EFAIL;
 			break;
 		}
@@ -245,7 +245,7 @@ static int __init acpi_populate_lapic_devtree(struct acpi_madt_hdr *madt_hdr,
 	}
 
 	vmm_devtree_setattr(cnode, VMM_DEVTREE_NR_LAPIC_ATTR_NAME,
-			&idx, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(idx));
+			&idx, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(idx), FALSE);
 
 	return ret;
 }
@@ -283,7 +283,7 @@ static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 
 		vmm_devtree_setattr(cnode, VMM_DEVTREE_NR_HPET_ATTR_NAME,
 				&nr_hpet_blks, VMM_DEVTREE_ATTRTYPE_UINT32,
-				sizeof(nr_hpet_blks));
+				sizeof(nr_hpet_blks), FALSE);
 
 		for (i = 0; i < nr_hpet_blks; i++) {
 			memset(hpet_nm, 0, sizeof(hpet_nm));
@@ -295,13 +295,13 @@ static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 			if (vmm_devtree_setattr(nnode, VMM_DEVTREE_HPET_ID_ATTR_NAME,
 							&hpet->tmr_blks[i].asid,
 							VMM_DEVTREE_ATTRTYPE_UINT32,
-							sizeof(hpet->tmr_blks[i].asid)) != VMM_OK) {
+							sizeof(hpet->tmr_blks[i].asid), FALSE) != VMM_OK) {
 				return VMM_EFAIL;
 			}
 
 			if (vmm_devtree_setattr(nnode, VMM_DEVTREE_HPET_PADDR_ATTR_NAME,
 							&hpet->tmr_blks[i].base, VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-							sizeof(hpet->tmr_blks[i].base)) != VMM_OK) {
+							sizeof(hpet->tmr_blks[i].base), FALSE) != VMM_OK) {
 				return VMM_EFAIL;
 			}
 		}

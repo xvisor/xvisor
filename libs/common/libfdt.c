@@ -31,40 +31,6 @@
 #define LIBFDT_DATA32(ptr)	vmm_be32_to_cpu(*((u32*)ptr))
 #define LIBFDT_DATA64(ptr)	vmm_be64_to_cpu(*((u64*)ptr))
 
-static u32 libfdt_property_len(const char *prop, 
-				u32 address_cells, u32 size_cells, u32 len)
-{
-	u32 lsz, type, reg_cells, reg_count;
-
-	/* Special way of handling 'reg' property */
-	if (strcmp(prop, "reg") == 0) {
-		reg_cells = len / sizeof(fdt_cell_t);
-		reg_count = udiv32(reg_cells, address_cells + size_cells);
-		if (umod32(reg_cells, address_cells + size_cells)) {
-			reg_count++;
-		}
-		reg_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
-		reg_cells += sizeof(physical_size_t) / sizeof(fdt_cell_t);
-		reg_count = reg_count * (reg_cells * sizeof(fdt_cell_t));
-		return reg_count;
-	}
-
-	type = vmm_devtree_estimate_attrtype(prop);
-
-	/* Special way of handling non-literal property */
-	if (!vmm_devtree_isliteral(type)) {
-		return len;
-	}
-
-	/* Special way of handling literal property */
-	lsz = vmm_devtree_literal_size(type);
-	if (umod32(len, lsz)) {
-		return udiv32(len, lsz) * lsz + lsz;
-	}
-
-	return len;
-}
-
 static void libfdt_property_read(const char *prop, void *dst, void *src,
 				 u32 address_cells, u32 size_cells, u32 len)
 {
@@ -187,9 +153,8 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   struct vmm_devtree_node *node,
 					   char **data)
 {
-	void *val;
 	const char *name;
-	u32 type, len, alen, addr_cells, size_cells;
+	u32 type, len, addr_cells, size_cells;
 	struct vmm_devtree_node *child;
 
 	if (!fdt || !node) {
@@ -214,17 +179,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			name = &fdt->str[LIBFDT_DATA32(*data)];
 			*data += sizeof(fdt_cell_t);
 			type = vmm_devtree_estimate_attrtype(name);
-			alen = libfdt_property_len(name, addr_cells, 
-						   size_cells, len);
-			val = (alen) ? vmm_zalloc(alen) : NULL;
-			if (val) {
-				libfdt_property_read(name, val, *data,
-					     addr_cells, size_cells, len);
-			}
-			vmm_devtree_setattr(node, name, val, type, alen);
-			if (val) {
-				vmm_free(val);
-			}
+			vmm_devtree_setattr(node, name, *data, type, len, TRUE);
 			*data += len;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;

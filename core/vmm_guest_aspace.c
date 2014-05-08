@@ -654,7 +654,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
 				 (void *)device_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(device_type));
+				 strlen(device_type), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -664,7 +664,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME,
 				 (void *)mainfest_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(mainfest_type));
+				 strlen(mainfest_type), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -674,7 +674,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
 				 (void *)address_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(address_type));
+				 strlen(address_type), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -685,7 +685,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 					 VMM_DEVTREE_COMPATIBLE_ATTR_NAME,
 					 (void *)compatible,
 					 VMM_DEVTREE_ATTRTYPE_STRING,
-					 strlen(compatible));
+					 strlen(compatible), FALSE);
 		if (rc) {
 			goto failed_delnode;
 		}
@@ -696,7 +696,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
 				 &gphys_addr,
 				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-				 sizeof(gphys_addr));
+				 sizeof(gphys_addr), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -707,7 +707,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 					 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
 					 &hphys_addr,
 					 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-					 sizeof(hphys_addr));
+					 sizeof(hphys_addr), FALSE);
 		if (rc) {
 			goto failed_delnode;
 		}
@@ -718,7 +718,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 					 VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
 					 &hphys_addr,
 					 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-					 sizeof(hphys_addr));
+					 sizeof(hphys_addr), FALSE);
 		if (rc) {
 			goto failed_delnode;
 		}
@@ -729,7 +729,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
 				 &phys_size,
 				 VMM_DEVTREE_ATTRTYPE_PHYSSIZE,
-				 sizeof(phys_size));
+				 sizeof(phys_size), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -739,7 +739,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
 				 &align_order,
 				 VMM_DEVTREE_ATTRTYPE_UINT32,
-				 sizeof(align_order));
+				 sizeof(align_order), FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
