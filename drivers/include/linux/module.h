@@ -20,7 +20,7 @@
 #define module_param(p1,p2,p3)
 #define MODULE_PARM_DESC(p1,p2)
 
-#define THIS_MODULE			1
+#define THIS_MODULE			NULL
 #define try_module_get(x)		1
 #define __module_get(x)
 #define module_put(x)

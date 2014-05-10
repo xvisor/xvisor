@@ -567,28 +567,25 @@ static struct gpio_chip sunxi_pinctrl_gpio_chip = {
 	.can_sleep		= 0,
 };
 
-#if 0
 static int sunxi_pinctrl_irq_set_type(struct irq_data *d,
+#if 0
 				      unsigned int type)
 #else
-static int sunxi_pinctrl_irq_set_type(struct vmm_host_irq *irq,
 				      u32 type)
 #endif
 {
-#if 0
 	struct sunxi_pinctrl *pctl = irq_data_get_irq_chip_data(d);
+#if 0
 	u32 reg = sunxi_irq_cfg_reg(d->hwirq);
 	u8 index = sunxi_irq_cfg_offset(d->hwirq);
 #else
-	struct sunxi_pinctrl *pctl = vmm_host_irq_get_chip_data(irq);
-	u32 reg = sunxi_irq_cfg_reg(irq->num - pctl->irq_start);
-	u8 index = sunxi_irq_cfg_offset(irq->num - pctl->irq_start);
+	u32 reg = sunxi_irq_cfg_reg(d->num - pctl->irq_start);
+	u8 index = sunxi_irq_cfg_offset(d->num - pctl->irq_start);
 #endif
 	unsigned long flags;
 	u32 regval;
 	u8 mode;
 
-#if 0
 	switch (type) {
 	case IRQ_TYPE_EDGE_RISING:
 		mode = IRQ_EDGE_RISING;
@@ -608,28 +605,6 @@ static int sunxi_pinctrl_irq_set_type(struct vmm_host_irq *irq,
 	default:
 		return -EINVAL;
 	}
-#else
-	switch (type) {
-	case VMM_IRQ_TYPE_EDGE_RISING:
-		mode = VMM_IRQ_TYPE_EDGE_RISING;
-		break;
-	case VMM_IRQ_TYPE_EDGE_FALLING:
-		mode = VMM_IRQ_TYPE_EDGE_FALLING;
-		break;
-	case VMM_IRQ_TYPE_EDGE_BOTH:
-		mode = VMM_IRQ_TYPE_EDGE_BOTH;
-		break;
-	case VMM_IRQ_TYPE_LEVEL_HIGH:
-		mode = VMM_IRQ_TYPE_LEVEL_HIGH;
-		break;
-	case VMM_IRQ_TYPE_LEVEL_LOW:
-		mode = VMM_IRQ_TYPE_LEVEL_LOW;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-#endif
 
 	spin_lock_irqsave(&pctl->lock, flags);
 
@@ -642,20 +617,15 @@ static int sunxi_pinctrl_irq_set_type(struct vmm_host_irq *irq,
 	return 0;
 }
 
-#if 0
 static void sunxi_pinctrl_irq_mask_ack(struct irq_data *d)
-#else
-static void sunxi_pinctrl_irq_mask_ack(struct vmm_host_irq *d)
-#endif
 {
-#if 0
 	struct sunxi_pinctrl *pctl = irq_data_get_irq_chip_data(d);
+#if 0
 	u32 ctrl_reg = sunxi_irq_ctrl_reg(d->hwirq);
 	u8 ctrl_idx = sunxi_irq_ctrl_offset(d->hwirq);
 	u32 status_reg = sunxi_irq_status_reg(d->hwirq);
 	u8 status_idx = sunxi_irq_status_offset(d->hwirq);
 #else
-	struct sunxi_pinctrl *pctl = vmm_host_irq_get_chip_data(d);
 	u32 ctrl_reg = sunxi_irq_ctrl_reg(d->num - pctl->irq_start);
 	u8 ctrl_idx = sunxi_irq_ctrl_offset(d->num - pctl->irq_start);
 	u32 status_reg = sunxi_irq_status_reg(d->num - pctl->irq_start);
@@ -677,18 +647,13 @@ static void sunxi_pinctrl_irq_mask_ack(struct vmm_host_irq *d)
 	spin_unlock_irqrestore(&pctl->lock, flags);
 }
 
-#if 0
 static void sunxi_pinctrl_irq_mask(struct irq_data *d)
-#else
-static void sunxi_pinctrl_irq_mask(struct vmm_host_irq *d)
-#endif
 {
-#if 0
 	struct sunxi_pinctrl *pctl = irq_data_get_irq_chip_data(d);
+#if 0
 	u32 reg = sunxi_irq_ctrl_reg(d->hwirq);
 	u8 idx = sunxi_irq_ctrl_offset(d->hwirq);
 #else
-	struct sunxi_pinctrl *pctl = vmm_host_irq_get_chip_data(d);
 	u32 reg = sunxi_irq_ctrl_reg(d->num - pctl->irq_start);
 	u8 idx = sunxi_irq_ctrl_offset(d->num - pctl->irq_start);
 #endif
@@ -705,20 +670,14 @@ static void sunxi_pinctrl_irq_mask(struct vmm_host_irq *d)
 	spin_unlock_irqrestore(&pctl->lock, flags);
 }
 
-#if 0
 static void sunxi_pinctrl_irq_unmask(struct irq_data *d)
-#else
-static void sunxi_pinctrl_irq_unmask(struct vmm_host_irq *d)
-#endif
 {
-#if 0
 	struct sunxi_pinctrl *pctl = irq_data_get_irq_chip_data(d);
 	struct sunxi_desc_function *func;
+#if 0
 	u32 reg = sunxi_irq_ctrl_reg(d->hwirq);
 	u8 idx = sunxi_irq_ctrl_offset(d->hwirq);
 #else
-	struct sunxi_pinctrl *pctl = vmm_host_irq_get_chip_data(d);
-	struct sunxi_desc_function *func;
 	u32 reg = sunxi_irq_ctrl_reg(d->num - pctl->irq_start);
 	u8 idx = sunxi_irq_ctrl_offset(d->num - pctl->irq_start);
 #endif
@@ -726,21 +685,19 @@ static void sunxi_pinctrl_irq_unmask(struct vmm_host_irq *d)
 	unsigned long flags;
 	u32 val;
 
-#if 0
 	func = sunxi_pinctrl_desc_find_function_by_pin(pctl,
+#if 0
 						       pctl->irq_array[d->hwirq],
+#else
+					pctl->irq_array[d->num - pctl->irq_start],
+#endif
 						       "irq");
 
 	/* Change muxing to INT mode */
+#if 0
 	sunxi_pmx_set(pctl->pctl_dev, pctl->irq_array[d->hwirq], func->muxval);
 #else
-	func = sunxi_pinctrl_desc_find_function_by_pin(pctl,
-					pctl->irq_array[d->num - pctl->irq_start],
-						       "irq");
-
-	/* Change muxing to INT mode */
 	sunxi_pmx_set(pctl->pctl_dev, pctl->irq_array[d->num - pctl->irq_start], func->muxval);
-
 #endif
 
 	spin_lock_irqsave(&pctl->lock, flags);
@@ -752,18 +709,12 @@ static void sunxi_pinctrl_irq_unmask(struct vmm_host_irq *d)
 	spin_unlock_irqrestore(&pctl->lock, flags);
 }
 
-#if 0
 static struct irq_chip sunxi_pinctrl_irq_chip = {
-#else
-static struct vmm_host_irq_chip sunxi_pinctrl_irq_chip = {
+#if 1
 	.name = "SUNXI-PINCTRL",
 #endif
 	.irq_mask	= sunxi_pinctrl_irq_mask,
-#if 0
 	.irq_mask_ack	= sunxi_pinctrl_irq_mask_ack,
-#else
-	.irq_mask_and_ack = sunxi_pinctrl_irq_mask_ack,
-#endif
 	.irq_unmask	= sunxi_pinctrl_irq_unmask,
 	.irq_set_type	= sunxi_pinctrl_irq_set_type,
 };
@@ -848,13 +799,11 @@ static int sunxi_pinctrl_build_state(struct vmm_device *pdev)
 	/* Allocate groups */
 #if 0
 	pctl->groups = devm_kzalloc(&pdev->dev,
-				    pctl->ngroups * sizeof(*pctl->groups),
-				    GFP_KERNEL);
 #else
 	pctl->groups = devm_kzalloc(pdev,
+#endif
 				    pctl->ngroups * sizeof(*pctl->groups),
 				    GFP_KERNEL);
-#endif
 	if (!pctl->groups)
 		return -ENOMEM;
 
@@ -872,13 +821,11 @@ static int sunxi_pinctrl_build_state(struct vmm_device *pdev)
 	 */
 #if 0
 	pctl->functions = devm_kzalloc(&pdev->dev,
-				pctl->desc->npins * sizeof(*pctl->functions),
-				GFP_KERNEL);
 #else
 	pctl->functions = devm_kzalloc(pdev,
+#endif
 				pctl->desc->npins * sizeof(*pctl->functions),
 				GFP_KERNEL);
-#endif
 	if (!pctl->functions)
 		return -ENOMEM;
 
@@ -943,6 +890,7 @@ static int sunxi_pinctrl_probe(struct platform_device *pdev)
 #else
 static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 			       const struct vmm_devtree_nodeid *devid)
+#endif
 {
 	struct device_node *node = pdev->node;
 #if 0
@@ -972,7 +920,6 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 	pctl->desc = (struct sunxi_pinctrl_desc *)device->data;
 #else
 	pctl->desc = (struct sunxi_pinctrl_desc *)devid->data;
-
 #endif
 
 	ret = sunxi_pinctrl_build_state(pdev);
@@ -991,9 +938,7 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 		pins[i] = pctl->desc->pins[i].pin;
 
 	sunxi_pctrl_desc.name = dev_name(pdev);
-#if 0
 	sunxi_pctrl_desc.owner = THIS_MODULE;
-#endif
 	sunxi_pctrl_desc.pins = pins;
 	sunxi_pctrl_desc.npins = pctl->desc->npins;
 	pctl->dev = pdev;
@@ -1083,7 +1028,6 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 				vmm_handle_level_irq);
 
 	};
-
 #endif
 
 	dev_info(pdev, "initialized sunXi PIO driver\n");
@@ -1097,8 +1041,6 @@ pinctrl_error:
 	pinctrl_unregister(pctl->pctl_dev);
 	return ret;
 }
-
-#endif
 
 #if 0
 static struct platform_driver sunxi_pinctrl_driver = {

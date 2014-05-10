@@ -5,6 +5,15 @@
 
 typedef vmm_irq_return_t irqreturn_t;
 
+#define irq_chip		vmm_host_irq_chip
+#define irq_data	 	vmm_host_irq
+
+#define IRQ_TYPE_EDGE_RISING	VMM_IRQ_TYPE_EDGE_RISING
+#define IRQ_TYPE_EDGE_FALLING	VMM_IRQ_TYPE_EDGE_FALLING
+#define IRQ_TYPE_EDGE_BOTH	VMM_IRQ_TYPE_EDGE_BOTH
+#define IRQ_TYPE_LEVEL_HIGH	VMM_IRQ_TYPE_LEVEL_HIGH
+#define IRQ_TYPE_LEVEL_LOW	VMM_IRQ_TYPE_LEVEL_LOW
+
 #define IRQ_NONE		VMM_IRQ_NONE
 #define IRQ_HANDLED		VMM_IRQ_HANDLED
 
@@ -12,6 +21,9 @@ typedef vmm_irq_return_t irqreturn_t;
 #define IRQF_TRIGGER_RISING	VMM_IRQ_TYPE_EDGE_RISING
 
 #define IRQ_RETVAL(x)		((x) != VMM_IRQ_NONE)
+
+#define irq_data_get_irq_chip_data(d)	\
+				vmm_host_irq_get_chip_data(d)
 
 static inline int request_irq(unsigned int irq, 
 			      vmm_host_irq_function_t func,

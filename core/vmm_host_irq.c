@@ -62,8 +62,8 @@ void vmm_handle_level_irq(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 	irq_flags_t flags;
 	struct vmm_host_irq_action *act;
 
-	if (irq->chip && irq->chip->irq_mask_and_ack) {
-			irq->chip->irq_mask_and_ack(irq);
+	if (irq->chip && irq->chip->irq_mask_ack) {
+		irq->chip->irq_mask_ack(irq);
 	} else {
 		if (irq->chip && irq->chip->irq_mask) {
 			irq->chip->irq_mask(irq);

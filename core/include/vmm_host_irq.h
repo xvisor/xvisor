@@ -111,7 +111,7 @@ struct vmm_host_irq_chip {
 	void (*irq_disable)(struct vmm_host_irq *irq);
 	void (*irq_ack)(struct vmm_host_irq *irq);
 	void (*irq_mask)(struct vmm_host_irq *irq);
-	void (*irq_mask_and_ack)(struct vmm_host_irq *irq);
+	void (*irq_mask_ack)(struct vmm_host_irq *irq);
 	void (*irq_unmask)(struct vmm_host_irq *irq);
 	void (*irq_eoi)(struct vmm_host_irq *irq);
 	int  (*irq_set_affinity)(struct vmm_host_irq *irq, 
