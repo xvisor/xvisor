@@ -455,7 +455,7 @@
 #define HTCR_ORGN0_SHIFT				10
 #define HTCR_IRGN0_MASK					0x00000300
 #define HTCR_IRGN0_SHIFT				8
-#define HTCR_T0SZ_MASK					0x00000003
+#define HTCR_T0SZ_MASK					0x00000007
 #define HTCR_T0SZ_SHIFT					0
 
 /* VTTBR */
