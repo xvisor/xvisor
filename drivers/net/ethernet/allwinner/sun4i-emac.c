@@ -844,7 +844,7 @@ static int emac_probe(struct vmm_device *pdev,
 
 	ndev = alloc_etherdev(sizeof(struct emac_board_info));
 	if (!ndev) {
-		dev_err(pdev, "could not allocate device.\n");
+		dev_err(pdev, "%s: could not allocate device.\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -861,7 +861,7 @@ static int emac_probe(struct vmm_device *pdev,
 	spin_lock_init(&db->lock);
 
 	if ((ret = vmm_devtree_regmap(np, &reg_addr, 0))) {
-		vmm_printf("Failed to ioreamp\n");
+		vmm_printf("%s: Failed to ioreamp\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -872,7 +872,7 @@ static int emac_probe(struct vmm_device *pdev,
 
 	ret = vmm_devtree_irq_get(np, &ndev->irq, 0);
 	if (ret) {
-		vmm_printf("No irq resource\n");
+		vmm_printf("%s: No irq resource\n", __func__);
 		goto out;
 	}
 
@@ -884,7 +884,7 @@ static int emac_probe(struct vmm_device *pdev,
 
 	db->phy_node = vmm_devtree_parse_phandle(np, "phy", 0);
 	if (!db->phy_node) {
-		dev_err(pdev, "no associated PHY\n");
+		dev_err(pdev, "%s: no associated PHY\n", __func__);
 		ret = -ENODEV;
 		goto out;
 	}
@@ -918,7 +918,7 @@ static int emac_probe(struct vmm_device *pdev,
 
 	ret = register_netdev(ndev);
 	if (ret) {
-		dev_err(pdev, "Registering netdev failed!\n");
+		dev_err(pdev, "%s: Registering netdev failed!\n", __func__);
 		ret = -ENODEV;
 		goto out;
 	}
@@ -930,7 +930,7 @@ static int emac_probe(struct vmm_device *pdev,
 	return 0;
 
 out:
-	dev_err(pdev, "not found (%d).\n", ret);
+	dev_err(pdev, "%s: not found (%d).\n", __func__, ret);
 	free_netdev(ndev);
 
 	return ret;

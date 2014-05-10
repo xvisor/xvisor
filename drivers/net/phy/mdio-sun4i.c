@@ -148,7 +148,7 @@ static int sun4i_mdio_probe(struct vmm_device *pdev,
 	}
 #endif
 	if ((ret = vmm_devtree_regmap(np, &reg_addr, 0))) {
-		vmm_printf("Failed to ioreamp\n");
+		vmm_printf("%s: Failed to ioremap\n", __func__);
 		return -ENOMEM;
 	}
 

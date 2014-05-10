@@ -194,7 +194,7 @@ static int sunxi_pctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 		int j = 0, configlen = 0;
 
 		if (!grp) {
-			dev_err(pctl->dev, "unknown pin %s", group);
+			dev_err(pctl->dev, "unknown pin %s\n", group);
 			continue;
 		}
 
