@@ -30,3 +30,42 @@ arch_delay_loop:
 	bhi	arch_delay_loop
 	mov	pc, lr
 
+	/*
+	 * arch specific machine cycle count from delay loop count
+	 */
+	.globl arch_delay_loop_cycles
+arch_delay_loop_cycles:
+	push	{r1, r2}
+
+	mrc	p15, 0, r1, c0, c0, 0		@ Read Main ID register
+	and	r2, r1, #0xff000000		@ ARM?
+	teq	r2, #0x41000000
+	bne	arm_cpu_skip
+	ubfx	r1, r1, #4, #12			@ primary part number
+
+	/* Machine cycle count for:
+	 *   Cortex-A7
+	 * Calulation:
+	 *   Machine cycle count = Delay loop count
+	 */
+	ldr	r2, =0x00000c07			@ Cortex-A7 primary part number
+	teq	r1, r2
+	bne	arm_cpu_skip
+arm_cpu_1x:
+	mov	r0, r0
+	b	arch_delay_loop_cycles_done
+arm_cpu_skip:
+
+	/* Machine cycle count for:
+	 *   Unknown CPUs
+	 * Calulation:
+	 *   Machine cycle count = Delay loop count * 3
+	 */
+unknown_cpu:
+	mov	r1, #3
+	mul	r0, r0, r1
+
+arch_delay_loop_cycles_done:
+	pop	{r1, r2}
+	mov	pc, lr
+

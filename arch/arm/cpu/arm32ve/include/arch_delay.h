@@ -31,9 +31,6 @@ void arch_delay_loop(u32 count);
 /** Estimated cycles for given loop count 
  *  Note: This can be processor specific
  */
-static inline u32 arch_delay_loop_cycles(u32 count)
-{
-	return count * 3;
-}
+u32 arch_delay_loop_cycles(u32 count);
 
 #endif
