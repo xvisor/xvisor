@@ -985,7 +985,7 @@ const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
 {
 	const u32 *ret;
 
-	if (!attr)
+	if (!attr || !attr->value)
 		return NULL;
 
 	if (!cur) {
@@ -1007,14 +1007,19 @@ const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
 const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 				    const char *cur)
 {
-	if (!attr)
+	const char *first, *last;
+
+	if (!attr || !attr->value)
 		return NULL;
+
+	first = (const char *)attr->value;
+	last = first + attr->len;
 
 	if (!cur) {
 		return attr->value;
-	} else if (((const char *)attr->value <= cur) &&
-		   (cur < ((const char *)attr->value + attr->len))) {
-		return cur + strlen(cur) + 1;
+	} else if ((first <= cur) && (cur < last)) {
+		cur = cur + strlen(cur) + 1;
+		return (cur < last) ? cur : NULL;
 	}
 
 	return NULL;
@@ -1662,13 +1667,13 @@ int vmm_devtree_regsize(struct vmm_devtree_node *node,
 	addr_cells = sizeof(physical_addr_t) / sizeof(u32);
 	size_cells = sizeof(physical_size_t) / sizeof(u32);
 
-	np = node;
+	np = node->parent;
 	while (np && vmm_devtree_read_u32(np,
 			VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &addr_cells)) {
 		np = node->parent;
 	}
 
-	np = node;
+	np = node->parent;
 	while (np && vmm_devtree_read_u32(np,
 			VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &size_cells)) {
 		np = node->parent;
@@ -1721,13 +1726,13 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 	addr_cells = sizeof(physical_addr_t) / sizeof(u32);
 	size_cells = sizeof(physical_size_t) / sizeof(u32);
 
-	np = node;
+	np = node->parent;
 	while (np && vmm_devtree_read_u32(np,
 			VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &addr_cells)) {
 		np = node->parent;
 	}
 
-	np = node;
+	np = node->parent;
 	while (np && vmm_devtree_read_u32(np,
 			VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &size_cells)) {
 		np = node->parent;
