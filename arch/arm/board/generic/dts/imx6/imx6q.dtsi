@@ -1,0 +1,166 @@
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "freescale,imx6";
+	model = "imx6q";
+
+	chosen { };
+
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <0>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <1>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <2>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a9";
+			reg = <3>;
+			enable-method = "smp-scu";
+			cpu-clear-addr = <0x10000034>;
+			cpu-release-addr = <0x10000030>;
+		};
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x10000000 0x40000000>; /* 1 GB */
+	};
+
+	scu { /* Snoop Control Unit */
+      		device_type = "scu";
+      		compatible = "arm,cortex-a9-scu";
+      		reg = <0x00a00000 0x100>;
+		interrupts = <53>;
+	};
+
+	gic { /* Generic Interrupt Controller */
+      		device_type = "pic";
+      		compatible = "arm,cortex-a9-gic";
+      		reg = <0x00a01000 0x1000
+		       0x00a00100 0x100>;
+		irq_start = <32>;
+	};
+
+	twd-timer { /* Local Timer */
+      		device_type = "timer";
+      		compatible = "arm,cortex-a9-twd-timer";
+      		reg = <0x00a00600 0x20>;	/* Local timer registers */
+		ref-counter-freq = <24000000>;	/* Reference counter frequency */
+		interrupts = <29>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		ocram {
+			compatible = "mmio-sram";
+			reg = <0x00900000 0x40000>;
+		};
+
+		SERIAL1: uart1 {
+			compatible = "freescale,imx-uart";
+			reg = <0x02020000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <58>;
+		};
+
+		SERIAL2: uart2 {
+			compatible = "freescale,imx-uart";
+			reg = <0x021e8000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <59>;
+		};
+
+		SERIAL3: uart3 {
+			compatible = "freescale,imx-uart";
+			reg = <0x021ec000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <60>;
+		};
+
+		SERIAL4: uart4 {
+			compatible = "freescale,imx-uart";
+			reg = <0x021f0000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <61>;
+		};
+
+		SERIAL5: uart5 {
+			compatible = "freescale,imx-uart";
+			reg = <0x021f4000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <62>;
+		};
+
+		epit1 {
+			device_type = "timer";
+			compatible = "freescale,epit-timer";
+			reg = <0x020d0000 0x4000>;
+			clock-frequency = <38999040>;
+			timer_num = <0>;
+			interrupts = <88>;
+		};
+
+		epit2 {
+			device_type = "timer";
+			compatible = "freescale,epit-timer";
+			reg = <0x020d4000 0x4000>;
+			clock-frequency = <38999040>;
+			timer_num = <1>;
+			interrupts = <89>;
+		};
+
+		gpt {
+			device_type = "timer";
+			compatible = "freescale,gpt-timer";
+			reg = <0x02098000 0x4000>;
+			clock-frequency = <1000000>;
+			timer_num = <2>;
+			interrupts = <87>;
+		};
+	};
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+};
+
+/* Add guest templates */
+/include/ "../../../common/guests/realview-pb-a8.dtsi"
+/include/ "../../../common/guests/vexpress-a9x2.dtsi"
