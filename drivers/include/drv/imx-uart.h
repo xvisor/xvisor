@@ -90,6 +90,7 @@
 #define UCR3_RXDSEN	(1<<6)  /* Receive status interrupt enable */
 #define UCR3_AIRINTEN	(1<<5)  /* Async IR wake interrupt enable */
 #define UCR3_AWAKEN	(1<<4)  /* Async wake interrupt enable */
+#define UCR3_DTRDEN	(1<<3)	/* Data Terminal Ready Delta Enable */
 #define IMX21_UCR3_RXDMUXSEL	(1<<2)  /* RXD Muxed Input Select */
 #define UCR3_INVT	(1<<1)  /* Inverted Infrared transmission */
 #define UCR3_BPEN	(1<<0)  /* Preset registers enable */

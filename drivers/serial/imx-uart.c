@@ -80,9 +80,9 @@ struct imx_port {
 
 bool imx_lowlevel_can_getc(virtual_addr_t base)
 {
-	u32 status = vmm_readl((void *)(base + USR2));
+	u32 status = vmm_readl((void *)(base + IMX21_UTS));
 
-	if (~status & USR2_RDR) {
+	if (status & UTS_RXEMPTY) {
 		return FALSE;
 	} else {
 		return TRUE;
@@ -103,9 +103,9 @@ u8 imx_lowlevel_getc(virtual_addr_t base)
 
 bool imx_lowlevel_can_putc(virtual_addr_t base)
 {
-	u32 status = vmm_readl((void *)(base + USR1));
+	u32 status = vmm_readl((void *)(base + IMX21_UTS));
 
-	if (~status & USR1_TRDY) {
+	if (status & UTS_TXFULL) {
 		return FALSE;
 	} else {
 		return TRUE;
@@ -156,9 +156,30 @@ void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/* enable FIFO, set RX and TX trigger */
 	vmm_out_le32((void *)(base + S3C2410_UFCON), S3C2410_UFCON_DEFAULT);
 #else
-	/* enable the UART */
-	temp |= UCR1_RRDYEN | UCR1_RTSDEN | UCR1_UARTEN;
+	/* disable all UCR2 related interrupts */
+	temp = vmm_readl((void *)(base + UCR2));
+	vmm_writel(temp & ~(UCR2_ATEN | UCR2_ESCI | UCR2_RTSEN),
+		   (void *)(base + UCR2));
 
+	/* disable all UCR3 related interrupts */
+	temp = vmm_readl((void *)(base + UCR3));
+	vmm_writel(temp &
+		   ~(UCR3_RXDSEN | UCR3_DTREN | UCR3_FRAERREN | UCR3_TIMEOUTEN |
+		     UCR3_AIRINTEN | UCR3_AWAKEN | UCR3_DTRDEN),
+		   (void *)(base + UCR3));
+
+	/* disable all UCR4 related interrupts */
+	temp = vmm_readl((void *)(base + UCR4));
+	vmm_writel(temp &
+		   ~(UCR4_DREN | UCR4_TCEN | UCR4_ENIRI | UCR4_WKEN | UCR4_BKEN
+		     | UCR4_OREN), (void *)(base + UCR4));
+
+	/* trigger interrupt when there is 1 by in the RXFIFO */
+	temp = vmm_readl((void *)(base + UFCR));
+	vmm_writel((temp & 0xFFC0) | 1, (void *)(base + UFCR));
+
+	/* enable the UART and the receive interrupt */
+	temp = UCR1_RRDYEN | UCR1_UARTEN;
 	vmm_writel(temp, (void *)(base + UCR1));
 #endif
 }
@@ -203,8 +224,11 @@ static vmm_irq_return_t imx_irq_handler(int irq, void *dev_id)
 		imx_rtsint(port);
 	}
 
-	if (sts & USR1_AWAKE) {
-		vmm_writel(USR1_AWAKE, (void *)port->base + USR1);
+	sts &=
+	    USR1_PARITYERR | USR1_RTSD | USR1_ESCF | USR1_FRAMERR | USR1_TIMEOUT
+	    | USR1_AIRINT | USR1_AWAKE;
+	if (sts) {
+		vmm_writel(sts, (void *)port->base + USR1);
 	}
 
 	return VMM_IRQ_HANDLED;
@@ -338,7 +362,7 @@ static int imx_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	port->mask = UCR1_RRDYEN | UCR1_RTSDEN;
+	port->mask = UCR1_RRDYEN | UCR1_UARTEN;
 
 #if defined(UART_IMX_USE_TXINTR)
 	port->mask |= UCR1_TRDYEN;
@@ -346,8 +370,7 @@ static int imx_driver_probe(struct vmm_device *dev,
 
 	vmm_writel(port->mask, (void *)port->base + UCR1);
 
-	if (vmm_devtree_read_u32(dev->node, "baudrate",
-				 &port->baudrate)) {
+	if (vmm_devtree_read_u32(dev->node, "baudrate", &port->baudrate)) {
 		port->baudrate = 115200;
 	}
 
@@ -406,7 +429,7 @@ static int imx_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid imx_devid_table[] = {
-	{.compatible = "freescale,imx-uart" },
+	{.compatible = "freescale,imx-uart"},
 	{ /* end of list */ },
 };
 
