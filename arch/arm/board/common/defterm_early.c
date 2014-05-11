@@ -80,14 +80,14 @@ void __init arch_defterm_early_putc(u8 ch)
 
 void __init arch_defterm_early_putc(u8 ch)
 {
-	/* Wait until there is space in the FIFO */
-	while (~(vmm_readl(early_base + USR1)) & USR1_TRDY);
+	/* Wait until FIFO is not full */
+	while (vmm_readl(early_base + IMX21_UTS) & UTS_TXFULL) ;
 
 	/* Send the character */
 	vmm_writel(ch, early_base + URTX0);
 
-	/* Flush */
-	while (~(vmm_readl(early_base + USR2)) & USR2_TXDC);
+	/* Wait until FIFO is empty */
+	while (!(vmm_readl(early_base + IMX21_UTS) & UTS_TXEMPTY)) ;
 }
 
 #else
@@ -98,4 +98,3 @@ void __init arch_defterm_early_putc(u8 ch)
 }
 
 #endif
-
