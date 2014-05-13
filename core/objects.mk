@@ -54,7 +54,7 @@ core-objs-y+= vmm_wallclock.o
 core-objs-y+= vmm_devdrv.o
 core-objs-y+= vmm_devemu.o
 core-objs-y+= vmm_chardev.o
-core-objs-y+= vmm_modules.o
+core-objs-$(CONFIG_MODULES)+= vmm_modules.o
 core-objs-y+= vmm_params.o
 core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
 
