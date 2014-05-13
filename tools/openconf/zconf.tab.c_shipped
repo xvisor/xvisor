@@ -2272,7 +2272,7 @@ void conf_parse(const char *name)
 		struct property *prop;
 
 		prop = prop_alloc(P_DEFAULT, modules_sym);
-		prop->expr = expr_alloc_symbol(sym_lookup("MODULES", 0));
+		prop->expr = expr_alloc_symbol(sym_lookup("CONFIG_MODULES", 0));
 	}
 	menu_finalize(&rootmenu);
 	for_all_symbols(i, sym) {
