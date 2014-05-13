@@ -373,7 +373,7 @@ void do_irq(arch_regs_t *regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_IRQ);
+	vmm_host_active_irq_exec(CPU_EXTERNAL_IRQ);
 
 	vmm_scheduler_irq_exit(regs);
 }
@@ -382,7 +382,7 @@ void do_fiq(arch_regs_t *regs)
 {
 	vmm_scheduler_irq_enter(regs, FALSE);
 
-	vmm_host_irq_exec(CPU_EXTERNAL_FIQ);
+	vmm_host_active_irq_exec(CPU_EXTERNAL_FIQ);
 
 	vmm_scheduler_irq_exit(regs);
 }

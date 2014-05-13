@@ -23,6 +23,7 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
@@ -163,7 +164,7 @@ static u32 aw_intc_irq_active(u32 cpu_irq_no)
 	/* Did not find any pending irq 
 	 * so return invalid irq number 
 	 */
-	return AW_NR_IRQS;
+	return UINT_MAX;
 }
 
 static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)

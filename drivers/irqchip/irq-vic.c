@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
@@ -76,23 +77,18 @@ static inline u32 vic_irq(struct vmm_host_irq *irq)
 
 static u32 vic_active_irq(u32 cpu_nr)
 {
-	u32 ret = 0;
-	u32 int_status;
-	volatile void *base = (volatile void *)vic_data[0].cpu_base;
+	u32 i, int_status;
 
-	int_status = vmm_readl(base + VIC_IRQ_STATUS);
-
+	int_status = vmm_readl((void *)vic_data[0].cpu_base + VIC_IRQ_STATUS);
 	if (int_status) {
-		for (ret = 0; ret < 32; ret++) {
-			if ((int_status >> ret) & 1) {
-				break;
+		for (i = 0; i < 32; i++) {
+			if ((int_status >> i) & 1) {
+				return i + vic_data[0].irq_offset;
 			}
 		}
-
-		ret += vic_data[0].irq_offset;
 	}
 
-	return ret;
+	return UINT_MAX;
 }
 
 static void vic_mask_irq(struct vmm_host_irq *irq)

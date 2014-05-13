@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_macros.h>
 #include <vmm_smp.h>
 #include <vmm_cpumask.h>
@@ -90,7 +91,11 @@ static u32 gic_active_irq(u32 cpu_irq_nr)
 	u32 ret;
 
 	ret = gic_read(gic_data[0].cpu_base + GIC_CPU_INTACK) & 0x3FF;
-	ret += gic_data[0].irq_offset;
+	if (ret < 1021) {
+		ret += gic_data[0].irq_offset;
+	} else {
+		ret = UINT_MAX;
+	}
 
 	return ret;
 }

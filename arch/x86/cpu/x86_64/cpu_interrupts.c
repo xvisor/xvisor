@@ -276,6 +276,7 @@ int do_gpf(int intno, arch_regs_t *regs)
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
 	struct vmm_guest *guest;
+
 	if (intno == 0x80) {
 		if (regs->rdi == GUEST_HALT_SW_CODE) {
 			guest = (struct vmm_guest *)regs->rsi;
@@ -288,7 +289,7 @@ int do_generic_int_handler(int intno, arch_regs_t *regs)
 		intno -= USER_DEFINED_IRQ_BASE;
 
 		vmm_scheduler_irq_enter(regs, FALSE);
-		vmm_host_irq_exec(intno);
+		vmm_host_generic_irq_exec(intno);
 		vmm_scheduler_irq_exit(regs);
 	}
 

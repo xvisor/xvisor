@@ -91,32 +91,42 @@ int vmm_host_generic_irq_exec(u32 hirq_no)
 	u32 cpu;
 	struct vmm_host_irq *irq;
 
-	if (hirq_no < CONFIG_HOST_IRQ_COUNT) {
-		irq = &hirqctrl.irq[hirq_no];
-		cpu = vmm_smp_processor_id();
-		irq->count[cpu]++;
-		if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
-			irq->state |= VMM_IRQ_STATE_INPROGRESS;
-		}
-		if (irq->handler) {
-			irq->handler(hirq_no, irq, cpu);
-		}
-		if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
-			irq->state &= ~VMM_IRQ_STATE_INPROGRESS;
-		}
-		return VMM_OK;
+	if (CONFIG_HOST_IRQ_COUNT <= hirq_no) {
+		return VMM_EINVALID;
 	}
 
-	return VMM_ENOTAVAIL;
+	irq = &hirqctrl.irq[hirq_no];
+	cpu = vmm_smp_processor_id();
+	irq->count[cpu]++;
+	if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
+		irq->state |= VMM_IRQ_STATE_INPROGRESS;
+	}
+	if (irq->handler) {
+		irq->handler(hirq_no, irq, cpu);
+	}
+	if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
+		irq->state &= ~VMM_IRQ_STATE_INPROGRESS;
+	}
+
+	return VMM_OK;
 }
 
-int vmm_host_irq_exec(u32 cpu_irq_no)
+int vmm_host_active_irq_exec(u32 cpu_irq_no)
 {
+	u32 hirq_no;
+
 	if (!hirqctrl.active) {
 		return VMM_ENOTAVAIL;
 	}
 
-	return vmm_host_generic_irq_exec(hirqctrl.active(cpu_irq_no));
+	hirq_no = hirqctrl.active(cpu_irq_no);
+	while (hirq_no < CONFIG_HOST_IRQ_COUNT) {
+		vmm_host_generic_irq_exec(hirq_no);
+
+		hirq_no = hirqctrl.active(cpu_irq_no);
+	}
+
+	return VMM_OK;
 }
 
 void vmm_host_irq_set_active_callback(u32 (*active)(u32))

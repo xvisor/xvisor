@@ -41,6 +41,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
@@ -87,14 +88,14 @@ static u32 avic_pending_int(u32 status)
 
 static u32 avic_active_irq(u32 cpu_irq_no)
 {
-	u32 ret = 0;
+	u32 ret, int_status;
 
-	u32 int_status;
-
-	if((int_status = vmm_readl((void *)avic_base + AVIC_NIPNDH))) {
+	if ((int_status = vmm_readl((void *)avic_base + AVIC_NIPNDH))) {
 		ret = 32 + avic_pending_int(int_status);
 	} else if ((int_status = vmm_readl((void *)avic_base + AVIC_NIPNDL))) {
 		ret = avic_pending_int(int_status);
+	} else {
+		ret = UINT_MAX;
 	}
 
 	return ret;

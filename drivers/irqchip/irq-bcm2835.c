@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
@@ -204,6 +205,8 @@ static u32 bcm2835_intc_active_irq(u32 cpu_irq_no)
 		} else {
 			BUG();
 		}
+	} else {
+		irq = UINT_MAX;
 	}
 
 	return irq;

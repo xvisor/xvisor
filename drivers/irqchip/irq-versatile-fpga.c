@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
@@ -94,25 +95,18 @@ static void fpga_irq_unmask(struct vmm_host_irq *irq)
 
 static u32 fpga_find_active_irq(struct fpga_irq_data *f)
 {
-	u32 int_status;
-	u32 i, ret = 0xFFFFFFFF;
+	u32 i, int_status;
 
 	int_status = vmm_readl(f->base + IRQ_STATUS);
-
 	if (int_status) {
 		for (i = 0; i < 32; i++) {
 			if (int_status & (1 << i)) {
-				ret = i;
-				break;
+				return i + f->irq_start;
 			}
-		}
-
-		if (ret != 0xFFFFFFFF) {
-			ret += f->irq_start;
 		}
 	}
 
-	return ret;
+	return UINT_MAX;
 }
 
 static u32 fpga_active_irq(u32 cpu_nr)
@@ -121,12 +115,12 @@ static u32 fpga_active_irq(u32 cpu_nr)
 
 	for (i = 0; i < fpga_irq_id; i++) {
 		ret = fpga_find_active_irq(&fpga_irq_devices[i]);
-		if (ret != 0xFFFFFFFF) {
+		if (ret != UINT_MAX) {
 			return ret;
 		}
 	}
 
-	return 0xFFFFFFFF;
+	return UINT_MAX;
 }
 
 static vmm_irq_return_t fpga_handle_cascade_irq(int irq, void *dev)
