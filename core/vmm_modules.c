@@ -155,6 +155,8 @@ bool vmm_modules_isbuiltin(struct vmm_module *mod)
 	return (mwrap->built_in) ? TRUE : FALSE;
 }
 
+#ifdef CONFIG_MODULES
+
 /* Find a module section: 0 means not found. */
 static u32 find_sec(const struct load_info *info, const char *name)
 {
@@ -713,6 +715,8 @@ int vmm_modules_unload(struct vmm_module *mod)
 
 	return VMM_OK;
 }
+
+#endif
 
 struct vmm_module *vmm_modules_getmodule(u32 index)
 {

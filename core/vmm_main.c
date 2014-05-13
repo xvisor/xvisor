@@ -164,14 +164,12 @@ static void system_init_work(struct vmm_work *work)
 	}
 #endif
 
-#if defined(CONFIG_MODULES)
 	/* Initialize hypervisor modules */
 	vmm_printf("Initialize Hypervisor Modules\n");
 	ret = vmm_modules_init();
 	if (ret) {
 		vmm_panic("Error %d\n", ret);
 	}
-#endif
 
 	/* Initialize cpu final */
 	vmm_printf("Initialize CPU Final\n");
