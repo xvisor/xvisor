@@ -70,7 +70,7 @@ CONFIG_ARM_SMP_IPI=y
 #
 # General Configuration
 #
-MODULES=y
+CONFIG_MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 # CONFIG_BANNER_NONE is not set
 # CONFIG_BANNER_BANNER3 is not set

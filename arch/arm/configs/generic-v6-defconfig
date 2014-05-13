@@ -74,7 +74,7 @@ CONFIG_VERSATILE_CLCD=y
 #
 # General Configuration
 #
-MODULES=y
+CONFIG_MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 # CONFIG_BANNER_NONE is not set
 # CONFIG_BANNER_BANNER3 is not set
