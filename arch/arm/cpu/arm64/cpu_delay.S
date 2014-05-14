@@ -26,7 +26,19 @@
 	 */
 	.globl arch_delay_loop
 arch_delay_loop:
-	subs	w0, w0, #1
+	subs	x0, x0, #1
 	b.hi	arch_delay_loop
+	ret
+
+	/*
+	 * arch specific machine cycle count from delay loop count
+	 */
+	.globl arch_delay_loop_cycles
+arch_delay_loop_cycles:
+	stp     x1, x2, [sp, #-16]!
+	mov	x1, x0
+	mov	x2, #3
+	mul	x0, x1, x2
+	ldp     x1, x2, [sp], #16
 	ret
 

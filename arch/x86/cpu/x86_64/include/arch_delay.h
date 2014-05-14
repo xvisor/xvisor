@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 
 /** FIXME: Low-level delay loop */
-static inline void arch_delay_loop(u32 count)
+static inline void arch_delay_loop(unsigned long count)
 {
 	while (--count);
 }
@@ -34,7 +34,7 @@ static inline void arch_delay_loop(u32 count)
 /** FIXME: Estimated cycles for given loop count 
  *  Note: This can be processor specific
  */
-static inline u32 arch_delay_loop_cycles(u32 count)
+static inline unsigned long arch_delay_loop_cycles(unsigned long count)
 {
 	return count * 2;
 }

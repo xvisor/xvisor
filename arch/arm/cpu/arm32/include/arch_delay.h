@@ -26,14 +26,11 @@
 #include <vmm_types.h>
 
 /** Low-level delay loop */
-void arch_delay_loop(u32 count);
+void arch_delay_loop(unsigned long count);
 
 /** Estimated cycles for given loop count 
  *  Note: This can be processor specific
  */
-static inline u32 arch_delay_loop_cycles(u32 count)
-{
-	return count * 3;
-}
+unsigned long arch_delay_loop_cycles(unsigned long count);
 
 #endif

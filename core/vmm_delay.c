@@ -29,12 +29,12 @@
 #include <arch_cpu.h>
 #include <libs/mathlib.h>
 
-static u32 loops_per_msec[CONFIG_CPU_COUNT];
-static u32 loops_per_usec[CONFIG_CPU_COUNT];
+static unsigned long loops_per_msec[CONFIG_CPU_COUNT];
+static unsigned long loops_per_usec[CONFIG_CPU_COUNT];
 
-void vmm_udelay(u32 usecs)
+void vmm_udelay(unsigned long usecs)
 {
-	u32 lpusec;
+	unsigned long lpusec;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
@@ -44,9 +44,9 @@ void vmm_udelay(u32 usecs)
 	arch_delay_loop(usecs * lpusec);
 }
 
-void vmm_mdelay(u32 msecs)
+void vmm_mdelay(unsigned long msecs)
 {
-	u32 lpmsec;
+	unsigned long lpmsec;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
@@ -56,9 +56,10 @@ void vmm_mdelay(u32 msecs)
 	arch_delay_loop(msecs * lpmsec);
 }
 
-void vmm_sdelay(u32 secs)
+void vmm_sdelay(unsigned long secs)
 {
-	u32 i, lpmsec;
+	u32 i;
+	unsigned long lpmsec;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
@@ -70,12 +71,12 @@ void vmm_sdelay(u32 secs)
 	}
 }
 
-u32 vmm_delay_estimate_cpu_mhz(u32 cpu)
+unsigned long vmm_delay_estimate_cpu_mhz(u32 cpu)
 {
 	return arch_delay_loop_cycles(loops_per_usec[cpu]);
 }
 
-u32 vmm_delay_estimate_cpu_khz(u32 cpu)
+unsigned long vmm_delay_estimate_cpu_khz(u32 cpu)
 {
 	return arch_delay_loop_cycles(loops_per_msec[cpu]);
 }

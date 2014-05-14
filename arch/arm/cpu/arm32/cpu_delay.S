@@ -30,3 +30,15 @@ arch_delay_loop:
 	bhi	arch_delay_loop
 	mov	pc, lr
 
+	/*
+	 * arch specific machine cycle count from delay loop count
+	 */
+	.globl arch_delay_loop_cycles
+arch_delay_loop_cycles:
+	push	{r1, r2}
+	mov	r1, r0
+	mov	r2, #3
+	mul	r0, r1, r2
+	pop	{r1, r2}
+	mov	pc, lr
+
