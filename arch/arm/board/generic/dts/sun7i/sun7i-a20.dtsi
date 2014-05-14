@@ -374,12 +374,12 @@
 		gic { /* Generic Interrupt Controller */
 			device_type = "pic";
 			compatible = "arm,cortex-a15-gic";
-			reg = <0x01c81000 0x1000   /* Dist Interface */
-			       0x01c82000 0x1000   /* CPU Interface */
-			       0x01c84000 0x2000   /* VCPU Control Interface */
-			       0x01c86000 0x2000>; /* VCPU Interface */
+			reg = <0x01c81000 0x1000	/* GIC Dist */
+			       0x01c82000 0x2000	/* GIC CPU */
+			       0x01c84000 0x2000	/* GIC VCPU Control */
+			       0x01c86000 0x2000>;	/* GIC VCPU */
 			irq_start = <16>;
-			interrupts = <25>;
+			interrupts = <25>;		/* GIC Maintanence IRQ */
 		};
 
 		gen-timer { /* Generic Timer */

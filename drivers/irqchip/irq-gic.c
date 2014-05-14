@@ -39,6 +39,8 @@
 #define GIC_CPU_RUNNINGPRI		0x14
 #define GIC_CPU_HIGHPRI			0x18
 
+#define GIC_CPU2_DIR			0x00
+
 #define GIC_DIST_CTRL			0x000
 #define GIC_DIST_CTR			0x004
 #define GIC_DIST_ENABLE_SET		0x100
@@ -52,10 +54,12 @@
 #define GIC_DIST_SOFTINT		0xf00
 
 struct gic_chip_data {
+	bool eoimode;
 	u32 irq_offset;
 	u32 gic_irqs;
 	virtual_addr_t dist_base;
 	virtual_addr_t cpu_base;
+	virtual_addr_t cpu2_base;
 };
 
 #ifndef GIC_MAX_NR
@@ -67,24 +71,7 @@ static struct gic_chip_data gic_data[GIC_MAX_NR];
 
 #define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
 #define gic_read(addr)		vmm_readl((void *)(addr))
-
-static inline virtual_addr_t gic_dist_base(struct vmm_host_irq *irq)
-{
-	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
-	return gic_data->dist_base;
-}
-
-static inline virtual_addr_t gic_cpu_base(struct vmm_host_irq *irq)
-{
-	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
-	return gic_data->cpu_base;
-}
-
-static inline u32 gic_irq(struct vmm_host_irq *irq)
-{
-	struct gic_chip_data *gic_data = vmm_host_irq_get_chip_data(irq);
-	return irq->num - gic_data->irq_offset;
-}
+#define gic_irq(gic, irq)	((irq)->num - (gic)->irq_offset)
 
 static u32 gic_active_irq(u32 cpu_irq_nr)
 {
@@ -102,25 +89,36 @@ static u32 gic_active_irq(u32 cpu_irq_nr)
 
 static void gic_eoi_irq(struct vmm_host_irq *irq)
 {
-	gic_write(gic_irq(irq), gic_cpu_base(irq) + GIC_CPU_EOI);
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+	u32 irq_no = gic_irq(gic, irq);
+
+	gic_write(irq_no, gic->cpu_base + GIC_CPU_EOI);
+	if (gic->eoimode) {
+		gic_write(irq_no, gic->cpu2_base + GIC_CPU2_DIR);
+	}
 }
 
 static void gic_mask_irq(struct vmm_host_irq *irq)
 {
-	gic_write(1 << (irq->num % 32), gic_dist_base(irq) +
-		  GIC_DIST_ENABLE_CLEAR + (gic_irq(irq) / 32) * 4);
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+
+	gic_write(1 << (irq->num % 32), gic->dist_base +
+		  GIC_DIST_ENABLE_CLEAR + (gic_irq(gic, irq) / 32) * 4);
 }
 
 static void gic_unmask_irq(struct vmm_host_irq *irq)
 {
-	gic_write(1 << (irq->num % 32), gic_dist_base(irq) +
-		  GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+
+	gic_write(1 << (irq->num % 32), gic->dist_base +
+		  GIC_DIST_ENABLE_SET + (gic_irq(gic, irq) / 32) * 4);
 }
 
 static int gic_set_type(struct vmm_host_irq *irq, u32 type)
 {
-	virtual_addr_t base = gic_dist_base(irq);
-	u32 gicirq = gic_irq(irq);
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+	virtual_addr_t base = gic->dist_base;
+	u32 gicirq = gic_irq(gic, irq);
 	u32 enablemask = 1 << (gicirq % 32);
 	u32 enableoff = (gicirq / 32) * 4;
 	u32 confmask = 0x2 << ((gicirq % 16) * 2);
@@ -188,11 +186,12 @@ static int gic_set_affinity(struct vmm_host_irq *irq,
 	u32 shift = (irq->num % 4) * 8;
 	u32 cpu = vmm_cpumask_first(mask_val);
 	u32 val, mask, bit;
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
 
 	if (cpu >= 8)
 		return VMM_EINVALID;
 
-	reg = gic_dist_base(irq) + GIC_DIST_TARGET + (gic_irq(irq) & ~3);
+	reg = gic->dist_base + GIC_DIST_TARGET + (gic_irq(gic, irq) & ~3);
 	mask = 0xff << shift;
 	bit = 1 << (cpu + shift);
 
@@ -349,12 +348,19 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	}
 
 	gic_write(0xf0, gic->cpu_base + GIC_CPU_PRIMASK);
-	gic_write(1, gic->cpu_base + GIC_CPU_CTRL);
+	if (gic->eoimode) {
+		gic_write(1|(1<<9), gic->cpu_base + GIC_CPU_CTRL);
+	} else {
+		gic_write(1, gic->cpu_base + GIC_CPU_CTRL);
+	}
 }
 
-static int __init gic_init_bases(u32 gic_nr, u32 irq_start, 
-			  virtual_addr_t cpu_base, 
-			  virtual_addr_t dist_base)
+static int __init gic_init_bases(u32 gic_nr,
+				 bool eoimode,
+				 u32 irq_start,
+				 virtual_addr_t cpu_base,
+				 virtual_addr_t cpu2_base,
+				 virtual_addr_t dist_base)
 {
 	u32 gic_irqs;
 	struct gic_chip_data *gic;
@@ -362,9 +368,11 @@ static int __init gic_init_bases(u32 gic_nr, u32 irq_start,
 	BUG_ON(gic_nr >= GIC_MAX_NR);
 
 	gic = &gic_data[gic_nr];
+	gic->eoimode = eoimode;
+	gic->irq_offset = (irq_start - 1) & ~31;
 	gic->dist_base = dist_base;
 	gic->cpu_base = cpu_base;
-	gic->irq_offset = (irq_start - 1) & ~31;
+	gic->cpu2_base = cpu2_base;
 
 	/*
 	 * Find out how many interrupts are supported.
@@ -389,12 +397,14 @@ static void __cpuinit gic_secondary_init(u32 gic_nr)
 	gic_cpu_init(&gic_data[gic_nr]);
 }
 
-static int __init gic_devtree_init(struct vmm_devtree_node *node, 
-				   struct vmm_devtree_node *parent)
+static int __init gic_devtree_init(struct vmm_devtree_node *node,
+				   struct vmm_devtree_node *parent,
+				   bool eoimode)
 {
 	int rc;
 	u32 irq;
 	virtual_addr_t cpu_base;
+	virtual_addr_t cpu2_base;
 	virtual_addr_t dist_base;
 
 	if (WARN_ON(!node)) {
@@ -407,11 +417,17 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 	rc = vmm_devtree_regmap(node, &cpu_base, 1);
 	WARN(rc, "unable to map gic cpu registers\n");
 
+	rc = vmm_devtree_regmap(node, &cpu2_base, 4);
+	if (rc) {
+		cpu2_base = cpu_base + 0x1000;
+	}
+
 	if (vmm_devtree_read_u32(node, "irq_start", &irq)) {
 		WARN(1, "unable to get gic irq_start\n");
 		irq = 0;
 	}
-	gic_init_bases(gic_cnt, irq, cpu_base, dist_base);
+
+	gic_init_bases(gic_cnt, eoimode, irq, cpu_base, cpu2_base, dist_base);
 
 	if (parent) {
 		if (vmm_devtree_read_u32(node, "parent_irq", &irq)) {
@@ -432,7 +448,7 @@ static int __cpuinit gic_init(struct vmm_devtree_node *node)
 	int rc;
 
 	if (vmm_smp_is_bootcpu()) {
-		rc = gic_devtree_init(node, NULL);
+		rc = gic_devtree_init(node, NULL, FALSE);
 	} else {
 		gic_secondary_init(0);
 		rc = VMM_OK;
@@ -440,7 +456,22 @@ static int __cpuinit gic_init(struct vmm_devtree_node *node)
 
 	return rc;
 }
+
+static int __cpuinit gic_eoimode_init(struct vmm_devtree_node *node)
+{
+	int rc;
+
+	if (vmm_smp_is_bootcpu()) {
+		rc = gic_devtree_init(node, NULL, TRUE);
+	} else {
+		gic_secondary_init(0);
+		rc = VMM_OK;
+	}
+
+	return rc;
+}
+
 VMM_HOST_IRQ_INIT_DECLARE(rvgic, "arm,realview-gic", gic_init);
 VMM_HOST_IRQ_INIT_DECLARE(ca9gic, "arm,cortex-a9-gic", gic_init);
-VMM_HOST_IRQ_INIT_DECLARE(ca15gic, "arm,cortex-a15-gic", gic_init);
+VMM_HOST_IRQ_INIT_DECLARE(ca15gic, "arm,cortex-a15-gic", gic_eoimode_init);
 
