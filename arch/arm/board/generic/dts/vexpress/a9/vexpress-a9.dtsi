@@ -65,7 +65,6 @@
       		compatible = "arm,cortex-a9-gic";
       		reg = <0x1E001000 0x1000
 		       0x1E000100 0x1000>;
-		irq_start = <29>;
 	};
 
 	twd-timer { /* Local Timer */

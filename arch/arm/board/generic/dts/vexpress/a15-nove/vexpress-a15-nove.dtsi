@@ -41,7 +41,6 @@
       		compatible = "arm,cortex-a9-gic";
       		reg = <0x0 0x2C001000 0x0 0x1000   /* GIC Dist */
 		       0x0 0x2C002000 0x0 0x1000>; /* GIC CPU */
-		irq_start = <16>;
 	};
 
 	dcc {

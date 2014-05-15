@@ -90,7 +90,6 @@
 		      		compatible = "arm,realview-gic";
 		      		reg = <0x10101000 0x1000
 				       0x10100100 0x100>;
-				irq_start = <29>;
 			};
 
 			twd-timer { /* Local Timer */

@@ -54,7 +54,6 @@
 		      		compatible = "arm,realview-gic";
 		      		reg = <0x1E001000 0x1000
 				       0x1E000000 0x1000>;
-				irq_start = <32>;
 			};
 
 			sysreg { /* System Registers */

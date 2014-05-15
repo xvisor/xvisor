@@ -54,9 +54,10 @@
 #define GIC_DIST_SOFTINT		0xf00
 
 struct gic_chip_data {
-	bool eoimode;
-	u32 irq_offset;
-	u32 gic_irqs;
+	bool eoimode;			/* EOImode state */
+	u32 irq_start;			/* Starting logical IRQ number */
+	u32 hwirq_base; 		/* Starting physical IRQ number */
+	u32 max_irqs;   		/* Total IRQs */
 	virtual_addr_t dist_base;
 	virtual_addr_t cpu_base;
 	virtual_addr_t cpu2_base;
@@ -71,7 +72,7 @@ static struct gic_chip_data gic_data[GIC_MAX_NR];
 
 #define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
 #define gic_read(addr)		vmm_readl((void *)(addr))
-#define gic_irq(gic, irq)	((irq)->num - (gic)->irq_offset)
+#define gic_irq(gic, irq)	((irq)->num - (gic)->irq_start)
 
 static u32 gic_active_irq(u32 cpu_irq_nr)
 {
@@ -79,7 +80,7 @@ static u32 gic_active_irq(u32 cpu_irq_nr)
 
 	ret = gic_read(gic_data[0].cpu_base + GIC_CPU_INTACK) & 0x3FF;
 	if (ret < 1021) {
-		ret += gic_data[0].irq_offset;
+		ret += gic_data[0].irq_start;
 	} else {
 		ret = UINT_MAX;
 	}
@@ -118,16 +119,16 @@ static int gic_set_type(struct vmm_host_irq *irq, u32 type)
 {
 	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
 	virtual_addr_t base = gic->dist_base;
-	u32 gicirq = gic_irq(gic, irq);
-	u32 enablemask = 1 << (gicirq % 32);
-	u32 enableoff = (gicirq / 32) * 4;
-	u32 confmask = 0x2 << ((gicirq % 16) * 2);
-	u32 confoff = (gicirq / 16) * 4;
+	u32 irq_no = gic_irq(gic, irq);
+	u32 enablemask = 1 << (irq_no % 32);
+	u32 enableoff = (irq_no / 32) * 4;
+	u32 confmask = 0x2 << ((irq_no % 16) * 2);
+	u32 confoff = (irq_no / 16) * 4;
 	bool enabled = FALSE;
 	u32 val;
 
 	/* Interrupt configuration for SGIs can't be changed */
-	if (gicirq < 16) {
+	if (irq_no < 16) {
 		return VMM_EINVALID;
 	}
 
@@ -213,7 +214,7 @@ static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
 		return VMM_IRQ_NONE;
 	}
 
-	cascade_irq = gic_irq + gic->irq_offset;
+	cascade_irq = gic_irq + gic->irq_start;
 	if (likely((32 <= gic_irq) && (gic_irq <= 1020))) {
 		vmm_host_generic_irq_exec(cascade_irq);
 	}
@@ -244,9 +245,9 @@ static void __init gic_cascade_irq(u32 gic_nr, u32 irq)
 	}
 }
 
-static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
+static void __init gic_dist_init(struct gic_chip_data *gic)
 {
-	unsigned int max_irq, irq_limit, i;
+	unsigned int i;
 	u32 cpumask = 1 << vmm_smp_processor_id();
 	virtual_addr_t base = gic->dist_base;
 
@@ -257,55 +258,32 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	gic_write(0, base + GIC_DIST_CTRL);
 
 	/*
-	 * Find out how many interrupts are supported.
-	 */
-	max_irq = gic_read(base + GIC_DIST_CTR) & 0x1f;
-	max_irq = (max_irq + 1) * 32;
-
-	/*
-	 * The GIC only supports up to 1020 interrupt sources.
-	 * Limit this to either the architected maximum, or the
-	 * platform maximum.
-	 */
-	if (max_irq > 1020) {
-		max_irq = 1020;
-	}
-
-	/*
 	 * Set all global interrupts to be level triggered, active low.
 	 */
-	for (i = 32; i < max_irq; i += 16) {
+	for (i = 32; i < gic->max_irqs; i += 16) {
 		gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
 	}
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
-	for (i = 32; i < max_irq; i += 4) {
+	for (i = 32; i < gic->max_irqs; i += 4) {
 		gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
 	}
 
 	/*
 	 * Set priority on all interrupts.
 	 */
-	for (i = 0; i < max_irq; i += 4) {
+	for (i = 0; i < gic->max_irqs; i += 4) {
 		gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
 	}
 
 	/*
 	 * Disable all interrupts.
 	 */
-	for (i = 0; i < max_irq; i += 32) {
+	for (i = 0; i < gic->max_irqs; i += 32) {
 		gic_write(0xffffffff,
 			  base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
-	}
-
-	/*
-	 * Limit number of interrupts registered to the platform maximum
-	 */
-	irq_limit = gic->irq_offset + max_irq;
-	if (WARN_ON(irq_limit > CONFIG_HOST_IRQ_COUNT)) {
-		irq_limit = CONFIG_HOST_IRQ_COUNT;
 	}
 
 	/*
@@ -314,11 +292,11 @@ static void __init gic_dist_init(struct gic_chip_data *gic, u32 irq_start)
 	 * The Linux kernel handles pheripheral interrupts via C code and 
 	 * SGI/PPI via assembly code.
 	 */
-	for (i = 0; i < irq_limit; i++) {
+	for (i = gic->irq_start; i < (gic->irq_start + gic->max_irqs); i++) {
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
 		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
-		/* Mark per-CPU IRQs */
+		/* Mark SGIs and PPIs as per-CPU IRQs */
 		if (i < 32) {
 			vmm_host_irq_mark_per_cpu(i);
 		}
@@ -362,14 +340,18 @@ static int __init gic_init_bases(u32 gic_nr,
 				 virtual_addr_t cpu2_base,
 				 virtual_addr_t dist_base)
 {
-	u32 gic_irqs;
+	u32 max_irqs;
 	struct gic_chip_data *gic;
 
 	BUG_ON(gic_nr >= GIC_MAX_NR);
 
 	gic = &gic_data[gic_nr];
 	gic->eoimode = eoimode;
-	gic->irq_offset = (irq_start - 1) & ~31;
+	gic->irq_start = irq_start;
+	/* For primary GICs, skip over SGIs.
+	 * For secondary GICs, skip over PPIs, too.
+	 */
+	gic->hwirq_base = (gic_nr == 0) ? 16 : 32;
 	gic->dist_base = dist_base;
 	gic->cpu_base = cpu_base;
 	gic->cpu2_base = cpu2_base;
@@ -378,13 +360,19 @@ static int __init gic_init_bases(u32 gic_nr,
 	 * Find out how many interrupts are supported.
 	 * The GIC only supports up to 1020 interrupt sources.
 	 */
-	gic_irqs = gic_read(gic->dist_base + GIC_DIST_CTR) & 0x1f;
-	gic_irqs = (gic_irqs + 1) * 32;
-	if (gic_irqs > 1020)
-		gic_irqs = 1020;
-	gic->gic_irqs = gic_irqs;
+	max_irqs = gic_read(gic->dist_base + GIC_DIST_CTR) & 0x1f;
+	max_irqs = (max_irqs + 1) * 32;
+	if (max_irqs > 1020)
+		max_irqs = 1020;
 
-	gic_dist_init(gic, irq_start);
+	/*
+	 * Limit number of interrupts registered to the platform maximum
+	 */
+	BUG_ON((max_irqs + gic->irq_start) > CONFIG_HOST_IRQ_COUNT);
+
+	gic->max_irqs = max_irqs;
+
+	gic_dist_init(gic);
 	gic_cpu_init(gic);
 
 	return VMM_OK;
@@ -423,7 +411,6 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 	}
 
 	if (vmm_devtree_read_u32(node, "irq_start", &irq)) {
-		WARN(1, "unable to get gic irq_start\n");
 		irq = 0;
 	}
 

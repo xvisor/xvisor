@@ -60,7 +60,6 @@
 		       0x0 0x2C002000 0x0 0x2000	/* GIC CPU */
 		       0x0 0x2C004000 0x0 0x2000	/* GIC VCPU Control */
 		       0x0 0x2C006000 0x0 0x2000>;	/* GIC VCPU */
-		irq_start = <16>;
 		interrupts = <25>;			/* GIC Maintanence IRQ */
 	};
 
