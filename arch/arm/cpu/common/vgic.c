@@ -273,11 +273,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	VGIC_SET_LR_MAP(vs, irq, lr);
 	VGIC_SET_LR_USED(vs, lr);
 
-	/* Set LR_EIO bit for level triggered interrupts */
 	lrval = VGIC_MAKE_LR_PENDING(src_id, irq);
-	if (!VGIC_TEST_TRIGGER(s, irq)) {
-		lrval |= GICH_LR_EOI;
-	} 
 
 	DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
 	vmm_writel(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
@@ -352,8 +348,6 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 	bool overflow = FALSE;
 	u32 hcr, cm = (1 << vs->vcpu->subid);
 
-	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
-
 	if (!s->enabled) {
 		return;
 	}
@@ -362,6 +356,8 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 	    !VGIC_TEST_PENDING(s, irq, cm)) {
 		return;
 	}
+
+	DPRINTF("%s: vcpu=%s irq=%d\n", __func__, vs->vcpu->name, irq);
 
 	if (irq < 16) {
 		if (!__vgic_queue_sgi(s, vs, irq)) {
@@ -392,11 +388,11 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 	bool overflow = FALSE;
 	u32 hcr, irq, cm = (1 << vs->vcpu->subid);
 
-	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
-
 	if (!s->enabled) {
 		return;
 	}
+
+	DPRINTF("%s: vcpu=%s\n", __func__, vs->vcpu->name);
 
 	for (irq = 0; irq < 16; irq++) {
 		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
@@ -435,10 +431,10 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s, 
 				     struct vgic_vcpu_state *vs)
 {
-	u32 hcr, misr, eisr[2], elrsr[2];
+	u32 hcr, misr, elrsr[2];
 	u32 lr, lrval, irq, cm = (1 << vs->vcpu->subid);
 
-	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+	/* Read register state */
 	misr = vmm_readl((void *)vgich.hctrl_va + GICH_MISR);
 	elrsr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR0);
 	if (32 < vgich.lr_cnt) {
@@ -447,62 +443,13 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		elrsr[1] = 0x0;
 	}
 
+	/* Print crucial registers */
 	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
 	DPRINTF("%s: MISR = %08x\n", __func__, misr);
 	DPRINTF("%s: ELRSR0 = %08x\n", __func__, elrsr[0]);
 	DPRINTF("%s: ELRSR1 = %08x\n", __func__, elrsr[1]);
 
-	if (misr & GICH_MISR_EOI) {
-		eisr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR0);
-		if (32 < vgich.lr_cnt) {
-			eisr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_EISR1);
-		} else {
-			eisr[1] = 0x0;
-		}
-		DPRINTF("%s: EISR0 = %08x\n", __func__, eisr[0]);
-		DPRINTF("%s: EISR1 = %08x\n", __func__, eisr[1]);
-
-		/* Some level interrupts have been EOIed. 
-		 * Clear their active bit.
-		 */
-		for (lr = 0; lr < vgich.lr_cnt; lr++) {
-			if (!VGIC_TEST_EISR(eisr, lr)) {
-				continue;
-			}
-
-			lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-
-			irq = lrval & GICH_LR_VIRTUALID;
-
-			VGIC_CLEAR_ACTIVE(s, irq, cm);
-			lrval &= ~GICH_LR_EOI;
-
-			/* Mark level triggered interrupts as pending if 
-			 * they are still raised.
-			 */
-			if (!VGIC_TEST_TRIGGER(s, irq) && 
-			    VGIC_TEST_ENABLED(s, irq, cm) &&
-			    VGIC_TEST_LEVEL(s, irq, cm) && 
-			    (VGIC_TARGET(s, irq) & cm) != 0) {
-				VGIC_SET_PENDING(s, irq, cm);
-			} else {
-				VGIC_CLEAR_PENDING(s, irq, cm);
-			}
-
-			/* Despite being EOIed, the LR may not have
-			 * been marked as empty.
-			 */
-			VGIC_SET_ELRSR(elrsr, lr);
-			lrval &= ~GICH_LR_ACTIVE_BIT;
-
-			vmm_writel(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-		}
-	}
-
-	if (misr & GICH_MISR_U) {
-		hcr &= ~GICH_HCR_UIE;
-	}
-
+	/* Re-claim empty LR registers */
 	for (lr = 0; lr < vgich.lr_cnt; lr++) {
 		if (!VGIC_TEST_ELRSR(elrsr, lr)) {
 			continue;
@@ -512,20 +459,47 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 			continue;
 		}
 
+		/* Read the LR register */
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-
 		DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
 
-		VGIC_CLEAR_LR_USED(vs, lr);
-
+		/* Determine irq number */
 		irq = lrval & GICH_LR_VIRTUALID;
 
+		/* Should be a valid irq number */
 		BUG_ON(irq >= VGIC_MAX_NIRQ);
 
+		/* Clear active bit (only for level-triggered interrupts) */
+		VGIC_CLEAR_ACTIVE(s, irq, cm);
+
+		/* Mark level triggered interrupts as pending if
+		 * they are still raised.
+		 */
+		if (!VGIC_TEST_TRIGGER(s, irq) &&
+		    VGIC_TEST_ENABLED(s, irq, cm) &&
+		    VGIC_TEST_LEVEL(s, irq, cm) &&
+		    (VGIC_TARGET(s, irq) & cm) != 0) {
+			VGIC_SET_PENDING(s, irq, cm);
+		} else {
+			VGIC_CLEAR_PENDING(s, irq, cm);
+		}
+
+		/* Mark this LR as free */
+		VGIC_CLEAR_LR_USED(vs, lr);
+
+		/* Map irq to unknown LR */
 		VGIC_SET_LR_MAP(vs, irq, VGIC_LR_UNKNOWN);
+
+		/* Clear LR register */
+		vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 	}
 
-	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+	/* Clear underflow interrupt if enabled */
+	if (misr & GICH_MISR_U) {
+		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+		hcr &= ~GICH_HCR_UIE;
+		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+	}
 }
 
 /* Process IRQ asserted by device emulation framework */
@@ -537,10 +511,13 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	struct vgic_vcpu_state *vs;
 	struct vgic_guest_state *s = opaque;
 
-	DPRINTF("%s: irq=%d cpu=%d level=%d\n", __func__, irq, cpu, level);
-
 	/* Lock VGIC distributor state */
 	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+
+	if (!s->enabled) {
+		vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+		return;
+	}
 
 	if (irq < 32) {
 		/* In case of PPIs and SGIs */
@@ -569,15 +546,15 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		goto done;
 	}
 
-	/* Forcefully resume VCPU if waiting for IRQ */
-	wfi_resume = TRUE;
+	/* Debug print */
+	DPRINTF("%s: irq=%d cpu=%d level=%d\n", __func__, irq, cpu, level);
 
 	/* Update IRQ state*/
 	if (level) {
 		VGIC_SET_LEVEL(s, irq, cm);
-		if (VGIC_TEST_TRIGGER(s, irq) || 
-		    VGIC_TEST_ENABLED(s, irq, cm)) {
+		if (VGIC_TEST_ENABLED(s, irq, cm)) {
 			VGIC_SET_PENDING(s, irq, target);
+			wfi_resume = TRUE;
 		}
 	} else {
 		VGIC_CLEAR_LEVEL(s, irq, cm);
@@ -585,6 +562,11 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 	/* Directly updating VGIC HW for current VCPU */
 	if (vs->vcpu == vmm_scheduler_current_vcpu()) {
+		/* The VGIC HW state may have changed when the
+		 * VCPU was running hence, sync VGIC VCPU state.
+		 */
+		__vgic_sync_vcpu_hwstate(s, vs);
+
 		/* Flush IRQ state change to VGIC HW */
 		__vgic_flush_vcpu_hwstate_irq(s, vs, irq);
 	}
@@ -593,7 +575,7 @@ done:
 	/* Unlock VGIC distributor state */
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
-	/* Resume from WFI if required */
+	/* Forcefully resume VCPU if waiting for IRQ */
 	if (wfi_resume) {
 		vmm_vcpu_irq_wait_resume(vs->vcpu);
 	}
@@ -1192,6 +1174,8 @@ static int vgic_emulator_reset(struct vmm_emudev *edev)
 	u32 i, j;
 	irq_flags_t flags;
 	struct vgic_guest_state *s = edev->priv;
+
+	DPRINTF("%s: guest=%s\n", __func__, s->guest->name);
 
 	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
