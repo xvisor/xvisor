@@ -4,6 +4,13 @@
 	#size-cells = <1>;
 	model = "allwinner,sun4i";
 
+	chosen { };
+
+	aliases {
+		ethernet0 = &emac;
+		serial0 = &uart0;
+		serial1 = &uart1;
+	};
 
 	cpus {
 		#address-cells = <1>;
