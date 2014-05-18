@@ -5,7 +5,11 @@
 	model = "allwinner,sun7i";
 
 	chosen { };
-	aliases { };
+
+        aliases {
+                serial0 = &uart0;
+                serial1 = &uart1;
+        };
 
 	cpus {
 		#address-cells = <1>;
@@ -451,4 +455,5 @@
 /* Add guest templates */
 /include/ "../../../common/guests/realview-pb-a8.dtsi"
 /include/ "../../../common/guests/vexpress-a9x2.dtsi"
+/include/ "../../../common/guests/vexpress-a15x2.dtsi"
 

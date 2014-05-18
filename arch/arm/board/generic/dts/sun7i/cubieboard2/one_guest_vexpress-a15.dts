@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "sun7i-a20.dtsi"
+/include/ "sun7i-a20-cubieboard2.dtsi"
 
 / {
 	chosen {
@@ -13,7 +13,7 @@
 			  "vfs mount rbd0 /",
 
 			  /* Copy guest0 device tree from templates */
-			  "devtree node copy /guests guest0 /templates/vexpress-a9x2",
+			  "devtree node copy /guests guest0 /templates/vexpress-a15x2",
 
 			  /* Update guest0 flash region */
 			  "devtree attr set /guests/guest0/aspace/nor_flash0 host_physical_addr physaddr 0x42000000",
@@ -28,20 +28,22 @@
 			  "devtree attr set /guests/guest0/aspace/videoram physical_size physsize 0x00800000",
 
 			  /* Update guest0 memory regions */
-			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x04000000",
-			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x45800000",
-			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
+			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x45800000",
+			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
+
+			  /* Update guest0 vGIC CPU interface regions */
+			  "devtree attr set /guests/guest0/aspace/gic_cpu host_physical_addr physaddr 0x01C86000",
+
+			  /* Connect guest0/eth netport to br0 */
+			  "devtree attr set /guests/guest0/aspace/eth switch string br0",
 
 			  /* Connect guest0/virtio-net0 netport to br0 */
 			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",
-
-			  /* Connect guest0/lan9118 netport to br0 */
-			  "devtree attr set /guests/guest0/aspace/lan9118 switch string br0",
 
 			  /* Create guest0 */
 			  "guest create guest0",
 
 			  /* Load guest0 images */
-			  "vfs guest_load_list guest0 /images/arm32/vexpress-a9/nor_flash.list";
+			  "vfs guest_load_list guest0 /images/arm32/vexpress-a15/nor_flash.list";
 	};
 };
