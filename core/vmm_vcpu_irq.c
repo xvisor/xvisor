@@ -95,13 +95,14 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 }
 
-static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
+static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 {
+	int rc;
 	irq_flags_t flags;
 	bool try_vcpu_resume = FALSE;
 
 	if (!vcpu) {
-		return;
+		return VMM_EINVALID;
 	}
 
 	/* Lock VCPU WFI */
@@ -116,6 +117,10 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 
 		/* Stop wait for irq timeout event */
 		vmm_timer_event_stop(vcpu->irqs.wfi.priv);
+
+		rc = VMM_OK;
+	} else {
+		rc = VMM_ENOTAVAIL;
 	}
 
 	/* Unlock VCPU WFI */
@@ -123,8 +128,10 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 
 	/* Try to resume the VCPU */
 	if (try_vcpu_resume) {
-		vmm_manager_vcpu_resume(vcpu);
+		rc = vmm_manager_vcpu_resume(vcpu);
 	}
+
+	return rc;
 }
 
 static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
@@ -199,9 +206,7 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 	}
 
 	/* Resume VCPU from wfi */
-	vcpu_irq_wfi_resume(vcpu);
-
-	return VMM_OK;
+	return vcpu_irq_wfi_resume(vcpu);
 }
 
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
