@@ -121,8 +121,7 @@ struct vgic_vcpu_state {
 
 	/* Maintainence Info */
 	u32 lr_used[GICH_LR_MAX_COUNT / 32];
-	u32 sgi_source[16];
-	u8 irq_lr[VGIC_MAX_NIRQ];
+	u8 irq_lr[VGIC_MAX_NIRQ][VGIC_MAX_NCPU];
 };
 
 struct vgic_guest_state {
@@ -145,6 +144,7 @@ struct vgic_guest_state {
 
 	/* Distribution Control */
 	struct vgic_irq_state irq_state[VGIC_MAX_NIRQ];
+	u32 sgi_source[VGIC_MAX_NCPU][16];
 	u32 irq_target[VGIC_MAX_NIRQ];
 	u32 priority1[32][VGIC_MAX_NCPU];
 	u32 priority2[VGIC_MAX_NIRQ - 32];
@@ -170,7 +170,7 @@ struct vgic_guest_state {
 #define VGIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
-#define VGIC_TEST_TRIGGER(s, irq) (s)->irq_state[irq].trigger
+#define VGIC_TEST_TRIGGER(s, irq) ((irq < 16) ? 1 : (s)->irq_state[irq].trigger)
 #define VGIC_GET_PRIORITY(s, irq, cpu) \
   (((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
 #define VGIC_TARGET(s, irq) (s)->irq_target[irq]
@@ -203,8 +203,8 @@ struct vgic_guest_state {
 #define VGIC_CLEAR_LR_USED(vs, lr) \
 	((vs)->lr_used[((lr) >> 5)] &= ~(1 << ((lr) & 0x1F)))
 
-#define VGIC_SET_LR_MAP(vs, irq, lr) ((vs)->irq_lr[irq] = (lr))
-#define VGIC_GET_LR_MAP(vs, irq) ((vs)->irq_lr[irq])
+#define VGIC_SET_LR_MAP(vs, irq, src_id, lr) ((vs)->irq_lr[irq][src_id] = (lr))
+#define VGIC_GET_LR_MAP(vs, irq, src_id) ((vs)->irq_lr[irq][src_id])
 
 /* Save current VGIC VCPU HW state */
 static void __vgic_save_vcpu_hwstate(struct vgic_vcpu_state *vs)
@@ -246,7 +246,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	DPRINTF("%s: Queue IRQ%d to VCPU with SUBID=%d\n", 
 		__func__, irq, vs->vcpu->subid);
 
-	lr = VGIC_GET_LR_MAP(vs, irq);
+	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
 
 	if (lr != VGIC_LR_UNKNOWN) {
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
@@ -265,12 +265,13 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 		}
 	}
 	if (lr >= vgich.lr_cnt) {
+		vmm_printf("%s: LR overflow src_id=%d irq=%d\n", __func__, src_id, irq);
 		return FALSE;
 	}
 
 	DPRINTF("%s: LR%d allocated for IRQ%d SRC=0x%x\n", 
 		__func__, lr, irq, src_id);
-	VGIC_SET_LR_MAP(vs, irq, lr);
+	VGIC_SET_LR_MAP(vs, irq, src_id, lr);
 	VGIC_SET_LR_USED(vs, lr);
 
 	lrval = VGIC_MAKE_LR_PENDING(src_id, irq);
@@ -289,7 +290,7 @@ static bool __vgic_queue_sgi(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u32 irq)
 {
-	u32 c, source = vs->sgi_source[irq];
+	u32 c, source = s->sgi_source[vs->vcpu->subid][irq];
 
 	for (c = 0; c < VGIC_NUM_CPU(s); c++) {
 		if (!(source & (1 << c))) {
@@ -300,7 +301,7 @@ static bool __vgic_queue_sgi(struct vgic_guest_state *s,
 		}
 	}
 
-	vs->sgi_source[irq] = source;
+	s->sgi_source[vs->vcpu->subid][irq] = source;
 
 	if (!source) {
 		VGIC_CLEAR_PENDING(s, irq, (1 << vs->vcpu->subid));
@@ -431,6 +432,7 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s, 
 				     struct vgic_vcpu_state *vs)
 {
+	u8 src_id;
 	u32 hcr, misr, elrsr[2];
 	u32 lr, lrval, irq, cm = (1 << vs->vcpu->subid);
 
@@ -463,8 +465,9 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 		DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
 
-		/* Determine irq number */
+		/* Determine irq number & src_id */
 		irq = lrval & GICH_LR_VIRTUALID;
+		src_id = VGIC_LR_CPUID(lrval);
 
 		/* Should be a valid irq number */
 		BUG_ON(irq >= VGIC_MAX_NIRQ);
@@ -488,7 +491,7 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		VGIC_CLEAR_LR_USED(vs, lr);
 
 		/* Map irq to unknown LR */
-		VGIC_SET_LR_MAP(vs, irq, VGIC_LR_UNKNOWN);
+		VGIC_SET_LR_MAP(vs, irq, src_id, VGIC_LR_UNKNOWN);
 
 		/* Clear LR register */
 		vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
@@ -1019,7 +1022,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 
 	if (offset == 0xF00) {
 		/* Software Interrupt */
-		irq = src & 0x3ff;
+		irq = src & 0x3FF;
 		switch ((src >> 24) & 3) {
 		case 0:
 			sgi_mask = (src >> 16) & VGIC_ALL_CPU_MASK(s);
@@ -1039,10 +1042,10 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			if (!(sgi_mask & (1 << i))) {
 				continue;
 			}
-			s->vstate[i].sgi_source[irq] |= (1 << cpu);
 			if (s->vstate[i].vcpu->subid == vs->vcpu->subid) {
 				continue;
 			}
+			s->sgi_source[i][irq] |= (1 << cpu);
 			vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
 			vmm_spin_lock_irqsave(&s->dist_lock, flags);
@@ -1171,7 +1174,7 @@ static int vgic_emulator_write32(struct vmm_emudev *edev,
 
 static int vgic_emulator_reset(struct vmm_emudev *edev)
 {
-	u32 i, j;
+	u32 i, j, k;
 	irq_flags_t flags;
 	struct vgic_guest_state *s = edev->priv;
 
@@ -1194,11 +1197,18 @@ static int vgic_emulator_reset(struct vmm_emudev *edev)
 		for (j = 0; j < (GICH_LR_MAX_COUNT / 32); j++) {
 			s->vstate[i].lr_used[j] = 0x0;
 		}
-		for (j = 0; j < 32; j++) {
-			s->vstate[i].sgi_source[j] = 0x0;
-		}
 		for (j = 0; j < VGIC_NUM_IRQ(s); j++) {
-			VGIC_SET_LR_MAP(&s->vstate[i], j, VGIC_LR_UNKNOWN);
+			for (k = 0; k < VGIC_MAX_NCPU; k++) {
+				VGIC_SET_LR_MAP(&s->vstate[i], j, k,
+						VGIC_LR_UNKNOWN);
+			}
+		}
+	}
+
+	/* Clear SGI sources */
+	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
+		for (j = 0; j < 16; j++) {
+			s->sgi_source[i][j] = 0x0;
 		}
 	}
 
