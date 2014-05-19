@@ -337,6 +337,53 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 	return VMM_OK;
 }
 
+int vmm_manager_vcpu_hcpu_resched(struct vmm_vcpu *vcpu)
+{
+	int rc;
+	irq_flags_t flags;
+
+	if (!vcpu) {
+		return VMM_EINVALID;
+	}
+
+	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	rc = vmm_scheduler_force_resched(vcpu->hcpu);
+	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	return rc;
+}
+
+static void manager_vcpu_hcpu_func(void *fptr, void *vptr, void *data)
+{
+	void (*func)(struct vmm_vcpu *, void *) = fptr;
+	struct vmm_vcpu *vcpu = vptr;
+
+	if (func && vcpu) {
+		func(vcpu, data);
+	}
+}
+
+int vmm_manager_vcpu_hcpu_func(struct vmm_vcpu *vcpu,
+			       void (*func)(struct vmm_vcpu *, void *),
+			       void *data)
+{
+	irq_flags_t flags;
+
+	if (!vcpu || !func) {
+		return VMM_EINVALID;
+	}
+
+	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	vmm_smp_ipi_async_call(vmm_cpumask_of(vcpu->hcpu),
+				manager_vcpu_hcpu_func,
+				func, vcpu, data);
+
+	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	return VMM_OK;
+}
+
 const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu)
 {
 	irq_flags_t flags;
