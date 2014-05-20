@@ -170,9 +170,10 @@ struct vgic_guest_state {
 #define VGIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
-#define VGIC_TEST_TRIGGER(s, irq) ((irq < 16) ? 1 : (s)->irq_state[irq].trigger)
+#define VGIC_TEST_TRIGGER(s, irq) \
+	((irq < 16) ? 1 : (s)->irq_state[irq].trigger)
 #define VGIC_GET_PRIORITY(s, irq, cpu) \
-  (((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
+	(((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
 #define VGIC_TARGET(s, irq) (s)->irq_target[irq]
 
 #define VGIC_TEST_EISR(eisr, lr) \
@@ -243,11 +244,10 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 {
 	u32 lr, lrval;
 
-	DPRINTF("%s: Queue IRQ%d to VCPU with SUBID=%d\n", 
-		__func__, irq, vs->vcpu->subid);
+	DPRINTF("%s: IRQ=%d SRC_ID=%d VCPU=%s\n",
+		__func__, irq, src_id, vs->vcpu->name);
 
 	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
-
 	if (lr != VGIC_LR_UNKNOWN) {
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 		if (VGIC_LR_CPUID(lrval) == src_id) {
@@ -265,7 +265,8 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 		}
 	}
 	if (lr >= vgich.lr_cnt) {
-		vmm_printf("%s: LR overflow src_id=%d irq=%d\n", __func__, src_id, irq);
+		vmm_printf("%s: LR overflow IRQ=%d SRC_ID=%d VCPU=%s\n",
+			   __func__, vs->vcpu->name, irq, src_id);
 		return FALSE;
 	}
 
@@ -286,7 +287,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
  */
-static bool __vgic_queue_sgi(struct vgic_guest_state *s, 
+static bool __vgic_queue_sgi(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u32 irq)
 {
@@ -315,8 +316,8 @@ static bool __vgic_queue_sgi(struct vgic_guest_state *s,
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
  */
-static bool __vgic_queue_hwirq(struct vgic_guest_state *s, 
-			       struct vgic_vcpu_state *vs, 
+static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
+			       struct vgic_vcpu_state *vs,
 			       u32 irq)
 {
 	u32 cm = (1 << vs->vcpu->subid);
@@ -342,7 +343,7 @@ static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
  */
-static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s, 
+static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 					  struct vgic_vcpu_state *vs,
 					  u32 irq)
 {
@@ -353,8 +354,7 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 		return;
 	}
 
-	if (!VGIC_TEST_ENABLED(s, irq, cm) || 
-	    !VGIC_TEST_PENDING(s, irq, cm)) {
+	if (!VGIC_TEST_PENDING(s, irq, cm)) {
 		return;
 	}
 
@@ -370,20 +370,18 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 		}
 	}
 
-	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
 	if (overflow) {
+		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
 		hcr |= GICH_HCR_UIE;
-	} else {
-		hcr &= ~GICH_HCR_UIE;
+		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
-	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 }
 
 /* Flush VGIC state to VGIC HW for given VCPU
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
  */
-static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s, 
+static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 				      struct vgic_vcpu_state *vs)
 {
 	bool overflow = FALSE;
@@ -396,40 +394,40 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 	DPRINTF("%s: vcpu=%s\n", __func__, vs->vcpu->name);
 
 	for (irq = 0; irq < 16; irq++) {
-		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
-		    !VGIC_TEST_PENDING(s, irq, cm)) {
+		if (!VGIC_TEST_PENDING(s, irq, cm)) {
 			continue;
 		}
 
 		if (!__vgic_queue_sgi(s, vs, irq)) {
 			overflow = TRUE;
+			goto done;
 		}
 	}
 
 	for (irq = 16; irq < VGIC_NUM_IRQ(s); irq++) {
-		if (!VGIC_TEST_ENABLED(s, irq, cm) || 
-		    !VGIC_TEST_PENDING(s, irq, cm)) {
+		if (!VGIC_TEST_PENDING(s, irq, cm)) {
 			continue;
 		}
 
 		if (!__vgic_queue_hwirq(s, vs, irq)) {
 			overflow = TRUE;
+			goto done;
 		}
 	}
 
-	hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+done:
 	if (overflow) {
+		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
 		hcr |= GICH_HCR_UIE;
-	} else {
-		hcr &= ~GICH_HCR_UIE;
+		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
-	vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 }
 
 /* Sync current VCPU VGIC state with HW state
+ * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
  */
-static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s, 
+static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 				     struct vgic_vcpu_state *vs)
 {
 	u8 src_id;
@@ -452,12 +450,10 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 	DPRINTF("%s: ELRSR1 = %08x\n", __func__, elrsr[1]);
 
 	/* Re-claim empty LR registers */
+	elrsr[0] &= vs->lr_used[0];
+	elrsr[1] &= vs->lr_used[1];
 	for (lr = 0; lr < vgich.lr_cnt; lr++) {
 		if (!VGIC_TEST_ELRSR(elrsr, lr)) {
-			continue;
-		}
-
-		if (!VGIC_TEST_LR_USED(vs, lr)) {
 			continue;
 		}
 
@@ -472,19 +468,21 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		/* Should be a valid irq number */
 		BUG_ON(irq >= VGIC_MAX_NIRQ);
 
-		/* Clear active bit (only for level-triggered interrupts) */
-		VGIC_CLEAR_ACTIVE(s, irq, cm);
-
 		/* Mark level triggered interrupts as pending if
 		 * they are still raised.
 		 */
-		if (!VGIC_TEST_TRIGGER(s, irq) &&
-		    VGIC_TEST_ENABLED(s, irq, cm) &&
-		    VGIC_TEST_LEVEL(s, irq, cm) &&
-		    (VGIC_TARGET(s, irq) & cm) != 0) {
-			VGIC_SET_PENDING(s, irq, cm);
-		} else {
-			VGIC_CLEAR_PENDING(s, irq, cm);
+		if (!VGIC_TEST_TRIGGER(s, irq)) {
+			/* Clear active bit */
+			VGIC_CLEAR_ACTIVE(s, irq, cm);
+
+			/* Update pending bit */
+			if (VGIC_TEST_ENABLED(s, irq, cm) &&
+			    VGIC_TEST_LEVEL(s, irq, cm) &&
+			    (VGIC_TARGET(s, irq) & cm) != 0) {
+				VGIC_SET_PENDING(s, irq, cm);
+			} else {
+				VGIC_CLEAR_PENDING(s, irq, cm);
+			}
 		}
 
 		/* Mark this LR as free */
@@ -492,9 +490,6 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 
 		/* Map irq to unknown LR */
 		VGIC_SET_LR_MAP(vs, irq, src_id, VGIC_LR_UNKNOWN);
-
-		/* Clear LR register */
-		vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 	}
 
 	/* Clear underflow interrupt if enabled */
@@ -503,6 +498,25 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		hcr &= ~GICH_HCR_UIE;
 		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
+}
+
+/* Sync & Flush VCPU VGIC state with HW state
+ * Note: Must be called only when given VCPU is current VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
+static void __vgic_sync_and_flush_vcpu(struct vgic_guest_state *s,
+					struct vgic_vcpu_state *vs)
+{
+	/* The VGIC HW state may have changed when the
+	 * VCPU was running hence, sync VGIC VCPU state.
+	 */
+	__vgic_sync_vcpu_hwstate(s, vs);
+
+	/* Flush VGIC state changes to VGIC HW for
+	 * reflecting latest changes while, the VCPU 
+	 * was not running.
+	 */
+	__vgic_flush_vcpu_hwstate(s, vs);
 }
 
 /* Process IRQ asserted by device emulation framework */
@@ -605,10 +619,8 @@ static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 	/* Lock VGIC distributor state */
 	vmm_spin_lock_irqsave(&s->dist_lock, flags);
 
-	/* The VGIC HW state may have changed when the 
-	 * VCPU was running hence, sync VGIC VCPU state.
-	 */
-	__vgic_sync_vcpu_hwstate(s, vs);
+	/* Sync & Flush VGIC state changes to VGIC HW */
+	__vgic_sync_and_flush_vcpu(s, vs);
 
 	/* Unlock VGIC distributor state */
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
@@ -673,7 +685,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 }
 
-static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu, 
+static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu,
 			     u32 offset, u8 *dst)
 {
 	u32 done = 0, i, irq, mask;
@@ -805,7 +817,7 @@ static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu,
 	return VMM_OK;
 }
 
-static int __vgic_dist_writeb(struct vgic_guest_state *s, int cpu, 
+static int __vgic_dist_writeb(struct vgic_guest_state *s, int cpu,
 			      u32 offset, u8 src)
 {
 	u32 done = 0, i, irq, mask, cm;
@@ -978,7 +990,7 @@ static int __vgic_dist_writeb(struct vgic_guest_state *s, int cpu,
 	return VMM_OK;
 }
 
-static int vgic_dist_read(struct vgic_guest_state *s, int cpu, 
+static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 			  u32 offset, u32 *dst)
 {
 	int rc = VMM_OK, i;
@@ -1065,16 +1077,8 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 		}
 	}
 
-	/* The VGIC HW state may have changed when the 
-	 * VCPU was running hence, sync VGIC VCPU state.
-	 */
-	__vgic_sync_vcpu_hwstate(s, vs);
-
-	/* Flush VGIC state changes to VGIC HW for 
-	 * reflecting latest changes while, the VCPU 
-	 * was not running.
-	 */
-	__vgic_flush_vcpu_hwstate(s, vs);
+	/* Sync & Flush VGIC state changes to VGIC HW */
+	__vgic_sync_and_flush_vcpu(s, vs);
 
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
@@ -1115,7 +1119,7 @@ static int vgic_reg_write(struct vgic_guest_state *s,
 }
 
 static int vgic_emulator_read8(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
+			       physical_addr_t offset,
 			       u8 *dst)
 {
 	int rc;
@@ -1130,7 +1134,7 @@ static int vgic_emulator_read8(struct vmm_emudev *edev,
 }
 
 static int vgic_emulator_read16(struct vmm_emudev *edev,
-				physical_addr_t offset, 
+				physical_addr_t offset,
 				u16 *dst)
 {
 	int rc;
@@ -1238,8 +1242,8 @@ static int vgic_emulator_reset(struct vmm_emudev *edev)
 }
 
 static struct vgic_guest_state *vgic_state_alloc(const char *name,
-						 struct vmm_guest *guest, 
-						 u32 num_cpu, 
+						 struct vmm_guest *guest,
+						 u32 num_cpu,
 						 u32 num_irq,
 						 u32 parent_irq)
 {
