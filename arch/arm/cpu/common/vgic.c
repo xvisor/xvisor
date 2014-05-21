@@ -52,6 +52,12 @@
 #define DPRINTF(msg...)
 #endif
 
+#define GICD_CTR			0x0
+
+#define GICC_EOI			0x10
+
+#define GICC2_DIR			0x0
+
 #define GICH_HCR			0x0
 #define GICH_VTR			0x4
 #define GICH_VMCR			0x8
@@ -83,21 +89,27 @@
 #define GICH_MISR_EOI			(1 << 0)
 #define GICH_MISR_U			(1 << 1)
 
+#define VGIC_MAX_NCPU			8
+#define VGIC_MAX_NIRQ			128
+#define VGIC_LR_UNKNOWN			0xFF
+
 struct vgic_host_ctrl {
 	bool avail;
+	bool cpu2_mapped;
+	physical_addr_t cpu_pa;
+	virtual_addr_t  cpu_va;
+	physical_addr_t cpu2_pa;
+	virtual_addr_t  cpu2_va;
 	physical_addr_t hctrl_pa;
 	virtual_addr_t  hctrl_va;
 	physical_addr_t vcpu_pa;
+	physical_size_t vcpu_sz;
 	virtual_addr_t  vcpu_va;
 	u32 maint_irq;
 	u32 lr_cnt;
 };
 
 static struct vgic_host_ctrl vgich;
-
-#define VGIC_MAX_NCPU			8
-#define VGIC_MAX_NIRQ			128
-#define VGIC_LR_UNKNOWN			0xFF
 
 struct vgic_irq_state {
 	u32 enabled:VGIC_MAX_NCPU;
@@ -1426,17 +1438,44 @@ static int __init vgic_emulator_init(void)
 		goto fail;
 	}
 
-	rc = vmm_devtree_regaddr(node, &vgich.hctrl_pa, 2);
+	rc = vmm_devtree_regaddr(node, &vgich.cpu_pa, 1);
 	if (rc) {
 		goto fail;
+	}
+
+	rc = vmm_devtree_regmap(node, &vgich.cpu_va, 1);
+	if (rc) {
+		goto fail;
+	}
+
+	rc = vmm_devtree_regaddr(node, &vgich.cpu2_pa, 4);
+	if (!rc) {
+		vgich.cpu2_mapped = TRUE;
+		rc = vmm_devtree_regmap(node, &vgich.cpu2_va, 4);
+		if (rc) {
+			goto fail_unmap_cpu;
+		}
+	} else {
+		vgich.cpu2_mapped = FALSE;
+		vgich.cpu2_va = vgich.cpu_va + 0x1000;
+	}
+
+	rc = vmm_devtree_regaddr(node, &vgich.hctrl_pa, 2);
+	if (rc) {
+		goto fail_unmap_cpu2;
 	}
 
 	rc = vmm_devtree_regmap(node, &vgich.hctrl_va, 2);
 	if (rc) {
-		goto fail;
+		goto fail_unmap_cpu2;
 	}
 
 	rc = vmm_devtree_regaddr(node, &vgich.vcpu_pa, 3);
+	if (rc) {
+		goto fail_unmap_hctrl;
+	}
+
+	rc = vmm_devtree_regsize(node, &vgich.vcpu_sz, 3);
 	if (rc) {
 		goto fail_unmap_hctrl;
 	}
@@ -1465,8 +1504,8 @@ static int __init vgic_emulator_init(void)
 			       (void *)(unsigned long)vgich.maint_irq,
 			       vgic_maint_irq, NULL);
 
-	DPRINTF("VGIC: HCTRL=0x%lx VCPU=0x%lx LR_CNT=%d\n", 
-		(unsigned long)vgich.hctrl_pa, 
+	DPRINTF("VGIC: HCTRL=0x%lx VCPU=0x%lx LR_CNT=%d\n",
+		(unsigned long)vgich.hctrl_pa,
 		(unsigned long)vgich.vcpu_pa, vgich.lr_cnt);
 
 	return VMM_OK;
@@ -1475,6 +1514,12 @@ fail_unmap_vcpu:
 	vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 fail_unmap_hctrl:
 	vmm_devtree_regunmap(node, vgich.hctrl_va, 2);
+fail_unmap_cpu2:
+	if (vgich.cpu2_mapped) {
+		vmm_devtree_regunmap(node, vgich.cpu2_va, 4);
+	}
+fail_unmap_cpu:
+	vmm_devtree_regunmap(node, vgich.cpu_va, 1);
 fail:
 	return rc;
 }
@@ -1511,6 +1556,12 @@ static void __exit vgic_emulator_exit(void)
 		vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 
 		vmm_devtree_regunmap(node, vgich.hctrl_va, 2);
+
+		if (vgich.cpu2_mapped) {
+			vmm_devtree_regunmap(node, vgich.cpu2_va, 4);
+		}
+
+		vmm_devtree_regunmap(node, vgich.cpu_va, 1);
 	}
 }
 
