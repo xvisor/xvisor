@@ -47,6 +47,8 @@ struct vmm_emulator {
 	int (*probe) (struct vmm_guest *guest,
 		      struct vmm_emudev *edev,
 		      const struct vmm_devtree_nodeid *nodeid);
+	int (*remove) (struct vmm_emudev *edev);
+	int (*reset) (struct vmm_emudev *edev);
 	int (*read8) (struct vmm_emudev *edev,
 		      physical_addr_t offset,
 		      u8 *dst);
@@ -71,13 +73,12 @@ struct vmm_emulator {
 	int (*write64) (struct vmm_emudev *edev,
 		        physical_addr_t offset,
 		        u64 src);
-	int (*reset) (struct vmm_emudev *edev);
-	int (*remove) (struct vmm_emudev *edev);
 };
 
 struct vmm_emudev {
 	vmm_spinlock_t lock;
 	struct vmm_devtree_node *node;
+	struct vmm_region *reg;
 	struct vmm_emulator *emu;
 	void *priv;
 };

@@ -712,7 +712,7 @@ int vmm_devemu_register_emulator(struct vmm_emulator *emu)
 	bool found;
 	struct vmm_emulator *e;
 
-	if (!emu ||
+	if (!emu || !emu->probe || !emu->remove || !emu->reset ||
 	    (emu->endian == VMM_DEVEMU_UNKNOWN_ENDIAN) ||
 	    (VMM_DEVEMU_MAX_ENDIAN <= emu->endian)) {
 		return VMM_EFAIL;
@@ -904,16 +904,17 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
-		return VMM_EFAIL;
+	if (!(reg->flags & VMM_REGION_ISDEVICE) ||
+	    (reg->flags & VMM_REGION_ALIAS)) {
+		return VMM_EINVALID;
 	}
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (!edev || !edev->emu->reset) {
-		return VMM_EFAIL;
+	if (edev && edev->emu->reset) {
+		return edev->emu->reset(edev);
 	}
 
-	return edev->emu->reset(edev);
+	return VMM_OK;
 }
 
 int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
@@ -928,8 +929,9 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
-		return VMM_EFAIL;
+	if (!(reg->flags & VMM_REGION_ISDEVICE) ||
+	    (reg->flags & VMM_REGION_ALIAS)) {
+		return VMM_EINVALID;
 	}
 
 	vmm_mutex_lock(&dectrl.emu_lock);
@@ -950,6 +952,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		}
 		INIT_SPIN_LOCK(&einst->lock);
 		einst->node = reg->node;
+		einst->reg = reg;
 		einst->emu = emu;
 		einst->priv = NULL;
 		reg->devemu_priv = einst;
@@ -996,8 +999,9 @@ int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
 		return VMM_EFAIL;
 	}
 
-	if (!(reg->flags & VMM_REGION_VIRTUAL)) {
-		return VMM_EFAIL;
+	if (!(reg->flags & VMM_REGION_ISDEVICE) ||
+	    (reg->flags & VMM_REGION_ALIAS)) {
+		return VMM_EINVALID;
 	}
 
 	if (reg->devemu_priv) {

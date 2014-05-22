@@ -525,8 +525,9 @@ static int region_add(struct vmm_guest *guest,
 		}
 	}
 
-	/* Probe device emulation for virtual regions */
-	if (reg->flags & VMM_REGION_VIRTUAL) {
+	/* Probe device emulation for real & virtual device regions */
+	if ((reg->flags & VMM_REGION_ISDEVICE) &&
+	    !(reg->flags & VMM_REGION_ALIAS)) {
 		if ((rc = vmm_devemu_probe_region(guest, reg))) {
 			vmm_free(reg);
 			return rc;
@@ -561,7 +562,8 @@ static int region_del(struct vmm_guest *guest,
 	}
 
 	/* Remove emulator for if virtual region */
-	if (reg->flags & VMM_REGION_VIRTUAL) {
+	if ((reg->flags & VMM_REGION_ISDEVICE) &&
+	    !(reg->flags & VMM_REGION_ALIAS)) {
 		vmm_devemu_remove_region(guest, reg);
 	}
 
@@ -606,7 +608,8 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	list_for_each_safe(l, l1, &aspace->reg_list) {
 		reg = list_entry(l, struct vmm_region, head);
 		vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
-		if (reg->flags & VMM_REGION_VIRTUAL) {
+		if ((reg->flags & VMM_REGION_ISDEVICE) &&
+		    !(reg->flags & VMM_REGION_ALIAS)) {
 			vmm_devemu_reset_region(guest, reg);
 		}
 		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
@@ -623,6 +626,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 const char *mainfest_type,
 			 const char *address_type,
 			 const char *compatible,
+			 u32 compatible_len,
 			 physical_addr_t gphys_addr,
 			 physical_addr_t hphys_addr,
 			 physical_size_t phys_size,
@@ -654,7 +658,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
 				 (void *)device_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(device_type), FALSE);
+				 strlen(device_type) + 1, FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -664,7 +668,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME,
 				 (void *)mainfest_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(mainfest_type), FALSE);
+				 strlen(mainfest_type) + 1, FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -674,7 +678,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 				 VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
 				 (void *)address_type,
 				 VMM_DEVTREE_ATTRTYPE_STRING,
-				 strlen(address_type), FALSE);
+				 strlen(address_type) + 1, FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -685,7 +689,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 					 VMM_DEVTREE_COMPATIBLE_ATTR_NAME,
 					 (void *)compatible,
 					 VMM_DEVTREE_ATTRTYPE_STRING,
-					 strlen(compatible), FALSE);
+					 compatible_len, FALSE);
 		if (rc) {
 			goto failed_delnode;
 		}
