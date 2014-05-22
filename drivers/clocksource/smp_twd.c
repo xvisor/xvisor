@@ -114,7 +114,7 @@ static int twd_clockchip_set_next_event(unsigned long next,
 	vmm_writel(next, (void *)(twd_base + TWD_TIMER_COUNTER));
 	vmm_writel(ctrl, (void *)(twd_base + TWD_TIMER_CONTROL));
 
-	return 0;
+	return VMM_OK;
 }
 
 static void __cpuinit twd_caliberate_freq(virtual_addr_t base, 

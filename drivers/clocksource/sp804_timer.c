@@ -212,7 +212,7 @@ static int sp804_clockchip_set_next_event(unsigned long next,
 	vmm_writel(next, (void *)(tcc->base + TIMER_LOAD));
 	vmm_writel(ctrl | TIMER_CTRL_ENABLE, (void *)(tcc->base + TIMER_CTRL));
 
-	return 0;
+	return VMM_OK;
 }
 
 static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
