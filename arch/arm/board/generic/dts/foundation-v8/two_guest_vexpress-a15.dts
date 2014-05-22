@@ -31,9 +31,6 @@
 			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x85800000",
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
 
-			  /* Update guest0 vGIC CPU interface regions */
-			  "devtree attr set /guests/guest0/aspace/gic_cpu host_physical_addr physaddr 0x2C006000",
-
 			  /* Connect guest0/eth netport to br0 */
 			  "devtree attr set /guests/guest0/aspace/eth switch string br0",
 
@@ -64,9 +61,6 @@
 			  /* Update guest1 memory regions */
 			  "devtree attr set /guests/guest1/aspace/mem0 host_physical_addr physaddr 0x8F800000",
 			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
-
-			  /* Update guest1 vGIC CPU interface regions */
-			  "devtree attr set /guests/guest1/aspace/gic_cpu host_physical_addr physaddr 0x2C006000",
 
 			  /* Connect guest1/eth netport to br0 */
 			  "devtree attr set /guests/guest1/aspace/eth switch string br0",

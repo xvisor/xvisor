@@ -70,7 +70,7 @@
 					guest_physical_addr = <0x2C001000>;
 					physical_size = <0x1000>;
 					device_type = "pic";
-					compatible = "arm,vgic";
+					compatible = "arm,vgic,dist";
 					parent_irq = <6>;
 					num_irq = <96>;
 				};
@@ -79,9 +79,10 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x2C002000>;
-					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
+					host_physical_addr = <0x00000000>; /* Automatically set by VGIC emulator */
 					physical_size = <0x1000>;
 					device_type = "pic";
+					compatible = "arm,vgic,cpu";
 				};
 
 				scc { /* No SCC */
