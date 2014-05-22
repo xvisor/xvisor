@@ -1097,8 +1097,8 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 	return rc;
 }
 
-static int vgic_reg_read(struct vgic_guest_state *s,
-			 u32 offset, u32 *dst)
+static int vgic_dist_reg_read(struct vgic_guest_state *s,
+			      u32 offset, u32 *dst)
 {
 	struct vmm_vcpu *vcpu;
 
@@ -1113,8 +1113,8 @@ static int vgic_reg_read(struct vgic_guest_state *s,
 	return vgic_dist_read(s, vcpu->subid, offset & 0xFFC, dst);
 }
 
-static int vgic_reg_write(struct vgic_guest_state *s,
-			  u32 offset, u32 regmask, u32 regval)
+static int vgic_dist_reg_write(struct vgic_guest_state *s,
+			       u32 offset, u32 regmask, u32 regval)
 {
 	struct vmm_vcpu *vcpu;
 
@@ -1130,14 +1130,14 @@ static int vgic_reg_write(struct vgic_guest_state *s,
 			       offset & 0xFFC, regmask, regval);
 }
 
-static int vgic_emulator_read8(struct vmm_emudev *edev,
-			       physical_addr_t offset,
-			       u8 *dst)
+static int vgic_dist_emulator_read8(struct vmm_emudev *edev,
+				    physical_addr_t offset,
+				    u8 *dst)
 {
 	int rc;
 	u32 regval = 0x0;
 
-	rc = vgic_reg_read(edev->priv, offset, &regval);
+	rc = vgic_dist_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
 		*dst = regval & 0xFF;
 	}
@@ -1145,14 +1145,14 @@ static int vgic_emulator_read8(struct vmm_emudev *edev,
 	return rc;
 }
 
-static int vgic_emulator_read16(struct vmm_emudev *edev,
-				physical_addr_t offset,
-				u16 *dst)
+static int vgic_dist_emulator_read16(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u16 *dst)
 {
 	int rc;
 	u32 regval = 0x0;
 
-	rc = vgic_reg_read(edev->priv, offset, &regval);
+	rc = vgic_dist_reg_read(edev->priv, offset, &regval);
 	if (!rc) {
 		*dst = regval & 0xFFFF;
 	}
@@ -1160,35 +1160,35 @@ static int vgic_emulator_read16(struct vmm_emudev *edev,
 	return rc;
 }
 
-static int vgic_emulator_read32(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				u32 *dst)
+static int vgic_dist_emulator_read32(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u32 *dst)
 {
-	return vgic_reg_read(edev->priv, offset, dst);
+	return vgic_dist_reg_read(edev->priv, offset, dst);
 }
 
-static int vgic_emulator_write8(struct vmm_emudev *edev,
-				physical_addr_t offset, 
-				u8 src)
+static int vgic_dist_emulator_write8(struct vmm_emudev *edev,
+				     physical_addr_t offset,
+				     u8 src)
 {
-	return vgic_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+	return vgic_dist_reg_write(edev->priv, offset, 0xFFFFFF00, src);
 }
 
-static int vgic_emulator_write16(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
-				 u16 src)
+static int vgic_dist_emulator_write16(struct vmm_emudev *edev,
+				      physical_addr_t offset, 
+				      u16 src)
 {
-	return vgic_reg_write(edev->priv, offset, 0xFFFF0000, src);
+	return vgic_dist_reg_write(edev->priv, offset, 0xFFFF0000, src);
 }
 
-static int vgic_emulator_write32(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
-				 u32 src)
+static int vgic_dist_emulator_write32(struct vmm_emudev *edev,
+				      physical_addr_t offset, 
+				      u32 src)
 {
-	return vgic_reg_write(edev->priv, offset, 0x00000000, src);
+	return vgic_dist_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
-static int vgic_emulator_reset(struct vmm_emudev *edev)
+static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 {
 	u32 i, j, k;
 	irq_flags_t flags;
@@ -1331,9 +1331,9 @@ static int vgic_state_free(struct vgic_guest_state *s)
 	return VMM_OK;
 }
 
-static int vgic_emulator_probe(struct vmm_guest *guest,
-				struct vmm_emudev *edev,
-				const struct vmm_devtree_nodeid *eid)
+static int vgic_dist_emulator_probe(struct vmm_guest *guest,
+				    struct vmm_emudev *edev,
+				    const struct vmm_devtree_nodeid *eid)
 {
 	int rc;
 	u32 parent_irq, num_irq;
@@ -1370,7 +1370,7 @@ static int vgic_emulator_probe(struct vmm_guest *guest,
 	return VMM_OK;
 }
 
-static int vgic_emulator_remove(struct vmm_emudev *edev)
+static int vgic_dist_emulator_remove(struct vmm_emudev *edev)
 {
 	struct vgic_guest_state *s = edev->priv;
 
@@ -1384,26 +1384,84 @@ static int vgic_emulator_remove(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
-static struct vmm_devtree_nodeid vgic_emuid_table[] = {
-	{ .type = "pic", 
-	  .compatible = "arm,vgic", 
+static struct vmm_devtree_nodeid vgic_dist_emuid_table[] = {
+	{ .type = "pic",
+	  .compatible = "arm,vgic,dist",
 	},
 	{ /* end of list */ },
 };
 
-static struct vmm_emulator vgic_emulator = {
-	.name = "vgic",
-	.match_table = vgic_emuid_table,
+static struct vmm_emulator vgic_dist_emulator = {
+	.name = "vgic-dist",
+	.match_table = vgic_dist_emuid_table,
 	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
-	.probe = vgic_emulator_probe,
-	.read8 = vgic_emulator_read8,
-	.write8 = vgic_emulator_write8,
-	.read16 = vgic_emulator_read16,
-	.write16 = vgic_emulator_write16,
-	.read32 = vgic_emulator_read32,
-	.write32 = vgic_emulator_write32,
-	.reset = vgic_emulator_reset,
-	.remove = vgic_emulator_remove,
+	.probe = vgic_dist_emulator_probe,
+	.remove = vgic_dist_emulator_remove,
+	.reset = vgic_dist_emulator_reset,
+	.read8 = vgic_dist_emulator_read8,
+	.write8 = vgic_dist_emulator_write8,
+	.read16 = vgic_dist_emulator_read16,
+	.write16 = vgic_dist_emulator_write16,
+	.read32 = vgic_dist_emulator_read32,
+	.write32 = vgic_dist_emulator_write32,
+};
+
+static int vgic_cpu_emulator_reset(struct vmm_emudev *edev)
+{
+	/* Nothing to do here. */
+	return VMM_OK;
+}
+
+static int vgic_cpu_emulator_probe(struct vmm_guest *guest,
+				   struct vmm_emudev *edev,
+				   const struct vmm_devtree_nodeid *eid)
+{
+	int rc;
+
+	if (!vgich.avail) {
+		return VMM_ENODEV;
+	}
+	if (guest->vcpu_count > VGIC_MAX_NCPU) {
+		return VMM_ENODEV;
+	}
+	if (!(edev->reg->flags & VMM_REGION_REAL)) {
+		return VMM_ENODEV;
+	}
+
+	rc = vmm_devtree_setattr(edev->node,
+				 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+				 &vgich.vcpu_pa,
+				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+				 sizeof(vgich.vcpu_pa), FALSE);
+	if (rc) {
+		return rc;
+	}
+
+	edev->reg->hphys_addr = vgich.vcpu_pa;
+
+	return VMM_OK;
+}
+
+static int vgic_cpu_emulator_remove(struct vmm_emudev *edev)
+{
+	/* Nothing to do here. */
+	return VMM_OK;
+}
+
+static struct vmm_devtree_nodeid vgic_cpu_emuid_table[] = {
+	{ .type = "pic",
+	  .compatible = "arm,vgic,cpu",
+	},
+	{ /* end of list */ },
+};
+
+static struct vmm_emulator vgic_cpu_emulator = {
+	.name = "vgic-cpu",
+	.match_table = vgic_cpu_emuid_table,
+	.endian = VMM_DEVEMU_LITTLE_ENDIAN,
+	.probe = vgic_cpu_emulator_probe,
+	.remove = vgic_cpu_emulator_remove,
+	.reset = vgic_cpu_emulator_reset,
 };
 
 static const struct vmm_devtree_nodeid vgic_host_match[] = {
@@ -1490,9 +1548,14 @@ static int __init vgic_emulator_init(void)
 		goto fail_unmap_vcpu;
 	}
 
-	rc = vmm_devemu_register_emulator(&vgic_emulator);
+	rc = vmm_devemu_register_emulator(&vgic_dist_emulator);
 	if (rc) {
 		goto fail_unmap_vcpu;
+	}
+
+	rc = vmm_devemu_register_emulator(&vgic_cpu_emulator);
+	if (rc) {
+		goto fail_unreg_dist;
 	}
 
 	vgich.avail = TRUE;
@@ -1510,6 +1573,8 @@ static int __init vgic_emulator_init(void)
 
 	return VMM_OK;
 
+fail_unreg_dist:
+	vmm_devemu_unregister_emulator(&vgic_dist_emulator);
 fail_unmap_vcpu:
 	vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 fail_unmap_hctrl:
@@ -1551,7 +1616,9 @@ static void __exit vgic_emulator_exit(void)
 				       (void *)(unsigned long)vgich.maint_irq,
 				       NULL, NULL);
 
-		vmm_devemu_unregister_emulator(&vgic_emulator);
+		vmm_devemu_unregister_emulator(&vgic_cpu_emulator);
+
+		vmm_devemu_unregister_emulator(&vgic_dist_emulator);
 
 		vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
 
