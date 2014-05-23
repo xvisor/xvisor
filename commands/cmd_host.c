@@ -110,6 +110,7 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 
 static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 {
+	const char *irq_name;
 	u32 num, cpu, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_chip *chip;
@@ -132,12 +133,16 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "\n");
 	for (num = 0; num < count; num++) {
 		irq = vmm_host_irq_get(num);
-		if (vmm_host_irq_is_disabled(irq)) {
+		irq_name = vmm_host_irq_get_name(irq);
+		if (vmm_host_irq_is_disabled(irq) || !irq_name) {
 			continue;
 		}
 		chip = vmm_host_irq_get_chip(irq);
+		if (!chip || !chip->name) {
+			continue;
+		}
 		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
-				  num, irq->name, chip->name);
+				  num, irq_name, chip->name);
 		for_each_online_cpu(cpu) {
 			stats = vmm_host_irq_get_count(irq, cpu);
 			vmm_cprintf(cdev, " %-11d", stats);

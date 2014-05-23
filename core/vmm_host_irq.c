@@ -39,14 +39,14 @@ struct vmm_host_irqs_ctrl {
 
 static struct vmm_host_irqs_ctrl hirqctrl;
 
-void vmm_handle_fast_eoi(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
+void vmm_handle_fast_eoi(struct vmm_host_irq *irq, u32 cpu, void *data)
 {
 	irq_flags_t flags;
 	struct vmm_host_irq_action *act;
 
 	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
 	list_for_each_entry(act, &irq->action_list[cpu], head) {
-		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
+		if (act->func(irq->num, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
@@ -57,25 +57,27 @@ void vmm_handle_fast_eoi(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
 	}
 }
 
-void vmm_handle_level_irq(u32 hirq_no, struct vmm_host_irq *irq, u32 cpu)
+void vmm_handle_level_irq(struct vmm_host_irq *irq, u32 cpu, void *data)
 {
 	irq_flags_t flags;
 	struct vmm_host_irq_action *act;
 
-	if (irq->chip && irq->chip->irq_mask_ack) {
-		irq->chip->irq_mask_ack(irq);
-	} else {
-		if (irq->chip && irq->chip->irq_mask) {
-			irq->chip->irq_mask(irq);
-		}
-		if (irq->chip && irq->chip->irq_ack) {
-			irq->chip->irq_ack(irq);
+	if (irq->chip) {
+		if (irq->chip->irq_mask_ack) {
+			irq->chip->irq_mask_ack(irq);
+		} else {
+			if (irq->chip->irq_mask) {
+				irq->chip->irq_mask(irq);
+			}
+			if (irq->chip->irq_ack) {
+				irq->chip->irq_ack(irq);
+			}
 		}
 	}
 
 	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
 	list_for_each_entry(act, &irq->action_list[cpu], head) {
-		if (act->func(hirq_no, act->dev) == VMM_IRQ_HANDLED) {
+		if (act->func(irq->num, act->dev) == VMM_IRQ_HANDLED) {
 			break;
 		}
 	}
@@ -102,7 +104,7 @@ int vmm_host_generic_irq_exec(u32 hirq_no)
 		irq->state |= VMM_IRQ_STATE_INPROGRESS;
 	}
 	if (irq->handler) {
-		irq->handler(hirq_no, irq, cpu);
+		irq->handler(irq, cpu, irq->handler_data);
 	}
 	if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
 		irq->state &= ~VMM_IRQ_STATE_INPROGRESS;
@@ -158,6 +160,11 @@ int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip)
 	return VMM_EFAIL;
 }
 
+struct vmm_host_irq_chip *vmm_host_irq_get_chip(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->chip : NULL;
+}
+
 int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data)
 {
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
@@ -168,8 +175,12 @@ int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data)
 	return VMM_EFAIL;
 }
 
-int vmm_host_irq_set_handler(u32 hirq_num, 
-			     void (*handler)(u32, struct vmm_host_irq *, u32))
+void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->chip_data : NULL;
+}
+
+int vmm_host_irq_set_handler(u32 hirq_num, vmm_host_irq_handler_t handler)
 {
 	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
 		hirqctrl.irq[hirq_num].handler = handler;
@@ -177,6 +188,34 @@ int vmm_host_irq_set_handler(u32 hirq_num,
 	}
 
 	return VMM_EFAIL;
+}
+
+vmm_host_irq_handler_t vmm_host_irq_get_handler(u32 hirq_num)
+{
+	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
+		return hirqctrl.irq[hirq_num].handler;
+	}
+
+	return NULL;
+}
+
+int vmm_host_irq_set_handler_data(u32 hirq_num, void *data)
+{
+	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
+		hirqctrl.irq[hirq_num].handler_data = data;
+		return VMM_OK;
+	}
+
+	return VMM_EFAIL;
+}
+
+void *vmm_host_irq_get_handler_data(u32 hirq_num)
+{
+	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
+		return hirqctrl.irq[hirq_num].handler_data;
+	}
+
+	return NULL;
 }
 
 int vmm_host_irq_set_affinity(u32 hirq_num, 
@@ -544,6 +583,7 @@ int __cpuinit vmm_host_irq_init(void)
 			hirqctrl.irq[ite].chip = NULL;
 			hirqctrl.irq[ite].chip_data = NULL;
 			hirqctrl.irq[ite].handler = NULL;
+			hirqctrl.irq[ite].handler_data = NULL;
 			for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 				INIT_RW_LOCK(&hirqctrl.irq[ite].action_lock[cpu]);
 				INIT_LIST_HEAD(&hirqctrl.irq[ite].action_list[cpu]);
