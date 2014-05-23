@@ -24,11 +24,7 @@
 # Include top-level configuration file if present
 -include $(build_dir)/.config
 
-ifdef CROSS_COMPILE
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
-else
-FW_CROSS_COMPILE=arm-none-eabi-
-endif
 FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
 FW_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
 FW_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
