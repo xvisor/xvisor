@@ -94,7 +94,7 @@ static void gic_eoi_irq(struct vmm_host_irq *irq)
 	u32 irq_no = gic_irq(gic, irq);
 
 	gic_write(irq_no, gic->cpu_base + GIC_CPU_EOI);
-	if (gic->eoimode) {
+	if (gic->eoimode && !vmm_host_irq_is_guest_routed(irq)) {
 		gic_write(irq_no, gic->cpu2_base + GIC_CPU2_DIR);
 	}
 }

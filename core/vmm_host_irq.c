@@ -291,6 +291,32 @@ int vmm_host_irq_unmark_per_cpu(u32 hirq_num)
 	return VMM_ENOTAVAIL;
 }
 
+int vmm_host_irq_mark_guest_routed(u32 hirq_num)
+{
+	struct vmm_host_irq *irq;
+
+	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		irq->state |= VMM_IRQ_STATE_GUEST_ROUTED;
+		return VMM_OK;
+	}
+
+	return VMM_ENOTAVAIL;
+}
+
+int vmm_host_irq_unmark_guest_routed(u32 hirq_num)
+{
+	struct vmm_host_irq *irq;
+
+	if (hirq_num < CONFIG_HOST_IRQ_COUNT) {
+		irq = &hirqctrl.irq[hirq_num];
+		irq->state &= ~VMM_IRQ_STATE_GUEST_ROUTED;
+		return VMM_OK;
+	}
+
+	return VMM_ENOTAVAIL;
+}
+
 int vmm_host_irq_enable(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;

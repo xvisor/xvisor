@@ -58,6 +58,7 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_PER_CPU		- Interrupt is per cpu
  * @VMM_IRQ_STATE_AFFINITY_SET		- Interrupt affinity was set
  * @VMM_IRQ_STATE_LEVEL			- Interrupt is level triggered
+ * @VMM_IRQ_STATE_GUEST_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  * @VMM_IRQ_STATE_INPROGRESS		- In progress state of the interrupt
@@ -67,6 +68,7 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_PER_CPU		= (1 << 11),
 	VMM_IRQ_STATE_AFFINITY_SET	= (1 << 12),
 	VMM_IRQ_STATE_LEVEL		= (1 << 13),
+	VMM_IRQ_STATE_GUEST_ROUTED	= (1 << 14),
 	VMM_IRQ_STATE_DISABLED		= (1 << 16),
 	VMM_IRQ_STATE_MASKED		= (1 << 17),
 	VMM_IRQ_STATE_INPROGRESS	= (1 << 18),
@@ -220,13 +222,13 @@ static inline const char *vmm_host_irq_get_name(struct vmm_host_irq *irq)
 /** Check if a host irq is per-cpu */
 static inline bool vmm_host_irq_is_per_cpu(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_PER_CPU;
+	return (irq->state & VMM_IRQ_STATE_PER_CPU) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is affinity was set */
 static inline bool vmm_host_irq_affinity_was_set(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_AFFINITY_SET;
+	return (irq->state & VMM_IRQ_STATE_AFFINITY_SET) ? TRUE : FALSE;
 }
 
 /** Get trigger type of a host irq */
@@ -249,25 +251,31 @@ static inline void vmm_host_irq_set_trigger_type(struct vmm_host_irq *irq, u32 t
 /** Check if a host irq is of level type */
 static inline bool vmm_host_irq_is_level_type(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_LEVEL;
+	return (irq->state & VMM_IRQ_STATE_LEVEL) ? TRUE : FALSE;
+}
+
+/** Check if a host irq is routed to some guest */
+static inline bool vmm_host_irq_is_guest_routed(struct vmm_host_irq *irq)
+{
+	return (irq->state & VMM_IRQ_STATE_GUEST_ROUTED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is disabled */
 static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_DISABLED;
+	return (irq->state & VMM_IRQ_STATE_DISABLED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is masked */
 static inline bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_MASKED;
+	return (irq->state & VMM_IRQ_STATE_MASKED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is in-progress */
 static inline bool vmm_host_irq_is_inprogress(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_INPROGRESS;
+	return (irq->state & VMM_IRQ_STATE_INPROGRESS) ? TRUE : FALSE;
 }
 
 /** Get host irq count from host irq instance */
@@ -287,11 +295,17 @@ int vmm_host_irq_set_affinity(u32 hirq_num,
 /** Set trigger type for given host irq */
 int vmm_host_irq_set_type(u32 hirq_num, u32 type);
 
-/** Mark per cpu state for given host irq */
+/** Mark host irq as per cpu */
 int vmm_host_irq_mark_per_cpu(u32 hirq_num);
 
-/** UnMark per cpu state for given host irq */
+/** UnMark host irq as per cpu */
 int vmm_host_irq_unmark_per_cpu(u32 hirq_num);
+
+/** Mark host irq as routed to some guest */
+int vmm_host_irq_mark_guest_routed(u32 hirq_num);
+
+/** UnMark host irq as routed to some guest */
+int vmm_host_irq_unmark_guest_routed(u32 hirq_num);
 
 /** Enable a host irq (by default all irqs are disabled) */
 int vmm_host_irq_enable(u32 hirq_num);
