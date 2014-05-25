@@ -193,7 +193,8 @@ struct vgic_guest_state {
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
 #define VGIC_TEST_TRIGGER(s, irq) \
-	((irq < 16) ? 1 : (s)->irq_state[irq].trigger)
+	(((irq < 32) || ((s)->irq_state[irq].host_irq < GICD_MAX_NIRQ)) ? \
+	1 : (s)->irq_state[irq].trigger)
 #define VGIC_GET_PRIORITY(s, irq, cpu) \
 	(((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
 #define VGIC_TARGET(s, irq) (s)->irq_target[irq]
@@ -552,7 +553,7 @@ static void __vgic_sync_and_flush_vcpu(struct vgic_guest_state *s,
 static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	int cm, target;
-	bool wfi_resume = FALSE;
+	bool irq_pending = FALSE;
 	irq_flags_t flags;
 	struct vgic_vcpu_state *vs;
 	struct vgic_guest_state *s = opaque;
@@ -595,12 +596,12 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	/* Debug print */
 	DPRINTF("%s: irq=%d cpu=%d level=%d\n", __func__, irq, cpu, level);
 
-	/* Update IRQ state*/
+	/* Update IRQ state */
 	if (level) {
 		VGIC_SET_LEVEL(s, irq, cm);
 		if (VGIC_TEST_ENABLED(s, irq, cm)) {
 			VGIC_SET_PENDING(s, irq, target);
-			wfi_resume = TRUE;
+			irq_pending = TRUE;
 		}
 	} else {
 		VGIC_CLEAR_LEVEL(s, irq, cm);
@@ -614,7 +615,9 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		__vgic_sync_vcpu_hwstate(s, vs);
 
 		/* Flush IRQ state change to VGIC HW */
-		__vgic_flush_vcpu_hwstate_irq(s, vs, irq);
+		if (irq_pending) {
+			__vgic_flush_vcpu_hwstate_irq(s, vs, irq);
+		}
 	}
 
 done:
@@ -622,7 +625,7 @@ done:
 	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
 
 	/* Forcefully resume VCPU if waiting for IRQ */
-	if (wfi_resume) {
+	if (irq_pending) {
 		vmm_vcpu_irq_wait_resume(vs->vcpu);
 	}
 }
@@ -1483,6 +1486,7 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 		vmm_spin_lock_irqsave(&vgich.host2guest_lock, flags);
 		if (bitmap_isset(vgich.host2guest_bmap, hirq)) {
 			rc = VMM_ENOTAVAIL;
+			goto fail;
 		} else {
 			bitmap_setbit(vgich.host2guest_bmap, hirq);
 			vgich.host2guest_irq[hirq] = virq;
