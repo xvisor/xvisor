@@ -59,6 +59,9 @@ bool vmm_scheduler_orphan_context(void);
 /** Check whether we are in Normal VCPU context */
 bool vmm_scheduler_normal_context(void);
 
+/** Retrive idle vcpu for given host CPU */
+struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu);
+
 /** Retrive current vcpu number */
 struct vmm_vcpu *vmm_scheduler_current_vcpu(void);
 

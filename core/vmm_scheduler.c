@@ -481,11 +481,6 @@ bool vmm_scheduler_irq_context(void)
 	return this_cpu(sched).irq_context;
 }
 
-struct vmm_vcpu *vmm_scheduler_current_vcpu(void)
-{
-	return this_cpu(sched).current_vcpu;
-}
-
 bool vmm_scheduler_orphan_context(void)
 {
 	bool ret = FALSE;
@@ -518,6 +513,23 @@ bool vmm_scheduler_normal_context(void)
 	arch_cpu_irq_restore(flags);
 
 	return ret;
+}
+
+struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu)
+{
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		return NULL;
+	}
+	if (!vmm_cpu_online(hcpu)) {
+		return NULL;
+	}
+
+	return per_cpu(sched, hcpu).idle_vcpu;
+}
+
+struct vmm_vcpu *vmm_scheduler_current_vcpu(void)
+{
+	return this_cpu(sched).current_vcpu;
 }
 
 struct vmm_guest *vmm_scheduler_current_guest(void)
