@@ -52,12 +52,12 @@
 /*
  * Get the number of CPU cores from the SCU configuration
  */
-u32 scu_get_core_count(void *scu_base)
+static u32 scu_get_core_count(void *scu_base)
 {
 	return (vmm_readl(scu_base + SCU_CONFIG) & 0x03) + 1;
 }
 
-bool scu_cpu_core_is_smp(void *scu_base, u32 cpu)
+static bool scu_cpu_core_is_smp(void *scu_base, u32 cpu)
 {
 	return (vmm_readl(scu_base + SCU_CONFIG) >> (4 + cpu)) & 0x01;
 }
@@ -65,7 +65,7 @@ bool scu_cpu_core_is_smp(void *scu_base, u32 cpu)
 /*
  * Enable the SCU
  */
-void scu_enable(void *scu_base)
+static void scu_enable(void *scu_base)
 {
 	u32 scu_ctrl;
 
@@ -234,7 +234,7 @@ static int __init scu_cpu_boot(unsigned int cpu)
 	return VMM_OK;
 }
 
-struct smp_operations smp_scu_ops = {
+static struct smp_operations smp_scu_ops = {
 	.name = "smp-scu",
 	.cpu_init = scu_cpu_init,
 	.cpu_prepare = scu_cpu_prepare,
