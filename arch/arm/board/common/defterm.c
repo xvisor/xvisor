@@ -51,6 +51,12 @@ static int __init unknown_defterm_init(struct vmm_devtree_node *node)
 	return VMM_ENODEV;
 }
 
+static struct defterm_ops unknown_ops = {
+	.putc = unknown_defterm_putc,
+	.getc = unknown_defterm_getc,
+	.init = unknown_defterm_init
+};
+
 #if defined(CONFIG_SERIAL_PL01X)
 
 #include <drv/pl011.h>
@@ -112,11 +118,7 @@ static struct defterm_ops pl011_ops = {
 
 #else
 
-static struct defterm_ops pl011_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
+#define pl011_ops unknown_ops
 
 #endif
 
@@ -187,11 +189,7 @@ static struct defterm_ops uart8250_ops = {
 
 #else
 
-static struct defterm_ops uart8250_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
+#define uart8250_ops unknown_ops
 
 #endif
 
@@ -256,11 +254,7 @@ static struct defterm_ops omapuart_ops = {
 
 #else
 
-static struct defterm_ops omapuart_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
+#define omapuart_ops unknown_ops
 
 #endif
 
@@ -325,11 +319,7 @@ static struct defterm_ops imx_ops = {
 
 #else
 
-static struct defterm_ops imx_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
+#define imx_ops unknown_ops
 
 #endif
 
@@ -398,11 +388,7 @@ static struct defterm_ops samsung_ops = {
 
 #else
 
-static struct defterm_ops samsung_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
+#define samsung_ops unknown_ops
 
 #endif
 
@@ -425,16 +411,16 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ /* end of list */ },
 };
 
-static const struct defterm_ops *ops = NULL;
+static const struct defterm_ops *ops = &unknown_ops;
 
 int arch_defterm_putc(u8 ch)
 {
-	return (ops) ? ops->putc(ch) : unknown_defterm_putc(ch);
+	return ops->putc(ch);
 }
 
 int arch_defterm_getc(u8 *ch)
 {
-	return (ops) ? ops->getc(ch) : unknown_defterm_getc(ch);
+	return ops->getc(ch);
 }
 
 int __init arch_defterm_init(void)
@@ -466,9 +452,7 @@ int __init arch_defterm_init(void)
 	nodeid = vmm_devtree_match_node(defterm_devid_table, node);
 	if (nodeid) {
 		ops = nodeid->data;
-	} else {
-		return VMM_ENODEV;
 	}
 
-	return (ops) ? ops->init(node) : unknown_defterm_init(node);
+	return ops->init(node);
 }
