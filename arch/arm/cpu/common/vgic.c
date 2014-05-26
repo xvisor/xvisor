@@ -127,7 +127,7 @@ struct vgic_irq_state {
 	u32 level:VGIC_MAX_NCPU;
 	u32 model:1; /* 0 = N:N, 1 = 1:N */
 	u32 trigger:1; /* nonzero = edge triggered.  */
-	u32 host_irq; /**/
+	u32 host_irq; /* If UINT_MAX then not mapped to host irq else mapped */
 };
 
 struct vgic_vcpu_state {
@@ -189,7 +189,8 @@ struct vgic_guest_state {
 #define VGIC_TEST_MODEL(s, irq) (s)->irq_state[irq].model
 #define VGIC_SET_LEVEL(s, irq, cm) (s)->irq_state[irq].level |= (cm)
 #define VGIC_CLEAR_LEVEL(s, irq, cm) (s)->irq_state[irq].level &= ~(cm)
-#define VGIC_TEST_LEVEL(s, irq, cm) ((s)->irq_state[irq].level & (cm))
+#define VGIC_TEST_LEVEL(s, irq, cm) \
+	(((s)->irq_state[irq].level & (cm)) ? TRUE : FALSE)
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
 #define VGIC_TEST_TRIGGER(s, irq) \
@@ -215,10 +216,7 @@ struct vgic_guest_state {
 #define VGIC_CLEAR_ELRSR(vs, lr) \
 	((elrsr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1F)))
 
-#define VGIC_MAKE_LR_PENDING(src, irq) \
-	(GICH_LR_PENDING | \
-	 ((src) << GICH_LR_PHYSID_CPUID_SHIFT) | \
-	 (irq))
+#define VGIC_MAKE_LR_PENDING(irq) (GICH_LR_PENDING | (irq))
 #define VGIC_LR_CPUID(lr_val) \
 	(((lr_val) & GICH_LR_PHYSID_CPUID) >> GICH_LR_PHYSID_CPUID_SHIFT)
 
@@ -273,14 +271,18 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 		__func__, irq, src_id, vs->vcpu->name);
 
 	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
-	if (lr != VGIC_LR_UNKNOWN) {
+	if ((lr < vgich.lr_cnt) &&
+	    VGIC_TEST_LR_USED(vs, lr)) {
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-		if (VGIC_LR_CPUID(lrval) == src_id) {
-			BUG_ON(!VGIC_TEST_LR_USED(vs, lr));
-			lrval |= GICH_LR_PENDING;
+		if ((GICH_LR_VIRTUALID & lrval) == irq) {
+			if ((lrval & GICH_LR_HW) ||
+			    (VGIC_LR_CPUID(lrval) == src_id)) {
+				lrval |= GICH_LR_PENDING;
+				vmm_writel(lrval,
+				  (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+				return TRUE;
+			}
 		}
-		vmm_writel(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-		return TRUE;
 	}
 
 	/* Try to use another LR for this interrupt */
@@ -295,16 +297,18 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 		return FALSE;
 	}
 
-	DPRINTF("%s: LR%d allocated for IRQ%d SRC=0x%x\n",
+	DPRINTF("%s: LR%d allocated for IRQ%d SRC_ID=0x%x\n",
 		__func__, lr, irq, src_id);
 	VGIC_SET_LR_MAP(vs, irq, src_id, lr);
 	VGIC_SET_LR_USED(vs, lr);
 
-	lrval = VGIC_MAKE_LR_PENDING(src_id, irq);
+	lrval = VGIC_MAKE_LR_PENDING(irq);
 	hirq = VGIC_GET_HOST_IRQ(s, irq);
 	if (hirq < GICD_MAX_NIRQ) {
 		lrval |= GICH_LR_HW;
 		lrval |= (hirq << GICH_LR_PHYSID_SHIFT) & GICH_LR_PHYSID;
+	} else {
+		lrval |= (src_id) << GICH_LR_PHYSID_CPUID_SHIFT;
 	}
 
 	DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
