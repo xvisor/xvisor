@@ -228,7 +228,7 @@ static int __init psci_smp_boot(unsigned int cpu)
 	return psci_cpu_on(cpu, _start_secondary_pa);
 }
 
-struct smp_operations psci_smp_ops = {
+static struct smp_operations psci_smp_ops = {
 	.name = "psci",
 	.cpu_init = psci_smp_init,
 	.cpu_prepare = psci_smp_prepare,

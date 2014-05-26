@@ -130,7 +130,7 @@ static void __cpuinit smp_spin_table_cpu_postboot(void)
 	smp_write_pen_release(INVALID_HWID);
 }
 
-struct smp_operations smp_spin_table_ops = {
+static struct smp_operations smp_spin_table_ops = {
 	.name = "spin-table",
 	.cpu_init = smp_spin_table_cpu_init,
 	.cpu_prepare = smp_spin_table_cpu_prepare,
