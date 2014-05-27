@@ -18,9 +18,8 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of core objects to be build
+# @brief list of schedalgo objects to be build
 # */
 
-core-objs-$(CONFIG_SCHEDALGO_RR) += schedalgo/vmm_schedalgo_rr.o
 core-objs-$(CONFIG_SCHEDALGO_PRR) += schedalgo/vmm_schedalgo_prr.o
 

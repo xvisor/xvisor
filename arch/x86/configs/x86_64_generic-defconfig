@@ -76,7 +76,6 @@ CONFIG_HEAP_BUDDY=y
 #
 # Scheduler Configuration
 #
-# CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
