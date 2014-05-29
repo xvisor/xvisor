@@ -240,6 +240,7 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	const char *aval;
 	bool is_real = FALSE;
 	bool is_alias = FALSE;
+	bool is_alloced = FALSE;
 	physical_addr_t addr;
 	physical_size_t size;
 
@@ -268,12 +269,21 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		return FALSE;
 	}
 
+	if (vmm_devtree_read_string(rnode, 
+			VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval)) {
+		return FALSE;
+	}
+	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
+		is_alloced = TRUE;
+	}
+
 	if (vmm_devtree_read_physaddr(rnode,
 			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
 		return FALSE;
 	}
 
-	if (is_real) {
+	if (is_real && !is_alloced) {
 		if (vmm_devtree_read_physaddr(rnode,
 			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
@@ -371,7 +381,7 @@ static int region_add(struct vmm_guest *guest,
 	reg->aspace = aspace;
 	reg->flags = 0x0;
 
-	rc = vmm_devtree_read_string(rnode,
+	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		vmm_free(reg);
@@ -387,7 +397,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->flags |= VMM_REGION_VIRTUAL;
 	}
 
-	rc = vmm_devtree_read_string(rnode,
+	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		vmm_free(reg);
@@ -400,7 +410,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->flags |= VMM_REGION_MEMORY;
 	}
 
-	rc = vmm_devtree_read_string(rnode,
+	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		vmm_free(reg);
@@ -435,7 +445,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->flags |= VMM_REGION_BUFFERABLE;
 	}
 
-	rc = vmm_devtree_read_physaddr(rnode,
+	rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
 				&reg->gphys_addr);
 	if (rc) {
@@ -443,8 +453,9 @@ static int region_add(struct vmm_guest *guest,
 		return rc;
 	}
 
-	if (reg->flags & VMM_REGION_REAL) {
-		rc = vmm_devtree_read_physaddr(rnode,
+	if ((reg->flags & VMM_REGION_REAL) &&
+	    !(reg->flags & VMM_REGION_ISALLOCED)) {
+		rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
 				&reg->hphys_addr);
 		if (rc) {
@@ -452,7 +463,7 @@ static int region_add(struct vmm_guest *guest,
 			return rc;
 		}
 	} else if (reg->flags & VMM_REGION_ALIAS) {
-		rc = vmm_devtree_read_physaddr(rnode,
+		rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
 				&reg->hphys_addr);
 		if (rc) {
@@ -463,7 +474,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->hphys_addr = reg->gphys_addr;
 	}
 
-	rc = vmm_devtree_read_physsize(rnode,
+	rc = vmm_devtree_read_physsize(reg->node,
 			VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
 			&reg->phys_size);
 	if (rc) {
@@ -471,7 +482,7 @@ static int region_add(struct vmm_guest *guest,
 		return rc;
 	}
 
-	rc = vmm_devtree_read_u32(rnode,
+	rc = vmm_devtree_read_u32(reg->node,
 			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
 			&reg->align_order);
 	if (rc) {
@@ -484,7 +495,7 @@ static int region_add(struct vmm_guest *guest,
 	if (is_region_overlapping(guest, reg)) {
 		vmm_printf("%s: Region for %s/%s overlapping with "
 			   "a previous node\n", __func__, 
-			   guest->name, rnode->name);
+			   guest->name, reg->node->name);
 		vmm_free(reg);
 		return VMM_EINVALID;
 	}
@@ -499,7 +510,7 @@ static int region_add(struct vmm_guest *guest,
 			vmm_printf("%s: Failed to reserve "
 				   "host RAM for %s/%s\n",
 				   __func__, guest->name,
-				   rnode->name);
+				   reg->node->name);
 			vmm_free(reg);
 			return rc;
 		} else {
@@ -517,11 +528,23 @@ static int region_add(struct vmm_guest *guest,
 			vmm_printf("%s: Failed to alloc "
 				   "host RAM for %s/%s\n",
 				   __func__, guest->name,
-				   rnode->name);
+				   reg->node->name);
 			vmm_free(reg);
 			return VMM_ENOMEM;
 		} else {
 			reg->flags |= VMM_REGION_ISHOSTRAM;
+			rc = vmm_devtree_setattr(reg->node,
+					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					&reg->hphys_addr,
+					VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+					sizeof(reg->hphys_addr), FALSE);
+			if (rc) {
+				vmm_printf("%s: Failed to set %s attribute "
+					   " for %s/%s\n", __func__,
+					   VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					   guest->name, reg->node->name);
+				return rc;
+			}
 		}
 	}
 
@@ -571,6 +594,10 @@ static int region_del(struct vmm_guest *guest,
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
 	    (reg->flags & VMM_REGION_ISHOSTRAM)) {
+		if (reg->flags & VMM_REGION_ISALLOCED) {
+			vmm_devtree_delattr(reg->node,
+					    VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
+		}
 		rc = vmm_host_ram_free(reg->hphys_addr,
 					reg->phys_size);
 		if (rc) {
