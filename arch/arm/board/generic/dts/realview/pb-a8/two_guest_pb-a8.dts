@@ -16,13 +16,7 @@
 			  /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
 
-			  /* Update guest0 flash region */
-			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x72000000",
-			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
-
-			  /* Update guest0 memory regions */
-			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
-			  "devtree attr set /guests/guest0/aspace/mem1 host_physical_addr physaddr 0x73000000",
+			  /* Update guest0/mem1 region size */
 			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
 
 			  /* Connect guest0/virtio-net0 netport to br0 */
@@ -40,13 +34,7 @@
 			  /* Copy guest1 device tree from templates */
 			  "devtree node copy /guests guest1 /templates/realview-pb-a8",
 
-			  /* Update guest1 flash region */
-			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x79000000",
-			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
-
-			  /* Update guest1 memory regions */
-			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
-			  "devtree attr set /guests/guest1/aspace/mem1 host_physical_addr physaddr 0x7A000000",
+			  /* Update guest1/mem1 region size */
 			  "devtree attr set /guests/guest1/aspace/mem1 physical_size physsize 0x06000000",
 
 			  /* Connect guest1/virtio-net0 netport to br0 */

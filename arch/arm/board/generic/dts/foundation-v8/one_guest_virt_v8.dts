@@ -15,16 +15,8 @@
 			  /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/virt-v8x2",
 
-			  /* Update guest0 flash region */
-			  "devtree attr set /guests/guest0/aspace/nor_flash0 host_physical_addr physaddr 0x82000000",
-			  "devtree attr set /guests/guest0/aspace/nor_flash0 physical_size physsize 0x01000000",
-
-			  /* Update guest0 memory regions */
-			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x83000000",
+			  /* Update guest0/mem0 region size */
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
-
-			  /* Update guest0 vGIC CPU interface regions */
-			  "devtree attr set /guests/guest0/aspace/gic_cpu host_physical_addr physaddr 0x2C006000",
 
 			  /* Connect guest0/virtio-net0 netport to br0 */
 			  "devtree attr set /guests/guest0/aspace/virtio-net0 switch string br0",

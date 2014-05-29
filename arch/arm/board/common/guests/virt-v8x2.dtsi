@@ -31,9 +31,9 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
-					physical_size = <0x00000000>; /* To be set by DTS including this file */
-					device_type = "rom";
+					physical_size = <0x01000000>;
+					device_type = "alloced_rom";
+					align_order = <21>; /* Align alloced memory to 2MB */
 				};
 
 				gic_dist {
@@ -96,9 +96,9 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x80000000>;
-					host_physical_addr = <0x00000000>; /* To be set by DTS including this file */
 					physical_size = <0x00000000>; /* To be set by DTS including this file */
-					device_type = "ram";
+					align_order = <21>; /* Align alloced memory to 2MB */
+					device_type = "alloced_ram";
 				};
 			};
 		};

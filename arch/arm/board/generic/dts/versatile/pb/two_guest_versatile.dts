@@ -16,12 +16,7 @@
 			  /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/versatilepb",
 
-			  /* Update guest0 flash region */
-			  "devtree attr set /guests/guest0/aspace/nor_flash host_physical_addr physaddr 0x02000000",
-			  "devtree attr set /guests/guest0/aspace/nor_flash physical_size physsize 0x01000000",
-
-			  /* Update guest0 memory regions */
-			  "devtree attr set /guests/guest0/aspace/mem0 host_physical_addr physaddr 0x03000000",
+			  /* Update guest0/mem0 region size */
 			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x06000000",
 
 			  /* Connect guest0/eth netport to br0 */
@@ -36,12 +31,7 @@
 			  /* Copy guest1 device tree from templates */
 			  "devtree node copy /guests guest1 /templates/versatilepb",
 
-			  /* Update guest1 flash region */
-			  "devtree attr set /guests/guest1/aspace/nor_flash host_physical_addr physaddr 0x09000000",
-			  "devtree attr set /guests/guest1/aspace/nor_flash physical_size physsize 0x01000000",
-
-			  /* Update guest1 memory regions */
-			  "devtree attr set /guests/guest1/aspace/mem0 host_physical_addr physaddr 0x0A000000",
+			  /* Update guest1/mem0 region size */
 			  "devtree attr set /guests/guest1/aspace/mem0 physical_size physsize 0x06000000",
 
 			  /* Connect guest1/eth netport to br0 */
