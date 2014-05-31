@@ -170,6 +170,6 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 		return rc;
 	}
 
-	return libfdt_parse_devtree(&fdt, root);
+	return libfdt_parse_devtree(&fdt, root, "\0", NULL);
 }
 

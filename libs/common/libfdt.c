@@ -154,20 +154,11 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   char **data)
 {
 	const char *name;
-	u32 type, len, addr_cells, size_cells;
+	u32 type, len;
 	struct vmm_devtree_node *child;
 
 	if (!fdt || !node) {
 		return;
-	}
-
-	if (vmm_devtree_read_u32(node->parent,
-				 "#address-cells", &addr_cells)) {
-		addr_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
-	}
-	if (vmm_devtree_read_u32(node->parent,
-				 "#size-cells", &size_cells)) {
-		size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 	}
 
 	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
@@ -208,12 +199,15 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 }
 
 int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
-			 struct vmm_devtree_node **root)
+			 struct vmm_devtree_node **root,
+			 const char *root_name,
+			 struct vmm_devtree_node *root_parent)
 {
 	char *data;
+	struct vmm_devtree_node *node;
 
 	/* Sanity check */
-	if (!fdt) {
+	if (!fdt || !root_name) {
 		return VMM_EFAIL;
 	}
 
@@ -224,11 +218,19 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	if (LIBFDT_DATA32(data) != FDT_BEGIN_NODE)
 		return VMM_EFAIL;
 
-	/* Point to root node name */
+	/* Skip root node name */
 	data += sizeof(fdt_cell_t);
 
 	/* Create root node */
-	*root = vmm_devtree_addnode(NULL, data);
+	node = vmm_devtree_addnode(root_parent, root_name);
+	if (!node) {
+		return VMM_ENOMEM;
+	}
+
+	/* Update return pointer for root node */
+	if (root) {
+		*root = node;
+	}
 
 	/* Skip root node name */
 	data += strlen(data) + 1;
@@ -237,7 +239,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	}
 
 	/* Parse FDT recursively */
-	libfdt_parse_devtree_recursive(fdt, *root, &data);
+	libfdt_parse_devtree_recursive(fdt, node, &data);
 
 	return VMM_OK;
 }

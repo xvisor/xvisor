@@ -92,7 +92,7 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 	}
 
 	/* Populate skeletal FDT */
-	rc = libfdt_parse_devtree(&fdt, root);
+	rc = libfdt_parse_devtree(&fdt, root, "\0", NULL);
 	if (rc) {
 		return rc;
 	}
