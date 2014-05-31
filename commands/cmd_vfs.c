@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_wallclock.h>
@@ -30,6 +31,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <libs/vfs.h>
 
@@ -40,6 +42,7 @@
 #define	MODULE_INIT			cmd_vfs_init
 #define	MODULE_EXIT			cmd_vfs_exit
 
+#define VFS_MAX_FDT_SZ			(32*1024)
 #define VFS_LOAD_BUF_SZ			256
 
 static void cmd_vfs_usage(struct vmm_chardev *cdev)
@@ -56,6 +59,8 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
+	vmm_cprintf(cdev, "   vfs fdt_load <devtree_path> "
+			  "<devtree_root_name> <path_to_fdt_file>\n");
 	vmm_cprintf(cdev, "   vfs host_load <host_phys_addr> "
 			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
 	vmm_cprintf(cdev, "   vfs host_load_list <path_to_list_file>\n");
@@ -462,6 +467,95 @@ static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
 	return vfs_rmdir(path);
 }
 
+static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
+			    const char *devtree_path,
+			    const char *devtree_root_name,
+			    const char *path)
+{
+	int fd, rc = VMM_OK;
+	size_t fdt_rd;
+	void *fdt_data;
+	struct stat st;
+	struct vmm_devtree_node *root;
+	struct vmm_devtree_node *parent;
+	struct fdt_fileinfo fdt;
+
+	parent = vmm_devtree_getnode(devtree_path);
+	if (!parent) {
+		vmm_cprintf(cdev, "Devtree path %s does not exist.\n",
+			    devtree_path);
+		rc = VMM_EINVALID;
+		goto fail;
+	}
+
+	root = vmm_devtree_getchild(parent, devtree_root_name);
+	if (root) {
+		vmm_cprintf(cdev, "Devtree path %s/%s already exist.\n",
+			    devtree_path, devtree_root_name);
+		rc = VMM_EINVALID;
+		goto fail;
+	}
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		rc = fd;
+		goto fail;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		goto fail_closefd;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vmm_cprintf(cdev, "Path %s should be regular file.\n", path);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	if (!st.st_size) {
+		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	if (st.st_size > VFS_MAX_FDT_SZ) {
+		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
+			    path, (long)st.st_size, VFS_MAX_FDT_SZ);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	fdt_data = vmm_zalloc(VFS_MAX_FDT_SZ);
+	if (!fdt_data) {
+		rc = VMM_ENOMEM;
+		goto fail_closefd;
+	}
+
+	fdt_rd = vfs_read(fd, fdt_data, VFS_MAX_FDT_SZ);
+	if (fdt_rd < st.st_size) {
+		rc = VMM_EIO;
+		goto fail_freedata;
+	}
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t)fdt_data, &fdt);
+	if (rc) {
+		goto fail_freedata;
+	}
+
+	root = NULL;
+	rc = libfdt_parse_devtree(&fdt, &root, devtree_root_name, parent);
+
+fail_freedata:
+	vmm_free(fdt_data);
+fail_closefd:
+	vfs_close(fd);
+fail:
+	return rc;
+}
+
 static int cmd_vfs_load(struct vmm_chardev *cdev,
 			struct vmm_guest *guest,
 			physical_addr_t pa, 
@@ -683,6 +777,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_mkdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
 		return cmd_vfs_rmdir(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "fdt_load") == 0) && (argc == 5)) {
+		return cmd_vfs_fdt_load(cdev, argv[2], argv[3], argv[4]);
 	} else if ((strcmp(argv[1], "host_load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)strtoull(argv[2], NULL, 0);
 		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;
