@@ -31,6 +31,7 @@ Guest with Xvisor running on ARM Fast Model VExpress-A15 Host:
 
   [6. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15x2.dtb ./tests/arm32/vexpress-a15/vexpress-a15x2.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img

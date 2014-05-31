@@ -26,6 +26,7 @@ guest with Xvisor running on QEMU VersatilePB Host:
 
   [6. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/versatilepb
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb.dtb ./tests/arm32/versatilepb/versatilepb.dts
   # cp -f ./build/tests/arm32/versatilepb/basic/firmware.bin.patched ./build/disk/images/arm32/versatilepb/firmware.bin
   # cp -f ./tests/arm32/versatilepb/basic/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
