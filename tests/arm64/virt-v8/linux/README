@@ -24,42 +24,35 @@ Foundation v8 model:
   [3. Configure Xvisor with Generic-V8 default settings]
   # make ARCH=arm generic-v8-defconfig 
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
 
-  [5. Build DTBs]
-  # make dtbs
-
-  [6. Build Basic Firmware]
+  [5. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
 
-  [7. Copy Linux defconfig to Linux build directory]
+  [6. Copy Linux defconfig to Linux build directory]
   # cp tests/arm64/virt-v8/linux/linux-<linux_version>_virt_v8_defconfig <linux_build_directory>/.config
 
-  [8. GoTo Linux source directory]
+  [7. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [9. Apply patch for virtio-console earlyprintk support]
-  # patch -p1 < <xvisor_source_directory>/tests/arm64/virt-v8/linux/linux-3.11-virtio-console-earlyprintk.patch
-  (Note: This is an optional but recommended step. Without this earlyprintks will not work on virtio-console)
-
-  [10. Configure Linux in build directory]
+  [8. Configure Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm64 oldconfig
 
-  [11. Build Linux in build directory to reflect changes in kernel image]
+  [9. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm64 Image
 
-  [12. Build virt-v8.dtb for guest linux]
+  [10. Build virt-v8.dtb for guest linux]
   # <linux_build_directory>/scripts/dtc/dtc -I dts -O dtb -p 0x800 -o <linux_build_directory>/virt-v8.dtb <xvisor_source_directory>/tests/arm64/virt-v8/linux/virt-v8.dts
 
-  [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs64.img)
   (Note: Please refer tests/arm64/common/busybox/README for creating rootfs64.img using BusyBox)
 
-  [14. GoTo Xvisor source directory]
+  [12. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [15. Create disk image for Xvisor]
+  [13. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm64/virt-v8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8x2.dtb ./tests/arm64/virt-v8/virt-v8x2.dts
   # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
@@ -70,31 +63,31 @@ Foundation v8 model:
   # cp -f <busybox_rootfs_directory>/rootfs64.img ./build/disk/images/arm64/rootfs64.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [16. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
+  [14. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
   # ./tools/scripts/memimg.py -a 0x80010000 -o ./build/foundation_v8_boot.img ./build/vmm.bin@0x80010000 ./build/disk.img@0x81000000
   # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_BASE=0x1c090000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=./build/foundation_v8_boot.img -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt_v8.dtb ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
 
-  [17. Launch Foundation v8 Model]
+  [15. Launch Foundation v8 Model]
   # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
 
-  [18. Kick Guest0 to start Basic Firmware]
+  [16. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
 
-  [19. Bind to VirtIO Console]
-  XVisor# vserial bind guest0/virtio-con0
+  [17. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
 
-  [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/virtio-con0] basic# autoexec
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [21. Wait for Linux prompt to come-up and then try out some commands]
-  [guest0/virtio-con0] / # ls
+  [19. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
 
-  [22. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/virtio-con0] / #
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
 

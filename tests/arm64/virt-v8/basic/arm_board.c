@@ -27,7 +27,7 @@
 #include <arm_plat.h>
 #include <pic/gic.h>
 #include <timer/generic_timer.h>
-#include <serial/virtio_console.h>
+#include <serial/pl01x.h>
 
 void arm_board_reset(void)
 {
@@ -57,18 +57,18 @@ physical_size_t arm_board_ram_size(void)
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw "
-			    "earlyprintk=virtio-console,0x40600000 "
-			    "console=hvc0 swiotlb=4096");
+			    "earlyprintk=pl011,0x09000000 "
+			    "console=ttyAMA0 swiotlb=4096");
 }
 
 physical_addr_t arm_board_flash_addr(void)
 {
-	return VIRT_V8_NOR_FLASH_0;
+	return VIRT_V8_NOR_FLASH;
 }
 
 u32 arm_board_iosection_count(void)
 {
-	return 5;
+	return 6;
 }
 
 physical_addr_t arm_board_iosection_addr(int num)
@@ -78,21 +78,25 @@ physical_addr_t arm_board_iosection_addr(int num)
 	switch (num) {
 	case 0:
 		/* nor-flash */
-		ret = VIRT_V8_NOR_FLASH_0;
+		ret = VIRT_V8_NOR_FLASH;
 		break;
 	case 1:
 		/* gic */
 		ret = VIRT_V8_GIC;
 		break;
 	case 2:
+		/* uart0 */
+		ret = VIRT_V8_UART0;
+		break;
+	case 3:
 		/* virtio-net */
 		ret = VIRT_V8_VIRTIO_NET;
 		break;
-	case 3:
+	case 4:
 		/* virtio-blk */
 		ret = VIRT_V8_VIRTIO_BLK;
 		break;
-	case 4:
+	case 5:
 		/* virtio-con */
 		ret = VIRT_V8_VIRTIO_CON;
 		break;
@@ -190,25 +194,26 @@ int arm_board_timer_init(u32 usecs)
 
 int arm_board_serial_init(void)
 {
-	return virtio_console_init(VIRT_V8_VIRTIO_CON);
+	pl01x_init(VIRT_V8_UART0, PL01X_TYPE_1, 115200, 24000000);
+
+	return 0;
 }
 
 void arm_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
-		virtio_console_printch(VIRT_V8_VIRTIO_CON, '\r');
+		pl01x_putc(VIRT_V8_UART0, PL01X_TYPE_1, '\r');
 	}
-	virtio_console_printch(VIRT_V8_VIRTIO_CON, ch);
+	pl01x_putc(VIRT_V8_UART0, PL01X_TYPE_1, ch);
 }
 
 char arm_board_serial_getc(void)
 {
-	char ch = virtio_console_getch(VIRT_V8_VIRTIO_CON);
+	char ch = pl01x_getc(VIRT_V8_UART0, PL01X_TYPE_1);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	virtio_console_printch(VIRT_V8_VIRTIO_CON, ch);
+	arm_board_serial_putc(ch);
 	return ch;
 }
-
 
