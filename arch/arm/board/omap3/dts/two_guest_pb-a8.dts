@@ -4,6 +4,15 @@
 /include/ "omap3.dtsi"
 
 / {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
 	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Create rbd0 device */
@@ -12,8 +21,8 @@
 			  /* Mount rbd0 device */
 			  "vfs mount rbd0 /",
 
-			  /* Copy guest0 device tree from templates */
-			  "devtree node copy /guests guest0 /templates/realview-pb-a8",
+			  /* Load guest0 device tree from file */
+			  "vfs fdt_load /guests guest0 /images/arm32/realview-pb-a8.dtb",
 
 			  /* Update guest0/mem1 region size */
 			  "devtree attr set /guests/guest0/aspace/mem1 physical_size physsize 0x06000000",
@@ -30,8 +39,8 @@
 			  /* Load guest0 images */
 			  "vfs guest_load_list guest0 /images/arm32/realview-pb-a8/nor_flash.list",
 
-			  /* Copy guest1 device tree from templates */
-			  "devtree node copy /guests guest1 /templates/realview-pb-a8",
+			  /* Load guest1 device tree from file */
+			  "vfs fdt_load /guests guest1 /images/arm32/realview-pb-a8.dtb",
 
 			  /* Update guest1/mem1 region size */
 			  "devtree attr set /guests/guest1/aspace/mem1 physical_size physsize 0x06000000",

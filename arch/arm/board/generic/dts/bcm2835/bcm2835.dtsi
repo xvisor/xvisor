@@ -88,17 +88,5 @@
 			clock-frequency = <250000000>;
 		};
 	};
-
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
 };
-
-/* Add guest templates */
-/include/ "../../../common/guests/realview-eb-mpcore.dtsi"
 

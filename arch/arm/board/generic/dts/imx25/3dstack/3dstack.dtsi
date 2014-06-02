@@ -18,17 +18,5 @@
 		device_type = "memory"; 
 		reg = <0x80000000 0x04000000>; /* 64 MB */
 	};
-
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
 };
-
-/* Add guest templates */
-/include/ "../../../../common/guests/versatilepb.dtsi"
 

@@ -144,18 +144,5 @@
 		clock-frequency = <32768>;
 		clock-output-names = "refclk32khz";
 	};
-
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
 };
-
-/* Add guest templates */
-/include/ "../../../../common/guests/realview-pb-a8.dtsi"
-/include/ "../../../../common/guests/vexpress-a9x2.dtsi"
 
