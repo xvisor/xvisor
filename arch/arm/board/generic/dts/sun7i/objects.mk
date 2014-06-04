@@ -24,5 +24,6 @@
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/one_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/one_guest_vexpress-a9.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/one_guest_virt-v7.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/two_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/cubieboard2/two_guest_vexpress-a15.dtb
