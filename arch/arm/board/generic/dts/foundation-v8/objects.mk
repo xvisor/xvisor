@@ -25,7 +25,7 @@ board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/zero_guest.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_vexpress-a9.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_vexpress-a15.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_virt_v8.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_virt-v8.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/two_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/two_guest_vexpress-a15.dtb
 
