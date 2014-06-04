@@ -57,7 +57,10 @@ void __noreturn vmm_hang(void)
 	while (1) ;
 }
 
-static void system_init_work(struct vmm_work *work)
+static struct vmm_work sys_init;
+static struct vmm_work sys_postinit;
+
+static void system_postinit_work(struct vmm_work *work)
 {
 #define BOOTCMD_WIDTH		256
 	int ret;
@@ -69,6 +72,100 @@ static void system_init_work(struct vmm_work *work)
 	struct rtc_device *rdev;
 #endif
 	struct vmm_devtree_node *node, *node1;
+
+	/* Print status of present host CPUs */
+	for_each_present_cpu(c) {
+		if (vmm_cpu_online(c)) {
+			vmm_printf("CPU%d: Online\n", c);
+		} else {
+			vmm_printf("CPU%d: Possible\n", c);
+		}
+	}
+	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+
+	/* Free init memory */
+	vmm_printf("Freeing init memory: ");
+	freed = vmm_host_free_initmem();
+	vmm_printf("%dK\n", freed);
+
+	/* Make sure /guests and /templates nodes are present */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	}
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
+	}
+
+	/* Process attributes in chosen node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (node) {
+		/* Find character device based on console attribute */
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_CONSOLE_ATTR_NAME, &str);
+		if (!(cdev = vmm_chardev_find(str))) {
+			if ((node1 = vmm_devtree_getnode(str))) {
+				cdev = vmm_chardev_find(node1->name);
+			}
+		}
+		/* Set chosen console device as stdio device */
+		if (cdev) {
+			vmm_printf("Change stdio device to %s\n", cdev->name);
+			vmm_stdio_change_device(cdev);
+		}
+
+#if defined(CONFIG_RTC)
+		/* Find rtc device based on rtc_device attribute */
+		str = NULL;
+		vmm_devtree_read_string(node,
+					VMM_DEVTREE_RTCDEV_ATTR_NAME, &str);
+		if (!(rdev = rtc_device_find(str))) {
+			if ((node1 = vmm_devtree_getnode(str))) {
+				rdev = rtc_device_find(node1->name);
+			}
+		}
+		/* Syncup wallclock time with chosen rtc device */
+		if (rdev) {
+			ret = rtc_device_sync_wallclock(rdev);
+			vmm_printf("Syncup wallclock using %s", rdev->name);
+			if (ret) {
+				vmm_printf("(error %d)", ret);
+			}
+			vmm_printf("\n");
+		}
+#endif
+
+		/* Execute boot commands */
+		if (vmm_devtree_read_string(node,
+			VMM_DEVTREE_BOOTCMD_ATTR_NAME, &str) == VMM_OK) {
+			c = vmm_devtree_attrlen(node,
+						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
+			while (c) {
+				/* Print boot command */
+				vmm_printf("bootcmd: %s\n", str);
+				/* Execute boot command */
+				strlcpy(bcmd, str, sizeof(bcmd));
+				cdev = vmm_stdio_device();
+				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
+				/* Next boot command */
+				c -= strlen(str) + 1;
+				str += strlen(str) + 1;
+			}
+		}
+	}
+}
+
+static void system_init_work(struct vmm_work *work)
+{
+	int ret;
+#if defined(CONFIG_SMP)
+	u32 c;
+#endif
 
 	/* Initialize wallclock */
 	vmm_printf("Initialize Wallclock Subsystem\n");
@@ -185,97 +282,14 @@ static void system_init_work(struct vmm_work *work)
 		vmm_panic("Error %d\n", ret);
 	}
 
-	/* Print status of present host CPUs */
-	for_each_present_cpu(c) {
-		if (vmm_cpu_online(c)) {
-			vmm_printf("CPU%d: Online\n", c);
-		} else {
-			vmm_printf("CPU%d: Possible\n", c);
-		}
-	}
-	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
-
-	/* Free init memory */
-	vmm_printf("Freeing init memory: ");
-	freed = vmm_host_free_initmem();
-	vmm_printf("%dK\n", freed);
-
-	/* Make sure /guests and /templates nodes are present */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (!node) {
-		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	}
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
-	if (!node) {
-		vmm_devtree_addnode(NULL, VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
-	}
-
-	/* Process attributes in chosen node */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_CHOSEN_NODE_NAME);
-	if (node) {
-		/* Find character device based on console attribute */
-		str = NULL;
-		vmm_devtree_read_string(node,
-					VMM_DEVTREE_CONSOLE_ATTR_NAME, &str);
-		if (!(cdev = vmm_chardev_find(str))) {
-			if ((node1 = vmm_devtree_getnode(str))) {
-				cdev = vmm_chardev_find(node1->name);
-			}
-		}
-		/* Set chosen console device as stdio device */
-		if (cdev) {
-			vmm_printf("Change stdio device to %s\n", cdev->name);
-			vmm_stdio_change_device(cdev);
-		}
-
-#if defined(CONFIG_RTC)
-		/* Find rtc device based on rtc_device attribute */
-		str = NULL;
-		vmm_devtree_read_string(node,
-					VMM_DEVTREE_RTCDEV_ATTR_NAME, &str);
-		if (!(rdev = rtc_device_find(str))) {
-			if ((node1 = vmm_devtree_getnode(str))) {
-				rdev = rtc_device_find(node1->name);
-			}
-		}
-		/* Syncup wallclock time with chosen rtc device */
-		if (rdev) {
-			ret = rtc_device_sync_wallclock(rdev);
-			vmm_printf("Syncup wallclock using %s", rdev->name);
-			if (ret) {
-				vmm_printf("(error %d)", ret);
-			}
-			vmm_printf("\n");
-		}
-#endif
-
-		/* Execute boot commands */
-		if (vmm_devtree_read_string(node,
-			VMM_DEVTREE_BOOTCMD_ATTR_NAME, &str) == VMM_OK) {
-			c = vmm_devtree_attrlen(node,
-						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
-			while (c) {
-				/* Print boot command */
-				vmm_printf("bootcmd: %s\n", str);
-				/* Execute boot command */
-				strlcpy(bcmd, str, sizeof(bcmd));
-				cdev = vmm_stdio_device();
-				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
-				/* Next boot command */
-				c -= strlen(str) + 1;
-				str += strlen(str) + 1;
-			}
-		}
-	}
+	/* Schedule system post-init work */
+	INIT_WORK(&sys_postinit, &system_postinit_work);
+	vmm_workqueue_schedule_work(NULL, &sys_postinit);
 }
 
 static void __init init_bootcpu(void)
 {
 	int ret;
-	struct vmm_work sysinit;
 
 	/* Sanity check on SMP processor id */
 	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
@@ -423,9 +437,9 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
-	/* Schedule system initialization work */
-	INIT_WORK(&sysinit, &system_init_work);
-	vmm_workqueue_schedule_work(NULL, &sysinit);
+	/* Schedule system init work */
+	INIT_WORK(&sys_init, &system_init_work);
+	vmm_workqueue_schedule_work(NULL, &sys_init);
 
 	/* Start timer (Must be last step) */
 	vmm_timer_start();
