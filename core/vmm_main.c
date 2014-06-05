@@ -59,6 +59,12 @@ void __noreturn vmm_hang(void)
 
 static struct vmm_work sys_init;
 static struct vmm_work sys_postinit;
+static bool sys_init_done = FALSE;
+
+bool vmm_init_done(void)
+{
+	return sys_init_done;
+}
 
 static void system_postinit_work(struct vmm_work *work)
 {
@@ -158,6 +164,9 @@ static void system_postinit_work(struct vmm_work *work)
 			}
 		}
 	}
+
+	/* Set system init done flag */
+	sys_init_done = TRUE;
 }
 
 static void system_init_work(struct vmm_work *work)
