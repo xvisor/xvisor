@@ -38,7 +38,7 @@
 #define MODULE_DESC			"Telnet Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(NETSTACK_IPRIORITY + 1)
 #define	MODULE_INIT			daemon_telnetd_init
 #define	MODULE_EXIT			daemon_telnetd_exit
 
