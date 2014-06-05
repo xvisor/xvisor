@@ -165,6 +165,22 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 	vmm_read_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
+bool vmm_timer_event_pending(struct vmm_timer_event *ev)
+{
+	bool ret;
+	irq_flags_t flags;
+
+	if (!ev) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
+	ret = ev->active_state;
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
+
+	return ret;
+}
+
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
 	u32 hcpu;

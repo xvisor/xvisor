@@ -69,6 +69,9 @@ struct vmm_timer_event {
 #define DECLARE_TIMER_EVENT(ev, _hndl, _priv)		\
 	struct vmm_timer_event ev = __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)
 
+/** Check if timer event is pending */
+bool vmm_timer_event_pending(struct vmm_timer_event *ev);
+
 /** Start a timer event */
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
 
