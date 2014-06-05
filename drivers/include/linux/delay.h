@@ -5,9 +5,9 @@
 #include <vmm_delay.h>
 
 #define udelay(x)	vmm_udelay(x)
-#define msleep(x)	vmm_mdelay(x)
+#define msleep(x)	vmm_msleep(x)
 #define mdelay(x)	vmm_mdelay(x)
-#define ssleep(x)	vmm_sdelay(x)
+#define ssleep(x)	vmm_ssleep(x)
 #define sdelay(x)	vmm_sdelay(x)
 
 #define __delay(x)	arch_delay_loop(x)

@@ -23,7 +23,9 @@
 
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_stdio.h>
 #include <vmm_timer.h>
+#include <vmm_waitqueue.h>
 #include <vmm_delay.h>
 #include <arch_delay.h>
 #include <arch_cpu.h>
@@ -31,6 +33,36 @@
 
 static unsigned long loops_per_msec[CONFIG_CPU_COUNT];
 static unsigned long loops_per_usec[CONFIG_CPU_COUNT];
+
+static void nanosec_sleep(u64 nsecs)
+{
+	int rc;
+	struct vmm_waitqueue wq;
+
+	INIT_WAITQUEUE(&wq, NULL);
+
+	rc = vmm_waitqueue_sleep_timeout(&wq, &nsecs);
+	if (rc != VMM_ETIMEDOUT) {
+		vmm_printf("%s: sleep timeout failed (error %d)\n",
+			   __func__, rc);
+		WARN_ON(1);
+	}
+}
+
+void vmm_usleep(unsigned long usecs)
+{
+	nanosec_sleep((u64)usecs * 1000ULL);
+}
+
+void vmm_msleep(unsigned long msecs)
+{
+	nanosec_sleep((u64)msecs * 1000000ULL);
+}
+
+void vmm_ssleep(unsigned long secs)
+{
+	nanosec_sleep((u64)secs * 1000000000ULL);
+}
 
 void vmm_udelay(unsigned long usecs)
 {

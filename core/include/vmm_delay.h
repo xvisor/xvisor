@@ -25,6 +25,15 @@
 
 #include <vmm_types.h>
 
+/** Sleep for some microseconds */
+void vmm_usleep(unsigned long usecs);
+
+/** Sleep for some milliseconds */
+void vmm_msleep(unsigned long msecs);
+
+/** Sleep for some seconds */
+void vmm_ssleep(unsigned long secs);
+
 /** Emulate soft delay in-terms of microseconds */
 void vmm_udelay(unsigned long usecs);
 
