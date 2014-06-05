@@ -94,18 +94,6 @@ static void system_postinit_work(struct vmm_work *work)
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
 
-	/* Make sure /guests and /templates nodes are present */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	if (!node) {
-		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
-	}
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
-	if (!node) {
-		vmm_devtree_addnode(NULL, VMM_DEVTREE_TEMPLATEINFO_NODE_NAME);
-	}
-
 	/* Process attributes in chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
@@ -299,6 +287,7 @@ static void system_init_work(struct vmm_work *work)
 static void __init init_bootcpu(void)
 {
 	int ret;
+	struct vmm_devtree_node *node;
 
 	/* Sanity check on SMP processor id */
 	if (CONFIG_CPU_COUNT <= vmm_smp_processor_id()) {
@@ -342,6 +331,18 @@ static void __init init_bootcpu(void)
 	ret = vmm_devtree_init();
 	if (ret) {
 		goto init_bootcpu_fail;
+	}
+
+	/* Make sure /guests and /vmm nodes are present */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	}
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_VMMINFO_NODE_NAME);
+	if (!node) {
+		vmm_devtree_addnode(NULL, VMM_DEVTREE_VMMINFO_NODE_NAME);
 	}
 
 	/* Initialize host interrupts */
