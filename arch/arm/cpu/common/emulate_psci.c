@@ -22,16 +22,26 @@
  */
 
 #include <vmm_error.h>
+#include <psci.h>
 #include <cpu_emulate_psci.h>
 #include <emulate_psci.h>
+
+/* Emulate PSCI v0.1 interface */
+#define PSCI_FN_BASE		0x95c1ba5e
+#define PSCI_FN(n)		(PSCI_FN_BASE + (n))
+
+#define PSCI_FN_CPU_SUSPEND	PSCI_FN(0)
+#define PSCI_FN_CPU_OFF		PSCI_FN(1)
+#define PSCI_FN_CPU_ON		PSCI_FN(2)
+#define PSCI_FN_MIGRATE		PSCI_FN(3)
 
 static unsigned long psci_vcpu_off(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if (vmm_manager_vcpu_reset(vcpu)) {
-		return EMU_PSCI_RET_INTERNAL_FAILURE;
+		return PSCI_RET_INTERNAL_FAILURE;
 	}
 
-	return EMU_PSCI_RET_SUCCESS;
+	return PSCI_RET_SUCCESS;
 }
 
 static unsigned long psci_vcpu_on(struct vmm_vcpu *vcpu, arch_regs_t *regs)
@@ -43,7 +53,7 @@ static unsigned long psci_vcpu_on(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	startpc = emulate_psci_get_reg(vcpu, regs, 2);
 
 	if (vcpu->subid == (u32)cpuid) {
-		return EMU_PSCI_RET_INVAL;
+		return PSCI_RET_INVALID_PARAMS;
 	}
 
 	/* FIXME: The cpuid is actually value of mpidr so, 
@@ -51,20 +61,20 @@ static unsigned long psci_vcpu_on(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	 */
 	target_vcpu = vmm_manager_guest_vcpu(vcpu->guest, (u32)cpuid);
 	if (!target_vcpu) {
-		return EMU_PSCI_RET_NOT_PRESENT;
+		return PSCI_RET_NOT_PRESENT;
 	}
 
 	if (vmm_manager_vcpu_get_state(target_vcpu) != VMM_VCPU_STATE_RESET) {
-		return EMU_PSCI_RET_ALREADY_ON;
+		return PSCI_RET_ALREADY_ON;
 	}
 
 	emulate_psci_set_pc(target_vcpu, &target_vcpu->regs, startpc);
 
 	if (vmm_manager_vcpu_kick(target_vcpu)) {
-		return EMU_PSCI_RET_INTERNAL_FAILURE;
+		return PSCI_RET_INTERNAL_FAILURE;
 	}
 
-	return EMU_PSCI_RET_SUCCESS;
+	return PSCI_RET_SUCCESS;
 }
 
 int emulate_psci_call(struct vmm_vcpu *vcpu, arch_regs_t *regs, bool is_smc)
@@ -73,15 +83,15 @@ int emulate_psci_call(struct vmm_vcpu *vcpu, arch_regs_t *regs, bool is_smc)
 	unsigned long val;
 
 	switch (psci_fn) {
-	case EMU_PSCI_FN_CPU_OFF:
+	case PSCI_FN_CPU_OFF:
 		val = psci_vcpu_off(vcpu, regs);
 		break;
-	case EMU_PSCI_FN_CPU_ON:
+	case PSCI_FN_CPU_ON:
 		val = psci_vcpu_on(vcpu, regs);
 		break;
-	case EMU_PSCI_FN_CPU_SUSPEND:
-	case EMU_PSCI_FN_MIGRATE:
-		val = EMU_PSCI_RET_NI;
+	case PSCI_FN_CPU_SUSPEND:
+	case PSCI_FN_MIGRATE:
+		val = PSCI_RET_NOT_SUPPORTED;
 		break;
 	default:
 		return VMM_EINVALID;

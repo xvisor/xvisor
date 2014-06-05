@@ -27,25 +27,6 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/* Emulate PSCI interface */
-#define EMU_PSCI_FN_BASE		0x95c1ba5e
-#define EMU_PSCI_FN(n)			(EMU_PSCI_FN_BASE + (n))
-
-#define EMU_PSCI_FN_CPU_SUSPEND		EMU_PSCI_FN(0)
-#define EMU_PSCI_FN_CPU_OFF		EMU_PSCI_FN(1)
-#define EMU_PSCI_FN_CPU_ON		EMU_PSCI_FN(2)
-#define EMU_PSCI_FN_MIGRATE		EMU_PSCI_FN(3)
-
-#define EMU_PSCI_RET_SUCCESS		0
-#define EMU_PSCI_RET_NI			((unsigned long)-1)
-#define EMU_PSCI_RET_INVAL		((unsigned long)-2)
-#define EMU_PSCI_RET_DENIED		((unsigned long)-3)
-#define EMU_PSCI_RET_ALREADY_ON		((unsigned long)-4)
-#define EMU_PSCI_RET_ON_PENDING		((unsigned long)-5)
-#define EMU_PSCI_RET_INTERNAL_FAILURE	((unsigned long)-6)
-#define EMU_PSCI_RET_NOT_PRESENT	((unsigned long)-7)
-#define EMU_PSCI_RET_DISABLED		((unsigned long)-8)
-
 /* Emulate PSCI call from Guest VCPU */
 int emulate_psci_call(struct vmm_vcpu *vcpu, arch_regs_t *regs, bool is_smc);
 

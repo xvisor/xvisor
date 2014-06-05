@@ -30,9 +30,11 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
-#include <smp_ops.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
+
+#include <psci.h>
+#include <smp_ops.h>
 
 enum psci_function {
 	PSCI_FN_CPU_SUSPEND,
@@ -44,22 +46,17 @@ enum psci_function {
 
 static u32 psci_function_id[PSCI_FN_MAX];
 
-#define PSCI_RET_SUCCESS		0
-#define PSCI_RET_EOPNOTSUPP		-1
-#define PSCI_RET_EINVAL			-2
-#define PSCI_RET_EPERM			-3
-
 static int psci_to_xvisor_errno(long errno)
 {
 	switch (errno) {
 	case PSCI_RET_SUCCESS:
 		return VMM_OK;
-	case PSCI_RET_EOPNOTSUPP:
+	case PSCI_RET_NOT_SUPPORTED:
 		return VMM_EOPNOTSUPP;
-	case PSCI_RET_EPERM:
-		return VMM_EACCESS;
-	case PSCI_RET_EINVAL:
+	case PSCI_RET_INVALID_PARAMS:
 		return VMM_EINVALID;
+	case PSCI_RET_DENIED:
+		return VMM_EACCESS;
 	default:
 		return VMM_EFAIL;
 	};
