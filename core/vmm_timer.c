@@ -181,6 +181,22 @@ bool vmm_timer_event_pending(struct vmm_timer_event *ev)
 	return ret;
 }
 
+u64 vmm_timer_event_expiry_time(struct vmm_timer_event *ev)
+{
+	u64 exp_time;
+	irq_flags_t flags;
+
+	if (!ev) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
+	exp_time = ev->expiry_tstamp;
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
+
+	return exp_time;
+}
+
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
 	u32 hcpu;
