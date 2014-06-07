@@ -478,6 +478,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	struct arm_priv *p;
 	const char *attr;
 	irq_flags_t flags;
+	u32 phys_timer_irq, virt_timer_irq;
 
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -638,17 +639,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 				HSTR_TTEE_MASK |
 				HSTR_T9_MASK |
 				HSTR_T15_MASK);
-		/* Intialize Generic timer */
-		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-			arm_gentimer_context(vcpu)->phys_timer_irq = 0;
-			vmm_devtree_read_u32(vcpu->node, 
-				"gentimer_phys_irq",
-				&arm_gentimer_context(vcpu)->phys_timer_irq);
-			arm_gentimer_context(vcpu)->virt_timer_irq = 0;
-			vmm_devtree_read_u32(vcpu->node, 
-				"gentimer_virt_irq",
-				&arm_gentimer_context(vcpu)->virt_timer_irq);
-		}
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
@@ -707,11 +697,31 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Reset generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_phys_irq",
+					 &phys_timer_irq)) {
+			phys_timer_irq = 0;
+		}
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_virt_irq",
+					 &virt_timer_irq)) {
+			virt_timer_irq = 0;
+		}
+		rc = generic_timer_vcpu_context_init(
+						&arm_gentimer_context(vcpu),
+						phys_timer_irq,
+						virt_timer_irq);
+		if (rc) {
+			goto fail_gentimer_init;
+		}
 	}
 
 	return VMM_OK;
 
+fail_gentimer_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_cp15_deinit(vcpu);
+	}
 fail_cp15_init:
 	if (!vcpu->reset_count) {
 		cpu_vcpu_cp14_deinit(vcpu);
@@ -739,6 +749,12 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	/* For Orphan VCPUs do nothing else */
 	if (!vcpu->is_normal) {
 		return VMM_OK;
+	}
+
+	/* Cleanup Generic Timer Context */
+	if ((rc = generic_timer_vcpu_context_deinit(
+				&arm_gentimer_context(vcpu)))) {
+		return rc;
 	}
 
 	/* Cleanup CP15 */
@@ -887,7 +903,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			cpu_vcpu_cp15_regs_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
-				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
+				generic_timer_vcpu_context_save(
+						arm_gentimer_context(tvcpu));
 			}
 			/* Save VGIC registers */
 			arm_vgic_save(tvcpu);
@@ -916,7 +933,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-			generic_timer_vcpu_context_restore(arm_gentimer_context(vcpu));
+			generic_timer_vcpu_context_restore(
+						arm_gentimer_context(vcpu));
 		}
 		/* Restore CP15 registers */
 		cpu_vcpu_cp15_regs_restore(vcpu);

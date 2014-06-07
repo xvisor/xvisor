@@ -42,34 +42,15 @@ enum {
 	GENERIC_TIMER_REG_VIRT_OFF,
 };
 
-#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
-#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
-
-#define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
-#define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
-#define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
-
-enum gen_timer_type {
-	GENERIC_HYPERVISOR_TIMER,
-	GENERIC_PHYSICAL_TIMER,
-	GENERIC_VIRTUAL_TIMER,
-};
-
 u64 generic_timer_wakeup_timeout(void);
 
-struct generic_timer_context {
-	u64 cntvoff;
-	u64 cntpcval;
-	u64 cntvcval;
-	u32 cntkctl;
-	u32 cntpctl;
-	u32 cntvctl;
-	u32 phys_timer_irq;
-	u32 virt_timer_irq;
-};
+int generic_timer_vcpu_context_init(void **context,
+				    u32 phys_irq, u32 virt_irq);
 
-void generic_timer_vcpu_context_init(struct generic_timer_context *cntx);
-void generic_timer_vcpu_context_save(struct generic_timer_context *cntx);
-void generic_timer_vcpu_context_restore(struct generic_timer_context *cntx);
+int generic_timer_vcpu_context_deinit(void **context);
+
+void generic_timer_vcpu_context_save(void *context);
+
+void generic_timer_vcpu_context_restore(void *context);
 
 #endif /* __GENERIC_TIMER_H__ */

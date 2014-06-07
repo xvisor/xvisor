@@ -25,6 +25,8 @@
 #define __CPU_GENERIC_TIMER_H__
 
 #include <vmm_types.h>
+#include <arch_barrier.h>
+#include <cpu_inline_asm.h>
 
 #define generic_timer_pcounter_read()	mrs(cntpct_el0)
 #define generic_timer_vcounter_read()	mrs(cntvct_el0)

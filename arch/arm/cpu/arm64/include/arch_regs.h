@@ -26,7 +26,6 @@
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
-#include <generic_timer.h>
 
 struct arch_regs {
 	u64 gpr[CPU_GPR_COUNT];	/* X0 - X29 */
@@ -101,7 +100,7 @@ struct arm_priv {
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */
-	struct generic_timer_context gentimer_context;
+	void *gentimer_priv;
 	/* VGIC context */
 	bool vgic_avail;
 	void (*vgic_save)(void *vcpu_ptr);
@@ -135,7 +134,7 @@ struct arm_guest_priv {
 /**
  *  Generic timers support macro
  */
-#define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
+#define arm_gentimer_context(vcpu)	(arm_priv(vcpu)->gentimer_priv)
 
 /**
  *  VGIC support macros

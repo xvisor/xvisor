@@ -32,11 +32,33 @@
 #include <vmm_scheduler.h>
 #include <vmm_smp.h>
 #include <vmm_devemu.h>
-#include <cpu_inline_asm.h>
-#include <arch_barrier.h>
 #include <generic_timer.h>
 #include <cpu_generic_timer.h>
 #include <libs/mathlib.h>
+
+#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
+#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
+
+#define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
+#define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
+#define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
+
+enum gen_timer_type {
+	GENERIC_HYPERVISOR_TIMER,
+	GENERIC_PHYSICAL_TIMER,
+	GENERIC_VIRTUAL_TIMER,
+};
+
+struct generic_timer_context {
+	u32 phys_timer_irq;
+	u32 virt_timer_irq;
+	u64 cntvoff;
+	u64 cntpcval;
+	u64 cntvcval;
+	u32 cntkctl;
+	u32 cntpctl;
+	u32 cntvctl;
+};
 
 static u32 generic_timer_hz = 0;
 
@@ -150,6 +172,7 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 	int rc;
 	u32 ctl, pirq;
 	struct vmm_vcpu *vcpu;
+	struct generic_timer_context *cntx;
 
 	ctl = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CTRL);
 	if (!(ctl & GENERIC_TIMER_CTRL_IT_STAT)) {
@@ -173,7 +196,15 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 		return VMM_IRQ_NONE;
 	}
 
-	pirq = arm_gentimer_context(vcpu)->phys_timer_irq;
+	cntx = arm_gentimer_context(vcpu);
+	if (!cntx) {
+		/* We accidently got an interrupt meant another normal VCPU */
+		vmm_printf("%s: Invalid normal context (current VCPU=%s)\n",
+			   __func__, vcpu->name);
+		return VMM_IRQ_NONE;
+	}
+
+	pirq = cntx->phys_timer_irq;
 	if (pirq == 0) {
 		return VMM_IRQ_NONE;
 	}
@@ -198,6 +229,7 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 	int rc;
 	u32 ctl, virq;
 	struct vmm_vcpu *vcpu;
+	struct generic_timer_context *cntx;
 
 	ctl = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CTRL);
 	if (!(ctl & GENERIC_TIMER_CTRL_IT_STAT)) {
@@ -221,7 +253,15 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 		return VMM_IRQ_NONE;
 	}
 
-	virq = arm_gentimer_context(vcpu)->virt_timer_irq;
+	cntx = arm_gentimer_context(vcpu);
+	if (!cntx) {
+		/* We accidently got an interrupt meant another normal VCPU */
+		vmm_printf("%s: Invalid normal context (current VCPU=%s)\n",
+			   __func__, vcpu->name);
+		return VMM_IRQ_NONE;
+	}
+
+	virq = cntx->virt_timer_irq;
 	if (virq == 0) {
 		return VMM_IRQ_NONE;
 	}
@@ -417,18 +457,58 @@ fail_free_cc:
 VMM_CLOCKCHIP_INIT_DECLARE(gtv7clkchip, "arm,armv7-timer", generic_timer_clockchip_init);
 VMM_CLOCKCHIP_INIT_DECLARE(gtv8clkchip, "arm,armv8-timer", generic_timer_clockchip_init);
 
-void generic_timer_vcpu_context_init(struct generic_timer_context *cntx)
+int generic_timer_vcpu_context_init(void **context,
+				    u32 phys_irq, u32 virt_irq)
+
 {
+	struct generic_timer_context *cntx;
+
+	if (!context) {
+		return VMM_EINVALID;
+	}
+
+	if (!(*context)) {
+		*context = vmm_zalloc(sizeof(*cntx));
+		if (!(*context)) {
+			return VMM_ENOMEM;
+		}
+	}
+
+	cntx = *context;
 	cntx->cntpctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntvctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntpcval = 0;
 	cntx->cntvcval = 0;
 	cntx->cntkctl = 0;
 	cntx->cntvoff = generic_timer_pcounter_read();
+	cntx->phys_timer_irq = phys_irq;
+	cntx->virt_timer_irq = virt_irq;
+
+	return VMM_OK;
 }
 
-void generic_timer_vcpu_context_save(struct generic_timer_context *cntx)
+int generic_timer_vcpu_context_deinit(void **context)
 {
+	if (!context) {
+		return VMM_EINVALID;
+	}
+	if (!(*context)) {
+		return VMM_EINVALID;
+	}
+
+	vmm_free(*context);
+
+	return VMM_OK;
+}
+
+void generic_timer_vcpu_context_save(void *context)
+{
+	struct generic_timer_context *cntx = context;
+
+	if (!cntx) {
+		return;
+	}
+
 	cntx->cntpctl = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CTRL);
 	cntx->cntvctl = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CTRL);
 	cntx->cntpcval = generic_timer_reg_read64(GENERIC_TIMER_REG_PHYS_CVAL);
@@ -440,8 +520,14 @@ void generic_timer_vcpu_context_save(struct generic_timer_context *cntx)
 				GENERIC_TIMER_CTRL_IT_MASK);
 }
 
-void generic_timer_vcpu_context_restore(struct generic_timer_context *cntx)
+void generic_timer_vcpu_context_restore(void *context)
 {
+	struct generic_timer_context *cntx = context;
+
+	if (!cntx) {
+		return;
+	}
+
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, cntx->cntvoff);
 	generic_timer_reg_write(GENERIC_TIMER_REG_KCTL, cntx->cntkctl);
 	generic_timer_reg_write64(GENERIC_TIMER_REG_PHYS_CVAL, cntx->cntpcval);

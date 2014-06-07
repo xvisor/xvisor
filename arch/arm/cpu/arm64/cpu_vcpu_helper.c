@@ -331,6 +331,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	u32 cpuid = 0;
 	const char *attr;
 	irq_flags_t flags;
+	u32 phys_timer_irq, virt_timer_irq;
 
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -509,13 +510,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = 0;
-		/* Generic timer physical & virtual irq for the vcpu */
-		arm_gentimer_context(vcpu)->phys_timer_irq = 0;
-		vmm_devtree_read_u32(vcpu->node, "gentimer_phys_irq",
-				&arm_gentimer_context(vcpu)->phys_timer_irq);
-		arm_gentimer_context(vcpu)->virt_timer_irq = 0;
-		vmm_devtree_read_u32(vcpu->node, "gentimer_virt_irq",
-				&arm_gentimer_context(vcpu)->virt_timer_irq);
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
@@ -544,11 +538,31 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Initialize generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_phys_irq",
+					 &phys_timer_irq)) {
+			phys_timer_irq = 0;
+		}
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_virt_irq",
+					 &virt_timer_irq)) {
+			virt_timer_irq = 0;
+		}
+		rc = generic_timer_vcpu_context_init(
+						&arm_gentimer_context(vcpu),
+						phys_timer_irq,
+						virt_timer_irq);
+		if (rc) {
+			goto fail_gentimer_init;
+		}
 	}
 
 	return VMM_OK;
 
+fail_gentimer_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_vfp_deinit(vcpu);
+	}
 fail_vfp_init:
 	if (!vcpu->reset_count) {
 		cpu_vcpu_sysregs_deinit(vcpu);
@@ -572,6 +586,12 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	/* For Orphan VCPUs do nothing else */
 	if (!vcpu->is_normal) {
 		return VMM_OK;
+	}
+
+	/* Free Generic Timer Context */
+	if ((rc = generic_timer_vcpu_context_deinit(
+				&arm_gentimer_context(vcpu)))) {
+		return rc;
 	}
 
 	/* Free VFP registers */
@@ -618,7 +638,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			cpu_vcpu_vfp_regs_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
-				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
+				generic_timer_vcpu_context_save(
+						arm_gentimer_context(tvcpu));
 			}
 			/* Save VGIC registers */
 			arm_vgic_save(tvcpu);
