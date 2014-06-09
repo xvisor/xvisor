@@ -18,10 +18,10 @@
  *
  * @file arm_sysregs.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief ARM Realview / Versatile Express System Registers emulator.
- * @details This source file implements the ARM system-registers emulator.
+ * @brief ARM Realview/Versatile/VExpress System Registers emulator.
+ * @details This source file emulates ARM system-registers.
  *
- * The source has been largely adapted from QEMU 0.14.xx hw/arm_sysctl.c 
+ * The source has been largely adapted from QEMU 1.0.xx hw/misc/arm_sysctl.c
  *
  * Status and system control registers for ARM RealView/Versatile boards.
  *
@@ -38,12 +38,11 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_timer.h>
-#include <vmm_workqueue.h>
 #include <vmm_manager.h>
 #include <vmm_devemu.h>
 #include <libs/mathlib.h>
 
-#define MODULE_DESC			"Realview Sysctl Emulator"
+#define MODULE_DESC			"ARM Sysregs Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
@@ -80,8 +79,6 @@ struct arm_sysregs {
 	u64 ref_24mhz;
 	u32 mux_in_irq[2];
 	u32 mux_out_irq;
-	struct vmm_work reboot;
-	struct vmm_work shutdown;
 
 	u32 sys_id;
 	u32 leds;
@@ -260,21 +257,6 @@ static int arm_sysregs_reg_read(struct arm_sysregs *s,
 	return rc;
 }
 
-static void arm_sysregs_shutdown(struct vmm_work *w)
-{
-	struct arm_sysregs *s = container_of(w, struct arm_sysregs, shutdown);
-
-	vmm_manager_guest_reset(s->guest);
-}
-
-static void arm_sysregs_reboot(struct vmm_work *w)
-{
-	struct arm_sysregs *s = container_of(w, struct arm_sysregs, reboot);
-
-	vmm_manager_guest_reset(s->guest);
-	vmm_manager_guest_kick(s->guest);
-}
-
 /* SYS_CFGCTRL functions */
 #define SYS_CFG_OSC 1
 #define SYS_CFG_VOLT 2
@@ -402,13 +384,13 @@ static bool vexpress_cfgctrl_write(struct arm_sysregs *s, u32 dcc,
 		break;
 	case SYS_CFG_SHUTDOWN:
 		if (site == SYS_CFG_SITE_MB && device == 0) {
-			vmm_workqueue_schedule_work(NULL, &s->shutdown);
+			vmm_manager_guest_shutdown_request(s->guest);
 			return TRUE;
 		}
 		break;
 	case SYS_CFG_REBOOT:
 		if (site == SYS_CFG_SITE_MB && device == 0) {
-			vmm_workqueue_schedule_work(NULL, &s->reboot);
+			vmm_manager_guest_reboot_request(s->guest);
 			return TRUE;
 		}
 		break;
@@ -489,8 +471,8 @@ static int arm_sysregs_reg_write(struct arm_sysregs *s,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x100) {
-					vmm_workqueue_schedule_work(NULL, 
-								&s->reboot);
+					vmm_manager_guest_reboot_request(
+								s->guest);
 				}
 			}
 			break;
@@ -500,8 +482,8 @@ static int arm_sysregs_reg_write(struct arm_sysregs *s,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x04) {
-					vmm_workqueue_schedule_work(NULL, 
-								&s->reboot);
+					vmm_manager_guest_reboot_request(
+								s->guest);
 				}
 			}
 			break;
@@ -510,8 +492,8 @@ static int arm_sysregs_reg_write(struct arm_sysregs *s,
 				s->resetlevel &= regmask;
 				s->resetlevel |= regval;
 				if (s->resetlevel & 0x08) {
-					vmm_workqueue_schedule_work(NULL, 
-								&s->reboot);
+					vmm_manager_guest_reboot_request(
+								s->guest);
 				}
 			}
 			break;
@@ -840,9 +822,6 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 	if (rc) {
 		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
-
-	INIT_WORK(&s->shutdown, arm_sysregs_shutdown);
-	INIT_WORK(&s->reboot, arm_sysregs_reboot);
 
 	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[0],
 					edev->node->name, 
