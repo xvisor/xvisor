@@ -589,9 +589,11 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	}
 
 	/* Free Generic Timer Context */
-	if ((rc = generic_timer_vcpu_context_deinit(
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+		if ((rc = generic_timer_vcpu_context_deinit(
 				&arm_gentimer_context(vcpu)))) {
-		return rc;
+			return rc;
+		}
 	}
 
 	/* Free VFP registers */
