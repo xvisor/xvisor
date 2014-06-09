@@ -22,16 +22,17 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_heap.h>
 #include <vmm_compiler.h>
+#include <vmm_smp.h>
+#include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_timer.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
+#include <vmm_workqueue.h>
 #include <vmm_manager.h>
-#include <vmm_stdio.h>
-#include <vmm_smp.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
@@ -52,6 +53,7 @@ struct vmm_manager_ctrl {
 	struct vmm_cpumask vcpu_affinity_mask[CONFIG_MAX_VCPU_COUNT];
 	struct vmm_vcpu vcpu_array[CONFIG_MAX_VCPU_COUNT];
 	bool vcpu_avail_array[CONFIG_MAX_VCPU_COUNT];
+	struct vmm_work guest_work_array[CONFIG_MAX_GUEST_COUNT];
 	struct vmm_guest guest_array[CONFIG_MAX_GUEST_COUNT];
 	bool guest_avail_array[CONFIG_MAX_GUEST_COUNT];
 	struct dlist orphan_vcpu_list;
@@ -792,6 +794,176 @@ int vmm_manager_guest_halt(struct vmm_guest *guest)
 					manager_guest_halt_iter, NULL);
 }
 
+static bool manager_have_req(struct vmm_guest *guest)
+{
+	bool ret = FALSE;
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave_lite(&guest->req_lock, flags);
+	if (!list_empty(&guest->req_list)) {
+		ret = TRUE;
+	}
+	vmm_spin_unlock_irqrestore_lite(&guest->req_lock, flags);
+
+	return ret;
+}
+
+static void manager_enqueue_req(struct vmm_guest *guest,
+				struct vmm_guest_request *req)
+{
+	irq_flags_t flags;
+
+	vmm_spin_lock_irqsave_lite(&guest->req_lock, flags);
+	list_add_tail(&req->head, &guest->req_list);
+	vmm_spin_unlock_irqrestore_lite(&guest->req_lock, flags);
+
+	vmm_workqueue_schedule_work(NULL, &mngr.guest_work_array[guest->id]);
+}
+
+static struct vmm_guest_request *manager_dequeue_req(struct vmm_guest *guest)
+{
+	irq_flags_t flags;
+	struct vmm_guest_request *req = NULL;
+
+	vmm_spin_lock_irqsave_lite(&guest->req_lock, flags);
+	if (!list_empty(&guest->req_list)) {
+		req = list_entry(list_pop(&guest->req_list),
+				 struct vmm_guest_request, head);
+	}
+	vmm_spin_unlock_irqrestore_lite(&guest->req_lock, flags);
+
+	return req;
+}
+
+static void manager_flush_req(struct vmm_guest *guest)
+{
+	irq_flags_t flags;
+	struct vmm_guest_request *req;
+
+	vmm_spin_lock_irqsave_lite(&guest->req_lock, flags);
+	while (!list_empty(&guest->req_list)) {
+		req = list_entry(list_pop(&guest->req_list),
+				 struct vmm_guest_request, head);
+		vmm_free(req);
+	}
+	vmm_spin_unlock_irqrestore_lite(&guest->req_lock, flags);
+}
+
+static void manager_req_work(struct vmm_work *work)
+{
+	u32 id;
+	void *start, *end, *ptr;
+	struct vmm_guest *guest;
+	struct vmm_guest_request *req;
+
+	/* Determine guest pointer from work pointer */
+	ptr = work;
+	start = &mngr.guest_work_array[0];
+	end = &mngr.guest_work_array[CONFIG_MAX_GUEST_COUNT - 1];
+	if (ptr < start || end <= ptr) {
+		return;
+	}
+	id = ptr - start;
+	id = id / sizeof(*work);
+	if (CONFIG_MAX_GUEST_COUNT <= id) {
+		return;
+	}
+	guest = &mngr.guest_array[id];
+
+	/* Process one request if available */
+	if ((req = manager_dequeue_req(guest))) {
+		req->func(guest, req->data);
+		vmm_free(req);
+
+		/* Reschedule work if we more request */
+		if (manager_have_req(guest)) {
+			vmm_workqueue_schedule_work(NULL,
+					&mngr.guest_work_array[guest->id]);
+		}
+	}
+}
+
+int vmm_manager_guest_request(struct vmm_guest *guest,
+			      void (*req_func)(struct vmm_guest *, void *),
+			      void *req_data)
+{
+	struct vmm_guest_request *req;
+
+	if (!guest || !req_func) {
+		return VMM_EINVALID;
+	}
+
+	req = vmm_zalloc(sizeof(*req));
+	if (!req) {
+		return VMM_ENOMEM;
+	}
+
+	INIT_LIST_HEAD(&req->head);
+	req->func = req_func;
+	req->data = req_data;
+
+	manager_enqueue_req(guest, req);
+
+	return VMM_OK;
+}
+
+static void manager_reboot_request(struct vmm_guest *guest, void *data)
+{
+	vmm_manager_guest_reset(guest);
+	vmm_manager_guest_kick(guest);
+}
+
+int vmm_manager_guest_reboot_request(struct vmm_guest *guest)
+{
+	struct vmm_vcpu *cvcpu;
+
+	if (!guest) {
+		return VMM_EINVALID;
+	}
+
+	/* If current VCPU belongs to the Guest then
+	 * pause the VCPU so that we don't return back
+	 * to the VCPU after submitting request.
+	 */
+	cvcpu = vmm_scheduler_current_vcpu();
+	if (cvcpu &&
+	    (cvcpu->guest == guest) &&
+	    vmm_scheduler_normal_context()) {
+		vmm_manager_vcpu_pause(cvcpu);
+	}
+
+	return vmm_manager_guest_request(guest,
+				manager_reboot_request, NULL);
+}
+
+static void manager_shutdown_request(struct vmm_guest *guest, void *data)
+{
+	vmm_manager_guest_reset(guest);
+}
+
+int vmm_manager_guest_shutdown_request(struct vmm_guest *guest)
+{
+	struct vmm_vcpu *cvcpu;
+
+	if (!guest) {
+		return VMM_EINVALID;
+	}
+
+	/* If current VCPU belongs to the Guest then
+	 * pause the VCPU so that we don't return back
+	 * to the VCPU after submitting request.
+	 */
+	cvcpu = vmm_scheduler_current_vcpu();
+	if (cvcpu &&
+	    (cvcpu->guest == guest) &&
+	    vmm_scheduler_normal_context()) {
+		vmm_manager_vcpu_pause(cvcpu);
+	}
+
+	return vmm_manager_guest_request(guest,
+				manager_shutdown_request, NULL);
+}
+
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 {
 	u32 val, vnum, gnum;
@@ -861,6 +1033,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	guest->is_big_endian = FALSE;
 #endif
 	guest->reset_count = 0;
+	INIT_SPIN_LOCK(&guest->req_lock);
+	INIT_LIST_HEAD(&guest->req_list);
 	INIT_RW_LOCK(&guest->vcpu_lock);
 	guest->vcpu_count = 0;
 	INIT_LIST_HEAD(&guest->vcpu_list);
@@ -1145,6 +1319,9 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	/* For sanity reset guest (ignore reture value) */
 	vmm_manager_guest_reset(guest);
 
+	/* Flush all request for this guest */
+	manager_flush_req(guest);
+
 	/* Deinit arch guest context */
 	if ((rc = arch_guest_deinit(guest))) {
 		goto release_lock;
@@ -1252,6 +1429,7 @@ int __init vmm_manager_init(void)
 		mngr.guest_array[gnum].vcpu_count = 0;
 		INIT_LIST_HEAD(&mngr.guest_array[gnum].vcpu_list);
 		mngr.guest_avail_array[gnum] = TRUE;
+		INIT_WORK(&mngr.guest_work_array[gnum], manager_req_work);
 	}
 
 	/* Initialze memory for vcpu instances */
@@ -1261,7 +1439,8 @@ int __init vmm_manager_init(void)
 		mngr.vcpu_array[vnum].name[0] = 0;
 		mngr.vcpu_array[vnum].node = NULL;
 		mngr.vcpu_array[vnum].is_normal = FALSE;
-		arch_atomic_write(&mngr.vcpu_array[vnum].state, VMM_VCPU_STATE_UNKNOWN);
+		arch_atomic_write(&mngr.vcpu_array[vnum].state,
+				  VMM_VCPU_STATE_UNKNOWN);
 		mngr.vcpu_array[vnum].state_tstamp = 0;
 		mngr.vcpu_array[vnum].state_ready_nsecs = 0;
 		mngr.vcpu_array[vnum].state_running_nsecs = 0;

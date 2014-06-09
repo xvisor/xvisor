@@ -81,6 +81,12 @@ struct vmm_guest_aspace {
 	void *devemu_priv;
 };
 
+struct vmm_guest_request {
+	struct dlist head;
+	void *data;
+	void (*func)(struct vmm_guest *, void *);
+};
+
 struct vmm_vcpu_irq {
 	atomic_t assert;
 	u64 reason;
@@ -109,6 +115,10 @@ struct vmm_guest {
 	struct vmm_devtree_node *node;
 	bool is_big_endian;
 	u32 reset_count;
+
+	/* Request queue */
+	vmm_spinlock_t req_lock;
+	struct dlist req_list;
 
 	/* VCPU instances belonging to this Guest */
 	vmm_rwlock_t vcpu_lock;
@@ -199,13 +209,13 @@ u32 vmm_manager_max_vcpu_count(void);
 /** Current number of VCPUs (orphan + normal) */
 u32 vmm_manager_vcpu_count(void);
 
-/** Retrieve VCPU with given ID. 
+/** Retrieve VCPU with given ID.
  *  Returns NULL if there is no VCPU associated with given ID.
  */
 struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 
 /** Iterate over each VCPU */
-int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *), 
+int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 			     void *priv);
 
 /** Retrive general VCPU statistics */
@@ -223,7 +233,7 @@ int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
 /** Retriver VCPU state */
 u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu);
 
-/** Update VCPU state 
+/** Update VCPU state
  *  Note: Avoid calling this function directly
  */
 int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 state);
@@ -266,7 +276,7 @@ int vmm_manager_vcpu_hcpu_func(struct vmm_vcpu *vcpu,
 const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu);
 
 /** Update host CPU affinity of given VCPU */
-int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
+int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 				  const struct vmm_cpumask *cpu_mask);
 
 /** Create an orphan VCPU */
@@ -285,12 +295,12 @@ u32 vmm_manager_max_guest_count(void);
 /** Current number of Guests */
 u32 vmm_manager_guest_count(void);
 
-/** Retrieve Guest with given ID. 
+/** Retrieve Guest with given ID.
  *  Returns NULL if there is no Guest associated with given ID.
  */
 struct vmm_guest *vmm_manager_guest(u32 guest_id);
 
-/** Find Guest with given name. 
+/** Find Guest with given name.
  *  Returns NULL if there is no Guest with given name.
  */
 struct vmm_guest *vmm_manager_guest_find(const char *guest_name);
@@ -303,7 +313,7 @@ struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid);
 
 /** Iterate over each VCPU of a given Guest */
 int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
-				   int (*iter)(struct vmm_vcpu *, void *), 
+				   int (*iter)(struct vmm_vcpu *, void *),
 				   void *priv);
 
 /** Reset a Guest */
@@ -320,6 +330,28 @@ int vmm_manager_guest_resume(struct vmm_guest *guest);
 
 /** Halt a Guest */
 int vmm_manager_guest_halt(struct vmm_guest *guest);
+
+/** Schedule request callback for a Guest
+ *  NOTE: Use this only for non-performance critical function
+ *  because we use one vmm_work per-Guest to process all Guest
+ *  request. For performance critical functions use different
+ *  bottom-half mechanism for processing Guest request.
+ *  NOTE: If Guest is destroyed then all its pending requests
+ *  will be ignored.
+ */
+int vmm_manager_guest_request(struct vmm_guest *guest,
+			      void (*req_func)(struct vmm_guest *, void *),
+			      void *req_data);
+
+/** Schedule reboot request for a Guest
+ *  NOTE: This request will first reset the Guest then kick it.
+ */
+int vmm_manager_guest_reboot_request(struct vmm_guest *guest);
+
+/** Schedule shutdown request for a Guest
+ *  NOTE: This request will only reset the Guest.
+ */
+int vmm_manager_guest_shutdown_request(struct vmm_guest *guest);
 
 /** Create a Guest based on device tree configuration */
 struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode);
