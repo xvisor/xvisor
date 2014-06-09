@@ -85,7 +85,16 @@ bool vmm_workqueue_work_completed(struct vmm_work *work)
 
 	vmm_spin_lock_irqsave(&work->lock, flags);
 
-	ret = (work->flags & VMM_WORK_STATE_STOPPED) ? TRUE : FALSE;
+	if (work->flags & VMM_WORK_STATE_CREATED) {
+		ret = FALSE;
+	} else {
+		if (!(work->flags & VMM_WORK_STATE_INPROGRESS) &&
+		    !(work->flags & VMM_WORK_STATE_SCHEDULED)) {
+			ret = TRUE;
+		} else {
+			ret = FALSE;
+		}
+	}
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
 
@@ -109,18 +118,15 @@ stop_retry:
 		goto stop_retry;
 	}
 
-	if (work->flags & VMM_WORK_STATE_STOPPED) {
-		vmm_spin_unlock_irqrestore(&work->lock, flags);
-		return VMM_OK;
-	}
-
 	if (work->wq && (work->flags & VMM_WORK_STATE_SCHEDULED)) {
 		vmm_spin_lock_irqsave(&(work->wq)->lock, flags1);
 		list_del(&work->head);
 		vmm_spin_unlock_irqrestore(&(work->wq)->lock, flags1);
 	}
 
-	work->flags = VMM_WORK_STATE_STOPPED;
+	work->flags &= ~VMM_WORK_STATE_CREATED;
+	work->flags &= ~VMM_WORK_STATE_INPROGRESS;
+	work->flags &= ~VMM_WORK_STATE_SCHEDULED;
 	work->wq = NULL;
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
@@ -228,13 +234,13 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 
 	vmm_spin_lock_irqsave(&work->lock, flags);
 
-	if ((work->flags != VMM_WORK_STATE_CREATED) &&
-	    (work->flags != VMM_WORK_STATE_STOPPED)) {
+	if (work->flags & VMM_WORK_STATE_SCHEDULED) {
 		vmm_spin_unlock_irqrestore(&work->lock, flags);
-		return VMM_EFAIL;
+		return VMM_EALREADY;
 	}
 
-	work->flags = VMM_WORK_STATE_SCHEDULED;
+	work->flags &= ~VMM_WORK_STATE_CREATED;
+	work->flags |= VMM_WORK_STATE_SCHEDULED;
 	work->wq = wq;
 
 	vmm_spin_lock_irqsave(&wq->lock, flags1);
@@ -298,7 +304,8 @@ static int workqueue_main(void *data)
 			do_work = FALSE;
 			vmm_spin_lock_irqsave(&work->lock, flags);
 			if (work->flags & VMM_WORK_STATE_SCHEDULED) {
-				work->flags = VMM_WORK_STATE_INPROGRESS;
+				work->flags &= ~VMM_WORK_STATE_SCHEDULED;
+				work->flags |= VMM_WORK_STATE_INPROGRESS;
 				do_work = TRUE;
 			}
 			vmm_spin_unlock_irqrestore(&work->lock, flags);
@@ -306,7 +313,7 @@ static int workqueue_main(void *data)
 			if (do_work) {
 				work->func(work);
 				vmm_spin_lock_irqsave(&work->lock, flags);
-				work->flags = VMM_WORK_STATE_STOPPED;
+				work->flags &= ~VMM_WORK_STATE_INPROGRESS;
 				vmm_spin_unlock_irqrestore(&work->lock, flags);
 			}
 
@@ -406,10 +413,10 @@ int __init vmm_workqueue_init(void)
 	wqctrl.wq_count = 0;
 
 	/* Create one system workqueue with thread priority
-	 * higher than default priority.
+	 * as default priority.
 	 */
 	wqctrl.syswq = vmm_workqueue_create("syswq", 
-					    VMM_THREAD_DEF_PRIORITY + 1);
+					    VMM_THREAD_DEF_PRIORITY);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
 	}
