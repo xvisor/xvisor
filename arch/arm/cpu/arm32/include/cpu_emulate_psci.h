@@ -28,6 +28,11 @@
 #include <cpu_defines.h>
 #include <cpu_vcpu_helper.h>
 
+static inline u32 emulate_psci_version(struct vmm_vcpu *vcpu)
+{
+	return arm_guest_priv(vcpu->guest)->psci_version;
+}
+
 static inline unsigned long emulate_psci_get_reg(struct vmm_vcpu *vcpu,
 						 arch_regs_t *regs, u32 reg)
 {
@@ -51,6 +56,11 @@ static inline void emulate_psci_set_pc(struct vmm_vcpu *vcpu,
 	}
 
 	regs->pc = (u32)val;
+}
+
+static inline unsigned long emulate_psci_get_mpidr(struct vmm_vcpu *vcpu)
+{
+	return arm_priv(vcpu)->cp15.c0_mpidr;
 }
 
 #endif	/* __CPU_EMULATE_PSCI_H__ */

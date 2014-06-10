@@ -681,9 +681,10 @@ int arch_guest_init(struct vmm_guest *guest)
 	struct cpu_page pg;
 
 	if (!guest->reset_count) {
-		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
+		guest->arch_priv = vmm_zalloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
-			return VMM_EFAIL;
+			rc = VMM_EFAIL;
+			goto fail;
 		}
 		ovect_flags = 0x0;
 		ovect_flags |= VMM_MEMORY_READABLE;
@@ -692,13 +693,14 @@ int arch_guest_init(struct vmm_guest *guest)
 		ovect_flags |= VMM_MEMORY_EXECUTABLE;
 		ovect_va = vmm_host_alloc_pages(1, ovect_flags);
 		if (!ovect_va) {
-			return VMM_EFAIL;
+			rc = VMM_EFAIL;
+			goto fail;
 		}
 		if ((rc = cpu_mmu_get_reserved_page(ovect_va, &pg))) {
-			return rc;
+			goto fail_freepages;
 		}
 		if ((rc = cpu_mmu_unmap_reserved_page(&pg))) {
-			return rc;
+			goto fail_freepages;
 		}
 #if defined(CONFIG_ARMV5)
 		pg.ap = TTBL_AP_SRW_UR;
@@ -710,12 +712,27 @@ int arch_guest_init(struct vmm_guest *guest)
 		}
 #endif
 		if ((rc = cpu_mmu_map_reserved_page(&pg))) {
-			return rc;
+			goto fail_freepages;
 		}
 		arm_guest_priv(guest)->ovect = (u32 *)ovect_va;
+
+		if (vmm_devtree_read_u32(guest->node,
+				"psci_version",
+				 &arm_guest_priv(guest)->psci_version)) {
+			/* By default, assume PSCI v0.1 */
+			arm_guest_priv(guest)->psci_version = 1;
+		}
 	}
 
 	return VMM_OK;
+
+fail_freepages:
+	if (arm_guest_priv(guest)->ovect) {
+		vmm_host_free_pages(
+			(virtual_addr_t)arm_guest_priv(guest)->ovect, 1);
+	}
+fail:
+	return rc;
 }
 
 int arch_guest_deinit(struct vmm_guest *guest)

@@ -440,7 +440,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 int arch_guest_init(struct vmm_guest *guest)
 {
 	if (!guest->reset_count) {
-		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
+		guest->arch_priv = vmm_zalloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
 			return VMM_ENOMEM;
 		}
@@ -450,6 +450,13 @@ int arch_guest_init(struct vmm_guest *guest)
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
 			return VMM_ENOMEM;
+		}
+
+		if (vmm_devtree_read_u32(guest->node,
+				"psci_version",
+				&arm_guest_priv(guest)->psci_version)) {
+			/* By default, assume PSCI v0.1 */
+			arm_guest_priv(guest)->psci_version = 1;
 		}
 	}
 

@@ -178,6 +178,11 @@ struct arm_priv {
 struct arm_guest_priv {
 	/* Overlapping vector page */
 	u32 *ovect;
+	/* PSCI version
+	 * Bits[31:16] = Major number
+	 * Bits[15:0] = Minor number
+	 */
+	u32 psci_version;
 } __attribute((packed));
 
 #define arm_regs(vcpu)		(&((vcpu)->regs))

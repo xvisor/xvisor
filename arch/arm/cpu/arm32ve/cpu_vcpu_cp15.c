@@ -612,6 +612,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c1_sctlr = 0x00c50078;
 		break;
 	default:
+		cp15->c0_midr = cpuid;
+		cp15->c0_mpidr = vcpu->subid;
 		break;
 	}
 

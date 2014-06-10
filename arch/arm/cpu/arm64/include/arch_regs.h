@@ -111,6 +111,11 @@ struct arm_priv {
 struct arm_guest_priv {
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
+	/* PSCI version
+	 * Bits[31:16] = Major number
+	 * Bits[15:0] = Minor number
+	 */
+	u32 psci_version;
 };
 
 #define arm_regs(vcpu)		(&((vcpu)->regs))
