@@ -251,8 +251,6 @@ _start_mmu_init:
 __start_secondary_pen_release:
 	.word	start_secondary_pen_release
 
-#define MPIDR_HWID_BITMASK	0xFFFFFF
-
 	/*
 	 * Secondary CPU startup code 
 	 */

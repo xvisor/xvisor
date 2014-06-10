@@ -25,13 +25,6 @@
 
 #include <vmm_devtree.h>
 
-#define INVALID_HWID		ULONG_MAX
-#if defined(CONFIG_ARM64)
-#define MPIDR_HWID_BITMASK	0xFF00FFFFFF
-#else
-#define MPIDR_HWID_BITMASK	0xFFFFFF
-#endif
-
 extern physical_addr_t __smp_logical_map[];
 #define smp_logical_map(cpu)	__smp_logical_map[(cpu)]
 

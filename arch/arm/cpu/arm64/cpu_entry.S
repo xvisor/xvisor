@@ -245,8 +245,6 @@ __start_secondary_pen_release:
 	.dword	.
 	.dword	start_secondary_pen_release
 
-#define MPIDR_HWID_BITMASK	0xff00ffffff
-
 	/*
 	 * Secondary CPU startup code 
 	 */

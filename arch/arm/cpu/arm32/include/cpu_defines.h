@@ -150,6 +150,22 @@
 							 SCTLR_AFE_MASK | \
 							 SCTLR_U_MASK)
 
+/* MPIDR related macros & defines */
+#define MPIDR_SMP_BITMASK				(0x3 << 30)
+#define MPIDR_SMP_VALUE					(0x2 << 30)
+#define MPIDR_MT_BITMASK				(0x1 << 24)
+#define MPIDR_HWID_BITMASK				0xFFFFFF
+#define MPIDR_INVALID					(~MPIDR_HWID_BITMASK)
+#define MPIDR_LEVEL_BITS_SHIFT				3
+#define MPIDR_LEVEL_BITS				\
+						(1 << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_LEVEL_MASK				\
+						((1 << MPIDR_LEVEL_BITS) - 1)
+#define MPIDR_LEVEL_SHIFT(level)			\
+			(((1 << level) >> 1) << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_AFFINITY_LEVEL(mpidr, level)		\
+		((mpidr >> (MPIDR_LEVEL_BITS * level)) & MPIDR_LEVEL_MASK)
+
 /* CPACR related macros & define */
 #define CPACR_ASEDIS_MASK				0x80000000
 #define CPACR_ASEDIS_SHIFT				31
