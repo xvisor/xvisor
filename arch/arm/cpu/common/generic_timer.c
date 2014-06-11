@@ -534,6 +534,8 @@ void generic_timer_vcpu_context_restore(void *context)
 	if (!cntx->cntvoff) {
 		cntx->cntvoff =
 			vmm_manager_guest_reset_timestamp(cntx->vcpu->guest);
+		cntx->cntvoff = cntx->cntvoff * generic_timer_hz;
+		cntx->cntvoff = udiv64(cntx->cntvoff, 1000000000ULL);
 	}
 
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, cntx->cntvoff);
