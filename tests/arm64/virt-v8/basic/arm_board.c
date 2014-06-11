@@ -25,13 +25,36 @@
 #include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <arm_stdio.h>
 #include <pic/gic.h>
 #include <timer/generic_timer.h>
 #include <serial/pl01x.h>
 
 void arm_board_reset(void)
 {
-	/* Nothing to do */
+	long ret;
+	unsigned long func, arg0, arg1, arg2;
+
+	/* HVC-based PSCI v0.2 SYSTEM_RESET call */
+	func = 0x84000009;
+	arg0 = 0;
+	arg1 = 0;
+	arg2 = 0;
+	asm volatile(
+		"mov	x0, %1\n\t"
+		"mov	x1, %2\n\t"
+		"mov	x2, %3\n\t"
+		"mov	x3, %4\n\t"
+		"hvc	#0    \n\t"
+		"mov	%0, x0\n\t"
+	: "=r" (ret)
+	: "r" (func), "r" (arg0), "r" (arg1), "r" (arg2)
+	: "x0", "x1", "x2", "x3", "cc", "memory");
+
+	if (ret) {
+		arm_printf("%s: PSCI SYSTEM_RESET returned %d",
+			   __func__, ret);
+	}
 }
 
 void arm_board_init(void)

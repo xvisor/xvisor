@@ -67,10 +67,10 @@
 	psci {
 		compatible = "arm,psci-0.2", "arm,psci";
 		method = "hvc";
-		cpu_suspend = <0x95c1ba5e>;
-		cpu_off = <0x95c1ba5f>;
-		cpu_on = <0x95c1ba60>;
-		migrate = <0x95c1ba61>;
+		cpu_suspend = <0xC4000001>;
+		cpu_off = <0x84000002>;
+		cpu_on = <0xC4000003>;
+		migrate = <0xC4000005>;
 	};
 
 	UARTCLK: apb-pclk {
