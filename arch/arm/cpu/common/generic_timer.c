@@ -50,6 +50,7 @@ enum gen_timer_type {
 };
 
 struct generic_timer_context {
+	struct vmm_vcpu *vcpu;
 	u32 phys_timer_irq;
 	u32 virt_timer_irq;
 	u64 cntvoff;
@@ -457,13 +458,14 @@ fail_free_cc:
 VMM_CLOCKCHIP_INIT_DECLARE(gtv7clkchip, "arm,armv7-timer", generic_timer_clockchip_init);
 VMM_CLOCKCHIP_INIT_DECLARE(gtv8clkchip, "arm,armv8-timer", generic_timer_clockchip_init);
 
-int generic_timer_vcpu_context_init(void **context,
+int generic_timer_vcpu_context_init(void *vcpu_ptr,
+				    void **context,
 				    u32 phys_irq, u32 virt_irq)
 
 {
 	struct generic_timer_context *cntx;
 
-	if (!context) {
+	if (!context || !vcpu_ptr) {
 		return VMM_EINVALID;
 	}
 
@@ -475,21 +477,22 @@ int generic_timer_vcpu_context_init(void **context,
 	}
 
 	cntx = *context;
+	cntx->vcpu = vcpu_ptr;
 	cntx->cntpctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntvctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntpcval = 0;
 	cntx->cntvcval = 0;
 	cntx->cntkctl = 0;
-	cntx->cntvoff = generic_timer_pcounter_read();
+	cntx->cntvoff = 0;
 	cntx->phys_timer_irq = phys_irq;
 	cntx->virt_timer_irq = virt_irq;
 
 	return VMM_OK;
 }
 
-int generic_timer_vcpu_context_deinit(void **context)
+int generic_timer_vcpu_context_deinit(void *vcpu_ptr, void **context)
 {
-	if (!context) {
+	if (!context || !vcpu_ptr) {
 		return VMM_EINVALID;
 	}
 	if (!(*context)) {
@@ -526,6 +529,11 @@ void generic_timer_vcpu_context_restore(void *context)
 
 	if (!cntx) {
 		return;
+	}
+
+	if (!cntx->cntvoff) {
+		cntx->cntvoff =
+			vmm_manager_guest_reset_timestamp(cntx->vcpu->guest);
 	}
 
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, cntx->cntvoff);

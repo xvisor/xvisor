@@ -44,10 +44,12 @@ enum {
 
 u64 generic_timer_wakeup_timeout(void);
 
-int generic_timer_vcpu_context_init(void **context,
+int generic_timer_vcpu_context_init(void *vcpu_ptr,
+				    void **context,
 				    u32 phys_irq, u32 virt_irq);
 
-int generic_timer_vcpu_context_deinit(void **context);
+int generic_timer_vcpu_context_deinit(void *vcpu_ptr,
+				      void **context);
 
 void generic_timer_vcpu_context_save(void *context);
 

@@ -562,7 +562,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					 &virt_timer_irq)) {
 			virt_timer_irq = 0;
 		}
-		rc = generic_timer_vcpu_context_init(
+		rc = generic_timer_vcpu_context_init(vcpu,
 						&arm_gentimer_context(vcpu),
 						phys_timer_irq,
 						virt_timer_irq);
@@ -604,8 +604,8 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 	/* Free Generic Timer Context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		if ((rc = generic_timer_vcpu_context_deinit(
-				&arm_gentimer_context(vcpu)))) {
+		if ((rc = generic_timer_vcpu_context_deinit(vcpu,
+					&arm_gentimer_context(vcpu)))) {
 			return rc;
 		}
 	}
