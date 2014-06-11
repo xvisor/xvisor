@@ -339,10 +339,7 @@ static int arm_hypercall_smc(u32 id, u32 subid, u32 inst,
 	/* Treat this as PSCI call and emulate it */
 	rc = emulate_psci_call(vcpu, regs, TRUE);
 	if (rc) {
-		/* Halt the VCPU */
-		vmm_printf("%s: VCPU=%s PSCI call failed\n", 
-			   __func__, vcpu->name);
-		cpu_vcpu_halt(vcpu, regs);
+		arm_unpredictable(regs, vcpu, inst, __func__);
 		return VMM_EFAIL;
 	} else {
 		regs->pc += 4;

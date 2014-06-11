@@ -363,7 +363,7 @@ static int do_psci_call(struct vmm_vcpu *vcpu,
 		cpu_vcpu_inject_undef(vcpu, regs);
 	}
 
-	return rc;
+	return VMM_OK;
 }
 
 int cpu_vcpu_emulate_hvc(struct vmm_vcpu *vcpu, 
