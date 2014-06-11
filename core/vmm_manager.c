@@ -730,6 +730,9 @@ int vmm_manager_guest_reset(struct vmm_guest *guest)
 		return VMM_EFAIL;
 	}
 
+	guest->reset_count++;
+	guest->reset_tstamp = vmm_timer_timestamp();
+
 	rc = vmm_manager_guest_vcpu_iterate(guest, 
 				manager_guest_reset_iter, NULL);
 	if (rc) {
@@ -737,11 +740,15 @@ int vmm_manager_guest_reset(struct vmm_guest *guest)
 	}
 
 	if (!(rc = vmm_guest_aspace_reset(guest))) {
-		guest->reset_count++;
 		rc = arch_guest_init(guest);
 	}
 
 	return rc;
+}
+
+u64 vmm_manager_guest_reset_timestamp(struct vmm_guest *guest)
+{
+	return (guest) ? guest->reset_tstamp : 0;
 }
 
 static int manager_guest_kick_iter(struct vmm_vcpu *vcpu, void *priv)
@@ -1033,6 +1040,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	guest->is_big_endian = FALSE;
 #endif
 	guest->reset_count = 0;
+	guest->reset_tstamp = vmm_timer_timestamp();
 	INIT_SPIN_LOCK(&guest->req_lock);
 	INIT_LIST_HEAD(&guest->req_list);
 	INIT_RW_LOCK(&guest->vcpu_lock);

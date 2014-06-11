@@ -115,6 +115,7 @@ struct vmm_guest {
 	struct vmm_devtree_node *node;
 	bool is_big_endian;
 	u32 reset_count;
+	u64 reset_tstamp;
 
 	/* Request queue */
 	vmm_spinlock_t req_lock;
@@ -325,6 +326,9 @@ int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
 
 /** Reset a Guest */
 int vmm_manager_guest_reset(struct vmm_guest *guest);
+
+/** Last Reset timestamp of a Guest */
+u64 vmm_manager_guest_reset_timestamp(struct vmm_guest *guest);
 
 /** Kick a Guest out of reset state */
 int vmm_manager_guest_kick(struct vmm_guest *guest);
