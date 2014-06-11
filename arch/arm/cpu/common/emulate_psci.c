@@ -194,7 +194,7 @@ static void psci_system_reset(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	int rc;
 
-	rc = vmm_manager_guest_shutdown_request(vcpu->guest);
+	rc = vmm_manager_guest_reboot_request(vcpu->guest);
 	if (rc) {
 		vmm_printf("%s: guest=%s reboot request failed (error %d)\n",
 			   __func__, vcpu->guest->name, rc);
