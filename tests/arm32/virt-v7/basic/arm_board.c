@@ -17,7 +17,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file arm_board.c
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief various platform specific functions
  */
 
@@ -25,13 +25,37 @@
 #include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <arm_stdio.h>
 #include <pic/gic.h>
 #include <timer/generic_timer.h>
 #include <serial/pl01x.h>
 
 void arm_board_reset(void)
 {
-	/* Nothing to do */
+	long ret;
+	unsigned long func, arg0, arg1, arg2;
+
+	/* HVC-based PSCI v0.2 SYSTEM_RESET call */
+	func = 0x84000009;
+	arg0 = 0;
+	arg1 = 0;
+	arg2 = 0;
+	asm volatile(
+		".arch_extension sec\n\t"
+		"mov	r0, %1\n\t"
+		"mov	r1, %2\n\t"
+		"mov	r2, %3\n\t"
+		"mov	r3, %4\n\t"
+		"smc	#0    \n\t"
+		"mov	%0, r0\n\t"
+	: "=r" (ret)
+	: "r" (func), "r" (arg0), "r" (arg1), "r" (arg2)
+	: "r0", "r1", "r2", "r3", "cc", "memory");
+
+	if (ret) {
+		arm_printf("%s: PSCI SYSTEM_RESET returned %d",
+			   __func__, ret);
+	}
 }
 
 void arm_board_init(void)

@@ -4,6 +4,7 @@
 / {
 	model = "virt-v7";
 	device_type = "guest";
+	psci_version = <2>;
 
 	vcpus {
 		vcpu0 {
