@@ -1070,6 +1070,10 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 	if (!path || !node)
 		return NULL;
 
+	while (*path == VMM_DEVTREE_PATH_SEPARATOR) {
+		path++;
+	}
+
 	while (*path) {
 		found = FALSE;
 		list_for_each_entry(child, &node->child_list, head) {
