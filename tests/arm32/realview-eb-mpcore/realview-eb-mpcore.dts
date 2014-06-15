@@ -5,6 +5,13 @@
 	model = "realview-eb-mpcore";
 	device_type = "guest";
 
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+		net1 = &NET1;
+		disk0 = &DISK0;
+	};
+
 	vcpus {
 		vcpu0 {
 			device_type = "vcpu";
@@ -16,7 +23,7 @@
 	aspace {
 		guest_irq_count = <2048>;
 
-		mem0 {
+		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x00000000>;
@@ -298,7 +305,7 @@
 			compatible = "corelink,l2c-310";
 		};
 
-		virtio-net0 {
+		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";
@@ -310,7 +317,7 @@
 			interrupts = <48>;
 		};
 
-		virtio-blk0 {
+		DISK0: virtio-blk0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";
@@ -342,7 +349,7 @@
 			device_type = "alloced_rom";
 		};
 
-		eth {
+		NET1: eth {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x4E000000>;

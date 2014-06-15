@@ -5,6 +5,13 @@
 	model = "vexpress-a15";
 	device_type = "guest";
 
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+		net1 = &NET1;
+		disk0 = &DISK0;
+	};
+
 	vcpus {
 		vcpu0 {
 			device_type = "vcpu";
@@ -26,7 +33,7 @@
 	aspace {
 		guest_irq_count = <2048>;
 
-		mem0 {
+		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x80000000>;
@@ -148,7 +155,7 @@
 			align_order = <21>; /* Align alloced memory to 2MB */
 		};
 
-		eth {
+		NET1: eth {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x1A000000>;
@@ -344,7 +351,7 @@
 			compatible = "zero";
 		};
 
-		virtio-net0 {
+		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";
@@ -356,7 +363,7 @@
 			interrupts = <50>;
 		};
 
-		virtio-blk0 {
+		DISK0: virtio-blk0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";

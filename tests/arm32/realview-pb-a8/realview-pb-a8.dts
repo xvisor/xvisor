@@ -5,6 +5,13 @@
 	model = "realview-pb-a8";
 	device_type = "guest";
 
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+		net1 = &NET1;
+		disk0 = &DISK0;
+	};
+
 	vcpus {
 		vcpu0 {
 			device_type = "vcpu";
@@ -16,7 +23,7 @@
 	aspace {
 		guest_irq_count = <2048>;
 
-		mem0 {
+		mem1 {
 			manifest_type = "alias";
 			address_type = "memory";
 			guest_physical_addr = <0x00000000>;
@@ -25,7 +32,7 @@
 			device_type = "ram";
 		};
 
-		mem1 {
+		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x70000000>;
@@ -288,7 +295,7 @@
 			parent_irq = <6>;
 		};
 
-		virtio-net0 {
+		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";
@@ -300,7 +307,7 @@
 			interrupts = <34>;
 		};
 
-		virtio-blk0 {
+		DISK0: virtio-blk0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			device_type = "virtio";
@@ -332,7 +339,7 @@
 			align_order = <21>; /* Align alloced memory to 2MB */
 		};
 
-		lan9118 {
+		NET1: lan9118 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x4E000000>;

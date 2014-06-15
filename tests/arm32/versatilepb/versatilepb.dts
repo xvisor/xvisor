@@ -5,6 +5,11 @@
 	model = "versatilepb";
 	device_type = "guest";
 
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+	};
+
 	vcpus {
 		vcpu0 {
 			device_type = "vcpu";
@@ -16,7 +21,7 @@
 	aspace {
 		guest_irq_count = <2048>;
 
-		mem0 {
+		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x00000000>;
@@ -129,7 +134,7 @@
 			compatible = "zero";
 		};
 
-		eth {
+		NET0: eth {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x10010000>;
