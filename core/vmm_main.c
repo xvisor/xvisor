@@ -69,12 +69,12 @@ bool vmm_init_done(void)
 static void system_postinit_work(struct vmm_work *work)
 {
 #define BOOTCMD_WIDTH		256
-	int ret;
 	char bcmd[BOOTCMD_WIDTH];
 	const char *str;
 	u32 c, freed;
 	struct vmm_chardev *cdev;
 #if defined(CONFIG_RTC)
+	int ret;
 	struct rtc_device *rdev;
 #endif
 	struct vmm_devtree_node *node, *node1;
