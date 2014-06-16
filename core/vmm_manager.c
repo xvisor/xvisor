@@ -739,8 +739,8 @@ int vmm_manager_guest_reset(struct vmm_guest *guest)
 		return rc;
 	}
 
-	if (!(rc = vmm_guest_aspace_reset(guest))) {
-		rc = arch_guest_init(guest);
+	if (!(rc = arch_guest_init(guest))) {
+		rc = vmm_guest_aspace_reset(guest);
 	}
 
 	return rc;
@@ -1288,6 +1288,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	/* Release manager lock */
 	vmm_spin_unlock_irqrestore_lite(&mngr.lock, flags);
 
+	/* Initialize arch guest context */
+	if (arch_guest_init(guest)) {
+		goto fail_destroy_guest;
+	}
+
 	/* Initialize guest address space */
 	if (vmm_guest_aspace_init(guest)) {
 		goto fail_destroy_guest;
@@ -1295,11 +1300,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	/* Reset guest address space */
 	if (vmm_guest_aspace_reset(guest)) {
-		goto fail_destroy_guest;
-	}
-
-	/* Initialize arch guest context */
-	if (arch_guest_init(guest)) {
 		goto fail_destroy_guest;
 	}
 
@@ -1330,13 +1330,13 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	/* Flush all request for this guest */
 	manager_flush_req(guest);
 
-	/* Deinit arch guest context */
-	if ((rc = arch_guest_deinit(guest))) {
+	/* Deinit the guest aspace */
+	if ((rc = vmm_guest_aspace_deinit(guest))) {
 		goto release_lock;
 	}
 
-	/* Deinit the guest aspace */
-	if ((rc = vmm_guest_aspace_deinit(guest))) {
+	/* Deinit arch guest context */
+	if ((rc = arch_guest_deinit(guest))) {
 		goto release_lock;
 	}
 
