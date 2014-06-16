@@ -29,6 +29,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_stdio.h>
+#include <arch_guest.h>
 #include <libs/stringlib.h>
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
@@ -369,7 +370,8 @@ static int region_add(struct vmm_guest *guest,
 
 	/* Sanity check on region node */
 	if (!is_region_node_valid(rnode)) {
-		return VMM_EINVALID;
+		rc = VMM_EINVALID;
+		goto region_fail;
 	}
 
 	/* Allocate region instance */
@@ -384,8 +386,7 @@ static int region_add(struct vmm_guest *guest,
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval);
 	if (rc) {
-		vmm_free(reg);
-		return rc;
+		goto region_free_fail;
 	}
 
 	if (!strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL)) {
@@ -400,8 +401,7 @@ static int region_add(struct vmm_guest *guest,
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval);
 	if (rc) {
-		vmm_free(reg);
-		return rc;
+		goto region_free_fail;
 	}
 
 	if (!strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
@@ -413,8 +413,7 @@ static int region_add(struct vmm_guest *guest,
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval);
 	if (rc) {
-		vmm_free(reg);
-		return rc;
+		goto region_free_fail;
 	}
 
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
@@ -449,8 +448,7 @@ static int region_add(struct vmm_guest *guest,
 				VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
 				&reg->gphys_addr);
 	if (rc) {
-		vmm_free(reg);
-		return rc;
+		goto region_free_fail;
 	}
 
 	if ((reg->flags & VMM_REGION_REAL) &&
@@ -459,16 +457,14 @@ static int region_add(struct vmm_guest *guest,
 				VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
 				&reg->hphys_addr);
 		if (rc) {
-			vmm_free(reg);
-			return rc;
+			goto region_free_fail;
 		}
 	} else if (reg->flags & VMM_REGION_ALIAS) {
 		rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
 				&reg->hphys_addr);
 		if (rc) {
-			vmm_free(reg);
-			return rc;
+			goto region_free_fail;
 		}
 	} else {
 		reg->hphys_addr = reg->gphys_addr;
@@ -478,8 +474,7 @@ static int region_add(struct vmm_guest *guest,
 			VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
 			&reg->phys_size);
 	if (rc) {
-		vmm_free(reg);
-		return rc;
+		goto region_free_fail;
 	}
 
 	rc = vmm_devtree_read_u32(reg->node,
@@ -496,8 +491,8 @@ static int region_add(struct vmm_guest *guest,
 		vmm_printf("%s: Region for %s/%s overlapping with "
 			   "a previous node\n", __func__, 
 			   guest->name, reg->node->name);
-		vmm_free(reg);
-		return VMM_EINVALID;
+		rc = VMM_EINVALID;
+		goto region_free_fail;
 	}
 
 	/* Reserve host RAM for reserved RAM/ROM regions */
@@ -511,8 +506,7 @@ static int region_add(struct vmm_guest *guest,
 				   "host RAM for %s/%s\n",
 				   __func__, guest->name,
 				   reg->node->name);
-			vmm_free(reg);
-			return rc;
+			goto region_free_fail;
 		} else {
 			reg->flags |= VMM_REGION_ISHOSTRAM;
 		}
@@ -529,8 +523,8 @@ static int region_add(struct vmm_guest *guest,
 				   "host RAM for %s/%s\n",
 				   __func__, guest->name,
 				   reg->node->name);
-			vmm_free(reg);
-			return VMM_ENOMEM;
+			rc = VMM_ENOMEM;
+			goto region_free_fail;
 		} else {
 			reg->flags |= VMM_REGION_ISHOSTRAM;
 			rc = vmm_devtree_setattr(reg->node,
@@ -543,7 +537,7 @@ static int region_add(struct vmm_guest *guest,
 					   " for %s/%s\n", __func__,
 					   VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
 					   guest->name, reg->node->name);
-				return rc;
+				goto region_free_fail;
 			}
 		}
 	}
@@ -552,9 +546,14 @@ static int region_add(struct vmm_guest *guest,
 	if ((reg->flags & VMM_REGION_ISDEVICE) &&
 	    !(reg->flags & VMM_REGION_ALIAS)) {
 		if ((rc = vmm_devemu_probe_region(guest, reg))) {
-			vmm_free(reg);
-			return rc;
+			goto region_ram_free_fail;
 		}
+	}
+
+	/* Call arch specific add region callback */
+	rc = arch_guest_add_region(guest, reg);
+        if (rc) {
+		goto region_unprobe_fail;
 	}
 
 	/* Add region to region list */
@@ -567,6 +566,27 @@ static int region_add(struct vmm_guest *guest,
 	}
 
 	return VMM_OK;
+
+region_unprobe_fail:
+	if ((reg->flags & VMM_REGION_ISDEVICE) &&
+	    !(reg->flags & VMM_REGION_ALIAS)) {
+		vmm_devemu_remove_region(guest, reg);
+	}
+region_ram_free_fail:
+	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+	    (reg->flags & VMM_REGION_ISHOSTRAM)) {
+		if (reg->flags & VMM_REGION_ISALLOCED) {
+			vmm_devtree_delattr(reg->node,
+					    VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
+		}
+		vmm_host_ram_free(reg->hphys_addr,
+				  reg->phys_size);
+	}
+region_free_fail:
+	vmm_free(reg);
+region_fail:
+	return rc;
 }
 
 static int region_del(struct vmm_guest *guest,
@@ -582,6 +602,14 @@ static int region_del(struct vmm_guest *guest,
 		vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);
 		list_del(&reg->head);
 		vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	}
+
+	/* Call arch specific del region callback */
+	rc = arch_guest_del_region(guest, reg);
+	if (rc) {
+		vmm_printf("%s: arch_guest_del_region() failed for %s/%s "
+			   "(error %d)\n", __func__, guest->name,
+			   reg->node->name, rc);
 	}
 
 	/* Remove emulator for if virtual region */

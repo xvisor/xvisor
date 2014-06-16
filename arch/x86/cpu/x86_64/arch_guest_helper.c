@@ -30,6 +30,7 @@
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <vm/amd_svm.h>
 #include <libs/stringlib.h>
 #include <arch_guest_helper.h>
 
@@ -85,6 +86,16 @@ int arch_guest_deinit(struct vmm_guest * guest)
 		vmm_free(priv);
 	}
 
+	return VMM_OK;
+}
+
+int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
+{
+	return VMM_OK;
+}
+
+int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
+{
 	return VMM_OK;
 }
 

@@ -478,6 +478,16 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	return VMM_OK;
 }
 
+int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
+{
+	return VMM_OK;
+}
+
+int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
+{
+	return VMM_OK;
+}
+
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	int rc, ite;
