@@ -21,13 +21,7 @@
 			  "vfs mount rbd0 /",
 
 			  /* Load guest0 device tree from file */
-			  "vfs fdt_load /guests guest0 /images/arm32/versatilepb.dtb",
-
-			  /* Update guest0/mem0 region size */
-			  "devtree attr set /guests/guest0/aspace/mem0 physical_size physsize 0x02000000",
-
-			  /* Connect guest0/eth netport to br0 */
-			  "devtree attr set /guests/guest0/aspace/eth switch string br0",
+			  "vfs fdt_load /guests guest0 /images/arm32/versatilepb.dtb mem0,physical_size,physsize,0x02000000 net0,switch,string,br0",
 
 			  /* Create guest0 */
 			  "guest create guest0",
