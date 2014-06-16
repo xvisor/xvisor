@@ -106,6 +106,11 @@ int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
 
 			vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
 		}
+	} else if (region->flags & (VMM_REGION_REAL | VMM_REGION_MEMORY)) {
+		struct x86_guest_priv *priv = x86_guest_priv(guest);
+
+		/* += ? Multiple memory regions may be */
+		priv->tot_ram_sz += region->phys_size;
 	}
 
 	return VMM_OK;
@@ -128,6 +133,12 @@ int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 
 			vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
 		}
+	} else if (region->flags & (VMM_REGION_REAL | VMM_REGION_MEMORY)) {
+		struct x86_guest_priv *priv = x86_guest_priv(guest);
+
+		if (priv->tot_ram_sz && priv->tot_ram_sz >= region->phys_size)
+			/* += ? Multiple memory regions may be */
+			priv->tot_ram_sz += region->phys_size;
 	}
 
 	return VMM_OK;

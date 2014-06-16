@@ -34,6 +34,7 @@
  */
 struct x86_guest_priv {
 	struct page_table *g_npt; /**< Guest's nested page table */
+	u64 tot_ram_sz;
 };
 
 /*!def x86_guest_priv(guest) is to access guest private information */
