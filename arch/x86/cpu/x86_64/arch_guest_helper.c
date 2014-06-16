@@ -91,11 +91,45 @@ int arch_guest_deinit(struct vmm_guest * guest)
 
 int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
 {
+	struct vmm_vcpu *vcpu;
+	u32 i, flags;
+
+	if (region->flags & VMM_REGION_IO) {
+		u32 reg_end = region->gphys_addr + region->phys_size;
+
+		for (i = region->gphys_addr; i < reg_end; i++) {
+			vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags);
+
+			list_for_each_entry(vcpu, &guest->vcpu_list, head) {
+				enable_ioport_intercept(x86_vcpu_priv(vcpu)->hw_context, i);
+			}
+
+			vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
+		}
+	}
+
 	return VMM_OK;
 }
 
 int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 {
+	struct vmm_vcpu *vcpu;
+	u32 i, flags;
+
+	if (region->flags & VMM_REGION_IO) {
+		u32 reg_end = region->gphys_addr + region->phys_size;
+
+		for (i = region->gphys_addr; i < reg_end; i++) {
+			vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags);
+
+			list_for_each_entry(vcpu, &guest->vcpu_list, head) {
+				disable_ioport_intercept(x86_vcpu_priv(vcpu)->hw_context, i);
+			}
+
+			vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
+		}
+	}
+
 	return VMM_OK;
 }
 

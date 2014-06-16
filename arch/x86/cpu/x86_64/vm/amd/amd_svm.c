@@ -59,7 +59,7 @@ static virtual_addr_t host_save_area;
 
 extern void handle_vcpuexit(struct vcpu_hw_context *context);
 
-static void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 {
 	u32 byte_offset = ioport >> 3;
 	u8 port_offset = ioport & 0x7;
@@ -68,8 +68,7 @@ static void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 	*iop_base |= (0x1 << port_offset);
 }
 
-#if 0
-static void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 {
 	u32 byte_offset = ioport >> 3;
 	u8 port_offset = ioport & 0x7;
@@ -77,7 +76,6 @@ static void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport
 	u8 *iop_base = context->icept_table.io_table_virt + byte_offset;
 	*iop_base &= ~(0x1 << port_offset);
 }
-#endif
 
 static virtual_addr_t alloc_host_save_area(void)
 {
@@ -459,19 +457,6 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 		context->vmcb->iopm_base_pa = context->icept_table.io_table_phys;
 
 	VM_LOG(LVL_INFO, "IOPM Base physical address: 0x%lx\n", context->vmcb->iopm_base_pa);
-
-	/* FIXME: Based on guest's dts table only this should be done. */
-	enable_ioport_intercept(context, 0x2f8);
-	enable_ioport_intercept(context, 0x2f9);
-	enable_ioport_intercept(context, 0x2fa);
-	enable_ioport_intercept(context, 0x2fb);
-	enable_ioport_intercept(context, 0x2fc);
-	enable_ioport_intercept(context, 0x2fd);
-	enable_ioport_intercept(context, 0x2fe);
-	enable_ioport_intercept(context, 0x2ff);
-	enable_ioport_intercept(context, 0xcf8);
-	enable_ioport_intercept(context, 0xcf9);
-	enable_ioport_intercept(context, 0xcfc);
 
 	/*
 	 * FIXME: VM: What state to load should come from VMCB.
