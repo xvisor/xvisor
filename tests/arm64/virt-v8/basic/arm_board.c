@@ -80,7 +80,7 @@ physical_size_t arm_board_ram_size(void)
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw "
-			    "earlyprintk=pl011,0x09000000 "
+			    "earlycon=pl011,0x09000000 "
 			    "console=ttyAMA0 swiotlb=4096");
 }
 

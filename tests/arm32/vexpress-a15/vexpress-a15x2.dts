@@ -2,8 +2,9 @@
 /dts-v1/;
 
 / {
-	model = "vexpress-a15";
+	model = "arm,vexpress,v2p-ca15,tc1";
 	device_type = "guest";
+	psci_version = <2>;
 
 	aliases {
 		mem0 = &MEM0;
@@ -79,7 +80,7 @@
 			device_type = "pic";
 			compatible = "arm,vgic,dist";
 			parent_irq = <6>;
-			num_irq = <96>;
+			num_irq = <160>;
 		};
 
 		gic_cpu {
@@ -135,6 +136,15 @@
 			physical_size = <0x01000000>;
 			device_type = "alloced_rom";
 			align_order = <21>; /* Align alloced memory to 2MB */
+		};
+
+		nor_flash1 { /* No NOR Flash CS1 */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x08000000>;
+			physical_size = <0x04000000>;
+			device_type = "misc";
+			compatible = "zero";
 		};
 
 		sram {

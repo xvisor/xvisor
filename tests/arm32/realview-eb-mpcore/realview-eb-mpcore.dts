@@ -4,6 +4,7 @@
 / {
 	model = "realview-eb-mpcore";
 	device_type = "guest";
+	psci_version = <2>;
 
 	aliases {
 		mem0 = &MEM0;
@@ -97,6 +98,15 @@
 			device_type = "input";
 			compatible = "primecell,arm,pl050,mouse";
 			interrupts = <40>;
+		};
+
+		charlcd { /* No Character LCD */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x10008000>;
+			physical_size = <0x1000>;
+			device_type = "misc";
+			compatible = "zero";
 		};
 
 		uart0 {

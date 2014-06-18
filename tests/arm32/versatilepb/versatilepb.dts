@@ -2,8 +2,9 @@
 /dts-v1/;
 
 / {
-	model = "versatilepb";
+	model = "arm,versatile-pb";
 	device_type = "guest";
+	psci_version = <2>;
 
 	aliases {
 		mem0 = &MEM0;

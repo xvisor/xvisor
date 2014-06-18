@@ -2,8 +2,9 @@
 /dts-v1/;
 
 / {
-	model = "vexpress-a9";
+	model = "arm,vexpress,v2p-ca9";
 	device_type = "guest";
+	psci_version = <2>;
 
 	aliases {
 		mem0 = &MEM0;
@@ -162,7 +163,7 @@
 		wdt { /* No Watch-Dog controller */
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x1000f000>;
+			guest_physical_addr = <0x1000F000>;
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";
@@ -182,16 +183,6 @@
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x10012000>;
-			physical_size = <0x1000>;
-			device_type = "timer";
-			compatible = "primecell,sp804";
-			interrupts = <35>;
-		};
-
-		timer_daughter {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E4000>;
 			physical_size = <0x1000>;
 			device_type = "timer";
 			compatible = "primecell,sp804";
@@ -220,7 +211,16 @@
 		cf { /* No PATA Controller */
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x1001a000>;
+			guest_physical_addr = <0x1001A000>;
+			physical_size = <0x1000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		legacy-clcd { /* No Legacy CLCD */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x1001F000>;
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";
@@ -249,6 +249,25 @@
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x100E1000>;
+			physical_size = <0x1000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		timer_daughter {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x100E4000>;
+			physical_size = <0x1000>;
+			device_type = "timer";
+			compatible = "primecell,sp804";
+			interrupts = <35>;
+		};
+
+		watchdog { /* No watchdog */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x100E5000>;
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";

@@ -4,6 +4,7 @@
 / {
 	model = "realview-pb-a8";
 	device_type = "guest";
+	psci_version = <2>;
 
 	aliases {
 		mem0 = &MEM0;
