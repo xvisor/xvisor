@@ -96,7 +96,7 @@
 #define GICH_MISR_U			(1 << 1)
 
 #define VGIC_MAX_NCPU			8
-#define VGIC_MAX_NIRQ			128
+#define VGIC_MAX_NIRQ			256
 #define VGIC_LR_UNKNOWN			0xFF
 
 struct vgic_host_ctrl {
