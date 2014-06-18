@@ -132,6 +132,10 @@ static int l2x0_cc_reg_write(struct l2x0_state *s,
 		/* ignore */
 		return rc;
 	}
+	if (offset >= 0x900 && offset < (0x900 + 8*8)) {
+		/* ignore lock down registers */
+		return rc;
+	}
 	switch (offset) {
 	case 0x100:
 		s->ctrl = regval & 1;
@@ -144,9 +148,6 @@ static int l2x0_cc_reg_write(struct l2x0_state *s,
 		break;
 	case 0x10C:
 		s->data_ctrl = regval;
-		break;
-	case 0x900:
-	case 0x904:
 		break;
 	case 0xC00:
 		s->filter_start = regval;
