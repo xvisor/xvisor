@@ -187,7 +187,7 @@ static int __init acpi_populate_ioapic_devtree(struct acpi_madt_hdr *madt_hdr,
 
 		if (vmm_devtree_setattr(nnode, VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME,
 						&ioapic->address, VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-						sizeof(ioapic->address), FALSE) != VMM_OK) {
+						sizeof(physical_addr_t), FALSE) != VMM_OK) {
 			ret = VMM_EFAIL;
 			break;
 		}
@@ -301,7 +301,7 @@ static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 
 			if (vmm_devtree_setattr(nnode, VMM_DEVTREE_HPET_PADDR_ATTR_NAME,
 							&hpet->tmr_blks[i].base, VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-							sizeof(hpet->tmr_blks[i].base), FALSE) != VMM_OK) {
+							sizeof(physical_addr_t), FALSE) != VMM_OK) {
 				return VMM_EFAIL;
 			}
 		}
