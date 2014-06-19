@@ -78,20 +78,22 @@ struct i440fx_state {
 
 static u32 i440fx_config_read(struct pci_class *pci_class, u16 reg_offset)
 {
+#if 0 /* FIXME: populate this when i440fx is revisited. */
 	struct pci_host_controller *pcntrl = (struct pci_host_controller *)pci_class;
 	struct i440fx_state *s = container_of(&pcntrl, struct i440fx_state, controller);
-
+#endif
 	return 0;
 }
 
 static int i440fx_config_write(struct pci_class *pci_class, u16 reg_offset, u32 data)
 {
+#if 0 /* FIXME: populate this when i440fx is revisited. */
 	struct pci_host_controller *pcntrl = (struct pci_host_controller *)pci_class;
 	struct i440fx_state *s = container_of(&pcntrl, struct i440fx_state, controller);
 
 	switch(reg_offset) {
 	}
-
+#endif
 	return VMM_OK;
 }
 
