@@ -22,9 +22,11 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
+#include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_delay.h>
-#include <vmm_compiler.h>
+#include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_workqueue.h>
 #include <libs/stringlib.h>
@@ -33,7 +35,7 @@ struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist wq_list;
 	u32 wq_count;
-	struct vmm_workqueue *syswq;
+	struct vmm_workqueue *syswq[CONFIG_CPU_COUNT];
 };
 
 static struct vmm_workqueue_ctrl wqctrl;
@@ -229,7 +231,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 	}
 
 	if (!wq) {
-		wq = wqctrl.syswq;
+		wq = wqctrl.syswq[vmm_smp_processor_id()];
 	}
 
 	vmm_spin_lock_irqsave(&work->lock, flags);
@@ -337,7 +339,7 @@ struct vmm_workqueue *vmm_workqueue_create(const char *name, u8 priority)
 		return NULL;
 	}
 
-	wq = vmm_malloc(sizeof(struct vmm_workqueue));
+	wq = vmm_zalloc(sizeof(struct vmm_workqueue));
 	if (!wq) {
 		return NULL;
 	}
@@ -398,28 +400,35 @@ int vmm_workqueue_destroy(struct vmm_workqueue *wq)
 	return VMM_OK;
 }
 
-int __init vmm_workqueue_init(void)
+int __cpuinit vmm_workqueue_init(void)
 {
-	/* Reset control structure */
-	memset(&wqctrl, 0, sizeof(wqctrl));
+	char syswq_name[VMM_FIELD_NAME_SIZE];
+	u32 cpu = vmm_smp_processor_id();
 
-	/* Initialize lock in control structure */
-	INIT_SPIN_LOCK(&wqctrl.lock);
+	if (vmm_smp_is_bootcpu()) {
+		/* Reset control structure */
+		memset(&wqctrl, 0, sizeof(wqctrl));
 
-	/* Initialize workqueue list */
-	INIT_LIST_HEAD(&wqctrl.wq_list);
+		/* Initialize lock in control structure */
+		INIT_SPIN_LOCK(&wqctrl.lock);
 
-	/* Initialize workqueue count */
-	wqctrl.wq_count = 0;
+		/* Initialize workqueue list */
+		INIT_LIST_HEAD(&wqctrl.wq_list);
+
+		/* Initialize workqueue count */
+		wqctrl.wq_count = 0;
+	}
 
 	/* Create one system workqueue with thread priority
 	 * as default priority.
 	 */
-	wqctrl.syswq = vmm_workqueue_create("syswq", 
-					    VMM_THREAD_DEF_PRIORITY);
+	vmm_snprintf(syswq_name, sizeof(syswq_name), "syswq/%d", cpu);
+	wqctrl.syswq[cpu] = vmm_workqueue_create(syswq_name,
+						 VMM_THREAD_DEF_PRIORITY);
 	if (!wqctrl.syswq) {
 		return VMM_EFAIL;
 	}
 
-	return VMM_OK;
+	return vmm_threads_set_affinity(wqctrl.syswq[cpu]->thread,
+					vmm_cpumask_of(cpu));
 }

@@ -519,6 +519,12 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
+	/* Initialize workqueue framework */
+	ret = vmm_workqueue_init();
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Inform architecture code about secondary cpu */
 	arch_smp_postboot();
 
