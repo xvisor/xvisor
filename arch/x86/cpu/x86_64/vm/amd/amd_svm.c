@@ -73,7 +73,7 @@ void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 	u32 byte_offset = ioport >> 3;
 	u8 port_offset = ioport & 0x7;
 
-	u8 *iop_base = context->icept_table.io_table_virt + byte_offset;
+	u8 *iop_base = (u8 *)context->icept_table.io_table_virt + byte_offset;
 	*iop_base &= ~(0x1 << port_offset);
 }
 
