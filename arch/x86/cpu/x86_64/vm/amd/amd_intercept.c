@@ -407,7 +407,7 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		}
 	}
 
-	context->vmcb->rip += 1;
+	context->vmcb->rip = context->vmcb->exitinfo2;
 
 	return;
 
