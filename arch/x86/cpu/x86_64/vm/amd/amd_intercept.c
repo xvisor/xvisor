@@ -380,11 +380,11 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		      : ((context->vmcb->exitinfo1 & (0x1 << 5)) ? 16
 			 : 32));
 	u8 seg_num = (context->vmcb->exitinfo1 >> 10) & 0x7;
-	u32 guest_rd;
+	u32 guest_rd = 0;
 	u32 wval;
 
 	VM_LOG(LVL_VERBOSE, "RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
-	VM_LOG(LVL_VERBOSE, "IOPort: %d is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
+	VM_LOG(LVL_VERBOSE, "IOPort: 0x%x is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
 		io_port, (in_inst ? "in" : "out"), op_size,seg_num,(str_op ? "yes" : "no"),(rep_access ? "yes" : "no"));
 
 	if (in_inst) {
