@@ -230,15 +230,15 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 		return VMM_EFAIL;
 	}
 
-	if (!wq) {
-		wq = wqctrl.syswq[vmm_smp_processor_id()];
-	}
-
 	vmm_spin_lock_irqsave(&work->lock, flags);
 
 	if (work->flags & VMM_WORK_STATE_SCHEDULED) {
 		vmm_spin_unlock_irqrestore(&work->lock, flags);
 		return VMM_EALREADY;
+	}
+
+	if (!wq) {
+		wq = wqctrl.syswq[vmm_smp_processor_id()];
 	}
 
 	work->flags &= ~VMM_WORK_STATE_CREATED;
@@ -251,9 +251,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
 
-	if (vmm_threads_get_state(wq->thread) != VMM_THREAD_STATE_RUNNING) {
-		vmm_threads_wakeup(wq->thread);
-	}
+	vmm_threads_wakeup(wq->thread);
 
 	return VMM_OK;
 }
