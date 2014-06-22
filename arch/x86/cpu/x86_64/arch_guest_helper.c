@@ -27,6 +27,7 @@
 #include <vmm_manager.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
+#include <vmm_macros.h>
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
@@ -142,6 +143,59 @@ int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 	}
 
 	return VMM_OK;
+}
+
+static void guest_cmos_init(struct vmm_guest *guest)
+{
+	int val;
+	struct x86_guest_priv *priv = x86_guest_priv(guest);
+	struct cmos_rtc_state *s = priv->rtc_cmos;
+
+	/* memory size */
+	/* base memory (first MiB) */
+	val = min((int)(priv->tot_ram_sz / 1024), 640);
+
+	s->rtc_cmos_write(s, RTC_REG_BASE_MEM_LO, val);
+	s->rtc_cmos_write(s, RTC_REG_BASE_MEM_HI, val >> 8);
+
+	/* extended memory (next 64MiB) */
+	if (priv->tot_ram_sz > 1024 * 1024) {
+		val = (priv->tot_ram_sz - 1024 * 1024) / 1024;
+	} else {
+		val = 0;
+	}
+	if (val > 65535)
+		val = 65535;
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_LO, val);
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_HI, val >> 8);
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_LO_COPY, val);
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_HI_COPY, val >> 8);
+
+	/* memory between 16MiB and 4GiB */
+	if (priv->tot_ram_sz > 16 * 1024 * 1024) {
+		val = (priv->tot_ram_sz - 16 * 1024 * 1024) / 65536;
+	} else {
+		val = 0;
+	}
+	if (val > 65535)
+		val = 65535;
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_64K_LO, val);
+	s->rtc_cmos_write(s, RTC_REG_EXT_MEM_64K_HI, val >> 8);
+
+	/* set the number of CPU */
+	s->rtc_cmos_write(s, RTC_REG_NR_PROCESSORS, 1);
+}
+
+void arch_guest_set_cmos (struct vmm_guest *guest, struct cmos_rtc_state *s)
+{
+	struct x86_guest_priv *priv = x86_guest_priv(guest);
+
+	vmm_printf("%s: x86 set cmos.\n", __func__);
+
+	if (priv)
+		priv->rtc_cmos = s;
+
+	guest_cmos_init(guest);
 }
 
 /*---------------------------------*

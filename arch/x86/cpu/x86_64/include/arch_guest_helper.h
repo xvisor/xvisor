@@ -24,6 +24,7 @@
 #define __ARCH_GUEST_HELPER_H_
 
 #include <cpu_vm.h>
+#include <emu/rtc/mc146818rtc.h>
 
 #define GUEST_HALT_SW_CODE	0x80
 
@@ -34,6 +35,7 @@
  */
 struct x86_guest_priv {
 	struct page_table *g_npt; /**< Guest's nested page table */
+	struct cmos_rtc_state *rtc_cmos;
 	u64 tot_ram_sz;
 };
 

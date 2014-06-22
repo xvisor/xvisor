@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Wed Mar 19 00:40:20 2014
+# Sun Jun  1 18:45:46 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -71,7 +71,7 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
-CONFIG_HEAP_BUDDY=y
+CONFIG_DMA_HEAP_SIZE_KB=512
 
 #
 # Scheduler Configuration
@@ -192,6 +192,7 @@ CONFIG_VFS_FAT=y
 #
 # CONFIG_ARM_VIC is not set
 # CONFIG_ARM_GIC is not set
+# CONFIG_VERSATILE_FPGA_IRQ is not set
 # CONFIG_MXC_AVIC is not set
 # CONFIG_BCM2835_INTC is not set
 # CONFIG_SUN4I_VIC is not set
@@ -305,6 +306,16 @@ CONFIG_IDE=y
 CONFIG_PIIX3_IDE=y
 
 #
+# GPIO Device Support
+#
+# CONFIG_GPIOLIB is not set
+
+#
+# Pin Controller
+#
+# CONFIG_PINCTRL is not set
+
+#
 # Device Emulators
 #
 
@@ -372,16 +383,14 @@ CONFIG_EMU_SERIAL_NS16550=y
 #
 # Real-Time Clock Emulators
 #
-# CONFIG_EMU_RTC is not set
+CONFIG_EMU_RTC=y
+# CONFIG_EMU_RTC_PL031 is not set
+CONFIG_EMU_RTC_MC146818=y
 
 #
 # GPIO Emulators
 #
 # CONFIG_EMU_GPIO is not set
-
-#
-# Bus Emulators
-#
 CONFIG_EMU_PCI=y
 
 #
