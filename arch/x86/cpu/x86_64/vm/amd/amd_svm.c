@@ -114,6 +114,9 @@ static void set_control_params (struct vcpu_hw_context *context)
 	vmcb->tsc_offset = 0;
 	vmcb->guest_asid = 1;
 
+	/* enable EFLAGS.IF virtualization */
+	vmcb->vintr.fields.intr_masking = 1;
+
 	vmcb->cr_intercepts |= (INTRCPT_WRITE_CR3  | INTRCPT_READ_CR3 |
 				INTRCPT_WRITE_CR0  | INTRCPT_READ_CR0 |
 				INTRCPT_WRITE_CR2  | INTRCPT_READ_CR2 |

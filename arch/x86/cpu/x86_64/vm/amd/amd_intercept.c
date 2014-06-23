@@ -508,6 +508,7 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 	case VMEXIT_SHUTDOWN: __handle_triple_fault(context); break;
 	case VMEXIT_CPUID: __handle_cpuid(context); break;
 	case VMEXIT_IOIO: __handle_ioio(context); break;
+	case VMEXIT_INTR: break; /* silently */
 	default:
 		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: %x\n",
 		       (u32)context->vmcb->exitcode);
