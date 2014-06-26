@@ -204,6 +204,12 @@ struct vmm_vcpu {
 	void *devemu_priv;
 };
 
+/** Acquire manager lock */
+void vmm_manager_lock(void);
+
+/** Release manager lock */
+void vmm_manager_unlock(void);
+
 /** Maximum number of VCPUs */
 u32 vmm_manager_max_vcpu_count(void);
 
@@ -215,7 +221,7 @@ u32 vmm_manager_vcpu_count(void);
  */
 struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 
-/** Iterate over each VCPU */
+/** Iterate over each VCPU with manager lock held */
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 			     void *priv);
 
