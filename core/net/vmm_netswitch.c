@@ -667,9 +667,9 @@ int __init vmm_netswitch_init(void)
 		return rc;
 	}
 
-	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
-			      vmm_netswitch_percpu_init,
-			      NULL, NULL, NULL);
+	vmm_smp_ipi_async_call(cpu_online_mask,
+			       vmm_netswitch_percpu_init,
+			       NULL, NULL, NULL);
 
 	return VMM_OK;
 }
