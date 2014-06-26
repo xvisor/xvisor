@@ -273,6 +273,11 @@ int vmm_timer_event_stop(struct vmm_timer_event *ev)
 	return VMM_OK;
 }
 
+bool vmm_timer_started(void)
+{
+	return this_cpu(tlc).started;
+}
+
 void vmm_timer_start(void)
 {
 	u64 tstamp;

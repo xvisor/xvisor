@@ -92,10 +92,13 @@ u64 vmm_timer_timestamp(void);
 u64 vmm_timer_timestamp_for_profile(void);
 #endif
 
-/** Start all timer events */
+/** Check if timer subsystem is running on current host CPU */
+bool vmm_timer_started(void);
+
+/** Start timer subsystem on current host CPU */
 void vmm_timer_start(void);
 
-/** Stop all timer events */
+/** Stop timer subsystem on current host CPU */
 void vmm_timer_stop(void);
 
 /** Initialize timer subsystem */
