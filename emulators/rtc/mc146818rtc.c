@@ -334,7 +334,7 @@ static void rtc_update_timer(struct vmm_timer_event *ev)
 	s32 new_irqs;
 
 
-	CMOS_LOG(LVL_ERR, "%s: enter\n", __func__);
+	CMOS_LOG(LVL_VERBOSE, "%s: enter\n", __func__);
 
 	if ((s->cmos_data[RTC_REG_A] & 0x60) == 0x60)
 		vmm_panic("%s: Invalid DIV state in register A\n", __func__);
@@ -778,7 +778,7 @@ static int mc146818_emulator_probe(struct vmm_guest *guest, struct vmm_emudev *e
 	int rc;
 	cmos_rtc_state_t *s = vmm_zalloc(sizeof(cmos_rtc_state_t));
 
-	CMOS_LOG(LVL_ERR, "Probing MC146818 RTC Emulator.\n");
+	CMOS_LOG(LVL_VERBOSE, "Probing MC146818 RTC Emulator.\n");
 
 	if (!s)
 		goto _error;
