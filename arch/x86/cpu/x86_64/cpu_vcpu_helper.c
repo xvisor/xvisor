@@ -225,6 +225,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			if (!vcpu->arch_priv)
 				return VMM_EFAIL;
 
+			INIT_SPIN_LOCK(&x86_vcpu_priv(vcpu)->lock);
+
 			init_cpu_capabilities(cpuid, vcpu);
 
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));

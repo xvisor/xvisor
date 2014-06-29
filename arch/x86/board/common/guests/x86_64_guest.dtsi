@@ -70,6 +70,30 @@
 					physical_size = <2>;
 					interrupts = <8>;
 				};
+
+				i8259@0 {
+					device_type = "pic";
+					compatible = "i8259a";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x20>;
+					physical_size = <2>;
+					base_irq = <0>;
+					num_irq = <8>;
+				};
+
+				i8259@1 {
+					device_type = "pic";
+					compatible = "i8259a";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0xa0>;
+					physical_size = <2>;
+					base_irq = <8>;
+					num_irq = <8>;
+					child_pic = <1>;
+					parent_irq = <2>;
+				};
 			};
 		};
 	};

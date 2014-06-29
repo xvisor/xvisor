@@ -24,6 +24,7 @@
 #include <arch_cpu.h>
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
+#include <cpu_vm.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {
@@ -36,9 +37,19 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 	return 1;
 }
 
-/* FIXME: */
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
+	struct x86_vcpu_priv *vcpu_priv = NULL;
+	irq_flags_t flags;
+
+	if (irq_no > CPU_INT1) return VMM_ENOENT;
+
+	vcpu_priv = x86_vcpu_priv(vcpu);
+
+	vmm_spin_lock_irqsave_lite(&vcpu_priv->lock, flags);
+	x86_vcpu_priv(vcpu)->int_pending[irq_no] = 1;
+	vmm_spin_unlock_irqrestore_lite(&vcpu_priv->lock, flags);
+
 	return VMM_OK;
 }
 
@@ -50,9 +61,19 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	return VMM_OK;
 }
 
-/* FIXME: */
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
+	struct x86_vcpu_priv *vcpu_priv = NULL;
+	irq_flags_t flags;
+
+	if (irq_no > CPU_INT1) return VMM_ENOENT;
+
+	vcpu_priv = x86_vcpu_priv(vcpu);
+
+	vmm_spin_lock_irqsave_lite(&vcpu_priv->lock, flags);
+	x86_vcpu_priv(vcpu)->int_pending[irq_no] = 0;
+	vmm_spin_unlock_irqrestore_lite(&vcpu_priv->lock, flags);
+
 	return VMM_OK;
 }
 

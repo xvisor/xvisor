@@ -152,10 +152,12 @@ struct cpuid_response {
  * Contains MSR, related vm control block, etc.
  */
 struct x86_vcpu_priv {
+	vmm_spinlock_t lock;
 	u64 capabilities;
 	struct cpuid_response extended_funcs[CPUID_EXTENDED_FUNC_LIMIT-CPUID_EXTENDED_BASE];
 	struct cpuid_response standard_funcs[CPUID_BASE_FUNC_LIMIT];
 	struct vcpu_hw_context *hw_context;
+	int int_pending[2];
 };
 
 #define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))

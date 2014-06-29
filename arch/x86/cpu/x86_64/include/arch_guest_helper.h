@@ -25,6 +25,7 @@
 
 #include <cpu_vm.h>
 #include <emu/rtc/mc146818rtc.h>
+#include <emu/i8259.h>
 
 #define GUEST_HALT_SW_CODE	0x80
 
@@ -34,8 +35,14 @@
  * specific guest.
  */
 struct x86_guest_priv {
+	/**< List of all PICs associated with guest. Guest code is not directly
+	 * know about any of the fields. PIC emulator will set this and query
+	 * when required.
+	 */
+	void *pic_list;
 	struct page_table *g_npt; /**< Guest's nested page table */
 	struct cmos_rtc_state *rtc_cmos;
+	struct i8259_state *master_pic;
 	u64 tot_ram_sz;
 };
 

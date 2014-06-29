@@ -190,12 +190,25 @@ void arch_guest_set_cmos (struct vmm_guest *guest, struct cmos_rtc_state *s)
 {
 	struct x86_guest_priv *priv = x86_guest_priv(guest);
 
-	vmm_printf("%s: x86 set cmos.\n", __func__);
-
 	if (priv)
 		priv->rtc_cmos = s;
 
 	guest_cmos_init(guest);
+}
+
+inline void *arch_get_guest_pic_list(struct vmm_guest *guest)
+{
+	return ((void *)x86_guest_priv(guest)->pic_list);
+}
+
+inline void arch_set_guest_pic_list(struct vmm_guest *guest, void *plist)
+{
+	x86_guest_priv(guest)->pic_list = plist;
+}
+
+void arch_set_guest_master_pic(struct vmm_guest *guest, struct i8259_state *pic)
+{
+	x86_guest_priv(guest)->master_pic = pic;
 }
 
 /*---------------------------------*
