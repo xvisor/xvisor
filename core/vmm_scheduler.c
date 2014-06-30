@@ -36,9 +36,10 @@
 #include <arch_vcpu.h>
 #include <libs/stringlib.h>
 
-#define IDLE_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
-#define IDLE_VCPU_PRIORITY 		VMM_VCPU_MIN_PRIORITY
-#define IDLE_VCPU_TIMESLICE 		(1000000000)
+#define IDLE_VCPU_STACK_SZ 	CONFIG_THREAD_STACK_SIZE
+#define IDLE_VCPU_PRIORITY 	VMM_VCPU_MIN_PRIORITY
+#define IDLE_VCPU_TIMESLICE 	(CONFIG_IDLE_TSLICE_SECS * 1000000000ULL)
+#define IDLE_SAMPLE_PERIOD	(CONFIG_IDLE_PERIOD_SECS * 1000000000ULL)
 
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
@@ -50,6 +51,11 @@ struct vmm_scheduler_ctrl {
 	arch_regs_t *irq_regs;
 	bool yield_on_irq_exit;
 	struct vmm_timer_event ev;
+	struct vmm_timer_event idle_sample_ev;
+	vmm_rwlock_t idle_sample_lock;
+	u64 idle_sample_ns;
+	u64 idle_sample_last_ns;
+	u64 idle_sample_period_ns;
 };
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
@@ -210,7 +216,7 @@ static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
 	}
 }
 
-static void vmm_scheduler_timer_event(struct vmm_timer_event *ev)
+static void scheduler_timer_event(struct vmm_timer_event *ev)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
@@ -515,6 +521,90 @@ bool vmm_scheduler_normal_context(void)
 	return ret;
 }
 
+static void scheduler_idle_sample_event(struct vmm_timer_event *ev)
+{
+	u64 running_ns, next_period;
+	irq_flags_t flags;
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	running_ns = 0;
+	vmm_manager_vcpu_stats(schedp->idle_vcpu,
+			       NULL, NULL, NULL,
+			       NULL, NULL, NULL,
+			       &running_ns, NULL, NULL);
+
+	vmm_write_lock_irqsave_lite(&schedp->idle_sample_lock, flags);
+	schedp->idle_sample_ns = running_ns - schedp->idle_sample_last_ns;
+	schedp->idle_sample_last_ns = running_ns;
+	next_period = schedp->idle_sample_period_ns;
+	vmm_write_unlock_irqrestore_lite(&schedp->idle_sample_lock, flags);
+
+	vmm_timer_event_start(&schedp->idle_sample_ev, next_period);
+}
+
+u64 vmm_scheduler_idle_time(u32 hcpu)
+{
+	u64 ret;
+	irq_flags_t flags;
+	struct vmm_scheduler_ctrl *schedp;
+
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		return 0;
+	}
+	if (!vmm_cpu_online(hcpu)) {
+		return 0;
+	}
+
+	schedp = &per_cpu(sched, hcpu);
+
+	vmm_read_lock_irqsave_lite(&schedp->idle_sample_lock, flags);
+	ret = schedp->idle_sample_ns;
+	vmm_read_unlock_irqrestore_lite(&schedp->idle_sample_lock, flags);
+
+	return ret;
+}
+
+u64 vmm_scheduler_idle_time_get_period(u32 hcpu)
+{
+	u64 ret;
+	irq_flags_t flags;
+	struct vmm_scheduler_ctrl *schedp;
+
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		return IDLE_SAMPLE_PERIOD;
+	}
+	if (!vmm_cpu_online(hcpu)) {
+		return IDLE_SAMPLE_PERIOD;
+	}
+
+	schedp = &per_cpu(sched, hcpu);
+
+	vmm_read_lock_irqsave_lite(&schedp->idle_sample_lock, flags);
+	ret = schedp->idle_sample_period_ns;
+	vmm_read_unlock_irqrestore_lite(&schedp->idle_sample_lock, flags);
+
+	return ret;
+}
+
+void vmm_scheduler_idle_time_set_period(u32 hcpu, u64 period)
+{
+	irq_flags_t flags;
+	struct vmm_scheduler_ctrl *schedp;
+
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		return;
+	}
+	if (!vmm_cpu_online(hcpu)) {
+		return;
+	}
+
+	schedp = &per_cpu(sched, hcpu);
+
+	vmm_write_lock_irqsave_lite(&schedp->idle_sample_lock, flags);
+	schedp->idle_sample_period_ns = period;
+	vmm_write_unlock_irqrestore_lite(&schedp->idle_sample_lock, flags);
+}
+
 struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu)
 {
 	if (CONFIG_CPU_COUNT <= hcpu) {
@@ -613,8 +703,16 @@ int __cpuinit vmm_scheduler_init(void)
 	/* Initialize yield on exit (Per Host CPU) */
 	schedp->yield_on_irq_exit = FALSE;
 
-	/* Create timer event and start it. (Per Host CPU) */
-	INIT_TIMER_EVENT(&schedp->ev, &vmm_scheduler_timer_event, schedp);
+	/* Initialize timer events (Per Host CPU) */
+	INIT_TIMER_EVENT(&schedp->ev, &scheduler_timer_event, schedp);
+	INIT_TIMER_EVENT(&schedp->idle_sample_ev,
+				&scheduler_idle_sample_event, schedp);
+
+	/* Initialize idle time sampling info (Per Host CPU) */
+	INIT_RW_LOCK(&schedp->idle_sample_lock);
+	schedp->idle_sample_ns = 0;
+	schedp->idle_sample_last_ns = 0;
+	schedp->idle_sample_period_ns = IDLE_SAMPLE_PERIOD;
 
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
 	vmm_snprintf(vcpu_name, sizeof(vcpu_name), "idle/%d", cpu);
@@ -638,8 +736,9 @@ int __cpuinit vmm_scheduler_init(void)
 		return rc;
 	}
 
-	/* Start scheduler timer event */
+	/* Start timer events */
 	vmm_timer_event_start(&schedp->ev, 0);
+	vmm_timer_event_start(&schedp->idle_sample_ev, IDLE_SAMPLE_PERIOD);
 
 	/* Mark this CPU online */
 	vmm_set_cpu_online(cpu, TRUE);

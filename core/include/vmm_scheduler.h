@@ -59,6 +59,15 @@ bool vmm_scheduler_orphan_context(void);
 /** Check whether we are in Normal VCPU context */
 bool vmm_scheduler_normal_context(void);
 
+/** Last sampled idle time in nanosecs for given host CPU */
+u64 vmm_scheduler_idle_time(u32 hcpu);
+
+/** Get idle time sampling period in nanosecs */
+u64 vmm_scheduler_idle_time_get_period(u32 hcpu);
+
+/** Set idle time sampling period in nanosecs */
+void vmm_scheduler_idle_time_set_period(u32 hcpu, u64 period);
+
 /** Retrive idle vcpu for given host CPU */
 struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu);
 
