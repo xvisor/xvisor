@@ -25,14 +25,14 @@
 #include <vmm_error.h>
 #include <vmm_timer.h>
 #include <vmm_manager.h>
+#include <vmm_threads.h>
 #include <vmm_mutex.h>
 #include <vmm_completion.h>
 #include <vmm_loadbal.h>
 
-#define LOADBAL_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
-#define LOADBAL_VCPU_PRIORITY 		VMM_VCPU_DEF_PRIORITY
-#define LOADBAL_VCPU_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
-#define LOADBAL_VCPU_PERIOD		(CONFIG_LOADBAL_PERIOD_SECS * \
+#define LOADBAL_PRIORITY 		VMM_VCPU_DEF_PRIORITY
+#define LOADBAL_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
+#define LOADBAL_PERIOD			(CONFIG_LOADBAL_PERIOD_SECS * \
 					 1000000000ULL)
 
 struct vmm_loadbal_ctrl {
@@ -41,7 +41,7 @@ struct vmm_loadbal_ctrl {
 	struct vmm_mutex algo_list_lock;
 	struct dlist algo_list;
 	struct vmm_completion loadbal_cmpl;
-	struct vmm_vcpu *loadbal_vcpu;
+	struct vmm_thread *loadbal_thread;
 };
 
 static bool lbctrl_init_done = FALSE;
@@ -68,12 +68,12 @@ u32 vmm_loadbal_good_hcpu(void)
 	return ret;
 }
 
-static void loadbal_main(void)
+static int loadbal_main(void *data)
 {
 	u64 tstamp;
 
 	while (1) {
-		tstamp = LOADBAL_VCPU_PERIOD;
+		tstamp = LOADBAL_PERIOD;
 		vmm_completion_wait_timeout(&lbctrl.loadbal_cmpl, &tstamp);
 
 		vmm_mutex_lock(&lbctrl.curr_algo_lock);
@@ -84,6 +84,8 @@ static void loadbal_main(void)
 
 		vmm_mutex_unlock(&lbctrl.curr_algo_lock);
 	}
+
+	return VMM_OK;
 }
 
 struct vmm_loadbal_algo *vmm_loadbal_current_algo(void)
@@ -245,27 +247,26 @@ int __init vmm_loadbal_init(void)
 	INIT_MUTEX(&lbctrl.algo_list_lock);
 	INIT_LIST_HEAD(&lbctrl.algo_list);
 
-	/* Initalize loadbal completion */
+	/* Initialize loadbal completion */
 	INIT_COMPLETION(&lbctrl.loadbal_cmpl);
 
-	/* Create loadbal orphan vcpu with default time slice */
-	lbctrl.loadbal_vcpu = vmm_manager_vcpu_orphan_create("loadbal",
-						(virtual_addr_t)&loadbal_main,
-						LOADBAL_VCPU_STACK_SZ,
-						LOADBAL_VCPU_PRIORITY, 
-						LOADBAL_VCPU_TIMESLICE);
-	if (!lbctrl.loadbal_vcpu) {
+	/* Create loadbal thread with default time slice */
+	lbctrl.loadbal_thread = vmm_threads_create("loadbal",
+						   loadbal_main, NULL,
+						   LOADBAL_PRIORITY,
+						   LOADBAL_TIMESLICE);
+	if (!lbctrl.loadbal_thread) {
 		return VMM_EFAIL;
 	}
 
-	/* The loadbal vcpu need to stay on this cpu */
-	if ((rc = vmm_manager_vcpu_set_affinity(lbctrl.loadbal_vcpu,
+	/* Set loadbal thread affinity to this cpu */
+	if ((rc = vmm_threads_set_affinity(lbctrl.loadbal_thread,
 				vmm_cpumask_of(vmm_smp_processor_id())))) {
 		return rc;
 	}
 
-	/* Kick loadbal orphan vcpu */
-	if ((rc = vmm_manager_vcpu_kick(lbctrl.loadbal_vcpu))) {
+	/* Start loadbal thread */
+	if ((rc = vmm_threads_start(lbctrl.loadbal_thread))) {
 		return rc;
 	}
 
