@@ -36,7 +36,7 @@ struct vmm_loadbal_algo {
 	u32 rating;
 	char name[VMM_FIELD_NAME_SIZE];
 	void (*start) (struct vmm_loadbal_algo *);
-	u32  (*good_hcpu) (struct vmm_loadbal_algo *);
+	u32  (*good_hcpu) (struct vmm_loadbal_algo *, u8 priority);
 	void (*balance) (struct vmm_loadbal_algo *);
 	void (*stop) (struct vmm_loadbal_algo *);
 	void *priv;
@@ -46,9 +46,9 @@ struct vmm_loadbal_algo {
  *  Note: This function must be called from Orphan (or Thread) Context
  */
 #ifdef CONFIG_SMP
-u32 vmm_loadbal_good_hcpu(void);
+u32 vmm_loadbal_good_hcpu(u8 priority);
 #else
-#define vmm_loadbal_good_hcpu()		vmm_smp_processor_id()
+#define vmm_loadbal_good_hcpu(priority)		vmm_smp_processor_id()
 #endif
 
 /** Current (or best rated) load balancing algo instance

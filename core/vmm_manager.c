@@ -471,6 +471,9 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	if (VMM_VCPU_MAX_PRIORITY < priority) {
 		priority = VMM_VCPU_MAX_PRIORITY;
 	}
+	if (priority < VMM_VCPU_MIN_PRIORITY) {
+		priority = VMM_VCPU_MIN_PRIORITY;
+	}
 
 	/* Acquire manager lock */
 	/* NOTE: We only touch manager lock if timer subsystem
@@ -528,7 +531,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Intialize scheduling context */
 	INIT_RW_LOCK(&vcpu->sched_lock);
-	vcpu->hcpu = vmm_loadbal_good_hcpu();
+	vcpu->hcpu = vmm_loadbal_good_hcpu(priority);
 	vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
 	vcpu->state_tstamp = vmm_timer_timestamp();
 	vcpu->state_ready_nsecs = 0;
@@ -1202,8 +1205,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 		/* Initialize scheduling context */
 		INIT_RW_LOCK(&vcpu->sched_lock);
-		vcpu->hcpu = vmm_loadbal_good_hcpu();
-		vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
 		vcpu->state_tstamp = vmm_timer_timestamp();
 		vcpu->state_ready_nsecs = 0;
 		vcpu->state_running_nsecs = 0;
@@ -1221,10 +1222,15 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
 			vcpu->priority = VMM_VCPU_MAX_PRIORITY;
 		}
+		if (vcpu->priority < VMM_VCPU_MIN_PRIORITY) {
+			vcpu->priority = VMM_VCPU_MIN_PRIORITY;
+		}
 		if (vmm_devtree_read_u64(vnode,
 			VMM_DEVTREE_TIME_SLICE_ATTR_NAME, &vcpu->time_slice)) {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
+		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
+		vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
 		vcpu->sched_priv = NULL;
 
 		/* Initialize architecture specific context */
