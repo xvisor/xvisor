@@ -27,6 +27,7 @@
 
 #include <vmm_limits.h>
 #include <vmm_types.h>
+#include <vmm_smp.h>
 #include <libs/list.h>
 
 /** Load balancing algo instance */
@@ -35,12 +36,22 @@ struct vmm_loadbal_algo {
 	u32 rating;
 	char name[VMM_FIELD_NAME_SIZE];
 	void (*start) (struct vmm_loadbal_algo *);
+	u32  (*good_hcpu) (struct vmm_loadbal_algo *);
 	void (*balance) (struct vmm_loadbal_algo *);
 	void (*stop) (struct vmm_loadbal_algo *);
 	void *priv;
 };
 
-/* Current (or best rated) load balancing algo instance
+/** Good host CPU for a new VCPU
+ *  Note: This function must be called from Orphan (or Thread) Context
+ */
+#ifdef CONFIG_SMP
+u32 vmm_loadbal_good_hcpu(void);
+#else
+#define vmm_loadbal_good_hcpu()		vmm_smp_processor_id()
+#endif
+
+/** Current (or best rated) load balancing algo instance
  *  Note: This function must be called from Orphan (or Thread) Context
  */
 struct vmm_loadbal_algo *vmm_loadbal_current_algo(void);

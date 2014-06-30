@@ -23,7 +23,7 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_smp.h>
+#include <vmm_timer.h>
 #include <vmm_manager.h>
 #include <vmm_mutex.h>
 #include <vmm_completion.h>
@@ -44,7 +44,29 @@ struct vmm_loadbal_ctrl {
 	struct vmm_vcpu *loadbal_vcpu;
 };
 
+static bool lbctrl_init_done = FALSE;
 static struct vmm_loadbal_ctrl lbctrl;
+
+u32 vmm_loadbal_good_hcpu(void)
+{
+	u32 ret;
+
+	if (!lbctrl_init_done || !vmm_timer_started()) {
+		return vmm_smp_processor_id();
+	}
+
+	vmm_mutex_lock(&lbctrl.curr_algo_lock);
+
+	if (lbctrl.curr_algo && lbctrl.curr_algo->good_hcpu) {
+		ret = lbctrl.curr_algo->good_hcpu(lbctrl.curr_algo);
+	} else {
+		ret = vmm_smp_processor_id();
+	}
+
+	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
+
+	return ret;
+}
 
 static void loadbal_main(void)
 {
@@ -246,6 +268,9 @@ int __init vmm_loadbal_init(void)
 	if ((rc = vmm_manager_vcpu_kick(lbctrl.loadbal_vcpu))) {
 		return rc;
 	}
+
+	/* Mark loadbal initialization to be complete */
+	lbctrl_init_done = TRUE;
 
 	return VMM_OK;
 }
