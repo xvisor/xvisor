@@ -33,6 +33,7 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <vmm_delay.h>
+#include <vmm_scheduler.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <arch_board.h>
@@ -61,7 +62,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 
 static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 {
-	u32 c, khz;
+	u32 c, khz, util;
 	char name[25];
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
@@ -69,11 +70,21 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Possible Count", vmm_num_possible_cpus());
 	vmm_cprintf(cdev, "%-25s: %u\n", "CPU Online Count", vmm_num_online_cpus());
 	for_each_online_cpu(c) {
-		khz = vmm_delay_estimate_cpu_khz(c);
+		vmm_cprintf(cdev, "\n");
 		vmm_sprintf(name, "CPU%d Speed", c);
-		vmm_cprintf(cdev, "%-25s: %d.%d MHz (Estimated)\n", name,
-			udiv32(khz, 1000), umod32(khz, 1000));
+		khz = vmm_delay_estimate_cpu_khz(c);
+		vmm_cprintf(cdev, "%-25s: %d.%03d MHz (Estimated)\n",
+			    name, udiv32(khz, 1000), umod32(khz, 1000));
+		vmm_sprintf(name, "CPU%d Utilization", c);
+		util = udiv64(vmm_scheduler_idle_time(c) * 1000,
+			      vmm_scheduler_idle_time_get_period(c));
+		util = (util > 1000) ? 1000 : util;
+		util = 1000 - util;
+		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
+			    name, udiv32(util, 10), umod32(util, 10));
 	}
+
+	vmm_cprintf(cdev, "\n");
 
 	arch_cpu_print_info(cdev);
 }
