@@ -121,6 +121,7 @@ static struct vmm_loadbal_algo *__loadbal_best_algo(void)
 
 int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 {
+	int rc = VMM_OK;
 	bool found;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
@@ -155,15 +156,14 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Update current algo */
 	vmm_mutex_lock(&lbctrl.curr_algo_lock);
 	if (best_algo && lbctrl.curr_algo != best_algo) {
-		if (lbctrl.curr_algo) {
-			if (lbctrl.curr_algo->stop) {
+		if (best_algo->start) {
+			rc = best_algo->start(best_algo);
+		}
+		if (rc == VMM_OK) {
+			if (lbctrl.curr_algo && lbctrl.curr_algo->stop) {
 				lbctrl.curr_algo->stop(lbctrl.curr_algo);
 			}
-			lbctrl.curr_algo = NULL;
-		}
-		lbctrl.curr_algo = best_algo;
-		if (lbctrl.curr_algo->start) {
-			lbctrl.curr_algo->start(lbctrl.curr_algo);
+			lbctrl.curr_algo = best_algo;
 		}
 	}
 	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
@@ -171,11 +171,12 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Unlock algo list */
 	vmm_mutex_unlock(&lbctrl.algo_list_lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 {
+	int rc = VMM_OK;
 	bool found;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
@@ -219,15 +220,14 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Update current algo */
 	vmm_mutex_lock(&lbctrl.curr_algo_lock);
 	if (best_algo && lbctrl.curr_algo != best_algo) {
-		if (lbctrl.curr_algo) {
-			if (lbctrl.curr_algo->stop) {
+		if (best_algo->start) {
+			rc = best_algo->start(best_algo);
+		}
+		if (rc == VMM_OK) {
+			if (lbctrl.curr_algo && lbctrl.curr_algo->stop) {
 				lbctrl.curr_algo->stop(lbctrl.curr_algo);
 			}
-			lbctrl.curr_algo = NULL;
-		}
-		lbctrl.curr_algo = best_algo;
-		if (lbctrl.curr_algo->start) {
-			lbctrl.curr_algo->start(lbctrl.curr_algo);
+			lbctrl.curr_algo = best_algo;
 		}
 	}
 	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
@@ -235,7 +235,7 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Unlock algo list */
 	vmm_mutex_unlock(&lbctrl.algo_list_lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int __init vmm_loadbal_init(void)

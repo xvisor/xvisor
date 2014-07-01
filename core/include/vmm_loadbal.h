@@ -35,12 +35,25 @@ struct vmm_loadbal_algo {
 	struct dlist head;
 	u32 rating;
 	char name[VMM_FIELD_NAME_SIZE];
-	void (*start) (struct vmm_loadbal_algo *);
+	int  (*start) (struct vmm_loadbal_algo *);
 	u32  (*good_hcpu) (struct vmm_loadbal_algo *, u8 priority);
 	void (*balance) (struct vmm_loadbal_algo *);
 	void (*stop) (struct vmm_loadbal_algo *);
 	void *priv;
 };
+
+static inline void vmm_loadbal_set_algo_priv(struct vmm_loadbal_algo *lbalgo,
+					     void *priv)
+{
+	if (lbalgo) {
+		lbalgo->priv = priv;
+	}
+}
+
+static inline void *vmm_loadbal_get_algo_priv(struct vmm_loadbal_algo *lbalgo)
+{
+	return (lbalgo) ? lbalgo->priv : NULL;
+}
 
 /** Good host CPU for a new VCPU
  *  Note: This function must be called from Orphan (or Thread) Context
