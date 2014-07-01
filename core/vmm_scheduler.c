@@ -542,16 +542,26 @@ static void scheduler_idle_sample_event(struct vmm_timer_event *ev)
 	vmm_timer_event_start(&schedp->idle_sample_ev, next_period);
 }
 
+u32 vmm_scheduler_ready_count(u32 hcpu, u8 priority)
+{
+	if ((CONFIG_CPU_COUNT <= hcpu) ||
+	    !vmm_cpu_online(hcpu) ||
+	    (priority < VMM_VCPU_MIN_PRIORITY) ||
+	    (VMM_VCPU_MAX_PRIORITY < priority)) {
+		return 0;
+	}
+
+	return rq_length(&per_cpu(sched, hcpu), priority);
+}
+
 u64 vmm_scheduler_idle_time(u32 hcpu)
 {
 	u64 ret;
 	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp;
 
-	if (CONFIG_CPU_COUNT <= hcpu) {
-		return 0;
-	}
-	if (!vmm_cpu_online(hcpu)) {
+	if ((CONFIG_CPU_COUNT <= hcpu) ||
+	    !vmm_cpu_online(hcpu)) {
 		return 0;
 	}
 
@@ -570,10 +580,8 @@ u64 vmm_scheduler_idle_time_get_period(u32 hcpu)
 	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp;
 
-	if (CONFIG_CPU_COUNT <= hcpu) {
-		return IDLE_SAMPLE_PERIOD;
-	}
-	if (!vmm_cpu_online(hcpu)) {
+	if ((CONFIG_CPU_COUNT <= hcpu) ||
+	    !vmm_cpu_online(hcpu)) {
 		return IDLE_SAMPLE_PERIOD;
 	}
 
@@ -591,10 +599,8 @@ void vmm_scheduler_idle_time_set_period(u32 hcpu, u64 period)
 	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp;
 
-	if (CONFIG_CPU_COUNT <= hcpu) {
-		return;
-	}
-	if (!vmm_cpu_online(hcpu)) {
+	if ((CONFIG_CPU_COUNT <= hcpu) ||
+	    !vmm_cpu_online(hcpu)) {
 		return;
 	}
 
@@ -607,10 +613,8 @@ void vmm_scheduler_idle_time_set_period(u32 hcpu, u64 period)
 
 struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu)
 {
-	if (CONFIG_CPU_COUNT <= hcpu) {
-		return NULL;
-	}
-	if (!vmm_cpu_online(hcpu)) {
+	if ((CONFIG_CPU_COUNT <= hcpu) ||
+	    !vmm_cpu_online(hcpu)) {
 		return NULL;
 	}
 
@@ -725,6 +729,9 @@ int __cpuinit vmm_scheduler_init(void)
 		return VMM_EFAIL;
 	}
 
+	/* Mark this CPU online (must be done before setting affinity) */
+	vmm_set_cpu_online(cpu, TRUE);
+
 	/* The idle vcpu need to stay on this cpu */
 	if ((rc = vmm_manager_vcpu_set_affinity(schedp->idle_vcpu,
 						vmm_cpumask_of(cpu)))) {
@@ -739,9 +746,6 @@ int __cpuinit vmm_scheduler_init(void)
 	/* Start timer events */
 	vmm_timer_event_start(&schedp->ev, 0);
 	vmm_timer_event_start(&schedp->idle_sample_ev, IDLE_SAMPLE_PERIOD);
-
-	/* Mark this CPU online */
-	vmm_set_cpu_online(cpu, TRUE);
 
 	return VMM_OK;
 }

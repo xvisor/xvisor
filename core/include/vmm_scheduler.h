@@ -59,6 +59,9 @@ bool vmm_scheduler_orphan_context(void);
 /** Check whether we are in Normal VCPU context */
 bool vmm_scheduler_normal_context(void);
 
+/** Count number ready VCPUs with given priority on a host CPU */
+u32 vmm_scheduler_ready_count(u32 hcpu, u8 priority);
+
 /** Last sampled idle time in nanosecs for given host CPU */
 u64 vmm_scheduler_idle_time(u32 hcpu);
 
