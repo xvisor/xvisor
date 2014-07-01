@@ -431,7 +431,9 @@ const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu)
 int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
 				  const struct vmm_cpumask *cpu_mask)
 {
+	int rc;
 	irq_flags_t flags;
+	struct vmm_cpumask and_mask;
 
 	if (!vcpu || !cpu_mask) {
 		return VMM_EFAIL;
@@ -440,10 +442,22 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 	/* Lock load balancing */
 	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
 
-	/* Match new affinity with current hcpu */
-	if (!vmm_cpumask_test_cpu(vcpu->hcpu, cpu_mask)) {
+	/* New affinity must overlap current affinity */
+	vmm_cpumask_and(&and_mask, vcpu->cpu_affinity, cpu_mask);
+	if (!vmm_cpumask_weight(&and_mask)) {
 		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 		return VMM_EINVALID;
+	}
+
+	/* Make sure current hcpu is set in both current and new affinity */
+	if (!vmm_cpumask_test_cpu(vcpu->hcpu, &and_mask)) {
+		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+		rc = vmm_manager_vcpu_set_hcpu(vcpu,
+					vmm_cpumask_first(&and_mask));
+		if (rc) {
+			return rc;
+		}
+		vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
 	}
 
 	/* Update affinity */
@@ -532,7 +546,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	/* Intialize scheduling context */
 	INIT_RW_LOCK(&vcpu->sched_lock);
 	vcpu->hcpu = vmm_loadbal_good_hcpu(priority);
-	vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
+	vcpu->cpu_affinity = cpu_online_mask;
 	vcpu->state_tstamp = vmm_timer_timestamp();
 	vcpu->state_ready_nsecs = 0;
 	vcpu->state_running_nsecs = 0;
@@ -563,9 +577,6 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					VMM_VCPU_STATE_RESET)) {
 		goto fail_vcpu_deinit;
 	}
-
-	/* Update VCPU affinity */
-	vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 
 	return vcpu;
 
@@ -1230,7 +1241,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
 		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
-		vcpu->cpu_affinity = vmm_cpumask_of(vcpu->hcpu);
+		vcpu->cpu_affinity = cpu_online_mask;
 		vcpu->sched_priv = NULL;
 
 		/* Initialize architecture specific context */
@@ -1340,8 +1351,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 			/* Set the affinity mask */
 			vmm_manager_vcpu_set_affinity(vcpu, affinity_mask);
-		} else {
-			vmm_manager_vcpu_set_affinity(vcpu, cpu_online_mask);
 		}
 
 		/* Get poweroff flag from device tree */
