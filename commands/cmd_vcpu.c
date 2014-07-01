@@ -68,11 +68,9 @@ struct vcpu_list_priv {
 
 static int vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 {
+	u32 hcpu, afflen;
 	char state[10];
-	char path[256];
-#ifdef CONFIG_SMP
-	u32 hcpu;
-#endif
+	const struct vmm_cpumask *aff;
 	struct vcpu_list_priv *p = priv;
 	struct vmm_chardev *cdev = p->cdev;
 
@@ -110,12 +108,17 @@ static int vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 	vmm_cprintf(cdev, " %-6d", hcpu);
 #endif
 	vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
-	if (vcpu->node) {
-		vmm_devtree_getpath(path, vcpu->node);
-		vmm_cprintf(cdev, " %-34s\n", path); 
-	} else {
-		vmm_cprintf(cdev, " %-34s\n", "(NA)"); 
+	vmm_cprintf(cdev, " %s", "{");
+	aff = vmm_manager_vcpu_get_affinity(vcpu);
+	afflen = 0;
+	for_each_cpu(hcpu, aff) {
+		if (afflen) {
+			vmm_cprintf(cdev, ",");
+		}
+		vmm_cprintf(cdev, "%d", hcpu);
+		afflen++;
 	}
+	vmm_cprintf(cdev, "%s\n", "}");
 
 	return VMM_OK;
 }
@@ -136,7 +139,7 @@ static int vcpu_list(struct vmm_chardev *cdev, bool normal, bool orphan)
 	vmm_cprintf(cdev, " %-6s", "CPU ");
 #endif
 	vmm_cprintf(cdev, " %-7s %-10s %-17s %-34s\n", 
-		    "Prio", "State", "Name", "Device Path");
+		    "Prio", "State", "Name", "Affinity");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
 
