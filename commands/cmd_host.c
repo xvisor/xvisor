@@ -62,7 +62,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 
 static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 {
-	u32 c, khz, util;
+	u32 c, p, khz, util;
 	char name[25];
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
@@ -82,6 +82,12 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 		util = 1000 - util;
 		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
 			    name, udiv32(util, 10), umod32(util, 10));
+		vmm_sprintf(name, "CPU%d Active VCPUs", c);
+		util = 1;
+		for (p = VMM_VCPU_MIN_PRIORITY; p <= VMM_VCPU_MAX_PRIORITY; p++) {
+			util += vmm_scheduler_ready_count(c, p);
+		}
+		vmm_cprintf(cdev, "%-25s: %d\n", name, util);
 	}
 
 	vmm_cprintf(cdev, "\n");
