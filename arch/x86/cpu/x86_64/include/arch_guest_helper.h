@@ -28,6 +28,8 @@
 #include <emu/i8259.h>
 
 #define GUEST_HALT_SW_CODE	0x80
+/* When CPU exited from VM mode for VMM to handle */
+#define GUEST_VM_EXIT_SW_CODE	0x81
 
 /*! \brief x86 Guest private information
  *
@@ -56,5 +58,6 @@ extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t v
 extern int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 				 size_t size);
 extern void arch_guest_halt(struct vmm_guest *guest);
+extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
 
 #endif /* __ARCH_GUEST_HELPER_H_ */

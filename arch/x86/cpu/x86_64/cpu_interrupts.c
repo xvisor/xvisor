@@ -276,11 +276,18 @@ int do_gpf(int intno, arch_regs_t *regs)
 int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
 	struct vmm_guest *guest;
+	struct vcpu_hw_context *context = NULL;
 
 	if (intno == 0x80) {
 		if (regs->rdi == GUEST_HALT_SW_CODE) {
 			guest = (struct vmm_guest *)regs->rsi;
 			vmm_manager_guest_halt(guest);
+		} else if (regs->rdi == GUEST_VM_EXIT_SW_CODE) {
+			context = (struct vcpu_hw_context *)regs->rsi;
+
+			vmm_scheduler_irq_enter(regs, TRUE);
+			context->vcpu_exit(context);
+			vmm_scheduler_irq_exit(regs);
 		} else {
 			vmm_scheduler_preempt_orphan(regs);
 		}

@@ -408,6 +408,8 @@ static void svm_run(struct vcpu_hw_context *context)
 	reload_host_tss();
 
 	stgi();
+
+	arch_guest_handle_vm_exit(context);
 }
 
 static int enable_svme(void)

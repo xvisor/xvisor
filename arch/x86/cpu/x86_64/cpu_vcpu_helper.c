@@ -351,5 +351,5 @@ static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
 {
 	dump_guest_vcpu_state(context);
-	arch_guest_halt(context->assoc_vcpu->guest);
+	vmm_manager_guest_halt(context->assoc_vcpu->guest);
 }

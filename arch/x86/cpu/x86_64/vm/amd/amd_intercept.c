@@ -116,8 +116,6 @@ void __handle_vm_npf (struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: nested page fault.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_vm_swint (struct vcpu_hw_context *context)
@@ -125,8 +123,6 @@ void __handle_vm_swint (struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: software interrupt.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_vm_exception (struct vcpu_hw_context *context)
@@ -175,8 +171,6 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
  guest_bad_fault:
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_vm_wrmsr (struct vcpu_hw_context *context)
@@ -184,8 +178,6 @@ void __handle_vm_wrmsr (struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: msr write.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_popf(struct vcpu_hw_context *context)
@@ -193,8 +185,6 @@ void __handle_popf(struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: popf.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_vm_vmmcall (struct vcpu_hw_context *context)
@@ -202,8 +192,6 @@ void __handle_vm_vmmcall (struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: vmmcall.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_vm_iret(struct vcpu_hw_context *context)
@@ -211,8 +199,6 @@ void __handle_vm_iret(struct vcpu_hw_context *context)
 	VM_LOG(LVL_INFO, "Unhandled Intercept: iret.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
-
-	vmm_hang();
 }
 
 void __handle_crN_read(struct vcpu_hw_context *context)
@@ -277,7 +263,6 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 	if (context->vcpu_emergency_shutdown){
 		context->vcpu_emergency_shutdown(context);
 	}
-	vmm_hang();
 }
 
 void __handle_crN_write(struct vcpu_hw_context *context)
@@ -367,7 +352,6 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 	if (context->vcpu_emergency_shutdown){
 		context->vcpu_emergency_shutdown(context);
 	}
-	vmm_hang();
 }
 
 void __handle_ioio(struct vcpu_hw_context *context)
@@ -415,7 +399,6 @@ void __handle_ioio(struct vcpu_hw_context *context)
 	if (context->vcpu_emergency_shutdown){
 		context->vcpu_emergency_shutdown(context);
 	}
-	vmm_hang();
 }
 
 void __handle_cpuid(struct vcpu_hw_context *context)
@@ -463,7 +446,6 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	if (context->vcpu_emergency_shutdown){
 		context->vcpu_emergency_shutdown(context);
 	}
-	vmm_hang();
 }
 
 /**

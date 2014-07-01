@@ -359,6 +359,24 @@ int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 }
 
 /**
+ * \brief Take exception to handle VM EXIT
+ *
+ * Xvisor by design handles VM EXIT as part of exception.
+ * It assumes that VM EXIT causes an exception. To fit
+ * in that world, we use the software interrupt method
+ * to induce a fake exception. Complete VM EXIT is
+ * handled while in that exception handler.
+ */
+void arch_guest_handle_vm_exit(struct vcpu_hw_context *context)
+{
+	__asm__ __volatile__("movq %0,  %%rdi\n"
+			     "movq %1,  %%rsi\n"
+			     "int $0x80\n"
+			     ::"ri"(GUEST_VM_EXIT_SW_CODE), "r"(context)
+			     :"rdi","rsi");
+}
+
+/**
  * \brief Initiate a guest halt.
  *
  * This function is to be used by the vCPU which is
