@@ -54,7 +54,8 @@ u32 vmm_loadbal_good_hcpu(u8 priority)
 	if (!lbctrl_init_done ||
 	    !vmm_timer_started() ||
 	    (VMM_VCPU_MAX_PRIORITY < priority) ||
-	    (priority < VMM_VCPU_MIN_PRIORITY)) {
+	    (priority < VMM_VCPU_MIN_PRIORITY) ||
+	    (vmm_cpumask_weight(cpu_online_mask) < 2)) {
 		return vmm_smp_processor_id();
 	}
 
@@ -78,6 +79,10 @@ static int loadbal_main(void *data)
 	while (1) {
 		tstamp = LOADBAL_PERIOD;
 		vmm_completion_wait_timeout(&lbctrl.loadbal_cmpl, &tstamp);
+
+		if (vmm_cpumask_weight(cpu_online_mask) < 2) {
+			continue;
+		}
 
 		vmm_mutex_lock(&lbctrl.curr_algo_lock);
 
