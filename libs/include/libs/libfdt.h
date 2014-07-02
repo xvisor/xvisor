@@ -89,6 +89,7 @@ struct fdt_fileinfo {
 	char *str;
 	size_t str_size;
 	char *mem_rsvmap;
+	u32 mem_rsvcnt;
 };
 
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
@@ -98,6 +99,12 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 			 struct vmm_devtree_node **root,
 			 const char *root_name,
 			 struct vmm_devtree_node *root_parent);
+
+u32 libfdt_reserve_count(struct fdt_fileinfo *fdt);
+
+int libfdt_reserve_address(struct fdt_fileinfo *fdt, u32 index, u64 *addr);
+
+int libfdt_reserve_size(struct fdt_fileinfo *fdt, u32 index, u64 *size);
 
 struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 					 const char *node_path);

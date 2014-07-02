@@ -112,6 +112,8 @@ static void libfdt_property_read(const char *prop, void *dst, void *src,
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
 			  struct fdt_fileinfo *fdt)
 {
+	struct fdt_reserve_entry *rsv;
+
 	/* Sanity check */
 	if (!fdt) {
 		return VMM_EFAIL;
@@ -145,6 +147,12 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 
 	/* Compute location of reserved memory map */
 	fdt->mem_rsvmap = (char *)fdt_addr + fdt->header.off_mem_rsvmap;
+	fdt->mem_rsvcnt = 0;
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	while (rsv && rsv->size) {
+		fdt->mem_rsvcnt++;
+		rsv++;
+	}
 
 	return VMM_OK;
 }
@@ -387,6 +395,49 @@ struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 	/* Find the FDT node recursively */
 	data = fdt->data;
 	return libfdt_find_node_recursive(&data, fdt->str, node_path);
+}
+
+u32 libfdt_reserve_count(struct fdt_fileinfo *fdt)
+{
+	if (!fdt) {
+		return 0;
+	}
+
+	return fdt->mem_rsvcnt;
+}
+
+int libfdt_reserve_address(struct fdt_fileinfo *fdt, u32 index, u64 *addr)
+{
+	struct fdt_reserve_entry *rsv;
+
+	if (!fdt || !fdt->mem_rsvmap || !addr) {
+		return VMM_EFAIL;
+	}
+	if (fdt->mem_rsvcnt <= index) {
+		return VMM_ENOTAVAIL;
+	}
+
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	*addr = LIBFDT_DATA64(&rsv[index].address);
+
+	return VMM_OK;
+}
+
+int libfdt_reserve_size(struct fdt_fileinfo *fdt, u32 index, u64 *size)
+{
+	struct fdt_reserve_entry *rsv;
+
+	if (!fdt || !fdt->mem_rsvmap || !size) {
+		return VMM_EFAIL;
+	}
+	if (fdt->mem_rsvcnt <= index) {
+		return VMM_ENOTAVAIL;
+	}
+
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	*size = LIBFDT_DATA64(&rsv[index].size);
+
+	return VMM_OK;
 }
 
 int libfdt_get_property(struct fdt_fileinfo *fdt, 
