@@ -80,6 +80,24 @@ int arch_devtree_ram_size(physical_size_t *size)
 	return VMM_OK;
 }
 
+int arch_devtree_reserve_count(u32 *count)
+{
+	*count = 0;
+	return VMM_OK;
+}
+
+int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
+{
+	*addr = 0x0;
+	return VMM_OK;
+}
+
+int arch_devtree_reserve_size(u32 index, physical_size_t *size)
+{
+	*size = 0x0;
+	return VMM_OK;
+}
+
 int arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;

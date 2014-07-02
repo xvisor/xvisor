@@ -275,6 +275,7 @@ u32 vmm_host_free_initmem(void)
 int __cpuinit vmm_host_aspace_init(void)
 {
 	int rc, cpu;
+	u32 resv, resv_count;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart;
@@ -402,6 +403,29 @@ int __cpuinit vmm_host_aspace_init(void)
 	if ((rc = vmm_host_ram_reserve(core_resv_pa, 
 				       core_resv_sz))) {
 		return rc;
+	}
+
+	/* Reserve portion of RAM as specified by
+	 * arch device tree functions.
+	 */
+	if ((rc = arch_devtree_reserve_count(&resv_count))) {
+		return rc;
+	}
+	for (resv = 0; resv < resv_count; resv++) {
+		if ((rc = arch_devtree_reserve_addr(resv, &ram_start))) {
+			return rc;
+		}
+		if ((rc = arch_devtree_reserve_size(resv, &ram_size))) {
+			return rc;
+		}
+		if (ram_start & VMM_PAGE_MASK) {
+			ram_size += ram_start & VMM_PAGE_MASK;
+			ram_start -= ram_start & VMM_PAGE_MASK;
+		}
+		ram_size = VMM_ROUNDUP2_PAGE_SIZE(ram_size);
+		if ((rc = vmm_host_ram_reserve(ram_start, ram_size))) {
+			return rc;
+		}
 	}
 
 	/* Setup temporary virtual address for physical read/write */

@@ -160,6 +160,63 @@ int arch_devtree_ram_size(physical_size_t *size)
 	return VMM_OK;
 }
 
+int arch_devtree_reserve_count(u32 *count)
+{
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	*count = libfdt_reserve_count(&fdt);
+
+	return VMM_OK;
+}
+
+int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
+{
+	u64 tmp;
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	rc = libfdt_reserve_address(&fdt, index, &tmp);
+	if (rc) {
+		return rc;
+	}
+
+	*addr = (physical_addr_t)tmp;
+
+	return VMM_OK;
+}
+
+int arch_devtree_reserve_size(u32 index, physical_size_t *size)
+{
+	u64 tmp;
+	int rc = VMM_OK;
+	struct fdt_fileinfo fdt;
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
+	if (rc) {
+		return rc;
+	}
+
+	rc = libfdt_reserve_size(&fdt, index, &tmp);
+	if (rc) {
+		return rc;
+	}
+
+	*size = (physical_size_t)tmp;
+
+	return VMM_OK;
+}
+
 int arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
