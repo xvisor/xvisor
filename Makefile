@@ -26,6 +26,11 @@ MAJOR = 0
 MINOR = 2
 RELEASE = 4
 
+# Select Make Options:
+# o  Do not use make's built-in rules and variables
+# o  Do not print "Entering directory ...";
+MAKEFLAGS += -rR --no-print-directory
+
 # Find out source & build directories
 src_dir=$(CURDIR)
 ifdef O
