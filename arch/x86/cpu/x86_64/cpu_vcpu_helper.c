@@ -295,17 +295,17 @@ void arch_vcpu_preempt_orphan(void)
 
 static void __dump_vcpu_regs(struct vmm_chardev *cdev, arch_regs_t *regs)
 {
-	vmm_cprintf(cdev, "rax: %lx rbx: %lx rcx: %lx rdx: %lx\n", 
+	vmm_cprintf(cdev, "RAX: 0x%08lx RBX: 0x%08lx RCX: 0x%08lx RDX: 0x%08lx\n", 
 		    regs->rax, regs->rbx, regs->rcx, regs->rdx);
-	vmm_cprintf(cdev, "rdi: %lx rsi: %lx rbp: %lx r8 : %lx\n",
+	vmm_cprintf(cdev, "RDI: 0x%08lx RSI: 0x%08lx RBP: 0x%08lx R08: 0x%08lx\n",
 		    regs->rdi, regs->rsi, regs->rbp, regs->r8);
-	vmm_cprintf(cdev, "r9 : %lx r10: %lx r11: %lx r12: %lx\n", 
+	vmm_cprintf(cdev, "R09: 0x%08lx R10: 0x%08lx R11: 0x%08lx R12: 0x%08lx\n", 
 		    regs->r9, regs->r10, regs->r11, regs->r12);
-	vmm_cprintf(cdev, "r13: %lx r14: %lx r15: %lx\n", 
-		    regs->r13, regs->r14, regs->r15);
-	vmm_cprintf(cdev, "rip: %lx rsp: %lx rflags: %lx hwec: %lx\n", 
-		    regs->rip, regs->rsp, regs->rflags, regs->hw_err_code);
-	vmm_cprintf(cdev, "ss: %lx cs: %lx\n", 
+	vmm_cprintf(cdev, "R13: 0x%08lx R14: 0x%08lx R15: 0x%08lx RIP: 0x%08lx\n", 
+		    regs->r13, regs->r14, regs->r15, regs->rip);
+	vmm_cprintf(cdev, "RSP: 0x%08lx RFLAGS: 0x%08lx HW-ERR: 0x%08lx\n", 
+		    regs->rsp, regs->rflags, regs->hw_err_code);
+	vmm_cprintf(cdev, "SS: 0x%08lx CS: 0x%08lx\n", 
 		    regs->ss, regs->cs);
 }
 
