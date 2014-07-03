@@ -239,7 +239,6 @@ int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_a
 			rva = (context->vmcb->cs.sel << 4) | vaddr;
 
 		*gpa = rva;
-		vmm_printf("gpa= %08lx\n", rva);
 		return VMM_OK;
 	}
 

@@ -362,14 +362,14 @@ static void rtc_update_timer(struct vmm_timer_event *ev)
 static int cmos_ioport_write(cmos_rtc_state_t *s, u32 addr,
                               u32 src_mask, u32 data)
 {
-	CMOS_LOG(LVL_INFO, "CMOS: write: Addr: 0x%x mask: 0x%x data: 0x%x\n",
+	CMOS_LOG(LVL_DEBUG, "CMOS: write: Addr: 0x%x mask: 0x%x data: 0x%x\n",
 		 addr, src_mask, data);
 
 	if ((addr & 1) == 0) {
 		s->cmos_index = data & 0x7f;
-		CMOS_LOG(LVL_INFO, "CMOS: Index: %d\n", s->cmos_index);
+		CMOS_LOG(LVL_DEBUG, "CMOS: Index: %d\n", s->cmos_index);
 	} else {
-		CMOS_LOG(LVL_INFO,"cmos: write index=0x%02x val=0x%02x\n",
+		CMOS_LOG(LVL_DEBUG,"cmos: write index=0x%02x val=0x%02x\n",
 			 s->cmos_index, data);
 		switch(s->cmos_index) {
 		case RTC_SECONDS_ALARM:
@@ -584,13 +584,13 @@ static u64 cmos_ioport_read(cmos_rtc_state_t *s, u32 addr,
 			    u32 *dst)
 {
 	int ret = VMM_OK;
-	CMOS_LOG(LVL_INFO, "CMOS Read: addr: 0x%x\n", addr);
+	CMOS_LOG(LVL_DEBUG, "CMOS Read: addr: 0x%x\n", addr);
 
 	if ((addr & 1) == 0) {
 		*dst = 0xff;
-		CMOS_LOG(LVL_INFO, "Returning FF\n");
+		CMOS_LOG(LVL_DEBUG, "Returning FF\n");
 	} else {
-		CMOS_LOG(LVL_INFO, "CMOS INDEX: %d\n", s->cmos_index);
+		CMOS_LOG(LVL_DEBUG, "CMOS INDEX: %d\n", s->cmos_index);
 		switch(s->cmos_index) {
 		case RTC_IBM_PS2_CENTURY_BYTE:
 			s->cmos_index = RTC_CENTURY;
@@ -630,7 +630,7 @@ static u64 cmos_ioport_read(cmos_rtc_state_t *s, u32 addr,
 			*dst = s->cmos_data[s->cmos_index];
 			break;
 		}
-		CMOS_LOG(LVL_INFO,"cmos: read index=0x%02x val=0x%02x\n",
+		CMOS_LOG(LVL_DEBUG,"cmos: read index=0x%02x val=0x%02x\n",
 			 s->cmos_index, *dst);
 	}
 
@@ -752,7 +752,7 @@ static int mc146818_emulator_write8(struct vmm_emudev *edev,
 				    physical_addr_t offset, 
 				    u8 src)
 {
-	CMOS_LOG(LVL_INFO, "offset: 0x%lx src: 0x%x\n", offset, src);
+	CMOS_LOG(LVL_DEBUG, "offset: 0x%lx src: 0x%x\n", offset, src);
 	return cmos_ioport_write(edev->priv, offset, 0xFFFFFF00, src);
 }
 
@@ -760,7 +760,7 @@ static int mc146818_emulator_write16(struct vmm_emudev *edev,
 				    physical_addr_t offset, 
 				    u16 src)
 {
-	CMOS_LOG(LVL_INFO, "offset: 0x%lx src: 0x%x\n", offset, src);
+	CMOS_LOG(LVL_DEBUG, "offset: 0x%lx src: 0x%x\n", offset, src);
 	return cmos_ioport_write(edev->priv, offset, 0xFFFF0000, src);
 }
 
@@ -768,7 +768,7 @@ static int mc146818_emulator_write32(struct vmm_emudev *edev,
 				    physical_addr_t offset, 
 				    u32 src)
 {
-	CMOS_LOG(LVL_INFO, "offset: 0x%lx src: 0x%x\n", offset, src);
+	CMOS_LOG(LVL_DEBUG, "offset: 0x%lx src: 0x%x\n", offset, src);
 	return cmos_ioport_write(edev->priv, offset, 0x00000000, src);
 }
 
@@ -778,7 +778,7 @@ static int mc146818_emulator_probe(struct vmm_guest *guest, struct vmm_emudev *e
 	int rc;
 	cmos_rtc_state_t *s = vmm_zalloc(sizeof(cmos_rtc_state_t));
 
-	CMOS_LOG(LVL_VERBOSE, "Probing MC146818 RTC Emulator.\n");
+	CMOS_LOG(LVL_DEBUG, "Probing MC146818 RTC Emulator.\n");
 
 	if (!s)
 		goto _error;

@@ -130,7 +130,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 	switch (context->vmcb->exitcode)
 	{
 	case VMEXIT_EXCEPTION_PF:
-		VM_LOG(LVL_ERR, "Guest fault: 0x%x (rIP: %x)\n",
+		VM_LOG(LVL_DEBUG, "Guest fault: 0x%x (rIP: %x)\n",
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
 		u64 fault_gphys = context->vmcb->exitinfo2;
@@ -212,8 +212,8 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 		if (context->cpuinfo->decode_assist) {
 			if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
 				cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-				vmm_printf("Guest writing 0x%lx to Cr0 from reg %d.\n",
-					   context->g_regs[cr_gpr], cr_gpr);
+				VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
+				       context->g_regs[cr_gpr], cr_gpr);
 			}
 		} else {
 			u8 reg, ext_reg = 0;
@@ -225,7 +225,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			}
 
 			g_ins = (u32)ins64;
-			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
+			VM_LOG(LVL_DEBUG, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((u8 *)&g_ins)[3] - 0xc0;
 				ext_reg = 1;
@@ -242,7 +242,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 				context->vmcb->rip += MOV_CRn_INST_SZ;
 				/* 1 more byte for 64-bit where r8-r15 registers are used. */
 				if (ext_reg) context->vmcb->rip += 1;
-				VM_LOG(LVL_ERR, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
+				VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
 			} else {
 				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
 				goto guest_bad_fault;
@@ -279,8 +279,8 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 		if (context->cpuinfo->decode_assist) {
 			if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
 				cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-				vmm_printf("Guest writing 0x%lx to Cr0 from reg %d.\n",
-					   context->g_regs[cr_gpr], cr_gpr);
+				VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
+				       context->g_regs[cr_gpr], cr_gpr);
 			}
 		} else {
 			u8 reg, ext_reg = 0;
@@ -292,7 +292,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			}
 
 			g_ins = (u32)ins64;
-			VM_LOG(LVL_ERR, "inst: 0x%lx 0x%x\n", ins64, g_ins);
+			VM_LOG(LVL_DEBUG, "inst: 0x%lx 0x%x\n", ins64, g_ins);
 			if (((u8 *)&g_ins)[0] == 0x41) {
 				reg = ((((u8 *)&g_ins)[3] - 0xc0) + 8);
 				ext_reg = 1;
@@ -330,7 +330,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 
 				asm volatile("str %0\n"
 					     :"=r"(htr));
-				VM_LOG(LVL_ERR, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
+				VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
 				       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
 			} else {
 				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
@@ -367,9 +367,9 @@ void __handle_ioio(struct vcpu_hw_context *context)
 	u32 guest_rd = 0;
 	u32 wval;
 
-	VM_LOG(LVL_VERBOSE, "RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
-	VM_LOG(LVL_VERBOSE, "IOPort: 0x%x is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
-		io_port, (in_inst ? "in" : "out"), op_size,seg_num,(str_op ? "yes" : "no"),(rep_access ? "yes" : "no"));
+	VM_LOG(LVL_DEBUG, "RIP: %x exitinfo1: %x\n", context->vmcb->rip, context->vmcb->exitinfo1);
+	VM_LOG(LVL_DEBUG, "IOPort: 0x%x is accssed for %sput. Size is %d. Segment: %d String operation? %s Repeated access? %s\n",
+	       io_port, (in_inst ? "in" : "out"), op_size,seg_num,(str_op ? "yes" : "no"),(rep_access ? "yes" : "no"));
 
 	if (in_inst) {
 		if (vmm_devemu_emulate_ioread(context->assoc_vcpu, io_port,
