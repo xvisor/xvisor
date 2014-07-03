@@ -94,6 +94,16 @@
 					child_pic = <1>;
 					parent_irq = <2>;
 				};
+
+				i8254@0 {
+					device_type = "pit";
+					compatible = "i8253,i8254";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x40>;
+					physical_size = <4>;
+					interrupts = <0>;
+				};
 			};
 		};
 	};

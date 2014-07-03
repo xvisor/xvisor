@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Sun Jun 29 18:12:04 2014
+# Wed Jul  2 22:51:58 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -340,7 +340,10 @@ CONFIG_EMU_PIC_I8259=y
 #
 # Timer Emulators
 #
-# CONFIG_EMU_TIMER is not set
+CONFIG_EMU_TIMER=y
+# CONFIG_EMU_TIMER_SP804 is not set
+# CONFIG_EMU_TIMER_ARM_MPTIMER is not set
+CONFIG_EMU_TIMER_INTEL_8254=y
 
 #
 # Cache Controller Emulators
