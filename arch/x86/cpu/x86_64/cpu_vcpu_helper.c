@@ -324,26 +324,84 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	/* For now no arch specific stats */
 }
 
-static const char *g_regs_names [] = {
-	"RAX", "RCX", "RDX", "RBX",
-	"RSP", "RBP", "RSI", "RDI",
-	"R08", "R09", "R10", "R11",
-	"R12", "R13", "R13", "R14",
-	"R15", "RIP", "CR0", "CR1",
-	"CR2", "CR3", "CR4", "GDT",
-	"LDT","TR ", "IDT" };
-
 static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 {
 	int i;
+	u32 val;
 
-	vmm_printf("GUEST %s dump state:\n", context->assoc_vcpu->name);
+	vmm_printf("\nGUEST %s dump state:\n\n", context->assoc_vcpu->name);
 
-	for (i = 0; i < NR_GUEST_REGS; i++) {
-		if (i && !(i % 4)) vmm_printf("\n");
-		vmm_printf("%s: 0x%08lx ", g_regs_names[i],
-			   context->g_regs[i]);
+	vmm_printf("RAX: 0x%8x RBX: 0x%8x RCX: 0x%8x RDX: 0x%8x\n",
+		   context->vmcb->rax, context->g_regs[GUEST_REGS_RBX],
+		   context->g_regs[GUEST_REGS_RCX], context->g_regs[GUEST_REGS_RDX]);
+	vmm_printf("R08: 0x%8x R09: 0x%8x R10: 0x%8x R11: 0x%8x\n",
+		   context->g_regs[GUEST_REGS_R8], context->g_regs[GUEST_REGS_R9],
+		   context->g_regs[GUEST_REGS_R10], context->g_regs[GUEST_REGS_R10]);
+	vmm_printf("R12: 0x%8x R13: 0x%8x R14: 0x%8x R15: 0x%8x\n",
+		   context->g_regs[GUEST_REGS_R12], context->g_regs[GUEST_REGS_R13],
+		   context->g_regs[GUEST_REGS_R14], context->g_regs[GUEST_REGS_R15]);
+	vmm_printf("RSP: 0x%8x RBP: 0x%8x RDI: 0x%8x RSI: 0x%8x\n",
+		   context->vmcb->rsp, context->g_regs[GUEST_REGS_RBP],
+		   context->g_regs[GUEST_REGS_RDI], context->g_regs[GUEST_REGS_RSI]);
+	vmm_printf("RIP: 0x%8x\n\n", context->vmcb->rip);
+	vmm_printf("CR0: 0x%8x CR2: 0x%8x CR3: 0x%8x CR4: 0x%8x\n",
+		   context->vmcb->cr0, context->vmcb->cr2,
+		   context->vmcb->cr3, context->vmcb->cr4);
+	vmm_printf("RFLAGS: 0x%8x    [ ", context->vmcb->rflags);
+	for (i = 0; i < 32; i++) {
+		val = context->vmcb->rflags & (0x1UL << i);
+		switch(val) {
+		case X86_EFLAGS_CF:
+			vmm_printf("CF ");
+			break;
+		case X86_EFLAGS_PF:
+			vmm_printf("PF ");
+			break;
+		case X86_EFLAGS_AF:
+			vmm_printf("AF ");
+			break;
+		case X86_EFLAGS_ZF:
+			vmm_printf("ZF ");
+			break;
+		case X86_EFLAGS_SF:
+			vmm_printf("SF ");
+			break;
+		case X86_EFLAGS_TF:
+			vmm_printf("TF ");
+			break;
+		case X86_EFLAGS_IF:
+			vmm_printf("IF ");
+			break;
+		case X86_EFLAGS_DF:
+			vmm_printf("DF ");
+			break;
+		case X86_EFLAGS_OF:
+			vmm_printf("OF ");
+			break;
+		case X86_EFLAGS_NT:
+			vmm_printf("NT ");
+			break;
+		case X86_EFLAGS_RF:
+			vmm_printf("RF ");
+			break;
+		case X86_EFLAGS_VM:
+			vmm_printf("VM ");
+			break;
+		case X86_EFLAGS_AC:
+			vmm_printf("AC ");
+			break;
+		case X86_EFLAGS_VIF:
+			vmm_printf("VIF ");
+			break;
+		case X86_EFLAGS_VIP:
+			vmm_printf("VIP ");
+			break;
+		case X86_EFLAGS_ID:
+			vmm_printf("ID ");
+			break;
+		}
 	}
+	vmm_printf("]\n");
 }
 
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
