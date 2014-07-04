@@ -37,6 +37,7 @@
 #include <vmm_devemu.h>
 #include <vmm_modules.h>
 #include <arch_regs.h>
+#include <arch_atomic.h>
 #include <libs/bitmap.h>
 
 #define MODULE_DESC			"GICv2 HW-assisted Emulator"
@@ -113,9 +114,7 @@ struct vgic_host_ctrl {
 	virtual_addr_t  vcpu_va;
 	u32 maint_irq;
 	u32 lr_cnt;
-	vmm_spinlock_t host2guest_lock;
-	unsigned long host2guest_bmap[BITS_TO_LONGS(GICD_MAX_NIRQ)];
-	u32 host2guest_irq[GICD_MAX_NIRQ];
+	atomic_t host2guest_irq[GICD_MAX_NIRQ];
 };
 
 static struct vgic_host_ctrl vgich;
@@ -491,8 +490,9 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 			continue;
 		}
 
-		/* Read the LR register */
+		/* Read and clear the LR register */
 		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+		vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 		DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
 
 		/* Determine irq number & src_id */
@@ -563,10 +563,10 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	struct vgic_guest_state *s = opaque;
 
 	/* Lock VGIC distributor state */
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	if (!s->enabled) {
-		vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+		vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 		return;
 	}
 
@@ -583,7 +583,7 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 			}
 		}
 		if (VGIC_NUM_CPU(s) <= cpu) {
-			vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+			vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 			return;
 		}
 	}
@@ -626,7 +626,7 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 done:
 	/* Unlock VGIC distributor state */
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	/* Forcefully resume VCPU if waiting for IRQ */
 	if (irq_pending) {
@@ -653,13 +653,13 @@ static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 	vs = &s->vstate[vcpu->subid];
 
 	/* Lock VGIC distributor state */
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	/* Sync & Flush VGIC state changes to VGIC HW */
 	__vgic_sync_and_flush_vcpu(s, vs);
 
 	/* Unlock VGIC distributor state */
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -669,7 +669,6 @@ static vmm_irq_return_t vgic_routed_irq(int irq_no, void *dev)
 {
 	int rc;
 	u32 virq, hirq = irq_no;
-	irq_flags_t flags;
 	struct vgic_guest_state *s = dev;
 
 	/* Sanity check */
@@ -678,11 +677,7 @@ static vmm_irq_return_t vgic_routed_irq(int irq_no, void *dev)
 	}
 
 	/* Determine guest IRQ from host IRQ */
-	vmm_spin_lock_irqsave(&vgich.host2guest_lock, flags);
-	virq = vgich.host2guest_irq[hirq];
-	vmm_spin_unlock_irqrestore(&vgich.host2guest_lock, flags);
-
-	/* Sanity check */
+	virq = (u32)arch_atomic_read(&vgich.host2guest_irq[hirq]);
 	if (VGIC_MAX_NIRQ <= virq) {
 		goto done;
 	}
@@ -723,7 +718,7 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	vs = &s->vstate[vcpu->subid];
 
 	/* Lock VGIC distributor state */
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	/* The VGIC HW state may have changed when the
 	 * VCPU was running hence, sync VGIC VCPU state.
@@ -731,7 +726,7 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	__vgic_sync_vcpu_hwstate(s, vs);
 
 	/* Unlock VGIC distributor state */
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	/* Save VGIC HW registers for VCPU */
 	__vgic_save_vcpu_hwstate(vs);
@@ -754,7 +749,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	__vgic_restore_vcpu_hwstate(vs);
 
 	/* Lock VGIC distributor state */
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	/* Flush VGIC state changes to VGIC HW for
 	 * reflecting latest changes while, the VCPU
@@ -763,7 +758,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	__vgic_flush_vcpu_hwstate(s, vs);
 
 	/* Unlock VGIC distributor state */
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 }
 
 static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu,
@@ -1082,7 +1077,7 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	*dst = 0;
 	for (i = 0; i < 4; i++) {
@@ -1092,7 +1087,7 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 		*dst |= val << (i * 8);
 	}
 
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -1109,7 +1104,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 		return VMM_EFAIL;
 	}
 
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	vs = &s->vstate[cpu];
 
@@ -1139,9 +1134,9 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 				continue;
 			}
 			s->sgi_source[i][irq] |= (1 << cpu);
-			vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+			vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
-			vmm_spin_lock_irqsave(&s->dist_lock, flags);
+			vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 		}
 	} else {
 		sgi_mask = 0x0;
@@ -1161,7 +1156,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 	/* Sync & Flush VGIC state changes to VGIC HW */
 	__vgic_sync_and_flush_vcpu(s, vs);
 
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	return rc;
 }
@@ -1265,7 +1260,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 
 	DPRINTF("%s: guest=%s\n", __func__, s->guest->name);
 
-	vmm_spin_lock_irqsave(&s->dist_lock, flags);
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 
 	/* Reset context for all VCPUs
 	 *
@@ -1327,7 +1322,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	/* Disable guest dist interface */
 	s->enabled = 0;
 
-	vmm_spin_unlock_irqrestore(&s->dist_lock, flags);
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	return VMM_OK;
 }
@@ -1419,7 +1414,6 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 				    const struct vmm_devtree_nodeid *eid)
 {
 	int rc;
-	irq_flags_t flags;
 	u32 i, virq, hirq, len, parent_irq, num_irq;
 	struct vgic_guest_state *s;
 
@@ -1487,17 +1481,13 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 			goto fail;
 		}
 
-		vmm_spin_lock_irqsave(&vgich.host2guest_lock, flags);
-		if (bitmap_isset(vgich.host2guest_bmap, hirq)) {
+		if (arch_atomic_cmpxchg(&vgich.host2guest_irq[hirq],
+					-1, virq) != -1) {
 			rc = VMM_ENOTAVAIL;
-			goto fail;
 		} else {
-			bitmap_setbit(vgich.host2guest_bmap, hirq);
-			vgich.host2guest_irq[hirq] = virq;
 			VGIC_SET_HOST_IRQ(s, virq, hirq);
 			rc = VMM_OK;
 		}
-		vmm_spin_unlock_irqrestore(&vgich.host2guest_lock, flags);
 		if (rc) {
 			vmm_printf("%s: Failed host-irq %d already routed\n",
 				   __func__, hirq);
@@ -1537,9 +1527,7 @@ fail:
 
 		VGIC_SET_HOST_IRQ(s, virq, UINT_MAX);
 
-		vgich.host2guest_irq[hirq] = UINT_MAX;
-
-		bitmap_clearbit(vgich.host2guest_bmap, hirq);
+		arch_atomic_cmpxchg(&vgich.host2guest_irq[hirq], virq, -1);
 	}
 	vgic_state_free(s);
 	return rc;
@@ -1566,9 +1554,7 @@ static int vgic_dist_emulator_remove(struct vmm_emudev *edev)
 
 		VGIC_SET_HOST_IRQ(s, virq, UINT_MAX);
 
-		vgich.host2guest_irq[hirq] = UINT_MAX;
-
-		bitmap_clearbit(vgich.host2guest_bmap, hirq);
+		arch_atomic_cmpxchg(&vgich.host2guest_irq[hirq], virq, -1);
 	}
 
 	vgic_state_free(s);
@@ -1751,13 +1737,8 @@ static int __init vgic_emulator_init(void)
 		goto fail_unreg_dist;
 	}
 
-	INIT_SPIN_LOCK(&vgich.host2guest_lock);
-	bitmap_zero(vgich.host2guest_bmap, GICD_MAX_NIRQ);
-	for (i = 0 ; i < 32; i++) {
-		bitmap_setbit(vgich.host2guest_bmap, i);
-	}
 	for (i = 0; i < GICD_MAX_NIRQ; i++) {
-		vgich.host2guest_irq[i] = UINT_MAX;
+		ARCH_ATOMIC_INIT(&vgich.host2guest_irq[i], -1);
 	}
 
 	vgich.avail = TRUE;
