@@ -54,6 +54,7 @@ cpu-objs-$(CONFIG_ARM32VE_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_atomic64.o
 cpu-objs-y+= cpu_interrupts.o
+cpu-objs-y+= cpu_vcpu_switch.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_excep.o
 cpu-objs-y+= cpu_vcpu_inject.o

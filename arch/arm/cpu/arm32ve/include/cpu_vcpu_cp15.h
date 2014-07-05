@@ -39,15 +39,14 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data);
 
-/** Save CP15 registers for given VCPU */
-void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu);
+/** Save CP15 context for given VCPU */
+void cpu_vcpu_cp15_save(struct vmm_vcpu *vcpu);
 
-/** Restore CP15 registers for given VCPU */
-void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu);
+/** Restore CP15 context for given VCPU */
+void cpu_vcpu_cp15_restore(struct vmm_vcpu *vcpu);
 
-/** Print CP15 registers for given VCPU */
-void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
-			     struct vmm_vcpu *vcpu);
+/** Print CP15 context for given VCPU */
+void cpu_vcpu_cp15_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
 /** Initialize CP15 context for given VCPU */
 int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid);

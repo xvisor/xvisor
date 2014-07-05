@@ -29,6 +29,7 @@
 #include <vmm_cache.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_cp15.h>
 
 #include <arm_features.h>
@@ -179,9 +180,10 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 14: /* DCCISW */
 			switch (opc2) {
 			case 2:
-				vmm_cpumask_setall(&cp15->dflush_needed);
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
 				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
-						      &cp15->dflush_needed);
+					&arm_priv(vcpu)->dflush_needed);
 				asm volatile("mcr p15, 0, %0, c7, c14, 2" 
 					: : "r" (data));
 				break;
@@ -192,9 +194,10 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 10: /* DCCSW */
 			switch (opc2) {
 			case 2:
-				vmm_cpumask_setall(&cp15->dflush_needed);
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
 				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
-						      &cp15->dflush_needed);
+					&arm_priv(vcpu)->dflush_needed);
 				asm volatile("mcr p15, 0, %0, c7, c10, 2" 
 					: : "r" (data));
 				break;
@@ -346,7 +349,7 @@ bad_reg:
 	return FALSE;
 }
 
-void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_save(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
@@ -375,7 +378,7 @@ void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
 	cp15->c13_tls3 = read_tpidrprw();
 }
 
-void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
@@ -410,13 +413,12 @@ void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
 	 * operations by set/way.
 	 */
 	if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(), 
-					   &cp15->dflush_needed)) {
+					   &arm_priv(vcpu)->dflush_needed)) {
 		vmm_flush_cache_all();
 	}
 }
 
-void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
-			     struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 i;
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
@@ -675,7 +677,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	}
 
 	/* Clear the dcache flush needed mask */
-	vmm_cpumask_clear(&cp15->dflush_needed);
+	vmm_cpumask_clear(&arm_priv(vcpu)->dflush_needed);
 
 	return VMM_OK;
 }

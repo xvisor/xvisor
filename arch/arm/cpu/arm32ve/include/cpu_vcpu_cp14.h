@@ -40,15 +40,14 @@ bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			 u32 data);
 
-/** Save CP14 registers for given VCPU */
-void cpu_vcpu_cp14_regs_save(struct vmm_vcpu *vcpu);
+/** Save CP14 context for given VCPU */
+void cpu_vcpu_cp14_save(struct vmm_vcpu *vcpu);
 
-/** Restore CP14 registers for given VCPU */
-void cpu_vcpu_cp14_regs_restore(struct vmm_vcpu *vcpu);
+/** Restore CP14 context for given VCPU */
+void cpu_vcpu_cp14_restore(struct vmm_vcpu *vcpu);
 
-/** Print CP14 registers for given VCPU */
-void cpu_vcpu_cp14_regs_dump(struct vmm_chardev *cdev,
-			     struct vmm_vcpu *vcpu);
+/** Print CP14 context for given VCPU */
+void cpu_vcpu_cp14_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
 /** Initialize CP14 context for given VCPU */
 int cpu_vcpu_cp14_init(struct vmm_vcpu *vcpu);

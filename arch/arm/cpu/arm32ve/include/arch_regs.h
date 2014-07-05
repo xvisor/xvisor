@@ -24,6 +24,7 @@
 #define _ARCH_REGS_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_cpumask.h>
 #include <vmm_spinlocks.h>
 #include <cpu_defines.h>
@@ -34,7 +35,7 @@ struct arch_regs {
 	u32 gpr[CPU_GPR_COUNT];	/* R0 - R12 */
 	u32 sp;	/* Stack Pointer */
 	u32 lr;	/* Link Register */
-} __attribute((packed));
+} __packed;
 
 typedef struct arch_regs arch_regs_t;
 
@@ -113,20 +114,9 @@ struct arm_priv_cp15 {
 	u32 c13_tls3; /* Privileged Thread register. */
 	u32 c15_i_max; /* Maximum D-cache dirty line index. */
 	u32 c15_i_min; /* Minimum D-cache dirty line index. */
-	/* D-cache clean-invalidate by set/way mask */
-	vmm_cpumask_t dflush_needed;
-};
+} __packed;
 
-struct arm_priv {
-	/* Internal CPU feature flags. */
-	u32 cpuid;
-	u64 features;
-	/* Hypervisor Configuration */
-	vmm_spinlock_t hcr_lock;
-	u32 hcr;
-	u32 hcptr;
-	u32 hstr;
-	/* Banked Registers */
+struct arm_priv_banked {
 	u32 sp_usr;
 	u32 sp_svc; /* Supervisor Mode */
 	u32 lr_svc;
@@ -144,12 +134,26 @@ struct arm_priv {
 	u32 sp_fiq;
 	u32 lr_fiq;
 	u32 spsr_fiq;
+} __packed;
+
+struct arm_priv {
+	/* Internal CPU feature flags. */
+	u32 cpuid;
+	u64 features;
+	/* Hypervisor Configuration */
+	vmm_spinlock_t hcr_lock;
+	u32 hcr;
+	u32 hcptr;
+	u32 hstr;
+	/* Banked Registers */
+	struct arm_priv_banked bnk;
 	/* VFP & SMID registers (cp10 & cp11 coprocessors) */
 	struct arm_priv_vfp vfp;
 	/* Debug, Trace, and ThumbEE (cp14 coprocessor) */
 	struct arm_priv_cp14 cp14;
 	/* System control (cp15 coprocessor) */
 	struct arm_priv_cp15 cp15;
+	vmm_cpumask_t dflush_needed;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */

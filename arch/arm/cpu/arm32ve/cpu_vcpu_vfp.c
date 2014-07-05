@@ -29,7 +29,7 @@
 #include <cpu_vcpu_vfp.h>
 #include <arm_features.h>
 
-void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
+void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
@@ -79,7 +79,7 @@ void cpu_vcpu_vfp_regs_save(struct vmm_vcpu *vcpu)
 	write_fpexc(vfp->fpexc & ~(FPEXC_EN_MASK));
 }
 
-void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
+void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
@@ -123,8 +123,7 @@ void cpu_vcpu_vfp_regs_restore(struct vmm_vcpu *vcpu)
 	write_fpexc(vfp->fpexc);
 }
 
-void cpu_vcpu_vfp_regs_dump(struct vmm_chardev *cdev,
-			    struct vmm_vcpu *vcpu)
+void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 i;
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
