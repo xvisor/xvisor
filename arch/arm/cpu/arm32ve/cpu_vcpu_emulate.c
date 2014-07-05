@@ -161,12 +161,18 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 		goto done;
 	}
 
+	/* If WFE trapped then only yield */
+	if (iss & ISS_WFI_WFE_TI_MASK) {
+		vmm_scheduler_yield();
+		goto done;
+	}
+
 	/* Estimate wakeup timeout if possible */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		timeout_nsecs = generic_timer_wakeup_timeout();
 	}
 
-	/* Wait for irq on this vcpu */
+	/* Wait for irq with timeout */
 	vmm_vcpu_irq_wait_timeout(vcpu, timeout_nsecs);
 
 done:

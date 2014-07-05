@@ -386,8 +386,8 @@
 #define ISS_COND_SHIFT					20
 
 /* WFI/WFE ISS Encodings */
-#define ISS_WFI_WFE_TRAPPED_MASK			0x00080000
-#define ISS_WFI_WFE_TRAPPED_SHIFT			19
+#define ISS_WFI_WFE_TI_MASK				0x00000001
+#define ISS_WFI_WFE_TI_SHIFT				0
 
 /* MCR/MRC ISS Encodings */
 #define ISS_MCR_MRC_OPC2_MASK				0x000E0000
