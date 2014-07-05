@@ -656,4 +656,77 @@
 #define ID_PFR1_PRG_MODEL_MASK				0x0000000f
 #define ID_PFR1_PRG_MODEL_SHIFT				0
 
+/* Field offsets for struct arm_priv_banked */
+#define ARM_PRIV_BANKED_sp_usr				0x0
+#define ARM_PRIV_BANKED_sp_svc				0x4
+#define ARM_PRIV_BANKED_lr_svc				0x8
+#define ARM_PRIV_BANKED_spsr_svc			0xC
+#define ARM_PRIV_BANKED_sp_abt				0x10
+#define ARM_PRIV_BANKED_lr_abt				0x14
+#define ARM_PRIV_BANKED_spsr_abt			0x18
+#define ARM_PRIV_BANKED_sp_und				0x1C
+#define ARM_PRIV_BANKED_lr_und				0x20
+#define ARM_PRIV_BANKED_spsr_und			0x24
+#define ARM_PRIV_BANKED_sp_irq				0x28
+#define ARM_PRIV_BANKED_lr_irq				0x2C
+#define ARM_PRIV_BANKED_spsr_irq			0x30
+#define ARM_PRIV_BANKED_gpr_fiq0			0x34
+#define ARM_PRIV_BANKED_sp_fiq				0x48
+#define ARM_PRIV_BANKED_lr_fiq				0x4C
+#define ARM_PRIV_BANKED_spsr_fiq			0x50
+
+/* Field offsets for struct arm_priv_cp15 */
+#define ARM_PRIV_CP15_c0_midr				0x0
+#define ARM_PRIV_CP15_c0_mpidr				0x4
+#define ARM_PRIV_CP15_c0_cachetype			0x8
+#define ARM_PRIV_CP15_c0_pfr0				0xC
+#define ARM_PRIV_CP15_c0_pfr1				0x10
+#define ARM_PRIV_CP15_c0_dfr0				0x14
+#define ARM_PRIV_CP15_c0_afr0				0x18
+#define ARM_PRIV_CP15_c0_mmfr0				0x1C
+#define ARM_PRIV_CP15_c0_mmfr1				0x20
+#define ARM_PRIV_CP15_c0_mmfr2				0x24
+#define ARM_PRIV_CP15_c0_mmfr3				0x28
+#define ARM_PRIV_CP15_c0_isar0				0x2C
+#define ARM_PRIV_CP15_c0_isar1				0x30
+#define ARM_PRIV_CP15_c0_isar2				0x34
+#define ARM_PRIV_CP15_c0_isar3				0x38
+#define ARM_PRIV_CP15_c0_isar4				0x3C
+#define ARM_PRIV_CP15_c0_isar5				0x40
+#define ARM_PRIV_CP15_c0_ccsid0				0x44
+#define ARM_PRIV_CP15_c0_clid				0x84
+#define ARM_PRIV_CP15_c0_cssel				0x88
+#define ARM_PRIV_CP15_c1_sctlr				0x8C
+#define ARM_PRIV_CP15_c1_cpacr				0x90
+#define ARM_PRIV_CP15_c2_ttbr0				0x94
+#define ARM_PRIV_CP15_c2_ttbr1				0x9C
+#define ARM_PRIV_CP15_c2_ttbcr				0xA4
+#define ARM_PRIV_CP15_c3_dacr				0xA8
+#define ARM_PRIV_CP15_c5_ifsr				0xAC
+#define ARM_PRIV_CP15_c5_dfsr				0xB0
+#define ARM_PRIV_CP15_c5_aifsr				0xB4
+#define ARM_PRIV_CP15_c5_adfsr				0xB8
+#define ARM_PRIV_CP15_c6_ifar				0xBC
+#define ARM_PRIV_CP15_c6_dfar				0xC0
+#define ARM_PRIV_CP15_c7_par				0xC4
+#define ARM_PRIV_CP15_c7_par64				0xC8
+#define ARM_PRIV_CP15_c9_insn				0xD0
+#define ARM_PRIV_CP15_c9_data				0xD4
+#define ARM_PRIV_CP15_c9_pmcr				0xD8
+#define ARM_PRIV_CP15_c9_pmcnten			0xDC
+#define ARM_PRIV_CP15_c9_pmovsr				0xE0
+#define ARM_PRIV_CP15_c9_pmxevtyper			0xE4
+#define ARM_PRIV_CP15_c9_pmuserenr			0xE8
+#define ARM_PRIV_CP15_c9_pminten			0xEC
+#define ARM_PRIV_CP15_c10_prrr				0xF0
+#define ARM_PRIV_CP15_c10_nmrr				0xF4
+#define ARM_PRIV_CP15_c12_vbar				0xF8
+#define ARM_PRIV_CP15_c13_fcseidr			0xFC
+#define ARM_PRIV_CP15_c13_contextidr			0x100
+#define ARM_PRIV_CP15_c13_tls1				0x104
+#define ARM_PRIV_CP15_c13_tls2				0x108
+#define ARM_PRIV_CP15_c13_tls3				0x10C
+#define ARM_PRIV_CP15_c15_i_max				0x110
+#define ARM_PRIV_CP15_c15_i_min				0x114
+
 #endif

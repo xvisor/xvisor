@@ -31,4 +31,10 @@ void cpu_vcpu_banked_regs_save(struct arm_priv_banked *bnk);
 /** Restore banked registers for given VCPU */
 void cpu_vcpu_banked_regs_restore(struct arm_priv_banked *bnk);
 
+/** Save CP15 registers for given VCPU */
+void cpu_vcpu_cp15_regs_save(struct arm_priv_cp15 *cp15);
+
+/** Restore CP15 registers for given VCPU */
+void cpu_vcpu_cp15_regs_restore(struct arm_priv_cp15 *cp15);
+
 #endif /* _CPU_VCPU_SWITCH_H */
