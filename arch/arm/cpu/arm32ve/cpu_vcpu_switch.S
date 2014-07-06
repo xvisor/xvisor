@@ -22,6 +22,7 @@
  */
 
 #include <cpu_defines.h>
+#include <generic_timer.h>
 
 	.globl cpu_vcpu_banked_regs_save
 cpu_vcpu_banked_regs_save:
@@ -226,6 +227,48 @@ cpu_vcpu_cp15_regs_restore:
 	mcr	p15, 0, r1, c13, c0, 3	/* c13_tls2 */
 	ldr	r1, [r0, #ARM_PRIV_CP15_c13_tls3]
 	mcr	p15, 0, r1, c13, c0, 4	/* c13_tls3 */
+	pop	{r1, r2}
+	bx 	lr
+
+	.globl generic_timer_regs_save
+generic_timer_regs_save:
+	push	{r1, r2}
+	mrc	p15, 0, r1, c14, c2, 1	/* cntpctl */
+	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntpctl]
+	mrc	p15, 0, r1, c14, c3, 1	/* cntvctl */
+	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvctl]
+	mrc	p15, 0, r1, c14, c1, 0	/* cntkctl */
+	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntkctl]
+	mrrc	p15, 2, r1, r2, c14	/* cntpcval */
+	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntpcval]
+	str	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntpcval + 0x4)]
+	mrrc	p15, 3, r1, r2, c14	/* cntvcval */
+	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvcval]
+	str	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntvcval + 0x4)]
+	mov	r1, #GENERIC_TIMER_CTRL_IT_MASK
+	mcr	p15, 0, r1, c14, c2, 1	/* cntpctl.it = 0 */
+	mcr	p15, 0, r1, c14, c3, 1	/* cntvctl.it = 0 */
+	pop	{r1, r2}
+	bx 	lr
+
+	.globl generic_timer_regs_restore
+generic_timer_regs_restore:
+	push	{r1, r2}
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvoff]
+	ldr	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntvoff + 0x4)]
+	mcrr	p15, 4, r1, r2, c14	/* cntvoff */
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntpcval]
+	ldr	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntpcval + 0x4)]
+	mcrr	p15, 2, r1, r2, c14	/* cntpcval */
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvcval]
+	ldr	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntvcval + 0x4)]
+	mcrr	p15, 3, r1, r2, c14	/* cntvcval */
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntkctl]
+	mcr	p15, 0, r1, c14, c1, 0	/* cntkctl */
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntpctl]
+	mcr	p15, 0, r1, c14, c2, 1	/* cntpctl */
+	ldr	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvctl]
+	mcr	p15, 0, r1, c14, c3, 1	/* cntvctl */
 	pop	{r1, r2}
 	bx 	lr
 

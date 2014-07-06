@@ -828,7 +828,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			cpu_vcpu_cp15_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
-				generic_timer_vcpu_context_save(
+				generic_timer_vcpu_context_save(tvcpu,
 						arm_gentimer_context(tvcpu));
 			}
 			/* Save VGIC registers */
@@ -858,7 +858,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-			generic_timer_vcpu_context_restore(
+			generic_timer_vcpu_context_restore(vcpu,
 						arm_gentimer_context(vcpu));
 		}
 		/* Restore CP15 context */

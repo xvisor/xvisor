@@ -36,29 +36,10 @@
 #include <cpu_generic_timer.h>
 #include <libs/mathlib.h>
 
-#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
-#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
-
-#define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
-#define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
-#define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
-
 enum gen_timer_type {
 	GENERIC_HYPERVISOR_TIMER,
 	GENERIC_PHYSICAL_TIMER,
 	GENERIC_VIRTUAL_TIMER,
-};
-
-struct generic_timer_context {
-	struct vmm_vcpu *vcpu;
-	u32 phys_timer_irq;
-	u32 virt_timer_irq;
-	u64 cntvoff;
-	u64 cntpcval;
-	u64 cntvcval;
-	u32 cntkctl;
-	u32 cntpctl;
-	u32 cntvctl;
 };
 
 static u32 generic_timer_hz = 0;
@@ -477,7 +458,6 @@ int generic_timer_vcpu_context_init(void *vcpu_ptr,
 	}
 
 	cntx = *context;
-	cntx->vcpu = vcpu_ptr;
 	cntx->cntpctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntvctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntpcval = 0;
@@ -504,7 +484,7 @@ int generic_timer_vcpu_context_deinit(void *vcpu_ptr, void **context)
 	return VMM_OK;
 }
 
-void generic_timer_vcpu_context_save(void *context)
+void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 {
 	struct generic_timer_context *cntx = context;
 
@@ -512,19 +492,24 @@ void generic_timer_vcpu_context_save(void *context)
 		return;
 	}
 
+#ifdef HAVE_GENERIC_TIMER_REGS_SAVE
+	generic_timer_regs_save(cntx);
+#else
 	cntx->cntpctl = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CTRL);
 	cntx->cntvctl = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CTRL);
 	cntx->cntpcval = generic_timer_reg_read64(GENERIC_TIMER_REG_PHYS_CVAL);
 	cntx->cntvcval = generic_timer_reg_read64(GENERIC_TIMER_REG_VIRT_CVAL);
 	cntx->cntkctl = generic_timer_reg_read(GENERIC_TIMER_REG_KCTL);
-	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL, 
+	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL,
 				GENERIC_TIMER_CTRL_IT_MASK);
 	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, 
 				GENERIC_TIMER_CTRL_IT_MASK);
+#endif
 }
 
-void generic_timer_vcpu_context_restore(void *context)
+void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 {
+	struct vmm_vcpu *vcpu;
 	struct generic_timer_context *cntx = context;
 
 	if (!cntx) {
@@ -532,17 +517,21 @@ void generic_timer_vcpu_context_restore(void *context)
 	}
 
 	if (!cntx->cntvoff) {
-		cntx->cntvoff =
-			vmm_manager_guest_reset_timestamp(cntx->vcpu->guest);
+		vcpu = vcpu_ptr;
+		cntx->cntvoff = vmm_manager_guest_reset_timestamp(vcpu->guest);
 		cntx->cntvoff = cntx->cntvoff * generic_timer_hz;
 		cntx->cntvoff = udiv64(cntx->cntvoff, 1000000000ULL);
 	}
 
+#ifdef HAVE_GENERIC_TIMER_REGS_RESTORE
+	generic_timer_regs_restore(cntx);
+#else
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_OFF, cntx->cntvoff);
 	generic_timer_reg_write(GENERIC_TIMER_REG_KCTL, cntx->cntkctl);
 	generic_timer_reg_write64(GENERIC_TIMER_REG_PHYS_CVAL, cntx->cntpcval);
 	generic_timer_reg_write64(GENERIC_TIMER_REG_VIRT_CVAL, cntx->cntvcval);
 	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL, cntx->cntpctl);
 	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, cntx->cntvctl);
+#endif
 }
 
