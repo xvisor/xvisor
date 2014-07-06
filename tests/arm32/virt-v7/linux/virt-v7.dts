@@ -61,7 +61,6 @@
 			     <1 14 0xff01>,
 			     <1 11 0xff01>,
 			     <1 10 0xff01>;
-		clock-frequency = <100000000>;
 	};
 
 	psci {
