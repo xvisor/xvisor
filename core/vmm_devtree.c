@@ -406,7 +406,9 @@ int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name)
 	}
 
 	vmm_free(attr->name);
-	vmm_free(attr->value);
+	if (attr->value) {
+		vmm_free(attr->value);
+	}
 	list_del(&attr->head);
 	vmm_free(attr);
 
