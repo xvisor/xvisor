@@ -272,7 +272,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u8 src_id, u32 irq)
 {
-	u32 hirq, lr, lrval;
+	register u32 hirq, lr, lrval;
 
 	DPRINTF("%s: IRQ=%d SRC_ID=%d VCPU=%s\n",
 		__func__, irq, src_id, vs->vcpu->name);
@@ -471,10 +471,10 @@ done:
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 				     struct vgic_vcpu_state *vs)
 {
-	u8 src_id;
 	void *lr_base;
 	u32 elrsr[2];
-	u32 lr, lrval, irq, cm = (1 << vs->vcpu->subid);
+	register u8 src_id;
+	register u32 lr, lrval, irq, cm = (1 << vs->vcpu->subid);
 
 	/* If no LR used then skip */
 	if (!VGIC_HAVE_LR_USED(vs)) {
