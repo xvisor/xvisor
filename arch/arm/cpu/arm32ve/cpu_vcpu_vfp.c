@@ -26,6 +26,7 @@
 #include <vmm_stdio.h>
 #include <arch_regs.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_vfp.h>
 #include <arm_features.h>
 
@@ -41,42 +42,7 @@ void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu)
 		return;
 	}
 
-	/* Save FPEXC */
-	vfp->fpexc = read_fpexc();
-
-	/* Force enable FPU */
-	write_fpexc(vfp->fpexc | FPEXC_EN_MASK);
-
-	/* Save FPSCR */
-	vfp->fpscr = read_fpscr();
-
-	/* Check for sub-architecture */
-	if (vfp->fpexc & FPEXC_EX_MASK) {
-		/* Save FPINST */
-		vfp->fpinst = read_fpinst();
-
-		/* Save FPINST2 */
-		if (vfp->fpexc & FPEXC_FP2V_MASK) {
-			vfp->fpinst2 = read_fpinst2();
-		}
-
-		/* Disable FPEXC_EX */
-		write_fpexc((vfp->fpexc | FPEXC_EN_MASK) & ~FPEXC_EX_MASK);
-	}
-
-	/* Save {d0-d15} */
-	asm volatile("stc p11, cr0, [%0], #32*4"
-		     : : "r" (vfp->fpregs1));
-
-	/* 32x 64 bits registers? */
-	if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
-		/* Save {d16-d31} */
-		asm volatile("stcl p11, cr0, [%0], #32*4"
-			     : : "r" (vfp->fpregs2));
-	}
-
-	/* Leave FPU in disabled state */
-	write_fpexc(vfp->fpexc & ~(FPEXC_EN_MASK));
+	cpu_vcpu_vfp_regs_save(vfp);
 }
 
 void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
@@ -91,36 +57,7 @@ void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
 		return;
 	}
 
-	/* Force enable FPU */
-	write_fpexc(read_fpexc() | FPEXC_EN_MASK);
-
-	/* Restore {d0-d15} */
-	asm volatile("ldc p11, cr0, [%0], #32*4"
-		     : : "r" (vfp->fpregs1));
-
-	/* 32x 64 bits registers? */
-	if ((read_mvfr0() & MVFR0_A_SIMD_MASK) == 2) {
-	        /* Restore {d16-d31} */
-        	asm volatile("ldcl p11, cr0, [%0], #32*4"
-			     : : "r" (vfp->fpregs2));
-	}
-
-	/* Check for sub-architecture */
-	if (vfp->fpexc & FPEXC_EX_MASK) {
-		/* Restore FPINST */
-		write_fpinst(vfp->fpinst);
-
-		/* Restore FPINST2 */
-		if (vfp->fpexc & FPEXC_FP2V_MASK) {
-			write_fpinst2(vfp->fpinst2);
-		}
-	}
-
-	/* Restore FPSCR */
-	write_fpscr(vfp->fpscr);
-
-	/* Restore FPEXC */
-	write_fpexc(vfp->fpexc);
+	cpu_vcpu_vfp_regs_restore(vfp);
 }
 
 void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

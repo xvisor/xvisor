@@ -30,29 +30,40 @@
 #include <cpu_defines.h>
 
 struct arch_regs {
-	u32 cpsr; /* CPSR */
-	u32 pc;	/* Program Counter */
-	u32 gpr[CPU_GPR_COUNT];	/* R0 - R12 */
-	u32 sp;	/* Stack Pointer */
-	u32 lr;	/* Link Register */
+	/* CPSR */
+	u32 cpsr;
+	/* Program Counter */
+	u32 pc;
+	/* R0 - R12 */
+	u32 gpr[CPU_GPR_COUNT];
+	/* Stack Pointer */
+	u32 sp;
+	/* Link Register */
+	u32 lr;
 } __packed;
 
 typedef struct arch_regs arch_regs_t;
 
+/* Note: This structure is accessed from assembly code
+ * hence any change in this structure should be reflected
+ * in relevant defines in cpu_defines.h
+ */
 struct arm_priv_vfp {
 	/* ID Registers */
-	u32 fpsid;
-	u32 mvfr0;
-	u32 mvfr1;
+	u32 fpsid;				/* 0x0 */
+	u32 mvfr0;				/* 0x4 */
+	u32 mvfr1;				/* 0x8 */
 	/* Control Registers */
-	u32 fpexc;
-	u32 fpscr;
-	u32 fpinst;
-	u32 fpinst2;
+	u32 fpexc;				/* 0xC */
+	u32 fpscr;				/* 0x10 */
+	u32 fpinst;				/* 0x14 */
+	u32 fpinst2;				/* 0x18 */
 	/* General Purpose Registers */
-	u64 fpregs1[16]; /* {d0-d15} 64bit floating point registers.*/
-	u64 fpregs2[16]; /* {d16-d31} 64bit floating point registers.*/
-};
+	/* {d0-d15} 64bit floating point registers.*/
+	u64 fpregs1[16];			/* 0x1C */
+	/* {d16-d31} 64bit floating point registers.*/
+	u64 fpregs2[16];			/* 0x9C */
+} __packed;
 
 struct arm_priv_cp14 {
 	/* ThumbEE Registers */

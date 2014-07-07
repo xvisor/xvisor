@@ -595,11 +595,11 @@
 #define MIDR_REVISON_SHIFT				0
 
 /* FPEXC */
-#define FPEXC_EX_MASK					(1u << 31)
+#define FPEXC_EX_MASK					(0x1 << 31)
 #define FPEXC_EX_SHIFT					31
-#define FPEXC_EN_MASK					(1u << 30)
+#define FPEXC_EN_MASK					(0x1 << 30)
 #define FPEXC_EN_SHIFT					30
-#define FPEXC_FP2V_MASK					(1u << 28)
+#define FPEXC_FP2V_MASK					(0x1 << 28)
 #define FPEXC_FP2V_SHIFT				28
 
 /* FPSID */
@@ -728,5 +728,16 @@
 #define ARM_PRIV_CP15_c13_tls3				0x10C
 #define ARM_PRIV_CP15_c15_i_max				0x110
 #define ARM_PRIV_CP15_c15_i_min				0x114
+
+/* Field offsets for struct arm_priv_vfp */
+#define ARM_PRIV_VFP_fpsid				0x0
+#define ARM_PRIV_VFP_mvfr0				0x4
+#define ARM_PRIV_VFP_mvfr1				0x8
+#define ARM_PRIV_VFP_fpexc				0xC
+#define ARM_PRIV_VFP_fpscr				0x10
+#define ARM_PRIV_VFP_fpinst				0x14
+#define ARM_PRIV_VFP_fpinst2				0x18
+#define ARM_PRIV_VFP_fpregs1				0x1C
+#define ARM_PRIV_VFP_fpregs2				0x9C
 
 #endif

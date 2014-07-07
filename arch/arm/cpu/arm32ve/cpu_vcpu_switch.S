@@ -230,6 +230,77 @@ cpu_vcpu_cp15_regs_restore:
 	pop	{r1, r2}
 	bx 	lr
 
+	.globl cpu_vcpu_vfp_regs_save
+cpu_vcpu_vfp_regs_save:
+	push	{r1, r2}
+	mrc	p10, 7, r1, c8, c0, 0	/* save fpexc */
+	str	r1, [r0, #ARM_PRIV_VFP_fpexc]
+	orr	r2, r1, #FPEXC_EN_MASK
+	mcr	p10, 7, r2, c8, c0, 0	/* force enable FPU */
+	mrc	p10, 7, r2, c1, c0, 0	/* save fpscr */
+	str	r2, [r0, #ARM_PRIV_VFP_fpscr]
+	and	r2, r1, #FPEXC_EX_MASK	/* check for sub-architecture ? */
+	cmp	r2, #0
+	beq	1f
+	mrc	p10, 7, r2, c9, c0, 0	/* save fpinst */
+	str	r2, [r0, #ARM_PRIV_VFP_fpinst]
+	and	r2, r1, #FPEXC_FP2V_MASK /* need to save fpinst2 ? */
+	cmp	r2, #0
+	beq	2f
+	mrc	p10, 7, r2, c10, c0, 0	/* save fpinst2 */
+	str	r2, [r0, #ARM_PRIV_VFP_fpinst2]
+2:
+	orr	r2, r1, #FPEXC_EN_MASK
+	and	r2, r2, #~(FPEXC_EX_MASK)
+	mcr	p10, 7, r2, c8, c0, 0	/* disable FPEXC_EX */
+1:
+	add	r2, r0, #ARM_PRIV_VFP_fpregs1
+	stc	p11, c0, [r2], #32*4	/* save {d0-d15} */
+
+	mrc	p10, 7, r2, c7, c0, 0	/* 32x64 bits registers ? */
+	and	r2, r2, #MVFR0_A_SIMD_MASK
+	cmp	r2, #2
+	bne	3f
+	add	r2, r0, #ARM_PRIV_VFP_fpregs2
+	stcl	p11, c0, [r2], #32*4	/* save {d16-d31} */
+3:
+	and	r2, r1, #~(FPEXC_EN_MASK)
+	mcr	p10, 7, r2, c8, c0, 0	/* leave FPU in disabled state */
+	pop	{r1, r2}
+	bx 	lr
+
+	.globl cpu_vcpu_vfp_regs_restore
+cpu_vcpu_vfp_regs_restore:
+	push	{r1, r2}
+	ldr	r1, [r0, #ARM_PRIV_VFP_fpexc]
+	orr	r2, r1, #FPEXC_EN_MASK
+	mcr	p10, 7, r2, c8, c0, 0	/* force enable FPU */
+	add	r2, r0, #ARM_PRIV_VFP_fpregs1
+	ldc	p11, c0, [r2], #32*4	/* restore {d0-d15} */
+	mrc	p10, 7, r2, c7, c0, 0	/* 32x64 bits registers ? */
+	and	r2, r2, #MVFR0_A_SIMD_MASK
+	cmp	r2, #2
+	bne	1f
+	add	r2, r0, #ARM_PRIV_VFP_fpregs2
+	ldcl	p11, c0, [r2], #32*4	/* restore {d16-d31} */
+1:
+	and	r2, r1, #FPEXC_EX_MASK	/* check for sub-architecture ? */
+	cmp	r2, #0
+	beq	2f
+	ldr	r2, [r0, #ARM_PRIV_VFP_fpinst]
+	mcr	p10, 7, r2, c9, c0, 0	/* restore fpinst */
+	and	r2, r1, #FPEXC_FP2V_MASK /* need to restore fpinst2 ? */
+	cmp	r2, #0
+	beq	2f
+	ldr	r2, [r0, #ARM_PRIV_VFP_fpinst2]
+	mcr	p10, 7, r2, c10, c0, 0	/* restore fpinst2 */
+2:
+	ldr	r2, [r0, #ARM_PRIV_VFP_fpscr]
+	mcr	p10, 7, r2, c1, c0, 0	/* restore fpscr */
+	mcr	p10, 7, r1, c8, c0, 0	/* restore fpexc */
+	pop	{r1, r2}
+	bx 	lr
+
 	.globl generic_timer_regs_save
 generic_timer_regs_save:
 	push	{r1, r2}
@@ -246,8 +317,8 @@ generic_timer_regs_save:
 	str	r1, [r0, #GENERIC_TIMER_CONTEXT_cntvcval]
 	str	r2, [r0, #(GENERIC_TIMER_CONTEXT_cntvcval + 0x4)]
 	mov	r1, #GENERIC_TIMER_CTRL_IT_MASK
-	mcr	p15, 0, r1, c14, c2, 1	/* cntpctl.it = 0 */
-	mcr	p15, 0, r1, c14, c3, 1	/* cntvctl.it = 0 */
+	mcr	p15, 0, r1, c14, c2, 1	/* disable physical timer */
+	mcr	p15, 0, r1, c14, c3, 1	/* disable virtual timer */
 	pop	{r1, r2}
 	bx 	lr
 
