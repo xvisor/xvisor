@@ -90,7 +90,7 @@ static inline u16 rev16(u16 v)
 				: "=r"(data) : "r"(addr))
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
-				: "=r"(res) : "r"(data), "r"(addr))
+				: "=&r"(res) : "r"(data), "r"(addr))
 
 #define clrex()	
 
@@ -100,7 +100,7 @@ static inline u16 rev16(u16 v)
 				: "=r"(data) : "r"(addr))
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
-				: "=r"(res) : "r"(data), "r"(addr))
+				: "=&r"(res) : "r"(data), "r"(addr))
 
 #define clrex()			asm volatile("clrex\n\t")
 
