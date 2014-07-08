@@ -51,7 +51,8 @@ u64 __notrace vmm_timecounter_read_for_profile(struct vmm_timecounter *tc)
 
 	cycles_now = tc->cs->read(tc->cs);
 	cycles_delta = (cycles_now - tc->cycles_last) & tc->cs->mask;
-	ns_offset = (cycles_delta * tc->cs->mult) >> tc->cs->shift;
+	ns_offset = vmm_clocksource_delta2nsecs(cycles_delta,
+						tc->cs->mult, tc->cs->shift);
 
 	return tc->nsec + ns_offset;
 }
@@ -66,7 +67,8 @@ u64 vmm_timecounter_read(struct vmm_timecounter *tc)
 	cycles_delta = (cycles_now - tc->cycles_last) & tc->cs->mask;
 	tc->cycles_last = cycles_now;
 
-	ns_offset = (cycles_delta * tc->cs->mult) >> tc->cs->shift;
+	ns_offset = vmm_clocksource_delta2nsecs(cycles_delta,
+						tc->cs->mult, tc->cs->shift);
 	tc->nsec += ns_offset;
 
 	return tc->nsec;
