@@ -34,7 +34,6 @@
 #include <cpu_vcpu_emulate.h>
 
 #include <arm_features.h>
-#include <generic_timer.h>
 #include <emulate_psci.h>
 
 /**
@@ -153,8 +152,6 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 			     arch_regs_t *regs,
 			     u32 il, u32 iss)
 {
-	u64 timeout_nsecs = 0;
-
 	/* Check instruction condition */
 	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
 		/* Skip this instruction */
@@ -167,13 +164,8 @@ int cpu_vcpu_emulate_wfi_wfe(struct vmm_vcpu *vcpu,
 		goto done;
 	}
 
-	/* Estimate wakeup timeout if possible */
-	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		timeout_nsecs = generic_timer_wakeup_timeout();
-	}
-
-	/* Wait for irq with timeout */
-	vmm_vcpu_irq_wait_timeout(vcpu, timeout_nsecs);
+	/* Wait for irq with default timeout */
+	vmm_vcpu_irq_wait_timeout(vcpu, 0);
 
 done:
 	/* Next instruction */

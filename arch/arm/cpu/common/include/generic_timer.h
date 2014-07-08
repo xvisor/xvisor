@@ -44,6 +44,7 @@
 
 #include <vmm_types.h>
 #include <vmm_compiler.h>
+#include <vmm_timer.h>
 
 enum {
 	GENERIC_TIMER_REG_FREQ,
@@ -70,6 +71,8 @@ struct generic_timer_context {
 	u32 cntkctl;
 	u32 cntpctl;
 	u32 cntvctl;
+	struct vmm_timer_event virt_ev;
+	struct vmm_timer_event phys_ev;
 }__packed;
 
 u64 generic_timer_wakeup_timeout(void);

@@ -43,6 +43,8 @@ enum gen_timer_type {
 };
 
 static u32 generic_timer_hz = 0;
+static u32 generic_timer_mult = 0;
+static u32 generic_timer_shift = 0;
 
 static u64 generic_counter_read(struct vmm_clocksource *cs)
 {
@@ -88,6 +90,8 @@ static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->mask = VMM_CLOCKSOURCE_MASK(56);
 	vmm_clocks_calc_mult_shift(&cs->mult, &cs->shift, 
 				   generic_timer_hz, VMM_NSEC_PER_SEC, 10);
+	generic_timer_mult = cs->mult;
+	generic_timer_shift = cs->shift;
 	cs->priv = NULL;
 
 	return vmm_clocksource_register(cs);
@@ -149,10 +153,35 @@ static int generic_timer_set_next_event(unsigned long evt,
 	return 0;
 }
 
-static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
+static void generic_phys_irq_inject(struct vmm_vcpu *vcpu,
+				    struct generic_timer_context *cntx)
 {
 	int rc;
-	u32 ctl, pirq;
+	u32 pirq;
+
+	pirq = cntx->phys_timer_irq;
+	if (pirq == 0) {
+		vmm_printf("%s: Physical timer irq not available (VCPU=%s)\n",
+			   __func__, vcpu->name);
+		return;
+	}
+
+	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 0);
+	if (rc) {
+		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
+			   __func__, vcpu->name, pirq);
+	}
+
+	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 1);
+	if (rc) {
+		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
+			   __func__, vcpu->name, pirq);
+	}
+}
+
+static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
+{
+	u32 ctl;
 	struct vmm_vcpu *vcpu;
 	struct generic_timer_context *cntx;
 
@@ -186,30 +215,40 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 		return VMM_IRQ_NONE;
 	}
 
-	pirq = cntx->phys_timer_irq;
-	if (pirq == 0) {
-		return VMM_IRQ_NONE;
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 0);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
-			   __func__, vcpu->name, pirq);
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 1);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
-			   __func__, vcpu->name, pirq);
-	}
+	generic_phys_irq_inject(vcpu, cntx);
 
 	return VMM_IRQ_HANDLED;
 }
 
-static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
+static void generic_virt_irq_inject(struct vmm_vcpu *vcpu,
+				    struct generic_timer_context *cntx)
 {
 	int rc;
-	u32 ctl, virq;
+	u32 virq;
+
+	virq = cntx->virt_timer_irq;
+	if (virq == 0) {
+		vmm_printf("%s: Virtual timer irq not available (VCPU=%s)\n",
+			   __func__, vcpu->name);
+		return;
+	}
+
+	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 0);
+	if (rc) {
+		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
+			   __func__, vcpu->name, virq);
+	}
+
+	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 1);
+	if (rc) {
+		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
+			   __func__, vcpu->name, virq);
+	}
+}
+
+static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
+{
+	u32 ctl;
 	struct vmm_vcpu *vcpu;
 	struct generic_timer_context *cntx;
 
@@ -243,22 +282,7 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 		return VMM_IRQ_NONE;
 	}
 
-	virq = cntx->virt_timer_irq;
-	if (virq == 0) {
-		return VMM_IRQ_NONE;
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 0);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
-			   __func__, vcpu->name, virq);
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 1);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
-			   __func__, vcpu->name, virq);
-	}
+	generic_virt_irq_inject(vcpu, cntx);
 
 	return VMM_IRQ_HANDLED;
 }
@@ -439,6 +463,26 @@ fail_free_cc:
 VMM_CLOCKCHIP_INIT_DECLARE(gtv7clkchip, "arm,armv7-timer", generic_timer_clockchip_init);
 VMM_CLOCKCHIP_INIT_DECLARE(gtv8clkchip, "arm,armv8-timer", generic_timer_clockchip_init);
 
+static void generic_phys_timer_expired(struct vmm_timer_event *ev)
+{
+	struct vmm_vcpu *vcpu = ev->priv;
+	struct generic_timer_context *cntx = arm_gentimer_context(vcpu);
+
+	BUG_ON(!cntx);
+
+	generic_phys_irq_inject(vcpu, cntx);
+}
+
+static void generic_virt_timer_expired(struct vmm_timer_event *ev)
+{
+	struct vmm_vcpu *vcpu = ev->priv;
+	struct generic_timer_context *cntx = arm_gentimer_context(vcpu);
+
+	BUG_ON(!cntx);
+
+	generic_virt_irq_inject(vcpu, cntx);
+}
+
 int generic_timer_vcpu_context_init(void *vcpu_ptr,
 				    void **context,
 				    u32 phys_irq, u32 virt_irq)
@@ -455,9 +499,15 @@ int generic_timer_vcpu_context_init(void *vcpu_ptr,
 		if (!(*context)) {
 			return VMM_ENOMEM;
 		}
+		cntx = *context;
+		INIT_TIMER_EVENT(&cntx->phys_ev,
+				 generic_phys_timer_expired, vcpu_ptr);
+		INIT_TIMER_EVENT(&cntx->virt_ev,
+				 generic_virt_timer_expired, vcpu_ptr);
+	} else {
+		cntx = *context;
 	}
 
-	cntx = *context;
 	cntx->cntpctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntvctl = GENERIC_TIMER_CTRL_IT_MASK;
 	cntx->cntpcval = 0;
@@ -467,11 +517,16 @@ int generic_timer_vcpu_context_init(void *vcpu_ptr,
 	cntx->phys_timer_irq = phys_irq;
 	cntx->virt_timer_irq = virt_irq;
 
+	vmm_timer_event_stop(&cntx->phys_ev);
+	vmm_timer_event_stop(&cntx->virt_ev);
+
 	return VMM_OK;
 }
 
 int generic_timer_vcpu_context_deinit(void *vcpu_ptr, void **context)
 {
+	struct generic_timer_context *cntx;
+
 	if (!context || !vcpu_ptr) {
 		return VMM_EINVALID;
 	}
@@ -479,13 +534,19 @@ int generic_timer_vcpu_context_deinit(void *vcpu_ptr, void **context)
 		return VMM_EINVALID;
 	}
 
-	vmm_free(*context);
+	cntx = *context;
+
+	vmm_timer_event_stop(&cntx->phys_ev);
+	vmm_timer_event_stop(&cntx->virt_ev);
+
+	vmm_free(cntx);
 
 	return VMM_OK;
 }
 
 void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 {
+	u64 ev_nsecs;
 	struct generic_timer_context *cntx = context;
 
 	if (!cntx) {
@@ -502,22 +563,43 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 	cntx->cntkctl = generic_timer_reg_read(GENERIC_TIMER_REG_KCTL);
 	generic_timer_reg_write(GENERIC_TIMER_REG_PHYS_CTRL,
 				GENERIC_TIMER_CTRL_IT_MASK);
-	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, 
+	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL,
 				GENERIC_TIMER_CTRL_IT_MASK);
 #endif
+
+	if ((cntx->cntpctl & GENERIC_TIMER_CTRL_ENABLE) &&
+	    !(cntx->cntpctl & GENERIC_TIMER_CTRL_IT_MASK)) {
+		ev_nsecs = cntx->cntpcval - generic_timer_pcounter_read();
+		ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
+						generic_timer_mult,
+						generic_timer_shift);
+		vmm_timer_event_start(&cntx->phys_ev, ev_nsecs);
+	}
+
+	if ((cntx->cntvctl & GENERIC_TIMER_CTRL_ENABLE) &&
+	    !(cntx->cntvctl & GENERIC_TIMER_CTRL_IT_MASK)) {
+		ev_nsecs = cntx->cntvcval + cntx->cntvoff -
+					generic_timer_pcounter_read();
+		ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
+						generic_timer_mult,
+						generic_timer_shift);
+		vmm_timer_event_start(&cntx->virt_ev, ev_nsecs);
+	}
 }
 
 void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 {
-	struct vmm_vcpu *vcpu;
+	struct vmm_vcpu *vcpu = vcpu_ptr;
 	struct generic_timer_context *cntx = context;
 
 	if (!cntx) {
 		return;
 	}
 
+	vmm_timer_event_stop(&cntx->phys_ev);
+	vmm_timer_event_stop(&cntx->virt_ev);
+
 	if (!cntx->cntvoff) {
-		vcpu = vcpu_ptr;
 		cntx->cntvoff = vmm_manager_guest_reset_timestamp(vcpu->guest);
 		cntx->cntvoff = cntx->cntvoff * generic_timer_hz;
 		cntx->cntvoff = udiv64(cntx->cntvoff, 1000000000ULL);
