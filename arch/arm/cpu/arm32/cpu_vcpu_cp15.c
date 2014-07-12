@@ -60,6 +60,9 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 		zone = CPU_VCPU_VTLB_ZONE_V;
 	} else if (p->ng) {
 		zone = CPU_VCPU_VTLB_ZONE_NG;
+	} else if ((CPU_IRQ_HIGHVEC_BASE <= p->va) &&
+		   (p->va < (CPU_IRQ_HIGHVEC_BASE + 0x10000))) {
+		zone = CPU_VCPU_VTLB_ZONE_HVEC;
 	} else {
 		zone = CPU_VCPU_VTLB_ZONE_G;
 	}

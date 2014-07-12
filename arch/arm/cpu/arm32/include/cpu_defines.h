@@ -24,12 +24,15 @@
 #define __CPU_DEFINES_H__
 
 /* Maximum allowed VTLB entries */
-#define CPU_VCPU_VTLB_ZONE_COUNT			3
-#define CPU_VCPU_VTLB_ZONE_V				2
-#define CPU_VCPU_VTLB_ZONE_NG				1
-#define CPU_VCPU_VTLB_ZONE_G				0
-#define CPU_VCPU_VTLB_ZONE_START(x)			((x==0) ? 0 : ((x==1) ? 200 : 325))
-#define CPU_VCPU_VTLB_ZONE_LEN(x)			((x==0) ? 200 : ((x==1) ? 125 : 25))
+#define CPU_VCPU_VTLB_ZONE_COUNT			4
+#define CPU_VCPU_VTLB_ZONE_V				0
+#define CPU_VCPU_VTLB_ZONE_HVEC				1
+#define CPU_VCPU_VTLB_ZONE_G				2
+#define CPU_VCPU_VTLB_ZONE_NG				3
+#define CPU_VCPU_VTLB_ZONE_START(x)			\
+			((x==0) ? 0 : ((x==1) ? 16 : ((x==2) ? 32 : 238)))
+#define CPU_VCPU_VTLB_ZONE_LEN(x)			\
+			((x==0) ? 16 : ((x==1) ? 16 : ((x==2) ? 206 : 112)))
 #define CPU_VCPU_VTLB_ENTRY_COUNT			350
 
 /* Coprocessor related macros & defines */
