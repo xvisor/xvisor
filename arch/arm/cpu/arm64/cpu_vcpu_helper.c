@@ -659,6 +659,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		if (tvcpu->is_normal) {
 			/* Update last host CPU */
 			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
+			/* Save VGIC registers */
+			arm_vgic_save(tvcpu);
 			/* Save system registers */
 			cpu_vcpu_sysregs_save(tvcpu);
 			/* Save VFP and SIMD register */
@@ -668,8 +670,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 				generic_timer_vcpu_context_save(tvcpu,
 						arm_gentimer_context(tvcpu));
 			}
-			/* Save VGIC registers */
-			arm_vgic_save(tvcpu);
 		}
 	}
 	/* Restore user registers & special registers */
@@ -690,8 +690,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		/* Restore Stage2 MMU context */
 		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 			       arm_guest_priv(vcpu->guest)->ttbl);
-		/* Restore VGIC registers */
-		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 			generic_timer_vcpu_context_restore(vcpu,
@@ -701,6 +699,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_vfp_regs_restore(vcpu);
 		/* Restore system registers */
 		cpu_vcpu_sysregs_restore(vcpu);
+		/* Restore VGIC registers */
+		arm_vgic_restore(vcpu);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because

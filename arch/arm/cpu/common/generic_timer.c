@@ -470,6 +470,8 @@ static void generic_phys_timer_expired(struct vmm_timer_event *ev)
 
 	BUG_ON(!cntx);
 
+	cntx->cntpctl |= GENERIC_TIMER_CTRL_IT_MASK;
+
 	generic_phys_irq_inject(vcpu, cntx);
 }
 
@@ -479,6 +481,8 @@ static void generic_virt_timer_expired(struct vmm_timer_event *ev)
 	struct generic_timer_context *cntx = arm_gentimer_context(vcpu);
 
 	BUG_ON(!cntx);
+
+	cntx->cntvctl |= GENERIC_TIMER_CTRL_IT_MASK;
 
 	generic_virt_irq_inject(vcpu, cntx);
 }
@@ -589,6 +593,7 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 
 void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 {
+	u64 pcnt;
 	struct vmm_vcpu *vcpu = vcpu_ptr;
 	struct generic_timer_context *cntx = context;
 
@@ -603,6 +608,22 @@ void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 		cntx->cntvoff = vmm_manager_guest_reset_timestamp(vcpu->guest);
 		cntx->cntvoff = cntx->cntvoff * generic_timer_hz;
 		cntx->cntvoff = udiv64(cntx->cntvoff, 1000000000ULL);
+	}
+
+	pcnt = generic_timer_pcounter_read();
+
+	if ((cntx->cntpctl & GENERIC_TIMER_CTRL_ENABLE) &&
+	    !(cntx->cntpctl & GENERIC_TIMER_CTRL_IT_MASK) &&
+	     (cntx->cntpcval <= pcnt)) {
+		cntx->cntpctl |= GENERIC_TIMER_CTRL_IT_MASK;
+		generic_phys_irq_inject(vcpu, cntx);
+	}
+
+	if ((cntx->cntvctl & GENERIC_TIMER_CTRL_ENABLE) &&
+	    !(cntx->cntvctl & GENERIC_TIMER_CTRL_IT_MASK) &&
+	     ((cntx->cntvoff + cntx->cntvcval) <= pcnt)) {
+		cntx->cntvctl |= GENERIC_TIMER_CTRL_IT_MASK;
+		generic_virt_irq_inject(vcpu, cntx);
 	}
 
 #ifdef HAVE_GENERIC_TIMER_REGS_RESTORE
