@@ -958,8 +958,7 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	if (((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) &&
-	    (pg.dom == TTBL_L1TBL_TTE_DOM_VCPU_SUPER)) {
+	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		/* Remove fault address from VTLB */
 		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
 
@@ -1504,7 +1503,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		switch (opc2) {
 		case 0:
 			/* store old value of sctlr */
-			tmp =  cp15->c1_sctlr & SCTLR_MMU_MASK;
+			tmp = cp15->c1_sctlr & SCTLR_MMU_MASK;
 			if (arm_feature(vcpu, ARM_FEATURE_V7)) {
 				cp15->c1_sctlr &= SCTLR_ROBITS_MASK;
 				cp15->c1_sctlr |= (data & ~SCTLR_ROBITS_MASK);
@@ -1525,11 +1524,6 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 				 * MMU related bits in SCTLR changes
 				 */
 				cpu_vcpu_cp15_vtlb_flush(cp15);
-			} else {
-				/* If no change in SCTLR then flush 
-				 * non-global pages from VTLB
-				 */
-				cpu_vcpu_cp15_vtlb_flush_ng(cp15);
 			}
 			break;
 		case 1:	/* Auxiliary control register. */
