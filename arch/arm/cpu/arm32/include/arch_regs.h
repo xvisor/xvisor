@@ -57,10 +57,11 @@ struct arm_priv_cp14 {
 };
 
 struct arm_vtlb_entry {
-	u8 valid;
-	u8 ng;
-	u8 dom;
-	struct cpu_page page;
+	u32 ng:1;
+	u32 dom:4;
+	virtual_addr_t pva;
+	virtual_size_t psz;
+	struct cpu_l2tbl *l2;
 };
 
 struct arm_vtlb {

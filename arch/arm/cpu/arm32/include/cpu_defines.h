@@ -31,10 +31,10 @@
 #define CPU_VCPU_VTLB_ZONE_G				3
 #define CPU_VCPU_VTLB_ZONE_NG				4
 #define CPU_VCPU_VTLB_ZONE_START(x)			\
-			((x < 3) ? (16*(x)) : ((x==3) ? 48 : 250))
+			((x < 3) ? (16*(x)) : ((x==3) ? 48 : 304))
 #define CPU_VCPU_VTLB_ZONE_LEN(x)			\
-			((x < 3) ? 16 : ((x==3) ? 202 : 100))
-#define CPU_VCPU_VTLB_ENTRY_COUNT			350
+			((x < 3) ? 16 : ((x==3) ? 256 : 128))
+#define CPU_VCPU_VTLB_ENTRY_COUNT			432
 
 /* Coprocessor related macros & defines */
 #define CPU_COPROC_COUNT				16
