@@ -169,7 +169,7 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_MEMORY_READ)
+#if !defined(ARCH_HAS_MEMORY_READWRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
@@ -222,7 +222,7 @@ u32 vmm_host_memory_write(physical_addr_t hpa,
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_MEMORY_WRITE)
+#if !defined(ARCH_HAS_MEMORY_READWRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
@@ -286,7 +286,21 @@ int __cpuinit vmm_host_aspace_init(void)
 
 	/* For Non-Boot CPU just call arch code and return */
 	if (!vmm_smp_is_bootcpu()) {
-		return arch_cpu_aspace_secondary_init();
+		rc = arch_cpu_aspace_secondary_init();
+		if (rc) {
+			return rc;
+		}
+
+#if defined(ARCH_HAS_MEMORY_READWRITE)
+		/* Initialize memory read/write for Non-Boot CPU */
+		rc = arch_cpu_aspace_memory_rwinit(
+				host_mem_rw_va[vmm_smp_processor_id()]);
+		if (rc) {
+			return rc;
+		}
+#endif
+
+		return VMM_OK;
 	}
 
 	/* Determine VAPOOL start and size */
@@ -436,6 +450,15 @@ int __cpuinit vmm_host_aspace_init(void)
 			return rc;
 		}
 	}
+
+#if defined(ARCH_HAS_MEMORY_READWRITE)
+	/* Initialize memory read/write for Boot CPU */
+	rc = arch_cpu_aspace_memory_rwinit(
+				host_mem_rw_va[vmm_smp_bootcpu_id()]);
+	if (rc) {
+		return rc;
+	}
+#endif
 
 	return VMM_OK;
 }

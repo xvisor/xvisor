@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <vmm_host_vapool.h>
@@ -57,6 +58,7 @@ int defl2_ttbl_used[TTBL_INITIAL_L2TBL_COUNT];
 virtual_addr_t defl2_ttbl_mapva[TTBL_INITIAL_L2TBL_COUNT];
 
 struct cpu_mmu_ctrl {
+	/* Initialized by primary CPU aspace init */
 	vmm_spinlock_t defl1_lock;
 	struct cpu_l1tbl defl1;
 	virtual_addr_t l1_base_va;
@@ -76,6 +78,9 @@ struct cpu_mmu_ctrl {
 	vmm_spinlock_t l2_alloc_lock;
 	u32 l2_alloc_count;
 	struct dlist free_l2tbl_list;
+	/* Initialized by memory read/write init */
+	u32 mem_rw_l1_offset[CONFIG_CPU_COUNT];
+	u32 mem_rw_l2_offset[CONFIG_CPU_COUNT];
 };
 
 static struct cpu_mmu_ctrl mmuctrl;
@@ -83,8 +88,6 @@ static struct cpu_mmu_ctrl mmuctrl;
 static inline void cpu_mmu_sync_tte(u32 *tte)
 {
 	clean_dcache_mva((virtual_addr_t)tte);
-	isb();
-	dsb();
 }
 
 /** Find L2 page table at given physical address from L1 page table */
@@ -1511,39 +1514,15 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	return VMM_OK;
 }
 
+int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
+{
+	/* For ARMv5 we don't have optimized memory read/write
+	 * hence do nothing here.
+	 */
+	return VMM_OK;
+}
+
 #else
-
-#define PHYS_RW_L1_TTE	(((TTBL_L1TBL_TTE_DOM_RESERVED <<		\
-			   TTBL_L1TBL_TTE_DOM_SHIFT) &			\
-			  TTBL_L1TBL_TTE_DOM_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_NS2_SHIFT) &		\
-			  TTBL_L1TBL_TTE_NS2_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_NG_SHIFT) &		\
-			  TTBL_L1TBL_TTE_NG_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_S_SHIFT) &		\
-			  TTBL_L1TBL_TTE_S_MASK)		|	\
-			 ((TTBL_AP_SRW_U << 				\
-			   (TTBL_L1TBL_TTE_AP2_SHIFT - 2)) &		\
-			  TTBL_L1TBL_TTE_AP2_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_TEX_SHIFT) &		\
-			  TTBL_L1TBL_TTE_TEX_MASK)		|	\
-			 ((TTBL_AP_SRW_U << TTBL_L1TBL_TTE_AP_SHIFT) &	\
-			  TTBL_L1TBL_TTE_AP_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_IMP_SHIFT) &		\
-			  TTBL_L1TBL_TTE_IMP_MASK)		|	\
-			 ((0x0 << TTBL_L1TBL_TTE_XN_SHIFT) &		\
-			  TTBL_L1TBL_TTE_XN_MASK)		|	\
-			 (TTBL_L1TBL_TTE_TYPE_SECTION))
-
-#define PHYS_RW_L1_TTE_NOCACHE	\
-			 (PHYS_RW_L1_TTE)
-
-#define PHYS_RW_L1_TTE_CACHE	\
-			 (PHYS_RW_L1_TTE |				\
-			  ((0x1 << TTBL_L1TBL_TTE_C_SHIFT) &		\
-			    TTBL_L1TBL_TTE_C_MASK)		|	\
-			  ((0x1 << TTBL_L1TBL_TTE_B_SHIFT) &		\
-			    TTBL_L1TBL_TTE_B_MASK))
 
 #define PHYS_RW_L2_TTE	((TTBL_L2TBL_TTE_TYPE_SMALL_XN)		|	\
 			 ((0x0 << TTBL_L2TBL_TTE_STEX_SHIFT) &		\
@@ -1571,53 +1550,32 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 				physical_addr_t src,
 				void *dst, u32 len, bool cacheable)
 {
-	u32 *l1_tte = NULL, *l2_tte = NULL;
-	u32 l1_tte_type;
+	u32 cpu = vmm_smp_processor_id();
+	u32 *l1_tte, *l2_tte;
 	physical_addr_t l2base;
-	struct cpu_l1tbl *l1 = NULL;
-	struct cpu_l2tbl *l2 = NULL;
+	struct cpu_l1tbl *l1;
+	struct cpu_l2tbl *l2;
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (!l1) {
 		return VMM_EFAIL;
 	}
 
-	l1_tte = (u32 *) (l1->tbl_va +
-			  ((tmp_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
-
-	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
-		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
-			l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
-			l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
-			if (!l2) {
-				return VMM_EFAIL;
-			}
-			l2_tte = (u32 *) ((tmp_va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
-				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
-		} else {
-			return VMM_EFAIL;
-		}
+	l1_tte = (u32 *) (l1->tbl_va + mmuctrl.mem_rw_l1_offset[cpu]);
+	l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+	l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
+	if (!l2) {
+		return VMM_EFAIL;
 	}
+	l2_tte = (u32 *) (l2->tbl_va + mmuctrl.mem_rw_l2_offset[cpu]);
 
-	if (l2_tte) {
-		if (cacheable) {
-			*l2_tte = PHYS_RW_L2_TTE_CACHE;
-		} else {
-			*l2_tte = PHYS_RW_L2_TTE_NOCACHE;
-		}
-		*l2_tte |= (src & TTBL_L2TBL_TTE_BASE12_MASK);
-		cpu_mmu_sync_tte(l2_tte);
+	if (cacheable) {
+		*l2_tte = PHYS_RW_L2_TTE_CACHE;
 	} else {
-		if (cacheable) {
-			*l1_tte = PHYS_RW_L1_TTE_CACHE;
-		} else {
-			*l1_tte = PHYS_RW_L1_TTE_NOCACHE;
-		}
-		*l1_tte |= (src & TTBL_L1TBL_TTE_BASE20_MASK);
-		cpu_mmu_sync_tte(l1_tte);
+		*l2_tte = PHYS_RW_L2_TTE_NOCACHE;
 	}
+	*l2_tte |= (src & TTBL_L2TBL_TTE_BASE12_MASK);
+	clean_dcache_mva((virtual_addr_t)l2_tte);
 
 	switch (len) {
 	case 1:
@@ -1634,15 +1592,9 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 		break;
 	};
 
-	if (l2_tte) {
-		*l2_tte = 0x0;
-		cpu_mmu_sync_tte(l2_tte);
-	} else {
-		*l1_tte = 0x0;
-		cpu_mmu_sync_tte(l1_tte);
-	}
+	*l2_tte = 0x0;
+	clean_dcache_mva((virtual_addr_t)l2_tte);
 	invalid_tlb_mva(tmp_va);
-	dsb();
 	isb();
 
 	return VMM_OK;
@@ -1652,45 +1604,32 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 				 physical_addr_t dst,
 				 void *src, u32 len, bool cacheable)
 {
-	u32 *l1_tte = NULL, *l2_tte = NULL;
-	u32 l1_tte_type;
+	u32 cpu = vmm_smp_processor_id();
+	u32 *l1_tte, *l2_tte;
 	physical_addr_t l2base;
-	struct cpu_l1tbl *l1 = NULL;
-	struct cpu_l2tbl *l2 = NULL;
+	struct cpu_l1tbl *l1;
+	struct cpu_l2tbl *l2;
 
 	l1 = cpu_mmu_l1tbl_current();
 	if (!l1) {
 		return VMM_EFAIL;
 	}
 
-	l1_tte = (u32 *) (l1->tbl_va +
-			  ((tmp_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
-
-	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
-	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
-		if (l1_tte_type == TTBL_L1TBL_TTE_TYPE_L2TBL) {
-			l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
-			l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
-			if (!l2) {
-				return VMM_EFAIL;
-			}
-			l2_tte = (u32 *) ((tmp_va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
-				  TTBL_L2TBL_TTE_OFFSET_SHIFT);
-			l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
-		} else {
-			return VMM_EFAIL;
-		}
+	l1_tte = (u32 *) (l1->tbl_va + mmuctrl.mem_rw_l1_offset[cpu]);
+	l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+	l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
+	if (!l2) {
+		return VMM_EFAIL;
 	}
+	l2_tte = (u32 *) (l2->tbl_va + mmuctrl.mem_rw_l2_offset[cpu]);
 
-	if (l2_tte) {
-		*l2_tte = PHYS_RW_L2_TTE;
-		*l2_tte |= (dst & TTBL_L2TBL_TTE_BASE12_MASK);
-		cpu_mmu_sync_tte(l2_tte);
+	if (cacheable) {
+		*l2_tte = PHYS_RW_L2_TTE_CACHE;
 	} else {
-		*l1_tte = PHYS_RW_L1_TTE;
-		*l1_tte |= (dst & TTBL_L1TBL_TTE_BASE20_MASK);
-		cpu_mmu_sync_tte(l1_tte);
+		*l2_tte = PHYS_RW_L2_TTE_NOCACHE;
 	}
+	*l2_tte |= (dst & TTBL_L2TBL_TTE_BASE12_MASK);
+	clean_dcache_mva((virtual_addr_t)l2_tte);
 
 	switch (len) {
 	case 1:
@@ -1707,16 +1646,71 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 		break;
 	};
 
-	if (l2_tte) {
-		*l2_tte = 0x0;
-		cpu_mmu_sync_tte(l2_tte);
-	} else {
-		*l1_tte = 0x0;
-		cpu_mmu_sync_tte(l1_tte);
-	}
+	*l2_tte = 0x0;
+	clean_dcache_mva((virtual_addr_t)l2_tte);
 	invalid_tlb_mva(tmp_va);
-	dsb();
 	isb();
+
+	return VMM_OK;
+}
+
+int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
+{
+	int rc;
+	u32 l1_tte_type;
+	u32 *l1_tte, *l2_tte;
+	physical_addr_t l2base;
+	struct cpu_l1tbl *l1;
+	struct cpu_l2tbl *l2;
+	struct cpu_page p;
+
+	memset(&p, 0, sizeof(p));
+	p.pa = 0;
+	p.va = tmp_va;
+	p.sz = VMM_PAGE_SIZE;
+	p.imp = 0;
+	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+	p.ap = TTBL_AP_S_U;
+	p.xn = 1;
+	p.tex = 0;
+	p.c = 0;
+	p.b = 0;
+	p.ng = 0;
+	p.s = 0;
+
+	rc = cpu_mmu_map_reserved_page(&p);
+	if (rc) {
+		return rc;
+	}
+
+	l1 = cpu_mmu_l1tbl_current();
+	if (!l1) {
+		return VMM_EFAIL;
+	}
+
+	l1_tte = (u32 *) (l1->tbl_va +
+			  ((tmp_va >> TTBL_L1TBL_TTE_OFFSET_SHIFT) << 2));
+	l1_tte_type = *l1_tte & TTBL_L1TBL_TTE_TYPE_MASK;
+	if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_FAULT) {
+		if (l1_tte_type != TTBL_L1TBL_TTE_TYPE_L2TBL) {
+			return VMM_EFAIL;
+		}
+		l2base = *l1_tte & TTBL_L1TBL_TTE_BASE10_MASK;
+		l2 = cpu_mmu_l2tbl_find_tbl_pa(l2base);
+		if (!l2) {
+			return VMM_ENOTAVAIL;
+		}
+		l2_tte = (u32 *) ((tmp_va & ~TTBL_L1TBL_TTE_OFFSET_MASK) >>
+			  TTBL_L2TBL_TTE_OFFSET_SHIFT);
+		l2_tte = (u32 *) (l2->tbl_va + ((u32) l2_tte << 2));
+		*l2_tte = 0x0;
+		mmuctrl.mem_rw_l1_offset[vmm_smp_processor_id()] =
+				((virtual_addr_t)l1_tte) - l1->tbl_va;
+		mmuctrl.mem_rw_l2_offset[vmm_smp_processor_id()] =
+				((virtual_addr_t)l2_tte) - l2->tbl_va;
+	} else {
+		return VMM_ENOTAVAIL;
+	}
 
 	return VMM_OK;
 }
@@ -1728,6 +1722,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 			u32 mem_flags)
 {
 	struct cpu_page p;
+
 	memset(&p, 0, sizeof(p));
 
 	/* Initialize the page struct */
@@ -1760,7 +1755,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.tex = 0;
 	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
-	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;;
+	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;
 	p.ng = 0;
 	p.s = 0;
 #endif
