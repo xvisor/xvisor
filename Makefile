@@ -62,7 +62,6 @@ export PROJECT_NAME = Xvisor (eXtensible Versatile hypervISOR)
 export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
 export CONFIG_DIR=$(build_dir)/tmpconf
 export CONFIG_FILE=$(build_dir)/.config
-export DEPENDENCY_FILE=$(build_dir)/.deps
 
 # Openconf settings
 export OPENCONF_PROJECT = $(PROJECT_NAME)
@@ -301,17 +300,12 @@ all-m+=$(emulators-m:.o=.xo)
 
 # Default rule "make"
 .PHONY: all
-all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
+all: $(CONFIG_FILE) $(tools-y) $(targets-y)
 
 .PHONY: modules
-modules: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(all-m)
+modules: $(CONFIG_FILE) $(all-m)
 
 dtbs: $(dtbs-y)
-
-# Generate and include built-in dependency rules
--include $(DEPENDENCY_FILE)
-$(DEPENDENCY_FILE): $(CONFIG_FILE) $(deps-y)
-	$(V)cat $(deps-y) > $(DEPENDENCY_FILE)
 
 # Include additional rules for tools
 include $(tools_dir)/rules.mk
@@ -381,6 +375,11 @@ $(build_dir)/%.o: $(build_dir)/%.c
 
 $(build_dir)/%.xo: $(build_dir)/%.o
 	$(call copy_file,$@,$^)
+
+# Include built-in and module objects dependency files
+# Dependency files should only be included after all Makefile rules
+$(deps-y): $(CONFIG_FILE)
+-include $(deps-y)
 
 # Rule for "make clean"
 .PHONY: clean
