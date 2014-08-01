@@ -19,6 +19,17 @@
  * @file libfdt.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Flattend device tree library header
+ *
+ * The FDT structures for parsing FDT blob are taken from:
+ * libfdt/fdt.h of DTC soure code.
+ * Refer, https://git.kernel.org/cgit/utils/dtc/dtc.git
+ *
+ * libfdt - Flat Device Tree manipulation
+ * Copyright (C) 2006 David Gibson, IBM Corporation.
+ * Copyright 2012 Kim Phillips, Freescale Semiconductor.
+ *
+ * libfdt is dual licensed: you can use it either under the terms of
+ * the GPL, or the BSD license, at your option.
  */
 
 #ifndef __LIBFDT_H_
