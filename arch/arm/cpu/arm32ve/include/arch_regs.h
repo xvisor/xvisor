@@ -58,11 +58,12 @@ struct arm_priv_vfp {
 	u32 fpscr;				/* 0x10 */
 	u32 fpinst;				/* 0x14 */
 	u32 fpinst2;				/* 0x18 */
+	u32 reserved;				/* 0x1C */
 	/* General Purpose Registers */
 	/* {d0-d15} 64bit floating point registers.*/
-	u64 fpregs1[16];			/* 0x1C */
+	u64 fpregs1[16];			/* 0x20 */
 	/* {d16-d31} 64bit floating point registers.*/
-	u64 fpregs2[16];			/* 0x9C */
+	u64 fpregs2[16];			/* 0xA0 */
 } __packed;
 
 struct arm_priv_cp14 {
@@ -104,12 +105,12 @@ struct arm_priv_cp15 {
 	u32 c1_sctlr;				/* 0x8C */
 	/* Coprocessor access register.  */
 	u32 c1_cpacr;				/* 0x90 */
-	/* MMU translation table base 0. */
-	u64 c2_ttbr0;				/* 0x94 */
-	/* MMU translation table base 1. */
-	u64 c2_ttbr1;				/* 0x9C */
 	/* MMU translation table base control. */
-	u32 c2_ttbcr;				/* 0xA4 */
+	u32 c2_ttbcr;				/* 0x94 */
+	/* MMU translation table base 0. */
+	u64 c2_ttbr0;				/* 0x98 */
+	/* MMU translation table base 1. */
+	u64 c2_ttbr1;				/* 0xA0 */
 	/* MMU domain access control register */
 	u32 c3_dacr;				/* 0xA8 */
 	/* Fault status registers. */
@@ -221,7 +222,7 @@ struct arm_priv {
 	void (*vgic_save)(void *vcpu_ptr);
 	void (*vgic_restore)(void *vcpu_ptr);
 	void *vgic_priv;
-} __attribute((packed));
+};
 
 struct arm_guest_priv {
 	/* Stage2 table */

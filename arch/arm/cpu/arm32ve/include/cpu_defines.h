@@ -698,9 +698,9 @@
 #define ARM_PRIV_CP15_c0_cssel				0x88
 #define ARM_PRIV_CP15_c1_sctlr				0x8C
 #define ARM_PRIV_CP15_c1_cpacr				0x90
-#define ARM_PRIV_CP15_c2_ttbr0				0x94
-#define ARM_PRIV_CP15_c2_ttbr1				0x9C
-#define ARM_PRIV_CP15_c2_ttbcr				0xA4
+#define ARM_PRIV_CP15_c2_ttbcr				0x94
+#define ARM_PRIV_CP15_c2_ttbr0				0x98
+#define ARM_PRIV_CP15_c2_ttbr1				0xA0
 #define ARM_PRIV_CP15_c3_dacr				0xA8
 #define ARM_PRIV_CP15_c5_ifsr				0xAC
 #define ARM_PRIV_CP15_c5_dfsr				0xB0
@@ -737,7 +737,8 @@
 #define ARM_PRIV_VFP_fpscr				0x10
 #define ARM_PRIV_VFP_fpinst				0x14
 #define ARM_PRIV_VFP_fpinst2				0x18
-#define ARM_PRIV_VFP_fpregs1				0x1C
-#define ARM_PRIV_VFP_fpregs2				0x9C
+#define ARM_PRIV_VFP_reserved				0x1C
+#define ARM_PRIV_VFP_fpregs1				0x20
+#define ARM_PRIV_VFP_fpregs2				0xA0
 
 #endif
