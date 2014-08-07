@@ -25,6 +25,7 @@
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_sysregs.h>
 
 #include <arm_features.h>
@@ -250,78 +251,12 @@ bad_reg:
 
 void cpu_vcpu_sysregs_save(struct vmm_vcpu *vcpu)
 {
-	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
-
-	/* Save 64bit EL1/EL0 registers */
-	s->sp_el0 = mrs(sp_el0);
-	s->sp_el1 = mrs(sp_el1);
-	s->elr_el1 = mrs(elr_el1);
-	s->spsr_el1 = mrs(spsr_el1);
-	s->ttbr0_el1 = mrs(ttbr0_el1);
-	s->ttbr1_el1 = mrs(ttbr1_el1);
-	s->sctlr_el1 = mrs(sctlr_el1);
-	s->cpacr_el1 = mrs(cpacr_el1);
-	s->tcr_el1 = mrs(tcr_el1);
-	s->esr_el1 = mrs(esr_el1);
-	s->far_el1 = mrs(far_el1);
-	s->mair_el1 = mrs(mair_el1);
-	s->vbar_el1 = mrs(vbar_el1);
-	s->contextidr_el1 = mrs(contextidr_el1);
-	s->tpidr_el0 = mrs(tpidr_el0);
-	s->tpidr_el1 = mrs(tpidr_el1);
-	s->tpidrro_el0 = mrs(tpidrro_el0);
-
-	/* Save 32bit only registers */
-	s->spsr_abt = mrs(spsr_abt);
-	s->spsr_und = mrs(spsr_und);
-	s->spsr_irq = mrs(spsr_irq);
-	s->spsr_fiq = mrs(spsr_fiq);
-	s->dacr32_el2 = mrs(dacr32_el2);
-	s->ifsr32_el2 = mrs(ifsr32_el2);
-	if (cpu_supports_thumbee()) {
-		s->teecr32_el1 = mrs(teecr32_el1);
-		s->teehbr32_el1 = mrs(teehbr32_el1);
-	}
+	cpu_vcpu_sysregs_regs_save(&arm_priv(vcpu)->sysregs);
 }
 
 void cpu_vcpu_sysregs_restore(struct vmm_vcpu *vcpu)
 {
-	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
-
-	/* Update VPIDR and VMPIDR */
-	msr(vpidr_el2, s->midr_el1);
-	msr(vmpidr_el2, s->mpidr_el1);
-
-	/* Restore 64bit EL1/EL0 register */
-	msr(sp_el0, s->sp_el0);
-	msr(sp_el1, s->sp_el1);
-	msr(elr_el1, s->elr_el1);
-	msr(spsr_el1, s->spsr_el1);
-	msr(ttbr0_el1, s->ttbr0_el1);
-	msr(ttbr1_el1, s->ttbr1_el1);
-	msr(sctlr_el1, s->sctlr_el1);
-	msr(cpacr_el1, s->cpacr_el1);
-	msr(tcr_el1, s->tcr_el1);
-	msr(esr_el1, s->esr_el1);
-	msr(far_el1, s->far_el1);
-	msr(mair_el1, s->mair_el1);
-	msr(vbar_el1, s->vbar_el1);
-	msr(contextidr_el1, s->contextidr_el1);
-	msr(tpidr_el0, s->tpidr_el0);
-	msr(tpidr_el1, s->tpidr_el1);
-	msr(tpidrro_el0, s->tpidrro_el0);
-
-	/* Restore 32bit only registers */
-	msr(spsr_abt, s->spsr_abt);
-	msr(spsr_und, s->spsr_und);
-	msr(spsr_irq, s->spsr_irq);
-	msr(spsr_fiq, s->spsr_fiq);
-	msr(dacr32_el2, s->dacr32_el2);
-	msr(ifsr32_el2, s->ifsr32_el2);
-	if (cpu_supports_thumbee()) {
-		msr(teecr32_el1, s->teecr32_el1);
-		msr(teehbr32_el1, s->teehbr32_el1);
-	}
+	cpu_vcpu_sysregs_regs_restore(&arm_priv(vcpu)->sysregs);
 }
 
 void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,
@@ -382,7 +317,7 @@ int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 
-	/* Clear all system registers */
+	/* Clear all sysregs */
 	memset(s, 0, sizeof(struct arm_priv_sysregs));
 
 	/* Initialize VCPU MIDR and MPIDR registers */

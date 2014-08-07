@@ -51,30 +51,30 @@ bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			 u32 data);
 
-/** Read one system register */
+/** Read one sysreg */
 bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
 			   u32 iss_sysreg, u64 *data);
 
-/** Write one system register */
+/** Write one sysreg */
 bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu, 
 			    arch_regs_t *regs,
 			    u32 iss_sysreg, u64 data);
 
-/** Save system registers */
+/** Save sysregs context */
 void cpu_vcpu_sysregs_save(struct vmm_vcpu *vcpu);
 
-/** Restore system registers */
+/** Restore sysregs context */
 void cpu_vcpu_sysregs_restore(struct vmm_vcpu *vcpu);
 
-/** Print system registers for given VCPU */
+/** Print sysregs context for given VCPU */
 void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,
 			   struct vmm_vcpu *vcpu);
 
-/** Initialize system registers for given VCPU */
+/** Initialize sysregs context for given VCPU */
 int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid);
 
-/** DeInitialize system registers for given VCPU */
+/** DeInitialize sysregs context for given VCPU */
 int cpu_vcpu_sysregs_deinit(struct vmm_vcpu *vcpu);
 
 #endif /* _CPU_VCPU_SYSREGS_H__ */

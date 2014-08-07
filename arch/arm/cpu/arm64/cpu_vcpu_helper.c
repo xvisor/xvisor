@@ -549,13 +549,13 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* Set last host CPU to invalid value */
 	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
 
-	/* Initialize system registers */
+	/* Initialize sysregs context */
 	rc = cpu_vcpu_sysregs_init(vcpu, cpuid);
 	if (rc) {
 		goto fail_sysregs_init;
 	}
 
-	/* Initialize VFP registers */
+	/* Initialize VFP context */
 	rc = cpu_vcpu_vfp_init(vcpu);
 	if (rc) {
 		goto fail_vfp_init;
@@ -621,13 +621,13 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	/* Free VFP registers */
+	/* Free VFP context */
 	rc = cpu_vcpu_vfp_deinit(vcpu);
 	if (rc) {
 		return rc;
 	}
 
-	/* Free system registers */
+	/* Free sysregs context */
 	rc = cpu_vcpu_sysregs_deinit(vcpu);
 	if (rc) {
 		return rc;
@@ -659,12 +659,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		if (tvcpu->is_normal) {
 			/* Update last host CPU */
 			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
-			/* Save VGIC registers */
+			/* Save VGIC context */
 			arm_vgic_save(tvcpu);
-			/* Save system registers */
+			/* Save sysregs context */
 			cpu_vcpu_sysregs_save(tvcpu);
-			/* Save VFP and SIMD register */
-			cpu_vcpu_vfp_regs_save(tvcpu);
+			/* Save VFP and SIMD context */
+			cpu_vcpu_vfp_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
 				generic_timer_vcpu_context_save(tvcpu,
@@ -695,11 +695,11 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			generic_timer_vcpu_context_restore(vcpu,
 						arm_gentimer_context(vcpu));
 		}
-		/* Restore VFP and SIMD register */
-		cpu_vcpu_vfp_regs_restore(vcpu);
-		/* Restore system registers */
+		/* Restore VFP and SIMD context */
+		cpu_vcpu_vfp_restore(vcpu);
+		/* Restore sysregs context */
 		cpu_vcpu_sysregs_restore(vcpu);
-		/* Restore VGIC registers */
+		/* Restore VGIC context */
 		arm_vgic_restore(vcpu);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
@@ -768,7 +768,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	/* Get private context */
 	p = arm_priv(vcpu);
 
-	/* Hypervisor registers */
+	/* Hypervisor context */
 	vmm_cprintf(cdev, "Hypervisor EL2 Registers\n");
 	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
 		    "HCR_EL2", p->hcr,
@@ -777,10 +777,10 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		    "HSTR_EL2", p->hstr,
 		    "TTBR_EL2", arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
 
-	/* Print VFP registers */
-	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+	/* Print VFP context */
+	cpu_vcpu_vfp_dump(cdev, vcpu);
 
-	/* Print system registers */
+	/* Print sysregs context */
 	cpu_vcpu_sysregs_dump(cdev, vcpu);
 }
 
