@@ -223,3 +223,40 @@ cpu_vcpu_vfp_regs_restore:
 	ldr	x1, [sp], #8
 	ret
 
+	.globl generic_timer_regs_save
+generic_timer_regs_save:
+	str	x1, [sp, #-8]!
+	mrs	x1, cntp_ctl_el0	/* cntpctl */
+	str	w1, [x0, #GENERIC_TIMER_CONTEXT_cntpctl]
+	mrs	x1, cntv_ctl_el0	/* cntvctl */
+	str	w1, [x0, #GENERIC_TIMER_CONTEXT_cntvctl]
+	mrs	x1, cntkctl_el1		/* cntkctl */
+	str	w1, [x0, #GENERIC_TIMER_CONTEXT_cntkctl]
+	mrs	x1, cntp_cval_el0	/* cntpcval */
+	str	x1, [x0, #GENERIC_TIMER_CONTEXT_cntpcval]
+	mrs	x1, cntv_cval_el0	/* cntvcval */
+	str	x1, [x0, #GENERIC_TIMER_CONTEXT_cntvcval]
+	mov	x1, #GENERIC_TIMER_CTRL_IT_MASK
+	msr	cntp_ctl_el0, x1	/* disable physical timer */
+	msr	cntv_ctl_el0, x1	/* disable virtual timer */
+	ldr	x1, [sp], #8
+	ret
+
+	.globl generic_timer_regs_restore
+generic_timer_regs_restore:
+	str	x1, [sp, #-8]!
+	ldr	x1, [x0, GENERIC_TIMER_CONTEXT_cntvoff]
+	msr	cntvoff_el2, x1		/* cntvoff */
+	ldr	x1, [x0, #GENERIC_TIMER_CONTEXT_cntpcval]
+	msr	cntp_cval_el0, x1	/* cntpcval */
+	ldr	x1, [x0, #GENERIC_TIMER_CONTEXT_cntvcval]
+	msr	cntv_cval_el0, x1	/* cntvcval */
+	ldr	w1, [x0, #GENERIC_TIMER_CONTEXT_cntkctl]
+	msr	cntkctl_el1, x1		/* cntkctl */
+	ldr	w1, [x0, #GENERIC_TIMER_CONTEXT_cntpctl]
+	msr	cntp_ctl_el0, x1	/* cntpctl */
+	ldr	w1, [x0, #GENERIC_TIMER_CONTEXT_cntvctl]
+	msr	cntv_ctl_el0, x1	/* cntvctl */
+	ldr	x1, [sp], #8
+	ret
+

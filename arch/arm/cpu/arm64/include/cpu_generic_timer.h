@@ -158,11 +158,11 @@ static inline u64 generic_timer_reg_read64(int reg)
 	return val;
 }
 
-#undef HAVE_GENERIC_TIMER_REGS_SAVE
+#define HAVE_GENERIC_TIMER_REGS_SAVE
 
 void generic_timer_regs_save(void *cntx);
 
-#undef HAVE_GENERIC_TIMER_REGS_RESTORE
+#define HAVE_GENERIC_TIMER_REGS_RESTORE
 
 void generic_timer_regs_restore(void *cntx);
 
