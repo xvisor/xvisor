@@ -89,7 +89,8 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
 
 /** Unmap a page from given L2 table */
 int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
-			     virtual_addr_t pgva, virtual_size_t pgsz);
+			     virtual_addr_t pgva, virtual_size_t pgsz,
+			     bool invalidate_tlb);
 
 /** Map a page under a given L1 table */
 int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg);

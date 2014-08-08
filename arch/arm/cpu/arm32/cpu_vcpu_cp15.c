@@ -78,7 +78,7 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 	e = &cp15->vtlb.table[entry];
 	if (e->l2) {
 		/* Remove valid victim page from L2 Page Table */
-		rc = cpu_mmu_unmap_l2tbl_page(e->l2, e->pva, e->psz);
+		rc = cpu_mmu_unmap_l2tbl_page(e->l2, e->pva, e->psz, TRUE);
 		if (rc) {
 			return rc;
 		}
@@ -139,7 +139,7 @@ int cpu_vcpu_cp15_vtlb_flush(struct arm_priv_cp15 *cp15)
 		}
 
 		e = &cp15->vtlb.table[vtlb];
-		rc = cpu_mmu_unmap_l2tbl_page(e->l2, e->pva, e->psz);
+		rc = cpu_mmu_unmap_l2tbl_page(e->l2, e->pva, e->psz, FALSE);
 		if (rc) {
 			return rc;
 		}
@@ -171,7 +171,7 @@ int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15,
 		e = &cp15->vtlb.table[vtlb];
 		if ((e->pva <= va) && (va < (e->pva + e->psz))) {
 			rc = cpu_mmu_unmap_l2tbl_page(e->l2,
-						      e->pva, e->psz);
+						      e->pva, e->psz, FALSE);
 			if (rc) {
 				return rc;
 			}
@@ -198,7 +198,8 @@ int cpu_vcpu_cp15_vtlb_flush_ng(struct arm_priv_cp15 *cp15)
 			e = &cp15->vtlb.table[vtlb];
 			if (e->ng) {
 				rc = cpu_mmu_unmap_l2tbl_page(e->l2,
-							      e->pva, e->psz);
+							      e->pva, e->psz,
+							      FALSE);
 				if (rc) {
 					return rc;
 				}
@@ -228,7 +229,7 @@ int cpu_vcpu_cp15_vtlb_flush_domain(struct arm_priv_cp15 *cp15,
 		e = &cp15->vtlb.table[vtlb];
 		if ((dacr_xor_diff >> ((e->dom & 0xF) << 1)) & 0x3) {
 			rc = cpu_mmu_unmap_l2tbl_page(e->l2,
-						      e->pva, e->psz);
+						      e->pva, e->psz, FALSE);
 			if (rc) {
 				return rc;
 			}

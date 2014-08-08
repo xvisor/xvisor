@@ -745,7 +745,8 @@ int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 }
 
 int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
-			     virtual_addr_t pgva, virtual_size_t pgsz)
+			     virtual_addr_t pgva, virtual_size_t pgsz,
+			     bool invalidate_tlb)
 {
 	int ret = VMM_EFAIL;
 	u32 ite, *l2_tte;
@@ -780,14 +781,6 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			if (!l2->tte_cnt) {
 				cpu_mmu_l2tbl_free(l2);
 			}
-			/* If given L1 page table is current then
-			 * invalidate tlb line
-			 */
-			if (read_ttbr0() == l1->tbl_pa) {
-				invalid_tlb_mva(pgva);
-				dsb();
-				isb();
-			}
 			ret = VMM_OK;
 		}
 		break;
@@ -798,14 +791,6 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			l2->tte_cnt--;
 			if (!l2->tte_cnt) {
 				cpu_mmu_l2tbl_free(l2);
-			}
-			/* If given L1 page table is current then
-			 * invalidate tlb line
-			 */
-			if (read_ttbr0() == l1->tbl_pa) {
-				invalid_tlb_mva(pgva);
-				dsb();
-				isb();
 			}
 			ret = VMM_OK;
 		}
@@ -829,14 +814,6 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			if (!l2->tte_cnt) {
 				cpu_mmu_l2tbl_free(l2);
 			}
-			/* If given L1 page table is current then
-			 * invalidate tlb line
-			 */
-			if (read_ttbr0() == l1->tbl_pa) {
-				invalid_tlb_mva(pgva);
-				dsb();
-				isb();
-			}
 			ret = VMM_OK;
 		}
 		break;
@@ -849,14 +826,6 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			if (!l2->tte_cnt) {
 				cpu_mmu_l2tbl_free(l2);
 			}
-			/* If given L1 page table is current then
-			 * invalidate tlb line
-			 */
-			if (read_ttbr0() == l1->tbl_pa) {
-				invalid_tlb_mva(pgva);
-				dsb();
-				isb();
-			}
 			ret = VMM_OK;
 		}
 		break;
@@ -864,6 +833,17 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 		break;
 	}
 #endif
+
+	if (ret == VMM_OK && invalidate_tlb) {
+		/* If given L1 page table is current then
+		 * invalidate tlb line
+		 */
+		if (read_ttbr0() == l1->tbl_pa) {
+			invalid_tlb_mva(pgva);
+			dsb();
+			isb();
+		}
+	}
 
 	return ret;
 }
