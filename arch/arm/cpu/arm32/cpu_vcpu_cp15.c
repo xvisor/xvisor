@@ -45,6 +45,31 @@
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
 
+static u32 __zone_start[] = {
+	0,
+	CPU_VCPU_VTLB_ZONE_V_LEN,
+	CPU_VCPU_VTLB_ZONE_V_LEN + \
+		CPU_VCPU_VTLB_ZONE_HVEC_LEN,
+	CPU_VCPU_VTLB_ZONE_V_LEN + \
+		CPU_VCPU_VTLB_ZONE_HVEC_LEN + \
+		CPU_VCPU_VTLB_ZONE_LVEC_LEN,
+	CPU_VCPU_VTLB_ZONE_V_LEN + \
+		CPU_VCPU_VTLB_ZONE_HVEC_LEN + \
+		CPU_VCPU_VTLB_ZONE_LVEC_LEN + \
+		CPU_VCPU_VTLB_ZONE_G_LEN,
+};
+
+static u32 __zone_len[] = {
+	CPU_VCPU_VTLB_ZONE_V_LEN,
+	CPU_VCPU_VTLB_ZONE_HVEC_LEN,
+	CPU_VCPU_VTLB_ZONE_LVEC_LEN,
+	CPU_VCPU_VTLB_ZONE_G_LEN,
+	CPU_VCPU_VTLB_ZONE_NG_LEN
+};
+
+#define CPU_VCPU_VTLB_ZONE_START(x)	__zone_start[(x)]
+#define CPU_VCPU_VTLB_ZONE_LEN(x)	__zone_len[(x)]
+
 /* Update Virtual TLB */
 static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 				     struct cpu_page *p,
@@ -82,7 +107,6 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 		if (rc) {
 			return rc;
 		}
-		e->ng = 0;
 		e->dom = 0;
 		e->l2 = NULL;
 	}
@@ -91,7 +115,6 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 	e->dom = domain;
 
 	/* Ensure pages for normal vcpu are non-global */
-	e->ng = p->ng;
 	p->ng = 1;
 
 #ifndef CONFIG_SMP
@@ -130,8 +153,8 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 int cpu_vcpu_cp15_vtlb_flush(struct arm_priv_cp15 *cp15)
 {
 	int rc;
-	u32 vtlb, zone;
-	struct arm_vtlb_entry *e;
+	register u32 vtlb, zone;
+	register struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
 		if (!cp15->vtlb.table[vtlb].l2) {
@@ -143,7 +166,6 @@ int cpu_vcpu_cp15_vtlb_flush(struct arm_priv_cp15 *cp15)
 		if (rc) {
 			return rc;
 		}
-		e->ng = 0;
 		e->dom = 0;
 		e->l2 = NULL;
 	}
@@ -160,22 +182,21 @@ int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15,
 				virtual_addr_t va)
 {
 	int rc;
-	u32 vtlb;
-	struct arm_vtlb_entry *e;
+	register u32 vtlb;
+	register struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
-		if (!cp15->vtlb.table[vtlb].l2) {
+		e = &cp15->vtlb.table[vtlb];
+		if (!e->l2) {
 			continue;
 		}
 
-		e = &cp15->vtlb.table[vtlb];
 		if ((e->pva <= va) && (va < (e->pva + e->psz))) {
 			rc = cpu_mmu_unmap_l2tbl_page(e->l2,
 						      e->pva, e->psz, FALSE);
 			if (rc) {
 				return rc;
 			}
-			e->ng = 0;
 			e->dom = 0;
 			e->l2 = NULL;
 			break;
@@ -185,30 +206,59 @@ int cpu_vcpu_cp15_vtlb_flush_va(struct arm_priv_cp15 *cp15,
 	return cpu_mmu_sync_ttbr_va(cp15->l1, va);
 }
 
-int cpu_vcpu_cp15_vtlb_flush_ng(struct arm_priv_cp15 *cp15)
+int cpu_vcpu_cp15_vtlb_flush_ng_va(struct arm_priv_cp15 *cp15,
+				   virtual_addr_t va)
 {
 	int rc;
-	u32 vtlb, vtlb_last;
-	struct arm_vtlb_entry *e;
+	register u32 vtlb, vtlb_last;
+	register struct arm_vtlb_entry *e;
 
 	vtlb = CPU_VCPU_VTLB_ZONE_START(CPU_VCPU_VTLB_ZONE_NG);
 	vtlb_last = vtlb + CPU_VCPU_VTLB_ZONE_LEN(CPU_VCPU_VTLB_ZONE_NG);
-	while (vtlb < vtlb_last) {
-		if (cp15->vtlb.table[vtlb].l2) {
-			e = &cp15->vtlb.table[vtlb];
-			if (e->ng) {
-				rc = cpu_mmu_unmap_l2tbl_page(e->l2,
-							      e->pva, e->psz,
-							      FALSE);
-				if (rc) {
-					return rc;
-				}
-				e->ng = 0;
-				e->l2 = NULL;
-				e->dom = 0;
-			}
+	for (; vtlb < vtlb_last; vtlb++) {
+		e = &cp15->vtlb.table[vtlb];
+		if (!e->l2) {
+			continue;
 		}
-		vtlb++;
+
+		if ((e->pva <= va) && (va < (e->pva + e->psz))) {
+			rc = cpu_mmu_unmap_l2tbl_page(e->l2,
+						      e->pva, e->psz,
+						      FALSE);
+			if (rc) {
+				return rc;
+			}
+			e->l2 = NULL;
+			e->dom = 0;
+			break;
+		}
+	}
+
+	return cpu_mmu_sync_ttbr(cp15->l1);
+}
+
+int cpu_vcpu_cp15_vtlb_flush_ng(struct arm_priv_cp15 *cp15)
+{
+	int rc;
+	register u32 vtlb, vtlb_last;
+	register struct arm_vtlb_entry *e;
+
+	vtlb = CPU_VCPU_VTLB_ZONE_START(CPU_VCPU_VTLB_ZONE_NG);
+	vtlb_last = vtlb + CPU_VCPU_VTLB_ZONE_LEN(CPU_VCPU_VTLB_ZONE_NG);
+	for (; vtlb < vtlb_last; vtlb++) {
+		e = &cp15->vtlb.table[vtlb];
+		if (!e->l2) {
+			continue;
+		}
+
+		rc = cpu_mmu_unmap_l2tbl_page(e->l2,
+					      e->pva, e->psz,
+					      FALSE);
+		if (rc) {
+			return rc;
+		}
+		e->l2 = NULL;
+		e->dom = 0;
 	}
 
 	return cpu_mmu_sync_ttbr(cp15->l1);
@@ -218,22 +268,21 @@ int cpu_vcpu_cp15_vtlb_flush_domain(struct arm_priv_cp15 *cp15,
 				    u32 dacr_xor_diff)
 {
 	int rc;
-	u32 vtlb;
-	struct arm_vtlb_entry *e;
+	register u32 vtlb;
+	register struct arm_vtlb_entry *e;
 
 	for (vtlb = 0; vtlb < CPU_VCPU_VTLB_ENTRY_COUNT; vtlb++) {
-		if (!cp15->vtlb.table[vtlb].l2) {
+		e = &cp15->vtlb.table[vtlb];
+		if (!e->l2) {
 			continue;
 		}
 
-		e = &cp15->vtlb.table[vtlb];
 		if ((dacr_xor_diff >> ((e->dom & 0xF) << 1)) & 0x3) {
 			rc = cpu_mmu_unmap_l2tbl_page(e->l2,
 						      e->pva, e->psz, FALSE);
 			if (rc) {
 				return rc;
 			}
-			e->ng = 0;
 			e->dom = 0;
 			e->l2 = NULL;
 		}
@@ -1935,7 +1984,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			cpu_vcpu_cp15_vtlb_flush(cp15);
 			break;
 		case 1:	/* Invalidate single TLB entry. */
-			cpu_vcpu_cp15_vtlb_flush_va(cp15, data);
+			cpu_vcpu_cp15_vtlb_flush_ng_va(cp15, data);
 			break;
 		case 2: /* Invalidate on ASID. */
 			cpu_vcpu_cp15_vtlb_flush_ng(cp15);

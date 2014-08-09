@@ -25,6 +25,7 @@
 #define _ARCH_REGS_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
 
@@ -35,7 +36,7 @@ struct arch_regs {
 	u32 sp;	/* Stack Pointer */
 	u32 lr;	/* Link Register */
 	u32 pc;	/* Program Counter */
-} __attribute((packed));
+} __packed;
 
 typedef struct arch_regs arch_regs_t;
 
@@ -48,26 +49,25 @@ struct arm_priv_vfp {
 	/* General Purpose Registers */
 	u64 fpregs1[16];  /* {d0-d15} 64bit floating point registers.*/
 	u64 fpregs2[16];  /* {d16-d31} 64bit floating point registers.*/
-};
+} __packed;
 
 struct arm_priv_cp14 {
 	/* ThumbEE Registers */
 	u32 teecr;
 	u32 teehbr;
-};
+} __packed;
 
 struct arm_vtlb_entry {
-	u32 ng:1;
-	u32 dom:4;
+	u32 dom;
 	virtual_addr_t pva;
 	virtual_size_t psz;
 	struct cpu_l2tbl *l2;
-};
+} __packed;
 
 struct arm_vtlb {
 	struct arm_vtlb_entry table[CPU_VCPU_VTLB_ENTRY_COUNT];
 	u32 victim[CPU_VCPU_VTLB_ZONE_COUNT];
-};
+} __packed;
 
 struct arm_priv_cp15 {
 	/* Shadow L1 */
@@ -138,7 +138,7 @@ struct arm_priv_cp15 {
 	u32 c13_tls3; /* Privileged Thread register. */
 	u32 c15_i_max; /* Maximum D-cache dirty line index. */
 	u32 c15_i_min; /* Minimum D-cache dirty line index. */
-};
+} __packed;
 
 struct arm_priv {
 	/* Priviledged CPSR */
@@ -174,7 +174,7 @@ struct arm_priv {
 	struct arm_priv_cp14 cp14;
 	/* System control (cp15 coprocessor) */
 	struct arm_priv_cp15 cp15;
-} __attribute((packed));
+};
 
 struct arm_guest_priv {
 	/* Overlapping vector page */
@@ -184,7 +184,7 @@ struct arm_guest_priv {
 	 * Bits[15:0] = Minor number
 	 */
 	u32 psci_version;
-} __attribute((packed));
+};
 
 #define arm_regs(vcpu)		(&((vcpu)->regs))
 #define arm_priv(vcpu)		((struct arm_priv *)((vcpu)->arch_priv))
