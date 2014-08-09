@@ -37,33 +37,31 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 			bool force_unpriv)
 {
 	struct cpu_page pg;
-	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 	register int rc = VMM_OK;
-	register u32 vind, ecode;
-	register struct cpu_page *pgp = &pg;
+	register u32 vind;
+	register struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+	register struct cpu_page *pgp;
 
 	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
 		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
 							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
-		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
+		if ((vind = cpu_vcpu_cp15_find_page(vcpu, addr,
 						     CP15_ACCESS_READ,
 						     force_unpriv, &pg))) {
 			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-					(ecode >> 4), (ecode & 0xF), 0, 1);
+					(vind >> 4), (vind & 0xF), 0, 1);
 			return VMM_EFAIL;
 		}
 		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
 		switch (dst_len) {
 		case 4:
-			vind &= ~(0x4 - 1);
-			vind /= 0x4;
+			vind = vind >> 2;
 			*((u32 *)dst) = arm_guest_priv(vcpu->guest)->ovect[vind];
 			break;
 		case 2:
-			vind &= ~(0x2 - 1);
-			vind /= 0x2;
+			vind = vind >> 1;
 			*((u16 *) dst) =
 			    ((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind];
 			break;
@@ -78,27 +76,27 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 	} else {
 		if (cp15->virtio_active) {
 			pgp = &cp15->virtio_page;
-			rc = VMM_OK;
 		} else {
+			pgp = &pg;
 			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
-		}
-		if (rc == VMM_ENOTAVAIL) {
-			if (pgp->va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					addr, DFSR_FS_TRANS_FAULT_PAGE,
-					0, 0, 1, force_unpriv);
-			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					addr, DFSR_FS_TRANS_FAULT_SECTION,
-					0, 0, 1, force_unpriv);
+			if (rc == VMM_ENOTAVAIL) {
+				if (pgp->va) {
+					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+						addr, DFSR_FS_TRANS_FAULT_PAGE,
+						0, 0, 1, force_unpriv);
+				} else {
+					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+						addr, DFSR_FS_TRANS_FAULT_SECTION,
+						0, 0, 1, force_unpriv);
+				}
+				if (!rc) {
+					rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
+				}
 			}
-			if (!rc) {
-				rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
+			if (rc) {
+				cpu_vcpu_halt(vcpu, regs);
+				return rc;
 			}
-		}
-		if (rc) {
-			cpu_vcpu_halt(vcpu, regs);
-			return rc;
 		}
 		switch (pgp->ap) {
 #if !defined(CONFIG_ARMV5)
@@ -123,16 +121,14 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 				*((u8 *) dst) = *((u8 *)addr);
 				break;
 			default:
-				if (dst_len > 4) {
-					vind = 0;
-					while (dst_len >= 4) {
-						((u32 *) dst)[vind] =
-						    ((u32 *) addr)[vind];
-						vind++;
-						dst_len = dst_len - 4;
-					}
-				} else {
+				if (dst_len < 4) {
 					return VMM_EFAIL;
+				}
+				vind = dst_len >> 2;
+				while (vind) {
+					((u32 *) dst)[vind-1] =
+					    ((u32 *) addr)[vind-1];
+					vind--;
 				}
 				break;
 			};
@@ -157,34 +153,33 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 			bool force_unpriv)
 {
 	struct cpu_page pg;
-	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 	register int rc = VMM_OK;
-	register u32 vind, ecode;
-	register struct cpu_page *pgp = &pg;
+	register u32 vind;
+	register struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
+	register struct cpu_page *pgp;
 
 	if ((addr & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) == cp15->ovect_base) {
 		if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) ==
 							CPSR_MODE_USER) {
 			force_unpriv = TRUE;
 		}
-		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
+		if ((vind = cpu_vcpu_cp15_find_page(vcpu, addr,
 						     CP15_ACCESS_WRITE,
 						     force_unpriv, &pg))) {
 			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-						   (ecode >> 4), (ecode & 0xF),
+						   (vind >> 4), (vind & 0xF),
 						   1, 1);
 			return VMM_EFAIL;
 		}
 		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
 		switch (src_len) {
 		case 4:
-			vind &= ~(0x4 - 1);
-			vind /= 0x4;
-			arm_guest_priv(vcpu->guest)->ovect[vind] = *((u32 *) src);
+			vind = vind >> 2;
+			arm_guest_priv(vcpu->guest)->ovect[vind] =
+							*((u32 *) src);
 			break;
 		case 2:
-			vind &= ~(0x2 - 1);
-			vind /= 0x2;
+			vind = vind >> 1;
 			((u16 *)arm_guest_priv(vcpu->guest)->ovect)[vind] =
 			    *((u16 *) src);
 			break;
@@ -199,27 +194,27 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 	} else {
 		if (cp15->virtio_active) {
 			pgp = &cp15->virtio_page;
-			rc = VMM_OK;
 		} else {
+			pgp = &pg;
 			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
-		}
-		if (rc == VMM_ENOTAVAIL) {
-			if (pgp->va) {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					addr, DFSR_FS_TRANS_FAULT_PAGE,
-					0, 1, 1, force_unpriv);
-			} else {
-				rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					addr, DFSR_FS_TRANS_FAULT_SECTION,
-					0, 1, 1, force_unpriv);
+			if (rc == VMM_ENOTAVAIL) {
+				if (pgp->va) {
+					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+						addr, DFSR_FS_TRANS_FAULT_PAGE,
+						0, 1, 1, force_unpriv);
+				} else {
+					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
+						addr, DFSR_FS_TRANS_FAULT_SECTION,
+						0, 1, 1, force_unpriv);
+				}
+				if (!rc) {
+					rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
+				}
 			}
-			if (!rc) {
-				rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
+			if (rc) {
+				cpu_vcpu_halt(vcpu, regs);
+				return rc;
 			}
-		}
-		if (rc) {
-			cpu_vcpu_halt(vcpu, regs);
-			return rc;
 		}
 		switch (pgp->ap) {
 		case TTBL_AP_SRW_U:
@@ -240,16 +235,14 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 				*((u8 *) addr) = *((u8 *) src);
 				break;
 			default:
-				if (src_len > 4) {
-					vind = 0;
-					while (src_len >= 4) {
-						((u32 *) addr)[vind] =
-						    ((u32 *) src)[vind];
-						vind++;
-						src_len = src_len - 4;
-					}
-				} else {
+				if (src_len < 4) {
 					return VMM_EFAIL;
+				}
+				vind = src_len >> 2;
+				while (vind) {
+					((u32 *) addr)[vind-1] =
+					    ((u32 *) src)[vind-1];
+					vind--;
 				}
 				break;
 			};
