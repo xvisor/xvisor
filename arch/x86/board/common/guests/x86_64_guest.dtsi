@@ -117,6 +117,16 @@
 					physical_size = <4>;
 					interrupts = <0>;
 				};
+
+				ps2devices@0 {
+					device_type = "input";
+					compatible = "i8042,keyboard,mouse";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x60>;
+					physical_size = <4>;
+					interrupts = <1 12>;
+				};
 			};
 		};
 	};
