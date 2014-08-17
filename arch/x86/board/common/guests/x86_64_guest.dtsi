@@ -80,6 +80,8 @@
 					physical_size = <2>;
 					base_irq = <0>;
 					num_irq = <8>;
+					child_pic = <1>;
+					parent_irq = <16>; /* vector 16 to be presented on LAPIC */
 				};
 
 				i8259@1 {
@@ -93,6 +95,17 @@
 					num_irq = <8>;
 					child_pic = <1>;
 					parent_irq = <2>;
+				};
+
+				lapic {
+					device_type = "pic";
+					compatible = "lapic";
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0xfee00000>;
+					physical_size = <0x1000>;
+					base_irq = <16>;
+					num_irq = <240>;
 				};
 
 				i8254@0 {

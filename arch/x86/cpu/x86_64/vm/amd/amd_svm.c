@@ -333,14 +333,6 @@ static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_
 
 static void svm_run(struct vcpu_hw_context *context)
 {
-#if 0
-	int cpu_int = 0;
-
-	/* check if interrupt is pending on its VCPU */
-	if (x86_vcpu_priv(context->assoc_vcpu)->int_pending[CPU_INT0]) {
-		cpu_int = pic_read_irq(x86_guest_priv(context->assoc_vcpu->guest)->master_pic);
-	}
-#endif
 	clgi();
 	asm volatile ("push %%rbp \n\t"
 		      "mov %c[rbx](%[context]), %%rbx \n\t"

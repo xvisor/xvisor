@@ -27,9 +27,6 @@
 #include <vmm_types.h>
 #include <processor_flags.h>
 
-#define CPU_INT0	0
-#define CPU_INT1	1
-
 static inline unsigned long __arch_save_flags(void)
 {
     unsigned long flags;

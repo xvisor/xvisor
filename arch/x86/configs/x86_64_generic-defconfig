@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Wed Jul  2 22:51:58 2014
+# Thu Jul 10 22:54:04 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -81,6 +81,8 @@ CONFIG_SCHEDALGO_PRR=y
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_IDLE_TSLICE_SECS=1
+CONFIG_IDLE_PERIOD_SECS=2
 
 #
 # Load Balancer Configuration
@@ -336,6 +338,7 @@ CONFIG_EMU_PIC=y
 # CONFIG_EMU_PIC_GIC is not set
 # CONFIG_EMU_PIC_PL190 is not set
 CONFIG_EMU_PIC_I8259=y
+CONFIG_EMU_PIC_LAPIC=y
 
 #
 # Timer Emulators
