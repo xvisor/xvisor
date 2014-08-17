@@ -40,6 +40,7 @@
 
 #include <arch_cpu_irq.h>
 #include <emu/i8259.h>
+#include <emu/apic_common.h>
 
 #define MODULE_DESC			"i8259 PIC Emulator"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
@@ -79,18 +80,6 @@ static s64 irq_time[16];
 
 #define PIC_ASSERT_INT		1
 #define PIC_DEASSERT_INT	0
-
-#define SLAVE_IRQ_ENCODE(__irq, __cpu_int, __action)			\
-	(((__irq & 0xff) << 9) |					\
-	 ((__cpu_int & 0xff) << 1) |					\
-	 (__action & 0x1))
-
-#define SLAVE_IRQ_DECODE(__level, __irq, __cpu_int, __action)	\
-	do {							\
-		__cpu_int = ((__level >> 1) & 0xff);		\
-		__irq = ((__level >> 9) & 0xff);		\
-		__action = __level & 0x1;			\
-	}while (0);
 
 struct guest_pic_list {
 	vmm_spinlock_t lock;
@@ -150,22 +139,24 @@ static void pic_update_irq(i8259_state_t *s)
 	int irq;
 	int action;
 	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, 0);
+	unsigned int level;
 
 	if (!vcpu)
 		return;
 
 	irq = pic_get_irq(s);
 
-	action = (irq >= 0 ? PIC_ASSERT_INT : PIC_DEASSERT_INT);
-
 	if (!s->master) {
-		vmm_devemu_emulate_irq(s->guest, s->parent_irq, 1);
+		level = SLAVE_IRQ_ENCODE(0, 0, 0, irq, 0);
+		vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
 	} else {
+		action = (irq >= 0 ? PIC_ASSERT_INT : PIC_DEASSERT_INT);
+
 		/* change level on CPU interrupt line */
 		if (action == PIC_DEASSERT_INT)
-			vmm_vcpu_irq_deassert(vcpu, CPU_INT0);
+			vmm_vcpu_irq_deassert(vcpu, irq);
 		else
-			vmm_vcpu_irq_assert(vcpu, CPU_INT0, 0);
+			vmm_vcpu_irq_assert(vcpu, irq, 0);
 	}
 	I8259_LOG(VERBOSE, "pic%d: imr=%x irr=%x padd=%d int=0x%x action=%d\n",
 		  s->master ? 0 : 1, s->imr, s->irr, s->priority_add, irq, action);

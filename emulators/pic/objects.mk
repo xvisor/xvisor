@@ -25,4 +25,5 @@
 emulators-objs-$(CONFIG_EMU_PIC_GIC)+= pic/gic.o
 emulators-objs-$(CONFIG_EMU_PIC_PL190)+= pic/pl190.o
 emulators-objs-$(CONFIG_EMU_PIC_I8259)+= pic/i8259.o
+emulators-objs-$(CONFIG_EMU_PIC_LAPIC)+= pic/lapic.o
 
