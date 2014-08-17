@@ -26,6 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <cpu_vm.h>
+#include <cpu_inst_decode.h>
 #include <cpu_features.h>
 #include <cpu_mmu.h>
 #include <cpu_pgtbl_helper.h>
@@ -90,7 +91,7 @@ static inline int guest_in_realmode(struct vcpu_hw_context *context)
 	return (!(context->vmcb->cr0 & X86_CR0_PE));
 }
 
-static int guest_read_fault_inst(struct vcpu_hw_context *context, u64 *g_ins)
+static int guest_read_fault_inst(struct vcpu_hw_context *context, x86_inst *g_ins)
 {
 	physical_addr_t rip_phys;
 
@@ -102,7 +103,7 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context, u64 *g_ins)
 
 	/* FIXME: Should we always do cacheable memory access here ?? */
 	if (vmm_guest_memory_read(context->assoc_vcpu->guest, rip_phys,
-				  g_ins, sizeof(*g_ins), TRUE) < sizeof(*g_ins)) {
+				  g_ins, sizeof(x86_inst), TRUE) < sizeof(x86_inst)) {
 		VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
 		       "instruction pointer. (%x)\n", rip_phys);
 		return VMM_EFAIL;
@@ -141,7 +142,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		 */
 		struct vmm_region *g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
 								 fault_gphys,
-								 VMM_REGION_REAL | VMM_REGION_MEMORY,
+								 VMM_REGION_MEMORY,
 								 FALSE);
 		if (!g_reg) {
 			VM_LOG(LVL_ERR, "ERROR: Can't find the host physical address for guest physical: 0x%lx\n",
@@ -149,13 +150,79 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 			goto guest_bad_fault;
 		}
 
-		if (realmode_map_memory(context, fault_gphys,
-					(g_reg->hphys_addr + fault_gphys),
-					PAGE_SIZE) != VMM_OK) {
-			VM_LOG(LVL_ERR, "ERROR: Failed to create map in guest's shadow page table.\n");
-			goto guest_bad_fault;
+		/* If fault is on a RAM backed address, map and return. Otherwise do emulate. */
+		if (g_reg->flags & VMM_REGION_REAL) {
+			if (realmode_map_memory(context, fault_gphys,
+						(g_reg->hphys_addr + fault_gphys),
+						PAGE_SIZE) != VMM_OK) {
+				VM_LOG(LVL_ERR, "ERROR: Failed to create map in guest's shadow page table.\n");
+				goto guest_bad_fault;
+			}
+			context->vmcb->cr2 = context->vmcb->exitinfo2;
+		} else {
+			x86_inst ins;
+			x86_decoded_inst_t dinst;
+			u64 guest_rd;
+
+			if (guest_read_fault_inst(context, &ins)) {
+				VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			if (x86_decode_inst(ins, &dinst) != VMM_OK) {
+				VM_LOG(LVL_ERR, "Failed to decode guest instruction.\n");
+				goto guest_bad_fault;
+			}
+
+			if (unlikely(dinst.inst_type != INST_TYPE_MOV)) {
+				VM_LOG(LVL_ERR, "IO Fault in guest without a move instruction!\n");
+				goto guest_bad_fault;
+			}
+
+			if ((dinst.inst.gen_mov.src_addr >= g_reg->gphys_addr) &&
+			    (dinst.inst.gen_mov.src_addr < (g_reg->gphys_addr + g_reg->phys_size))) {
+				if (vmm_devemu_emulate_read(context->assoc_vcpu, fault_gphys,
+							    &guest_rd, dinst.inst.gen_mov.op_size,
+							    VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+					vmm_printf("Failed to emulate IO instruction in guest.\n");
+					goto guest_bad_fault;
+				}
+
+				if (dinst.inst.gen_mov.dst_addr >= RM_REG_AX &&
+				    dinst.inst.gen_mov.dst_addr < RM_REG_MAX) {
+					context->g_regs[dinst.inst.gen_mov.dst_addr] = guest_rd;
+					if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
+						context->vmcb->rax = guest_rd;
+				} else {
+					VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
+					goto guest_bad_fault;
+				}
+			}
+
+			if ((dinst.inst.gen_mov.dst_addr >= g_reg->gphys_addr) &&
+			    (dinst.inst.gen_mov.dst_addr < (g_reg->gphys_addr + g_reg->phys_size))) {
+				if (dinst.inst.gen_mov.src_type == OP_TYPE_IMM) {
+					guest_rd = dinst.inst.gen_mov.src_addr;
+				} else if (dinst.inst.gen_mov.src_addr >= RM_REG_AX &&
+					   dinst.inst.gen_mov.src_addr < RM_REG_MAX) {
+					if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
+						guest_rd = context->vmcb->rax;
+					else
+						guest_rd = context->g_regs[dinst.inst.gen_mov.src_addr];
+				} else {
+					VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
+					goto guest_bad_fault;
+				}
+
+				if (vmm_devemu_emulate_write(context->assoc_vcpu, fault_gphys,
+							     &guest_rd, dinst.inst.gen_mov.op_size,
+							     VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+					vmm_printf("Failed to emulate IO instruction in guest.\n");
+					goto guest_bad_fault;
+				}
+			}
+			context->vmcb->rip += dinst.inst_size;
 		}
-		context->vmcb->cr2 = context->vmcb->exitinfo2;
 		break;
 
 	default:
@@ -216,35 +283,51 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 				       context->g_regs[cr_gpr], cr_gpr);
 			}
 		} else {
-			u8 reg, ext_reg = 0;
-			u64 ins64;
-			u32 g_ins;
+			x86_inst ins64;
+			x86_decoded_inst_t dinst;
+			u64 rvalue;
+
 			if (guest_read_fault_inst(context, &ins64)) {
 				VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
 				goto guest_bad_fault;
 			}
 
-			g_ins = (u32)ins64;
-			VM_LOG(LVL_DEBUG, "inst: 0x%lx 0x%x\n", ins64, g_ins);
-			if (((u8 *)&g_ins)[0] == 0x41) {
-				reg = ((u8 *)&g_ins)[3] - 0xc0;
-				ext_reg = 1;
-			} else
-				reg = ((u8 *)&g_ins)[2] - 0xc0;
+			if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+				VM_LOG(LVL_ERR, "Failed to decode instruction.\n");
+				goto guest_bad_fault;
+			}
 
-			if (ext_reg) g_ins = ((g_ins << 8) >> 8);
-			g_ins &= ~(0xFFFFUL << 16);
-			if (g_ins == 0x200f) { /* mov %cr0, register */
-				if (!reg)
-					context->vmcb->rax = context->g_cr0;
+			if (likely(dinst.inst_type == INST_TYPE_MOV_CR)) {
+				switch (dinst.inst.crn_mov.src_reg) {
+				case RM_REG_CR0:
+					rvalue = context->g_cr0;
+					break;
 
-				context->g_regs[reg] = context->g_cr0;
-				context->vmcb->rip += MOV_CRn_INST_SZ;
-				/* 1 more byte for 64-bit where r8-r15 registers are used. */
-				if (ext_reg) context->vmcb->rip += 1;
+				case RM_REG_CR1:
+					rvalue = context->g_cr1;
+					break;
+
+				case RM_REG_CR2:
+					rvalue = context->g_cr2;
+					break;
+
+				case RM_REG_CR3:
+					rvalue = context->g_cr3;
+					break;
+
+				default:
+					VM_LOG(LVL_ERR, "Unknown CR reg %d\n", dinst.inst.crn_mov.src_reg);
+					goto guest_bad_fault;
+				}
+
+				if (!dinst.inst.crn_mov.dst_reg)
+					context->vmcb->rax = rvalue;
+
+				context->g_regs[dinst.inst.crn_mov.dst_reg] = context->g_cr0;
+				context->vmcb->rip += dinst.inst_size;
 				VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
 			} else {
-				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
+				VM_LOG(LVL_ERR, "Unknown fault instruction: 0x%lx\n", ins64);
 				goto guest_bad_fault;
 			}
 		}
@@ -283,57 +366,59 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 				       context->g_regs[cr_gpr], cr_gpr);
 			}
 		} else {
-			u8 reg, ext_reg = 0;
-			u64 ins64;
-			u32 g_ins;
+			x86_inst ins64;
+			x86_decoded_inst_t dinst;
+
 			if (guest_read_fault_inst(context, &ins64)) {
 				VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
 				goto guest_bad_fault;
 			}
 
-			g_ins = (u32)ins64;
-			VM_LOG(LVL_DEBUG, "inst: 0x%lx 0x%x\n", ins64, g_ins);
-			if (((u8 *)&g_ins)[0] == 0x41) {
-				reg = ((((u8 *)&g_ins)[3] - 0xc0) + 8);
-				ext_reg = 1;
-			} else
-				reg = ((u8 *)&g_ins)[2] - 0xc0;
+			if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+				VM_LOG(LVL_ERR, "Failed to code instruction.\n");
+				goto guest_bad_fault;
+			}
 
-			if (ext_reg) g_ins = ((g_ins << 8) >> 8);
-			g_ins &= ~(0xFFFFUL << 16);
-			if (g_ins == 0x220f) { /* mov register, %cr0 */
-				if (!reg) {
-					bits_set = (~context->g_cr0 & context->vmcb->rax);
-					bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
-					context->g_cr0 = context->vmcb->rax;
-				} else {
-					bits_set = (~context->g_cr0 & context->g_regs[reg]);
-					bits_clrd = (context->g_cr0 & ~context->g_regs[reg]);
-					context->g_cr0 = context->g_regs[reg];
+			if (dinst.inst_type == INST_TYPE_MOV_CR) {
+				switch(dinst.inst.crn_mov.dst_reg) {
+				case RM_REG_CR0:
+					if (!dinst.inst.crn_mov.src_reg) {
+						bits_set = (~context->g_cr0 & context->vmcb->rax);
+						bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
+						context->g_cr0 = context->vmcb->rax;
+					} else {
+						bits_set = (~context->g_cr0 & context->g_regs[dinst.inst.crn_mov.src_reg]);
+						bits_clrd = (context->g_cr0 & ~context->g_regs[dinst.inst.crn_mov.src_reg]);
+						context->g_cr0 = context->g_regs[dinst.inst.crn_mov.src_reg];
+					}
+
+					if (bits_set & X86_CR0_PE)
+						context->vmcb->cr0 |= X86_CR0_PE;
+
+					if (bits_set & X86_CR0_PG)
+						context->vmcb->cr0 |= X86_CR0_PG;
+
+					if (bits_clrd & X86_CR0_CD)
+						context->vmcb->cr0 &= ~X86_CR0_CD;
+
+					if (bits_clrd & X86_CR0_NW)
+						context->vmcb->cr0 &= ~X86_CR0_NW;
+
+					break;
+				default:
+					VM_LOG(LVL_ERR, "Write to CR%d not supported.\n",
+					       dinst.inst.crn_mov.dst_reg - RM_REG_CR0);
+					goto guest_bad_fault;
 				}
 
-				if (bits_set & X86_CR0_PE)
-					context->vmcb->cr0 |= X86_CR0_PE;
-
-				if (bits_set & X86_CR0_PG)
-					context->vmcb->cr0 |= X86_CR0_PG;
-
-				if (bits_clrd & X86_CR0_CD)
-					context->vmcb->cr0 &= ~X86_CR0_CD;
-
-				if (bits_clrd & X86_CR0_NW)
-					context->vmcb->cr0 &= ~X86_CR0_NW;
-
-				context->vmcb->rip += MOV_CRn_INST_SZ;
-				/* 1 more byte for 64-bit where r8-r15 registers are used. */
-				if (ext_reg) context->vmcb->rip += 1;
+				context->vmcb->rip += dinst.inst_size;
 
 				asm volatile("str %0\n"
 					     :"=r"(htr));
 				VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
 				       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
 			} else {
-				VM_LOG(LVL_ERR, "Unknown fault instruction: %x\n", g_ins);
+				VM_LOG(LVL_ERR, "Unknown fault instruction\n");
 				goto guest_bad_fault;
 			}
 		}
