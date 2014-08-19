@@ -26,6 +26,7 @@
 #include <vmm_types.h>
 #include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
+#include <vmm_cpumask.h>
 #include <cpu_defines.h>
 
 struct arch_regs {
@@ -127,6 +128,7 @@ struct arm_priv {
 	u64 hstr;	/* Hypervisor System Trap Register */
 	/* EL1/EL0 sysregs */
 	struct arm_priv_sysregs sysregs;
+	vmm_cpumask_t dflush_needed;
 	/* VFP & SMID context */
 	struct arm_priv_vfp vfp;
 	/* Last host CPU on which this VCPU ran */

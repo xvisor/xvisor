@@ -22,6 +22,8 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
+#include <vmm_cache.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
@@ -90,7 +92,9 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-	}
+	default:
+		goto bad_reg;
+	};
 
 	return TRUE;
 
@@ -115,7 +119,42 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-	}
+	case 7: /* Cache control. */
+		switch (CRm) {
+		case 6:	/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+		case 14: /* DCCISW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->dflush_needed);
+				asm volatile("dc cisw, %0" : : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 10: /* DCCSW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->dflush_needed);
+				asm volatile("dc csw, %0" : : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
+	default:
+		goto bad_reg;
+	};
 
 	return TRUE;
 
@@ -237,6 +276,19 @@ bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu,
 	case ISS_ACTLR_EL1:
 		s->actlr_el1 = data;
 		break;
+	case ISS_DCISW_EL1:	/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+	case ISS_DCCISW_EL1: /* DCCISW */
+		vmm_cpumask_setall(&arm_priv(vcpu)->dflush_needed);
+		vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+				&arm_priv(vcpu)->dflush_needed);
+		asm volatile("dc cisw, %0" : : "r" (data));
+		break;
+	case ISS_DCCSW_EL1: /* DCCSW */
+		vmm_cpumask_setall(&arm_priv(vcpu)->dflush_needed);
+		vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+				&arm_priv(vcpu)->dflush_needed);
+		asm volatile("dc csw, %0" : : "r" (data));
+		break;
 	default:
 		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
 		goto bad_reg;
@@ -257,6 +309,15 @@ void cpu_vcpu_sysregs_save(struct vmm_vcpu *vcpu)
 void cpu_vcpu_sysregs_restore(struct vmm_vcpu *vcpu)
 {
 	cpu_vcpu_sysregs_regs_restore(&arm_priv(vcpu)->sysregs);
+
+	/* Check whether vcpu requires dcache to be flushed on
+	 * this host CPU. This is a consequence of doing dcache
+	 * operations by set/way.
+	 */
+	if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(),
+					   &arm_priv(vcpu)->dflush_needed)) {
+		vmm_flush_cache_all();
+	}
 }
 
 void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,

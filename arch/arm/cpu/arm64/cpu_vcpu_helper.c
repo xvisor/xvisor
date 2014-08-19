@@ -517,7 +517,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 		/* Initialize Hypervisor Configuration */
 		INIT_SPIN_LOCK(&arm_priv(vcpu)->hcr_lock);
-		arm_priv(vcpu)->hcr =  (HCR_TACR_MASK |
+		arm_priv(vcpu)->hcr =  (HCR_TSW_MASK |
+					HCR_TACR_MASK |
 					HCR_TIDCP_MASK |
 					HCR_TSC_MASK |
 					HCR_TWE_MASK |
