@@ -24,7 +24,7 @@
 #define __PCI_EMU_CORE_H
 
 #include <vmm_types.h>
-#include <vmm_mutex.h>
+#include <vmm_spinlocks.h>
 #include <vmm_manager.h>
 
 #define PCI_EMU_CORE_IPRIORITY		1
@@ -106,9 +106,9 @@ struct pci_class {
 struct pci_host_controller {
 	struct pci_class class;
 	u8 name[VMM_FIELD_NAME_SIZE];
-	u16 nr_buses;
-	u16 bus_start;
-	struct vmm_mutex lock;
+	u32 nr_buses;
+	u32 bus_start;
+	struct vmm_spinlock lock;
 	struct dlist attached_buses;
 	struct dlist head;
 	struct vmm_guest *guest;
@@ -117,7 +117,7 @@ struct pci_host_controller {
 struct pci_bus {
 	struct dlist head;
 	u16 bus_id;
-	struct vmm_mutex lock;
+	struct vmm_spinlock lock;
 	struct pci_host_controller *host_controller;
 	struct dlist attached_devices;
 };
@@ -129,7 +129,7 @@ struct pci_device {
 	struct pci_bus *pci_bus;
 	struct vmm_guest *guest;
 	struct vmm_devtree_node *node;
-	struct vmm_mutex lock;
+	struct vmm_spinlock lock;
 	void *priv;
 };
 
@@ -147,6 +147,9 @@ struct pci_dev_emulator {
 int pci_emu_register_device(struct pci_dev_emulator *emu);
 int pci_emu_unregister_device(struct pci_dev_emulator *emu);
 struct pci_dev_emulator *pci_emu_find_device(const char *name);
+int pci_emu_find_pci_device(struct pci_host_controller *controller,
+			    int bus_id, int dev_id,
+			    struct pci_device **pdev);
 int pci_emu_probe_devices(struct vmm_guest *guest,
 			  struct pci_host_controller *controller,
 			  struct vmm_devtree_node *node);

@@ -45,9 +45,9 @@
 					guest_physical_addr = <0xcf8>;
 					physical_size = <8>;
 					nr_buses = <1>;
-					bus_start_id = <1>;
+					bus_start_id = <0>;
 
-					pci_bus1 {
+					pci_bus0 {
 						devices {
 							psm {
 								device_type = "psm"; /* PCI Shared Memory */

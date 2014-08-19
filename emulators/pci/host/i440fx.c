@@ -51,7 +51,7 @@ enum {
 	I440FX_LOG_LVL_VERBOSE
 };
 
-static int i440fx_default_log_lvl = I440FX_LOG_LVL_INFO;
+static int i440fx_default_log_lvl = I440FX_LOG_LVL_VERBOSE;
 
 #define I440FX_LOG(lvl, fmt, args...)					\
 	do {								\
@@ -108,21 +108,36 @@ static int i440fx_reg_write(struct i440fx_state *s, u32 addr,
 static int i440fx_reg_read(struct i440fx_state *s, u32 addr, u32 *dst, u32 size)
 {
 	u16 bus, dev, func, reg_offs;
+	struct pci_device *pdev;
 
-	if (addr == 4) {
-		if (s->conf_add & 0x80000000) {
-			bus = (s->conf_add >> 16) & 0xff;
-			dev = (s->conf_add >> 11) & 0x1f;
-			func = (s->conf_add >> 8) & 0x7;
-			reg_offs = (s->conf_add >> 2) & 0x3f;
+	/*
+	 * If guest is reading from command register,
+	 * then its probing if PCI is supported or not.
+	 */
+	if (!addr) {
+		*dst = s->conf_add;
+		return VMM_OK;
+	}
 
-			/* if bus and dev are 0, its bound to PMC */
-			if (bus == 0 && dev == 0) {
-				/* PMC is not a multi-function device */
-				if (func) return VMM_EINVALID;
-				*dst = pci_emu_config_space_read((struct pci_class *)s->controller,
-								 reg_offs, size);
+	if (s->conf_add & 0x80000000) {
+		bus = (s->conf_add >> 16) & 0xff;
+		dev = (s->conf_add >> 11) & 0x1f;
+		func = (s->conf_add >> 8) & 0x7;
+		reg_offs = (s->conf_add >> 2) & 0x3f;
+
+		/* if bus and dev are 0, its bound to PMC */
+		if (bus == 0 && dev == 0) {
+			/* PMC is not a multi-function device */
+			if (func) return VMM_EINVALID;
+			*dst = pci_emu_config_space_read((struct pci_class *)s->controller,
+							 reg_offs, size);
+		} else {
+			if (pci_emu_find_pci_device(s->controller, bus, dev, &pdev) != VMM_OK) {
+				*dst = 0xffff;
+				return VMM_OK;
 			}
+
+			*dst = pci_emu_config_space_read((struct pci_class *)pdev, reg_offs, size);
 		}
 	}
 
@@ -227,7 +242,7 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 	class->config_read = i440fx_config_read;
 	class->config_write = i440fx_config_write;
 
-	rc = vmm_devtree_read_u16(edev->node, "nr_buses",
+	rc = vmm_devtree_read_u32(edev->node, "nr_buses",
 				  &s->controller->nr_buses);
 	if (rc) {
 		I440FX_LOG(LVL_ERR, "Failed to get fifo size in guest DTS.\n");
@@ -238,7 +253,7 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 		   __func__, s->controller->nr_buses);
 
 	for (i = 0; i < s->controller->nr_buses; i++) {
-		if ((rc = pci_emu_attach_new_pci_bus(s->controller, i+1))
+		if ((rc = pci_emu_attach_new_pci_bus(s->controller, i))
 		    != VMM_OK) {
 			I440FX_LOG(LVL_ERR, "Failed to attach PCI bus %d\n",
 				   i+1);

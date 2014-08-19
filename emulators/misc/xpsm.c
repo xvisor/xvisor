@@ -44,6 +44,10 @@ static int xpsm_emulator_probe(struct pci_device *pdev,
 			       struct vmm_guest *guest,
 			       const struct vmm_devtree_nodeid *eid)
 {
+	struct pci_class *class = (struct pci_class *)pdev;
+	class->conf_header.vendor_id = 0x1857;
+	class->conf_header.device_id = 0x1947;
+
 	pdev->priv = NULL;
 
 	return VMM_OK;
