@@ -249,7 +249,8 @@ static u8 imx_getc_sleepable(struct imx_port *port)
 	return imx_lowlevel_getc(port->base);
 }
 
-static u32 imx_read(struct vmm_chardev *cdev, u8 * dest, u32 len, bool sleep)
+static u32 imx_read(struct vmm_chardev *cdev,
+		    u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct imx_port *port;
@@ -293,7 +294,8 @@ static void imx_putc_sleepable(struct imx_port *port, u8 ch)
 }
 #endif
 
-static u32 imx_write(struct vmm_chardev *cdev, u8 * src, u32 len, bool sleep)
+static u32 imx_write(struct vmm_chardev *cdev,
+		     u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct imx_port *port;

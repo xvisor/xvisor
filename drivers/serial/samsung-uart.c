@@ -186,8 +186,8 @@ static u8 samsung_getc_sleepable(struct samsung_port *port)
 	return samsung_lowlevel_getc(port->base);
 }
 
-static u32 samsung_read(struct vmm_chardev *cdev, u8 * dest, u32 len,
-			bool sleep)
+static u32 samsung_read(struct vmm_chardev *cdev,
+			u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct samsung_port *port;
@@ -215,8 +215,7 @@ static u32 samsung_read(struct vmm_chardev *cdev, u8 * dest, u32 len,
 }
 
 #if defined(UART_SAMSUNG_USE_TXINTR)
-static void samsung_putc_sleepable(struct samsung_port
-				   *port, u8 ch)
+static void samsung_putc_sleepable(struct samsung_port *port, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
 	if (!samsung_lowlevel_can_putc(port->base)) {
@@ -232,9 +231,8 @@ static void samsung_putc_sleepable(struct samsung_port
 }
 #endif
 
-static u32 samsung_write(struct
-			 vmm_chardev
-			 *cdev, u8 * src, u32 len, bool sleep)
+static u32 samsung_write(struct vmm_chardev *cdev,
+			 u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct samsung_port

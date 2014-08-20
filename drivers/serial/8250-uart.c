@@ -237,7 +237,7 @@ static u8 uart_8250_getc_sleepable(struct uart_8250_port *port)
 #endif
 
 static u32 uart_8250_read(struct vmm_chardev *cdev, 
-		     u8 *dest, u32 len, bool sleep)
+			u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i = 0;
 	irq_flags_t flags;
@@ -291,7 +291,7 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 }
 
 static u32 uart_8250_write(struct vmm_chardev *cdev, 
-		      u8 *src, u32 len, bool sleep)
+			u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct uart_8250_port *port;
