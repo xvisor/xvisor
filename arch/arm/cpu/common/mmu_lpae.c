@@ -24,6 +24,7 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
 #include <arch_sections.h>
@@ -32,7 +33,7 @@
 #include <cpu_mmu_lpae.h>
 #include <mmu_lpae.h>
 
-/* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool. 
+/* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool.
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
  * or 1 MB / 4 KB = 256 translation tables
  */
@@ -52,6 +53,9 @@ struct mmu_lpae_ctrl {
 	vmm_spinlock_t alloc_lock;
 	u32 ttbl_alloc_count;
 	struct dlist free_ttbl_list;
+	/* Initialized by memory read/write init */
+	struct cpu_ttbl *mem_rw_ttbl[CONFIG_CPU_COUNT];
+	u64 *mem_rw_tte[CONFIG_CPU_COUNT];
 };
 
 static struct mmu_lpae_ctrl mmuctrl;
@@ -93,7 +97,7 @@ static inline bool mmu_lpae_ttbl_isattached(struct cpu_ttbl *child)
 
 static inline bool mmu_lpae_valid_block_size(physical_size_t sz)
 {
-	if ((sz == TTBL_L3_BLOCK_SIZE) || 
+	if ((sz == TTBL_L3_BLOCK_SIZE) ||
 	    (sz == TTBL_L2_BLOCK_SIZE) ||
 	    (sz == TTBL_L1_BLOCK_SIZE)) {
 		return TRUE;
@@ -142,7 +146,7 @@ static inline int mmu_lpae_level_index_shift(int level)
 }
 
 static int mmu_lpae_ttbl_attach(struct cpu_ttbl *parent,
-				physical_addr_t map_ia, 
+				physical_addr_t map_ia,
 				struct cpu_ttbl *child)
 {
 	int index;
@@ -155,7 +159,7 @@ static int mmu_lpae_ttbl_attach(struct cpu_ttbl *parent,
 	if (mmu_lpae_ttbl_isattached(child)) {
 		return VMM_EFAIL;
 	}
-	if ((parent->level == TTBL_LAST_LEVEL) || 
+	if ((parent->level == TTBL_LAST_LEVEL) ||
 	    (child->stage != parent->stage)) {
 		return VMM_EFAIL;
 	}
@@ -345,8 +349,8 @@ struct cpu_ttbl *mmu_lpae_ttbl_get_child(struct cpu_ttbl *parent,
 	return child;
 }
 
-u32 mmu_lpae_best_page_size(physical_addr_t ia, 
-			   physical_addr_t oa, 
+u32 mmu_lpae_best_page_size(physical_addr_t ia,
+			   physical_addr_t oa,
 			   u32 availsz)
 {
 	if (!(ia & (TTBL_L1_BLOCK_SIZE - 1)) &&
@@ -364,9 +368,8 @@ u32 mmu_lpae_best_page_size(physical_addr_t ia,
 	return TTBL_L3_BLOCK_SIZE;
 }
 
-int mmu_lpae_get_page(struct cpu_ttbl * ttbl, 
-		     physical_addr_t ia, 
-		     struct cpu_page * pg)
+int mmu_lpae_get_page(struct cpu_ttbl *ttbl,
+		      physical_addr_t ia, struct cpu_page *pg)
 {
 	int index;
 	u64 *tte;
@@ -392,7 +395,7 @@ int mmu_lpae_get_page(struct cpu_ttbl * ttbl,
 		return VMM_EFAIL;
 	}
 
-	if ((ttbl->level < TTBL_LAST_LEVEL) && 
+	if ((ttbl->level < TTBL_LAST_LEVEL) &&
 	    (tte[index] & TTBL_TABLE_MASK)) {
 		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 		child = mmu_lpae_ttbl_get_child(ttbl, ia, FALSE);
@@ -409,7 +412,7 @@ int mmu_lpae_get_page(struct cpu_ttbl * ttbl,
 	pg->sz = mmu_lpae_level_block_size(ttbl->level);
 
 	if (ttbl->stage == TTBL_STAGE2) {
-		pg->xn = (tte[index] & TTBL_STAGE2_UPPER_XN_MASK) >> 
+		pg->xn = (tte[index] & TTBL_STAGE2_UPPER_XN_MASK) >>
 						TTBL_STAGE2_UPPER_XN_SHIFT;
 		pg->cont = (tte[index] & TTBL_STAGE2_UPPER_CONT_MASK) >>
 						TTBL_STAGE2_UPPER_CONT_SHIFT;
@@ -422,7 +425,7 @@ int mmu_lpae_get_page(struct cpu_ttbl * ttbl,
 		pg->memattr = (tte[index] & TTBL_STAGE2_LOWER_MEMATTR_MASK) >>
 					TTBL_STAGE2_LOWER_MEMATTR_SHIFT;
 	} else {
-		pg->xn = (tte[index] & TTBL_STAGE1_UPPER_XN_MASK) >> 
+		pg->xn = (tte[index] & TTBL_STAGE1_UPPER_XN_MASK) >>
 						TTBL_STAGE1_UPPER_XN_SHIFT;
 		pg->pxn = (tte[index] & TTBL_STAGE1_UPPER_PXN_MASK) >>
 						TTBL_STAGE1_UPPER_PXN_SHIFT;
@@ -475,7 +478,7 @@ int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 			return VMM_EFAIL;
 		}
 		rc = mmu_lpae_unmap_page(child, pg);
-		if ((ttbl->tte_cnt == 0) && 
+		if ((ttbl->tte_cnt == 0) &&
 		    (ttbl->level > TTBL_FIRST_LEVEL)) {
 			mmu_lpae_ttbl_free(ttbl);
 		}
@@ -521,7 +524,7 @@ int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	return VMM_OK;
 }
 
-int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
+int mmu_lpae_map_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 {
 	int index;
 	u64 *tte;
@@ -567,14 +570,14 @@ int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 						TTBL_STAGE2_UPPER_XN_MASK;
 		tte[index] |= ((u64)pg->cont << TTBL_STAGE2_UPPER_CONT_SHIFT) &
 						TTBL_STAGE2_UPPER_CONT_MASK;
-		tte[index] |= ((u64)pg->af << TTBL_STAGE2_LOWER_AF_SHIFT) & 
+		tte[index] |= ((u64)pg->af << TTBL_STAGE2_LOWER_AF_SHIFT) &
 						TTBL_STAGE1_LOWER_AF_MASK;
-		tte[index] |= ((u64)pg->sh << TTBL_STAGE2_LOWER_SH_SHIFT) & 
+		tte[index] |= ((u64)pg->sh << TTBL_STAGE2_LOWER_SH_SHIFT) &
 						TTBL_STAGE2_LOWER_SH_MASK;
-		tte[index] |= ((u64)pg->ap << TTBL_STAGE2_LOWER_HAP_SHIFT) & 
+		tte[index] |= ((u64)pg->ap << TTBL_STAGE2_LOWER_HAP_SHIFT) &
 						TTBL_STAGE2_LOWER_HAP_MASK;
-		tte[index] |= ((u64)pg->memattr << 
-				TTBL_STAGE2_LOWER_MEMATTR_SHIFT) & 
+		tte[index] |= ((u64)pg->memattr <<
+				TTBL_STAGE2_LOWER_MEMATTR_SHIFT) &
 				TTBL_STAGE2_LOWER_MEMATTR_MASK;
 	} else {
 		tte[index] |= ((u64)pg->xn << TTBL_STAGE1_UPPER_XN_SHIFT) &
@@ -583,22 +586,22 @@ int mmu_lpae_map_page(struct cpu_ttbl * ttbl, struct cpu_page *pg)
 						TTBL_STAGE1_UPPER_PXN_MASK;
 		tte[index] |= ((u64)pg->cont << TTBL_STAGE1_UPPER_CONT_SHIFT) &
 						TTBL_STAGE1_UPPER_CONT_MASK;
-		tte[index] |= ((u64)pg->ng << TTBL_STAGE1_LOWER_NG_SHIFT) & 
+		tte[index] |= ((u64)pg->ng << TTBL_STAGE1_LOWER_NG_SHIFT) &
 						TTBL_STAGE1_LOWER_NG_MASK;
-		tte[index] |= ((u64)pg->af << TTBL_STAGE1_LOWER_AF_SHIFT) & 
+		tte[index] |= ((u64)pg->af << TTBL_STAGE1_LOWER_AF_SHIFT) &
 						TTBL_STAGE1_LOWER_AF_MASK;
-		tte[index] |= ((u64)pg->sh << TTBL_STAGE1_LOWER_SH_SHIFT) & 
+		tte[index] |= ((u64)pg->sh << TTBL_STAGE1_LOWER_SH_SHIFT) &
 						TTBL_STAGE1_LOWER_SH_MASK;
-		tte[index] |= ((u64)pg->ap << TTBL_STAGE1_LOWER_AP_SHIFT) & 
+		tte[index] |= ((u64)pg->ap << TTBL_STAGE1_LOWER_AP_SHIFT) &
 						TTBL_STAGE1_LOWER_AP_MASK;
-		tte[index] |= ((u64)pg->ns << TTBL_STAGE1_LOWER_NS_SHIFT) & 
+		tte[index] |= ((u64)pg->ns << TTBL_STAGE1_LOWER_NS_SHIFT) &
 						TTBL_STAGE1_LOWER_NS_MASK;
-		tte[index] |= ((u64)pg->aindex << 
-				TTBL_STAGE1_LOWER_AINDEX_SHIFT) & 
+		tte[index] |= ((u64)pg->aindex <<
+				TTBL_STAGE1_LOWER_AINDEX_SHIFT) &
 				TTBL_STAGE1_LOWER_AINDEX_MASK;
 	}
 
-	tte[index] |= pg->oa & 
+	tte[index] |= pg->oa &
 		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
 
 	if (ttbl->level == TTBL_LAST_LEVEL) {
@@ -646,7 +649,202 @@ int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl)
 	return VMM_OK;
 }
 
-int arch_cpu_aspace_map(virtual_addr_t page_va, 
+#define PHYS_RW_TTE							\
+	((TTBL_TABLE_MASK|TTBL_VALID_MASK)	|			\
+	 ((0x1ULL << TTBL_STAGE1_UPPER_XN_SHIFT) &			\
+	    TTBL_STAGE1_UPPER_XN_MASK)		|			\
+	 ((0x1 << TTBL_STAGE1_LOWER_AF_SHIFT) &				\
+	    TTBL_STAGE1_LOWER_AF_MASK)		|			\
+	 ((TTBL_SH_INNER_SHAREABLE << TTBL_STAGE1_LOWER_SH_SHIFT) &	\
+	    TTBL_STAGE1_LOWER_SH_MASK)		|			\
+	 ((TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT) &		\
+	    TTBL_STAGE1_LOWER_AP_MASK)		|			\
+	 ((0x1 << TTBL_STAGE1_LOWER_NS_SHIFT) &				\
+	    TTBL_STAGE1_LOWER_NS_MASK))
+
+#define PHYS_RW_TTE_NOCACHE						\
+	(PHYS_RW_TTE |							\
+	 ((AINDEX_SO << TTBL_STAGE1_LOWER_AINDEX_SHIFT) &		\
+	    TTBL_STAGE1_LOWER_AINDEX_MASK))
+
+#define PHYS_RW_TTE_CACHE						\
+	(PHYS_RW_TTE |							\
+	 ((AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT) &	\
+	    TTBL_STAGE1_LOWER_AINDEX_MASK))
+
+int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
+				physical_addr_t src,
+				void *dst, u32 len, bool cacheable)
+{
+	u64 old_tte_val;
+	u64 *tte = mmuctrl.mem_rw_tte[vmm_smp_processor_id()];
+	struct cpu_ttbl *ttbl = mmuctrl.mem_rw_ttbl[vmm_smp_processor_id()];
+	virtual_addr_t offset = (src & VMM_PAGE_MASK);
+
+	old_tte_val = *tte;
+
+	if (cacheable) {
+		*tte = PHYS_RW_TTE_CACHE;
+	} else {
+		*tte = PHYS_RW_TTE_NOCACHE;
+	}
+	*tte |= src &
+		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
+
+	cpu_mmu_sync_tte(tte);
+
+	switch (len) {
+	case 1:
+		*((u8 *)dst) = *(u8 *)(tmp_va + offset);
+		break;
+	case 2:
+		*((u16 *)dst) = *(u16 *)(tmp_va + offset);
+		break;
+	case 4:
+		*((u32 *)dst) = *(u32 *)(tmp_va + offset);
+		break;
+	case 8:
+		*((u64 *)dst) = *(u64 *)(tmp_va + offset);
+		break;
+	default:
+		memcpy(dst, (void *)(tmp_va + offset), len);
+		break;
+	};
+
+	*tte = old_tte_val;
+	cpu_mmu_sync_tte(tte);
+	cpu_invalid_va_hypervisor_tlb(tmp_va);
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
+				 physical_addr_t dst,
+				 void *src, u32 len, bool cacheable)
+{
+	u64 old_tte_val;
+	u64 *tte = mmuctrl.mem_rw_tte[vmm_smp_processor_id()];
+	struct cpu_ttbl *ttbl = mmuctrl.mem_rw_ttbl[vmm_smp_processor_id()];
+	virtual_addr_t offset = (dst & VMM_PAGE_MASK);
+
+	old_tte_val = *tte;
+
+	if (cacheable) {
+		*tte = PHYS_RW_TTE_CACHE;
+	} else {
+		*tte = PHYS_RW_TTE_NOCACHE;
+	}
+	*tte |= dst &
+		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
+
+	cpu_mmu_sync_tte(tte);
+
+	switch (len) {
+	case 1:
+		*(u8 *)(tmp_va + offset) = *((u8 *)src);
+		break;
+	case 2:
+		*(u16 *)(tmp_va + offset) = *((u16 *)src);
+		break;
+	case 4:
+		*(u32 *)(tmp_va + offset) = *((u32 *)src);
+		break;
+	case 8:
+		*(u64 *)(tmp_va + offset) = *((u64 *)src);
+		break;
+	default:
+		memcpy((void *)(tmp_va + offset), src, len);
+		break;
+	};
+
+	*tte = old_tte_val;
+	cpu_mmu_sync_tte(tte);
+	cpu_invalid_va_hypervisor_tlb(tmp_va);
+
+	return VMM_OK;
+}
+
+static int __cpuinit mmu_lpae_find_tte(struct cpu_ttbl *ttbl,
+				       physical_addr_t ia,
+				       u64 **ttep, struct cpu_ttbl **ttblp)
+{
+	int index;
+	u64 *tte;
+	irq_flags_t flags;
+	struct cpu_ttbl *child;
+
+	if (!ttbl || !ttep || !ttblp) {
+		return VMM_EFAIL;
+	}
+
+	index = mmu_lpae_level_index(ia, ttbl->level);
+	tte = (u64 *)ttbl->tbl_va;
+
+	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
+
+	if (!(tte[index] & TTBL_VALID_MASK)) {
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
+		return VMM_EFAIL;
+	}
+	if ((ttbl->level == TTBL_LAST_LEVEL) &&
+	    !(tte[index] & TTBL_TABLE_MASK)) {
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
+		return VMM_EFAIL;
+	}
+
+	if ((ttbl->level < TTBL_LAST_LEVEL) &&
+	    (tte[index] & TTBL_TABLE_MASK)) {
+		vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
+		child = mmu_lpae_ttbl_get_child(ttbl, ia, FALSE);
+		if (!child) {
+			return VMM_EFAIL;
+		}
+		return mmu_lpae_find_tte(child, ia, ttep, ttblp);
+	}
+
+	*ttep = &tte[index];
+	*ttblp = ttbl;
+
+	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
+
+	return VMM_OK;
+}
+
+int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
+{
+	int rc;
+	u32 cpu = vmm_smp_processor_id();
+	struct cpu_page p;
+
+	memset(&p, 0, sizeof(p));
+	p.ia = tmp_va;
+	p.oa = 0x0;
+	p.sz = VMM_PAGE_SIZE;
+	p.af = 1;
+	p.ap = TTBL_AP_SR_U;
+	p.xn = 1;
+	p.ns = 1;
+	p.sh = TTBL_SH_INNER_SHAREABLE;
+	p.aindex = AINDEX_SO;
+
+	rc = mmu_lpae_map_hypervisor_page(&p);
+	if (rc) {
+		return rc;
+	}
+
+	mmuctrl.mem_rw_tte[cpu] = NULL;
+	mmuctrl.mem_rw_ttbl[cpu] = NULL;
+	rc = mmu_lpae_find_tte(mmuctrl.hyp_ttbl, tmp_va,
+			       &mmuctrl.mem_rw_tte[cpu],
+			       &mmuctrl.mem_rw_ttbl[cpu]);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_map(virtual_addr_t page_va,
 			physical_addr_t page_pa,
 			u32 mem_flags)
 {
@@ -666,9 +864,9 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.ns = 1;
-	p.sh = TTBL_SH_INNER_SHAREABLE; 
+	p.sh = TTBL_SH_INNER_SHAREABLE;
 
-	if ((mem_flags & VMM_MEMORY_CACHEABLE) && 
+	if ((mem_flags & VMM_MEMORY_CACHEABLE) &&
 	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
 		p.aindex = AINDEX_NORMAL_WB;
 	} else if (mem_flags & VMM_MEMORY_CACHEABLE) {
@@ -716,7 +914,7 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
-int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa, 
+int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 					virtual_addr_t *core_resv_va,
 					virtual_size_t *core_resv_sz,
 					physical_addr_t *arch_resv_pa,
@@ -730,7 +928,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	struct cpu_page hyppg;
 	struct cpu_ttbl *ttbl, *parent;
 
-	/* Check & setup core reserved space and update the 
+	/* Check & setup core reserved space and update the
 	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
 	 * to inform host aspace about correct placement of the
 	 * core reserved space.
@@ -741,23 +939,23 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	resv_va = va + sz;
 	resv_pa = pa + sz;
 	if (resv_va & (TTBL_L3_BLOCK_SIZE - 1)) {
-		resv_va += TTBL_L3_BLOCK_SIZE - 
+		resv_va += TTBL_L3_BLOCK_SIZE -
 			    (resv_va & (TTBL_L3_BLOCK_SIZE - 1));
 	}
 	if (resv_pa & (TTBL_L3_BLOCK_SIZE - 1)) {
-		resv_pa += TTBL_L3_BLOCK_SIZE - 
+		resv_pa += TTBL_L3_BLOCK_SIZE -
 			    (resv_pa & (TTBL_L3_BLOCK_SIZE - 1));
 	}
 	if (resv_sz & (TTBL_L3_BLOCK_SIZE - 1)) {
-		resv_sz += TTBL_L3_BLOCK_SIZE - 
+		resv_sz += TTBL_L3_BLOCK_SIZE -
 			    (resv_sz & (TTBL_L3_BLOCK_SIZE - 1));
 	}
 	*core_resv_pa = resv_pa;
 	*core_resv_va = resv_va;
 	*core_resv_sz = resv_sz;
 
-	/* Initialize MMU control and allocate arch reserved space and 
-	 * update the *arch_resv_pa, *arch_resv_va, and *arch_resv_sz 
+	/* Initialize MMU control and allocate arch reserved space and
+	 * update the *arch_resv_pa, *arch_resv_va, and *arch_resv_sz
 	 * parameters to inform host aspace about the arch reserved space.
 	 */
 	memset(&mmuctrl, 0, sizeof(mmuctrl));
@@ -769,8 +967,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	resv_sz += TTBL_TABLE_SIZE * TTBL_MAX_TABLE_COUNT;
 	*arch_resv_sz = resv_sz - *arch_resv_sz;
 	mmuctrl.ittbl_base_va = (virtual_addr_t)&def_ttbl;
-	mmuctrl.ittbl_base_pa = mmuctrl.ittbl_base_va - 
-				arch_code_vaddr_start() + 
+	mmuctrl.ittbl_base_pa = mmuctrl.ittbl_base_va -
+				arch_code_vaddr_start() +
 				arch_code_paddr_start();
 	INIT_SPIN_LOCK(&mmuctrl.alloc_lock);
 	mmuctrl.ttbl_alloc_count = 0x0;
@@ -842,10 +1040,10 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 			if (!(((u64 *)parent->tbl_va)[t] & TTBL_TABLE_MASK)) {
 				continue;
 			}
-			if ((((u64 *)parent->tbl_va)[t] & TTBL_OUTADDR_MASK) 
+			if ((((u64 *)parent->tbl_va)[t] & TTBL_OUTADDR_MASK)
 			    == ttbl->tbl_pa) {
 				ttbl->map_ia = parent->map_ia;
-				ttbl->map_ia += ((u64)t) << 
+				ttbl->map_ia += ((u64)t) <<
 				mmu_lpae_level_index_shift(parent->level);
 				break;
 			}
@@ -868,7 +1066,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	/* TODO: Unmap identity mappings from hypervisor ttbl
 	 *
 	 * The only issue in unmapping identity mapping from hypervisor ttbl
-	 * is that secondary cores (in SMP systems) crash immediatly after 
+	 * is that secondary cores (in SMP systems) crash immediatly after
 	 * enabling MMU.
 	 *
 	 * For now as a quick fix, we keep the identity mappings.
