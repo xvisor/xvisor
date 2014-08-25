@@ -75,20 +75,29 @@ static char *exception_names[] = {
 extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			       physical_addr_t paddr, size_t size);
 
-static inline void dump_guest_exception_insts(struct vmcb *vmcb)
-{
-	int i;
-	u8 *guest_ins_base = (u8 *)((u8 *)(vmcb)) + 0xd0;
-
-	for (i = 0; i < 16; i++) {
-		vmm_printf("%x ", guest_ins_base[i]);
-		if (i && !(i % 8)) vmm_printf("\n");
-	}
-}
-
 static inline int guest_in_realmode(struct vcpu_hw_context *context)
 {
 	return (!(context->vmcb->cr0 & X86_CR0_PE));
+}
+
+static int guest_read_gva(struct vcpu_hw_context *context, u32 vaddr, u8 *where, u32 size)
+{
+	physical_addr_t gphys;
+
+	if (gva_to_gpa(context, vaddr, &gphys)) {
+		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%x to guest physical.\n",
+			vaddr);
+		return VMM_EFAIL;
+	}
+
+	/* FIXME: Should we always do cacheable memory access here ?? */
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest, gphys,
+				  where, size, TRUE) < size) {
+		VM_LOG(LVL_ERR, "Failed to read guest pa 0x%lx\n", gphys);
+		return VMM_EFAIL;
+	}
+
+	return VMM_OK;
 }
 
 static int guest_read_fault_inst(struct vcpu_hw_context *context, x86_inst *g_ins)
@@ -110,6 +119,40 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context, x86_inst *g_in
 	}
 
 	return VMM_OK;
+}
+
+static inline void dump_guest_exception_insts(struct vcpu_hw_context *context)
+{
+	x86_inst ins;
+	int i;
+
+	if (guest_read_fault_inst(context, &ins)) {
+		VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+		return;
+	}
+	vmm_printf("\n");
+	for (i = 0; i < 14; i++) {
+		vmm_printf("%x ", ins[i]);
+		if (i && !(i % 8)) vmm_printf("\n");
+	}
+	vmm_printf("\n");
+}
+
+void __handle_vm_gdt_write(struct vcpu_hw_context *context)
+{
+	u64 gdt_entry;
+	u32 guest_gdt_base = context->g_regs[GUEST_REGS_RBX];
+	int i;
+
+	vmm_printf("GDT Base: 0x%x\n", guest_gdt_base);
+	for (i = 0; i < 2; i++) {
+		guest_read_gva(context, guest_gdt_base, (u8 *)&gdt_entry, sizeof(gdt_entry));
+		vmm_printf("%2d : 0x%08lx\n", i, gdt_entry);
+		guest_gdt_base += sizeof(gdt_entry);
+	}
+
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
 }
 
 void __handle_vm_npf (struct vcpu_hw_context *context)
@@ -554,6 +597,14 @@ void __handle_triple_fault(struct vcpu_hw_context *context)
 	vmm_hang();
 }
 
+void __handle_halt(struct vcpu_hw_context *context)
+{
+	VM_LOG(LVL_INFO, "\n%s issued a halt instruction. Halting it.\n", context->assoc_vcpu->guest->name);
+
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+}
+
 void handle_vcpuexit(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_DEBUG, "**** #VMEXIT - exit code: %x\n", (u32) context->vmcb->exitcode);
@@ -575,7 +626,9 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 	case VMEXIT_SHUTDOWN: __handle_triple_fault(context); break;
 	case VMEXIT_CPUID: __handle_cpuid(context); break;
 	case VMEXIT_IOIO: __handle_ioio(context); break;
+	case VMEXIT_GDTR_WRITE: __handle_vm_gdt_write(context); break;
 	case VMEXIT_INTR: break; /* silently */
+	case VMEXIT_HLT: __handle_halt(context); break;
 	default:
 		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: %x\n",
 		       (u32)context->vmcb->exitcode);
