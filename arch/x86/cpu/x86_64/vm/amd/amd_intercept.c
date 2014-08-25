@@ -514,12 +514,16 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RAX] = guest_rd;
 		context->vmcb->rax = guest_rd;
 	} else {
-		wval = (u32)context->vmcb->rax;
-		if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, io_port,
-					       &wval, op_size/8,
-					       VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
-			vmm_printf("Failed to emulate IO instruction in guest.\n");
-			goto _fail;
+		if (io_port == 0x80) {
+			VM_LOG(LVL_DEBUG, "(0x%x) CBDW: 0x%x\n", context->vmcb->rip, (u32)context->vmcb->rax);
+		} else  {
+			wval = (u32)context->vmcb->rax;
+			if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, io_port,
+						       &wval, op_size/8,
+						       VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+				vmm_printf("Failed to emulate IO instruction in guest.\n");
+				goto _fail;
+			}
 		}
 	}
 

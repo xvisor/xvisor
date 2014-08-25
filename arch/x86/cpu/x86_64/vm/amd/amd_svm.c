@@ -477,6 +477,9 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	context->vcpu_run = svm_run;
 	context->vcpu_exit = handle_vcpuexit;
 
+	/* Monitor the coreboot's debug port output */
+	enable_ioport_intercept(context, 0x80);
+
 	return VMM_OK;
 }
 
