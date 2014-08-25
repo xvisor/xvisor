@@ -317,74 +317,63 @@ void __handle_vm_iret(struct vcpu_hw_context *context)
 
 void __handle_crN_read(struct vcpu_hw_context *context)
 {
-	int crn = context->vmcb->exitcode - VMEXIT_CR0_READ;
 	int cr_gpr;
 
-	switch(crn) {
-	case 0:
-		/* Check if host support instruction decode assistance */
-		if (context->cpuinfo->decode_assist) {
-			if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
-				cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-				VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
-				       context->g_regs[cr_gpr], cr_gpr);
-			}
-		} else {
-			x86_inst ins64;
-			x86_decoded_inst_t dinst;
-			u64 rvalue;
-
-			if (guest_read_fault_inst(context, &ins64)) {
-				VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
-				goto guest_bad_fault;
-			}
-
-			if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
-				VM_LOG(LVL_ERR, "Failed to decode instruction.\n");
-				goto guest_bad_fault;
-			}
-
-			if (likely(dinst.inst_type == INST_TYPE_MOV_CR)) {
-				switch (dinst.inst.crn_mov.src_reg) {
-				case RM_REG_CR0:
-					rvalue = context->g_cr0;
-					break;
-
-				case RM_REG_CR1:
-					rvalue = context->g_cr1;
-					break;
-
-				case RM_REG_CR2:
-					rvalue = context->g_cr2;
-					break;
-
-				case RM_REG_CR3:
-					rvalue = context->g_cr3;
-					break;
-
-				default:
-					VM_LOG(LVL_ERR, "Unknown CR reg %d\n", dinst.inst.crn_mov.src_reg);
-					goto guest_bad_fault;
-				}
-
-				if (!dinst.inst.crn_mov.dst_reg)
-					context->vmcb->rax = rvalue;
-
-				context->g_regs[dinst.inst.crn_mov.dst_reg] = context->g_cr0;
-				context->vmcb->rip += dinst.inst_size;
-				VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
-			} else {
-				VM_LOG(LVL_ERR, "Unknown fault instruction: 0x%lx\n", ins64);
-				goto guest_bad_fault;
-			}
+	/* Check if host support instruction decode assistance */
+	if (context->cpuinfo->decode_assist) {
+		if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
+			cr_gpr = (context->vmcb->exitinfo1 & 0xf);
+			VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
+			       context->g_regs[cr_gpr], cr_gpr);
 		}
-		break;
-	case 3:
-		break;
-	default:
-		VM_LOG(LVL_ERR, "Unhandled intercept cr%d read\n",
-		       crn);
-		break;
+	} else {
+		x86_inst ins64;
+		x86_decoded_inst_t dinst;
+		u64 rvalue;
+
+		if (guest_read_fault_inst(context, &ins64)) {
+			VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+			goto guest_bad_fault;
+		}
+
+		if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+			VM_LOG(LVL_ERR, "Failed to decode instruction.\n");
+			goto guest_bad_fault;
+		}
+
+		if (likely(dinst.inst_type == INST_TYPE_MOV_CR)) {
+			switch (dinst.inst.crn_mov.src_reg) {
+			case RM_REG_CR0:
+				rvalue = context->g_cr0;
+				break;
+
+			case RM_REG_CR1:
+				rvalue = context->g_cr1;
+				break;
+
+			case RM_REG_CR2:
+				rvalue = context->g_cr2;
+				break;
+
+			case RM_REG_CR3:
+				rvalue = context->g_cr3;
+				break;
+
+			default:
+				VM_LOG(LVL_ERR, "Unknown CR reg %d read by guest\n", dinst.inst.crn_mov.src_reg);
+				goto guest_bad_fault;
+			}
+
+			if (!dinst.inst.crn_mov.dst_reg)
+				context->vmcb->rax = rvalue;
+
+			context->g_regs[dinst.inst.crn_mov.dst_reg] = context->g_cr0;
+			context->vmcb->rip += dinst.inst_size;
+			VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
+		} else {
+			VM_LOG(LVL_ERR, "Unknown fault instruction: 0x%lx\n", ins64);
+			goto guest_bad_fault;
+		}
 	}
 
 	return;
@@ -397,85 +386,84 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 
 void __handle_crN_write(struct vcpu_hw_context *context)
 {
-	int crn = context->vmcb->exitcode - VMEXIT_CR0_WRITE;
 	int cr_gpr;
 	u32 bits_clrd;
 	u32 bits_set;
 	u64 htr;
 
-	switch(crn) {
-	case 0:
-		/* Check if host support instruction decode assistance */
-		if (context->cpuinfo->decode_assist) {
-			if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
-				cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-				VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
-				       context->g_regs[cr_gpr], cr_gpr);
-			}
-		} else {
-			x86_inst ins64;
-			x86_decoded_inst_t dinst;
+	/* Check if host support instruction decode assistance */
+	if (context->cpuinfo->decode_assist) {
+		if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
+			cr_gpr = (context->vmcb->exitinfo1 & 0xf);
+			VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg %d.\n",
+			       context->g_regs[cr_gpr], cr_gpr);
+		}
+	} else {
+		x86_inst ins64;
+		x86_decoded_inst_t dinst;
 
-			if (guest_read_fault_inst(context, &ins64)) {
-				VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
-				goto guest_bad_fault;
-			}
+		if (guest_read_fault_inst(context, &ins64)) {
+			VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+			goto guest_bad_fault;
+		}
 
-			if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
-				VM_LOG(LVL_ERR, "Failed to code instruction.\n");
-				goto guest_bad_fault;
-			}
+		if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+			VM_LOG(LVL_ERR, "Failed to code instruction.\n");
+			goto guest_bad_fault;
+		}
 
-			if (dinst.inst_type == INST_TYPE_MOV_CR) {
-				switch(dinst.inst.crn_mov.dst_reg) {
-				case RM_REG_CR0:
-					if (!dinst.inst.crn_mov.src_reg) {
-						bits_set = (~context->g_cr0 & context->vmcb->rax);
-						bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
-						context->g_cr0 = context->vmcb->rax;
-					} else {
-						bits_set = (~context->g_cr0 & context->g_regs[dinst.inst.crn_mov.src_reg]);
-						bits_clrd = (context->g_cr0 & ~context->g_regs[dinst.inst.crn_mov.src_reg]);
-						context->g_cr0 = context->g_regs[dinst.inst.crn_mov.src_reg];
-					}
-
-					if (bits_set & X86_CR0_PE)
-						context->vmcb->cr0 |= X86_CR0_PE;
-
-					if (bits_set & X86_CR0_PG)
-						context->vmcb->cr0 |= X86_CR0_PG;
-
-					if (bits_clrd & X86_CR0_CD)
-						context->vmcb->cr0 &= ~X86_CR0_CD;
-
-					if (bits_clrd & X86_CR0_NW)
-						context->vmcb->cr0 &= ~X86_CR0_NW;
-
-					break;
-				default:
-					VM_LOG(LVL_ERR, "Write to CR%d not supported.\n",
-					       dinst.inst.crn_mov.dst_reg - RM_REG_CR0);
-					goto guest_bad_fault;
+		if (dinst.inst_type == INST_TYPE_MOV_CR) {
+			switch(dinst.inst.crn_mov.dst_reg) {
+			case RM_REG_CR0:
+				if (!dinst.inst.crn_mov.src_reg) {
+					bits_set = (~context->g_cr0 & context->vmcb->rax);
+					bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
+					context->g_cr0 = context->vmcb->rax;
+				} else {
+					bits_set = (~context->g_cr0 & context->g_regs[dinst.inst.crn_mov.src_reg]);
+					bits_clrd = (context->g_cr0 & ~context->g_regs[dinst.inst.crn_mov.src_reg]);
+					context->g_cr0 = context->g_regs[dinst.inst.crn_mov.src_reg];
 				}
 
-				context->vmcb->rip += dinst.inst_size;
+				if (bits_set & X86_CR0_PE)
+					context->vmcb->cr0 |= X86_CR0_PE;
 
-				asm volatile("str %0\n"
-					     :"=r"(htr));
-				VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
-				       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
-			} else {
-				VM_LOG(LVL_ERR, "Unknown fault instruction\n");
+				if (bits_set & X86_CR0_PG)
+					context->vmcb->cr0 |= X86_CR0_PG;
+
+				if (bits_clrd & X86_CR0_CD)
+					context->vmcb->cr0 &= ~X86_CR0_CD;
+
+				if (bits_clrd & X86_CR0_NW)
+					context->vmcb->cr0 &= ~X86_CR0_NW;
+
+				break;
+
+			case RM_REG_CR3:
+				if (!dinst.inst.crn_mov.src_reg) {
+					context->g_cr3 = context->vmcb->rax;
+				} else {
+					context->g_cr3 = context->g_regs[dinst.inst.crn_mov.src_reg];
+				}
+				/* TODO: Flush the TLBs in shadow for guest */
+				break;
+
+			default:
+				VM_LOG(LVL_ERR, "Write to CR%d not supported.\n",
+				       dinst.inst.crn_mov.dst_reg - RM_REG_CR0);
 				goto guest_bad_fault;
 			}
+
+			context->vmcb->rip += dinst.inst_size;
+
+			asm volatile("str %0\n"
+				     :"=r"(htr));
+			VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
+			       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
+		} else {
+			VM_LOG(LVL_ERR, "Unknown fault instruction\n");
+			goto guest_bad_fault;
 		}
-		break;
-	case 3:
-		break;
-	default:
-		VM_LOG(LVL_ERR, "Unhandled intercept cr%d write\n",
-		       crn);
-		break;
 	}
 
 	return;
