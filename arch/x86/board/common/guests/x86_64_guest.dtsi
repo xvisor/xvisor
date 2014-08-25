@@ -17,13 +17,72 @@
 			aspace {
 				guest_irq_count = <256>;
 
+				/*
+				 *	0x00000000 	0x000003FF 	1 KiB 		Real Mode IVT (Interrupt Vector Table)
+				 *	0x00000400 	0x000004FF 	256 bytes 	BDA (BIOS data area)
+				 *	0x00000500 	0x00007BFF 	30 KiB 		Conventional memory
+				 *	0x00007C00  	0x00007DFF 	512 bytes 	OS BootSector
+				 *	0x00007E00 	0x0007FFFF 	480.5 KiB 	Conventional memory
+				 *	0x00080000 	0x0009FBFF 	~120 KiB 	Conventional memory
+				 *	0x0009FC00 	0x0009FFFF 	1 KiB 		EBDA (Extended BIOS Data Area)
+				 */
 				mem0 {
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x0c000000>;
-					physical_size = <0x04000000>;
-					device_type = "ram";
+					physical_size = <0x70000>;
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				/* Extended Memory 14 MiB */
+				mem1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00100000>;
+					physical_size = <0xE00000>;
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				/* More extended memory upto 3072 MiB */
+				mem2 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x01000000>;
+					physical_size = <0x3200000>; /* 50 MiB */
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				cache0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x70000>;
+					physical_size = <0x10000>;
+					device_type = "alloced_ram";
+					align_order = <12>;
+				};
+
+				/* Map in protected mode where coreboot will jump */
+				bios_rom0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0xfff80000>;
+					physical_size = <0x80000>; /* 512K rom */
+					device_type = "alloced_rom";
+					align_order = <16>; /* 4K aligns */
+				};
+
+				/* alias in realmode */
+				bios_rom1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x80000>;
+					/*alias_physical_addr = <0xfff80000>;*/
+					physical_size = <0x80000>; /* 512K rom */
+					device_type = "alloced_rom";
+					align_order = <16>;
 				};
 
 				uart0 {
