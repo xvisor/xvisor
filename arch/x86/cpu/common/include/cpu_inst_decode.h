@@ -75,8 +75,8 @@ typedef enum {
 typedef union mod_rm {
 	u8 byte;
 	struct {
-		u32 dst:3; /* dst reg */
 		u32 src:3; /* src reg */
+		u32 dst:3; /* dst reg */
 		u32 mod:2;
 	} f;
 } mod32_rm_t;
