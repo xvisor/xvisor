@@ -79,9 +79,9 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 			switch (funcs) {
 			case CPUID_BASE_VENDORSTRING:
 				func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
-				func_response->resp_ebx = 0x41757468; /*htuA*/
-				func_response->resp_ecx = 0x63414d44; /*DMAc*/
-				func_response->resp_edx = 0x656e7469; /*itne*/
+				func_response->resp_ebx = 0x68747541; /* 41757468; htuA*/
+				func_response->resp_ecx = 0x444d4163; /* 63414d44; DMAc*/
+				func_response->resp_edx = 0x69746e65; /* 656e7469; itne*/
 				break;
 
 			case CPUID_BASE_FEATURES:
@@ -160,6 +160,13 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				       "on 0", 4);
 				memcpy((char *)&func_response->resp_edx,
 				       ".1  ", 4);
+				break;
+
+			case CPUID_EXTENDED_BRANDSTRINGEND:
+				memset((void *)&func_response->resp_eax, 0, 4);
+				memset((void *)&func_response->resp_ebx, 0, 4);
+				memset((void *)&func_response->resp_ecx, 0, 4);
+				memset((void *)&func_response->resp_edx, 0, 4);
 				break;
 
 			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
