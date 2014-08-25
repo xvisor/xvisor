@@ -108,7 +108,8 @@ int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
 			vmm_read_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
 		}
 	} else if ((region->flags & VMM_REGION_MEMORY)
-		   && (region->flags & VMM_REGION_REAL)) {
+		   && (region->flags & VMM_REGION_REAL)
+		   && (region->flags & VMM_REGION_ISRAM)) {
 		struct x86_guest_priv *priv = x86_guest_priv(guest);
 
 		/* += ? Multiple memory regions may be */
