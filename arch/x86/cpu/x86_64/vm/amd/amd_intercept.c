@@ -178,6 +178,8 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
 		u64 fault_gphys = context->vmcb->exitinfo2;
+		u64 fault_offset;
+
 		/* Guest is in real mode so faulting guest virtual is
 		 * guest physical address. We just need to add faulting
 		 * address as offset to host physical address to get
@@ -193,10 +195,12 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 			goto guest_bad_fault;
 		}
 
+		fault_offset = fault_gphys - g_reg->gphys_addr;
+
 		/* If fault is on a RAM backed address, map and return. Otherwise do emulate. */
-		if (g_reg->flags & VMM_REGION_REAL) {
+		if (g_reg->flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
 			if (realmode_map_memory(context, fault_gphys,
-						(g_reg->hphys_addr + fault_gphys),
+						(g_reg->hphys_addr + fault_offset),
 						PAGE_SIZE) != VMM_OK) {
 				VM_LOG(LVL_ERR, "ERROR: Failed to create map in guest's shadow page table.\n");
 				goto guest_bad_fault;
