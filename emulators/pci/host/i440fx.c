@@ -128,9 +128,12 @@ static int i440fx_reg_read(struct i440fx_state *s, u32 addr, u32 *dst, u32 size)
 		/* if bus and dev are 0, its bound to PMC */
 		if (bus == 0 && dev == 0) {
 			/* PMC is not a multi-function device */
-			if (func) return VMM_EINVALID;
-			*dst = pci_emu_config_space_read((struct pci_class *)s->controller,
-							 reg_offs, size);
+			if (func) {
+				*dst = 0xFFFFFFFFUL;
+			} else {
+				*dst = pci_emu_config_space_read((struct pci_class *)s->controller,
+								 reg_offs, size);
+			}
 		} else {
 			if (pci_emu_find_pci_device(s->controller, bus, dev, &pdev) != VMM_OK) {
 				*dst = 0xffff;
