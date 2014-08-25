@@ -550,6 +550,7 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_EXTENDED_BASE:
 	case CPUID_EXTENDED_BRANDSTRING:
 	case CPUID_EXTENDED_BRANDSTRINGMORE:
+	case CPUID_EXTENDED_BRANDSTRINGEND:
 		func = &priv->extended_funcs[context->vmcb->rax - CPUID_EXTENDED_BASE];
 		context->vmcb->rax = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
@@ -558,7 +559,7 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_DEBUG, "GCPUID/R: Func: %x\n", context->vmcb->rax);
+		VM_LOG(LVL_ERR, "GCPUID/R: Func: %x\n", context->vmcb->rax);
 		goto _fail;
 	}
 
