@@ -354,6 +354,19 @@ static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 	vmm_printf("CR0: 0x%08x CR2: 0x%08x CR3: 0x%08x CR4: 0x%08x\n",
 		   context->vmcb->cr0, context->vmcb->cr2,
 		   context->vmcb->cr3, context->vmcb->cr4);
+
+	dump_seg_selector("CS ", &context->vmcb->cs);
+	dump_seg_selector("DS ", &context->vmcb->ds);
+	dump_seg_selector("ES ", &context->vmcb->es);
+	dump_seg_selector("SS ", &context->vmcb->ss);
+	dump_seg_selector("FS ", &context->vmcb->fs);
+	dump_seg_selector("GS ", &context->vmcb->gs);
+	dump_seg_selector("GDT", &context->vmcb->gdtr);
+	dump_seg_selector("LDT", &context->vmcb->ldtr);
+	dump_seg_selector("IDT", &context->vmcb->idtr);
+	dump_seg_selector("TR ", &context->vmcb->tr);
+
+
 	vmm_printf("RFLAGS: 0x%08x    [ ", context->vmcb->rflags);
 	for (i = 0; i < 32; i++) {
 		val = context->vmcb->rflags & (0x1UL << i);

@@ -74,6 +74,7 @@
 #if !defined (__ASSEMBLY__)
 
 #include <vmm_types.h>
+#include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
 
@@ -157,6 +158,13 @@ struct seg_selector {
 	u32		limit;
 	u64		base;
 } __packed;
+
+static inline void dump_seg_selector(const char *seg_name, struct seg_selector *ss)
+{
+	vmm_printf("%-6s: Sel: 0x%08x Limit: 0x%08x Base: 0x%08lx (G: %2u DB: %2u L: %2u AVL: %2u P: %2u DPL: %2u S: %2u Type: %2d)\n",
+		   seg_name, ss->sel, ss->limit, ss->base, ss->attrs.fields.g, ss->attrs.fields.db, ss->attrs.fields.l,
+		   ss->attrs.fields.avl, ss->attrs.fields.p, ss->attrs.fields.dpl, ss->attrs.fields.s, ss->attrs.fields.type);
+}
 
 #endif
 
