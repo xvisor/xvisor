@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Sun Aug 17 19:58:03 2014
+# Tue Aug 26 18:08:17 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -392,8 +392,9 @@ CONFIG_EMU_TIMER_INTEL_8254=y
 #
 # Miscellaneous Emulators
 #
-# CONFIG_EMU_MISC_ZERO is not set
+CONFIG_EMU_MISC_ZERO=y
 CONFIG_EMU_MISC_PSM=y
+CONFIG_EMU_MISC_FW_CFG=y
 
 #
 # Network Interface Controller Emulators

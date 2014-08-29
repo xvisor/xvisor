@@ -186,6 +186,15 @@
 					physical_size = <4>;
 					interrupts = <1 12>;
 				};
+
+				fw_cfg@0 {
+					device_type = "misc";
+					compatible = "fwcfg";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x0510>;
+					physical_size = <0x2>;
+				};
 			};
 		};
 	};
