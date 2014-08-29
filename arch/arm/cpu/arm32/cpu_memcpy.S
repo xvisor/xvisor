@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_string.S
+ * @file cpu_memcpy.S
  * @author Anup Patel (anup@brainfault.org)
- * @brief Low-level implementation of string functions 
+ * @brief Low-level implementation of memcpy function 
  */
 
 	.text
@@ -78,72 +78,5 @@ memcpy_unaligned:
 
 memcpy_done:
 	pop	{r0, r3, r4, r5, r6, lr}
-	mov	pc, lr
-
-
-
-	.text
-	.align	5
-	.word	0
-	.globl memset
-memset:
-	push	{r0, r3, r4, r5, r6, r7, lr}
-
-	mov	r3, r1
-	lsl	r3, #8
-	orr	r3, r3, r1
-	lsl	r3, #8
-	orr	r3, r3, r1
-	lsl	r3, #8
-	orr	r3, r3, r1
-	mov	r4, r3
-	mov	r5, r3
-	mov	r6, r3
-
-	ands	r7, r0, #15
-	beq	memset_aligned16
-
-	ands	r7, r0, #7
-	beq	memset_aligned8
-
-	ands	r7, r0, #3
-	beq	memset_aligned4
-
-	b	memset_unaligned
-
-memset_aligned16:
-3:	cmp	r2, #16
-	blt	memset_aligned8
-
-	stmia	r0!, {r3, r4, r5, r6}
-	sub	r2, r2, #16
-	b	3b
-
-memset_aligned8:
-2:	cmp	r2, #8
-	blt	memset_aligned4
-
-	stmia	r0!, {r3, r4}
-	sub	r2, r2, #8
-	b	2b
-
-memset_aligned4:
-1:	cmp	r2, #4
-	blt	memset_unaligned
-
-	str	r3, [r0], #4
-	sub	r2, r2, #4
-	b	1b
-
-memset_unaligned:
-0:	cmp	r2, #0
-	beq	memset_done
-
-	strb	r1, [r0], #1
-	sub	r2, r2, #1
-	b	0b
-
-memset_done:
-	pop	{r0, r3, r4, r5, r6, r7, lr}
 	mov	pc, lr
 
