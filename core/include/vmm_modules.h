@@ -90,23 +90,26 @@ struct vmm_symbol {
 	u32 type;
 };
 
+#define EXPAND(VAR)			#VAR
+
 #ifdef __VMM_MODULES__
 
-#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = {\
+#define __VMM_DECLARE_MODULE(_name,_desc,_author,_license,_ipriority,_init,\
+			   _exit) \
+__modtbl struct vmm_module _name = {	\
 	.signature = VMM_MODULE_SIGNATURE, \
-	.name = VMM_MODNAME, \
+	.name = #_name, \
 	.desc = _desc, \
 	.author = _author, \
 	.license = _license, \
 	.ipriority = _ipriority, \
 	.init = _init, \
 	.exit = _exit, \
-	.head = LIST_HEAD_INIT(__moddecl__.head), \
+	.head = LIST_HEAD_INIT(_name.head),	\
 }
 
 #define __VMM_EXPORT_SYMBOL(sym,_type) \
-static __unused __symtbl struct vmm_symbol __##sym = { \
+__symtbl struct vmm_symbol __##sym = { \
 	.name = #sym, \
 	.addr = (virtual_addr_t)&sym, \
 	.type = (_type), \
@@ -114,22 +117,29 @@ static __unused __symtbl struct vmm_symbol __##sym = { \
 
 #else
 
-#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = {\
+#define __VMM_DECLARE_MODULE(_name,_desc,_author,_license,_ipriority,_init,\
+			   _exit) \
+__modtbl struct vmm_module _name = {	\
 	.signature = VMM_MODULE_SIGNATURE, \
-	.name = VMM_MODNAME, \
+	.name = #_name, \
 	.desc = _desc, \
 	.author = _author, \
 	.license = "GPL", \
 	.ipriority = _ipriority, \
 	.init = _init, \
 	.exit = _exit, \
-	.head = LIST_HEAD_INIT(__moddecl__.head), \
+	.head = LIST_HEAD_INIT(_name.head),	\
 }
 
 #define __VMM_EXPORT_SYMBOL(sym,_type)
 
 #endif
+
+#define MACRO_CONCAT(X,Y)		X ## Y
+#define MODTBL_NAME(PREFIX,NAME)	MACRO_CONCAT(PREFIX,NAME)
+#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
+	__VMM_DECLARE_MODULE(MODTBL_NAME(__modtbl__,VMM_MODNAME),_desc,_author,	\
+			     _license,_ipriority,_init,_exit)
 
 #define VMM_EXPORT_SYMBOL(sym) \
 	__VMM_EXPORT_SYMBOL(sym,VMM_SYMBOL_ANY)

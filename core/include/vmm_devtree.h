@@ -139,7 +139,7 @@ struct vmm_devtree_nidtbl_entry {
 #ifndef __VMM_MODULES__
 
 #define VMM_DEVTREE_NIDTBL_ENTRY(nid, _subsys, _name, _type, _compat, _data) \
-static __unused __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
+__nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 	.signature = VMM_DEVTREE_NIDTBL_SIGNATURE, \
 	.subsys = (_subsys), \
 	.nodeid.name = (_name), \
