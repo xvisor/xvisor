@@ -2,11 +2,15 @@
 #define _INTERRUPT_H
 
 #include <vmm_host_irq.h>
+#include <vmm_host_extirq.h>
 
 typedef vmm_irq_return_t irqreturn_t;
+typedef unsigned int irq_hw_number_t;
 
 #define irq_chip		vmm_host_irq_chip
 #define irq_data	 	vmm_host_irq
+#define irq_domain		vmm_host_extirq_group
+#define irq_domain_ops		vmm_host_extirq_group_ops
 
 #define IRQ_TYPE_EDGE_RISING	VMM_IRQ_TYPE_EDGE_RISING
 #define IRQ_TYPE_EDGE_FALLING	VMM_IRQ_TYPE_EDGE_FALLING

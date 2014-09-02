@@ -159,6 +159,12 @@ int vmm_host_active_irq_exec(u32 cpu_irq_no);
 /** Set callback for retriving active host irq number */
 void vmm_host_irq_set_active_callback(u32 (*active)(u32));
 
+/** Initialize host irq instance 
+ *  Note: This function is for internal use only.
+ *  Note: Do not call this function directly.
+ */
+void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num);
+
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
 
@@ -335,5 +341,34 @@ int vmm_host_irq_unregister(u32 hirq_num,
 
 /** Interrupts initialization function */
 int vmm_host_irq_init(void);
+
+/*
+ * Entry/exit functions for chained handlers where the primary IRQ chip
+ * may implement either fasteoi or level-trigger flow control.
+ */
+static inline void vmm_chained_irq_enter(struct vmm_host_irq_chip *chip,
+					 struct vmm_host_irq *desc)
+{
+	/* FastEOI controllers require no action on entry. */
+	if (chip->irq_eoi)
+		return;
+
+	if (chip->irq_mask_ack) {
+		chip->irq_mask_ack(desc);
+	} else {
+		chip->irq_mask(desc);
+		if (chip->irq_ack)
+			chip->irq_ack(desc);
+	}
+}
+
+static inline void vmm_chained_irq_exit(struct vmm_host_irq_chip *chip,
+					struct vmm_host_irq *desc)
+{
+	if (chip->irq_eoi)
+		chip->irq_eoi(desc);
+        else
+		chip->irq_unmask(desc);
+}
 
 #endif
