@@ -6,8 +6,9 @@
 #include <linux/export.h>
 #include <linux/init.h>
 
-#define KBUILD_MODNAME			VMM_MODNAME
-#define KBUILD_BASENAME			VMM_MODNAME
+#define EXPAND(VAR)			#VAR
+#define KBUILD_MODNAME			EXPAND(VMM_MODNAME)
+#define KBUILD_BASENAME			EXPAND(VMM_MODNAME)
 
 #define module vmm_module
 

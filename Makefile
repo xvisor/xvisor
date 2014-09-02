@@ -161,6 +161,10 @@ $(error Invalid make targets. Cannot use target modules with any other target.)
 endif
 endif
 
+define dynamic_flags
+-I$(shell dirname $(2)) -DVMM_MODNAME=$(subst -,_,$(shell basename $(1) .o))
+endef
+
 # Setup functions for compilation
 merge_objs = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (merge)     $(subst $(build_dir)/,,$(1))"; \
@@ -177,17 +181,17 @@ compile_cpp = $(V)mkdir -p `dirname $(1)`; \
 compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1); \
-	     $(cc) $(cflags) -I`dirname $(2)` -MM $(2) >> $(1)
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
-	     $(cc) $(cflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1); \
-	     $(as) $(asflags) -I`dirname $(2)` -MM $(2) >> $(1)
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
-	     $(as) $(asflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
 	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
