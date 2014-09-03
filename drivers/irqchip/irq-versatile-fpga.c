@@ -237,4 +237,4 @@ static int __init fpga_init(struct vmm_devtree_node *node)
 	return 0;
 }
 
-VMM_HOST_IRQ_INIT_DECLARE(vvic, "arm,versatile-sic", fpga_init);
+VMM_HOST_IRQ_INIT_DECLARE(vfpga, "arm,versatile-sic", fpga_init);
