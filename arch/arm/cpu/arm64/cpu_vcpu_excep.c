@@ -35,12 +35,12 @@
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
 
-static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu, 
+static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 			       arch_regs_t *regs,
 			       physical_addr_t fipa)
 {
 	int rc, rc1;
-	u32 reg_flags = 0x0;
+	u32 reg_flags = 0x0, pg_reg_flags = 0x0;
 	struct cpu_page pg;
 	physical_addr_t inaddr, outaddr;
 	physical_size_t size, availsz;
@@ -51,10 +51,10 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	size = TTBL_L3_BLOCK_SIZE;
 	pg.sh = 3U;
 
-	rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+	rc = vmm_guest_physical_map(vcpu->guest, inaddr, size,
 				    &outaddr, &availsz, &reg_flags);
 	if (rc) {
-		vmm_printf("%s: IPA=0x%lx size=0x%lx map failed\n", 
+		vmm_printf("%s: IPA=0x%lx size=0x%lx map failed\n",
 			   __func__, inaddr, size);
 		return rc;
 	}
@@ -68,23 +68,35 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	pg.ia = inaddr;
 	pg.sz = size;
 	pg.oa = outaddr;
+	pg_reg_flags = reg_flags;
 
 	if (reg_flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) {
 		inaddr = fipa & TTBL_L2_MAP_MASK;
 		size = TTBL_L2_BLOCK_SIZE;
-		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size, 
+		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size,
 				    &outaddr, &availsz, &reg_flags);
 		if (!rc && (availsz >= TTBL_L2_BLOCK_SIZE)) {
 			pg.ia = inaddr;
 			pg.sz = size;
 			pg.oa = outaddr;
+			pg_reg_flags = reg_flags;
+		}
+		inaddr = fipa & TTBL_L1_MAP_MASK;
+		size = TTBL_L1_BLOCK_SIZE;
+		rc = vmm_guest_physical_map(vcpu->guest, inaddr, size,
+				    &outaddr, &availsz, &reg_flags);
+		if (!rc && (availsz >= TTBL_L1_BLOCK_SIZE)) {
+			pg.ia = inaddr;
+			pg.sz = size;
+			pg.oa = outaddr;
+			pg_reg_flags = reg_flags;
 		}
 	}
 
-	if (reg_flags & VMM_REGION_VIRTUAL) {
+	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
 		pg.af = 0;
 		pg.ap = TTBL_HAP_NOACCESS;
-	} else if (reg_flags & VMM_REGION_READONLY) {
+	} else if (pg_reg_flags & VMM_REGION_READONLY) {
 		pg.af = 1;
 		pg.ap = TTBL_HAP_READONLY;
 	} else {
@@ -95,12 +107,12 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	/* memattr in stage 2
 	 * ------------------
 	 *  0x0 - strongly ordered
-	 *  0x5 - normal-memory NC 
+	 *  0x5 - normal-memory NC
 	 *  0xA - normal-memory WT
 	 *  0xF - normal-memory WB
 	 */
-	if (reg_flags & VMM_REGION_CACHEABLE) {
-		if (reg_flags & VMM_REGION_BUFFERABLE) {
+	if (pg_reg_flags & VMM_REGION_CACHEABLE) {
+		if (pg_reg_flags & VMM_REGION_BUFFERABLE) {
 			pg.memattr = 0xF;
 		} else {
 			pg.memattr = 0xA;
@@ -120,7 +132,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 		 * when mmu_lpae_map_page() fails.
 		 */
 		memset(&pg, 0, sizeof(pg));
-		rc1 = mmu_lpae_get_page(arm_guest_priv(vcpu->guest)->ttbl, 
+		rc1 = mmu_lpae_get_page(arm_guest_priv(vcpu->guest)->ttbl,
 					fipa, &pg);
 		if (rc1) {
 			return rc1;
@@ -131,9 +143,9 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_inst_abort(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_inst_abort(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			u32 il, u32 iss, 
+			u32 il, u32 iss,
 			physical_addr_t fipa)
 {
 	switch (iss & ISS_ABORT_FSC_MASK) {
@@ -148,9 +160,9 @@ int cpu_vcpu_inst_abort(struct vmm_vcpu *vcpu,
 	return VMM_EFAIL;
 }
 
-int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			u32 il, u32 iss, 
+			u32 il, u32 iss,
 			physical_addr_t fipa)
 {
 	u32 read_count, inst;
@@ -185,14 +197,14 @@ int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 			}
 		}
 		if (iss & ISS_ABORT_WNR_MASK) {
-			return cpu_vcpu_emulate_store(vcpu, regs, 
+			return cpu_vcpu_emulate_store(vcpu, regs,
 						      il, iss, fipa);
 		} else {
-			return cpu_vcpu_emulate_load(vcpu, regs, 
+			return cpu_vcpu_emulate_load(vcpu, regs,
 						     il, iss, fipa);
 		}
 	default:
-		vmm_printf("%s: Unhandled FSC=0x%x\n", 
+		vmm_printf("%s: Unhandled FSC=0x%x\n",
 			   __func__, iss & ISS_ABORT_FSC_MASK);
 		break;
 	};
