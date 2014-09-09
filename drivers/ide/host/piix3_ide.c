@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -43,64 +43,92 @@
 #define	MODULE_INIT			piix3_ide_init
 #define	MODULE_EXIT			piix3_ide_exit
 
-#define PIIX3_BUS			0
-#define PIIX3_DEVICE			1
-#define PIIX3_FUNCTION			1
+struct piix3_ide_device {
+	u8 bus;
+	u8 device;
+	u8 function;
+};
 
-#define PIIX3_BDF			((PIIX3_BUS << 16) | (PIIX3_DEVICE << 11) | (PIIX3_FUNCTION << 8))
+struct piix3_ide_device piix3_ide_devices[2] = {
+	/* QEMU PIIX3 */
+	{
+		.bus = 0,
+		.device = 1,
+		.function = 1
+	},
+	/* vmplayer PIIX3 */
+	{
+		.bus = 0,
+		.device = 7,
+		.function = 1
+	}
+};
+
+#define TO_BDF(__b, __d, __f)	((__b << 16) | \
+				 (__d << 11) | \
+				 (__f << 8))
+
+#define PIIX3_BDF(__dev)	(TO_BDF(__dev.bus,		\
+					__dev.device,		\
+					__dev.function))
 
 static int piix3_ide_probe(struct vmm_device *dev,
 			   const struct vmm_devtree_nodeid *devid)
 {
 	struct ide_host_controller *controller;
 	struct ide_drive *drive;
-	int i;
+	int i, j;
 
-	/* send the parameters */
-	outl((1 << 31) | PIIX3_BDF | 8, 0xCF8);
-	if ((inl(0xCFC) >> 16) != 0xFFFF) { /* If device exists class won't be 0xFFFF */
-		vmm_printf("PIIX3: Found PIIX3 IDE Controller.\n");
-		controller = vmm_zalloc(sizeof(struct ide_host_controller));
-		if (controller == NULL) {
-			vmm_printf("ERROR: Failed to allocate host controller instance.\n");
-			return VMM_ENOMEM;
-		}
-
-		controller->bar0 = 0x1f0;
-		controller->bar1 = 0x3f6;
-		controller->bar2 = 0x170;
-		controller->bar3 = 0x376;
-
-		if (ide_initialize(controller) != VMM_OK) {
-			vmm_free(controller);
-			vmm_printf("ERROR: Failed to initialize IDE controller.\n");
-			return VMM_ENODEV;
-		}
-
-		/* Print Summary: */
-		for (i = 0; i < MAX_IDE_DRIVES; i++) {
-
-			if (!controller->ide_drives[i].present) {
-				continue;
+	for (j = 0; j < array_size(piix3_ide_devices); j++) {
+		/* send the parameters */
+		outl((1 << 31) | PIIX3_BDF(piix3_ide_devices[j]) | 8, 0xCF8);
+		/* If device exists class won't be 0xFFFF */
+		if ((inl(0xCFC) >> 16) != 0xFFFF) {
+			vmm_printf("PIIX3: Found PIIX3 IDE Controller.\n");
+			controller =
+				vmm_zalloc(sizeof(struct ide_host_controller));
+			if (controller == NULL) {
+				vmm_printf("ERROR: Failed to allocate host "
+					   "controller instance.\n");
+				return VMM_ENOMEM;
 			}
 
-			vmm_printf("Drive %d: Present.\n", i);
-			drive = &controller->ide_drives[i];
+			controller->bar0 = 0x1f0;
+			controller->bar1 = 0x3f6;
+			controller->bar2 = 0x170;
+			controller->bar3 = 0x376;
 
-			drive->dev = dev;
-
-			vmm_printf(" Found %s Drive %dMB - %s\n",
-				   (const char *[]){"ATA", "ATAPI"}[drive->type],
-				   drive->size/1024/2,
-				   drive->model);
-			
-			if (ide_add_drive(drive) != VMM_OK) {
-				vmm_printf("ERROR: Failed to add drive to block layer.\n");
-				return VMM_EFAIL;
+			if (ide_initialize(controller) != VMM_OK) {
+				vmm_free(controller);
+				vmm_printf("ERROR: Failed to initialize IDE "
+					   "controller.\n");
+				return VMM_ENODEV;
 			}
-		}
 
-		return VMM_OK;
+			/* Print Summary: */
+			for (i = 0; i < MAX_IDE_DRIVES; i++) {
+				if (!controller->ide_drives[i].present) {
+					continue;
+				}
+
+				vmm_printf("Drive %d: Present.\n", i);
+				drive = &controller->ide_drives[i];
+
+				drive->dev = dev;
+
+				vmm_printf(" Found %s Drive %dMB - %s\n",
+					   (const char *[]){"ATA", "ATAPI"}[drive->type],
+					   drive->size/1024/2,
+					   drive->model);
+
+				if (ide_add_drive(drive) != VMM_OK) {
+					vmm_printf("ERROR: Failed to add drive to block layer.\n");
+					return VMM_EFAIL;
+				}
+			}
+
+			return VMM_OK;
+		}
 	}
 
 	return VMM_EFAIL;
