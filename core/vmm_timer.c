@@ -51,7 +51,7 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 {
 	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
 
-	if (!tc) {
+	if (!tc || !tc->cs) {
 		return 0;
 	}
 
@@ -65,7 +65,7 @@ u64 vmm_timer_timestamp(void)
 	irq_flags_t flags;
 	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
 
-	if (!tc) {
+	if (!tc || !tc->cs) {
 		return 0;
 	}
 
