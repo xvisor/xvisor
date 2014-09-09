@@ -49,7 +49,13 @@ static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
 #if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
 {
-	return vmm_timecounter_read_for_profile(&(this_cpu(tlc).tc));
+	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
+
+	if (!tc) {
+		return 0;
+	}
+
+	return vmm_timecounter_read_for_profile(tc);
 }
 #endif
 
@@ -57,9 +63,14 @@ u64 vmm_timer_timestamp(void)
 {
 	u64 ret;
 	irq_flags_t flags;
+	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
+
+	if (!tc) {
+		return 0;
+	}
 
 	arch_cpu_irq_save(flags);
-	ret = vmm_timecounter_read(&(this_cpu(tlc).tc));
+	ret = vmm_timecounter_read(tc);
 	arch_cpu_irq_restore(flags);
 
 	return ret;
