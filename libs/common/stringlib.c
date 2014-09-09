@@ -560,3 +560,70 @@ char *skip_spaces(const char *str)
 	for (; isspace(*str); str++);
 	return (char *)str;
 }
+
+/**
+ * Calculate the length (in bytes) of the initial
+ * segment of s which consists entirely of bytes
+ * in accept.
+ */
+size_t strspn(const char* s, const char* accept)
+{
+	size_t n;
+	const char* p;
+
+	for(n = 0; *s; s++, n++) {
+		for(p = accept; *p && *p != *s; p++)
+			;
+		if (!*p)
+			break;
+	}
+
+	return n;
+}
+
+/**
+ * Calculate the length of the initial segment of s which
+ * consists entirely of bytes not in reject.
+ */
+size_t strcspn(const char *s, const char *reject)
+{
+	size_t ret = 0;
+
+	while(*s)
+		if(strchr(reject,*s))
+			return ret;
+		else
+			s++,ret++;
+
+	return ret;
+}
+
+/**
+ * Parse a string into a sequence of token
+ */
+char* strtok_r(char *str, const char *delim, char **context)
+{
+	char *ret;
+
+	if (str == NULL) {
+		str = *context;
+	}
+
+	str += strspn(str, delim);
+
+	if (*str == '\0') {
+		return NULL;
+	}
+
+	ret = str;
+
+	str += strcspn(str, delim);
+
+	if (*str) {
+		*str++ = '\0';
+	}
+
+	*context = str;
+
+	return ret;
+}
