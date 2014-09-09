@@ -55,6 +55,7 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
+	vmm_cprintf(cdev, "   vfs run <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
@@ -335,6 +336,79 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 closedir_fail:
 	vfs_closedir(fd);
 	return rc;
+}
+
+static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc;
+	u32 len;
+	size_t buf_rd;
+	char buf[VFS_LOAD_BUF_SZ];
+	struct stat st;
+	u32 tok_len;
+	char *token, *save;
+	const char *delim = "\n";
+	u32 end, cleanup = 0;
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	len = st.st_size;
+	while (len) {
+		memset(buf, 0, sizeof(buf));
+
+		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+		buf_rd = vfs_read(fd, buf, buf_rd);
+		if (buf_rd < 1) {
+			break;
+		}
+
+		end = buf_rd - 1;
+		while (buf[end] != '\n') {
+			buf[end] = 0;
+			end--;
+			cleanup++;
+		}
+
+		if (cleanup) {
+			vfs_lseek(fd, (buf_rd - cleanup), SEEK_SET);
+			cleanup = 0;
+		}
+
+		for (token = strtok_r(buf, delim, &save); token;
+		     token = strtok_r(NULL, delim, &save)) {
+			tok_len = strlen(token);
+			if (*token != '#' && *token != '\n') {
+				vmm_cmdmgr_execute_cmdstr(cdev, token, NULL);
+			}
+
+			len -= (tok_len + 1);
+		}
+	}
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
 }
 
 static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
@@ -941,6 +1015,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_umount(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "ls") == 0) && (argc == 3)) {
 		return cmd_vfs_ls(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "run") == 0) && (argc == 3)) {
+		return cmd_vfs_run(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "cat") == 0) && (argc == 3)) {
 		return cmd_vfs_cat(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "mv") == 0) && (argc == 4)) {
