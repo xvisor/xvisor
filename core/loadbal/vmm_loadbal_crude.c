@@ -99,7 +99,7 @@ static void crude_analyze_idle(struct crude_control *crude)
 	for_each_online_cpu(hcpu) {
 		crude->idle_ns[hcpu] = vmm_scheduler_idle_time(hcpu);
 		crude->idle_period_ns[hcpu] =
-				vmm_scheduler_idle_time_get_period(hcpu);
+				vmm_scheduler_get_sample_period(hcpu);
 		crude->idle_percent[hcpu] = udiv64(crude->idle_ns[hcpu] * 100,
 						crude->idle_period_ns[hcpu]);
 	}

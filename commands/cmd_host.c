@@ -77,9 +77,15 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 			    name, udiv32(khz, 1000), umod32(khz, 1000));
 		vmm_sprintf(name, "CPU%d Utilization", c);
 		util = udiv64(vmm_scheduler_idle_time(c) * 1000,
-			      vmm_scheduler_idle_time_get_period(c));
+			      vmm_scheduler_get_sample_period(c));
 		util = (util > 1000) ? 1000 : util;
 		util = 1000 - util;
+		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
+			    name, udiv32(util, 10), umod32(util, 10));
+		vmm_sprintf(name, "CPU%d Interrupts", c);
+		util = udiv64(vmm_scheduler_irq_time(c) * 1000,
+			      vmm_scheduler_get_sample_period(c));
+		util = (util > 1000) ? 1000 : util;
 		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
 			    name, udiv32(util, 10), umod32(util, 10));
 		vmm_sprintf(name, "CPU%d Active VCPUs", c);
