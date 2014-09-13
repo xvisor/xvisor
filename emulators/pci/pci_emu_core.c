@@ -199,6 +199,125 @@ struct pci_dev_emulator *pci_emu_find_device(const char *name)
 	return NULL;
 }
 
+static int pci_emu_register_bar(struct vmm_guest *guest,
+				const char *name,
+				struct pci_class *class,
+				u32 barnum,
+				struct vmm_devtree_node *bar_node)
+{
+	int rc;
+	const char *man_type;
+	const char *dev_type;
+	const char *addr_type;
+	const char *compat;
+	physical_addr_t addr;
+	physical_size_t size;
+	u32 order;
+
+	if (vmm_devtree_read_string(bar_node,
+				    VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME,
+				    &man_type)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_string(bar_node,
+				    VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
+				    &dev_type)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_string(bar_node,
+				    VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
+				    &addr_type)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_string(bar_node,
+				    VMM_DEVTREE_COMPATIBLE_ATTR_NAME,
+				    &compat)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_physaddr(bar_node,
+				      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_physaddr(bar_node,
+				      VMM_DEVTREE_PHYS_SIZE_ATTR_NAME, &size)) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_read_u32(bar_node,
+				 VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &order)) {
+		order = 0;
+	}
+
+	if (BITS_PER_LONG <= order) {
+		return VMM_EFAIL;
+	}
+	if (size & order_mask(order)) {
+		return VMM_EFAIL;
+	}
+
+	if ((rc = vmm_guest_add_region(guest, name,
+				       dev_type, man_type,
+				       addr_type, compat,
+				       strlen(compat),
+				       addr, 0, size,
+				       order)) != VMM_OK) {
+		return VMM_EFAIL;
+	}
+
+
+	class->conf_header.bars[barnum] = addr;
+
+	return VMM_OK;
+}
+
+static int pci_emu_enumerate_bars(struct vmm_guest *guest,
+				  struct pci_device *pdev,
+				  struct vmm_devtree_node *bus_node)
+{
+	struct vmm_devtree_node *bar_node = NULL, *bars = NULL;
+	char reg_name[64];
+	int rc;
+	u32 barnum;
+	struct pci_class *class = (struct pci_class *)pdev;
+
+	bar_node = vmm_devtree_getchild(bus_node, "bars");
+
+	if (!bar_node) {
+		/* Its okay if device tree doesn't have bars */
+		return VMM_OK;
+	}
+
+	list_for_each_entry(bars, &bar_node->child_list, head) {
+		rc = vmm_devtree_read_u32(bars, "barnum", &barnum);
+		if (rc) {
+			vmm_printf("%s: Bar number not specified for %s\n",
+				   __func__, bars->name);
+			return rc;
+		}
+
+		if (barnum >= 6) {
+			vmm_printf("%s: Bar number for %s is out of range: %d\n",
+				   __func__, bars->name, barnum);
+			return VMM_EFAIL;
+		}
+
+		vmm_sprintf(reg_name, "%s@%s", bars->name, bus_node->name);
+		/* FIXME: Unmap previously register bars, or let it go??? */
+		if ((rc = pci_emu_register_bar(guest, reg_name, class, barnum, bars)) != VMM_OK) {
+			vmm_printf("%s: Failed to register bar region %s\n",
+				   __func__, reg_name);
+			return rc;
+		}
+	}
+
+	return VMM_OK;
+}
+
 int pci_emu_probe_devices(struct vmm_guest *guest,
 			  struct pci_host_controller *controller,
 			  struct vmm_devtree_node *node)
@@ -283,6 +402,13 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 								    bcount))) {
 					vmm_printf("%s: %s/%s couldn't attach PCI device to bus.\n",
 						   __func__, guest->name, pdev->node->name);
+					vmm_free(pdev);
+					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
+					return rc;
+				}
+
+				/* FIXME: Unregister the complete device */
+				if ((rc = pci_emu_enumerate_bars(guest, pdev, bus_node)) != VMM_OK) {
 					vmm_free(pdev);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 					return rc;
