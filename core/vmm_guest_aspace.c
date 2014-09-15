@@ -29,8 +29,27 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_stdio.h>
+#include <vmm_notifier.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
+
+static BLOCKING_NOTIFIER_CHAIN(guest_aspace_notifier_chain);
+
+int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb)
+{
+	int rc = vmm_blocking_notifier_register(&guest_aspace_notifier_chain,
+						nb);
+
+	return rc;
+}
+
+int vmm_guest_aspace_unregister_client(struct vmm_notifier_block *nb)
+{
+	int rc = vmm_blocking_notifier_unregister(&guest_aspace_notifier_chain,
+						  nb);
+
+	return rc;
+}
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
@@ -648,6 +667,7 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	struct dlist *l, *l1;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
+	struct vmm_guest_aspace_event evt;
 
 	/* Sanity Check */
 	if (!guest) {
@@ -670,6 +690,16 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
 	}
 	vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+
+	/*
+	 * Notify the listeners about reset event.
+	 * No locks taken at this point.
+	 */
+	evt.guest = guest;
+	evt.data = NULL;
+	vmm_blocking_notifier_call(&guest_aspace_notifier_chain,
+				   VMM_GUEST_ASPACE_EVENT_RESET,
+				   &evt);
 
 	/* Reset device emulation context */
 	return vmm_devemu_reset_context(guest);
@@ -853,6 +883,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	int rc;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_devtree_node *rnode = NULL;
+	struct vmm_guest_aspace_event evt;
 
 	/* Sanity Check */
 	if (!guest) {
@@ -895,6 +926,16 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	/* Mark address space as initialized */
 	aspace->initialized = TRUE;
 
+	/*
+	 * Notify the listeners that init is complete.
+	 * No locks taken at this point.
+	 */
+	evt.guest = guest;
+	evt.data = NULL;
+	vmm_blocking_notifier_call(&guest_aspace_notifier_chain,
+				   VMM_GUEST_ASPACE_EVENT_INIT,
+				   &evt);
+
 	return VMM_OK;
 }
 
@@ -904,12 +945,24 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 	irq_flags_t flags;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
+	struct vmm_guest_aspace_event evt;
 
 	/* Sanity Check */
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 	aspace = &guest->aspace;
+
+	/*
+	 * About to deinit the guest address space. Regions
+	 * are still valid. Handler should take care of
+	 * internal locking, none taken at this point.
+	 */
+	evt.guest = guest;
+	evt.data = NULL;
+	vmm_blocking_notifier_call(&guest_aspace_notifier_chain,
+				   VMM_GUEST_ASPACE_EVENT_DEINIT,
+				   &evt);
 
 	/* Mark address space as uninitialized */
 	aspace->initialized = FALSE;

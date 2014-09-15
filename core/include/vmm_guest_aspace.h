@@ -24,6 +24,26 @@
 #define _VMM_GUEST_ASPACE_H__
 
 #include <vmm_manager.h>
+#include <vmm_notifier.h>
+
+/* Notifier event when guest aspace is initialized */
+#define VMM_GUEST_ASPACE_EVENT_INIT		0x01
+/* Notifier event when guest aspace is about to be uninitialized */
+#define VMM_GUEST_ASPACE_EVENT_DEINIT		0x02
+/* Notifier event when guest aspace is reset */
+#define VMM_GUEST_ASPACE_EVENT_RESET		0x03
+
+/** Representation of block device notifier event */
+struct vmm_guest_aspace_event {
+	struct vmm_guest *guest;
+	void *data;
+};
+
+/** Register a guest address space state change notifier handler */
+int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb);
+
+/** Unregister guest address space state change notifier */
+int vmm_guest_aspace_unregister_client(struct vmm_notifier_block *nb);
 
 /** Find region corresponding to a guest physical address and also
  *  resolve aliased regions to real or virtual regions if required.
