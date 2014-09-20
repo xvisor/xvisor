@@ -123,7 +123,7 @@ static int i440fx_reg_read(struct i440fx_state *s, u32 addr, u32 *dst, u32 size)
 		bus = (s->conf_add >> 16) & 0xff;
 		dev = (s->conf_add >> 11) & 0x1f;
 		func = (s->conf_add >> 8) & 0x7;
-		reg_offs = (s->conf_add >> 2) & 0x3f;
+		reg_offs = (s->conf_add) & 0xfc;
 
 		/* if bus and dev are 0, its bound to PMC */
 		if (bus == 0 && dev == 0) {
