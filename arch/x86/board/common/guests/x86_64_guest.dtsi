@@ -116,7 +116,7 @@
 								device_id = <1>;
 
 								bars {
-									bar0 {
+									bar0@psm {
 										device_type = "psm";
 										compatible = "xpsm,bar";
 										manifest_type = "virtual";
@@ -124,6 +124,28 @@
 										barnum = <0>;
 										guest_physical_addr = <0x5000000>;
 										physical_size = <0x1000>;
+									};
+								};
+							};
+							virtio-blk0 {
+								device_type = "virtio";
+								compatible = "virtio,pci";
+								manifest_type = "virtual";
+								address_type = "io";
+								device_id = <2>;
+
+								bars {
+									bar0@virtio-blk0 {
+										manifest_type = "virtual";
+										address_type = "io";
+										device_type = "virtio";
+										compatible = "virtio,pci,bar";
+										barnum = <0>;
+										virtio_type = <2>;
+										guest_physical_addr = <0x610>;
+										physical_size = <0x100>;
+										blkdev = "hda0";
+										interrupts = <55>;
 									};
 								};
 							};

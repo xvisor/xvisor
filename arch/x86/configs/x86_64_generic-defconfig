@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Tue Aug 26 18:08:17 2014
+# Sun Sep 14 10:58:48 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -360,7 +360,9 @@ CONFIG_PIIX3_IDE=y
 #
 # VirtIO Support
 #
-# CONFIG_EMU_VIRTIO is not set
+CONFIG_EMU_VIRTIO=y
+# CONFIG_EMU_VIRTIO_MMIO is not set
+CONFIG_EMU_VIRTIO_PCI=y
 
 #
 # System Emulators
@@ -404,7 +406,8 @@ CONFIG_EMU_MISC_FW_CFG=y
 #
 # Block Device Emulators
 #
-# CONFIG_EMU_BLOCK is not set
+CONFIG_EMU_BLOCK=y
+CONFIG_EMU_BLOCK_VIRTIO=y
 
 #
 # Display Emulators
