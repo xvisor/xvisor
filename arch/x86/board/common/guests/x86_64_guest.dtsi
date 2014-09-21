@@ -200,6 +200,17 @@
 					num_irq = <240>;
 				};
 
+				hpet {
+					device_type = "hpet";
+					compatible = "hpet";
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0xfed00000>;
+					physical_size = <0x1000>;
+					id = <0>;
+					num_timers = <2>;
+				};
+
 				i8254@0 {
 					device_type = "pit";
 					compatible = "i8253,i8254";
