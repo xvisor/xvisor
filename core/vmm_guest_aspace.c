@@ -705,6 +705,12 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	return vmm_devemu_reset_context(guest);
 }
 
+int vmm_guest_add_region_from_node(struct vmm_guest *guest,
+				   struct vmm_devtree_node *node)
+{
+	return region_add(guest, node, NULL);
+}
+
 int vmm_guest_add_region(struct vmm_guest *guest,
 			 const char *name,
 			 const char *device_type,
@@ -849,7 +855,8 @@ failed:
 }
 
 int vmm_guest_del_region(struct vmm_guest *guest,
-			 struct vmm_region *reg)
+			 struct vmm_region *reg,
+			 bool del_node)
 {
 	int rc;
 	struct vmm_devtree_node *rnode;
@@ -872,8 +879,9 @@ int vmm_guest_del_region(struct vmm_guest *guest,
 		return rc;
 	}
 
-	/* Delete region node */
-	vmm_devtree_delnode(rnode);
+	/* Delete region node if required */
+	if (del_node)
+		vmm_devtree_delnode(rnode);
 
 	return VMM_OK;
 }
