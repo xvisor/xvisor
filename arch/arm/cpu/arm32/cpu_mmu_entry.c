@@ -44,8 +44,8 @@ extern u8 defterm_early_base[];
 
 void __attribute__ ((section(".entry")))
     __setup_initial_ttbl(struct mmu_entry_ctrl *entry,
-		     virtual_addr_t map_start, virtual_addr_t map_end,
-		     virtual_addr_t pa_start, int cacheable)
+			 virtual_addr_t map_start, virtual_addr_t map_end,
+			 virtual_addr_t pa_start, int cacheable, int writable)
 {
 	u32 i;
 	u32 *l1_tte, *l2_tte;
@@ -139,11 +139,18 @@ void __attribute__ ((section(".entry")))
 				    TTBL_L2TBL_TTE_NG_MASK;
 			*l2_tte |= (0x0 << TTBL_L2TBL_TTE_S_SHIFT) &
 				    TTBL_L2TBL_TTE_S_MASK;
-			*l2_tte |=
-			    (TTBL_AP_SRW_U << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
-			     TTBL_L2TBL_TTE_AP2_MASK;
-			*l2_tte |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT) &
-				    TTBL_L2TBL_TTE_AP_MASK;
+			if (writable) {
+				*l2_tte |=
+					(TTBL_AP_SRW_U << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
+					TTBL_L2TBL_TTE_AP2_MASK;
+				*l2_tte |= (TTBL_AP_SRW_U << TTBL_L2TBL_TTE_AP_SHIFT) &
+					TTBL_L2TBL_TTE_AP_MASK;
+			} else {
+				*l2_tte |= (TTBL_AP_SR_U << (TTBL_L2TBL_TTE_AP2_SHIFT - 2)) &
+					TTBL_L2TBL_TTE_AP2_MASK;
+				*l2_tte |= (TTBL_AP_SR_U << TTBL_L2TBL_TTE_AP_SHIFT) &
+					TTBL_L2TBL_TTE_AP_MASK;
+			}
 			*l2_tte |= (cacheable << TTBL_L2TBL_TTE_C_SHIFT) &
 				    TTBL_L2TBL_TTE_C_MASK;
 			*l2_tte |= (cacheable << TTBL_L2TBL_TTE_B_SHIFT) &
@@ -175,6 +182,50 @@ void __attribute__ ((section(".entry")))
 			} \
 			_tva; \
 			})
+
+
+#define SECTION_START(SECTION)	_ ## SECTION ## _start
+#define SECTION_END(SECTION)	_ ## SECTION ## _end
+
+#define SECTION_ADDR_START(SECTION)	(virtual_addr_t)&SECTION_START(SECTION)
+#define SECTION_ADDR_END(SECTION)	(virtual_addr_t)&SECTION_END(SECTION)
+
+#define DECLARE_SECTION(SECTION)					\
+	extern virtual_addr_t SECTION_START(SECTION);			\
+	extern virtual_addr_t SECTION_END(SECTION)
+
+DECLARE_SECTION(text);
+DECLARE_SECTION(cpuinit);
+DECLARE_SECTION(spinlock);
+DECLARE_SECTION(init);
+DECLARE_SECTION(initdata);
+DECLARE_SECTION(rodata);
+DECLARE_SECTION(data);
+DECLARE_SECTION(percpu);
+DECLARE_SECTION(bss);
+DECLARE_SECTION(svc_stack);
+DECLARE_SECTION(abt_stack);
+DECLARE_SECTION(und_stack);
+DECLARE_SECTION(irq_stack);
+DECLARE_SECTION(fiq_stack);
+
+
+#define SETUP_RO_SECTION(ENTRY, SECTION)				\
+	__setup_initial_ttbl(&(ENTRY),					\
+			     SECTION_ADDR_START(SECTION),		\
+			     SECTION_ADDR_END(SECTION),			\
+			     to_load_pa(SECTION_ADDR_START(SECTION)),	\
+			     TRUE,					\
+			     FALSE)
+
+#define SETUP_RW_SECTION(ENTRY, SECTION)				\
+	__setup_initial_ttbl(&(ENTRY),					\
+			     SECTION_ADDR_START(SECTION),		\
+			     SECTION_ADDR_END(SECTION),			\
+			     to_load_pa(SECTION_ADDR_START(SECTION)),	\
+			     TRUE,					\
+			     TRUE)
+
 
 void __attribute__ ((section(".entry")))
     _setup_initial_ttbl(virtual_addr_t load_start, virtual_addr_t load_end,
@@ -213,18 +264,32 @@ void __attribute__ ((section(".entry")))
 			     defterm_early_va,
 			     defterm_early_va + TTBL_L2TBL_SMALL_PAGE_SIZE,
 			     (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
-			     FALSE);
+			     FALSE, TRUE);
 #endif
 
 	/* Map physical = logical
 	 * Note: This is the mapping we are using at present
 	 */
 	__setup_initial_ttbl(&entry, load_start, load_end, load_start,
-			     TRUE);
+			     TRUE, TRUE);
 
 	/* Map to logical addresses set at link time
 	 * Note: This is the mapping used after first reset
 	 */
-	__setup_initial_ttbl(&entry, exec_start, exec_end, load_start,
-			     TRUE);
+	/* __setup_initial_ttbl(&entry, exec_start, exec_end, */
+	/* 		     to_load_pa(exec_start), TRUE, TRUE); */
+	SETUP_RO_SECTION(entry, text);
+	SETUP_RO_SECTION(entry, init);
+	SETUP_RO_SECTION(entry, cpuinit);
+	SETUP_RO_SECTION(entry, spinlock);
+	SETUP_RO_SECTION(entry, rodata);
+	SETUP_RW_SECTION(entry, initdata);
+	SETUP_RW_SECTION(entry, percpu);
+	SETUP_RW_SECTION(entry, data);
+	SETUP_RW_SECTION(entry, bss);
+	SETUP_RW_SECTION(entry, svc_stack);
+	SETUP_RW_SECTION(entry, abt_stack);
+	SETUP_RW_SECTION(entry, und_stack);
+	SETUP_RW_SECTION(entry, irq_stack);
+	SETUP_RW_SECTION(entry, fiq_stack);
 }

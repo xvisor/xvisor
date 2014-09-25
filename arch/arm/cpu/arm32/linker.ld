@@ -25,67 +25,34 @@ OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH("arm")
 ENTRY(_start_vect)
 
-SECTIONS 
+SECTIONS
 {
 	. = CPU_TEXT_START;
 
 	. = ALIGN(0x1000); /* Need this to create proper pages */
-	
+
 	PROVIDE(_code_start = .);
+
+	/* Beginning of the code section */
 
 	.text :
  	{
+		. = ALIGN(4);
 		PROVIDE(_text_start = .);
 		*(.entry)
 		*(.text)
-		. = ALIGN(4);
 		PROVIDE(_text_end = .);
 	}
 
-	.data :
-	{
-		PROVIDE(_data_start = .);
-		*(.data)
-		. = ALIGN(4);
-		PROVIDE(_data_end = .);
-	}
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	.rodata :
-	{
-		PROVIDE(_rodata_start = .);
-		*(.rodata .rodata.*)
-		. = ALIGN(4);
-		PROVIDE(_rodata_end = .);
-	}
-
-	.percpu :
-	{
-		PROVIDE(_percpu_start = .);
-		*(.percpu)
-		. = ALIGN(4);
-		PROVIDE(_percpu_end = .);
-	}
-
-	. = ALIGN(0x1000); /* init section is page aligned */
-
-	.init : 
+	.init :
 	{
 		PROVIDE(_init_start = .);
 
-		*(.init.*)
 		. = ALIGN(4);
+		*(.init.text)
 
-		PROVIDE(_modtbl_start = .);
-		*(.modtbl)
-		. = ALIGN(4);
-		PROVIDE(_modtbl_end = .);
-
-		PROVIDE(_nidtbl_start = .);
-		*(.nidtbl)
-		. = ALIGN(4);
-		PROVIDE(_nidtbl_end = .);
-
-		. = ALIGN(4);
 		PROVIDE(__setup_start = .);
 		*(.setup.init);
 		PROVIDE(__setup_end = .);
@@ -95,19 +62,95 @@ SECTIONS
 		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
 
 		PROVIDE(_init_end = .);
+
+		. = ALIGN(0x1000);
+
+		PROVIDE(_initdata_start = .);
+		*(.init.data)
+		PROVIDE(_initdata_end = .);
 	}
 
-	. = ALIGN(0x1000); /* bss is page aligned */
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.cpuinit :
+	{
+		. = ALIGN(4);
+		PROVIDE(_cpuinit_start = .);
+		*(.cpuinit.*)
+		PROVIDE(_cpuinit_end = .);
+	}
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.spinlock :
+	{
+		. = ALIGN(4);
+		PROVIDE(_spinlock_start = .);
+		*(.spinlock.*)
+		PROVIDE(_spinlock_end = .);
+	}
+
+	/* End of the code sections */
+
+	/* Beginning of the read-only data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.rodata :
+	{
+		PROVIDE(_rodata_start = .);
+		. = ALIGN(4);
+		*(.symtbl)
+		*(.rodata .rodata.*)
+		PROVIDE(_rodata_end = .);
+	}
+
+	/* End of the read-only data sections */
+
+	/* Beginning of the read-write data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.percpu :
+	{
+		PROVIDE(_percpu_start = .);
+		. = ALIGN(4);
+		*(.percpu)
+		PROVIDE(_percpu_end = .);
+	}
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.data :
+	{
+		PROVIDE(_data_start = .);
+		*(.data)
+		*(.readmostly.data)
+
+		PROVIDE(_modtbl_start = .);
+		. = ALIGN(4);
+		*(.modtbl)
+		PROVIDE(_modtbl_end = .);
+
+		PROVIDE(_nidtbl_start = .);
+		. = ALIGN(4);
+		*(.nidtbl)
+		PROVIDE(_nidtbl_end = .);
+
+		PROVIDE(_data_end = .);
+	}
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.bss :
 	{
 		PROVIDE(_bss_start = .);
 		*(.bss)
-		. = ALIGN(4);
+		*(COMMON)
 		PROVIDE(_bss_end = .);
 	}
 
-	. = ALIGN(0x1000); /* all stacks are page aligned */
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.svc_stack :
 	{
@@ -150,6 +193,6 @@ SECTIONS
 	}
 
 	. = ALIGN(0x1000); /* Need this to create proper pages */
-	
+
 	PROVIDE(_code_end = .);
 }
