@@ -390,11 +390,11 @@ void do_fiq(arch_regs_t *regs)
 int __cpuinit arch_cpu_irq_setup(void)
 {
 	static const struct cpu_page zero_filled_cpu_page = { 0 };
+	extern u32 _start_vect[];
 
 	int rc;
-	extern u32 _start_vect[];
-	u32 *vectors, *vectors_data;
-	u32 vec, cpu = vmm_smp_processor_id();
+	u32 *vectors;
+	u32 count, cpu = vmm_smp_processor_id();
 	struct cpu_page vec_page;
 
 #if defined(CONFIG_ARM32_HIGHVEC)
@@ -407,7 +407,6 @@ int __cpuinit arch_cpu_irq_setup(void)
 	}
 	vectors = (u32 *)CPU_IRQ_LOWVEC_BASE;
 #endif
-	vectors_data = vectors + CPU_IRQ_NR;
 
 	/* For secondary CPUs nothing else to be done. */
 	if (cpu) {
@@ -432,7 +431,8 @@ int __cpuinit arch_cpu_irq_setup(void)
 		vec_page.va = (virtual_addr_t)vectors;
 		vec_page.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
 		vec_page.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
-		vec_page.ap = TTBL_AP_SRW_U;
+		vec_page.ap = TTBL_AP_SR_U;
+		vec_page.c = 1;
 
 		if ((rc = cpu_mmu_map_reserved_page(&vec_page))) {
 			return rc;
@@ -440,12 +440,12 @@ int __cpuinit arch_cpu_irq_setup(void)
 	}
 
 	/*
-	 * Loop through the vectors we're taking over, and copy the
-	 * vector's insn and data word.
+	 * Copy the vector's insn and data word.
 	 */
-	for (vec = 0; vec < CPU_IRQ_NR; vec++) {
-		vectors[vec] = _start_vect[vec];
-		vectors_data[vec] = _start_vect[vec + CPU_IRQ_NR];
+	count = vmm_host_memory_write(vec_page.pa, (void *)&_start_vect[0],
+				      CPU_IRQ_NR * sizeof(u32) * 2, FALSE);
+	if (count != (CPU_IRQ_NR * sizeof(u32) * 2)) {
+		return VMM_EFAIL;
 	}
 
 	return VMM_OK;
