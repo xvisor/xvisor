@@ -427,7 +427,7 @@ CONFIG_CMDLINE_FROM_BOOTLOADER=y
 CONFIG_FPE_NWFPE=y
 # CONFIG_FPE_NWFPE_XP is not set
 # CONFIG_FPE_FASTFPE is not set
-CONFIG_VFP=y
+# CONFIG_VFP is not set
 
 #
 # Userspace binary formats
