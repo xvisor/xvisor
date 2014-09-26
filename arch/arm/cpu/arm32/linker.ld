@@ -192,6 +192,8 @@ SECTIONS
 		PROVIDE(_fiq_stack_end = .);
 	}
 
+	/* End of the read-write data sections */
+
 	. = ALIGN(0x1000); /* Need this to create proper pages */
 
 	PROVIDE(_code_end = .);

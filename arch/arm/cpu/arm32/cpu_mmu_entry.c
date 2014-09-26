@@ -183,7 +183,6 @@ void __attribute__ ((section(".entry")))
 			_tva; \
 			})
 
-
 #define SECTION_START(SECTION)	_ ## SECTION ## _start
 #define SECTION_END(SECTION)	_ ## SECTION ## _end
 
@@ -198,17 +197,7 @@ DECLARE_SECTION(text);
 DECLARE_SECTION(cpuinit);
 DECLARE_SECTION(spinlock);
 DECLARE_SECTION(init);
-DECLARE_SECTION(initdata);
 DECLARE_SECTION(rodata);
-DECLARE_SECTION(data);
-DECLARE_SECTION(percpu);
-DECLARE_SECTION(bss);
-DECLARE_SECTION(svc_stack);
-DECLARE_SECTION(abt_stack);
-DECLARE_SECTION(und_stack);
-DECLARE_SECTION(irq_stack);
-DECLARE_SECTION(fiq_stack);
-
 
 #define SETUP_RO_SECTION(ENTRY, SECTION)				\
 	__setup_initial_ttbl(&(ENTRY),					\
@@ -217,15 +206,6 @@ DECLARE_SECTION(fiq_stack);
 			     to_load_pa(SECTION_ADDR_START(SECTION)),	\
 			     TRUE,					\
 			     FALSE)
-
-#define SETUP_RW_SECTION(ENTRY, SECTION)				\
-	__setup_initial_ttbl(&(ENTRY),					\
-			     SECTION_ADDR_START(SECTION),		\
-			     SECTION_ADDR_END(SECTION),			\
-			     to_load_pa(SECTION_ADDR_START(SECTION)),	\
-			     TRUE,					\
-			     TRUE)
-
 
 void __attribute__ ((section(".entry")))
     _setup_initial_ttbl(virtual_addr_t load_start, virtual_addr_t load_end,
@@ -268,28 +248,25 @@ void __attribute__ ((section(".entry")))
 #endif
 
 	/* Map physical = logical
-	 * Note: This is the mapping we are using at present
+	 * Note: This mapping is using at boot time only
 	 */
 	__setup_initial_ttbl(&entry, load_start, load_end, load_start,
 			     TRUE, TRUE);
 
-	/* Map to logical addresses set at link time
-	 * Note: This is the mapping used after first reset
+	/* Map to logical addresses which are
+	 * covered by read-only linker sections
+	 * Note: This mapping is used at runtime
 	 */
-	/* __setup_initial_ttbl(&entry, exec_start, exec_end, */
-	/* 		     to_load_pa(exec_start), TRUE, TRUE); */
 	SETUP_RO_SECTION(entry, text);
 	SETUP_RO_SECTION(entry, init);
 	SETUP_RO_SECTION(entry, cpuinit);
 	SETUP_RO_SECTION(entry, spinlock);
 	SETUP_RO_SECTION(entry, rodata);
-	SETUP_RW_SECTION(entry, initdata);
-	SETUP_RW_SECTION(entry, percpu);
-	SETUP_RW_SECTION(entry, data);
-	SETUP_RW_SECTION(entry, bss);
-	SETUP_RW_SECTION(entry, svc_stack);
-	SETUP_RW_SECTION(entry, abt_stack);
-	SETUP_RW_SECTION(entry, und_stack);
-	SETUP_RW_SECTION(entry, irq_stack);
-	SETUP_RW_SECTION(entry, fiq_stack);
+
+	/* Map rest of logical addresses which are
+	 * not covered by read-only linker sections
+	 * Note: This mapping is used at runtime
+	 */
+	__setup_initial_ttbl(&entry, exec_start, exec_end, load_start,
+			     TRUE, TRUE);
 }
