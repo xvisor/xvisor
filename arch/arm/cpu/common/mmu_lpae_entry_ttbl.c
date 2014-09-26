@@ -43,7 +43,7 @@ extern u8 defterm_early_base[];
 void __attribute__ ((section(".entry")))
     __setup_initial_ttbl(struct mmu_lpae_entry_ctrl *lpae_entry,
 		     virtual_addr_t map_start, virtual_addr_t map_end,
-		     virtual_addr_t pa_start, u32 aindex)
+		     virtual_addr_t pa_start, u32 aindex, bool writeable)
 {
 	u32 i, index;
 	u64 *ttbl;
@@ -120,8 +120,9 @@ void __attribute__ ((section(".entry")))
 			    (((page_addr - map_start) + pa_start) &
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= TTBL_STAGE1_LOWER_AF_MASK;
-			ttbl[index] |=
-			    (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT);
+			ttbl[index] |= (writeable) ?
+			    (TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT) :
+			    (TTBL_AP_SR_U << TTBL_STAGE1_LOWER_AP_SHIFT);
 			ttbl[index] |=
 			    (aindex << TTBL_STAGE1_LOWER_AINDEX_SHIFT)
 			    & TTBL_STAGE1_LOWER_AINDEX_MASK;
@@ -156,9 +157,33 @@ void __attribute__ ((section(".entry")))
 			_tva; \
 			})
 
+#define SECTION_START(SECTION)	_ ## SECTION ## _start
+#define SECTION_END(SECTION)	_ ## SECTION ## _end
+
+#define SECTION_ADDR_START(SECTION)	(virtual_addr_t)&SECTION_START(SECTION)
+#define SECTION_ADDR_END(SECTION)	(virtual_addr_t)&SECTION_END(SECTION)
+
+#define DECLARE_SECTION(SECTION)					\
+	extern virtual_addr_t SECTION_START(SECTION);			\
+	extern virtual_addr_t SECTION_END(SECTION)
+
+DECLARE_SECTION(text);
+DECLARE_SECTION(cpuinit);
+DECLARE_SECTION(spinlock);
+DECLARE_SECTION(init);
+DECLARE_SECTION(rodata);
+
+#define SETUP_RO_SECTION(ENTRY, SECTION)				\
+	__setup_initial_ttbl(&(ENTRY),					\
+			     to_exec_va(SECTION_ADDR_START(SECTION)),	\
+			     to_exec_va(SECTION_ADDR_END(SECTION)),	\
+			     to_load_pa(SECTION_ADDR_START(SECTION)),	\
+			     AINDEX_NORMAL_WB,				\
+			     FALSE)
+
 void __attribute__ ((section(".entry")))
     _setup_initial_ttbl(virtual_addr_t load_start, virtual_addr_t load_end,
-		    virtual_addr_t exec_start, virtual_addr_t exec_end)
+			virtual_addr_t exec_start, virtual_addr_t exec_end)
 {
 	u32 i;
 #ifdef CONFIG_DEFTERM_EARLY_PRINT
@@ -194,18 +219,29 @@ void __attribute__ ((section(".entry")))
 			     defterm_early_va,
 			     defterm_early_va + TTBL_L3_BLOCK_SIZE,
 			     (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
-			     AINDEX_SO);
+			     AINDEX_SO, TRUE);
 #endif
 
 	/* Map physical = logical
-	 * Note: This is the mapping we are using at present
+	 * Note: This mapping is using at boot time only
 	 */
 	__setup_initial_ttbl(&lpae_entry, load_start, load_end, load_start,
-			     AINDEX_NORMAL_WB);
+			     AINDEX_NORMAL_WB, TRUE);
 
-	/* Map to logical addresses set at link time
-	 * Note: This is the mapping used after first reset
+	/* Map to logical addresses which are
+	 * covered by read-only linker sections
+	 * Note: This mapping is used at runtime
+	 */
+	SETUP_RO_SECTION(lpae_entry, text);
+	SETUP_RO_SECTION(lpae_entry, init);
+	SETUP_RO_SECTION(lpae_entry, cpuinit);
+	SETUP_RO_SECTION(lpae_entry, spinlock);
+	SETUP_RO_SECTION(lpae_entry, rodata);
+
+	/* Map rest of logical addresses which are
+	 * not covered by read-only linker sections
+	 * Note: This mapping is used at runtime
 	 */
 	__setup_initial_ttbl(&lpae_entry, exec_start, exec_end, load_start,
-			     AINDEX_NORMAL_WB);
+			     AINDEX_NORMAL_WB, TRUE);
 }
