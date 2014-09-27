@@ -408,6 +408,7 @@ skip:
 		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
 			   "failed (error %d)\n", __func__,
 			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+		vmm_manager_vcpu_halt(vcpu);
 	}
 
 	return rc;
@@ -465,6 +466,7 @@ skip:
 		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
 			   "failed (error %d)\n", __func__,
 			   vcpu->name, (u64)gphys_addr, src_len, rc);
+		vmm_manager_vcpu_halt(vcpu);
 	}
 
 	return rc;
@@ -522,6 +524,7 @@ skip:
 		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
 			   "failed (error %d)\n", __func__,
 			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+		vmm_manager_vcpu_halt(vcpu);
 	}
 
 	return rc;
@@ -579,6 +582,7 @@ skip:
 		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
 			   "failed (error %d)\n", __func__,
 			   vcpu->name, (u64)gphys_addr, src_len, rc);
+		vmm_manager_vcpu_halt(vcpu);
 	}
 
 	return rc;
