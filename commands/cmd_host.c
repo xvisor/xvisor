@@ -60,47 +60,6 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
 }
 
-static void cmd_host_cpu_info(struct vmm_chardev *cdev)
-{
-	u32 c, p, khz, util;
-	char name[25];
-
-	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
-	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Present Count", vmm_num_present_cpus());
-	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Possible Count", vmm_num_possible_cpus());
-	vmm_cprintf(cdev, "%-25s: %u\n", "CPU Online Count", vmm_num_online_cpus());
-	for_each_online_cpu(c) {
-		vmm_cprintf(cdev, "\n");
-		vmm_sprintf(name, "CPU%d Speed", c);
-		khz = vmm_delay_estimate_cpu_khz(c);
-		vmm_cprintf(cdev, "%-25s: %d.%03d MHz (Estimated)\n",
-			    name, udiv32(khz, 1000), umod32(khz, 1000));
-		vmm_sprintf(name, "CPU%d Utilization", c);
-		util = udiv64(vmm_scheduler_idle_time(c) * 1000,
-			      vmm_scheduler_get_sample_period(c));
-		util = (util > 1000) ? 1000 : util;
-		util = 1000 - util;
-		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
-			    name, udiv32(util, 10), umod32(util, 10));
-		vmm_sprintf(name, "CPU%d Interrupts", c);
-		util = udiv64(vmm_scheduler_irq_time(c) * 1000,
-			      vmm_scheduler_get_sample_period(c));
-		util = (util > 1000) ? 1000 : util;
-		vmm_cprintf(cdev, "%-25s: %d.%d %%\n",
-			    name, udiv32(util, 10), umod32(util, 10));
-		vmm_sprintf(name, "CPU%d Active VCPUs", c);
-		util = 1;
-		for (p = VMM_VCPU_MIN_PRIORITY; p <= VMM_VCPU_MAX_PRIORITY; p++) {
-			util += vmm_scheduler_ready_count(c, p);
-		}
-		vmm_cprintf(cdev, "%-25s: %d\n", name, util);
-	}
-
-	vmm_cprintf(cdev, "\n");
-
-	arch_cpu_print_info(cdev);
-}
-
 static void cmd_host_info(struct vmm_chardev *cdev)
 {
 	const char *attr;
@@ -129,6 +88,71 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 		    ((total *VMM_PAGE_SIZE) >> 20));
 
 	arch_board_print_info(cdev);
+}
+
+static void cmd_host_cpu_info(struct vmm_chardev *cdev)
+{
+	u32 c, khz;
+	char name[25];
+
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
+	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Present Count", vmm_num_present_cpus());
+	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Possible Count", vmm_num_possible_cpus());
+	vmm_cprintf(cdev, "%-25s: %u\n", "CPU Online Count", vmm_num_online_cpus());
+	for_each_online_cpu(c) {
+		vmm_sprintf(name, "CPU%d Estimated Speed", c);
+		khz = vmm_delay_estimate_cpu_khz(c);
+		vmm_cprintf(cdev, "%-25s: %d.%03d MHz\n",
+			    name, udiv32(khz, 1000), umod32(khz, 1000));
+	}
+
+	vmm_cprintf(cdev, "\n");
+
+	arch_cpu_print_info(cdev);
+}
+
+static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
+{
+	u32 c, p, khz, util;
+
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "-------------------------\n");
+	vmm_cprintf(cdev, " %4s %15s %13s %12s %16s\n", 
+		    "CPU#", "Speed (MHz)", "Util. (%)",
+		    "IRQs (%)", "Active VCPUs");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "-------------------------\n");
+
+	for_each_online_cpu(c) {
+		vmm_cprintf(cdev, " %4d", c);
+
+		khz = vmm_delay_estimate_cpu_khz(c);
+		vmm_cprintf(cdev, " %11d.%03d",
+			    udiv32(khz, 1000), umod32(khz, 1000));
+
+		util = udiv64(vmm_scheduler_idle_time(c) * 1000,
+			      vmm_scheduler_get_sample_period(c));
+		util = (util > 1000) ? 1000 : util;
+		util = 1000 - util;
+		vmm_cprintf(cdev, " %11d.%01d",
+			    udiv32(util, 10), umod32(util, 10));
+
+		util = udiv64(vmm_scheduler_irq_time(c) * 1000,
+			      vmm_scheduler_get_sample_period(c));
+		util = (util > 1000) ? 1000 : util;
+		vmm_cprintf(cdev, " %10d.%01d",
+			    udiv32(util, 10), umod32(util, 10));
+
+		util = 1;
+		for (p = VMM_VCPU_MIN_PRIORITY; p <= VMM_VCPU_MAX_PRIORITY; p++) {
+			util += vmm_scheduler_ready_count(c, p);
+		}
+		vmm_cprintf(cdev, " %15d ", util);
+
+		vmm_cprintf(cdev, "\n");
+	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "-------------------------\n");
 }
 
 static void cmd_host_irq_stats(struct vmm_chardev *cdev)
@@ -269,51 +293,61 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int colcnt;
-	if (1 < argc) {
-		if (strcmp(argv[1], "help") == 0) {
-			cmd_host_usage(cdev);
-			return VMM_OK;
-		} else if (strcmp(argv[1], "info") == 0) {
-			cmd_host_info(cdev);
-			return VMM_OK;
-		} else if (strcmp(argv[1], "cpu") == 0) {
+
+	if (argc <= 1) {
+		goto fail;
+	}
+
+	if (strcmp(argv[1], "help") == 0) {
+		cmd_host_usage(cdev);
+		return VMM_OK;
+	} else if (strcmp(argv[1], "info") == 0) {
+		cmd_host_info(cdev);
+		return VMM_OK;
+	} else if ((strcmp(argv[1], "cpu") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "info") == 0) {
 			cmd_host_cpu_info(cdev);
 			return VMM_OK;
-		} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
-			if (strcmp(argv[2], "stats") == 0) {
-				cmd_host_irq_stats(cdev);
-				return VMM_OK;
+		} else if (strcmp(argv[2], "stats") == 0) {
+			cmd_host_cpu_stats(cdev);
+			return VMM_OK;
+		}
+	} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "stats") == 0) {
+			cmd_host_irq_stats(cdev);
+			return VMM_OK;
+		}
+	} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "info") == 0) {
+			cmd_host_ram_info(cdev);
+			return VMM_OK;
+		} else if (strcmp(argv[2], "bitmap") == 0) {
+			if (3 < argc) {
+				colcnt = atoi(argv[3]);
+			} else {
+				colcnt = 64;
 			}
-		} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
-			if (strcmp(argv[2], "info") == 0) {
-				cmd_host_ram_info(cdev);
-				return VMM_OK;
-			} else if (strcmp(argv[2], "bitmap") == 0) {
-				if (3 < argc) {
-					colcnt = atoi(argv[3]);
-				} else {
-					colcnt = 64;
-				}
-				cmd_host_ram_bitmap(cdev, colcnt);
-				return VMM_OK;
+			cmd_host_ram_bitmap(cdev, colcnt);
+			return VMM_OK;
+		}
+	} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "info") == 0) {
+			cmd_host_vapool_info(cdev);
+			return VMM_OK;
+		} else if (strcmp(argv[2], "state") == 0) {
+			return cmd_host_vapool_state(cdev);
+		} else if (strcmp(argv[2], "bitmap") == 0) {
+			if (3 < argc) {
+				colcnt = atoi(argv[3]);
+			} else {
+				colcnt = 64;
 			}
-		} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
-			if (strcmp(argv[2], "info") == 0) {
-				cmd_host_vapool_info(cdev);
-				return VMM_OK;
-			} else if (strcmp(argv[2], "state") == 0) {
-				return cmd_host_vapool_state(cdev);
-			} else if (strcmp(argv[2], "bitmap") == 0) {
-				if (3 < argc) {
-					colcnt = atoi(argv[3]);
-				} else {
-					colcnt = 64;
-				}
-				cmd_host_vapool_bitmap(cdev, colcnt);
-				return VMM_OK;
-			}
+			cmd_host_vapool_bitmap(cdev, colcnt);
+			return VMM_OK;
 		}
 	}
+
+fail:
 	cmd_host_usage(cdev);
 	return VMM_EFAIL;
 }
