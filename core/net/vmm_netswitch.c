@@ -38,6 +38,7 @@
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
 #include <libs/list.h>
+#include <libs/mathlib.h>
 #include <libs/stringlib.h>
 
 #undef DEBUG
@@ -108,19 +109,39 @@ struct vmm_netswitch_bh_ctrl {
 
 static DEFINE_PER_CPU(struct vmm_netswitch_bh_ctrl, nbctrl);
 
-static bool netswitch_bh_ring_ncmpinc(unsigned long *var,
-				      unsigned long cmp1,
-				      unsigned long cmp2,
-				      unsigned long *oldvar)
+static bool netswitch_bh_ring_produceop(unsigned long *produce,
+					unsigned long consume,
+					unsigned long limit,
+					unsigned long *oldproduce)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
 
-	if (*var != (cmp1 + cmp2)) {
-		*oldvar = *var;
-		*var = *var + 1;
+	if (*produce < (consume + limit)) {
+		*oldproduce = *produce;
+		*produce = *produce + 1;
+		ret = TRUE;
+	}
+
+	arch_cpu_irq_restore(flags);
+
+	return ret;
+}
+
+static bool netswitch_bh_ring_consumeop(unsigned long *consume,
+					unsigned long produce,
+					unsigned long *oldconsume)
+{
+	bool ret = FALSE;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+
+	if (*consume < produce) {
+		*oldconsume = *consume;
+		*consume = *consume + 1;
 		ret = TRUE;
 	}
 
@@ -143,10 +164,10 @@ static int netswitch_bh_ring_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
 	unsigned long produce;
 
 	try = 10;
-	while (try && !netswitch_bh_ring_ncmpinc(&nbp->produce,
-						 nbp->consume,
-						 NETSWITCH_BH_XFER_RING_SZ,
-						 &produce)) {
+	while (try && !netswitch_bh_ring_produceop(&nbp->produce,
+						   nbp->consume,
+						   NETSWITCH_BH_XFER_RING_SZ,
+						   &produce)) {
 		vmm_waitqueue_wakeall(&nbp->wq);
 		try--;
 	}
@@ -165,17 +186,31 @@ static int netswitch_bh_ring_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
 static struct vmm_netport_xfer *netswitch_bh_ring_dequeue(
 				struct vmm_netswitch_bh_ctrl *nbp)
 {
-	u32 index;
+#define NETSWITCH_TRIES_PER_PHASE_BITS	4
+#define NETSWITCH_TRIES_PER_PHASE	(1 << NETSWITCH_TRIES_PER_PHASE_BITS)
+#define NETSWITCH_PHASE_COUNT		100
+	u32 index, try, phase;
 	u64 timeout;
 	unsigned long consume;
 	struct vmm_netport_xfer *xfer;
 
-	while (!netswitch_bh_ring_ncmpinc(&nbp->consume,
-					  nbp->produce, 0,
-					  &consume)) {
-		timeout = CONFIG_NET_BH_TIMEOUT_SECS;
-		timeout = timeout * 1000000000ULL;
-		vmm_waitqueue_sleep_timeout(&nbp->wq, &timeout);
+	try = 0;
+	while (!netswitch_bh_ring_consumeop(&nbp->consume,
+					    nbp->produce,
+					    &consume)) {
+		phase = try >> NETSWITCH_TRIES_PER_PHASE_BITS;
+		if (phase == 0) {
+			vmm_scheduler_yield();
+		} else {
+			timeout = CONFIG_NET_BH_TIMEOUT_SECS;
+			timeout = timeout * 1000000000ULL;
+			if (phase < NETSWITCH_PHASE_COUNT) {
+				timeout = udiv64(timeout,
+					NETSWITCH_PHASE_COUNT - (phase - 1));
+			}
+			vmm_waitqueue_sleep_timeout(&nbp->wq, &timeout);
+		}
+		try++;
 	}
 
 	index = consume & NETSWITCH_BH_XFER_RING_MASK;
