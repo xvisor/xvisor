@@ -1,0 +1,191 @@
+#!/bin/bash
+
+#Required packages
+PACKAGES="gcc-multilib git-all cscope iasl cgdb xorriso libncurses5-dev m4 flex bison qemu-system-x86 autoconf expect qemu-system-x86"
+#colors
+black='\E[30;47m'
+#red='\E[31;47m'
+red='\E[0;31m'
+#green='\E[32;47m'
+green='\E[0;32m'
+
+alias Reset="tput sgr0"      #  Reset text attributes to normal
+                             #+ without clearing screen.
+
+cecho ()                     # Color-echo.
+                             # Argument $1 = message
+                             # Argument $2 = color
+{
+    local default_msg="No message passed."
+                             # Doesn't really need to be a local variable.
+
+    message=${1:-$default_msg}   # Defaults to default message.
+    color=${2:-$black}           # Defaults to black, if not specified.
+
+    echo -en "$color"
+    echo "$message"
+    tput sgr0                      # Reset to normal.
+
+    return
+}
+
+function run_or_die() {
+    echo -n "$2 "
+    $1 &>>${LOG_FILE}
+    if [ $? -ne 0 ]; then
+	cecho "[FAILED]" $red
+	echo "Please look at $LOG_FILE for more details about error."
+	exit 255
+    else
+	cecho "[OK]" $green
+    fi
+}
+
+function prepare_environment() {
+    run_or_die "sudo apt-get install ${PACKAGES}" "Building conducive environtment..."
+}
+
+function checkout_coreboot() {
+    run_or_die "git clone http://review.coreboot.org/p/coreboot" "Checking out coreboot..."
+    cd coreboot
+    run_or_die "git submodule update --init --checkout" "Checking out submodules..."
+    cd payloads
+    run_or_die "git clone http://review.coreboot.org/filo.git"  "Checking out FILO... "
+    cd ..
+}
+
+function checkout_xvisor() {
+    run_or_die "git clone http://github.com/hschauhan/xvisor-x86_64.git" "Checking out Xvisor-x86_64... "
+}
+
+function make_cross_toolchain() {
+	if [ -d util/crossgcc/xgcc ]; then
+	    cecho "Cross toolchain already built. Skipping" $green
+	else
+	    run_or_die "make crossgcc"  "Making cross toolchain..."
+        fi
+}
+
+function prepare_configs() {
+    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/coreboot.config .config" "Copying coreboot.config"
+    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/filo.config payloads/filo/.config" "Copying filo.config"
+    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/filo.lib.config payloads/filo/lib.config" "Copying libpayload.config"
+}
+
+function build_filo() {
+    cd payloads/filo
+    run_or_die "make" "Building FILO..."
+    run_or_die "cp build/filo.elf ../../filo.elf" "Copying filo.elf..."
+    cd ../../
+}
+
+function build_coreboot() {
+    run_or_die "make" "Building coreboot..."
+}
+
+function build_xvisor() {
+    cd xvisor-x86_64
+    run_or_die "make ARCH=x86 x86_64_generic-defconfig" "Making Xvisor Config..."
+    run_or_die "make" "Building Xvisor..."
+    cd ..
+}
+
+function build_hdd_image() {
+    cd ..
+    if [ ! -e xvisor-hd.disk ]; then
+	run_or_die "qemu-img create -f raw xvisor-hd.disk 32M" "Creating HDD Image..."
+	run_or_die "xvisor-x86_64/tests/x86/create_hdd_partitions.expt xvisor-hd.disk" "Creating partitions..."
+	run_or_die "sudo losetup /dev/loop0 xvisor-hd.disk -o 1048576" "Setting up loopback device..."
+	run_or_die "sudo mkfs.vfat /dev/loop0" "Creating filesystem..."
+	run_or_die "sudo losetup -d /dev/loop0" "Detaching the loopback device..."
+    fi
+
+    if [ ! -e lomount ]; then
+	run_or_die "gcc -o lomount xvisor-x86_64/tests/x86/lomount.c" "Building lomount"
+    fi
+    
+    if [ ! -d xmount ]; then
+	mkdir xmount
+    fi
+
+    run_or_die "sudo ./lomount -t vfat -diskimage xvisor-hd.disk -partition 1 ./xmount" "Mounting HDD Image..."
+    run_or_die "sudo cp coreboot/build/coreboot.rom ./xmount/" "Copying BIOS file..."
+    run_or_die "sudo cp xvisor-x86_64/tests/x86/guest_init.cmd ./xmount/" "Copying guest init script..."
+    run_or_die "sync" "Syncing disk..."
+    run_or_die "sudo umount ./xmount" "Unmounting HDD Image..."
+}
+
+function build_boot_iso() {
+    if [ ! -d xvisor-iso ]; then
+	run_or_die "mkdir -p xvisor-iso/boot/grub" "Making ISO directory..."
+    fi
+
+    if [ ! -e xvisor-x86_64/build/vmm.bin ]; then
+	cecho "Xvisor is not build." $red
+	exit 255
+    fi
+
+    echo -n "Creating GRUB configuration file..."
+    echo "#This is Automatically generated file. Please don't modify by hand." > xvisor-iso/boot/grub/grub.cfg
+    echo "set timeout=15" >> xvisor-iso/boot/grub/grub.cfg
+    echo "set default=0" >> xvisor-iso/boot/grub/grub.cfg
+    echo "" >> xvisor-iso/boot/grub/grub.cfg
+    echo "menuentry \"Xvisor x86_64\" {" >> xvisor-iso/boot/grub/grub.cfg
+    echo "	  multiboot /boot/vmm.bin earlyprint=vga console" >> xvisor-iso/boot/grub/grub.cfg
+    echo "	  boot" >> xvisor-iso/boot/grub/grub.cfg
+    echo "}" >> xvisor-iso/boot/grub/grub.cfg
+    cecho "[OK]" $green
+
+    run_or_die "cp xvisor-x86_64/build/vmm.bin xvisor-iso/boot/" "Copying Xvisor binary..."
+    run_or_die "grub-mkrescue -o bootable.iso xvisor-iso/" "Creating ISO image..."
+}
+
+function do_common() {
+    prepare_environment
+    make_cross_toolchain
+    prepare_configs
+    build_filo
+    build_coreboot
+    build_hdd_image
+    build_xvisor
+    build_boot_iso
+
+    cecho "Congratulations!!" $red
+    cecho "Your setup is ready!!!" $green
+    cecho "Run your setup with following command:" $green
+    cecho "qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-hd.disk -m 1024M -boot d -s -serial stdio" $green
+}
+
+function run_pre_existing() {
+    cd sandbox/coreboot
+    if [ $? -ne 0 ]; then
+	cecho "Exiting..." $red
+	exit 255
+    fi
+    LOG_FILE=${PWD}/../output.log
+    do_common
+}
+
+function run_fresh() {
+    rm -rf sandbox
+    mkdir "sandbox"
+    cd sandbox
+    LOG_FILE=${PWD}/output.log
+    checkout_xvisor
+    checkout_coreboot
+    do_common
+}
+
+function main() {
+	if [ -d sandbox ]; then
+	    echo -n 
+	    read -p "There already exists a directory named sandbox. Do you want to delete it? [y/N] " yn
+	    case $yn in
+		[Yy]* ) run_fresh;;
+		[Nn]* ) run_pre_existing;;
+		* ) echo "Please answer yes or no.";;
+	    esac
+	fi
+}
+
+main
