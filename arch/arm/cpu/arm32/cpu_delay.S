@@ -37,7 +37,7 @@ arch_delay_loop:
 arch_delay_loop_cycles:
 	push	{r1, r2}
 	mov	r1, r0
-	mov	r2, #3
+	mov	r2, #2
 	mul	r0, r1, r2
 	pop	{r1, r2}
 	mov	pc, lr

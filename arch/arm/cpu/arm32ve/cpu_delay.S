@@ -59,10 +59,10 @@ arm_cpu_skip:
 	/* Machine cycle count for:
 	 *   Unknown CPUs
 	 * Calulation:
-	 *   Machine cycle count = Delay loop count * 3
+	 *   Machine cycle count = Delay loop count * 2
 	 */
 unknown_cpu:
-	mov	r1, #3
+	mov	r1, #2
 	mul	r0, r0, r1
 
 arch_delay_loop_cycles_done:
