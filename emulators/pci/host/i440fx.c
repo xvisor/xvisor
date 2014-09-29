@@ -28,8 +28,10 @@
 #include <vmm_devemu.h>
 #include <vmm_timer.h>
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
+#include <vmm_mutex.h>
 #include <vmm_compiler.h>
+#include <vmm_notifier.h>
+#include <vmm_guest_aspace.h>
 #include <vio/vmm_vserial.h>
 #include <libs/stringlib.h>
 #include <emu/pci/pci_emu_core.h>
@@ -67,11 +69,12 @@ typedef struct i440fx_dev_registers {
 } i440fx_dev_registers_t;
 
 struct i440fx_state {
-	vmm_spinlock_t lock;
+	struct vmm_mutex lock;
 	struct vmm_guest *guest;
 	struct vmm_devtree_node *node;
 	struct pci_host_controller *controller;
 	i440fx_dev_registers_t *dev_regs;
+	struct vmm_notifier_block guest_aspace_client;
 	u32 conf_add;
 	u32 conf_data;
 };
@@ -123,7 +126,7 @@ static int i440fx_reg_read(struct i440fx_state *s, u32 addr, u32 *dst, u32 size)
 		bus = (s->conf_add >> 16) & 0xff;
 		dev = (s->conf_add >> 11) & 0x1f;
 		func = (s->conf_add >> 8) & 0x7;
-		reg_offs = (s->conf_add >> 2) & 0x3f;
+		reg_offs = (s->conf_add) & 0xfc;
 
 		/* if bus and dev are 0, its bound to PMC */
 		if (bus == 0 && dev == 0) {
@@ -210,6 +213,39 @@ static int i440fx_emulator_write32(struct vmm_emudev *edev,
 	return i440fx_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
+static int i440fx_guest_aspace_notification(struct vmm_notifier_block *nb,
+					    unsigned long evt, void *data)
+{
+	int ret = NOTIFY_DONE;
+	int rc;
+	struct i440fx_state *i440fx =
+		container_of(nb, struct i440fx_state, guest_aspace_client);
+
+	vmm_mutex_lock(&i440fx->lock);
+
+	switch (evt) {
+	case VMM_GUEST_ASPACE_EVENT_RESET:
+		if ((rc =
+		     pci_emu_register_controller(i440fx->node,
+						 i440fx->guest,
+						 i440fx->controller))
+		    != VMM_OK) {
+			I440FX_LOG(LVL_ERR,
+				   "Failed to attach PCI controller.\n");
+			goto _failed;
+		}
+		ret = NOTIFY_OK;
+		break;
+	default:
+		break;
+	}
+
+ _failed:
+	vmm_mutex_unlock(&i440fx->lock);
+
+	return ret;
+}
+
 static int i440fx_emulator_probe(struct vmm_guest *guest,
 				 struct vmm_emudev *edev,
 				 const struct vmm_devtree_nodeid *eid)
@@ -233,7 +269,7 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 		I440FX_LOG(LVL_ERR, "Failed to allocate pci host contoller for i440fx.\n");
 		goto _failed;
 	}
-	INIT_SPIN_LOCK(&s->lock);
+	INIT_MUTEX(&s->lock);
 	INIT_LIST_HEAD(&s->controller->head);
 	INIT_LIST_HEAD(&s->controller->attached_buses);
 
@@ -271,14 +307,12 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 		goto _failed;
 	}
 
-	if ((rc = pci_emu_register_controller(edev->node, guest,
-					      s->controller)) != VMM_OK) {
-		I440FX_LOG(LVL_ERR,
-			   "Failed to attach controller to PCI layer.\n");
-		goto _failed;
-	}
-
 	edev->priv = s;
+
+	s->guest_aspace_client.notifier_call = &i440fx_guest_aspace_notification;
+	s->guest_aspace_client.priority = 0;
+
+	vmm_guest_aspace_register_client(&s->guest_aspace_client);
 
 	I440FX_LOG(LVL_VERBOSE, "Success.\n");
 

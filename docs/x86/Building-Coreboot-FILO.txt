@@ -1,0 +1,63 @@
+First clone the coreboot using the below commands:
+
+----------
+git clone http://review.coreboot.org/p/coreboot
+cd coreboot
+git submodule update --init --checkout
+----------
+
+Before you can build coreboot, it is advised that you
+build the toolchain. Use the command below for that.
+----------
+make crossgcc
+----------
+
+Then do the menuconfig, the Linux way:
+----------
+make menuconfig
+----------
+
+In the options, for payload select the ELF binary option
+and in the text field of binary name enter "filo.elf"
+Choose 512KB has the size of the coreboot.
+
+Wait we are not ready to build coreboot yet. We would need
+to build FILO first. Clone FILO as mentioned below:
+----------
+cd payloads
+git clone http://review.coreboot.org/p/filo
+cd filo
+make menuconfig
+----------
+
+In the menuconfig, deselect the Grub interface and deselect the
+autoboot. Select "Include Multiboot Header". Enable PCI and FAT
+support. Now do:
+----------
+make
+----------
+
+When you run make, it will first configure the libpayload. Choose
+all the defaults except, enable SERIAL Port and choose 0x2f8 as the
+address (by default 0x3f8 is choosen).
+When the build completes copy build/filo.elf in coreboot base directory.
+----------
+cp build/filo.elf ../../
+----------
+
+Switch to coreboot directory base:
+----------
+cd ../../
+----------
+
+Now issue make in coreboot:
+----------
+make
+----------
+
+If all goes fine, you will have coreboot.rom which can be used as guest.
+
+.:: HAPPY HACKING ::.
+
+Sources:
+[1] http://www.coreboot.org/Build_HOWTO
