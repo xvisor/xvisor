@@ -93,6 +93,7 @@ function build_xvisor() {
 function build_hdd_image() {
     cd ..
     if [ ! -e xvisor-hd.disk ]; then
+	run_or_die "sudo echo 1 > /dev/null" "Requesting sudo previledges..."
 	run_or_die "qemu-img create -f raw xvisor-hd.disk 32M" "Creating HDD Image..."
 	run_or_die "xvisor-x86_64/tests/x86/create_hdd_partitions.expt xvisor-hd.disk" "Creating partitions..."
 	run_or_die "sudo losetup /dev/loop0 xvisor-hd.disk -o 1048576" "Setting up loopback device..."
@@ -185,7 +186,11 @@ function main() {
 		[Nn]* ) run_pre_existing;;
 		* ) echo "Please answer yes or no.";;
 	    esac
+
+	    exit 0
 	fi
+
+	run_fresh
 }
 
 main
