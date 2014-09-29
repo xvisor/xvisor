@@ -206,69 +206,15 @@ static int pci_emu_register_bar(struct vmm_guest *guest,
 				struct vmm_devtree_node *bar_node)
 {
 	int rc;
-	const char *man_type;
-	const char *dev_type;
-	const char *addr_type;
-	const char *compat;
 	physical_addr_t addr;
-	physical_size_t size;
-	u32 order;
-
-	if (vmm_devtree_read_string(bar_node,
-				    VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME,
-				    &man_type)) {
-		return VMM_EFAIL;
-	}
-
-	if (vmm_devtree_read_string(bar_node,
-				    VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
-				    &dev_type)) {
-		return VMM_EFAIL;
-	}
-
-	if (vmm_devtree_read_string(bar_node,
-				    VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
-				    &addr_type)) {
-		return VMM_EFAIL;
-	}
-
-	if (vmm_devtree_read_string(bar_node,
-				    VMM_DEVTREE_COMPATIBLE_ATTR_NAME,
-				    &compat)) {
-		return VMM_EFAIL;
-	}
 
 	if (vmm_devtree_read_physaddr(bar_node,
 				      VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
 		return VMM_EFAIL;
 	}
 
-	if (vmm_devtree_read_physaddr(bar_node,
-				      VMM_DEVTREE_PHYS_SIZE_ATTR_NAME, &size)) {
-		return VMM_EFAIL;
-	}
-
-	if (vmm_devtree_read_u32(bar_node,
-				 VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &order)) {
-		order = 0;
-	}
-
-	if (BITS_PER_LONG <= order) {
-		return VMM_EFAIL;
-	}
-	if (size & order_mask(order)) {
-		return VMM_EFAIL;
-	}
-
-	if ((rc = vmm_guest_add_region(guest, name,
-				       dev_type, man_type,
-				       addr_type, compat,
-				       strlen(compat),
-				       addr, 0, size,
-				       order)) != VMM_OK) {
-		return VMM_EFAIL;
-	}
-
+	if ((rc = vmm_guest_add_region_from_node(guest, bar_node)) != VMM_OK)
+		return rc;
 
 	class->conf_header.bars[barnum] = addr;
 
