@@ -117,12 +117,13 @@ static int cpu_vcpu_cp15_vtlb_update(struct arm_priv_cp15 *cp15,
 	/* Ensure pages for normal vcpu are non-global */
 	p->ng = 1;
 
-#ifndef CONFIG_SMP
-	/* Ensure non-shareable pages for normal vcpu when running on UP host.
-	 * This will force usage of local monitors in case of UP host.
-        */
-	p->s = 0;
-#endif
+	/* Ensure non-shareable pages for normal vcpu
+	 * when running on UP host. This will force usage
+	 * of local monitors in case of UP host.
+	 */
+	if (vmm_num_online_cpus() == 1) {
+		p->s = 0;
+	}
 
 	/* Add victim page to L1 page table */
 	if ((rc = cpu_mmu_map_page(cp15->l1, p))) {
