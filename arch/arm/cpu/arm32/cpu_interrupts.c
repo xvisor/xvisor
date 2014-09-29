@@ -211,6 +211,7 @@ void do_prefetch_abort(arch_regs_t *regs)
 	case IFSR_FS_IMP_VALID_LOCKDOWN:
 	case IFSR_FS_IMP_VALID_COPROC_ABORT:
 	case IFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
+		vmm_manager_vcpu_halt(vcpu);
 		rc = VMM_EFAIL;
 		crash_dump = TRUE;
 		break;
@@ -348,6 +349,7 @@ void do_data_abort(arch_regs_t *regs)
 	case DFSR_FS_MEM_ACCESS_SYNC_PARITY_ERROR:
 	case DFSR_FS_ASYNC_EXT_ABORT:
 	case DFSR_FS_MEM_ACCESS_ASYNC_PARITY_ERROR:
+		vmm_manager_vcpu_halt(vcpu);
 		rc = VMM_EFAIL;
 		crash_dump = TRUE;
 		break;
