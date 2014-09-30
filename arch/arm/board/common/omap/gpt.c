@@ -189,7 +189,7 @@ int __cpuinit gpt_clockchip_init(const char *name,
 	cc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
 	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, gpt_hz, 10);
-	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
+	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xFF, &cc->clkchip);
 	cc->clkchip.max_delta_ns = 
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &gpt_clockchip_set_mode;
