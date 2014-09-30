@@ -123,15 +123,21 @@ int vmm_host_generic_irq_exec(u32 hirq_no)
 
 int vmm_host_active_irq_exec(u32 cpu_irq_no)
 {
-	u32 hirq_no;
+	u32 hirq_no, exec_count;
 
 	if (!hirqctrl.active) {
 		return VMM_ENOTAVAIL;
 	}
 
+	/* We only process 16 active host irqs at a time.
+	 * This avoids infinite irq processing loop caused by
+	 * spurious interrupts on buggy hardware.
+	 */
+	exec_count = 16;
 	hirq_no = hirqctrl.active(cpu_irq_no);
-	while (hirq_no < CONFIG_HOST_IRQ_COUNT) {
+	while (exec_count && (hirq_no < CONFIG_HOST_IRQ_COUNT)) {
 		vmm_host_generic_irq_exec(hirq_no);
+		exec_count--;
 
 		hirq_no = hirqctrl.active(cpu_irq_no);
 	}
