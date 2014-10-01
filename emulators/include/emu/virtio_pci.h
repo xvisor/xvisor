@@ -56,7 +56,7 @@
 
 /* The remaining space is defined by each driver as the per-driver
  * configuration space */
-#define VIRTIO_PCI_CONFIG		(VIRTIO_PCI_ISR)
+#define VIRTIO_PCI_CONFIG		(20)
 
 /* How many bits to shift physical queue address written to QUEUE_PFN.
  * 12 is historical, and due to x86 page size. */
