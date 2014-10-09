@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2014 Himanshu Chauhan
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,37 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for library options
+# @file objects.mk
+# @author Himanshu Chauhan <hschauhan@nulltrace.org>
+# @brief list of cryptographic hashes
 # */
 
-menu "Library Options"
-
-config CONFIG_VSCREEN
-	tristate "Virtual screen capture library"
-	depends on CONFIG_INPUT
-	depends on CONFIG_FB
-	depends on CONFIG_VINPUT
-	depends on CONFIG_VDISPLAY
-	default n
-	help
-		Enable/Disable virtual screen capture library.
-
-source libs/netstack/openconf.cfg
-
-config CONFIG_VSTELNET
-	tristate "Vserial telnet library"
-	depends on CONFIG_NET_STACK
-	default n
-	help
-		Enable/Disable vstelnet library.
-
-source libs/vtemu/openconf.cfg
-
-source libs/vfs/openconf.cfg
-
-source libs/crypto/openconf.cfg
-
-endmenu
-
+libs-objs-$(CONFIG_CRYPTO_HASH_MD5)+= crypto/hashes/md5.o
