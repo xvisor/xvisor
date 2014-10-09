@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Sun Sep 21 15:45:52 2014
+# Fri Oct  3 20:31:44 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -220,6 +220,13 @@ CONFIG_VFS=y
 # CONFIG_VFS_CPIO is not set
 # CONFIG_VFS_EXT4 is not set
 CONFIG_VFS_FAT=y
+
+#
+# Cryptographic Options
+#
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_HASHES=y
+CONFIG_CRYPTO_HASH_MD5=y
 
 #
 # Device Drivers
