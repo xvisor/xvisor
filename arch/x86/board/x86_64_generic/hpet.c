@@ -169,25 +169,21 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 	int chip_no = HPET_TIMER_CHIP(timer_id);
 	int block_no = HPET_TIMER_BLOCK(timer_id);
 	int timer_no = HPET_TIMER(timer_id);
-	struct dlist *clist, *blist, *tlist;
 	struct hpet_chip *chip;
 	struct hpet_block *block;
 	struct hpet_timer *timer;
 
-	list_for_each(clist, &hpet_devices.chip_list) {
-		chip = list_entry(clist, struct hpet_chip, head);
+	list_for_each_entry(chip, &hpet_devices.chip_list, head) {
+		if (chip->chip_id != chip_no)
+			continue;
 
-		if (chip->chip_id != chip_no) continue;
+		list_for_each_entry(block, &chip->block_list, head) {
+			if (block->block_id != block_no)
+				continue;
 
-		list_for_each(blist, &chip->block_list) {
-			block = list_entry(blist, struct hpet_block, head);
-
-			if (block->block_id != block_no) continue;
-
-			list_for_each(tlist, &block->timer_list) {
-				timer = list_entry(tlist, struct hpet_timer, head);
-
-				if (timer->timer_id != timer_no) continue;
+			list_for_each_entry(timer, &block->timer_list, head) {
+				if (timer->timer_id != timer_no)
+					continue;
 
 				return timer;
 			}

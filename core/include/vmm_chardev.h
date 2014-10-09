@@ -34,25 +34,25 @@ struct vmm_chardev {
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device dev;
 	int (*ioctl) (struct vmm_chardev *cdev,
-			int cmd, void *buf, u32 len);
+		      int cmd, void *arg);
 	u32 (*read) (struct vmm_chardev *cdev,
-			u8 *dest, u32 len, bool sleep);
+		     u8 *dest, size_t len, off_t *off, bool sleep);
 	u32 (*write) (struct vmm_chardev *cdev,
-			u8 *src, u32 len, bool sleep);
+		      u8 *src, size_t len, off_t *off, bool sleep);
 	void *priv;
 };
 
 /** Do ioctl operation on a character device */
 int vmm_chardev_doioctl(struct vmm_chardev *cdev,
-			int cmd, void *buf, u32 len);
+			int cmd, void *arg);
 
 /** Do read operation on a character device */
 u32 vmm_chardev_doread(struct vmm_chardev *cdev,
-		       u8 *dest, u32 len, bool block);
+		       u8 *dest, size_t len, off_t *off, bool block);
 
 /** Do write operation on a character device */
 u32 vmm_chardev_dowrite(struct vmm_chardev *cdev,
-			u8 *src, u32 len, bool block);
+			u8 *src, size_t len, off_t *off, bool block);
 
 /** Register character device to device driver framework */
 int vmm_chardev_register(struct vmm_chardev *cdev);

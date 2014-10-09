@@ -90,7 +90,7 @@ static inline u16 rev16(u16 v)
 				: "=r"(data) : "r"(addr))
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
-				: "=r"(res) : "r"(data), "r"(addr))
+				: "=&r"(res) : "r"(data), "r"(addr))
 
 #define clrex()	
 
@@ -100,7 +100,7 @@ static inline u16 rev16(u16 v)
 				: "=r"(data) : "r"(addr))
 
 #define strex(addr, data, res)	asm volatile("strex	%0, %1, [%2]\n\t" \
-				: "=r"(res) : "r"(data), "r"(addr))
+				: "=&r"(res) : "r"(data), "r"(addr))
 
 #define clrex()			asm volatile("clrex\n\t")
 
@@ -268,7 +268,7 @@ static inline u16 rev16(u16 v)
 				" mcr     p15, 0, %0, c2, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#if defined(CONFIG_ARMV7A_SECUREX)
+#if defined(CONFIG_ARMV7A)
 
 #define read_vbar()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c12, c0, 0\n\t" \
@@ -278,7 +278,12 @@ static inline u16 rev16(u16 v)
 				" mcr     p15, 0, %0, c12, c0, 0\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#endif /* CONFIG_ARMV7A_SECUREX */
+#else
+
+#define read_vbar()		0
+#define write_vbar(val)
+
+#endif /* CONFIG_ARMV7A */
 
 #define read_ttbcr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c2, c0, 2\n\t" \
@@ -523,6 +528,10 @@ extern unsigned int *_ifar;
 
 #endif
 
+#ifdef CONFIG_ARMV5
+#define cpu_supports_fpu()	0
+#else
 #define cpu_supports_fpu()	(!(read_fpsid() & FPSID_SW_MASK))
+#endif
 
 #endif

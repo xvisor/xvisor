@@ -655,7 +655,7 @@ int fb_register(struct fb_info *info)
 	info->dev.class = &fb_class;
 	vmm_devdrv_set_data(&info->dev, info);
 
-	rc = vmm_devdrv_class_register_device(&fb_class, &info->dev);
+	rc = vmm_devdrv_register_device(&info->dev);
 	if (rc) {
 		goto free_pixmap;
 	}
@@ -684,7 +684,7 @@ int fb_unregister(struct fb_info *info)
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devdrv_class_unregister_device(&fb_class, &info->dev);
+	rc = vmm_devdrv_unregister_device(&info->dev);
 	if (rc) {
 		return rc;
 	}

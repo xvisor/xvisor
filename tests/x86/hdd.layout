@@ -1,0 +1,7 @@
+# partition table of xvisor-hd.disk
+unit: sectors
+
+xvisor-hd.disk1 : start=     2048, size=    63488, Id=83
+xvisor-hd.disk2 : start=        0, size=        0, Id= 0
+xvisor-hd.disk3 : start=        0, size=        0, Id= 0
+xvisor-hd.disk4 : start=        0, size=        0, Id= 0

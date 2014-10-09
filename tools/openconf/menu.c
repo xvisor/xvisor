@@ -89,7 +89,7 @@ struct expr *menu_check_dep(struct expr *e)
 		e->right.expr = menu_check_dep(e->right.expr);
 		break;
 	case E_SYMBOL:
-		/* change 'm' into 'm' && MODULES */
+		/* change 'm' into 'm' && CONFIG_MODULES */
 		if (e->left.sym == &symbol_mod)
 			return expr_alloc_and(e, expr_alloc_symbol(modules_sym));
 		break;

@@ -26,15 +26,21 @@
 
 #include <vmm_types.h>
 
-/** Allocate virtual space from virtual address pool */
-int vmm_host_vapool_alloc(virtual_addr_t *va, 
-			  virtual_size_t sz, 
-			  bool aligned);
+struct vmm_chardev;
 
-/** Reserve a portion of virtual space forcefully */
+/** Allocate virtual space */
+int vmm_host_vapool_alloc(virtual_addr_t *va, 
+			  virtual_size_t sz);
+
+/** Reserve a virtual space forcefully */
 int vmm_host_vapool_reserve(virtual_addr_t va, virtual_size_t sz);
 
-/** Free virtual space to virtual address pool */
+/** Find alloced/reserved virtual space covering given virtual address */
+int vmm_host_vapool_find(virtual_addr_t va,
+			 virtual_addr_t *alloc_va,
+			 virtual_size_t *alloc_sz);
+
+/** Free virtual space */
 int vmm_host_vapool_free(virtual_addr_t va, virtual_size_t sz);
 
 /** Check if a virtual address is free */
@@ -60,11 +66,12 @@ bool vmm_host_vapool_isvalid(virtual_addr_t addr);
 /** Estimate house-keeping size of virtual address pool */
 virtual_size_t vmm_host_vapool_estimate_hksize(virtual_size_t size);
 
+/** Print virtual address pool state */
+int vmm_host_vapool_print_state(struct vmm_chardev *cdev);
+
 /* Initialize virtual address pool managment */
 int vmm_host_vapool_init(virtual_addr_t base,
 			 virtual_size_t size, 
-			 virtual_addr_t hkbase, 
-			 virtual_addr_t resv_va, 
-			 virtual_size_t resv_sz);
+			 virtual_addr_t hkbase);
 
 #endif /* __VMM_HOST_VAPOOL_H_ */

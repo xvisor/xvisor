@@ -212,7 +212,7 @@ struct atkbd {
 
 	unsigned short id;
 	unsigned short keycode[ATKBD_KEYMAP_SIZE];
-	DEFINE_BITMAP(force_release_mask, ATKBD_KEYMAP_SIZE);
+	DECLARE_BITMAP(force_release_mask, ATKBD_KEYMAP_SIZE);
 	unsigned char set;
 	bool translated;
 	bool extra;

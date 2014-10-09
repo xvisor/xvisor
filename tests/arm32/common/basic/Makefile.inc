@@ -24,11 +24,7 @@
 # Include top-level configuration file if present
 -include $(build_dir)/.config
 
-ifdef CROSS_COMPILE
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
-else
-FW_CROSS_COMPILE=arm-none-eabi-
-endif
 FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
 FW_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
 FW_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
@@ -55,16 +51,19 @@ FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
 
 ifeq ($(board_arch),v5)
 FIRMWARE_OBJS=$(obj_dir)/arm_entry_v5.o \
+		$(obj_dir)/arm_cache_v5.o \
 		$(obj_dir)/arm_mmu_v5.o
 endif
 
 ifeq ($(board_arch),v6)
 FIRMWARE_OBJS=$(obj_dir)/arm_entry_v6.o \
+		$(obj_dir)/arm_cache_v6.o \
 		$(obj_dir)/arm_mmu_v6.o
 endif
 
 ifeq ($(board_arch),v7)
 FIRMWARE_OBJS=$(obj_dir)/arm_entry_v7.o \
+		$(obj_dir)/arm_cache_v7.o \
 		$(obj_dir)/arm_mmu_v7.o
 endif
 
@@ -113,6 +112,7 @@ FIRMWARE_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/arm_board.h \
                 $(common_dir)/arm_heap.h \
                 $(common_dir)/arm_inline_asm.h \
+                $(common_dir)/arm_cache.h \
                 $(common_dir)/arm_io.h \
                 $(common_dir)/arm_irq.h \
                 $(common_dir)/arm_mmu.h \

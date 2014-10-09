@@ -1,0 +1,160 @@
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "arm,versatile";
+	model = "versatilepb";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			model = "ARM926ej";
+			reg = <0>;
+		};
+	};
+
+	memory { 
+		device_type = "memory"; 
+		reg = <0x00000000 0x10000000>; /* 256 MB */
+	};
+
+	motherboard {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		amba {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "arm,amba-bus";
+
+			vic { /* Vectored Interrupt Controller */
+				device_type = "pic";
+				compatible = "arm,versatile-vic";
+				reg = <0x10140000 0x1000>;
+			};
+
+			sic { /* Secondary Interrupt Controller */
+				device_type = "pic";
+				compatible = "arm,versatile-sic";
+				reg = <0x10003000 0x1000>;
+				irq_start = <32>;
+				clear-mask = <0xFFFFFFFF>; /* By default mask all interrupts */
+				valid-mask = <0x000003FF>; /* Interrupts 0 to 8 routed via VIC irq 31 */
+				picen-mask = <0xFFD00000>; /* Interrupts 21 to 31 routed directly to VIC */
+				interrupts = <31>; /* Cascaded to vic */
+			};
+
+			sysreg { /* System Registers */
+		      		device_type = "sys";
+		      		compatible = "arm,versatile-sysreg";
+		      		reg = <0x10000000 0x1000>;
+			};
+
+			eth0 {
+				device_type = "nic";
+				compatible = "smc91x";
+				reg = <0x10010000 0x1000>;
+				interrupts = <25>;
+				switch = "br0";
+			};
+
+			clcd {
+	     	 		device_type = "fb";
+	      			compatible = "arm,pl110,versatile";
+	      			reg = <0x10120000 0x1000>;
+				interrupts = <16>;
+				use_dma = <1>;
+			};
+
+			sysctl: sysctl0 { /* System Controller */
+		      		device_type = "sys";
+		      		compatible = "arm,sp810";
+		      		reg = <0x101E0000 0x1000>;
+				clocks = <&refclk32khz>, <&refclk1mhz>;
+				clock-names = "refclk", "timclk", "apb_pclk";
+				#clock-cells = <1>;
+				clock-output-names = "timerclken0", "timerclken1", "timerclken2", "timerclken3";
+			};
+
+			timer01 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x101E2000 0x1000>;
+				interrupts = <4>;
+				clocks = <&sysctl 0>, <&sysctl 1>;
+				clock-names = "timclken1", "timclken2";
+			};
+
+			timer23 {
+		      		device_type = "timer";
+		      		compatible = "arm,sp804";
+		      		reg = <0x101E3000 0x1000>;
+				interrupts = <5>;
+				clocks = <&sysctl 2>, <&sysctl 3>;
+				clock-names = "timclken1", "timclken2";
+			};
+
+			SERIAL0: uart0 {
+		      		compatible = "arm,pl011";
+		      		reg = <0x101F1000 0x1000>;
+				clock-frequency = <24000000>;
+				interrupts = <12>;
+			};
+
+			RTC0: rtc0 {
+				device_type = "rtc";
+				compatible = "arm,pl031";
+				reg = <0x101E8000 0x1000>;
+				clock-frequency = <1>;
+				interrupts = <10>;
+			};
+
+			kmi0 { /* Keyboard */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x10006000 0x1000>;
+				interrupts = <35>;
+				clocks = <&refclk24mhz>;
+				clock-names = "KMIREFCLK";
+			};
+
+			kmi1 { /* Mouse */
+		      		device_type = "serio";
+		      		compatible = "ambakmi";
+		      		reg = <0x10007000 0x1000>;
+				interrupts = <36>;
+				clocks = <&refclk24mhz>;
+				clock-names = "KMIREFCLK";
+			};
+		};
+	};
+
+	refclk24mhz: refclk24mhz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "refclk24mhz";
+	};
+
+	refclk1mhz: refclk1mhz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <1000000>;
+		clock-output-names = "refclk1mhz";
+	};
+
+	refclk32khz: refclk32khz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "refclk32khz";
+	};
+};
+

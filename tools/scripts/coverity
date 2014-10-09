@@ -21,7 +21,7 @@ get_cross_compiler() {
 	"arm")
 		if [ "$2" = "generic-v8-defconfig" ]
 		then
-			CROSS_COMPILE_LIST="aarch64-linux-gnu- aarch64-elf-"
+			CROSS_COMPILE_LIST="aarch64-linux-gnu- aarch64-elf- aarch64-none-elf-"
 		else
 			CROSS_COMPILE_LIST="arm-unknown-linux-gnueabi- arm-none-linux-gnueabi- arm-linux-gnueabi-"
 		fi
@@ -102,11 +102,19 @@ do
 	# Build for all supported targets
 	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
 	do
+		# print error message on failure
+		trap 'echo build failed for $ARCH:$DEFCONFIG' EXIT
+
 		CROSS_COMPILE=`get_cross_compiler $ARCH $DEFCONFIG`
 		make clean
 		make ARCH=$ARCH $DEFCONFIG
 		cov-build --dir cov-int make CROSS_COMPILE=$CROSS_COMPILE -j 4
+
+		# cancel trap
+		trap - EXIT
 	done
 done
 
 tar cfz xvisor-coverity.all.`date --date now +%Y%m%d%H%M%S`.tgz cov-int
+
+echo "Coverity build file is ready"

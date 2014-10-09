@@ -81,19 +81,19 @@ _start:
 	add	r0, r0, r4
 	str	r5, [r0]
 
-	/* Hang if execution start is not 1 MB aligned */
+	/* Hang if execution start is not 4KB aligned */
 	mov	r0, r6
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12
 	cmp	r0, r6
-	blt	_start_hang
+	blt	.
 
-	/* Hang if execution end is not 1 MB aligned */
+	/* Hang if execution end is not 4KB aligned */
 	mov	r0, r7
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12
 	cmp	r0, r7
-	blt	_start_hang
+	blt	.
 
 	/* Zero-out bss section */
 	mov	r0, #0
@@ -117,13 +117,13 @@ _bss_zero:
 
 	/* First check for 4B alignment */
 	tst	r2, #0x3
-	bne	align_1m_boundary
+	bne	align_4k_boundary
 
 	/* Now check for FDT_MAGIC */
 	ldr	r0, [r2]
 	ldr	r1, __fdt_magic
 	cmp	r0, r1
-	bne	align_1m_boundary
+	bne	align_4k_boundary
 
 	/* Now get the dtb total-size */
 	ldrb	r0, [r2, #4]
@@ -137,7 +137,7 @@ _bss_zero:
 	/* Compare with max supported dtb size */
 	ldr	r1, __max_dtb_size
 	cmp	r0, r1
-	bgt	align_1m_boundary
+	bgt	align_4k_boundary
 
 	/* Overwrite the built-in fdt with the one passed */
 	ldr	r1, __builtin_dtb
@@ -154,11 +154,11 @@ dtb_save_loop:
 	subs	r0, r0, #4
 	bgt	dtb_save_loop
 
-align_1m_boundary:
-	/* Relocate code if load start is not 1MB aligned */
+align_4k_boundary:
+	/* Relocate code if load start is not 4KB aligned */
 	mov	r0, r4
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12
 	cmp	r0, r4
 	/* Skip relocation if already aligned */
 	beq	_start_mmu_init
@@ -177,8 +177,8 @@ align_1m_boundary:
 	 */
 	mov	r0, r4		 /* r0 -> load start */
 	mov	r1, r4
-	mov	r1, r1, lsr #20
-	mov	r1, r1, lsl #20	 /* r1 -> load start aligned to 1MB boundary */
+	mov	r1, r1, lsr #12
+	mov	r1, r1, lsl #12	 /* r1 -> load start aligned to 4KB boundary */
 	sub	r2, r5, r4	 /* r2 -> code size */
 	bl	_start_nextpc1
 _start_nextpc1:
@@ -188,8 +188,8 @@ _start_nextpc1:
 	bx	r5		 /* call _copy */
 	/* Update load start and load end */
 	mov	r0, r4
-	mov	r0, r0, lsr #20
-	mov	r0, r0, lsl #20  /* r0 -> load_start aligned to 1MB boundary */
+	mov	r0, r0, lsr #12
+	mov	r0, r0, lsl #12  /* r0 -> load_start aligned to 4KB boundary */
 	subs	r1, r4, r0	 /* r1 -> offset between load start and aligned address */
 	subs	r4, r4, r1	 /* r4 -> new load start */
 	subs	r5, r5, r1	 /* r5 -> new load end */
@@ -203,65 +203,53 @@ _start_nextpc1:
 	str	r5, [r0]
 
 _start_mmu_init:
-	ldr	r0, __tmpl1_mem
+	ldr	r0, __defl1_ttbl
 	sub	r0, r0, r6
 	add	r0, r0, r4
-	ldr	r1, __tmpl1_mem_addr
+	ldr	r1, __defl1_ttbl_addr
 	sub	r1, r1, r6
 	add	r1, r1, r4
 	str	r0, [r1]
-	/* r0 -> default Level1 Table base address */
-	mov	r1, #1
-	lsl	r1, #14		 /* r1 -> 16K */
-	mov	r2, #0
-	mov	r3, r0
 
-	/* Clear default Level1 Table */
-_start_mmu_tmpl1_clear:
-	str	r2, [r3]
-	add	r3, r3, #4
-	sub	r1, r1, #4
-	cmp	r1, #0
-	bgt	_start_mmu_tmpl1_clear
+	ldr	sp, __svc_stack_end
+	sub	sp, sp, r6
+	add	sp, sp, r4
 
-	/* Create entries in default Level1 Table
-	 * for execution & load addresses
-	 */
-	ldr	r3, __mmu_section_attr
-	/* r1 -> load entry start address */
-	mov	r1, r4		/* r4 -> load start address */
-	lsr	r1, #18 	/* r1 >> 20, r1 << 2 */
-	add	r1, r0, r1
-	/* Setup load entry */
-	orr	r2, r3, r4
-	str	r2, [r1]
-	/* r1 -> execute entry start address */
-	mov	r1, r6
-	lsr	r1, #18		/* r1 >> 20, r1 << 2 */
-	add	r1, r0, r1
-	/* r2 -> execute entry end address */
-	sub	r2, r7, r6
-	lsr	r2, #18		/* r2 >> 20, r2 << 2 */
-	add	r2, r1, r2
-	/* r5 -> temporary value */
-	mov	r5, #0
-_start_mmu_tmpl1_set:
-	orr	r5, r3, r4
-	str	r5, [r1]
-	lsr	r4, #20
-	add	r4, r4, #1
-	lsl	r4, #20
-	add	r1, r1, #4
-	cmp	r1, r2
-	blt	_start_mmu_tmpl1_set
+	mov	r0, r4
+	mov	r1, r5
+	mov	r2, r6
+	mov	r3, r7
+	bl	_setup_initial_ttbl
 	b	_start_secondary_nopen
+
+/*
+ * CMODE - Change processor mode
+ * \rs : the GPR having cpsr value
+ * \mode : target processor mode
+ *
+ * Please note we do *not* read cpsr here
+ * \rs is supposed to have cpsr before calling this
+ * This macro is called from performance critical paths
+ * (read exception entry/exit) and to allow optimizations
+ * we do *not* read cpsr in this macro and instead
+ * expect \rs to have cpsr before calling this.
+ */
+#if (__ARM_ARCH_VERSION__ < 6)
+.macro	CMODE rs mode
+	and	\rs, \rs, #~(CPSR_MODE_MASK)
+	orr	\rs, \rs, #\mode
+	msr	cpsr_c, \rs
+.endm
+#else
+.macro	CMODE rs mode
+	cps	#\mode
+.endm
+#endif
 
 #ifdef CONFIG_SMP
 	.align	3
 __start_secondary_pen_release:
 	.word	start_secondary_pen_release
-
-#define MPIDR_HWID_BITMASK	0xFFFFFF
 
 	/*
 	 * Secondary CPU startup code 
@@ -292,8 +280,17 @@ pen:	wfe
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary_nopen:
+	/*
+	 * Latest ARMv7 bootloaders will enter Xvisor in HYP-mode
+	 * if Virtualization extenstion is available as-per Linux
+	 * ARM32 booting protocol.
+	 *
+	 * For sanity we force-fully switch to SVC mode.
+	 */
+	CMODE	r0, CPSR_MODE_SUPERVISOR
+
 	/* Setup Translation Table Base Register 0 */
-	ldr	r0, __tmpl1_mem
+	ldr	r0, __defl1_ttbl
 	mcr	p15, 0, r0, c2, c0, 0
 
 	/* Setup Domain Control Register */
@@ -312,7 +309,7 @@ _start_secondary_nopen:
 	/* Jump to reset code */
 	ldr	pc, __reset
 
-_start_hang:
+	/* We should never reach here. */
 	b	.
 
 #if (__ARM_ARCH_VERSION__ < 6)
@@ -361,10 +358,10 @@ __copy_start:
 	.word _copy
 __copy_end:
 	.word _copy_end
-__tmpl1_mem_addr:
-	.word __tmpl1_mem
-__tmpl1_mem:
-	.word tmpl1_mem
+__defl1_ttbl_addr:
+	.word __defl1_ttbl
+__defl1_ttbl:
+	.word defl1_ttbl
 #if (__ARM_ARCH_VERSION__ < 6)
 	.globl _ifar
 _ifar:
@@ -372,30 +369,6 @@ _ifar:
 	.globl _abort_inst
 _abort_inst:
 	.word 0x0
-#endif
-
-/*
- * CMODE - Change processor mode
- * \rs : the GPR having cpsr value
- * \mode : target processor mode
- *
- * Please note we do *not* read cpsr here
- * \rs is supposed to have cpsr before calling this
- * This macro is called from performance critical paths
- * (read exception entry/exit) and to allow optimizations
- * we do *not* read cpsr in this macro and instead
- * expect \rs to have cpsr before calling this.
- */
-#if (__ARM_ARCH_VERSION__ < 6)
-.macro	CMODE rs mode
-	and	\rs, \rs, #~(CPSR_MODE_MASK)
-	orr	\rs, \rs, #\mode
-	msr	cpsr_c, \rs
-.endm
-#else
-.macro	CMODE rs mode
-	cps	#\mode
-.endm
 #endif
 
 	/*

@@ -181,8 +181,8 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 	}
 
 	bcm_host->clk = clk_get(dev, NULL);
-	if (!bcm_host->clk) {
-		rc = VMM_ENODEV;
+	if (VMM_IS_ERR(bcm_host->clk)) {
+		rc = VMM_PTR_ERR(bcm_host->clk);
 		goto free_reg;
 	}
 	bcm_host->clock_freq = clk_get_rate(bcm_host->clk);

@@ -1,0 +1,61 @@
+			Xvisor v0.2.5
+		(Last Commit: ------------)
+		(Release Date: 09-Oct-2014)
+
+In this release, we have new features, drivers, and emulators.
+
+New Features:
+ - Hub or repeater policy based netswitch
+ - Generic pluggable loadbalancer
+ - PCI emulation framework
+ - Linux-compatible red-black tree library
+ - Generic buddy allocator library
+ - Linux-compatible radix tree library
+ - Linux-compatible GPIO driver framework
+ - Linux-compatible Pinmux driver framework
+ - Linux-compatible device resource managment APIs
+ - Sampling interrupt processing time in scheduler
+ - Sampling idle time in scheduler
+ - Extended Host IRQ APIs
+
+New Commands:
+ - vcpu orphan_list and vcpu normal_list sub-commands
+ - vfs fdt_load and vfs run sub-commands
+
+New Drivers:
+ - Sun4i EMAC driver
+ - Sunxi pinctrl driver
+
+New Emulators:
+ - PCI shared memory device emulator
+ - i440fx PCI host controller emulator
+ - MC146818 RTC emulator
+ - i8259 PIC emulator
+ - Legacy Intel 8254 PIT emulator
+ - Intel LAPIC emulator
+
+ARM Ports:
+ - Full device-tree based generic board support
+ - PSCI based SMP operations for host
+ - Defterm early prints for early debugging
+ - Added PSCI v0.2 emulation all guests
+
+ARM 32-bit Port:
+ - Support booting on VExpress-A15 fast model
+ - Added i.MX6 Saberlite support
+ - Add separate VTLB zone for low exception vectors
+ - Faster map/unmap pages for VTLB emulation
+ - Avoid redundant TLB invalidates while managing VTLB
+
+ARM 32-bit with VE Port:
+ - Added Sun7i Cubieboard2 support
+ - Low-level context switching for normal VCPUs
+
+ARM 64-bit Port:
+ - Low-level context switching for normal VCPUs
+ - Trap data cache operation by set/way
+ - Optimized memcpy and memset implementation
+
+x86_64 Port:
+ - Able to boot coreboot BIOS as guest with FILO payload
+

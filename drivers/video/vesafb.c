@@ -207,8 +207,7 @@ static void vesafb_destroy(struct fb_info *info)
 {
 	fb_dealloc_cmap(&info->cmap);
 	if (info->screen_base)
-		vmm_host_memunmap((virtual_addr_t)info->screen_base, 
-				  info->screen_size);
+		vmm_host_memunmap((virtual_addr_t)info->screen_base);
 	release_mem_region(info->apertures->ranges[0].base, info->apertures->ranges[0].size);
 	framebuffer_release(info);
 }
@@ -541,8 +540,7 @@ static int vesafb_probe(struct vmm_device *dev,
 	return 0;
 err:
 	if (info->screen_base)
-		vmm_host_memunmap((virtual_addr_t)info->screen_base, 
-				  info->screen_size);
+		vmm_host_memunmap((virtual_addr_t)info->screen_base);
 	framebuffer_release(info);
 	release_mem_region(vesafb_fix.smem_start, size_total);
 	return err;
@@ -558,8 +556,7 @@ static int vesafb_remove(struct vmm_device *dev)
 	if (info->cmap.len)
 		fb_dealloc_cmap(&info->cmap);
 	if (info->screen_base)
-		vmm_host_memunmap((virtual_addr_t)info->screen_base, 
-				  info->screen_size);
+		vmm_host_memunmap((virtual_addr_t)info->screen_base);
 	framebuffer_release(info);
 	release_mem_region(vesafb_fix.smem_start, vesafb_fix.smem_len);
 

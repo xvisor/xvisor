@@ -42,8 +42,10 @@ static void cmd_module_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   module help\n");
 	vmm_cprintf(cdev, "   module list\n");
 	vmm_cprintf(cdev, "   module info <index>\n");
+#ifdef CONFIG_MODULES
 	vmm_cprintf(cdev, "   module load <phys_addr> <phys_size> (EXPERIMENTAL)\n");
 	vmm_cprintf(cdev, "   module unload <index>\n");
+#endif
 }
 
 static void cmd_module_list(struct vmm_chardev *cdev)
@@ -89,6 +91,8 @@ static int cmd_module_info(struct vmm_chardev *cdev, u32 index)
 	return VMM_OK;
 }
 
+#ifdef CONFIG_MODULES
+
 static int cmd_module_load(struct vmm_chardev *cdev, 
 			   physical_addr_t phys_addr,
 			   physical_size_t phys_size)
@@ -100,13 +104,13 @@ static int cmd_module_load(struct vmm_chardev *cdev,
 	mod_va = vmm_host_iomap(phys_addr, mod_sz);
 
 	if ((rc = vmm_modules_load(mod_va, mod_sz))) {
-		vmm_host_iounmap(mod_va, mod_sz);
+		vmm_host_iounmap(mod_va);
 		return rc;
 	} else {
 		vmm_cprintf(cdev, "Loaded module succesfully\n");
 	}
 
-	rc = vmm_host_iounmap(mod_va, mod_sz);
+	rc = vmm_host_iounmap(mod_va);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 		return rc;
@@ -139,11 +143,15 @@ static int cmd_module_unload(struct vmm_chardev *cdev, u32 index)
 	return rc;
 }
 
+#endif
+
 static int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int index;
+#ifdef CONFIG_MODULES
 	physical_addr_t addr;
 	physical_size_t size;
+#endif
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
 			cmd_module_usage(cdev);
@@ -160,6 +168,7 @@ static int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	if (strcmp(argv[1], "info") == 0) {
 		index = atoi(argv[2]);
 		return cmd_module_info(cdev, index);
+#ifdef CONFIG_MODULES
 	} else if (strcmp(argv[1], "load") == 0 && argc == 4) {
 		addr = (physical_addr_t)strtoull(argv[2], NULL, 0);
 		size = (physical_size_t)strtoull(argv[3], NULL, 0);
@@ -167,6 +176,7 @@ static int cmd_module_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "unload") == 0) {
 		index = atoi(argv[2]);
 		return cmd_module_unload(cdev, index);
+#endif
 	} else {
 		cmd_module_usage(cdev);
 		return VMM_EFAIL;

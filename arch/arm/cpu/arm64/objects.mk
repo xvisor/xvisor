@@ -27,7 +27,7 @@
 # testing for a specific architecture or later rather impossible.
 arch-$(CONFIG_ARMV8) += -mgeneral-regs-only -mlittle-endian
 
-cpu-cppflags+=-DTEXT_START=0x00000000
+cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-y) $(tune-y)
 cpu-asflags += $(arch-y) $(tune-y)
 cpu-ldflags +=
@@ -37,12 +37,15 @@ cpu-objs-y+= cpu_proc.o
 cpu-objs-y+= cpu_cache.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
-cpu-objs-y+= cpu_elf.o
+cpu-objs-y+= cpu_memcpy.o
+cpu-objs-y+= cpu_memset.o
+cpu-objs-$(CONFIG_MODULES)+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM64_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-$(CONFIG_SMP)+= cpu_locks.o
 cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_atomic64.o
 cpu-objs-y+= cpu_interrupts.o
+cpu-objs-y+= cpu_vcpu_switch.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_coproc.o
 cpu-objs-y+= cpu_vcpu_excep.o

@@ -18,8 +18,9 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
+# @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of rtc emulator objects
 # */
 
 emulators-objs-$(CONFIG_EMU_RTC_PL031)+= rtc/pl031.o
-
+emulators-objs-$(CONFIG_EMU_RTC_MC146818)+= rtc/mc146818rtc.o

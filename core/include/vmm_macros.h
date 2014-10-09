@@ -229,4 +229,10 @@
 #define size_to_order(x, order)		(((x) >> (order)) + \
 					 (((x) & order_mask(order)) ? 1:0))
 
+/**
+ * A trick to suppress uninitialized variable warning without generating any
+ * code
+ */
+#define uninitialized_var(x) x = x
+
 #endif /* __VMM_MACROS_H__ */

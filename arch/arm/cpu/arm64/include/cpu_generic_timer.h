@@ -25,6 +25,8 @@
 #define __CPU_GENERIC_TIMER_H__
 
 #include <vmm_types.h>
+#include <arch_barrier.h>
+#include <cpu_inline_asm.h>
 
 #define generic_timer_pcounter_read()	mrs(cntpct_el0)
 #define generic_timer_vcounter_read()	mrs(cntvct_el0)
@@ -155,5 +157,13 @@ static inline u64 generic_timer_reg_read64(int reg)
 
 	return val;
 }
+
+#define HAVE_GENERIC_TIMER_REGS_SAVE
+
+void generic_timer_regs_save(void *cntx);
+
+#define HAVE_GENERIC_TIMER_REGS_RESTORE
+
+void generic_timer_regs_restore(void *cntx);
 
 #endif	/* __CPU_GENERIC_TIMER_H__ */

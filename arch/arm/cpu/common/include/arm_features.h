@@ -23,7 +23,7 @@
 #ifndef _ARM_FEATURES_H__
 #define _ARM_FEATURES_H__
 
-/* CPUID related macors & defines */
+/* CPUID related macros & defines */
 #define ARM_CPUID_ARM1026     0x4106a262
 #define ARM_CPUID_ARM926      0x41069265
 #define ARM_CPUID_ARM946      0x41059461
@@ -46,6 +46,7 @@
 #define ARM_CPUID_ARM1136     0x4117b363
 #define ARM_CPUID_ARM1136_R2  0x4107b362
 #define ARM_CPUID_ARM11MPCORE 0x410fb022
+#define ARM_CPUID_CORTEXA7    0x410fc070
 #define ARM_CPUID_CORTEXA8    0x410fc080
 #define ARM_CPUID_CORTEXA9    0x410fc090
 #define ARM_CPUID_CORTEXA15   0x412fc0f1

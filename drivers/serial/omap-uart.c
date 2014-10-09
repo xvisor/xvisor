@@ -55,7 +55,7 @@ struct omap_uart_port {
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
-	u32 reg_align;
+	u32 reg_shift;
 	u32 irq;
 	u32 lcr;
 	u32 mcr;
@@ -64,10 +64,10 @@ struct omap_uart_port {
 	u32 efr;
 };
 
-#define omap_serial_in(reg) (vmm_in_8((u8 *)REG_##reg(base, reg_align))) 
-#define omap_serial_out(reg, val) vmm_out_8((u8 *)REG_##reg(base, reg_align), (val))
+#define omap_serial_in(reg) (vmm_in_8((u8 *)REG_##reg(base, 1 << reg_shift))) 
+#define omap_serial_out(reg, val) vmm_out_8((u8 *)REG_##reg(base, 1 << reg_shift), (val))
 
-bool omap_uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
+bool omap_uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_shift)
 {
 	if (omap_serial_in(UART_LSR) & UART_LSR_DR) {
 		return TRUE;
@@ -75,16 +75,16 @@ bool omap_uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_align)
 	return FALSE;
 }
 
-u8 omap_uart_lowlevel_getc(virtual_addr_t base, u32 reg_align)
+u8 omap_uart_lowlevel_getc(virtual_addr_t base, u32 reg_shift)
 {
-	while (!omap_uart_lowlevel_can_getc(base, reg_align));
+	while (!omap_uart_lowlevel_can_getc(base, reg_shift));
 
 	return (omap_serial_in(UART_RBR));
 }
 
 #define BOTH_EMPTY (UART_LSR_TEMT | UART_LSR_THRE)
 
-bool omap_uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
+bool omap_uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_shift)
 {
 	if ((omap_serial_in(UART_LSR) & BOTH_EMPTY) == BOTH_EMPTY) {
 		return TRUE;
@@ -92,14 +92,14 @@ bool omap_uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_align)
 	return FALSE;
 }
 
-void omap_uart_lowlevel_putc(virtual_addr_t base, u32 reg_align, u8 ch)
+void omap_uart_lowlevel_putc(virtual_addr_t base, u32 reg_shift, u8 ch)
 {
-	while (!omap_uart_lowlevel_can_putc(base, reg_align));
+	while (!omap_uart_lowlevel_can_putc(base, reg_shift));
 
 	omap_serial_out(UART_THR, ch);
 }
 
-void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_align, 
+void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift, 
 				u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
@@ -134,8 +134,8 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_align,
 
 #undef omap_serial_in
 #undef omap_serial_out
-#define omap_serial_in(port, reg) (vmm_in_8((u8 *)REG_##reg(port->base, port->reg_align))) 
-#define omap_serial_out(port, reg, val) vmm_out_8((u8 *)REG_##reg(port->base, port->reg_align), (val))
+#define omap_serial_in(port, reg) (vmm_in_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift))) 
+#define omap_serial_out(port, reg, val) vmm_out_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift), (val))
 
 void uart_configure_xonxoff(struct omap_uart_port *port)
 {
@@ -348,7 +348,7 @@ static u8 omap_uart_getc_sleepable(struct omap_uart_port *port)
 static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
 {
 	/* Wait until there is space in the FIFO */
-	if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
+	if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
 		/* Enable the TX interrupt */
 		port->ier |= UART_IER_THRI;
 		omap_serial_out(port, UART_IER, port->ier);
@@ -363,7 +363,7 @@ static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
 #endif
 
 static u32 omap_uart_read(struct vmm_chardev *cdev, 
-			  u8 *dest, u32 len, bool sleep)
+			  u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct omap_uart_port *port;
@@ -380,10 +380,10 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 		}
 	} else {
 		for(i = 0; i < len; i++) {
-			if (!omap_uart_lowlevel_can_getc(port->base, port->reg_align)) {
+			if (!omap_uart_lowlevel_can_getc(port->base, port->reg_shift)) {
 				break;
 			}
-			dest[i] = omap_uart_lowlevel_getc(port->base, port->reg_align);
+			dest[i] = omap_uart_lowlevel_getc(port->base, port->reg_shift);
 		}
 	}
 
@@ -391,7 +391,7 @@ static u32 omap_uart_read(struct vmm_chardev *cdev,
 }
 
 static u32 omap_uart_write(struct vmm_chardev *cdev, 
-			   u8 *src, u32 len, bool sleep)
+			   u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct omap_uart_port *port;
@@ -409,18 +409,18 @@ static u32 omap_uart_write(struct vmm_chardev *cdev,
 		}
 	} else {
 		for (i = 0; i < len; i++) {
-			if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
+			if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
 				break;
 			}
-			omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
+			omap_uart_lowlevel_putc(port->base, port->reg_shift, src[i]);
 		}
 	}
 #else
 	for (i = 0; i < len; i++) {
-		if (!omap_uart_lowlevel_can_putc(port->base, port->reg_align)) {
+		if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
 			break;
 		}
-		omap_uart_lowlevel_putc(port->base, port->reg_align, src[i]);
+		omap_uart_lowlevel_putc(port->base, port->reg_shift, src[i]);
 	}
 #endif
 
@@ -431,7 +431,6 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	u32 reg_offset;
 	struct omap_uart_port *port;
 	
 	port = vmm_zalloc(sizeof(struct omap_uart_port));
@@ -460,20 +459,14 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg_align",
-				 &port->reg_align)) {
-		port->reg_align = 1;
+	if (vmm_devtree_read_u32(dev->node, "reg-shift",
+				 &port->reg_shift)) {
+		port->reg_shift = 0;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg_offset",
-				 &reg_offset) == VMM_OK) {
-		port->base += reg_offset;
-	}
-
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
-		goto free_reg;
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
+		port->baudrate = 115200;
 	}
 
 	rc = vmm_devtree_clock_frequency(dev->node,
@@ -528,7 +521,7 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid omap_uart_devid_table[] = {
-	{ .type = "serial", .compatible = "st16654"},
+	{ .compatible = "st16654" },
 	{ /* end of list */ },
 };
 

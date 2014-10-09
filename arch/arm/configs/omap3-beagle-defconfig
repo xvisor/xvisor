@@ -53,7 +53,7 @@ CONFIG_BOARD_OMAP3=y
 # CONFIG_BOARD_SUN4I is not set
 # CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
-# CONFIG_BOARD_GENERIC_V8 is not set
+# CONFIG_BOARD_GENERIC is not set
 CONFIG_BOARD="omap3"
 
 #
@@ -83,7 +83,7 @@ CONFIG_OMAP=y
 #
 # General Configuration
 #
-MODULES=y
+CONFIG_MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 # CONFIG_BANNER_NONE is not set
 # CONFIG_BANNER_BANNER3 is not set
@@ -109,7 +109,6 @@ CONFIG_HEAP_BUDDY=y
 #
 # Scheduler Configuration
 #
-# CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y

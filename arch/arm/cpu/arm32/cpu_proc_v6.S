@@ -105,14 +105,28 @@ proc_mmu_switch:
  */
 	.globl proc_setup
 proc_setup:
+	mrc	p15, 0, r0, c0, c0, 0		@ Read Main ID register
+	and	r10, r0, #0xff000000		@ ARM?
+	teq	r10, #0x41000000
+	bne	arm_proc_setup_skip
+	lsl	r0, r0, #16
+	lsr	r0, r0, #20
+
+	ldr	r10, =0x00000b02		@ ARM11MP primary part number
+	teq	r0, r10
+	bne	arm_arm11mp_skip
 #ifdef CONFIG_SMP
-	mrc	p15, 0, r0, c1, c0, 1	@ Enable SMP/nAMP mode
+	mrc	p15, 0, r0, c1, c0, 1		@ Enable SMP/nAMP mode
 	nop
 	orr	r0, r0, #0x20
 	mcr	p15, 0, r0, c1, c0, 1
 	nop
 #endif
+	b	proc_specific_setup_done
+arm_arm11mp_skip:
+arm_proc_setup_skip:
 
+proc_specific_setup_done:
 	mov	r0, #0
 	mcr	p15, 0, r0, c7, c14, 0		@ clean+invalidate D cache
 	mcr	p15, 0, r0, c7, c5, 0		@ invalidate I cache
@@ -171,12 +185,23 @@ arch_smp_id:
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	/* SMP ID computation for:
+	mrc	p15, 0, r0, c0, c0, 0		@ Read Main ID register
+	and	r10, r0, #0xff000000		@ ARM?
+	teq	r10, #0x41000000
+	bne	arm_cpu_skip
+	lsl	r0, r0, #16
+	lsr	r0, r0, #20
+
+	/* SMP ID setup for:
 	 *   ARM11MP
 	 * MPIDR fields:
 	 *   Cluster ID = MPIDR[11:8]
 	 *   CPU ID = MPIDR[3:0]
 	 */
+	ldr	r10, =0x00000b02		@ ARM11MP primary part number
+	teq	r0, r10
+	bne	arm_cpu_skip
+arm_cpu_4bit_4bit:
 	mrc     p15, 0, r0, c0, c0, 5
 	mov	r1, r0
 	lsr	r1, r1, #8
@@ -184,6 +209,16 @@ proc_setup_smp_id:
 	lsl	r1, r1, #4
 	and	r0, r0, #0xF
 	orr	r0, r1, r0
+	b	setup_smp_id_check
+arm_cpu_skip:
+
+	/* SMP ID setup for:
+	 *   Unknown CPUs
+	 * MPIDR fields:
+	 *   RAZ
+	 */
+unknown_cpu:
+	mov	r0, #0
 
 setup_smp_id_check:
 	/* Ensure that SMP ID in r0

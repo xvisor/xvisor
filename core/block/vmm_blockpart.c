@@ -75,14 +75,14 @@ static u32 blockpart_count_work(void)
 static struct blockpart_work *blockpart_pop_work(void)
 {
 	irq_flags_t flags;
-	struct dlist *l;
 	struct blockpart_work *w = NULL;
 
 	vmm_spin_lock_irqsave(&bpctrl.work_list_lock, flags);
 
 	if (!list_empty(&bpctrl.work_list)) {
-		l = list_pop(&bpctrl.work_list);
-		w = list_entry(l, struct blockpart_work, head);
+		w = list_first_entry(&bpctrl.work_list,
+				     struct blockpart_work, head);
+		list_del(&w->head);
 		bpctrl.work_count--;
 	}
 
@@ -96,7 +96,6 @@ static void blockpart_add_work(enum blockpart_work_type type,
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct blockpart_work *w;
 
 	if (!bdev) {
@@ -106,8 +105,7 @@ static void blockpart_add_work(enum blockpart_work_type type,
 	vmm_spin_lock_irqsave(&bpctrl.work_list_lock, flags);
 
 	found = FALSE;
-	list_for_each(l, &bpctrl.work_list) {
-		w = list_entry(l, struct blockpart_work, head);
+	list_for_each_entry(w, &bpctrl.work_list, head) {
 		if ((w->type == type) && (w->bdev == bdev)) {
 			found = TRUE;
 			break;
@@ -130,9 +128,7 @@ static void blockpart_add_work(enum blockpart_work_type type,
 static void blockpart_del_work(enum blockpart_work_type type, 
 				struct vmm_blockdev *bdev)
 {
-	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct blockpart_work *w;
 
 	if (!bdev) {
@@ -141,18 +137,13 @@ static void blockpart_del_work(enum blockpart_work_type type,
 
 	vmm_spin_lock_irqsave(&bpctrl.work_list_lock, flags);
 
-	found = FALSE;
-	list_for_each(l, &bpctrl.work_list) {
-		w = list_entry(l, struct blockpart_work, head);
+	list_for_each_entry(w, &bpctrl.work_list, head) {
 		if ((w->type == type) && (w->bdev == bdev)) {
-			found = TRUE;
+			list_del(&w->head);
+			bpctrl.work_count--;
+			vmm_free(w);
 			break;
 		}
-	}
-	if (found) {
-		list_del(&w->head);
-		bpctrl.work_count--;
-		vmm_free(w);
 	}
 
 	vmm_spin_unlock_irqrestore(&bpctrl.work_list_lock, flags);
@@ -215,11 +206,11 @@ static void blockpart_signal_one_work(void)
 static void blockpart_signal_all_work(void)
 {
 	irq_flags_t flags;
-	struct dlist *l;
+	struct blockpart_work *w;
 
 	vmm_spin_lock_irqsave(&bpctrl.work_list_lock, flags);
 
-	list_for_each(l, &bpctrl.work_list) {
+	list_for_each_entry(w, &bpctrl.work_list, head) {
 		vmm_completion_complete(&bpctrl.work_avail);
 	}
 
@@ -270,7 +261,6 @@ int vmm_blockpart_manager_register(struct vmm_blockpart_manager *mngr)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_blockpart_manager *mngrt;
 
 	if (!mngr) {
@@ -282,8 +272,7 @@ int vmm_blockpart_manager_register(struct vmm_blockpart_manager *mngr)
 
 	vmm_spin_lock_irqsave(&bpctrl.mngr_list_lock, flags);
 
-	list_for_each(l, &bpctrl.mngr_list) {
-		mngrt = list_entry(l, struct vmm_blockpart_manager, head);
+	list_for_each_entry(mngrt, &bpctrl.mngr_list, head) {
 		if (mngrt->sign == mngr->sign) {
 			found = TRUE;
 			break;
@@ -314,7 +303,6 @@ int vmm_blockpart_manager_unregister(struct vmm_blockpart_manager *mngr)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_blockpart_manager *mngrt;
 
 	if (!mngr) {
@@ -330,8 +318,7 @@ int vmm_blockpart_manager_unregister(struct vmm_blockpart_manager *mngr)
 
 	mngrt = NULL;
 	found = FALSE;
-	list_for_each(l, &bpctrl.mngr_list) {
-		mngrt = list_entry(l, struct vmm_blockpart_manager, head);
+	list_for_each_entry(mngrt, &bpctrl.mngr_list, head) {
 		if (mngrt->sign == mngr->sign) {
 			found = TRUE;
 			break;
@@ -355,8 +342,7 @@ struct vmm_blockpart_manager *vmm_blockpart_manager_get(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_blockpart_manager *ret;
+	struct vmm_blockpart_manager *mngrt;
 
 	if (index < 0) {
 		return NULL;
@@ -364,11 +350,10 @@ struct vmm_blockpart_manager *vmm_blockpart_manager_get(int index)
 
 	vmm_spin_lock_irqsave(&bpctrl.mngr_list_lock, flags);
 
-	ret = NULL;
+	mngrt = NULL;
 	found = FALSE;
 
-	list_for_each(l, &bpctrl.mngr_list) {
-		ret = list_entry(l, struct vmm_blockpart_manager, head);
+	list_for_each_entry(mngrt, &bpctrl.mngr_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -382,7 +367,7 @@ struct vmm_blockpart_manager *vmm_blockpart_manager_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return mngrt;
 }
 VMM_EXPORT_SYMBOL(vmm_blockpart_manager_get);
 
@@ -390,11 +375,11 @@ u32 vmm_blockpart_manager_count(void)
 {
 	u32 retval = 0;
 	irq_flags_t flags;
-	struct dlist *l;
+	struct vmm_blockpart_manager *mngrt;
 
 	vmm_spin_lock_irqsave(&bpctrl.mngr_list_lock, flags);
 
-	list_for_each(l, &bpctrl.mngr_list) {
+	list_for_each_entry(mngrt, &bpctrl.mngr_list, head) {
 		retval++;
 	}
 

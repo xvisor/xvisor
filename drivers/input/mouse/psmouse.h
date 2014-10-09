@@ -1,6 +1,8 @@
 #ifndef _PSMOUSE_H
 #define _PSMOUSE_H
 
+#include <linux/module.h>
+
 #define PSMOUSE_CMD_SETSCALE11	0x00e6
 #define PSMOUSE_CMD_SETSCALE21	0x00e7
 #define PSMOUSE_CMD_SETRES	0x10e8
@@ -158,11 +160,7 @@ static struct psmouse_attribute psmouse_attr_##_name = {			\
 #endif
 
 #ifndef psmouse_fmt
-#if 0
 #define psmouse_fmt(fmt)	KBUILD_BASENAME ": " fmt
-#else
-#define psmouse_fmt(fmt)	VMM_MODNAME ": " fmt
-#endif
 #endif
 
 #define psmouse_dbg(psmouse, format, ...)		\

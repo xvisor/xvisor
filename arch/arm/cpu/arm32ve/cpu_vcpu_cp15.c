@@ -29,6 +29,7 @@
 #include <vmm_cache.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_cp15.h>
 
 #include <arm_features.h>
@@ -69,6 +70,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0;
 				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
@@ -114,6 +116,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 		case 0:
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* PCR: Power control register */
 				/* Read always zero. */
@@ -129,6 +132,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 				/* CBAR: Configuration Base Address Register */
 				*data = 0x1e000000;
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* CBAR: Configuration Base Address Register */
 				*data = 0x2c000000;
@@ -176,9 +180,10 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 14: /* DCCISW */
 			switch (opc2) {
 			case 2:
-				vmm_cpumask_setall(&cp15->dflush_needed);
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
 				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
-						      &cp15->dflush_needed);
+					&arm_priv(vcpu)->dflush_needed);
 				asm volatile("mcr p15, 0, %0, c7, c14, 2" 
 					: : "r" (data));
 				break;
@@ -189,9 +194,10 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 10: /* DCCSW */
 			switch (opc2) {
 			case 2:
-				vmm_cpumask_setall(&cp15->dflush_needed);
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
 				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
-						      &cp15->dflush_needed);
+					&arm_priv(vcpu)->dflush_needed);
 				asm volatile("mcr p15, 0, %0, c7, c10, 2" 
 					: : "r" (data));
 				break;
@@ -320,6 +326,7 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 		case 0:
 			switch (arm_cpuid(vcpu)) {
 			case ARM_CPUID_CORTEXA9:
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				/* Power Control Register */
 				/* Ignore writes. */;
@@ -342,77 +349,33 @@ bad_reg:
 	return FALSE;
 }
 
-void cpu_vcpu_cp15_regs_save(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_save(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
-	cp15->c0_cssel = read_csselr();
-	cp15->c1_sctlr = read_sctlr();
-	cp15->c1_cpacr = read_cpacr();
-	cp15->c2_ttbr0 = read_ttbr0_long();
-	cp15->c2_ttbr1 = read_ttbr1_long();
-	cp15->c2_ttbcr = read_ttbcr();
-	cp15->c3_dacr = read_dacr();
-	cp15->c5_ifsr = read_ifsr();
-	cp15->c5_dfsr = read_dfsr();
-	cp15->c5_aifsr = read_aifsr();
-	cp15->c5_adfsr = read_adfsr();
-	cp15->c6_ifar = read_ifar();
-	cp15->c6_dfar = read_dfar();
-	cp15->c7_par = read_par();
-	cp15->c7_par64 = read_par64();
-	cp15->c10_prrr = read_prrr();
-	cp15->c10_nmrr = read_nmrr();
-	cp15->c12_vbar = read_vbar();
-	cp15->c13_fcseidr = read_fcseidr();
-	cp15->c13_contextidr = read_contextidr();
-	cp15->c13_tls1 = read_tpidrurw();
-	cp15->c13_tls2 = read_tpidruro();
-	cp15->c13_tls3 = read_tpidrprw();
+	cpu_vcpu_cp15_regs_save(cp15);
 }
 
-void cpu_vcpu_cp15_regs_restore(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
 	write_vpidr(cp15->c0_midr);
 	write_vmpidr(cp15->c0_mpidr);
-	write_csselr(cp15->c0_cssel);
-	write_sctlr(cp15->c1_sctlr);
-	write_cpacr(cp15->c1_cpacr);
-	write_ttbr0_long(cp15->c2_ttbr0);
-	write_ttbr1_long(cp15->c2_ttbr1);
-	write_ttbcr(cp15->c2_ttbcr);
-	write_dacr(cp15->c3_dacr);
-	write_ifsr(cp15->c5_ifsr);
-	write_dfsr(cp15->c5_dfsr);
-	write_aifsr(cp15->c5_aifsr);
-	write_adfsr(cp15->c5_adfsr);
-	write_ifar(cp15->c6_ifar);
-	write_dfar(cp15->c6_dfar);
-	write_par(cp15->c7_par);
-	write_par64(cp15->c7_par64);
-	write_prrr(cp15->c10_prrr);
-	write_nmrr(cp15->c10_nmrr);
-	write_vbar(cp15->c12_vbar);
-	write_fcseidr(cp15->c13_fcseidr);
-	write_contextidr(cp15->c13_contextidr);
-	write_tpidrurw(cp15->c13_tls1);
-	write_tpidruro(cp15->c13_tls2);
-	write_tpidrprw(cp15->c13_tls3);
+
+	cpu_vcpu_cp15_regs_restore(cp15);
 
 	/* Check whether vcpu requires dcache to be flushed on
 	 * this host CPU. This is a consequence of doing dcache
 	 * operations by set/way.
 	 */
 	if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(), 
-					   &cp15->dflush_needed)) {
+					   &arm_priv(vcpu)->dflush_needed)) {
 		vmm_flush_cache_all();
 	}
 }
 
-void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
-			     struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp15_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 i;
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
@@ -583,6 +546,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c0_ccsid[1] = 0x200fe015;	/* 16k L1 icache. */
 		cp15->c1_sctlr = 0x00c50078;
 		break;
+	case ARM_CPUID_CORTEXA7:
 	case ARM_CPUID_CORTEXA15:
 		cp15->c0_midr = cpuid;
 		cp15->c0_mpidr = (1 << 31) | vcpu->subid;
@@ -607,6 +571,8 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c1_sctlr = 0x00c50078;
 		break;
 	default:
+		cp15->c0_midr = cpuid;
+		cp15->c0_mpidr = vcpu->subid;
 		break;
 	}
 
@@ -668,7 +634,7 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 	}
 
 	/* Clear the dcache flush needed mask */
-	vmm_cpumask_clear(&cp15->dflush_needed);
+	vmm_cpumask_clear(&arm_priv(vcpu)->dflush_needed);
 
 	return VMM_OK;
 }

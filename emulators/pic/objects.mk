@@ -18,9 +18,12 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
+# @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of pic emulator objects
 # */
 
 emulators-objs-$(CONFIG_EMU_PIC_GIC)+= pic/gic.o
 emulators-objs-$(CONFIG_EMU_PIC_PL190)+= pic/pl190.o
+emulators-objs-$(CONFIG_EMU_PIC_I8259)+= pic/i8259.o
+emulators-objs-$(CONFIG_EMU_PIC_LAPIC)+= pic/lapic.o
 

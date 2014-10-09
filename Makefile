@@ -24,7 +24,12 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 4
+RELEASE = 5
+
+# Select Make Options:
+# o  Do not use make's built-in rules and variables
+# o  Do not print "Entering directory ...";
+MAKEFLAGS += -rR --no-print-directory
 
 # Find out source & build directories
 src_dir=$(CURDIR)
@@ -57,7 +62,6 @@ export PROJECT_NAME = Xvisor (eXtensible Versatile hypervISOR)
 export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
 export CONFIG_DIR=$(build_dir)/tmpconf
 export CONFIG_FILE=$(build_dir)/.config
-export DEPENDENCY_FILE=$(build_dir)/.deps
 
 # Openconf settings
 export OPENCONF_PROJECT = $(PROJECT_NAME)
@@ -157,6 +161,10 @@ $(error Invalid make targets. Cannot use target modules with any other target.)
 endif
 endif
 
+define dynamic_flags
+-I$(shell dirname $(2)) -DVMM_MODNAME=$(subst -,_,$(shell basename $(1) .o))
+endef
+
 # Setup functions for compilation
 merge_objs = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (merge)     $(subst $(build_dir)/,,$(1))"; \
@@ -173,17 +181,17 @@ compile_cpp = $(V)mkdir -p `dirname $(1)`; \
 compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1); \
-	     $(cc) $(cflags) -I`dirname $(2)` -MM $(2) >> $(1)
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
-	     $(cc) $(cflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1); \
-	     $(as) $(asflags) -I`dirname $(2)` -MM $(2) >> $(1)
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
-	     $(as) $(asflags) -DVMM_MODNAME=\"$(subst .o,,$(shell basename $(1)))\" -I`dirname $<` -c $(2) -o $(1)
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
 	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
@@ -296,17 +304,12 @@ all-m+=$(emulators-m:.o=.xo)
 
 # Default rule "make"
 .PHONY: all
-all: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(tools-y) $(targets-y)
+all: $(CONFIG_FILE) $(tools-y) $(targets-y)
 
 .PHONY: modules
-modules: $(CONFIG_FILE) $(DEPENDENCY_FILE) $(all-m)
+modules: $(CONFIG_FILE) $(all-m)
 
 dtbs: $(dtbs-y)
-
-# Generate and include built-in dependency rules
--include $(DEPENDENCY_FILE)
-$(DEPENDENCY_FILE): $(CONFIG_FILE) $(deps-y)
-	$(V)cat $(deps-y) > $(DEPENDENCY_FILE)
 
 # Include additional rules for tools
 include $(tools_dir)/rules.mk
@@ -376,6 +379,11 @@ $(build_dir)/%.o: $(build_dir)/%.c
 
 $(build_dir)/%.xo: $(build_dir)/%.o
 	$(call copy_file,$@,$^)
+
+# Include built-in and module objects dependency files
+# Dependency files should only be included after all Makefile rules
+$(deps-y): $(CONFIG_FILE)
+-include $(deps-y)
 
 # Rule for "make clean"
 .PHONY: clean

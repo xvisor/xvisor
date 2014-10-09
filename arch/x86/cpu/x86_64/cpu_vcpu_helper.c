@@ -79,9 +79,9 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 			switch (funcs) {
 			case CPUID_BASE_VENDORSTRING:
 				func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
-				func_response->resp_ebx = 0x41757468; /*htuA*/
-				func_response->resp_ecx = 0x63414d44; /*DMAc*/
-				func_response->resp_edx = 0x656e7469; /*itne*/
+				func_response->resp_ebx = 0x68747541; /* 41757468; htuA*/
+				func_response->resp_ecx = 0x444d4163; /* 63414d44; DMAc*/
+				func_response->resp_edx = 0x69746e65; /* 656e7469; itne*/
 				break;
 
 			case CPUID_BASE_FEATURES:
@@ -162,6 +162,13 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				       ".1  ", 4);
 				break;
 
+			case CPUID_EXTENDED_BRANDSTRINGEND:
+				memset((void *)&func_response->resp_eax, 0, 4);
+				memset((void *)&func_response->resp_ebx, 0, 4);
+				memset((void *)&func_response->resp_ecx, 0, 4);
+				memset((void *)&func_response->resp_edx, 0, 4);
+				break;
+
 			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
 				/* FIXME: Write where whatever Qemu spits out */
 				break;
@@ -224,6 +231,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 			if (!vcpu->arch_priv)
 				return VMM_EFAIL;
+
+			INIT_SPIN_LOCK(&x86_vcpu_priv(vcpu)->lock);
 
 			init_cpu_capabilities(cpuid, vcpu);
 
@@ -293,17 +302,17 @@ void arch_vcpu_preempt_orphan(void)
 
 static void __dump_vcpu_regs(struct vmm_chardev *cdev, arch_regs_t *regs)
 {
-	vmm_cprintf(cdev, "rax: %lx rbx: %lx rcx: %lx rdx: %lx\n", 
+	vmm_cprintf(cdev, "RAX: 0x%08lx RBX: 0x%08lx RCX: 0x%08lx RDX: 0x%08lx\n", 
 		    regs->rax, regs->rbx, regs->rcx, regs->rdx);
-	vmm_cprintf(cdev, "rdi: %lx rsi: %lx rbp: %lx r8 : %lx\n",
+	vmm_cprintf(cdev, "RDI: 0x%08lx RSI: 0x%08lx RBP: 0x%08lx R08: 0x%08lx\n",
 		    regs->rdi, regs->rsi, regs->rbp, regs->r8);
-	vmm_cprintf(cdev, "r9 : %lx r10: %lx r11: %lx r12: %lx\n", 
+	vmm_cprintf(cdev, "R09: 0x%08lx R10: 0x%08lx R11: 0x%08lx R12: 0x%08lx\n", 
 		    regs->r9, regs->r10, regs->r11, regs->r12);
-	vmm_cprintf(cdev, "r13: %lx r14: %lx r15: %lx\n", 
-		    regs->r13, regs->r14, regs->r15);
-	vmm_cprintf(cdev, "rip: %lx rsp: %lx rflags: %lx hwec: %lx\n", 
-		    regs->rip, regs->rsp, regs->rflags, regs->hw_err_code);
-	vmm_cprintf(cdev, "ss: %lx cs: %lx\n", 
+	vmm_cprintf(cdev, "R13: 0x%08lx R14: 0x%08lx R15: 0x%08lx RIP: 0x%08lx\n", 
+		    regs->r13, regs->r14, regs->r15, regs->rip);
+	vmm_cprintf(cdev, "RSP: 0x%08lx RFLAGS: 0x%08lx HW-ERR: 0x%08lx\n", 
+		    regs->rsp, regs->rflags, regs->hw_err_code);
+	vmm_cprintf(cdev, "SS: 0x%08lx CS: 0x%08lx\n", 
 		    regs->ss, regs->cs);
 }
 
@@ -322,7 +331,101 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	/* For now no arch specific stats */
 }
 
+static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
+{
+	int i;
+	u32 val;
+
+	vmm_printf("\nGUEST %s dump state:\n\n", context->assoc_vcpu->name);
+
+	vmm_printf("RAX: 0x%08x RBX: 0x%08x RCX: 0x%08x RDX: 0x%08x\n",
+		   context->vmcb->rax, context->g_regs[GUEST_REGS_RBX],
+		   context->g_regs[GUEST_REGS_RCX], context->g_regs[GUEST_REGS_RDX]);
+	vmm_printf("R08: 0x%08x R09: 0x%08x R10: 0x%08x R11: 0x%08x\n",
+		   context->g_regs[GUEST_REGS_R8], context->g_regs[GUEST_REGS_R9],
+		   context->g_regs[GUEST_REGS_R10], context->g_regs[GUEST_REGS_R10]);
+	vmm_printf("R12: 0x%08x R13: 0x%08x R14: 0x%08x R15: 0x%08x\n",
+		   context->g_regs[GUEST_REGS_R12], context->g_regs[GUEST_REGS_R13],
+		   context->g_regs[GUEST_REGS_R14], context->g_regs[GUEST_REGS_R15]);
+	vmm_printf("RSP: 0x%08x RBP: 0x%08x RDI: 0x%08x RSI: 0x%08x\n",
+		   context->vmcb->rsp, context->g_regs[GUEST_REGS_RBP],
+		   context->g_regs[GUEST_REGS_RDI], context->g_regs[GUEST_REGS_RSI]);
+	vmm_printf("RIP: 0x%08x\n\n", context->vmcb->rip);
+	vmm_printf("CR0: 0x%08x CR2: 0x%08x CR3: 0x%08x CR4: 0x%08x\n",
+		   context->vmcb->cr0, context->vmcb->cr2,
+		   context->vmcb->cr3, context->vmcb->cr4);
+
+	dump_seg_selector("CS ", &context->vmcb->cs);
+	dump_seg_selector("DS ", &context->vmcb->ds);
+	dump_seg_selector("ES ", &context->vmcb->es);
+	dump_seg_selector("SS ", &context->vmcb->ss);
+	dump_seg_selector("FS ", &context->vmcb->fs);
+	dump_seg_selector("GS ", &context->vmcb->gs);
+	dump_seg_selector("GDT", &context->vmcb->gdtr);
+	dump_seg_selector("LDT", &context->vmcb->ldtr);
+	dump_seg_selector("IDT", &context->vmcb->idtr);
+	dump_seg_selector("TR ", &context->vmcb->tr);
+
+
+	vmm_printf("RFLAGS: 0x%08x    [ ", context->vmcb->rflags);
+	for (i = 0; i < 32; i++) {
+		val = context->vmcb->rflags & (0x1UL << i);
+		switch(val) {
+		case X86_EFLAGS_CF:
+			vmm_printf("CF ");
+			break;
+		case X86_EFLAGS_PF:
+			vmm_printf("PF ");
+			break;
+		case X86_EFLAGS_AF:
+			vmm_printf("AF ");
+			break;
+		case X86_EFLAGS_ZF:
+			vmm_printf("ZF ");
+			break;
+		case X86_EFLAGS_SF:
+			vmm_printf("SF ");
+			break;
+		case X86_EFLAGS_TF:
+			vmm_printf("TF ");
+			break;
+		case X86_EFLAGS_IF:
+			vmm_printf("IF ");
+			break;
+		case X86_EFLAGS_DF:
+			vmm_printf("DF ");
+			break;
+		case X86_EFLAGS_OF:
+			vmm_printf("OF ");
+			break;
+		case X86_EFLAGS_NT:
+			vmm_printf("NT ");
+			break;
+		case X86_EFLAGS_RF:
+			vmm_printf("RF ");
+			break;
+		case X86_EFLAGS_VM:
+			vmm_printf("VM ");
+			break;
+		case X86_EFLAGS_AC:
+			vmm_printf("AC ");
+			break;
+		case X86_EFLAGS_VIF:
+			vmm_printf("VIF ");
+			break;
+		case X86_EFLAGS_VIP:
+			vmm_printf("VIP ");
+			break;
+		case X86_EFLAGS_ID:
+			vmm_printf("ID ");
+			break;
+		}
+	}
+	vmm_printf("]\n");
+}
+
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
 {
-	arch_guest_halt(context->assoc_vcpu->guest);
+	dump_guest_vcpu_state(context);
+	vmm_manager_guest_halt(context->assoc_vcpu->guest);
 }

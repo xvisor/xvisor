@@ -1,0 +1,22 @@
+
+/include/ "../imx31.dtsi"
+
+/ {
+	model = "kzm";
+
+	chosen {
+		console = &SERIAL1;
+	};
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x80000000 0x10000000>; /* 256 MB */
+	};
+
+	soc {
+		eth0 {
+			switch = "br0";
+		};
+	};
+};
+

@@ -33,7 +33,7 @@
 
 struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 {
-	struct dlist *l;
+	struct vmm_netport_xfer *xfer;
 	irq_flags_t flags;
 
 	if (!port) {
@@ -45,11 +45,13 @@ struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 		vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
 		return NULL;
 	}
-	l = list_pop(&port->free_list);
+	xfer = list_first_entry(&port->free_list,
+				struct vmm_netport_xfer, head);
+	list_del(&xfer->head);
 	port->free_count--;
 	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
 
-	return list_entry(l, struct vmm_netport_xfer, head);
+	return xfer;
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
 
@@ -142,7 +144,7 @@ int vmm_netport_register(struct vmm_netport *port)
 	port->dev.class = &netport_class;
 	vmm_devdrv_set_data(&port->dev, port);
 
-	rc = vmm_devdrv_class_register_device(&netport_class, &port->dev);
+	rc = vmm_devdrv_register_device(&port->dev);
 	if (rc != VMM_OK) {
 		vmm_printf("%s: Failed to register %s %s (error %d)\n",
 			   __func__, VMM_NETPORT_CLASS_NAME, port->name, rc);
@@ -170,7 +172,7 @@ int vmm_netport_unregister(struct vmm_netport *port)
 		return rc;
 	}
 
-	return vmm_devdrv_class_unregister_device(&netport_class, &port->dev);
+	return vmm_devdrv_unregister_device(&port->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_netport_unregister);
 

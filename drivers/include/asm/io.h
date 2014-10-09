@@ -1,6 +1,7 @@
 #ifndef _ASM_IO_H_
 #define _ASM_IO_H_
 
+#include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 
 /** I/O access functions (Assumed to be Little Endian) */
@@ -57,5 +58,41 @@
 #define out_be64			vmm_out_be64
 
 #define	__iomem
+
+#define	__raw_readw			readw
+#define	__raw_readl			readl
+#define	__raw_writew			writew
+#define	__raw_writel			writel
+
+#define ioread8(addr)			readb(addr)
+#define ioread16(addr)			readw(addr)
+#define ioread16be(addr)		__be16_to_cpu(__raw_readw(addr))
+#define ioread32(addr)			readl(addr)
+#define ioread32be(addr)		__be32_to_cpu(__raw_readl(addr))
+
+#define iowrite8(v, addr)		writeb((v), (addr))
+#define iowrite16(v, addr)		writew((v), (addr))
+#define iowrite16be(v, addr)		__raw_writew(__cpu_to_be16(v), addr)
+#define iowrite32(v, addr)		writel((v), (addr))
+#define iowrite32be(v, addr)		__raw_writel(__cpu_to_be32(v), addr)
+
+#define ioread8_rep(p, dst, count) \
+				insb((unsigned long) (p), (dst), (count))
+#define ioread16_rep(p, dst, count) \
+				insw((unsigned long) (p), (dst), (count))
+#define ioread32_rep(p, dst, count) \
+				insl((unsigned long) (p), (dst), (count))
+
+#define iowrite8_rep(p, src, count) \
+				outsb((unsigned long) (p), (src), (count))
+#define iowrite16_rep(p, src, count) \
+				outsw((unsigned long) (p), (src), (count))
+#define iowrite32_rep(p, src, count) \
+				outsl((unsigned long) (p), (src), (count))
+
+static inline void iounmap(void __iomem *addr)
+{
+	vmm_host_iounmap((virtual_addr_t) addr);
+}
 
 #endif /* _ASM_IO_H_ */

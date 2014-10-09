@@ -126,15 +126,13 @@ static int __virtio_bind_emulator(struct virtio_device *dev,
 
 static void __virtio_find_emulator(struct virtio_device *dev)
 {
-	struct dlist *l;
 	struct virtio_emulator *emu;
 
 	if (!dev || dev->emu) {
 		return;
 	}
 
-	list_for_each(l, &virtio_emu_list) {
-		emu = list_entry(l, struct virtio_emulator, node);
+	list_for_each_entry(emu, &virtio_emu_list, node) {
 		if (!__virtio_bind_emulator(dev, emu)) {
 			break;
 		}
@@ -143,15 +141,13 @@ static void __virtio_find_emulator(struct virtio_device *dev)
 
 static void __virtio_attach_emulator(struct virtio_emulator *emu)
 {
-	struct dlist *l;
 	struct virtio_device *dev;
 
 	if (!emu) {
 		return;
 	}
 
-	list_for_each(l, &virtio_dev_list) {
-		dev = list_entry(l, struct virtio_device, node);
+	list_for_each_entry(dev, &virtio_dev_list, node) {
 		if (!dev->emu) {
 			__virtio_bind_emulator(dev, emu);
 		}
@@ -221,7 +217,6 @@ VMM_EXPORT_SYMBOL(virtio_unregister_device);
 int virtio_register_emulator(struct virtio_emulator *emu)
 {
 	bool found;
-	struct dlist *l;
 	struct virtio_emulator *vemu;
 
 	if (!emu) {
@@ -233,8 +228,7 @@ int virtio_register_emulator(struct virtio_emulator *emu)
 
 	vmm_mutex_lock(&virtio_mutex);
 
-	list_for_each(l, &virtio_emu_list) {
-		vemu = list_entry(l, struct virtio_emulator, node);
+	list_for_each_entry(vemu, &virtio_emu_list, node) {
 		if (strcmp(vemu->name, emu->name) == 0) {
 			found = TRUE;
 			break;

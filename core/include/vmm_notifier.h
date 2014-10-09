@@ -72,7 +72,21 @@ struct vmm_notifier_block {
  */
 #define NOTIFY_STOP		(NOTIFY_OK|NOTIFY_STOP_MASK)
 
+/* Encapsulate (negative) errno value (in particular, NOTIFY_BAD <=> EPERM). */
+static inline int vmm_notifier_from_errno(int err)
+{
+	if (err)
+		return NOTIFY_STOP_MASK | (NOTIFY_OK - err);
 
+	return NOTIFY_OK;
+}
+
+/* Restore (negative) errno value from notify return value. */
+static inline int vmm_notifier_to_errno(int ret)
+{
+	ret &= ~NOTIFY_STOP_MASK;
+	return ret > NOTIFY_OK ? NOTIFY_OK - ret : 0;
+}
 
 /** Representation of an atoming notifier chain */
 struct vmm_atomic_notifier_chain {

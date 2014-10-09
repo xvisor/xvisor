@@ -38,7 +38,7 @@
 #define MODULE_DESC			"Telnet Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(NETSTACK_IPRIORITY + 1)
 #define	MODULE_INIT			daemon_telnetd_init
 #define	MODULE_EXIT			daemon_telnetd_exit
 
@@ -314,7 +314,7 @@ static u32 telnetd_dequeue_rx_buffer(u8 *dest, u32 len)
 }
 
 static u32 telnetd_chardev_write(struct vmm_chardev *cdev,
-				 u8 *src, u32 len, bool sleep)
+			u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	bool flush_needed = FALSE;
@@ -341,7 +341,7 @@ static u32 telnetd_chardev_write(struct vmm_chardev *cdev,
 }
 
 static u32 telnetd_chardev_read(struct vmm_chardev *cdev,
-				u8 *dest, u32 len, bool sleep)
+			u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	/* We have bug if read() called in non-sleepable context */
 	BUG_ON(!sleep);

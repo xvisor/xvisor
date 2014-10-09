@@ -28,6 +28,7 @@ clk-versatile-drv-y += clk-icst.o
 clk-versatile-drv-y += clk-integrator.o
 clk-versatile-drv-y += clk-impd1.o
 clk-versatile-drv-y += clk-sp810.o
+clk-versatile-drv-y += clk-versatile.o
 clk-versatile-drv-y += clk-realview.o
 clk-versatile-drv-y += clk-vexpress.o
 clk-versatile-drv-$(CONFIG_VEXPRESS_CONFIG) += clk-vexpress-osc.o

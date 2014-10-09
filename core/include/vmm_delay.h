@@ -25,20 +25,29 @@
 
 #include <vmm_types.h>
 
+/** Sleep for some microseconds */
+void vmm_usleep(unsigned long usecs);
+
+/** Sleep for some milliseconds */
+void vmm_msleep(unsigned long msecs);
+
+/** Sleep for some seconds */
+void vmm_ssleep(unsigned long secs);
+
 /** Emulate soft delay in-terms of microseconds */
-void vmm_udelay(u32 usecs);
+void vmm_udelay(unsigned long usecs);
 
 /** Emulate soft delay in-terms of milliseconds */
-void vmm_mdelay(u32 msecs);
+void vmm_mdelay(unsigned long msecs);
 
 /** Emulate soft delay in-terms of seconds */
-void vmm_sdelay(u32 secs);
+void vmm_sdelay(unsigned long secs);
 
 /** Get estimated speed of given host cpu in MHz */
-u32 vmm_delay_estimate_cpu_mhz(u32 cpu);
+unsigned long vmm_delay_estimate_cpu_mhz(u32 cpu);
 
 /** Get estimated speed of given host cpu in KHz */
-u32 vmm_delay_estimate_cpu_khz(u32 cpu);
+unsigned long vmm_delay_estimate_cpu_khz(u32 cpu);
 
 /** Recaliberate soft delay subsystem */
 void vmm_delay_recaliberate(void);

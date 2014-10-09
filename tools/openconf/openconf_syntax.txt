@@ -29,7 +29,7 @@ them. A single configuration option is defined like this:
 
 config MODVERSIONS
 	bool "Set version information on all module symbols"
-	depends on MODULES
+	depends on CONFIG_MODULES
 	help
 	  Usually, modules have to be recompiled whenever you switch to a new
 	  software.  ...
@@ -139,8 +139,8 @@ applicable everywhere (see syntax).
     .config doesn't exists yet.)
 
   - "modules"
-    This declares the symbol to be used as the MODULES symbol, which
-    enables the third modular state for all config symbols.
+    This declares the symbol to be used as the CONFIG_MODULES symbol,
+    which enables the third modular state for all config symbols.
 
   - "env"=<value>
     This imports the environment variable into Kconfig. It behaves like
@@ -219,20 +219,20 @@ must be true:
 - the child entry must become invisible, if the parent is set to 'n'
 - the child entry must only be visible, if the parent is visible
 
-config MODULES
+config CONFIG_MODULES
 	bool "Enable loadable module support"
 
 config MODVERSIONS
 	bool "Set version information on all module symbols"
-	depends on MODULES
+	depends on CONFIG_MODULES
 
 comment "module support disabled"
-	depends on !MODULES
+	depends on !CONFIG_MODULES
 
-MODVERSIONS directly depends on MODULES, this means it's only visible if
-MODULES is different from 'n'. The comment on the other hand is always
-visible when MODULES is visible (the (empty) dependency of MODULES is
-also part of the comment dependencies).
+MODVERSIONS directly depends on CONFIG_MODULES, this means it's only
+visible if CONFIG_MODULES is different from 'n'. The comment on the other
+hand is always visible when CONFIG_MODULES is visible (the (empty) dependency
+of CONFIG_MODULES is also part of the comment dependencies).
 
 
 Kconfig syntax

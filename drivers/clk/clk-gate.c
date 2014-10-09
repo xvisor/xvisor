@@ -1,38 +1,20 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-gate.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Gated clock implementation
- *
- * Adapted from linux/drivers/clk/clk-gate.c
- *
+/*
  * Copyright (C) 2010-2011 Canonical Ltd <jeremy.kerr@canonical.com>
  * Copyright (C) 2011-2012 Mike Turquette, Linaro Ltd <mturquette@linaro.org>
  *
- * The original source is licensed under GPL.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Gated clock implementation
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_modules.h>
-#include <libs/stringlib.h>
-#include <drv/clk-provider.h>
+#include <linux/clk-provider.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include <linux/err.h>
+#include <linux/string.h>
 
 /**
  * DOC: basic gatable clock which can gate and ungate it's ouput
@@ -69,7 +51,7 @@ static void clk_gate_endisable(struct clk_hw *hw, int enable)
 	set ^= enable;
 
 	if (gate->lock)
-		vmm_spin_lock_irqsave(gate->lock, flags);
+		spin_lock_irqsave(gate->lock, flags);
 
 	if (gate->flags & CLK_GATE_HIWORD_MASK) {
 		reg = BIT(gate->bit_idx + 16);
@@ -87,7 +69,7 @@ static void clk_gate_endisable(struct clk_hw *hw, int enable)
 	clk_writel(reg, gate->reg);
 
 	if (gate->lock)
-		vmm_spin_unlock_irqrestore(gate->lock, flags);
+		spin_unlock_irqrestore(gate->lock, flags);
 }
 
 static int clk_gate_enable(struct clk_hw *hw)
@@ -123,7 +105,7 @@ const struct clk_ops clk_gate_ops = {
 	.disable = clk_gate_disable,
 	.is_enabled = clk_gate_is_enabled,
 };
-VMM_EXPORT_SYMBOL_GPL(clk_gate_ops);
+EXPORT_SYMBOL_GPL(clk_gate_ops);
 
 /**
  * clk_register_gate - register a gate clock with the clock framework
@@ -136,10 +118,10 @@ VMM_EXPORT_SYMBOL_GPL(clk_gate_ops);
  * @clk_gate_flags: gate-specific flags for this clock
  * @lock: shared register lock for this clock
  */
-struct clk *clk_register_gate(struct vmm_device *dev, const char *name,
+struct clk *clk_register_gate(struct device *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		void __iomem *reg, u8 bit_idx,
-		u8 clk_gate_flags, vmm_spinlock_t *lock)
+		u8 clk_gate_flags, spinlock_t *lock)
 {
 	struct clk_gate *gate;
 	struct clk *clk;
@@ -147,16 +129,16 @@ struct clk *clk_register_gate(struct vmm_device *dev, const char *name,
 
 	if (clk_gate_flags & CLK_GATE_HIWORD_MASK) {
 		if (bit_idx > 16) {
-			vmm_printf("gate bit exceeds LOWORD field\n");
-			return NULL;
+			pr_err("gate bit exceeds LOWORD field\n");
+			return ERR_PTR(-EINVAL);
 		}
 	}
 
 	/* allocate the gate */
-	gate = vmm_zalloc(sizeof(struct clk_gate));
+	gate = kzalloc(sizeof(struct clk_gate), GFP_KERNEL);
 	if (!gate) {
-		vmm_printf("%s: could not allocate gated clk\n", __func__);
-		return NULL;
+		pr_err("%s: could not allocate gated clk\n", __func__);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	init.name = name;
@@ -174,9 +156,9 @@ struct clk *clk_register_gate(struct vmm_device *dev, const char *name,
 
 	clk = clk_register(dev, &gate->hw);
 
-	if (!clk)
-		vmm_free(gate);
+	if (IS_ERR(clk))
+		kfree(gate);
 
 	return clk;
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_gate);
+EXPORT_SYMBOL_GPL(clk_register_gate);

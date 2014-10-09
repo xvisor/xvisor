@@ -379,7 +379,7 @@ static int vtemu_key_event(struct input_handler *ihnd,
 }
 
 static u32 vtemu_read(struct vmm_chardev *cdev,
-			u8 *dest, u32 len, bool sleep)
+		      u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct vtemu *v = cdev->priv;
@@ -948,7 +948,7 @@ unhandled:
 }
 
 static u32 vtemu_write(struct vmm_chardev *cdev,
-			 u8 *src, u32 len, bool sleep)
+		       u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	int rc;
 	u32 i;

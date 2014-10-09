@@ -21,6 +21,7 @@
 # @brief list of driver objects
 # */
 
+drivers-objs-$(CONFIG_CLKDEV_LOOKUP) += clk/clk-devres.o
 drivers-objs-$(CONFIG_CLKDEV_LOOKUP) += clk/clkdev.o
 drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk.o
 drivers-objs-$(CONFIG_COMMON_CLK) += clk/clk-divider.o

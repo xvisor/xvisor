@@ -107,4 +107,10 @@ void *memchr(const void *s, int c, size_t n);
 
 char *skip_spaces(const char *str);
 
+size_t strspn(const char* s, const char* accept);
+
+size_t strcspn(const char *s, const char *reject);
+
+char* strtok_r(char *str, const char *delim, char **context);
+
 #endif /* __STRINGLIB_H__ */

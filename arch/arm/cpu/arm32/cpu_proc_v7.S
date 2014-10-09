@@ -108,23 +108,10 @@ proc_mmu_switch:
  */
 	.globl proc_setup
 proc_setup:
-#ifdef CONFIG_SMP
-#if defined(CONFIG_CPU_CORTEX_A9)
-	mov	r10, #(1 << 0)			@ TLB ops broadcasting
-#endif
-	mrc	p15, 0, r0, c1, c0, 1
-#if 0
-	ALT_UP(mov	r0, #(1 << 6))		@ fake it for UP
-#endif
-	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
-	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
-	orreq	r0, r0, r10			@ Enable CPU-specific SMP bits
-	mcreq	p15, 0, r0, c1, c0, 1
-#endif
 	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
 	and	r10, r0, #0xff000000		@ ARM?
 	teq	r10, #0x41000000
-	bne	3f
+	bne	arm_proc_setup_skip
 	and	r5, r0, #0x00f00000		@ variant
 	and	r6, r0, #0x0000000f		@ revision
 	orr	r6, r6, r5, lsr #20-4		@ combine variant and revision
@@ -133,7 +120,7 @@ proc_setup:
 	/* Cortex-A8 Errata */
 	ldr	r10, =0x00000c08		@ Cortex-A8 primary part number
 	teq	r0, r10
-	bne	2f
+	bne	arm_cortex_a8_skip
 #ifdef CONFIG_ARM_ERRATA_430973
 	teq	r5, #0x00100000			@ only present in r1p*
 	mrceq	p15, 0, r10, c1, c0, 1		@ read aux control register
@@ -154,12 +141,21 @@ proc_setup:
 	orreq	r10, r10, #(1 << 22)		@ set the Write Allocate disable bit
 	mcreq	p15, 1, r10, c9, c0, 2		@ write the L2 cache aux ctrl register
 #endif
-	b	3f
+	b	proc_specific_setup_done
+arm_cortex_a8_skip:
 
 	/* Cortex-A9 Errata */
-2:	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
+	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
 	teq	r0, r10
-	bne	3f
+	bne	arm_cortex_a9_skip
+#ifdef CONFIG_SMP
+	mov	r10, #(1 << 0)			@ TLB ops broadcasting
+	mrc	p15, 0, r0, c1, c0, 1
+	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
+	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
+	orreq	r0, r0, r10			@ Enable CPU-specific SMP bits
+	mcreq	p15, 0, r0, c1, c0, 1
+#endif
 #ifdef CONFIG_ARM_ERRATA_742230
 	cmp	r6, #0x22			@ only present up to r2p2
 	mrcle	p15, 0, r10, c15, c0, 1		@ read diagnostic register
@@ -186,10 +182,34 @@ proc_setup:
 	mrclt	p15, 0, r10, c15, c0, 1		@ read diagnostic register
 	orrlt	r10, r10, #1 << 11		@ set bit #11
 	mcrlt	p15, 0, r10, c15, c0, 1		@ write diagnostic register
-1:
 #endif
+	b	proc_specific_setup_done
+arm_cortex_a9_skip:
 
-3:	mov	r10, #0
+	/* Cortex-A15 Errata */
+	ldr	r10, =0x00000c0f		@ Cortex-A15 primary part number
+	teq	r0, r10
+	bne	arm_cortex_a15_skip
+#ifdef CONFIG_SMP
+	mov	r10, #0
+	mrc	p15, 0, r0, c1, c0, 1
+	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
+	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
+	orreq	r0, r0, r10			@ Enable CPU-specific SMP bits
+	mcreq	p15, 0, r0, c1, c0, 1
+#endif
+#ifdef CONFIG_ARM_ERRATA_773022
+	cmp	r6, #0x4			@ only present up to r0p4
+	mrcle	p15, 0, r10, c1, c0, 1		@ read aux control register
+	orrle	r10, r10, #1 << 1		@ disable loop buffer
+	mcrle	p15, 0, r10, c1, c0, 1		@ write aux control register
+#endif
+arm_cortex_a15_skip:
+
+arm_proc_setup_skip:
+
+proc_specific_setup_done:
+	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
 	dsb
 
@@ -238,11 +258,15 @@ proc_setup_smp_id:
 
 	/* SMP ID setup for:
 	 *   Cortex-A9
+	 *   Cortex-A15
 	 * MPIDR fields:
 	 *   Cluster ID = MPIDR[11:8]
 	 *   CPU ID = MPIDR[1:0]
 	 */
 	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
+	teq	r0, r10
+	beq	arm_cpu_4bit_2bit
+	ldr	r10, =0x00000c0f		@ Cortex-A15 primary part number
 	teq	r0, r10
 	bne	arm_cpu_skip
 arm_cpu_4bit_2bit:
@@ -256,8 +280,14 @@ arm_cpu_4bit_2bit:
 	b	setup_smp_id_check
 arm_cpu_skip:
 
-setup_smp_id_hang:
-	b	.
+	/* SMP ID setup for:
+	 *   Unknown CPUs
+	 * MPIDR fields:
+	 *   CPU ID = MPIDR[7:0]
+	 */
+unknown_cpu:
+	mrc     p15, 0, r0, c0, c0, 5
+	and	r0, r0, #0xFF
 
 setup_smp_id_check:
 	/* Ensure that SMP ID in r0

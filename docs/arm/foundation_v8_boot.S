@@ -92,6 +92,8 @@ __gic_cpu_init:
 	.align 3
 __gentimer_freq:
 	.dword GENTIMER_FREQ
+__uart_base:
+	.dword UART_BASE
 __gic_dist_base:
 	.dword GIC_DIST_BASE
 __gic_cpu_base:
@@ -150,6 +152,15 @@ __secondary_spin:
 __secondary_spin_code_end:
 
 __secondary_spin_skip:
+
+	/* UART initialisation (38400 8N1) */
+	ldr	x4, __uart_base		/* UART base */
+	mov	w5, #0x10		/* ibrd */
+	str	w5, [x4, #0x24]
+	mov	w5, #0xc300
+	orr	w5, w5, #0x0001		/* cr */
+	str	w5, [x4, #0x30]
+
 #ifdef DTB
 	/* if dtb provided load the address where we placed it */
 	ldr	x0, __dtb_addr

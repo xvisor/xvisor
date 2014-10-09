@@ -1,39 +1,20 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-fixed-rate.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Fixed rate clock implementation
- *
- * Adapted from linux/drivers/clk/clk-fixed-rate.c
- *
+/*
  * Copyright (C) 2010-2011 Canonical Ltd <jeremy.kerr@canonical.com>
  * Copyright (C) 2011-2012 Mike Turquette, Linaro Ltd <mturquette@linaro.org>
  *
- * The original source is licensed under GPL.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Fixed rate clock implementation
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_stdio.h>
-#include <vmm_devtree.h>
-#include <vmm_modules.h>
-#include <drv/clk-provider.h>
+#include <linux/clk-provider.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include <linux/err.h>
+#include <linux/of.h>
 
 /*
  * DOC: basic fixed-rate clock that cannot gate
@@ -53,32 +34,41 @@ static unsigned long clk_fixed_rate_recalc_rate(struct clk_hw *hw,
 	return to_clk_fixed_rate(hw)->fixed_rate;
 }
 
+static unsigned long clk_fixed_rate_recalc_accuracy(struct clk_hw *hw,
+		unsigned long parent_accuracy)
+{
+	return to_clk_fixed_rate(hw)->fixed_accuracy;
+}
+
 const struct clk_ops clk_fixed_rate_ops = {
 	.recalc_rate = clk_fixed_rate_recalc_rate,
+	.recalc_accuracy = clk_fixed_rate_recalc_accuracy,
 };
-VMM_EXPORT_SYMBOL_GPL(clk_fixed_rate_ops);
+EXPORT_SYMBOL_GPL(clk_fixed_rate_ops);
 
 /**
- * clk_register_fixed_rate - register fixed-rate clock with the clock framework
+ * clk_register_fixed_rate_with_accuracy - register fixed-rate clock with the
+ *					   clock framework
  * @dev: device that is registering this clock
  * @name: name of this clock
  * @parent_name: name of clock's parent
  * @flags: framework-specific flags
  * @fixed_rate: non-adjustable clock rate
+ * @fixed_accuracy: non-adjustable clock rate
  */
-struct clk *clk_register_fixed_rate(struct vmm_device *dev, const char *name,
-		const char *parent_name, unsigned long flags,
-		unsigned long fixed_rate)
+struct clk *clk_register_fixed_rate_with_accuracy(struct device *dev,
+		const char *name, const char *parent_name, unsigned long flags,
+		unsigned long fixed_rate, unsigned long fixed_accuracy)
 {
 	struct clk_fixed_rate *fixed;
 	struct clk *clk;
 	struct clk_init_data init;
 
 	/* allocate fixed-rate clock */
-	fixed = vmm_zalloc(sizeof(struct clk_fixed_rate));
+	fixed = kzalloc(sizeof(struct clk_fixed_rate), GFP_KERNEL);
 	if (!fixed) {
-		vmm_printf("%s: could not allocate fixed clk\n", __func__);
-		return NULL;
+		pr_err("%s: could not allocate fixed clk\n", __func__);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	init.name = name;
@@ -89,37 +79,59 @@ struct clk *clk_register_fixed_rate(struct vmm_device *dev, const char *name,
 
 	/* struct clk_fixed_rate assignments */
 	fixed->fixed_rate = fixed_rate;
+	fixed->fixed_accuracy = fixed_accuracy;
 	fixed->hw.init = &init;
 
 	/* register the clock */
 	clk = clk_register(dev, &fixed->hw);
-
-	if (!clk)
-		vmm_free(fixed);
+	if (IS_ERR(clk))
+		kfree(fixed);
 
 	return clk;
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_fixed_rate);
+EXPORT_SYMBOL_GPL(clk_register_fixed_rate_with_accuracy);
 
+/**
+ * clk_register_fixed_rate - register fixed-rate clock with the clock framework
+ * @dev: device that is registering this clock
+ * @name: name of this clock
+ * @parent_name: name of clock's parent
+ * @flags: framework-specific flags
+ * @fixed_rate: non-adjustable clock rate
+ */
+struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
+		const char *parent_name, unsigned long flags,
+		unsigned long fixed_rate)
+{
+	return clk_register_fixed_rate_with_accuracy(dev, name, parent_name,
+						     flags, fixed_rate, 0);
+}
+EXPORT_SYMBOL_GPL(clk_register_fixed_rate);
+
+#ifdef CONFIG_OF
 /**
  * of_fixed_clk_setup() - Setup function for simple fixed rate clock
  */
-void of_fixed_clk_setup(struct vmm_devtree_node *node)
+void of_fixed_clk_setup(struct device_node *node)
 {
 	struct clk *clk;
 	const char *clk_name = node->name;
 	u32 rate;
+	u32 accuracy = 0;
 
-	if (vmm_devtree_read_u32(node, "clock-frequency", &rate))
+	if (of_property_read_u32(node, "clock-frequency", &rate))
 		return;
 
-	vmm_devtree_read_string(node, "clock-output-names", &clk_name);
+	of_property_read_u32(node, "clock-accuracy", &accuracy);
 
-	clk = clk_register_fixed_rate(NULL, clk_name, NULL, CLK_IS_ROOT, rate);
-	if (clk)
+	of_property_read_string(node, "clock-output-names", &clk_name);
+
+	clk = clk_register_fixed_rate_with_accuracy(NULL, clk_name, NULL,
+						    CLK_IS_ROOT, rate,
+						    accuracy);
+	if (!IS_ERR(clk))
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 }
-VMM_EXPORT_SYMBOL_GPL(of_fixed_clk_setup);
-
+EXPORT_SYMBOL_GPL(of_fixed_clk_setup);
 CLK_OF_DECLARE(fixed_clk, "fixed-clock", of_fixed_clk_setup);
-
+#endif

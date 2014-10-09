@@ -126,6 +126,10 @@ static inline u32 vmm_clocksource_hz2mult(u32 hz, u32 shift)
 	return (u32)tmp;
 }
 
+/** Convert delta cycles to nsecs */
+#define vmm_clocksource_delta2nsecs(cycles, mult, shift) \
+		(((cycles) * (mult)) >> (shift)) 
+
 /** Get current value from nanosecond counter (nanoseconds elapsed) */
 u64 vmm_timecounter_read(struct vmm_timecounter *tc);
 

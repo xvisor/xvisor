@@ -125,7 +125,7 @@ static int cmd_memory_dump(struct vmm_chardev *cdev,
 	while (w < wcnt) {
 		if (page_pa != (addr - (addr & VMM_PAGE_MASK))) {
 			if (page_mapped) {
-				rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+				rc = vmm_host_iounmap(page_va);
 				if (rc) {
 					vmm_cprintf(cdev, 
 					"Error: Failed to unmap memory.\n");
@@ -166,7 +166,7 @@ static int cmd_memory_dump(struct vmm_chardev *cdev,
 	}
 	vmm_cprintf(cdev, "\n");
 	if (page_mapped) {
-		rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+		rc = vmm_host_iounmap(page_va);
 		if (rc) {
 			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 			return rc;
@@ -201,7 +201,7 @@ static int cmd_memory_crc32(struct vmm_chardev *cdev,
 	while (w < wcnt) {
 		if (page_pa != (addr - (addr & VMM_PAGE_MASK))) {
 			if (page_mapped) {
-				rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+				rc = vmm_host_iounmap(page_va);
 				if (rc) {
 					vmm_cprintf(cdev, 
 					"Error: Failed to unmap memory.\n");
@@ -221,7 +221,7 @@ static int cmd_memory_crc32(struct vmm_chardev *cdev,
 	crc = crc ^ ~0U;
 	vmm_cprintf(cdev, "%08x\n", crc);
 	if (page_mapped) {
-		rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+		rc = vmm_host_iounmap(page_va);
 		if (rc) {
 			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 			return rc;
@@ -247,7 +247,7 @@ static int cmd_memory_modify(struct vmm_chardev *cdev,
 	while (w < valc) {
 		if (page_pa != (addr - (addr & VMM_PAGE_MASK))) {
 			if (page_mapped) {
-				rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+				rc = vmm_host_iounmap(page_va);
 				if (rc) {
 					vmm_cprintf(cdev, 
 					"Error: Failed to unmap memory.\n");
@@ -280,7 +280,7 @@ static int cmd_memory_modify(struct vmm_chardev *cdev,
 		w++;
 	}
 	if (page_mapped) {
-		rc = vmm_host_iounmap(page_va, VMM_PAGE_SIZE);
+		rc = vmm_host_iounmap(page_va);
 		if (rc) {
 			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 			return rc;
@@ -308,7 +308,7 @@ static int cmd_memory_copy(struct vmm_chardev *cdev,
 	while (b < bcnt) {
 		if (dpage_pa != (daddr - (daddr & VMM_PAGE_MASK))) {
 			if (dpage_mapped) {
-				rc = vmm_host_iounmap(dpage_va, VMM_PAGE_SIZE);
+				rc = vmm_host_iounmap(dpage_va);
 				if (rc) {
 					vmm_cprintf(cdev, 
 					"Error: Failed to unmap memory.\n");
@@ -323,7 +323,7 @@ static int cmd_memory_copy(struct vmm_chardev *cdev,
 		dva = dpage_va + (virtual_addr_t)(daddr & VMM_PAGE_MASK);
 		if (spage_pa != (saddr - (saddr & VMM_PAGE_MASK))) {
 			if (spage_mapped) {
-				rc = vmm_host_iounmap(spage_va, VMM_PAGE_SIZE);
+				rc = vmm_host_iounmap(spage_va);
 				if (rc) {
 					vmm_cprintf(cdev, 
 					"Error: Failed to unmap memory.\n");
@@ -349,7 +349,7 @@ static int cmd_memory_copy(struct vmm_chardev *cdev,
 	}
 	vmm_cprintf(cdev, "Copied %d (0x%x) bytes.\n", b, b);
 	if (dpage_mapped) {
-		rc = vmm_host_iounmap(dpage_va, VMM_PAGE_SIZE);
+		rc = vmm_host_iounmap(dpage_va);
 		if (rc) {
 			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 			return rc;
@@ -357,7 +357,7 @@ static int cmd_memory_copy(struct vmm_chardev *cdev,
 		dpage_mapped = FALSE;
 	}
 	if (spage_mapped) {
-		rc = vmm_host_iounmap(spage_va, VMM_PAGE_SIZE);
+		rc = vmm_host_iounmap(spage_va);
 		if (rc) {
 			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
 			return rc;

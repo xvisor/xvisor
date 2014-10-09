@@ -22,10 +22,13 @@
 # */
 
 core-objs-y+= vmm_main.o
+core-objs-y+= vmm_heap.o
 core-objs-y+= vmm_stdio.o
 core-objs-y+= vmm_cpumask.o
+core-objs-y+= vmm_devres.o
 core-objs-y+= vmm_devtree.o
 core-objs-y+= vmm_host_irq.o
+core-objs-y+= vmm_host_extirq.o
 core-objs-y+= vmm_host_ram.o
 core-objs-y+= vmm_host_vapool.o
 core-objs-y+= vmm_host_aspace.o
@@ -55,4 +58,3 @@ core-objs-y+= vmm_chardev.o
 core-objs-y+= vmm_modules.o
 core-objs-y+= vmm_params.o
 core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
-

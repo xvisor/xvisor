@@ -33,6 +33,7 @@
 
 #include <vmm_types.h>
 #include <vmm_notifier.h>
+#include <libs/list.h>
 
 struct vmm_device;
 struct vmm_devtree_node;
@@ -110,6 +111,8 @@ void clk_unprepare(struct clk *clk);
 
 struct clk *clk_get(struct vmm_device *dev, const char *id);
 
+struct clk *devm_clk_get(struct vmm_device *dev, const char *id);
+
 int clk_enable(struct clk *clk);
 
 void clk_disable(struct clk *clk);
@@ -117,6 +120,8 @@ void clk_disable(struct clk *clk);
 unsigned long clk_get_rate(struct clk *clk);
 
 void clk_put(struct clk *clk);
+
+void devm_clk_put(struct vmm_device *dev, struct clk *clk);
 
 long clk_round_rate(struct clk *clk, unsigned long rate);
 
@@ -149,9 +154,6 @@ static inline void clk_disable_unprepare(struct clk *clk)
 	clk_disable(clk);
 	clk_unprepare(clk);
 }
-
-int clk_add_alias(const char *alias, const char *alias_dev_name,
-		  char *id, struct vmm_device *dev);
 
 #if defined(CONFIG_COMMON_CLK)
 

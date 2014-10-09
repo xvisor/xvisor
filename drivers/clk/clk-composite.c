@@ -1,38 +1,23 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-composite.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Composite clock implementation
- *
- * Adapted from linux/drivers/clk/clk-composite.c
- *
+/*
  * Copyright (c) 2013 NVIDIA CORPORATION.  All rights reserved.
  *
- * The original source is licensed under GPL.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_stdio.h>
-#include <vmm_modules.h>
-#include <drv/clk.h>
-#include <drv/clk-provider.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
+#include <linux/err.h>
+#include <linux/slab.h>
 
 #define to_clk_composite(_hw) container_of(_hw, struct clk_composite, hw)
 
@@ -68,6 +53,30 @@ static unsigned long clk_composite_recalc_rate(struct clk_hw *hw,
 	rate_hw->clk = hw->clk;
 
 	return rate_ops->recalc_rate(rate_hw, parent_rate);
+}
+
+static long clk_composite_determine_rate(struct clk_hw *hw, unsigned long rate,
+					unsigned long *best_parent_rate,
+					struct clk **best_parent_p)
+{
+	struct clk_composite *composite = to_clk_composite(hw);
+	const struct clk_ops *rate_ops = composite->rate_ops;
+	const struct clk_ops *mux_ops = composite->mux_ops;
+	struct clk_hw *rate_hw = composite->rate_hw;
+	struct clk_hw *mux_hw = composite->mux_hw;
+
+	if (rate_hw && rate_ops && rate_ops->determine_rate) {
+		rate_hw->clk = hw->clk;
+		return rate_ops->determine_rate(rate_hw, rate, best_parent_rate,
+						best_parent_p);
+	} else if (mux_hw && mux_ops && mux_ops->determine_rate) {
+		mux_hw->clk = hw->clk;
+		return mux_ops->determine_rate(mux_hw, rate, best_parent_rate,
+					       best_parent_p);
+	} else {
+		pr_err("clk: clk_composite_determine_rate function called, but no mux or rate callback set!\n");
+		return 0;
+	}
 }
 
 static long clk_composite_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -127,7 +136,7 @@ static void clk_composite_disable(struct clk_hw *hw)
 	gate_ops->disable(gate_hw);
 }
 
-struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
+struct clk *clk_register_composite(struct device *dev, const char *name,
 			const char **parent_names, int num_parents,
 			struct clk_hw *mux_hw, const struct clk_ops *mux_ops,
 			struct clk_hw *rate_hw, const struct clk_ops *rate_ops,
@@ -139,10 +148,10 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 	struct clk_composite *composite;
 	struct clk_ops *clk_composite_ops;
 
-	composite = vmm_zalloc(sizeof(*composite));
+	composite = kzalloc(sizeof(*composite), GFP_KERNEL);
 	if (!composite) {
-		vmm_printf("%s: could not allocate composite clk\n", __func__);
-		return NULL;
+		pr_err("%s: could not allocate composite clk\n", __func__);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	init.name = name;
@@ -154,6 +163,7 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 
 	if (mux_hw && mux_ops) {
 		if (!mux_ops->get_parent || !mux_ops->set_parent) {
+			clk = ERR_PTR(-EINVAL);
 			goto err;
 		}
 
@@ -161,10 +171,13 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 		composite->mux_ops = mux_ops;
 		clk_composite_ops->get_parent = clk_composite_get_parent;
 		clk_composite_ops->set_parent = clk_composite_set_parent;
+		if (mux_ops->determine_rate)
+			clk_composite_ops->determine_rate = clk_composite_determine_rate;
 	}
 
 	if (rate_hw && rate_ops) {
 		if (!rate_ops->recalc_rate) {
+			clk = ERR_PTR(-EINVAL);
 			goto err;
 		}
 
@@ -183,11 +196,14 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 		composite->rate_hw = rate_hw;
 		composite->rate_ops = rate_ops;
 		clk_composite_ops->recalc_rate = clk_composite_recalc_rate;
+		if (rate_ops->determine_rate)
+			clk_composite_ops->determine_rate = clk_composite_determine_rate;
 	}
 
 	if (gate_hw && gate_ops) {
 		if (!gate_ops->is_enabled || !gate_ops->enable ||
 		    !gate_ops->disable) {
+			clk = ERR_PTR(-EINVAL);
 			goto err;
 		}
 
@@ -202,7 +218,7 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 	composite->hw.init = &init;
 
 	clk = clk_register(dev, &composite->hw);
-	if (!clk)
+	if (IS_ERR(clk))
 		goto err;
 
 	if (composite->mux_hw)
@@ -217,7 +233,6 @@ struct clk *clk_register_composite(struct vmm_device *dev, const char *name,
 	return clk;
 
 err:
-	vmm_free(composite);
-	return NULL;
+	kfree(composite);
+	return clk;
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_composite);

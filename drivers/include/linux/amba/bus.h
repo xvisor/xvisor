@@ -43,8 +43,8 @@ static inline u32 amba_periphid(struct vmm_device *dev)
 		val = vmm_readl((void *)(dev_base + 0xFEC));
 		pid |= (val & 0xFF) << 24;
 		vmm_devtree_regunmap(dev->node, dev_base, 0);
-		vmm_devtree_setattr(dev->node, AMBA_PERIPHID_ATTR_NAME, 
-			    &pid, VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(pid));
+		vmm_devtree_setattr(dev->node, AMBA_PERIPHID_ATTR_NAME, &pid,
+			     VMM_DEVTREE_ATTRTYPE_UINT32, sizeof(pid), FALSE);
 	}
 
 	return pid;

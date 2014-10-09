@@ -1,40 +1,17 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-fixed-factor.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Fixed factor clock implementation
- *
- * Adapted from linux/drivers/clk/clk-fixed-factor.c
- *
+/*
  * Copyright (C) 2011 Sascha Hauer, Pengutronix <s.hauer@pengutronix.de>
  *
- * Standard functionality for the common clock API.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * The original source is licensed under GPL.
+ * Standard functionality for the common clock API.
  */
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_stdio.h>
-#include <vmm_devtree.h>
-#include <vmm_modules.h>
-#include <libs/mathlib.h>
-#include <drv/clk-provider.h>
+#include <linux/module.h>
+#include <linux/clk-provider.h>
+#include <linux/slab.h>
+#include <linux/err.h>
+#include <linux/of.h>
 
 /*
  * DOC: basic fixed multiplier and divider clock that cannot gate
@@ -55,7 +32,11 @@ static unsigned long clk_factor_recalc_rate(struct clk_hw *hw,
 	unsigned long long int rate;
 
 	rate = (unsigned long long int)parent_rate * fix->mult;
+#if 0
+	do_div(rate, fix->div);
+#else
 	rate = udiv64(rate, fix->div);
+#endif
 	return (unsigned long)rate;
 }
 
@@ -67,12 +48,20 @@ static long clk_factor_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (__clk_get_flags(hw->clk) & CLK_SET_RATE_PARENT) {
 		unsigned long best_parent;
 
+#if 0
+		best_parent = (rate / fix->mult) * fix->div;
+#else
 		best_parent = udiv64(rate, fix->mult) * fix->div;
+#endif
 		*prate = __clk_round_rate(__clk_get_parent(hw->clk),
 				best_parent);
 	}
 
+#if 0
+	return (*prate / fix->div) * fix->mult;
+#else
 	return udiv64(*prate, fix->div) * fix->mult;
+#endif
 }
 
 static int clk_factor_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -86,9 +75,9 @@ struct clk_ops clk_fixed_factor_ops = {
 	.set_rate = clk_factor_set_rate,
 	.recalc_rate = clk_factor_recalc_rate,
 };
-VMM_EXPORT_SYMBOL_GPL(clk_fixed_factor_ops);
+EXPORT_SYMBOL_GPL(clk_fixed_factor_ops);
 
-struct clk *clk_register_fixed_factor(struct vmm_device *dev, const char *name,
+struct clk *clk_register_fixed_factor(struct device *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		unsigned int mult, unsigned int div)
 {
@@ -96,10 +85,10 @@ struct clk *clk_register_fixed_factor(struct vmm_device *dev, const char *name,
 	struct clk_init_data init;
 	struct clk *clk;
 
-	fix = vmm_zalloc(sizeof(*fix));
+	fix = kmalloc(sizeof(*fix), GFP_KERNEL);
 	if (!fix) {
-		vmm_printf("%s: could not allocate fixed factor clk\n", __func__);
-		return NULL;
+		pr_err("%s: could not allocate fixed factor clk\n", __func__);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	/* struct clk_fixed_factor assignments */
@@ -115,45 +104,45 @@ struct clk *clk_register_fixed_factor(struct vmm_device *dev, const char *name,
 
 	clk = clk_register(dev, &fix->hw);
 
-	if (!clk)
-		vmm_free(fix);
+	if (IS_ERR(clk))
+		kfree(fix);
 
 	return clk;
 }
-VMM_EXPORT_SYMBOL_GPL(clk_register_fixed_factor);
+EXPORT_SYMBOL_GPL(clk_register_fixed_factor);
 
+#ifdef CONFIG_OF
 /**
  * of_fixed_factor_clk_setup() - Setup function for simple fixed factor clock
  */
-void __init of_fixed_factor_clk_setup(struct vmm_devtree_node *node)
+void __init of_fixed_factor_clk_setup(struct device_node *node)
 {
 	struct clk *clk;
 	const char *clk_name = node->name;
 	const char *parent_name;
 	u32 div, mult;
 
-	if (vmm_devtree_read_u32(node, "clock-div", &div)) {
-		vmm_printf("%s Fixed factor clock <%s> must have a clock-div property\n",
+	if (of_property_read_u32(node, "clock-div", &div)) {
+		pr_err("%s Fixed factor clock <%s> must have a clock-div property\n",
 			__func__, node->name);
 		return;
 	}
 
-	if (vmm_devtree_read_u32(node, "clock-mult", &mult)) {
-		vmm_printf("%s Fixed factor clock <%s> must have a clock-mult property\n",
+	if (of_property_read_u32(node, "clock-mult", &mult)) {
+		pr_err("%s Fixed factor clock <%s> must have a clock-mult property\n",
 			__func__, node->name);
 		return;
 	}
 
-	vmm_devtree_read_string(node, "clock-output-names", &clk_name);
+	of_property_read_string(node, "clock-output-names", &clk_name);
 	parent_name = of_clk_get_parent_name(node, 0);
 
 	clk = clk_register_fixed_factor(NULL, clk_name, parent_name, 0,
 					mult, div);
-	if (clk)
+	if (!IS_ERR(clk))
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
 }
-VMM_EXPORT_SYMBOL_GPL(of_fixed_factor_clk_setup);
-
+EXPORT_SYMBOL_GPL(of_fixed_factor_clk_setup);
 CLK_OF_DECLARE(fixed_factor_clk, "fixed-factor-clock",
 		of_fixed_factor_clk_setup);
-
+#endif

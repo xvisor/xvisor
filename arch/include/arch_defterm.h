@@ -29,10 +29,9 @@
 int arch_defterm_getc(u8 *ch);
 
 /** Early output character to default terminal 
- *  NOTE: This function is optional.
- *  NOTE: it is called before default terminal is initialized.
- *  NOTE: If arch implments this function then arch_config.h
- *  will define ARCH_HAS_DEFTERM_EARLY_PRINT feature.
+ *  NOTE: This function is optional. The vmm_stdio implementation
+ *  provides a default weak implementation of this function.
+ *  NOTE: It is called before default terminal is initialized.
  */
 void arch_defterm_early_putc(u8 ch);
 

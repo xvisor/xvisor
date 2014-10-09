@@ -44,7 +44,6 @@
 		device_type = "pic";
 		compatible = "arm,cortex-a9-gic";
 		reg = <0x10490000 0x1000 0x10480000 0x100>;
-		irq_start = <16>;
 	};
 
 	mct {
@@ -67,42 +66,32 @@
 		};
 
 		SERIAL0: exynos4210-uart.0 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
-			baudrate = <115200>;
 			interrupts = <84>;
 		};
 
 		SERIAL1: exynos4210-uart.1 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
-			baudrate = <115200>;
 			interrupts = <85>;
 		};
 
 		SERIAL2: exynos4210-uart.2 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
-			baudrate = <115200>;
 			interrupts = <86>;
 		};
 
 		SERIAL3: exynos4210-uart.3 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
-			baudrate = <115200>;
 			interrupts = <87>;
 		};
 
 		SERIAL4: exynos4210-uart.4 {
-			device_type = "serial";
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
-			baudrate = <115200>;
 			interrupts = <88>;
 		};
 

@@ -449,7 +449,7 @@ static struct fb_ops clcdfb_ops = {
 	.fb_imageblit	= cfb_imageblit,
 };
 
-static int clcdfb_register(struct clcd_fb *fb)
+static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 {
 	int ret;
 	physical_addr_t mmio_pa;
@@ -463,17 +463,17 @@ static int clcdfb_register(struct clcd_fb *fb)
 		fb->off_ienb = CLCD_PL111_IENB;
 		fb->off_cntl = CLCD_PL111_CNTL;
 	} else {
-#ifdef CONFIG_BOARD_VERSATILE
-		fb->off_ienb = CLCD_PL111_IENB;
-		fb->off_cntl = CLCD_PL111_CNTL;
-#else
-		fb->off_ienb = CLCD_PL110_IENB;
-		fb->off_cntl = CLCD_PL110_CNTL;
-#endif
+		if (is_versatile) {
+			fb->off_ienb = CLCD_PL111_IENB;
+			fb->off_cntl = CLCD_PL111_CNTL;
+		} else {
+			fb->off_ienb = CLCD_PL110_IENB;
+			fb->off_cntl = CLCD_PL110_CNTL;
+		}
 	}
 
 	fb->clk = clk_get(fb->dev, NULL);
-	if (!fb->clk) {
+	if (IS_ERR(fb->clk)) {
 		ret = PTR_ERR(fb->clk);
 		goto out;
 	}
@@ -592,10 +592,16 @@ static int clcdfb_probe(struct vmm_device *dev,
 {
 	struct clcd_board *board = dev->node->system_data;
 	struct clcd_fb *fb;
+	bool is_versatile;
 	int ret;
 
 	if (!board)
 		return -EINVAL;
+
+	if (!strcmp(id->compatible, "arm,pl110,versatile"))
+		is_versatile = TRUE;
+	else
+		is_versatile = FALSE;
 
 	fb = kzalloc(sizeof(struct clcd_fb), GFP_KERNEL);
 	if (!fb) {
@@ -614,7 +620,7 @@ static int clcdfb_probe(struct vmm_device *dev,
 	if (ret)
 		goto free_fb;
 
-	ret = clcdfb_register(fb); 
+	ret = clcdfb_register(fb, is_versatile); 
 	if (ret == 0) {
 		dev->priv = fb;
 		goto out;
@@ -650,6 +656,7 @@ static int clcdfb_remove(struct vmm_device *dev)
 
 static struct vmm_devtree_nodeid clcdfb_devid_table[] = {
 	{.type = "fb",.compatible = "arm,pl110"},
+	{.type = "fb",.compatible = "arm,pl110,versatile"},
 	{.type = "fb",.compatible = "arm,pl111"},
 	{ /* end of list */ },
 };

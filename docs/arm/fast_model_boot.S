@@ -132,6 +132,22 @@ secondary_loop:
 	mov	pc, r1
 secondary_loop_skip:
 
+	/* Setup UART */
+	ldr	r1, __uart_addr
+	b	__uart_addr_next
+__uart_addr:
+#ifdef VEXPRESS_A15
+	.word	0x1c090000
+#else
+	.word	0x00000000
+#endif
+__uart_addr_next:
+	mov	r0, #0x10			@ ibrd
+	str	r0, [r1, #0x24]
+	mov	r0, #0xc300
+	orr	r0, #0x0001			@ cr
+	str	r0, [r1, #0x30]
+
 	/* Jump to input binary */
 	mov	r0, #0
 	mov	r1, #0

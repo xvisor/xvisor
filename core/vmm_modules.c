@@ -98,7 +98,6 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym)
 	u32 s;
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct module_wrap *mwrap = NULL;
 
 	if (!symname || !sym) {
@@ -118,8 +117,7 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym)
 	vmm_spin_lock_irqsave(&modctrl.lock, flags);
 
 	found = FALSE;
-	list_for_each(l, &modctrl.mod_list) {
-		mwrap = list_entry(l, struct module_wrap, head);
+	list_for_each_entry(mwrap, &modctrl.mod_list, head) {
 		for (s = 0; s < mwrap->num_syms; s++) {
 			if (strcmp(mwrap->syms[s].name, symname) == 0) {
 				memcpy(sym, &mwrap->syms[s], sizeof(*sym));
@@ -156,6 +154,8 @@ bool vmm_modules_isbuiltin(struct vmm_module *mod)
 	
 	return (mwrap->built_in) ? TRUE : FALSE;
 }
+
+#ifdef CONFIG_MODULES
 
 /* Find a module section: 0 means not found. */
 static u32 find_sec(const struct load_info *info, const char *name)
@@ -716,27 +716,32 @@ int vmm_modules_unload(struct vmm_module *mod)
 	return VMM_OK;
 }
 
+#endif
+
 struct vmm_module *vmm_modules_getmodule(u32 index)
 {
+	bool found = FALSE;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct module_wrap *ret = NULL;
+	struct module_wrap *mwrap;
 
 	vmm_spin_lock_irqsave(&modctrl.lock, flags);
 
-	if (index < modctrl.mod_count) {
-		list_for_each(l, &modctrl.mod_list) {
-			ret = list_entry(l, struct module_wrap, head);
-			if (!index) {
-				break;
-			}
-			index--;
+	if (modctrl.mod_count <= index) {
+		vmm_spin_unlock_irqrestore(&modctrl.lock, flags);
+		return NULL;
+	}
+
+	list_for_each_entry(mwrap, &modctrl.mod_list, head) {
+		if (!index) {
+			found = TRUE;
+			break;
 		}
+		index--;
 	}
 
 	vmm_spin_unlock_irqrestore(&modctrl.lock, flags);
 
-	return (ret) ? &ret->mod : NULL;
+	return (found) ? &mwrap->mod : NULL;
 }
 
 u32 vmm_modules_count(void)
@@ -802,7 +807,6 @@ int __init vmm_modules_init(void)
 	struct module_wrap *mwrap;
 	struct vmm_module *mod_entry;
 	struct modules_list *ag_mod_list;
-	struct dlist *tnode;
 
 	/* Reset the control structure */
 	memset(&modctrl, 0, sizeof(modctrl));
@@ -821,11 +825,7 @@ int __init vmm_modules_init(void)
 	list_mergesort(NULL, &ag_mod_list->mod_list, cmp_list_element);
 
 	/* Initialize built-in modules in sorted order */
-	list_for_each(tnode, &ag_mod_list->mod_list) {
-		mod_entry = list_entry(tnode, struct vmm_module, head);
-		if (unlikely(!mod_entry))
-			break;
-
+	list_for_each_entry(mod_entry, &ag_mod_list->mod_list, head) {
 		mwrap = vmm_zalloc(sizeof(struct module_wrap));
 		if (unlikely(!mwrap)) {
 			break;

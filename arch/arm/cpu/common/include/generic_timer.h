@@ -24,7 +24,27 @@
 #ifndef __GENERIC_TIMER_H__
 #define __GENERIC_TIMER_H__
 
+#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
+#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
+
+#define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
+#define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
+#define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
+
+#define GENERIC_TIMER_CONTEXT_phys_timer_irq	0x0
+#define GENERIC_TIMER_CONTEXT_virt_timer_irq	0x4
+#define GENERIC_TIMER_CONTEXT_cntvoff		0x8
+#define GENERIC_TIMER_CONTEXT_cntpcval		0x10
+#define GENERIC_TIMER_CONTEXT_cntvcval		0x18
+#define GENERIC_TIMER_CONTEXT_cntkctl		0x20
+#define GENERIC_TIMER_CONTEXT_cntpctl		0x24
+#define GENERIC_TIMER_CONTEXT_cntvctl		0x28
+
+#ifndef __ASSEMBLY__
+
 #include <vmm_types.h>
+#include <vmm_compiler.h>
+#include <vmm_timer.h>
 
 enum {
 	GENERIC_TIMER_REG_FREQ,
@@ -42,34 +62,31 @@ enum {
 	GENERIC_TIMER_REG_VIRT_OFF,
 };
 
-#define GENERIC_TIMER_HCTL_KERN_PCNT_EN		(1 << 0)
-#define GENERIC_TIMER_HCTL_KERN_PTMR_EN		(1 << 1)
-
-#define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
-#define GENERIC_TIMER_CTRL_IT_MASK		(1 << 1)
-#define GENERIC_TIMER_CTRL_IT_STAT		(1 << 2)
-
-enum gen_timer_type {
-	GENERIC_HYPERVISOR_TIMER,
-	GENERIC_PHYSICAL_TIMER,
-	GENERIC_VIRTUAL_TIMER,
-};
-
-u64 generic_timer_wakeup_timeout(void);
-
 struct generic_timer_context {
+	u32 phys_timer_irq;
+	u32 virt_timer_irq;
 	u64 cntvoff;
 	u64 cntpcval;
 	u64 cntvcval;
 	u32 cntkctl;
 	u32 cntpctl;
 	u32 cntvctl;
-	u32 phys_timer_irq;
-	u32 virt_timer_irq;
-};
+	struct vmm_timer_event virt_ev;
+	struct vmm_timer_event phys_ev;
+}__packed;
 
-void generic_timer_vcpu_context_init(struct generic_timer_context *cntx);
-void generic_timer_vcpu_context_save(struct generic_timer_context *cntx);
-void generic_timer_vcpu_context_restore(struct generic_timer_context *cntx);
+u64 generic_timer_wakeup_timeout(void);
+
+int generic_timer_vcpu_context_init(void *vcpu_ptr,
+				    void **context,
+				    u32 phys_irq, u32 virt_irq);
+
+int generic_timer_vcpu_context_deinit(void *vcpu_ptr, void **context);
+
+void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context);
+
+void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context);
+
+#endif /* __ASSEMBLY__ */
 
 #endif /* __GENERIC_TIMER_H__ */

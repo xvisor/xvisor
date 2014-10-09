@@ -24,6 +24,26 @@
 #define _VMM_GUEST_ASPACE_H__
 
 #include <vmm_manager.h>
+#include <vmm_notifier.h>
+
+/* Notifier event when guest aspace is initialized */
+#define VMM_GUEST_ASPACE_EVENT_INIT		0x01
+/* Notifier event when guest aspace is about to be uninitialized */
+#define VMM_GUEST_ASPACE_EVENT_DEINIT		0x02
+/* Notifier event when guest aspace is reset */
+#define VMM_GUEST_ASPACE_EVENT_RESET		0x03
+
+/** Representation of block device notifier event */
+struct vmm_guest_aspace_event {
+	struct vmm_guest *guest;
+	void *data;
+};
+
+/** Register a guest address space state change notifier handler */
+int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb);
+
+/** Unregister guest address space state change notifier */
+int vmm_guest_aspace_unregister_client(struct vmm_notifier_block *nb);
 
 /** Find region corresponding to a guest physical address and also
  *  resolve aliased regions to real or virtual regions if required.
@@ -55,13 +75,35 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 			     physical_addr_t gphys_addr,
 			     physical_size_t gphys_size);
 
-/** Reset Guest Address space */
+/** Add a new region from a given node in DTS */
+int vmm_guest_add_region_from_node(struct vmm_guest *guest,
+				   struct vmm_devtree_node *node);
+
+/** Add new guest region */
+int vmm_guest_add_region(struct vmm_guest *guest,
+			 const char *name,
+			 const char *device_type,
+			 const char *mainfest_type,
+			 const char *address_type,
+			 const char *compatible,
+			 u32 compatible_len,
+			 physical_addr_t gphys_addr,
+			 physical_addr_t hphys_addr,
+			 physical_size_t phys_size,
+			 u32 align_order);
+
+/** Delete a guest region */
+int vmm_guest_del_region(struct vmm_guest *guest,
+			 struct vmm_region *reg,
+			 bool del_node);
+
+/** Reset guest address space */
 int vmm_guest_aspace_reset(struct vmm_guest *guest);
 
-/** Initialize Guest Address space */
+/** Initialize guest address space */
 int vmm_guest_aspace_init(struct vmm_guest *guest);
 
-/** DeInitialize Guest Address space */
+/** DeInitialize guest address space */
 int vmm_guest_aspace_deinit(struct vmm_guest *guest);
 
 #endif

@@ -739,8 +739,9 @@ int input_register_device(struct input_dev *dev)
 		return VMM_EOVERFLOW;
 	}
 	vmm_devdrv_set_data(&dev->dev, dev);
-	
-	rc = vmm_devdrv_class_register_device(&input_class, &dev->dev);
+
+	dev->dev.class = &input_class;
+	rc = vmm_devdrv_register_device(&dev->dev);
 	if (rc) {
 		return rc;
 	}
@@ -820,7 +821,7 @@ int input_unregister_device(struct input_dev *dev)
 	}
 	vmm_spin_unlock_irqrestore(&dev->ops_lock, flags);
 
-	return vmm_devdrv_class_unregister_device(&input_class, &dev->dev);
+	return vmm_devdrv_unregister_device(&dev->dev);
 }
 VMM_EXPORT_SYMBOL(input_unregister_device);
 

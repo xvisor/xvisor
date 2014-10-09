@@ -39,32 +39,12 @@
 		};
 
 		SERIAL0: uart0 {
-			device_type = "serial";
 			compatible = "st16654";
 			reg = <0x49020000 0x1000>;
 			clock-frequency = <48000000>;
-			baudrate = <115200>;
-			reg_offset = <0x0>;
-			reg_align = <0x4>;
+			reg-shift = <2>;
 			interrupts = <74>;
 		};
 	};
-
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
-	/* Empty guests node */
-	guests {
-	};
 };
-
-/* Add guest templates */
-/include/ "../../common/guests/realview-pb-a8.dtsi"
-/include/ "../../common/guests/vexpress-a9x2.dtsi"
 

@@ -40,7 +40,8 @@
 #include <libs/list.h>
 #include <libs/bitmap.h>
 #include <libs/stringlib.h>
-#include <drv/vexpress.h>
+
+#include <linux/vexpress.h>
 
 #undef DEBUG
 
@@ -59,7 +60,7 @@ struct vexpress_config_bridge {
 	vmm_spinlock_t transactions_lock;
 } vexpress_config_bridges[VEXPRESS_CONFIG_MAX_BRIDGES];
 
-static DEFINE_BITMAP(vexpress_config_bridges_map,
+static DECLARE_BITMAP(vexpress_config_bridges_map,
 		array_size(vexpress_config_bridges));
 static DEFINE_SPINLOCK(vexpress_config_bridges_lock);
 

@@ -450,9 +450,14 @@ static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 		uart8250_port.baudrate = 115200;
 	}
 
-	if (vmm_devtree_read_u32(node, "reg_align",
-				 &uart8250_port.reg_align)) {
-		uart8250_port.reg_align = 4;
+	if (vmm_devtree_read_u32(node, "reg-shift",
+				 &uart8250_port.reg_shift)) {
+		uart8250_port.reg_shift = 2;
+	}
+
+	if (vmm_devtree_read_u32(node, "reg-io-width",
+				 &uart8250_port.reg_width)) {
+		uart8250_port.reg_width = 1;
 	}
 
 	uart_8250_lowlevel_init(&uart8250_port);
@@ -476,7 +481,6 @@ static struct defterm_ops uart8250_ops = {
 
 #endif
 
-#ifdef ARCH_HAS_DEFTERM_EARLY_PRINT
 int init_early_vga_console(void)
 {
 	settextcolor(15 /* White foreground */, 0 /* Black background */);
@@ -499,7 +503,6 @@ static int __init setup_early_print(char *buf)
 }
 
 vmm_early_param("earlyprint", setup_early_print);
-#endif
 
 static int __init set_default_console(char *buf)
 {
@@ -509,14 +512,15 @@ static int __init set_default_console(char *buf)
 }
 
 vmm_early_param("console", set_default_console);
+
 /*-------------- UART DEFTERM --------------- */
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
-	{.type = "serial",.compatible = "ns8250",.data = &uart8250_ops},
-	{.type = "serial",.compatible = "ns16450",.data = &uart8250_ops},
-	{.type = "serial",.compatible = "ns16550a",.data = &uart8250_ops},
-	{.type = "serial",.compatible = "ns16550",.data = &uart8250_ops},
-	{.type = "serial",.compatible = "ns16750",.data = &uart8250_ops},
-	{.type = "serial",.compatible = "ns16850",.data = &uart8250_ops},
+	{ .compatible = "ns8250", .data = &uart8250_ops },
+	{ .compatible = "ns16450", .data = &uart8250_ops },
+	{ .compatible = "ns16550a", .data = &uart8250_ops },
+	{ .compatible = "ns16550", .data = &uart8250_ops },
+	{ .compatible = "ns16750", .data = &uart8250_ops },
+	{ .compatible = "ns16850", .data = &uart8250_ops },
 	{ /* end of list */ },
 };
 

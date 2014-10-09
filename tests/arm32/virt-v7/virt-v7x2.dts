@@ -1,0 +1,122 @@
+
+/dts-v1/;
+
+/ {
+	model = "virt-v7";
+	device_type = "guest";
+	psci_version = <2>;
+
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+		disk0 = &DISK0;
+	};
+
+	vcpus {
+		vcpu0 {
+			device_type = "vcpu";
+			compatible = "armv7a,cortex-a15";
+			start_pc = <0x00000000>;
+			gentimer_virt_irq = <27>;
+			gentimer_phys_irq = <30>;
+		};
+
+		vcpu1 {
+			device_type = "vcpu";
+			compatible = "armv7a,cortex-a15";
+			start_pc = <0x00000000>;
+			gentimer_virt_irq = <27>;
+			gentimer_phys_irq = <30>;
+			poweroff;
+		};
+	};
+	
+	aspace {
+		guest_irq_count = <1024>;
+
+		nor_flash0 {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x00000000>;
+			physical_size = <0x01000000>;
+			device_type = "alloced_rom";
+			align_order = <21>; /* Align alloced memory to 2MB */
+		};
+
+		gic_dist {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x08000000>;
+			physical_size = <0x1000>;
+			device_type = "pic";
+			compatible = "arm,vgic,dist";
+			parent_irq = <6>;
+			num_irq = <96>;
+		};
+
+		gic_cpu {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x08010000>;
+			host_physical_addr = <0x00000000>; /* Automatically set by VGIC emulator */
+			physical_size = <0x1000>;
+			device_type = "pic";
+			compatible = "arm,vgic,cpu";
+		};
+
+		uart0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x09000000>;
+			physical_size = <0x1000>;
+			device_type = "serial";
+			compatible = "primecell,arm,pl011";
+			fifo_size = <1024>;
+			interrupts = <33>;
+		};
+
+		NET0: virtio-net0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <1>;
+			guest_physical_addr = <0x0A000000>;
+			physical_size = <0x1000>;
+			switch = ""; /* Override this before guest creation */
+			interrupts = <48>;
+		};
+
+		DISK0: virtio-blk0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <2>;
+			guest_physical_addr = <0x0A001000>;
+			physical_size = <0x1000>;
+			blkdev = ""; /* Override this before guest creation */
+			interrupts = <49>;
+		};
+
+		virtio-con0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <3>;
+			guest_physical_addr = <0x0A002000>;
+			physical_size = <0x1000>;
+			interrupts = <50>;
+		};
+
+		MEM0: mem0 {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x40000000>;
+			physical_size = <0x00000000>; /* Override this before guest creation */
+			align_order = <21>; /* Align alloced memory to 2MB */
+			device_type = "alloced_ram";
+		};
+	};
+};

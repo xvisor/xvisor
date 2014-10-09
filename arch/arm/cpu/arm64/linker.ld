@@ -33,6 +33,8 @@ SECTIONS
 	
 	PROVIDE(_code_start = .);
 
+	/* Beginning of the code section */
+
 	.text :
  	{
 		PROVIDE(_text_start = .);
@@ -42,13 +44,58 @@ SECTIONS
 		PROVIDE(_text_end = .);
 	}
 
-	.data :
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.init : 
 	{
-		PROVIDE(_data_start = .);
-		*(.data)
+		PROVIDE(_init_start = .);
+
+		*(.init.text)
 		. = ALIGN(8);
-		PROVIDE(_data_end = .);
+
+		PROVIDE(__setup_start = .);
+		*(.setup.init);
+		PROVIDE(__setup_end = .);
+
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+		*(.devtree)
+		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
+
+		PROVIDE(_init_end = .);
+
+		. = ALIGN(0x1000);
+
+		PROVIDE(_initdata_start = .);
+		*(.init.data)
+		. = ALIGN(8);
+		PROVIDE(_initdata_end = .);
 	}
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.cpuinit :
+	{
+		PROVIDE(_cpuinit_start = .);
+		*(.cpuinit.*)
+		. = ALIGN(8);
+		PROVIDE(_cpuinit_end = .);
+	}
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
+	.spinlock :
+	{
+		PROVIDE(_spinlock_start = .);
+		*(.spinlock.*)
+		. = ALIGN(8);
+		PROVIDE(_spinlock_end = .);
+	}
+
+	/* End of the code sections */
+
+	/* Beginning of the read-only data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.rodata :
 	{
@@ -58,6 +105,12 @@ SECTIONS
 		PROVIDE(_rodata_end = .);
 	}
 
+	/* End of the read-only data sections */
+
+	/* Beginning of the read-write data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+
 	.percpu :
 	{
 		PROVIDE(_percpu_start = .);
@@ -66,13 +119,15 @@ SECTIONS
 		PROVIDE(_percpu_end = .);
 	}
 
-	. = ALIGN(0x1000); /* init section is page aligned */
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	.init : 
+	.data :
 	{
-		PROVIDE(_init_start = .);
+		PROVIDE(_data_start = .);
 
-		*(.init.*)
+		*(.data)
+		*(.data.*)
+		*(.readmostly.data)
 		. = ALIGN(8);
 
 		PROVIDE(_modtbl_start = .);
@@ -85,19 +140,10 @@ SECTIONS
 		. = ALIGN(8);
 		PROVIDE(_nidtbl_end = .);
 
-		. = ALIGN(8);
-		PROVIDE(__setup_start = .);
-		*(.setup.init);
-		PROVIDE(__setup_end = .);
-
-		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
-		*(.devtree)
-		. = ALIGN(CONFIG_ARM_MAX_DTB_SIZE);
-
-		PROVIDE(_init_end = .);
+		PROVIDE(_data_end = .);
 	}
 
-	. = ALIGN(0x1000); /* bss is page aligned */
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.bss :
 	{
@@ -108,7 +154,7 @@ SECTIONS
 		PROVIDE(_bss_end = .);
 	}
 
-	. = ALIGN(0x1000); /* all stacks are page aligned */
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.hvc_stack :
 	{
@@ -117,6 +163,8 @@ SECTIONS
 		. = ALIGN(8);
 		PROVIDE(_hvc_stack_end = .);
 	}
+
+	/* End of the read-write data sections */
 
 	. = ALIGN(0x1000); /* Need this to create proper pages */
 	

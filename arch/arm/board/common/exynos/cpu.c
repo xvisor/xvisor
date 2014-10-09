@@ -55,6 +55,6 @@ void __init exynos_init_cpu(physical_addr_t cpuid_addr)
 		samsung_cpu_id = vmm_readl((void *)virt_addr);
 		samsung_cpu_rev = samsung_cpu_id & 0xFF;
 
-		vmm_host_iounmap(virt_addr, sizeof(samsung_cpu_id));
+		vmm_host_iounmap(virt_addr);
 	}
 }

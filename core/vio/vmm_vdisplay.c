@@ -375,7 +375,6 @@ VMM_EXPORT_SYMBOL(vmm_vdisplay_one_update);
 
 void vmm_vdisplay_update(struct vmm_vdisplay *vdis)
 {
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_surface *s;
 
@@ -385,9 +384,7 @@ void vmm_vdisplay_update(struct vmm_vdisplay *vdis)
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
+	list_for_each_entry(s, &vdis->surface_list, head) {
 		vmm_vdisplay_one_update(vdis, s);
 	}
 
@@ -420,18 +417,17 @@ void vmm_vdisplay_text_update(struct vmm_vdisplay *vdis,
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_text_update);
 
-static void __surface_refresh(struct vmm_surface *s)
+static void __surface_refresh(struct vmm_surface *sf)
 {
-	if (s->ops && s->ops->refresh) {
-		s->ops->refresh(s);
+	if (sf->ops && sf->ops->refresh) {
+		sf->ops->refresh(sf);
 	}
 }
 
 void vmm_vdisplay_surface_refresh(struct vmm_vdisplay *vdis)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -439,28 +435,25 @@ void vmm_vdisplay_surface_refresh(struct vmm_vdisplay *vdis)
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_refresh(s);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_refresh(sf);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_refresh);
 
-static void __surface_gfx_clear(struct vmm_surface *s)
+static void __surface_gfx_clear(struct vmm_surface *sf)
 {
-	if (s->ops && s->ops->gfx_clear) {
-		s->ops->gfx_clear(s);
+	if (sf->ops && sf->ops->gfx_clear) {
+		sf->ops->gfx_clear(sf);
 	}
 }
 
 void vmm_vdisplay_surface_gfx_clear(struct vmm_vdisplay *vdis)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -468,21 +461,19 @@ void vmm_vdisplay_surface_gfx_clear(struct vmm_vdisplay *vdis)
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_gfx_clear(s);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_gfx_clear(sf);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_surface_gfx_clear);
 
-static void __surface_gfx_update(struct vmm_surface *s,
+static void __surface_gfx_update(struct vmm_surface *sf,
 				 int x, int y, int w, int h)
 {
-	int width = vmm_surface_width(s);
-	int height = vmm_surface_height(s);
+	int width = vmm_surface_width(sf);
+	int height = vmm_surface_height(sf);
 
 	x = max(x, 0);
 	y = max(y, 0);
@@ -491,17 +482,16 @@ static void __surface_gfx_update(struct vmm_surface *s,
 	w = min(w, width - x);
 	h = min(h, height - y);
 
-	if (s->ops && s->ops->gfx_update) {
-		s->ops->gfx_update(s, x, y, w, h);
+	if (sf->ops && sf->ops->gfx_update) {
+		sf->ops->gfx_update(sf, x, y, w, h);
 	}
 }
 
 void vmm_vdisplay_surface_gfx_update(struct vmm_vdisplay *vdis,
 				     int x, int y, int w, int h)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -509,10 +499,8 @@ void vmm_vdisplay_surface_gfx_update(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_gfx_update(s, x, y, w, h);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_gfx_update(sf, x, y, w, h);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -532,9 +520,8 @@ static void __surface_gfx_resize(struct vmm_surface *s, int w, int h)
 void vmm_vdisplay_surface_gfx_resize(struct vmm_vdisplay *vdis,
 				     int w, int h)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -542,10 +529,8 @@ void vmm_vdisplay_surface_gfx_resize(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_gfx_resize(s, w, h);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_gfx_resize(sf, w, h);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -591,9 +576,8 @@ void vmm_vdisplay_surface_gfx_copy(struct vmm_vdisplay *vdis,
 				   int dst_x, int dst_y,
 				   int w, int h)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -601,10 +585,8 @@ void vmm_vdisplay_surface_gfx_copy(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_gfx_copy(s, src_x, src_y, dst_x, dst_y, w, h);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_gfx_copy(sf, src_x, src_y, dst_x, dst_y, w, h);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -620,9 +602,8 @@ static void __surface_text_clear(struct vmm_surface *s)
 
 void vmm_vdisplay_surface_text_clear(struct vmm_vdisplay *vdis)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -630,10 +611,8 @@ void vmm_vdisplay_surface_text_clear(struct vmm_vdisplay *vdis)
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_text_clear(s);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_text_clear(sf);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -650,9 +629,8 @@ static void __surface_text_cursor(struct vmm_surface *s, int x, int y)
 void vmm_vdisplay_surface_text_cursor(struct vmm_vdisplay *vdis,
 				      int x, int y)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -660,10 +638,8 @@ void vmm_vdisplay_surface_text_cursor(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_text_cursor(s, x, y);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_text_cursor(sf, x, y);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -681,9 +657,8 @@ static void __surface_text_update(struct vmm_surface *s,
 void vmm_vdisplay_surface_text_update(struct vmm_vdisplay *vdis,
 				      int x, int y, int w, int h)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -691,10 +666,8 @@ void vmm_vdisplay_surface_text_update(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_text_update(s, x, y, w, h);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_text_update(sf, x, y, w, h);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -711,9 +684,8 @@ static void __surface_text_resize(struct vmm_surface *s, int w, int h)
 void vmm_vdisplay_surface_text_resize(struct vmm_vdisplay *vdis,
 				      int w, int h)
 {
-	struct dlist *l;
 	irq_flags_t flags;
-	struct vmm_surface *s;
+	struct vmm_surface *sf;
 
 	if (!vdis) {
 		return;
@@ -721,10 +693,8 @@ void vmm_vdisplay_surface_text_resize(struct vmm_vdisplay *vdis,
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 
-	s = NULL;
-	list_for_each(l, &vdis->surface_list) {
-		s = list_entry(l, struct vmm_surface, head);
-		__surface_text_resize(s, w, h);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
+		__surface_text_resize(sf, w, h);
 	}
 
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
@@ -735,7 +705,6 @@ int vmm_vdisplay_add_surface(struct vmm_vdisplay *vdis,
 			     struct vmm_surface *s)
 {
 	bool found;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_surface *sf;
 
@@ -747,8 +716,7 @@ int vmm_vdisplay_add_surface(struct vmm_vdisplay *vdis,
 
 	sf = NULL;
 	found = FALSE;
-	list_for_each(l, &vdis->surface_list) {
-		sf = list_entry(l, struct vmm_surface, head);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
 		if (strncmp(s->name, sf->name, sizeof(s->name)) == 0) {
 			found = TRUE;
 			break;
@@ -772,7 +740,6 @@ int vmm_vdisplay_del_surface(struct vmm_vdisplay *vdis,
 			     struct vmm_surface *s)
 {
 	bool found;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_surface *sf;
 
@@ -784,8 +751,7 @@ int vmm_vdisplay_del_surface(struct vmm_vdisplay *vdis,
 
 	sf = NULL;
 	found = FALSE;
-	list_for_each(l, &vdis->surface_list) {
-		sf = list_entry(l, struct vmm_surface, head);
+	list_for_each_entry(sf, &vdis->surface_list, head) {
 		if (strncmp(s->name, sf->name, sizeof(s->name)) == 0) {
 			found = TRUE;
 			break;
@@ -809,7 +775,6 @@ struct vmm_vdisplay *vmm_vdisplay_create(const char *name,
 					 void *priv)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vdisplay *vdis;
 	struct vmm_vdisplay_event event;
 
@@ -822,8 +787,7 @@ struct vmm_vdisplay *vmm_vdisplay_create(const char *name,
 
 	vmm_mutex_lock(&vdctrl.vdis_list_lock);
 
-	list_for_each(l, &vdctrl.vdis_list) {
-		vdis = list_entry(l, struct vmm_vdisplay, head);
+	list_for_each_entry(vdis, &vdctrl.vdis_list, head) {
 		if (strcmp(name, vdis->name) == 0) {
 			found = TRUE;
 			break;
@@ -871,7 +835,7 @@ int vmm_vdisplay_destroy(struct vmm_vdisplay *vdis)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
+	struct vmm_surface *sf;
 	struct vmm_vdisplay *vd;
 	struct vmm_vdisplay_event event;
 
@@ -887,7 +851,9 @@ int vmm_vdisplay_destroy(struct vmm_vdisplay *vdis)
 
 	vmm_spin_lock_irqsave(&vdis->surface_list_lock, flags);
 	while (!list_empty(&vdis->surface_list)) {
-		l = list_pop(&vdis->surface_list);
+		sf = list_first_entry(&vdis->surface_list,
+					struct vmm_surface, head);
+		list_del(&sf->head);
 	}
 	vmm_spin_unlock_irqrestore(&vdis->surface_list_lock, flags);
 
@@ -900,8 +866,7 @@ int vmm_vdisplay_destroy(struct vmm_vdisplay *vdis)
 
 	vd = NULL;
 	found = FALSE;
-	list_for_each(l, &vdctrl.vdis_list) {
-		vd = list_entry(l, struct vmm_vdisplay, head);
+	list_for_each_entry(vd, &vdctrl.vdis_list, head) {
 		if (strcmp(vd->name, vdis->name) == 0) {
 			found = TRUE;
 			break;
@@ -924,7 +889,6 @@ VMM_EXPORT_SYMBOL(vmm_vdisplay_destroy);
 struct vmm_vdisplay *vmm_vdisplay_find(const char *name)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vdisplay *vd;
 
 	if (!name) {
@@ -936,8 +900,7 @@ struct vmm_vdisplay *vmm_vdisplay_find(const char *name)
 
 	vmm_mutex_lock(&vdctrl.vdis_list_lock);
 
-	list_for_each(l, &vdctrl.vdis_list) {
-		vd = list_entry(l, struct vmm_vdisplay, head);
+	list_for_each_entry(vd, &vdctrl.vdis_list, head) {
 		if (strcmp(vd->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -957,20 +920,18 @@ VMM_EXPORT_SYMBOL(vmm_vdisplay_find);
 struct vmm_vdisplay *vmm_vdisplay_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_vdisplay *retval;
+	struct vmm_vdisplay *vd;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	vd = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&vdctrl.vdis_list_lock);
 
-	list_for_each(l, &vdctrl.vdis_list) {
-		retval = list_entry(l, struct vmm_vdisplay, head);
+	list_for_each_entry(vd, &vdctrl.vdis_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -984,18 +945,18 @@ struct vmm_vdisplay *vmm_vdisplay_get(int index)
 		return NULL;
 	}
 
-	return retval;
+	return vd;
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_get);
 
 u32 vmm_vdisplay_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct vmm_vdisplay *vd;
 
 	vmm_mutex_lock(&vdctrl.vdis_list_lock);
 
-	list_for_each(l, &vdctrl.vdis_list) {
+	list_for_each_entry(vd, &vdctrl.vdis_list, head) {
 		retval++;
 	}
 

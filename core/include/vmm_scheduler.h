@@ -35,7 +35,10 @@ void vmm_scheduler_preempt_enable(void);
 /** Preempt Orphan VCPU (Must be called from somewhere) */
 void vmm_scheduler_preempt_orphan(arch_regs_t *regs);
 
-/** Change the vcpu state 
+/** Force re-scheduling on given host CPU */
+int vmm_scheduler_force_resched(u32 hcpu);
+
+/** Change the vcpu state
  *  (Do not call this function directly.)
  *  (Always prefer vmm_manager_vcpu_xxx() APIs for vcpu state change.)
  */
@@ -55,6 +58,24 @@ bool vmm_scheduler_orphan_context(void);
 
 /** Check whether we are in Normal VCPU context */
 bool vmm_scheduler_normal_context(void);
+
+/** Count number ready VCPUs with given priority on a host CPU */
+u32 vmm_scheduler_ready_count(u32 hcpu, u8 priority);
+
+/** Get scheduler sampling period in nanosecs */
+u64 vmm_scheduler_get_sample_period(u32 hcpu);
+
+/** Set scheduler sampling period in nanosecs */
+void vmm_scheduler_set_sample_period(u32 hcpu, u64 period);
+
+/** Last sampled irq time in nanosecs for given host CPU */
+u64 vmm_scheduler_irq_time(u32 hcpu);
+
+/** Last sampled idle time in nanosecs for given host CPU */
+u64 vmm_scheduler_idle_time(u32 hcpu);
+
+/** Retrive idle vcpu for given host CPU */
+struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu);
 
 /** Retrive current vcpu number */
 struct vmm_vcpu *vmm_scheduler_current_vcpu(void);

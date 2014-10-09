@@ -99,6 +99,10 @@ struct vcpu_hw_context {
 	struct vmcs *vmcs;
 	struct vmm_vcpu *assoc_vcpu; /**< vCPU associated to this hardware context */
 	u64 g_regs[NR_GUEST_REGS];
+	u64 g_cr0; /* till g_cr3 is what guest sees */
+	u64 g_cr1;
+	u64 g_cr2;
+	u64 g_cr3;
 
 	unsigned int asid;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
@@ -107,7 +111,7 @@ struct vcpu_hw_context {
 	struct page_table *shadow_pgt; /**< Shadow page table when EPT/NPT is not available in chip */
 	union page32 *shadow32_pg_list; /**< Page list for 32-bit guest and paged real mode. */
 	union page32 *shadow32_pgt; /**<32-bit page table */
-	DEFINE_BITMAP(shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
+	DECLARE_BITMAP(shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
 	u32 pgmap_free_cache;
 
 	struct vcpu_intercept_table icept_table;
@@ -148,10 +152,12 @@ struct cpuid_response {
  * Contains MSR, related vm control block, etc.
  */
 struct x86_vcpu_priv {
+	vmm_spinlock_t lock;
 	u64 capabilities;
 	struct cpuid_response extended_funcs[CPUID_EXTENDED_FUNC_LIMIT-CPUID_EXTENDED_BASE];
 	struct cpuid_response standard_funcs[CPUID_BASE_FUNC_LIMIT];
 	struct vcpu_hw_context *hw_context;
+	int int_pending; /* vector to be taken in guest */
 };
 
 #define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))

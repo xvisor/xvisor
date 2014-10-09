@@ -189,8 +189,7 @@ int virtio_queue_cleanup(struct virtio_queue *vq)
 		goto done;
 	}
 
-	rc = vmm_host_memunmap((virtual_addr_t)vq->addr, 
-			       (virtual_size_t)vq->total_size);
+	rc = vmm_host_memunmap((virtual_addr_t)vq->addr);
 
 done:
 	vq->last_avail_idx = 0;

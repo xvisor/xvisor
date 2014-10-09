@@ -119,7 +119,7 @@ void clk_disable(struct clk *clk)
  */
 void clk_put(struct clk *clk)
 {
-	vmm_host_iounmap((virtual_addr_t) clk, sizeof(u32));
+	vmm_host_iounmap((virtual_addr_t)clk);
 }
 
 /**

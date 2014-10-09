@@ -220,12 +220,8 @@ virtual_size_t vmm_host_ram_estimate_hksize(physical_size_t ram_size)
 
 int __init vmm_host_ram_init(physical_addr_t base, 
 			     physical_size_t size,
-			     virtual_addr_t hkbase, 
-			     physical_addr_t resv_pa, 
-			     virtual_size_t resv_sz)
+			     virtual_addr_t hkbase)
 {
-	int start, last, max;
-
 	memset(&rctrl, 0, sizeof(rctrl));
 
 	INIT_SPIN_LOCK(&rctrl.ram_bmap_lock);
@@ -240,13 +236,6 @@ int __init vmm_host_ram_init(physical_addr_t base,
 	rctrl.ram_bmap_free = rctrl.ram_frame_count;
 
 	bitmap_zero(rctrl.ram_bmap, rctrl.ram_frame_count);
-
-	max = ((rctrl.ram_start + rctrl.ram_size) >> VMM_PAGE_SHIFT);
-	start = ((resv_pa - rctrl.ram_start) >> VMM_PAGE_SHIFT);
-	last = start + (resv_sz >> VMM_PAGE_SHIFT);
-	last = (last < max) ? last : max;
-	bitmap_set(rctrl.ram_bmap, start, last - start);
-	rctrl.ram_bmap_free -=  last - start;
 
 	return VMM_OK;
 }

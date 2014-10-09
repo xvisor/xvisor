@@ -25,6 +25,8 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_main.h>
+#include <vmm_delay.h>
 #include <vmm_version.h>
 #include <vmm_devtree.h>
 #include <vmm_threads.h>
@@ -51,6 +53,11 @@ static int mterm_main(void *udata)
 	size_t cmds_len;
 	char cmds[CONFIG_MTERM_CMD_WIDTH];
 	struct vmm_chardev *cdev;
+
+	/* Sleep here if initialization is not complete */
+	while (!vmm_init_done()) {
+		vmm_msleep(100);
+	}
 
 	/* Print Banner */
 	vmm_printf("%s", VMM_BANNER_STRING);

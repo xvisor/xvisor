@@ -90,23 +90,28 @@ struct vmm_symbol {
 	u32 type;
 };
 
+#define EXPAND(VAR)			#VAR
+#define MACRO_CONCAT(X,Y)		X ## Y
+#define MACRO_CONCAT2(X, Y)		MACRO_CONCAT(X, Y)
+
 #ifdef __VMM_MODULES__
 
-#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = {\
+#define __VMM_DECLARE_MODULE(_var,_name,_desc,_author,_license,\
+			     _ipriority,_init,_exit) \
+__modtbl struct vmm_module _var = {	\
 	.signature = VMM_MODULE_SIGNATURE, \
-	.name = VMM_MODNAME, \
+	.name = stringify(_name), \
 	.desc = _desc, \
 	.author = _author, \
 	.license = _license, \
 	.ipriority = _ipriority, \
 	.init = _init, \
 	.exit = _exit, \
-	.head = LIST_HEAD_INIT(__moddecl__.head), \
+	.head = LIST_HEAD_INIT(_var.head),	\
 }
 
 #define __VMM_EXPORT_SYMBOL(sym,_type) \
-static __unused __symtbl struct vmm_symbol __##sym = { \
+__symtbl struct vmm_symbol __##sym = { \
 	.name = #sym, \
 	.addr = (virtual_addr_t)&sym, \
 	.type = (_type), \
@@ -114,22 +119,30 @@ static __unused __symtbl struct vmm_symbol __##sym = { \
 
 #else
 
-#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
-static __unused __modtbl struct vmm_module __moddecl__ = {\
+#define __VMM_DECLARE_MODULE(_var,_name,_desc,_author,_license,\
+			     _ipriority,_init,_exit) \
+__modtbl struct vmm_module _var = {	\
 	.signature = VMM_MODULE_SIGNATURE, \
-	.name = VMM_MODNAME, \
+	.name = stringify(_name), \
 	.desc = _desc, \
 	.author = _author, \
 	.license = "GPL", \
 	.ipriority = _ipriority, \
 	.init = _init, \
 	.exit = _exit, \
-	.head = LIST_HEAD_INIT(__moddecl__.head), \
+	.head = LIST_HEAD_INIT(_var.head),	\
 }
 
 #define __VMM_EXPORT_SYMBOL(sym,_type)
 
 #endif
+
+#define MODTBL_VAR(NAME)		\
+		MACRO_CONCAT2(MACRO_CONCAT(__modtbl__,NAME), __LINE__)
+#define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
+	__VMM_DECLARE_MODULE(MODTBL_VAR(VMM_MODNAME),\
+			     VMM_MODNAME,_desc,_author,\
+			     _license,_ipriority,_init,_exit)
 
 #define VMM_EXPORT_SYMBOL(sym) \
 	__VMM_EXPORT_SYMBOL(sym,VMM_SYMBOL_ANY)
@@ -152,11 +165,15 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym);
 /** Check if module is built-in */
 bool vmm_modules_isbuiltin(struct vmm_module *mod);
 
+#ifdef CONFIG_MODULES
+
 /** Load a loadable module */
 int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size);
 
 /** Unload a loadable module */
 int vmm_modules_unload(struct vmm_module *mod);
+
+#endif
 
 /** Retrive a module at with given index */
 struct vmm_module *vmm_modules_getmodule(u32 index);

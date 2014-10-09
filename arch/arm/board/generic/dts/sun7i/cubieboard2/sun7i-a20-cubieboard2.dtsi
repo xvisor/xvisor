@@ -1,0 +1,11 @@
+
+/include/ "../sun7i-a20.dtsi"
+
+/ {
+	model = "Cubietech Cubieboard2";
+	compatible = "cubietech,cubieboard2", "allwinner,sun7i-a20";
+
+        chosen {
+                bootargs = "earlyprintk console=ttyS0,115200";
+        };
+};

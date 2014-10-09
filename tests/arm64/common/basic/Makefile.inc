@@ -24,11 +24,7 @@
 # Include top-level configuration file if present
 -include $(build_dir)/.config
 
-ifdef CROSS_COMPILE
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
-else
-FW_CROSS_COMPILE=aarch64-none-linux-gnu-
-endif
 FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
 FW_CFLAGS=$(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -mgeneral-regs-only -mlittle-endian
 FW_ASFLAGS=$(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -mgeneral-regs-only -mlittle-endian -D__ASSEMBLY__
@@ -39,6 +35,7 @@ FW_CPP=$(FW_CROSS_COMPILE)cpp
 FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
 
 FIRMWARE_OBJS=$(obj_dir)/arm_entry.o \
+		$(obj_dir)/arm_cache.o \
 		$(obj_dir)/arm_mmu.o
 
 FIRMWARE_OBJS+=$(board_objs)
@@ -72,6 +69,7 @@ FIRMWARE_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/arm_board.h \
                 $(common_dir)/arm_heap.h \
                 $(common_dir)/arm_inline_asm.h \
+                $(common_dir)/arm_cache.h \
                 $(common_dir)/arm_io.h \
                 $(common_dir)/arm_irq.h \
                 $(common_dir)/arm_mmu.h \

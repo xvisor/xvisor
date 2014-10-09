@@ -36,7 +36,8 @@
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
-#include <drv/vexpress.h>
+
+#include <linux/vexpress.h>
 
 #define MODULE_DESC			"VExpress Sysreg Driver"
 #define MODULE_AUTHOR			"Anup Patel"

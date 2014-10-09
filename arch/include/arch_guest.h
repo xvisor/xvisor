@@ -26,8 +26,35 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Guest functions required by VMM core */
-int arch_guest_init(struct vmm_guest * guest);
-int arch_guest_deinit(struct vmm_guest * guest);
+/** Architecture specific callback for guest init */
+int arch_guest_init(struct vmm_guest *guest);
+
+/** Architecture specific callback for guest deinit */
+int arch_guest_deinit(struct vmm_guest *guest);
+
+/** Architecture specific callback for newly added region
+ *
+ * Do architecture related initialization for the newly added
+ * region. This function is called after the region probing
+ * is done by the core code.
+ *
+ * @param guest Guest for which region is being added.
+ * @param region Region being added.
+ * @return This function should return VMM_OK on success or
+ * appropriate error code otherwise.
+ */
+int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region);
+
+/** Architecture specific callback for region being deleted
+ *
+ * Do Architecture related cleanup for the region being deleted.
+ * This function is called before region is unprobed by core.
+ *
+ * @param guest Guest for which region is being added.
+ * @param region Region being added.
+ * @return This function should return VMM_OK on success or
+ * appropriate error code otherwise.
+ */
+int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region);
 
 #endif

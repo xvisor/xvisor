@@ -197,7 +197,7 @@ static u8 pl011_getc_sleepable(struct pl011_port *port)
 }
 
 static u32 pl011_read(struct vmm_chardev *cdev,
-		      u8 * dest, u32 len, bool sleep)
+		      u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -244,7 +244,7 @@ static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
 #endif
 
 static u32 pl011_write(struct vmm_chardev *cdev,
-		       u8 * src, u32 len, bool sleep)
+		       u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct pl011_port *port;
@@ -311,10 +311,9 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_port;
 	}
 
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
-		goto free_reg;
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
+		port->baudrate = 115200;
 	}
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
@@ -369,7 +368,7 @@ static int pl011_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid pl011_devid_table[] = {
-	{.type = "serial",.compatible = "arm,pl011"},
+	{ .compatible = "arm,pl011" },
 	{ /* end of list */ },
 };
 

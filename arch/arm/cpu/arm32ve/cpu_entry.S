@@ -219,8 +219,6 @@ _start_mmu_init:
 __start_secondary_pen_release:
 	.word	start_secondary_pen_release
 
-#define MPIDR_HWID_BITMASK	0xFFFFFF
-
 	/*
 	 * Secondary CPU startup code 
 	 */
@@ -284,7 +282,10 @@ _start_secondary_nopen:
 #endif
 	/* Setup Hypervisor System Control Register */
 	bl	proc_setup
+	dsb
+	isb
 	mcr     p15, 4, r0, c1, c0, 0
+	isb
 	/* Jump to reset code */
 	ldr	pc, __reset
 
@@ -304,15 +305,31 @@ __hmair0_set:
 __hmair1_set:
 	.word (HMAIR1_INITVAL)
 __htcr_clear:
-	.word ~(HTCR_T0SZ_MASK | HTCR_ORGN0_MASK | HTCR_IRGN0_MASK)
+	.word ~(HTCR_T0SZ_MASK | \
+		HTCR_ORGN0_MASK | \
+		HTCR_IRGN0_MASK | \
+		HTCR_SH0_MASK)
 __htcr_set:
-	.word ((0x3 << HTCR_ORGN0_SHIFT) | (0x3 << HTCR_IRGN0_SHIFT))
+	.word ((0x1 << HTCR_ORGN0_SHIFT) | \
+	       (0x1 << HTCR_IRGN0_SHIFT) | \
+	       (0x3 << HTCR_SH0_SHIFT))
 __httbr_set:
 	.word def_ttbl
 __vtcr_clear:
-	.word ~(0x0)
+	.word ~(VTCR_T0SZ_MASK | \
+		VTCR_S_MASK | \
+		VTCR_SL0_MASK | \
+		VTCR_ORGN0_MASK | \
+		VTCR_IRGN0_MASK | \
+		VTCR_SH0_MASK)
 __vtcr_set:
-	.word ((0x1 << VTCR_SL0_SHIFT) | (0x3 << VTCR_ORGN0_SHIFT) | (0x3 << VTCR_IRGN0_SHIFT))
+	.word ((VTCR_T0SZ_VAL(39)) | \
+	       (VTCR_S_VAL(39)) | \
+	       (VTCR_SL0_L1) | \
+	       (0x1 << VTCR_ORGN0_SHIFT) | \
+	       (0x1 << VTCR_IRGN0_SHIFT) | \
+	       (0x3 << VTCR_SH0_SHIFT))
+
 __boot_reg0:
 	.word _boot_reg0
 __boot_reg1:

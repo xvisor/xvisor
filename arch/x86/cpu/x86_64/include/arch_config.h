@@ -24,7 +24,6 @@
 #ifndef _ARCH_CONFIG_H__
 #define _ARCH_CONFIG_H__
 
-#define ARCH_HAS_DEFTERM_EARLY_PRINT
 #define ARCH_HAS_DIVISON_OPERATION
 
 #endif /* _ARCH_CONFIG_H__ */

@@ -255,10 +255,10 @@ static u32 get_osc_clk_speed(u32 gpt_num, u32 sys_clk_div)
 	}
 
 	/* Unmap s32k registers */
-	vmm_host_iounmap(s32k_va, 0x1000);
+	vmm_host_iounmap(s32k_va);
 
 	/* Unmap gpt registers */
-	vmm_host_iounmap(gpt_va, 0x1000);
+	vmm_host_iounmap(gpt_va);
 
 	return osc_clk_hz >> (sys_clk_div - 1);
 }

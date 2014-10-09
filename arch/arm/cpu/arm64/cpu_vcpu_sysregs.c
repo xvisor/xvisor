@@ -22,9 +22,12 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_smp.h>
+#include <vmm_cache.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_sysregs.h>
 
 #include <arm_features.h>
@@ -53,6 +56,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 					*data &= ~(1 << 6);
 				}
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0;
 				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
@@ -76,6 +80,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			case ARM_CPUID_CORTEXA9:
 				*data = 0x1e000000;
 				break;
+			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
 				*data = 0x2c000000;
 				break;
@@ -87,7 +92,9 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-	}
+	default:
+		goto bad_reg;
+	};
 
 	return TRUE;
 
@@ -112,7 +119,42 @@ bool cpu_vcpu_cp15_write(struct vmm_vcpu *vcpu,
 			goto bad_reg;
 		};
 		break;
-	}
+	case 7: /* Cache control. */
+		switch (CRm) {
+		case 6:	/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+		case 14: /* DCCISW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->dflush_needed);
+				asm volatile("dc cisw, %0" : : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		case 10: /* DCCSW */
+			switch (opc2) {
+			case 2:
+				vmm_cpumask_setall(
+					&arm_priv(vcpu)->dflush_needed);
+				vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+					&arm_priv(vcpu)->dflush_needed);
+				asm volatile("dc csw, %0" : : "r" (data));
+				break;
+			default:
+				goto bad_reg;
+			};
+			break;
+		default:
+			goto bad_reg;
+		};
+		break;
+	default:
+		goto bad_reg;
+	};
 
 	return TRUE;
 
@@ -234,6 +276,19 @@ bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu,
 	case ISS_ACTLR_EL1:
 		s->actlr_el1 = data;
 		break;
+	case ISS_DCISW_EL1:	/* Upgrade DCISW to DCCISW, as per HCR.SWIO */
+	case ISS_DCCISW_EL1: /* DCCISW */
+		vmm_cpumask_setall(&arm_priv(vcpu)->dflush_needed);
+		vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+				&arm_priv(vcpu)->dflush_needed);
+		asm volatile("dc cisw, %0" : : "r" (data));
+		break;
+	case ISS_DCCSW_EL1: /* DCCSW */
+		vmm_cpumask_setall(&arm_priv(vcpu)->dflush_needed);
+		vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
+				&arm_priv(vcpu)->dflush_needed);
+		asm volatile("dc csw, %0" : : "r" (data));
+		break;
 	default:
 		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
 		goto bad_reg;
@@ -248,77 +303,20 @@ bad_reg:
 
 void cpu_vcpu_sysregs_save(struct vmm_vcpu *vcpu)
 {
-	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
-
-	/* Save 64bit EL1/EL0 registers */
-	s->sp_el0 = mrs(sp_el0);
-	s->sp_el1 = mrs(sp_el1);
-	s->elr_el1 = mrs(elr_el1);
-	s->spsr_el1 = mrs(spsr_el1);
-	s->ttbr0_el1 = mrs(ttbr0_el1);
-	s->ttbr1_el1 = mrs(ttbr1_el1);
-	s->sctlr_el1 = mrs(sctlr_el1);
-	s->cpacr_el1 = mrs(cpacr_el1);
-	s->tcr_el1 = mrs(tcr_el1);
-	s->esr_el1 = mrs(esr_el1);
-	s->far_el1 = mrs(far_el1);
-	s->mair_el1 = mrs(mair_el1);
-	s->vbar_el1 = mrs(vbar_el1);
-	s->contextidr_el1 = mrs(contextidr_el1);
-	s->tpidr_el0 = mrs(tpidr_el0);
-	s->tpidr_el1 = mrs(tpidr_el1);
-	s->tpidrro_el0 = mrs(tpidrro_el0);
-
-	/* Save 32bit only registers */
-	s->spsr_abt = mrs(spsr_abt);
-	s->spsr_und = mrs(spsr_und);
-	s->spsr_irq = mrs(spsr_irq);
-	s->spsr_fiq = mrs(spsr_fiq);
-	s->dacr32_el2 = mrs(dacr32_el2);
-	s->ifsr32_el2 = mrs(ifsr32_el2);
-	if (cpu_supports_thumbee()) {
-		s->teecr32_el1 = mrs(teecr32_el1);
-		s->teehbr32_el1 = mrs(teehbr32_el1);
-	}
+	cpu_vcpu_sysregs_regs_save(&arm_priv(vcpu)->sysregs);
 }
 
 void cpu_vcpu_sysregs_restore(struct vmm_vcpu *vcpu)
 {
-	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
+	cpu_vcpu_sysregs_regs_restore(&arm_priv(vcpu)->sysregs);
 
-	/* Update VPIDR and VMPIDR */
-	msr(vpidr_el2, s->midr_el1);
-	msr(vmpidr_el2, s->mpidr_el1);
-
-	/* Restore 64bit EL1/EL0 register */
-	msr(sp_el0, s->sp_el0);
-	msr(sp_el1, s->sp_el1);
-	msr(elr_el1, s->elr_el1);
-	msr(spsr_el1, s->spsr_el1);
-	msr(ttbr0_el1, s->ttbr0_el1);
-	msr(ttbr1_el1, s->ttbr1_el1);
-	msr(sctlr_el1, s->sctlr_el1);
-	msr(cpacr_el1, s->cpacr_el1);
-	msr(tcr_el1, s->tcr_el1);
-	msr(esr_el1, s->esr_el1);
-	msr(far_el1, s->far_el1);
-	msr(mair_el1, s->mair_el1);
-	msr(vbar_el1, s->vbar_el1);
-	msr(contextidr_el1, s->contextidr_el1);
-	msr(tpidr_el0, s->tpidr_el0);
-	msr(tpidr_el1, s->tpidr_el1);
-	msr(tpidrro_el0, s->tpidrro_el0);
-
-	/* Restore 32bit only registers */
-	msr(spsr_abt, s->spsr_abt);
-	msr(spsr_und, s->spsr_und);
-	msr(spsr_irq, s->spsr_irq);
-	msr(spsr_fiq, s->spsr_fiq);
-	msr(dacr32_el2, s->dacr32_el2);
-	msr(ifsr32_el2, s->ifsr32_el2);
-	if (cpu_supports_thumbee()) {
-		msr(teecr32_el1, s->teecr32_el1);
-		msr(teehbr32_el1, s->teehbr32_el1);
+	/* Check whether vcpu requires dcache to be flushed on
+	 * this host CPU. This is a consequence of doing dcache
+	 * operations by set/way.
+	 */
+	if (vmm_cpumask_test_and_clear_cpu(vmm_smp_processor_id(),
+					   &arm_priv(vcpu)->dflush_needed)) {
+		vmm_flush_cache_all();
 	}
 }
 
@@ -380,7 +378,7 @@ int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid)
 {
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 
-	/* Clear all system registers */
+	/* Clear all sysregs */
 	memset(s, 0, sizeof(struct arm_priv_sysregs));
 
 	/* Initialize VCPU MIDR and MPIDR registers */
@@ -398,6 +396,7 @@ int cpu_vcpu_sysregs_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		s->midr_el1 &= ~(MIDR_PARTNUM_MASK|MIDR_REVISON_MASK);
 		s->mpidr_el1 = (1 << 31) | vcpu->subid;
 		break;
+	case ARM_CPUID_CORTEXA7:
 	case ARM_CPUID_CORTEXA15:
 		s->midr_el1 = cpuid;
 		s->mpidr_el1 = (1 << 31) | vcpu->subid;

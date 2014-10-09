@@ -25,6 +25,7 @@
 
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <libs/list.h>
 
@@ -57,6 +58,7 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_PER_CPU		- Interrupt is per cpu
  * @VMM_IRQ_STATE_AFFINITY_SET		- Interrupt affinity was set
  * @VMM_IRQ_STATE_LEVEL			- Interrupt is level triggered
+ * @VMM_IRQ_STATE_GUEST_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  * @VMM_IRQ_STATE_INPROGRESS		- In progress state of the interrupt
@@ -66,6 +68,7 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_PER_CPU		= (1 << 11),
 	VMM_IRQ_STATE_AFFINITY_SET	= (1 << 12),
 	VMM_IRQ_STATE_LEVEL		= (1 << 13),
+	VMM_IRQ_STATE_GUEST_ROUTED	= (1 << 14),
 	VMM_IRQ_STATE_DISABLED		= (1 << 16),
 	VMM_IRQ_STATE_MASKED		= (1 << 17),
 	VMM_IRQ_STATE_INPROGRESS	= (1 << 18),
@@ -81,8 +84,10 @@ enum vmm_irq_return {
 	VMM_IRQ_HANDLED		= (1 << 0),
 };
 
-typedef enum vmm_irq_return vmm_irq_return_t;
+struct vmm_host_irq;
 
+typedef enum vmm_irq_return vmm_irq_return_t;
+typedef void (*vmm_host_irq_handler_t)(struct vmm_host_irq *, u32, void *);
 typedef vmm_irq_return_t (*vmm_host_irq_function_t) (int irq_no, void *dev);
 
 /** Host IRQ Action Abstraction */
@@ -92,9 +97,7 @@ struct vmm_host_irq_action {
 	void *dev;
 };
 
-struct vmm_host_irq;
-
-/** Host IRQ Chip Abstraction 
+/** Host IRQ Chip Abstraction
  * @irq_enable:		enable the interrupt (defaults to chip->unmask if NULL)
  * @irq_disable:	disable the interrupt (defaults to chip->mask if NULL)
  * @irq_ack:		start of a new interrupt
@@ -110,13 +113,15 @@ struct vmm_host_irq_chip {
 	void (*irq_disable)(struct vmm_host_irq *irq);
 	void (*irq_ack)(struct vmm_host_irq *irq);
 	void (*irq_mask)(struct vmm_host_irq *irq);
-	void (*irq_mask_and_ack)(struct vmm_host_irq *irq);
+	void (*irq_mask_ack)(struct vmm_host_irq *irq);
 	void (*irq_unmask)(struct vmm_host_irq *irq);
 	void (*irq_eoi)(struct vmm_host_irq *irq);
-	int  (*irq_set_affinity)(struct vmm_host_irq *irq, 
-				 const struct vmm_cpumask *dest, 
+	int  (*irq_set_affinity)(struct vmm_host_irq *irq,
+				 const struct vmm_cpumask *dest,
 				 bool force);
 	int  (*irq_set_type)(struct vmm_host_irq *irq, u32 flow_type);
+	void (*irq_raise)(struct vmm_host_irq *irq,
+			  const struct vmm_cpumask *dest);
 };
 
 /** Host IRQ Abstraction */
@@ -127,8 +132,10 @@ struct vmm_host_irq {
 	u32 count[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
-	void (*handler)(u32, struct vmm_host_irq *);
-	struct dlist action_list;
+	vmm_host_irq_handler_t handler;
+	void *handler_data;
+	vmm_rwlock_t action_lock[CONFIG_CPU_COUNT];
+	struct dlist action_list[CONFIG_CPU_COUNT];
 };
 
 /* nodeid table based host irq initialization callback */
@@ -138,19 +145,25 @@ typedef int (*vmm_host_irq_init_t)(struct vmm_devtree_node *);
 #define VMM_HOST_IRQ_INIT_DECLARE(name, compat, fn)	\
 VMM_DEVTREE_NIDTBL_ENTRY(name, "host_irq", "", "", compat, fn)
 
-/** Explicity report a host irq 
+/** Explicity report a host irq
  * (Note: To be called from architecture specific code)
- * (Note: This will be typically called by nested/secondary PICs) 
+ * (Note: This will be typically called by nested/secondary PICs)
  */
 int vmm_host_generic_irq_exec(u32 hirq_no);
 
-/** Report external irq as seen from CPU 
- * (Note: To be called from architecture specific code) 
+/** Report active irq as seen from CPU
+ * (Note: To be called from architecture specific code)
  */
-int vmm_host_irq_exec(u32 cpu_irq_no);
+int vmm_host_active_irq_exec(u32 cpu_irq_no);
 
 /** Set callback for retriving active host irq number */
 void vmm_host_irq_set_active_callback(u32 (*active)(u32));
+
+/** Initialize host irq instance 
+ *  Note: This function is for internal use only.
+ *  Note: Do not call this function directly.
+ */
+void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num);
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
@@ -158,24 +171,38 @@ u32 vmm_host_irq_count(void);
 /** Get host irq instance from host irq number */
 struct vmm_host_irq *vmm_host_irq_get(u32 hirq_num);
 
-/* Set host irq chip for given host irq number */
+/** Set host irq chip for given host irq number */
 int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
 
-/* Set host irq chip data for given host irq number */
+/** Get host irq chip instance from host irq instance */
+struct vmm_host_irq_chip *vmm_host_irq_get_chip(struct vmm_host_irq *irq);
+
+/** Set host irq chip data for given host irq number */
 int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data);
 
-/* Set host irq handler for given host irq number 
- * NOTE: For second argument, mention one of the 
- * vmm_handle_xxxxx functions from below
+/** Get host irq chip data from host irq instance */
+void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq);
+
+/** Set host irq handler for given host irq number
+ *  NOTE: For second argument, mention one of the
+ *  vmm_handle_xxxxx functions from below
  */
-int vmm_host_irq_set_handler(u32 hirq_num, 
-		void (*handler)(u32, struct vmm_host_irq *));
+int vmm_host_irq_set_handler(u32 hirq_num, vmm_host_irq_handler_t handler);
 
-/* Fast EOI irq handler */
-void vmm_handle_fast_eoi(u32 hirq_num, struct vmm_host_irq *irq);
+/** Get host irq handler for given host irq number */
+vmm_host_irq_handler_t vmm_host_irq_get_handler(u32 hirq_num);
 
-/* Level irq handler */
-void vmm_handle_level_irq(u32 hirq_num, struct vmm_host_irq *irq);
+/** Set host irq handler data for given host irq number  */
+int vmm_host_irq_set_handler_data(u32 hirq_num, void *data);
+
+/** Get host irq handler data for given host irq number */
+void *vmm_host_irq_get_handler_data(u32 hirq_num);
+
+/** Fast EOI irq handler */
+void vmm_handle_fast_eoi(struct vmm_host_irq *irq, u32 cpu, void *data);
+
+/** Level irq handler */
+void vmm_handle_level_irq(struct vmm_host_irq *irq, u32 cpu, void *data);
 
 /** Get host irq number from host irq instance */
 static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
@@ -183,16 +210,31 @@ static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
 	return (irq) ? irq->num : 0;
 }
 
+/** Set host irq name from host irq instance */
+static inline void vmm_host_irq_set_name(struct vmm_host_irq *irq,
+					 const char *name)
+{
+	if (irq) {
+		irq->name = name;
+	}
+}
+
+/** Get host irq name from host irq instance */
+static inline const char *vmm_host_irq_get_name(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->name : 0;
+}
+
 /** Check if a host irq is per-cpu */
 static inline bool vmm_host_irq_is_per_cpu(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_PER_CPU;
+	return (irq->state & VMM_IRQ_STATE_PER_CPU) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is affinity was set */
 static inline bool vmm_host_irq_affinity_was_set(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_AFFINITY_SET;
+	return (irq->state & VMM_IRQ_STATE_AFFINITY_SET) ? TRUE : FALSE;
 }
 
 /** Get trigger type of a host irq */
@@ -215,25 +257,31 @@ static inline void vmm_host_irq_set_trigger_type(struct vmm_host_irq *irq, u32 t
 /** Check if a host irq is of level type */
 static inline bool vmm_host_irq_is_level_type(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_LEVEL;
+	return (irq->state & VMM_IRQ_STATE_LEVEL) ? TRUE : FALSE;
+}
+
+/** Check if a host irq is routed to some guest */
+static inline bool vmm_host_irq_is_guest_routed(struct vmm_host_irq *irq)
+{
+	return (irq->state & VMM_IRQ_STATE_GUEST_ROUTED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is disabled */
 static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_DISABLED;
+	return (irq->state & VMM_IRQ_STATE_DISABLED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is masked */
-static inline bool vmm_host_irq_irq_masked(struct vmm_host_irq *irq)
+static inline bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_MASKED;
+	return (irq->state & VMM_IRQ_STATE_MASKED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is in-progress */
-static inline bool vmm_host_irq_irq_inprogress(struct vmm_host_irq *irq)
+static inline bool vmm_host_irq_is_inprogress(struct vmm_host_irq *irq)
 {
-	return irq->state & VMM_IRQ_STATE_INPROGRESS;
+	return (irq->state & VMM_IRQ_STATE_INPROGRESS) ? TRUE : FALSE;
 }
 
 /** Get host irq count from host irq instance */
@@ -245,32 +293,25 @@ static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq, u32 cpu)
 	return 0;
 }
 
-/** Get host irq chip instance from host irq instance */
-static inline struct vmm_host_irq_chip *vmm_host_irq_get_chip(
-						struct vmm_host_irq *irq)
-{
-	return (irq) ? irq->chip : NULL;
-}
-
-/** Get host irq chip data from host irq instance */
-static inline void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
-{
-	return (irq) ? irq->chip_data : NULL;
-}
-
 /** Set cpu affinity of given host irq */
-int vmm_host_irq_set_affinity(u32 hirq_num, 
-			      const struct vmm_cpumask *dest, 
+int vmm_host_irq_set_affinity(u32 hirq_num,
+			      const struct vmm_cpumask *dest,
 			      bool force);
 
 /** Set trigger type for given host irq */
 int vmm_host_irq_set_type(u32 hirq_num, u32 type);
 
-/** Mark per cpu state for given host irq */
+/** Mark host irq as per cpu */
 int vmm_host_irq_mark_per_cpu(u32 hirq_num);
 
-/** UnMark per cpu state for given host irq */
+/** UnMark host irq as per cpu */
 int vmm_host_irq_unmark_per_cpu(u32 hirq_num);
+
+/** Mark host irq as routed to some guest */
+int vmm_host_irq_mark_guest_routed(u32 hirq_num);
+
+/** UnMark host irq as routed to some guest */
+int vmm_host_irq_unmark_guest_routed(u32 hirq_num);
 
 /** Enable a host irq (by default all irqs are disabled) */
 int vmm_host_irq_enable(u32 hirq_num);
@@ -284,17 +325,50 @@ int vmm_host_irq_unmask(u32 hirq_num);
 /** Mask a host irq */
 int vmm_host_irq_mask(u32 hirq_num);
 
+/** Raise a host irq from software */
+int vmm_host_irq_raise(u32 hirq_num,
+		       const struct vmm_cpumask *dest);
+
 /** Register function callback for given irq */
-int vmm_host_irq_register(u32 hirq_num, 
+int vmm_host_irq_register(u32 hirq_num,
 			  const char *name,
 			  vmm_host_irq_function_t func,
 			  void *dev);
 
 /** Unregister function callback for given irq */
-int vmm_host_irq_unregister(u32 hirq_num, 
+int vmm_host_irq_unregister(u32 hirq_num,
 			    void *dev);
 
 /** Interrupts initialization function */
 int vmm_host_irq_init(void);
+
+/*
+ * Entry/exit functions for chained handlers where the primary IRQ chip
+ * may implement either fasteoi or level-trigger flow control.
+ */
+static inline void vmm_chained_irq_enter(struct vmm_host_irq_chip *chip,
+					 struct vmm_host_irq *desc)
+{
+	/* FastEOI controllers require no action on entry. */
+	if (chip->irq_eoi)
+		return;
+
+	if (chip->irq_mask_ack) {
+		chip->irq_mask_ack(desc);
+	} else {
+		chip->irq_mask(desc);
+		if (chip->irq_ack)
+			chip->irq_ack(desc);
+	}
+}
+
+static inline void vmm_chained_irq_exit(struct vmm_host_irq_chip *chip,
+					struct vmm_host_irq *desc)
+{
+	if (chip->irq_eoi)
+		chip->irq_eoi(desc);
+        else
+		chip->irq_unmask(desc);
+}
 
 #endif

@@ -47,11 +47,12 @@ cpu-asflags += -marm $(arch-y) $(tune-y)
 cpu-ldflags += -msoft-float
 
 cpu-objs-y += cpu_entry.o
+cpu-objs-y += cpu_mmu_entry.o
 cpu-objs-y += cpu_mmu.o
 cpu-objs-y += cpu_atomic.o
 cpu-objs-y += cpu_atomic64.o
 
-cpu-objs-$(CONFIG_CPU_ARM926T)+= cpu_proc_arm926.o
+cpu-objs-$(CONFIG_ARMV5)+= cpu_proc_v5.o
 cpu-objs-$(CONFIG_ARMV6)+= cpu_proc_v6.o
 cpu-objs-$(CONFIG_ARMV7A)+= cpu_proc_v7.o
 
@@ -61,8 +62,9 @@ cpu-objs-$(CONFIG_ARMV7A)+= cpu_cache_v7.o
 
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_delay.o
-cpu-objs-y+= cpu_string.o
-cpu-objs-y+= cpu_elf.o
+cpu-objs-y+= cpu_memcpy.o
+cpu-objs-y+= cpu_memset.o
+cpu-objs-$(CONFIG_MODULES)+= cpu_elf.o
 cpu-objs-$(CONFIG_ARM32_STACKTRACE)+= cpu_stacktrace.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_helper.o

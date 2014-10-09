@@ -1,0 +1,46 @@
+
+/include/ "../sun4i-a10.dtsi"
+
+/ {
+	model = "Miniand Hackberry";
+	compatible = "miniand,hackberry", "allwinner,sun4i-a10";
+
+	chosen {
+		bootargs = "earlyprintk console=ttyS0,115200";
+	};
+
+	soc@01c00000 {
+		emac: ethernet@01c0b000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&emac_pins_a>;
+			phy = <&phy0>;
+			status = "okay";
+		};
+
+		mdio@01c0b080 {
+			status = "okay";
+
+			phy0: ethernet-phy@0 {
+			        reg = <0>;
+			};
+		};
+
+		pio: pinctrl@01c20800 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&hackberry_hogs>;
+
+			hackberry_hogs: hogs@0 {
+			        allwinner,pins = "PH19";
+			        allwinner,function = "gpio_out";
+			        allwinner,drive = <0>;
+			        allwinner,pull = <0>;
+			};
+		};
+
+		uart0: serial@01c28000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart0_pins_a>;
+			status = "okay";
+		};
+	};
+};

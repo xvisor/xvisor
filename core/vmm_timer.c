@@ -49,7 +49,7 @@ static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
 #if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
 {
-	return vmm_timecounter_read_for_profile(&(this_cpu(tlc).tc));
+	return vmm_timecounter_read_for_profile(&this_cpu(tlc).tc);
 }
 #endif
 
@@ -59,7 +59,7 @@ u64 vmm_timer_timestamp(void)
 	irq_flags_t flags;
 
 	arch_cpu_irq_save(flags);
-	ret = vmm_timecounter_read(&(this_cpu(tlc).tc));
+	ret = vmm_timecounter_read(&this_cpu(tlc).tc);
 	arch_cpu_irq_restore(flags);
 
 	return ret;
@@ -165,12 +165,43 @@ static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
 	vmm_read_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
+bool vmm_timer_event_pending(struct vmm_timer_event *ev)
+{
+	bool ret;
+	irq_flags_t flags;
+
+	if (!ev) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
+	ret = ev->active_state;
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
+
+	return ret;
+}
+
+u64 vmm_timer_event_expiry_time(struct vmm_timer_event *ev)
+{
+	u64 exp_time;
+	irq_flags_t flags;
+
+	if (!ev) {
+		return FALSE;
+	}
+
+	vmm_spin_lock_irqsave_lite(&ev->active_lock, flags);
+	exp_time = ev->expiry_tstamp;
+	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
+
+	return exp_time;
+}
+
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 {
 	u32 hcpu;
 	u64 tstamp;
 	bool found_pos = FALSE;
-	struct dlist *l;
 	irq_flags_t flags, flags1;
 	struct vmm_timer_event *e = NULL;
 	struct vmm_timer_local_ctrl *tlcp;
@@ -194,8 +225,7 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 
 	vmm_write_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
 
-	list_for_each(l, &tlcp->event_list) {
-		e = list_entry(l, struct vmm_timer_event, active_head);
+	list_for_each_entry(e, &tlcp->event_list, active_head) {
 		if (ev->expiry_tstamp < e->expiry_tstamp) {
 			found_pos = TRUE;
 			break;
@@ -241,6 +271,11 @@ int vmm_timer_event_stop(struct vmm_timer_event *ev)
 	vmm_spin_unlock_irqrestore_lite(&ev->active_lock, flags);
 
 	return VMM_OK;
+}
+
+bool vmm_timer_started(void)
+{
+	return this_cpu(tlc).started;
 }
 
 void vmm_timer_start(void)
@@ -289,9 +324,11 @@ int __cpuinit vmm_timer_init(void)
 	INIT_RW_LOCK(&tlcp->event_list_lock);
 	INIT_LIST_HEAD(&tlcp->event_list);
 
-	/* Find suitable clockchip */
-	if (!(tlcp->cc = vmm_clockchip_find_best(vmm_cpumask_of(cpu)))) {
-		vmm_panic("%s: No clockchip for CPU%d\n", __func__, cpu);
+	/* Bind suitable clockchip to current host CPU */
+	tlcp->cc = vmm_clockchip_bind_best(cpu);
+	if (!tlcp->cc) {
+		vmm_printf("%s: No clockchip for CPU%d\n", __func__, cpu);
+		return VMM_ENODEV;
 	}
 
 	/* Update event handler of clockchip */
@@ -301,7 +338,8 @@ int __cpuinit vmm_timer_init(void)
 	if (vmm_smp_is_bootcpu()) {
 		/* Find suitable clocksource */
 		if (!(cs = vmm_clocksource_best())) {
-			vmm_panic("%s: No clocksource found\n", __func__);
+			vmm_printf("%s: No clocksource found\n", __func__);
+			return VMM_ENODEV;
 		}
 
 		/* Initialize timecounter wrapper */

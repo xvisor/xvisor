@@ -304,10 +304,24 @@ int arch_guest_init(struct vmm_guest *guest)
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
-			return VMM_EFAIL;
+			return VMM_ENOMEM;
 		}
+
 		arm_guest_priv(guest)->ttbl = mmu_lpae_ttbl_alloc(TTBL_STAGE2);
+		if (!arm_guest_priv(guest)->ttbl) {
+			vmm_free(guest->arch_priv);
+			guest->arch_priv = NULL;
+			return VMM_ENOMEM;
+		}
+
+		if (vmm_devtree_read_u32(guest->node,
+				"psci_version",
+				&arm_guest_priv(guest)->psci_version)) {
+			/* By default, assume PSCI v0.1 */
+			arm_guest_priv(guest)->psci_version = 1;
+		}
 	}
+
 	return VMM_OK;
 }
 
@@ -325,12 +339,23 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	return VMM_OK;
 }
 
+int arch_guest_add_region(struct vmm_guest *guest, struct vmm_region *region)
+{
+	return VMM_OK;
+}
+
+int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
+{
+	return VMM_OK;
+}
+
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	int rc;
 	u32 cpuid = 0;
 	const char *attr;
 	irq_flags_t flags;
+	u32 phys_timer_irq, virt_timer_irq;
 
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -356,6 +381,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_regs(vcpu)->pstate = PSR_MODE32;
 	} else if (strcmp(attr, "armv7a,cortex-a15") == 0) {
 		cpuid = ARM_CPUID_CORTEXA15;
+		arm_regs(vcpu)->pstate = PSR_MODE32;
+	} else if (strcmp(attr, "armv7a,cortex-a7") == 0) {
+		cpuid = ARM_CPUID_CORTEXA7;
 		arm_regs(vcpu)->pstate = PSR_MODE32;
 	} else if (strcmp(attr, "armv8,generic") == 0) {
 		cpuid = ARM_CPUID_ARMV8;
@@ -410,6 +438,19 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
 			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
+			break;
+		case ARM_CPUID_CORTEXA7:
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
 		case ARM_CPUID_CORTEXA15:
@@ -476,9 +517,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 		/* Initialize Hypervisor Configuration */
 		INIT_SPIN_LOCK(&arm_priv(vcpu)->hcr_lock);
-		arm_priv(vcpu)->hcr =  (HCR_TACR_MASK |
+		arm_priv(vcpu)->hcr =  (HCR_TSW_MASK |
+					HCR_TACR_MASK |
 					HCR_TIDCP_MASK |
 					HCR_TSC_MASK |
+					HCR_TWE_MASK |
 					HCR_TWI_MASK |
 					HCR_AMO_MASK |
 					HCR_IMO_MASK |
@@ -493,13 +536,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		arm_priv(vcpu)->cptr |= CPTR_TFP_MASK;
 		/* Initialize Hypervisor System Trap Register */
 		arm_priv(vcpu)->hstr = 0;
-		/* Generic timer physical & virtual irq for the vcpu */
-		arm_gentimer_context(vcpu)->phys_timer_irq = 0;
-		vmm_devtree_read_u32(vcpu->node, "gentimer_phys_irq",
-				&arm_gentimer_context(vcpu)->phys_timer_irq);
-		arm_gentimer_context(vcpu)->virt_timer_irq = 0;
-		vmm_devtree_read_u32(vcpu->node, "gentimer_virt_irq",
-				&arm_gentimer_context(vcpu)->virt_timer_irq);
 		/* Cleanup VGIC context first time */
 		arm_vgic_cleanup(vcpu);
 	}
@@ -514,13 +550,13 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* Set last host CPU to invalid value */
 	arm_priv(vcpu)->last_hcpu = 0xFFFFFFFF;
 
-	/* Initialize system registers */
+	/* Initialize sysregs context */
 	rc = cpu_vcpu_sysregs_init(vcpu, cpuid);
 	if (rc) {
 		goto fail_sysregs_init;
 	}
 
-	/* Initialize VFP registers */
+	/* Initialize VFP context */
 	rc = cpu_vcpu_vfp_init(vcpu);
 	if (rc) {
 		goto fail_vfp_init;
@@ -528,11 +564,31 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Initialize generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		generic_timer_vcpu_context_init(arm_gentimer_context(vcpu));
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_phys_irq",
+					 &phys_timer_irq)) {
+			phys_timer_irq = 0;
+		}
+		if (vmm_devtree_read_u32(vcpu->node, 
+					 "gentimer_virt_irq",
+					 &virt_timer_irq)) {
+			virt_timer_irq = 0;
+		}
+		rc = generic_timer_vcpu_context_init(vcpu,
+						&arm_gentimer_context(vcpu),
+						phys_timer_irq,
+						virt_timer_irq);
+		if (rc) {
+			goto fail_gentimer_init;
+		}
 	}
 
 	return VMM_OK;
 
+fail_gentimer_init:
+	if (!vcpu->reset_count) {
+		cpu_vcpu_vfp_deinit(vcpu);
+	}
 fail_vfp_init:
 	if (!vcpu->reset_count) {
 		cpu_vcpu_sysregs_deinit(vcpu);
@@ -558,13 +614,21 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 		return VMM_OK;
 	}
 
-	/* Free VFP registers */
+	/* Free Generic Timer Context */
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+		if ((rc = generic_timer_vcpu_context_deinit(vcpu,
+					&arm_gentimer_context(vcpu)))) {
+			return rc;
+		}
+	}
+
+	/* Free VFP context */
 	rc = cpu_vcpu_vfp_deinit(vcpu);
 	if (rc) {
 		return rc;
 	}
 
-	/* Free system registers */
+	/* Free sysregs context */
 	rc = cpu_vcpu_sysregs_deinit(vcpu);
 	if (rc) {
 		return rc;
@@ -596,16 +660,17 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		if (tvcpu->is_normal) {
 			/* Update last host CPU */
 			arm_priv(tvcpu)->last_hcpu = vmm_smp_processor_id();
-			/* Save system registers */
+			/* Save VGIC context */
+			arm_vgic_save(tvcpu);
+			/* Save sysregs context */
 			cpu_vcpu_sysregs_save(tvcpu);
-			/* Save VFP and SIMD register */
-			cpu_vcpu_vfp_regs_save(tvcpu);
+			/* Save VFP and SIMD context */
+			cpu_vcpu_vfp_save(tvcpu);
 			/* Save generic timer */
 			if (arm_feature(tvcpu, ARM_FEATURE_GENERIC_TIMER)) {
-				generic_timer_vcpu_context_save(arm_gentimer_context(tvcpu));
+				generic_timer_vcpu_context_save(tvcpu,
+						arm_gentimer_context(tvcpu));
 			}
-			/* Save VGIC registers */
-			arm_vgic_save(tvcpu);
 		}
 	}
 	/* Restore user registers & special registers */
@@ -626,17 +691,17 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		/* Restore Stage2 MMU context */
 		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
 			       arm_guest_priv(vcpu->guest)->ttbl);
-		/* Restore VGIC registers */
-		arm_vgic_restore(vcpu);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-			generic_timer_vcpu_context_restore(
+			generic_timer_vcpu_context_restore(vcpu,
 						arm_gentimer_context(vcpu));
 		}
-		/* Restore VFP and SIMD register */
-		cpu_vcpu_vfp_regs_restore(vcpu);
-		/* Restore system registers */
+		/* Restore VFP and SIMD context */
+		cpu_vcpu_vfp_restore(vcpu);
+		/* Restore sysregs context */
 		cpu_vcpu_sysregs_restore(vcpu);
+		/* Restore VGIC context */
+		arm_vgic_restore(vcpu);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
@@ -704,7 +769,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	/* Get private context */
 	p = arm_priv(vcpu);
 
-	/* Hypervisor registers */
+	/* Hypervisor context */
 	vmm_cprintf(cdev, "Hypervisor EL2 Registers\n");
 	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
 		    "HCR_EL2", p->hcr,
@@ -713,10 +778,10 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		    "HSTR_EL2", p->hstr,
 		    "TTBR_EL2", arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
 
-	/* Print VFP registers */
-	cpu_vcpu_vfp_regs_dump(cdev, vcpu);
+	/* Print VFP context */
+	cpu_vcpu_vfp_dump(cdev, vcpu);
 
-	/* Print system registers */
+	/* Print sysregs context */
 	cpu_vcpu_sysregs_dump(cdev, vcpu);
 }
 

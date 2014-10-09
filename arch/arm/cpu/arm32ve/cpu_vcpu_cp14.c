@@ -152,14 +152,14 @@ bad_reg:
 	return FALSE;
 }
 
-void cpu_vcpu_cp14_regs_save(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp14_save(struct vmm_vcpu *vcpu)
 {
 	/* All CP14 register access by VCPU always trap hence,
 	 * we always have updated copy of CP14 registers.
 	 */
 }
 
-void cpu_vcpu_cp14_regs_restore(struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp14_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp14 *cp14 = &arm_priv(vcpu)->cp14;
 
@@ -175,8 +175,7 @@ void cpu_vcpu_cp14_regs_restore(struct vmm_vcpu *vcpu)
 	write_teehbr(cp14->teehbr);
 }
 
-void cpu_vcpu_cp14_regs_dump(struct vmm_chardev *cdev,
-			     struct vmm_vcpu *vcpu)
+void cpu_vcpu_cp14_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	struct arm_priv_cp14 *cp14 = &arm_priv(vcpu)->cp14;
 

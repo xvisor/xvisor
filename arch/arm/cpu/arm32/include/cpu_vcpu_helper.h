@@ -39,14 +39,6 @@ void cpu_vcpu_cpsr_update(struct vmm_vcpu * vcpu,
 			  u32 new_cpsr,
 			  u32 new_cpsr_mask);
 
-/* Function to save banked registers of a VCPU */
-void cpu_vcpu_banked_regs_save(struct vmm_vcpu * vcpu, 
-			       arch_regs_t * src);
-
-/* Function to restore banked registers of a VCPU */
-void cpu_vcpu_banked_regs_restore(struct vmm_vcpu * vcpu, 
-				  arch_regs_t * dst);
-
 /* Function to retrieve SPSR of a VCPU */
 u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu * vcpu);
 

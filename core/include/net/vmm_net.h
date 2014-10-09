@@ -36,6 +36,9 @@ extern void vmm_netport_exit(void);
 extern int vmm_netdev_init(void);
 extern void vmm_netdev_exit(void);
 
+extern int vmm_hub_init(void);
+extern void vmm_hub_exit(void);
+
 extern int vmm_bridge_init(void);
 extern void vmm_bridge_exit(void);
 

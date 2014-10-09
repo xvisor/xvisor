@@ -46,33 +46,60 @@
 #undef UART_POLLING
 #define UART_RXBUF_SIZE 1024
 
-static u8 uart_8250_in8(struct uart_8250_port *port, u32 offset)
+static u8 uart_8250_in(struct uart_8250_port *port, u32 offset)
 {
-	return vmm_inb((port->base+(offset*port->reg_align)));
+	u8 ret;
+
+	switch (port->reg_width) {
+	case 4:
+		ret = vmm_inl(port->base + (offset << port->reg_shift));
+		break;
+	case 2:
+		ret = vmm_inw(port->base + (offset << port->reg_shift));
+		break;
+	default:
+		ret = vmm_inb(port->base + (offset << port->reg_shift));
+		break;
+	};
+
+	return ret;
 }
 
-static void uart_8250_out8(struct uart_8250_port *port, u32 offset, u8 val)
+static void uart_8250_out(struct uart_8250_port *port, u32 offset, u8 val)
 {
-	vmm_outb(val, (port->base+(offset*port->reg_align)));
+	switch (port->reg_width) {
+	case 4:
+		vmm_outl(val, port->base + (offset << port->reg_shift));
+		break;
+	case 2:
+		vmm_outw(val, port->base + (offset << port->reg_shift));
+		break;
+	default:
+		vmm_outb(val, port->base + (offset << port->reg_shift));
+		break;
+	};
+
 	if (offset == UART_LCR_OFFSET) {
 		port->lcr_last = val;
 	}
 }
 
+#ifndef UART_POLLING
 static void uart_8250_clear_errors(struct uart_8250_port *port)
 {
 	/* If there was a RX FIFO error (because of framing, parity, 
 	 * break error) keep removing entries from RX FIFO until
 	 * LSR does not show this bit set
 	 */
-        while(uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
-		uart_8250_in8(port, UART_RBR_OFFSET);
+        while (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_BRK_ERROR_BITS) {
+		uart_8250_in(port, UART_RBR_OFFSET);
 	};
 }
+#endif
 
 bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port)
 {
-	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_DR) {
+	if (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_DR) {
 		return TRUE;
 	}
 	return FALSE;
@@ -80,15 +107,15 @@ bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port)
 
 u8 uart_8250_lowlevel_getc(struct uart_8250_port *port)
 {
-	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_DR) {
-		return (uart_8250_in8(port, UART_RBR_OFFSET));
+	if (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_DR) {
+		return uart_8250_in(port, UART_RBR_OFFSET);
 	}
 	return 0;
 }
 
 bool uart_8250_lowlevel_can_putc(struct uart_8250_port *port)
 {
-	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_THRE) {
+	if (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_THRE) {
 		return TRUE;
 	}
 	return FALSE;
@@ -96,8 +123,8 @@ bool uart_8250_lowlevel_can_putc(struct uart_8250_port *port)
 
 void uart_8250_lowlevel_putc(struct uart_8250_port *port, u8 ch)
 {
-	if (uart_8250_in8(port, UART_LSR_OFFSET) & UART_LSR_THRE) {
-		uart_8250_out8(port, UART_THR_OFFSET, ch);
+	if (uart_8250_in(port, UART_LSR_OFFSET) & UART_LSR_THRE) {
+		uart_8250_out(port, UART_THR_OFFSET, ch);
 	}
 }
 
@@ -107,26 +134,26 @@ void uart_8250_lowlevel_init(struct uart_8250_port *port)
 	bdiv = udiv32(port->input_clock, (16 * port->baudrate));
 
 	/* set DLAB bit */
-	uart_8250_out8(port, UART_LCR_OFFSET, 0x80);
+	uart_8250_out(port, UART_LCR_OFFSET, 0x80);
 	/* set baudrate divisor */
-	uart_8250_out8(port, UART_DLL_OFFSET, bdiv & 0xFF);
+	uart_8250_out(port, UART_DLL_OFFSET, bdiv & 0xFF);
 	/* set baudrate divisor */
-	uart_8250_out8(port, UART_DLM_OFFSET, (bdiv >> 8) & 0xFF); 
+	uart_8250_out(port, UART_DLM_OFFSET, (bdiv >> 8) & 0xFF); 
 	/* clear DLAB; set 8 bits, no parity */
-	uart_8250_out8(port, UART_LCR_OFFSET, 0x03);
+	uart_8250_out(port, UART_LCR_OFFSET, 0x03);
 	/* enable FIFO */
-	uart_8250_out8(port, UART_FCR_OFFSET, 0x01);
+	uart_8250_out(port, UART_FCR_OFFSET, 0x01);
 	/* no modem control DTR RTS */
-	uart_8250_out8(port, UART_MCR_OFFSET, 0x00);
+	uart_8250_out(port, UART_MCR_OFFSET, 0x00);
 	/* clear line status */
-	uart_8250_in8(port, UART_LSR_OFFSET);
+	uart_8250_in(port, UART_LSR_OFFSET);
 	/* read receive buffer */
-	uart_8250_in8(port, UART_RBR_OFFSET);
+	uart_8250_in(port, UART_RBR_OFFSET);
 	/* set scratchpad */
-	uart_8250_out8(port, UART_SCR_OFFSET, 0x00);
+	uart_8250_out(port, UART_SCR_OFFSET, 0x00);
 	/* set interrupt enable reg */
 	port->ier = 0x00;
-	uart_8250_out8(port, UART_IER_OFFSET, 0x00);
+	uart_8250_out(port, UART_IER_OFFSET, 0x00);
 }
 
 #ifndef UART_POLLING
@@ -135,8 +162,8 @@ static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 	u16 iir, lsr;
 	struct uart_8250_port *port = (struct uart_8250_port *)dev;
 
-        iir = uart_8250_in8(port, UART_IIR_OFFSET);
-        lsr = uart_8250_in8(port, UART_LSR_OFFSET);
+        iir = uart_8250_in(port, UART_IIR_OFFSET);
+        lsr = uart_8250_in(port, UART_LSR_OFFSET);
 
 	switch (iir & 0xf) {
         case UART_IIR_NOINT:
@@ -151,17 +178,17 @@ static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 		if (lsr & UART_LSR_DR) {
 			vmm_spin_lock(&port->rxlock);
 			do {
-				u8 ch = uart_8250_in8(port, UART_RBR_OFFSET);
+				u8 ch = uart_8250_in(port, UART_RBR_OFFSET);
 				if (((port->rxtail + 1) % UART_RXBUF_SIZE) 
 							!= port->rxhead) {
 					port->rxbuf[port->rxtail] = ch;
 					port->rxtail = 
 					((port->rxtail + 1) % UART_RXBUF_SIZE);
 				} else {
-					break;
+					continue;
 				}
-			} while (uart_8250_in8(port, UART_LSR_OFFSET) & 
-						(UART_LSR_DR | UART_LSR_OE));
+			} while (uart_8250_in(port, UART_LSR_OFFSET) & 
+					      (UART_LSR_DR | UART_LSR_OE));
 			vmm_spin_unlock(&port->rxlock);
 			/* Signal work completion to sleeping thread */
 			vmm_completion_complete(&port->read_possible);
@@ -175,8 +202,8 @@ static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 		 * used by Designware UARTs, we do not expect other UART IPs 
 		 * to hit this case 
 		 */ 
-		uart_8250_in8(port, 0x1f);
-		uart_8250_out8(port, UART_LCR_OFFSET, port->lcr_last);
+		uart_8250_in(port, 0x1f);
+		uart_8250_out(port, UART_LCR_OFFSET, port->lcr_last);
 		break;
 	default:
 		break;
@@ -210,7 +237,7 @@ static u8 uart_8250_getc_sleepable(struct uart_8250_port *port)
 #endif
 
 static u32 uart_8250_read(struct vmm_chardev *cdev, 
-		     u8 *dest, u32 len, bool sleep)
+			u8 *dest, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i = 0;
 	irq_flags_t flags;
@@ -226,7 +253,7 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 	if (sleep) {
 		/* Ensure RX interrupts are enabled */
 		port->ier |= (UART_IER_RLSI | UART_IER_RDI);
-		uart_8250_out8(port, UART_IER_OFFSET, port->ier);
+		uart_8250_out(port, UART_IER_OFFSET, port->ier);
 
 		for(i = 0; i < len; i++) {
 			dest[i] = uart_8250_getc_sleepable(port);
@@ -235,7 +262,7 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 #endif
 		/* Disable the RX interrupts as we do not want irq-handler to
 		 * start pulling the RX characters */
-		uart_8250_out8(port, UART_IER_OFFSET, 
+		uart_8250_out(port, UART_IER_OFFSET, 
 				port->ier & ~(UART_IER_RLSI | UART_IER_RDI));
 		/* Check the RX FIFO buffer if interrupts were enabled */
 		if (port->ier & (UART_IER_RLSI | UART_IER_RDI)) {
@@ -255,7 +282,7 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 			dest[i] = uart_8250_lowlevel_getc(port);
 		}
 		/* Restore IER value */ 
-		uart_8250_out8(port, UART_IER_OFFSET, port->ier);
+		uart_8250_out(port, UART_IER_OFFSET, port->ier);
 #ifndef UART_POLLING
 	}
 #endif
@@ -264,7 +291,7 @@ static u32 uart_8250_read(struct vmm_chardev *cdev,
 }
 
 static u32 uart_8250_write(struct vmm_chardev *cdev, 
-		      u8 *src, u32 len, bool sleep)
+			u8 *src, size_t len, off_t __unused *off, bool sleep)
 {
 	u32 i;
 	struct uart_8250_port *port;
@@ -289,9 +316,10 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 				  const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
-	u32 reg_offset;
 	struct uart_8250_port *port;
-	
+	physical_addr_t ioport;
+	const char *aval;
+
 	port = vmm_zalloc(sizeof(struct uart_8250_port));
 	if(!port) {
 		rc = VMM_ENOMEM;
@@ -312,25 +340,43 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 
 	INIT_COMPLETION(&port->read_possible);
 
-	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
-	if(rc) {
-		goto free_port;
+	if (vmm_devtree_read_string(dev->node,
+				    VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
+				    &aval)) {
+		aval = NULL;
+	}
+	if (aval && !strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
+		port->use_ioport = TRUE;
+	} else {
+		port->use_ioport = FALSE;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg_align",
-				 &port->reg_align)) {
-		port->reg_align = 1;
+	if (port->use_ioport) {
+		rc = vmm_devtree_regaddr(dev->node, &ioport, 0);
+		if (rc) {
+			goto free_port;
+		}
+		port->base = ioport;
+	} else {
+		rc = vmm_devtree_regmap(dev->node, &port->base, 0);
+		if (rc) {
+			goto free_port;
+		}
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg_offset",
-				 &reg_offset) == VMM_OK) {
-		port->base += reg_offset;
+	if (vmm_devtree_read_u32(dev->node, "reg-shift",
+				 &port->reg_shift)) {
+		port->reg_shift = 0;
 	}
 
-	rc = vmm_devtree_read_u32(dev->node, "baudrate",
-				  &port->baudrate);
-	if (rc) {
-		goto free_reg;
+	if (vmm_devtree_read_u32(dev->node, "reg-io-width",
+				 &port->reg_width)) {
+		port->reg_width = 1;
+	}
+
+	if (vmm_devtree_read_u32(dev->node, "baudrate",
+				 &port->baudrate)) {
+		port->baudrate = 115200;
 	}
 
 	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
@@ -377,7 +423,9 @@ free_all:
 	vmm_free(port->rxbuf);
 #endif
 free_reg:
-	vmm_devtree_regunmap(dev->node, port->base, 0);
+	if (!port->use_ioport) {
+		vmm_devtree_regunmap(dev->node, port->base, 0);
+	}
 free_port:
 	vmm_free(port);
 free_nothing:
@@ -390,7 +438,9 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 
 	if (port) {
 		vmm_chardev_unregister(&port->cd);
-		vmm_devtree_regunmap(dev->node, port->base, 0);
+		if (!port->use_ioport) {
+			vmm_devtree_regunmap(dev->node, port->base, 0);
+		}
 		vmm_free(port);
 		dev->priv = NULL;
 	}
@@ -399,12 +449,13 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid uart_8250_devid_table[] = {
-	{ .type = "serial", .compatible = "ns8250"},
-	{ .type = "serial", .compatible = "ns16450"},
-	{ .type = "serial", .compatible = "ns16550a"},
-	{ .type = "serial", .compatible = "ns16550"},
-	{ .type = "serial", .compatible = "ns16750"},
-	{ .type = "serial", .compatible = "ns16850"},
+	{ .compatible = "ns8250" },
+	{ .compatible = "ns16450" },
+	{ .compatible = "ns16550a" },
+	{ .compatible = "ns16550" },
+	{ .compatible = "ns16750" },
+	{ .compatible = "ns16850" },
+	{ .compatible = "snps,dw-apb-uart" },
 	{ /* end of list */ },
 };
 

@@ -32,9 +32,10 @@
 #include <vmm_smp.h>
 #include <vmm_delay.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 
-#include <gic.h>
+#include <cpu_defines.h>
 #include <smp_ops.h>
 
 static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];
@@ -100,7 +101,7 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 	asm volatile ("sev");
 #else
 	/* Wakeup target cpu from wfe/wfi by sending an IPI */
-	gic_raise_softirq(mask, 0);
+	vmm_host_irq_raise(0, mask);
 #endif
 
 	return VMM_OK;
@@ -118,7 +119,7 @@ static int __init smp_spin_table_cpu_boot(unsigned int cpu)
 	vmm_udelay(100000);
 
 	/* Check pen value */
-	if (smp_read_pen_release() != INVALID_HWID) {
+	if (smp_read_pen_release() != MPIDR_INVALID) {
 		return VMM_ENOSYS;
 	}
 
@@ -128,10 +129,10 @@ static int __init smp_spin_table_cpu_boot(unsigned int cpu)
 static void __cpuinit smp_spin_table_cpu_postboot(void)
 {
 	/* Let the primary processor know we're out of the pen. */
-	smp_write_pen_release(INVALID_HWID);
+	smp_write_pen_release(MPIDR_INVALID);
 }
 
-struct smp_operations smp_spin_table_ops = {
+static struct smp_operations smp_spin_table_ops = {
 	.name = "spin-table",
 	.cpu_init = smp_spin_table_cpu_init,
 	.cpu_prepare = smp_spin_table_cpu_prepare,

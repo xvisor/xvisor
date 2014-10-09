@@ -19,6 +19,17 @@
  * @file libfdt.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Flattend device tree library header
+ *
+ * The FDT structures for parsing FDT blob are taken from:
+ * libfdt/fdt.h of DTC soure code.
+ * Refer, https://git.kernel.org/cgit/utils/dtc/dtc.git
+ *
+ * libfdt - Flat Device Tree manipulation
+ * Copyright (C) 2006 David Gibson, IBM Corporation.
+ * Copyright 2012 Kim Phillips, Freescale Semiconductor.
+ *
+ * libfdt is dual licensed: you can use it either under the terms of
+ * the GPL, or the BSD license, at your option.
  */
 
 #ifndef __LIBFDT_H_
@@ -84,24 +95,36 @@ struct fdt_property {
 
 struct fdt_fileinfo {
 	struct fdt_header header;
-	char * data;
+	char *data;
 	size_t data_size;
-	char * str;
+	char *str;
 	size_t str_size;
+	char *mem_rsvmap;
+	u32 mem_rsvcnt;
 };
 
-int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
+int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 			  struct fdt_fileinfo *fdt);
 
 int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
-			 struct vmm_devtree_node **root);
+			 struct vmm_devtree_node **root,
+			 const char *root_name,
+			 struct vmm_devtree_node *root_parent);
 
-struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt, 
+u32 libfdt_reserve_count(struct fdt_fileinfo *fdt);
+
+int libfdt_reserve_address(struct fdt_fileinfo *fdt, u32 index, u64 *addr);
+
+int libfdt_reserve_size(struct fdt_fileinfo *fdt, u32 index, u64 *size);
+
+struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 					 const char *node_path);
 
-int libfdt_get_property(struct fdt_fileinfo *fdt, 
-			struct fdt_node_header *fdt_node, 
+int libfdt_get_property(struct fdt_fileinfo *fdt,
+			struct fdt_node_header *fdt_node,
+			u32 address_cells, u32 size_cells,
 			const char *property,
-			void *property_value);
+			void *property_value,
+			u32 property_len);
 
 #endif /* __LIBFDT_H_ */

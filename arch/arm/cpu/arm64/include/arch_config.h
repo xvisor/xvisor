@@ -24,7 +24,9 @@
 #ifndef _ARCH_CONFIG_H__
 #define _ARCH_CONFIG_H__
 
-//#define ARCH_HAS_MEMCPY
-//#define ARCH_HAS_MEMSET
+#define ARCH_HAS_MEMORY_READWRITE
+
+#define ARCH_HAS_MEMCPY
+#define ARCH_HAS_MEMSET
 
 #endif /* _ARCH_CONFIG_H__ */

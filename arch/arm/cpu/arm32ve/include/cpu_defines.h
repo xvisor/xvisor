@@ -118,6 +118,22 @@
 #define SCTLR_A_MASK					0x00000002
 #define SCTLR_M_MASK					0x00000001
 
+/* MPIDR related macros & defines */
+#define MPIDR_SMP_BITMASK				(0x3 << 30)
+#define MPIDR_SMP_VALUE					(0x2 << 30)
+#define MPIDR_MT_BITMASK				(0x1 << 24)
+#define MPIDR_HWID_BITMASK				0xFFFFFF
+#define MPIDR_INVALID					(~MPIDR_HWID_BITMASK)
+#define MPIDR_LEVEL_BITS_SHIFT				3
+#define MPIDR_LEVEL_BITS				\
+						(1 << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_LEVEL_MASK				\
+						((1 << MPIDR_LEVEL_BITS) - 1)
+#define MPIDR_LEVEL_SHIFT(level)			\
+			(((1 << level) >> 1) << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_AFFINITY_LEVEL(mpidr, level)		\
+		((mpidr >> (MPIDR_LEVEL_BITS * level)) & MPIDR_LEVEL_MASK)
+
 /* CTR related macros & defines */
 #define CTR_FORMAT_MASK					0xE0000000
 #define CTR_FORMAT_SHIFT				29
@@ -370,8 +386,8 @@
 #define ISS_COND_SHIFT					20
 
 /* WFI/WFE ISS Encodings */
-#define ISS_WFI_WFE_TRAPPED_MASK			0x00080000
-#define ISS_WFI_WFE_TRAPPED_SHIFT			19
+#define ISS_WFI_WFE_TI_MASK				0x00000001
+#define ISS_WFI_WFE_TI_SHIFT				0
 
 /* MCR/MRC ISS Encodings */
 #define ISS_MCR_MRC_OPC2_MASK				0x000E0000
@@ -455,7 +471,7 @@
 #define HTCR_ORGN0_SHIFT				10
 #define HTCR_IRGN0_MASK					0x00000300
 #define HTCR_IRGN0_SHIFT				8
-#define HTCR_T0SZ_MASK					0x00000003
+#define HTCR_T0SZ_MASK					0x00000007
 #define HTCR_T0SZ_SHIFT					0
 
 /* VTTBR */
@@ -477,8 +493,13 @@
 #define VTCR_SL0_SHIFT					6
 #define VTCR_S_MASK					0x00000010
 #define VTCR_S_SHIFT					4
-#define VTCR_T0SZ_MASK					0x00000003
+#define VTCR_T0SZ_MASK					0x0000000F
 #define VTCR_T0SZ_SHIFT					0
+
+#define VTCR_SL0_L2					(0 << VTCR_SL0_SHIFT) /* Starting-level: 2 */
+#define VTCR_SL0_L1					(1 << VTCR_SL0_SHIFT) /* Starting-level: 1 */
+#define VTCR_T0SZ_VAL(ipa_bits)				((32 - (ipa_bits)) & VTCR_T0SZ_MASK)
+#define VTCR_S_VAL(ipa_bits)				((VTCR_T0SZ_VAL(ipa_bits) << 1) & VTCR_S_MASK)
 
 /* HMAIR encodings */
 #define AINDEX_SO					0
@@ -574,11 +595,11 @@
 #define MIDR_REVISON_SHIFT				0
 
 /* FPEXC */
-#define FPEXC_EX_MASK					(1u << 31)
+#define FPEXC_EX_MASK					(0x1 << 31)
 #define FPEXC_EX_SHIFT					31
-#define FPEXC_EN_MASK					(1u << 30)
+#define FPEXC_EN_MASK					(0x1 << 30)
 #define FPEXC_EN_SHIFT					30
-#define FPEXC_FP2V_MASK					(1u << 28)
+#define FPEXC_FP2V_MASK					(0x1 << 28)
 #define FPEXC_FP2V_SHIFT				28
 
 /* FPSID */
@@ -634,5 +655,90 @@
 #define ID_PFR1_SECUREX_SHIFT				4
 #define ID_PFR1_PRG_MODEL_MASK				0x0000000f
 #define ID_PFR1_PRG_MODEL_SHIFT				0
+
+/* Field offsets for struct arm_priv_banked */
+#define ARM_PRIV_BANKED_sp_usr				0x0
+#define ARM_PRIV_BANKED_sp_svc				0x4
+#define ARM_PRIV_BANKED_lr_svc				0x8
+#define ARM_PRIV_BANKED_spsr_svc			0xC
+#define ARM_PRIV_BANKED_sp_abt				0x10
+#define ARM_PRIV_BANKED_lr_abt				0x14
+#define ARM_PRIV_BANKED_spsr_abt			0x18
+#define ARM_PRIV_BANKED_sp_und				0x1C
+#define ARM_PRIV_BANKED_lr_und				0x20
+#define ARM_PRIV_BANKED_spsr_und			0x24
+#define ARM_PRIV_BANKED_sp_irq				0x28
+#define ARM_PRIV_BANKED_lr_irq				0x2C
+#define ARM_PRIV_BANKED_spsr_irq			0x30
+#define ARM_PRIV_BANKED_gpr_fiq0			0x34
+#define ARM_PRIV_BANKED_sp_fiq				0x48
+#define ARM_PRIV_BANKED_lr_fiq				0x4C
+#define ARM_PRIV_BANKED_spsr_fiq			0x50
+
+/* Field offsets for struct arm_priv_cp15 */
+#define ARM_PRIV_CP15_c0_midr				0x0
+#define ARM_PRIV_CP15_c0_mpidr				0x4
+#define ARM_PRIV_CP15_c0_cachetype			0x8
+#define ARM_PRIV_CP15_c0_pfr0				0xC
+#define ARM_PRIV_CP15_c0_pfr1				0x10
+#define ARM_PRIV_CP15_c0_dfr0				0x14
+#define ARM_PRIV_CP15_c0_afr0				0x18
+#define ARM_PRIV_CP15_c0_mmfr0				0x1C
+#define ARM_PRIV_CP15_c0_mmfr1				0x20
+#define ARM_PRIV_CP15_c0_mmfr2				0x24
+#define ARM_PRIV_CP15_c0_mmfr3				0x28
+#define ARM_PRIV_CP15_c0_isar0				0x2C
+#define ARM_PRIV_CP15_c0_isar1				0x30
+#define ARM_PRIV_CP15_c0_isar2				0x34
+#define ARM_PRIV_CP15_c0_isar3				0x38
+#define ARM_PRIV_CP15_c0_isar4				0x3C
+#define ARM_PRIV_CP15_c0_isar5				0x40
+#define ARM_PRIV_CP15_c0_ccsid0				0x44
+#define ARM_PRIV_CP15_c0_clid				0x84
+#define ARM_PRIV_CP15_c0_cssel				0x88
+#define ARM_PRIV_CP15_c1_sctlr				0x8C
+#define ARM_PRIV_CP15_c1_cpacr				0x90
+#define ARM_PRIV_CP15_c2_ttbcr				0x94
+#define ARM_PRIV_CP15_c2_ttbr0				0x98
+#define ARM_PRIV_CP15_c2_ttbr1				0xA0
+#define ARM_PRIV_CP15_c3_dacr				0xA8
+#define ARM_PRIV_CP15_c5_ifsr				0xAC
+#define ARM_PRIV_CP15_c5_dfsr				0xB0
+#define ARM_PRIV_CP15_c5_aifsr				0xB4
+#define ARM_PRIV_CP15_c5_adfsr				0xB8
+#define ARM_PRIV_CP15_c6_ifar				0xBC
+#define ARM_PRIV_CP15_c6_dfar				0xC0
+#define ARM_PRIV_CP15_c7_par				0xC4
+#define ARM_PRIV_CP15_c7_par64				0xC8
+#define ARM_PRIV_CP15_c9_insn				0xD0
+#define ARM_PRIV_CP15_c9_data				0xD4
+#define ARM_PRIV_CP15_c9_pmcr				0xD8
+#define ARM_PRIV_CP15_c9_pmcnten			0xDC
+#define ARM_PRIV_CP15_c9_pmovsr				0xE0
+#define ARM_PRIV_CP15_c9_pmxevtyper			0xE4
+#define ARM_PRIV_CP15_c9_pmuserenr			0xE8
+#define ARM_PRIV_CP15_c9_pminten			0xEC
+#define ARM_PRIV_CP15_c10_prrr				0xF0
+#define ARM_PRIV_CP15_c10_nmrr				0xF4
+#define ARM_PRIV_CP15_c12_vbar				0xF8
+#define ARM_PRIV_CP15_c13_fcseidr			0xFC
+#define ARM_PRIV_CP15_c13_contextidr			0x100
+#define ARM_PRIV_CP15_c13_tls1				0x104
+#define ARM_PRIV_CP15_c13_tls2				0x108
+#define ARM_PRIV_CP15_c13_tls3				0x10C
+#define ARM_PRIV_CP15_c15_i_max				0x110
+#define ARM_PRIV_CP15_c15_i_min				0x114
+
+/* Field offsets for struct arm_priv_vfp */
+#define ARM_PRIV_VFP_fpsid				0x0
+#define ARM_PRIV_VFP_mvfr0				0x4
+#define ARM_PRIV_VFP_mvfr1				0x8
+#define ARM_PRIV_VFP_fpexc				0xC
+#define ARM_PRIV_VFP_fpscr				0x10
+#define ARM_PRIV_VFP_fpinst				0x14
+#define ARM_PRIV_VFP_fpinst2				0x18
+#define ARM_PRIV_VFP_reserved				0x1C
+#define ARM_PRIV_VFP_fpregs1				0x20
+#define ARM_PRIV_VFP_fpregs2				0xA0
 
 #endif

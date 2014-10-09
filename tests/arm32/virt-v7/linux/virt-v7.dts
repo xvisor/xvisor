@@ -1,0 +1,114 @@
+
+/dts-v1/;
+
+/ {
+	model = "Virt-v7";
+	compatible = "linux,dummy-virt";
+	interrupt-parent = <&gic>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x0>;
+			enable-method = "psci";
+		};
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x1>;
+			enable-method = "psci";
+		};
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x2>;
+			enable-method = "psci";
+		};
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			reg = <0x3>;
+			enable-method = "psci";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00000000 0x40000000 0 0x06000000>;
+	};
+
+	gic: intc {
+		compatible = "arm,cortex-a15-gic";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		interrupt-controller;
+		reg = <0x0 0x08000000 0 0x10000>,
+		      <0x0 0x08010000 0 0x10000>;
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupts = <1 13 0xff01>,
+			     <1 14 0xff01>,
+			     <1 11 0xff01>,
+			     <1 10 0xff01>;
+	};
+
+	psci {
+		compatible = "arm,psci-0.2", "arm,psci";
+		method = "hvc";
+		cpu_suspend = <0x84000001>;
+		cpu_off = <0x84000002>;
+		cpu_on = <0x84000003>;
+		migrate = <0x84000005>;
+	};
+
+	UARTCLK: apb-pclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0x0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "clk24mhz";
+	};
+
+	smb {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		pl011@09000000 {
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0x0 0x09000000 0x0 0x1000>;
+			interrupts = <0 1 4>;
+			clocks = <&UARTCLK>, <&UARTCLK>;
+			clock-names = "uartclk", "apb_pclk";
+		};
+
+		virtio_net@0A000000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x0A000000 0x0 0x1000>;
+			interrupts = <0 16 4>;
+		};
+
+		virtio_block@0A001000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x0A001000 0x0 0x1000>;
+			interrupts = <0 17 4>;
+		};
+
+		virtio_console@0A002000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x0A002000 0x0 0x1000>;
+			interrupts = <0 18 4>;
+		};
+	};
+};

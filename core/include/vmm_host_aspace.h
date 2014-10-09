@@ -63,7 +63,8 @@ enum vmm_host_memory_flags {
 	VMM_MEMORY_WRITEABLE=0x00000002,
 	VMM_MEMORY_EXECUTABLE=0x00000004,
 	VMM_MEMORY_CACHEABLE=0x00000008,
-	VMM_MEMORY_BUFFERABLE=0x00000010
+	VMM_MEMORY_BUFFERABLE=0x00000010,
+	VMM_MEMORY_DMACOHERENT=0x00000020,
 };
 
 #define VMM_MEMORY_FLAGS_NORMAL		(VMM_MEMORY_READABLE | \
@@ -81,6 +82,13 @@ enum vmm_host_memory_flags {
 					 VMM_MEMORY_EXECUTABLE | \
 					 VMM_MEMORY_CACHEABLE)
 
+#define VMM_MEMORY_FLAGS_DMA		(VMM_MEMORY_READABLE | \
+					 VMM_MEMORY_WRITEABLE | \
+					 VMM_MEMORY_EXECUTABLE | \
+					 VMM_MEMORY_CACHEABLE | \
+					 VMM_MEMORY_BUFFERABLE | \
+					 VMM_MEMORY_DMACOHERENT)
+
 #define VMM_MEMORY_FLAGS_IO		(VMM_MEMORY_READABLE | \
 					 VMM_MEMORY_WRITEABLE)
 
@@ -90,8 +98,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 			       u32 mem_flags);
 
 /** Unmap virtual memory */
-int vmm_host_memunmap(virtual_addr_t va, 
-		      virtual_size_t sz);
+int vmm_host_memunmap(virtual_addr_t va);
 
 /** Map IO physical memory to a virtual memory */
 static inline virtual_addr_t vmm_host_iomap(physical_addr_t pa, 
@@ -101,10 +108,9 @@ static inline virtual_addr_t vmm_host_iomap(physical_addr_t pa,
 }
 
 /** Unmap IO virtual memory */
-static inline int vmm_host_iounmap(virtual_addr_t va, 
-				   virtual_size_t sz)
+static inline int vmm_host_iounmap(virtual_addr_t va)
 {
-	return vmm_host_memunmap(va, sz);
+	return vmm_host_memunmap(va);
 }
 
 /** Allocate pages from host memory */

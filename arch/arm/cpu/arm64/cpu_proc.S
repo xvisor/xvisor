@@ -38,11 +38,16 @@
  */
 	.globl proc_setup
 proc_setup:
+	ic	iallu				/* I+BTB cache invalidate */
+	tlbi	alle2is				/* invalidate I + D TLBs */
+	dsb	sy
+
 	adr	x5, v8_crval
-	ldp	x5, x6, [x5]
+	ldr	x6, [x5, #0]
+	ldr	x7, [x5, #8]
    	mrs 	x0, sctlr_el2			/* read control register */
-	bic	x0, x0, x5			/* clear bits them */
-	orr	x0, x0, x6			/* set them */
+	bic	x0, x0, x6			/* clear bits them */
+	orr	x0, x0, x7			/* set them */
 	ret
 
 	/*                W
@@ -51,7 +56,7 @@ proc_setup:
 	 * 0000 00x0 0000 x000 000x 0000 0000 xxxx < forced
 	 *                0       1           0101 < we want
 	 */
-	.align	2
+	.align	3
 	.type	v8_crval, #object
 v8_crval:
 	.dword	0x0008000A /* clear */
@@ -92,8 +97,14 @@ arm_cpu_4bit:
 	b	setup_smp_id_check
 arm_cpu_skip:
 
-setup_smp_id_hang:
-	b	.
+	/* SMP ID setup for:
+	 *   Unknown CPUs
+	 * MPIDR fields:
+	 *   CPU ID = MPIDR[7:0]
+	 */
+unknown_cpu:
+	mrs	x0, mpidr_el1
+	and	x0, x0, #0xFF
 
 setup_smp_id_check:
 	/* Ensure that SMP ID in r0

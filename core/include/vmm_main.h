@@ -29,6 +29,9 @@
 /** Hang hypervisor */
 void __noreturn vmm_hang(void);
 
+/** Check if hypervisor is initialized or not */
+bool vmm_init_done(void);
+
 /** Initialize hypervisor */
 void vmm_init(void);
 

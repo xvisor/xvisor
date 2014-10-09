@@ -218,6 +218,5 @@ void cpu_boot_vcpu(struct vcpu_hw_context *context)
 {
 	for(;;)	{
 		context->vcpu_run(context);
-		context->vcpu_exit(context);
 	}
 }

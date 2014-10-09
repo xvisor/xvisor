@@ -39,41 +39,31 @@
 		};
 
 		SERIAL0: uart0 {
-			device_type = "serial";
 			compatible = "ns8250";
 			reg = <0x3f8 0x0>;
+			address_type = "io";
 			baudrate = <115200>;
 			interrupts = <4>;
 			clock-frequency = <24000000>;
 		};
 
 		SERIAL1: uart1 {
-			device_type = "serial";
 			compatible = "ns8250";
 			reg = <0x2f8 0x0>;
+			address_type = "io";
 			baudrate = <115200>;
 			interrupts = <3>;
 			clock-frequency = <24000000>;
 		};
 	};
 
-	vmm {
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
+    vmm {
+    };
 
 	chosen {
-		console = &SERIAL0;
+		/*console = &SERIAL0;*/
 		/*console = &STDOUT;*/
-		bootcmd = /* Copy guest0 device tree from templates */
-			  "devtree node copy /guests guest0 /templates/x86_64_generic",
-			  /* Create guest0 */
-			  "guest create guest0";
-
-	};
-
-	/* empty guest node */
-	guests {
+		bootcmd = "vfs mount hda0p0 /";
 	};
 };
 

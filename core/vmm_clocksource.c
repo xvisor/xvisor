@@ -49,9 +49,14 @@ u64 __notrace vmm_timecounter_read_for_profile(struct vmm_timecounter *tc)
 	u64 cycles_now, cycles_delta;
 	u64 ns_offset;
 
+	if (!tc || !tc->cs) {
+		return 0;
+	}
+
 	cycles_now = tc->cs->read(tc->cs);
 	cycles_delta = (cycles_now - tc->cycles_last) & tc->cs->mask;
-	ns_offset = (cycles_delta * tc->cs->mult) >> tc->cs->shift;
+	ns_offset = vmm_clocksource_delta2nsecs(cycles_delta,
+						tc->cs->mult, tc->cs->shift);
 
 	return tc->nsec + ns_offset;
 }
@@ -62,11 +67,16 @@ u64 vmm_timecounter_read(struct vmm_timecounter *tc)
 	u64 cycles_now, cycles_delta;
 	u64 ns_offset;
 
+	if (!tc || !tc->cs) {
+		return 0;
+	}
+
 	cycles_now = tc->cs->read(tc->cs);
 	cycles_delta = (cycles_now - tc->cycles_last) & tc->cs->mask;
 	tc->cycles_last = cycles_now;
 
-	ns_offset = (cycles_delta * tc->cs->mult) >> tc->cs->shift;
+	ns_offset = vmm_clocksource_delta2nsecs(cycles_delta,
+						tc->cs->mult, tc->cs->shift);
 	tc->nsec += ns_offset;
 
 	return tc->nsec;
@@ -74,7 +84,7 @@ u64 vmm_timecounter_read(struct vmm_timecounter *tc)
 
 int vmm_timecounter_start(struct vmm_timecounter *tc)
 {
-	if (!tc) {
+	if (!tc || !tc->cs) {
 		return VMM_EFAIL;
 	}
 
@@ -87,7 +97,7 @@ int vmm_timecounter_start(struct vmm_timecounter *tc)
 
 int vmm_timecounter_stop(struct vmm_timecounter *tc)
 {
-	if (!tc) {
+	if (!tc || !tc->cs) {
 		return VMM_EFAIL;
 	}
 
@@ -117,7 +127,6 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cst;
 
 	if (!cs) {
@@ -129,8 +138,7 @@ int vmm_clocksource_register(struct vmm_clocksource *cs)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cst = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cst, &csctrl.clksrc_list, head) {
 		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
@@ -154,7 +162,6 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cst;
 
 	if (!cs) {
@@ -170,8 +177,7 @@ int vmm_clocksource_unregister(struct vmm_clocksource *cs)
 
 	cst = NULL;
 	found = FALSE;
-	list_for_each(l, &csctrl.clksrc_list) {
-		cst = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cst, &csctrl.clksrc_list, head) {
 		if (strcmp(cst->name, cs->name) == 0) {
 			found = TRUE;
 			break;
@@ -194,7 +200,6 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 {
 	int rating = 0;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cs, *best_cs;
 
 	cs = NULL;
@@ -202,8 +207,7 @@ struct vmm_clocksource *vmm_clocksource_best(void)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cs = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (cs->rating > rating) {
 			best_cs = cs;
 			rating = cs->rating;
@@ -219,7 +223,6 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_clocksource *cs;
 
 	if (!name) {
@@ -231,8 +234,7 @@ struct vmm_clocksource *vmm_clocksource_find(const char *name)
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		cs = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (strcmp(cs->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -252,20 +254,18 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct vmm_clocksource *ret;
+	struct vmm_clocksource *cs;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	ret = NULL;
+	cs = NULL;
 	found = FALSE;
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
-		ret = list_entry(l, struct vmm_clocksource, head);
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -279,18 +279,18 @@ struct vmm_clocksource *vmm_clocksource_get(int index)
 		return NULL;
 	}
 
-	return ret;
+	return cs;
 }
 
 u32 vmm_clocksource_count(void)
 {
 	u32 retval = 0;
 	irq_flags_t flags;
-	struct dlist *l;
+	struct vmm_clocksource *cs;
 
 	vmm_spin_lock_irqsave(&csctrl.lock, flags);
 
-	list_for_each(l, &csctrl.clksrc_list) {
+	list_for_each_entry(cs, &csctrl.clksrc_list, head) {
 		retval++;
 	}
 

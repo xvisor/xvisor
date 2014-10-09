@@ -1,4 +1,4 @@
-#include <drv/hardware/icst.h>
+#include <asm/hardware/icst.h>
 
 /**
  * struct clk_icst_desc - descriptor for the ICST VCO
@@ -13,6 +13,8 @@ struct clk_icst_desc {
 	u32 lock_offset;
 };
 
-struct clk *icst_clk_register(struct vmm_device *dev,
+struct clk *icst_clk_register(struct device *dev,
 			      const struct clk_icst_desc *desc,
-			      void *base);
+			      const char *name,
+			      const char *parent_name,
+			      void __iomem *base);

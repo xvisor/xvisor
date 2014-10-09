@@ -26,8 +26,8 @@
 #include <vmm_types.h>
 #include <libs/list.h>
 
-/* Generic CPU page having superset of page 
- * attributes required by all ARM family 
+/* Generic CPU page having superset of page
+ * attributes required by all ARM family
  * processors such as ARMv5, ARMv6, and ARMv7
  */
 struct cpu_page {
@@ -76,12 +76,21 @@ struct cpu_l1tbl {
 u32 cpu_mmu_best_page_size(virtual_addr_t va, physical_addr_t pa, u32 availsz);
 
 /** Get page from a given virtual address */
-int cpu_mmu_get_page(struct cpu_l1tbl *l1, 
-		     virtual_addr_t va, 
+int cpu_mmu_get_page(struct cpu_l1tbl *l1,
+		     virtual_addr_t va,
 		     struct cpu_page *pg);
+
+/** Get L2 table from a given virtual address */
+int cpu_mmu_get_l2tbl(struct cpu_l1tbl *l1,
+		      virtual_addr_t va, struct cpu_l2tbl **l2);
 
 /** Unmap a page from given L1 table */
 int cpu_mmu_unmap_page(struct cpu_l1tbl *l1, struct cpu_page *pg);
+
+/** Unmap a page from given L2 table */
+int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
+			     virtual_addr_t pgva, virtual_size_t pgsz,
+			     bool invalidate_tlb);
 
 /** Map a page under a given L1 table */
 int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg);

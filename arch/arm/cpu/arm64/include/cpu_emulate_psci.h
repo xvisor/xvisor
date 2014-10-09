@@ -26,7 +26,46 @@
 
 #include <vmm_types.h>
 #include <cpu_defines.h>
+#include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
+
+static inline u32 emulate_psci_version(struct vmm_vcpu *vcpu)
+{
+	return arm_guest_priv(vcpu->guest)->psci_version;
+}
+
+static inline bool emulate_psci_is_32bit(struct vmm_vcpu *vcpu,
+					 arch_regs_t *regs)
+{
+	return (regs->pstate & PSR_MODE32) ? TRUE : FALSE;
+}
+
+static inline void emulate_psci_set_thumb(struct vmm_vcpu *vcpu,
+					  arch_regs_t *regs)
+{
+	regs->pstate |= CPSR_THUMB_ENABLED;
+}
+
+static inline bool emulate_psci_is_be(struct vmm_vcpu *vcpu,
+				      arch_regs_t *regs)
+{
+	if (regs->pstate & PSR_MODE32) {
+		return (regs->pstate & CPSR_BE_ENABLED) ? TRUE : FALSE;
+	}
+
+	return (mrs(sctlr_el1) & SCTLR_EE_MASK) ? TRUE : FALSE;
+}
+
+static inline void emulate_psci_set_be(struct vmm_vcpu *vcpu,
+					arch_regs_t *regs)
+{
+	if (regs->pstate & PSR_MODE32) {
+		regs->pstate |= CPSR_BE_ENABLED;
+		return;
+	}
+
+	arm_priv(vcpu)->sysregs.sctlr_el1 |= SCTLR_EE_MASK;
+}
 
 static inline unsigned long emulate_psci_get_reg(struct vmm_vcpu *vcpu,
 						 arch_regs_t *regs, u32 reg)
@@ -44,13 +83,12 @@ static inline void emulate_psci_set_reg(struct vmm_vcpu *vcpu,
 static inline void emulate_psci_set_pc(struct vmm_vcpu *vcpu,
 					arch_regs_t *regs, unsigned long val)
 {
-	/* Handle Thumb2 entry point */
-	if ((regs->pstate & PSR_MODE32) && (val & 1)) {
-		val &= ~((unsigned long) 1);
-		regs->pstate |= CPSR_THUMB_ENABLED;
-	}
-
 	regs->pc = (u64)val;
+}
+
+static inline unsigned long emulate_psci_get_mpidr(struct vmm_vcpu *vcpu)
+{
+	return arm_priv(vcpu)->sysregs.mpidr_el1;
 }
 
 #endif	/* __CPU_EMULATE_PSCI_H__ */

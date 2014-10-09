@@ -439,7 +439,7 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 	bdev->dev.class = &bdev_class;
 	vmm_devdrv_set_data(&bdev->dev, bdev);
 
-	rc = vmm_devdrv_class_register_device(&bdev_class, &bdev->dev);
+	rc = vmm_devdrv_register_device(&bdev->dev);
 	if (rc) {
 		return rc;
 	}
@@ -516,7 +516,6 @@ VMM_EXPORT_SYMBOL(vmm_blockdev_add_child);
 int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 {
 	int rc;
-	struct dlist *l;
 	struct vmm_blockdev *child_bdev;
 	struct vmm_blockdev_event event;
 
@@ -527,8 +526,8 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 	/* Unreg & free child block devices */
 	vmm_mutex_lock(&bdev->child_lock);
 	while (!list_empty(&bdev->child_list)) {
-		l = list_pop(&bdev->child_list);
-		child_bdev = list_entry(l, struct vmm_blockdev, head);
+		child_bdev = list_first_entry(&bdev->child_list, struct vmm_blockdev, head);
+		list_del(&child_bdev->head);
 		if ((rc = vmm_blockdev_unregister(child_bdev))) {
 			vmm_mutex_unlock(&bdev->child_lock);
 			return rc;
@@ -544,7 +543,7 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 				   VMM_BLOCKDEV_EVENT_UNREGISTER, 
 				   &event);
 
-	return vmm_devdrv_class_unregister_device(&bdev_class, &bdev->dev);
+	return vmm_devdrv_unregister_device(&bdev->dev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_unregister);
 

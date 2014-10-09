@@ -31,40 +31,6 @@
 #define LIBFDT_DATA32(ptr)	vmm_be32_to_cpu(*((u32*)ptr))
 #define LIBFDT_DATA64(ptr)	vmm_be64_to_cpu(*((u64*)ptr))
 
-static u32 libfdt_property_len(const char *prop, 
-				u32 address_cells, u32 size_cells, u32 len)
-{
-	u32 lsz, type, reg_cells, reg_count;
-
-	/* Special way of handling 'reg' property */
-	if (strcmp(prop, "reg") == 0) {
-		reg_cells = len / sizeof(fdt_cell_t);
-		reg_count = udiv32(reg_cells, address_cells + size_cells);
-		if (umod32(reg_cells, address_cells + size_cells)) {
-			reg_count++;
-		}
-		reg_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
-		reg_cells += sizeof(physical_size_t) / sizeof(fdt_cell_t);
-		reg_count = reg_count * (reg_cells * sizeof(fdt_cell_t));
-		return reg_count;
-	}
-
-	type = vmm_devtree_estimate_attrtype(prop);
-
-	/* Special way of handling non-literal property */
-	if (!vmm_devtree_isliteral(type)) {
-		return len;
-	}
-
-	/* Special way of handling literal property */
-	lsz = vmm_devtree_literal_size(type);
-	if (umod32(len, lsz)) {
-		return udiv32(len, lsz) * lsz + lsz;
-	}
-
-	return len;
-}
-
 static void libfdt_property_read(const char *prop, void *dst, void *src,
 				 u32 address_cells, u32 size_cells, u32 len)
 {
@@ -146,6 +112,8 @@ static void libfdt_property_read(const char *prop, void *dst, void *src,
 int libfdt_parse_fileinfo(virtual_addr_t fdt_addr, 
 			  struct fdt_fileinfo *fdt)
 {
+	struct fdt_reserve_entry *rsv;
+
 	/* Sanity check */
 	if (!fdt) {
 		return VMM_EFAIL;
@@ -170,14 +138,21 @@ int libfdt_parse_fileinfo(virtual_addr_t fdt_addr,
 	}
 
 	/* Compute data location & size */
-	fdt->data = (char *)fdt_addr;
-	fdt->data += sizeof(struct fdt_header);
-	fdt->data += sizeof(struct fdt_reserve_entry);
+	fdt->data = (char *)fdt_addr + fdt->header.off_dt_struct;
 	fdt->data_size = fdt->header.size_dt_struct;
 
 	/* Compute strings location & size */
-	fdt->str = fdt->data + fdt->data_size;
+	fdt->str = (char *)fdt_addr + fdt->header.off_dt_strings;
 	fdt->str_size = fdt->header.size_dt_strings;
+
+	/* Compute location of reserved memory map */
+	fdt->mem_rsvmap = (char *)fdt_addr + fdt->header.off_mem_rsvmap;
+	fdt->mem_rsvcnt = 0;
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	while (rsv && rsv->size) {
+		fdt->mem_rsvcnt++;
+		rsv++;
+	}
 
 	return VMM_OK;
 }
@@ -186,22 +161,12 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 					   struct vmm_devtree_node *node,
 					   char **data)
 {
-	void *val;
 	const char *name;
-	u32 type, len, alen, addr_cells, size_cells;
+	u32 type, len;
 	struct vmm_devtree_node *child;
 
 	if (!fdt || !node) {
 		return;
-	}
-
-	if (vmm_devtree_read_u32(node->parent,
-				 "#address-cells", &addr_cells)) {
-		addr_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
-	}
-	if (vmm_devtree_read_u32(node->parent,
-				 "#size-cells", &size_cells)) {
-		size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 	}
 
 	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
@@ -213,13 +178,7 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 			name = &fdt->str[LIBFDT_DATA32(*data)];
 			*data += sizeof(fdt_cell_t);
 			type = vmm_devtree_estimate_attrtype(name);
-			alen = libfdt_property_len(name, addr_cells, 
-						   size_cells, len);
-			val = vmm_zalloc(alen);
-			libfdt_property_read(name, val, *data,
-					     addr_cells, size_cells, len);
-			vmm_devtree_setattr(node, name, val, type, alen);
-			vmm_free(val);
+			vmm_devtree_setattr(node, name, *data, type, len, TRUE);
 			*data += len;
 			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0)
 				(*data)++;
@@ -248,12 +207,15 @@ static void libfdt_parse_devtree_recursive(struct fdt_fileinfo *fdt,
 }
 
 int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
-			 struct vmm_devtree_node **root)
+			 struct vmm_devtree_node **root,
+			 const char *root_name,
+			 struct vmm_devtree_node *root_parent)
 {
 	char *data;
+	struct vmm_devtree_node *node;
 
 	/* Sanity check */
-	if (!fdt) {
+	if (!fdt || !root_name) {
 		return VMM_EFAIL;
 	}
 
@@ -264,11 +226,19 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	if (LIBFDT_DATA32(data) != FDT_BEGIN_NODE)
 		return VMM_EFAIL;
 
-	/* Point to root node name */
+	/* Skip root node name */
 	data += sizeof(fdt_cell_t);
 
 	/* Create root node */
-	*root = vmm_devtree_addnode(NULL, data);
+	node = vmm_devtree_addnode(root_parent, root_name);
+	if (!node) {
+		return VMM_ENOMEM;
+	}
+
+	/* Update return pointer for root node */
+	if (root) {
+		*root = node;
+	}
 
 	/* Skip root node name */
 	data += strlen(data) + 1;
@@ -277,7 +247,7 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	}
 
 	/* Parse FDT recursively */
-	libfdt_parse_devtree_recursive(fdt, *root, &data);
+	libfdt_parse_devtree_recursive(fdt, node, &data);
 
 	return VMM_OK;
 }
@@ -296,8 +266,9 @@ static struct fdt_node_header *libfdt_find_node_recursive(char **data,
 		node_path++;
 	}
 
-	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE)
+	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE) {
 		return NULL;
+	}
 
 	*data += sizeof(fdt_cell_t);
 
@@ -426,17 +397,63 @@ struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 	return libfdt_find_node_recursive(&data, fdt->str, node_path);
 }
 
+u32 libfdt_reserve_count(struct fdt_fileinfo *fdt)
+{
+	if (!fdt) {
+		return 0;
+	}
+
+	return fdt->mem_rsvcnt;
+}
+
+int libfdt_reserve_address(struct fdt_fileinfo *fdt, u32 index, u64 *addr)
+{
+	struct fdt_reserve_entry *rsv;
+
+	if (!fdt || !fdt->mem_rsvmap || !addr) {
+		return VMM_EFAIL;
+	}
+	if (fdt->mem_rsvcnt <= index) {
+		return VMM_ENOTAVAIL;
+	}
+
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	*addr = LIBFDT_DATA64(&rsv[index].address);
+
+	return VMM_OK;
+}
+
+int libfdt_reserve_size(struct fdt_fileinfo *fdt, u32 index, u64 *size)
+{
+	struct fdt_reserve_entry *rsv;
+
+	if (!fdt || !fdt->mem_rsvmap || !size) {
+		return VMM_EFAIL;
+	}
+	if (fdt->mem_rsvcnt <= index) {
+		return VMM_ENOTAVAIL;
+	}
+
+	rsv = (struct fdt_reserve_entry *)fdt->mem_rsvmap;
+	*size = LIBFDT_DATA64(&rsv[index].size);
+
+	return VMM_OK;
+}
+
 int libfdt_get_property(struct fdt_fileinfo *fdt, 
-			struct fdt_node_header *fdt_node, 
+			struct fdt_node_header *fdt_node,
+			u32 address_cells, u32 size_cells,
 			const char *property,
-			void *property_value)
+			void *property_value,
+			u32 property_len)
 {
 	u32 len = 0x0;
 	struct fdt_property *ret = NULL;
 	char *data = NULL;
 
 	/* Sanity checks */
-	if (!fdt || !fdt_node || !property || !property_value) {
+	if (!fdt || !fdt_node ||
+	    !property || !property_value || !property_len) {
 		return VMM_EFAIL;
 	}
 
@@ -479,8 +496,12 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 		return VMM_EFAIL;
 	}
 
+	if (property_len < len) {
+		len = property_len;
+	}
+
 	libfdt_property_read(property, property_value, &ret->data[0],
-		sizeof(physical_addr_t) / 4, sizeof(physical_size_t) / 4, len);
+			     address_cells, size_cells, len);
 
 	return VMM_OK;
 }

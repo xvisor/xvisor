@@ -69,6 +69,12 @@ struct vmm_timer_event {
 #define DECLARE_TIMER_EVENT(ev, _hndl, _priv)		\
 	struct vmm_timer_event ev = __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)
 
+/** Check if timer event is pending */
+bool vmm_timer_event_pending(struct vmm_timer_event *ev);
+
+/** Return the absolute timestamp at which timer event will expire */
+u64 vmm_timer_event_expiry_time(struct vmm_timer_event *ev);
+
 /** Start a timer event */
 int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
 
@@ -86,10 +92,13 @@ u64 vmm_timer_timestamp(void);
 u64 vmm_timer_timestamp_for_profile(void);
 #endif
 
-/** Start all timer events */
+/** Check if timer subsystem is running on current host CPU */
+bool vmm_timer_started(void);
+
+/** Start timer subsystem on current host CPU */
 void vmm_timer_start(void);
 
-/** Stop all timer events */
+/** Stop timer subsystem on current host CPU */
 void vmm_timer_stop(void);
 
 /** Initialize timer subsystem */

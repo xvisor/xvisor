@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_wallclock.h>
@@ -30,6 +31,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <libs/vfs.h>
 
@@ -40,6 +42,7 @@
 #define	MODULE_INIT			cmd_vfs_init
 #define	MODULE_EXIT			cmd_vfs_exit
 
+#define VFS_MAX_FDT_SZ			(32*1024)
 #define VFS_LOAD_BUF_SZ			256
 
 static void cmd_vfs_usage(struct vmm_chardev *cdev)
@@ -52,10 +55,15 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
+	vmm_cprintf(cdev, "   vfs run <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
+	vmm_cprintf(cdev, "   vfs fdt_load <devtree_path> "
+			  "<devtree_root_name> <path_to_fdt_file> "
+			  "[<alias0>,<attr_name>,<attr_type>,<value>] "
+			  "[<alias1>,<attr_name>,<attr_type>,<value>] ...\n");
 	vmm_cprintf(cdev, "   vfs host_load <host_phys_addr> "
 			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
 	vmm_cprintf(cdev, "   vfs host_load_list <path_to_list_file>\n");
@@ -63,6 +71,11 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 			  "<path_to_file> [<file_offset>] [<byte_count>]\n");
 	vmm_cprintf(cdev, "   vfs guest_load_list <guest_name> "
 			  "<path_to_list_file>\n");
+	vmm_cprintf(cdev, "Note:\n");
+	vmm_cprintf(cdev, "   <attr_type> = unknown|string|bytes|"
+					   "uint32|uint64|"
+			  		   "physaddr|physsize|"
+					   "virtaddr|virtsize\n");
 }
 
 static int cmd_vfs_fslist(struct vmm_chardev *cdev)
@@ -325,6 +338,79 @@ closedir_fail:
 	return rc;
 }
 
+static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc;
+	u32 len;
+	size_t buf_rd;
+	char buf[VFS_LOAD_BUF_SZ];
+	struct stat st;
+	u32 tok_len;
+	char *token, *save;
+	const char *delim = "\n";
+	u32 end, cleanup = 0;
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	len = st.st_size;
+	while (len) {
+		memset(buf, 0, sizeof(buf));
+
+		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+		buf_rd = vfs_read(fd, buf, buf_rd);
+		if (buf_rd < 1) {
+			break;
+		}
+
+		end = buf_rd - 1;
+		while (buf[end] != '\n') {
+			buf[end] = 0;
+			end--;
+			cleanup++;
+		}
+
+		if (cleanup) {
+			vfs_lseek(fd, (buf_rd - cleanup), SEEK_SET);
+			cleanup = 0;
+		}
+
+		for (token = strtok_r(buf, delim, &save); token;
+		     token = strtok_r(NULL, delim, &save)) {
+			tok_len = strlen(token);
+			if (*token != '#' && *token != '\n') {
+				vmm_cmdmgr_execute_cmdstr(cdev, token, NULL);
+			}
+
+			len -= (tok_len + 1);
+		}
+	}
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
 static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
 {
 	int fd, rc;
@@ -460,6 +546,262 @@ static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
 	}
 
 	return vfs_rmdir(path);
+}
+
+static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
+			    const char *devtree_path,
+			    const char *devtree_root_name,
+			    const char *path,
+			    int aliasc, char **aliasv)
+{
+	int a, fd, rc = VMM_OK;
+	char *astr;
+	const char *aname, *apath, *aattr, *atype;
+	size_t fdt_rd;
+	void *fdt_data, *val = NULL;
+	u32 val_type, val_len = 0;
+	struct stat st;
+	struct vmm_devtree_node *root, *anode, *node;
+	struct vmm_devtree_node *parent;
+	struct fdt_fileinfo fdt;
+
+	parent = vmm_devtree_getnode(devtree_path);
+	if (!parent) {
+		vmm_cprintf(cdev, "Devtree path %s does not exist.\n",
+			    devtree_path);
+		rc = VMM_EINVALID;
+		goto fail;
+	}
+
+	root = vmm_devtree_getchild(parent, devtree_root_name);
+	if (root) {
+		vmm_cprintf(cdev, "Devtree path %s/%s already exist.\n",
+			    devtree_path, devtree_root_name);
+		rc = VMM_EINVALID;
+		goto fail;
+	}
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		rc = fd;
+		goto fail;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
+		goto fail_closefd;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vmm_cprintf(cdev, "Path %s should be regular file.\n", path);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	if (!st.st_size) {
+		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	if (st.st_size > VFS_MAX_FDT_SZ) {
+		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
+			    path, (long)st.st_size, VFS_MAX_FDT_SZ);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	fdt_data = vmm_zalloc(VFS_MAX_FDT_SZ);
+	if (!fdt_data) {
+		rc = VMM_ENOMEM;
+		goto fail_closefd;
+	}
+
+	fdt_rd = vfs_read(fd, fdt_data, VFS_MAX_FDT_SZ);
+	if (fdt_rd < st.st_size) {
+		rc = VMM_EIO;
+		goto fail_freedata;
+	}
+
+	rc = libfdt_parse_fileinfo((virtual_addr_t)fdt_data, &fdt);
+	if (rc) {
+		goto fail_freedata;
+	}
+
+	root = NULL;
+	rc = libfdt_parse_devtree(&fdt, &root, devtree_root_name, parent);
+	if (rc) {
+		goto fail_freedata;
+	}
+
+	anode = vmm_devtree_getchild(root, VMM_DEVTREE_ALIASES_NODE_NAME);
+
+	for (a = 0; a < aliasc; a++) {
+		if (!anode) {
+			vmm_cprintf(cdev, "Error: %s node not available\n",
+				    VMM_DEVTREE_ALIASES_NODE_NAME);
+			continue;
+		}
+
+		astr = aliasv[a];
+
+		aname = astr;
+		while (*astr != '\0' && *astr != ',') {
+			astr++;
+		}
+		if (*astr == ',') {
+			*astr = '\0';
+			astr++;
+		}
+
+		if (*astr == '\0') {
+			continue;
+		}
+		aattr = astr;
+		while (*astr != '\0' && *astr != ',') {
+			astr++;
+		}
+		if (*astr == ',') {
+			*astr = '\0';
+			astr++;
+		}
+
+		if (*astr == '\0') {
+			continue;
+		}
+		atype = astr;
+		while (*astr != '\0' && *astr != ',') {
+			astr++;
+		}
+		if (*astr == ',') {
+			*astr = '\0';
+			astr++;
+		}
+
+		if (*astr == '\0') {
+			continue;
+		}
+
+		if (vmm_devtree_read_string(anode, aname, &apath)) {
+			vmm_cprintf(cdev, "Error: Failed to read %s attribute "
+				    "of %s node\n", aname,
+				    VMM_DEVTREE_ALIASES_NODE_NAME);
+			continue;
+		}
+
+		node = vmm_devtree_getchild(root, apath);
+		if (!node) {
+			vmm_cprintf(cdev, "Error: %s node not found under "
+				    "%s/%s\n", apath, devtree_path,
+				    devtree_root_name);
+			continue;
+		}
+
+		if (!strcmp(atype, "unknown")) {
+			val = NULL;
+			val_len = 0;
+			val_type = VMM_DEVTREE_MAX_ATTRTYPE;
+		} else if (!strcmp(atype, "string")) {
+			val_len = strlen(astr) + 1;
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			strcpy(val, astr);
+			val_type = VMM_DEVTREE_ATTRTYPE_STRING;
+		} else if (!strcmp(atype, "bytes")) {
+			val_len = 1;
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((u8 *)val) = strtoul(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_BYTEARRAY;
+		} else if (!strcmp(atype, "uint32")) {
+			val_len = 4;
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((u32 *)val) = strtoul(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_UINT32;
+		} else if (!strcmp(atype, "uint64")) {
+			val_len = 8;
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((u64 *)val) = strtoull(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_UINT64;
+		} else if (!strcmp(atype, "physaddr")) {
+			val_len = sizeof(physical_addr_t);
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((physical_addr_t *)val) = strtoull(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
+		} else if (!strcmp(atype, "physsize")) {
+			val_len = sizeof(physical_size_t);
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((physical_size_t *)val) = strtoull(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
+		} else if (!strcmp(atype, "virtaddr")) {
+			val_len = sizeof(virtual_addr_t);
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((virtual_addr_t *)val) = strtoull(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
+		} else if (!strcmp(atype, "virtsize")) {
+			val_len = sizeof(virtual_size_t);
+			val = vmm_zalloc(val_len);
+			if (!val) {
+				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
+					    "failed\n", val_len);
+				continue;
+			}
+			*((virtual_size_t *)val) = strtoull(astr, NULL, 0);
+			val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
+		} else {
+			vmm_cprintf(cdev, "Error: Invalid attribute type %s\n",
+				    atype);
+			continue;
+		}
+
+		if (val && (val_len > 0)) {
+			vmm_devtree_setattr(node, aattr, val,
+					    val_type, val_len, FALSE);
+			vmm_free(val);
+		}
+	}
+
+fail_freedata:
+	vmm_free(fdt_data);
+fail_closefd:
+	vfs_close(fd);
+fail:
+	return rc;
 }
 
 static int cmd_vfs_load(struct vmm_chardev *cdev,
@@ -673,6 +1015,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_umount(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "ls") == 0) && (argc == 3)) {
 		return cmd_vfs_ls(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "run") == 0) && (argc == 3)) {
+		return cmd_vfs_run(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "cat") == 0) && (argc == 3)) {
 		return cmd_vfs_cat(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "mv") == 0) && (argc == 4)) {
@@ -683,6 +1027,9 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_mkdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
 		return cmd_vfs_rmdir(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "fdt_load") == 0) && (argc >= 5)) {
+		return cmd_vfs_fdt_load(cdev, argv[2], argv[3], argv[4],
+					argc-5, (argc-5) ? &argv[5] : NULL);
 	} else if ((strcmp(argv[1], "host_load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)strtoull(argv[2], NULL, 0);
 		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;

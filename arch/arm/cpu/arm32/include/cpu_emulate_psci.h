@@ -28,6 +28,35 @@
 #include <cpu_defines.h>
 #include <cpu_vcpu_helper.h>
 
+static inline u32 emulate_psci_version(struct vmm_vcpu *vcpu)
+{
+	return arm_guest_priv(vcpu->guest)->psci_version;
+}
+
+static inline bool emulate_psci_is_32bit(struct vmm_vcpu *vcpu,
+					 arch_regs_t *regs)
+{
+	return TRUE;
+}
+
+static inline void emulate_psci_set_thumb(struct vmm_vcpu *vcpu,
+					  arch_regs_t *regs)
+{
+	regs->cpsr |= CPSR_THUMB_ENABLED;
+}
+
+static inline bool emulate_psci_is_be(struct vmm_vcpu *vcpu,
+				      arch_regs_t *regs)
+{
+	return (regs->cpsr & CPSR_BE_ENABLED) ? TRUE : FALSE;
+}
+
+static inline void emulate_psci_set_be(struct vmm_vcpu *vcpu,
+					arch_regs_t *regs)
+{
+	regs->cpsr |= CPSR_BE_ENABLED;
+}
+
 static inline unsigned long emulate_psci_get_reg(struct vmm_vcpu *vcpu,
 						 arch_regs_t *regs, u32 reg)
 {
@@ -44,13 +73,12 @@ static inline void emulate_psci_set_reg(struct vmm_vcpu *vcpu,
 static inline void emulate_psci_set_pc(struct vmm_vcpu *vcpu,
 					arch_regs_t *regs, unsigned long val)
 {
-	/* Handle Thumb2 entry point */
-	if (val & 1) {
-		val &= ~((unsigned long) 1);
-		regs->cpsr |= CPSR_THUMB_ENABLED;
-	}
-
 	regs->pc = (u32)val;
+}
+
+static inline unsigned long emulate_psci_get_mpidr(struct vmm_vcpu *vcpu)
+{
+	return arm_priv(vcpu)->cp15.c0_mpidr;
 }
 
 #endif	/* __CPU_EMULATE_PSCI_H__ */

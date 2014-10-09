@@ -162,4 +162,33 @@ static inline s32 smod32(s32 value, s32 divisor)
  */
 unsigned long int_sqrt(unsigned long x);
 
+/**
+ * Compute with 96 bit intermediate result: (a*b)/c
+ */
+static inline u64 muldiv64(u64 a, u32 b, u32 c)
+{
+	u64 rem;
+
+	union {
+		u64 ll;
+		struct {
+#if BYTE_ORDER == BIG_ENDIAN
+			u32 high, low;
+#else
+			u32 low, high;
+#endif
+		} l;
+	} u, res;
+	u64 rl, rh;
+
+	u.ll = a;
+	rl = (u64)u.l.low * (u64)b;
+	rh = (u64)u.l.high * (u64)b;
+	rh += (rl >> 32);
+	res.l.high = udiv64(rh, c);
+	rem = umod64(rh, c);
+	res.l.low = ((rem << 32) + (rl & 0xffffffff)) / c;
+	return res.ll;
+}
+
 #endif /* __MATHLIB_H__ */

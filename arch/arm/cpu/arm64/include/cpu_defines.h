@@ -199,6 +199,19 @@
 #define SCTLR_A_MASK					0x00000002
 #define SCTLR_M_MASK					0x00000001
 
+/* MPIDR related macros & defines */
+#define MPIDR_HWID_BITMASK				0xFF00FFFFFF
+#define MPIDR_INVALID					(~MPIDR_HWID_BITMASK)
+#define MPIDR_LEVEL_BITS_SHIFT				3
+#define MPIDR_LEVEL_BITS				\
+					(1 << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_LEVEL_MASK				\
+					((1 << MPIDR_LEVEL_BITS) - 1)
+#define MPIDR_LEVEL_SHIFT(level)			\
+			(((1 << level) >> 1) << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_AFFINITY_LEVEL(mpidr, level)		\
+		((mpidr >> MPIDR_LEVEL_SHIFT(level)) & MPIDR_LEVEL_MASK)
+
 /* CTR related macros & defines */
 #define CTR_FORMAT_MASK					0xE0000000
 #define CTR_FORMAT_SHIFT				29
@@ -465,10 +478,13 @@
 #define ISS_ACTLR_EL1					ISS_SYSREG_ENC(3,1,0,1,0)
 #define ISS_ACTLR_EL2					ISS_SYSREG_ENC(3,1,0,1,4)
 #define ISS_ACTLR_EL3					ISS_SYSREG_ENC(3,1,0,1,6)
+#define ISS_DCISW_EL1					ISS_SYSREG_ENC(1,2,0,7,6)
+#define ISS_DCCSW_EL1					ISS_SYSREG_ENC(1,2,0,7,10)
+#define ISS_DCCISW_EL1					ISS_SYSREG_ENC(1,2,0,7,14)
 
 /* WFI/WFE ISS Encodings */
-#define ISS_WFI_WFE_TRAPPED_MASK			0x00000001
-#define ISS_WFI_WFE_TRAPPED_SHIFT			0
+#define ISS_WFI_WFE_TI_MASK				0x00000001
+#define ISS_WFI_WFE_TI_SHIFT				0
 
 /* MCR/MRC ISS Encodings */
 #define ISS_MCR_MRC_OPC2_MASK				0x000E0000
@@ -563,6 +579,14 @@
 #define TCR_T0SZ_MASK					0x0000003f
 #define TCR_T0SZ_SHIFT					0
 
+#define TCR_PS_32BITS					(0 << TCR_PS_SHIFT)
+#define TCR_PS_36BITS					(1 << TCR_PS_SHIFT)
+#define TCR_PS_40BITS					(2 << TCR_PS_SHIFT)
+#define TCR_PS_42BITS					(3 << TCR_PS_SHIFT)
+#define TCR_PS_44BITS					(4 << TCR_PS_SHIFT)
+#define TCR_PS_48BITS					(5 << TCR_PS_SHIFT)
+#define TCR_T0SZ_VAL(in_bits)				((64 - (in_bits)) & TCR_T0SZ_MASK)
+
 /* VTTBR */
 #define VTTBR_INITVAL					0x0000000000000000ULL
 #define VTTBR_VMID_MASK					0x00FF000000000000ULL
@@ -586,6 +610,17 @@
 #define VTCR_SL0_SHIFT					6
 #define VTCR_T0SZ_MASK					0x0000003f
 #define VTCR_T0SZ_SHIFT					0
+
+#define VTCR_PS_32BITS					(0 << VTCR_PS_SHIFT)
+#define VTCR_PS_36BITS					(1 << VTCR_PS_SHIFT)
+#define VTCR_PS_40BITS					(2 << VTCR_PS_SHIFT)
+#define VTCR_PS_42BITS					(3 << VTCR_PS_SHIFT)
+#define VTCR_PS_44BITS					(4 << VTCR_PS_SHIFT)
+#define VTCR_PS_48BITS					(5 << VTCR_PS_SHIFT)
+#define VTCR_SL0_L2					(0 << VTCR_SL0_SHIFT) /* Starting-level: 2 */
+#define VTCR_SL0_L1					(1 << VTCR_SL0_SHIFT) /* Starting-level: 1 */
+#define VTCR_SL0_L0					(2 << VTCR_SL0_SHIFT) /* Starting-level: 0 */
+#define VTCR_T0SZ_VAL(in_bits)				((64 - (in_bits)) & VTCR_T0SZ_MASK)
 
 /* MAIR_EL2 encodings */
 #define AINDEX_SO					0
@@ -714,5 +749,45 @@
 #define ID_AA64PFR0_EL0_A32				0x00000002
 #define ID_AA64PFR0_EL0_MASK				0x0000000f
 #define ID_AA64PFR0_EL0_SHIFT				0
+
+/* Field offsets for struct arm_priv_sysregs */
+#define ARM_PRIV_SYSREGS_sp_el0				0x0
+#define ARM_PRIV_SYSREGS_sp_el1				0x8
+#define ARM_PRIV_SYSREGS_elr_el1			0x10
+#define ARM_PRIV_SYSREGS_spsr_el1			0x18
+#define ARM_PRIV_SYSREGS_midr_el1			0x20
+#define ARM_PRIV_SYSREGS_mpidr_el1			0x28
+#define ARM_PRIV_SYSREGS_sctlr_el1			0x30
+#define ARM_PRIV_SYSREGS_actlr_el1			0x38
+#define ARM_PRIV_SYSREGS_cpacr_el1			0x40
+#define ARM_PRIV_SYSREGS_ttbr0_el1			0x48
+#define ARM_PRIV_SYSREGS_ttbr1_el1			0x50
+#define ARM_PRIV_SYSREGS_tcr_el1			0x58
+#define ARM_PRIV_SYSREGS_esr_el1			0x60
+#define ARM_PRIV_SYSREGS_far_el1			0x68
+#define ARM_PRIV_SYSREGS_par_el1			0x70
+#define ARM_PRIV_SYSREGS_mair_el1			0x78
+#define ARM_PRIV_SYSREGS_vbar_el1			0x80
+#define ARM_PRIV_SYSREGS_contextidr_el1			0x88
+#define ARM_PRIV_SYSREGS_tpidr_el0			0x90
+#define ARM_PRIV_SYSREGS_tpidr_el1			0x98
+#define ARM_PRIV_SYSREGS_tpidrro_el0			0xA0
+#define ARM_PRIV_SYSREGS_spsr_abt			0xA8
+#define ARM_PRIV_SYSREGS_spsr_und			0xAC
+#define ARM_PRIV_SYSREGS_spsr_irq			0xB0
+#define ARM_PRIV_SYSREGS_spsr_fiq			0xB4
+#define ARM_PRIV_SYSREGS_dacr32_el2			0xB8
+#define ARM_PRIV_SYSREGS_ifsr32_el2			0xBC
+#define ARM_PRIV_SYSREGS_teecr32_el1			0xC0
+#define ARM_PRIV_SYSREGS_teehbr32_el1			0xC4
+
+/* Field offsets for struct arm_priv_vfp */
+#define ARM_PRIV_VFP_mvfr0				0x0
+#define ARM_PRIV_VFP_mvfr1				0x4
+#define ARM_PRIV_VFP_mvfr2				0x8
+#define ARM_PRIV_VFP_fpcr				0xC
+#define ARM_PRIV_VFP_fpsr				0x10
+#define ARM_PRIV_VFP_fpexc32				0x14
+#define ARM_PRIV_VFP_fpregs				0x18
 
 #endif

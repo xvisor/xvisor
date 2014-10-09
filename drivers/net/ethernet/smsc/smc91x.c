@@ -82,12 +82,6 @@ static const char version[] =
 
 #include "smc91x.h"
 
-#define cpu_relax()
-#define tasklet_schedule(x)
-#define tasklet_hi_schedule(x)
-#define tasklet_kill(x)
-#define platform_set_drvdata(pdev, data) pdev->priv = (void *)data
-
 #ifndef SMC_NOWAIT
 # define SMC_NOWAIT		0
 #endif
@@ -2607,8 +2601,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	release_mem_region(res->start, SMC_IO_EXTENT);
 #endif
  out_free_netdev:
- 	/* TBD:: Add free_netdev support */
-	//free_netdev(ndev);
+	free_netdev(ndev);
  out:
 	printk("%s: not found (%d).\n", CARDNAME, ret);
 

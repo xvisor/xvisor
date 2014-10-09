@@ -36,6 +36,7 @@
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
 #include <linux/device.h>
+#include <uapi/linux/if.h>
 #include <uapi/linux/if_ether.h>
 
 #define MAX_NETDEV_NAME_LEN			32
@@ -47,7 +48,8 @@
 enum netdev_status {
 	NETDEV_UNINITIALIZED = 0x1,
 	NETDEV_REGISTERED = 0x2,
-	NETDEV_TX_ALLOWED = 0x4,
+	NETDEV_OPEN	  = 0x4,
+	NETDEV_TX_ALLOWED = 0x8,
 };
 
 enum netdev_link_state {
@@ -72,6 +74,11 @@ struct net_device_ops {
 	int (*ndo_open) (struct net_device *ndev);
 	int (*ndo_stop) (struct net_device *ndev);
 	int (*ndo_start_xmit) (struct sk_buff *buf, struct net_device *ndev);
+	int (*ndo_validate_addr)(struct net_device *dev);
+	void (*ndo_tx_timeout) (struct net_device *dev);
+	int (*ndo_do_ioctl)(struct net_device *dev,
+			    struct ifreq *ifr, int cmd);
+	int (*ndo_change_mtu)(struct net_device *dev, int new_mtu);
 };
 
 struct net_device_stats {
@@ -128,12 +135,27 @@ struct net_device {
 	unsigned char	dma;	/* DMA channel		*/
 	struct net_device_stats stats;
 	struct phy_device *phydev;
+	unsigned long		trans_start;
+	int			watchdog_timeo;
+
 	struct vmm_device *vmm_dev;
 };
 
 #define NETDEV_ALIGN            32
 
 #include <linux/ethtool.h>
+
+/* No harm in enabling these debug messages. */
+#define	netif_msg_ifup(db)		1
+#define	netif_msg_ifdown(db)		1
+#define netif_msg_timer(db)		1
+#define	netif_msg_rx_err(db)		1
+
+/* These debug messages will throw too may prints, disabling them by default */
+#define	netif_msg_intr(db)		0
+#define	netif_msg_tx_done(db)		0
+#define	netif_msg_rx_status(db)		0
+
 
 static inline int netif_carrier_ok(const struct net_device *dev)
 {
@@ -176,10 +198,26 @@ static inline int netif_queue_stopped(struct net_device *dev)
 		return 1;
 }
 
+static inline bool netif_running(struct net_device *dev)
+{
+	if (dev->state & NETDEV_OPEN)
+		return true;
+
+	return false;
+}
+
 static inline void ether_setup(struct net_device *dev)
 {
 	dev->hw_addr_len = ETH_ALEN;
 	dev->mtu = ETH_DATA_LEN;
+}
+
+static inline int eth_change_mtu(struct net_device *dev, int new_mtu)
+{
+	if (new_mtu < 68 || new_mtu > ETH_DATA_LEN)
+		return -EINVAL;
+	dev->mtu = new_mtu;
+	return 0;
 }
 
 static inline void netdev_set_priv(struct net_device *ndev, void *priv)
@@ -212,8 +250,14 @@ static inline int netif_rx(struct sk_buff *mb, struct net_device *dev)
 	return VMM_OK;
 }
 
-#define netif_msg_link(x)	0
-#define SET_NETDEV_DEV(ndev, pdev) ndev->vmm_dev = (void *) pdev
+static inline void free_netdev(struct net_device *dev)
+{
+	vmm_free(dev);
+}
+
+#define	netif_msg_link(x)		0
+#define	SET_NETDEV_DEV(ndev, pdev)	ndev->vmm_dev = (void *) pdev
+#define	unregister_netdev(ndev)		netdev_unregister(ndev)
 
 /** Allocate new network device */
 struct net_device *netdev_alloc(const char *name);

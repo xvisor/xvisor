@@ -1,0 +1,22 @@
+
+/include/ "../imx25.dtsi"
+
+/ {
+	model = "3dstack";
+
+	chosen {
+		console = &SERIAL1;
+	};
+
+	memory { 
+		/* NOTE: By default QEMU will only proivde 128 MB
+		 * unless specified by "-m" option. If you have
+		 * X MB then we will be able to access only first
+		 * X MB starting at physical_addr.
+                 * Note: the 3Dstack board only has 64 MB DDR.
+		 */
+		device_type = "memory"; 
+		reg = <0x80000000 0x04000000>; /* 64 MB */
+	};
+};
+

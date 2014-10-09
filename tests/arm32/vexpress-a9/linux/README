@@ -21,83 +21,82 @@ VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with VExpress-A9 default settings]
-  # make ARCH=arm vexpress-a9-defconfig
+  [3. Configure Xvisor with Generic v7 default settings]
+  # make ARCH=arm generic-v7-defconfig
 
-  [4. Enable VExpress-A9 Guest from menuconfig]
-  # make menuconfig
-  SELECT '1x vexpress-a9 guest' DTS from 'VExpress Options'
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
 
-  [5. Build Xvisor]
-  # make
-
-  [6. Build Basic Firmware]
+  [5. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic
 
-  [7. Copy defconfig to Linux build directory]
+  [6. Copy defconfig to Linux build directory]
   # cp tests/arm32/vexpress-a9/linux/linux-<linux_version>_vexpress_a9_defconfig <linux_build_directory>/.config
 
-  [8. GoTo Linux source directory]
+  [7. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [9. Configure Linux in build directory]
+  [8. Configure Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
-  [10. Build Linux in build directory]
+  [9. Build Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm Image
 
-  [11. Patch Linux kernel to replace sensitive non-priviledged instructions]
+  [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
-  [12. Build Linux in build directory to reflect changes in kernel image]
+  [11. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm Image
 
-  [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
 
-  [14. GoTo Xvisor source directory]
+  [13. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [15. Create disk image for Xvisor]
+  [14. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb <linux_source_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [16. Create qemu.img for running it on QEMU]
+  [15. Create qemu.img for running it on QEMU]
   # ./tools/scripts/memimg.py -a 0x60010000 -o build/qemu.img build/vmm.bin@0x60010000 build/disk.img@0x61000000
 
-  [17. Launch QEMU 0.15.xx or higher]
-  # qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio -kernel build/qemu.img
+  [16. Launch QEMU 1.7.xx or higher]
+  # qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/vexpress/a9/one_guest_vexpress-a9.dtb
 
-  [18. Kick Guest0 for starting Basic Firmware]
+  [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [19. Bind to virtual UART0 of Linux Guest]
+  [18. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [20. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [21. Wait for Linux prompt to come-up and then try out some commands]
+  [20. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [22. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on VExpress-A9 host 
-   emulated by QEMU 0.15.xx or higher. For other types of ARM host some of the 
-   above steps will need to be adapted for that specfic ARM host. For more info
-   on your desired ARM host refer docs/arm/)
-  (Note: you are free to the change ordering of above steps based on your workspace)
+  (Note: the above steps assumes Xvisor running on VExpress-A9 host
+   emulated by QEMU. For other types of ARM host some of the above
+   steps will need to be adapted for that specfic ARM host. For more
+   info on your desired ARM host refer docs/arm/)
+  (Note: you are free to the change ordering of above steps based on
+   your workspace)
 
 

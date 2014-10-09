@@ -24,8 +24,12 @@
 #define __ARCH_GUEST_HELPER_H_
 
 #include <cpu_vm.h>
+#include <emu/rtc/mc146818rtc.h>
+#include <emu/i8259.h>
 
 #define GUEST_HALT_SW_CODE	0x80
+/* When CPU exited from VM mode for VMM to handle */
+#define GUEST_VM_EXIT_SW_CODE	0x81
 
 /*! \brief x86 Guest private information
  *
@@ -33,18 +37,27 @@
  * specific guest.
  */
 struct x86_guest_priv {
+	/**< List of all PICs associated with guest. Guest code is not directly
+	 * know about any of the fields. PIC emulator will set this and query
+	 * when required.
+	 */
+	void *pic_list;
 	struct page_table *g_npt; /**< Guest's nested page table */
+	struct cmos_rtc_state *rtc_cmos;
+	struct i8259_state *master_pic;
+	u64 tot_ram_sz;
 };
 
 /*!def x86_guest_priv(guest) is to access guest private information */
 #define x86_guest_priv(guest) ((struct x86_guest_priv *)(guest->arch_priv))
 
-extern physical_addr_t guest_virtual_to_physical(struct vcpu_hw_context *context,
-						 virtual_addr_t vaddr);
+extern int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_addr_t *gpa);
+extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, physical_addr_t *hpa);
 extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			       physical_addr_t paddr, size_t size);
 extern int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 				 size_t size);
 extern void arch_guest_halt(struct vmm_guest *guest);
+extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
 
 #endif /* __ARCH_GUEST_HELPER_H_ */

@@ -43,6 +43,8 @@ static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vcpu help\n");
 	vmm_cprintf(cdev, "   vcpu list\n");
+	vmm_cprintf(cdev, "   vcpu orphan_list\n");
+	vmm_cprintf(cdev, "   vcpu normal_list\n");
 	vmm_cprintf(cdev, "   vcpu reset   <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu kick    <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu pause   <vcpu_id>\n");
@@ -58,14 +60,24 @@ static int cmd_vcpu_help(struct vmm_chardev *cdev, int dummy)
 	return VMM_OK;
 }
 
-static int cmd_vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
+struct vcpu_list_priv {
+	struct vmm_chardev *cdev;
+	bool normal;
+	bool orphan;
+};
+
+static int vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 {
+	u32 hcpu, afflen;
 	char state[10];
-	char path[256];
-#ifdef CONFIG_SMP
-	u32 hcpu;
-#endif
-	struct vmm_chardev *cdev = priv;
+	const struct vmm_cpumask *aff;
+	struct vcpu_list_priv *p = priv;
+	struct vmm_chardev *cdev = p->cdev;
+
+	if (!(vcpu->is_normal && p->normal) &&
+	    !(!vcpu->is_normal && p->orphan)) {
+		return VMM_OK;
+	}
 
 	switch (vmm_manager_vcpu_get_state(vcpu)) {
 	case VMM_VCPU_STATE_UNKNOWN:
@@ -96,19 +108,29 @@ static int cmd_vcpu_list_iter(struct vmm_vcpu *vcpu, void *priv)
 	vmm_cprintf(cdev, " %-6d", hcpu);
 #endif
 	vmm_cprintf(cdev, " %-7d %-10s %-17s", vcpu->priority, state, vcpu->name);
-	if (vcpu->node) {
-		vmm_devtree_getpath(path, vcpu->node);
-		vmm_cprintf(cdev, " %-34s\n", path); 
-	} else {
-		vmm_cprintf(cdev, " %-34s\n", "(NA)"); 
+	vmm_cprintf(cdev, " %s", "{");
+	aff = vmm_manager_vcpu_get_affinity(vcpu);
+	afflen = 0;
+	for_each_cpu(hcpu, aff) {
+		if (afflen) {
+			vmm_cprintf(cdev, ",");
+		}
+		vmm_cprintf(cdev, "%d", hcpu);
+		afflen++;
 	}
+	vmm_cprintf(cdev, "%s\n", "}");
 
 	return VMM_OK;
 }
 
-static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+static int vcpu_list(struct vmm_chardev *cdev, bool normal, bool orphan)
 {
 	int rc;
+	struct vcpu_list_priv p;
+
+	p.cdev = cdev;
+	p.normal = normal;
+	p.orphan = orphan;
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
@@ -117,16 +139,31 @@ static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
 	vmm_cprintf(cdev, " %-6s", "CPU ");
 #endif
 	vmm_cprintf(cdev, " %-7s %-10s %-17s %-34s\n", 
-		    "Prio", "State", "Name", "Device Path");
+		    "Prio", "State", "Name", "Affinity");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
 
-	rc = vmm_manager_vcpu_iterate(cmd_vcpu_list_iter, cdev);
+	rc = vmm_manager_vcpu_iterate(vcpu_list_iter, &p);
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
 
 	return rc;
+}
+
+static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+{
+	return vcpu_list(cdev, TRUE, TRUE);
+}
+
+static int cmd_vcpu_orphan_list(struct vmm_chardev *cdev, int dummy)
+{
+	return vcpu_list(cdev, FALSE, TRUE);
+}
+
+static int cmd_vcpu_normal_list(struct vmm_chardev *cdev, int dummy)
+{
+	return vcpu_list(cdev, TRUE, FALSE);
 }
 
 static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
@@ -353,6 +390,8 @@ static const struct {
 } const command[] = {
 	{"help", cmd_vcpu_help},
 	{"list", cmd_vcpu_list},
+	{"orphan_list", cmd_vcpu_orphan_list},
+	{"normal_list", cmd_vcpu_normal_list},
 	{"reset", cmd_vcpu_reset},
 	{"kick", cmd_vcpu_kick},
 	{"pause", cmd_vcpu_pause},

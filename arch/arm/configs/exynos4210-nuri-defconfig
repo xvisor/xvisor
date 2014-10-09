@@ -2,9 +2,8 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Thu Feb 13 01:50:27 2014
+# Thu Apr 10 01:40:53 2014
 #
-CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
@@ -14,8 +13,11 @@ CONFIG_ARCH="arm"
 # CONFIG_CPU_CORTEX_A8 is not set
 CONFIG_CPU_CORTEX_A9=y
 # CONFIG_CPU_CORTEX_A15 is not set
+# CONFIG_CPU_GENERIC_V5 is not set
+# CONFIG_CPU_GENERIC_V6 is not set
+# CONFIG_CPU_GENERIC_V7 is not set
+# CONFIG_CPU_GENERIC_V7_VE is not set
 # CONFIG_CPU_GENERIC_V8 is not set
-CONFIG_CPU_COUNT=4
 # CONFIG_ARMV5 is not set
 # CONFIG_ARMV6 is not set
 # CONFIG_ARMV6K is not set
@@ -27,8 +29,10 @@ CONFIG_ARM32=y
 # CONFIG_ARM64 is not set
 
 #
-# ARM Options
+# ARM CPU Options
 #
+CONFIG_SMP=y
+CONFIG_CPU_COUNT=4
 CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_HOST_IRQ_COUNT=1024
 CONFIG_ARM_LOCKS=y
@@ -39,7 +43,6 @@ CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
-# CONFIG_ARMV7A_SECUREX is not set
 # CONFIG_ARM_ERRATA_430973 is not set
 # CONFIG_ARM_ERRATA_458693 is not set
 # CONFIG_ARM_ERRATA_460075 is not set
@@ -48,41 +51,29 @@ CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM_ERRATA_743622 is not set
 # CONFIG_ARM_ERRATA_751472 is not set
 # CONFIG_ARM_ERRATA_754322 is not set
-# CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_IMX25 is not set
-# CONFIG_BOARD_BCM2835 is not set
-# CONFIG_BOARD_IMX31 is not set
-# CONFIG_BOARD_REALVIEW is not set
 # CONFIG_BOARD_OMAP3 is not set
-# CONFIG_BOARD_SUN4I is not set
-# CONFIG_BOARD_VEXPRESS is not set
 CONFIG_BOARD_EXYNOS4=y
-# CONFIG_BOARD_GENERIC_V8 is not set
+# CONFIG_BOARD_GENERIC is not set
+
+#
+# ARM Board Options
+#
 CONFIG_BOARD="exynos4"
 # CONFIG_BOARD_SMDKC210 is not set
 CONFIG_BOARD_NURI=y
 # CONFIG_BOARD_ODROIDX is not set
-
-#
-# nuri Options
-#
 CONFIG_NURI_ONE_GUEST_PBA8_DTS=y
 # CONFIG_NURI_TWO_GUEST_PBA8_DTS is not set
-# CONFIG_ARM_VIC is not set
-CONFIG_ARM_GIC=y
-# CONFIG_ARM_TIMER_SP804 is not set
-# CONFIG_ARM_TWD is not set
-CONFIG_ARM_SMP_OPS=y
-CONFIG_ARM_SMP_IPI=y
-# CONFIG_ARM_SMP_SPIN_TABLE is not set
+# CONFIG_DEFTERM_EARLY_PRINT is not set
 CONFIG_ARM_SCU=y
+CONFIG_ARM_SMP_OPS=y
+# CONFIG_ARM_SMP_SPIN_TABLE is not set
+CONFIG_ARM_SMP_PSCI=y
+CONFIG_ARM_SMP_IPI=y
 # CONFIG_VERSATILE_CLCD is not set
 # CONFIG_OMAP is not set
 CONFIG_SAMSUNG_MCT=y
 CONFIG_SAMSUNG_MCT_LOCAL_TIMERS=y
-# CONFIG_SUNXI is not set
-# CONFIG_FREESCALE_AVIC is not set
-# CONFIG_FREESCALE_EPIT is not set
 
 #
 # Hypervisor Options
@@ -91,7 +82,7 @@ CONFIG_SAMSUNG_MCT_LOCAL_TIMERS=y
 #
 # General Configuration
 #
-MODULES=y
+CONFIG_MODULES=y
 # CONFIG_VERBOSE_MODE is not set
 # CONFIG_BANNER_NONE is not set
 # CONFIG_BANNER_BANNER3 is not set
@@ -112,12 +103,10 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
-CONFIG_HEAP_BUDDY=y
 
 #
 # Scheduler Configuration
 #
-# CONFIG_SCHEDALGO_RR is not set
 CONFIG_SCHEDALGO_PRR=y
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
@@ -139,6 +128,7 @@ CONFIG_BLOCKPART_DOS=y
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+CONFIG_NET_BH_TIMEOUT_SECS=30
 
 #
 # Virtual IO Support
@@ -259,6 +249,24 @@ CONFIG_VFS_FAT=y
 #
 
 #
+# Interrupt Controller Drivers
+#
+# CONFIG_ARM_VIC is not set
+CONFIG_ARM_GIC=y
+# CONFIG_MXC_AVIC is not set
+# CONFIG_BCM2835_INTC is not set
+# CONFIG_SUN4I_VIC is not set
+
+#
+# Clocksource Drivers
+#
+# CONFIG_ARM_TIMER_SP804 is not set
+# CONFIG_ARM_TWD is not set
+# CONFIG_MXC_EPIT is not set
+# CONFIG_BCM2835_TIMER is not set
+# CONFIG_SUN4I_TIMER is not set
+
+#
 # Serial Port Drivers
 #
 CONFIG_SERIAL=y
@@ -315,6 +323,11 @@ CONFIG_BLOCK_RBD=y
 #
 # CONFIG_CLKDEV_LOOKUP is not set
 # CONFIG_COMMON_CLK is not set
+
+#
+# Power Supply Drivers
+#
+# CONFIG_POWER_SUPPLY is not set
 
 #
 # Multifunction device drivers
@@ -421,6 +434,7 @@ CONFIG_EMU_RTC_PL031=y
 #
 CONFIG_EMU_GPIO=y
 CONFIG_EMU_GPIO_PL061=y
+# CONFIG_EMU_PCI is not set
 
 #
 # Tool Options

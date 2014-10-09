@@ -28,11 +28,11 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Raspberry Pi (or BCM2835 SOC) default settings]
-  # make ARCH=arm bcm2835-raspi-defconfig 
+  [3. Configure Xvisor with Generic-v6 default settings]
+  # make ARCH=arm generic-v6-defconfig
 
-  [4. Build Xvisor, this creates vmm.bin]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
@@ -42,11 +42,13 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   
   [7. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
@@ -63,31 +65,33 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [9. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [10. Copy uvmm.bin to boot partition of SD card]
+  [10. Copy uvmm.bin, DTB, and disk.im to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-
-  [11. Copy disk image to boot partition of SD card]
+  # cp -f build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [13. Unplug SD card from your development machine and plug it back on Raspberry Pi]
+  [12. Unplug SD card from your development machine and plug it back on Raspberry Pi]
 
-  [14. Connect to serial port of Raspberry Pi using Putty or Minicom]
+  [13. Connect to serial port of Raspberry Pi using Putty or Minicom]
 
-  [15. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+  [14. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
 
-  [16. Enable MMC interface from U-Boot command line]
+  [15. Enable MMC interface from U-Boot command line]
   U-Boot> mmc dev 0:0
 
-  [17. Copy Xvisor from SD card to SDRAM]
+  [16. Copy Xvisor from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x00200000 uvmm.bin
+
+  [17. Copy Xvisor DTB from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x00800000 one_guest_ebmp.dtb
 
   [18. Copy disk image from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x01000000 disk.img
 
   [19. Jump into Xvisor after disabling MMU, interrupts, etc]
-  U-Boot> bootm 0x00200000
+  U-Boot> bootm 0x00200000 - 0x00800000
 
   [20. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
@@ -131,22 +135,24 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Raspberry Pi (or BCM2835 SOC) default settings]
-  # make ARCH=arm bcm2835-raspi-defconfig
+  [3. Configure Xvisor with Generic-v6 default settings]
+  # make ARCH=arm generic-v6-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic
 
   [6. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
@@ -163,7 +169,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
 
   [8. Launch QEMU]
-  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

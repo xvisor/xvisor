@@ -28,7 +28,8 @@
 #include <vmm_devdrv.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
-#include <drv/realview.h>
+
+#include <linux/realview.h>
 
 #define MODULE_DESC			"Realview Sysreg Driver"
 #define MODULE_AUTHOR			"Anup Patel"

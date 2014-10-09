@@ -30,3 +30,4 @@ cpu-common-objs-y += cpu_features.o
 cpu-common-objs-$(CONFIG_LOCAL_APIC) += cpu_apic.o
 cpu-common-objs-$(CONFIG_ACPI) += acpi.o
 cpu-common-objs-$(CONFIG_VEXT) += vm/vm.o
+cpu-common-objs-$(CONFIG_VEXT) += vm/cpu_inst_decode.o

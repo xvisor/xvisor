@@ -24,66 +24,98 @@
 #define _ARCH_REGS_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <vmm_spinlocks.h>
+#include <vmm_cpumask.h>
 #include <cpu_defines.h>
-#include <generic_timer.h>
 
 struct arch_regs {
-	u64 gpr[CPU_GPR_COUNT];	/* X0 - X29 */
+	/* X0 - X29 */
+	u64 gpr[CPU_GPR_COUNT];
+	/* Link Register (or X30) */
 	u64 lr;
-	u64 sp;		/* Stack Pointer */
-	u64 pc;		/* Program Counter */
-	u64 pstate; 	/* PState/SPSR */
-} __attribute((packed));
+	/* Stack Pointer */
+	u64 sp;
+	/* Program Counter */
+	u64 pc;
+	/* PState/CPSR */
+	u64 pstate;
+} __packed;
 
 typedef struct arch_regs arch_regs_t;
 
+/* Note: This structure is accessed from assembly code
+ * hence any change in this structure should be reflected
+ * in relevant defines in cpu_defines.h
+ */
 struct arm_priv_vfp {
 	/* 64bit EL1/EL0 registers */
-	u32 mvfr0;
-	u32 mvfr1;
-	u32 mvfr2;
-	u32 fpcr;
-	u32 fpsr;
-	u64 fpregs[64]; /* 32x 128bit floating point registers. */
+	u32 mvfr0;				/* 0x0 */
+	u32 mvfr1;				/* 0x4 */
+	u32 mvfr2;				/* 0x8 */
+	u32 fpcr;				/* 0xC */
+	u32 fpsr;				/* 0x10 */
 	/* 32bit only registers */
-	u32 fpexc32;
-};
+	u32 fpexc32;				/* 0x14 */
+	/* 32x 128bit floating point registers. */
+	u64 fpregs[64];				/* 0x18 */
+} __packed;
 
+/* Note: This structure is accessed from assembly code
+ * hence any change in this structure should be reflected
+ * in relevant defines in cpu_defines.h
+ */
 struct arm_priv_sysregs {
 	/* 64bit EL1/EL0 registers */
-	u64 sp_el0;
-	u64 sp_el1;
-	u64 elr_el1;
-	u64 spsr_el1;
-	u64 midr_el1;	
-	u64 mpidr_el1;
-	u64 sctlr_el1; 	/* System control register. */
-	u64 actlr_el1;	/* Auxillary control register. */
-	u64 cpacr_el1; 	/* Coprocessor access register.  */
-	u64 ttbr0_el1;	/* MMU translation table base 0. */
-	u64 ttbr1_el1;	/* MMU translation table base 1. */
-	u64 tcr_el1; 	/* MMU translation control register. */
-	u64 esr_el1;	/* Exception status register. */
-	u64 far_el1; 	/* Fault address register. */
-	u64 par_el1;	/* Translation result. */
-	u64 mair_el1;	/* Memory attribute Index Register */
-	u64 vbar_el1; 	/* Vector base address register */
-	u64 contextidr_el1; /* Context ID. */
-	u64 tpidr_el0; /* User RW Thread register. */
-	u64 tpidr_el1; /* Privileged Thread register. */
-	u64 tpidrro_el0; 	/* User RO Thread register. */
+	u64 sp_el0;				/* 0x0 */
+	u64 sp_el1;				/* 0x8 */
+	u64 elr_el1;				/* 0x10 */
+	u64 spsr_el1;				/* 0x18 */
+	u64 midr_el1;				/* 0x20 */
+	u64 mpidr_el1;				/* 0x28 */
+	/* System control register. */
+	u64 sctlr_el1;				/* 0x30 */
+	/* Auxillary control register. */
+	u64 actlr_el1;				/* 0x38 */
+	/* Coprocessor access register.  */
+	u64 cpacr_el1;				/* 0x40 */
+	/* MMU translation table base 0. */
+	u64 ttbr0_el1;				/* 0x48 */
+	/* MMU translation table base 1. */
+	u64 ttbr1_el1;				/* 0x50 */
+	/* MMU translation control register. */
+	u64 tcr_el1;				/* 0x58 */
+	/* Exception status register. */
+	u64 esr_el1;				/* 0x60 */
+	/* Fault address register. */
+	u64 far_el1;				/* 0x68 */
+	/* Translation result. */
+	u64 par_el1;				/* 0x70 */
+	/* Memory attribute index Register */
+	u64 mair_el1;				/* 0x78 */
+	/* Vector base address register */
+	u64 vbar_el1;				/* 0x80 */
+	/* Context ID. */
+	u64 contextidr_el1;			/* 0x88 */
+	/* User RW Thread register. */
+	u64 tpidr_el0;				/* 0x90 */
+	/* Privileged Thread register. */
+	u64 tpidr_el1;				/* 0x98 */
+	/* User RO Thread register. */
+	u64 tpidrro_el0;			/* 0xA0 */
 	/* 32bit only registers */
-	u32 spsr_abt;
-	u32 spsr_und;
-	u32 spsr_irq;
-	u32 spsr_fiq;
-	u32 dacr32_el2;	/* MMU domain access control register */
-	u32 ifsr32_el2; 	/* Fault status registers. */
+	u32 spsr_abt;				/* 0xA8 */
+	u32 spsr_und;				/* 0xAC */
+	u32 spsr_irq;				/* 0xB0 */
+	u32 spsr_fiq;				/* 0xB4 */
+	/* MMU domain access control register */
+	u32 dacr32_el2;				/* 0xB8 */
+	/* Fault status registers. */
+	u32 ifsr32_el2;				/* 0xBC */
 	/* 32bit only ThumbEE registers */
-	u64 teecr32_el1;
-	u32 teehbr32_el1;
-};
+	u32 teecr32_el1;			/* 0xC0 */
+	u32 teehbr32_el1;			/* 0xC4 */
+} __packed;
 
 struct arm_priv {
 	/* Internal CPU feature flags. */
@@ -94,24 +126,30 @@ struct arm_priv {
 	u64 hcr;	/* Hypervisor Configuration */
 	u64 cptr;	/* Coprocessor Trap Register */
 	u64 hstr;	/* Hypervisor System Trap Register */
-	/* EL1/EL0 system registers */
+	/* EL1/EL0 sysregs */
 	struct arm_priv_sysregs sysregs;
-	/* VFP & SMID registers */
+	vmm_cpumask_t dflush_needed;
+	/* VFP & SMID context */
 	struct arm_priv_vfp vfp;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */
-	struct generic_timer_context gentimer_context;
+	void *gentimer_priv;
 	/* VGIC context */
 	bool vgic_avail;
 	void (*vgic_save)(void *vcpu_ptr);
 	void (*vgic_restore)(void *vcpu_ptr);
 	void *vgic_priv;
-} __attribute((packed));
+};
 
 struct arm_guest_priv {
 	/* Stage2 table */
 	struct cpu_ttbl *ttbl;
+	/* PSCI version
+	 * Bits[31:16] = Major number
+	 * Bits[15:0] = Minor number
+	 */
+	u32 psci_version;
 };
 
 #define arm_regs(vcpu)		(&((vcpu)->regs))
@@ -135,7 +173,7 @@ struct arm_guest_priv {
 /**
  *  Generic timers support macro
  */
-#define arm_gentimer_context(vcpu)	(&(arm_priv(vcpu)->gentimer_context))
+#define arm_gentimer_context(vcpu)	(arm_priv(vcpu)->gentimer_priv)
 
 /**
  *  VGIC support macros

@@ -23,4 +23,5 @@
 
 emulators-objs-$(CONFIG_EMU_INPUT_PS2)+= input/ps2_emu.o
 emulators-objs-$(CONFIG_EMU_INPUT_PL050)+= input/pl050.o
+emulators-objs-$(CONFIG_EMU_INPUT_I8042)+= input/pckbd.o
 

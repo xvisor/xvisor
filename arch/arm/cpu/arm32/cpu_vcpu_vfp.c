@@ -107,7 +107,7 @@ bad_reg:
 	return FALSE;
 }
 
-bool cpu_vcpu_cp10_write(struct vmm_vcpu * vcpu, 
+bool cpu_vcpu_cp10_write(struct vmm_vcpu *vcpu, 
 			 arch_regs_t *regs,
 			 u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
 			 u32 data)
@@ -317,7 +317,7 @@ void cpu_vcpu_vfp_regs_dump(struct vmm_chardev *cdev,
 
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 {
-	u32 vfp_arch = read_fpsid();
+	u32 vfp_arch;
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
 	/* If host HW does not have VFP (i.e. software VFP) then 

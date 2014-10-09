@@ -44,6 +44,7 @@
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
+#include <cpu_defines.h>
 #include <cpu_inline_asm.h>
 #include <smp_ops.h>
 
@@ -55,9 +56,9 @@
 #define DPRINTF(msg...)
 #endif
 
-volatile unsigned long start_secondary_pen_release = INVALID_HWID;
+volatile unsigned long start_secondary_pen_release = MPIDR_INVALID;
 physical_addr_t __smp_logical_map[CONFIG_CPU_COUNT] =
-				{ [0 ... CONFIG_CPU_COUNT-1] = INVALID_HWID };
+				{ [0 ... CONFIG_CPU_COUNT-1] = MPIDR_INVALID };
 
 static LIST_HEAD(smp_ops_list);
 static const struct smp_operations *smp_cpu_ops[CONFIG_CPU_COUNT];
@@ -197,7 +198,7 @@ int __init arch_smp_init_cpus(void)
 		 * Duplicate MPIDRs are a recipe for disaster. Scan
 		 * all initialized entries and check for
 		 * duplicates. If any is found just ignore the cpu.
-		 * smp_logical_map was initialized to INVALID_HWID to
+		 * smp_logical_map was initialized to MPIDR_INVALID to
 		 * avoid matching valid MPIDR values.
 		 */
 		for (i = 1; (i < cpu) && (i < CONFIG_CPU_COUNT); i++) {
@@ -266,7 +267,7 @@ next:
 	 * validated so set them as possible cpus.
 	 */
 	for (i = 0; i < CONFIG_CPU_COUNT; i++) {
-		if (smp_logical_map(i) != INVALID_HWID)
+		if (smp_logical_map(i) != MPIDR_INVALID)
 			vmm_set_cpu_possible(i, TRUE);
 	}
 

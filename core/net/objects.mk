@@ -27,6 +27,7 @@ vmm_netcore-y += vmm_mbuf.o
 vmm_netcore-y += vmm_net.o
 vmm_netcore-y += vmm_netswitch.o
 vmm_netcore-y += vmm_netport.o
+vmm_netcore-y += vmm_hub.o
 vmm_netcore-y += vmm_bridge.o
 
 %/vmm_netcore.o: $(foreach obj,$(vmm_netcore-y),%/$(obj))

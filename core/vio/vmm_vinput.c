@@ -62,7 +62,6 @@ struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
 			void *priv)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vkeyboard *vkbd;
 	struct vmm_vinput_event event;
 
@@ -75,8 +74,7 @@ struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
 
 	vmm_mutex_lock(&victrl.vkbd_list_lock);
 
-	list_for_each(l, &victrl.vkbd_list) {
-		vkbd = list_entry(l, struct vmm_vkeyboard, head);
+	list_for_each_entry(vkbd, &victrl.vkbd_list, head) {
 		if (strcmp(name, vkbd->name) == 0) {
 			found = TRUE;
 			break;
@@ -125,7 +123,6 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 {
 	bool found;
 	irq_flags_t flags;
-	struct dlist *l;
 	struct vmm_vkeyboard *vk;
 	struct vmm_vkeyboard_led_handler *vklh;
 	struct vmm_vinput_event event;
@@ -142,8 +139,9 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 
 	vmm_spin_lock_irqsave(&vkbd->ledstate_lock, flags);
 	while (!list_empty(&vkbd->led_handler_list)) {
-		l = list_pop(&vkbd->led_handler_list);
-		vklh = list_entry(l, struct vmm_vkeyboard_led_handler, head);
+		vklh = list_first_entry(&vkbd->led_handler_list,
+				struct vmm_vkeyboard_led_handler, head);
+		list_del(&vklh->head);
 		vmm_free(vklh);
 	}
 	vmm_spin_unlock_irqrestore(&vkbd->ledstate_lock, flags);
@@ -157,8 +155,7 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 
 	vk = NULL;
 	found = FALSE;
-	list_for_each(l, &victrl.vkbd_list) {
-		vk = list_entry(l, struct vmm_vkeyboard, head);
+	list_for_each_entry(vk, &victrl.vkbd_list, head) {
 		if (strcmp(vk->name, vkbd->name) == 0) {
 			found = TRUE;
 			break;
@@ -195,7 +192,6 @@ int vmm_vkeyboard_add_led_handler(struct vmm_vkeyboard *vkbd,
 		void *priv)
 {
 	bool found;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_vkeyboard_led_handler *vklh;
 
@@ -207,8 +203,7 @@ int vmm_vkeyboard_add_led_handler(struct vmm_vkeyboard *vkbd,
 
 	vklh = NULL;
 	found = FALSE;
-	list_for_each(l, &vkbd->led_handler_list) {
-		vklh = list_entry(l, struct vmm_vkeyboard_led_handler, head);
+	list_for_each_entry(vklh, &vkbd->led_handler_list, head) {
 		if ((vklh->led_change == led_change) &&
 		    (vklh->priv == priv)) {
 			found = TRUE;
@@ -242,7 +237,6 @@ int vmm_vkeyboard_del_led_handler(struct vmm_vkeyboard *vkbd,
 		void *priv)
 {
 	bool found;
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_vkeyboard_led_handler *vklh;
 
@@ -254,8 +248,7 @@ int vmm_vkeyboard_del_led_handler(struct vmm_vkeyboard *vkbd,
 
 	vklh = NULL;
 	found = FALSE;
-	list_for_each(l, &vkbd->led_handler_list) {
-		vklh = list_entry(l, struct vmm_vkeyboard_led_handler, head);
+	list_for_each_entry(vklh, &vkbd->led_handler_list, head) {
 		if ((vklh->led_change == led_change) &&
 		    (vklh->priv == priv)) {
 			found = TRUE;
@@ -278,7 +271,6 @@ VMM_EXPORT_SYMBOL(vmm_vkeyboard_del_led_handler);
 
 void vmm_vkeyboard_set_ledstate(struct vmm_vkeyboard *vkbd, int ledstate)
 {
-	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_vkeyboard_led_handler *vklh;
 
@@ -288,8 +280,7 @@ void vmm_vkeyboard_set_ledstate(struct vmm_vkeyboard *vkbd, int ledstate)
 
 	vmm_spin_lock_irqsave(&vkbd->ledstate_lock, flags);
 	vkbd->ledstate = ledstate;
-	list_for_each(l, &vkbd->led_handler_list) {
-		vklh = list_entry(l, struct vmm_vkeyboard_led_handler, head);
+	list_for_each_entry(vklh, &vkbd->led_handler_list, head) {
 		vklh->led_change(vkbd, ledstate, vklh->priv);
 	}
 	vmm_spin_unlock_irqrestore(&vkbd->ledstate_lock, flags);
@@ -316,7 +307,6 @@ VMM_EXPORT_SYMBOL(vmm_vkeyboard_get_ledstate);
 struct vmm_vkeyboard *vmm_vkeyboard_find(const char *name)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vkeyboard *vk;
 
 	if (!name) {
@@ -328,8 +318,7 @@ struct vmm_vkeyboard *vmm_vkeyboard_find(const char *name)
 
 	vmm_mutex_lock(&victrl.vkbd_list_lock);
 
-	list_for_each(l, &victrl.vkbd_list) {
-		vk = list_entry(l, struct vmm_vkeyboard, head);
+	list_for_each_entry(vk, &victrl.vkbd_list, head) {
 		if (strcmp(vk->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -349,20 +338,18 @@ VMM_EXPORT_SYMBOL(vmm_vkeyboard_find);
 struct vmm_vkeyboard *vmm_vkeyboard_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_vkeyboard *retval;
+	struct vmm_vkeyboard *vk;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	vk = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&victrl.vkbd_list_lock);
 
-	list_for_each(l, &victrl.vkbd_list) {
-		retval = list_entry(l, struct vmm_vkeyboard, head);
+	list_for_each_entry(vk, &victrl.vkbd_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -376,18 +363,18 @@ struct vmm_vkeyboard *vmm_vkeyboard_get(int index)
 		return NULL;
 	}
 
-	return retval;
+	return vk;
 }
 VMM_EXPORT_SYMBOL(vmm_vkeyboard_get);
 
 u32 vmm_vkeyboard_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct vmm_vkeyboard *vk;
 
 	vmm_mutex_lock(&victrl.vkbd_list_lock);
 
-	list_for_each(l, &victrl.vkbd_list) {
+	list_for_each_entry(vk, &victrl.vkbd_list, head) {
 		retval++;
 	}
 
@@ -406,7 +393,6 @@ struct vmm_vmouse *vmm_vmouse_create(const char *name,
 				     void *priv)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vmouse *vmou;
 	struct vmm_vinput_event event;
 
@@ -419,8 +405,7 @@ struct vmm_vmouse *vmm_vmouse_create(const char *name,
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
 
-	list_for_each(l, &victrl.vmou_list) {
-		vmou = list_entry(l, struct vmm_vmouse, head);
+	list_for_each_entry(vmou, &victrl.vmou_list, head) {
 		if (strcmp(name, vmou->name) == 0) {
 			found = TRUE;
 			break;
@@ -469,7 +454,6 @@ VMM_EXPORT_SYMBOL(vmm_vmouse_create);
 int vmm_vmouse_destroy(struct vmm_vmouse *vmou)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vmouse *vm;
 	struct vmm_vinput_event event;
 
@@ -492,8 +476,7 @@ int vmm_vmouse_destroy(struct vmm_vmouse *vmou)
 
 	vm = NULL;
 	found = FALSE;
-	list_for_each(l, &victrl.vmou_list) {
-		vm = list_entry(l, struct vmm_vmouse, head);
+	list_for_each_entry(vm, &victrl.vmou_list, head) {
 		if (strcmp(vm->name, vmou->name) == 0) {
 			found = TRUE;
 			break;
@@ -605,7 +588,6 @@ VMM_EXPORT_SYMBOL(vmm_vmouse_get_graphics_rotation);
 struct vmm_vmouse *vmm_vmouse_find(const char *name)
 {
 	bool found;
-	struct dlist *l;
 	struct vmm_vmouse *vm;
 
 	if (!name) {
@@ -617,8 +599,7 @@ struct vmm_vmouse *vmm_vmouse_find(const char *name)
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
 
-	list_for_each(l, &victrl.vmou_list) {
-		vm = list_entry(l, struct vmm_vmouse, head);
+	list_for_each_entry(vm, &victrl.vmou_list, head) {
 		if (strcmp(vm->name, name) == 0) {
 			found = TRUE;
 			break;
@@ -638,20 +619,18 @@ VMM_EXPORT_SYMBOL(vmm_vmouse_find);
 struct vmm_vmouse *vmm_vmouse_get(int index)
 {
 	bool found;
-	struct dlist *l;
-	struct vmm_vmouse *retval;
+	struct vmm_vmouse *vm;
 
 	if (index < 0) {
 		return NULL;
 	}
 
-	retval = NULL;
+	vm = NULL;
 	found = FALSE;
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
 
-	list_for_each(l, &victrl.vmou_list) {
-		retval = list_entry(l, struct vmm_vmouse, head);
+	list_for_each_entry(vm, &victrl.vmou_list, head) {
 		if (!index) {
 			found = TRUE;
 			break;
@@ -665,18 +644,18 @@ struct vmm_vmouse *vmm_vmouse_get(int index)
 		return NULL;
 	}
 
-	return retval;
+	return vm;
 }
 VMM_EXPORT_SYMBOL(vmm_vmouse_get);
 
 u32 vmm_vmouse_count(void)
 {
 	u32 retval = 0;
-	struct dlist *l;
+	struct vmm_vmouse *vm;
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
 
-	list_for_each(l, &victrl.vmou_list) {
+	list_for_each_entry(vm, &victrl.vmou_list, head) {
 		retval++;
 	}
 

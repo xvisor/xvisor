@@ -17,13 +17,72 @@
 			aspace {
 				guest_irq_count = <256>;
 
+				/*
+				 *	0x00000000 	0x000003FF 	1 KiB 		Real Mode IVT (Interrupt Vector Table)
+				 *	0x00000400 	0x000004FF 	256 bytes 	BDA (BIOS data area)
+				 *	0x00000500 	0x00007BFF 	30 KiB 		Conventional memory
+				 *	0x00007C00  	0x00007DFF 	512 bytes 	OS BootSector
+				 *	0x00007E00 	0x0007FFFF 	480.5 KiB 	Conventional memory
+				 *	0x00080000 	0x0009FBFF 	~120 KiB 	Conventional memory
+				 *	0x0009FC00 	0x0009FFFF 	1 KiB 		EBDA (Extended BIOS Data Area)
+				 */
 				mem0 {
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x00000000>;
-					host_physical_addr = <0x0c000000>;
-					physical_size = <0x04000000>;
-					device_type = "ram";
+					physical_size = <0x70000>;
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				/* Extended Memory 14 MiB */
+				mem1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x00100000>;
+					physical_size = <0xE00000>;
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				/* More extended memory upto 3072 MiB */
+				mem2 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x01000000>;
+					physical_size = <0x3190000>; /* 49.5625 MiB */
+					device_type = "alloced_ram";
+					align_order = <12>; /* 4K alignment */
+				};
+
+				cache0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x70000>;
+					physical_size = <0x10000>;
+					device_type = "alloced_ram";
+					align_order = <12>;
+				};
+
+				/* Map in protected mode where coreboot will jump */
+				bios_rom0 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0xfff80000>;
+					physical_size = <0x80000>; /* 512K rom */
+					device_type = "alloced_rom";
+					align_order = <16>; /* 4K aligns */
+				};
+
+				/* alias in realmode */
+				bios_rom1 {
+					manifest_type = "real";
+					address_type = "memory";
+					guest_physical_addr = <0x80000>;
+					/*alias_physical_addr = <0xfff80000>;*/
+					physical_size = <0x80000>; /* 512K rom */
+					device_type = "alloced_rom";
+					align_order = <16>;
 				};
 
 				uart0 {
@@ -32,9 +91,153 @@
 					manifest_type = "virtual";
 					address_type = "io";
 					guest_physical_addr = <0x2f8>;
-					physical_size = <0x100>;
+					physical_size = <0x8>;
 					fifo_size = <64>;
 					interrupts = <12>;
+				};
+
+				i440fx0 {
+					device_type = "pci-host-controller";
+					compatible = "i440fx";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0xcf8>;
+					physical_size = <8>;
+					nr_buses = <1>;
+					bus_start_id = <0>;
+
+					pci_bus0 {
+						devices {
+							psm {
+								device_type = "psm"; /* PCI Shared Memory */
+								compatible = "xpsm"; /* Xvisor PCI Shared Memory device */
+								manifest_type = "virtual";
+								address_type = "memory";
+								device_id = <1>;
+
+								bars {
+									bar0@psm {
+										device_type = "psm";
+										compatible = "xpsm,bar";
+										manifest_type = "virtual";
+										address_type = "memory";
+										barnum = <0>;
+										guest_physical_addr = <0x5000000>;
+										physical_size = <0x1000>;
+									};
+								};
+							};
+							virtio-blk0 {
+								device_type = "virtio";
+								compatible = "virtio,pci";
+								manifest_type = "virtual";
+								address_type = "io";
+								device_id = <2>;
+
+								bars {
+									bar0@virtio-blk0 {
+										manifest_type = "virtual";
+										address_type = "io";
+										device_type = "virtio";
+										compatible = "virtio,pci,bar";
+										barnum = <0>;
+										virtio_type = <2>;
+										guest_physical_addr = <0x610>;
+										physical_size = <0x100>;
+										blkdev = "hda0";
+										interrupts = <55>;
+									};
+								};
+							};
+						};
+					};
+				};
+
+				mc146818@0 {
+					device_type = "rtc";
+					compatible = "motorola,mc146818";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x70>;
+					physical_size = <2>;
+					interrupts = <8>;
+				};
+
+				i8259@0 {
+					device_type = "pic";
+					compatible = "i8259a";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x20>;
+					physical_size = <2>;
+					base_irq = <0>;
+					num_irq = <8>;
+					child_pic = <1>;
+					parent_irq = <16>; /* vector 16 to be presented on LAPIC */
+				};
+
+				i8259@1 {
+					device_type = "pic";
+					compatible = "i8259a";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0xa0>;
+					physical_size = <2>;
+					base_irq = <8>;
+					num_irq = <8>;
+					child_pic = <1>;
+					parent_irq = <2>;
+				};
+
+				lapic {
+					device_type = "pic";
+					compatible = "lapic";
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0xfee00000>;
+					physical_size = <0x1000>;
+					base_irq = <16>;
+					num_irq = <240>;
+				};
+
+				hpet {
+					device_type = "hpet";
+					compatible = "hpet";
+					manifest_type = "virtual";
+					address_type = "memory";
+					guest_physical_addr = <0xfed00000>;
+					physical_size = <0x1000>;
+					id = <0>;
+					num_timers = <2>;
+				};
+
+				i8254@0 {
+					device_type = "pit";
+					compatible = "i8253,i8254";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x40>;
+					physical_size = <4>;
+					interrupts = <0>;
+				};
+
+				ps2devices@0 {
+					device_type = "input";
+					compatible = "i8042,keyboard,mouse";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x60>;
+					physical_size = <4>;
+					interrupts = <1 12>;
+				};
+
+				fw_cfg@0 {
+					device_type = "misc";
+					compatible = "fwcfg";
+					manifest_type = "virtual";
+					address_type = "io";
+					guest_physical_addr = <0x0510>;
+					physical_size = <0x2>;
 				};
 			};
 		};

@@ -27,8 +27,6 @@
 #include <vmm_compiler.h>
 #include <vmm_host_irq.h>
 
-#include <gic.h>
-
 static vmm_irq_return_t smp_ipi_handler(int irq_no, void *dev)
 {
 	/* Call core code to handle IPI1 */
@@ -39,30 +37,24 @@ static vmm_irq_return_t smp_ipi_handler(int irq_no, void *dev)
 
 void arch_smp_ipi_trigger(const struct vmm_cpumask *dest)
 {
-	/* Send IPI1 to other cores */
-	gic_raise_softirq(dest, 1);
+	/* Raise IPI1 to other cores */
+	vmm_host_irq_raise(1, dest);
 }
 
 int __cpuinit arch_smp_ipi_init(void)
 {
 	int rc;
 
-	if (vmm_smp_is_bootcpu()) {
-		/* Register IPI1 interrupt handler */
-		rc = vmm_host_irq_register(1, "IPI1", &smp_ipi_handler, NULL);
-		if (rc) {
-			return rc;
-		}
-
-		/* Mark IPI1 interrupt as per-cpu */
-		rc = vmm_host_irq_mark_per_cpu(1);
-		if (rc) {
-			return rc;
-		}
+	/* Ignore IPI initialization if IRQ1 is not per-CPU interrupt */
+	if (!vmm_host_irq_is_per_cpu(vmm_host_irq_get(1))) {
+		return VMM_OK;
 	}
 
-	/* Explicitly enable IPI1 interrupt */
-	gic_enable_ppi(1);
+	/* Register IPI1 interrupt handler */
+	rc = vmm_host_irq_register(1, "IPI1", &smp_ipi_handler, NULL);
+	if (rc) {
+		return rc;
+	}
 
 	return VMM_OK;
 }

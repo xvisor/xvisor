@@ -46,7 +46,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 
 	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
 
-	if ((rc = vmm_host_vapool_alloc(&va, sz, FALSE))) {
+	if ((rc = vmm_host_vapool_alloc(&va, sz))) {
 		/* Don't have space */
 		BUG();
 	}
@@ -66,7 +66,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 	return va + (pa & VMM_PAGE_MASK);
 }
 
-int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
+static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
 {
 	int rc, ite;
 
@@ -81,10 +81,25 @@ int vmm_host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	}
 
 	if ((rc = vmm_host_vapool_free(va, sz))) {
+		BUG();
 		return rc;
 	}
 
 	return VMM_OK;
+}
+
+int vmm_host_memunmap(virtual_addr_t va)
+{
+	int rc;
+	virtual_addr_t alloc_va;
+	virtual_size_t alloc_sz;
+
+	rc = vmm_host_vapool_find(va, &alloc_va, &alloc_sz);
+	if (rc) {
+		return rc;
+	}
+
+	return host_memunmap(alloc_va, alloc_sz);
 }
 
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
@@ -111,7 +126,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 		return rc;
 	}
 
-	if ((rc = vmm_host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
+	if ((rc = host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
 		return rc;
 	}
 
@@ -154,7 +169,7 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_MEMORY_READ)
+#if !defined(ARCH_HAS_MEMORY_READWRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
@@ -171,7 +186,7 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 		}
 #else
 		rc = arch_cpu_aspace_memory_read(tmp_va, hpa,
-						 dst, len, cacheable);
+						 dst, page_read, cacheable);
 		if (rc) {
 			break;
 		}
@@ -207,7 +222,7 @@ u32 vmm_host_memory_write(physical_addr_t hpa,
 
 		arch_cpu_irq_save(flags);
 
-#if !defined(ARCH_HAS_MEMORY_WRITE)
+#if !defined(ARCH_HAS_MEMORY_READWRITE)
 		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
@@ -260,16 +275,32 @@ u32 vmm_host_free_initmem(void)
 int __cpuinit vmm_host_aspace_init(void)
 {
 	int rc, cpu;
+	u32 resv, resv_count;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
-	virtual_addr_t vapool_start, core_resv_va = 0x0, arch_resv_va = 0x0;
+	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart;
 	virtual_size_t vapool_size, vapool_hksize, ram_hksize;
 	virtual_size_t hk_total_size = 0x0;
+	virtual_addr_t core_resv_va = 0x0, arch_resv_va = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
 	/* For Non-Boot CPU just call arch code and return */
 	if (!vmm_smp_is_bootcpu()) {
-		return arch_cpu_aspace_secondary_init();
+		rc = arch_cpu_aspace_secondary_init();
+		if (rc) {
+			return rc;
+		}
+
+#if defined(ARCH_HAS_MEMORY_READWRITE)
+		/* Initialize memory read/write for Non-Boot CPU */
+		rc = arch_cpu_aspace_memory_rwinit(
+				host_mem_rw_va[vmm_smp_processor_id()]);
+		if (rc) {
+			return rc;
+		}
+#endif
+
+		return VMM_OK;
 	}
 
 	/* Determine VAPOOL start and size */
@@ -308,18 +339,19 @@ int __cpuinit vmm_host_aspace_init(void)
 	core_resv_va = vapool_start + arch_code_size();
 	core_resv_sz = hk_total_size;
 
-	/* We cannot estimate the physical address, virtual address, and size 
-	 * of arch reserved space so we set all of them to zero and expect that
-	 * arch_primary_cpu_aspace_init() will update them if arch code is going to use
-	 * the arch reserved space
+	/* We cannot estimate the physical address, virtual address,
+	 * and size of arch reserved space so we set all of them to
+	 * zero and expect that arch_primary_cpu_aspace_init() will
+	 * update them if arch code requires arch reserved space.
 	 */
 	arch_resv_pa = 0x0;
 	arch_resv_va = 0x0;
 	arch_resv_sz = 0x0;
 
-	/* Call arch_primary_cpu_aspace_init() with estimated parameters for core 
-	 * reserved space and arch reserved space. The arch_primary_cpu_aspace_init()
-	 * can change these parameter as per needed.
+	/* Call arch_primary_cpu_aspace_init() with the estimated
+	 * parameters for core reserved space and arch reserved space.
+	 * The arch_primary_cpu_aspace_init() can change these parameter
+	 * as needed.
 	 */
 	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
 						&core_resv_va, 
@@ -336,59 +368,97 @@ int __cpuinit vmm_host_aspace_init(void)
 	    (ram_size <= core_resv_sz)) {
 		return VMM_EFAIL;
 	}
+	vapool_hkstart = core_resv_va;
+	ram_hkstart = core_resv_va + vapool_hksize;
 
 	/* Initialize VAPOOL managment */
 	if ((rc = vmm_host_vapool_init(vapool_start, 
 					vapool_size, 
-					core_resv_va, 
-					core_resv_va, 
-					core_resv_sz))) {
-		return rc;
-	}
-
-	/* Reserve pages used for code in VAPOOL */
-	if ((rc = vmm_host_vapool_reserve(arch_code_vaddr_start(), 
-					  arch_code_size()))) {
-		return rc;
-	}
-
-	/* Reserve pages used for arch reserved space in VAPOOL */
-	if ((0x0 < arch_resv_sz) &&
-	    (rc = vmm_host_vapool_reserve(arch_resv_va, 
-					   arch_resv_sz))) {
+					vapool_hkstart))) {
 		return rc;
 	}
 
 	/* Initialize RAM managment */
 	if ((rc = vmm_host_ram_init(ram_start, 
 				    ram_size, 
-				    core_resv_va + vapool_hksize, 
-				    core_resv_pa, 
-				    core_resv_sz))) {
+				    ram_hkstart))) {
 		return rc;
 	}
 
-	/* Reserve pages used for code in RAM */
-	if ((rc = vmm_host_ram_reserve(arch_code_paddr_start(), 
-				       arch_code_size()))) {
+	/* Reserve all pages covering code space, core reserved space,
+	 * and arch reserved space in VAPOOL & RAM.
+	 */
+	if (arch_code_vaddr_start() < core_resv_va) {
+		core_resv_va = arch_code_vaddr_start();
+	}
+	if ((arch_resv_sz > 0) && (arch_resv_va < core_resv_va)) {
+		core_resv_va = arch_resv_va;
+	}
+	if (arch_code_paddr_start() < core_resv_pa) {
+		core_resv_pa = arch_code_paddr_start();
+	}
+	if ((arch_resv_sz > 0) && 
+	    (arch_resv_pa < core_resv_pa)) {
+		core_resv_pa = arch_resv_pa;
+	}
+	if ((core_resv_va + core_resv_sz) <
+			(arch_code_vaddr_start() + arch_code_size())) {
+		core_resv_sz =
+		(arch_code_vaddr_start() + arch_code_size()) - core_resv_va;
+	}
+	if ((arch_resv_sz > 0) && 
+	    ((core_resv_va + core_resv_sz) < (arch_resv_va + arch_resv_sz))) {
+		core_resv_sz = (arch_resv_va + arch_resv_sz) - core_resv_va;
+	}
+	if ((rc = vmm_host_vapool_reserve(core_resv_va,
+					  core_resv_sz))) {
+		return rc;
+	}
+	if ((rc = vmm_host_ram_reserve(core_resv_pa, 
+				       core_resv_sz))) {
 		return rc;
 	}
 
-	/* Reserve pages used for arch reserved space in RAM */
-	if ((0x0 < arch_resv_sz) &&
-	    (rc = vmm_host_ram_reserve(arch_resv_pa, 
-				       arch_resv_sz))) {
+	/* Reserve portion of RAM as specified by
+	 * arch device tree functions.
+	 */
+	if ((rc = arch_devtree_reserve_count(&resv_count))) {
 		return rc;
+	}
+	for (resv = 0; resv < resv_count; resv++) {
+		if ((rc = arch_devtree_reserve_addr(resv, &ram_start))) {
+			return rc;
+		}
+		if ((rc = arch_devtree_reserve_size(resv, &ram_size))) {
+			return rc;
+		}
+		if (ram_start & VMM_PAGE_MASK) {
+			ram_size += ram_start & VMM_PAGE_MASK;
+			ram_start -= ram_start & VMM_PAGE_MASK;
+		}
+		ram_size = VMM_ROUNDUP2_PAGE_SIZE(ram_size);
+		if ((rc = vmm_host_ram_reserve(ram_start, ram_size))) {
+			return rc;
+		}
 	}
 
 	/* Setup temporary virtual address for physical read/write */
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		rc = vmm_host_vapool_alloc(&host_mem_rw_va[cpu], 
-					   VMM_PAGE_SIZE, FALSE);
+					   VMM_PAGE_SIZE);
 		if (rc) {
 			return rc;
 		}
 	}
+
+#if defined(ARCH_HAS_MEMORY_READWRITE)
+	/* Initialize memory read/write for Boot CPU */
+	rc = arch_cpu_aspace_memory_rwinit(
+				host_mem_rw_va[vmm_smp_bootcpu_id()]);
+	if (rc) {
+		return rc;
+	}
+#endif
 
 	return VMM_OK;
 }

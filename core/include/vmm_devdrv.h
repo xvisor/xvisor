@@ -27,8 +27,12 @@
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
+#include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
 #include <libs/list.h>
+#include <vmm_error.h>
+
+#define VMM_DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 
 struct vmm_class;
 struct vmm_classdev;
@@ -60,6 +64,11 @@ struct vmm_bus {
 	void (*shutdown) (struct vmm_device *);
 };
 
+struct vmm_device_type {
+	const char *name;
+	void (*release) (struct vmm_device *);
+};
+
 struct vmm_device {
 	/* Private fields (for device driver framework) */
 	struct dlist bus_head;
@@ -69,13 +78,19 @@ struct vmm_device {
 	struct dlist child_head;
 	struct vmm_mutex child_list_lock;
 	struct dlist child_list;
+	vmm_spinlock_t devres_lock;
+	struct dlist devres_head;
+	struct dlist deferred_head;
 	/* Public fields */
+	u64 *dma_mask;
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
+	struct vmm_device_type *type;
 	struct vmm_devtree_node *node;
 	struct vmm_device *parent;
 	struct vmm_class *class;
 	struct vmm_driver *driver;
+	void *pins;
 	void (*release) (struct vmm_device *);
 	void *priv;
 };
@@ -107,6 +122,34 @@ static inline void vmm_devdrv_set_data(struct vmm_device *dev, void *data)
 	}
 }
 
+/** get the dma_mask from device */
+static inline u64 vmm_dma_get_mask(struct vmm_device *dev)
+{
+	if (dev && dev->dma_mask && *dev->dma_mask) {
+		return *dev->dma_mask;
+	}
+	return VMM_DMA_BIT_MASK(32);
+}
+
+/** set the dma_mask in device */
+static inline int vmm_dma_set_mask(struct vmm_device *dev, u64 mask)
+{
+	if (!dev->dma_mask) {
+		return VMM_EIO;
+	}	
+	*dev->dma_mask = mask;
+	return VMM_OK;
+}
+
+/** Bind device pins
+ *  Note: The device driver framework only provide dummy weak
+ *  implementation of this function which does nothing.
+ *  Note: The pinctrl framework will provide complete implementation
+ *  of this function. If pinctrl framework is not available then
+ *  this function will do nothing.
+ */
+int vmm_devdrv_pinctrl_bind(struct vmm_device *dev);
+
 /** Probe device instances under a given device tree node */
 int vmm_devdrv_probe(struct vmm_devtree_node *node);
 
@@ -125,15 +168,11 @@ struct vmm_class *vmm_devdrv_class(int index);
 /** Count available classes */
 u32 vmm_devdrv_class_count(void);
 
-int vmm_devdrv_class_register_device(struct vmm_class *cls,
-				     struct vmm_device *dev);
-
-int vmm_devdrv_class_unregister_device(struct vmm_class *cls,
-				       struct vmm_device *dev);
-
+/** Find device of a class by name */
 struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
 						const char *dname);
 
+/** Get device of a class */
 struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index);
 
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls);
@@ -152,14 +191,6 @@ struct vmm_bus *vmm_devdrv_bus(int index);
 
 /** Count available buses */
 u32 vmm_devdrv_bus_count(void);
-
-/** Register device on a bus */
-int vmm_devdrv_bus_register_device(struct vmm_bus *bus,
-				   struct vmm_device *dev);
-
-/** Unregister device on a bus */
-int vmm_devdrv_bus_unregister_device(struct vmm_bus *bus,
-				     struct vmm_device *dev);
 
 /** Find device on a bus */
 struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,

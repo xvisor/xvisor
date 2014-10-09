@@ -1,11 +1,11 @@
 		Xvisor on QEMU Realview-EB-MPCore Host
 
-This section of readme explains how to build & run Xvisor for Realview-EB-MPCore 
+This section of explains how to build & run Xvisor for Realview-EB-MPCore
 emulated by QEMU. 
 
-By default, Xvisor for Realview-EB-MPCore supports Realview-EB-MPCore guest so 
-we will show how to run Basic Firmwares on Realview-EB-MPCore guest. For more 
-info refer, <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
+By default, Xvisor for Realview-EB-MPCore supports Realview-EB-MPCore guest
+so, we will show how to run Basic Firmwares on Realview-EB-MPCore guest.
+For more info, <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
 
 Please follow the steps below to build & run Basic Firmware on 
 Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
@@ -16,17 +16,18 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Realview-EB-MPCore default settings]
-  # make ARCH=arm realview-eb-mpcore-defconfig
+  [3. Configure Xvisor with Generic-v6 default settings]
+  # make ARCH=arm generic-v6-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic
 
   [6. Create disk image for Xvisor]
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
@@ -35,7 +36,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
 
   [8. Launch QEMU]
-  # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/realview/eb-mpcore/one_guest_ebmp.dtb
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

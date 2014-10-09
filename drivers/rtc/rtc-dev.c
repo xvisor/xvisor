@@ -144,7 +144,7 @@ int rtc_device_register(struct rtc_device *rdev)
 	rdev->dev.class = &rtc_class;
 	vmm_devdrv_set_data(&rdev->dev, rdev);
 
-	return vmm_devdrv_class_register_device(&rtc_class, &rdev->dev);
+	return vmm_devdrv_register_device(&rdev->dev);
 
 }
 VMM_EXPORT_SYMBOL(rtc_device_register);
@@ -155,7 +155,7 @@ int rtc_device_unregister(struct rtc_device *rdev)
 		return VMM_EFAIL;
 	}
 
-	return vmm_devdrv_class_unregister_device(&rtc_class, &rdev->dev);
+	return vmm_devdrv_unregister_device(&rdev->dev);
 }
 VMM_EXPORT_SYMBOL(rtc_device_unregister);
 

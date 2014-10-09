@@ -1,40 +1,21 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-factors.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief Adjustable factor-based clock implementation
- *
- * Adapted from linux/drivers/clk/sunxi/clk-factors.c
- *
+/*
  * Copyright (C) 2013 Emilio López <emilio@elopez.com.ar>
  *
- * The original source is licensed under GPL.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Adjustable factor-based clock implementation
  */
 
-#include <vmm_error.h>
-#include <vmm_heap.h>
-#include <vmm_delay.h>
-#include <vmm_modules.h>
-#include <vmm_host_io.h>
-#include <libs/mathlib.h>
-#include <libs/stringlib.h>
-#include <drv/clk-provider.h>
+#include <linux/clk-provider.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include <linux/err.h>
+#include <linux/string.h>
+
+#include <linux/delay.h>
 
 #include "clk-factors.h"
 
@@ -49,17 +30,9 @@
  * parent - fixed parent.  No clk_set_parent support
  */
 
-struct clk_factors {
-	struct clk_hw hw;
-	void __iomem *reg;
-	struct clk_factors_config *config;
-	void (*get_factors) (u32 *rate, u32 parent, u8 *n, u8 *k, u8 *m, u8 *p);
-	vmm_spinlock_t *lock;
-};
-
 #define to_clk_factors(_hw) container_of(_hw, struct clk_factors, hw)
 
-#define SETMASK(len, pos)		(((-1U) >> (31-len))  << (pos))
+#define SETMASK(len, pos)		(((1U << (len)) - 1) << (pos))
 #define CLRMASK(len, pos)		(~(SETMASK(len, pos)))
 #define FACTOR_GET(bit, len, reg)	(((reg) & SETMASK(len, bit)) >> (bit))
 
@@ -76,7 +49,7 @@ static unsigned long clk_factors_recalc_rate(struct clk_hw *hw,
 	struct clk_factors_config *config = factors->config;
 
 	/* Fetch the register value */
-	reg = vmm_readl(factors->reg);
+	reg = readl(factors->reg);
 
 	/* Get each individual factor if applicable */
 	if (config->nwidth != SUNXI_FACTORS_NOT_APPLICABLE)
@@ -89,7 +62,11 @@ static unsigned long clk_factors_recalc_rate(struct clk_hw *hw,
 		p = FACTOR_GET(config->pshift, config->pwidth, reg);
 
 	/* Calculate the rate */
+#if 0
+	rate = (parent_rate * n * (k + 1) >> p) / (m + 1);
+#else
 	rate = udiv64((parent_rate * n * (k + 1) >> p), (m + 1));
+#endif
 
 	return rate;
 }
@@ -107,7 +84,7 @@ static long clk_factors_round_rate(struct clk_hw *hw, unsigned long rate,
 static int clk_factors_set_rate(struct clk_hw *hw, unsigned long rate,
 				unsigned long parent_rate)
 {
-	u8 n, k, m, p;
+	u8 n = 0, k = 0, m = 0, p = 0;
 	u32 reg;
 	struct clk_factors *factors = to_clk_factors(hw);
 	struct clk_factors_config *config = factors->config;
@@ -116,10 +93,10 @@ static int clk_factors_set_rate(struct clk_hw *hw, unsigned long rate,
 	factors->get_factors((u32 *)&rate, (u32)parent_rate, &n, &k, &m, &p);
 
 	if (factors->lock)
-		vmm_spin_lock_irqsave(factors->lock, flags);
+		spin_lock_irqsave(factors->lock, flags);
 
 	/* Fetch the register value */
-	reg = vmm_readl(factors->reg);
+	reg = readl(factors->reg);
 
 	/* Set up the new factors - macros do not do anything if width is 0 */
 	reg = FACTOR_SET(config->nshift, config->nwidth, reg, n);
@@ -128,73 +105,19 @@ static int clk_factors_set_rate(struct clk_hw *hw, unsigned long rate,
 	reg = FACTOR_SET(config->pshift, config->pwidth, reg, p);
 
 	/* Apply them now */
-	vmm_writel(reg, factors->reg);
+	writel(reg, factors->reg);
 
 	/* delay 500us so pll stabilizes */
-	/* TODO: __delay((rate >> 20) * 500 / 2); */
-	vmm_udelay(500);
+	__delay((rate >> 20) * 500 / 2);
 
 	if (factors->lock)
-		vmm_spin_unlock_irqrestore(factors->lock, flags);
+		spin_unlock_irqrestore(factors->lock, flags);
 
 	return 0;
 }
 
-static const struct clk_ops clk_factors_ops = {
+const struct clk_ops clk_factors_ops = {
 	.recalc_rate = clk_factors_recalc_rate,
 	.round_rate = clk_factors_round_rate,
 	.set_rate = clk_factors_set_rate,
 };
-
-/**
- * clk_register_factors - register a factors clock with
- * the clock framework
- * @dev: device registering this clock
- * @name: name of this clock
- * @parent_name: name of clock's parent
- * @flags: framework-specific flags
- * @reg: register address to adjust factors
- * @config: shift and width of factors n, k, m and p
- * @get_factors: function to calculate the factors for a given frequency
- * @lock: shared register lock for this clock
- */
-struct clk *clk_register_factors(struct vmm_device *dev, const char *name,
-				 const char *parent_name,
-				 unsigned long flags, void *reg,
-				 struct clk_factors_config *config,
-				 void (*get_factors)(u32 *rate, u32 parent,
-						     u8 *n, u8 *k, u8 *m, u8 *p),
-				 vmm_spinlock_t *lock)
-{
-	struct clk_factors *factors;
-	struct clk *clk;
-	struct clk_init_data init;
-
-	/* allocate the factors */
-	factors = vmm_zalloc(sizeof(struct clk_factors));
-	if (!factors) {
-		vmm_printf("%s: could not allocate factors clk\n", __func__);
-		return NULL;
-	}
-
-	init.name = name;
-	init.ops = &clk_factors_ops;
-	init.flags = flags;
-	init.parent_names = (parent_name ? &parent_name : NULL);
-	init.num_parents = (parent_name ? 1 : 0);
-
-	/* struct clk_factors assignments */
-	factors->reg = reg;
-	factors->config = config;
-	factors->lock = lock;
-	factors->hw.init = &init;
-	factors->get_factors = get_factors;
-
-	/* register the clock */
-	clk = clk_register(dev, &factors->hw);
-
-	if (!clk)
-		vmm_free(factors);
-
-	return clk;
-}

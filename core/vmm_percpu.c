@@ -30,8 +30,8 @@
 
 #ifdef CONFIG_SMP
 
-virtual_addr_t __percpu_vaddr[CONFIG_CPU_COUNT];
-virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT];
+virtual_addr_t __percpu_vaddr[CONFIG_CPU_COUNT] = { 0 };
+virtual_addr_t __percpu_offset[CONFIG_CPU_COUNT] = { 0 };
 
 int __init vmm_percpu_init(void)
 {

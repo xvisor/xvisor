@@ -27,10 +27,14 @@
 #include <libs/stringlib.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_manager.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <cpu_interrupts.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
+#include <emu/i8259.h>
+#include <arch_guest_helper.h>
 
 enum svm_init_mode {
 	SVM_MODE_REAL,
@@ -58,7 +62,7 @@ static virtual_addr_t host_save_area;
 
 extern void handle_vcpuexit(struct vcpu_hw_context *context);
 
-static void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 {
 	u32 byte_offset = ioport >> 3;
 	u8 port_offset = ioport & 0x7;
@@ -67,16 +71,14 @@ static void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 	*iop_base |= (0x1 << port_offset);
 }
 
-#if 0
-static void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
 {
 	u32 byte_offset = ioport >> 3;
 	u8 port_offset = ioport & 0x7;
 
-	u8 *iop_base = context->icept_table.io_table_virt + byte_offset;
+	u8 *iop_base = (u8 *)context->icept_table.io_table_virt + byte_offset;
 	*iop_base &= ~(0x1 << port_offset);
 }
-#endif
 
 static virtual_addr_t alloc_host_save_area(void)
 {
@@ -115,6 +117,9 @@ static void set_control_params (struct vcpu_hw_context *context)
 	vmcb->tsc_offset = 0;
 	vmcb->guest_asid = 1;
 
+	/* enable EFLAGS.IF virtualization */
+	vmcb->vintr.fields.intr_masking = 1;
+
 	vmcb->cr_intercepts |= (INTRCPT_WRITE_CR3  | INTRCPT_READ_CR3 |
 				INTRCPT_WRITE_CR0  | INTRCPT_READ_CR0 |
 				INTRCPT_WRITE_CR2  | INTRCPT_READ_CR2 |
@@ -135,7 +140,7 @@ static void set_control_params (struct vcpu_hw_context *context)
 				      INTRCPT_LDTR_WR    |
 				      INTRCPT_TR_RD      |
 				      INTRCPT_TR_WR      |
-				      INTRCPT_RDTSC      |
+				      //INTRCPT_RDTSC      |
 				      //INTRCPT_PUSHF      |
 				      //INTRCPT_POPF       |
 				      INTRCPT_CPUID      |
@@ -171,6 +176,9 @@ static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
 	physical_addr_t gcr3_pa;
 	struct vmcb *vmcb = context->vmcb;
+
+	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
+	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
 
 	/*
 	 * NOTE: X86_CR0_PG with disabled PE is a new mode in SVM. Its
@@ -221,9 +229,11 @@ static void set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	vmcb->ldtr.sel = 0;
 	vmcb->ldtr.base = 0;
 	vmcb->ldtr.limit = 0xFFFF;
+
 	vmcb->tr.sel = 0;
 	vmcb->tr.base = 0;
-	vmcb->tr.limit = 0xFFFF;
+	vmcb->tr.limit = 0xffff;
+	vmcb->tr.attrs.bytes = (1 << 15) | (11 << 8);
 }
 
 static __unused void set_vm_to_mbr_start_state(struct vmcb* vmcb, enum svm_init_mode mode)
@@ -385,7 +395,13 @@ static void svm_run(struct vcpu_hw_context *context)
 			, "rbx", "rcx", "rdx", "rsi", "rdi"
 			, "r8", "r9", "r10", "r11" , "r12", "r13", "r14", "r15"
 		      );
+
+	/* TR is not reloaded back the cpu after VM exit. */
+	reload_host_tss();
+
 	stgi();
+
+	arch_guest_handle_vm_exit(context);
 }
 
 static int enable_svme(void)
@@ -450,16 +466,6 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 
 	VM_LOG(LVL_INFO, "IOPM Base physical address: 0x%lx\n", context->vmcb->iopm_base_pa);
 
-	/* FIXME: Based on guest's dts table only this should be done. */
-	enable_ioport_intercept(context, 0x2f8);
-	enable_ioport_intercept(context, 0x2f9);
-	enable_ioport_intercept(context, 0x2fa);
-	enable_ioport_intercept(context, 0x2fb);
-	enable_ioport_intercept(context, 0x2fc);
-	enable_ioport_intercept(context, 0x2fd);
-	enable_ioport_intercept(context, 0x2fe);
-	enable_ioport_intercept(context, 0x2ff);
-
 	/*
 	 * FIXME: VM: What state to load should come from VMCB.
 	 * Ideally, if a bios image is provided the vm should
@@ -470,6 +476,9 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 
 	context->vcpu_run = svm_run;
 	context->vcpu_exit = handle_vcpuexit;
+
+	/* Monitor the coreboot's debug port output */
+	enable_ioport_intercept(context, 0x80);
 
 	return VMM_OK;
 }

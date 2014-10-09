@@ -1,47 +1,25 @@
-/**
- * Copyright (c) 2013 Anup Patel.
- * All rights reserved.
- *
+/*
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * @file clk-vexpress-osc.c
- * @author Anup Patel (anup@brainfault.org)
- * @brief ARM VExpress board OSC clocks implementation
- *
- * Adapted from linux/drivers/clk/versatile/clk-vexpress-osc.c
- *
  * Copyright (C) 2012 ARM Limited
  */
 
-#include <vmm_error.h>
-#include <vmm_macros.h>
-#include <vmm_compiler.h>
-#include <vmm_heap.h>
-#include <vmm_stdio.h>
-#include <vmm_devtree.h>
-#include <drv/clkdev.h>
-#include <drv/clk-provider.h>
-#include <drv/vexpress.h>
+#define pr_fmt(fmt) "vexpress-osc: " fmt
 
-#undef DEBUG
-
-#ifdef DEBUG
-#define DPRINTF(msg...)	vmm_printf(msg)
-#else
-#define DPRINTF(msg...)
-#endif
+#include <linux/clkdev.h>
+#include <linux/clk-provider.h>
+#include <linux/err.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+#include <linux/vexpress.h>
 
 struct vexpress_osc {
 	struct vexpress_config_func *func;
@@ -91,21 +69,22 @@ static struct clk_ops vexpress_osc_ops = {
 	.set_rate = vexpress_osc_set_rate,
 };
 
-struct clk * __init vexpress_osc_setup(struct vmm_device *dev)
+
+struct clk * __init vexpress_osc_setup(struct device *dev)
 {
 	struct clk_init_data init;
-	struct vexpress_osc *osc = vmm_zalloc(sizeof(*osc));
+	struct vexpress_osc *osc = kzalloc(sizeof(*osc), GFP_KERNEL);
 
 	if (!osc)
 		return NULL;
 
 	osc->func = vexpress_config_func_get_by_dev(dev);
 	if (!osc->func) {
-		vmm_free(osc);
+		kfree(osc);
 		return NULL;
 	}
 
-	init.name = dev->name;
+	init.name = dev_name(dev);
 	init.ops = &vexpress_osc_ops;
 	init.flags = CLK_IS_ROOT;
 	init.num_parents = 0;
@@ -114,34 +93,42 @@ struct clk * __init vexpress_osc_setup(struct vmm_device *dev)
 	return clk_register(NULL, &osc->hw);
 }
 
-void __init vexpress_osc_of_setup(struct vmm_devtree_node *node)
+void __init vexpress_osc_of_setup(struct device_node *node)
 {
 	struct clk_init_data init;
 	struct vexpress_osc *osc;
 	struct clk *clk;
 	u32 range[2];
 
-	osc = vmm_zalloc(sizeof(*osc));
+	osc = kzalloc(sizeof(*osc), GFP_KERNEL);
 	if (!osc)
 		goto error;
 
 	osc->func = vexpress_config_func_get_by_node(node);
 	if (!osc->func) {
-		vmm_printf("%s: Failed to obtain config func for node '%s'!\n",
-			   __func__, node->name);
+#if 0
+		pr_err("Failed to obtain config func for node '%s'!\n",
+				node->full_name);
+#else
+		pr_err("Failed to obtain config func for node '%s'!\n",
+				node->name);
+#endif
 		goto error;
 	}
 
-	if (vmm_devtree_read_u32_array(node, "freq-range", range,
-				array_size(range)) == VMM_OK) {
+	if (of_property_read_u32_array(node, "freq-range", range,
+			ARRAY_SIZE(range)) == 0) {
 		osc->rate_min = range[0];
 		osc->rate_max = range[1];
 	}
 
-	init.name = NULL;
-	vmm_devtree_read_string(node, "clock-output-names", &init.name);
+	of_property_read_string(node, "clock-output-names", &init.name);
 	if (!init.name)
+#if 0
+		init.name = node->full_name;
+#else
 		init.name = node->name;
+#endif
 
 	init.ops = &vexpress_osc_ops;
 	init.flags = CLK_IS_ROOT;
@@ -150,21 +137,20 @@ void __init vexpress_osc_of_setup(struct vmm_devtree_node *node)
 	osc->hw.init = &init;
 
 	clk = clk_register(NULL, &osc->hw);
-	if (!clk) {
-		vmm_printf("%s: Failed to register clock '%s'!\n",
-			   __func__, init.name);
+	if (IS_ERR(clk)) {
+		pr_err("Failed to register clock '%s'!\n", init.name);
 		goto error;
 	}
 
 	of_clk_add_provider(node, of_clk_src_simple_get, clk);
 
-	DPRINTF("%s: Registered clock '%s'\n", __func__, init.name);
+	pr_debug("Registered clock '%s'\n", init.name);
 
 	return;
 
 error:
 	if (osc->func)
 		vexpress_config_func_put(osc->func);
-	vmm_free(osc);
+	kfree(osc);
 }
 CLK_OF_DECLARE(vexpress_soc, "arm,vexpress-osc", vexpress_osc_of_setup);

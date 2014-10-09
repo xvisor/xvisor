@@ -1,7 +1,9 @@
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
+#include <vmm_scheduler.h>
 #include <vmm_waitqueue.h>
+#include <vmm_threads.h>
 #include <libs/mathlib.h>
 
 #include <linux/jiffies.h>
@@ -10,9 +12,11 @@
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 
-#define in_atomic()			1
-#define in_interrupt()  vmm_scheduler_irq_context()
+#define task_struct			vmm_vcpu
+#define current				vmm_scheduler_current_vcpu()
 
+#define in_atomic()			1
+#define in_interrupt()			vmm_scheduler_irq_context()
 
 typedef struct vmm_waitqueue wait_queue_head_t;
 
@@ -30,7 +34,7 @@ typedef struct vmm_waitqueue wait_queue_head_t;
 do {									\
 	if (condition)	 						\
 		break;							\
-	vmm_waitqueue_sleep_event(condition);				\
+	vmm_waitqueue_sleep_event(wq, condition);			\
 } while (0)
 
 /**

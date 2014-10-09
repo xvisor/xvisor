@@ -91,8 +91,8 @@ primary_cpu_boot:
 	mrs    	x3, sctlr_el1
 	ldr	x2, __sctlr_mmu_clear
 	and	x3, x3, x2
-	/* We also enable I/D caching */
-	ldr	x2, __sctlr_mmu_val
+	/* We also enable I-Cache */
+	ldr	x2, __sctlr_mmu_set
 	orr	x3, x3, x2
 	msr     sctlr_el1, x3
 	dsb	sy
@@ -172,8 +172,8 @@ _switch_to_user_mode:
 	.align 3
 __sctlr_mmu_clear:
 	.dword ~(SCTLR_A_MASK)
-__sctlr_mmu_val:
-	.dword (SCTLR_C_MASK | SCTLR_I_MASK)
+__sctlr_mmu_set:
+	.dword (SCTLR_I_MASK)
 __reloc_region_start:
 	.dword _reloc_region_start
 __reloc_region_end:

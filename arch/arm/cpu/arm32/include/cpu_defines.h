@@ -24,13 +24,23 @@
 #define __CPU_DEFINES_H__
 
 /* Maximum allowed VTLB entries */
-#define CPU_VCPU_VTLB_ZONE_COUNT			3
-#define CPU_VCPU_VTLB_ZONE_V				2
-#define CPU_VCPU_VTLB_ZONE_NG				1
-#define CPU_VCPU_VTLB_ZONE_G				0
-#define CPU_VCPU_VTLB_ZONE_START(x)			((x==0) ? 0 : ((x==1) ? 200 : 325))
-#define CPU_VCPU_VTLB_ZONE_LEN(x)			((x==0) ? 200 : ((x==1) ? 125 : 25))
-#define CPU_VCPU_VTLB_ENTRY_COUNT			350
+#define CPU_VCPU_VTLB_ZONE_V				0
+#define CPU_VCPU_VTLB_ZONE_V_LEN			16
+#define CPU_VCPU_VTLB_ZONE_HVEC				1
+#define CPU_VCPU_VTLB_ZONE_HVEC_LEN			16
+#define CPU_VCPU_VTLB_ZONE_LVEC				2
+#define CPU_VCPU_VTLB_ZONE_LVEC_LEN			16
+#define CPU_VCPU_VTLB_ZONE_G				3
+#define CPU_VCPU_VTLB_ZONE_G_LEN			256
+#define CPU_VCPU_VTLB_ZONE_NG				4
+#define CPU_VCPU_VTLB_ZONE_NG_LEN			128
+#define CPU_VCPU_VTLB_ZONE_COUNT			5
+#define CPU_VCPU_VTLB_ENTRY_COUNT			\
+				(CPU_VCPU_VTLB_ZONE_V_LEN + \
+				 CPU_VCPU_VTLB_ZONE_HVEC_LEN + \
+				 CPU_VCPU_VTLB_ZONE_LVEC_LEN + \
+				 CPU_VCPU_VTLB_ZONE_G_LEN + \
+				 CPU_VCPU_VTLB_ZONE_NG_LEN)
 
 /* Coprocessor related macros & defines */
 #define CPU_COPROC_COUNT				16
@@ -149,6 +159,22 @@
 							 SCTLR_TRE_MASK | \
 							 SCTLR_AFE_MASK | \
 							 SCTLR_U_MASK)
+
+/* MPIDR related macros & defines */
+#define MPIDR_SMP_BITMASK				(0x3 << 30)
+#define MPIDR_SMP_VALUE					(0x2 << 30)
+#define MPIDR_MT_BITMASK				(0x1 << 24)
+#define MPIDR_HWID_BITMASK				0xFFFFFF
+#define MPIDR_INVALID					(~MPIDR_HWID_BITMASK)
+#define MPIDR_LEVEL_BITS_SHIFT				3
+#define MPIDR_LEVEL_BITS				\
+						(1 << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_LEVEL_MASK				\
+						((1 << MPIDR_LEVEL_BITS) - 1)
+#define MPIDR_LEVEL_SHIFT(level)			\
+			(((1 << level) >> 1) << MPIDR_LEVEL_BITS_SHIFT)
+#define MPIDR_AFFINITY_LEVEL(mpidr, level)		\
+		((mpidr >> (MPIDR_LEVEL_BITS * level)) & MPIDR_LEVEL_MASK)
 
 /* CPACR related macros & define */
 #define CPACR_ASEDIS_MASK				0x80000000
@@ -358,6 +384,8 @@
 #define TTBL_L2TBL_TTE_TYPE_SMALL			0x2
 #define TTBL_L2TBL_TTE_TYPE_SMALL_XN			0x3
 #define TTBL_L2TBL_TTE_TYPE_TINY			0x3
+#define TTBL_INITIAL_L2TBL_COUNT			8
+#define TTBL_INITIAL_L2TBL_SIZE				(TTBL_INITIAL_L2TBL_COUNT * TTBL_L2TBL_SIZE)
 
 /* TTBR0 related macros & defines */
 #define TTBR0_IGRN0_MASK				0x00000040

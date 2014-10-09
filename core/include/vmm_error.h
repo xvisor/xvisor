@@ -50,5 +50,47 @@
 #define VMM_EFAULT		-23
 #define VMM_ENXIO		-24
 #define VMM_EPROTONOSUPPORT	-25
+#define VMM_EPROBE_DEFER	-26
+#define VMM_ESHUTDOWN		-27
+
+#define VMM_MAX_ERRNO		4095
+
+#define VMM_IS_ERR_VALUE(x)	((x) <= (unsigned long)VMM_MAX_ERRNO)
+
+static inline void *VMM_ERR_PTR(long error)
+{
+	if (0 < (-error) && (-error) < VMM_MAX_ERRNO)
+		return (void *) (-error);
+	return (void *)0;
+}
+
+static inline long VMM_PTR_ERR(const void *ptr)
+{
+	return (ptr) ? -((long)ptr) : VMM_EFAIL;
+}
+
+static inline long VMM_IS_ERR(const void *ptr)
+{
+	return VMM_IS_ERR_VALUE((unsigned long)ptr);
+}
+
+static inline long VMM_IS_ERR_OR_NULL(const void *ptr)
+{
+	return !ptr || VMM_IS_ERR_VALUE((unsigned long)ptr);
+}
+
+static inline void *VMM_ERR_CAST(const void *ptr)
+{
+	/* cast away the const */
+	return (void *) ptr;
+}
+
+static inline int VMM_PTR_RET(const void *ptr)
+{
+	if (VMM_IS_ERR(ptr))
+		return VMM_PTR_ERR(ptr);
+	else
+		return 0;
+}
 
 #endif

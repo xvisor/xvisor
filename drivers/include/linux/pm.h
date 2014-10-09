@@ -83,4 +83,8 @@ enum rpm_request {
 	RPM_REQ_RESUME,
 };
 
+typedef struct pm_message {
+	        int event;
+} pm_message_t;
+
 #endif /* _LINUX_PM_H */

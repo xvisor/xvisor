@@ -47,6 +47,9 @@
 #define VMM_DEVTREE_CLOCK_OUT_NAMES_ATTR_NAME	"clock-output-names"
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
+#define VMM_DEVTREE_RANGES_ATTR_NAME		"ranges"
+#define VMM_DEVTREE_ADDR_CELLS_ATTR_NAME	"#address-cells"
+#define VMM_DEVTREE_SIZE_CELLS_ATTR_NAME	"#size-cells"
 #define VMM_DEVTREE_PHANDLE_ATTR_NAME		"phandle"
 
 #define VMM_DEVTREE_CHOSEN_NODE_NAME		"chosen"
@@ -99,14 +102,15 @@
 #define VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME	"poweroff"
 
 enum vmm_devtree_attrypes {
-	VMM_DEVTREE_ATTRTYPE_UNKNOWN	= 0,
-	VMM_DEVTREE_ATTRTYPE_UINT32	= 1,
-	VMM_DEVTREE_ATTRTYPE_UINT64	= 2,
-	VMM_DEVTREE_ATTRTYPE_VIRTADDR	= 3,
-	VMM_DEVTREE_ATTRTYPE_VIRTSIZE	= 4,
-	VMM_DEVTREE_ATTRTYPE_PHYSADDR	= 5,
-	VMM_DEVTREE_ATTRTYPE_PHYSSIZE	= 6,
-	VMM_DEVTREE_ATTRTYPE_STRING	= 7
+	VMM_DEVTREE_ATTRTYPE_UINT32	= 0,
+	VMM_DEVTREE_ATTRTYPE_UINT64	= 1,
+	VMM_DEVTREE_ATTRTYPE_VIRTADDR	= 2,
+	VMM_DEVTREE_ATTRTYPE_VIRTSIZE	= 3,
+	VMM_DEVTREE_ATTRTYPE_PHYSADDR	= 4,
+	VMM_DEVTREE_ATTRTYPE_PHYSSIZE	= 5,
+	VMM_DEVTREE_ATTRTYPE_STRING	= 6,
+	VMM_DEVTREE_ATTRTYPE_BYTEARRAY	= 7,
+	VMM_DEVTREE_MAX_ATTRTYPE	= 8
 };
 
 struct vmm_devtree_attr {
@@ -135,7 +139,7 @@ struct vmm_devtree_nidtbl_entry {
 #ifndef __VMM_MODULES__
 
 #define VMM_DEVTREE_NIDTBL_ENTRY(nid, _subsys, _name, _type, _compat, _data) \
-static __unused __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
+__nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 	.signature = VMM_DEVTREE_NIDTBL_SIGNATURE, \
 	.subsys = (_subsys), \
 	.nodeid.name = (_name), \
@@ -175,7 +179,7 @@ struct vmm_devtree_node {
 
 #define VMM_MAX_PHANDLE_ARGS		8
 struct vmm_devtree_phandle_args {
-	struct vmm_devtree_node *node;
+	struct vmm_devtree_node *np;
 	int args_count;
 	u32 args[VMM_MAX_PHANDLE_ARGS];
 };
@@ -201,7 +205,8 @@ u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node,
 
 /** Set an attribute for a device tree node */
 int vmm_devtree_setattr(struct vmm_devtree_node *node,
-			const char *name, void *value, u32 type, u32 len);
+			const char *name, void *value,
+			u32 type, u32 len, bool value_is_be);
 
 /** Get an attribute from a device tree node */
 struct vmm_devtree_attr *vmm_devtree_getattr(
@@ -374,6 +379,20 @@ int vmm_devtree_count_strings(struct vmm_devtree_node *node,
 int vmm_devtree_string_index(struct vmm_devtree_node *node,
 			     const char *attrib, int index, const char **out);
 
+/** Retrive the next u32 value.
+ *
+ *  Returns NULL when u32 is not available.
+ */
+const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
+				const u32 *cur, u32 *val);
+
+/** Retrive the next string.
+ *
+ *  Returns NULL when string is not available.
+ */
+const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr, 
+				    const char *cur);
+
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node);
 
@@ -391,7 +410,7 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
  */
 const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 				const struct vmm_devtree_nodeid *matches,
-				struct vmm_devtree_node *node);
+				const struct vmm_devtree_node *node);
 
 /** Find node matching nodeid table starting from given node 
  *  Note: If node == NULL then node == root
@@ -417,6 +436,10 @@ struct vmm_devtree_node *vmm_devtree_find_compatible(
 				struct vmm_devtree_node *node,
 				const char *device_type,
 				const char *compatible);
+
+/** Check if node is compatible to given compatibility string */
+bool vmm_devtree_is_compatible(const struct vmm_devtree_node *node,
+			       const char *compatible);
 
 /** Find a node with given phandle value
  *  Note: This is based on 'phandle' attributes of device tree node
@@ -503,8 +526,10 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 					const char *cells_name);
 
 /** Add new node to device tree
- *  NOTE: vmm_devtree_addnode() allows parent == NULL to enable creation
- *  of root node using vmm_devtree_addnode().
+ *  NOTE: This function allows parent == NULL to enable creation of
+ *  root node but only once.
+ *  NOTE: Once root node is created, subsequent calls to this function
+ *  with parent == NULL will add nodes under root node.
  */
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name);
@@ -536,13 +561,6 @@ int vmm_devtree_irq_get(struct vmm_devtree_node *node,
  */
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
 
-/** Map device registers to virtual address
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
- *  of device tree node
- */
-int vmm_devtree_regmap(struct vmm_devtree_node *node, 
-		       virtual_addr_t *addr, int regset);
-
 /** Get physical size of device registers
  *  Note: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
@@ -556,6 +574,13 @@ int vmm_devtree_regsize(struct vmm_devtree_node *node,
  */
 int vmm_devtree_regaddr(struct vmm_devtree_node *node, 
 		        physical_addr_t *addr, int regset);
+
+/** Map device registers to virtual address
+ *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  of device tree node
+ */
+int vmm_devtree_regmap(struct vmm_devtree_node *node, 
+		       virtual_addr_t *addr, int regset);
 
 /** Unmap device registers from virtual address
  *  Note: This is based on 'reg' and 'virtual-reg' attributes 

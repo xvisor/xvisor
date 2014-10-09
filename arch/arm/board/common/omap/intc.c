@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
@@ -37,28 +38,32 @@ static u32 intc_nrirq;
 
 static u32 intc_active_irq(u32 cpu_irq)
 {
-	u32 ret = 0xFFFFFFFF;
+	u32 ret;
+
 	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* armv7a IRQ */
 		ret = intc_read(INTC_SIR_IRQ);
 		/* Spurious IRQ ? */
-		if(((u32) ret & INTC_SIR_IRQ_SPURIOUSFLAG_M)) {
-			ret = -1;
+		if (ret & INTC_SIR_IRQ_SPURIOUSFLAG_M) {
+			return UINT_MAX;
 		}
-		ret = ((u32) ret & INTC_SIR_IRQ_ACTIVEIRQ_M);
+		ret = (ret & INTC_SIR_IRQ_ACTIVEIRQ_M);
 		if (intc_nrirq <= ret) {
-			ret = -1;
+			return UINT_MAX;
 		}
 	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* armv7a FIQ */
 		ret = intc_read(INTC_SIR_FIQ);
 		/* Spurious FIQ ? */
-		if(((u32) ret & INTC_SIR_FIQ_SPURIOUSFLAG_M)) {
-			ret = -1;
+		if (ret & INTC_SIR_FIQ_SPURIOUSFLAG_M) {
+			return UINT_MAX;
 		}
-		ret = ((u32) ret & INTC_SIR_FIQ_ACTIVEIRQ_M);
+		ret = (ret & INTC_SIR_FIQ_ACTIVEIRQ_M);
 		if (intc_nrirq <= ret) {
-			ret = -1;
+			return UINT_MAX;
 		}
+	} else {
+		ret = UINT_MAX;
 	}
+
 	return ret;
 }
 

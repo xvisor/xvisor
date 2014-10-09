@@ -23,16 +23,16 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_smp.h>
+#include <vmm_timer.h>
 #include <vmm_manager.h>
+#include <vmm_threads.h>
 #include <vmm_mutex.h>
 #include <vmm_completion.h>
 #include <vmm_loadbal.h>
 
-#define LOADBAL_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
-#define LOADBAL_VCPU_PRIORITY 		VMM_VCPU_DEF_PRIORITY
-#define LOADBAL_VCPU_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
-#define LOADBAL_VCPU_PERIOD		(CONFIG_LOADBAL_PERIOD_SECS * \
+#define LOADBAL_PRIORITY 		VMM_VCPU_DEF_PRIORITY
+#define LOADBAL_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
+#define LOADBAL_PERIOD			(CONFIG_LOADBAL_PERIOD_SECS * \
 					 1000000000ULL)
 
 struct vmm_loadbal_ctrl {
@@ -41,18 +41,48 @@ struct vmm_loadbal_ctrl {
 	struct vmm_mutex algo_list_lock;
 	struct dlist algo_list;
 	struct vmm_completion loadbal_cmpl;
-	struct vmm_vcpu *loadbal_vcpu;
+	struct vmm_thread *loadbal_thread;
 };
 
+static bool lbctrl_init_done = FALSE;
 static struct vmm_loadbal_ctrl lbctrl;
 
-static void loadbal_main(void)
+u32 vmm_loadbal_good_hcpu(u8 priority)
+{
+	u32 ret;
+
+	if (!lbctrl_init_done ||
+	    !vmm_timer_started() ||
+	    (VMM_VCPU_MAX_PRIORITY < priority) ||
+	    (priority < VMM_VCPU_MIN_PRIORITY) ||
+	    (vmm_cpumask_weight(cpu_online_mask) < 2)) {
+		return vmm_smp_processor_id();
+	}
+
+	vmm_mutex_lock(&lbctrl.curr_algo_lock);
+
+	if (lbctrl.curr_algo && lbctrl.curr_algo->good_hcpu) {
+		ret = lbctrl.curr_algo->good_hcpu(lbctrl.curr_algo, priority);
+	} else {
+		ret = vmm_smp_processor_id();
+	}
+
+	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
+
+	return ret;
+}
+
+static int loadbal_main(void *data)
 {
 	u64 tstamp;
 
 	while (1) {
-		tstamp = LOADBAL_VCPU_PERIOD;
+		tstamp = LOADBAL_PERIOD;
 		vmm_completion_wait_timeout(&lbctrl.loadbal_cmpl, &tstamp);
+
+		if (vmm_cpumask_weight(cpu_online_mask) < 2) {
+			continue;
+		}
 
 		vmm_mutex_lock(&lbctrl.curr_algo_lock);
 
@@ -62,6 +92,8 @@ static void loadbal_main(void)
 
 		vmm_mutex_unlock(&lbctrl.curr_algo_lock);
 	}
+
+	return VMM_OK;
 }
 
 struct vmm_loadbal_algo *vmm_loadbal_current_algo(void)
@@ -78,13 +110,11 @@ struct vmm_loadbal_algo *vmm_loadbal_current_algo(void)
 static struct vmm_loadbal_algo *__loadbal_best_algo(void)
 {
 	u32 best_rating;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	best_rating = 0;
 	best_algo = NULL;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (best_rating < algo->rating) {
 			best_rating = algo->rating;
 			best_algo = algo;
@@ -96,8 +126,8 @@ static struct vmm_loadbal_algo *__loadbal_best_algo(void)
 
 int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 {
+	int rc = VMM_OK;
 	bool found;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	/* Sanity checks */
@@ -110,8 +140,7 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 
 	/* Registered algo instance should not be present in algo list */
 	found = FALSE;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (algo == lbalgo) {
 			found = TRUE;
 			break;
@@ -132,15 +161,14 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Update current algo */
 	vmm_mutex_lock(&lbctrl.curr_algo_lock);
 	if (best_algo && lbctrl.curr_algo != best_algo) {
-		if (lbctrl.curr_algo) {
-			if (lbctrl.curr_algo->stop) {
+		if (best_algo->start) {
+			rc = best_algo->start(best_algo);
+		}
+		if (rc == VMM_OK) {
+			if (lbctrl.curr_algo && lbctrl.curr_algo->stop) {
 				lbctrl.curr_algo->stop(lbctrl.curr_algo);
 			}
-			lbctrl.curr_algo = NULL;
-		}
-		lbctrl.curr_algo = best_algo;
-		if (lbctrl.curr_algo->start) {
-			lbctrl.curr_algo->start(lbctrl.curr_algo);
+			lbctrl.curr_algo = best_algo;
 		}
 	}
 	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
@@ -148,13 +176,13 @@ int vmm_loadbal_register_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Unlock algo list */
 	vmm_mutex_unlock(&lbctrl.algo_list_lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 {
+	int rc = VMM_OK;
 	bool found;
-	struct dlist *l;
 	struct vmm_loadbal_algo *algo, *best_algo;
 
 	/* Sanity checks */
@@ -167,8 +195,7 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 
 	/* Unregistered algo instance should be present in algo list */
 	found = FALSE;
-	list_for_each(l, &lbctrl.algo_list) {
-		algo = list_entry(l, struct vmm_loadbal_algo, head);
+	list_for_each_entry(algo, &lbctrl.algo_list, head) {
 		if (algo == lbalgo) {
 			found = TRUE;
 			break;
@@ -198,15 +225,14 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Update current algo */
 	vmm_mutex_lock(&lbctrl.curr_algo_lock);
 	if (best_algo && lbctrl.curr_algo != best_algo) {
-		if (lbctrl.curr_algo) {
-			if (lbctrl.curr_algo->stop) {
+		if (best_algo->start) {
+			rc = best_algo->start(best_algo);
+		}
+		if (rc == VMM_OK) {
+			if (lbctrl.curr_algo && lbctrl.curr_algo->stop) {
 				lbctrl.curr_algo->stop(lbctrl.curr_algo);
 			}
-			lbctrl.curr_algo = NULL;
-		}
-		lbctrl.curr_algo = best_algo;
-		if (lbctrl.curr_algo->start) {
-			lbctrl.curr_algo->start(lbctrl.curr_algo);
+			lbctrl.curr_algo = best_algo;
 		}
 	}
 	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
@@ -214,7 +240,7 @@ int vmm_loadbal_unregister_algo(struct vmm_loadbal_algo *lbalgo)
 	/* Unlock algo list */
 	vmm_mutex_unlock(&lbctrl.algo_list_lock);
 
-	return VMM_OK;
+	return rc;
 }
 
 int __init vmm_loadbal_init(void)
@@ -229,29 +255,31 @@ int __init vmm_loadbal_init(void)
 	INIT_MUTEX(&lbctrl.algo_list_lock);
 	INIT_LIST_HEAD(&lbctrl.algo_list);
 
-	/* Initalize loadbal completion */
+	/* Initialize loadbal completion */
 	INIT_COMPLETION(&lbctrl.loadbal_cmpl);
 
-	/* Create loadbal orphan vcpu with default time slice */
-	lbctrl.loadbal_vcpu = vmm_manager_vcpu_orphan_create("loadbal",
-						(virtual_addr_t)&loadbal_main,
-						LOADBAL_VCPU_STACK_SZ,
-						LOADBAL_VCPU_PRIORITY, 
-						LOADBAL_VCPU_TIMESLICE);
-	if (!lbctrl.loadbal_vcpu) {
+	/* Create loadbal thread with default time slice */
+	lbctrl.loadbal_thread = vmm_threads_create("loadbal",
+						   loadbal_main, NULL,
+						   LOADBAL_PRIORITY,
+						   LOADBAL_TIMESLICE);
+	if (!lbctrl.loadbal_thread) {
 		return VMM_EFAIL;
 	}
 
-	/* The loadbal vcpu need to stay on this cpu */
-	if ((rc = vmm_manager_vcpu_set_affinity(lbctrl.loadbal_vcpu,
+	/* Set loadbal thread affinity to this cpu */
+	if ((rc = vmm_threads_set_affinity(lbctrl.loadbal_thread,
 				vmm_cpumask_of(vmm_smp_processor_id())))) {
 		return rc;
 	}
 
-	/* Kick loadbal orphan vcpu */
-	if ((rc = vmm_manager_vcpu_kick(lbctrl.loadbal_vcpu))) {
+	/* Start loadbal thread */
+	if ((rc = vmm_threads_start(lbctrl.loadbal_thread))) {
 		return rc;
 	}
+
+	/* Mark loadbal initialization to be complete */
+	lbctrl_init_done = TRUE;
 
 	return VMM_OK;
 }
