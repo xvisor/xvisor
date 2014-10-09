@@ -18,6 +18,7 @@
  *
  * @file cmd_vfs.c
  * @author Anup Patel (anup@brainfault.org)
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Implementation of vfs command
  */
 
@@ -34,6 +35,10 @@
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <libs/vfs.h>
+
+#if CONFIG_CRYPTO_HASH_MD5
+#include <libs/md5.h>
+#endif
 
 #define MODULE_DESC			"Command vfs"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -55,6 +60,9 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
+#if CONFIG_CRYPTO_HASH_MD5
+	vmm_cprintf(cdev, "   vfs md5 <path_to_file>\n");
+#endif
 	vmm_cprintf(cdev, "   vfs run <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
@@ -410,6 +418,67 @@ static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
 
 	return VMM_OK;
 }
+
+#if CONFIG_CRYPTO_HASH_MD5
+static int cmd_vfs_md5(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc, i;
+	u32 len;
+	size_t buf_rd;
+	u8 buf[VFS_LOAD_BUF_SZ];
+	struct stat st;
+	struct md5_context md5c;
+	u8 digest[16];
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	len = st.st_size;
+	md5_init(&md5c);
+
+	while (len) {
+		memset(buf, 0, sizeof(buf));
+
+		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+		buf_rd = vfs_read(fd, buf, buf_rd);
+		if (buf_rd < 1) {
+			break;
+		}
+		md5_update(&md5c, buf, buf_rd);
+	}
+
+	md5_final(digest, &md5c);
+
+	vmm_cprintf(cdev, "MD5 Digest: ");
+	for (i = 0; i < 16; i++)
+		vmm_cprintf(cdev, "%x", digest[i]);
+	vmm_cprintf(cdev, "\n");
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+#endif
 
 static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
 {
@@ -1017,6 +1086,10 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_ls(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "run") == 0) && (argc == 3)) {
 		return cmd_vfs_run(cdev, argv[2]);
+#if CONFIG_CRYPTO_HASH_MD5
+	} else if ((strcmp(argv[1], "md5") == 0) && (argc == 3)) {
+		return cmd_vfs_md5(cdev, argv[2]);
+#endif
 	} else if ((strcmp(argv[1], "cat") == 0) && (argc == 3)) {
 		return cmd_vfs_cat(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "mv") == 0) && (argc == 4)) {

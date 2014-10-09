@@ -18,6 +18,7 @@
  *
  * @file cmd_memory.c
  * @author Anup Patel (anup@brainfault.org)
+ * @author Himanshu Chauhan (hschauhan@nulltrace.org)
  * @brief Implementation of memory command
  */
 
@@ -27,6 +28,10 @@
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
+
+#if CONFIG_CRYPTO_HASH_MD5
+#include <libs/md5.h>
+#endif
 
 #define MODULE_DESC			"Command memory"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -89,6 +94,7 @@ static void cmd_memory_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   memory dump16   <phys_addr> <count>\n");
 	vmm_cprintf(cdev, "   memory dump32   <phys_addr> <count>\n");
 	vmm_cprintf(cdev, "   memory crc32    <phys_addr> <count>\n");
+	vmm_cprintf(cdev, "   memory md5      <phys_addr> <count>\n");
 	vmm_cprintf(cdev, "   memory modify8  <phys_addr> "
 						"<val0> <val1> ...\n");
 	vmm_cprintf(cdev, "   memory modify16 <phys_addr> "
@@ -231,6 +237,49 @@ static int cmd_memory_crc32(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
+#if CONFIG_CRYPTO_HASH_MD5
+static int cmd_memory_md5(struct vmm_chardev *cdev,
+			  physical_addr_t addr, u32 wcnt)
+{
+	int rc, i;
+	u8 signature[16];
+	struct md5_context md5c;
+	virtual_addr_t page_va;
+	physical_addr_t page_pa;
+
+	if (sizeof(physical_addr_t) == sizeof(u64)) {
+		vmm_cprintf(cdev, "MD5 digest for 0x%016llx - 0x%016llx:\n",
+			    (u64)addr, (u64)(addr + wcnt));
+	} else {
+		vmm_cprintf(cdev, "MD5 digest 0x%08x - 0x%08x:\n",
+			    (u32)addr, (u32)(addr + wcnt));
+	}
+
+	page_pa = addr - (addr & VMM_PAGE_MASK);
+	page_va = vmm_host_iomap(page_pa, wcnt);
+
+	if (!page_va) {
+		vmm_cprintf(cdev, "Error: Failed to map memory.\n");
+		return VMM_ENOMEM;
+	}
+
+	md5_init(&md5c);
+	md5_update(&md5c, (u8 *)page_va, wcnt);
+	md5_final(signature, &md5c);
+
+	for (i = 0; i < 16; i++)
+		vmm_cprintf(cdev, "%x", signature[i]);
+	vmm_cprintf(cdev, "\n");
+
+	rc = vmm_host_iounmap(page_va);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
+		return rc;
+	}
+
+	return VMM_OK;
+}
+#endif
 
 static int cmd_memory_modify(struct vmm_chardev *cdev,
 			     physical_addr_t addr, 
@@ -401,6 +450,11 @@ static int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "crc32") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_crc32(cdev, addr, (u32)tmp);
+#if CONFIG_CRYPTO_HASH_MD5
+	} else if (strcmp(argv[1], "md5") == 0) {
+		tmp = strtoull(argv[3], NULL, 0);
+		return cmd_memory_md5(cdev, addr, (u32)tmp);
+#endif
 	} else if (strcmp(argv[1], "modify8") == 0) {
 		return cmd_memory_modify(cdev, addr, 1, argc - 3, &argv[3]);
 	} else if (strcmp(argv[1], "modify16") == 0) {
