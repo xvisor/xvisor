@@ -38,7 +38,7 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 	struct fdt_node_header *fdt_node;
 	u32 tmp, address_cells, size_cells;
 	physical_addr_t data[2];
-	
+
 	address_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
 	size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
 
@@ -47,25 +47,27 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 		return rc;
 	}
 
-	fdt_root = libfdt_find_node(&fdt, 
+	fdt_root = libfdt_find_node(&fdt,
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	if (!fdt_root) {
 		return VMM_EFAIL;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_root, address_cells, size_cells,
-				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		address_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_root, address_cells, size_cells,
-				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		size_cells = tmp;
 	}
 
-	fdt_node = libfdt_find_node(&fdt, 
+	fdt_node = libfdt_find_node(&fdt,
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
@@ -73,19 +75,22 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		address_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		size_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_REG_ATTR_NAME, data);
+				 VMM_DEVTREE_REG_ATTR_NAME,
+				 data, sizeof(data));
 	if (rc) {
 		return rc;
 	}
@@ -112,25 +117,27 @@ int arch_devtree_ram_size(physical_size_t *size)
 		return rc;
 	}
 
-	fdt_root = libfdt_find_node(&fdt, 
+	fdt_root = libfdt_find_node(&fdt,
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING);
 	if (!fdt_root) {
 		return VMM_EFAIL;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_root, address_cells, size_cells,
-				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		address_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_root, address_cells, size_cells,
-				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		size_cells = tmp;
 	}
 
-	fdt_node = libfdt_find_node(&fdt, 
+	fdt_node = libfdt_find_node(&fdt,
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
@@ -138,19 +145,22 @@ int arch_devtree_ram_size(physical_size_t *size)
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		address_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &tmp);
+				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
+				 &tmp, sizeof(tmp));
 	if (!rc) {
 		size_cells = tmp;
 	}
 
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_REG_ATTR_NAME, data);
+				 VMM_DEVTREE_REG_ATTR_NAME,
+				 data, sizeof(data));
 	if (rc) {
 		return rc;
 	}

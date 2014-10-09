@@ -124,6 +124,7 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 			struct fdt_node_header *fdt_node,
 			u32 address_cells, u32 size_cells,
 			const char *property,
-			void *property_value);
+			void *property_value,
+			u32 property_len);
 
 #endif /* __LIBFDT_H_ */

@@ -444,14 +444,16 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 			struct fdt_node_header *fdt_node,
 			u32 address_cells, u32 size_cells,
 			const char *property,
-			void *property_value)
+			void *property_value,
+			u32 property_len)
 {
 	u32 len = 0x0;
 	struct fdt_property *ret = NULL;
 	char *data = NULL;
 
 	/* Sanity checks */
-	if (!fdt || !fdt_node || !property || !property_value) {
+	if (!fdt || !fdt_node ||
+	    !property || !property_value || !property_len) {
 		return VMM_EFAIL;
 	}
 
@@ -492,6 +494,10 @@ int libfdt_get_property(struct fdt_fileinfo *fdt,
 
 	if (!ret) {
 		return VMM_EFAIL;
+	}
+
+	if (property_len < len) {
+		len = property_len;
 	}
 
 	libfdt_property_read(property, property_value, &ret->data[0],
