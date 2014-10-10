@@ -1,13 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #Required packages
-PACKAGES="gcc-multilib git-all cscope iasl cgdb xorriso libncurses5-dev m4 flex bison qemu-system-x86 autoconf expect qemu-system-x86"
+PACKAGES="gcc-multilib git-all cscope iasl cgdb xorriso libncurses5-dev m4 flex bison qemu-system-x86 autoconf expect qemu-system-x86 qemu-utils"
 #colors
 black='\E[30;47m'
 #red='\E[31;47m'
 red='\E[0;31m'
 #green='\E[32;47m'
 green='\E[0;32m'
+
+SANDBOX_PATH=
 
 alias Reset="tput sgr0"      #  Reset text attributes to normal
                              #+ without clearing screen.
@@ -47,11 +49,12 @@ function prepare_environment() {
 
 function checkout_coreboot() {
     run_or_die "git clone http://review.coreboot.org/p/coreboot" "Checking out coreboot..."
-    cd coreboot
+    pushd ${SANDBOX_PATH}/coreboot
     run_or_die "git submodule update --init --checkout" "Checking out submodules..."
-    cd payloads
+    pushd ${SANDBOX_PATH}/coreboot/payloads
     run_or_die "git clone http://review.coreboot.org/filo.git"  "Checking out FILO... "
-    cd ..
+    popd
+    popd
 }
 
 function checkout_xvisor() {
@@ -59,41 +62,44 @@ function checkout_xvisor() {
 }
 
 function make_cross_toolchain() {
+	pushd ${SANDBOX_PATH}/coreboot
 	if [ -d util/crossgcc/xgcc ]; then
 	    cecho "Cross toolchain already built. Skipping" $green
 	else
 	    run_or_die "make crossgcc"  "Making cross toolchain..."
         fi
+	popd
 }
 
 function prepare_configs() {
-    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/coreboot.config .config" "Copying coreboot.config"
-    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/filo.config payloads/filo/.config" "Copying filo.config"
-    run_or_die "cp ../xvisor-x86_64/tests/x86/bios/configs/filo.lib.config payloads/filo/lib.config" "Copying libpayload.config"
+    run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/coreboot.config ${SANDBOX_PATH}/coreboot/.config" "Copying coreboot.config"
+    run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/filo.config ${SANDBOX_PATH}/coreboot/payloads/filo/.config" "Copying filo.config"
+    run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/filo.lib.config ${SANDBOX_PATH}/coreboot/payloads/filo/lib.config" "Copying libpayload.config"
 }
 
 function build_filo() {
-    cd payloads/filo
+    pushd ${SANDBOX_PATH}/coreboot/payloads/filo
     run_or_die "make" "Building FILO..."
     run_or_die "cp build/filo.elf ../../filo.elf" "Copying filo.elf..."
-    cd ../../
+    popd
 }
 
 function build_coreboot() {
+    pushd ${SANDBOX_PATH}/coreboot
     run_or_die "make" "Building coreboot..."
+    popd
 }
 
 function build_xvisor() {
-    cd xvisor-x86_64
+    pushd ${SANDBOX_PATH}/xvisor-x86_64
     run_or_die "make ARCH=x86 x86_64_generic-defconfig" "Making Xvisor Config..."
     run_or_die "make" "Building Xvisor..."
-    cd ..
+    popd
 }
 
 function build_hdd_image() {
-    cd ..
+    cd ${SANDBOX_PATH}/
     if [ ! -e xvisor-hd.disk ]; then
-	run_or_die "sudo echo 1 > /dev/null" "Requesting sudo previledges..."
 	run_or_die "qemu-img create -f raw xvisor-hd.disk 32M" "Creating HDD Image..."
 	run_or_die "xvisor-x86_64/tests/x86/create_hdd_partitions.expt xvisor-hd.disk" "Creating partitions..."
 	run_or_die "sudo losetup /dev/loop0 xvisor-hd.disk -o 1048576" "Setting up loopback device..."
@@ -117,6 +123,7 @@ function build_hdd_image() {
 }
 
 function build_boot_iso() {
+    cd ${SANDBOX_PATH}/
     if [ ! -d xvisor-iso ]; then
 	run_or_die "mkdir -p xvisor-iso/boot/grub" "Making ISO directory..."
     fi
@@ -158,39 +165,159 @@ function do_common() {
 }
 
 function run_pre_existing() {
-    cd sandbox/coreboot
-    if [ $? -ne 0 ]; then
-	cecho "Exiting..." $red
-	exit 255
-    fi
-    LOG_FILE=${PWD}/../output.log
     do_common
 }
 
 function run_fresh() {
-    rm -rf sandbox
-    mkdir "sandbox"
-    cd sandbox
-    LOG_FILE=${PWD}/output.log
     checkout_xvisor
     checkout_coreboot
     do_common
 }
 
-function main() {
-	if [ -d sandbox ]; then
-	    echo -n 
-	    read -p "There already exists a directory named sandbox. Do you want to delete it? [y/N] " yn
-	    case $yn in
-		[Yy]* ) run_fresh;;
-		[Nn]* ) run_pre_existing;;
-		* ) echo "Please answer yes or no.";;
-	    esac
-
-	    exit 0
-	fi
-
-	run_fresh
+function show_help() {
+    echo "$(basename $0) is a script which can create a Xvisor-x86_64 setup from"
+    echo "scratch. While doing so it also installs all the required packages."
+    echo "It will ask for your SUDO password as and when required. It is advisable"
+    echo "to run with SUDO command though."
+    echo "The setup is created in a separate directory which can be specified with"
+    echo "option -s. This directory is termed as \"Sandbox\". When your sandbox"
+    echo "is ready you can run Xvisor with the following command:"
+    echo
+    cecho "qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-hd.disk -m 1024M -boot d -s -serial stdio" $green
+    echo "NOTE: You will need to switch to sandbox directory before running the above command."
+    echo
+    echo "Usage:"
+    echo "$0 <options>"
+    echo
+    echo "Options itself have the commands that are to be run."
+    echo
+    echo "The following are the options available:"
+    echo "-f: <no argument>. Use when you need create a setup from scratch."
+    echo "    When using this option make sure that internet is accessible"
+    echo "    because sources will be fetched from internet before building."
+    echo "-s: <sandbox path>. Give an already existing sandbox path. If the"
+    echo "    given path doesn't exist it is created. This script expects"
+    echo "    a sandbox which is created by the script itself."
+    echo "    This is so because there are files like Hard Drive image"
+    echo "    which this script expects with a certain name. Things may"
+    echo "    fail if it doesn't find files with correct name at correct"
+    echo "    location."
+    echo "-d: <no argument>. Do everything except for checking out sources"
+    echo "    from internet. It builds everything. Toolchain for payload, "
+    echo "    payload, Xvisor."
+    echo "-x: <no argument>. Build only Xvisor. It will create a bootable ISO."
+    echo "-p: <no argument>. Build only payload. Payload is built and copied"
+    echo "    to the harddisk image which the sandbox has."
+    echo "-i: <no argument>. Only rebuild the bootable ISO."
+    echo "-h: Show this help message"
+    exit 0
 }
 
-main
+#function check_and_get_helpers() {
+#    helper_files="create_hdd_partitions.expt guest_init.cmd hdd.layout lomount.c"
+#    for hfile in ${helper_files}; do
+#	if [ ! -e ${hfile} ]; then
+#	    wget -c https://raw.githubusercontent.com/hschauhan/xvisor-x86_64/master/tests/x86/${hfile}
+#	fi
+#    done
+#}
+
+do_default=0
+build_only_xvisor=0
+build_payload=0
+build_only_iso=0
+build_fresh=0
+
+if [ $# -eq 0 ]; then
+    show_help
+    exit 255
+fi
+
+while getopts "fs:dxpih" optchar; do
+    case "${optchar}" in
+	f)
+	    echo "Will build fresh"
+	    build_fresh=1
+	    ;;
+	d)
+	    do_default=1
+	    ;;
+	x)
+	    build_only_xvisor=1
+	    ;;
+	i)
+	    build_only_iso=1
+	    ;;
+	p)
+	    build_payload=1
+	    ;;
+	s)
+	    SANDBOX_PATH="${OPTARG}"
+	    if [ ! [$SANDBOX_PATH = /*] ]; then
+		SANDBOX_PATH=${PWD}/$SANDBOX_PATH
+	    fi
+	    ;;
+	h) show_help;;
+	*)
+	    show_help
+	    ;;
+    esac
+done
+
+if [ "${SANDBOX_PATH}" = "" ]; then
+    echo "Sandbox box path is not specified."
+    exit 255
+fi
+
+echo "SANDBOX: ${SANDBOX_PATH}"
+
+# Check and get helper scripts.
+#check_and_get_helpers
+
+LOG_FILE=${SANDBOX_PATH}/output.log
+
+if [ "${build_fresh}" = "1" ]; then
+    if [ -d ${SANDBOX_PATH} ]; then
+	read -p "There already exists a directory named sandbox. Do you want to delete it and start afresh? [y/N] " yn
+	case $yn in
+	    [Yy]* )
+		rm -rf ${SANDBOX_PATH}
+		mkdir -p ${SANDBOX_PATH}
+		run_or_die "cd ${SANDBOX_PATH}" "Moving to sandbox => ${SANDBOX_PATH}"
+		run_fresh;;
+	    [Nn]* ) exit 0;;
+	    * ) echo "Please answer yes or no.";;
+	esac
+    else
+	rm -rf ${SANDBOX_PATH}
+	mkdir -p ${SANDBOX_PATH}
+	run_or_die "cd ${SANDBOX_PATH}" "Moving to sandbox => ${SANDBOX_PATH}"
+	run_fresh
+    fi
+fi
+
+run_or_die "cd ${SANDBOX_PATH}" "Moving to sandbox => ${SANDBOX_PATH}"
+
+if [ "${do_default}" = "1" ]; then
+    do_common
+    exit 0
+fi
+
+if [ "${build_only_iso}" = "1" ]; then
+    build_boot_iso
+    exit 0
+fi
+
+if [ "${build_only_xvisor}" = "1" ]; then
+    build_xvisor
+    build_boot_iso
+    exit 0
+fi
+
+if [ "${build_payload}" = "1" ]; then
+    prepare_configs
+    build_filo
+    build_coreboot
+    build_hdd_image
+    exit 0
+fi
