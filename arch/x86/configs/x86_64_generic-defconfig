@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.4
-# Fri Oct  3 20:31:44 2014
+# Sat Oct  4 14:43:57 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -227,6 +227,9 @@ CONFIG_VFS_FAT=y
 CONFIG_CRYPTO=y
 CONFIG_CRYPTO_HASHES=y
 CONFIG_CRYPTO_HASH_MD5=y
+CONFIG_LIBAUTH=y
+CONFIG_LIBAUTH_FILE="/system/passwd"
+CONFIG_LIBAUTH_USE_MD5_PASSWD=y
 
 #
 # Device Drivers
