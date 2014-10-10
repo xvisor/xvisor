@@ -39,4 +39,5 @@ libs-objs-y+= common/radix-tree.o
 libs-objs-y+= common/buddy.o
 libs-objs-y+= common/mempool.o
 libs-objs-y+= common/libfdt.o
+libs-objs-$(CONFIG_LIBAUTH)+= common/libauth.o
 
