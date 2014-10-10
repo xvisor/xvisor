@@ -70,9 +70,9 @@ static int mterm_main(void *udata)
 
 		/* Get command string */
 #ifdef CONFIG_MTERM_HISTORY
-		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', &mtctrl.history);
+		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', &mtctrl.history, TRUE);
 #else
-		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', NULL);
+		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', NULL, TRUE);
 #endif
 
 		/* Process command string */

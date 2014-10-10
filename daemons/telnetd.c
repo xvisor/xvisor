@@ -427,10 +427,10 @@ static int telnetd_main(void *data)
 			tdctrl.cdev_ingets = TRUE;
 #ifdef CONFIG_TELNETD_HISTORY
 			vmm_cgets(&tdctrl.cdev, cmds, CONFIG_TELNETD_CMD_WIDTH,
-				 '\n', &tdctrl.history);
+				  '\n', &tdctrl.history, TRUE);
 #else
 			vmm_cgets(&tdctrl.cdev, cmds, CONFIG_TELNETD_CMD_WIDTH,
-				 '\n', NULL);
+				  '\n', NULL, TRUE);
 #endif
 			tdctrl.cdev_ingets = FALSE;
 
