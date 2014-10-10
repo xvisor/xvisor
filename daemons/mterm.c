@@ -34,6 +34,10 @@
 #include <vmm_cmdmgr.h>
 #include <libs/stringlib.h>
 
+#ifdef CONFIG_LIBAUTH
+#include <libs/libauth.h>
+#endif
+
 #define MODULE_DESC			"Managment Terminal"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -59,31 +63,77 @@ static int mterm_main(void *udata)
 		vmm_msleep(100);
 	}
 
-	/* Print Banner */
-	vmm_printf("%s", VMM_BANNER_STRING);
-
-	/* Main loop of VMM */
-	while (1) {
-		/* Show prompt */
-		vmm_printf("XVisor# ");
-		memset(cmds, 0, sizeof(cmds));
-
-		/* Get command string */
-#ifdef CONFIG_MTERM_HISTORY
-		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', &mtctrl.history, TRUE);
-#else
-		vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH, '\n', NULL, TRUE);
+#ifdef CONFIG_LIBAUTH
+	char user[64];
+	char passwd[256];
+	u32 nr_bad_login_tries = 0;
 #endif
 
-		/* Process command string */
-		cmds_len = strlen(cmds);
-		if (cmds_len > 0) {
-			if (cmds[cmds_len - 1] == '\r')
-				cmds[cmds_len - 1] = '\0';
+	while (1) {
+		/* Print Banner */
+		vmm_printf("%s", VMM_BANNER_STRING);
 
-			/* Execute command string */
-			cdev = vmm_stdio_device();
-			vmm_cmdmgr_execute_cmdstr(cdev, cmds, NULL);
+#ifdef CONFIG_LIBAUTH
+		/* Authentication loop */
+		while (1) {
+			vmm_printf("user: ");
+			memset(user, 0, sizeof(user));
+			memset(passwd, 0, sizeof(passwd));
+			vmm_gets(user, 64, '\n', NULL, 1);
+			vmm_printf("password: ");
+			vmm_gets(passwd, 256, '\n', NULL, 0);
+			vmm_printf("\n");
+			if (authenticate_user(user, passwd) == VMM_OK) {
+				break;
+			} else {
+				nr_bad_login_tries++;
+				vmm_printf("Authentication failed.\n");
+			}
+
+			if (nr_bad_login_tries >= 5) {
+				vmm_printf("Too many bad tries.\n"
+					   "Please give your fingers "
+					   "some rest and try again "
+					   "after 15 seconds.\n");
+				vmm_ssleep(15);
+				nr_bad_login_tries = 0;
+			}
+		}
+#endif
+
+		/* Main loop of VMM */
+		while (1) {
+#ifdef CONFIG_LIBAUTH
+			/* Show prompt */
+			vmm_printf("%s@XVisor# ", user);
+#else
+			vmm_printf("XVisor# ");
+#endif
+			memset(cmds, 0, sizeof(cmds));
+
+			/* Get command string */
+#ifdef CONFIG_MTERM_HISTORY
+			vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH,
+				 '\n', &mtctrl.history, TRUE);
+#else
+			vmm_gets(cmds, CONFIG_MTERM_CMD_WIDTH,
+				 '\n', NULL, TRUE);
+#endif
+
+			/* Process command string */
+			cmds_len = strlen(cmds);
+			if (cmds_len > 0) {
+				if (cmds[cmds_len - 1] == '\r')
+					cmds[cmds_len - 1] = '\0';
+
+#ifdef CONFIG_LIBAUTH
+				/* Break main loop for logout command */
+				if (!strcmp(cmds, "logout")) break;
+#endif
+				/* Execute command string */
+				cdev = vmm_stdio_device();
+				vmm_cmdmgr_execute_cmdstr(cdev, cmds, NULL);
+			}
 		}
 	}
 
@@ -100,7 +150,7 @@ static int __init daemon_mterm_init(void)
 	memset(&mtctrl, 0, sizeof(mtctrl));
 
 #ifdef CONFIG_MTERM_HISTORY
-	INIT_HISTORY(&mtctrl.history, 
+	INIT_HISTORY(&mtctrl.history,
 			CONFIG_MTERM_HISTORY_SIZE, CONFIG_MTERM_CMD_WIDTH);
 #endif
 
@@ -120,9 +170,9 @@ static int __init daemon_mterm_init(void)
 	}
 
 	/* Create mterm thread */
-	mtctrl.thread = vmm_threads_create("mterm", 
-					   &mterm_main, 
-					   NULL, 
+	mtctrl.thread = vmm_threads_create("mterm",
+					   &mterm_main,
+					   NULL,
 					   mterm_priority,
 					   mterm_time_slice);
 	if (!mtctrl.thread) {
@@ -142,9 +192,9 @@ static void __exit daemon_mterm_exit(void)
 	vmm_threads_destroy(mtctrl.thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
