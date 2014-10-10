@@ -29,6 +29,13 @@
 #ifdef CONFIG_LIBAUTH_USE_MD5_PASSWD
 #include <libs/md5.h>
 typedef u8 hash_digest_t[16];
+#define HASH_LEN	16
+#endif
+
+#if CONFIG_LIBAUTH_USE_SHA256_PASSWD
+#include <libs/sha256.h>
+typedef sha256_digest_t hash_digest_t;
+#define HASH_LEN	SHA256_DIGEST_LEN
 #endif
 
 /* Current user */
@@ -185,6 +192,15 @@ static void calculate_hash(char *str, hash_digest_t sig)
 	md5_update(&md5c, (u8 *)str, strlen(str));
 	md5_final(sig, &md5c);
 }
+#elif CONFIG_LIBAUTH_USE_SHA256_PASSWD
+static void calculate_hash(char *str, hash_digest_t sig)
+{
+	struct sha256_context sha256c;
+
+	sha256_init(&sha256c);
+	sha256_update(&sha256c, (u8 *)str, strlen(str));
+	sha256_final(sig, &sha256c);
+}
 #else
 #error "No hash selected for password hashing."
 #endif
@@ -198,7 +214,7 @@ int authenticate_user(const char *user, char *passwd)
 
 	memset(match_against, 0 , sizeof(match_against));
 	if (get_user_hash(user, (u8 *)&match_against, sizeof(match_against)) == VMM_OK) {
-		for (i = 0; i < 16; i++) {
+		for (i = 0; i < HASH_LEN; i++) {
 			if (match_against[i] != passwd_sig[i]) {
 				return VMM_EFAIL;
 			}
