@@ -116,7 +116,7 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 /** Print formatted string to default device */
 #define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__);
 
-/** Panic & Print formatted message 
+/** Panic & Print formatted message
  * Note: This function is less verbose so perfer vmm_panic().
  */
 void __noreturn __vmm_panic(const char *format, ...);
@@ -132,20 +132,20 @@ void __noreturn __vmm_panic(const char *format, ...);
 int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block);
 
 /** Get character from character device */
-char vmm_cgetc(struct vmm_chardev *cdev) ;
+char vmm_cgetc(struct vmm_chardev *cdev, bool lecho) ;
 
 /** Get character from default device */
-char vmm_getc(void);
+char vmm_getc(bool lecho);
 
 /** Get string from character device
  *  If history is NULL does not support UP/DN keys */
-char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, 
-		char endchar, struct vmm_history *history);
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
+		char endchar, struct vmm_history *history, bool lecho);
 
 /** Get string from default device
  *  If history is NULL does not support UP/DN keys */
-char *vmm_gets(char *s, int maxwidth, char endchar, 
-		struct vmm_history *history);
+char *vmm_gets(char *s, int maxwidth, char endchar,
+	       struct vmm_history *history, bool lecho);
 
 /** Get default character device used by stdio */
 struct vmm_chardev *vmm_stdio_device(void);

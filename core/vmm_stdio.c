@@ -452,26 +452,28 @@ int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 	return rc;
 }
 
-char vmm_cgetc(struct vmm_chardev *cdev)
+char vmm_cgetc(struct vmm_chardev *cdev, bool lecho)
 {
 	char ch = 0;
 	vmm_scanchars(cdev, &ch, 1, TRUE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	if (vmm_isprintable(ch)) {
+
+	if (lecho && vmm_isprintable(ch)) {
 		vmm_cputc(cdev, ch);
 	}
+
 	return ch;
 }
 
-char vmm_getc(void)
+char vmm_getc(bool lecho)
 {
-	return vmm_cgetc(stdio_ctrl.dev);
+	return vmm_cgetc(stdio_ctrl.dev, lecho);
 }
 
-char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth, 
-		char endchar, struct vmm_history *history)
+char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
+		char endchar, struct vmm_history *history, bool lecho)
 {
 	char ch, ch1;
 	bool add_ch, del_ch, to_left, to_right, to_start, to_end;
@@ -482,7 +484,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 	}
 	if (history) {
 		hist_cur = history->tail;
-		maxwidth = (maxwidth < history->width) ? maxwidth : 
+		maxwidth = (maxwidth < history->width) ? maxwidth :
 							 history->width;
 	}
 	while (1) {
@@ -492,7 +494,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 		to_end = FALSE;
 		add_ch = FALSE;
 		del_ch = FALSE;
-		if ((ch = vmm_cgetc(cdev)) == endchar) {
+		if ((ch = vmm_cgetc(cdev, lecho)) == endchar) {
 			break;
 		}
 		/* Note: we have to process all the required
@@ -654,10 +656,11 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 	return s;
 }
 
-char *vmm_gets(char *s, int maxwidth, char endchar, 
-		struct vmm_history *history)
+char *vmm_gets(char *s, int maxwidth, char endchar,
+	       struct vmm_history *history, bool lecho)
 {
-	return vmm_cgets(stdio_ctrl.dev, s, maxwidth, endchar, history);
+	return vmm_cgets(stdio_ctrl.dev, s, maxwidth,
+			 endchar, history, lecho);
 }
 
 struct vmm_chardev *vmm_stdio_device(void)
