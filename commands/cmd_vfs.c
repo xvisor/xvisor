@@ -40,6 +40,10 @@
 #include <libs/md5.h>
 #endif
 
+#if CONFIG_CRYPTO_HASH_SHA256
+#include <libs/sha256.h>
+#endif
+
 #define MODULE_DESC			"Command vfs"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -62,6 +66,9 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
 #if CONFIG_CRYPTO_HASH_MD5
 	vmm_cprintf(cdev, "   vfs md5 <path_to_file>\n");
+#endif
+#if CONFIG_CRYPTO_HASH_SHA256
+	vmm_cprintf(cdev, "   vfs sha256 <path_to_file>\n");
 #endif
 	vmm_cprintf(cdev, "   vfs run <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
@@ -467,6 +474,67 @@ static int cmd_vfs_md5(struct vmm_chardev *cdev, const char *path)
 
 	vmm_cprintf(cdev, "MD5 Digest: ");
 	for (i = 0; i < 16; i++)
+		vmm_cprintf(cdev, "%x", digest[i]);
+	vmm_cprintf(cdev, "\n");
+
+	rc = vfs_close(fd);
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to close %s\n", path);
+		return rc;
+	}
+
+	return VMM_OK;
+}
+#endif
+
+#if CONFIG_CRYPTO_HASH_SHA256
+static int cmd_vfs_sha256(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc, i;
+	u32 len;
+	size_t buf_rd;
+	u8 buf[VFS_LOAD_BUF_SZ];
+	struct stat st;
+	struct sha256_context sha256c;
+	sha256_digest_t digest;
+
+	fd = vfs_open(path, O_RDONLY, 0);
+	if (fd < 0) {
+		vmm_cprintf(cdev, "Failed to open %s\n", path);
+		return fd;
+	}
+
+	rc = vfs_fstat(fd, &st);
+	if (rc) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+		return rc;
+	}
+
+	if (!(st.st_mode & S_IFREG)) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Cannot read %s\n", path);
+		return VMM_EINVALID;
+	}
+
+	len = st.st_size;
+	sha256_init(&sha256c);
+
+	while (len) {
+		memset(buf, 0, sizeof(buf));
+
+		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+		buf_rd = vfs_read(fd, buf, buf_rd);
+		if (buf_rd < 1) {
+			break;
+		}
+		sha256_update(&sha256c, buf, buf_rd);
+	}
+
+	sha256_final(digest, &sha256c);
+
+	vmm_cprintf(cdev, "SHA-256 Digest: ");
+	for (i = 0; i < SHA256_DIGEST_LEN; i++)
 		vmm_cprintf(cdev, "%x", digest[i]);
 	vmm_cprintf(cdev, "\n");
 
@@ -1089,6 +1157,10 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 #if CONFIG_CRYPTO_HASH_MD5
 	} else if ((strcmp(argv[1], "md5") == 0) && (argc == 3)) {
 		return cmd_vfs_md5(cdev, argv[2]);
+#endif
+#if CONFIG_CRYPTO_HASH_SHA256
+	} else if ((strcmp(argv[1], "sha256") == 0) && (argc == 3)) {
+		return cmd_vfs_sha256(cdev, argv[2]);
 #endif
 	} else if ((strcmp(argv[1], "cat") == 0) && (argc == 3)) {
 		return cmd_vfs_cat(cdev, argv[2]);

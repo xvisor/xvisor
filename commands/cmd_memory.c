@@ -33,6 +33,10 @@
 #include <libs/md5.h>
 #endif
 
+#if CONFIG_CRYPTO_HASH_SHA256
+#include <libs/sha256.h>
+#endif
+
 #define MODULE_DESC			"Command memory"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -94,7 +98,12 @@ static void cmd_memory_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   memory dump16   <phys_addr> <count>\n");
 	vmm_cprintf(cdev, "   memory dump32   <phys_addr> <count>\n");
 	vmm_cprintf(cdev, "   memory crc32    <phys_addr> <count>\n");
+#if CONFIG_CRYPTO_HASH_MD5
 	vmm_cprintf(cdev, "   memory md5      <phys_addr> <count>\n");
+#endif
+#if CONFIG_CRYPTO_HASH_SHA256
+	vmm_cprintf(cdev, "   memory sha256      <phys_addr> <count>\n");
+#endif
 	vmm_cprintf(cdev, "   memory modify8  <phys_addr> "
 						"<val0> <val1> ...\n");
 	vmm_cprintf(cdev, "   memory modify16 <phys_addr> "
@@ -281,6 +290,50 @@ static int cmd_memory_md5(struct vmm_chardev *cdev,
 }
 #endif
 
+#if CONFIG_CRYPTO_HASH_SHA256
+static int cmd_memory_sha256(struct vmm_chardev *cdev,
+			     physical_addr_t addr, u32 wcnt)
+{
+	int rc, i;
+	sha256_digest_t digest;
+	struct sha256_context sha256c;
+	virtual_addr_t page_va;
+	physical_addr_t page_pa;
+
+	if (sizeof(physical_addr_t) == sizeof(u64)) {
+		vmm_cprintf(cdev, "SHA-256 digest for 0x%016llx - 0x%016llx:\n",
+			    (u64)addr, (u64)(addr + wcnt));
+	} else {
+		vmm_cprintf(cdev, "SHA-256 digest 0x%08x - 0x%08x:\n",
+			    (u32)addr, (u32)(addr + wcnt));
+	}
+
+	page_pa = addr - (addr & VMM_PAGE_MASK);
+	page_va = vmm_host_iomap(page_pa, wcnt);
+
+	if (!page_va) {
+		vmm_cprintf(cdev, "Error: Failed to map memory.\n");
+		return VMM_ENOMEM;
+	}
+
+	sha256_init(&sha256c);
+	sha256_update(&sha256c, (u8 *)page_va, wcnt);
+	sha256_final(digest, &sha256c);
+
+	for (i = 0; i < SHA256_DIGEST_LEN; i++)
+		vmm_cprintf(cdev, "%x", digest[i]);
+	vmm_cprintf(cdev, "\n");
+
+	rc = vmm_host_iounmap(page_va);
+	if (rc) {
+		vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
+		return rc;
+	}
+
+	return VMM_OK;
+}
+#endif
+
 static int cmd_memory_modify(struct vmm_chardev *cdev,
 			     physical_addr_t addr, 
 			     u32 wsz, int valc, char **valv)
@@ -454,6 +507,11 @@ static int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "md5") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_md5(cdev, addr, (u32)tmp);
+#endif
+#if CONFIG_CRYPTO_HASH_SHA256
+	} else if (strcmp(argv[1], "sha256") == 0) {
+		tmp = strtoull(argv[3], NULL, 0);
+		return cmd_memory_sha256(cdev, addr, (u32)tmp);
 #endif
 	} else if (strcmp(argv[1], "modify8") == 0) {
 		return cmd_memory_modify(cdev, addr, 1, argc - 3, &argv[3]);
