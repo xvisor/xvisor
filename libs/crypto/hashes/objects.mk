@@ -22,3 +22,4 @@
 # */
 
 libs-objs-$(CONFIG_CRYPTO_HASH_MD5)+= crypto/hashes/md5.o
+libs-objs-$(CONFIG_CRYPTO_HASH_SHA256)+= crypto/hashes/sha256.o
