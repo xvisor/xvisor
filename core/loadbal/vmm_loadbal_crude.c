@@ -56,7 +56,8 @@
 #define	MODULE_EXIT			crude_exit
 
 struct crude_control {
-	u32 count[CONFIG_CPU_COUNT][VMM_VCPU_MAX_PRIORITY+1];
+	u32 alive_count[CONFIG_CPU_COUNT][VMM_VCPU_MAX_PRIORITY+1];
+	u32 active_count[CONFIG_CPU_COUNT][VMM_VCPU_MAX_PRIORITY+1];
 	u64 idle_ns[CONFIG_CPU_COUNT];
 	u64 idle_period_ns[CONFIG_CPU_COUNT];
 	u32 idle_percent[CONFIG_CPU_COUNT];
@@ -76,14 +77,18 @@ static int crude_analyze_count_iter(struct vmm_vcpu *vcpu, void *priv)
 
 	vmm_manager_vcpu_get_hcpu(vcpu, &hcpu);
 
-	crude->count[hcpu][vcpu->priority]++;
+	crude->alive_count[hcpu][vcpu->priority]++;
+	if (state != VMM_VCPU_STATE_PAUSED) {
+		crude->active_count[hcpu][vcpu->priority]++;
+	}
 
 	return VMM_OK;
 }
 
 static void crude_analyze_count(struct crude_control *crude)
 {
-	memset(crude->count, 0, sizeof(crude->count));
+	memset(crude->alive_count, 0, sizeof(crude->alive_count));
+	memset(crude->active_count, 0, sizeof(crude->active_count));
 
 	vmm_manager_vcpu_iterate(crude_analyze_count_iter, crude);
 }
@@ -110,86 +115,94 @@ static u32 crude_best_count_hcpu(struct crude_control *crude, u8 priority)
 	u32 hcpu, best_hcpu, best_hcpu_count;
 
 	best_hcpu = vmm_smp_processor_id();
-	best_hcpu_count = crude->count[best_hcpu][priority];
+	best_hcpu_count = crude->alive_count[best_hcpu][priority];
 
 	for_each_online_cpu(hcpu) {
-		if (crude->count[hcpu][priority] < best_hcpu_count) {
+		if (crude->alive_count[hcpu][priority] < best_hcpu_count) {
 			best_hcpu = hcpu;
-			best_hcpu_count = crude->count[hcpu][priority];
+			best_hcpu_count = crude->alive_count[hcpu][priority];
 		}
 	}
 
 	return best_hcpu;
 }
 
+/**
+ * Find out best idle hcpu.
+ *
+ * A best idle hcpu is a hcpu who spends maximum time in idle.
+ */
 static u32 crude_best_idle_hcpu(struct crude_control *crude)
 {
-	u32 hcpu, best_hcpu, best_hcpu_idle;
+	u32 hcpu, idle, best_hcpu, best_hcpu_idle;
 
 	best_hcpu = vmm_smp_processor_id();
 	best_hcpu_idle = crude->idle_percent[best_hcpu];
 
 	for_each_online_cpu(hcpu) {
-		if (crude->idle_percent[hcpu] > best_hcpu_idle) {
+		idle = crude->idle_percent[hcpu];
+		if (idle > best_hcpu_idle) {
 			best_hcpu = hcpu;
-			best_hcpu_idle = crude->idle_percent[hcpu];
+			best_hcpu_idle = idle;
 		}
 	}
 
 	return best_hcpu;
 }
 
+/**
+ * Find out worst idle hcpu.
+ *
+ * A worst idle hcpu is a hcpu who spends least time in idle.
+ *
+ * If two hcpus have same idle time then hcpu with more number
+ * of active VCPUs is considered worst among the two hcpus.
+ */
 static u32 crude_worst_idle_hcpu(struct crude_control *crude)
 {
-	u32 hcpu, worst_hcpu, worst_hcpu_idle;
+	u32 p, hcpu, count, idle;
+	u32 worst_hcpu, worst_hcpu_count, worst_hcpu_idle;
 
 	worst_hcpu = vmm_smp_processor_id();
 	worst_hcpu_idle = crude->idle_percent[worst_hcpu];
+	count = 1;
+	for (p = VMM_VCPU_MIN_PRIORITY; p <= VMM_VCPU_MAX_PRIORITY; p++) {
+		count += crude->active_count[worst_hcpu][p];
+	}
+	worst_hcpu_count = count;
 
 	for_each_online_cpu(hcpu) {
-		if (crude->idle_percent[hcpu] <= worst_hcpu_idle) {
+		idle = crude->idle_percent[hcpu];
+		count = 1;
+		for (p = VMM_VCPU_MIN_PRIORITY;
+		     p <= VMM_VCPU_MAX_PRIORITY; p++) {
+			count += crude->active_count[hcpu][p];
+		}
+		if ((idle < worst_hcpu_idle) ||
+		    ((idle == worst_hcpu_idle) &&
+		     (count > worst_hcpu_count))) {
 			worst_hcpu = hcpu;
-			worst_hcpu_idle = crude->idle_percent[hcpu];
+			worst_hcpu_idle = idle;
+			worst_hcpu_count = count;
 		}
 	}
 
 	return worst_hcpu;
 }
 
-static u32 crude_next_hcpu(struct crude_control *crude,
-			   struct vmm_vcpu *vcpu, 
-			   u32 old_hcpu,
-			   const struct vmm_cpumask *mask)
-{
-	u32 hcpu, best_hcpu, best_idle_percent;
-
-	best_hcpu = old_hcpu;
-	best_idle_percent = crude->idle_percent[best_hcpu];
-	for_each_cpu(hcpu, mask) {
-		if (hcpu == old_hcpu) {
-			continue;
-		}
-		if (best_idle_percent < crude->idle_percent[hcpu]) {
-			best_hcpu = hcpu;
-			best_idle_percent = crude->idle_percent[hcpu];
-		}
-	}
-
-	return best_hcpu;
-}
-
 struct crude_balance_hcpu {
 	struct crude_control *crude;
 	u8 prio;
 	u32 state;
-	u32 hcpu;
+	u32 old_hcpu;
+	u32 new_hcpu;
 	u32 done;
 };
 
 static int crude_balance_hcpu_iter(struct vmm_vcpu *vcpu, void *priv)
 {
 	int rc;
-	u32 hcpu, new_hcpu, state;
+	u32 hcpu, state;
 	const struct vmm_cpumask *aff;
 	struct crude_balance_hcpu *crude_bhp = priv;
 
@@ -202,7 +215,7 @@ static int crude_balance_hcpu_iter(struct vmm_vcpu *vcpu, void *priv)
 	}
 
 	vmm_manager_vcpu_get_hcpu(vcpu, &hcpu);
-	if (hcpu != crude_bhp->hcpu) {
+	if (hcpu != crude_bhp->old_hcpu) {
 		return VMM_OK;
 	}
 
@@ -216,15 +229,15 @@ static int crude_balance_hcpu_iter(struct vmm_vcpu *vcpu, void *priv)
 		return VMM_OK;
 	}
 
-	new_hcpu = crude_next_hcpu(crude_bhp->crude, vcpu, hcpu, aff);
-	if (new_hcpu == hcpu) {
+	if (!vmm_cpumask_test_cpu(crude_bhp->new_hcpu, aff)) {
 		return VMM_OK;
 	}
 
 	DPRINTF("%s: vcpu=%s old_hcpu=%d new_hcpu=%d\n",
-		__func__, vcpu->name, hcpu, new_hcpu);
+		__func__, vcpu->name,
+		crude_bhp->old_hcpu, crude_bhp->new_hcpu);
 
-	rc = vmm_manager_vcpu_set_hcpu(vcpu, new_hcpu);
+	rc = vmm_manager_vcpu_set_hcpu(vcpu, crude_bhp->new_hcpu);
 	if (rc) {
 		return rc;
 	}
@@ -266,6 +279,7 @@ static void crude_balance(struct vmm_loadbal_algo *algo)
 		return;
 	}
 
+	crude_analyze_count(crude);
 	crude_analyze_idle(crude);
 
 	best_hcpu = crude_best_idle_hcpu(crude);
@@ -278,14 +292,16 @@ static void crude_balance(struct vmm_loadbal_algo *algo)
 	DPRINTF("%s: worst_hcpu=%d worst_hcpu_idle=%d\n",
 		__func__, worst_hcpu, worst_hcpu_idle);
 
-	if ((worst_hcpu_idle > 50) ||
+	if ((best_hcpu == worst_hcpu) ||
+	    (worst_hcpu_idle > 50) ||
 	    ((best_hcpu_idle - worst_hcpu_idle) < 10)) {
 		return;
 	}
 
 	crude_bhp.crude = crude;
 	crude_bhp.state = VMM_VCPU_STATE_READY;
-	crude_bhp.hcpu = worst_hcpu;
+	crude_bhp.old_hcpu = worst_hcpu;
+	crude_bhp.new_hcpu = best_hcpu;
 	crude_bhp.done = 0;
 
 	for (prio = VMM_VCPU_MIN_PRIORITY;
@@ -293,8 +309,8 @@ static void crude_balance(struct vmm_loadbal_algo *algo)
 		if (!vmm_scheduler_ready_count(worst_hcpu, prio)) {
 			continue;
 		}
-		DPRINTF("%s: balance worst_hcpu=%d prio=%d\n",
-			__func__, worst_hcpu, prio);
+		DPRINTF("%s: balance worst_hcpu=%d best_hcpu=%d prio=%d\n",
+			__func__, worst_hcpu, best_hcpu, prio);
 		crude_bhp.prio = prio;
 		vmm_manager_vcpu_iterate(crude_balance_hcpu_iter, &crude_bhp);
 	}
