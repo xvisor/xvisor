@@ -42,7 +42,7 @@ struct vmm_devdrv_ctrl {
 	struct dlist deferred_probe_list;
 	struct vmm_work deferred_probe_work;
 
-	struct vmm_bus default_bus;
+	struct vmm_bus platform_bus;
 };
 
 static struct vmm_devdrv_ctrl ddctrl;
@@ -123,7 +123,7 @@ static void deferred_probe_del(struct vmm_device *dev)
 	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
 }
 
-static int default_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
+static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 {
 	const struct vmm_devtree_nodeid *match;
 
@@ -139,7 +139,7 @@ static int default_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 	return 1;
 }
 
-static int default_bus_probe(struct vmm_device *dev)
+static int platform_bus_probe(struct vmm_device *dev)
 {
 	struct vmm_driver *drv;
 	const struct vmm_devtree_nodeid *match;
@@ -161,7 +161,7 @@ static int default_bus_probe(struct vmm_device *dev)
 	return VMM_OK;
 }
 
-static int default_bus_remove(struct vmm_device *dev)
+static int platform_bus_remove(struct vmm_device *dev)
 {
 	struct vmm_driver *drv;
 
@@ -454,7 +454,7 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 	}
 	dev->node = node;
 	dev->parent = parent;
-	dev->bus = &ddctrl.default_bus;
+	dev->bus = &ddctrl.platform_bus;
 	dev->release = default_device_release;
 	dev->priv = NULL;
 
@@ -1456,7 +1456,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 	}
 
 	if (!drv->bus) {
-		drv->bus = &ddctrl.default_bus;
+		drv->bus = &ddctrl.platform_bus;
 	}
 
 	return vmm_devdrv_bus_register_driver(drv->bus, drv);
@@ -1522,10 +1522,10 @@ int __init vmm_devdrv_init(void)
 	INIT_LIST_HEAD(&ddctrl.deferred_probe_list);
 	INIT_WORK(&ddctrl.deferred_probe_work, deferred_probe_work_func);
 
-	strcpy(ddctrl.default_bus.name, "default");
-	ddctrl.default_bus.match = default_bus_match;
-	ddctrl.default_bus.probe = default_bus_probe;
-	ddctrl.default_bus.remove = default_bus_remove;
+	strcpy(ddctrl.platform_bus.name, "platform");
+	ddctrl.platform_bus.match = platform_bus_match;
+	ddctrl.platform_bus.probe = platform_bus_probe;
+	ddctrl.platform_bus.remove = platform_bus_remove;
 
-	return vmm_devdrv_register_bus(&ddctrl.default_bus);
+	return vmm_devdrv_register_bus(&ddctrl.platform_bus);
 }
