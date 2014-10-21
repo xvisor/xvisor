@@ -26,6 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_cpumask.h>
 #include <vmm_devtree.h>
+#include <vmm_devdrv.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
@@ -58,6 +59,10 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool info\n");
 	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
+	vmm_cprintf(cdev, "   host bus_list\n");
+	vmm_cprintf(cdev, "   host bus_device_list <bus_name>\n");
+	vmm_cprintf(cdev, "   host class_list\n");
+	vmm_cprintf(cdev, "   host class_device_list <class_name>\n");
 }
 
 static void cmd_host_info(struct vmm_chardev *cdev)
@@ -151,6 +156,7 @@ static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
 
 		vmm_cprintf(cdev, "\n");
 	}
+
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "-------------------------\n");
 }
@@ -208,6 +214,7 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 	u32 free = vmm_host_ram_free_frame_count();
 	u32 total = vmm_host_ram_total_frame_count();
 	physical_addr_t base = vmm_host_ram_base();
+
 	if (sizeof(u64) == sizeof(physical_addr_t)) {
 		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
 	} else {
@@ -223,6 +230,7 @@ static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_ram_total_frame_count();
 	physical_addr_t base = vmm_host_ram_base();
+
 	vmm_cprintf(cdev, "0 : free\n");
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
@@ -249,6 +257,7 @@ static void cmd_host_vapool_info(struct vmm_chardev *cdev)
 	u32 free = vmm_host_vapool_free_page_count();
 	u32 total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
+
 	if (sizeof(u64) == sizeof(virtual_addr_t)) {
 		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
 	} else {
@@ -269,6 +278,7 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
+
 	vmm_cprintf(cdev, "0 : free\n");
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
@@ -288,6 +298,104 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 		}
 	}
 	vmm_cprintf(cdev, "\n");
+}
+
+static void cmd_host_bus_list(struct vmm_chardev *cdev)
+{
+	u32 num, dcount, count = vmm_devdrv_bus_count();
+	struct vmm_bus *b;
+
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-7s %-15s %-15s\n", 
+			  "Num#", "Bus Name", "Device Count");
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	for (num = 0; num < count; num++) {
+		b = vmm_devdrv_bus(num);
+		dcount = vmm_devdrv_bus_device_count(b);
+		vmm_cprintf(cdev, " %-7d %-15s %-15d\n", 
+				  num, b->name, dcount);
+	}
+	vmm_cprintf(cdev, "----------------------------------------\n");
+}
+
+static int cmd_host_bus_device_list(struct vmm_chardev *cdev,
+				    const char *bus_name)
+{
+	u32 num, count = vmm_devdrv_bus_count();
+	struct vmm_bus *b;
+	struct vmm_device *d;
+
+	b = vmm_devdrv_find_bus(bus_name);
+	if (!b) {
+		vmm_cprintf(cdev, "Failed to find %s bus\n", bus_name);
+		return VMM_ENOTAVAIL;
+	}
+	count = vmm_devdrv_bus_device_count(b);
+
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+	vmm_cprintf(cdev, " %-7s %-25s %-25s\n", 
+			  "Num#", "Device Name", "Parent Name");
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+	for (num = 0; num < count; num++) {
+		d = vmm_devdrv_bus_device(b, num);
+		vmm_cprintf(cdev, " %-7d %-25s %-25s\n", 
+			num, d->name, (d->parent) ? d->parent->name : "---");
+	}
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+
+	return VMM_OK;
+}
+
+static void cmd_host_class_list(struct vmm_chardev *cdev)
+{
+	u32 num, dcount, count = vmm_devdrv_class_count();
+	struct vmm_class *c;
+
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-7s %-15s %-15s\n", 
+			  "Num#", "Class Name", "Device Count");
+	vmm_cprintf(cdev, "----------------------------------------\n");
+	for (num = 0; num < count; num++) {
+		c = vmm_devdrv_class(num);
+		dcount = vmm_devdrv_class_device_count(c);
+		vmm_cprintf(cdev, " %-7d %-15s %-15d\n", 
+				  num, c->name, dcount);
+	}
+	vmm_cprintf(cdev, "----------------------------------------\n");
+}
+
+static int cmd_host_class_device_list(struct vmm_chardev *cdev,
+				      const char *class_name)
+{
+	u32 num, count = vmm_devdrv_class_count();
+	struct vmm_class *c;
+	struct vmm_device *d;
+
+	c = vmm_devdrv_find_class(class_name);
+	if (!c) {
+		vmm_cprintf(cdev, "Failed to find %s class\n", class_name);
+		return VMM_ENOTAVAIL;
+	}
+	count = vmm_devdrv_class_device_count(c);
+
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+	vmm_cprintf(cdev, " %-7s %-25s %-25s\n", 
+			  "Num#", "Device Name", "Parent Name");
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+	for (num = 0; num < count; num++) {
+		d = vmm_devdrv_class_device(c, num);
+		vmm_cprintf(cdev, " %-7d %-25s %-25s\n", 
+			num, d->name, (d->parent) ? d->parent->name : "---");
+	}
+	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev, "--------------------\n");
+
+	return VMM_OK;
 }
 
 static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
@@ -345,6 +453,18 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			cmd_host_vapool_bitmap(cdev, colcnt);
 			return VMM_OK;
 		}
+	} else if ((strcmp(argv[1], "bus_list") == 0) && (2 == argc)) {
+		cmd_host_bus_list(cdev);
+		return VMM_OK;
+	} else if ((strcmp(argv[1], "bus_device_list") == 0) && (3 == argc)) {
+		cmd_host_bus_device_list(cdev, argv[2]);
+		return VMM_OK;
+	} else if ((strcmp(argv[1], "class_list") == 0) && (2 == argc)) {
+		cmd_host_class_list(cdev);
+		return VMM_OK;
+	} else if ((strcmp(argv[1], "class_device_list") == 0) && (3 == argc)) {
+		cmd_host_class_device_list(cdev, argv[2]);
+		return VMM_OK;
 	}
 
 fail:
