@@ -84,12 +84,6 @@ typedef unsigned long blkcnt_t;
 
 #endif /* __KERNEL__ */
 
-#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
-typedef u64 dma_addr_t;
-#else
-typedef u32 dma_addr_t;
-#endif /* dma_addr_t */
-
 /*
  * Below are truly Linux-specific types that should never collide with
  * any application/library that wants linux/types.h.

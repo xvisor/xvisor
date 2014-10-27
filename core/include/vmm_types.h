@@ -50,4 +50,6 @@ typedef signed long long loff_t;
 
 #include <arch_types.h>
 
+typedef physical_addr_t dma_addr_t;
+
 #endif /* __VMM_TYPES_H__ */
