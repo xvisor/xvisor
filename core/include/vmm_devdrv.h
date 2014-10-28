@@ -39,6 +39,8 @@ struct vmm_classdev;
 struct vmm_bus;
 struct vmm_device;
 struct vmm_driver;
+struct vmm_iommu_ops;
+struct vmm_iommu_group;
 
 struct vmm_class {
 	/* Private fields (for device driver framework) */
@@ -58,6 +60,7 @@ struct vmm_bus {
 	struct dlist driver_list;
 	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
+	struct vmm_iommu_ops *iommu_ops;
 	int (*match) (struct vmm_device *dev, struct vmm_driver *drv);
 	int (*probe) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);
@@ -90,6 +93,7 @@ struct vmm_device {
 	struct vmm_device *parent;
 	struct vmm_class *class;
 	struct vmm_driver *driver;
+	struct vmm_iommu_group *iommu_group;
 	void *pins;
 	void (*release) (struct vmm_device *);
 	void *priv;
