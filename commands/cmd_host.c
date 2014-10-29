@@ -53,6 +53,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host help\n");
 	vmm_cprintf(cdev, "   host info\n");
 	vmm_cprintf(cdev, "   host cpu info\n");
+	vmm_cprintf(cdev, "   host cpu stats\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
 	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
