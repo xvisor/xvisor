@@ -198,6 +198,10 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 		return VMM_ENODEV;
 	}
 
+	/* Notify bus event listeners */
+	vmm_blocking_notifier_call(&bus->event_listeners,
+				   VMM_BUS_NOTIFY_BIND_DRIVER, dev);
+
 	/* If bus probe is available then device should
 	 * probe without failure
 	 */
@@ -227,6 +231,10 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 		}
 #endif
 		dev->driver = NULL;
+	} else {
+		/* Notify bus event listeners */
+		vmm_blocking_notifier_call(&bus->event_listeners,
+					   VMM_BUS_NOTIFY_BOUND_DRIVER, dev);
 	}
 
 	return rc;
@@ -242,6 +250,10 @@ static void __bus_remove_device_driver(struct vmm_bus *bus,
 	if (!dev->is_registered || !dev->driver) {
 		return;
 	}
+
+	/* Notify bus event listeners */
+	vmm_blocking_notifier_call(&bus->event_listeners,
+				   VMM_BUS_NOTIFY_UNBIND_DRIVER, dev);
 
 	if (bus->remove) {
 #if defined(CONFIG_VERBOSE_MODE)
@@ -263,6 +275,10 @@ static void __bus_remove_device_driver(struct vmm_bus *bus,
 		vmm_printf("devdrv: bus=\"%s\" device=\"%s\" "
 			   "remove error %d\n",
 			   bus->name, dev->name, rc);
+	} else {
+		/* Notify bus event listeners */
+		vmm_blocking_notifier_call(&bus->event_listeners,
+					   VMM_BUS_NOTIFY_UNBOUND_DRIVER, dev);
 	}
 
 	/* Purge all managed resources */
@@ -824,6 +840,7 @@ int vmm_devdrv_register_bus(struct vmm_bus *bus)
 	INIT_MUTEX(&bus->lock);
 	INIT_LIST_HEAD(&bus->device_list);
 	INIT_LIST_HEAD(&bus->driver_list);
+	BLOCKING_INIT_NOTIFIER_CHAIN(&bus->event_listeners);
 
 	list_add_tail(&bus->head, &ddctrl.bus_list);
 
@@ -989,6 +1006,10 @@ static int devdrv_bus_register_device(struct vmm_bus *bus,
 	list_add_tail(&dev->bus_head, &bus->device_list);
 	dev->is_registered = TRUE;
 
+	/* Notify bus event listeners */
+	vmm_blocking_notifier_call(&bus->event_listeners,
+				   VMM_BUS_NOTIFY_ADD_DEVICE, dev);
+
 	/* Bus probe this device */
 	__bus_probe_this_device(bus, dev);
 
@@ -1030,6 +1051,10 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 
 	/* Bus remove this device */
 	__bus_remove_this_device(bus, d);
+
+	/* Notify bus event listeners */
+	vmm_blocking_notifier_call(&bus->event_listeners,
+				   VMM_BUS_NOTIFY_DEL_DEVICE, d);
 
 	list_del(&d->bus_head);
 	d->is_registered = FALSE;
@@ -1315,6 +1340,26 @@ u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus)
 	vmm_mutex_unlock(&bus->lock);
 
 	return retval;
+}
+
+int vmm_bus_register_notifier(struct vmm_bus *bus,
+			      struct vmm_notifier_block *nb)
+{
+	if (!bus || !nb) {
+		return VMM_EINVALID;
+	}
+
+	return vmm_blocking_notifier_register(&bus->event_listeners, nb);
+}
+
+int vmm_bus_unregister_notifier(struct vmm_bus *bus,
+				struct vmm_notifier_block *nb)
+{
+	if (!bus || !nb) {
+		return VMM_EINVALID;
+	}
+
+	return vmm_blocking_notifier_unregister(&bus->event_listeners, nb);
 }
 
 void vmm_devdrv_initialize_device(struct vmm_device *dev)

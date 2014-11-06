@@ -29,6 +29,7 @@
 #include <vmm_devtree.h>
 #include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
+#include <vmm_notifier.h>
 #include <libs/list.h>
 #include <vmm_error.h>
 
@@ -58,6 +59,7 @@ struct vmm_bus {
 	struct vmm_mutex lock;
 	struct dlist device_list;
 	struct dlist driver_list;
+	struct vmm_blocking_notifier_chain event_listeners;
 	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_iommu_ops *iommu_ops;
@@ -227,6 +229,28 @@ struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index);
 
 /** Count available device drivers for a bus */
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus);
+
+/** Register a client for bus events */
+int vmm_bus_register_notifier(struct vmm_bus *bus,
+			      struct vmm_notifier_block *nb);
+
+/** Unregister a client for bus events */
+int vmm_bus_unregister_notifier(struct vmm_bus *bus,
+				struct vmm_notifier_block *nb);
+
+/* All 4 notifers below get called with the target struct device *
+ * as an argument. Note that those functions are likely to be called
+ * with the device lock held in the core, so be careful.
+ */
+#define VMM_BUS_NOTIFY_ADD_DEVICE	0x00000001 /* device added */
+#define VMM_BUS_NOTIFY_DEL_DEVICE	0x00000002 /* device removed */
+#define VMM_BUS_NOTIFY_BIND_DRIVER	0x00000003 /* driver about to be
+						      bound */
+#define VMM_BUS_NOTIFY_BOUND_DRIVER	0x00000004 /* driver bound to device */
+#define VMM_BUS_NOTIFY_UNBIND_DRIVER	0x00000005 /* driver about to be
+						      unbound */
+#define VMM_BUS_NOTIFY_UNBOUND_DRIVER	0x00000006 /* driver is unbound
+						      from the device */
 
 /** Initialize device */
 void vmm_devdrv_initialize_device(struct vmm_device *dev);
