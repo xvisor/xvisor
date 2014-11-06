@@ -24,6 +24,16 @@
 
 #define bus_register(bus)		vmm_devdrv_register_bus(bus)
 #define bus_unregister(bus)		vmm_devdrv_unregister_bus(bus)
+#define bus_register_notifier(bus, nb)	vmm_bus_register_notifier(bus, nb)
+#define bus_unregister_notifier(bus, nb) \
+					vmm_bus_unregister_notifier(bus, nb)
+
+#define BUS_NOTIFY_ADD_DEVICE		VMM_BUS_NOTIFY_ADD_DEVICE
+#define BUS_NOTIFY_DEL_DEVICE		VMM_BUS_NOTIFY_DEL_DEVICE
+#define BUS_NOTIFY_BIND_DRIVER		VMM_BUS_NOTIFY_BIND_DRIVER
+#define BUS_NOTIFY_BOUND_DRIVER		VMM_BUS_NOTIFY_BOUND_DRIVER
+#define BUS_NOTIFY_UNBIND_DRIVER	VMM_BUS_NOTIFY_UNBIND_DRIVER
+#define BUS_NOTIFY_UNBOUND_DRIVER	VMM_BUS_NOTIFY_UNBOUND_DRIVER
 
 #define get_device(dev)			vmm_devdrv_ref_device(dev)
 #define put_device(dev)			vmm_devdrv_free_device(dev)
@@ -104,8 +114,6 @@ static inline struct device *bus_find_device_by_name(struct bus_type *bus,
 
 }
 
-
-/* FIXME: This file is just a place holder in most cases. */
 /* interface for exporting device attributes */
 
 #endif /* _LINUX_DEVICE_H */
