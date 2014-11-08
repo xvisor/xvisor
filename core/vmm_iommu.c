@@ -305,6 +305,83 @@ int vmm_iommu_group_id(struct vmm_iommu_group *group)
 }
 VMM_EXPORT_SYMBOL(vmm_iommu_group_id);
 
+static int add_iommu_group(struct vmm_device *dev, void *data)
+{
+	struct vmm_iommu_ops *ops = data;
+
+	if (!ops->add_device)
+		return VMM_ENODEV;
+
+	WARN_ON(dev->iommu_group);
+
+	ops->add_device(dev);
+
+	return 0;
+}
+
+static int iommu_bus_notifier(struct vmm_notifier_block *nb,
+			      unsigned long action, void *data)
+{
+	struct vmm_device *dev = data;
+	struct vmm_iommu_ops *ops = dev->bus->iommu_ops;
+	struct vmm_iommu_group *group;
+	unsigned long group_action = 0;
+
+	/*
+	 * ADD/DEL call into iommu driver ops if provided, which may
+	 * result in ADD/DEL notifiers to group->notifier
+	 */
+	if (action == VMM_BUS_NOTIFY_ADD_DEVICE) {
+		if (ops->add_device)
+			return ops->add_device(dev);
+	} else if (action == VMM_BUS_NOTIFY_DEL_DEVICE) {
+		if (ops->remove_device && dev->iommu_group) {
+			ops->remove_device(dev);
+			return 0;
+		}
+	}
+
+	/*
+	 * Remaining BUS_NOTIFYs get filtered and republished to the
+	 * group, if anyone is listening
+	 */
+	group = vmm_iommu_group_get(dev);
+	if (!group)
+		return 0;
+
+	switch (action) {
+	case VMM_BUS_NOTIFY_BIND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_BIND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_BOUND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_BOUND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_UNBIND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBIND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_UNBOUND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBOUND_DRIVER;
+		break;
+	}
+
+	if (group_action)
+		vmm_blocking_notifier_call(&group->notifier,
+					   group_action, dev);
+
+	vmm_iommu_group_put(group);
+	return 0;
+}
+
+static struct vmm_notifier_block iommu_bus_nb = {
+	.notifier_call = iommu_bus_notifier,
+};
+
+static void iommu_bus_init(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
+{
+	vmm_devdrv_bus_register_notifier(bus, &iommu_bus_nb);
+	vmm_devdrv_bus_for_each_dev(bus, NULL, ops, add_iommu_group);
+}
+
 int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
 {
 	if (bus->iommu_ops != NULL)
@@ -313,7 +390,7 @@ int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
 	bus->iommu_ops = ops;
 
 	/* Do IOMMU specific setup for this bus-type */
-	/* FIXME: iommu_bus_init(bus, ops); */
+	iommu_bus_init(bus, ops);
 
 	return VMM_OK;
 }
