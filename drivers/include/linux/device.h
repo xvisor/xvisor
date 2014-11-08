@@ -24,9 +24,9 @@
 
 #define bus_register(bus)		vmm_devdrv_register_bus(bus)
 #define bus_unregister(bus)		vmm_devdrv_unregister_bus(bus)
-#define bus_register_notifier(bus, nb)	vmm_bus_register_notifier(bus, nb)
+#define bus_register_notifier(bus, nb)	vmm_devdrv_bus_register_notifier(bus, nb)
 #define bus_unregister_notifier(bus, nb) \
-					vmm_bus_unregister_notifier(bus, nb)
+					vmm_devdrv_bus_unregister_notifier(bus, nb)
 
 #define BUS_NOTIFY_ADD_DEVICE		VMM_BUS_NOTIFY_ADD_DEVICE
 #define BUS_NOTIFY_DEL_DEVICE		VMM_BUS_NOTIFY_DEL_DEVICE
@@ -97,22 +97,12 @@
 #define devm_kfree(dev, p)		vmm_devm_free(dev, p)
 #define devm_kstrdup(dev, s, gfp)	vmm_devm_strdup(dev, s)
 
-static inline struct device *bus_find_device(struct bus_type *bus,
-					struct device *start,
-					void *data,
-					int (*match) (struct device *, void *))
-{
-	return vmm_devdrv_bus_find_device(bus, data, match);
-
-}
-
-static inline struct device *bus_find_device_by_name(struct bus_type *bus,
-					struct device *start,
-					const char *name)
-{
-	return vmm_devdrv_bus_find_device_by_name(bus, name);
-
-}
+#define bus_find_device(bus, start, data, match)	\
+			vmm_devdrv_bus_find_device(bus, start, data, match)
+#define bus_find_device_by_name(bus, start, name)	\
+			vmm_devdrv_bus_find_device_by_name(bus, start, name)
+#define bus_for_each_device(bus, start, data, fn)	\
+			vmm_devdrv_bus_for_each_device(bus, start, data, fn)
 
 /* interface for exporting device attributes */
 

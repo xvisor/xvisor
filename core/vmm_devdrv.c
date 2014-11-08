@@ -1065,21 +1065,29 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 }
 
 struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
-			void *data, int (*match) (struct vmm_device *, void *))
+				struct vmm_device *start,
+				void *data,
+				int (*match) (struct vmm_device *, void *))
 {
-	bool found;
-	struct vmm_device *d;
+	bool found = FALSE;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_device *d = NULL;
 
 	if (!bus || !match) {
 		return NULL;
 	}
 
-	found = FALSE;
-	d = NULL;
-
 	vmm_mutex_lock(&bus->lock);
 
 	list_for_each_entry(d, &bus->device_list, bus_head) {
+		if (!start_found) {
+			if (start && start == d) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
 		if (match(d, data)) {
 			found = TRUE;
 			break;
@@ -1095,35 +1103,55 @@ struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
 	return d;
 }
 
-struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
-					              const char *dname)
+static int devdrv_name_match(struct vmm_device *dev, void *data)
 {
-	bool found;
-	struct vmm_device *d;
+	return (strcmp(dev->name, (const char*)data) == 0) ? 1 : 0;
+}
 
-	if (!bus || !dname) {
-		return NULL;
+struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
+						struct vmm_device *start,
+						const char *dname)
+{
+	return vmm_devdrv_bus_find_device(bus, start, (void *)dname,
+					  devdrv_name_match);
+}
+
+int vmm_devdrv_bus_for_each_dev(struct vmm_bus *bus,
+				struct vmm_device *start,
+				void *data,
+				int (*fn)(struct vmm_device *dev, void *data))
+{
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_device *d = NULL;
+
+	if (!bus || !fn) {
+		return VMM_EINVALID;
 	}
-
-	found = FALSE;
-	d = NULL;
+	if (start && start->bus != bus) {
+		return VMM_EINVALID;
+	}
 
 	vmm_mutex_lock(&bus->lock);
 
 	list_for_each_entry(d, &bus->device_list, bus_head) {
-		if (strcmp(d->name, dname) == 0) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == d) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(d, data);
+		if (rc) {
 			break;
 		}
 	}
 
 	vmm_mutex_unlock(&bus->lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return d;
+	return rc;
 }
 
 struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index)
@@ -1342,8 +1370,8 @@ u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus)
 	return retval;
 }
 
-int vmm_bus_register_notifier(struct vmm_bus *bus,
-			      struct vmm_notifier_block *nb)
+int vmm_devdrv_bus_register_notifier(struct vmm_bus *bus,
+				     struct vmm_notifier_block *nb)
 {
 	if (!bus || !nb) {
 		return VMM_EINVALID;
@@ -1352,8 +1380,8 @@ int vmm_bus_register_notifier(struct vmm_bus *bus,
 	return vmm_blocking_notifier_register(&bus->event_listeners, nb);
 }
 
-int vmm_bus_unregister_notifier(struct vmm_bus *bus,
-				struct vmm_notifier_block *nb)
+int vmm_devdrv_bus_unregister_notifier(struct vmm_bus *bus,
+					struct vmm_notifier_block *nb)
 {
 	if (!bus || !nb) {
 		return VMM_EINVALID;

@@ -200,11 +200,20 @@ u32 vmm_devdrv_bus_count(void);
 
 /** Find device on a bus */
 struct vmm_device *vmm_devdrv_bus_find_device(struct vmm_bus *bus,
-			void *data, int (*match) (struct vmm_device *, void *));
+				struct vmm_device *start,
+				void *data,
+				int (*match) (struct vmm_device *, void *));
 
 /** Find device on a bus by name */
 struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
-					              const char *dname);
+						struct vmm_device *start,
+						const char *dname);
+
+/** Iterate over each device of a bus */
+int vmm_devdrv_bus_for_each_dev(struct vmm_bus *bus,
+				struct vmm_device *start,
+				void *data,
+				int (*fn)(struct vmm_device *dev, void *data));
 
 /** Get device on a bus */
 struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index);
@@ -231,12 +240,12 @@ struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index);
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus);
 
 /** Register a client for bus events */
-int vmm_bus_register_notifier(struct vmm_bus *bus,
-			      struct vmm_notifier_block *nb);
+int vmm_devdrv_bus_register_notifier(struct vmm_bus *bus,
+				     struct vmm_notifier_block *nb);
 
 /** Unregister a client for bus events */
-int vmm_bus_unregister_notifier(struct vmm_bus *bus,
-				struct vmm_notifier_block *nb);
+int vmm_devdrv_bus_unregister_notifier(struct vmm_bus *bus,
+					struct vmm_notifier_block *nb);
 
 /* All 4 notifers below get called with the target struct device *
  * as an argument. Note that those functions are likely to be called
