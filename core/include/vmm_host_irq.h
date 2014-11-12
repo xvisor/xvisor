@@ -76,14 +76,14 @@ enum vmm_irq_states {
 
 /**
  * enum vmm_routed_irq_states
- * @VMM_ROUTED_IRQ_PENDING		- Routed interrupt is pending
- * @VMM_ROUTED_IRQ_ACTIVE		- Routed interrupt is active
- * @VMM_ROUTED_IRQ_MASKED		- Routed interrupt is masked
+ * @VMM_ROUTED_IRQ_STATE_PENDING	- Routed interrupt is pending
+ * @VMM_ROUTED_IRQ_STATE_ACTIVE		- Routed interrupt is active
+ * @VMM_ROUTED_IRQ_STATE_MASKED		- Routed interrupt is masked
  */
 enum vmm_routed_irq_states {
-	VMM_ROUTED_IRQ_PENDING		= (1 << 0),
-	VMM_ROUTED_IRQ_ACTIVE		= (1 << 1),
-	VMM_ROUTED_IRQ_MASKED		= (1 << 2),
+	VMM_ROUTED_IRQ_STATE_PENDING	= (1 << 0),
+	VMM_ROUTED_IRQ_STATE_ACTIVE	= (1 << 1),
+	VMM_ROUTED_IRQ_STATE_MASKED	= (1 << 2),
 };
 
 /**
