@@ -44,7 +44,7 @@ function run_or_die() {
 }
 
 function prepare_environment() {
-    run_or_die "sudo apt-get install ${PACKAGES}" "Building conducive environtment..."
+    run_or_die "sudo apt-get -y install ${PACKAGES}" "Building conducive environtment..."
 }
 
 function checkout_coreboot() {
