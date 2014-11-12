@@ -47,7 +47,8 @@
 #define GIC_DIST_ENABLE_CLEAR		0x180
 #define GIC_DIST_PENDING_SET		0x200
 #define GIC_DIST_PENDING_CLEAR		0x280
-#define GIC_DIST_ACTIVE_BIT		0x300
+#define GIC_DIST_ACTIVE_SET		0x300
+#define GIC_DIST_ACTIVE_CLEAR		0x380
 #define GIC_DIST_PRI			0x400
 #define GIC_DIST_TARGET			0x800
 #define GIC_DIST_CONFIG			0xc00
@@ -74,6 +75,22 @@ static struct gic_chip_data gic_data[GIC_MAX_NR];
 #define gic_read(addr)		vmm_readl((void *)(addr))
 #define gic_irq(gic, irq)	((irq)->num - (gic)->irq_start)
 
+static void gic_poke_irq(struct gic_chip_data *gic,
+			 struct vmm_host_irq *irq, u32 offset)
+{
+	u32 irq_no = gic_irq(gic, irq);
+	u32 mask = 1 << (irq_no % 32);
+	gic_write(mask, gic->dist_base + offset + (irq_no / 32) * 4);
+}
+
+static int gic_peek_irq(struct gic_chip_data *gic,
+			struct vmm_host_irq *irq, u32 offset)
+{
+	u32 irq_no = gic_irq(gic, irq);
+	u32 mask = 1 << (irq_no % 32);
+	return !!(gic_read(gic->dist_base + offset + (irq_no / 32) * 4) & mask);
+}
+
 static u32 gic_active_irq(u32 cpu_irq_nr)
 {
 	u32 ret;
@@ -88,6 +105,18 @@ static u32 gic_active_irq(u32 cpu_irq_nr)
 	return ret;
 }
 
+static void gic_mask_irq(struct vmm_host_irq *irq)
+{
+	gic_poke_irq(vmm_host_irq_get_chip_data(irq),
+		     irq, GIC_DIST_ENABLE_CLEAR);
+}
+
+static void gic_unmask_irq(struct vmm_host_irq *irq)
+{
+	gic_poke_irq(vmm_host_irq_get_chip_data(irq),
+		     irq, GIC_DIST_ENABLE_SET);
+}
+
 static void gic_eoi_irq(struct vmm_host_irq *irq)
 {
 	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
@@ -97,22 +126,6 @@ static void gic_eoi_irq(struct vmm_host_irq *irq)
 	if (gic->eoimode && !vmm_host_irq_is_routed(irq)) {
 		gic_write(irq_no, gic->cpu2_base + GIC_CPU2_DIR);
 	}
-}
-
-static void gic_mask_irq(struct vmm_host_irq *irq)
-{
-	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
-
-	gic_write(1 << (irq->num % 32), gic->dist_base +
-		  GIC_DIST_ENABLE_CLEAR + (gic_irq(gic, irq) / 32) * 4);
-}
-
-static void gic_unmask_irq(struct vmm_host_irq *irq)
-{
-	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
-
-	gic_write(1 << (irq->num % 32), gic->dist_base +
-		  GIC_DIST_ENABLE_SET + (gic_irq(gic, irq) / 32) * 4);
 }
 
 static int gic_set_type(struct vmm_host_irq *irq, u32 type)
@@ -203,6 +216,40 @@ static int gic_set_affinity(struct vmm_host_irq *irq,
 }
 #endif
 
+static u32 gic_irq_get_routed_state(struct vmm_host_irq *irq, u32 mask)
+{
+	u32 val = 0;
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+
+	if ((mask & VMM_ROUTED_IRQ_STATE_PENDING) &&
+	    gic_peek_irq(gic, irq, GIC_DIST_ENABLE_SET))
+		val |= VMM_ROUTED_IRQ_STATE_PENDING;
+	if ((mask & VMM_ROUTED_IRQ_STATE_ACTIVE) &&
+	    gic_peek_irq(gic, irq, GIC_DIST_ACTIVE_SET))
+		val |= VMM_ROUTED_IRQ_STATE_ACTIVE;
+	if ((mask & VMM_ROUTED_IRQ_STATE_MASKED) &&
+	    !gic_peek_irq(gic, irq, GIC_DIST_ENABLE_SET))
+		val |= VMM_ROUTED_IRQ_STATE_MASKED;
+
+	return val;
+}
+
+static void gic_irq_set_routed_state(struct vmm_host_irq *irq,
+				     u32 val, u32 mask)
+{
+	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(irq);
+
+	if (mask & VMM_ROUTED_IRQ_STATE_PENDING)
+		gic_poke_irq(gic, irq, (val & VMM_ROUTED_IRQ_STATE_PENDING) ?
+				GIC_DIST_ENABLE_SET : GIC_DIST_ENABLE_CLEAR);
+	if (mask & VMM_ROUTED_IRQ_STATE_ACTIVE)
+		gic_poke_irq(gic, irq, (val & VMM_ROUTED_IRQ_STATE_ACTIVE) ?
+				GIC_DIST_ACTIVE_SET : GIC_DIST_ACTIVE_CLEAR);
+	if (mask & VMM_ROUTED_IRQ_STATE_MASKED)
+		gic_poke_irq(gic, irq, (val & VMM_ROUTED_IRQ_STATE_MASKED) ?
+				GIC_DIST_ENABLE_CLEAR : GIC_DIST_ENABLE_SET);
+}
+
 static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
 {
 	struct gic_chip_data *gic = dev;
@@ -232,6 +279,8 @@ static struct vmm_host_irq_chip gic_chip = {
 	.irq_set_affinity	= gic_set_affinity,
 	.irq_raise		= gic_raise,
 #endif
+	.irq_get_routed_state	= gic_irq_get_routed_state,
+	.irq_set_routed_state	= gic_irq_set_routed_state,
 };
 
 static void __init gic_cascade_irq(u32 gic_nr, u32 irq)
