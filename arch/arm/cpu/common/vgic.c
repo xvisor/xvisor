@@ -1516,7 +1516,7 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 			goto fail;
 		}
 
-		rc = vmm_host_irq_mark_guest_routed(hirq);
+		rc = vmm_host_irq_mark_routed(hirq);
 		if (rc) {
 			vmm_printf("%s: Failed to mark host-irq %d as routed\n",
 				   __func__, hirq);
@@ -1545,7 +1545,7 @@ fail:
 
 		vmm_host_irq_unregister(hirq, s);
 
-		vmm_host_irq_unmark_guest_routed(hirq);
+		vmm_host_irq_unmark_routed(hirq);
 
 		VGIC_SET_HOST_IRQ(s, virq, UINT_MAX);
 
@@ -1572,7 +1572,7 @@ static int vgic_dist_emulator_remove(struct vmm_emudev *edev)
 
 		vmm_host_irq_unregister(hirq, s);
 
-		vmm_host_irq_unmark_guest_routed(hirq);
+		vmm_host_irq_unmark_routed(hirq);
 
 		VGIC_SET_HOST_IRQ(s, virq, UINT_MAX);
 

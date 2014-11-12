@@ -298,25 +298,63 @@ int vmm_host_irq_unmark_per_cpu(u32 hirq_num)
 	return VMM_OK;
 }
 
-int vmm_host_irq_mark_guest_routed(u32 hirq_num)
+int vmm_host_irq_mark_routed(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
 
 	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
 		return VMM_ENOTAVAIL;
 
-	irq->state |= VMM_IRQ_STATE_GUEST_ROUTED;
+	irq->state |= VMM_IRQ_STATE_ROUTED;
 	return VMM_OK;
 }
 
-int vmm_host_irq_unmark_guest_routed(u32 hirq_num)
+int vmm_host_irq_unmark_routed(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
 
 	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
 		return VMM_ENOTAVAIL;
 
-	irq->state &= ~VMM_IRQ_STATE_GUEST_ROUTED;
+	irq->state &= ~VMM_IRQ_STATE_ROUTED;
+	return VMM_OK;
+}
+
+int vmm_host_irq_get_routed_state(u32 hirq_num, u32 *val, u32 mask)
+{
+	struct vmm_host_irq *irq;
+	struct vmm_host_irq_chip *chip;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
+		return VMM_ENOTAVAIL;
+
+	if (NULL == (chip = vmm_host_irq_get_chip(irq)))
+		return VMM_ENOTAVAIL;
+
+	if (!chip->irq_get_routed_state)
+		return VMM_EINVALID;
+
+	*val = chip->irq_get_routed_state(irq, mask);
+
+	return VMM_OK;
+}
+
+int vmm_host_irq_set_routed_state(u32 hirq_num, u32 val, u32 mask)
+{
+	struct vmm_host_irq *irq;
+	struct vmm_host_irq_chip *chip;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
+		return VMM_ENOTAVAIL;
+
+	if (NULL == (chip = vmm_host_irq_get_chip(irq)))
+		return VMM_ENOTAVAIL;
+
+	if (!chip->irq_set_routed_state)
+		return VMM_EINVALID;
+
+	chip->irq_set_routed_state(irq, val, mask);
+
 	return VMM_OK;
 }
 

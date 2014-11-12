@@ -58,7 +58,7 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_PER_CPU		- Interrupt is per cpu
  * @VMM_IRQ_STATE_AFFINITY_SET		- Interrupt affinity was set
  * @VMM_IRQ_STATE_LEVEL			- Interrupt is level triggered
- * @VMM_IRQ_STATE_GUEST_ROUTED		- Interrupt is routed to some guest
+ * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  * @VMM_IRQ_STATE_INPROGRESS		- In progress state of the interrupt
@@ -68,10 +68,22 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_PER_CPU		= (1 << 11),
 	VMM_IRQ_STATE_AFFINITY_SET	= (1 << 12),
 	VMM_IRQ_STATE_LEVEL		= (1 << 13),
-	VMM_IRQ_STATE_GUEST_ROUTED	= (1 << 14),
+	VMM_IRQ_STATE_ROUTED		= (1 << 14),
 	VMM_IRQ_STATE_DISABLED		= (1 << 16),
 	VMM_IRQ_STATE_MASKED		= (1 << 17),
 	VMM_IRQ_STATE_INPROGRESS	= (1 << 18),
+};
+
+/**
+ * enum vmm_routed_irq_states
+ * @VMM_ROUTED_IRQ_PENDING		- Routed interrupt is pending
+ * @VMM_ROUTED_IRQ_ACTIVE		- Routed interrupt is active
+ * @VMM_ROUTED_IRQ_MASKED		- Routed interrupt is masked
+ */
+enum vmm_routed_irq_states {
+	VMM_ROUTED_IRQ_PENDING		= (1 << 0),
+	VMM_ROUTED_IRQ_ACTIVE		= (1 << 1),
+	VMM_ROUTED_IRQ_MASKED		= (1 << 2),
 };
 
 /**
@@ -98,14 +110,16 @@ struct vmm_host_irq_action {
 };
 
 /** Host IRQ Chip Abstraction
- * @irq_enable:		enable the interrupt (defaults to chip->unmask if NULL)
- * @irq_disable:	disable the interrupt (defaults to chip->mask if NULL)
- * @irq_ack:		start of a new interrupt
- * @irq_mask:		mask an interrupt source
- * @irq_unmask:		unmask an interrupt source
- * @irq_eoi:		end of interrupt
- * @irq_set_affinity:	set the CPU affinity on SMP machines
- * @irq_set_type:	set the flow type (VMM_IRQ_TYPE_LEVEL/etc.) of an IRQ
+ * @irq_enable:           enable the interrupt (defaults to chip->unmask if NULL)
+ * @irq_disable:          disable the interrupt (defaults to chip->mask if NULL)
+ * @irq_ack:              start of a new interrupt
+ * @irq_mask:             mask an interrupt source
+ * @irq_unmask:           unmask an interrupt source
+ * @irq_eoi:              end of interrupt
+ * @irq_set_affinity:     set the CPU affinity on SMP machines
+ * @irq_set_type:         set the flow type (VMM_IRQ_TYPE_LEVEL/etc.) of an IRQ
+ * @irq_get_routed_state: get the routed state of an IRQ
+ * @irq_set_routed_state: set the routed state of an IRQ
  */
 struct vmm_host_irq_chip {
 	const char *name;
@@ -122,6 +136,9 @@ struct vmm_host_irq_chip {
 	int  (*irq_set_type)(struct vmm_host_irq *irq, u32 flow_type);
 	void (*irq_raise)(struct vmm_host_irq *irq,
 			  const struct vmm_cpumask *dest);
+	u32  (*irq_get_routed_state)(struct vmm_host_irq *irq, u32 mask);
+	void (*irq_set_routed_state)(struct vmm_host_irq *irq,
+				     u32 val, u32 mask);
 };
 
 /** Host IRQ Abstraction */
@@ -261,9 +278,9 @@ static inline bool vmm_host_irq_is_level_type(struct vmm_host_irq *irq)
 }
 
 /** Check if a host irq is routed to some guest */
-static inline bool vmm_host_irq_is_guest_routed(struct vmm_host_irq *irq)
+static inline bool vmm_host_irq_is_routed(struct vmm_host_irq *irq)
 {
-	return (irq->state & VMM_IRQ_STATE_GUEST_ROUTED) ? TRUE : FALSE;
+	return (irq->state & VMM_IRQ_STATE_ROUTED) ? TRUE : FALSE;
 }
 
 /** Check if a host irq is disabled */
@@ -308,10 +325,16 @@ int vmm_host_irq_mark_per_cpu(u32 hirq_num);
 int vmm_host_irq_unmark_per_cpu(u32 hirq_num);
 
 /** Mark host irq as routed to some guest */
-int vmm_host_irq_mark_guest_routed(u32 hirq_num);
+int vmm_host_irq_mark_routed(u32 hirq_num);
 
 /** UnMark host irq as routed to some guest */
-int vmm_host_irq_unmark_guest_routed(u32 hirq_num);
+int vmm_host_irq_unmark_routed(u32 hirq_num);
+
+/** Get host irq routed state */
+int vmm_host_irq_get_routed_state(u32 hirq_num, u32 *val, u32 mask);
+
+/** Set/update host irq routed state */
+int vmm_host_irq_set_routed_state(u32 hirq_num, u32 val, u32 mask);
 
 /** Enable a host irq (by default all irqs are disabled) */
 int vmm_host_irq_enable(u32 hirq_num);
