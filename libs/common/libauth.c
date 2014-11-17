@@ -26,6 +26,11 @@
 #include <libs/vfs.h>
 #include <libs/stringlib.h>
 
+#ifdef CONFIG_LIBAUTH_DEFAULT_USER
+extern const char libs_common_libauth_passwd_data_start[];
+extern const unsigned long libs_common_libauth_passwd_data_size;
+#endif
+
 #ifdef CONFIG_LIBAUTH_USE_MD5_PASSWD
 #include <libs/md5.h>
 typedef u8 hash_digest_t[16];
@@ -41,34 +46,35 @@ typedef sha256_digest_t hash_digest_t;
 /* Current user */
 #define VFS_LOAD_BUF_SZ 256
 
-static int string_to_digest(char *digest_str, u8 *digest, u32 dlen)
+static int string_to_digest(const char *digest_str, size_t digest_str_len,
+			    u8 *digest, u32 dlen)
 {
 	int i, j;
 	u8 dval;
 
 	/* Convert to lower and validate */
-	for (i = 0; i < strlen(digest_str); i++) {
+	for (i = 0; i < digest_str_len; i++) {
 		if (!isalnum(digest_str[i])) {
 			return VMM_EFAIL;
 		}
 
 		if (isalpha(digest_str[i])) {
-			digest_str[i] = tolower(digest_str[i]);
-			if (digest_str[i] < 'a' || digest_str[i] > 'f') {
+			if ((tolower(digest_str[i]) < 'a') ||
+			    (tolower(digest_str[i]) > 'f')) {
 				return VMM_EFAIL;
 			}
 		}
 	}
 
-	for (i = 0, j = 0; i < strlen(digest_str); j++, i += 2) {
+	for (i = 0, j = 0; i < digest_str_len; j++, i += 2) {
 		dval = 0;
 		if (isalpha(digest_str[i])) {
-			dval = (((digest_str[i] - 'a') + 10) << 4);
+			dval = (((tolower(digest_str[i]) - 'a') + 10) << 4);
 		} else
 			dval = (digest_str[i] - '0') << 4;
 
 		if (isalpha(digest_str[i + 1])) {
-			dval |= ((digest_str[i + 1] - 'a') + 10);
+			dval |= ((tolower(digest_str[i + 1]) - 'a') + 10);
 		} else
 			dval |= (digest_str[i + 1] - '0');
 
@@ -102,7 +108,9 @@ static int process_auth_entry(char *auth_entry, const char *user,
 			}
 		} else {
 			if (found) {
-				return string_to_digest(auth_token, dst_hash, dst_len);
+				return string_to_digest(auth_token,
+						        strlen(auth_token),
+							dst_hash, dst_len);
 			}
 		}
 		centry++;
@@ -166,8 +174,8 @@ static int get_user_hash(const char *user, u8 *dst_hash, u32 dst_len)
 		     token = strtok_r(NULL, delim, &save)) {
 			tok_len = strlen(token);
 			if (*token != '#' && *token != '\n') {
-				if (process_auth_entry(token, user, dst_hash,
-						       dst_len) == VMM_OK)
+				if (process_auth_entry(token, user,
+						dst_hash, dst_len) == VMM_OK)
 					return VMM_OK;
 			}
 
@@ -213,7 +221,27 @@ int authenticate_user(const char *user, char *passwd)
 	calculate_hash(passwd, passwd_sig);
 
 	memset(match_against, 0 , sizeof(match_against));
-	if (get_user_hash(user, (u8 *)&match_against, sizeof(match_against)) == VMM_OK) {
+
+#if CONFIG_LIBAUTH_DEFAULT_USER
+	if (!strncmp(user, CONFIG_LIBAUTH_DEFAULT_USERNAME, strlen(user))) {
+		if (string_to_digest(libs_common_libauth_passwd_data_start,
+				     libs_common_libauth_passwd_data_size,
+				     (u8 *)&match_against,
+				     sizeof(match_against)) != VMM_OK)
+			return VMM_EFAIL;
+
+		for (i = 0; i < HASH_LEN; i++) {
+			if (match_against[i] != passwd_sig[i]) {
+				return VMM_EFAIL;
+			}
+		}
+
+		return VMM_OK;
+	}
+#endif
+
+	if (get_user_hash(user,
+		(u8 *)&match_against, sizeof(match_against)) == VMM_OK) {
 		for (i = 0; i < HASH_LEN; i++) {
 			if (match_against[i] != passwd_sig[i]) {
 				return VMM_EFAIL;

@@ -39,5 +39,25 @@ libs-objs-y+= common/radix-tree.o
 libs-objs-y+= common/buddy.o
 libs-objs-y+= common/mempool.o
 libs-objs-y+= common/libfdt.o
+
 libs-objs-$(CONFIG_LIBAUTH)+= common/libauth.o
+libs-objs-$(CONFIG_LIBAUTH_DEFAULT_USER)+= common/libauth_passwd.o
+
+ifdef CONFIG_LIBAUTH_DEFAULT_USER
+
+ifdef CONFIG_LIBAUTH_USE_MD5_PASSWD
+hash_bin:=md5sum
+endif
+ifdef CONFIG_LIBAUTH_USE_SHA256_PASSWD
+hash_bin:=sha256sum
+endif
+
+$(build_dir)/libs/common/libauth_passwd.data: $(CONFIG_FILE)
+	$(V)mkdir -p `dirname $@`
+	$(V)echo -n ${CONFIG_LIBAUTH_DEFAULT_PASSWD} | ${hash_bin} | awk '{ printf "%s", $$1 }' >> $@
+
+$(build_dir)/libauth_passwd.o: $(build_dir)/libauth_passwd.c
+	$(call compile_cc,$@,$<)
+
+endif
 
