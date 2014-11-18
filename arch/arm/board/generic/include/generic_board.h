@@ -25,11 +25,13 @@
 
 #include <vmm_limits.h>
 #include <vmm_devtree.h>
+#include <vmm_chardev.h>
 
 struct generic_board {
 	char name[VMM_FIELD_NAME_SIZE];
 	int (*early_init)(struct vmm_devtree_node *node);
 	int (*final_init)(struct vmm_devtree_node *node);
+	void (*print_info)(struct vmm_chardev *cdev);
 };
 
 /* declare nodeid table based initialization for generic board */

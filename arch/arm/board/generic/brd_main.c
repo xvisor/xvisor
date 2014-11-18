@@ -1,4 +1,10 @@
 /**
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * All rights reserved.
+ *
+ * Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+ * for board information implementation.
+ *
  * Copyright (c) 2013 Sukanto Ghosh.
  * All rights reserved.
  *
@@ -46,9 +52,29 @@ static const struct vmm_devtree_nodeid *generic_board_matches;
  * Print board information
  */
 
+static void generic_board_print_info(struct vmm_devtree_node *node,
+				    const struct vmm_devtree_nodeid *match,
+				    void *data)
+{
+	const struct generic_board *brd = match->data;
+	struct vmm_chardev *cdev = data;
+
+	if (!brd || !brd->print_info) {
+		return;
+	}
+
+	brd->print_info(cdev);
+}
+
+
 void arch_board_print_info(struct vmm_chardev *cdev)
 {
-	/* FIXME: To be implemented. */
+	if (generic_board_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     generic_board_matches,
+					     generic_board_print_info,
+					     cdev);
+	}
 }
 
 /*
