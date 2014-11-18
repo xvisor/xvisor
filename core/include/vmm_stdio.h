@@ -114,7 +114,7 @@ int vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 
 /** Print formatted string to default device */
-#define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__);
+#define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__)
 
 /** Panic & Print formatted message
  * Note: This function is less verbose so perfer vmm_panic().

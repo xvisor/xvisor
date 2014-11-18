@@ -433,7 +433,7 @@ static void __init init_bootcpu(void)
 
 #if defined(CONFIG_SMP)
 	/* Initialize inter-processor interrupts */
-	vmm_printf("Initialize Inter Processor Interrupts\n")
+	vmm_printf("Initialize Inter Processor Interrupts\n");
 	ret = vmm_smp_ipi_init();
 	if (ret) {
 		goto init_bootcpu_fail;
