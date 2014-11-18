@@ -2,6 +2,10 @@
  * Copyright (c) 2010 Anup Patel.
  * All rights reserved.
  *
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+ * to add region overlapping debug message.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -338,7 +342,8 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 }
 
 static bool is_region_overlapping(struct vmm_guest *guest,
-				  struct vmm_region *reg)
+				  struct vmm_region *reg,
+				  struct vmm_region **overlapping)
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
@@ -364,10 +369,14 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 		treg_start = treg->gphys_addr;
 		treg_end = treg->gphys_addr + treg->phys_size;
 		if ((treg_start <= reg_start) && (reg_start < treg_end)) {
+			if (overlapping)
+				*overlapping = treg;
 			ret = TRUE;
 			break;
 		}
 		if ((treg_start < reg_end) && (reg_end < treg_end)) {
+			if (overlapping)
+				*overlapping = treg;
 			ret = TRUE;
 			break;
 		}
@@ -375,6 +384,22 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 	vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
 
 	return ret;
+}
+
+static void region_overlap_message(const char *func,
+				   struct vmm_guest *guest,
+				   struct vmm_region *reg,
+				   struct vmm_region *reg_overlap)
+{
+	const physical_size_t reg_size = reg->hphys_addr + reg->phys_size;
+	const physical_size_t overlap_reg_size = reg_overlap->hphys_addr +
+		reg_overlap->phys_size;
+
+	vmm_printf("%s: Region for %s/%s (0x%08X - 0x%08X) overlaps with "
+		   "region %s/%s (0x%08X - 0x%08X)\n", func, guest->name,
+		   reg->node->name, reg->hphys_addr, reg_size,
+		   reg_overlap->aspace->guest->name, reg_overlap->node->name,
+		   reg_overlap->hphys_addr, overlap_reg_size);
 }
 
 static int region_add(struct vmm_guest *guest,
@@ -386,6 +411,7 @@ static int region_add(struct vmm_guest *guest,
 	irq_flags_t flags;
 	struct vmm_region *reg = NULL;
 	struct vmm_guest_aspace *aspace = &guest->aspace;
+	struct vmm_region *reg_overlap = NULL;
 
 	/* Sanity check on region node */
 	if (!is_region_node_valid(rnode)) {
@@ -506,10 +532,8 @@ static int region_add(struct vmm_guest *guest,
 	reg->devemu_priv = NULL;
 
 	/* Ensure region does not overlap other regions */
-	if (is_region_overlapping(guest, reg)) {
-		vmm_printf("%s: Region for %s/%s overlapping with "
-			   "a previous node\n", __func__, 
-			   guest->name, reg->node->name);
+	if (is_region_overlapping(guest, reg, &reg_overlap)) {
+		region_overlap_message(__func__, guest, reg, reg_overlap);
 		rc = VMM_EINVALID;
 		goto region_free_fail;
 	}
