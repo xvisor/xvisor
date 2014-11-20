@@ -2,6 +2,10 @@
 # Copyright (c) 2010 Anup Patel.
 # All rights reserved.
 #
+# Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+# Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+# to improve the device tree dependency generation.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
@@ -26,10 +30,11 @@ $(build_dir)/tools/dtc/dtc: $(CURDIR)/tools/dtc/Makefile
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/dtc O=$(build_dir)/tools/dtc
 
-$(build_dir)/%.dep: $(src_dir)/%.dts
+$(build_dir)/%.dep: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
-	$(V)echo "$(@:.dep=.S): $<" > $@
+	$(V)$(build_dir)/tools/dtc/dtc -d $@ -I dts -O dtb -o $(subst .dep,.dtb,$@) $<
+	$(V)rm -f $(subst .dep,.dtb,$@)
 
 $(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`

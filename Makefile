@@ -2,6 +2,10 @@
 # Copyright (c) 2010 Anup Patel.
 # All rights reserved.
 #
+# Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+# Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+# to improve the device tree dependency generation.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
@@ -262,6 +266,7 @@ deps-y+=$(commands-y:.o=.dep)
 deps-y+=$(daemons-y:.o=.dep)
 deps-y+=$(drivers-y:.o=.dep)
 deps-y+=$(emulators-y:.o=.dep)
+deps-y+=$(dtbs-y:.dtb=.dep)
 
 # Setup list of deps files for module objects
 deps-y+=$(core-m:.o=.dep)
