@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Originally from Jean-Christophe Dubois, and modified by
+ * Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
+ * to split device tree files between i.MX6-specific and Sabrelite-specific
+ * definitions, and add the Anatop definition.
+ * Inspired by the Linux Kernel 3.13.6 i.MX6 device tree file.
+ */
 
 / {
 	#address-cells = <1>;
@@ -50,9 +58,24 @@
 		};
 	};
 
-	memory {
-		device_type = "memory"; 
-		reg = <0x10000000 0x40000000>; /* 1 GB */
+        clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ckil {
+			compatible = "imx-ckil", "fixed-clock";
+			clock-frequency = <32768>;
+		};
+
+		ckih1 {
+			compatible = "imx-ckih1", "fixed-clock";
+			clock-frequency = <0>;
+		};
+
+		osc {
+			compatible = "imx-osc", "fixed-clock";
+			clock-frequency = <24000000>;
+		};
 	};
 
 	scu { /* Snoop Control Unit */
@@ -82,9 +105,31 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		ocram {
-			compatible = "mmio-sram";
-			reg = <0x00900000 0x40000>;
+		aips-bus@02000000 { /* AIPS1 */
+			compatible = "fsl,aips-bus", "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x02000000 0x100000>;
+			ranges;
+
+			anatop: anatop@020c8000 {
+				compatible = "fsl,imx6q-anatop", "syscon", "simple-bus";
+				reg = <0x020c8000 0x1000>;
+				interrupts = <49 54 127>;
+			};
+
+			gpc@020dc000 {
+				compatible = "fsl,imx6q-gpc";
+				reg = <0x020dc000 0x4000>;
+				interrupts = <89 90>;
+			};
+
+			clks: ccm@020c4000 {
+				compatible = "fsl,imx6q-ccm";
+				reg = <0x020c4000 0x4000>;
+				interrupts = <87 88>;
+				#clock-cells = <1>;
+			};
 		};
 
 		SERIAL1: uart1 {
@@ -142,7 +187,7 @@
 
 		gpt {
 			device_type = "timer";
-			compatible = "freescale,gpt-timer";
+			compatible = "fsl,imx6q-gpt";
 			reg = <0x02098000 0x4000>;
 			clock-frequency = <1000000>;
 			timer_num = <2>;

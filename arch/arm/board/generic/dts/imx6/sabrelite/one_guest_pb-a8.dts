@@ -1,7 +1,14 @@
+/*
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Originally from Jean-Christophe Dubois, and modified by
+ * Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
+ * to split device tree files between i.MX6-specific and Sabrelite-specific
+ * definitions.
+ */
 
 /dts-v1/;
 
-/include/ "../imx6q.dtsi"
+/include/ "sabrelite.dtsi"
 
 / {
 	vmm {
