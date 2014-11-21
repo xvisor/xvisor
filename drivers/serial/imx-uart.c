@@ -2,6 +2,10 @@
  * Copyright (c) 2013 Jean-Christophe Dubois.
  * All rights reserved.
  *
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+ * to allow a full UART initialization without the need of a bootloader.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -156,10 +160,14 @@ void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/* enable FIFO, set RX and TX trigger */
 	vmm_out_le32((void *)(base + S3C2410_UFCON), S3C2410_UFCON_DEFAULT);
 #else
-	/* disable all UCR2 related interrupts */
 	temp = vmm_readl((void *)(base + UCR2));
-	vmm_writel(temp & ~(UCR2_ATEN | UCR2_ESCI | UCR2_RTSEN),
-		   (void *)(base + UCR2));
+	/* disable all UCR2 related interrupts */
+	temp &= ~(UCR2_ATEN | UCR2_ESCI | UCR2_RTSEN);
+	/* Set to 8N1 */
+	temp = (temp & ~(UCR2_PREN | UCR2_STPB)) | UCR2_WS;
+	/* Ignore RTS */
+	temp |= UCR2_IRTS;
+	vmm_writel(temp, (void *)(base + UCR2));
 
 	/* disable all UCR3 related interrupts */
 	temp = vmm_readl((void *)(base + UCR3));
@@ -181,6 +189,11 @@ void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/* enable the UART and the receive interrupt */
 	temp = UCR1_RRDYEN | UCR1_UARTEN;
 	vmm_writel(temp, (void *)(base + UCR1));
+
+	/* Enable FIFOs */
+	temp = vmm_readl((void *)(base + UCR2));
+	vmm_writel(temp | UCR2_SRST | UCR2_RXEN | UCR2_TXEN,
+		   (void *)(base + UCR2));
 #endif
 }
 
