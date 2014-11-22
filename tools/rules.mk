@@ -4,7 +4,8 @@
 #
 # Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
 # Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
-# to improve the device tree dependency generation.
+# to improve the device tree dependency generation, and to port the Linux
+# device tree source preprocessing rule.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,22 +31,26 @@ $(build_dir)/tools/dtc/dtc: $(CURDIR)/tools/dtc/Makefile
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
 	$(V)$(MAKE) -C $(CURDIR)/tools/dtc O=$(build_dir)/tools/dtc
 
+dtsflags = $(cppflags) -nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-with-cpp
+
 $(build_dir)/%.dep: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
-	$(V)$(build_dir)/tools/dtc/dtc -d $@ -I dts -O dtb -o $(subst .dep,.dtb,$@) $<
-	$(V)rm -f $(subst .dep,.dtb,$@)
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -d $@ -I dts -O dtb -i `dirname $<` -o /dev/null
+	$(V)sed -i "s|/dev/null|$(subst .dep,.dtb,$@)|g" $@
+	$(V)sed -i "s|<stdin>|$<|g" $@
+	$(V)$(cc) $(dtsflags) -MT $(subst .dep,.dtb,$@) -MM $< >> $@
 
 $(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
-	$(V)$(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb -o $@ $<
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb -i `dirname $<` -o $@
 
 $(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 	$(V)echo '.section ".devtree"' > $@
-	$(V)$(build_dir)/tools/dtc/dtc -I dts -O asm $< >> $@
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -I dts -O asm -i `dirname $<` >> $@
 
 $(build_dir)/%.dep: $(src_dir)/%.data
 	$(V)mkdir -p `dirname $@`

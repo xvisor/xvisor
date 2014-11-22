@@ -387,8 +387,8 @@ $(build_dir)/%.xo: $(build_dir)/%.o
 
 # Include built-in and module objects dependency files
 # Dependency files should only be included after all Makefile rules
-$(deps-y): $(CONFIG_FILE)
--include $(deps-y)
+all-deps = $(if $(findstring config,$(MAKECMDGOALS)),,$(deps-y))
+-include $(all-deps)
 
 # Rule for "make clean"
 .PHONY: clean

@@ -8,7 +8,7 @@
 
 /dts-v1/;
 
-/include/ "sabrelite.dtsi"
+#include "sabrelite.dtsi"
 
 / {
 	vmm {

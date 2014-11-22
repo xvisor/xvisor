@@ -20,7 +20,7 @@
  * @brief Sabrelite-specific device tree definitions.
  */
 
-/include/ "../imx6q.dtsi"
+#include "../imx6q.dtsi"
 
 / {
 	#address-cells = <0x1>;
