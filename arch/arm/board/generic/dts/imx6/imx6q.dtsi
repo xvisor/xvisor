@@ -112,6 +112,18 @@
 			reg = <0x02000000 0x100000>;
 			ranges;
 
+			/* This must be declared before ECSPI controller
+			   definition, which are using it */
+			gpio3: gpio@020a4000 {
+				compatible = "fsl,imx6q-gpio", "fsl,imx35-gpio";
+				reg = <0x020a4000 0x4000>;
+				interrupts = <102 103>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+			};
+
 			anatop: anatop@020c8000 {
 				compatible = "fsl,imx6q-anatop", "syscon", "simple-bus";
 				reg = <0x020c8000 0x1000>;

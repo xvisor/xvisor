@@ -24,3 +24,4 @@
 drivers-objs-$(CONFIG_GPIOLIB)+= gpio/gpiolib.o
 drivers-objs-$(CONFIG_GPIO_GENERIC)+= gpio/gpio-generic.o
 drivers-objs-$(CONFIG_OF_GPIO)+= gpio/gpiolib-of.o
+drivers-objs-$(CONFIG_GPIO_MXC)+= gpio/gpio-mxc.o

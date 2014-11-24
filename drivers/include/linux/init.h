@@ -3,6 +3,7 @@
 
 #include <vmm_compiler.h>
 #include <arch_barrier.h>
+#include <vmm_smp.h>
 #include <vmm_params.h>
 
 #include <linux/types.h>
