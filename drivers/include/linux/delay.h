@@ -4,6 +4,11 @@
 #include <arch_delay.h>
 #include <vmm_delay.h>
 
+#ifndef MAX_UDELAY_MS
+# define MAX_UDELAY_MS	5
+#endif
+
+#define ndelay(x)	vmm_ndelay(x)
 #define udelay(x)	vmm_udelay(x)
 #define msleep(x)	vmm_msleep(x)
 #define mdelay(x)	vmm_mdelay(x)

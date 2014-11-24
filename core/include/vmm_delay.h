@@ -34,6 +34,9 @@ void vmm_msleep(unsigned long msecs);
 /** Sleep for some seconds */
 void vmm_ssleep(unsigned long secs);
 
+/** Emulate soft delay in-terms of nanoseconds */
+void vmm_ndelay(unsigned long nsecs);
+
 /** Emulate soft delay in-terms of microseconds */
 void vmm_udelay(unsigned long usecs);
 

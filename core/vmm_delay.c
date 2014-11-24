@@ -33,6 +33,7 @@
 
 static unsigned long loops_per_msec[CONFIG_CPU_COUNT];
 static unsigned long loops_per_usec[CONFIG_CPU_COUNT];
+static unsigned long loops_per_nsec[CONFIG_CPU_COUNT];
 
 static void nanosec_sleep(u64 nsecs)
 {
@@ -62,6 +63,18 @@ void vmm_msleep(unsigned long msecs)
 void vmm_ssleep(unsigned long secs)
 {
 	nanosec_sleep((u64)secs * 1000000000ULL);
+}
+
+void vmm_ndelay(unsigned long nsecs)
+{
+	unsigned long lpnsec;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	lpnsec = loops_per_nsec[vmm_smp_processor_id()];
+	arch_cpu_irq_restore(flags);
+
+	arch_delay_loop(nsecs * lpnsec);
 }
 
 void vmm_udelay(unsigned long usecs)
@@ -127,6 +140,7 @@ void vmm_delay_recaliberate(void)
 
 	nsecs = vmm_timer_timestamp() - tstamp;
 
+	loops_per_nsec[cpu] = udiv64(1000000ULL, nsecs);
 	loops_per_usec[cpu] = udiv64(1000ULL * 1000000ULL, nsecs);
 	loops_per_msec[cpu] = udiv64(1000000ULL * 1000000ULL, nsecs);
 
