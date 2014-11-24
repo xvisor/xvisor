@@ -29,5 +29,5 @@
 
 #define GFP_KERNEL		0x00000001
 #define GFP_ATOMIC		0x00000002
-
+#define GFP_DMA			0x00000004
 #endif

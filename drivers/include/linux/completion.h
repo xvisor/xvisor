@@ -16,9 +16,16 @@
 #define completion				vmm_completion
 
 #define init_completion(cmpl)			INIT_COMPLETION(cmpl)
-#define complete(cmpl)				vmm_completion_complete(cmpl)
 
-#define wait_for_completion(cmpl)		vmm_completion_wait(cmpl)
+static inline void complete(struct completion *x)
+{
+	vmm_completion_complete(x);
+}
+
+static inline int wait_for_completion(struct completion *x)
+{
+	return vmm_completion_wait(x);
+}
 
 /**
  * wait_for_completion_timeout: - waits for completion of a task (w/timeout)

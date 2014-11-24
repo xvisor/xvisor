@@ -13,6 +13,7 @@
 #include <linux/printk.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pm.h>
 
 #define bus_type			vmm_bus
 #define device_type			vmm_device_type
