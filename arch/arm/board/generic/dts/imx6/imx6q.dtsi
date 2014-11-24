@@ -112,8 +112,6 @@
 			reg = <0x02000000 0x100000>;
 			ranges;
 
-			/* This must be declared before ECSPI controller
-			   definition, which are using it */
 			gpio3: gpio@020a4000 {
 				compatible = "fsl,imx6q-gpio", "fsl,imx35-gpio";
 				reg = <0x020a4000 0x4000>;
@@ -142,69 +140,120 @@
 				interrupts = <87 88>;
 				#clock-cells = <1>;
 			};
-		};
 
-		SERIAL1: uart1 {
-			compatible = "freescale,imx-uart";
-			reg = <0x02020000 0x4000>;
-			clock-frequency = <3000000>;
-			interrupts = <58>;
-		};
+			spba-bus@02000000 {
+				#address-cells = <1>;
+				#size-cells = <1>;
 
-		SERIAL2: uart2 {
-			compatible = "freescale,imx-uart";
-			reg = <0x021e8000 0x4000>;
-			clock-frequency = <3000000>;
-			interrupts = <59>;
-		};
+				ecspi1: ecspi@02008000 {
+					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
+					reg = <0x02008000 0x4000>;
+					interrupts = <63>;
+					clocks = <&clks 112>, <&clks 112>;
+					clock-names = "ipg", "per";
+					status = "disabled";
+				};
 
-		SERIAL3: uart3 {
-			compatible = "freescale,imx-uart";
-			reg = <0x021ec000 0x4000>;
-			clock-frequency = <3000000>;
-			interrupts = <60>;
-		};
+				ecspi2: ecspi@0200c000 {
+					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
+					reg = <0x0200c000 0x4000>;
+					interrupts = <64>;
+					clocks = <&clks 113>, <&clks 113>;
+					clock-names = "ipg", "per";
+					status = "disabled";
+				};
 
-		SERIAL4: uart4 {
-			compatible = "freescale,imx-uart";
-			reg = <0x021f0000 0x4000>;
-			clock-frequency = <3000000>;
-			interrupts = <61>;
-		};
+				ecspi3: ecspi@02010000 {
+					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
+					reg = <0x02010000 0x4000>;
+					interrupts = <65>;
+					clocks = <&clks 114>, <&clks 114>;
+					clock-names = "ipg", "per";
+					status = "disabled";
+				};
 
-		SERIAL5: uart5 {
-			compatible = "freescale,imx-uart";
-			reg = <0x021f4000 0x4000>;
-			clock-frequency = <3000000>;
-			interrupts = <62>;
-		};
+				ecspi4: ecspi@02014000 {
+					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
+					reg = <0x02014000 0x4000>;
+					interrupts = <66>;
+					clocks = <&clks 115>, <&clks 115>;
+					clock-names = "ipg", "per";
+					status = "disabled";
+				};
 
-		epit1 {
-			device_type = "timer";
-			compatible = "freescale,epit-timer";
-			reg = <0x020d0000 0x4000>;
-			clock-frequency = <38999040>;
-			timer_num = <0>;
-			interrupts = <88>;
-		};
+				ecspi5: ecspi@02018000 {
+					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
+					reg = <0x02018000 0x4000>;
+					interrupts = <67>;
+					clocks = <&clks 116>, <&clks 116>;
+					clock-names = "ipg", "per";
+					status = "disabled";
+				};
+			};
 
-		epit2 {
-			device_type = "timer";
-			compatible = "freescale,epit-timer";
-			reg = <0x020d4000 0x4000>;
-			clock-frequency = <38999040>;
-			timer_num = <1>;
-			interrupts = <89>;
-		};
+			SERIAL1: uart1 {
+				compatible = "freescale,imx-uart";
+				reg = <0x02020000 0x4000>;
+				clock-frequency = <3000000>;
+				interrupts = <58>;
+			};
 
-		gpt {
-			device_type = "timer";
-			compatible = "fsl,imx6q-gpt";
-			reg = <0x02098000 0x4000>;
-			clock-frequency = <1000000>;
-			timer_num = <2>;
-			interrupts = <87>;
+			SERIAL2: uart2 {
+				compatible = "freescale,imx-uart";
+				reg = <0x021e8000 0x4000>;
+				clock-frequency = <3000000>;
+				interrupts = <59>;
+			};
+
+			SERIAL3: uart3 {
+				compatible = "freescale,imx-uart";
+				reg = <0x021ec000 0x4000>;
+				clock-frequency = <3000000>;
+				interrupts = <60>;
+			};
+
+			SERIAL4: uart4 {
+				compatible = "freescale,imx-uart";
+				reg = <0x021f0000 0x4000>;
+				clock-frequency = <3000000>;
+				interrupts = <61>;
+			};
+
+			SERIAL5: uart5 {
+				compatible = "freescale,imx-uart";
+				reg = <0x021f4000 0x4000>;
+				clock-frequency = <3000000>;
+				interrupts = <62>;
+			};
+
+			epit1 {
+				device_type = "timer";
+				compatible = "freescale,epit-timer";
+				reg = <0x020d0000 0x4000>;
+				clock-frequency = <38999040>;
+				timer_num = <0>;
+				interrupts = <88>;
+			};
+
+			epit2 {
+				device_type = "timer";
+				compatible = "freescale,epit-timer";
+				reg = <0x020d4000 0x4000>;
+				clock-frequency = <38999040>;
+				timer_num = <1>;
+				interrupts = <89>;
+			};
+
+			gpt {
+				device_type = "timer";
+				compatible = "fsl,imx6q-gpt";
+				reg = <0x02098000 0x4000>;
+				clock-frequency = <1000000>;
+				timer_num = <2>;
+				interrupts = <87>;
+			};
 		};
 	};
 };
+
 

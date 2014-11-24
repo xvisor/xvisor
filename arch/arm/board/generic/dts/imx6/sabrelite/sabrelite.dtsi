@@ -33,3 +33,22 @@
 		reg = <0x10000000 0x40000000>; /* 1 GB */
 	};
 };
+
+&ecspi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	fsl,spi-num-chipselects = <1>;
+	cs-gpios = <&gpio3 19 0>;
+	status = "okay";
+
+	/* This must be add to specify the SPI bus number, used by the flash
+	   driver. */
+	bus = <0>;
+
+	flash: m25p80@0 {
+		compatible = "sst25vf016b";
+		spi-max-frequency = <20000000>;
+		reg = <0>;
+	};
+};
