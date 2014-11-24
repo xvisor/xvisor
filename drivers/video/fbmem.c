@@ -706,7 +706,7 @@ struct fb_info *fb_find(const char *name)
 {
 	struct vmm_device *dev;
 
-	dev = vmm_devdrv_class_find_device(&fb_class, name);
+	dev = vmm_devdrv_class_find_device_by_name(&fb_class, name);
 	if (!dev) {
 		return NULL;
 	}

@@ -727,6 +727,39 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 }
 
 struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
+				void *data,
+				int (*match) (struct vmm_device *, void *))
+{
+	bool found;
+	struct vmm_device *d;
+
+	if (!cls || !match) {
+		return NULL;
+	}
+
+	found = FALSE;
+	d = NULL;
+
+	vmm_mutex_lock(&cls->lock);
+
+	list_for_each_entry(d, &cls->device_list, class_head) {
+		if (match(d, data)) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&cls->lock);
+
+	if (!found) {
+		return NULL;
+	}
+
+	return d;
+}
+
+struct vmm_device *vmm_devdrv_class_find_device_by_name(
+						struct vmm_class *cls,
 						const char *dname)
 {
 	bool found;

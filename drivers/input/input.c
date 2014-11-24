@@ -892,7 +892,7 @@ struct input_dev *input_find_device(const char *phys)
 {
 	struct vmm_device *dev;
 
-	dev = vmm_devdrv_class_find_device(&input_class, phys);
+	dev = vmm_devdrv_class_find_device_by_name(&input_class, phys);
 	if (!dev) {
 		return NULL;
 	}

@@ -180,7 +180,7 @@ struct vmm_netport *vmm_netport_find(const char *name)
 {
 	struct vmm_device *dev;
 
-	dev = vmm_devdrv_class_find_device(&netport_class, name);
+	dev = vmm_devdrv_class_find_device_by_name(&netport_class, name);
 	if (!dev) {
 		return NULL;
 	}

@@ -551,7 +551,7 @@ struct vmm_blockdev *vmm_blockdev_find(const char *name)
 {
 	struct vmm_device *dev;
 
-	dev = vmm_devdrv_class_find_device(&bdev_class, name);
+	dev = vmm_devdrv_class_find_device_by_name(&bdev_class, name);
 	if (!dev) {
 		return NULL;
 	}

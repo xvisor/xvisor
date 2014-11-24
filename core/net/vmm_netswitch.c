@@ -630,7 +630,7 @@ struct vmm_netswitch *vmm_netswitch_find(const char *name)
 {
 	struct vmm_device *dev;
 
-	dev = vmm_devdrv_class_find_device(&nsw_class, name);
+	dev = vmm_devdrv_class_find_device_by_name(&nsw_class, name);
 	if (!dev) {
 		return NULL;
 	}

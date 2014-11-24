@@ -174,8 +174,14 @@ struct vmm_class *vmm_devdrv_class(int index);
 /** Count available classes */
 u32 vmm_devdrv_class_count(void);
 
-/** Find device of a class by name */
+/** Find device of a class using match function */
 struct vmm_device *vmm_devdrv_class_find_device(struct vmm_class *cls,
+				void *data,
+				int (*match) (struct vmm_device *, void *));
+
+/** Find device of a class by name */
+struct vmm_device *vmm_devdrv_class_find_device_by_name(
+						struct vmm_class *cls,
 						const char *dname);
 
 /** Get device of a class */
