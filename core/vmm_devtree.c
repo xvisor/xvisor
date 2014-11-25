@@ -1941,7 +1941,7 @@ int __init vmm_devtree_init(void)
 	if (!nidtbl_sz) {
 		return VMM_OK;
 	}
-	nidtbl_cnt = nidtbl_sz / sizeof(*tnide);
+	nidtbl_cnt = udiv64(nidtbl_sz, sizeof(*tnide));
 	dtree_ctrl.nidtbl = vmm_zalloc(nidtbl_cnt * sizeof(*tnide));
 	if (!dtree_ctrl.nidtbl) {
 		return VMM_ENOMEM;
