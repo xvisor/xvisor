@@ -111,7 +111,7 @@ __modtbl struct vmm_module _var = {	\
 }
 
 #define __VMM_EXPORT_SYMBOL(sym,_type) \
-__symtbl struct vmm_symbol __##sym = { \
+__symtbl struct vmm_symbol __exported_##sym = { \
 	.name = #sym, \
 	.addr = (virtual_addr_t)&sym, \
 	.type = (_type), \
