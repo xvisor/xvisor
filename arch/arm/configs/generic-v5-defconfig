@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.4
-# Wed Apr 16 22:36:28 2014
+# Version: 0.2.5
+# Thu Nov 27 21:50:28 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -35,7 +35,6 @@ CONFIG_ARM32=y
 CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_HOST_IRQ_COUNT=1024
-# CONFIG_ARM_MMU_LPAE is not set
 CONFIG_ARM_MAX_DTB_SIZE=0x10000
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
@@ -51,11 +50,16 @@ CONFIG_BOARD_GENERIC=y
 #
 CONFIG_BOARD="generic"
 CONFIG_GENERIC_VERSATILE=y
+# CONFIG_ARCH_MXC is not set
 # CONFIG_DEFTERM_EARLY_PRINT is not set
-# CONFIG_VERSATILE_CLCD is not set
+CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
+# CONFIG_SABRELITE_CONFIG is not set
+# CONFIG_IMX_CPU is not set
+# CONFIG_IMX6Q_CLK is not set
+# CONFIG_IMX6Q_PM is not set
 
 #
 # Hypervisor Options
@@ -95,6 +99,8 @@ CONFIG_SCHEDALGO_PRR=y
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_IDLE_TSLICE_SECS=1
+CONFIG_IDLE_PERIOD_SECS=2
 
 #
 # Load Balancer Configuration
@@ -104,9 +110,18 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 #
 # Device Support
 #
+# CONFIG_IOMMU is not set
+
+#
+# Block Device Support
+#
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
+
+#
+# Networking Support
+#
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -219,7 +234,6 @@ CONFIG_MTERM_HISTORY_SIZE=10
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
-CONFIG_NET_STACK_LWIP=y
 
 #
 # Virtual Terminal Emulator Options
@@ -243,6 +257,11 @@ CONFIG_VFS=y
 # CONFIG_VFS_CPIO is not set
 CONFIG_VFS_EXT4=y
 CONFIG_VFS_FAT=y
+
+#
+# Cryptographic Options
+#
+# CONFIG_CRYPTO is not set
 
 #
 # Device Drivers
@@ -288,6 +307,11 @@ CONFIG_RTC_PL031=y
 # Block Drivers
 #
 CONFIG_BLOCK_RBD=y
+
+#
+# MTD drivers
+#
+# CONFIG_MTD is not set
 
 #
 # MMC/SD/SDIO drivers
@@ -369,6 +393,10 @@ CONFIG_COMMON_CLK_VERSATILE=y
 # CONFIG_POWER_SUPPLY is not set
 
 #
+# Power-off or Reset Drivers
+#
+
+#
 # Multifunction device drivers
 #
 # CONFIG_REALVIEW_CONFIG is not set
@@ -378,6 +406,21 @@ CONFIG_COMMON_CLK_VERSATILE=y
 # IDE Driver
 #
 # CONFIG_IDE is not set
+
+#
+# GPIO Device Support
+#
+# CONFIG_GPIOLIB is not set
+
+#
+# Pin Controller
+#
+# CONFIG_PINCTRL is not set
+
+#
+# SPI drivers
+#
+# CONFIG_SPI is not set
 
 #
 # Device Emulators
@@ -402,6 +445,8 @@ CONFIG_EMU_SYS_SP810=y
 CONFIG_EMU_PIC=y
 # CONFIG_EMU_PIC_GIC is not set
 CONFIG_EMU_PIC_PL190=y
+# CONFIG_EMU_PIC_I8259 is not set
+# CONFIG_EMU_PIC_LAPIC is not set
 
 #
 # Timer Emulators
@@ -409,6 +454,8 @@ CONFIG_EMU_PIC_PL190=y
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
 # CONFIG_EMU_TIMER_ARM_MPTIMER is not set
+# CONFIG_EMU_TIMER_INTEL_8254 is not set
+# CONFIG_EMU_TIMER_HPET is not set
 
 #
 # Cache Controller Emulators
@@ -419,6 +466,7 @@ CONFIG_EMU_TIMER_SP804=y
 # Miscellaneous Emulators
 #
 CONFIG_EMU_MISC_ZERO=y
+# CONFIG_EMU_MISC_FW_CFG is not set
 
 #
 # Network Interface Controller Emulators
@@ -446,6 +494,7 @@ CONFIG_EMU_DISPLAY_PL110=y
 CONFIG_EMU_INPUT=y
 CONFIG_EMU_INPUT_PS2=y
 CONFIG_EMU_INPUT_PL050=y
+# CONFIG_EMU_INPUT_I8042 is not set
 
 #
 # Serial Port Emulators
@@ -465,6 +514,7 @@ CONFIG_EMU_CONSOLE_VIRTIO=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+# CONFIG_EMU_RTC_MC146818 is not set
 
 #
 # GPIO Emulators

@@ -1,10 +1,9 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.4
-# Thu Feb 13 01:48:24 2014
+# Version: 0.2.5
+# Thu Nov 27 21:50:29 2014
 #
-# CONFIG_SMP is not set
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
 CONFIG_ARCH="arm"
@@ -13,9 +12,13 @@ CONFIG_ARCH="arm"
 # CONFIG_CPU_ARM11MP is not set
 CONFIG_CPU_CORTEX_A8=y
 # CONFIG_CPU_CORTEX_A9 is not set
+# CONFIG_CPU_CORTEX_A7 is not set
 # CONFIG_CPU_CORTEX_A15 is not set
+# CONFIG_CPU_GENERIC_V5 is not set
+# CONFIG_CPU_GENERIC_V6 is not set
+# CONFIG_CPU_GENERIC_V7 is not set
+# CONFIG_CPU_GENERIC_V7_VE is not set
 # CONFIG_CPU_GENERIC_V8 is not set
-CONFIG_CPU_COUNT=1
 # CONFIG_ARMV5 is not set
 # CONFIG_ARMV6 is not set
 # CONFIG_ARMV6K is not set
@@ -27,54 +30,45 @@ CONFIG_ARM32=y
 # CONFIG_ARM64 is not set
 
 #
-# ARM Options
+# ARM CPU Options
 #
+# CONFIG_SMP is not set
+CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=12
 CONFIG_HOST_IRQ_COUNT=1024
-# CONFIG_ARM_MMU_LPAE is not set
 CONFIG_ARM_MAX_DTB_SIZE=0xC000
 CONFIG_CPU="arm32"
 CONFIG_CPU_LE=y
 # CONFIG_CPU_BE is not set
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
-CONFIG_ARMV7A_SECUREX=y
 # CONFIG_ARM_ERRATA_430973 is not set
 # CONFIG_ARM_ERRATA_458693 is not set
 # CONFIG_ARM_ERRATA_460075 is not set
 # CONFIG_ARM_ERRATA_751472 is not set
 # CONFIG_ARM_ERRATA_754322 is not set
-# CONFIG_BOARD_VERSATILE is not set
-# CONFIG_BOARD_IMX25 is not set
-# CONFIG_BOARD_BCM2835 is not set
-# CONFIG_BOARD_IMX31 is not set
-# CONFIG_BOARD_REALVIEW is not set
 CONFIG_BOARD_OMAP3=y
-# CONFIG_BOARD_SUN4I is not set
-# CONFIG_BOARD_VEXPRESS is not set
 # CONFIG_BOARD_EXYNOS4 is not set
 # CONFIG_BOARD_GENERIC is not set
-CONFIG_BOARD="omap3"
 
 #
-# OMAP3 SOC Options
+# ARM Board Options
 #
+CONFIG_BOARD="omap3"
 CONFIG_OMAP3_CLKSRC_S32KT=y
 # CONFIG_OMAP3_CLKSRC_GPT is not set
 CONFIG_OMAP3_ONE_GUEST_PBA8_DTS=y
 # CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS is not set
 # CONFIG_OMAP3_TWO_GUEST_PBA8_DTS is not set
-# CONFIG_ARM_VIC is not set
-# CONFIG_ARM_GIC is not set
-# CONFIG_ARM_TIMER_SP804 is not set
-# CONFIG_ARM_TWD is not set
+# CONFIG_DEFTERM_EARLY_PRINT is not set
 # CONFIG_VERSATILE_CLCD is not set
 CONFIG_OMAP=y
 # CONFIG_SAMSUNG_MCT is not set
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
-# CONFIG_SUNXI is not set
-# CONFIG_FREESCALE_AVIC is not set
-# CONFIG_FREESCALE_EPIT is not set
+# CONFIG_SABRELITE_CONFIG is not set
+# CONFIG_IMX_CPU is not set
+# CONFIG_IMX6Q_CLK is not set
+# CONFIG_IMX6Q_PM is not set
 
 #
 # Hypervisor Options
@@ -104,7 +98,7 @@ CONFIG_WFI_TIMEOUT_SECS=10
 # Heap Configuration
 #
 CONFIG_HEAP_SIZE_MB=4
-CONFIG_HEAP_BUDDY=y
+CONFIG_DMA_HEAP_SIZE_KB=512
 
 #
 # Scheduler Configuration
@@ -114,6 +108,8 @@ CONFIG_SCHEDALGO_PRR=y
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
 CONFIG_TSLICE_MS=10
+CONFIG_IDLE_TSLICE_SECS=1
+CONFIG_IDLE_PERIOD_SECS=2
 
 #
 # Load Balancer Configuration
@@ -123,12 +119,22 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 #
 # Device Support
 #
+# CONFIG_IOMMU is not set
+
+#
+# Block Device Support
+#
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
+
+#
+# Networking Support
+#
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
+CONFIG_NET_BH_TIMEOUT_SECS=30
 
 #
 # Virtual IO Support
@@ -233,7 +239,6 @@ CONFIG_MTERM_HISTORY_SIZE=10
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
-CONFIG_NET_STACK_LWIP=y
 
 #
 # Virtual FileSystem Options
@@ -244,8 +249,32 @@ CONFIG_VFS_EXT4=y
 CONFIG_VFS_FAT=y
 
 #
+# Cryptographic Options
+#
+# CONFIG_CRYPTO is not set
+
+#
 # Device Drivers
 #
+
+#
+# Interrupt Controller Drivers
+#
+# CONFIG_ARM_VIC is not set
+# CONFIG_ARM_GIC is not set
+# CONFIG_VERSATILE_FPGA_IRQ is not set
+# CONFIG_MXC_AVIC is not set
+# CONFIG_BCM2835_INTC is not set
+# CONFIG_SUN4I_VIC is not set
+
+#
+# Clocksource Drivers
+#
+# CONFIG_ARM_TIMER_SP804 is not set
+# CONFIG_ARM_TWD is not set
+# CONFIG_MXC_EPIT is not set
+# CONFIG_BCM2835_TIMER is not set
+# CONFIG_SUN4I_TIMER is not set
 
 #
 # Serial Port Drivers
@@ -266,6 +295,11 @@ CONFIG_SERIAL_OMAP_UART=y
 # Block Drivers
 #
 CONFIG_BLOCK_RBD=y
+
+#
+# MTD drivers
+#
+# CONFIG_MTD is not set
 
 #
 # MMC/SD/SDIO drivers
@@ -304,6 +338,15 @@ CONFIG_BLOCK_RBD=y
 # CONFIG_COMMON_CLK is not set
 
 #
+# Power Supply Drivers
+#
+# CONFIG_POWER_SUPPLY is not set
+
+#
+# Power-off or Reset Drivers
+#
+
+#
 # Multifunction device drivers
 #
 # CONFIG_REALVIEW_CONFIG is not set
@@ -313,6 +356,21 @@ CONFIG_BLOCK_RBD=y
 # IDE Driver
 #
 # CONFIG_IDE is not set
+
+#
+# GPIO Device Support
+#
+# CONFIG_GPIOLIB is not set
+
+#
+# Pin Controller
+#
+# CONFIG_PINCTRL is not set
+
+#
+# SPI drivers
+#
+# CONFIG_SPI is not set
 
 #
 # Device Emulators
@@ -337,6 +395,8 @@ CONFIG_EMU_SYS_SP810=y
 CONFIG_EMU_PIC=y
 CONFIG_EMU_PIC_GIC=y
 # CONFIG_EMU_PIC_PL190 is not set
+# CONFIG_EMU_PIC_I8259 is not set
+# CONFIG_EMU_PIC_LAPIC is not set
 
 #
 # Timer Emulators
@@ -344,6 +404,8 @@ CONFIG_EMU_PIC_GIC=y
 CONFIG_EMU_TIMER=y
 CONFIG_EMU_TIMER_SP804=y
 CONFIG_EMU_TIMER_ARM_MPTIMER=y
+# CONFIG_EMU_TIMER_INTEL_8254 is not set
+# CONFIG_EMU_TIMER_HPET is not set
 
 #
 # Cache Controller Emulators
@@ -356,6 +418,7 @@ CONFIG_EMU_CACHE_L2X0=y
 CONFIG_EMU_MISC_ZERO=y
 # CONFIG_EMU_MISC_ARM11MPCORE is not set
 CONFIG_EMU_MISC_A9MPCORE=y
+# CONFIG_EMU_MISC_FW_CFG is not set
 
 #
 # Network Interface Controller Emulators
@@ -383,6 +446,7 @@ CONFIG_EMU_DISPLAY_PL110=y
 CONFIG_EMU_INPUT=y
 CONFIG_EMU_INPUT_PS2=y
 CONFIG_EMU_INPUT_PL050=y
+# CONFIG_EMU_INPUT_I8042 is not set
 
 #
 # Serial Port Emulators
@@ -402,12 +466,14 @@ CONFIG_EMU_CONSOLE_VIRTIO=y
 #
 CONFIG_EMU_RTC=y
 CONFIG_EMU_RTC_PL031=y
+# CONFIG_EMU_RTC_MC146818 is not set
 
 #
 # GPIO Emulators
 #
 CONFIG_EMU_GPIO=y
 CONFIG_EMU_GPIO_PL061=y
+# CONFIG_EMU_PCI is not set
 
 #
 # Tool Options

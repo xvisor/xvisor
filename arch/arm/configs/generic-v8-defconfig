@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.5
-# Wed Oct 29 17:47:08 2014
+# Thu Nov 27 21:50:29 2014
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -53,6 +53,7 @@ CONFIG_BOARD_GENERIC=y
 # ARM Board Options
 #
 CONFIG_BOARD="generic"
+# CONFIG_ARCH_MXC is not set
 # CONFIG_DEFTERM_EARLY_PRINT is not set
 CONFIG_ARM_SCU=y
 CONFIG_ARM_SMP_OPS=y
@@ -63,6 +64,10 @@ CONFIG_ARM_SMP_IPI=y
 # CONFIG_OMAP is not set
 # CONFIG_SAMSUNG_MCT is not set
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
+# CONFIG_SABRELITE_CONFIG is not set
+# CONFIG_IMX_CPU is not set
+# CONFIG_IMX6Q_CLK is not set
+# CONFIG_IMX6Q_PM is not set
 
 #
 # Hypervisor Options
@@ -116,9 +121,17 @@ CONFIG_LOADBAL_CRUDE=y
 #
 CONFIG_IOMMU=y
 CONFIG_IOMMU_MAX_GROUPS=256
+
+#
+# Block Device Support
+#
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
+
+#
+# Networking Support
+#
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -229,7 +242,6 @@ CONFIG_MTERM_HISTORY_SIZE=10
 # Network Stack Options
 #
 # CONFIG_NET_STACK is not set
-CONFIG_NET_STACK_LWIP=y
 
 #
 # Virtual FileSystem Options
@@ -290,6 +302,11 @@ CONFIG_RTC=y
 CONFIG_BLOCK_RBD=y
 
 #
+# MTD drivers
+#
+# CONFIG_MTD is not set
+
+#
 # MMC/SD/SDIO drivers
 #
 # CONFIG_MMC is not set
@@ -345,6 +362,10 @@ CONFIG_COMMON_CLK=y
 # CONFIG_POWER_SUPPLY is not set
 
 #
+# Power-off or Reset Drivers
+#
+
+#
 # Multifunction device drivers
 #
 # CONFIG_REALVIEW_CONFIG is not set
@@ -364,6 +385,11 @@ CONFIG_COMMON_CLK=y
 # Pin Controller
 #
 # CONFIG_PINCTRL is not set
+
+#
+# SPI drivers
+#
+# CONFIG_SPI is not set
 
 #
 # Device Emulators
