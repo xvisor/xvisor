@@ -16,30 +16,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
-# @author Anup Patel (anup@brainfault.org)
-# @brief config file for the MTD driver supported by xvisor.
+# @brief list of the MTD device objects
 # */
 
-menu "MTD drivers"
+drivers-objs-$(CONFIG_MTD_M25P80)+= mtd/devices/m25p80_mod.o
 
-config CONFIG_MTD
-        tristate "Memory Technology Device (MTD) support"
-        help
-          Memory Technology Devices are flash, RAM and similar chips, often
-          used for solid state file systems on embedded devices. This option
-          will provide the generic support for MTD drivers to register
-          themselves with the kernel and for potential users of MTD devices
-          to enumerate the devices which are present and obtain a handle on
-          them. It will also allow you to select individual drivers for
-          particular hardware and users of MTD devices. If unsure, say N.
+m25p80_mod-y += m25p80.o m25p80_chardev.o
+m25p80_mod-$(CONFIG_MTD_M25P80_BLOCKDEV) += m25p80_blockdev.o
 
+%/m25p80_mod.o: $(foreach obj,$(m25p80_mod-y),%/$(obj))
+	$(call merge_objs,$@,$^)
 
-if CONFIG_MTD
+%/m25p80_mod.dep: $(foreach dep,$(m25p80_mod-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
 
-source "drivers/mtd/devices/openconf.cfg"
-
-endif # CONFIG_MTD
-
-endmenu # MTD drivers
