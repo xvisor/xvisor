@@ -108,7 +108,7 @@ void imx_gpc_irq_mask(struct irq_data *d);
 void imx_gpc_irq_unmask(struct irq_data *d);
 int imx6q_set_lpm(enum mxc_cpu_pwr_mode mode);
 void imx6q_pm_set_ccm_base(void __iomem *base);
-void imx6q_clocks_dump(void);
+int imx6_command_setup(void);
 struct clk* imx_clk_get(enum mx6q_clks clkid);
 
 #endif

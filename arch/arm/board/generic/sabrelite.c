@@ -62,7 +62,14 @@ static int __init imx6_early_init(struct vmm_devtree_node *node)
 
 static int __init imx6_final_init(struct vmm_devtree_node *node)
 {
-	/* Nothing to do here. */
+	int rc;
+
+	/* Setup arch specific command fo IMX6 */
+	rc = imx6_command_setup();
+	if (rc) {
+		return rc;
+	}
+
 	return VMM_OK;
 }
 
