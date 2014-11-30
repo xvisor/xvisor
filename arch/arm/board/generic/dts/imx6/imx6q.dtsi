@@ -7,6 +7,8 @@
  * Inspired by the Linux Kernel 3.13.6 i.MX6 device tree file.
  */
 
+#include "imx6q-pinfunc.h"
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
@@ -139,6 +141,21 @@
 				reg = <0x020c4000 0x4000>;
 				interrupts = <87 88>;
 				#clock-cells = <1>;
+			};
+
+			iomuxc: iomuxc@020e0000 {
+				compatible = "fsl,imx6dl-iomuxc", "fsl,imx6q-iomuxc";
+				reg = <0x020e0000 0x4000>;
+
+				ecspi1 {
+					pinctrl_ecspi1_1: ecspi1grp-1 {
+						fsl,pins = <
+							MX6QDL_PAD_EIM_D17__ECSPI1_MISO 0x100b1
+							MX6QDL_PAD_EIM_D18__ECSPI1_MOSI 0x100b1
+							MX6QDL_PAD_EIM_D16__ECSPI1_SCLK 0x100b1
+						>;
+					};
+				};
 			};
 
 			spba-bus@02000000 {
