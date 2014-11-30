@@ -1655,6 +1655,21 @@ u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
 	return alen / sizeof(u32);
 }
 
+u32 vmm_devtree_is_available(struct vmm_devtree_node *node)
+{
+	const char *status = NULL;
+	u32 err;
+
+	err = vmm_devtree_string_index(node, "status", 0, &status);
+	if (err < 0)
+		return 1;
+
+	if (!strncmp("okay", status, err) || !strncmp("ok", status, err)) {
+		return 1;
+	}
+	return 0;
+}
+
 int vmm_devtree_regsize(struct vmm_devtree_node *node, 
 		        physical_size_t *size, int regset)
 {

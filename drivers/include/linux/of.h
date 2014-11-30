@@ -119,6 +119,9 @@ static inline struct property *of_find_property(const struct device_node *np,
 #define	of_device_is_compatible(device, name)		\
 		vmm_devtree_is_compatible(device, name)
 
+#define of_device_is_available(device)			\
+		vmm_devtree_is_available(device)
+
 #define of_match_node			vmm_devtree_match_node
 
 #define of_prop_next_u32		vmm_devtree_next_u32

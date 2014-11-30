@@ -561,6 +561,14 @@ int vmm_devtree_irq_get(struct vmm_devtree_node *node,
  */
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
 
+/** vmm_devtree_is_available - check if a device is available for use
+ *  @node: Node to check for availability
+ *
+ *  Returns 1 if the status property is absent or set to "okay" or "ok",
+ *  0 otherwise
+ */
+u32 vmm_devtree_is_available(struct vmm_devtree_node *node);
+
 /** Get physical size of device registers
  *  Note: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
