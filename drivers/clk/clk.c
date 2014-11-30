@@ -110,21 +110,31 @@ static void clk_enable_unlock(unsigned long flags)
 
 /***        debugfs support        ***/
 
+#if 0
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 
 static struct dentry *rootdir;
 static struct dentry *orphandir;
 static int inited = 0;
+#endif /* CONFIG_DEBUG_FS */
+#else
+#include <linux/seq_file.h>
+#endif /* 0 */
 
 static void clk_summary_show_one(struct seq_file *s, struct clk *c, int level)
 {
 	if (!c)
 		return;
 
+#if 0
 	seq_printf(s, "%*s%-*s %-11d %-12d %-10lu %-11lu",
 		   level * 3 + 1, "",
 		   30 - level * 3, c->name,
+#else
+	seq_printf(s, " %-30s %-11d %-12d %-10lu %-11lu",
+		   c->name,
+#endif
 		   c->enable_count, c->prepare_count, clk_get_rate(c),
 		   clk_get_accuracy(c));
 	seq_printf(s, "\n");
@@ -144,7 +154,11 @@ static void clk_summary_show_subtree(struct seq_file *s, struct clk *c,
 		clk_summary_show_subtree(s, child, level + 1);
 }
 
+#if 0
 static int clk_summary_show(struct seq_file *s, void *data)
+#else
+int clk_summary_show(struct seq_file *s, void *data)
+#endif
 {
 	struct clk *c;
 
@@ -163,8 +177,10 @@ static int clk_summary_show(struct seq_file *s, void *data)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(clk_summary_show);
 
 
+#if 0
 static int clk_summary_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, clk_summary_show, inode->i_private);
@@ -176,16 +192,30 @@ static const struct file_operations clk_summary_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+#endif /* 0 */
+
+static void clk_dump_indent(struct seq_file *s, int level)
+{
+	level++;
+	seq_printf(s, "\n");
+	while (level--)
+		seq_printf(s, "\t");
+}
 
 static void clk_dump_one(struct seq_file *s, struct clk *c, int level)
 {
 	if (!c)
 		return;
 
+	clk_dump_indent(s, level);
 	seq_printf(s, "\"%s\": { ", c->name);
+	clk_dump_indent(s, level+1);
 	seq_printf(s, "\"enable_count\": %d,", c->enable_count);
+	clk_dump_indent(s, level+1);
 	seq_printf(s, "\"prepare_count\": %d,", c->prepare_count);
-	seq_printf(s, "\"rate\": %lu", clk_get_rate(c));
+	clk_dump_indent(s, level+1);
+	seq_printf(s, "\"rate\": %lu,", clk_get_rate(c));
+	clk_dump_indent(s, level+1);
 	seq_printf(s, "\"accuracy\": %lu", clk_get_accuracy(c));
 }
 
@@ -203,10 +233,15 @@ static void clk_dump_subtree(struct seq_file *s, struct clk *c, int level)
 		clk_dump_subtree(s, child, level + 1);
 	}
 
+	clk_dump_indent(s, level);
 	seq_printf(s, "}");
 }
 
+#if 0
 static int clk_dump(struct seq_file *s, void *data)
+#else
+int clk_dump(struct seq_file *s, void *data)
+#endif
 {
 	struct clk *c;
 	bool first_node = true;
@@ -229,11 +264,13 @@ static int clk_dump(struct seq_file *s, void *data)
 
 	clk_prepare_unlock();
 
-	seq_printf(s, "}");
+	seq_printf(s, "\n}");
 	return 0;
 }
+EXPORT_SYMBOL_GPL(clk_dump);
 
 
+#if 0
 static int clk_dump_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, clk_dump, inode->i_private);

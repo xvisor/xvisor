@@ -103,6 +103,15 @@ int clk_notifier_register(struct clk *clk, struct vmm_notifier_block *nb);
 
 int clk_notifier_unregister(struct clk *clk, struct vmm_notifier_block *nb);
 
+long clk_get_accuracy(struct clk *clk);
+
+#else
+
+static inline long clk_get_accuracy(struct clk *clk)
+{
+	return VMM_ENOTSUPP;
+}
+
 #endif
 
 int clk_prepare(struct clk *clk);
@@ -181,4 +190,9 @@ struct clk *of_clk_get_by_name(struct vmm_devtree_node *np, const char *name)
 #endif
 
 const char *__clk_get_name(struct clk *clk);
+
+/* Xvisor specific clock APIs */
+int clk_dump(struct vmm_chardev *cdev, void *data);
+int clk_summary_show(struct vmm_chardev *cdev, void *data);
+
 #endif
