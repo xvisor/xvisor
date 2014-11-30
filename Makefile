@@ -386,9 +386,11 @@ $(build_dir)/%.xo: $(build_dir)/%.o
 	$(call copy_file,$@,$^)
 
 # Include built-in and module objects dependency files
-# Dependency files should only be included after all Makefile rules
-all-deps = $(if $(findstring config,$(MAKECMDGOALS)),,$(deps-y))
--include $(all-deps)
+# Dependency files should only be included after default Makefile rule
+# They should not be included for any "xxxconfig" or "xxxclean" rule
+all-deps-1 = $(if $(findstring config,$(MAKECMDGOALS)),,$(deps-y))
+all-deps-2 = $(if $(findstring clean,$(MAKECMDGOALS)),,$(all-deps-1))
+-include $(all-deps-2)
 
 # Rule for "make clean"
 .PHONY: clean
