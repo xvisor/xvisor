@@ -34,7 +34,7 @@
 #define DRV_NAME		"sunxi-pinctrl"
 #define DRV_VERSION		"1.02"
 
-#define MODULE_DESC		"Allwinner A10 emac network driver"
+#define MODULE_DESC		"Allwinner A10 pinctrl driver"
 #define MODULE_AUTHOR		"Pranav Sawargaonkar"
 #define MODULE_LICENSE		"GPL"
 #define MODULE_IPRIORITY	(2)
