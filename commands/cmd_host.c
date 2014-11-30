@@ -28,6 +28,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_extirq.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
@@ -55,6 +56,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host cpu info\n");
 	vmm_cprintf(cdev, "   host cpu stats\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
+	vmm_cprintf(cdev, "   host extirq stats\n");
 	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
 	vmm_cprintf(cdev, "   host vapool info\n");
@@ -208,6 +210,11 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "------------");
 	}
 	vmm_cprintf(cdev, "\n");
+}
+
+static void cmd_host_extirq_stats(struct vmm_chardev *cdev)
+{
+	vmm_host_extirq_debug_dump(cdev);
 }
 
 static void cmd_host_ram_info(struct vmm_chardev *cdev)
@@ -424,6 +431,11 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "stats") == 0) {
 			cmd_host_irq_stats(cdev);
+			return VMM_OK;
+		}
+	} else if ((strcmp(argv[1], "extirq") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "stats") == 0) {
+			cmd_host_extirq_stats(cdev);
 			return VMM_OK;
 		}
 	} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {

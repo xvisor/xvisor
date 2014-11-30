@@ -30,6 +30,7 @@
 #include <libs/list.h>
 #include <linux/of.h>
 
+struct vmm_chardev;
 struct vmm_host_extirq_group;
 
 /**
@@ -95,6 +96,8 @@ int vmm_host_extirq_create_mapping(struct vmm_host_extirq_group *group,
 				   unsigned int	irq_num);
 
 void vmm_host_extirq_dispose_mapping(unsigned int irq_num);
+
+void vmm_host_extirq_debug_dump(struct vmm_chardev *cdev);
 
 /**
  * vmm_host_extirq_add() - Allocate and register a new extended IRQ group.

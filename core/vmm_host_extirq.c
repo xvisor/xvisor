@@ -72,35 +72,35 @@ int vmm_host_extirq_find_mapping(struct vmm_host_extirq_group *group,
 	return group->base + offset;
 }
 
-void vmm_host_extirq_debug_dump(void)
+void vmm_host_extirq_debug_dump(struct vmm_chardev *cdev)
 {
 	int idx = 0;
 	struct vmm_host_irq *irq = NULL;
 	struct vmm_host_extirq_group *group = NULL;
 
-	vmm_printf("%d extended IRQs:\n", extirqctrl.count);
-	vmm_printf("  BITMAP:\n");
+	vmm_cprintf(cdev, "%d extended IRQs\n", extirqctrl.count);
+	vmm_cprintf(cdev, "  BITMAP:\n");
 	for (idx = 0; idx < BITS_TO_LONGS(extirqctrl.count); ++idx) {
 		if (0 == (idx % 4)) {
-			vmm_printf("\n    %d:", idx);
+			vmm_cprintf(cdev, "\n    %d:", idx);
 		}
-		vmm_printf(" 0x%x", extirqctrl.bitmap[idx]);
+		vmm_cprintf(cdev, " 0x%x", extirqctrl.bitmap[idx]);
 	}
-	vmm_printf("\n");
+	vmm_cprintf(cdev, "\n");
 
 	list_for_each_entry(group, &extirqctrl.groups, head) {
-		vmm_printf("  Group from IRQ %d to %d:\n", group->base,
-			   group->end);
+		vmm_cprintf(cdev, "  Group from IRQ %d to %d:\n", group->base,
+				  group->end);
 		for (idx = group->base; idx < group->end; ++idx) {
 			irq = extirqctrl.irqs[idx - CONFIG_HOST_IRQ_COUNT];
 			if (!irq)
 				continue;
 			if (idx != irq->num)
-				vmm_printf("WARNING: IRQ %d not correctly "
-					   "set\n");
-			vmm_printf("    IRQ %d mapped, name: %s, chip: %s\n",
-				   idx, irq->name,
-				   irq->chip ? irq->chip->name : "None");
+				vmm_cprintf(cdev, "WARNING: IRQ %d "
+					    "not correctly set\n");
+			vmm_cprintf(cdev, "    IRQ %d mapped, name: %s, "
+				    "chip: %s\n", idx, irq->name,
+				    irq->chip ? irq->chip->name : "None");
 		}
 	}
 }
