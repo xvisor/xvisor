@@ -115,7 +115,7 @@ struct vmm_driver {
 };
 
 /** Set driver data in device */
-static inline void *vmm_devdrv_get_data(struct vmm_device *dev)
+static inline void *vmm_devdrv_get_data(const struct vmm_device *dev)
 {
 	return (dev) ? dev->priv : NULL;
 }
