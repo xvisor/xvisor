@@ -132,6 +132,10 @@ void __attribute__ ((section(".entry")))
 			*l2_tte = 0x0;
 			*l2_tte |= (((page_addr - map_start) + pa_start) &
 				    TTBL_L2TBL_TTE_BASE12_MASK);
+			/*
+			 * When JTAG debugging is disable, set writable page to
+			 * TTBL_L2TBL_TTE_TYPE_SMALL_XN
+			 */
 			*l2_tte |= TTBL_L2TBL_TTE_TYPE_SMALL_X;
 			*l2_tte |= (0x0 << TTBL_L2TBL_TTE_STEX_SHIFT) &
 				    TTBL_L2TBL_TTE_STEX_MASK;
@@ -189,15 +193,24 @@ void __attribute__ ((section(".entry")))
 #define SECTION_ADDR_START(SECTION)	(virtual_addr_t)&SECTION_START(SECTION)
 #define SECTION_ADDR_END(SECTION)	(virtual_addr_t)&SECTION_END(SECTION)
 
-#define DECLARE_SECTION(SECTION)					\
+#define DECLARE_EXTERN_SECTION(SECTION)					\
 	extern virtual_addr_t SECTION_START(SECTION);			\
 	extern virtual_addr_t SECTION_END(SECTION)
 
-DECLARE_SECTION(text);
-DECLARE_SECTION(cpuinit);
-DECLARE_SECTION(spinlock);
-DECLARE_SECTION(init);
-DECLARE_SECTION(rodata);
+DECLARE_EXTERN_SECTION(text);
+DECLARE_EXTERN_SECTION(cpuinit);
+DECLARE_EXTERN_SECTION(spinlock);
+DECLARE_EXTERN_SECTION(init);
+DECLARE_EXTERN_SECTION(initdata);
+DECLARE_EXTERN_SECTION(rodata);
+DECLARE_EXTERN_SECTION(data);
+DECLARE_EXTERN_SECTION(percpu);
+DECLARE_EXTERN_SECTION(bss);
+DECLARE_EXTERN_SECTION(svc_stack);
+DECLARE_EXTERN_SECTION(abt_stack);
+DECLARE_EXTERN_SECTION(und_stack);
+DECLARE_EXTERN_SECTION(irq_stack);
+DECLARE_EXTERN_SECTION(fiq_stack);
 
 #define SETUP_RO_SECTION(ENTRY, SECTION)				\
 	__setup_initial_ttbl(&(ENTRY),					\
