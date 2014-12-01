@@ -37,6 +37,7 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
+#include <vmm_compiler.h>
 
 /*
  * An indirect pointer (root->rnode pointing to a radix_tree_node, rather
