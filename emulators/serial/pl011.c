@@ -185,7 +185,7 @@ static int pl011_reg_write(struct pl011_state *s, u32 offset,
 	int rc = VMM_OK;
 	bool set_irq = FALSE;
 	bool recv_char = FALSE;
-	u32 level, enabled;
+	u32 level = 0, enabled = 0;
 
 	vmm_spin_lock(&s->lock);
 

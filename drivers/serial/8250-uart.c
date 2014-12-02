@@ -214,7 +214,7 @@ static vmm_irq_return_t uart_8250_irq_handler(int irq_no, void *dev)
 
 static u8 uart_8250_getc_sleepable(struct uart_8250_port *port)
 {
-	u8 ch;
+	u8 ch = 0;
 	bool avail = FALSE;
 	irq_flags_t flags;
 	while (!avail) {

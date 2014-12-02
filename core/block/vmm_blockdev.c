@@ -246,7 +246,7 @@ u64 vmm_blockdev_rw(struct vmm_blockdev *bdev,
 			enum vmm_request_type type,
 			u8 *buf, u64 off, u64 len)
 {
-	u8 *tbuf;
+	u8 *tbuf = NULL;
 	u64 tmp, first_lba, first_off, first_len;
 	u64 middle_lba, middle_len;
 	u64 last_lba, last_len;

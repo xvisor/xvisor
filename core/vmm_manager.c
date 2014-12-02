@@ -756,7 +756,7 @@ int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
 				   int (*iter)(struct vmm_vcpu *, void *), 
 				   void *priv)
 {
-	int rc;
+	int rc = VMM_OK;
 	irq_flags_t flags;
 	struct vmm_vcpu *vcpu;
 

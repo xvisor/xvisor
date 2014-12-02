@@ -490,7 +490,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 {
 	u32 alarmno, tickno;
 	struct rtc_time rtc_tm;
-	int ret, tmp, rc;
+	int ret = VMM_OK, tmp, rc;
 
 	/* find the IRQs */
 

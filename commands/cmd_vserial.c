@@ -228,7 +228,7 @@ static void cmd_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
 static int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 {
 	int rc = VMM_OK;
-	u32 tmp, ecount, eattrib[2], eacount;
+	u32 tmp, ecount = 0, eattrib[2], eacount;
 	bool eactive = FALSE;
 	char ecmd[VSERIAL_ESCMD_SIZE], ch;
 	struct vmm_vserial *vser = vmm_vserial_find(name);

@@ -425,15 +425,15 @@ int input_scancode_to_scalar(const struct input_keymap_entry *ke,
 {
 	switch (ke->len) {
 	case 1:
-		*scancode = *((u8 *)ke->scancode);
+		*scancode = (unsigned int)(*((u8 *)ke->scancode));
 		break;
 
 	case 2:
-		*scancode = *((u16 *)ke->scancode);
+		*scancode = (unsigned int)(*((u16 *)ke->scancode));
 		break;
 
 	case 4:
-		*scancode = *((u32 *)ke->scancode);
+		*scancode = (unsigned int)(*((u32 *)ke->scancode));
 		break;
 
 	default:

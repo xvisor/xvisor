@@ -821,7 +821,7 @@ int buddy_mem_reserve(struct buddy_allocator *ba,
 		      unsigned long addr,
 		      unsigned long size)
 {
-	struct buddy_area *a, *b;
+	struct buddy_area *a = NULL, *b;
 	unsigned long bin, tsz;
 
 	/* Sanity checks */

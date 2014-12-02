@@ -478,7 +478,7 @@ char *vmm_cgets(struct vmm_chardev *cdev, char *s, int maxwidth,
 	char ch, ch1;
 	bool add_ch, del_ch, to_left, to_right, to_start, to_end;
 	u32 ite, pos = 0, count = 0;
-	int prev, hist_cur;
+	int prev, hist_cur = 0;
 	if (!s) {
 		return NULL;
 	}

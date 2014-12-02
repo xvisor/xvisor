@@ -161,7 +161,7 @@ static int netswitch_bh_ring_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
 				     struct vmm_netport_xfer *xfer)
 {
 	u32 try, index;
-	unsigned long produce;
+	unsigned long produce = 0;
 
 	try = 10;
 	while (try && !netswitch_bh_ring_produceop(&nbp->produce,

@@ -84,7 +84,7 @@ static unsigned long psci_vcpu_on(struct vmm_vcpu *source_vcpu,
 	unsigned long context_id;
 	unsigned long mpidr;
 	unsigned long target_pc;
-	struct vmm_vcpu *vcpu = NULL, *tmp;
+	struct vmm_vcpu *vcpu = NULL, *tmp = NULL;
 
 	cpu_id = emulate_psci_get_reg(source_vcpu, regs, 1);
 	if (emulate_psci_is_32bit(source_vcpu, regs)) {
