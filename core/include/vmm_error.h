@@ -57,6 +57,7 @@
 #define VMM_EROFS		-30	/* Read-only file system */
 #define VMM_EBADMSG		-31	/* Not a data message */
 #define VMM_EUCLEAN		-32	/* Structure needs cleaning */
+#define VMM_ENOTSUPP		-33
 
 #define VMM_MAX_ERRNO		4095
 
