@@ -107,6 +107,7 @@ targets-y+=$(build_dir)/system.map
 # Setup compilation environment
 cpp=$(CROSS_COMPILE)cpp
 cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
+cppflags+=-include $(core_dir)/include/vmm_openconf.h
 cppflags+=-DCONFIG_MAJOR=$(MAJOR)
 cppflags+=-DCONFIG_MINOR=$(MINOR)
 cppflags+=-DCONFIG_RELEASE=$(RELEASE)
