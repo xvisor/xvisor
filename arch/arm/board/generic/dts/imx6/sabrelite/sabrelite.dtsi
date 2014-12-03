@@ -52,3 +52,9 @@
 		reg = <0>;
 	};
 };
+
+&pwm4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm4>;
+	status = "okay";
+};
