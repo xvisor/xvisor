@@ -33,6 +33,8 @@
 #define writew				vmm_writew
 #define readl				vmm_readl
 #define writel				vmm_writel
+#define readl_relaxed			vmm_readl
+#define writel_relaxed			vmm_writel
 
 #define	readsl				vmm_readsl
 #define	readsw				vmm_readsw

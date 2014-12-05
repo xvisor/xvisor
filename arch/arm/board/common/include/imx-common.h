@@ -21,8 +21,6 @@
 #include <linux/io.h>
 #include <linux/interrupt.h>
 
-#define readl_relaxed	readl
-#define writel_relaxed	writel
 #define __raw_readl	readl
 #define __raw_writel	writel
 
