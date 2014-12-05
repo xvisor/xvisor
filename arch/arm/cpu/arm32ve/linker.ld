@@ -126,6 +126,7 @@ SECTIONS
 		PROVIDE(_data_start = .);
 		*(.data)
 		*(.readmostly.data)
+		*(*.data)
 		. = ALIGN(4);
 
 		PROVIDE(_modtbl_start = .);

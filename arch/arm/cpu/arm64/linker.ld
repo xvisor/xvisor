@@ -128,6 +128,7 @@ SECTIONS
 		*(.data)
 		*(.data.*)
 		*(.readmostly.data)
+		*(*.data)
 		. = ALIGN(8);
 
 		PROVIDE(_modtbl_start = .);
