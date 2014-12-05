@@ -77,4 +77,11 @@
 /* SMP Write Memory barrier */
 #define arch_smp_wmb()			dmb()
 
+/* CPU relax for busy loop */
+#if defined(CONFIG_ARMV6) || defined(CONFIG_ARM_ERRATA_754327)
+#define arch_cpu_relax()		arch_smp_mb()
+#else
+#define arch_cpu_relax()		asm volatile ("" : : : "memory")
+#endif
+
 #endif /* __ARCH_BARRIER_H__ */

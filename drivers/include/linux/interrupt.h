@@ -65,7 +65,6 @@ static inline void disable_irq(unsigned int irq)
 		arch_cpu_irq_restore(flags)
 
 /* Placeholders */
-#define cpu_relax()
 #define tasklet_schedule(x)
 #define tasklet_hi_schedule(x)
 #define tasklet_kill(x)

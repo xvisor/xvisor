@@ -49,4 +49,7 @@
 /* SMP Write Memory barrier */
 #define arch_smp_wmb()			dmb()
 
+/* CPU relax for busy loop */
+#define arch_cpu_relax()		asm volatile ("" : : : "memory")
+
 #endif /* __ARCH_BARRIER_H__ */

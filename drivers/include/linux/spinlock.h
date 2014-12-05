@@ -3,6 +3,8 @@
 
 #include <vmm_spinlocks.h>
 
+#include <asm/processor.h>
+
 #define	spinlock_t		struct vmm_spinlock
 #define	spin_lock		vmm_spin_lock
 #define	spin_trylock		vmm_spin_trylock

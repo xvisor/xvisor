@@ -3,6 +3,8 @@
 
 #include <vmm_mutex.h>
 
+#include <asm/processor.h>
+
 #define mutex			vmm_mutex
 
 #define mutex_init(x)		INIT_MUTEX(x)

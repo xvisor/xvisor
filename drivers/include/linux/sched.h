@@ -12,6 +12,8 @@
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 
+#include <asm/processor.h>
+
 #define task_struct			vmm_vcpu
 #define current				vmm_scheduler_current_vcpu()
 
