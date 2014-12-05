@@ -39,6 +39,7 @@ libs-objs-y+= common/radix-tree.o
 libs-objs-y+= common/buddy.o
 libs-objs-y+= common/mempool.o
 libs-objs-y+= common/libfdt.o
+libs-objs-y+= common/bitrev.o
 
 libs-objs-$(CONFIG_LIBAUTH)+= common/libauth.o
 libs-objs-$(CONFIG_LIBAUTH_DEFAULT_USER)+= common/libauth_passwd.o
@@ -62,3 +63,4 @@ $(build_dir)/libauth_passwd.o: $(build_dir)/libauth_passwd.c
 endif
 
 libs-objs-$(CONFIG_GENALLOC)+= common/genalloc.o
+
