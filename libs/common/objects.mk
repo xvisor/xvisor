@@ -61,3 +61,4 @@ $(build_dir)/libauth_passwd.o: $(build_dir)/libauth_passwd.c
 
 endif
 
+libs-objs-$(CONFIG_GENALLOC)+= common/genalloc.o
