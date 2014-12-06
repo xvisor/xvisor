@@ -26,6 +26,7 @@
 #include <vmm_devtree.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_heap.h>
 #include <block/vmm_blockdev.h>
 #include <libs/stringlib.h>
 
@@ -40,19 +41,14 @@ static void cmd_blockdev_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   blockdev help\n");
-	vmm_cprintf(cdev, "   blockdev info <name>\n");
 	vmm_cprintf(cdev, "   blockdev list\n");
+	vmm_cprintf(cdev, "   blockdev info <name>\n");
+	vmm_cprintf(cdev, "   blockdev dump8 <name> [length] [offset]\n");
 }
 
-static int cmd_blockdev_info(struct vmm_chardev *cdev, const char *name)
+static int cmd_blockdev_info(struct vmm_chardev *cdev,
+			     struct vmm_blockdev *bdev)
 {
-	struct vmm_blockdev *bdev = vmm_blockdev_find(name);
-
-	if (!bdev) {
-		vmm_cprintf(cdev, "Error: cannot find blockdev %s\n", name);
-		return VMM_EINVALID;
-	}
-
 	vmm_cprintf(cdev, "Name       : %s\n", bdev->name);
 	vmm_cprintf(cdev, "Parent     : %s\n", 
 				(bdev->parent) ? bdev->parent->name : "---");
@@ -91,8 +87,64 @@ static void cmd_blockdev_list(struct vmm_chardev *cdev)
 
 }
 
+static int cmd_blockdev_dump8(struct vmm_chardev *cdev,
+			      struct vmm_blockdev *bdev,
+			      int argc, char *argv[])
+{
+#define BLOCKDEV_DUMP_BUF_SZ	128
+	u8 data[BLOCKDEV_DUMP_BUF_SZ];
+	u64 off = 0, count = bdev->block_size;
+	u64 i, pos, sz, rdsz;
+
+	if (argc >= 1)
+		count = strtoul(argv[0], NULL, 10);
+
+	if (!count) {
+		vmm_cprintf(cdev, "Error, 0 data to read\n");
+		return VMM_EINVALID;
+	}
+
+	if (argc >= 2) {
+		if (argv[1][0] && (argv[1][1] == 'x'))
+			off = strtoull(argv[1], NULL, 16);
+		else
+			off = strtoull(argv[1], NULL, 10);
+	}
+
+	pos = 0;
+	while (count) {
+		sz = (count < BLOCKDEV_DUMP_BUF_SZ) ?
+				count : BLOCKDEV_DUMP_BUF_SZ;
+
+		rdsz = vmm_blockdev_rw(bdev, VMM_REQUEST_READ, data, off, sz);
+		if (rdsz != sz) {
+			vmm_cprintf(cdev, "Error, read %lld byte(s)\n", rdsz);
+			break;
+		}
+
+		for (i = 0; i < rdsz; i++) {
+			if (pos % 8 == 0)
+				vmm_cprintf(cdev, "0x%08x:", i + off);
+			vmm_cprintf(cdev, " 0x%02x", data[i]);
+			if (pos % 8 == 7)
+				vmm_cprintf(cdev, "\n");
+			pos++;
+		}
+
+		count -= sz;
+		off += sz;
+	}
+
+	if (pos % 8 != 0)
+		vmm_cprintf(cdev, "\n");
+
+	return VMM_OK;
+}
+
 static int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	struct vmm_blockdev *bdev = NULL;
+
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
 			cmd_blockdev_usage(cdev);
@@ -101,9 +153,20 @@ static int cmd_blockdev_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			cmd_blockdev_list(cdev);
 			return VMM_OK;
 		}
-	} else if (argc == 3) {
+	} else if (argc >= 3) {
+		bdev = vmm_blockdev_find(argv[2]);
+
+		if (!bdev) {
+			vmm_cprintf(cdev, "Error: cannot find blockdev %s\n",
+				    argv[2]);
+			return VMM_EINVALID;
+		}
+
 		if (strcmp(argv[1], "info") == 0) {
-			return cmd_blockdev_info(cdev, argv[2]);
+			return cmd_blockdev_info(cdev, bdev);
+		} else if (strcmp(argv[1], "dump8") == 0) {
+			return cmd_blockdev_dump8(cdev, bdev,
+						 argc - 3, argv + 3);
 		}
 	}
 	cmd_blockdev_usage(cdev);
