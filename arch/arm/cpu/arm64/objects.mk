@@ -29,6 +29,7 @@ arch-$(CONFIG_ARMV8) += -mgeneral-regs-only -mlittle-endian
 
 cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-y) $(tune-y)
+cpu-cflags += -fno-strict-aliasing -O2
 cpu-asflags += $(arch-y) $(tune-y)
 cpu-ldflags +=
 
