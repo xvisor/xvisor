@@ -44,7 +44,7 @@ commands-objs-$(CONFIG_CMD_VSCREEN)+= cmd_vscreen.o
 
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
-commands-objs-$(CONFIG_CMD_FB)+= cmd_fb.o
+commands-objs-$(CONFIG_CMD_FB)+= cmd_fb_mod.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
 commands-objs-$(CONFIG_CMD_RBD)+= cmd_rbd.o
 commands-objs-$(CONFIG_CMD_FLASH)+= cmd_flash.o
@@ -55,4 +55,13 @@ commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
 
 commands-objs-$(CONFIG_CMD_VSTELNET)+= cmd_vstelnet.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
+
+cmd_fb_mod-y += cmd_fb.o
+cmd_fb_mod-$(CONFIG_CMD_FB_LOGO) += cmd_fb_logo.o
+
+%/cmd_fb_mod.o: $(foreach obj,$(cmd_fb_mod-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/cmd_fb_mod.dep: $(foreach dep,$(cmd_fb_mod-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
 
