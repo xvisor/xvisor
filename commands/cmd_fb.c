@@ -28,6 +28,7 @@
 #include <vmm_cmdmgr.h>
 #include <vmm_delay.h>
 #include <libs/stringlib.h>
+#include <libs/image_loader.h>
 #include <drv/fb.h>
 
 #include "cmd_fb_logo.h"
@@ -49,6 +50,7 @@ static void cmd_fb_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   fb fillrect <fb_name> <x> <y> <w> <h> <c> "
 		    "[<rop>]\n");
 	vmm_cprintf(cdev, "   fb logo <fb_name> [<x>] [<y>] [<w>] [<h>]\n");
+	vmm_cprintf(cdev, "   fb image <fb_name> <image_path> [<x>] [<y>]\n");
 }
 
 static void cmd_fb_list(struct vmm_chardev *cdev)
@@ -224,7 +226,7 @@ static int cmd_fb_fillrect(struct vmm_chardev *cdev, struct fb_info *info,
 	return VMM_OK;
 }
 
-#if IS_ENABLED(CONFIG_CMD_FB_LOGO)
+#if IS_ENABLED(CONFIG_CMD_FB_LOGO) || IS_ENABLED(CONFIG_CMD_FB_IMAGE)
 /**
  * Display images on the framebuffer.
  * The image and the framebuffer must have the same color space and color map.
@@ -261,7 +263,9 @@ static int fb_write_image(struct fb_info *info, const struct fb_image *image,
 
 	return VMM_OK;
 }
+#endif
 
+#if IS_ENABLED(CONFIG_CMD_FB_LOGO)
 static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 		       int argc, char *argv[])
 {
@@ -283,23 +287,31 @@ static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 
 	if (argc >= 1)
 		x = strtol(argv[0], NULL, 10);
-	else
+	else if (image->width < info->var.xres)
 		x = (info->var.xres - image->width) / 2;
+	else
+		x = 0;
 
 	if (argc >= 2)
 		y = strtol(argv[1], NULL, 10);
-	else
+	else if (image->height < info->var.yres)
 		y = (info->var.yres - image->height) / 2;
+	else
+		y = 0;
 
 	if (argc >= 3)
 		w = strtol(argv[2], NULL, 10);
-	else
+	else if (image->width < info->var.xres)
 		w = image->width;
+	else
+		w = info->var.xres - 1;
 
 	if (argc >= 4)
 		h = strtol(argv[3], NULL, 10);
-	else
+	else if (image->height < info->var.yres)
 		h = image->height;
+	else
+		h = info->var.yres - 1;
 
 	if (info->var.xres <= x) {
 		vmm_cprintf(cdev, "Error: x should be less than %d\n",
@@ -331,10 +343,71 @@ static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 		       int argc, char *argv[])
 {
-	vmm_cprintf(cdev, "Logo option is not enabled.\n");
+	vmm_cprintf(cdev, "fb logo command is not enabled.\n");
 	return VMM_EFAIL;
 }
 #endif /* CONFIG_CMD_FB_LOGO */
+
+#if IS_ENABLED(CONFIG_CMD_FB_IMAGE)
+static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
+			int argc, char **argv)
+{
+	int err = VMM_OK;
+	unsigned int w = 0;
+	unsigned int h = 0;
+	struct fb_image image;
+
+	if (argc < 1) {
+		cmd_fb_usage(cdev);
+		return VMM_EFAIL;
+	}
+
+	memset(&image, 0, sizeof(image));
+
+	if (VMM_OK != (err = image_load(argv[0], &format_rgb565, &image))) {
+		vmm_cprintf(cdev, "Error, failed to load image \"%s\" (%d)\n",
+			    argv[0], err);
+		return err;
+	}
+
+	if (argc >= 2)
+		image.dx = strtol(argv[1], NULL, 10);
+	else if (image.width < info->var.xres)
+		image.dx = (info->var.xres - image.width) / 2;
+	else
+		image.dx = 0;
+
+	if (argc >= 3)
+		image.dy = strtol(argv[2], NULL, 10);
+	else if (image.height < info->var.yres)
+		image.dy = (info->var.yres - image.height) / 2;
+	else
+		image.dy = 0;
+
+	if (image.width < info->var.xres)
+		w = image.width;
+	else
+		w = info->var.xres - 1;
+
+	if (image.height < info->var.yres)
+		h = image.height;
+	else
+		h = info->var.yres - 1;
+
+	err = fb_write_image(info, &image, image.dx, image.dy, w, h);
+
+	image_release(&image);
+
+	return err;
+}
+#else
+static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
+			int argc, char **argv)
+{
+	vmm_cprintf(cdev, "fb image command is not available\n");
+	return VMM_EFAIL;
+}
+#endif /* CONFIG_CMD_FB_IMAGE */
 
 static int cmd_fb_blank(struct vmm_chardev *cdev, struct fb_info *info,
 			int argc, char **argv)
@@ -414,6 +487,8 @@ static int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_fb_fillrect(cdev, info, argc - 3, argv + 3);
 	} else if (0 == strcmp(argv[1], "logo")) {
 		return cmd_fb_logo(cdev, info, argc - 3, argv + 3);
+	} else if (0 == strcmp(argv[1], "image")) {
+		return cmd_fb_image(cdev, info, argc - 3, argv + 3);
 	}
 	return VMM_EFAIL;
 }
