@@ -183,8 +183,8 @@ __do_IMP:
         movl    $PAGE_SIZE, %ecx
         divl    %ecx
         pushl   %eax
-        pushl   $CPU_TEXT_LMA
-        pushl   $CPU_TEXT_LMA /* identical map */
+        pushl   $CPU_TEXT_LMA << 20
+        pushl   $CPU_TEXT_LMA << 20/* identical map */
         call    create_page_table_entry
         leave
         ret

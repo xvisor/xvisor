@@ -26,7 +26,7 @@ ENTRY(_start_32)
 
 SECTIONS 
 {
-	. = CPU_TEXT_LMA;
+	. = CPU_TEXT_LMA << 20;
 
         PROVIDE(_code_start = .);
 

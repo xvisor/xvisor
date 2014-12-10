@@ -30,7 +30,7 @@
 #include <libs/buddy.h>
 
 #define VAPOOL_MIN_BIN		(VMM_PAGE_SHIFT)
-#define VAPOOL_MAX_BIN		(23)
+#define VAPOOL_MAX_BIN		(__builtin_ctz(CONFIG_VAPOOL_ALIGN_MB) + 20)
 
 struct vmm_host_vapool_ctrl {
 	virtual_addr_t vapool_start;

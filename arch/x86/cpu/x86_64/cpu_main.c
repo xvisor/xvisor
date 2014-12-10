@@ -146,18 +146,18 @@ int __init arch_cpu_final_init(void)
 
 virtual_addr_t arch_code_vaddr_start(void)
 {
-	return ((virtual_addr_t) CPU_TEXT_LMA);
+	return ((virtual_addr_t) (CPU_TEXT_LMA << 20));
 }
 
 physical_addr_t arch_code_paddr_start(void)
 {
-	return ((physical_addr_t) CPU_TEXT_LMA);
+	return ((physical_addr_t) (CPU_TEXT_LMA << 20));
 }
 
 extern u8 _code_end;
 u8 __x86_vmm_address(virtual_addr_t addr)
 {
-	if (addr >= CPU_TEXT_LMA && addr <= (virtual_addr_t)&_code_end)
+	if (addr >= (CPU_TEXT_LMA << 20) && addr <= (virtual_addr_t)&_code_end)
 		return 1;
 
 	return 0;
