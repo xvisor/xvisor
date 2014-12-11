@@ -3,6 +3,9 @@
 
 #include <vmm_types.h>
 
+#define __user
+#define __init_refok
+
 #ifndef __KERNEL__
 #define __KERNEL__
 #endif

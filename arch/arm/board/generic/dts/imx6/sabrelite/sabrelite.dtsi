@@ -58,3 +58,20 @@
 	pinctrl-0 = <&pinctrl_pwm4>;
 	status = "okay";
 };
+
+&ldb {
+	ipu_id = <0>;
+	disp_id = <0>;
+	ext_ref = <1>;
+	mode = "sin0";
+	sec_ipu_id = <1>;
+	sec_disp_id = <1>;
+	status = "okay";
+};
+
+&mxcfb1 {
+	status = "okay";
+	interface_pix_fmt = "RGB565";
+	default_bpp = <16>;
+	mode_str ="LDB-XGA";
+};

@@ -16,7 +16,11 @@
 #define no_printk(args...)
 
 #if defined(DEV_DEBUG)
-#define dev_dbg(args...) vmm_printf(args)
+#define dev_dbg(dev, args...)						\
+	do {								\
+		vmm_printf("%s: ", (dev)->name);			\
+		vmm_printf(args);					\
+	} while (0)
 #else
 #define dev_dbg(...)
 #endif

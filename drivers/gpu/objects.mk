@@ -17,13 +17,21 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
-# @brief list of IMX platform objects.
+# @author Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+# @brief list of MXC driver objects
 # */
 
-board-common-objs-$(CONFIG_IMX_CPU)+= imx/cpu.o
-board-common-objs-$(CONFIG_IMX6Q_CLK)+= imx/gpc.o
-board-common-objs-$(CONFIG_IMX6Q_PM)+= imx/pm-imx6q.o
-board-common-objs-$(CONFIG_IMX6_CMD)+= imx/cmd_imx6.o
-board-common-objs-$(CONFIG_ARCH_MXC)+= imx/mxc_dispdrv.o
+drivers-objs-$(CONFIG_IMX_IPUV3_CORE) += gpu/ipu-v3/ipu-v3.o
 
+ipu-v3-y+=ipu_common.o
+ipu-v3-y+=ipu_disp.o
+ipu-v3-y+=ipu_device.o
+ipu-v3-y+=/ipu_pixel_clk.o
+ipu-v3-y+=/ipu_ic.o
+ipu-v3-y+=/ipu_capture.o
+
+%/ipu-v3.o: $(foreach obj,$(ipu-v3-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/ipu-v3.dep: $(foreach dep,$(ipu-v3-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

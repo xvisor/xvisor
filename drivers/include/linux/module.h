@@ -3,6 +3,7 @@
 
 #include <vmm_modules.h>
 
+#include <linux/types.h>
 #include <linux/export.h>
 #include <linux/init.h>
 
@@ -10,9 +11,6 @@
 #define KBUILD_BASENAME			stringify(VMM_MODNAME)
 
 #define module vmm_module
-
-#define __user
-#define __init_refok
 
 #define MODULE_DEVICE_TABLE(p1,p2)
 
