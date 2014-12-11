@@ -52,13 +52,6 @@ struct vmm_delayed_work {
 	struct vmm_timer_event event;
 };
 
-struct vmm_workqueue {
-	vmm_spinlock_t lock;
-	struct dlist head;
-	struct dlist work_list;
-	struct vmm_thread *thread;
-};
-
 #define INIT_WORK(w, _f)	do { \
 				INIT_SPIN_LOCK(&(w)->lock); \
 				INIT_LIST_HEAD(&(w)->head); \

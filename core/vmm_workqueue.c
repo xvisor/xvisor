@@ -28,8 +28,17 @@
 #include <vmm_delay.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_completion.h>
 #include <vmm_workqueue.h>
 #include <libs/stringlib.h>
+
+struct vmm_workqueue {
+	vmm_spinlock_t lock;
+	struct dlist head;
+	struct dlist work_list;
+	struct vmm_completion work_avail;
+	struct vmm_thread *thread;
+};
 
 struct vmm_workqueue_ctrl {
 	vmm_spinlock_t lock;
@@ -251,7 +260,7 @@ int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 
 	vmm_spin_unlock_irqrestore(&work->lock, flags);
 
-	vmm_threads_wakeup(wq->thread);
+	vmm_completion_complete(&wq->work_avail);
 
 	return VMM_OK;
 }
@@ -293,6 +302,8 @@ static int workqueue_main(void *data)
 	}
 
 	while (1) {
+		vmm_completion_wait(&wq->work_avail);
+
 		vmm_spin_lock_irqsave(&wq->lock, flags);
 		
 		while (!list_empty(&wq->work_list)) {
@@ -321,8 +332,6 @@ static int workqueue_main(void *data)
 		}
 
 		vmm_spin_unlock_irqrestore(&wq->lock, flags);
-
-		vmm_threads_sleep(wq->thread);
 	}
 
 	return VMM_OK;
@@ -345,6 +354,7 @@ struct vmm_workqueue *vmm_workqueue_create(const char *name, u8 priority)
 	INIT_SPIN_LOCK(&wq->lock);
 	INIT_LIST_HEAD(&wq->head);
 	INIT_LIST_HEAD(&wq->work_list);
+	INIT_COMPLETION(&wq->work_avail);
 
 	wq->thread = vmm_threads_create(name, workqueue_main, wq, 
 					priority, VMM_THREAD_DEF_TIME_SLICE);
