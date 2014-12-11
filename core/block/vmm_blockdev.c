@@ -364,7 +364,7 @@ done:
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_rw);
 
-static struct vmm_blockdev *__blockdev_alloc(bool alloc_rq)
+struct vmm_blockdev *vmm_blockdev_alloc(void)
 {
 	struct vmm_blockdev *bdev;
 
@@ -377,39 +377,15 @@ static struct vmm_blockdev *__blockdev_alloc(bool alloc_rq)
 	INIT_MUTEX(&bdev->child_lock);
 	bdev->child_count = 0;
 	INIT_LIST_HEAD(&bdev->child_list);
-
-	if (alloc_rq) {
-		bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
-		if (!bdev->rq) {
-			vmm_free(bdev);
-			return NULL;
-		}
-
-		INIT_SPIN_LOCK(&bdev->rq->lock);
-	} else {
-		bdev->rq = NULL;
-	}
+	bdev->rq = NULL;
 
 	return bdev;
 }
-
-struct vmm_blockdev *vmm_blockdev_alloc(void)
-{
-	return __blockdev_alloc(TRUE);
-}
 VMM_EXPORT_SYMBOL(vmm_blockdev_alloc);
-
-static void __blockdev_free(struct vmm_blockdev *bdev, bool free_rq)
-{
-	if (free_rq) {
-		vmm_free(bdev->rq);
-	}
-	vmm_free(bdev);
-}
 
 void vmm_blockdev_free(struct vmm_blockdev *bdev)
 {
-	__blockdev_free(bdev, TRUE);
+	vmm_free(bdev);
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_free);
 
@@ -422,7 +398,7 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 	int rc;
 	struct vmm_blockdev_event event;
 
-	if (!bdev) {
+	if (!bdev || !bdev->rq) {
 		return VMM_EFAIL;
 	}
 
@@ -476,7 +452,7 @@ int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 		return VMM_ERANGE;
 	}
 
-	child_bdev = __blockdev_alloc(FALSE);
+	child_bdev = vmm_blockdev_alloc();
 	child_bdev->parent = bdev;
 	child_bdev->dev.parent = &bdev->dev;
 	vmm_mutex_lock(&bdev->child_lock);
@@ -508,7 +484,7 @@ remove_from_list:
 	list_del(&child_bdev->head);
 	vmm_mutex_unlock(&bdev->child_lock);
 free_blockdev:
-	__blockdev_free(child_bdev, FALSE);
+	vmm_blockdev_free(child_bdev);
 	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_add_child);
@@ -532,7 +508,7 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 			vmm_mutex_unlock(&bdev->child_lock);
 			return rc;
 		}
-		__blockdev_free(child_bdev, FALSE);
+		vmm_blockdev_free(child_bdev);
 	}
 	vmm_mutex_unlock(&bdev->child_lock);
 

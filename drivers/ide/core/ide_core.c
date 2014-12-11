@@ -99,18 +99,25 @@ static int __init_ide_drive(struct ide_drive *drive)
 	bdev->num_blocks = drive->size;
 
 	/* Setup request queue for block device instance */
+	bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
+	if (!bdev->rq) {
+		goto detect_freebdev_fail;
+	}
+	INIT_REQUEST_QUEUE(bdev->rq);
 	bdev->rq->make_request = ide_make_request;
 	bdev->rq->abort_request = ide_abort_request;
 	bdev->rq->priv = drive;
 
 	rc = vmm_blockdev_register(drive->bdev);
 	if (rc) {
-		goto detect_freebdev_fail;
+		goto detect_freerq_fail;
 	}
 
 	rc = VMM_OK;
 	goto detect_done;
 
+detect_freerq_fail:
+	vmm_free(drive->bdev->rq);
 detect_freebdev_fail:
 	vmm_blockdev_free(drive->bdev);
 detect_freecard_fail:

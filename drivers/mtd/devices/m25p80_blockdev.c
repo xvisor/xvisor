@@ -143,12 +143,19 @@ int m25p_register_blockdev(struct vmm_device *dev)
 	bdev->block_size = flash->mtd.erasesize;
 
 	/* Setup request queue for block device instance */
+	bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
+	if (!bdev->rq) {
+		vmm_blockdev_free(flash->blockdev);
+		return VMM_ENOMEM;
+	}
+	INIT_REQUEST_QUEUE(bdev->rq);
 	bdev->rq->make_request = m25p_make_request;
 	bdev->rq->abort_request = m25p_abort_request;
 	bdev->rq->priv = flash;
 
 	/* Register block device instance */
 	if (VMM_OK != (err = vmm_blockdev_register(bdev))) {
+		vmm_free(flash->blockdev->rq);
 		vmm_blockdev_free(flash->blockdev);
 		dev_err(dev, "Failed to register blockdev\n");
 		return err;
@@ -170,6 +177,7 @@ int m25p_unregister_blockdev(struct vmm_device *dev)
 	if (vmm_blockdev_unregister(flash->blockdev)) {
 		return VMM_EFAIL;
 	}
+	vmm_free(flash->blockdev->rq);
 	vmm_blockdev_free(flash->blockdev);
 
 	return VMM_OK;

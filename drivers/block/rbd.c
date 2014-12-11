@@ -112,13 +112,18 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	d->bdev->block_size = RBD_BLOCK_SIZE;
 
 	/* Setup request queue for block device instance */
+	d->bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
+	if (!d->bdev->rq) {
+		goto free_bdev;
+	}
+	INIT_REQUEST_QUEUE(d->bdev->rq);
 	d->bdev->rq->make_request = rbd_make_request;
 	d->bdev->rq->abort_request = rbd_abort_request;
 	d->bdev->rq->priv = d;
 
 	/* Register block device instance */
 	if (vmm_blockdev_register(d->bdev)) {
-		goto free_bdev;
+		goto free_bdev_rq;
 	}
 
 	/* Reserve RAM space */
@@ -135,6 +140,8 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 
 unreg_bdev:
 	vmm_blockdev_unregister(d->bdev);
+free_bdev_rq:
+	vmm_free(d->bdev->rq);
 free_bdev:
 	vmm_blockdev_free(d->bdev);
 free_rbd:
@@ -165,6 +172,9 @@ void rbd_destroy(struct rbd *d)
 
 	/* Unregister block device */
 	vmm_blockdev_unregister(d->bdev);
+
+	/* Free block device request queue */
+	vmm_free(d->bdev->rq);
 
 	/* Free block device */
 	vmm_blockdev_free(d->bdev);

@@ -87,6 +87,15 @@ struct vmm_request_queue {
 	void *priv;
 };
 
+#define INIT_REQUEST_QUEUE(rq) \
+		do { \
+			INIT_SPIN_LOCK(&(rq)->lock); \
+			(rq)->make_request = NULL; \
+			(rq)->abort_request = NULL; \
+			(rq)->flush_cache = NULL; \
+			(rq)->priv = NULL; \
+		} while (0)
+
 /* Block device flags */
 #define VMM_BLOCKDEV_RDONLY				0x00000001
 #define VMM_BLOCKDEV_RW					0x00000002

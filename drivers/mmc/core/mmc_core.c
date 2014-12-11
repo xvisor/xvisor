@@ -1099,6 +1099,7 @@ static int __mmc_detect_card_removed(struct mmc_host *host)
 	/* FIXME: Need to wait for pending IO on mmc card */
 
 	vmm_blockdev_unregister(host->card->bdev);
+	vmm_free(host->card->bdev->rq);
 	vmm_blockdev_free(host->card->bdev);
 
 	vmm_free(host->card);
@@ -1215,18 +1216,26 @@ static int __mmc_detect_card_inserted(struct mmc_host *host)
 	bdev->num_blocks = udiv64(card->capacity, bdev->block_size);
 
 	/* Setup request queue for block device instance */
+	bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
+	if (!bdev->rq) {
+		rc = VMM_ENOMEM;
+		goto detect_freebdev_fail;
+	}
+	INIT_REQUEST_QUEUE(bdev->rq);
 	bdev->rq->make_request = mmc_make_request;
 	bdev->rq->abort_request = mmc_abort_request;
 	bdev->rq->priv = host;
 
 	rc = vmm_blockdev_register(card->bdev);
 	if (rc) {
-		goto detect_freebdev_fail;
+		goto detect_freerq_fail;
 	}
 
 	rc = VMM_OK;
 	goto detect_done;
 
+detect_freerq_fail:
+	vmm_free(host->card->bdev->rq);
 detect_freebdev_fail:
 	vmm_blockdev_free(host->card->bdev);
 detect_freecard_fail:
