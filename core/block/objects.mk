@@ -21,7 +21,17 @@
 # @brief list of core objects to be build
 # */
 
-core-objs-$(CONFIG_BLOCK)+= block/vmm_blockdev.o
+core-objs-$(CONFIG_BLOCK)+= block/vmm_blockdev_mod.o
+
+vmm_blockdev_mod-y += vmm_blockdev.o
+vmm_blockdev_mod-y += vmm_blockrq_nop.o
+
+%/vmm_blockdev_mod.o: $(foreach obj,$(vmm_blockdev_mod-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/vmm_blockdev_mod.dep: $(foreach dep,$(vmm_blockdev_mod-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
+
 core-objs-$(CONFIG_BLOCKPART)+= block/vmm_blockpart.o
 core-objs-$(CONFIG_BLOCKPART_DOS)+= block/vmm_blockpart_dos.o
 
