@@ -22,7 +22,7 @@
 
 	motherboard {
 		#address-cells = <1>;
-		#size-cells = <1>;
+		#size-cells = <0>;
 		compatible = "simple-bus";
 
 		ps2 {
@@ -54,7 +54,7 @@
 
 		SERIAL1: uart1 {
 			compatible = "ns8250";
-			reg = <0x2f8 0x0>;
+			reg = <0x2f8>;
 			address_type = "io";
 			baudrate = <115200>;
 			interrupts = <3>;
@@ -72,8 +72,7 @@
 	};
 
 	chosen {
-		/*console = &SERIAL0;*/
-		/*console = &STDOUT;*/
+		console = &SERIAL0;
 		bootcmd = "vfs mount hda0p0 /";
 	};
 };
