@@ -32,6 +32,9 @@
 #include <libs/fifo.h>
 #include <drv/input.h>
 
+#define SERIAL_CONSOLE_NAME	"serial"
+#define VGA_CONSOLE_NAME	"vga"
+
 struct defterm_ops {
 	int (*putc)(u8 ch);
 	int (*getc)(u8 *ch);
@@ -154,7 +157,7 @@ static void cls()
 }
 
 /* Puts a single character on the screen */
-static void putch(unsigned char c)
+static int putch(unsigned char c)
 {
 	u16 *where;
 	u32 att = attrib << 8;
@@ -243,6 +246,8 @@ done:
 
 	/* Update cursor location */
 	update_cursor();
+
+	return 0;
 }
 
 /* Sets the forecolor and backcolor that we will use */
@@ -481,23 +486,133 @@ static struct defterm_ops uart8250_ops = {
 
 #endif
 
-int init_early_vga_console(void)
+typedef int (*EARLY_PUTC)(u8 ch);
+
+static EARLY_PUTC early_putc = NULL;
+
+static int init_early_vga_console(void)
 {
 	settextcolor(15 /* White foreground */, 0 /* Black background */);
 	textmemptr = (u16 *)(0xB8000UL);
 	cls();
 
+	early_putc = putch;
+
 	return 0;
+}
+
+static int setup_early_serial_console(physical_addr_t addr, u32 baud, u32 clock)
+{
+	uart8250_port.base = addr;
+	uart8250_port.input_clock = clock;
+	uart8250_port.baudrate = baud;
+	uart8250_port.reg_shift = 2;
+	uart8250_port.reg_width = 1;
+
+	uart_8250_lowlevel_init(&uart8250_port);
+
+	early_putc = &uart8250_defterm_putc;
+
+	return VMM_OK;
+}
+
+static int parse_early_serial_options(char *options)
+{
+	char *opt_token, *opt_save;
+	const char *opt_delim = ",";
+	u32 opt_tok_len;
+	physical_addr_t addr=0x3f8;
+	u32 baud = 115200, clock = 24000000;
+	u32 opt_number = 0;
+	char *token;
+
+	for (opt_token = strtok_r(options, opt_delim,
+				   &opt_save); opt_token;
+	     opt_token = strtok_r(NULL, opt_delim,
+				   &opt_save)) {
+
+		/* @,11520,24000000 -> @, is empty */
+		opt_tok_len = strlen(opt_token);
+
+		/* Empty */
+		if (opt_tok_len <= 1) {
+			opt_number++;
+			continue;
+		}
+
+		token = skip_spaces(opt_token);
+
+		switch(opt_number) {
+		case 0:
+			addr = (physical_addr_t)strtoull(token, NULL, 16);
+			opt_number++;
+			break;
+
+		case 1:
+			baud = strtoul(token, NULL, 10);
+			opt_number++;
+			break;
+
+		case 2:
+			clock = strtoul(token, NULL, 10);
+			opt_number++;
+			break;
+		}
+	}
+
+	setup_early_serial_console(addr, baud, clock);
+
+	return VMM_EFAIL;
+}
+
+/* earlyprint=serial@<addr>,<baudrate> */
+static int init_early_serial_console(char *setup_string)
+{
+	char *port_token, *port_save;
+	const char *port_delim = "@";
+	u32 centry = 0, found = 0, port_tok_len, check_len;
+
+	for (port_token = strtok_r(setup_string, port_delim,
+				   &port_save); port_token;
+	     port_token = strtok_r(NULL, port_delim,
+				   &port_save)) {
+		port_tok_len = strlen(port_token);
+		if (!centry) {
+
+			check_len = (strlen(SERIAL_CONSOLE_NAME) > port_tok_len
+				     ? port_tok_len
+				     : strlen(SERIAL_CONSOLE_NAME));
+
+			if (!strncmp(setup_string, SERIAL_CONSOLE_NAME,
+				     check_len))
+				found = 1;
+		} else {
+			if (found) {
+				parse_early_serial_options(port_token);
+				found = 0;
+				return VMM_OK;
+			}
+		}
+		centry++;
+	}
+
+	return VMM_EFAIL;
+
 }
 
 void arch_defterm_early_putc(u8 ch)
 {
-	putch(ch);
+	if (early_putc)
+		early_putc(ch);
 }
 
 static int __init setup_early_print(char *buf)
 {
-	init_early_vga_console();
+
+	if (!strncmp(buf, SERIAL_CONSOLE_NAME, strlen(SERIAL_CONSOLE_NAME)))
+		init_early_serial_console(buf);
+	else if(!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
+		init_early_vga_console();
 
 	return 0;
 }
