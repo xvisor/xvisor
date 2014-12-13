@@ -45,7 +45,7 @@
 
 		SERIAL0: uart0 {
 			compatible = "ns8250";
-			reg = <0x3f8 0x0>;
+			reg = <0x3f8>;
 			address_type = "io";
 			baudrate = <115200>;
 			interrupts = <4>;
