@@ -23,8 +23,13 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_delay.h>
 #include <vmm_devtree.h>
 #include <vmm_manager.h>
+#include <vmm_scheduler.h>
+#include <vmm_host_ram.h>
+#include <vmm_host_vapool.h>
+#include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
 #include <arch_vcpu.h>
@@ -45,6 +50,7 @@ static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vcpu list\n");
 	vmm_cprintf(cdev, "   vcpu orphan_list\n");
 	vmm_cprintf(cdev, "   vcpu normal_list\n");
+	vmm_cprintf(cdev, "   vcpu monitor [<output_chardev_name>]\n");
 	vmm_cprintf(cdev, "   vcpu reset   <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu kick    <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu pause   <vcpu_id>\n");
@@ -54,7 +60,8 @@ static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vcpu dumpstat <vcpu_id>\n");
 }
 
-static int cmd_vcpu_help(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_help(struct vmm_chardev *cdev,
+			 int argc, char **argv)
 {
 	cmd_vcpu_usage(cdev);
 	return VMM_OK;
@@ -151,26 +158,138 @@ static int vcpu_list(struct vmm_chardev *cdev, bool normal, bool orphan)
 	return rc;
 }
 
-static int cmd_vcpu_list(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_list(struct vmm_chardev *cdev,
+			 int argc, char **argv)
 {
 	return vcpu_list(cdev, TRUE, TRUE);
 }
 
-static int cmd_vcpu_orphan_list(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_orphan_list(struct vmm_chardev *cdev,
+				int argc, char **argv)
 {
 	return vcpu_list(cdev, FALSE, TRUE);
 }
 
-static int cmd_vcpu_normal_list(struct vmm_chardev *cdev, int dummy)
+static int cmd_vcpu_normal_list(struct vmm_chardev *cdev,
+				int argc, char **argv)
 {
 	return vcpu_list(cdev, TRUE, FALSE);
 }
 
-static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_monitor(struct vmm_chardev *cdev,
+			    int argc, char **argv)
 {
-	int ret;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	char ch;
+	bool skip_sleep;
+	bool found_escape_ch;
+	u32 i, c, util;
+	virtual_size_t vfree, vtotal;
+	physical_size_t pfree, ptotal;
+	struct vmm_chardev *ocdev = NULL;
 
+	if (argc) {
+		ocdev = vmm_chardev_find(argv[0]);
+	}
+
+	if (!ocdev) {
+		ocdev = cdev;
+	}
+
+	while (1) {
+		/* Reset cursor positon using VT100 command */
+		vmm_cputs(ocdev, "\e[H");
+
+		/* Clear entire screen using VT100 command */
+		vmm_cputs(ocdev, "\e[J");
+
+		/* Print CPU usage */
+		i = 0;
+		for_each_online_cpu(c) {
+			vmm_cprintf(ocdev, "CPU%d:", c);
+			util = udiv64(vmm_scheduler_idle_time(c) * 1000,
+				      vmm_scheduler_get_sample_period(c));
+			util = (util > 1000) ? 1000 : util;
+			util = 1000 - util;
+			vmm_cprintf(ocdev, " %d.%01d%%  ",
+				    udiv32(util, 10), umod32(util, 10));
+			i++;
+			if (i % 4 == 0) {
+				vmm_cputs(ocdev, "\n");
+			}
+		}
+		if (i % 4) {
+			vmm_cputs(ocdev, "\n");
+		}
+
+		/* Print VAPOOL usage */
+		vfree = vmm_host_vapool_free_page_count();
+		vfree *= VMM_PAGE_SIZE;
+		vtotal = vmm_host_vapool_total_page_count();
+		vtotal *= VMM_PAGE_SIZE;
+		if (sizeof(virtual_size_t) == sizeof(u64)) {
+			vmm_cprintf(ocdev, "VAPOOL: free %llKiB  "
+				"used %llKiB  total %llKiB\n",
+				vfree/1024, (vtotal-vfree)/1024, vtotal/1024);
+		} else {
+			vmm_cprintf(ocdev, "VAPOOL: free %dKiB  "
+				"used %dKiB  total %dKiB\n",
+				vfree/1024, (vtotal-vfree)/1024, vtotal/1024);
+		}
+		/* Print RAM usage */
+		pfree = vmm_host_ram_free_frame_count();
+		pfree *= VMM_PAGE_SIZE;
+		ptotal = vmm_host_ram_total_frame_count();
+		ptotal *= VMM_PAGE_SIZE;
+		if (sizeof(physical_size_t) == sizeof(u64)) {
+			vmm_cprintf(ocdev, "RAM: free %llKiB  "
+				"used %llKiB  total %llKiB\n",
+				pfree/1024, (ptotal-pfree)/1024, ptotal/1024);
+		} else {
+			vmm_cprintf(ocdev, "RAM: free %dKiB  "
+				"used %dKiB  total %dKiB\n",
+				pfree/1024, (ptotal-pfree)/1024, ptotal/1024);
+		}
+
+		/* Print VCPU list */
+		vcpu_list(ocdev, TRUE, TRUE);
+
+		/* Look for escape character 'q' */
+		ch = 0;
+		skip_sleep = FALSE;
+		found_escape_ch = FALSE;
+		while (!vmm_scanchars(cdev, &ch, 1, FALSE)) {
+			skip_sleep = TRUE;
+			if (ch == 'q') {
+				found_escape_ch = TRUE;
+				break;
+			}
+		}
+		if (found_escape_ch) {
+			break;
+		}
+
+		/* Sleep for 1 seconds */
+		if (!skip_sleep) {
+			vmm_ssleep(1);
+		}
+	}
+
+	return VMM_OK;
+}
+
+static int cmd_vcpu_reset(struct vmm_chardev *cdev,
+			  int argc, char **argv)
+{
+	int ret, id;
+	struct vmm_vcpu *vcpu;
+
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -185,11 +304,19 @@ static int cmd_vcpu_reset(struct vmm_chardev *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_kick(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_kick(struct vmm_chardev *cdev,
+			 int argc, char **argv)
 {
-	int ret;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	int ret, id;
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -204,11 +331,19 @@ static int cmd_vcpu_kick(struct vmm_chardev *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_pause(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_pause(struct vmm_chardev *cdev,
+			  int argc, char **argv)
 {
-	int ret;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	int ret, id;
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -223,11 +358,19 @@ static int cmd_vcpu_pause(struct vmm_chardev *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_resume(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_resume(struct vmm_chardev *cdev,
+			   int argc, char **argv)
 {
-	int ret;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	int ret, id;
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -243,11 +386,19 @@ static int cmd_vcpu_resume(struct vmm_chardev *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_halt(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_halt(struct vmm_chardev *cdev,
+			 int argc, char **argv)
 {
-	int ret;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	int ret, id;
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -262,10 +413,19 @@ static int cmd_vcpu_halt(struct vmm_chardev *cdev, int id)
 	return ret;
 }
 
-static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev,
+			    int argc, char **argv)
 {
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	int id;
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -295,16 +455,24 @@ static void nsecs_to_hhmmsstt(u64 nsecs,
 	nsecs = udiv64(nsecs, 60ULL);
 }
 
-static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev, int id)
+static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
+			     int argc, char **argv)
 {
-	int ret;
+	int ret, id;
 	u8 priority;
 	u32 h, m, s, ms;
 	u32 state, hcpu, reset_count;
 	u64 last_reset_nsecs, total_nsecs;
 	u64 ready_nsecs, running_nsecs, paused_nsecs, halted_nsecs;
-	struct vmm_vcpu *vcpu = vmm_manager_vcpu(id);
+	struct vmm_vcpu *vcpu;
 
+	if (!argc) {
+		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	vcpu = vmm_manager_vcpu(id);
 	if (!vcpu) {
 		vmm_cprintf(cdev, "Failed to find vcpu\n");
 		return VMM_EFAIL;
@@ -386,12 +554,13 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev, int id)
 
 static const struct {
 	char *name;
-	int (*function) (struct vmm_chardev *, int);
+	int (*function) (struct vmm_chardev *, int, char **);
 } const command[] = {
 	{"help", cmd_vcpu_help},
 	{"list", cmd_vcpu_list},
 	{"orphan_list", cmd_vcpu_orphan_list},
 	{"normal_list", cmd_vcpu_normal_list},
+	{"monitor", cmd_vcpu_monitor},
 	{"reset", cmd_vcpu_reset},
 	{"kick", cmd_vcpu_kick},
 	{"pause", cmd_vcpu_pause},
@@ -402,9 +571,9 @@ static const struct {
 	{NULL, NULL},
 };
 	
-static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
+static int cmd_vcpu_exec(struct vmm_chardev *cdev,
+			 int argc, char **argv)
 {
-	int id = -1;
 	int index = 0;
 
 	if ((argc == 1) || (argc > 3)) {
@@ -412,13 +581,10 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return VMM_EFAIL;
 	}
 
-	if (argc == 3) {
-		id = atoi(argv[2]);
-	}
-	
 	while (command[index].name) {
 		if (strcmp(argv[1], command[index].name) == 0) {
-			return command[index].function(cdev, id);
+			return command[index].function(cdev,
+						argc-2, &argv[2]);
 		}
 		index++;
 	}
