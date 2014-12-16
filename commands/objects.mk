@@ -57,7 +57,8 @@ commands-objs-$(CONFIG_CMD_VSTELNET)+= cmd_vstelnet.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
 
 cmd_fb_mod-y += cmd_fb.o
-cmd_fb_mod-$(CONFIG_CMD_FB_LOGO) += cmd_fb_logo.o
+cmd_fb_mod-$(CONFIG_CMD_FB_LOGO_XVISOR) += cmd_fb_logo_xvisor.o
+cmd_fb_mod-$(CONFIG_CMD_FB_LOGO_SYSTEMX) += cmd_fb_logo_sx.o
 
 %/cmd_fb_mod.o: $(foreach obj,$(cmd_fb_mod-y),%/$(obj))
 	$(call merge_objs,$@,$^)
