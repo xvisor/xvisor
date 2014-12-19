@@ -76,7 +76,7 @@ static int m25p_make_request(struct vmm_request_queue *rq,
 	unsigned int retlen = 0;
 	physical_addr_t off = 0;
 	physical_size_t len = 0;
-	struct m25p *flash = r->priv;
+	struct m25p *flash = rq->priv;
 
 	off = r->lba << flash->mtd.erasesize_shift;
 	len = r->bcnt << flash->mtd.erasesize_shift;
