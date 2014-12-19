@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file rbd.h
+ * @file rbd.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief RAM backed block device driver.
  */
