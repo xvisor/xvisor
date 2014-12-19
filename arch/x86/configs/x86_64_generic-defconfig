@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.5
-# Thu Nov 27 21:50:28 2014
+# Mon Dec 15 17:35:15 2014
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -10,6 +10,7 @@ CONFIG_ARCH="x86"
 # CONFIG_SMP is not set
 CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=16
+CONFIG_VAPOOL_ALIGN_MB=2
 CONFIG_HOST_IRQ_COUNT=224
 CONFIG_CPU="x86_64"
 CONFIG_CPU_LE=y
@@ -93,17 +94,9 @@ CONFIG_LOADBAL_PERIOD_SECS=5
 # Device Support
 #
 # CONFIG_IOMMU is not set
-
-#
-# Block Device Support
-#
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
-
-#
-# Networking Support
-#
 # CONFIG_NET is not set
 
 #
@@ -181,6 +174,8 @@ CONFIG_CMD_VINPUT=y
 #
 CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
+# CONFIG_CMD_FB_LOGO is not set
+# CONFIG_CMD_FB_IMAGE is not set
 CONFIG_CMD_BLOCKDEV=y
 
 #
@@ -226,6 +221,7 @@ CONFIG_VFS=y
 # CONFIG_VFS_CPIO is not set
 # CONFIG_VFS_EXT4 is not set
 CONFIG_VFS_FAT=y
+CONFIG_VFS_ISO9660=y
 
 #
 # Cryptographic Options
@@ -241,6 +237,8 @@ CONFIG_LIBAUTH_USE_MD5_PASSWD=y
 CONFIG_LIBAUTH_DEFAULT_USER=y
 CONFIG_LIBAUTH_DEFAULT_USERNAME="admin"
 CONFIG_LIBAUTH_DEFAULT_PASSWD="EQuiN0X"
+# CONFIG_GENALLOC is not set
+# CONFIG_IMAGE_LOADER is not set
 
 #
 # Device Drivers
@@ -387,6 +385,21 @@ CONFIG_PIIX3_IDE=y
 # SPI drivers
 #
 # CONFIG_SPI is not set
+
+#
+# PWM Drivers
+#
+# CONFIG_PWM is not set
+
+#
+# Reset drivers
+#
+# CONFIG_RESET_CONTROLLER is not set
+
+#
+# Miscellaneous Drivers
+#
+# CONFIG_SRAM is not set
 
 #
 # Device Emulators
