@@ -111,14 +111,16 @@ static int piix3_ide_probe(struct vmm_device *dev,
 					continue;
 				}
 
-				vmm_printf("Drive %d: Present.\n", i);
 				drive = &controller->ide_drives[i];
 
 				drive->dev = dev;
 
-				vmm_printf(" Found %s Drive %dMB - %s\n",
+				vmm_printf(" Found %s Drive %dMB - [%s %s] %s\n",
 					   (const char *[]){"ATA", "ATAPI"}[drive->type],
 					   drive->size/1024/2,
+					   (const char *[]){"Primary", "Secondary"}[drive->channel->id],
+					   /* Same as above, using the drive */
+					   (const char *[]){"Master", "Slave"}[drive->drive],
 					   drive->model);
 
 				if (ide_add_drive(drive) != VMM_OK) {

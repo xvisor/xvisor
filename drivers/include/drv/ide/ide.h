@@ -34,6 +34,9 @@
 #define IDE_ATA			0x00
 #define IDE_ATAPI		0x01
 
+#define PRIMARY_ATA_CHANNEL_IRQ		14
+#define SECONDARY_ATA_CHANNEL_IRQ	15
+
 struct ide_drive;
 
 struct ide_channel {
@@ -63,6 +66,7 @@ struct ide_drive {
 	u16 capabilities;		/* drive capabilities */
 	u32 cmd_set;			/* command sets supported */
 	u32 size;			/* size in sectors */
+	u32 blk_size;			/* Block size of drive CDROM: 2048 */
 	struct ide_channel *channel;	/* channel on which drive is connected. */
 
         u8 lba48_enabled;		/* device can use 48bit addr (ATA/ATAPI v7) */
@@ -77,6 +81,7 @@ struct ide_drive {
 
         struct vmm_thread *io_thread;	/* IO thread */
         struct vmm_completion io_avail;	/* To wake up I/O thread */
+	struct vmm_completion dev_intr; /* Device reported interrupt */
 	struct vmm_blockdev *bdev;	/* Block device associated to this drive */
 
 	struct ide_drive_ops io_ops;	/* Host operations */

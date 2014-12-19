@@ -26,6 +26,7 @@
 #include <vmm_delay.h>
 #include <vmm_timer.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_modules.h>
 #include <vmm_mutex.h>
 #include <libs/stringlib.h>
@@ -95,7 +96,7 @@ static int __init_ide_drive(struct ide_drive *drive)
 	bdev->dev.parent = drive->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
 	bdev->start_lba = 0;
-	bdev->block_size = 512;
+	bdev->block_size = drive->blk_size;
 	bdev->num_blocks = drive->size;
 
 	/* Setup request queue for block device instance */
@@ -191,7 +192,10 @@ static int ide_io_thread(void *tdata)
 	struct ide_drive *drive = (struct ide_drive *)tdata;
 
 	while (1) {
-		vmm_completion_wait(&drive->io_avail);
+		if (vmm_completion_wait(&drive->io_avail) != VMM_OK) {
+			vmm_printf("Failed to wait on completion.\n");
+			return VMM_EFAIL;
+		}
 
 		vmm_spin_lock_irqsave(&drive->io_list_lock, f);
 		if (list_empty(&drive->io_list)) {
@@ -279,6 +283,15 @@ static int ide_abort_request(struct vmm_request_queue *rq,
 	return VMM_OK;
 }
 
+static vmm_irq_return_t handle_ata_interrupt(int irq_no, void *dev)
+{
+	struct ide_drive *drive = (struct ide_drive *)dev;
+
+	vmm_completion_complete(&drive->dev_intr);
+
+	return VMM_IRQ_HANDLED;
+}
+
 int ide_add_drive(struct ide_drive *drive)
 {
 	char name[32];
@@ -295,6 +308,7 @@ int ide_add_drive(struct ide_drive *drive)
 	INIT_LIST_HEAD(&drive->io_list);
 	INIT_SPIN_LOCK(&drive->io_list_lock);
 	INIT_COMPLETION(&drive->io_avail);
+	INIT_COMPLETION(&drive->dev_intr);
 	INIT_MUTEX(&drive->lock);
 
 	if (__init_ide_drive(drive) != VMM_OK) {
@@ -312,6 +326,15 @@ int ide_add_drive(struct ide_drive *drive)
 		vmm_mutex_unlock(&ide_drive_list_mutex);
 		return VMM_EFAIL;
 	}
+
+	if (drive->channel->id)
+		vmm_host_irq_register(SECONDARY_ATA_CHANNEL_IRQ,
+				      "ATA-15", handle_ata_interrupt,
+				      drive);
+	else
+		vmm_host_irq_register(PRIMARY_ATA_CHANNEL_IRQ,
+				      "ATA-14", handle_ata_interrupt,
+				      drive);
 
 	ide_drive_count++;
 	list_add_tail(&drive->link, &ide_drive_list);

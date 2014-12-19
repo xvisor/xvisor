@@ -88,7 +88,7 @@ unsigned char ide_print_error(struct ide_drive *drive, unsigned char err)
 {
 	if (err == 0)
 		return err;
- 
+
 	vmm_printf("IDE:");
 	if (err == 1) {
 		vmm_printf("- Device Fault\n     "); err = 19;
@@ -338,6 +338,92 @@ static u8 ide_ata_access(struct ide_drive *drive,
 	return 0;
 }
 
+void ide_wait_irq(struct ide_drive *drive)
+{
+	vmm_completion_wait(&drive->dev_intr);
+}
+
+static int ide_atapi_read(struct ide_drive *drive, u32 lba,
+			  u32 numsects, void *buffer)
+{
+	struct ide_channel *channel = drive->channel;
+	u32 slavebit = drive->drive;
+	u32 bus = channel->base;
+	/* ATAPI drives have a sector size of 2048 bytes. */
+	u32 words = 1024;
+	unsigned char  err;
+	int i;
+	u8 atapi_packet[12] = { 0 };
+
+	if (numsects > 1) return VMM_EOPNOTSUPP;
+
+	/* Enable IRQ */
+	ide_write(channel, ATA_REG_CONTROL, channel->int_en = 0);
+
+	/* Setup SCSI Packet */
+	atapi_packet[ 0] = ATAPI_CMD_READ_12;
+	atapi_packet[ 1] = 0x0;
+	atapi_packet[ 2] = (lba >> 24) & 0xFF;
+	atapi_packet[ 3] = (lba >> 16) & 0xFF;
+	atapi_packet[ 4] = (lba >> 8) & 0xFF;
+	atapi_packet[ 5] = (lba >> 0) & 0xFF;
+	atapi_packet[ 6] = 0x0;
+	atapi_packet[ 7] = 0x0;
+	atapi_packet[ 8] = 0x0;
+	atapi_packet[ 9] = numsects;
+	atapi_packet[10] = 0x0;
+	atapi_packet[11] = 0x0;
+
+	/* Select the drive */
+	ide_write(channel, ATA_REG_HDDEVSEL, slavebit << 4);
+
+	/* Delay 400 nanoseconds for select to complete */
+	for(i = 0; i < 4; i++)
+		/* Reading the Alternate Status port wastes 100ns. */
+		ide_read(channel, ATA_REG_ALTSTATUS);
+
+	/* Inform the Controller that we use PIO mode */
+	ide_write(channel, ATA_REG_FEATURES, 0);
+
+	/* Tell the Controller the size of buffer */
+	/* Lower Byte of Sector Size. */
+	ide_write(channel, ATA_REG_LBA1, (words * 2) & 0xFF);
+	/* Upper Byte of Sector Size. */
+	ide_write(channel, ATA_REG_LBA2, (words * 2) >> 8);
+
+	/* Send the Packet Command */
+	ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PACKET);
+
+	/* Waiting for the driver to finish or return an error code */
+	err = ide_polling(channel, 1);
+	if (err)
+		return err;
+
+	/* Sending the packet data */
+	asm("rep   outsw" : : "c"(6), "d"(bus), "S"(atapi_packet));
+
+	/* Receiving Data */
+	for (i = 0; i < numsects; i++) {
+		ide_wait_irq(drive);                  // Wait for an IRQ.
+		err = ide_polling(channel, 1);
+		if (err) {
+			return err;      // Polling and return if error.
+		}
+
+		insw(bus, buffer, words);
+		buffer += words * sizeof(u16);
+	}
+
+	/* Waiting for an IRQ */
+	ide_wait_irq(drive);
+
+	/* Waiting for BSY & DRQ to clear */
+	while (ide_read(channel, ATA_REG_STATUS) & (ATA_SR_BSY | ATA_SR_DRQ))
+		;
+
+	return VMM_OK;
+}
+
 u32 ide_write_sectors(struct ide_drive *drive,
 		      u64 lba, u32 numsects, const void *buffer)
 {
@@ -371,6 +457,8 @@ VMM_EXPORT_SYMBOL_GPL(ide_write_sectors);
 u32 ide_read_sectors(struct ide_drive *drive,
 		     u64 lba, u32 numsects, void *buffer)
 {
+	int i;
+
 	/* Check if the drive presents: */
 	if (drive->drive > 3 || drive->present == 0)
 		return 0;
@@ -386,6 +474,9 @@ u32 ide_read_sectors(struct ide_drive *drive,
 		if (drive->type == IDE_ATA)
 			err = ide_ata_access(drive, ATA_READ, FALSE,
 					     lba, numsects, buffer);
+		else if (drive->type == IDE_ATAPI)
+			for (i = 0; i < numsects; i++)
+				err = ide_atapi_read(drive, lba+i, 1, buffer);
 
 		ide_print_error(drive, err);
 	}
@@ -429,7 +520,6 @@ int ide_initialize(struct ide_host_controller *controller)
 	/* Detect ATA-ATAPI Devices: */
 	for (i = 0; i < MAX_IDE_CHANNELS; i++) {
 		for (j = 0; j < MAX_IDE_DRIVES_PER_CHAN; j++) {
-
 			/* Assuming that no drive here. */
 			controller->ide_drives[count].present = 0;
 
@@ -471,8 +561,27 @@ int ide_initialize(struct ide_host_controller *controller)
 				}
 			}
 
-			if (err) {
-				continue;
+			/* Probe for ATAPI device */
+			if (err != 0) {
+				u8 cl = ide_read(&controller->ide_channels[i],
+						 ATA_REG_LBA1);
+				u8 ch = ide_read(&controller->ide_channels[i],
+						 ATA_REG_LBA2);
+
+				if (cl == 0x14 && ch == 0xeb)
+					type = IDE_ATAPI;
+				else if (cl == 0x69 && ch == 0x96)
+					type = IDE_ATAPI;
+				else
+					/* Unknown type */
+					continue;
+
+				ide_write(&controller->ide_channels[i],
+					  ATA_REG_COMMAND,
+					  ATA_CMD_IDENTIFY_PACKET);
+
+
+				vmm_mdelay(1);
 			}
 
 			/* Read Identification Space of the Device: */
@@ -509,6 +618,15 @@ int ide_initialize(struct ide_host_controller *controller)
 				controller->ide_drives[count].lba48_enabled = 0;
 			}
 
+			controller->ide_drives[count].blk_size = 512;
+
+			if (type == IDE_ATAPI) {
+				/* CDROM have block size of 2048 */
+				controller->ide_drives[count].blk_size = 2048;
+				/* Force 650MB */
+				controller->ide_drives[count].size = 1331200;
+			}
+
 			/* String indicates model of device
 			 * (like Western Digital HDD and SONY DVD-RW...)
 			 */
@@ -529,4 +647,3 @@ int ide_initialize(struct ide_host_controller *controller)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL_GPL(ide_initialize);
-
