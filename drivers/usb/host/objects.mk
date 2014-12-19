@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Anup Patel.
+# Copyright (c) 2014 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,22 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for USB drivers.
+# @brief list of USB host controller driver objects
 # */
 
-menu "USB drivers"
-
-config CONFIG_USB
-	tristate "USB Support"
-	help
-	  This option adds core support for Universal Serial Bus (USB).
-	  You will also need drivers from the following menu to make use of it.
-
-source "drivers/usb/core/openconf.cfg"
-
-source "drivers/usb/host/openconf.cfg"
-
-endmenu
+drivers-objs-$(CONFIG_USB_DWC2_HCD) += usb/host/dwc2.o
 
