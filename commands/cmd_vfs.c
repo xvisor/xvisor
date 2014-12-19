@@ -336,7 +336,11 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 		vmm_cprintf(cdev, "%02d %d %02d:%02d:%02d ", 
 				  ti.tm_mday, ti.tm_year + 1900, 
 				  ti.tm_hour, ti.tm_min, ti.tm_sec);
-		vmm_cprintf(cdev, "%s\n", d.d_name);
+		if (type[0] == 'd')
+			vmm_cprintf(cdev, "%s/\n", d.d_name);
+		else
+			vmm_cprintf(cdev, "%s\n", d.d_name);
+
 		total_ent++;
 	}
 	vmm_cprintf(cdev, "total %d\n", total_ent);
