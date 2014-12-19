@@ -174,7 +174,7 @@ const struct usb_device_id *usb_match_interface(struct usb_interface *intf,
 
 	return NULL;
 }
-VMM_EXPORT_SYMBOL(usb_interface_match);
+VMM_EXPORT_SYMBOL(usb_match_interface);
 
 int usb_add_dynid(struct usb_driver *driver,
 		  u32 idVendor, u32 idProduct, u32 bInterfaceClass)
