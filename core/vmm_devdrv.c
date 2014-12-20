@@ -186,7 +186,9 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 	int rc = VMM_OK;
 
 	/* Device should be registered but not having any driver */
-	if (!dev->is_registered || dev->driver) {
+	if (!dev->is_registered ||
+	    dev->autoprobe_disabled ||
+	    dev->driver) {
 		/* Note: we return OK so that caller
 		 * does not try more drivers
 		 */
@@ -1429,6 +1431,7 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 		return;
 	}
 
+	memset(dev, 0, sizeof(*dev));
 	INIT_LIST_HEAD(&dev->bus_head);
 	INIT_LIST_HEAD(&dev->child_head);
 	arch_atomic_write(&dev->ref_count, 1);

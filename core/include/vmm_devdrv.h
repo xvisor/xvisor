@@ -87,8 +87,8 @@ struct vmm_device {
 	struct dlist devres_head;
 	struct dlist deferred_head;
 	/* Public fields */
-	u64 *dma_mask;
 	char name[VMM_FIELD_NAME_SIZE];
+	bool autoprobe_disabled;
 	struct vmm_bus *bus;
 	struct vmm_device_type *type;
 	struct vmm_devtree_node *node;
@@ -96,6 +96,7 @@ struct vmm_device {
 	struct vmm_class *class;
 	struct vmm_driver *driver;
 	struct vmm_iommu_group *iommu_group;
+	u64 *dma_mask;
 	void *pins;
 	void (*release) (struct vmm_device *);
 	void *priv;
