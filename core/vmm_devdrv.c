@@ -173,7 +173,7 @@ static int platform_bus_remove(struct vmm_device *dev)
 	return drv->remove(dev);
 }
 
-static void default_device_release(struct vmm_device *dev)
+static void platform_device_release(struct vmm_device *dev)
 {
 	vmm_free(dev);
 }
@@ -468,17 +468,18 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 
 	if (strlcpy(dev->name, node->name, sizeof(dev->name)) >=
 	    sizeof(dev->name)) {
+		vmm_free(dev);
 		return VMM_EOVERFLOW;
 	}
 	dev->node = node;
 	dev->parent = parent;
 	dev->bus = &ddctrl.platform_bus;
-	dev->release = default_device_release;
+	dev->release = platform_device_release;
 	dev->priv = NULL;
 
 	rc = vmm_devdrv_register_device(dev);
 	if (rc) {
-		vmm_devdrv_free_device(dev);
+		vmm_free(dev);
 		return rc;
 	}
 
@@ -661,28 +662,31 @@ static int devdrv_class_register_device(struct vmm_class *cls,
 
 	vmm_mutex_lock(&cls->lock);
 
+	/* Check duplicacy */
 	list_for_each_entry(d, &cls->device_list, class_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
 		}
 	}
-
 	if (found) {
 		vmm_mutex_unlock(&cls->lock);
 		return VMM_EINVALID;
 	}
 
+	/* Update class device list */
+	INIT_LIST_HEAD(&dev->class_head);
+	vmm_devdrv_ref_device(dev);
+	list_add_tail(&dev->class_head, &cls->device_list);
+	dev->is_registered = TRUE;
+
+	/* Update parent child list */
 	if (dev->parent) {
 		vmm_devdrv_ref_device(dev->parent);
 		vmm_mutex_lock(&dev->parent->child_list_lock);
 		list_add_tail(&dev->child_head, &dev->parent->child_list);
 		vmm_mutex_unlock(&dev->parent->child_list_lock);
 	}
-
-	INIT_LIST_HEAD(&dev->class_head);
-	list_add_tail(&dev->class_head, &cls->device_list);
-	dev->is_registered = TRUE;
 
 	vmm_mutex_unlock(&cls->lock);
 
@@ -706,6 +710,7 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 		return VMM_EFAIL;
 	}
 
+	/* Check existance */
 	d = NULL;
 	found = FALSE;
 	list_for_each_entry(d, &cls->device_list, class_head) {
@@ -714,13 +719,22 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 			break;
 		}
 	}
-
 	if (!found) {
 		vmm_mutex_unlock(&cls->lock);
 		return VMM_ENOTAVAIL;
 	}
 
+	/* Update parent child list */
+	if (dev->parent) {
+		vmm_mutex_lock(&dev->parent->child_list_lock);
+		list_del(&dev->child_head);
+		vmm_mutex_unlock(&dev->parent->child_list_lock);
+		vmm_devdrv_free_device(dev->parent);
+	}
+
+	/* Update class device list */
 	list_del(&d->class_head);
+	vmm_devdrv_free_device(dev);
 	d->is_registered = FALSE;
 
 	vmm_mutex_unlock(&cls->lock);
@@ -1018,28 +1032,31 @@ static int devdrv_bus_register_device(struct vmm_bus *bus,
 
 	vmm_mutex_lock(&bus->lock);
 
+	/* Check duplicacy */
 	list_for_each_entry(d, &bus->device_list, bus_head) {
 		if (strcmp(d->name, dev->name) == 0) {
 			found = TRUE;
 			break;
 		}
 	}
-
 	if (found) {
 		vmm_mutex_unlock(&bus->lock);
 		return VMM_EINVALID;
 	}
 
+	/* Update bus device list */
+	INIT_LIST_HEAD(&dev->bus_head);
+	vmm_devdrv_ref_device(dev);
+	list_add_tail(&dev->bus_head, &bus->device_list);
+	dev->is_registered = TRUE;
+
+	/* Update parent child list */
 	if (dev->parent) {
 		vmm_devdrv_ref_device(dev->parent);
 		vmm_mutex_lock(&dev->parent->child_list_lock);
 		list_add_tail(&dev->child_head, &dev->parent->child_list);
 		vmm_mutex_unlock(&dev->parent->child_list_lock);
 	}
-
-	INIT_LIST_HEAD(&dev->bus_head);
-	list_add_tail(&dev->bus_head, &bus->device_list);
-	dev->is_registered = TRUE;
 
 	/* Notify bus event listeners */
 	vmm_blocking_notifier_call(&bus->event_listeners,
@@ -1070,6 +1087,7 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 		return VMM_EFAIL;
 	}
 
+	/* Check existance */
 	d = NULL;
 	found = FALSE;
 	list_for_each_entry(d, &bus->device_list, bus_head) {
@@ -1078,7 +1096,6 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 			break;
 		}
 	}
-
 	if (!found) {
 		vmm_mutex_unlock(&bus->lock);
 		return VMM_ENOTAVAIL;
@@ -1091,7 +1108,17 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 	vmm_blocking_notifier_call(&bus->event_listeners,
 				   VMM_BUS_NOTIFY_DEL_DEVICE, d);
 
+	/* Update parent child list */
+	if (dev->parent) {
+		vmm_mutex_lock(&dev->parent->child_list_lock);
+		list_del(&dev->child_head);
+		vmm_mutex_unlock(&dev->parent->child_list_lock);
+		vmm_devdrv_free_device(dev->parent);
+	}
+
+	/* Update bus device list */
 	list_del(&d->bus_head);
+	vmm_devdrv_free_device(dev);
 	d->is_registered = FALSE;
 
 	vmm_mutex_unlock(&bus->lock);
@@ -1462,14 +1489,6 @@ void vmm_devdrv_free_device(struct vmm_device *dev)
 
 	if (arch_atomic_sub_return(&dev->ref_count, 1)) {
 		return;
-	}
-
-	/* Update parent */
-	if (dev->parent) {
-		vmm_mutex_lock(&dev->parent->child_list_lock);
-		list_del(&dev->child_head);
-		vmm_mutex_unlock(&dev->parent->child_list_lock);
-		vmm_devdrv_free_device(dev->parent);
 	}
 
 	released = TRUE;
