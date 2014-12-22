@@ -139,22 +139,6 @@ int usb_new_device(struct usb_device *dev);
 int usb_disconnect(struct usb_device *dev);
 
 /**
- * usb_hub_probe_driver - Probe un-probed usb devices with given usb driver
- * @drv: the usb driver structure instance
- *
- * Note: This can be called from any context.
- */
-int usb_hub_probe_driver(struct usb_driver *drv);
-
-/**
- * usb_hub_disconnect_driver - Disconnect usb devices connected to usb driver
- * @drv: the usb driver structure instance
- *
- * Note: This can be called from any context.
- */
-void usb_hub_disconnect_driver(struct usb_driver *drv);
-
-/**
  * usb_hub_find_child - find child device of hub (usbcore, hcds)
  * @hdev: pointer to device whose state is needed
  * @port1: port number to look for

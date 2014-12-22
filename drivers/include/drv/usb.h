@@ -24,8 +24,11 @@
 #ifndef __USB_CORE_H_
 #define __USB_CORE_H_
 
+#include <vmm_limits.h>
 #include <vmm_types.h>
+#include <vmm_macros.h>
 #include <vmm_spinlocks.h>
+#include <vmm_devdrv.h>
 #include <libs/list.h>
 #include <drv/usb/defs.h>
 #include <drv/usb/ch9.h>
@@ -34,6 +37,8 @@
 #include <linux/mod_devicetable.h>
 
 #define USB_CORE_IPRIORITY		(1)
+
+extern struct vmm_bus usb_bus_type;
 
 /* FIXME:
  * The EHCI spec says that we must align to at least 32 bytes.  However,
@@ -80,10 +85,9 @@ struct usb_devrequest {
 
 /* Interface */
 struct usb_interface {
-	struct usb_interface_descriptor desc;
+	struct vmm_device dev;
 
-	struct usb_device *dev;
-	struct usb_driver *drv;
+	struct usb_interface_descriptor desc;
 
 	unsigned char	no_of_ep;
 	unsigned char	num_altsetting;
@@ -97,6 +101,8 @@ struct usb_interface {
 	 */
 	struct usb_ss_ep_comp_descriptor ss_ep_comp_desc[USB_MAXENDPOINTS];
 } __attribute__ ((packed));
+
+#define	to_usb_interface(i) container_of((i), struct usb_interface, dev)
 
 /* Configuration information.. */
 struct usb_config {
@@ -115,10 +121,9 @@ enum {
 };
 
 struct usb_device {
-	struct dlist head;		/* Global device list */
-	atomic_t refcnt;
-	char	name[32];
-	char	devpath[16];
+	struct vmm_device dev;
+
+	char	devpath[VMM_FIELD_NAME_SIZE];
 	u32	route;
 	u8	portnum;
 	u8	level;
@@ -126,7 +131,6 @@ struct usb_device {
 	struct usb_hcd *hcd;
 
 	int maxchild;			/* Number of ports if hub */
-	struct usb_device *parent;
 	vmm_spinlock_t children_lock;
 	struct usb_device *children[USB_MAXCHILDREN];
 
@@ -173,12 +177,8 @@ struct usb_device {
 	u64 active_duration;
 };
 
-#define	to_usb_device(d) container_of(d, struct usb_device, dev)
-
-static inline struct usb_device *interface_to_usbdev(struct usb_interface *intf)
-{
-	return intf->dev;
-}
+#define	to_usb_device(d)	container_of((d), struct usb_device, dev)
+#define interface_to_usbdev(i)	to_usb_device((i)->dev.parent)
 
 /*-------------------------------------------------------------------*
  *                    USB device driver support                      *
@@ -393,15 +393,13 @@ struct usb_dynid {
  * and blocking until the unlinks complete).
  */
 struct usb_driver {
-	struct dlist head;
+	struct vmm_driver drv;
 
 	const char *name;
 
 	int (*probe) (struct usb_interface *intf,
 		      const struct usb_device_id *id);
-
 	void (*disconnect) (struct usb_interface *intf);
-
 	int (*pre_reset)(struct usb_interface *intf);
 	int (*post_reset)(struct usb_interface *intf);
 
@@ -413,6 +411,8 @@ struct usb_driver {
 	unsigned int disable_hub_initiated_lpm:1;
 	unsigned int soft_unbind:1;
 };
+
+#define	to_usb_driver(d) container_of((d), struct usb_driver, drv)
 
 /**
  * usb_match_one_id - Try to match usb_device_id with usb interface
@@ -475,14 +475,6 @@ int usb_del_dynid(struct usb_driver *driver,
 		  u32 idVendor, u32 idProduct);
 
 /**
- * usb_probe_driver - probe matching usb driver given usb interface 
- * @intf: interface of a usb device instance
- *
- * Note: This should be called from Thread (or Orphan) context.
- */
-int usb_probe_driver(struct usb_interface *intf);
-
-/**
  * usb_pre_reset_driver - pre reset usb driver for given usb interface
  * @intf: interface of a usb device instance
  * @drv: usb driver connected to this interface
@@ -501,16 +493,6 @@ int usb_pre_reset_driver(struct usb_interface *intf,
  */
 int usb_post_reset_driver(struct usb_interface *intf, 
 			  struct usb_driver *drv);
-
-/**
- * usb_disconnect_driver - disconnect usb driver given usb interface 
- * @intf: interface of a usb device instance
- * @drv: usb driver connected to this interface
- *
- * Note: This should be called from Thread (or Orphan) context.
- */
-void usb_disconnect_driver(struct usb_interface *intf, 
-			   struct usb_driver *drv);
 
 /**
  * usb_register - register a new usb driver 

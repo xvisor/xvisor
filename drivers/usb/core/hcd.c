@@ -156,8 +156,8 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 	int rc;
 
 	if (hcd->driver->irq) {
-		vmm_snprintf(hcd->irq_descr, sizeof(hcd->irq_descr), "%s:usb%d",
-				hcd->driver->description, hcd->bus_num);
+		vmm_snprintf(hcd->irq_descr, sizeof(hcd->irq_descr),
+			     "%s:usb%d", hcd->dev->name, hcd->bus_num);
 		rc = vmm_host_irq_register(irqnum, hcd->irq_descr, 
 					   &usb_hcd_irq, hcd);
 		if (rc != 0) {
@@ -194,14 +194,14 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
  */
 static int register_root_hub(struct usb_hcd *hcd)
 {
-	struct usb_device *usb_dev = hcd->root_hub;
+	struct usb_device *rhdev = hcd->root_hub;
 	int retval;
 
-	usb_set_device_state(usb_dev, USB_STATE_ADDRESS);
+	usb_set_device_state(rhdev, USB_STATE_ADDRESS);
 
 	vmm_mutex_lock(&usb_hcd_list_lock);
 
-	retval = usb_new_device(usb_dev);
+	retval = usb_new_device(rhdev);
 	if (retval) {
 		vmm_printf("%s: can't register root hub for %s, %d\n",
 			   __func__, hcd->dev->name, retval);
@@ -341,6 +341,7 @@ void usb_hcd_died(struct usb_hcd *hcd)
 				USB_STATE_NOTATTACHED);
 		usb_disconnect(hcd->root_hub);
 		hcd->root_hub = NULL;
+		hcd->rh_registered = 0;
 	}
 	vmm_spin_unlock_irqrestore (&hcd_root_hub_lock, flags);
 	/* Make sure that the other roothub is also deallocated. */

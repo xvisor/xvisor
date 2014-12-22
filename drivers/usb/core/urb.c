@@ -34,6 +34,7 @@ void usb_init_urb(struct urb *urb)
 	if (urb) {
 		memset(urb, 0, sizeof(*urb));
 		arch_atomic_write(&urb->refcnt, 1);
+		INIT_LIST_HEAD(&urb->urb_list);
 	}
 }
 VMM_EXPORT_SYMBOL(usb_init_urb);

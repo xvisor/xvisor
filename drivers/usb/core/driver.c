@@ -29,11 +29,6 @@
 #include <drv/usb.h>
 #include <drv/usb/hub.h>
 
-/* Protected list of all usb devices. */
-static DEFINE_MUTEX(usb_drv_list_lock);
-static LIST_HEAD(usb_drv_list);
-static u32 usb_drv_count;
-
 static const struct usb_device_id *usb_match_dynamic_id(struct usb_interface *intf,
 							struct usb_driver *drv)
 {
@@ -179,7 +174,6 @@ VMM_EXPORT_SYMBOL(usb_match_interface);
 int usb_add_dynid(struct usb_driver *driver,
 		  u32 idVendor, u32 idProduct, u32 bInterfaceClass)
 {
-	int retval;
 	irq_flags_t flags;
 	struct usb_dynid *dynid;
 
@@ -201,11 +195,7 @@ int usb_add_dynid(struct usb_driver *driver,
 	list_add_tail(&dynid->node, &driver->dynids.list);
 	vmm_spin_unlock_irqrestore(&driver->dynids.lock, flags);
 
-	retval = usb_hub_probe_driver(driver);
-	if (retval)
-		return retval;
-
-	return VMM_OK;
+	return vmm_devdrv_attach_driver(&driver->drv);
 }
 VMM_EXPORT_SYMBOL(usb_add_dynid);
 
@@ -235,35 +225,6 @@ int usb_del_dynid(struct usb_driver *driver,
 }
 VMM_EXPORT_SYMBOL(usb_del_dynid);
 
-int usb_probe_driver(struct usb_interface *intf)
-{
-	int err;
-	struct dlist *l;
-	struct usb_driver *drv;
-	const struct usb_device_id *id;
-
-	if (!intf) {
-		return VMM_EINVALID;
-	}
-
-	vmm_mutex_lock(&usb_drv_list_lock);
-
-	list_for_each(l, &usb_drv_list) {
-		drv = list_entry(l, struct usb_driver, head);
-		id = usb_match_interface(intf, drv);
-		if (id) {
-			err = drv->probe(intf, id);
-			vmm_mutex_unlock(&usb_drv_list_lock);
-			return err;
-		}
-	}
-
-	vmm_mutex_unlock(&usb_drv_list_lock);
-
-	return VMM_OK;
-}
-VMM_EXPORT_SYMBOL(usb_probe_driver);
-
 int usb_pre_reset_driver(struct usb_interface *intf, 
 			 struct usb_driver *drv)
 {
@@ -286,45 +247,16 @@ int usb_post_reset_driver(struct usb_interface *intf,
 }
 VMM_EXPORT_SYMBOL(usb_post_reset_driver);
 
-void usb_disconnect_driver(struct usb_interface *intf, 
-			   struct usb_driver *drv)
-{
-	if (!intf || !drv) {
-		return;
-	}
-
-	drv->disconnect(intf);
-}
-VMM_EXPORT_SYMBOL(usb_disconnect_driver);
-
 int usb_register(struct usb_driver *drv)
 {
-	struct dlist *l;
-	struct usb_driver *tdrv;
-
 	if (!drv) {
 		return VMM_EINVALID;
 	}
 
-	vmm_mutex_lock(&usb_drv_list_lock);
+	strncpy(drv->drv.name, drv->name, sizeof(drv->drv.name));
+	drv->drv.bus = &usb_bus_type;
 
-	list_for_each(l, &usb_drv_list) {
-		tdrv = list_entry(l, struct usb_driver, head);
-		if (strcmp(drv->name, tdrv->name) == 0) {
-			vmm_printf("%s: driver=\"%s\" alread registered\n",
-				   __func__, drv->name);
-			vmm_mutex_unlock(&usb_drv_list_lock);
-			return VMM_EEXIST;
-		}
-	}
-
-	usb_drv_count++;
-	INIT_LIST_HEAD(&drv->head);
-	list_add_tail(&drv->head, &usb_drv_list);
-
-	vmm_mutex_unlock(&usb_drv_list_lock);
-
-	return usb_hub_probe_driver(drv);
+	return vmm_devdrv_register_driver(&drv->drv);
 }
 VMM_EXPORT_SYMBOL(usb_register);
 
@@ -334,13 +266,57 @@ void usb_deregister(struct usb_driver *drv)
 		return;
 	}
 
-	vmm_mutex_lock(&usb_drv_list_lock);
-
-	usb_hub_disconnect_driver(drv);
-
-	list_del(&drv->head);
-
-	vmm_mutex_unlock(&usb_drv_list_lock);
+	vmm_devdrv_unregister_driver(&drv->drv);
 }
 VMM_EXPORT_SYMBOL(usb_deregister);
 
+static int usb_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
+{
+	struct usb_interface *intf = to_usb_interface(dev);
+	struct usb_driver *udrv = to_usb_driver(drv);
+
+	return usb_match_interface(intf, udrv) ? 1 : 0;
+}
+
+static int usb_bus_probe(struct vmm_device *dev)
+{
+	int err;
+	struct usb_interface *intf = to_usb_interface(dev);
+	struct usb_driver *udrv = to_usb_driver(dev->driver);
+	const struct usb_device_id *id = usb_match_interface(intf, udrv);
+
+	if (!id) {
+		return VMM_ENODEV;
+	}
+
+	if (udrv->probe) {
+		err = udrv->probe(intf, id);
+	} else {
+		err = VMM_ENODEV;
+	}
+
+	return err;
+}
+
+static int usb_bus_remove(struct vmm_device *dev)
+{
+	int err;
+	struct usb_interface *intf = to_usb_interface(dev);
+	struct usb_driver *udrv = to_usb_driver(dev->driver);
+
+	if (udrv->disconnect) {
+		udrv->disconnect(intf);
+		err = VMM_OK;
+	} else {
+		err = VMM_ENODEV;
+	}
+
+	return err;
+}
+
+struct vmm_bus usb_bus_type = {
+	.name = "usb",
+	.match = usb_bus_match,
+	.probe = usb_bus_probe,
+	.remove = usb_bus_remove,
+};

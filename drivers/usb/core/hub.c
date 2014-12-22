@@ -52,11 +52,6 @@
 #define USB_HUB_MIN_POWER_ON_DELAY	100
 #endif
 
-/* Protected list of all usb devices. */
-static DEFINE_MUTEX(usb_dev_list_lock); 
-static LIST_HEAD(usb_dev_list);
-static u32 usb_dev_count;
-
 /* Protect struct usb_device->state and ->children members */
 static DEFINE_SPINLOCK(device_state_lock);
 
@@ -76,8 +71,6 @@ struct usb_hub_work {
 	bool freeup;
 	int (*work_func)(struct usb_hub_work *);
 	struct usb_device *dev;
-	struct usb_interface *intf;
-	struct usb_driver *drv;
 };
 
 /* Hub monitor work */
@@ -92,23 +85,17 @@ static struct vmm_timer_event usb_hub_mon_event;
 static void usb_hub_init_work(struct usb_hub_work *work, 
 			      int (*func)(struct usb_hub_work *),
 			      bool freeup,
-			      struct usb_device *dev,
-			      struct usb_interface *intf,
-			      struct usb_driver *drv)
+			      struct usb_device *dev)
 {
 	INIT_LIST_HEAD(&work->head);
 	work->work_func = func;
 	work->freeup = freeup;
 	work->dev = dev;
-	work->intf = intf;
-	work->drv = drv;
 }
 
 static struct usb_hub_work *usb_hub_alloc_work(
 				int (*func)(struct usb_hub_work *),
-				struct usb_device *dev,
-				struct usb_interface *intf,
-				struct usb_driver *drv)
+				struct usb_device *dev)
 {
 	struct usb_hub_work *work;
 
@@ -117,7 +104,7 @@ static struct usb_hub_work *usb_hub_alloc_work(
 		return NULL;
 	}
 
-	usb_hub_init_work(work, func, TRUE, dev, intf, drv);
+	usb_hub_init_work(work, func, TRUE, dev);
 
 	return work;
 }
@@ -188,38 +175,6 @@ static void usb_hub_flush_dev_work(struct usb_device *dev)
 		list_for_each(l, &usb_hub_work_list) {
 			work = list_entry(l, struct usb_hub_work, head);
 			if (work->dev == dev) {
-				list_del(&work->head);
-				found = TRUE;
-				break;
-			}
-		}
-
-		vmm_spin_unlock_irqrestore(&usb_hub_work_list_lock, flags);
-
-		if (!found) {
-			break;
-		}
-
-		usb_hub_free_work(work);
-	}
-}
-
-static void usb_hub_flush_drv_work(struct usb_driver *drv)
-{
-	bool found;
-	irq_flags_t flags;
-	struct dlist *l;
-	struct usb_hub_work *work;
-
-	while (1) {
-		found = FALSE;
-		work = NULL;
-
-		vmm_spin_lock_irqsave(&usb_hub_work_list_lock, flags);
-
-		list_for_each(l, &usb_hub_work_list) {
-			work = list_entry(l, struct usb_hub_work, head);
-			if (work->drv == drv) {
 				list_del(&work->head);
 				found = TRUE;
 				break;
@@ -438,7 +393,6 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 	int index, ifno, epno, curr_if_num;
 	struct usb_descriptor_header *head;
 	struct usb_endpoint_descriptor *ep_desc;
-	struct usb_interface_descriptor *if_desc = NULL;
 	struct usb_interface *ifp = NULL;
 
 	ifno = -1;
@@ -469,11 +423,15 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 				/* this is a new interface, copy new desc */
 				ifno = dev->config.no_of_intf;
 				ifp = &dev->config.intf[ifno];
-				if_desc = &ifp->desc;
+				vmm_devdrv_initialize_device(&ifp->dev);
+				vmm_snprintf(ifp->dev.name,
+					     sizeof(ifp->dev.name),
+					     "%s-%d", dev->dev.name, ifno);
+				ifp->dev.parent = &dev->dev;
+				ifp->dev.bus = &usb_bus_type;
 				dev->config.no_of_intf++;
-				memcpy(if_desc, &buffer[index], 
-					sizeof(*if_desc));
-				ifp->dev = dev;
+				memcpy(&ifp->desc, &buffer[index], 
+					sizeof(ifp->desc));
 				ifp->no_of_ep = 0;
 				ifp->num_altsetting = 1;
 				curr_if_num = ifp->desc.bInterfaceNumber;
@@ -637,18 +595,16 @@ static struct usb_hub_device *usb_hub_alloc(void)
 static void usb_hub_start(struct usb_hub_device *hub)
 {
 	vmm_mutex_lock(&usb_hub_list_lock);
-
+	usb_ref_device(hub->dev);
 	list_add_tail(&hub->head, &usb_hub_list);
-
 	vmm_mutex_unlock(&usb_hub_list_lock);
 }
 
 static void usb_hub_stop(struct usb_hub_device *hub)
 {
 	vmm_mutex_lock(&usb_hub_list_lock);
-
 	list_del(&hub->head);
-
+	usb_free_device(hub->dev);
 	vmm_mutex_unlock(&usb_hub_list_lock);
 }
 
@@ -731,6 +687,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 		DPRINTF("%s: port status alloc failed\n", __func__);
 		return;
 	}
+	usb_ref_device(dev);
 
 	/* Enable power to the ports:
 	 * Here we Power-cycle the ports: aka,
@@ -752,6 +709,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 			DPRINTF("%s: port %d get_port_status failed\n", 
 				__func__, i + 1);
 			vmm_free(portsts);
+			usb_free_device(dev);
 			return;
 		}
 
@@ -768,6 +726,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 			DPRINTF("%s: port %d power change failed\n", 
 				__func__, i + 1);
 			vmm_free(portsts);
+			usb_free_device(dev);
 			return;
 		}
 	}
@@ -786,6 +745,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	}
 
 	vmm_free(portsts);
+	usb_free_device(dev);
 }
 
 static int usb_hub_configure(struct usb_device *dev)
@@ -803,6 +763,7 @@ static int usb_hub_configure(struct usb_device *dev)
 	if (!buffer) {
 		return VMM_ENOMEM;
 	}
+	usb_ref_device(dev);
 
 	/* Allocate Hub device */
 	hub = usb_hub_alloc();
@@ -951,6 +912,7 @@ static int usb_hub_configure(struct usb_device *dev)
 	usb_hub_start(hub);
 
 done:
+	usb_free_device(dev);
 	vmm_free(buffer);
 
 	return err;
@@ -1010,15 +972,15 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	struct usb_device_descriptor *desc;
 	enum usb_device_state state;
 
+	usb_ref_device(dev);
+
 	/* Sanity check on device state */
 	state = usb_get_device_state(dev);
 	if ((state < USB_STATE_ATTACHED) ||
 	    (USB_STATE_ADDRESS < state)) {
+		usb_free_device(dev);
 		return VMM_EINVALID;
 	}
-
-	/* Increment ref count of usb device to avoid accidental free-up */
-	usb_ref_device(dev);
 
 	/* Alloc buffer for temporary read/writes */
 	tmpbuf = vmm_zalloc(USB_BUFSIZ);
@@ -1086,7 +1048,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		}
 
 		/* reset the port for the second time */
-		err = usb_hub_port_reset(dev->parent, port, &portstatus);
+		err = usb_hub_port_reset(parent, port, &portstatus);
 		if (err) {
 			vmm_printf("%s: couldn't reset port %i\n", 
 				   __func__, port);
@@ -1179,12 +1141,16 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	/* Set device state to configured */
 	usb_set_device_state(dev, USB_STATE_CONFIGURED);
 
+	/* Register new device to devdrv */
+	vmm_devdrv_register_device(&dev->dev);
+
 	/* Now probe the device interfaces */
 	err = usb_hub_probe(dev);
 	if (err == VMM_ENODEV) {
-		for (i = 0; i < dev->config.no_of_intf; i++) {		
-			usb_probe_driver(&dev->config.intf[i]);
+		for (i = 0; i < dev->config.no_of_intf; i++) {
+			vmm_devdrv_register_device(&dev->config.intf[i].dev);
 		}
+		err = VMM_OK;
 	}
 
 done:
@@ -1209,8 +1175,6 @@ static void usb_hub_disconnect(struct usb_device *dev)
 
 	usb_hub_stop(hub);
 
-	usb_free_device(hub->dev);
-
 	usb_hub_free(hub);
 }
 
@@ -1218,7 +1182,6 @@ static void recursively_disconnect(struct usb_device *dev)
 {
 	int i;
 	irq_flags_t flags;
-	struct usb_driver *drv;
 	struct usb_interface *intf;
 
 	/* Disconnect the child devices first */
@@ -1240,13 +1203,12 @@ static void recursively_disconnect(struct usb_device *dev)
 	} else {
 		for (i = 0; i < dev->config.no_of_intf; i++) {
 			intf = &dev->config.intf[i];
-			drv = intf->drv;
-			if (drv) {
-				usb_disconnect_driver(intf, drv);
-				intf->drv = NULL;
-			}
+			vmm_devdrv_unregister_device(&intf->dev);
 		}
 	}
+
+	/* Unregister from devdrv */
+	vmm_devdrv_unregister_device(&dev->dev);
 
 	/* Free the device */
 	usb_free_device(dev);
@@ -1277,6 +1239,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	if (!portsts) {
 		return;
 	}
+	usb_ref_device(dev);
 
 	/* Check status */
 	if (usb_get_port_status(dev, port + 1, portsts) < 0) {
@@ -1325,6 +1288,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	/* Allocate a new device struct for it */
 	usb = usb_alloc_device(dev, dev->hcd, port);
 
+	/* Determine device speed */
 	switch (portstatus & USB_PORT_STAT_SPEED_MASK) {
 	case USB_PORT_STAT_SUPER_SPEED:
 		usb->speed = USB_SPEED_SUPER;
@@ -1340,10 +1304,10 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 		break;
 	}
 
+	/* Update parent childer list */
 	vmm_spin_lock_irqsave(&dev->children_lock, flags);
 	dev->children[port] = usb;
 	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
-	usb->parent = dev;
 	usb->portnum = port + 1;
 
 	/* Run it through the hoops (find a driver, etc) */
@@ -1358,6 +1322,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	}
 
 done:
+	usb_free_device(dev);
 	vmm_free(portsts);
 }
 
@@ -1382,6 +1347,8 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 	if (!portsts) {
 		return VMM_ENOMEM;
 	}
+
+	usb_ref_device(dev);
 
 	for (i = 0; i < dev->maxchild; i++) {
 		/*
@@ -1452,6 +1419,8 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 						USB_PORT_FEAT_C_RESET);
 		}
 	}
+
+	usb_free_device(dev);
 
 	vmm_free(portsts);
 
@@ -1550,13 +1519,46 @@ void usb_set_device_state(struct usb_device *udev,
 }
 VMM_EXPORT_SYMBOL(usb_set_device_state);
 
+static void usb_release_device(struct vmm_device *ddev)
+{
+	irq_flags_t flags;
+	struct usb_device *dev = to_usb_device(ddev);
+	struct usb_device *parent = (ddev->parent) ?
+				to_usb_device(ddev->parent) : NULL;
+
+	/* Update HCD device number bitmap */
+	vmm_spin_lock_irqsave(&dev->hcd->devicemap_lock, flags);
+	__clear_bit(dev->devnum - 1, dev->hcd->devicemap);
+	vmm_spin_unlock_irqrestore(&dev->hcd->devicemap_lock, flags);
+
+	/* Update parent device */
+	if (parent) {
+		vmm_spin_lock_irqsave(&parent->children_lock, flags);
+		parent->children[dev->portnum] = NULL;
+		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
+	}
+
+	/* Flush all HUB work related to this USB device */
+	usb_hub_flush_dev_work(dev);
+
+	/* Root hubs aren't true devices, so free HCD resources */
+	if (dev->hcd->driver->free_dev && parent) {
+		dev->hcd->driver->free_dev(dev->hcd, dev);
+	}
+
+	/* Destroy HCD this will reduce HCD referenece count */
+	usb_destroy_hcd(dev->hcd);
+
+	/* Release memory of the usb device */
+	vmm_free(dev);
+}
+
 struct usb_device *usb_alloc_device(struct usb_device *parent,
 				    struct usb_hcd *hcd, unsigned port)
 {
 	int i;
 	irq_flags_t flags;
-	struct dlist *l;
-	struct usb_device *dev, *tdev;
+	struct usb_device *dev;
 
 	/* Sanity checks */
 	if (USB_MAXCHILDREN <= port) {
@@ -1578,6 +1580,13 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		return NULL;
 	}
 
+	/* Initialize devdrv context */
+	vmm_devdrv_initialize_device(&dev->dev);
+	dev->dev.autoprobe_disabled = TRUE;
+	dev->dev.parent = (parent) ? &parent->dev : NULL;
+	dev->dev.bus = &usb_bus_type;
+	dev->dev.release = usb_release_device;
+
 	/* Increment reference count of HCD */
 	usb_ref_hcd(hcd);
 
@@ -1589,9 +1598,6 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		return NULL;
 	}
 
-	INIT_LIST_HEAD(&dev->head);
-	arch_atomic_write(&dev->refcnt, 1);
-
 	dev->state = USB_STATE_ATTACHED;
 
 	if (unlikely(!parent)) {
@@ -1599,7 +1605,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		dev->route = 0;
 		dev->level = 1;
 
-		vmm_snprintf(dev->name, sizeof(dev->name),
+		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d", hcd->bus_num);
 	} else {
 		dev->level = parent->level + 1;
@@ -1622,7 +1628,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 			}
 		}
 
-		vmm_snprintf(dev->name, sizeof(dev->name),
+		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d-%s", hcd->bus_num, dev->devpath);
 
 		/* hub driver sets up TT records */
@@ -1635,16 +1641,10 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 
 	dev->portnum = port;
 	dev->hcd = hcd;
-	dev->parent = parent;
 	dev->maxchild = 0;
 	INIT_SPIN_LOCK(&dev->children_lock);
 	for (i = 0; i < USB_MAXCHILDREN; i++) {
 		dev->children[i] = NULL;
-	}
-
-	/* Increment parent reference count */
-	if (dev->parent) {
-		usb_ref_device(dev->parent);
 	}
 
 	/* Assign device number based on HCD device bitmap
@@ -1664,28 +1664,9 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 	vmm_spin_unlock_irqrestore(&hcd->devicemap_lock, flags);
 	if (i == 0) {
 		usb_destroy_hcd(hcd);
-		usb_free_device(dev->parent);
 		vmm_free(dev);
 		return NULL;
 	}
-
-	/* Add usb device to global list */
-	vmm_mutex_lock(&usb_dev_list_lock);
-	list_for_each(l, &usb_dev_list) {
-		tdev = list_entry(l, struct usb_device, head);
-		if (strcmp(dev->name, tdev->name) == 0) {
-			vmm_printf("%s: device=%s alread registered\n",
-				   hcd->dev->name, dev->name);
-			vmm_mutex_unlock(&usb_dev_list_lock);
-			usb_destroy_hcd(hcd);
-			usb_free_device(dev->parent);
-			vmm_free(dev);
-			return NULL;
-		}
-	}
-	usb_dev_count++;
-	list_add_tail(&dev->head, &usb_dev_list);
-	vmm_mutex_unlock(&usb_dev_list_lock);
 
 	return dev;
 }
@@ -1693,58 +1674,25 @@ VMM_EXPORT_SYMBOL(usb_alloc_device);
 
 void usb_ref_device(struct usb_device *dev)
 {
-	arch_atomic_add(&dev->refcnt, 1);
+	if (dev) {
+		vmm_devdrv_ref_device(&dev->dev);
+	}
 }
 VMM_EXPORT_SYMBOL(usb_ref_device);
 
 void usb_free_device(struct usb_device *dev)
 {
-	irq_flags_t flags;
-
-	if (!dev) {
-		return;
+	if (dev) {
+		vmm_devdrv_free_device(&dev->dev);
 	}
-
-	if (arch_atomic_sub_return(&dev->refcnt, 1)) {
-		return;
-	}
-
-	/* Remove usb device to global list */
-	vmm_mutex_lock(&usb_dev_list_lock);
-	list_del(&dev->head);
-	usb_dev_count--;
-	vmm_mutex_unlock(&usb_dev_list_lock);
-
-	/* Assign device number based on HCD device bitmap */
-	vmm_spin_lock_irqsave(&dev->hcd->devicemap_lock, flags);
-	__clear_bit(dev->devnum - 1, dev->hcd->devicemap);
-	vmm_spin_unlock_irqrestore(&dev->hcd->devicemap_lock, flags);
-
-	/* Update parent device */
-	if (dev->parent) {
-		vmm_spin_lock_irqsave(&dev->parent->children_lock, flags);
-		dev->parent->children[dev->portnum] = NULL;
-		vmm_spin_unlock_irqrestore(&dev->parent->children_lock, flags);
-	}
-
-	/* Flush all HUB work related to this USB device */
-	usb_hub_flush_dev_work(dev);
-
-	/* Root hubs aren't true devices, so free HCD resources */
-	if (dev->hcd->driver->free_dev && dev->parent) {
-		dev->hcd->driver->free_dev(dev->hcd, dev);
-	}
-
-	usb_destroy_hcd(dev->hcd);
-
-	vmm_free(dev);
 }
 VMM_EXPORT_SYMBOL(usb_free_device);
 
 static int usb_new_device_work(struct usb_hub_work *work)
 {
 	struct usb_device *dev = work->dev;
-	struct usb_device *parent = dev->parent;
+	struct usb_device *parent =
+		(dev->dev.parent) ? to_usb_device(dev->dev.parent) : NULL;
 
 	return usb_hub_detect_new_device(parent, dev);
 }
@@ -1757,8 +1705,7 @@ int usb_new_device(struct usb_device *dev)
 		return VMM_EINVALID;
 	}
 
-	w = usb_hub_alloc_work(usb_new_device_work,
-			       dev, NULL, NULL);
+	w = usb_hub_alloc_work(usb_new_device_work, dev);
 	if (w) {
 		usb_hub_queue_work(w);
 	}
@@ -1780,8 +1727,7 @@ int usb_disconnect(struct usb_device *dev)
 		return VMM_EINVALID;
 	}
 
-	w = usb_hub_alloc_work(usb_disconnect_work,
-			       dev, NULL, NULL);
+	w = usb_hub_alloc_work(usb_disconnect_work, dev);
 	if (w) {
 		usb_hub_queue_work(w);
 	}
@@ -1789,104 +1735,6 @@ int usb_disconnect(struct usb_device *dev)
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(usb_disconnect);
-
-static int usb_hub_probe_driver_work(struct usb_hub_work *work)
-{
-	u32 i;
-	struct dlist *l;
-	struct usb_device *dev = NULL;
-	struct usb_interface *intf = NULL;
-	struct usb_driver *drv = work->drv;
-
-	if (!drv) {
-		return VMM_EFAIL;
-	}
-
-	vmm_mutex_lock(&usb_dev_list_lock);
-
-	list_for_each(l, &usb_dev_list) {
-		dev = list_entry(l, struct usb_device, head);
-		for (i = 0; i < dev->config.no_of_intf; i++) {
-			intf = &dev->config.intf[i];
-			if (intf->drv) {
-				continue;
-			}
-			if (!usb_probe_driver(intf)) {
-				intf->drv = drv;
-			}
-		}
-	}
-
-	vmm_mutex_unlock(&usb_dev_list_lock);
-
-	return VMM_OK;
-}
-
-int usb_hub_probe_driver(struct usb_driver *drv)
-{
-	struct usb_hub_work *w;
-
-	if (!drv) {
-		return VMM_EINVALID;
-	}
-
-	w = usb_hub_alloc_work(usb_hub_probe_driver_work,
-			       NULL, NULL, drv);
-	if (w) {
-		usb_hub_queue_work(w);
-	}
-
-	return VMM_OK;
-}
-VMM_EXPORT_SYMBOL(usb_hub_probe_driver);
-
-static int usb_hub_disconnect_driver_work(struct usb_hub_work *work)
-{
-	u32 i;
-	struct dlist *l;
-	struct usb_device *dev = NULL;
-	struct usb_interface *intf = NULL;
-	struct usb_driver *drv = work->drv;
-
-	if (!drv) {
-		return VMM_EFAIL;
-	}
-
-	vmm_mutex_lock(&usb_dev_list_lock);
-
-	list_for_each(l, &usb_dev_list) {
-		dev = list_entry(l, struct usb_device, head);
-		for (i = 0; i < dev->config.no_of_intf; i++) {
-			intf = &dev->config.intf[i];
-			if (intf->drv == drv) {
-				usb_disconnect_driver(intf, drv);
-				intf->drv = NULL;
-			}
-		}
-	}
-
-	vmm_mutex_unlock(&usb_dev_list_lock);
-
-	return VMM_OK;
-}
-
-void usb_hub_disconnect_driver(struct usb_driver *drv)
-{
-	struct usb_hub_work *w;
-
-	if (!drv) {
-		return;
-	}
-
-	usb_hub_flush_drv_work(drv);
-
-	w = usb_hub_alloc_work(usb_hub_disconnect_driver_work,
-			       NULL, NULL, drv);
-	if (w) {
-		usb_hub_queue_work(w);
-	}
-}
-VMM_EXPORT_SYMBOL(usb_hub_disconnect_driver);
 
 struct usb_device *usb_hub_find_child(struct usb_device *hdev, int port1)
 {
@@ -1918,7 +1766,7 @@ int __init usb_hub_init(void)
 	vmm_threads_start(usb_hub_worker_thread);
 
 	usb_hub_init_work(&usb_hub_mon_work, usb_hub_mon_work_func, 
-			  FALSE, NULL, NULL, NULL);
+			  FALSE, NULL);
 
 	INIT_TIMER_EVENT(&usb_hub_mon_event, usb_hub_mon_event_func, NULL);
 	vmm_timer_event_start(&usb_hub_mon_event, USB_HUB_MON_EVENT_NSECS);

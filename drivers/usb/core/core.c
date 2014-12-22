@@ -38,6 +38,11 @@ static int __init usb_core_init(void)
 {
 	int rc;
 
+	rc = vmm_devdrv_register_bus(&usb_bus_type);
+	if (rc) {
+		return rc;
+	}
+
 	rc = usb_hcd_init();
 	if (rc) {
 		return rc;
@@ -56,6 +61,8 @@ static void __exit usb_core_exit(void)
 	usb_hub_exit();
 
 	usb_hcd_exit();
+
+	vmm_devdrv_unregister_bus(&usb_bus_type);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,
