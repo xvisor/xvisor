@@ -62,7 +62,7 @@ static LIST_HEAD(usb_hub_list);
 /* Protected Hub work list and Hub worker thread */
 static struct vmm_thread *usb_hub_worker_thread;
 static LIST_HEAD(usb_hub_work_list);
-static DEFINE_SPINLOCK(usb_hub_work_list_lock); 
+static DEFINE_SPINLOCK(usb_hub_work_list_lock);
 static DECLARE_COMPLETION(usb_hub_work_avail);
 
 /* Hub work instance */
@@ -82,7 +82,7 @@ static struct vmm_timer_event usb_hub_mon_event;
  * ==================== USB Hub Worker Routines ====================
  */
 
-static void usb_hub_init_work(struct usb_hub_work *work, 
+static void usb_hub_init_work(struct usb_hub_work *work,
 			      int (*func)(struct usb_hub_work *),
 			      bool freeup,
 			      struct usb_device *dev)
@@ -118,7 +118,7 @@ static void usb_hub_free_work(struct usb_hub_work *work)
 	vmm_free(work);
 }
 
-static void usb_hub_queue_work(struct usb_hub_work *work) 
+static void usb_hub_queue_work(struct usb_hub_work *work)
 {
 	irq_flags_t flags;
 
@@ -215,7 +215,7 @@ static int usb_hub_worker_thread_main(void *data)
 
 		err = work->work_func(work);
 		if (err) {
-			vmm_printf("%s: Work failed (error %d)\n", 
+			vmm_printf("%s: Work failed (error %d)\n",
 				   __func__, err);
 		}
 
@@ -373,8 +373,8 @@ static int usb_set_maxpacket(struct usb_device *dev)
 	int i, ii;
 
 	for (i = 0; i < dev->config.desc.bNumInterfaces; i++) {
-		for (ii = 0; 
-		     ii < dev->config.intf[i].desc.bNumEndpoints; 
+		for (ii = 0;
+		     ii < dev->config.intf[i].desc.bNumEndpoints;
 		     ii++) {
 			usb_set_maxpacket_ep(dev, i, ii);
 		}
@@ -407,7 +407,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 		return VMM_EINVALID;
 	}
 	memcpy(&dev->config, buffer, buffer[0]);
-	dev->config.desc.wTotalLength = 
+	dev->config.desc.wTotalLength =
 			vmm_le16_to_cpu(dev->config.desc.wTotalLength);
 	dev->config.no_of_intf = 0;
 
@@ -430,7 +430,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 				ifp->dev.parent = &dev->dev;
 				ifp->dev.bus = &usb_bus_type;
 				dev->config.no_of_intf++;
-				memcpy(&ifp->desc, &buffer[index], 
+				memcpy(&ifp->desc, &buffer[index],
 					sizeof(ifp->desc));
 				ifp->no_of_ep = 0;
 				ifp->num_altsetting = 1;
@@ -450,7 +450,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 			/* found an endpoint */
 			ifp->no_of_ep++;
 			memcpy(ep_desc, &buffer[index], sizeof(*ep_desc));
-			ep_wMaxPacketSize = 
+			ep_wMaxPacketSize =
 				get_unaligned(&ep_desc->wMaxPacketSize);
 			put_unaligned(vmm_le16_to_cpu(ep_wMaxPacketSize),
 					&ep_desc->wMaxPacketSize);
@@ -458,7 +458,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 			break;
 		case USB_DT_SS_ENDPOINT_COMP:
 			ifp = &dev->config.intf[ifno];
-			memcpy(&ifp->ss_ep_comp_desc[epno], &buffer[index], 
+			memcpy(&ifp->ss_ep_comp_desc[epno], &buffer[index],
 				sizeof(ifp->ss_ep_comp_desc[epno]));
 			break;
 		default:
@@ -494,8 +494,9 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 static inline const char *portspeed(int portstatus)
 {
 	char *speed_str;
+	int portmask = (USB_PORT_STAT_LOW_SPEED|USB_PORT_STAT_HIGH_SPEED);
 
-	switch (portstatus & USB_PORT_STAT_SPEED_MASK) {
+	switch (portstatus & portmask) {
 	case USB_PORT_STAT_SUPER_SPEED:
 		speed_str = "5 Gb/s";
 		break;
@@ -541,8 +542,8 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 		portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
 		portchange = vmm_le16_to_cpu(portsts->wPortChange);
 
-		DPRINTF("%s: portstatus 0x%x, change 0x%x, %s\n", 
-			__func__, portstatus, portchange, 
+		DPRINTF("%s: portstatus 0x%x, change 0x%x, %s\n",
+			__func__, portstatus, portchange,
 			portspeed(portstatus));
 
 		DPRINTF("%s: STAT_C_CONNECTION = %d STAT_CONNECTION = %d" \
@@ -696,7 +697,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	DPRINTF("%s: enabling power on all ports\n", __func__);
 	for (i = 0; i < dev->maxchild; i++) {
 		usb_clear_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
-		DPRINTF("%s: port %d returns 0x%lx\n", 
+		DPRINTF("%s: port %d returns 0x%lx\n",
 			__func__, i + 1, dev->status);
 	}
 
@@ -706,7 +707,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	for (i = 0; i < dev->maxchild; i++) {
 		ret = usb_get_port_status(dev, i + 1, portsts);
 		if (ret < 0) {
-			DPRINTF("%s: port %d get_port_status failed\n", 
+			DPRINTF("%s: port %d get_port_status failed\n",
 				__func__, i + 1);
 			vmm_free(portsts);
 			usb_free_device(dev);
@@ -723,7 +724,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 		 */
 		portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
 		if (portstatus & (USB_PORT_STAT_POWER << 1)) {
-			DPRINTF("%s: port %d power change failed\n", 
+			DPRINTF("%s: port %d power change failed\n",
 				__func__, i + 1);
 			vmm_free(portsts);
 			usb_free_device(dev);
@@ -733,7 +734,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 
 	for (i = 0; i < dev->maxchild; i++) {
 		usb_set_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
-		DPRINTF("%s: port %d returns 0x%lx\n", 
+		DPRINTF("%s: port %d returns 0x%lx\n",
 			__func__, i + 1, dev->status);
 	}
 
@@ -775,7 +776,7 @@ static int usb_hub_configure(struct usb_device *dev)
 
 	/* Get Hub descriptor */
 	if (usb_get_hub_descriptor(dev, buffer, 4) < 0) {
-		DPRINTF("%s: failed to get hub descriptor, giving up 0x%lx\n", 
+		DPRINTF("%s: failed to get hub descriptor, giving up 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
 		err = VMM_EFAIL;
@@ -785,7 +786,7 @@ static int usb_hub_configure(struct usb_device *dev)
 
 	/* Silence compiler warning if USB_BUFSIZ is > 256 [= sizeof(char)] */
 	if (descriptor->bLength > USB_BUFSIZ) {
-		DPRINTF("%s: failed to hub descriptor too long: %d\n", 
+		DPRINTF("%s: failed to hub descriptor too long: %d\n",
 			__func__, descriptor->bLength);
 		usb_hub_free(hub);
 		err = VMM_EINVALID;
@@ -793,7 +794,7 @@ static int usb_hub_configure(struct usb_device *dev)
 	}
 
 	if (usb_get_hub_descriptor(dev, buffer, descriptor->bLength) < 0) {
-		DPRINTF("%s: failed to hub descriptor 2nd giving up 0x%lx\n", 
+		DPRINTF("%s: failed to hub descriptor 2nd giving up 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
 		err = VMM_EFAIL;
@@ -814,12 +815,12 @@ static int usb_hub_configure(struct usb_device *dev)
 	memset(bitmap, 0xff, (USB_MAXCHILDREN+1+7)/8); /* PowerMask = 1B */
 
 	for (i = 0; i < ((hub->desc.bNbrPorts + 1 + 7)/8); i++) {
-		hub->desc.u.hs.DeviceRemovable[i] = 
+		hub->desc.u.hs.DeviceRemovable[i] =
 					descriptor->u.hs.DeviceRemovable[i];
 	}
 
 	for (i = 0; i < ((hub->desc.bNbrPorts + 1 + 7)/8); i++) {
-		hub->desc.u.hs.PortPwrCtrlMask[i] = 
+		hub->desc.u.hs.PortPwrCtrlMask[i] =
 					descriptor->u.hs.PortPwrCtrlMask[i];
 	}
 
@@ -851,7 +852,7 @@ static int usb_hub_configure(struct usb_device *dev)
 		DPRINTF("%s: global over-current protection\n", __func__);
 		break;
 	case 0x08:
-		DPRINTF("%s: individual port over-current protection\n", 
+		DPRINTF("%s: individual port over-current protection\n",
 			__func__);
 		break;
 	case 0x10:
@@ -866,13 +867,13 @@ static int usb_hub_configure(struct usb_device *dev)
 		__func__, descriptor->bHubContrCurrent);
 
 	for (i = 0; i < dev->maxchild; i++) {
-		DPRINTF("%s: port %d is%s removable\n", __func__, i + 1, 
+		DPRINTF("%s: port %d is%s removable\n", __func__, i + 1,
 			hub->desc.DeviceRemovable[(i + 1) / 8] & \
 			(1 << ((i + 1) % 8)) ? " not" : "");
 	}
 
 	if (sizeof(struct usb_hub_status) > USB_BUFSIZ) {
-		DPRINTF("%s: failed to get Status too long: %d\n", 
+		DPRINTF("%s: failed to get Status too long: %d\n",
 			__func__, descriptor->bLength);
 		usb_hub_free(hub);
 		err = VMM_EFAIL;
@@ -1050,7 +1051,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		/* reset the port for the second time */
 		err = usb_hub_port_reset(parent, port, &portstatus);
 		if (err) {
-			vmm_printf("%s: couldn't reset port %i\n", 
+			vmm_printf("%s: couldn't reset port %i\n",
 				   __func__, port);
 			dev->devnum = addr;
 			goto done;
@@ -1230,6 +1231,7 @@ static int usb_hub_disconnect_device(struct usb_device *dev)
 static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 {
 	u16 portstatus;
+	u16 portmask = (USB_PORT_STAT_LOW_SPEED|USB_PORT_STAT_HIGH_SPEED);
 	irq_flags_t flags;
 	struct usb_device *usb;
 	struct usb_device *dev = hub->dev;
@@ -1278,7 +1280,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 
 	/* Reset the port */
 	if (usb_hub_port_reset(dev, port, &portstatus) < 0) {
-		vmm_printf("%s: cannot reset port %i!?\n", 
+		vmm_printf("%s: cannot reset port %i!?\n",
 			   __func__, port + 1);
 		goto done;
 	}
@@ -1289,7 +1291,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	usb = usb_alloc_device(dev, dev->hcd, port);
 
 	/* Determine device speed */
-	switch (portstatus & USB_PORT_STAT_SPEED_MASK) {
+	switch (portstatus & portmask) {
 	case USB_PORT_STAT_SUPER_SPEED:
 		usb->speed = USB_SPEED_SUPER;
 		break;
@@ -1363,7 +1365,7 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 		do {
 			err = usb_get_port_status(dev, i + 1, portsts);
 			if (err < 0) {
-				DPRINTF("%s: get_port_status failed\n", 
+				DPRINTF("%s: get_port_status failed\n",
 					__func__);
 				break;
 			}
@@ -1385,7 +1387,7 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 			__func__, i + 1, portstatus, portchange);
 
 		if (portchange & USB_PORT_STAT_C_CONNECTION) {
-			DPRINTF("%s: port %d connection change\n", 
+			DPRINTF("%s: port %d connection change\n",
 				__func__, i + 1);
 			usb_hub_port_connect_change(hub, i);
 		}
@@ -1398,14 +1400,14 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 		}
 
 		if (portstatus & USB_PORT_STAT_SUSPEND) {
-			DPRINTF("%s: port %d suspend change\n", 
+			DPRINTF("%s: port %d suspend change\n",
 				__func__, i + 1);
 			usb_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_SUSPEND);
 		}
 
 		if (portchange & USB_PORT_STAT_C_OVERCURRENT) {
-			DPRINTF("%s: port %d over-current change\n", 
+			DPRINTF("%s: port %d over-current change\n",
 				__func__, i + 1);
 			usb_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_OVER_CURRENT);
@@ -1413,7 +1415,7 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 		}
 
 		if (portchange & USB_PORT_STAT_C_RESET) {
-			DPRINTF("%s: port %d reset change\n", 
+			DPRINTF("%s: port %d reset change\n",
 				__func__, i + 1);
 			usb_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_RESET);
@@ -1765,7 +1767,7 @@ int __init usb_hub_init(void)
 
 	vmm_threads_start(usb_hub_worker_thread);
 
-	usb_hub_init_work(&usb_hub_mon_work, usb_hub_mon_work_func, 
+	usb_hub_init_work(&usb_hub_mon_work, usb_hub_mon_work_func,
 			  FALSE, NULL);
 
 	INIT_TIMER_EVENT(&usb_hub_mon_event, usb_hub_mon_event_func, NULL);

@@ -30,7 +30,6 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devdrv.h>
 #include <libs/list.h>
-#include <drv/usb/defs.h>
 #include <drv/usb/ch9.h>
 
 /* For linux like 'struct usb_device_id' */
@@ -564,7 +563,7 @@ struct urb {
 static inline void usb_fill_control_urb(struct urb *urb,
 					struct usb_device *dev,
 					u32 pipe,
-					unsigned char *setup_packet,
+					u8 *setup_packet,
 					void *transfer_buffer,
 					int buffer_length,
 					usb_complete_t complete_fn,
@@ -758,6 +757,12 @@ int usb_unlink_urb(struct urb *urb, int status);
  * specification, so that much of the uhci driver can just mask the bits
  * appropriately.
  */
+
+#define USB_PIPE_ISOCHRONOUS	0
+#define USB_PIPE_INTERRUPT	1
+#define USB_PIPE_CONTROL	2
+#define USB_PIPE_BULK		3
+
 #define usb_packetid(pipe)	(((pipe) & USB_DIR_IN) ? USB_PID_IN : \
 				 USB_PID_OUT)
 
@@ -768,40 +773,40 @@ int usb_unlink_urb(struct urb *urb, int status);
 #define usb_pipeendpoint(pipe)	(((pipe) >> 15) & 0xf)
 #define usb_pipedata(pipe)	(((pipe) >> 19) & 1)
 #define usb_pipetype(pipe)	(((pipe) >> 30) & 3)
-#define usb_pipeisoc(pipe)	(usb_pipetype((pipe)) == PIPE_ISOCHRONOUS)
-#define usb_pipeint(pipe)	(usb_pipetype((pipe)) == PIPE_INTERRUPT)
-#define usb_pipecontrol(pipe)	(usb_pipetype((pipe)) == PIPE_CONTROL)
-#define usb_pipebulk(pipe)	(usb_pipetype((pipe)) == PIPE_BULK)
+#define usb_pipeisoc(pipe)	(usb_pipetype((pipe)) == USB_PIPE_ISOCHRONOUS)
+#define usb_pipeint(pipe)	(usb_pipetype((pipe)) == USB_PIPE_INTERRUPT)
+#define usb_pipecontrol(pipe)	(usb_pipetype((pipe)) == USB_PIPE_CONTROL)
+#define usb_pipebulk(pipe)	(usb_pipetype((pipe)) == USB_PIPE_BULK)
 
 /* Create various pipes... */
-#define create_pipe(dev,endpoint) \
+#define usb_create_pipe(dev,endpoint) \
 		(((dev)->devnum << 8) | ((endpoint) << 15) | \
 		(dev)->maxpacketsize)
-#define default_pipe(dev) ((dev)->speed << 26)
-#define usb_sndctrlpipe(dev, endpoint)	((PIPE_CONTROL << 30) | \
-					 create_pipe(dev, endpoint))
-#define usb_rcvctrlpipe(dev, endpoint)	((PIPE_CONTROL << 30) | \
-					 create_pipe(dev, endpoint) | \
+#define usb_default_pipe(dev) ((dev)->speed << 26)
+#define usb_sndctrlpipe(dev, endpoint)	((USB_PIPE_CONTROL << 30) | \
+					 usb_create_pipe(dev, endpoint))
+#define usb_rcvctrlpipe(dev, endpoint)	((USB_PIPE_CONTROL << 30) | \
+					 usb_create_pipe(dev, endpoint) | \
 					 USB_DIR_IN)
-#define usb_sndisocpipe(dev, endpoint)	((PIPE_ISOCHRONOUS << 30) | \
-					 create_pipe(dev, endpoint))
-#define usb_rcvisocpipe(dev, endpoint)	((PIPE_ISOCHRONOUS << 30) | \
-					 create_pipe(dev, endpoint) | \
+#define usb_sndisocpipe(dev, endpoint)	((USB_PIPE_ISOCHRONOUS << 30) | \
+					 usb_create_pipe(dev, endpoint))
+#define usb_rcvisocpipe(dev, endpoint)	((USB_PIPE_ISOCHRONOUS << 30) | \
+					 usb_create_pipe(dev, endpoint) | \
 					 USB_DIR_IN)
-#define usb_sndbulkpipe(dev, endpoint)	((PIPE_BULK << 30) | \
-					 create_pipe(dev, endpoint))
-#define usb_rcvbulkpipe(dev, endpoint)	((PIPE_BULK << 30) | \
-					 create_pipe(dev, endpoint) | \
+#define usb_sndbulkpipe(dev, endpoint)	((USB_PIPE_BULK << 30) | \
+					 usb_create_pipe(dev, endpoint))
+#define usb_rcvbulkpipe(dev, endpoint)	((USB_PIPE_BULK << 30) | \
+					 usb_create_pipe(dev, endpoint) | \
 					 USB_DIR_IN)
-#define usb_sndintpipe(dev, endpoint)	((PIPE_INTERRUPT << 30) | \
-					 create_pipe(dev, endpoint))
-#define usb_rcvintpipe(dev, endpoint)	((PIPE_INTERRUPT << 30) | \
-					 create_pipe(dev, endpoint) | \
+#define usb_sndintpipe(dev, endpoint)	((USB_PIPE_INTERRUPT << 30) | \
+					 usb_create_pipe(dev, endpoint))
+#define usb_rcvintpipe(dev, endpoint)	((USB_PIPE_INTERRUPT << 30) | \
+					 usb_create_pipe(dev, endpoint) | \
 					 USB_DIR_IN)
-#define usb_snddefctrl(dev)		((PIPE_CONTROL << 30) | \
-					 default_pipe(dev))
-#define usb_rcvdefctrl(dev)		((PIPE_CONTROL << 30) | \
-					 default_pipe(dev) | \
+#define usb_snddefctrl(dev)		((USB_PIPE_CONTROL << 30) | \
+					 usb_default_pipe(dev))
+#define usb_rcvdefctrl(dev)		((USB_PIPE_CONTROL << 30) | \
+					 usb_default_pipe(dev) | \
 					 USB_DIR_IN)
 
 /* Endpoint halt control/status */
@@ -829,13 +834,8 @@ int usb_get_descriptor(struct usb_device *dev, u8 desctype,
 int usb_string(struct usb_device *dev, int index, char *buf, size_t size);
 
 /* wrappers that also update important state inside usbcore */
-int usb_set_protocol(struct usb_device *dev, int ifnum, int protocol);
-int usb_set_idle(struct usb_device *dev, int ifnum, 
-		 int duration, int report_id);
 int usb_set_interface(struct usb_device *dev, int ifnum, int alternate);
 int usb_get_configuration_no(struct usb_device *dev, u8 *buffer, int cfgno);
-int usb_get_report(struct usb_device *dev, int ifnum, 
-		   u8 type, u8 id, void *buf, u32 size);
 int usb_get_class_descriptor(struct usb_device *dev, int ifnum,
 			     u8 type, u8 id, void *buf, u32 size);
 int usb_clear_halt(struct usb_device *dev, u32 pipe);

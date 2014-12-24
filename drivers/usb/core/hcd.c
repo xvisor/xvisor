@@ -76,7 +76,7 @@ int usb_hcd_unlink_urb(struct urb *urb, int status)
 
 	/* The only reason an HCD might fail this call is if
 	 * it has not yet fully queued the urb to begin with.
-	 * Such failures should be harmless. 
+	 * Such failures should be harmless.
 	 */
 	retval = hcd->driver->urb_dequeue(hcd, urb, status);
 
@@ -158,7 +158,7 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 	if (hcd->driver->irq) {
 		vmm_snprintf(hcd->irq_descr, sizeof(hcd->irq_descr),
 			     "%s:usb%d", hcd->dev->name, hcd->bus_num);
-		rc = vmm_host_irq_register(irqnum, hcd->irq_descr, 
+		rc = vmm_host_irq_register(irqnum, hcd->irq_descr,
 					   &usb_hcd_irq, hcd);
 		if (rc != 0) {
 			vmm_printf("%s: request interrupt %d failed\n",
@@ -247,7 +247,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 
 	if ((rhdev = usb_alloc_device(NULL, hcd, 0)) == NULL) {
-		vmm_printf("%s: unable to allocate root hub\n", 
+		vmm_printf("%s: unable to allocate root hub\n",
 			   hcd->dev->name);
 		retval = VMM_ENOMEM;
 		goto err_allocate_root_hub;

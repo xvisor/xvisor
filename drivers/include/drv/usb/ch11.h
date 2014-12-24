@@ -106,6 +106,7 @@ struct usb_port_status {
 #define USB_PORT_STAT_POWER		0x0100
 #define USB_PORT_STAT_LOW_SPEED		0x0200
 #define USB_PORT_STAT_HIGH_SPEED        0x0400
+#define USB_PORT_STAT_SUPER_SPEED	0x0600
 #define USB_PORT_STAT_TEST              0x0800
 #define USB_PORT_STAT_INDICATOR         0x1000
 /* bits 13 to 15 are reserved */

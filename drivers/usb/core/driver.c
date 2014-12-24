@@ -47,7 +47,7 @@ static const struct usb_device_id *usb_match_dynamic_id(struct usb_interface *in
 }
 
 /* returns 0 if no match, 1 if match */
-static int usb_match_device(struct usb_device *dev, 
+static int usb_match_device(struct usb_device *dev,
 			    const struct usb_device_id *id)
 {
 	if ((id->match_flags & USB_DEVICE_ID_MATCH_VENDOR) &&
@@ -225,7 +225,7 @@ int usb_del_dynid(struct usb_driver *driver,
 }
 VMM_EXPORT_SYMBOL(usb_del_dynid);
 
-int usb_pre_reset_driver(struct usb_interface *intf, 
+int usb_pre_reset_driver(struct usb_interface *intf,
 			 struct usb_driver *drv)
 {
 	if (!intf || !drv) {
@@ -236,7 +236,7 @@ int usb_pre_reset_driver(struct usb_interface *intf,
 }
 VMM_EXPORT_SYMBOL(usb_pre_reset_driver);
 
-int usb_post_reset_driver(struct usb_interface *intf, 
+int usb_post_reset_driver(struct usb_interface *intf,
 			  struct usb_driver *drv)
 {
 	if (!intf || !drv) {

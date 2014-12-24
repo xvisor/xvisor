@@ -76,7 +76,7 @@ int usb_control_msg(struct usb_device *dev, u32 pipe,
 
 	/* Fill URB */
 	usb_fill_control_urb(&u, dev, pipe, 
-			     (unsigned char *)&setup_packet, data, size, 
+			     (u8 *)&setup_packet, data, size,
 			     urb_request_complete, &uc);
 
 	/* Submit URB */
@@ -120,8 +120,8 @@ int usb_interrupt_msg(struct usb_device *dev, u32 pipe,
 	INIT_COMPLETION(&uc);
 
 	/* Fill Interrupt URB */
-	usb_fill_int_urb(&u, dev, pipe, 
-			  data, len, 
+	usb_fill_int_urb(&u, dev, pipe,
+			  data, len,
 			  urb_request_complete, &uc, interval);
 
 	/* Submit URB */
@@ -157,8 +157,8 @@ int usb_bulk_msg(struct usb_device *dev, u32 pipe,
 	INIT_COMPLETION(&uc);
 
 	/* Fill Bulk URB */
-	usb_fill_bulk_urb(&u, dev, pipe, 
-			  data, len, 
+	usb_fill_bulk_urb(&u, dev, pipe,
+			  data, len,
 			  urb_request_complete, &uc);
 
 	/* Submit URB */
@@ -208,7 +208,7 @@ int usb_maxpacket(struct usb_device *dev, u32 pipe)
 }
 VMM_EXPORT_SYMBOL(usb_maxpacket);
 
-int usb_get_descriptor(struct usb_device *dev, u8 desctype, 
+int usb_get_descriptor(struct usb_device *dev, u8 desctype,
 		       u8 descindex, void *buf, int size)
 {
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
@@ -218,8 +218,8 @@ int usb_get_descriptor(struct usb_device *dev, u8 desctype,
 }
 VMM_EXPORT_SYMBOL(usb_get_descriptor);
 
-static int usb_get_string(struct usb_device *dev, 
-			  unsigned short langid, unsigned char index, 
+static int usb_get_string(struct usb_device *dev,
+			  unsigned short langid, unsigned char index,
 			  void *buf, int size)
 {
 	int i, result;
@@ -228,7 +228,7 @@ static int usb_get_string(struct usb_device *dev,
 		/* some devices are flaky */
 		result = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 					USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
-					(USB_DT_STRING << 8) + index, 
+					(USB_DT_STRING << 8) + index,
 					langid, buf, size,
 					USB_CNTL_TIMEOUT);
 		if (result > 0) {
@@ -255,8 +255,8 @@ static void usb_try_string_workarounds(unsigned char *buf, int *length)
 	}
 }
 
-static int usb_string_sub(struct usb_device *dev, 
-			  unsigned int langid, unsigned int index, 
+static int usb_string_sub(struct usb_device *dev,
+			  unsigned int langid, unsigned int index,
 			  unsigned char *buf)
 {
 	int rc;
@@ -320,7 +320,7 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
 				"(error=%lx)\n", __func__, dev->status);
 			goto done;
 		} else if (tbuf[0] < 4) {
-			DPRINTF("%s: string descriptor 0 too short\n", 
+			DPRINTF("%s: string descriptor 0 too short\n",
 				__func__);
 			err = VMM_EINVALID;
 			goto done;
@@ -329,7 +329,7 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
 			dev->string_langid = tbuf[2] | (tbuf[3] << 8);
 				/* always use the first langid listed */
 			DPRINTF("%s: USB device number %d default " \
-				"language ID 0x%x\n", __func__, 
+				"language ID 0x%x\n", __func__,
 				dev->devnum, dev->string_langid);
 		}
 	}
@@ -360,27 +360,6 @@ done:
 }
 VMM_EXPORT_SYMBOL(usb_string);
 
-int usb_set_protocol(struct usb_device *dev, int ifnum, int protocol)
-{
-	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				USB_REQ_SET_PROTOCOL, 
-				USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-				protocol, ifnum, 
-				NULL, 0, USB_CNTL_TIMEOUT);
-}
-VMM_EXPORT_SYMBOL(usb_set_protocol);
-
-int usb_set_idle(struct usb_device *dev, int ifnum, 
-		 int duration, int report_id)
-{
-	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				USB_REQ_SET_IDLE, 
-				USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-				(duration << 8) | report_id, ifnum, 
-				NULL, 0, USB_CNTL_TIMEOUT);
-}
-VMM_EXPORT_SYMBOL(usb_set_idle);
-
 int usb_set_interface(struct usb_device *dev, int ifnum, int alternate)
 {
 	struct usb_interface *intf = NULL;
@@ -393,7 +372,7 @@ int usb_set_interface(struct usb_device *dev, int ifnum, int alternate)
 		}
 	}
 	if (!intf) {
-		vmm_printf("%s: selecting invalid interface %d", 
+		vmm_printf("%s: selecting invalid interface %d",
 			   __func__, ifnum);
 		return VMM_EINVALID;
 	}
@@ -409,9 +388,9 @@ int usb_set_interface(struct usb_device *dev, int ifnum, int alternate)
 	}
 
 	ret = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				USB_REQ_SET_INTERFACE, 
+				USB_REQ_SET_INTERFACE,
 				USB_RECIP_INTERFACE,
-				alternate, ifnum, 
+				alternate, ifnum,
 				NULL, 0, USB_CNTL_TIMEOUT * 5);
 	if (ret < 0) {
 		return ret;
@@ -443,37 +422,26 @@ int usb_get_configuration_no(struct usb_device *dev, u8 *buffer, int cfgno)
 	tmp = vmm_le16_to_cpu(config->wTotalLength);
 
 	if (tmp > USB_BUFSIZ) {
-		vmm_printf("%s: failed to get descriptor - too long: %d\n", 
+		vmm_printf("%s: failed to get descriptor - too long: %d\n",
 			   __func__, tmp);
 		return VMM_ENOMEM;
 	}
 
 	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, tmp);
-	DPRINTF("%s: cfgno %d, result %d, wLength %d\n", 
+	DPRINTF("%s: cfgno %d, result %d, wLength %d\n",
 		__func__, cfgno, result, tmp);
 
 	return result;
 }
 VMM_EXPORT_SYMBOL(usb_get_configuration_no);
 
-int usb_get_report(struct usb_device *dev, int ifnum, 
-		   u8 type, u8 id, void *buf, u32 size)
-{
-	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-			USB_REQ_GET_REPORT,
-			USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
-			(type << 8) + id, ifnum, 
-			buf, size, USB_CNTL_TIMEOUT);
-}
-VMM_EXPORT_SYMBOL(usb_get_report);
-
 int usb_get_class_descriptor(struct usb_device *dev, int ifnum,
 			     u8 type, u8 id, void *buf, u32 size)
 {
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-				USB_REQ_GET_DESCRIPTOR, 
+				USB_REQ_GET_DESCRIPTOR,
 				USB_RECIP_INTERFACE | USB_DIR_IN,
-				(type << 8) + id, ifnum, 
+				(type << 8) + id, ifnum,
 				buf, size, USB_CNTL_TIMEOUT);
 }
 VMM_EXPORT_SYMBOL(usb_get_class_descriptor);
@@ -484,9 +452,9 @@ int usb_clear_halt(struct usb_device *dev, u32 pipe)
 	int endp = usb_pipeendpoint(pipe)|(usb_pipein(pipe)<<7);
 
 	result = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				 USB_REQ_CLEAR_FEATURE, 
-				 USB_RECIP_ENDPOINT, 
-				 0, endp, 
+				 USB_REQ_CLEAR_FEATURE,
+				 USB_RECIP_ENDPOINT,
+				 0, endp,
 				 NULL, 0, USB_CNTL_TIMEOUT * 3);
 	/* don't clear if failed */
 	if (result < 0) {
