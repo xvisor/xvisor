@@ -50,7 +50,7 @@ static void urb_request_complete(struct urb *u)
 
 int usb_control_msg(struct usb_device *dev, u32 pipe,
 		    u8 request, u8 requesttype, u16 value, u16 index,
-		    void *data, u16 size, int timeout)
+		    void *data, u16 size, int *actual_length, int timeout)
 {
 	int rc;
 	u64 tout;
@@ -100,6 +100,11 @@ int usb_control_msg(struct usb_device *dev, u32 pipe,
 	/* If URB failed then return status */
 	if (u.status < 0) {
 		return u.status;
+	}
+
+	/* Return actual transfer length */
+	if (actual_length) {
+		*actual_length = u.actual_length;
 	}
 
 	return VMM_OK;
@@ -214,7 +219,7 @@ int usb_get_descriptor(struct usb_device *dev, u8 desctype,
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 			USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
 			(desctype << 8) + descindex, 0,
-			buf, size, USB_CNTL_TIMEOUT);
+			buf, size, NULL, USB_CNTL_TIMEOUT);
 }
 VMM_EXPORT_SYMBOL(usb_get_descriptor);
 
@@ -222,7 +227,7 @@ static int usb_get_string(struct usb_device *dev,
 			  unsigned short langid, unsigned char index,
 			  void *buf, int size)
 {
-	int i, result;
+	int i, result, len = 0;
 
 	for (i = 0; i < 3; ++i) {
 		/* some devices are flaky */
@@ -230,8 +235,9 @@ static int usb_get_string(struct usb_device *dev,
 					USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
 					(USB_DT_STRING << 8) + index,
 					langid, buf, size,
-					USB_CNTL_TIMEOUT);
-		if (result > 0) {
+					&len, USB_CNTL_TIMEOUT);
+		if (result == VMM_OK) {
+			result = len;
 			break;
 		}
 	}
@@ -317,7 +323,7 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
 		err = usb_string_sub(dev, 0, 0, tbuf);
 		if (err < 0) {
 			DPRINTF("%s: error getting string descriptor 0 " \
-				"(error=%lx)\n", __func__, dev->status);
+				"(error=%d)\n", __func__, err);
 			goto done;
 		} else if (tbuf[0] < 4) {
 			DPRINTF("%s: string descriptor 0 too short\n",
@@ -391,7 +397,7 @@ int usb_set_interface(struct usb_device *dev, int ifnum, int alternate)
 				USB_REQ_SET_INTERFACE,
 				USB_RECIP_INTERFACE,
 				alternate, ifnum,
-				NULL, 0, USB_CNTL_TIMEOUT * 5);
+				NULL, 0, NULL, USB_CNTL_TIMEOUT * 5);
 	if (ret < 0) {
 		return ret;
 	}
@@ -408,16 +414,10 @@ int usb_get_configuration_no(struct usb_device *dev, u8 *buffer, int cfgno)
 
 	config = (struct usb_config_descriptor *)&buffer[0];
 	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, 9);
-	if (result < 9) {
-		if (result < 0) {
-			vmm_printf("%s: unable to get descriptor, error %lX\n",
+	if (result < 0) {
+		vmm_printf("%s: unable to get descriptor, error %lX\n",
 				   __func__, dev->status);
-		} else {
-			vmm_printf("%s: config descriptor too short " \
-				   "(expected %d, got %d)\n",
-				   __func__, 9, result);
-		}
-		return -1;
+		return result;
 	}
 	tmp = vmm_le16_to_cpu(config->wTotalLength);
 
@@ -442,7 +442,7 @@ int usb_get_class_descriptor(struct usb_device *dev, int ifnum,
 				USB_REQ_GET_DESCRIPTOR,
 				USB_RECIP_INTERFACE | USB_DIR_IN,
 				(type << 8) + id, ifnum,
-				buf, size, USB_CNTL_TIMEOUT);
+				buf, size, NULL, USB_CNTL_TIMEOUT);
 }
 VMM_EXPORT_SYMBOL(usb_get_class_descriptor);
 
@@ -455,7 +455,7 @@ int usb_clear_halt(struct usb_device *dev, u32 pipe)
 				 USB_REQ_CLEAR_FEATURE,
 				 USB_RECIP_ENDPOINT,
 				 0, endp,
-				 NULL, 0, USB_CNTL_TIMEOUT * 3);
+				 NULL, 0, NULL, USB_CNTL_TIMEOUT * 3);
 	/* don't clear if failed */
 	if (result < 0) {
 		return result;

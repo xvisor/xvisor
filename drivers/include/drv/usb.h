@@ -821,7 +821,7 @@ int usb_unlink_urb(struct urb *urb, int status);
 
 int usb_control_msg(struct usb_device *dev, u32 pipe,
 		    u8 request, u8 requesttype, u16 value, u16 index,
-		    void *data, u16 size, int timeout);
+		    void *data, u16 size, int *actual_length, int timeout);
 int usb_interrupt_msg(struct usb_device *dev, u32 pipe,
 		      void *data, int len, int interval);
 int usb_bulk_msg(struct usb_device *dev, u32 pipe,

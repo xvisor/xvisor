@@ -239,14 +239,14 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 static void announce_device(struct usb_device *udev)
 {
 	DPRINTF("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
-			udev->hcd->dev->name,
-			vmm_le16_to_cpu(udev->descriptor.idVendor),
-			vmm_le16_to_cpu(udev->descriptor.idProduct));
+		udev->hcd->dev->name,
+		vmm_le16_to_cpu(udev->descriptor.idVendor),
+		vmm_le16_to_cpu(udev->descriptor.idProduct));
 	DPRINTF("%s: New USB device strings: Mfr=%d, Product=%d, SerialNumber=%d\n",
-			udev->hcd->dev->name,
-			udev->descriptor.iManufacturer,
-			udev->descriptor.iProduct,
-			udev->descriptor.iSerialNumber);
+		udev->hcd->dev->name,
+		udev->descriptor.iManufacturer,
+		udev->descriptor.iProduct,
+		udev->descriptor.iSerialNumber);
 	show_string(udev, "Product", udev->product);
 	show_string(udev, "Manufacturer", udev->manufacturer);
 	show_string(udev, "SerialNumber", udev->serial);
@@ -256,44 +256,45 @@ static int usb_get_hub_descriptor(struct usb_device *dev, void *data, int size)
 {
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 		USB_REQ_GET_DESCRIPTOR, USB_DIR_IN | USB_RT_HUB,
-		USB_DT_HUB << 8, 0, data, size, USB_CNTL_TIMEOUT);
+		USB_DT_HUB << 8, 0, data, size, NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_clear_port_feature(struct usb_device *dev, int port, int feature)
 {
 	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 				USB_REQ_CLEAR_FEATURE, USB_RT_PORT, feature,
-				port, NULL, 0, USB_CNTL_TIMEOUT);
+				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_set_port_feature(struct usb_device *dev, int port, int feature)
 {
 	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 				USB_REQ_SET_FEATURE, USB_RT_PORT, feature,
-				port, NULL, 0, USB_CNTL_TIMEOUT);
+				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_get_hub_status(struct usb_device *dev, void *data)
 {
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_HUB, 0, 0,
-			data, sizeof(struct usb_hub_status), USB_CNTL_TIMEOUT);
+			data, sizeof(struct usb_hub_status),
+			NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_get_port_status(struct usb_device *dev, int port, void *data)
 {
 	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_PORT, 0, port,
-			data, sizeof(struct usb_hub_status), USB_CNTL_TIMEOUT);
+			data, sizeof(struct usb_hub_status),
+			NULL, USB_CNTL_TIMEOUT);
 }
 
-static int usb_set_address(struct usb_device *dev)
+static int usb_set_address(struct usb_device *dev, u32 addr)
 {
 	DPRINTF("%s: set address %d\n", __func__, dev->devnum);
 	return usb_control_msg(dev, usb_snddefctrl(dev),
 				USB_REQ_SET_ADDRESS, 0,
-				(dev->devnum), 0,
-				NULL, 0, USB_CNTL_TIMEOUT);
+				addr, 0, NULL, 0, NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_set_configuration(struct usb_device *dev, int configuration)
@@ -306,7 +307,7 @@ static int usb_set_configuration(struct usb_device *dev, int configuration)
 	res = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 				USB_REQ_SET_CONFIGURATION, 0,
 				configuration, 0,
-				NULL, 0, USB_CNTL_TIMEOUT);
+				NULL, 0, NULL, USB_CNTL_TIMEOUT);
 	if (res) {
 		return res;
 	}
@@ -977,8 +978,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 
 	/* Sanity check on device state */
 	state = usb_get_device_state(dev);
-	if ((state < USB_STATE_ATTACHED) ||
-	    (USB_STATE_ADDRESS < state)) {
+	if (state != USB_STATE_NOTATTACHED) {
 		usb_free_device(dev);
 		return VMM_EINVALID;
 	}
@@ -1028,6 +1028,9 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	 */
 	dev->descriptor.bDeviceClass = desc->bDeviceClass;
 
+	/* Mark device as attached */
+	usb_set_device_state(dev, USB_STATE_ATTACHED);
+
 	/* Find the port number we're at */
 	if (parent) {
 		int j;
@@ -1074,22 +1077,28 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		dev->maxpacketsize = PACKET_SIZE_64;
 		break;
 	}
-	dev->devnum = addr;
 
-	err = usb_set_address(dev); /* set address */
+	/* Mark device as powered */
+	usb_set_device_state(dev, USB_STATE_POWERED);
+
+	err = usb_set_address(dev, addr); /* set address */
+	dev->devnum = addr; /* fail or success we restore back devnum */
 	if (err < 0) {
-		vmm_printf("%s: device not accepting new address %d"
+		vmm_printf("%s: device not accepting new address %d "
 			   "(status=0x%lx)\n", __func__, dev->status);
 		goto done;
 	}
 
 	vmm_mdelay(10); /* Let the SET_ADDRESS settle */
 
+	/* Mark device as address set */
+	usb_set_device_state(dev, USB_STATE_ADDRESS);
+
 	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0,
 				 tmpbuf, sizeof(dev->descriptor));
 	if (err) {
-		vmm_printf("%s: unable to get device descriptor"
-			   " (error=%d)\n", __func__, err);
+		vmm_printf("%s: unable to get device descriptor "
+			   "(error=%d)\n", __func__, err);
 		goto done;
 	}
 	memcpy(&dev->descriptor, tmpbuf, sizeof(dev->descriptor));
@@ -1122,10 +1131,10 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		goto done;
 	}
 
+	/* Read device strings */
 	memset(dev->manufacturer, 0, sizeof(dev->manufacturer));
 	memset(dev->product, 0, sizeof(dev->product));
 	memset(dev->serial, 0, sizeof(dev->serial));
-
 	if (dev->descriptor.iManufacturer)
 		usb_string(dev, dev->descriptor.iManufacturer,
 			   dev->manufacturer, sizeof(dev->manufacturer));
@@ -1136,22 +1145,26 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		usb_string(dev, dev->descriptor.iSerialNumber,
 			   dev->serial, sizeof(dev->serial));
 
-	/* Inform everyone about new USB device */
-	announce_device(dev);
-
 	/* Set device state to configured */
 	usb_set_device_state(dev, USB_STATE_CONFIGURED);
+
+	/* Inform everyone about new USB device */
+	announce_device(dev);
 
 	/* Register new device to devdrv */
 	vmm_devdrv_register_device(&dev->dev);
 
 	/* Now probe the device interfaces */
 	err = usb_hub_probe(dev);
-	if (err == VMM_ENODEV) {
+	if (err == VMM_OK) {
+		vmm_devdrv_register_device(&dev->config.intf[0].dev);
+	} else if (err == VMM_ENODEV) {
 		for (i = 0; i < dev->config.no_of_intf; i++) {
 			vmm_devdrv_register_device(&dev->config.intf[i].dev);
 		}
 		err = VMM_OK;
+	} else {
+		usb_set_device_state(dev, USB_STATE_NOTATTACHED);
 	}
 
 done:
@@ -1172,7 +1185,7 @@ static void usb_hub_disconnect(struct usb_device *dev)
 		return;
 	}
 
-	/* FIXME: */
+	vmm_devdrv_unregister_device(&dev->config.intf[0].dev);
 
 	usb_hub_stop(hub);
 
@@ -1197,6 +1210,9 @@ static void recursively_disconnect(struct usb_device *dev)
 	}
 	dev->maxchild = 0;
 	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
+
+	/* Mark device as not attached */
+	usb_set_device_state(dev, USB_STATE_NOTATTACHED);
 
 	/* Now disconnect the device */
 	if (usb_hub_check_interface(dev)) {
@@ -1600,13 +1616,14 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		return NULL;
 	}
 
-	dev->state = USB_STATE_ATTACHED;
+	/* Update device state */
+	dev->state = USB_STATE_NOTATTACHED;
 
+	/* Update device name, devpath, route, and level */
 	if (unlikely(!parent)) {
 		dev->devpath[0] = '0';
 		dev->route = 0;
 		dev->level = 1;
-
 		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d", hcd->bus_num);
 	} else {
@@ -1629,18 +1646,16 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 					(15 << ((parent->level - 1)*4));
 			}
 		}
-
 		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d-%s", hcd->bus_num, dev->devpath);
-
-		/* hub driver sets up TT records */
-
+		/* FIXME: hub driver sets up TT records */
 		/* Update parent device */
 		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 		parent->children[port] = dev;
 		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 	}
 
+	/* Update rest of the device fields */
 	dev->portnum = port;
 	dev->hcd = hcd;
 	dev->maxchild = 0;
