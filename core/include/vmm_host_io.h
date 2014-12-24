@@ -318,4 +318,49 @@ static inline void vmm_out_be64(volatile u64 *addr, u64 data)
 	arch_out_be64(addr, data);
 }
 
+/* Bitwise memory read/write functions */
+#define vmm_clrbits(type, addr, clear)		\
+	vmm_out_##type((addr), vmm_in_##type(addr) & ~(clear))
+
+#define vmm_setbits(type, addr, set)		\
+	vmm_out_##type((addr), vmm_in_##type(addr) | (set))
+
+#define vmm_clrsetbits(type, addr, clear, set)	\
+	vmm_out_##type((addr), (vmm_in_##type(addr) & ~(clear)) | (set))
+
+#define vmm_clrbits_be32(addr, clear)		\
+				vmm_clrbits(be32, addr, clear)
+#define vmm_setbits_be32(addr, set)		\
+				vmm_setbits(be32, addr, set)
+#define vmm_clrsetbits_be32(addr, clear, set)	\
+				vmm_clrsetbits(be32, addr, clear, set)
+
+#define vmm_clrbits_le32(addr, clear)		\
+				vmm_clrbits(le32, addr, clear)
+#define vmm_setbits_le32(addr, set)		\
+				vmm_setbits(le32, addr, set)
+#define vmm_clrsetbits_le32(addr, clear, set)	\
+				vmm_clrsetbits(le32, addr, clear, set)
+
+#define vmm_clrbits_be16(addr, clear)		\
+				vmm_clrbits(be16, addr, clear)
+#define vmm_setbits_be16(addr, set)		\
+				vmm_setbits(be16, addr, set)
+#define vmm_clrsetbits_be16(addr, clear, set)	\
+				vmm_clrsetbits(be16, addr, clear, set)
+
+#define vmm_clrbits_le16(addr, clear)		\
+				vmm_clrbits(le16, addr, clear)
+#define vmm_setbits_le16(addr, set)		\
+				vmm_setbits(le16, addr, set)
+#define vmm_clrsetbits_le16(addr, clear, set)	\
+				vmm_clrsetbits(le16, addr, clear, set)
+
+#define vmm_clrbits_8(addr, clear)		\
+				vmm_clrbits(8, addr, clear)
+#define vmm_setbits_8(addr, set)		\
+				vmm_setbits(8, addr, set)
+#define vmm_clrsetbits_8(addr, clear, set)	\
+				vmm_clrsetbits(8, addr, clear, set)
+
 #endif /* __VMM_HOST_IO_H_ */
