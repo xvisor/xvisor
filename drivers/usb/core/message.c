@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_cache.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
@@ -56,7 +57,7 @@ int usb_control_msg(struct usb_device *dev, u32 pipe,
 	u64 tout;
 	struct urb u;
 	struct vmm_completion uc;
-	struct usb_devrequest setup_packet;
+	struct usb_devrequest __cacheline_aligned setup_packet;
 
 	/* Initialize setup packet */
 	setup_packet.requesttype = requesttype;
