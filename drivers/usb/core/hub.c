@@ -233,20 +233,16 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 {
 	if (!string)
 		return;
-	DPRINTF("%s: %s = %s\n", udev->hcd->dev->name, id, string);
+	DPRINTF("%s: %s: %s = %s\n",
+		udev->hcd->dev->name, udev->dev.name, id, string);
 }
 
 static void announce_device(struct usb_device *udev)
 {
-	DPRINTF("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
-		udev->hcd->dev->name,
+	DPRINTF("%s: %s: New USB device found, idVendor=%04x, idProduct=%04x\n",
+		udev->hcd->dev->name, udev->dev.name,
 		vmm_le16_to_cpu(udev->descriptor.idVendor),
 		vmm_le16_to_cpu(udev->descriptor.idProduct));
-	DPRINTF("%s: New USB device strings: Mfr=%d, Product=%d, SerialNumber=%d\n",
-		udev->hcd->dev->name,
-		udev->descriptor.iManufacturer,
-		udev->descriptor.iProduct,
-		udev->descriptor.iSerialNumber);
 	show_string(udev, "Product", udev->product);
 	show_string(udev, "Manufacturer", udev->manufacturer);
 	show_string(udev, "SerialNumber", udev->serial);
@@ -427,7 +423,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 				vmm_devdrv_initialize_device(&ifp->dev);
 				vmm_snprintf(ifp->dev.name,
 					     sizeof(ifp->dev.name),
-					     "%s-%d", dev->dev.name, ifno);
+					     "%s-intf%d", dev->dev.name, ifno);
 				ifp->dev.parent = &dev->dev;
 				ifp->dev.bus = &usb_bus_type;
 				dev->config.no_of_intf++;
@@ -1579,10 +1575,10 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 	struct usb_device *dev;
 
 	/* Sanity checks */
-	if (USB_MAXCHILDREN <= port) {
-		return NULL;
-	}
 	if (parent) {
+		if (USB_MAXCHILDREN <= port) {
+			return NULL;
+		}
 		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 		if (parent->children[port]) {
 			vmm_spin_unlock_irqrestore(&parent->children_lock,
@@ -1623,36 +1619,36 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 	if (unlikely(!parent)) {
 		dev->devpath[0] = '0';
 		dev->route = 0;
-		dev->level = 1;
+		dev->level = 0;
 		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d", hcd->bus_num);
 	} else {
-		dev->level = parent->level + 1;
-		/* match any labeling on the hubs; it's one-based */
-		if (parent->devpath[0] == '0') {
+		if (parent->level == 0) {
+			/* Root hub port is not counted in route string
+			 * because it is always zero.
+			 */
 			vmm_snprintf(dev->devpath, sizeof(dev->devpath),
-				"%d", port);
-			/* Root ports are not counted in route string */
-			dev->route = 0;
+				     "%d", port);
 		} else {
 			vmm_snprintf(dev->devpath, sizeof(dev->devpath),
-				"%s.%d", parent->devpath, port);
-			/* Route string assumes hubs have less than 16 ports */
-			if (port < 15) {
-				dev->route = parent->route +
-					(port << ((parent->level - 1)*4));
-			} else {
-				dev->route = parent->route +
-					(15 << ((parent->level - 1)*4));
-			}
+				     "%s.%d", parent->devpath, port);
 		}
+		/* Route string assumes hubs have less than 16 ports */
+		if (port < 15) {
+			dev->route = parent->route +
+				(port << (parent->level * 4));
+		} else {
+			dev->route = parent->route +
+				(15 << (parent->level * 4));
+		}
+		dev->level = parent->level + 1;
 		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
 			     "usb%d-%s", hcd->bus_num, dev->devpath);
 		/* FIXME: hub driver sets up TT records */
 		/* Update parent device */
 		vmm_spin_lock_irqsave(&parent->children_lock, flags);
 		parent->children[port] = dev;
-		vmm_spin_lock_irqsave(&parent->children_lock, flags);
+		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
 	}
 
 	/* Update rest of the device fields */
