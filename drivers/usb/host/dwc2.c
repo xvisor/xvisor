@@ -19,11 +19,20 @@
  * @file dwc2.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Designware USB2.0 host controller driver.
+ *
+ * This source is largely adapted from Raspberry Pi u-boot sources:
+ * <u-boot>/drivers/usb/host/dwc2.c
+ *
+ * Copyright (C) 2012 Oleksandr Tymoshenko <gonzo@freebsd.org>
+ * Copyright (C) 2014 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
 #include <vmm_heap.h>
+#include <vmm_cache.h>
 #include <vmm_stdio.h>
 #include <vmm_delay.h>
 #include <vmm_spinlocks.h>
@@ -34,6 +43,8 @@
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
 #include <drv/usb.h>
 #include <drv/usb/ch11.h>
 #include <drv/usb/roothubdesc.h>
@@ -47,6 +58,13 @@
 #define MODULE_IPRIORITY		(USB_CORE_IPRIORITY + 1)
 #define	MODULE_INIT			dwc2_driver_init
 #define	MODULE_EXIT			dwc2_driver_exit
+
+/* Use only HC channel 0. */
+#define DWC2_HC_CHANNEL			0
+#define DWC2_STATUS_BUF_SIZE		64
+#define DWC2_DATA_BUF_SIZE		(64 * 1024)
+#define DWC2_MAX_DEVICE			16
+#define DWC2_MAX_ENDPOINT		16
 
 /**
  * Parameters for configuring the dwc2 driver
@@ -70,6 +88,7 @@
  *                      value for this if none is specified.
  *                       0 - Address DMA
  *                       1 - Descriptor DMA (default, if available)
+ * @dma_burst_size:     Specifies burst len of DMA
  * @speed:              Specifies the maximum speed of operation in host and
  *                      device mode. The actual speed depends on the speed of
  *                      the attached device and the value of phy_type.
@@ -172,9 +191,10 @@
  *                      by the driver and are ignored in this
  *                      configuration value.
  * @uframe_sched:       True to enable the microframe scheduler
+ * @ic_usb_cap:		True to enable bit26 of GUSBCFG
  *
  * The following parameters may be specified when starting the module. These
- * parameters define how the DWC_otg controller should be configured. A
+ * parameters define how the DWC2 controller should be configured. A
  * value of -1 (or any other out of range value) for any parameter means
  * to read the value from hardware (if possible) or use the builtin
  * default described above.
@@ -188,6 +208,7 @@ struct dwc2_core_params {
 	int otg_ver;
 	int dma_enable;
 	int dma_desc_enable;
+	int dma_burst_size;
 	int speed;
 	int enable_dynamic_fifo;
 	int en_multiple_tx_fifo;
@@ -209,6 +230,7 @@ struct dwc2_core_params {
 	int reload_ctl;
 	int ahbcfg;
 	int uframe_sched;
+	int ic_usb_cap;
 };
 
 struct dwc2_control {
@@ -217,12 +239,415 @@ struct dwc2_control {
 	u32 irq;
 	u32 rh_devnum;
 
+	int bulk_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
+	int control_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
+
 	vmm_spinlock_t urb_lock;
 	struct dlist urb_pending_list;
 	struct vmm_completion urb_pending;
 	struct vmm_thread *urb_thread;
 };
 
+/*
+ * DWC2 IP interface
+ */
+static int wait_for_bit(void *reg, const u32 mask, bool set)
+{
+	unsigned int timeout = 1000000;
+	u32 val;
+
+	while (--timeout) {
+		val = vmm_readl(reg);
+		if (!set)
+			val = ~val;
+
+		if ((val & mask) == mask)
+			return 0;
+
+		vmm_udelay(1);
+	}
+
+	return VMM_ETIMEDOUT;
+}
+
+/*
+ * Initializes the FSLSPClkSel field of the HCFG register
+ * depending on the PHY type.
+ *
+ * @param dwc2 Programming view of DWC2 controller
+ */
+static void dwc2_init_fslspclksel(struct dwc2_control *dwc2)
+{
+	u32 phyclk;
+
+	if (dwc2->params->phy_type == 0) {
+		phyclk = DWC2_HCFG_FSLSPCLKSEL_48_MHZ;	/* Full speed PHY */
+	} else {
+		/* High speed PHY running at full speed or high speed */
+		phyclk = DWC2_HCFG_FSLSPCLKSEL_30_60_MHZ;
+	}
+
+	if (dwc2->params->ulpi_fs_ls) {
+		u32 ghwcfg2 = vmm_readl(&dwc2->regs->ghwcfg2);
+		u32 hval = (ghwcfg2 & DWC2_HWCFG2_HS_PHY_TYPE_MASK) >>
+				DWC2_HWCFG2_HS_PHY_TYPE_OFFSET;
+		u32 fval = (ghwcfg2 & DWC2_HWCFG2_FS_PHY_TYPE_MASK) >>
+				DWC2_HWCFG2_FS_PHY_TYPE_OFFSET;
+		if (hval == 2 && fval == 1)
+			phyclk = DWC2_HCFG_FSLSPCLKSEL_48_MHZ;	/* Full speed PHY */
+	}
+
+	vmm_clrsetbits_le32(&dwc2->regs->host_regs.hcfg,
+			    DWC2_HCFG_FSLSPCLKSEL_MASK,
+			    phyclk << DWC2_HCFG_FSLSPCLKSEL_OFFSET);
+}
+
+/*
+ * Flush a Tx FIFO.
+ *
+ * @param dwc2 Programming view of DWC2 controller.
+ * @param num Tx FIFO to flush.
+ */
+static void dwc2_flush_tx_fifo(struct dwc2_control *dwc2, const int num)
+{
+	int ret;
+
+	vmm_writel(DWC2_GRSTCTL_TXFFLSH | (num << DWC2_GRSTCTL_TXFNUM_OFFSET),
+		   &dwc2->regs->grstctl);
+	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_TXFFLSH, 0);
+	if (ret)
+		vmm_printf("%s: Timeout!\n", __func__);
+
+	/* Wait for 3 PHY Clocks */
+	vmm_udelay(1);
+}
+
+/*
+ * Flush Rx FIFO.
+ *
+ * @param dwc2 Programming view of DWC2 controller.
+ */
+static void dwc2_flush_rx_fifo(struct dwc2_control *dwc2)
+{
+	int ret;
+
+	vmm_writel(DWC2_GRSTCTL_RXFFLSH, &dwc2->regs->grstctl);
+	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_RXFFLSH, 0);
+	if (ret)
+		vmm_printf("%s: Timeout!\n", __func__);
+
+	/* Wait for 3 PHY Clocks */
+	vmm_udelay(1);
+}
+
+/*
+ * Do core a soft reset of the core.  Be careful with this because it
+ * resets all the internal state machines of the core.
+ *
+ * @param dwc2 Programming view of DWC2 controller
+ */
+static void dwc2_core_reset(struct dwc2_control *dwc2)
+{
+	int rc;
+
+	/* Wait for AHB master IDLE state. */
+	rc = wait_for_bit(&dwc2->regs->grstctl,
+			  DWC2_GRSTCTL_AHBIDLE, 1);
+	if (rc == VMM_ETIMEDOUT) {
+		vmm_printf("%s: Timeout!\n", __func__);
+	}
+
+	/* Core Soft Reset */
+	vmm_writel(DWC2_GRSTCTL_CSFTRST, &dwc2->regs->grstctl);
+	rc = wait_for_bit(&dwc2->regs->grstctl,
+			  DWC2_GRSTCTL_CSFTRST, 0);
+	if (rc == VMM_ETIMEDOUT) {
+		vmm_printf("%s: Timeout!\n", __func__);
+	}
+
+	/*
+	 * Wait for core to come out of reset.
+	 * NOTE: This long sleep is _very_ important, otherwise the
+	 * core will not stay in host mode after a connector ID change!
+	 */
+	vmm_mdelay(100);
+}
+
+/*
+ * This function initializes the DWC2 controller registers for
+ * host mode.
+ *
+ * This function flushes the Tx and Rx FIFOs and it flushes any entries in the
+ * request queues. Host channels are reset to ensure that they are ready for
+ * performing transfers.
+ *
+ * @param dwc2 Programming view of DWC2 controller
+ */
+static void dwc2_core_host_init(struct dwc2_control *dwc2)
+{
+	int i, ret, num_channels;
+	u32 nptxfifosize = 0, ptxfifosize = 0, hprt0 = 0;
+
+	/* Restart the Phy Clock */
+	vmm_writel(0, &dwc2->regs->pcgcctl);
+
+	/* Initialize Host Configuration Register */
+	dwc2_init_fslspclksel(dwc2);
+	if (dwc2->params->speed == 1) {
+		vmm_setbits_le32(&dwc2->regs->host_regs.hcfg,
+				 DWC2_HCFG_FSLSSUPP);
+	}
+
+	/* Configure data FIFO sizes */
+	if (dwc2->params->enable_dynamic_fifo &&
+	    (vmm_readl(&dwc2->regs->ghwcfg2) & DWC2_HWCFG2_DYNAMIC_FIFO)) {
+		/* Rx FIFO */
+		vmm_writel(dwc2->params->host_rx_fifo_size,
+			   &dwc2->regs->grxfsiz);
+
+		/* Non-periodic Tx FIFO */
+		nptxfifosize |= dwc2->params->host_nperio_tx_fifo_size <<
+				DWC2_FIFOSIZE_DEPTH_OFFSET;
+		nptxfifosize |= dwc2->params->host_rx_fifo_size <<
+				DWC2_FIFOSIZE_STARTADDR_OFFSET;
+		vmm_writel(nptxfifosize, &dwc2->regs->gnptxfsiz);
+
+		/* Periodic Tx FIFO */
+		ptxfifosize |= dwc2->params->host_nperio_tx_fifo_size <<
+				DWC2_FIFOSIZE_DEPTH_OFFSET;
+		ptxfifosize |= (dwc2->params->host_rx_fifo_size +
+				dwc2->params->host_nperio_tx_fifo_size) <<
+				DWC2_FIFOSIZE_STARTADDR_OFFSET;
+		vmm_writel(ptxfifosize, &dwc2->regs->hptxfsiz);
+	}
+
+	/* Clear Host Set HNP Enable in the OTG Control Register */
+	vmm_clrbits_le32(&dwc2->regs->gotgctl, DWC2_GOTGCTL_HSTSETHNPEN);
+
+	/* Make sure the FIFOs are flushed. */
+	dwc2_flush_tx_fifo(dwc2, 0x10);	/* All Tx FIFOs */
+	dwc2_flush_rx_fifo(dwc2);
+
+	/* Flush out any leftover queued requests. */
+	num_channels = vmm_readl(&dwc2->regs->ghwcfg2);
+	num_channels &= DWC2_HWCFG2_NUM_HOST_CHAN_MASK;
+	num_channels >>= DWC2_HWCFG2_NUM_HOST_CHAN_OFFSET;
+	num_channels += 1;
+	for (i = 0; i < num_channels; i++) {
+		vmm_clrsetbits_le32(&dwc2->regs->hc_regs[i].hcchar,
+				DWC2_HCCHAR_CHEN | DWC2_HCCHAR_EPDIR,
+				DWC2_HCCHAR_CHDIS);
+	}
+
+	/* Halt all channels to put them into a known state. */
+	for (i = 0; i < num_channels; i++) {
+		vmm_clrsetbits_le32(&dwc2->regs->hc_regs[i].hcchar,
+				    DWC2_HCCHAR_EPDIR,
+				    DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS);
+		ret = wait_for_bit(&dwc2->regs->hc_regs[i].hcchar,
+				   DWC2_HCCHAR_CHEN, 0);
+		if (ret)
+			vmm_printf("%s: Timeout!\n", __func__);
+	}
+
+	/* Turn on the vbus power. */
+	if (vmm_readl(&dwc2->regs->gintsts) & DWC2_GINTSTS_CURMODE_HOST) {
+		hprt0 = vmm_readl(&dwc2->regs->hprt0);
+		hprt0 &= ~(DWC2_HPRT0_PRTENA | DWC2_HPRT0_PRTCONNDET);
+		hprt0 &= ~(DWC2_HPRT0_PRTENCHNG | DWC2_HPRT0_PRTOVRCURRCHNG);
+		if (!(hprt0 & DWC2_HPRT0_PRTPWR)) {
+			hprt0 |= DWC2_HPRT0_PRTPWR;
+			vmm_writel(hprt0, &dwc2->regs->hprt0);
+		}
+	}
+}
+
+/*
+ * This function initializes the DWC2 controller registers and
+ * prepares the core for device mode or host mode operation.
+ *
+ * @param dwc2 Programming view of the DWC2 controller
+ */
+static void dwc2_core_init(struct dwc2_control *dwc2)
+{
+	u32 ahbcfg = 0, usbcfg = 0;
+	u8 brst_sz = dwc2->params->dma_burst_size;
+
+	/* Common Initialization */
+	usbcfg = vmm_readl(&dwc2->regs->gusbcfg);
+
+	/* Program the ULPI External VBUS bit if needed */
+	if (dwc2->params->phy_ulpi_ext_vbus) {
+		usbcfg |= DWC2_GUSBCFG_ULPI_EXT_VBUS_DRV;
+	} else {
+		usbcfg &= ~DWC2_GUSBCFG_ULPI_EXT_VBUS_DRV;
+	}
+
+	/* Set external TS Dline pulsing */
+	if (dwc2->params->ts_dline) {
+		usbcfg |= DWC2_GUSBCFG_TERM_SEL_DL_PULSE;
+	} else {
+		usbcfg &= ~DWC2_GUSBCFG_TERM_SEL_DL_PULSE;
+	}
+	vmm_writel(usbcfg, &dwc2->regs->gusbcfg);
+
+	/* Reset the Controller */
+	dwc2_core_reset(dwc2);
+
+	/*
+	 * This programming sequence needs to happen in FS mode before
+	 * any other programming occurs
+	 */
+	if ((dwc2->params->speed == 1) &&
+	    (dwc2->params->phy_type == 0)) {
+		/* If FS mode with FS PHY */
+		vmm_setbits_le32(&dwc2->regs->gusbcfg, DWC2_GUSBCFG_PHYSEL);
+
+		/* Reset after a PHY select */
+		dwc2_core_reset(dwc2);
+
+		/*
+		 * Program DCFG.DevSpd or HCFG.FSLSPclkSel to 48Mhz in FS.
+		 * Also do this on HNP Dev/Host mode switches (done in
+		 * dev_init and host_init).
+		 */
+		if (vmm_readl(&dwc2->regs->gintsts) &
+					DWC2_GINTSTS_CURMODE_HOST)
+			dwc2_init_fslspclksel(dwc2);
+
+		if (dwc2->params->i2c_enable) {
+			/* Program GUSBCFG.OtgUtmifsSel to I2C */
+			vmm_setbits_le32(&dwc2->regs->gusbcfg,
+					 DWC2_GUSBCFG_OTGUTMIFSSEL);
+
+			/* Program GI2CCTL.I2CEn */
+			vmm_clrsetbits_le32(&dwc2->regs->gi2cctl,
+					    DWC2_GI2CCTL_I2CEN |
+					    DWC2_GI2CCTL_I2CDEVADDR_MASK,
+					    1<<DWC2_GI2CCTL_I2CDEVADDR_OFFSET);
+			vmm_setbits_le32(&dwc2->regs->gi2cctl,
+					 DWC2_GI2CCTL_I2CEN);
+		}
+	} else {
+		/* High speed PHY. */
+
+		/*
+		 * HS PHY parameters. These parameters are preserved during
+		 * soft reset so only program the first time. Do a soft reset
+		 * immediately after setting phyif.
+		 */
+		usbcfg &= ~(DWC2_GUSBCFG_ULPI_UTMI_SEL | DWC2_GUSBCFG_PHYIF);
+		usbcfg |= dwc2->params->phy_type <<
+					DWC2_GUSBCFG_ULPI_UTMI_SEL_OFFSET;
+
+		if (usbcfg & DWC2_GUSBCFG_ULPI_UTMI_SEL) {
+			/* ULPI interface */
+			if (dwc2->params->phy_ulpi_ddr) {
+				usbcfg |= DWC2_GUSBCFG_DDRSEL;
+			} else {
+				usbcfg &= ~DWC2_GUSBCFG_DDRSEL;
+			}
+		} else {
+			/* UTMI+ interface */
+			if (dwc2->params->phy_utmi_width == 16) {
+				usbcfg |= DWC2_GUSBCFG_PHYIF;
+			}
+		}
+
+		vmm_writel(usbcfg, &dwc2->regs->gusbcfg);
+
+		/* Reset after setting the PHY parameters */
+		dwc2_core_reset(dwc2);
+	}
+
+	usbcfg = vmm_readl(&dwc2->regs->gusbcfg);
+	usbcfg &= ~(DWC2_GUSBCFG_ULPI_FSLS | DWC2_GUSBCFG_ULPI_CLK_SUS_M);
+	if (dwc2->params->ulpi_fs_ls) {
+		u32 ghwcfg2 = vmm_readl(&dwc2->regs->ghwcfg2);
+		u32 hval = (ghwcfg2 & DWC2_HWCFG2_HS_PHY_TYPE_MASK) >>
+				DWC2_HWCFG2_HS_PHY_TYPE_OFFSET;
+		u32 fval = (ghwcfg2 & DWC2_HWCFG2_FS_PHY_TYPE_MASK) >>
+				DWC2_HWCFG2_FS_PHY_TYPE_OFFSET;
+		if (hval == 2 && fval == 1) {
+			usbcfg |= DWC2_GUSBCFG_ULPI_FSLS;
+			usbcfg |= DWC2_GUSBCFG_ULPI_CLK_SUS_M;
+		}
+	}
+	vmm_writel(usbcfg, &dwc2->regs->gusbcfg);
+
+	/* Program the GAHBCFG Register. */
+	switch (vmm_readl(&dwc2->regs->ghwcfg2) &
+				DWC2_HWCFG2_ARCHITECTURE_MASK) {
+	case DWC2_HWCFG2_ARCHITECTURE_SLAVE_ONLY:
+		break;
+	case DWC2_HWCFG2_ARCHITECTURE_EXT_DMA:
+		while (brst_sz > 1) {
+			ahbcfg |=
+				ahbcfg + (1 << DWC2_GAHBCFG_HBURSTLEN_OFFSET);
+			ahbcfg &= DWC2_GAHBCFG_HBURSTLEN_MASK;
+			brst_sz >>= 1;
+		}
+		if (dwc2->params->dma_enable) {
+			ahbcfg |= DWC2_GAHBCFG_DMAENABLE;
+		}
+		break;
+
+	case DWC2_HWCFG2_ARCHITECTURE_INT_DMA:
+		ahbcfg |= DWC2_GAHBCFG_HBURSTLEN_INCR4;
+		if (dwc2->params->dma_enable) {
+			ahbcfg |= DWC2_GAHBCFG_DMAENABLE;
+		}
+		break;
+	}
+
+	vmm_writel(ahbcfg, &dwc2->regs->gahbcfg);
+
+	/* Program the GUSBCFG register for HNP/SRP. */
+	vmm_setbits_le32(&dwc2->regs->gusbcfg,
+			 DWC2_GUSBCFG_HNPCAP | DWC2_GUSBCFG_SRPCAP);
+
+	if (dwc2->params->ic_usb_cap) {
+		vmm_setbits_le32(&dwc2->regs->gusbcfg, DWC2_GUSBCFG_IC_USB_CAP);
+	}
+}
+
+/*
+ * Prepares a host channel for transferring packets to/from a specific
+ * endpoint. The HCCHARn register is set up with the characteristics specified
+ * in _hc. Host channel interrupts that may need to be serviced while this
+ * transfer is in progress are enabled.
+ *
+ * @param dwc2 Programming view of DWC2 controller
+ * @param hc Information needed to initialize the host channel
+ */
+static void dwc2_hc_init(struct dwc2_control *dwc2, u8 hc_num,
+			 u8 dev_addr, u8 ep_num, u8 ep_is_in,
+			 u8 ep_type, u8 max_packet)
+{
+	struct dwc2_hc_regs *hc_regs = &dwc2->regs->hc_regs[hc_num];
+	const u32 hcchar = (dev_addr << DWC2_HCCHAR_DEVADDR_OFFSET) |
+				(ep_num << DWC2_HCCHAR_EPNUM_OFFSET) |
+				(ep_is_in << DWC2_HCCHAR_EPDIR_OFFSET) |
+				(ep_type << DWC2_HCCHAR_EPTYPE_OFFSET) |
+				(max_packet << DWC2_HCCHAR_MPS_OFFSET);
+
+	/* Clear old interrupt conditions for this host channel. */
+	vmm_writel(0x3fff, &hc_regs->hcint);
+
+	/*
+	 * Program the HCCHARn register with the endpoint characteristics
+	 * for the current transfer.
+	 */
+	vmm_writel(hcchar, &hc_regs->hcchar);
+
+	/* Program the HCSPLIT register for SPLITs */
+	vmm_writel(0, &hc_regs->hcsplt);
+}
+
+/*
+ * DWC2 to USB API interface
+ */
+/* Direction: In ; Request: Status */
 static int dwc2_rh_msg_in_status(struct dwc2_control *dwc2,
 				 struct urb *u,
 				 struct usb_devrequest *cmd)
@@ -289,6 +714,7 @@ static int dwc2_rh_msg_in_status(struct dwc2_control *dwc2,
 	return rc;
 }
 
+/* Direction: In ; Request: Descriptor */
 static int dwc2_rh_msg_in_descriptor(struct dwc2_control *dwc2,
 				     struct urb *u,
 				     struct usb_devrequest *cmd)
@@ -394,6 +820,7 @@ static int dwc2_rh_msg_in_descriptor(struct dwc2_control *dwc2,
 	return rc;
 }
 
+/* Direction: In ; Request: Configuration */
 static int dwc2_rh_msg_in_configuration(struct dwc2_control *dwc2,
 					struct urb *u,
 					struct usb_devrequest *cmd)
@@ -422,6 +849,7 @@ static int dwc2_rh_msg_in_configuration(struct dwc2_control *dwc2,
 	return rc;
 }
 
+/* Direction: In */
 static int dwc2_rh_msg_in(struct dwc2_control *dwc2,
 			   struct urb *u, struct usb_devrequest *cmd)
 {
@@ -442,6 +870,7 @@ static int dwc2_rh_msg_in(struct dwc2_control *dwc2,
 	return VMM_EINVALID;
 }
 
+/* Direction: Out */
 static int dwc2_rh_msg_out(struct dwc2_control *dwc2,
 			   struct urb *u, struct usb_devrequest *cmd)
 {
@@ -532,22 +961,337 @@ static vmm_irq_return_t	dwc2_irq(struct usb_hcd *hcd)
 	return VMM_IRQ_NONE;
 }
 
+#define DWC2_HCINT_COMP_HLT		(DWC2_HCINT_XFERCOMP | \
+					 DWC2_HCINT_CHHLTD)
+#define DWC2_HCINT_COMP_HLT_ACK		(DWC2_HCINT_XFERCOMP | \
+					 DWC2_HCINT_CHHLTD | \
+					 DWC2_HCINT_ACK)
+
 static int dwc2_control_msg(struct dwc2_control *dwc2,
 			    struct urb *u)
 {
+	void *buffer = u->transfer_buffer;
+	int len = u->transfer_buffer_length;
+	struct dwc2_hc_regs *hc_regs;
+	int done = 0, rc = VMM_OK;
+	int devnum = usb_pipedevice(u->pipe);
+	int ep = usb_pipeendpoint(u->pipe);
+	u32 hctsiz = 0, tmp, hcint;
+	unsigned int timeout = 1000000;
+	physical_addr_t pa;
+	u8 __cacheline_aligned status_buffer[DWC2_STATUS_BUF_SIZE];
+
+	/* Process root hub control messages differently */
 	if (u->dev->devnum == dwc2->rh_devnum) {
 		return dwc2_control_rh_msg(dwc2, u);
 	}
 
-	/* FIXME: */
-	return VMM_ENOTAVAIL;
+	/* Ensure that transfer buffer is cache aligned */
+	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
+		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
+			   __func__, u->dev->dev.name);
+		rc = VMM_EIO;
+		goto out;
+	}
+
+	/* Determine host channel registers */
+	hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
+
+	if (len > DWC2_DATA_BUF_SIZE) {
+		vmm_printf("%s: %d is more then available buffer size(%d)\n",
+		       __func__, len, DWC2_DATA_BUF_SIZE);
+		rc = VMM_EINVALID;
+		goto out;
+	}
+
+	/* Initialize channel, OUT for setup buffer */
+	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep, 0,
+		     DWC2_HCCHAR_EPTYPE_CONTROL,
+		     usb_maxpacket(u->dev, u->pipe));
+
+	/* SETUP stage  */
+	vmm_writel((8 << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
+	       (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+	       (DWC2_HC_PID_SETUP << DWC2_HCTSIZ_PID_OFFSET),
+	       &hc_regs->hctsiz);
+
+	rc = vmm_host_va2pa((virtual_addr_t)u->setup_packet, &pa);
+	if (rc) {
+		vmm_printf("%s: VA2PA error!\n", __func__);
+		goto out;
+	}
+	vmm_writel((u32)pa, &hc_regs->hcdma);
+
+	/* Set host channel enable after all other setup is complete. */
+	vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
+			DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
+			(1 << DWC2_HCCHAR_MULTICNT_OFFSET) | DWC2_HCCHAR_CHEN);
+
+	rc = wait_for_bit(&hc_regs->hcint, DWC2_HCINT_CHHLTD, 1);
+	if (rc) {
+		vmm_printf("%s: Timeout!\n", __func__);
+		goto out;
+	}
+
+	hcint = vmm_readl(&hc_regs->hcint);
+	if (!(hcint & DWC2_HCINT_COMP_HLT)) {
+		vmm_printf("%s: Error (HCINT=%08x)\n", __func__, hcint);
+		rc = VMM_EINVALID;
+		goto out;
+	}
+
+	/* Clear interrupts */
+	vmm_writel(0, &hc_regs->hcintmsk);
+	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
+
+	if (buffer) {
+		/* DATA stage */
+		dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
+			     usb_pipein(u->pipe),
+			     DWC2_HCCHAR_EPTYPE_CONTROL,
+			     usb_maxpacket(u->dev, u->pipe));
+
+		/* TODO: check if len < 64 */
+		dwc2->control_data_toggle[devnum][ep] = DWC2_HC_PID_DATA1;
+		vmm_writel((len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
+			   (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+			   (dwc2->control_data_toggle[devnum][ep] <<
+				DWC2_HCTSIZ_PID_OFFSET),
+			   &hc_regs->hctsiz);
+
+		rc = vmm_host_va2pa((virtual_addr_t)buffer, &pa);
+		if (rc) {
+			vmm_printf("%s: VA2PA error!\n", __func__);
+			goto out;
+		}
+		vmm_writel((u32)pa, &hc_regs->hcdma);
+
+		/* Set host channel enable after all other setup is complete */
+		vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
+				DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
+				(1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
+				DWC2_HCCHAR_CHEN);
+
+		while (1) {
+			hcint = vmm_readl(&hc_regs->hcint);
+			if (!(hcint & DWC2_HCINT_CHHLTD))
+				continue;
+
+			if (hcint & DWC2_HCINT_XFERCOMP) {
+				hctsiz = vmm_readl(&hc_regs->hctsiz);
+				done = len;
+
+				tmp = hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK;
+				tmp >>= DWC2_HCTSIZ_XFERSIZE_OFFSET;
+
+				if (usb_pipein(u->pipe))
+					done -= tmp;
+			}
+
+			if (hcint & DWC2_HCINT_ACK) {
+				tmp = hctsiz & DWC2_HCTSIZ_PID_MASK;
+				tmp >>= DWC2_HCTSIZ_PID_OFFSET;
+				if (tmp == DWC2_HC_PID_DATA0) {
+					dwc2->control_data_toggle[devnum][ep] =
+						DWC2_HC_PID_DATA0;
+				} else {
+					dwc2->control_data_toggle[devnum][ep] =
+						DWC2_HC_PID_DATA1;
+				}
+			}
+
+			if (!(hcint & DWC2_HCINT_COMP_HLT)) {
+				vmm_printf("%s: Error (HCINT=%08x)\n",
+				       __func__, hcint);
+				rc = VMM_EIO;
+				goto out;
+			}
+
+			if (!--timeout) {
+				vmm_printf("%s: Timeout!\n", __func__);
+				rc = VMM_ETIMEDOUT;
+				goto out;
+			}
+
+			break;
+		}
+	} /* End of DATA stage */
+
+	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
+		     ((len == 0) || usb_pipeout(u->pipe)) ? 1 : 0,
+		     DWC2_HCCHAR_EPTYPE_CONTROL,
+		     usb_maxpacket(u->dev, u->pipe));
+
+	vmm_writel((1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+	       (DWC2_HC_PID_DATA1 << DWC2_HCTSIZ_PID_OFFSET),
+	       &hc_regs->hctsiz);
+
+	rc = vmm_host_va2pa((virtual_addr_t)status_buffer, &pa);
+	if (rc) {
+		vmm_printf("%s: VA2PA error!\n", __func__);
+		goto out;
+	}
+	vmm_writel((u32)pa, &hc_regs->hcdma);
+
+	/* Set host channel enable after all other setup is complete. */
+	vmm_clrsetbits_le32(&hc_regs->hcchar,
+			    DWC2_HCCHAR_MULTICNT_MASK |
+			    DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
+			    (1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
+			    DWC2_HCCHAR_CHEN);
+
+	while (1) {
+		hcint = vmm_readl(&hc_regs->hcint);
+		if (hcint & DWC2_HCINT_CHHLTD)
+			break;
+	}
+
+	if (!(hcint & DWC2_HCINT_COMP_HLT)) {
+		vmm_printf("%s: Error (HCINT=%08x)\n", __func__, hcint);
+		rc = VMM_EIO;
+	}
+
+out:
+	u->actual_length = done;
+
+	return rc;
 }
 
 static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 			 struct urb *u)
 {
-	/* FIXME: */
-	return VMM_ENOTAVAIL;
+	void *buffer = u->transfer_buffer;
+	int len = u->transfer_buffer_length;
+	int devnum = usb_pipedevice(u->pipe);
+	int ep = usb_pipeendpoint(u->pipe);
+	int max = usb_maxpacket(u->dev, u->pipe);
+	int done = 0, rc = VMM_OK, stop_transfer = 0;
+	u32 hctsiz, hcint, tmp, xfer_len, num_packets;
+	struct dwc2_hc_regs *hc_regs;
+	physical_addr_t pa;
+	unsigned int timeout = 1000000;
+
+	/* Reject root hub bulk messages differently */
+	if (u->dev->devnum == dwc2->rh_devnum) {
+		return VMM_EINVALID;
+	}
+
+	/* Ensure that transfer buffer is cache aligned */
+	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
+		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
+			   __func__, u->dev->dev.name);
+		rc = VMM_EIO;
+		goto out;
+	}
+
+	/* Determine host channel registers */
+	hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
+
+	if (len > DWC2_DATA_BUF_SIZE) {
+		vmm_printf("%s: %d is more then available buffer size (%d)\n",
+		       __func__, len, DWC2_DATA_BUF_SIZE);
+		rc = VMM_EINVALID;
+		goto out;
+	}
+
+	while ((done < len) && !stop_transfer) {
+		/* Initialize channel */
+		dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
+			     usb_pipein(u->pipe),
+			     DWC2_HCCHAR_EPTYPE_BULK, max);
+
+		xfer_len = len - done;
+		/* Make sure that xfer_len is a multiple of max packet size. */
+		if (xfer_len > dwc2->params->max_transfer_size)
+			xfer_len = dwc2->params->max_transfer_size - max + 1;
+
+		if (xfer_len > 0) {
+			num_packets = udiv32((xfer_len + max - 1), max);
+			if (num_packets > dwc2->params->max_packet_count) {
+				num_packets = dwc2->params->max_packet_count;
+				xfer_len = num_packets * max;
+			}
+		} else {
+			num_packets = 1;
+		}
+
+		if (usb_pipein(u->pipe))
+			xfer_len = num_packets * max;
+
+		vmm_writel((xfer_len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
+			   (num_packets << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+			   (dwc2->bulk_data_toggle[devnum][ep] <<
+					DWC2_HCTSIZ_PID_OFFSET),
+			   &hc_regs->hctsiz);
+
+		rc = vmm_host_va2pa((virtual_addr_t)buffer, &pa);
+		if (rc) {
+			vmm_printf("%s: VA2PA error!\n", __func__);
+			goto out;
+		}
+		vmm_writel((u32)pa, &hc_regs->hcdma);
+
+		/* Set host channel enable after all other setup is complete. */
+		vmm_clrsetbits_le32(&hc_regs->hcchar,
+				    DWC2_HCCHAR_MULTICNT_MASK |
+				    DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
+				    (1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
+				    DWC2_HCCHAR_CHEN);
+
+		while (1) {
+			hcint = vmm_readl(&hc_regs->hcint);
+
+			if (!(hcint & DWC2_HCINT_CHHLTD))
+				continue;
+
+			if (hcint & DWC2_HCINT_XFERCOMP) {
+				hctsiz = vmm_readl(&hc_regs->hctsiz);
+				done += xfer_len;
+
+				tmp = hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK;
+				tmp >>= DWC2_HCTSIZ_XFERSIZE_OFFSET;
+
+				if (usb_pipein(u->pipe)) {
+					done -= tmp;
+					if (hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK)
+						stop_transfer = 1;
+				}
+
+				tmp = hctsiz & DWC2_HCTSIZ_PID_MASK;
+				tmp >>= DWC2_HCTSIZ_PID_OFFSET;
+				if (tmp == DWC2_HC_PID_DATA1) {
+					dwc2->bulk_data_toggle[devnum][ep] =
+						DWC2_HC_PID_DATA1;
+				} else {
+					dwc2->bulk_data_toggle[devnum][ep] =
+						DWC2_HC_PID_DATA0;
+				}
+				break;
+			}
+
+			if (hcint & DWC2_HCINT_STALL) {
+				vmm_printf("%s: Channel halted\n", __func__);
+				dwc2->bulk_data_toggle[devnum][ep] =
+							DWC2_HC_PID_DATA0;
+
+				stop_transfer = 1;
+				break;
+			}
+
+			if (!--timeout) {
+				vmm_printf("%s: Timeout!\n", __func__);
+				break;
+			}
+		}
+	}
+
+	vmm_writel(0, &hc_regs->hcintmsk);
+	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
+
+out:
+	u->actual_length = done;
+
+	return rc;
 }
 
 static int dwc2_int_msg(struct dwc2_control *dwc2,
@@ -626,21 +1370,66 @@ static int dwc2_reset(struct usb_hcd *hcd)
 {
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
+	/* Clear root hub device number */
 	dwc2->rh_devnum = 0;
-	/* FIXME: */
+
+	/* Soft-reset controller */
+	dwc2_core_reset(dwc2);
 
 	return VMM_OK;
 }
 
 static int dwc2_start(struct usb_hcd *hcd)
 {
-	/* FIXME: */
+	u32 i, j;
+	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
+
+	/* General init */
+	dwc2_core_init(dwc2);
+
+	/* Init host mode */
+	dwc2_core_host_init(dwc2);
+
+	/* Reset port0 */
+	vmm_clrsetbits_le32(&dwc2->regs->hprt0,
+			    DWC2_HPRT0_PRTENA |
+			    DWC2_HPRT0_PRTCONNDET |
+			    DWC2_HPRT0_PRTENCHNG |
+			    DWC2_HPRT0_PRTOVRCURRCHNG,
+			    DWC2_HPRT0_PRTRST);
+	vmm_mdelay(50);
+	vmm_clrbits_le32(&dwc2->regs->hprt0,
+			 DWC2_HPRT0_PRTENA |
+			 DWC2_HPRT0_PRTCONNDET |
+			 DWC2_HPRT0_PRTENCHNG |
+			 DWC2_HPRT0_PRTOVRCURRCHNG |
+			 DWC2_HPRT0_PRTRST);
+
+	/* Control & Bulk endpoint status flags */
+	for (i = 0; i < DWC2_MAX_DEVICE; i++) {
+		for (j = 0; j < DWC2_MAX_ENDPOINT; j++) {
+			dwc2->control_data_toggle[i][j] = DWC2_HC_PID_DATA1;
+			dwc2->bulk_data_toggle[i][j] = DWC2_HC_PID_DATA0;
+		}
+	}
+
 	return VMM_OK;
 }
 
 static void dwc2_stop(struct usb_hcd *hcd)
 {
-	/* FIXME: */
+	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
+
+	/* Flush the all pending work */
+	dwc2_flush_work(hcd);
+
+	/* Put everything in reset. */
+	vmm_clrsetbits_le32(&dwc2->regs->hprt0,
+			    DWC2_HPRT0_PRTENA |
+			    DWC2_HPRT0_PRTCONNDET |
+			    DWC2_HPRT0_PRTENCHNG |
+			    DWC2_HPRT0_PRTOVRCURRCHNG,
+			    DWC2_HPRT0_PRTRST);
 }
 
 static int dwc2_urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
@@ -776,8 +1565,6 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 
 	usb_remove_hcd(hcd);
 
-	dwc2_flush_work(hcd);
-
 	vmm_threads_destroy(dwc2->urb_thread);
 
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)dwc2->regs, 0);
@@ -792,6 +1579,7 @@ static const struct dwc2_core_params params_bcm2835 = {
 	.otg_ver			= 0,	/* 1.3 */
 	.dma_enable			= 1,
 	.dma_desc_enable		= 0,
+	.dma_burst_size			= 32,
 	.speed				= 0,	/* High Speed */
 	.enable_dynamic_fifo		= 1,
 	.en_multiple_tx_fifo		= 1,
@@ -813,6 +1601,7 @@ static const struct dwc2_core_params params_bcm2835 = {
 	.reload_ctl			= 0,
 	.ahbcfg				= 0x10,
 	.uframe_sched			= 0,
+	.ic_usb_cap			= 0,
 };
 
 static struct vmm_devtree_nodeid dwc2_devid_table[] = {
