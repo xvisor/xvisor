@@ -272,8 +272,15 @@ VMM_EXPORT_SYMBOL(usb_deregister);
 
 static int usb_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 {
-	struct usb_interface *intf = to_usb_interface(dev);
-	struct usb_driver *udrv = to_usb_driver(drv);
+	struct usb_interface *intf;
+	struct usb_driver *udrv;
+
+	if (dev->type != &usb_interface_type) {
+		return 0;
+	}
+
+	intf = to_usb_interface(dev);
+	udrv = to_usb_driver(drv);
 
 	return usb_match_interface(intf, udrv) ? 1 : 0;
 }
@@ -281,10 +288,18 @@ static int usb_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 static int usb_bus_probe(struct vmm_device *dev)
 {
 	int err;
-	struct usb_interface *intf = to_usb_interface(dev);
-	struct usb_driver *udrv = to_usb_driver(dev->driver);
-	const struct usb_device_id *id = usb_match_interface(intf, udrv);
+	struct usb_interface *intf;
+	struct usb_driver *udrv;
+	const struct usb_device_id *id;
 
+	if (dev->type != &usb_interface_type) {
+		return VMM_ENODEV;
+	}
+
+	intf = to_usb_interface(dev);
+	udrv = to_usb_driver(dev->driver);
+
+	id = usb_match_interface(intf, udrv);
 	if (!id) {
 		return VMM_ENODEV;
 	}
@@ -301,8 +316,15 @@ static int usb_bus_probe(struct vmm_device *dev)
 static int usb_bus_remove(struct vmm_device *dev)
 {
 	int err;
-	struct usb_interface *intf = to_usb_interface(dev);
-	struct usb_driver *udrv = to_usb_driver(dev->driver);
+	struct usb_interface *intf;
+	struct usb_driver *udrv;
+
+	if (dev->type != &usb_interface_type) {
+		return VMM_ENODEV;
+	}
+
+	intf = to_usb_interface(dev);
+	udrv = to_usb_driver(dev->driver);
 
 	if (udrv->disconnect) {
 		udrv->disconnect(intf);
