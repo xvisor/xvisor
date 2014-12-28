@@ -38,6 +38,8 @@
 #define USB_CORE_IPRIORITY		(1)
 
 extern struct vmm_bus usb_bus_type;
+extern struct vmm_device_type usb_device_type;
+extern struct vmm_device_type usb_interface_type;
 
 /* FIXME:
  * The EHCI spec says that we must align to at least 32 bytes.  However,

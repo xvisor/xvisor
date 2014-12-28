@@ -426,6 +426,7 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 					     "%s-intf%d", dev->dev.name, ifno);
 				ifp->dev.parent = &dev->dev;
 				ifp->dev.bus = &usb_bus_type;
+				ifp->dev.type = &usb_interface_type;
 				dev->config.no_of_intf++;
 				memcpy(&ifp->desc, &buffer[index],
 					sizeof(ifp->desc));
@@ -1567,6 +1568,26 @@ static void usb_release_device(struct vmm_device *ddev)
 	vmm_free(dev);
 }
 
+static void usb_release_interface(struct vmm_device *ddev)
+{
+	/* Nothing to do here because usb interface device will
+	 * be released automatically when parent usb device is
+	 * released.
+	 */
+}
+
+struct vmm_device_type usb_device_type = {
+	.name = "usb_device",
+	.release = usb_release_device,
+};
+VMM_EXPORT_SYMBOL(usb_device_type);
+
+struct vmm_device_type usb_interface_type = {
+	.name = "usb_interface",
+	.release = usb_release_interface,
+};
+VMM_EXPORT_SYMBOL(usb_interface_type);
+
 struct usb_device *usb_alloc_device(struct usb_device *parent,
 				    struct usb_hcd *hcd, unsigned port)
 {
@@ -1599,7 +1620,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 	dev->dev.autoprobe_disabled = TRUE;
 	dev->dev.parent = (parent) ? &parent->dev : NULL;
 	dev->dev.bus = &usb_bus_type;
-	dev->dev.release = usb_release_device;
+	dev->dev.type = &usb_device_type;
 
 	/* Increment reference count of HCD */
 	usb_ref_hcd(hcd);

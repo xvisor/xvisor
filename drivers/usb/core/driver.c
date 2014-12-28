@@ -320,3 +320,4 @@ struct vmm_bus usb_bus_type = {
 	.probe = usb_bus_probe,
 	.remove = usb_bus_remove,
 };
+VMM_EXPORT_SYMBOL(usb_bus_type);
