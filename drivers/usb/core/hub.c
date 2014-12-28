@@ -233,16 +233,14 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 {
 	if (!string)
 		return;
-	DPRINTF("%s: %s: %s = %s\n",
-		udev->hcd->dev->name, udev->dev.name, id, string);
+	vmm_printf("%s: %s = %s\n", udev->dev.name, id, string);
 }
 
 static void announce_device(struct usb_device *udev)
 {
-	DPRINTF("%s: %s: New USB device found, idVendor=%04x, idProduct=%04x\n",
-		udev->hcd->dev->name, udev->dev.name,
-		vmm_le16_to_cpu(udev->descriptor.idVendor),
-		vmm_le16_to_cpu(udev->descriptor.idProduct));
+	vmm_printf("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
+		   udev->dev.name, vmm_le16_to_cpu(udev->descriptor.idVendor),
+		   vmm_le16_to_cpu(udev->descriptor.idProduct));
 	show_string(udev, "Product", udev->product);
 	show_string(udev, "Manufacturer", udev->manufacturer);
 	show_string(udev, "SerialNumber", udev->serial);

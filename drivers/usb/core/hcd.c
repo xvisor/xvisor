@@ -157,7 +157,8 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 
 	if (hcd->driver->irq) {
 		vmm_snprintf(hcd->irq_descr, sizeof(hcd->irq_descr),
-			     "%s:usb%d", hcd->dev->name, hcd->bus_num);
+			     "%s:%s", hcd->dev->name,
+			     hcd->root_hub->dev.name);
 		rc = vmm_host_irq_register(irqnum, hcd->irq_descr,
 					   &usb_hcd_irq, hcd);
 		if (rc != 0) {
@@ -167,16 +168,16 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 		}
 		hcd->irq = irqnum;
 		vmm_printf("%s: %s 0x%08llx\n", hcd->dev->name,
-				(hcd->driver->flags & HCD_MEMORY) ?
-					"io mem" : "io base",
-					(unsigned long long)hcd->rsrc_start);
+			  (hcd->driver->flags & HCD_MEMORY) ?
+				"IO mem" : "IO base",
+			  (unsigned long long)hcd->rsrc_start);
 	} else {
 		hcd->irq = 0;
 		if (hcd->rsrc_start) {
 			vmm_printf("%s: %s 0x%08llx\n", hcd->dev->name,
-					(hcd->driver->flags & HCD_MEMORY) ?
-					"io mem" : "io base",
-					(unsigned long long)hcd->rsrc_start);
+				   (hcd->driver->flags & HCD_MEMORY) ?
+					"IO mem" : "IO base",
+				   (unsigned long long)hcd->rsrc_start);
 		}
 	}
 
@@ -304,6 +305,9 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	if ((retval = register_root_hub(hcd)) != 0)
 		goto err_register_root_hub;
 
+	vmm_printf("%s: Root Hub Device %s\n",
+		   hcd->dev->name, rhdev->dev.name);
+
 	return VMM_OK;
 
 err_register_root_hub:
@@ -328,7 +332,7 @@ void usb_hcd_died(struct usb_hcd *hcd)
 {
 	irq_flags_t flags;
 
-	vmm_printf("%s: HC died; cleaning up\n", hcd->dev->name);
+	vmm_printf("%s: HCD died; cleaning up\n", hcd->dev->name);
 
 	vmm_spin_lock_irqsave (&hcd_root_hub_lock, flags);
 	clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
@@ -352,7 +356,8 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->root_hub;
 
-	vmm_printf("%s: remove, state %x\n", hcd->dev->name, hcd->state);
+	vmm_printf("%s: HCD remove, state %x\n",
+		   hcd->dev->name, hcd->state);
 
 	clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
 	if (HC_IS_RUNNING (hcd->state))
