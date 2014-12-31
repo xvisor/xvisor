@@ -75,15 +75,6 @@ struct usb_driver;
 struct usb_hcd;
 struct urb;
 
-/* device request (setup) */
-struct usb_devrequest {
-	u8	requesttype;
-	u8	request;
-	u16	value;
-	u16	index;
-	u16	length;
-} __attribute__ ((packed));
-
 /* Interface */
 struct usb_interface {
 	struct vmm_device dev;

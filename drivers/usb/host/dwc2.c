@@ -650,14 +650,14 @@ static void dwc2_hc_init(struct dwc2_control *dwc2, u8 hc_num,
 /* Direction: In ; Request: Status */
 static int dwc2_rh_msg_in_status(struct dwc2_control *dwc2,
 				 struct urb *u,
-				 struct usb_devrequest *cmd)
+				 struct usb_ctrlrequest *cmd)
 {
 	int len = 0, rc = VMM_OK;
 	u32 hprt0 = 0, port_status = 0, port_change = 0;
 	void *buffer = u->transfer_buffer;
 	int buffer_len = u->transfer_buffer_length;
 
-	switch (cmd->requesttype & ~USB_DIR_IN) {
+	switch (cmd->bRequestType & ~USB_DIR_IN) {
 	case 0:
 		*(u16 *)buffer = vmm_cpu_to_le16(1);
 		len = 2;
@@ -717,17 +717,17 @@ static int dwc2_rh_msg_in_status(struct dwc2_control *dwc2,
 /* Direction: In ; Request: Descriptor */
 static int dwc2_rh_msg_in_descriptor(struct dwc2_control *dwc2,
 				     struct urb *u,
-				     struct usb_devrequest *cmd)
+				     struct usb_ctrlrequest *cmd)
 {
 	u32 dsc;
 	u8 data[32];
 	int len = 0, rc = VMM_OK;
-	u16 wValue = vmm_cpu_to_le16(cmd->value);
-	u16 wLength = vmm_cpu_to_le16(cmd->length);
+	u16 wValue = vmm_cpu_to_le16(cmd->wValue);
+	u16 wLength = vmm_cpu_to_le16(cmd->wLength);
 	void *buffer = u->transfer_buffer;
 	int buffer_len = u->transfer_buffer_length;
 
-	switch (cmd->requesttype & ~USB_DIR_IN) {
+	switch (cmd->bRequestType & ~USB_DIR_IN) {
 	case 0:
 		switch (wValue & 0xff00) {
 		case 0x0100:	/* device descriptor */
@@ -823,13 +823,13 @@ static int dwc2_rh_msg_in_descriptor(struct dwc2_control *dwc2,
 /* Direction: In ; Request: Configuration */
 static int dwc2_rh_msg_in_configuration(struct dwc2_control *dwc2,
 					struct urb *u,
-					struct usb_devrequest *cmd)
+					struct usb_ctrlrequest *cmd)
 {
 	int len = 0, rc = VMM_OK;
 	void *buffer = u->transfer_buffer;
 	int buffer_len = u->transfer_buffer_length;
 
-	switch (cmd->requesttype & ~USB_DIR_IN) {
+	switch (cmd->bRequestType & ~USB_DIR_IN) {
 	case 0:
 		*(u8 *)buffer = 0x01;
 		len = 1;
@@ -851,9 +851,9 @@ static int dwc2_rh_msg_in_configuration(struct dwc2_control *dwc2,
 
 /* Direction: In */
 static int dwc2_rh_msg_in(struct dwc2_control *dwc2,
-			   struct urb *u, struct usb_devrequest *cmd)
+			   struct urb *u, struct usb_ctrlrequest *cmd)
 {
-	switch (cmd->request) {
+	switch (cmd->bRequest) {
 	case USB_REQ_GET_STATUS:
 		return dwc2_rh_msg_in_status(dwc2, u, cmd);
 	case USB_REQ_GET_DESCRIPTOR:
@@ -872,11 +872,11 @@ static int dwc2_rh_msg_in(struct dwc2_control *dwc2,
 
 /* Direction: Out */
 static int dwc2_rh_msg_out(struct dwc2_control *dwc2,
-			   struct urb *u, struct usb_devrequest *cmd)
+			   struct urb *u, struct usb_ctrlrequest *cmd)
 {
 	int rc = VMM_OK;
-	u16 bmrtype_breq = cmd->requesttype | (cmd->request << 8);
-	u16 wValue = vmm_cpu_to_le16(cmd->value);
+	u16 bmrtype_breq = cmd->bRequestType | (cmd->bRequest << 8);
+	u16 wValue = vmm_cpu_to_le16(cmd->wValue);
 
 	switch (bmrtype_breq & ~USB_DIR_IN) {
 	case (USB_REQ_CLEAR_FEATURE << 8) | USB_RECIP_ENDPOINT:
@@ -941,10 +941,10 @@ static int dwc2_control_rh_msg(struct dwc2_control *dwc2,
 			       struct urb *u)
 {
 	int rc;
-	struct usb_devrequest *cmd =
-			(struct usb_devrequest *)u->setup_packet;
+	struct usb_ctrlrequest *cmd =
+			(struct usb_ctrlrequest *)u->setup_packet;
 
-	if (cmd->requesttype & USB_DIR_IN) {
+	if (cmd->bRequestType & USB_DIR_IN) {
 		rc = dwc2_rh_msg_in(dwc2, u, cmd);
 	} else {
 		rc = dwc2_rh_msg_out(dwc2, u, cmd);
