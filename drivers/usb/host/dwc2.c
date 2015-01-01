@@ -39,12 +39,14 @@
 #include <vmm_workqueue.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
+#include <vmm_mutex.h>
 #include <vmm_completion.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+
 #include <drv/usb.h>
 #include <drv/usb/ch11.h>
 #include <drv/usb/roothubdesc.h>
@@ -241,6 +243,8 @@ struct dwc2_control {
 
 	int bulk_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
 	int control_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
+
+	struct vmm_mutex urb_process_mutex;
 
 	vmm_spinlock_t urb_lock;
 	struct dlist urb_pending_list;
@@ -1303,9 +1307,36 @@ static int dwc2_int_msg(struct dwc2_control *dwc2,
 	return VMM_ENOTAVAIL;
 }
 
-static int dwc2_worker(void *data)
+static void dwc2_urb_process(struct usb_hcd *hcd,
+			     struct dwc2_control *dwc2,
+			     struct urb *u)
 {
 	int rc;
+
+	vmm_mutex_lock(&dwc2->urb_process_mutex);
+
+	switch (usb_pipetype(u->pipe)) {
+	case USB_PIPE_CONTROL:
+		rc = dwc2_control_msg(dwc2, u);
+		break;
+	case USB_PIPE_BULK:
+		rc = dwc2_bulk_msg(dwc2, u);
+		break;
+	case USB_PIPE_INTERRUPT:
+		rc = dwc2_int_msg(dwc2, u);
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	vmm_mutex_unlock(&dwc2->urb_process_mutex);
+
+	usb_hcd_giveback_urb(hcd, u, rc);
+}
+
+static int dwc2_worker(void *data)
+{
 	irq_flags_t flags;
 	struct urb *u;
 	struct usb_hcd *hcd = data;
@@ -1326,22 +1357,7 @@ static int dwc2_worker(void *data)
 			continue;
 		}
 
-		switch (usb_pipetype(u->pipe)) {
-		case USB_PIPE_CONTROL:
-			rc = dwc2_control_msg(dwc2, u);
-			break;
-		case USB_PIPE_BULK:
-			rc = dwc2_bulk_msg(dwc2, u);
-			break;
-		case USB_PIPE_INTERRUPT:
-			rc = dwc2_int_msg(dwc2, u);
-			break;
-		default:
-			rc = VMM_EINVALID;
-			break;
-		};
-
-		usb_hcd_giveback_urb(hcd, u, rc);
+		dwc2_urb_process(hcd, dwc2, u);
 	}
 
 	return VMM_OK;
@@ -1437,11 +1453,15 @@ static int dwc2_urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
 	irq_flags_t flags;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
-	list_add_tail(&urb->urb_list, &dwc2->urb_pending_list);
-	vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
+	if (vmm_scheduler_orphan_context()) {
+		dwc2_urb_process(hcd, dwc2, urb);
+	} else {
+		vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
+		list_add_tail(&urb->urb_list, &dwc2->urb_pending_list);
+		vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
 
-	vmm_completion_complete(&dwc2->urb_pending);
+		vmm_completion_complete(&dwc2->urb_pending);
+	}
 
 	return VMM_OK;
 }
@@ -1524,6 +1544,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 		goto fail_unmap_regs;
 	}
 
+	INIT_MUTEX(&dwc2->urb_process_mutex);
 	INIT_SPIN_LOCK(&dwc2->urb_lock);
 	INIT_LIST_HEAD(&dwc2->urb_pending_list);
 	INIT_COMPLETION(&dwc2->urb_pending);
