@@ -416,8 +416,8 @@ int usb_get_configuration_no(struct usb_device *dev, u8 *buffer, int cfgno)
 	config = (struct usb_config_descriptor *)&buffer[0];
 	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, 9);
 	if (result < 0) {
-		vmm_printf("%s: unable to get descriptor, error %lX\n",
-				   __func__, dev->status);
+		vmm_printf("%s: unable to get descriptor, error %d\n",
+			   __func__, result);
 		return result;
 	}
 	tmp = vmm_le16_to_cpu(config->wTotalLength);

@@ -514,7 +514,7 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 			      unsigned short *portstat)
 {
 #define MAX_TRIES 5
-	int tries;
+	int err, tries;
 	struct usb_port_status *portsts;
 	unsigned short portstatus, portchange;
 
@@ -529,11 +529,12 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 		usb_set_port_feature(dev, port + 1, USB_PORT_FEAT_RESET);
 		vmm_mdelay(200);
 
-		if (usb_get_port_status(dev, port + 1, portsts) < 0) {
-			vmm_printf("%s: get_port_status failed status 0x%lx\n",
-				   __func__, dev->status);
+		err = usb_get_port_status(dev, port + 1, portsts);
+		if (err < 0) {
+			vmm_printf("%s: get_port_status failed error=%d\n",
+				   __func__, err);
 			vmm_free(portsts);
-			return VMM_EFAIL;
+			return err;
 		}
 		portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
 		portchange = vmm_le16_to_cpu(portsts->wPortChange);
@@ -1080,7 +1081,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	dev->devnum = addr; /* fail or success we restore back devnum */
 	if (err < 0) {
 		vmm_printf("%s: device not accepting new address %d "
-			   "(status=0x%lx)\n", __func__, dev->status);
+			   "(err=%d)\n", __func__, err);
 		goto done;
 	}
 
@@ -1121,8 +1122,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	err = usb_set_configuration(dev, dev->config.desc.bConfigurationValue);
 	if (err) {
 		vmm_printf("%s: failed to set default configuration "
-			   "len %d, status 0x%lx\n", 
-			   __func__, dev->act_len, dev->status);
+			   "error=%d\n", __func__, err);
 		goto done;
 	}
 
@@ -1152,6 +1152,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	/* Now probe the device interfaces */
 	err = usb_hub_probe(dev);
 	if (err == VMM_OK) {
+		dev->config.intf[0].dev.autoprobe_disabled = TRUE;
 		vmm_devdrv_register_device(&dev->config.intf[0].dev);
 	} else if (err == VMM_ENODEV) {
 		for (i = 0; i < dev->config.no_of_intf; i++) {

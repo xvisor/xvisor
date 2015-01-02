@@ -94,7 +94,9 @@ struct usb_interface {
 	struct usb_ss_ep_comp_descriptor ss_ep_comp_desc[USB_MAXENDPOINTS];
 } __attribute__ ((packed));
 
-#define	to_usb_interface(i) container_of((i), struct usb_interface, dev)
+#define	to_usb_interface(_i) container_of((_i), struct usb_interface, dev)
+#define interface_set_data(_i, _p) vmm_devdrv_set_data(&(_i)->dev, (_p))
+#define interface_get_data(_i) vmm_devdrv_get_data(&(_i)->dev)
 
 /* Configuration information.. */
 struct usb_config {
@@ -122,6 +124,10 @@ struct usb_device {
 
 	struct usb_hcd *hcd;
 
+	/*
+	 * Child devices -  if this is a hub device
+	 * Each instance needs its own set of data structures.
+	 */
 	int maxchild;			/* Number of ports if hub */
 	vmm_spinlock_t children_lock;
 	struct usb_device *children[USB_MAXCHILDREN];
@@ -130,6 +136,7 @@ struct usb_device {
 	u16	bus_mA;
 	enum usb_device_state	state;
 	enum usb_device_speed	speed;
+	u64 active_duration;
 
 	char	manufacturer[32];	/* manufacturer */
 	char	product[32];		/* product */
@@ -158,19 +165,10 @@ struct usb_device {
 	int (*irq_handle)(struct usb_device *dev);
 	unsigned long irq_status;
 	int irq_act_len;		/* transfered bytes */
-	void *privptr;
-
-	/*
-	 * Child devices -  if this is a hub device
-	 * Each instance needs its own set of data structures.
-	 */
-	unsigned long status;
-	int act_len;			/* transfered bytes */
-	u64 active_duration;
 };
 
-#define	to_usb_device(d)	container_of((d), struct usb_device, dev)
-#define interface_to_usbdev(i)	to_usb_device((i)->dev.parent)
+#define	to_usb_device(_d)	container_of((_d), struct usb_device, dev)
+#define interface_to_usbdev(_i)	to_usb_device((_i)->dev.parent)
 
 /*-------------------------------------------------------------------*
  *                    USB device driver support                      *
@@ -339,6 +337,9 @@ struct usb_dynid {
 
 /**
  * struct usb_driver - identifies USB interface driver to usbcore
+ * @drv: used internally to register to device driver framework.
+ * @dynids: used internally to hold the list of dynamically added device
+ *	ids for this driver.
  * @name: The driver name should be unique among USB drivers,
  *	and should normally be the same as the module name.
  * @probe: Called to see if the driver is willing to manage a particular
@@ -359,8 +360,6 @@ struct usb_dynid {
  *	has been reset
  * @id_table: USB drivers use ID table to support hotplugging.
  *	This must be set or your driver's probe function will never get called.
- * @dynids: used internally to hold the list of dynamically added device
- *	ids for this driver.
  * @no_dynamic_id: if set to 1, the USB core will not allow dynamic ids to be
  *	added to this driver by preventing the sysfs file from being created.
  * @supports_autosuspend: if set to 0, the USB core will not allow autosuspend
@@ -386,6 +385,7 @@ struct usb_dynid {
  */
 struct usb_driver {
 	struct vmm_driver drv;
+	struct usb_dynids dynids;
 
 	const char *name;
 
@@ -397,14 +397,13 @@ struct usb_driver {
 
 	const struct usb_device_id *id_table;
 
-	struct usb_dynids dynids;
 	unsigned int no_dynamic_id:1;
 	unsigned int supports_autosuspend:1;
 	unsigned int disable_hub_initiated_lpm:1;
 	unsigned int soft_unbind:1;
 };
 
-#define	to_usb_driver(d) container_of((d), struct usb_driver, drv)
+#define	to_usb_driver(_d) container_of((_d), struct usb_driver, drv)
 
 /**
  * usb_match_one_id - Try to match usb_device_id with usb interface
