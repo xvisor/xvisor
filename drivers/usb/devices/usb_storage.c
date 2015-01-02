@@ -159,50 +159,6 @@ static void usb_storage_free_disk_num(int disk_num)
 	vmm_spin_unlock_irqrestore(&us_disk_bmap_lock, flags);
 }
 
-static int usb_storage_CB_reset(struct scsi_transport *tr, void *priv)
-{
-	int rc;
-	unsigned char cmd[12];
-	struct usb_storage *us = priv;
-
-	memset(cmd, 0xff, sizeof(cmd));
-	cmd[0] = SCSI_SEND_DIAG;
-	cmd[1] = 4;
-	rc = usb_control_msg(us->dev, usb_sndctrlpipe(us->dev, 0),
-			     US_CBI_ADSC,
-			     USB_TYPE_CLASS | USB_RECIP_INTERFACE, 0,
-			     us->intf->desc.bInterfaceNumber,
-			     cmd, sizeof(cmd),
-			     NULL, USB_CNTL_TIMEOUT * 5);
-	if (rc) {
-		return rc;
-	}
-
-	/* long wait for reset */
-	vmm_msleep(1500);
-
-	/* clear halt on input endpoint */
-	rc = usb_clear_halt(us->dev, usb_rcvbulkpipe(us->dev, us->ep_in));
-	if (rc) {
-		return rc;
-	}
-
-	/* clear halt on output endpoint */
-	rc = usb_clear_halt(us->dev, usb_sndbulkpipe(us->dev, us->ep_out));
-	if (rc) {
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
-static int usb_storage_CB_transport(struct scsi_request *srb,
-				    struct scsi_transport *tr, void *priv)
-{
-	/* FIXME: */
-	return VMM_OK;
-}
-
 static int usb_storage_BBB_reset(struct scsi_transport *tr, void *priv)
 {
 	int rc;
@@ -389,7 +345,13 @@ again:
 static void usb_storage_info_fixup(struct scsi_info *info,
 				   struct scsi_transport *tr, void *priv)
 {
-	/* FIXME: */
+	struct usb_storage *us = priv;
+	if ((us->dev->descriptor.idVendor == 0x0424) &&
+	    (us->dev->descriptor.idProduct == 0x223a)) {
+		strncpy(info->vendor, "SMSC", sizeof(info->vendor));
+		strncpy(info->product, "Flash Controller",
+			sizeof(info->product));
+	}
 }
 
 static int usb_storage_max_luns(struct usb_device *dev,
@@ -570,20 +532,6 @@ static void usb_storage_disconnect(struct usb_interface *intf)
 	vmm_free(us);
 }
 
-static struct scsi_transport cb = {
-	.name = "Control/Bulk",
-	.transport = usb_storage_CB_transport,
-	.reset = usb_storage_CB_reset,
-	.info_fixup = usb_storage_info_fixup,
-};
-
-static struct scsi_transport cbi = {
-	.name = "Control/Bulk/Interrupt",
-	.transport = usb_storage_CB_transport,
-	.reset = usb_storage_CB_reset,
-	.info_fixup = usb_storage_info_fixup,
-};
-
 static struct scsi_transport bulk = {
 	.name = "Bulk/Bulk/Bulk",
 	.transport = usb_storage_BBB_transport,
@@ -593,42 +541,18 @@ static struct scsi_transport bulk = {
 
 static const struct usb_device_id usb_storage_products[] = {
 {
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_CB),
-	.driver_info = (unsigned long) &cb,
-},
-{
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_CBI),
-	.driver_info = (unsigned long) &cbi,
-},
-{
 	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_BULK),
-	.driver_info = (unsigned long) &bulk,
-},
-{
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_CB),
-	.driver_info = (unsigned long) &cb,
-},
-{
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_CBI),
-	.driver_info = (unsigned long) &cbi,
+	.driver_info = (unsigned long)&bulk,
 },
 {
 	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_BULK),
-	.driver_info = (unsigned long) &bulk,
-},
-{
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_CB),
-	.driver_info = (unsigned long) &cb,
-},
-{
-	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_CBI),
-	.driver_info = (unsigned long) &cbi,
+	.driver_info = (unsigned long)&bulk,
 },
 {
 	USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_BULK),
-	.driver_info = (unsigned long) &bulk,
+	.driver_info = (unsigned long)&bulk,
 },
-{ },		/* END */
+{ },	/* END */
 };
 
 static struct usb_driver usb_storage_driver = {
