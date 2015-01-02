@@ -256,6 +256,9 @@ int usb_register(struct usb_driver *drv)
 	strncpy(drv->drv.name, drv->name, sizeof(drv->drv.name));
 	drv->drv.bus = &usb_bus_type;
 
+	INIT_SPIN_LOCK(&drv->dynids.lock);
+	INIT_LIST_HEAD(&drv->dynids.list);
+
 	return vmm_devdrv_register_driver(&drv->drv);
 }
 VMM_EXPORT_SYMBOL(usb_register);
