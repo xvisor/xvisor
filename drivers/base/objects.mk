@@ -21,4 +21,5 @@
 # @brief list of driver objects
 # */
 
+drivers-objs-y+= base/resource.o
 drivers-objs-$(CONFIG_PINCTRL)+= base/pinctrl.o
