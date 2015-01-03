@@ -37,6 +37,7 @@
 #define __notrace		__attribute__((no_instrument_function))
 #define __packed		__attribute__((packed))
 #define __weak			__attribute__((weak))
+#define __mustcheck		__attribute__((warn_unused_result))
 
 #define __section(S)		__attribute__((section(#S)))
 #define __read_mostly		__section(".readmostly.data")
