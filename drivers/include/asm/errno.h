@@ -33,5 +33,8 @@
 #define EBADMSG			-(VMM_EBADMSG)
 #define EREMOTEIO		-(VMM_EREMOTEIO)
 #define EINPROGRESS		-(VMM_EINPROGRESS)
+#define E2BIG			-(VMM_EINVALID)
+#define ENOTTY			-(VMM_ENODEV)
+#define EAGAIN			-(VMM_EAGAIN)
 
 #endif /* defined(_ASM_ERRNO_H) */
