@@ -33,6 +33,11 @@
 
 #include <hpet.h>
 
+#ifdef CONFIG_PCI
+extern int __init pci_arch_init(void);
+extern int __init pci_subsys_init(void);
+#endif
+
 #if defined(CONFIG_VTEMU)
 struct vtemu *x86_vt;
 #endif
