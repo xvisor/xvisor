@@ -23,6 +23,9 @@
 #define might_sleep()	do {} while(0);
 #define might_sleep_if(cond) do{} while(0);
 
+#define simple_strtoul	strtoul
+#define simple_strtol	strtol
+
 /* FIXME: This file just a place holder for most cases */
 
 #endif /* _LINUX_KERNEL_H */

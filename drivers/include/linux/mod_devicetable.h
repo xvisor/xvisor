@@ -15,9 +15,12 @@ typedef unsigned long kernel_ulong_t;
 #define PCI_ANY_ID (~0)
 
 struct pci_device_id {
-	__u32 vendor, device;		/* Vendor and device ID or PCI_ANY_ID*/
-	__u32 subvendor, subdevice;	/* Subsystem ID's or PCI_ANY_ID */
-	__u32 class, class_mask;	/* (class,subclass,prog-if) triplet */
+	__u32 vendor;
+	__u32 devid;		/* Vendor and device ID or PCI_ANY_ID*/
+	__u32 subvendor;
+	__u32 subdevice;	/* Subsystem ID's or PCI_ANY_ID */
+	__u32 class;
+	__u32 class_mask;	/* (class,subclass,prog-if) triplet */
 	kernel_ulong_t driver_data;	/* Data private to the driver */
 };
 

@@ -1,10 +1,16 @@
 #ifndef _LINUX_ERR_H
 #define _LINUX_ERR_H
 
+#include <vmm_compiler.h>
 #include <linux/printk.h>
 #include <asm/errno.h>
 
-#define __must_check
+/* Indirect macros required for expanded argument pasting, eg. __LINE__. */
+#define ___PASTE(a,b) a##b
+#define __PASTE(a,b) ___PASTE(a,b)
+
+#define __must_check		__mustcheck
+#define __force
 
 #define MAX_ERRNO		VMM_MAX_ERRNO
 

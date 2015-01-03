@@ -4,6 +4,8 @@
 #include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 
+#define IO_SPACE_LIMIT	0xffff
+
 /** I/O access functions (Assumed to be Little Endian) */
 #define inb				vmm_inb
 #define inw				vmm_inw

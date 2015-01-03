@@ -49,6 +49,9 @@
 #define device_del(dev)			vmm_devdrv_unregister_device(dev)
 #define device_register(dev)		vmm_devdrv_register_device(dev)
 #define device_unregister(dev)		vmm_devdrv_unregister_device(dev)
+#define device_lock(_lock)		do { } while (0);
+#define device_trylock(_lock)		(1) /* always available */
+#define device_unlock(_lock)		do { } while (0);
 
 #define driver_register(drv)		vmm_devdrv_register_driver(drv)
 #define driver_attach(drv)		vmm_devdrv_attach_driver(drv)
@@ -104,6 +107,13 @@
 			vmm_devdrv_bus_find_device_by_name(bus, start, name)
 #define bus_for_each_device(bus, start, data, fn)	\
 			vmm_devdrv_bus_for_each_device(bus, start, data, fn)
+
+static inline int dev_to_node(struct device *dev) { return -1; }
+static inline void set_dev_node(struct device *dev, int node) { }
+
+#define dev_WARN	dev_warn
+#define dev_WARN_ONCE(dev, condition, format, arg...)	\
+	dev_warn(dev, format, ##arg)
 
 /* interface for exporting device attributes */
 
