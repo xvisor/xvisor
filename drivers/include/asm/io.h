@@ -1,6 +1,7 @@
 #ifndef _ASM_IO_H_
 #define _ASM_IO_H_
 
+#include <vmm_error.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 
@@ -63,11 +64,14 @@
 
 #define	__iomem
 
+#define __raw_readb			readb
 #define	__raw_readw			readw
 #define	__raw_readl			readl
+#define __raw_writeb			writeb
 #define	__raw_writew			writew
 #define	__raw_writel			writel
 
+#ifndef CONFIG_GENERIC_IO
 #define ioread8(addr)			readb(addr)
 #define ioread16(addr)			readw(addr)
 #define ioread16be(addr)		__be16_to_cpu(__raw_readw(addr))
@@ -93,6 +97,9 @@
 				outsw((unsigned long) (p), (src), (count))
 #define iowrite32_rep(p, src, count) \
 				outsl((unsigned long) (p), (src), (count))
+#else
+#include <asm-generic/iomap.h>
+#endif /* !CONFIG_GENERIO_IO */
 
 static inline void iounmap(void __iomem *addr)
 {

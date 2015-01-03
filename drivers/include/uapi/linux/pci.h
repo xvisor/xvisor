@@ -17,7 +17,11 @@
 #ifndef _UAPILINUX_PCI_H
 #define _UAPILINUX_PCI_H
 
+#if 0
 #include <linux/pci_regs.h>	/* The pci register defines */
+#else
+#include <uapi/linux/pci_regs.h>	/* The pci register defines */
+#endif
 
 /*
  * The PCI interface treats multi-function devices as independent
