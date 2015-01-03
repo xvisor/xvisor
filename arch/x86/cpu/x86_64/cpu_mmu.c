@@ -108,6 +108,17 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
+int arch_cpu_aspace_pa2va(physical_addr_t pa,
+			  virtual_size_t sz,
+			  u32 mem_flags,
+			  virtual_addr_t *va)
+{
+	/* x86 has identical mapping */
+	*va = pa;
+
+	return VMM_OK;
+}
+
 int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 					virtual_addr_t *core_resv_va,
 					virtual_size_t *core_resv_sz,

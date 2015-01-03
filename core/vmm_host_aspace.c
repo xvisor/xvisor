@@ -149,6 +149,27 @@ int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
+int vmm_host_pa2va(physical_addr_t pa,
+		   virtual_size_t sz,
+		   u32 mem_flags,
+		   virtual_addr_t *va)
+{
+	int rc = VMM_OK;
+	virtual_addr_t _va = 0x0;
+
+	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
+	if ((rc = arch_cpu_aspace_pa2va(pa & ~VMM_PAGE_MASK,
+					sz, mem_flags, &_va))) {
+		return rc;
+	}
+
+	if (va) {
+		*va = _va | (pa & VMM_PAGE_MASK);
+	}
+
+	return VMM_OK;
+}
+
 u32 vmm_host_memory_read(physical_addr_t hpa,
 			 void *dst, u32 len, bool cacheable)
 {

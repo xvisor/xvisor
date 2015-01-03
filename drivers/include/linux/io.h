@@ -17,4 +17,17 @@
 		(void *)(__pa);				\
 	})
 
+static inline void *phys_to_virt(physical_addr_t pa,
+				 virtual_size_t sz, u32 mem_flags)
+{
+       int rc = VMM_OK;
+       virtual_addr_t va = 0;
+
+       if ((rc = vmm_host_pa2va(pa, sz, mem_flags, &va))) {
+               return NULL;
+       }
+
+       return (void *)va;
+}
+
 #endif /* _LINUX_IO_H_ */

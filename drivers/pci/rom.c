@@ -251,7 +251,8 @@ void __iomem *pci_platform_rom(struct pci_dev *pdev, size_t *size)
 #if 0
 		return phys_to_virt((phys_addr_t)pdev->rom);
 #else
-		return ioremap((phys_addr_t)pdev->rom, pdev->romlen);
+		return phys_to_virt((phys_addr_t)pdev->rom,
+				    pdev->romlen, VMM_MEMORY_FLAGS_NORMAL);
 #endif
 	}
 
