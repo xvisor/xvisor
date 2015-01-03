@@ -113,4 +113,6 @@ size_t strcspn(const char *s, const char *reject);
 
 char* strtok_r(char *str, const char *delim, char **context);
 
+int sscanf(const char *buf, const char *fmt, ...);
+
 #endif /* __STRINGLIB_H__ */
