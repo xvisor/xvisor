@@ -35,6 +35,11 @@
 			compatible = "piix3_ide";
 		};
 
+		pci_host {
+			device_type = "pci-host-controller";
+			compatible = "x86-legacy";
+		};
+
 		STDOUT: vga {
 		};
 
@@ -57,8 +62,14 @@
 		};
 	};
 
-    vmm {
-    };
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
 
 	chosen {
 		/*console = &SERIAL0;*/
