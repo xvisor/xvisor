@@ -26,6 +26,7 @@
 #include <vmm_limits.h>
 #include <vmm_compiler.h>
 #include <vmm_types.h>
+#include <arch_atomic.h>
 #include <libs/list.h>
 
 #define VMM_DEVTREE_PATH_SEPARATOR		'/'
@@ -161,6 +162,7 @@ __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 
 struct vmm_devtree_node {
 	struct dlist head;
+	atomic_t ref_count;
 	char *name;
 	void *system_data; /* System data pointer 
 			      (Arch. specific code can use this to 
@@ -525,7 +527,13 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 					const char *list_name,
 					const char *cells_name);
 
-/** Add new node to device tree
+/** Increase reference count of give node */
+void vmm_devtree_ref_node(struct vmm_devtree_node *node);
+
+/** Free a node from device tree */
+void vmm_devtree_free_node(struct vmm_devtree_node *node);
+
+/** Add new node to device tree with given name
  *  NOTE: This function allows parent == NULL to enable creation of
  *  root node but only once.
  *  NOTE: Once root node is created, subsequent calls to this function

@@ -1469,6 +1469,28 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 						0, -1, NULL);
 }
 
+void vmm_devtree_ref_node(struct vmm_devtree_node *node)
+{
+	if (!node) {
+		return;
+	}
+
+	arch_atomic_inc(&node->ref_count);
+}
+
+void vmm_devtree_free_node(struct vmm_devtree_node *node)
+{
+	if (!node) {
+		return;
+	}
+
+	if (arch_atomic_sub_return(&node->ref_count, 1)) {
+		return;
+	}
+
+	vmm_free(node);
+}
+
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name)
 {
@@ -1491,11 +1513,12 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 		}
 	}
 
-	node = vmm_malloc(sizeof(struct vmm_devtree_node));
+	node = vmm_zalloc(sizeof(struct vmm_devtree_node));
 	if (!node) {
 		return NULL;
 	}
 	INIT_LIST_HEAD(&node->head);
+	arch_atomic_write(&node->ref_count, 1);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
 	len = strlen(name) + 1;
@@ -1507,10 +1530,13 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	strcpy(node->name, name);
 	node->system_data = NULL;
 	node->priv = NULL;
-	node->parent = parent;
 
 	if (parent) {
+		vmm_devtree_ref_node(parent);
+		node->parent = parent;
 		list_add_tail(&node->head, &parent->child_list);
+	} else {
+		node->parent = NULL;
 	}
 
 	return node;
@@ -1576,7 +1602,7 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 	int rc;
 	struct dlist *l;
 	struct vmm_devtree_attr *attr;
-	struct vmm_devtree_node *child;
+	struct vmm_devtree_node *child, *parent;
 
 	if (!node || (node == dtree_ctrl.root)) {
 		return VMM_EFAIL;
@@ -1600,7 +1626,13 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 
 	list_del(&node->head);
 
-	vmm_free(node);
+	if (node->parent) {
+		parent = node->parent;
+		node->parent = NULL;
+		vmm_devtree_free_node(parent);
+	}
+
+	vmm_devtree_free_node(node);
 
 	return VMM_OK;
 }
