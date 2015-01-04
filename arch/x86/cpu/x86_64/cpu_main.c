@@ -40,6 +40,7 @@ struct multiboot_info boot_info;
 u8 boot_cmd_line[MAX_CMD_LINE];
 
 extern u32 dt_blob_start;
+volatile int wait_for_gdb = 0;
 
 int arch_devtree_ram_start(physical_addr_t *addr)
 {
@@ -203,6 +204,8 @@ void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 	vmm_parse_early_options((char *)boot_cmd_line);
 
 	indentify_cpu();
+
+	while (wait_for_gdb);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
