@@ -49,7 +49,7 @@ static void cmd_ipconfig_usage(struct vmm_chardev *cdev)
 
 static int cmd_ipconfig_show(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	u8 buf[4];
+	u8 buf[6];
 	char str[30];
 	char *p;
 
