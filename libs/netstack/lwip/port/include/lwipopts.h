@@ -133,7 +133,7 @@
  * MEMP_NUM_SYS_TIMEOUT: the number of simulateously active timeouts.
  * (requires NO_SYS==0)
  */
-#define MEMP_NUM_SYS_TIMEOUT            3
+#define MEMP_NUM_SYS_TIMEOUT            10
 
 /**
  * MEMP_NUM_NETBUF: the number of struct netbufs.
@@ -265,8 +265,8 @@
 /**
  * LWIP_DHCP==1: Enable DHCP module.
  */
-#define LWIP_DHCP                       0
-
+#define LWIP_DHCP                       1
+#define DHCP_DOES_ARP_CHECK             0
 
 /*
    ------------------------------------
@@ -424,6 +424,15 @@
  */
 #define PPP_SUPPORT                     0
 
+/*
+   ---------------------------------------
+   ---------- Debugging options ----------
+   ---------------------------------------
+*/
+/**
+ * DHCP_DEBUG: Enable debugging in dhcp.c.
+ */
+#define DHCP_DEBUG                      LWIP_DBG_ON
 
 /* Misc */
 

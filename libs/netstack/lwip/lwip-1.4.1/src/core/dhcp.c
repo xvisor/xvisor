@@ -81,7 +81,9 @@
 #include "lwip/dns.h"
 #include "netif/etharp.h"
 
+#if 0
 #include <string.h>
+#endif
 
 /** DHCP_CREATE_RAND_XID: if this is set to 1, the xid is created using
  * LWIP_RAND() (this overrides DHCP_GLOBAL_XID)
@@ -938,7 +940,12 @@ dhcp_bind(struct netif *netif)
   if (dhcp->offered_t1_renew != 0xffffffffUL) {
     /* set renewal period timer */
     LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_bind(): t1 renewal timer %"U32_F" secs\n", dhcp->offered_t1_renew));
+#if 0
     timeout = (dhcp->offered_t1_renew + DHCP_COARSE_TIMER_SECS / 2) / DHCP_COARSE_TIMER_SECS;
+#else
+    timeout = (dhcp->offered_t1_renew + DHCP_COARSE_TIMER_SECS / 2);
+    timeout = udiv32(timeout, DHCP_COARSE_TIMER_SECS);
+#endif
     if(timeout > 0xffff) {
       timeout = 0xffff;
     }
@@ -951,7 +958,12 @@ dhcp_bind(struct netif *netif)
   /* set renewal period timer */
   if (dhcp->offered_t2_rebind != 0xffffffffUL) {
     LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_bind(): t2 rebind timer %"U32_F" secs\n", dhcp->offered_t2_rebind));
+#if 0
     timeout = (dhcp->offered_t2_rebind + DHCP_COARSE_TIMER_SECS / 2) / DHCP_COARSE_TIMER_SECS;
+#else
+    timeout = (dhcp->offered_t2_rebind + DHCP_COARSE_TIMER_SECS / 2);
+    timeout = udiv32(timeout, DHCP_COARSE_TIMER_SECS);
+#endif
     if(timeout > 0xffff) {
       timeout = 0xffff;
     }
