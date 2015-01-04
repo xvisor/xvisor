@@ -33,7 +33,9 @@
 
 #if LWIP_DNS && LWIP_SOCKET
 
+#if 0
 #include <stddef.h> /* for size_t */
+#endif
 
 #include "lwip/inet.h"
 #include "lwip/sockets.h"

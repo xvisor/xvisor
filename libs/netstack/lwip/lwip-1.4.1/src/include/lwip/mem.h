@@ -40,7 +40,9 @@ extern "C" {
 
 #if MEM_LIBC_MALLOC
 
+#if 0
 #include <stddef.h> /* for size_t */
+#endif
 
 typedef size_t mem_size_t;
 #define MEM_SIZE_F SZT_F
