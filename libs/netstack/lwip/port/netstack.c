@@ -45,6 +45,7 @@
 #include "lwip/sockets.h"
 #include "lwip/inet.h"
 #include "lwip/inet_chksum.h"
+#include "lwip/dhcp.h"
 
 #include "netif/etharp.h"
 
@@ -93,6 +94,15 @@ char *netstack_get_name(void)
 	return "lwIP";
 }
 VMM_EXPORT_SYMBOL(netstack_get_name);
+
+int netstack_dhcp_request(void)
+{
+	if (dhcp_start(&lns.nif))
+		return VMM_EFAIL;
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(netstack_dhcp_request);
 
 int netstack_set_ipaddr(u8 *addr)
 {

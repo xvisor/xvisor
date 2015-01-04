@@ -44,6 +44,7 @@ static void cmd_ipconfig_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   ipconfig help\n");
 	vmm_cprintf(cdev, "   ipconfig show\n");
+	vmm_cprintf(cdev, "   ipconfig dhcp\n");
 	vmm_cprintf(cdev, "   ipconfig update <ipaddr> [<netmask>] [<gateway>]\n");
 }
 
@@ -70,6 +71,11 @@ static int cmd_ipconfig_show(struct vmm_chardev *cdev, int argc, char **argv)
 	vmm_cprintf(cdev, "   HW address         : %s\n", p);
 
 	return VMM_OK;
+}
+
+static int cmd_ipconfig_dhcp(struct vmm_chardev *cdev, int argc, char **argv)
+{
+	return netstack_dhcp_request();
 }
 
 static int cmd_ipconfig_update(struct vmm_chardev *cdev, int argc, char **argv)
@@ -129,6 +135,8 @@ static int cmd_ipconfig_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_OK;
 		} else if (strcmp(argv[1], "show") == 0) {
 			return cmd_ipconfig_show(cdev, argc, argv);
+		} else if (strcmp(argv[1], "dhcp") == 0) {
+			return cmd_ipconfig_dhcp(cdev, argc, argv);
 		}
 	} else if (argc > 2) {
 		if (strcmp(argv[1], "update") == 0) {

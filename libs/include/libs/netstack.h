@@ -80,6 +80,11 @@ struct netstack_socket_buf {
 char *netstack_get_name(void);
 
 /**
+ * Obtain IP-settings using DHCP request.
+ */
+int netstack_dhcp_request(void);
+
+/**
  * Set IP-address of the host.
  */
 int netstack_set_ipaddr(u8 *ipaddr);
