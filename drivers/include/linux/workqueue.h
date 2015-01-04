@@ -19,11 +19,13 @@
 #define schedule_work(a)		vmm_workqueue_schedule_work(system_wq, a)
 #define cancel_work_sync(a)		vmm_workqueue_stop_work(a)
 #define cancel_delayed_work_sync(a)	vmm_workqueue_stop_delayed_work(a)
+#define cancel_rearming_delayed_work(a) vmm_workqueue_stop_delayed_work(a)
 
 #define create_singlethread_workqueue(name) \
 		vmm_workqueue_create(name, VMM_THREAD_DEF_PRIORITY)
 #define destroy_workqueue(wq)		vmm_workqueue_destroy(wq);
 #define flush_workqueue(wq)		vmm_workqueue_flush(wq)
+#define flush_scheduled_work(wk)
 
 static inline int schedule_delayed_work(struct delayed_work *work, 
 					unsigned long delay)

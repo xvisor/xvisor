@@ -180,4 +180,17 @@ static inline struct sk_buff *dev_alloc_skb(unsigned int length)
 
 #define skb_checksum_none_assert(skb)
 
+static inline void skb_copy_from_linear_data(const struct sk_buff *skb,
+					     void *to,
+                                             const unsigned int len)
+{
+        memcpy(to, skb_data(skb), len);
+}
+
+static inline void skb_copy_and_csum_dev(const struct sk_buff *skb, void *to)
+{
+	/* FIXME: Add csum */
+	skb_copy_from_linear_data(skb, to, skb_len(skb));
+}
+
 #endif /* __LINUX_SKBUFF_H_ */

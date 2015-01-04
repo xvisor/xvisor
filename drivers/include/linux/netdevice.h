@@ -130,6 +130,8 @@ struct net_device {
 	unsigned char dev_addr[MAX_NDEV_HW_ADDRESS];
 	unsigned int hw_addr_len;
 	unsigned int mtu;
+	unsigned int flags;
+	unsigned long last_rx;
 	u32 irq;
 	physical_addr_t base_addr;
 	unsigned char	dma;	/* DMA channel		*/
@@ -148,14 +150,15 @@ struct net_device {
 /* No harm in enabling these debug messages. */
 #define	netif_msg_ifup(db)		1
 #define	netif_msg_ifdown(db)		1
-#define netif_msg_timer(db)		1
+#define	netif_msg_timer(db)		1
 #define	netif_msg_rx_err(db)		1
+#define	netif_msg_tx_err(db)		1
 
 /* These debug messages will throw too may prints, disabling them by default */
 #define	netif_msg_intr(db)		0
 #define	netif_msg_tx_done(db)		0
 #define	netif_msg_rx_status(db)		0
-
+#define	netif_msg_tx_queued(db)		0
 
 static inline int netif_carrier_ok(const struct net_device *dev)
 {
