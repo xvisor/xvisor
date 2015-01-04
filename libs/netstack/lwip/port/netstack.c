@@ -698,8 +698,9 @@ static int lwip_switch2port_xfer(struct vmm_netport *port,
 {
 	u32 pbuf_len;
 	struct eth_hdr *ethhdr;
-	struct pbuf *p;
+	struct pbuf *p, *q;
 	struct lwip_netstack *lns = port->priv;
+	u32 lcopied = 0;
 
 	/* Move received packet into a new pbuf */
 	pbuf_len = min(MAX_FRAME_LEN, mbuf->m_pktlen);
@@ -707,7 +708,11 @@ static int lwip_switch2port_xfer(struct vmm_netport *port,
 	if (!p) {
 		return VMM_ENOMEM;
 	}
-	m_copydata(mbuf, 0, pbuf_len, p->payload);
+
+	for (q = p; q != NULL; q = q->next) {
+		m_copydata(mbuf, lcopied, q->len, q->payload);
+		lcopied += q->len;
+	}
 
 	/* Points to packet ethernet header */
 	ethhdr = p->payload;
