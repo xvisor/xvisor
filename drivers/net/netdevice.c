@@ -73,14 +73,24 @@ static int netdev_register_port(struct net_device *ndev)
         vmm_netport_register(port);
 
 	if (dev) {
-		if (vmm_devtree_read_string(dev->node,
-					"switch", &attr) == VMM_OK) {
+		if (dev->node &&
+		    vmm_devtree_read_string(dev->node,
+					    "switch", &attr) == VMM_OK) {
 			nsw = vmm_netswitch_find(attr);
 			if (!nsw) {
 				vmm_panic("%s: Cannot find netswitch \"%s\"\n",
 						ndev->name, attr);
 			}
 			vmm_netswitch_port_add(nsw, port);
+		} else {
+			/* Add port to default switch if not specified. */
+			if (vmm_netswitch_count()) {
+				nsw = vmm_netswitch_get(0);
+				if (!nsw) {
+					vmm_panic("Cannot find switch index 0\n");
+				}
+				vmm_netswitch_port_add(nsw, port);
+			}
 		}
 	}
 
