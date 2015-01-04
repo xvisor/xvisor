@@ -73,7 +73,6 @@
 
 struct lwip_netstack {
 	struct netif nif;
-	ip_addr_t ipaddr, netmask, gw;
 	struct vmm_netport *port;
 #if !defined(PING_USE_SOCKETS)
 	struct vmm_mutex ping_lock;
@@ -97,54 +96,57 @@ VMM_EXPORT_SYMBOL(netstack_get_name);
 
 int netstack_set_ipaddr(u8 *addr)
 {
-	IP4_ADDR(&lns.ipaddr, addr[0],addr[1],addr[2],addr[3]);
-	netif_set_ipaddr(&lns.nif, &lns.ipaddr);
+	ip_addr_t ipaddr;
+	IP4_ADDR(&ipaddr, addr[0],addr[1],addr[2],addr[3]);
+	netif_set_ipaddr(&lns.nif, &ipaddr);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_set_ipaddr);
 
 int netstack_get_ipaddr(u8 *addr)
 {
-	addr[0] = ip4_addr1(&lns.ipaddr);
-	addr[1] = ip4_addr2(&lns.ipaddr);
-	addr[2] = ip4_addr3(&lns.ipaddr);
-	addr[3] = ip4_addr4(&lns.ipaddr);
+	addr[0] = ip4_addr1(&lns.nif.ip_addr);
+	addr[1] = ip4_addr2(&lns.nif.ip_addr);
+	addr[2] = ip4_addr3(&lns.nif.ip_addr);
+	addr[3] = ip4_addr4(&lns.nif.ip_addr);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_get_ipaddr);
 
 int netstack_set_ipmask(u8 *addr)
 {
-	IP4_ADDR(&lns.netmask, addr[0],addr[1],addr[2],addr[3]);
-	netif_set_netmask(&lns.nif, &lns.netmask);
+	ip_addr_t netmask;
+	IP4_ADDR(&netmask, addr[0],addr[1],addr[2],addr[3]);
+	netif_set_netmask(&lns.nif, &netmask);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_set_ipmask);
 
 int netstack_get_ipmask(u8 *addr)
 {
-	addr[0] = ip4_addr1(&lns.netmask);
-	addr[1] = ip4_addr2(&lns.netmask);
-	addr[2] = ip4_addr3(&lns.netmask);
-	addr[3] = ip4_addr4(&lns.netmask);
+	addr[0] = ip4_addr1(&lns.nif.netmask);
+	addr[1] = ip4_addr2(&lns.nif.netmask);
+	addr[2] = ip4_addr3(&lns.nif.netmask);
+	addr[3] = ip4_addr4(&lns.nif.netmask);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_get_ipmask);
 
 int netstack_set_gatewayip(u8 *addr)
 {
-	IP4_ADDR(&lns.gw, addr[0],addr[1],addr[2],addr[3]);
-	netif_set_gw(&lns.nif, &lns.gw);
+	ip_addr_t gw;
+	IP4_ADDR(&gw, addr[0],addr[1],addr[2],addr[3]);
+	netif_set_gw(&lns.nif, &gw);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_set_gatewayip);
 
 int netstack_get_gatewayip(u8 *addr)
 {
-	addr[0] = ip4_addr1(&lns.gw);
-	addr[1] = ip4_addr2(&lns.gw);
-	addr[2] = ip4_addr3(&lns.gw);
-	addr[3] = ip4_addr4(&lns.gw);
+	addr[0] = ip4_addr1(&lns.nif.gw);
+	addr[1] = ip4_addr2(&lns.nif.gw);
+	addr[2] = ip4_addr3(&lns.nif.gw);
+	addr[3] = ip4_addr4(&lns.nif.gw);
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(netstack_get_gatewayip);
@@ -815,8 +817,9 @@ static int __init lwip_netstack_init(void)
 	struct vmm_netswitch *nsw;
 	struct vmm_devtree_node *node;
 	const char *str;
-	u8 ip[] = {192, 168, 0, 1};
+	u8 ip[] = {169, 254, 1, 1};
 	u8 mask[] = {255, 255, 255, 0};
+	ip_addr_t __ip, __nm, __gw;
 
 	/* Clear lwIP state */
 	memset(&lns, 0, sizeof(lns));
@@ -878,10 +881,10 @@ static int __init lwip_netstack_init(void)
 	tcpip_init(NULL, NULL);
 
 	/* Add netif */
-	IP4_ADDR(&lns.ipaddr, ip[0],ip[1],ip[2],ip[3]);
-	IP4_ADDR(&lns.netmask, mask[0],mask[1],mask[2],mask[3]);
-	IP4_ADDR(&lns.gw, ip[0],ip[1],ip[2],ip[3]);
-	netif_add(&lns.nif, &lns.ipaddr, &lns.netmask, &lns.gw, &lns, 
+	IP4_ADDR(&__ip, ip[0],ip[1],ip[2],ip[3]);
+	IP4_ADDR(&__nm, mask[0],mask[1],mask[2],mask[3]);
+	IP4_ADDR(&__gw, ip[0],ip[1],ip[2],ip[3]);
+	netif_add(&lns.nif, &__ip, &__nm, &__gw, &lns,
 		  lwip_netstack_netif_init, ethernet_input);
 
 	/* Set default netif */
