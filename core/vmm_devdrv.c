@@ -1458,10 +1458,11 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 		return;
 	}
 
-	memset(dev, 0, sizeof(*dev));
+	/* Only initialize the private fields of device */
 	INIT_LIST_HEAD(&dev->bus_head);
-	INIT_LIST_HEAD(&dev->child_head);
+	INIT_LIST_HEAD(&dev->class_head);
 	arch_atomic_write(&dev->ref_count, 1);
+	dev->is_registered = FALSE;
 	INIT_LIST_HEAD(&dev->child_head);
 	INIT_MUTEX(&dev->child_list_lock);
 	INIT_LIST_HEAD(&dev->child_list);
