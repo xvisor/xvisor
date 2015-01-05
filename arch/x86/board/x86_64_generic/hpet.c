@@ -211,6 +211,7 @@ int __init hpet_init(void)
 	BUG_ON(node == NULL);
 	rc = vmm_devtree_read_u32(node,
 			VMM_DEVTREE_NR_HPET_ATTR_NAME, &nr_hpet_chips);
+	vmm_devtree_dref_node(node);
 	BUG_ON(rc != VMM_OK);
 
 	/* Need at least one HPET as system timer */
@@ -246,6 +247,7 @@ int __init hpet_init(void)
 
 			rc = vmm_devtree_read_physaddr(node,
 				VMM_DEVTREE_HPET_PADDR_ATTR_NAME, &block->pbase);
+			vmm_devtree_dref_node(node);
 			BUG_ON(rc != VMM_OK);
 			BUG_ON(block->pbase == 0);
 

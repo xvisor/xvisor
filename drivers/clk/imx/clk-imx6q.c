@@ -119,30 +119,33 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	rate = 0;
 	if (NULL != (np = vmm_devtree_getnode("/clocks/ckil")))
 		vmm_devtree_clock_frequency(np, &rate);
+	vmm_devtree_dref_node(np);
 	clk[ckil] = imx_obtain_fixed_clock("ckil", rate);
 
 	rate = 0;
 	if (NULL != (np = vmm_devtree_getnode("/clocks/ckih1")))
 		vmm_devtree_clock_frequency(np, &rate);
+	vmm_devtree_dref_node(np);
 	clk[ckih] = imx_obtain_fixed_clock("ckih1", rate);
 
 	rate = 0;
 	if (NULL != (np = vmm_devtree_getnode("/clocks/osc")))
 		vmm_devtree_clock_frequency(np, &rate);
+	vmm_devtree_dref_node(np);
 	clk[osc] = imx_obtain_fixed_clock("osc", rate);
 
 	if (NULL == (np = vmm_devtree_find_compatible(NULL, NULL,
-						      "fsl,imx6q-anatop")))
-	{
+						      "fsl,imx6q-anatop"))) {
 		WARN(1, "Failed to find compatible \"fsl,imx6q-anatop\"\n");
 		return;
 	}
 
-	if (VMM_OK != vmm_devtree_regmap(np, &vbase, 0))
-	{
+	if (VMM_OK != vmm_devtree_regmap(np, &vbase, 0)) {
 		WARN(1, "Failed to map imx6q-anatop registers\n");
+		vmm_devtree_dref_node(np);
 		return;
 	}
+	vmm_devtree_dref_node(np);
 	base = (void __iomem *)vbase;
 
 	/* Audio/video PLL post dividers do not work on i.MX6q revision 1.0 */
@@ -476,23 +479,23 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	imx6q_set_lpm(WAIT_CLOCKED);
 
 	if (NULL == (np = vmm_devtree_find_compatible(NULL, NULL,
-						      "fsl,imx6q-gpt")))
-	{
+						      "fsl,imx6q-gpt"))) {
 		vmm_printf("Failed to find GPT node\n");
 		return;
 	}
-	if (VMM_OK != vmm_devtree_regmap(np, &vbase, 0))
-	{
+	if (VMM_OK != vmm_devtree_regmap(np, &vbase, 0)) {
 		vmm_printf("Failed to map GPT registers\n");
+		vmm_devtree_dref_node(np);
 		return;
 	}
 	base = (void __iomem *)vbase;
 
-	if (VMM_OK != vmm_devtree_irq_get(np, &irq, 0))
-	{
+	if (VMM_OK != vmm_devtree_irq_get(np, &irq, 0)) {
 		vmm_printf("Failed to find GPT IRQ\n");
+		vmm_devtree_dref_node(np);
 		return;
 	}
+	vmm_devtree_dref_node(np);
 }
 CLK_OF_DECLARE(imx6q, "fsl,imx6q-ccm", imx6q_clocks_init);
 

@@ -102,6 +102,7 @@ static int __init realview_early_init(struct vmm_devtree_node *node)
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
+	vmm_devtree_dref_node(node);
 
 	return VMM_OK;
 }

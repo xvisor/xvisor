@@ -22,11 +22,13 @@ typedef u32 phandle;
 
 static inline struct device_node *of_node_get(struct device_node *node)
 {
+	vmm_devtree_ref_node(node);
 	return node;
 }
 
 static inline void of_node_put(struct device_node *node)
 {
+	vmm_devtree_dref_node(node);
 	return;
 }
 

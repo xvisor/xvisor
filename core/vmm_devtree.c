@@ -1100,6 +1100,10 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 		node = child;
 	};
 
+	if (node) {
+		vmm_devtree_ref_node(node);
+	}
+
 	return node;
 }
 
@@ -1110,8 +1114,10 @@ struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
 	if (!node)
 		return NULL;
 
-	if (!path)
+	if (!path) {
+		vmm_devtree_ref_node(node);
 		return node;
+	}
 
 	if (strncmp(node->name, path, strlen(node->name)) != 0)
 		return NULL;
@@ -1173,6 +1179,7 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 	}
 
 	if (vmm_devtree_match_node(matches, node)) {
+		vmm_devtree_ref_node(node);
 		return node;
 	}
 
@@ -1204,6 +1211,8 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 		node = dtree_ctrl.root;
 	}
 
+	vmm_devtree_ref_node(node);
+
 	mid = vmm_devtree_match_node(matches, node);
 	if (mid) {
 		found(node, mid, found_data);
@@ -1213,6 +1222,8 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 		vmm_devtree_iterate_matching(child, matches, 
 					     found, found_data);
 	}
+
+	vmm_devtree_dref_node(node);
 }
 
 struct vmm_devtree_node *vmm_devtree_find_compatible(
@@ -1276,7 +1287,8 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 
 	rc = vmm_devtree_read_u32(node, VMM_DEVTREE_PHANDLE_ATTR_NAME, &phnd);
 	if ((rc == VMM_OK) && (phnd == phandle)) {
-		return node;
+		ret = node;
+		goto done;
 	}
 
 	ret = NULL;
@@ -1285,6 +1297,11 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 		if (ret) {
 			break;
 		}
+	}
+
+done:
+	if (ret) {
+		vmm_devtree_ref_node(ret);
 	}
 
 	return ret;
@@ -1391,6 +1408,7 @@ static int devtree_parse_phandle_with_args(
 				int i;
 				if (WARN_ON(count > VMM_MAX_PHANDLE_ARGS))
 					count = VMM_MAX_PHANDLE_ARGS;
+				vmm_devtree_ref_node(node);
 				out->np = node;
 				out->args_count = count;
 				for (i = 0; i < count; i++) {
@@ -1478,7 +1496,7 @@ void vmm_devtree_ref_node(struct vmm_devtree_node *node)
 	arch_atomic_inc(&node->ref_count);
 }
 
-void vmm_devtree_free_node(struct vmm_devtree_node *node)
+void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 {
 	if (!node) {
 		return;
@@ -1488,6 +1506,11 @@ void vmm_devtree_free_node(struct vmm_devtree_node *node)
 		return;
 	}
 
+	if (dtree_ctrl.root == node) {
+		dtree_ctrl.root = NULL;
+	}
+
+	vmm_free(node->name);
 	vmm_free(node);
 }
 
@@ -1604,7 +1627,7 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 	struct vmm_devtree_attr *attr;
 	struct vmm_devtree_node *child, *parent;
 
-	if (!node || (node == dtree_ctrl.root)) {
+	if (!node) {
 		return VMM_EFAIL;
 	}
 
@@ -1624,15 +1647,14 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node)
 		}
 	}
 
-	list_del(&node->head);
-
 	if (node->parent) {
 		parent = node->parent;
+		list_del(&node->head);
 		node->parent = NULL;
-		vmm_devtree_free_node(parent);
+		vmm_devtree_dref_node(parent);
 	}
 
-	vmm_devtree_free_node(node);
+	vmm_devtree_dref_node(node);
 
 	return VMM_OK;
 }

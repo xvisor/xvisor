@@ -158,6 +158,7 @@ int __init arch_smp_init_cpus(void)
 	if (!dn) {
 		vmm_printf("%s: Failed to find node for boot cpu\n",
 			   __func__);
+		vmm_devtree_dref_node(cpus);
 		return VMM_ENODEV;
 	}
 
@@ -166,6 +167,7 @@ int __init arch_smp_init_cpus(void)
 	if (rc) {
 		vmm_printf("%s: Failed to find reg property for boot cpu\n",
 			   __func__);
+		vmm_devtree_dref_node(cpus);
 		return rc;
 	}
 	smp_read_ops(dn, 0);
@@ -248,6 +250,9 @@ int __init arch_smp_init_cpus(void)
 next:
 		cpu++;
 	}
+
+	/* De-reference cpus node */
+	vmm_devtree_dref_node(cpus);
 
 	/* sanity check */
 	if (cpu > CONFIG_CPU_COUNT) {

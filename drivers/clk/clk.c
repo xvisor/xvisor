@@ -2748,7 +2748,9 @@ static void of_clk_init_matching(struct vmm_devtree_node *np,
 				 void *data)
 {
 	of_clk_init_cb_t clk_init_cb = match->data;
-	clk_init_cb(np);
+
+	if (clk_init_cb)
+		clk_init_cb(np);
 }
 
 /**

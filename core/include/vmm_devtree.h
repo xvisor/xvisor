@@ -187,7 +187,7 @@ struct vmm_devtree_phandle_args {
 };
 
 /** Check whether given attribute type is literal or literal list 
- *  Note: literal means 32-bit or 64-bit number
+ *  NOTE: literal means 32-bit or 64-bit number
  */
 bool vmm_devtree_isliteral(u32 attrtype);
 
@@ -398,12 +398,15 @@ const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node);
 
-/** Get child node below a given node */
+/** Get child node below a given node
+ *  NOTE: The returned node will have increased refrence count
+ */
 struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 					      const char *path);
 
 /** Get node corresponding to a path string 
- *  Note: If path == NULL then root node will be returned
+ *  NOTE: If path == NULL then root node will be returned
+ *  NOTE: The returned node will have increased refrence count
  */
 struct vmm_devtree_node *vmm_devtree_getnode(const char *path);
 
@@ -415,14 +418,15 @@ const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 				const struct vmm_devtree_node *node);
 
 /** Find node matching nodeid table starting from given node 
- *  Note: If node == NULL then node == root
+ *  NOTE: If node == NULL then node == root
+ *  NOTE: The returned node will have increased refrence count
  */
 struct vmm_devtree_node *vmm_devtree_find_matching(
 				struct vmm_devtree_node *node,
 				const struct vmm_devtree_nodeid *matches);
 
 /** Iterate over all matching nodes 
- *  Note: If node == NULL then node == root
+ *  NOTE: If node == NULL then node == root
  */
 void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 				  const struct vmm_devtree_nodeid *matches,
@@ -432,7 +436,8 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 				  void *found_data);
 
 /** Find compatible node starting from given node 
- *  Note: If node == NULL then node == root 
+ *  NOTE: If node == NULL then node == root 
+ *  NOTE: The returned node will have increased refrence count
  */
 struct vmm_devtree_node *vmm_devtree_find_compatible(
 				struct vmm_devtree_node *node,
@@ -444,11 +449,14 @@ bool vmm_devtree_is_compatible(const struct vmm_devtree_node *node,
 			       const char *compatible);
 
 /** Find a node with given phandle value
- *  Note: This is based on 'phandle' attributes of device tree node
+ *  NOTE: This is based on 'phandle' attributes of device tree node
+ *  NOTE: The returned node will have increased refrence count
  */
 struct vmm_devtree_node *vmm_devtree_find_node_by_phandle(u32 phandle);
 
-/** Resolve a phandle property to a vmm_devtree_node pointer */
+/** Resolve a phandle property to a vmm_devtree_node pointer
+ *  NOTE: The returned node will have increased refrence count
+ */
 struct vmm_devtree_node *vmm_devtree_parse_phandle(
 					const struct vmm_devtree_node *node,
 					const char *phandle_name,
@@ -476,6 +484,8 @@ struct vmm_devtree_node *vmm_devtree_parse_phandle(
  *
  *  To get a device_node of the `node2' node you may call this:
  *  vmm_devtree_parse_phandle_with_args(node3, "list", "#list-cells", 1, &out);
+ *
+ *  NOTE: The returned nodes will have increased refrence count
  */
 int vmm_devtree_parse_phandle_with_args(const struct vmm_devtree_node *node,
 					const char *list_name,
@@ -504,6 +514,8 @@ int vmm_devtree_parse_phandle_with_args(const struct vmm_devtree_node *node,
  *
  * To get a device_node of the `node2' node you may call this:
  * vmm_devtree_parse_phandle_with_fixed_args(node3, "list", 2, 1, &args);
+ *
+ *  NOTE: The returned nodes will have increased refrence count
  */
 int vmm_devtree_parse_phandle_with_fixed_args(
 					const struct vmm_devtree_node *node,
@@ -530,8 +542,8 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 /** Increase reference count of give node */
 void vmm_devtree_ref_node(struct vmm_devtree_node *node);
 
-/** Free a node from device tree */
-void vmm_devtree_free_node(struct vmm_devtree_node *node);
+/** De-refernce a device tree node */
+void vmm_devtree_dref_node(struct vmm_devtree_node *node);
 
 /** Add new node to device tree with given name
  *  NOTE: This function allows parent == NULL to enable creation of
@@ -551,21 +563,21 @@ int vmm_devtree_copynode(struct vmm_devtree_node *parent,
 int vmm_devtree_delnode(struct vmm_devtree_node *node);
 
 /** Get device clock-frequency
- *  Note: This is based on 'clock-frequency' attribute of device tree node
- *  Note: This API if for hard-coding clock frequency in device tree node 
+ *  NOTE: This is based on 'clock-frequency' attribute of device tree node
+ *  NOTE: This API if for hard-coding clock frequency in device tree node 
  *  and it does not use clk_xxxx() APIs
  */
 int vmm_devtree_clock_frequency(struct vmm_devtree_node *node, 
 				u32 *clock_freq);
 
 /** Get device irq number
- *  Note: This is based on 'irq' attribute of device tree node
+ *  NOTE: This is based on 'irq' attribute of device tree node
  */
 int vmm_devtree_irq_get(struct vmm_devtree_node *node, 
 		        u32 *irq, int index);
 
 /** Get count of device irqs
- *  Note: This is based on 'irq' attribute of device tree node
+ *  NOTE: This is based on 'irq' attribute of device tree node
  */
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
 
@@ -578,28 +590,28 @@ u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
 u32 vmm_devtree_is_available(struct vmm_devtree_node *node);
 
 /** Get physical size of device registers
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  NOTE: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
  */
 int vmm_devtree_regsize(struct vmm_devtree_node *node, 
 		        physical_size_t *size, int regset);
 
 /** Get physical address of device registers
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  NOTE: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
  */
 int vmm_devtree_regaddr(struct vmm_devtree_node *node, 
 		        physical_addr_t *addr, int regset);
 
 /** Map device registers to virtual address
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  NOTE: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
  */
 int vmm_devtree_regmap(struct vmm_devtree_node *node, 
 		       virtual_addr_t *addr, int regset);
 
 /** Unmap device registers from virtual address
- *  Note: This is based on 'reg' and 'virtual-reg' attributes 
+ *  NOTE: This is based on 'reg' and 'virtual-reg' attributes 
  *  of device tree node
  */
 int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
@@ -612,7 +624,7 @@ u32 vmm_devtree_nidtbl_count(void);
 struct vmm_devtree_nidtbl_entry *vmm_devtree_nidtbl_get(int index);
 
 /** Create matches table from nodeid table with given subsys 
- *  Note: If subsys==NULL then matches table is created from all enteries
+ *  NOTE: If subsys==NULL then matches table is created from all enteries
  */
 const struct vmm_devtree_nodeid *
 		vmm_devtree_nidtbl_create_matches(const char *subsys);

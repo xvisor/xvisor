@@ -129,7 +129,7 @@ static struct vmm_devtree_nodeid psci_matches[] = {
 static int __init psci_smp_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
-	int rc;
+	int rc = VMM_OK;
 	const char *method;
 	static struct vmm_devtree_node *psci = NULL;
 
@@ -149,7 +149,7 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (rc) {
 		vmm_printf("%s: Can't find 'method' attribute\n",
 			   __func__);
-		return rc;
+		goto done;
 	}
 #if 0
 	/* For some reason, this does not work for now. */
@@ -157,7 +157,8 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (strcmp(method, "smc")) {
 		vmm_printf("%s: 'method' is not 'smc'\n",
 			   __func__);
-		return VMM_EINVALID;
+		rc = VMM_EINVALID;
+		goto done;
 	}
 #endif
 
@@ -167,7 +168,7 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (rc) {
 		vmm_printf("%s: Can't find 'cpu_on' attribute\n",
 			   __func__);
-		return rc;
+		goto done;
 	}
 
 	/* retrieve the "cpu_suspend" attribute */
@@ -176,7 +177,7 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (rc) {
 		vmm_printf("%s: Can't find 'cpu_suspend' attribute\n",
 			   __func__);
-		return rc;
+		goto done;
 	}
 
 	/* retrieve the "cpu_off" attribute */
@@ -185,7 +186,7 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (rc) {
 		vmm_printf("%s: Can't find 'cpu_off' attribute\n",
 			   __func__);
-		return rc;
+		goto done;
 	}
 
 	/* retrieve the "migrate" attribute */
@@ -194,10 +195,12 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 	if (rc) {
 		vmm_printf("%s: Can't find 'migrate' attribute\n",
 			   __func__);
-		return rc;
+		goto done;
 	}
 
-	return VMM_OK;
+done:
+	vmm_devtree_dref_node(psci);
+	return rc;
 }
 
 static int __init psci_smp_prepare(unsigned int cpu)

@@ -240,6 +240,7 @@ int detect_ioapics(unsigned int *nr_ioapics)
 
 	ret = vmm_devtree_read_u32(node,
 			VMM_DEVTREE_NR_IOAPIC_ATTR_NAME, &val);
+	vmm_devtree_dref_node(node);
 	if (ret)
 		return ret;
 
@@ -260,6 +261,7 @@ int detect_ioapics(unsigned int *nr_ioapics)
 		ret = vmm_devtree_read_physaddr(node,
 				VMM_DEVTREE_IOAPIC_PADDR_ATTR_NAME,
 				&io_apic[n].paddr);
+		vmm_devtree_dref_node(node);
 		if (ret)
 			return ret;
 

@@ -80,6 +80,7 @@ static int __init vmm_net_init(void)
 	}
 
 	rc = vmm_devdrv_probe(node);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		vmm_printf("%s: devtree node probe failed\n", __func__);
 		goto net_devtree_probe_failed;

@@ -1091,6 +1091,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	/* Initialize guest instance */
 	strlcpy(guest->name, gnode->name, sizeof(guest->name));
+	vmm_devtree_ref_node(gnode);
 	guest->node = gnode;
 #ifdef CONFIG_CPU_BE
 	guest->is_big_endian = TRUE;
@@ -1136,20 +1137,20 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No more free VCPUs\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 		if (vmm_devtree_read_string(vnode,
 				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str)) {
 			vmm_printf("%s: No device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
 			vmm_printf("%s: Invalid device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 
 		/* Acquire manager lock */
@@ -1169,7 +1170,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 
 		/* Update general info and state */
@@ -1184,8 +1185,9 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   __func__, gnode->name, vnode->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
+		vmm_devtree_ref_node(vnode);
 		vcpu->node = vnode;
 		vcpu->is_normal = TRUE;
 		vcpu->is_poweroff = FALSE;
@@ -1206,6 +1208,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if (!vcpu->stack_va) {
 			vmm_printf("%s: stack alloc failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
+			vmm_devtree_dref_node(vcpu->node);
+			vcpu->node = NULL;
 			vmm_manager_lock();
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
@@ -1250,11 +1254,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_free((void *)vcpu->stack_va);
 			vmm_printf("%s: arch_vcpu_init() failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
+			vmm_devtree_dref_node(vcpu->node);
+			vcpu->node = NULL;
 			vmm_manager_lock();
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 
 		/* Initialize virtual IRQ context */
@@ -1263,11 +1269,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_free((void *)vcpu->stack_va);
 			vmm_printf("%s: vmm_vcpu_irq_init() failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
+			vmm_devtree_dref_node(vcpu->node);
+			vcpu->node = NULL;
 			vmm_manager_lock();
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 
 		/* Initialize waitqueue context */
@@ -1284,11 +1292,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_free((void *)vcpu->stack_va);
 			vmm_printf("%s: Setting RESET state failed "
 				   "for VCPU %s\n", __func__, vcpu->name);
+			vmm_devtree_dref_node(vcpu->node);
+			vcpu->node = NULL;
 			vmm_manager_lock();
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			goto fail_dref_vsnode;
 		}
 
 		/* Setup VCPU affinity mask */
@@ -1322,11 +1332,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 						" (%d <) or not online for"
 						" %s\n", __func__, cpu,
 						CONFIG_CPU_COUNT, vcpu->name);
+					vmm_devtree_dref_node(vcpu->node);
+					vcpu->node = NULL;
 					vmm_manager_lock();
 					mngr.vcpu_count--;
 					mngr.vcpu_avail_array[vcpu->id] = TRUE;
 					vmm_manager_unlock();
-					goto fail_destroy_guest;
+					goto fail_dref_vsnode;
 				}
 				index++;
 			}
@@ -1342,11 +1354,13 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				vmm_printf(
 					"%s: Can't find a valid CPU for"
 					" vcpu %s\n", __func__, vcpu->name);
+				vmm_devtree_dref_node(vcpu->node);
+				vcpu->node = NULL;
 				vmm_manager_lock();
 				mngr.vcpu_count--;
 				mngr.vcpu_avail_array[vcpu->id] = TRUE;
 				vmm_manager_unlock();
-				goto fail_destroy_guest;
+				goto fail_dref_vsnode;
 			}
 
 			/* Set the affinity mask */
@@ -1365,6 +1379,9 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		guest->vcpu_count++;
 		vmm_write_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
 	}
+
+	/* Release vcpus node */
+	vmm_devtree_dref_node(vsnode);
 
 	/* Fail if no VCPU is associated to the guest */
 	vmm_read_lock_irqsave_lite(&guest->vcpu_lock, flags);
@@ -1391,6 +1408,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 	return guest;
 
+fail_dref_vsnode:
+	vmm_devtree_dref_node(vsnode);
 fail_destroy_guest:
 	vmm_manager_guest_destroy(guest);
 	return NULL;
@@ -1462,6 +1481,10 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 			vmm_free((void *)vcpu->stack_va);
 		}
 
+		/* De-reference VCPU node */
+		vmm_devtree_dref_node(vcpu->node);
+		vcpu->node = NULL;
+
 		/* Acquire manager lock */
 		vmm_manager_lock();
 
@@ -1485,6 +1508,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 	vmm_manager_lock();
 
 	/* Reset guest instance members */
+	vmm_devtree_dref_node(guest->node);
 	guest->node = NULL;
 	guest->name[0] = '\0';
 	INIT_LIST_HEAD(&guest->vcpu_list);

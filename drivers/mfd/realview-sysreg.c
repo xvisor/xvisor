@@ -202,6 +202,7 @@ void __init realview_sysreg_of_early_init(void)
 			return;
 		}		
 		realview_sysreg_base = (void *)base_va;
+		vmm_devtree_dref_node(node);
 	}
 }
 

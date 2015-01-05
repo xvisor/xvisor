@@ -154,6 +154,7 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 			return VMM_ENODEV;
 		}
 		rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
+		vmm_devtree_dref_node(scu_node);
 		if (rc) {
 			return rc;
 		}

@@ -160,8 +160,7 @@ int __init arch_clocksource_init(void)
 	/* Map timer0 registers */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
 	if (!node) {
-		rc = VMM_EFAIL;
-		goto skip_mct_timer_init;
+		return VMM_EFAIL;
 	}
 
 	rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
@@ -172,7 +171,7 @@ int __init arch_clocksource_init(void)
 	if (!mct_timer_base) {
 		rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
 		if (rc) {
-			return rc;
+			goto skip_mct_timer_init;
 		}
 	}
 
@@ -180,10 +179,11 @@ int __init arch_clocksource_init(void)
 	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
 				      mct_clk_rate);
 	if (rc) {
-		return rc;
+		goto skip_mct_timer_init;
 	}
- skip_mct_timer_init:
 
+ skip_mct_timer_init:
+	vmm_devtree_dref_node(node);
 	return rc;
 }
 
@@ -204,18 +204,21 @@ int __cpuinit arch_clockchip_init(void)
 		if (!mct_timer_base) {
 			rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
 			if (rc) {
+				vmm_devtree_dref_node(node);
 				return rc;
 			}
 		}
 
 		rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
 		if (rc) {
+			vmm_devtree_dref_node(node);
 			return rc;
 		}
 
 		/* Get MCT irq */
 		rc = vmm_devtree_irq_get(node, &val, 0);
 		if (rc) {
+			vmm_devtree_dref_node(node);
 			return rc;
 		}
 
@@ -223,11 +226,13 @@ int __cpuinit arch_clockchip_init(void)
 		rc = exynos4_clockchip_init(mct_timer_base, val, node->name,
 					    300, mct_clk_rate, 0);
 		if (rc) {
+			vmm_devtree_dref_node(node);
 			return rc;
 		}
 
+		vmm_devtree_dref_node(node);
 	}
- skip_mct_timer_init:
+skip_mct_timer_init:
 
 #if CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
 	if (mct_timer_base) {
@@ -254,10 +259,11 @@ int __init arch_board_final_init(void)
 		return VMM_ENOTAVAIL;
 	}
 
+	/* Initiate device driver probing */
 	rc = vmm_devdrv_probe(node);
-	if (rc) {
-		return rc;
-	}
 
-	return VMM_OK;
+	/* Dereference the node */
+	vmm_devtree_dref_node(node);
+
+	return rc;
 }

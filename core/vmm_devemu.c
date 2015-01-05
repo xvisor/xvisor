@@ -955,6 +955,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			return VMM_ENOMEM;
 		}
 		INIT_SPIN_LOCK(&einst->lock);
+		vmm_devtree_ref_node(reg->node);
 		einst->node = reg->node;
 		einst->reg = reg;
 		einst->emu = emu;
@@ -967,6 +968,8 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		if ((rc = emu->probe(guest, einst, match))) {
 			vmm_printf("%s: %s/%s probe error %d\n", 
 			__func__, guest->name, reg->node->name, rc);
+			vmm_devtree_dref_node(einst->node);
+			einst->node = NULL;
 			vmm_free(einst);
 			reg->devemu_priv = NULL;
 			vmm_mutex_unlock(&dectrl.emu_lock);
@@ -975,6 +978,8 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		if ((rc = emu->reset(einst))) {
 			vmm_printf("%s: %s/%s reset error %d\n", 
 			__func__, guest->name, reg->node->name, rc);
+			vmm_devtree_dref_node(einst->node);
+			einst->node = NULL;
 			vmm_free(einst);
 			reg->devemu_priv = NULL;
 			vmm_mutex_unlock(&dectrl.emu_lock);
@@ -1014,6 +1019,9 @@ int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
 		if ((rc = einst->emu->remove(einst))) {
 			return rc;
 		}
+
+		vmm_devtree_dref_node(einst->node);
+		einst->node = NULL;
 
 		vmm_free(reg->devemu_priv);
 		reg->devemu_priv = NULL;

@@ -79,6 +79,7 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 	if (node) {
 		vmm_devtree_read_string(node,
 					VMM_DEVTREE_MODEL_ATTR_NAME, &attr);
+		vmm_devtree_dref_node(node);
 	}
 	if (attr) {
 		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", attr);

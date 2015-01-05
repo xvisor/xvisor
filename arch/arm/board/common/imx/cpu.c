@@ -100,9 +100,9 @@ struct device * __init imx_soc_device_init(void)
 	soc_dev_attr->family = "Freescale i.MX";
 
 	root = vmm_devtree_getnode("/");
-	if (NULL == (soc_dev_attr->machine = vmm_devtree_attrval(root,
-								 "model")))
-	{
+	soc_dev_attr->machine = vmm_devtree_attrval(root, "model");
+	vmm_devtree_dref_node(root);
+	if (!soc_dev_attr->machine) {
 		vmm_printf("Error: SOC model not found in device tree\n");
 		goto free_soc;
 	}
@@ -148,8 +148,7 @@ struct device * __init imx_soc_device_init(void)
 
 	/* Allocate a string that can contain 2 digits (up to 0xf), a dot,
 	   2 other digits (also up to 0xf), and the 0 terminating character */
-	if (NULL == (revision = kmalloc(6, GFP_KERNEL)))
-	{
+	if (NULL == (revision = kmalloc(6, GFP_KERNEL))) {
 		vmm_printf("Failed to allocate SOC revision string space\n");
 		goto free_soc;
 	}

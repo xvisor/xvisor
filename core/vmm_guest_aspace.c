@@ -413,6 +413,9 @@ static int region_add(struct vmm_guest *guest,
 	struct vmm_guest_aspace *aspace = &guest->aspace;
 	struct vmm_region *reg_overlap = NULL;
 
+	/* Increment ref count of region node */
+	vmm_devtree_ref_node(rnode);
+
 	/* Sanity check on region node */
 	if (!is_region_node_valid(rnode)) {
 		rc = VMM_EINVALID;
@@ -629,6 +632,7 @@ region_ram_free_fail:
 region_free_fail:
 	vmm_free(reg);
 region_fail:
+	vmm_devtree_dref_node(rnode);
 	return rc;
 }
 
@@ -638,6 +642,7 @@ static int region_del(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
+	struct vmm_devtree_node *rnode = reg->node;
 	struct vmm_guest_aspace *aspace = &guest->aspace;
 
 	/* Remove it from region list if not removed already */
@@ -681,6 +686,9 @@ static int region_del(struct vmm_guest *guest,
 
 	/* Free the region */
 	vmm_free(reg);
+
+	/* De-reference the region node */
+	vmm_devtree_dref_node(rnode);
 
 	return rc;
 }
@@ -1024,9 +1032,13 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 	if ((rc = vmm_devemu_deinit_context(guest))) {
 		return rc;
 	}
-
-	/* Reset devemu_priv pointer of aspace */
 	guest->aspace.devemu_priv = NULL;
+
+	/* De-reference address space node */
+	if (guest->aspace.node) {
+		vmm_devtree_dref_node(guest->aspace.node);
+		guest->aspace.node = NULL;
+	}
 
 	return VMM_OK;
 }

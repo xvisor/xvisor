@@ -175,6 +175,8 @@ static int platform_bus_remove(struct vmm_device *dev)
 
 static void platform_device_release(struct vmm_device *dev)
 {
+	vmm_devtree_dref_node(dev->node);
+	dev->node = NULL;
 	vmm_free(dev);
 }
 
@@ -471,6 +473,7 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 		vmm_free(dev);
 		return VMM_EOVERFLOW;
 	}
+	vmm_devtree_ref_node(node);
 	dev->node = node;
 	dev->parent = parent;
 	dev->bus = &ddctrl.platform_bus;

@@ -168,6 +168,7 @@ static int __init daemon_mterm_init(void)
 				 "mterm_time_slice", &mterm_time_slice)) {
 		mterm_time_slice = VMM_THREAD_DEF_TIME_SLICE;
 	}
+	vmm_devtree_dref_node(node);
 
 	/* Create mterm thread */
 	mtctrl.thread = vmm_threads_create("mterm",

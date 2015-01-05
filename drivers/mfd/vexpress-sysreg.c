@@ -380,6 +380,7 @@ void __init vexpress_sysreg_of_early_init(void)
 		}		
 		vexpress_sysreg_base = (void *)base_va;
 		vexpress_sysreg_setup(node);
+		vmm_devtree_dref_node(node);
 	}
 }
 

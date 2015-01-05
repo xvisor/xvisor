@@ -105,6 +105,7 @@ static void system_postinit_work(struct vmm_work *work)
 		if (!(cdev = vmm_chardev_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
 				cdev = vmm_chardev_find(node1->name);
+				vmm_devtree_dref_node(node1);
 			}
 		}
 		/* Set chosen console device as stdio device */
@@ -121,6 +122,7 @@ static void system_postinit_work(struct vmm_work *work)
 		if (!(rdev = rtc_device_find(str))) {
 			if ((node1 = vmm_devtree_getnode(str))) {
 				rdev = rtc_device_find(node1->name);
+				vmm_devtree_dref_node(node1);
 			}
 		}
 		/* Syncup wallclock time with chosen rtc device */
@@ -151,6 +153,9 @@ static void system_postinit_work(struct vmm_work *work)
 				str += strlen(str) + 1;
 			}
 		}
+
+		/* De-reference chosen node */
+		vmm_devtree_dref_node(node);
 	}
 
 	/* Set system init done flag */
@@ -338,11 +343,15 @@ static void __init init_bootcpu(void)
 				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
 	if (!node) {
 		vmm_devtree_addnode(NULL, VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	} else {
+		vmm_devtree_dref_node(node);
 	}
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_VMMINFO_NODE_NAME);
 	if (!node) {
 		vmm_devtree_addnode(NULL, VMM_DEVTREE_VMMINFO_NODE_NAME);
+	} else {
+		vmm_devtree_dref_node(node);
 	}
 
 	/* Initialize host interrupts */

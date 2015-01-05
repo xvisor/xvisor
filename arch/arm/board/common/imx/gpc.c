@@ -133,15 +133,16 @@ void __init imx_gpc_init(void)
 {
 	struct device_node *np;
 	virtual_addr_t vbase = 0;
-	int i;
+	int i, rc;
 
-	if (NULL == (np = vmm_devtree_find_compatible(NULL, NULL, "fsl,imx6q-gpc")))
-	{
+	np = vmm_devtree_find_compatible(NULL, NULL, "fsl,imx6q-gpc");
+	if (!np) {
 		printk("Failed to find compatible GPC node\n");
 		return;
 	}
-	if (VMM_OK != vmm_devtree_regmap(np, &vbase, 0))
-	{
+	rc = vmm_devtree_regmap(np, &vbase, 0);
+	vmm_devtree_dref_node(np);
+	if (VMM_OK != rc) {
 		printk("Failed to map GPC registers\n");
 		return;
 	}

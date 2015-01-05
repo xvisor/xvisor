@@ -1693,8 +1693,7 @@ static int __init vgic_emulator_init(void)
 	node = vmm_devtree_find_matching(NULL, vgic_host_match);
 	if (!node) {
 		vmm_printf("%s: GIC node not found\n", __func__);
-		rc = VMM_ENODEV;
-		goto fail;
+		return VMM_ENODEV;
 	}
 
 	rc = vmm_devtree_regaddr(node, &vgich.cpu_pa, 1);
@@ -1776,6 +1775,7 @@ static int __init vgic_emulator_init(void)
 		(unsigned long)vgich.hctrl_pa,
 		(unsigned long)vgich.vcpu_pa, vgich.lr_cnt);
 
+	vmm_devtree_dref_node(node);
 	return VMM_OK;
 
 fail_unreg_dist:
@@ -1791,6 +1791,7 @@ fail_unmap_cpu2:
 fail_unmap_cpu:
 	vmm_devtree_regunmap(node, vgich.cpu_va, 1);
 fail:
+	vmm_devtree_dref_node(node);
 	return rc;
 }
 
@@ -1816,8 +1817,9 @@ static void __exit vgic_emulator_exit(void)
 		return;
 	}
 
-	if (node && vgich.avail) {
-		vmm_smp_ipi_async_call(cpu_online_mask, vgic_disable_maint_irq,
+	if (vgich.avail) {
+		vmm_smp_ipi_async_call(cpu_online_mask,
+				       vgic_disable_maint_irq,
 				       (void *)(unsigned long)vgich.maint_irq,
 				       NULL, NULL);
 
@@ -1835,6 +1837,8 @@ static void __exit vgic_emulator_exit(void)
 
 		vmm_devtree_regunmap(node, vgich.cpu_va, 1);
 	}
+
+	vmm_devtree_dref_node(node);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

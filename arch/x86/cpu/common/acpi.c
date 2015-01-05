@@ -257,6 +257,7 @@ static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
 	/* FIXME: First find if tab_size already exists. */
 	struct vmm_devtree_node *cnode = vmm_devtree_addnode(node, tab_sign);
 
+	vmm_devtree_dref_node(node);
 	if (!strncmp(tab_sign, APIC_SIGNATURE, strlen(APIC_SIGNATURE))) {
 		struct acpi_madt_hdr *madt_hdr;
 		madt_hdr = (struct acpi_madt_hdr *)tab_data;

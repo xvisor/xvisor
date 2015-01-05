@@ -1326,7 +1326,8 @@ static void __init of_sunxi_table_clock_setup_found(
 	const struct div_data *ddata = match->data;
 	void (*setup_function)(struct vmm_devtree_node *, const void *) = data;
 
-	setup_function(node, ddata);
+	if (setup_function)
+		setup_function(node, ddata);
 }
 
 static void __init of_sunxi_table_clock_setup(const struct vmm_devtree_nodeid *clk_match,

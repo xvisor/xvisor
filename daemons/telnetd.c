@@ -509,6 +509,7 @@ static int __init daemon_telnetd_init(void)
 				 "telnetd_port", &tdctrl.port)) {
 		tdctrl.port = 23;
 	}
+	vmm_devtree_dref_node(node);
 
 	/* Sanitize telnetd control information */
 	tdctrl.sk = NULL;

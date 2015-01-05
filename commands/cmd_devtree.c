@@ -187,6 +187,8 @@ static int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 		cmd_devtree_print_attribute(cdev, attr, 0);
 	}
 
+	vmm_devtree_dref_node(node);
+
 	return VMM_OK;
 }
 
@@ -277,7 +279,8 @@ static int cmd_devtree_attr_set(struct vmm_chardev *cdev,
 		val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 	} else {
 		vmm_cprintf(cdev, "Error: Invalid attribute type %s\n", type);
-		return VMM_EFAIL;
+		rc = VMM_EFAIL;
+		goto done;
 	}
 
 	if (val && (val_len > 0)) {
@@ -286,6 +289,8 @@ static int cmd_devtree_attr_set(struct vmm_chardev *cdev,
 		vmm_free(val);
 	}
 
+done:
+	vmm_devtree_dref_node(node);
 	return rc;
 }
 
@@ -301,6 +306,7 @@ static int cmd_devtree_attr_get(struct vmm_chardev *cdev,
 	}
 
 	attr = vmm_devtree_getattr(node, name);
+	vmm_devtree_dref_node(node);
 	if (!attr) {
 		vmm_cprintf(cdev, "Error: Unable to find attr %s\n", name);
 		return VMM_EFAIL;
@@ -323,6 +329,7 @@ static int cmd_devtree_attr_del(struct vmm_chardev *cdev,
 	}
 
 	rc = vmm_devtree_delattr(node, name);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: Unable to delete attr %s\n", name);
 		return rc;
@@ -341,6 +348,7 @@ static int cmd_devtree_node_show(struct vmm_chardev *cdev, char *path)
 	}
 
 	cmd_devtree_print_node(cdev, node, FALSE, 0);
+	vmm_devtree_dref_node(node);
 
 	return VMM_OK;
 }
@@ -355,6 +363,7 @@ static int cmd_devtree_node_dump(struct vmm_chardev *cdev, char *path)
 	}
 
 	cmd_devtree_print_node(cdev, node, TRUE, 0);
+	vmm_devtree_dref_node(node);
 
 	return VMM_OK;
 }
@@ -371,6 +380,7 @@ static int cmd_devtree_node_add(struct vmm_chardev *cdev,
 	}
 
 	node = vmm_devtree_addnode(parent, name);
+	vmm_devtree_dref_node(parent);
 	if (!node) {
 		vmm_cprintf(cdev, "Error: Unable to add node %s. "
 				  "Probably node already exist\n", name);
@@ -383,6 +393,7 @@ static int cmd_devtree_node_add(struct vmm_chardev *cdev,
 static int cmd_devtree_node_copy(struct vmm_chardev *cdev, 
 				 char *path, char *name, char *src_path)
 {
+	int rc;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 	struct vmm_devtree_node *src = vmm_devtree_getnode(src_path);
 
@@ -396,7 +407,11 @@ static int cmd_devtree_node_copy(struct vmm_chardev *cdev,
 		return VMM_EFAIL;
 	}
 
-	return vmm_devtree_copynode(node, name, src);
+	rc = vmm_devtree_copynode(node, name, src);
+	vmm_devtree_dref_node(src);
+	vmm_devtree_dref_node(node);
+
+	return rc;
 }
 
 static int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
@@ -410,6 +425,7 @@ static int cmd_devtree_node_del(struct vmm_chardev *cdev, char *path)
 	}
 
 	rc = vmm_devtree_delnode(node);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		vmm_cprintf(cdev, "Error: Unable to delete node at %s\n", path);
 		return rc;

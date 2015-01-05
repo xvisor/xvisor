@@ -85,6 +85,7 @@ static int __init vexpress_early_init(struct vmm_devtree_node *node)
 		return VMM_ENODEV;
 	}
 	muxfpga_func = vexpress_config_func_get_by_node(node);
+	vmm_devtree_dref_node(node);
 	if (!muxfpga_func) {
 		return VMM_ENODEV;
 	}
@@ -95,6 +96,7 @@ static int __init vexpress_early_init(struct vmm_devtree_node *node)
 		return VMM_ENODEV;
 	}
 	dvimode_func = vexpress_config_func_get_by_node(node);
+	vmm_devtree_dref_node(node);
 	if (!dvimode_func) {
 		return VMM_ENODEV;
 	}
@@ -104,6 +106,7 @@ static int __init vexpress_early_init(struct vmm_devtree_node *node)
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
+	vmm_devtree_dref_node(node);
 
 	return 0;
 }

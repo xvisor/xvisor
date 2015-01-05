@@ -590,7 +590,7 @@ struct gen_pool *of_get_named_gen_pool(struct vmm_devtree_node *np,
 				       const char *propname, int index)
 {
 	int found = 0;
-	struct vmm_bus *default_bus = NULL;
+	struct vmm_bus *platform_bus = NULL;
 	struct vmm_device *dev;
 	struct vmm_devtree_node *np_pool;
 
@@ -598,16 +598,20 @@ struct gen_pool *of_get_named_gen_pool(struct vmm_devtree_node *np,
 	if (!np_pool)
 		return NULL;
 
-	default_bus = vmm_devdrv_find_bus("default");
-	if (!default_bus)
+	platform_bus = vmm_devdrv_find_bus("platform");
+	if (!platform_bus) {
+		vmm_devtree_dref_node(np_pool);
 		return NULL;
+	}
 
-	list_for_each_entry(dev, &default_bus->device_list, bus_head) {
+	list_for_each_entry(dev, &platform_bus->device_list, bus_head) {
 		if (dev->node == np_pool) {
 			found = 1;
 			break;
 		}
 	}
+
+	vmm_devtree_dref_node(np_pool);
 
 	if (!found)
 		return NULL;

@@ -866,6 +866,9 @@ static int __init lwip_netstack_init(void)
 		vmm_panic("No netswitch found\n");
 	}
 
+	/* Release netstack device tree node */
+	vmm_devtree_dref_node(node);
+
 	/* Allocate a netport */
 	lns.port = vmm_netport_alloc("lwip-netport", VMM_NETPORT_DEF_QUEUE_SIZE);
 	if (!lns.port) {

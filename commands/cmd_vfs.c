@@ -710,12 +710,12 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 	if (!parent) {
 		vmm_cprintf(cdev, "Devtree path %s does not exist.\n",
 			    devtree_path);
-		rc = VMM_EINVALID;
-		goto fail;
+		return VMM_EINVALID;
 	}
 
 	root = vmm_devtree_getchild(parent, devtree_root_name);
 	if (root) {
+		vmm_devtree_dref_node(root);
 		vmm_cprintf(cdev, "Devtree path %s/%s already exist.\n",
 			    devtree_path, devtree_root_name);
 		rc = VMM_EINVALID;
@@ -850,7 +850,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			strcpy(val, astr);
 			val_type = VMM_DEVTREE_ATTRTYPE_STRING;
@@ -860,7 +860,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((u8 *)val) = strtoul(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_BYTEARRAY;
@@ -870,7 +870,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((u32 *)val) = strtoul(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_UINT32;
@@ -880,7 +880,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((u64 *)val) = strtoull(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_UINT64;
@@ -890,7 +890,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((physical_addr_t *)val) = strtoull(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_PHYSADDR;
@@ -900,7 +900,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((physical_size_t *)val) = strtoull(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_PHYSSIZE;
@@ -910,7 +910,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((virtual_addr_t *)val) = strtoull(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_VIRTADDR;
@@ -920,14 +920,14 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			if (!val) {
 				vmm_cprintf(cdev, "Error: vmm_zalloc(%d) "
 					    "failed\n", val_len);
-				continue;
+				goto next_iter;
 			}
 			*((virtual_size_t *)val) = strtoull(astr, NULL, 0);
 			val_type = VMM_DEVTREE_ATTRTYPE_VIRTSIZE;
 		} else {
 			vmm_cprintf(cdev, "Error: Invalid attribute type %s\n",
 				    atype);
-			continue;
+			goto next_iter;
 		}
 
 		if (val && (val_len > 0)) {
@@ -935,13 +935,19 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 					    val_type, val_len, FALSE);
 			vmm_free(val);
 		}
+
+next_iter:
+		vmm_devtree_dref_node(node);
 	}
+
+	vmm_devtree_dref_node(anode);
 
 fail_freedata:
 	vmm_free(fdt_data);
 fail_closefd:
 	vfs_close(fd);
 fail:
+	vmm_devtree_dref_node(parent);
 	return rc;
 }
 

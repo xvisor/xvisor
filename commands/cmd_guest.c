@@ -86,12 +86,12 @@ static void cmd_guest_list(struct vmm_chardev *cdev)
 static int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
 {
 	struct vmm_guest *guest = NULL;
-	struct vmm_devtree_node *node = NULL;
+	struct vmm_devtree_node *pnode = NULL, *node = NULL;
 
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+	pnode = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 					VMM_DEVTREE_GUESTINFO_NODE_NAME);
-
-	node = vmm_devtree_getchild(node, name);
+	node = vmm_devtree_getchild(pnode, name);
+	vmm_devtree_dref_node(pnode);
 	if (!node) {
 		vmm_cprintf(cdev, "Error: failed to find %s node under %s\n",
 				  name, VMM_DEVTREE_PATH_SEPARATOR_STRING
@@ -100,6 +100,7 @@ static int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
 	}
 
 	guest = vmm_manager_guest_create(node);
+	vmm_devtree_dref_node(node);
 	if (!guest) {
 		vmm_cprintf(cdev, "Error: failed to create %s\n", name);
 		return VMM_EFAIL;

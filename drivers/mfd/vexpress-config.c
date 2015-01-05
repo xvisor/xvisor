@@ -84,6 +84,7 @@ struct vexpress_config_bridge *vexpress_config_bridge_register(
 	__set_bit(i, vexpress_config_bridges_map);
 	bridge = &vexpress_config_bridges[i];
 
+	vmm_devtree_ref_node(node);
 	bridge->node = node;
 	bridge->info = info;
 	INIT_LIST_HEAD(&bridge->transactions);
@@ -109,6 +110,8 @@ void vexpress_config_bridge_unregister(struct vexpress_config_bridge *bridge)
 	WARN_ON(!list_empty(&__bridge.transactions));
 	while (!list_empty(&__bridge.transactions))
 		arch_smp_mb(); /* FIXME: cpu_relax(); */
+
+	vmm_devtree_dref_node(__bridge.node);
 }
 VMM_EXPORT_SYMBOL(vexpress_config_bridge_unregister);
 
@@ -140,6 +143,7 @@ struct vexpress_config_func *__vexpress_config_func_get(struct vmm_device *dev,
 		if (vmm_devtree_read_u32(bridge_node,
 			"arm,vexpress,config-bridge", &prop) == VMM_OK) {
 			bridge_node = vmm_devtree_find_node_by_phandle(prop);
+			vmm_devtree_dref_node(bridge_node);
 			break;
 		}
 

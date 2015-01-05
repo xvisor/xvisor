@@ -75,6 +75,8 @@ int __init arch_cpu_early_init(void)
 		vmm_parse_early_options(options);
 	}
 
+	vmm_devtree_dref_node(node);
+
 	return VMM_OK;
 }
 

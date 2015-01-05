@@ -439,6 +439,7 @@ int __init arch_defterm_init(void)
 
 	rc = vmm_devtree_read_string(node,
 				VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;
 	}
@@ -454,5 +455,8 @@ int __init arch_defterm_init(void)
 		ops = nodeid->data;
 	}
 
-	return ops->init(node);
+	rc = ops->init(node);
+	vmm_devtree_dref_node(node);
+
+	return rc;
 }

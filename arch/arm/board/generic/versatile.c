@@ -306,6 +306,7 @@ static int __init versatile_early_init(struct vmm_devtree_node *node)
 		return VMM_ENODEV;
 	}
 	rc = vmm_devtree_regmap(node, &versatile_sys_base, 0);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;
 	}
@@ -322,6 +323,7 @@ static int __init versatile_early_init(struct vmm_devtree_node *node)
 	if (node) {
 		node->system_data = &clcd_system_data;
 	}
+	vmm_devtree_dref_node(node);
 
 	return 0;
 }

@@ -167,6 +167,7 @@ int __init arch_board_final_init(void)
 
 	/* Do probing using device driver framework */
 	rc = vmm_devdrv_probe(node);
+	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;
 	}
