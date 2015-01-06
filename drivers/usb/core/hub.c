@@ -525,7 +525,6 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 
 	DPRINTF("%s: resetting port %d...\n", __func__, port);
 	for (tries = 0; tries < MAX_TRIES; tries++) {
-
 		usb_set_port_feature(dev, port + 1, USB_PORT_FEAT_RESET);
 		vmm_mdelay(200);
 
@@ -1288,6 +1287,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	}
 	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 
+	/* Wait for clear connection to finish */
 	vmm_mdelay(200);
 
 	/* Reset the port */
@@ -1297,6 +1297,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 		goto done;
 	}
 
+	/* Wait for reset to finish */
 	vmm_mdelay(200);
 
 	/* Allocate a new device struct for it */
@@ -1347,7 +1348,6 @@ done:
 static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 {
 	int i, err;
-	u64 tstamp;
 	u16 portstatus, portchange;
 	struct usb_device *dev = hub->dev;
 	struct usb_port_status *portsts;
@@ -1365,35 +1365,14 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 	usb_ref_device(dev);
 
 	for (i = 0; i < dev->maxchild; i++) {
-		/*
-		 * Wait for (whichever finishes first)
-		 *  - A maximum of 10 seconds
-		 *    This is a purely observational value driven by connecting
-		 *    a few broken pen drives and taking the max * 1.5 approach
-		 *  - connection_change and connection state to report same
-		 *    state
-		 */
-		tstamp = vmm_timer_timestamp() + 10000000000ULL;
-		do {
-			err = usb_get_port_status(dev, i + 1, portsts);
-			if (err < 0) {
-				DPRINTF("%s: get_port_status failed\n",
-					__func__);
-				break;
-			}
-
-			portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
-			portchange = vmm_le16_to_cpu(portsts->wPortChange);
-
-			if ((portchange & USB_PORT_STAT_C_CONNECTION) ==
-				(portstatus & USB_PORT_STAT_CONNECTION))
-				break;
-
-		} while (vmm_timer_timestamp() < tstamp);
-
+		err = usb_get_port_status(dev, i + 1, portsts);
 		if (err < 0) {
+			DPRINTF("%s: get_port_status failed\n",
+				__func__);
 			continue;
 		}
+		portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
+		portchange = vmm_le16_to_cpu(portsts->wPortChange);
 
 		DPRINTF("%s: port %d status 0x%x change 0x%x\n",
 			__func__, i + 1, portstatus, portchange);

@@ -321,9 +321,6 @@ static void dwc2_flush_tx_fifo(struct dwc2_control *dwc2, const int num)
 	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_TXFFLSH, 0);
 	if (ret)
 		vmm_printf("%s: Timeout!\n", __func__);
-
-	/* Wait for 3 PHY Clocks */
-	vmm_udelay(1);
 }
 
 /*
@@ -339,9 +336,6 @@ static void dwc2_flush_rx_fifo(struct dwc2_control *dwc2)
 	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_RXFFLSH, 0);
 	if (ret)
 		vmm_printf("%s: Timeout!\n", __func__);
-
-	/* Wait for 3 PHY Clocks */
-	vmm_udelay(1);
 }
 
 /*
@@ -374,7 +368,7 @@ static void dwc2_core_reset(struct dwc2_control *dwc2)
 	 * NOTE: This long sleep is _very_ important, otherwise the
 	 * core will not stay in host mode after a connector ID change!
 	 */
-	vmm_mdelay(100);
+	vmm_msleep(100);
 }
 
 /*
@@ -905,7 +899,7 @@ static int dwc2_rh_msg_out(struct dwc2_control *dwc2,
 					DWC2_HPRT0_PRTENCHNG |
 					DWC2_HPRT0_PRTOVRCURRCHNG,
 					DWC2_HPRT0_PRTRST);
-			vmm_mdelay(50);
+			vmm_msleep(50);
 			vmm_clrbits_le32(&dwc2->regs->hprt0,
 					DWC2_HPRT0_PRTRST);
 			break;
@@ -953,8 +947,6 @@ static int dwc2_control_rh_msg(struct dwc2_control *dwc2,
 	} else {
 		rc = dwc2_rh_msg_out(dwc2, u, cmd);
 	}
-
-	vmm_mdelay(1);
 
 	return rc;
 }
@@ -1413,7 +1405,7 @@ static int dwc2_start(struct usb_hcd *hcd)
 			    DWC2_HPRT0_PRTENCHNG |
 			    DWC2_HPRT0_PRTOVRCURRCHNG,
 			    DWC2_HPRT0_PRTRST);
-	vmm_mdelay(50);
+	vmm_msleep(50);
 	vmm_clrbits_le32(&dwc2->regs->hprt0,
 			 DWC2_HPRT0_PRTENA |
 			 DWC2_HPRT0_PRTCONNDET |
