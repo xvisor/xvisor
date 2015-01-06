@@ -80,7 +80,7 @@ int usb_hcd_unlink_urb(struct urb *urb, int status)
 	 */
 	retval = hcd->driver->urb_dequeue(hcd, urb, status);
 
-	usb_free_device(urb->dev);
+	usb_dref_device(urb->dev);
 
 	return retval;
 }
@@ -322,7 +322,7 @@ err_hcd_driver_start:
 err_request_irq:
 err_hcd_driver_setup:
 err_set_rh_speed:
-	usb_free_device(hcd->root_hub);
+	usb_dref_device(hcd->root_hub);
 err_allocate_root_hub:
 	return retval;
 }
@@ -394,7 +394,7 @@ void usb_ref_hcd(struct usb_hcd *hcd)
 }
 VMM_EXPORT_SYMBOL(usb_ref_hcd);
 
-void usb_destroy_hcd(struct usb_hcd *hcd)
+void usb_dref_hcd(struct usb_hcd *hcd)
 {
 	if (arch_atomic_sub_return(&hcd->refcnt, 1)) {
 		return;
@@ -402,7 +402,7 @@ void usb_destroy_hcd(struct usb_hcd *hcd)
 
 	vmm_free(hcd);
 }
-VMM_EXPORT_SYMBOL(usb_destroy_hcd);
+VMM_EXPORT_SYMBOL(usb_dref_hcd);
 
 void usb_hcd_shutdown(struct usb_hcd *hcd)
 {

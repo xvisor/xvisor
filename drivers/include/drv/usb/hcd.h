@@ -278,15 +278,15 @@ void usb_remove_hcd(struct usb_hcd *hcd);
 void usb_ref_hcd(struct usb_hcd *hcd);
 
 /**
- * usb_destroy_hcd - destroy generic HCD structure
+ * usb_dref_hcd - de-refernce generic HCD structure
  * @hcd: pointer to the HCD representing the controller
  *
  * Note: This can be called from any context.
  */
-void usb_destroy_hcd(struct usb_hcd *hcd);
+void usb_dref_hcd(struct usb_hcd *hcd);
 
 /**
- * usb_destroy_hcd - shutdown generic HCD structure
+ * usb_hcd_shutdown - shutdown generic HCD structure
  * @hcd: pointer to the HCD representing the controller
  *
  * Note: This can be called from any context.

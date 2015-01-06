@@ -1572,7 +1572,7 @@ fail_destroy_thread:
 fail_unmap_regs:
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)dwc2->regs, 0);
 fail_destroy_hcd:
-	usb_destroy_hcd(hcd);
+	usb_dref_hcd(hcd);
 fail:
 	return rc;
 }
@@ -1590,7 +1590,7 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)dwc2->regs, 0);
 
-	usb_destroy_hcd(hcd);
+	usb_dref_hcd(hcd);
 
 	return VMM_OK;
 }

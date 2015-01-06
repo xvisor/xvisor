@@ -516,6 +516,9 @@ struct urb {
 	/* List head for use by current owner of this urb */
 	struct dlist urb_list;
 
+	/* Release function */
+	void (*release)(struct urb *);
+
 	/* Parameters for doing this urb */
 	struct usb_device *dev;
 	u32 pipe;

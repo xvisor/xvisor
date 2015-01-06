@@ -502,7 +502,7 @@ fail_free_disks:
 		}
 	}
 fail_free_device:
-	usb_free_device(us->dev);
+	usb_dref_device(us->dev);
 	vmm_free(us);
 fail:
 	return rc;
@@ -526,7 +526,7 @@ static void usb_storage_disconnect(struct usb_interface *intf)
 	}
 
 	/* Free the USB device */
-	usb_free_device(us->dev);
+	usb_dref_device(us->dev);
 
 	/* Free usb storage instance */
 	vmm_free(us);

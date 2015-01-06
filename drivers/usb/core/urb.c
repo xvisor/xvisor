@@ -31,13 +31,20 @@
 
 void usb_init_urb(struct urb *urb)
 {
-	if (urb) {
-		memset(urb, 0, sizeof(*urb));
-		arch_atomic_write(&urb->refcnt, 1);
-		INIT_LIST_HEAD(&urb->urb_list);
+	if (!urb) {
+		return;
 	}
+
+	memset(urb, 0, sizeof(*urb));
+	arch_atomic_write(&urb->refcnt, 1);
+	INIT_LIST_HEAD(&urb->urb_list);
 }
 VMM_EXPORT_SYMBOL(usb_init_urb);
+
+static void usb_release_urb(struct urb *urb)
+{
+	vmm_free(urb);
+}
 
 struct urb *usb_alloc_urb(void)
 {
@@ -50,6 +57,7 @@ struct urb *usb_alloc_urb(void)
 	}
 
 	usb_init_urb(urb);
+	urb->release = usb_release_urb;
 
 	return urb;
 }
@@ -65,12 +73,16 @@ VMM_EXPORT_SYMBOL(usb_ref_urb);
 
 void usb_free_urb(struct urb *urb)
 {
-	if (urb) {
-		if (arch_atomic_sub_return(&urb->refcnt, 1)) {
-			return;
-		}
+	if (!urb) {
+		return;
+	}
 
-		vmm_free(urb);
+	if (arch_atomic_sub_return(&urb->refcnt, 1)) {
+		return;
+	}
+
+	if (urb->release) {
+		urb->release(urb);
 	}
 }
 VMM_EXPORT_SYMBOL(usb_free_urb);

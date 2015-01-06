@@ -93,12 +93,12 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 void usb_ref_device(struct usb_device *dev);
 
 /**
- * usb_free_device - free the usb device
+ * usb_dref_device - de-refernce the usb device
  * @dev: the usb_device structure of existing device
  *
  * Note: This should be called from Thread (or Orphan) context.
  */
-void usb_free_device(struct usb_device *dev);
+void usb_dref_device(struct usb_device *dev);
 
 /**
  * usb_new_device - enumerate newly found usb device
