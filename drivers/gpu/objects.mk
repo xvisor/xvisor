@@ -26,9 +26,9 @@ drivers-objs-$(CONFIG_IMX_IPUV3_CORE) += gpu/ipu-v3/ipu-v3.o
 ipu-v3-y+=ipu_common.o
 ipu-v3-y+=ipu_disp.o
 ipu-v3-y+=ipu_device.o
-ipu-v3-y+=/ipu_pixel_clk.o
-ipu-v3-y+=/ipu_ic.o
-ipu-v3-y+=/ipu_capture.o
+ipu-v3-y+=ipu_pixel_clk.o
+ipu-v3-y+=ipu_ic.o
+ipu-v3-y+=ipu_capture.o
 
 %/ipu-v3.o: $(foreach obj,$(ipu-v3-y),%/$(obj))
 	$(call merge_objs,$@,$^)
