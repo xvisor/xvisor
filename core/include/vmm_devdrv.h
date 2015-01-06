@@ -275,7 +275,7 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev);
 void vmm_devdrv_ref_device(struct vmm_device *dev);
 
 /** Decrement reference count of device */
-void vmm_devdrv_free_device(struct vmm_device *dev);
+void vmm_devdrv_dref_device(struct vmm_device *dev);
 
 /** Check whether device is registered or not */
 bool vmm_devdrv_isregistered_device(struct vmm_device *dev);

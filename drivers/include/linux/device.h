@@ -37,7 +37,7 @@
 #define BUS_NOTIFY_UNBOUND_DRIVER	VMM_BUS_NOTIFY_UNBOUND_DRIVER
 
 #define get_device(dev)			vmm_devdrv_ref_device(dev)
-#define put_device(dev)			vmm_devdrv_free_device(dev)
+#define put_device(dev)			vmm_devdrv_dref_device(dev)
 #define device_is_registered(dev)	vmm_devdrv_isregistered_device(dev)
 #define dev_name(dev)			(dev)->name
 #define dev_set_name(dev, msg...)	vmm_sprintf((dev)->name, msg)

@@ -1716,7 +1716,7 @@ VMM_EXPORT_SYMBOL(usb_ref_device);
 void usb_free_device(struct usb_device *dev)
 {
 	if (dev) {
-		vmm_devdrv_free_device(&dev->dev);
+		vmm_devdrv_dref_device(&dev->dev);
 	}
 }
 VMM_EXPORT_SYMBOL(usb_free_device);

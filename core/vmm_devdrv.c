@@ -404,22 +404,35 @@ static void __bus_remove_this_driver(struct vmm_bus *bus,
 /* Note: Must be called with bus->lock held */
 void __bus_shutdown(struct vmm_bus *bus)
 {
-	struct vmm_device *dev;
+	struct vmm_device *d;
 
 	/* Forcefully destroy all devices */
 	while (!list_empty(&bus->device_list)) {
-		dev = list_first_entry(&bus->device_list,
+		d = list_first_entry(&bus->device_list,
 					struct vmm_device, bus_head);
 
 		/* Bus shutdown/cleanup this device */
-		__bus_shutdown_this_device(bus, dev);
+		__bus_shutdown_this_device(bus, d);
+
+		/* Notify bus event listeners */
+		vmm_blocking_notifier_call(&bus->event_listeners,
+				   VMM_BUS_NOTIFY_DEL_DEVICE, d);
+
+		/* Update parent child list */
+		if (d->parent) {
+			vmm_mutex_lock(&d->parent->child_list_lock);
+			list_del(&d->child_head);
+			vmm_mutex_unlock(&d->parent->child_list_lock);
+			vmm_devdrv_dref_device(d->parent);
+			d->parent = NULL;
+		}
 
 		/* Unregister from device list */
-		list_del(&dev->bus_head);
-		dev->is_registered = FALSE;
+		list_del(&d->bus_head);
+		d->is_registered = FALSE;
 
 		/* Decrement reference count of device */
-		vmm_devdrv_free_device(dev);
+		vmm_devdrv_dref_device(d);
 	}
 }
 
@@ -427,19 +440,28 @@ void __bus_shutdown(struct vmm_bus *bus)
 void __class_release(struct vmm_class *cls)
 {
 	struct dlist *l;
-	struct vmm_device *dev;
+	struct vmm_device *d;
 
 	/* Forcefully destroy all devices */
 	while (!list_empty(&cls->device_list)) {
 		l = list_first(&cls->device_list);
-		dev = list_entry(l, struct vmm_device, class_head);
+		d = list_entry(l, struct vmm_device, class_head);
 
-		/* Unregister from device list */
-		list_del(&dev->class_head);
-		dev->is_registered = FALSE;
+		/* Update parent child list */
+		if (d->parent) {
+			vmm_mutex_lock(&d->parent->child_list_lock);
+			list_del(&d->child_head);
+			vmm_mutex_unlock(&d->parent->child_list_lock);
+			vmm_devdrv_dref_device(d->parent);
+			d->parent = NULL;
+		}
+
+		/* Update class device list */
+		list_del(&d->class_head);
+		d->is_registered = FALSE;
 
 		/* Decrement reference count of device */
-		vmm_devdrv_free_device(dev);
+		vmm_devdrv_dref_device(d);
 	}
 }
 
@@ -728,17 +750,20 @@ static int devdrv_class_unregister_device(struct vmm_class *cls,
 	}
 
 	/* Update parent child list */
-	if (dev->parent) {
-		vmm_mutex_lock(&dev->parent->child_list_lock);
-		list_del(&dev->child_head);
-		vmm_mutex_unlock(&dev->parent->child_list_lock);
-		vmm_devdrv_free_device(dev->parent);
+	if (d->parent) {
+		vmm_mutex_lock(&d->parent->child_list_lock);
+		list_del(&d->child_head);
+		vmm_mutex_unlock(&d->parent->child_list_lock);
+		vmm_devdrv_dref_device(d->parent);
+		d->parent = NULL;
 	}
 
 	/* Update class device list */
 	list_del(&d->class_head);
-	vmm_devdrv_free_device(dev);
 	d->is_registered = FALSE;
+
+	/* Decrement reference count of device */
+	vmm_devdrv_dref_device(d);
 
 	vmm_mutex_unlock(&cls->lock);
 
@@ -1112,17 +1137,20 @@ static int devdrv_bus_unregister_device(struct vmm_bus *bus,
 				   VMM_BUS_NOTIFY_DEL_DEVICE, d);
 
 	/* Update parent child list */
-	if (dev->parent) {
-		vmm_mutex_lock(&dev->parent->child_list_lock);
-		list_del(&dev->child_head);
-		vmm_mutex_unlock(&dev->parent->child_list_lock);
-		vmm_devdrv_free_device(dev->parent);
+	if (d->parent) {
+		vmm_mutex_lock(&d->parent->child_list_lock);
+		list_del(&d->child_head);
+		vmm_mutex_unlock(&d->parent->child_list_lock);
+		vmm_devdrv_dref_device(d->parent);
+		d->parent = NULL;
 	}
 
 	/* Update bus device list */
 	list_del(&d->bus_head);
-	vmm_devdrv_free_device(dev);
 	d->is_registered = FALSE;
+
+	/* Decrement reference count of device */
+	vmm_devdrv_dref_device(d);
 
 	vmm_mutex_unlock(&bus->lock);
 
@@ -1483,7 +1511,7 @@ void vmm_devdrv_ref_device(struct vmm_device *dev)
 	arch_atomic_inc(&dev->ref_count);
 }
 
-void vmm_devdrv_free_device(struct vmm_device *dev)
+void vmm_devdrv_dref_device(struct vmm_device *dev)
 {
 	bool released;
 
