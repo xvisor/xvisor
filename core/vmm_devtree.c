@@ -1498,6 +1498,10 @@ void vmm_devtree_ref_node(struct vmm_devtree_node *node)
 
 void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 {
+	int rc;
+	struct vmm_devtree_attr *attr;
+	struct vmm_devtree_node *parent;
+
 	if (!node) {
 		return;
 	}
@@ -1508,6 +1512,23 @@ void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 
 	if (dtree_ctrl.root == node) {
 		dtree_ctrl.root = NULL;
+	}
+
+	while (!list_empty(&node->attr_list)) {
+		attr = list_first_entry(&node->attr_list,
+					struct vmm_devtree_attr, head);
+		if ((rc = vmm_devtree_delattr(node, attr->name))) {
+			vmm_printf("%s: Failed to delete attibute=%s "
+				   "from node=%s (error %d)\n",
+				   __func__, attr->name, node->name, rc);
+		}
+	}
+
+	if (node->parent) {
+		parent = node->parent;
+		list_del(&node->head);
+		node->parent = NULL;
+		vmm_devtree_dref_node(parent);
 	}
 
 	vmm_free(node->name);
@@ -1623,35 +1644,17 @@ int vmm_devtree_copynode(struct vmm_devtree_node *parent,
 int vmm_devtree_delnode(struct vmm_devtree_node *node)
 {
 	int rc;
-	struct dlist *l;
-	struct vmm_devtree_attr *attr;
-	struct vmm_devtree_node *child, *parent;
+	struct vmm_devtree_node *child, *child_next;
 
 	if (!node) {
 		return VMM_EFAIL;
 	}
 
-	while(!list_empty(&node->attr_list)) {
-		l = list_first(&node->attr_list);
-		attr = list_entry(l, struct vmm_devtree_attr, head);
-		if ((rc = vmm_devtree_delattr(node, attr->name))) {
-			return rc;
-		}
-	}
-
-	while(!list_empty(&node->child_list)) {
-		l = list_first(&node->child_list);
-		child = list_entry(l, struct vmm_devtree_node, head);
+	list_for_each_entry_safe(child, child_next,
+				 &node->child_list, head) {
 		if ((rc = vmm_devtree_delnode(child))) {
 			return rc;
 		}
-	}
-
-	if (node->parent) {
-		parent = node->parent;
-		list_del(&node->head);
-		node->parent = NULL;
-		vmm_devtree_dref_node(parent);
 	}
 
 	vmm_devtree_dref_node(node);
