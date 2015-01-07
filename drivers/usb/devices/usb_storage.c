@@ -34,7 +34,6 @@
 #include <libs/scsi_disk.h>
 
 #include <drv/usb.h>
-#include <drv/usb/hub.h>
 
 #define MODULE_DESC			"USB Storage Driver"
 #define MODULE_AUTHOR			"Anup Patel"

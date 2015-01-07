@@ -30,7 +30,6 @@
 #include <vmm_modules.h>
 #include <drv/usb.h>
 #include <drv/usb/hcd.h>
-#include <drv/usb/hub.h>
 
 #undef DEBUG
 

@@ -27,7 +27,6 @@
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
 #include <drv/usb.h>
-#include <drv/usb/hub.h>
 
 static const struct usb_device_id *usb_match_dynamic_id(struct usb_interface *intf,
 							struct usb_driver *drv)

@@ -31,12 +31,13 @@
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <arch_atomic.h>
+
 #include <libs/unaligned.h>
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
+
 #include <drv/usb.h>
-#include <drv/usb/hcd.h>
-#include <drv/usb/hub.h>
+#include <drv/usb/ch11.h>
 
 #undef DEBUG
 
@@ -52,12 +53,18 @@
 #define USB_HUB_MIN_POWER_ON_DELAY	100
 #endif
 
-/* Protect struct usb_device->state and ->children members */
-static DEFINE_SPINLOCK(device_state_lock);
+/** Representation of Hub instance */
+struct usb_hub_device {
+	struct dlist head;
+	bool configured;
+	struct usb_device *dev;
+	struct usb_interface *intf;
+	struct usb_hub_descriptor desc;
+};
 
-/* Protected list of all usb hubs. */
-static DEFINE_MUTEX(usb_hub_list_lock);
-static LIST_HEAD(usb_hub_list);
+/*
+ * ==================== USB Hub Worker Routines ====================
+ */
 
 /* Protected Hub work list and Hub worker thread */
 static struct vmm_thread *usb_hub_worker_thread;
@@ -72,15 +79,6 @@ struct usb_hub_work {
 	int (*work_func)(struct usb_hub_work *);
 	struct usb_device *dev;
 };
-
-/* Hub monitor work */
-#define USB_HUB_MON_EVENT_NSECS		2000000000ULL
-static struct usb_hub_work usb_hub_mon_work;
-static struct vmm_timer_event usb_hub_mon_event;
-
-/*
- * ==================== USB Hub Worker Routines ====================
- */
 
 static void usb_hub_init_work(struct usb_hub_work *work,
 			      int (*func)(struct usb_hub_work *),
@@ -191,7 +189,7 @@ static void usb_hub_flush_dev_work(struct usb_device *dev)
 	}
 }
 
-static int usb_hub_worker_thread_main(void *data)
+static int usb_hub_worker_main(void *data)
 {
 	int err;
 	irq_flags_t flags;
@@ -226,7 +224,113 @@ static int usb_hub_worker_thread_main(void *data)
 }
 
 /*
- * ==================== USB Hub Helper Routines ====================
+ * ==================== USB Hub Managment Routines ====================
+ */
+
+/* Protected list of all usb hubs. */
+static DEFINE_MUTEX(usb_hub_list_lock);
+static LIST_HEAD(usb_hub_list);
+
+static struct usb_hub_device *usb_hub_alloc(void)
+{
+	struct usb_hub_device *hub;
+
+	hub = vmm_zalloc(sizeof(struct usb_hub_device));
+	if (!hub) {
+		return NULL;
+	}
+
+	INIT_LIST_HEAD(&hub->head);
+	hub->configured = FALSE;
+
+	return hub;
+}
+
+static void usb_hub_add(struct usb_hub_device *hub)
+{
+	vmm_mutex_lock(&usb_hub_list_lock);
+	usb_ref_device(hub->dev);
+	list_add_tail(&hub->head, &usb_hub_list);
+	vmm_mutex_unlock(&usb_hub_list_lock);
+}
+
+static void usb_hub_remove(struct usb_hub_device *hub)
+{
+	vmm_mutex_lock(&usb_hub_list_lock);
+	list_del(&hub->head);
+	usb_dref_device(hub->dev);
+	vmm_mutex_unlock(&usb_hub_list_lock);
+}
+
+static struct usb_hub_device *usb_hub_find(struct usb_device *dev,
+					   struct usb_interface *intf)
+{
+	struct dlist *l;
+	struct usb_hub_device *thub, *hub = NULL;
+
+	vmm_mutex_lock(&usb_hub_list_lock);
+
+	list_for_each(l, &usb_hub_list) {
+		thub = list_entry(l, struct usb_hub_device, head);
+		if (thub->dev == dev) {
+			hub = thub;
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&usb_hub_list_lock);
+
+	return hub;
+}
+
+static struct usb_hub_device *usb_hub_get(int index)
+{
+	struct dlist *l;
+	struct usb_hub_device *thub, *hub = NULL;
+
+	if (index < 0) {
+		return NULL;
+	}
+
+	vmm_mutex_lock(&usb_hub_list_lock);
+
+	list_for_each(l, &usb_hub_list) {
+		thub = list_entry(l, struct usb_hub_device, head);
+		if (!index) {
+			hub = thub;
+			break;
+		}
+		index--;
+	}
+
+	vmm_mutex_unlock(&usb_hub_list_lock);
+
+	return hub;
+}
+
+static u32 usb_hub_count(void)
+{
+	u32 ret = 0;
+	struct dlist *l;
+
+	vmm_mutex_lock(&usb_hub_list_lock);
+
+	list_for_each(l, &usb_hub_list) {
+		ret++;
+	}
+
+	vmm_mutex_unlock(&usb_hub_list_lock);
+
+	return ret;
+}
+
+static void usb_hub_free(struct usb_hub_device *hub)
+{
+	vmm_free(hub);
+}
+
+/*
+ * ==================== USB Device Helper Routines ====================
  */
 
 static void show_string(struct usb_device *udev, char *id, char *string)
@@ -236,7 +340,7 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 	vmm_printf("%s: %s = %s\n", udev->dev.name, id, string);
 }
 
-static void announce_device(struct usb_device *udev)
+static void usb_announce_device(struct usb_device *udev)
 {
 	vmm_printf("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
 		   udev->dev.name, vmm_le16_to_cpu(udev->descriptor.idVendor),
@@ -244,43 +348,6 @@ static void announce_device(struct usb_device *udev)
 	show_string(udev, "Product", udev->product);
 	show_string(udev, "Manufacturer", udev->manufacturer);
 	show_string(udev, "SerialNumber", udev->serial);
-}
-
-static int usb_get_hub_descriptor(struct usb_device *dev, void *data, int size)
-{
-	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-		USB_REQ_GET_DESCRIPTOR, USB_DIR_IN | USB_RT_HUB,
-		USB_DT_HUB << 8, 0, data, size, NULL, USB_CNTL_TIMEOUT);
-}
-
-static int usb_clear_port_feature(struct usb_device *dev, int port, int feature)
-{
-	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				USB_REQ_CLEAR_FEATURE, USB_RT_PORT, feature,
-				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
-}
-
-static int usb_set_port_feature(struct usb_device *dev, int port, int feature)
-{
-	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
-				USB_REQ_SET_FEATURE, USB_RT_PORT, feature,
-				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
-}
-
-static int usb_get_hub_status(struct usb_device *dev, void *data)
-{
-	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_HUB, 0, 0,
-			data, sizeof(struct usb_hub_status),
-			NULL, USB_CNTL_TIMEOUT);
-}
-
-static int usb_get_port_status(struct usb_device *dev, int port, void *data)
-{
-	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_PORT, 0, port,
-			data, sizeof(struct usb_hub_status),
-			NULL, USB_CNTL_TIMEOUT);
 }
 
 static int usb_set_address(struct usb_device *dev, u32 addr)
@@ -484,10 +551,51 @@ static int usb_parse_config(struct usb_device *dev, u8 *buffer, int cfgno)
 }
 
 /*
- * ==================== USB Hub Managment Routines ====================
+ * ==================== USB Hub Helper Routines ====================
  */
 
-static inline const char *portspeed(int portstatus)
+static int usb_hub_get_descriptor(struct usb_device *dev,
+				  void *data, int size)
+{
+	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
+		USB_REQ_GET_DESCRIPTOR, USB_DIR_IN | USB_RT_HUB,
+		USB_DT_HUB << 8, 0, data, size, NULL, USB_CNTL_TIMEOUT);
+}
+
+static int usb_hub_clear_port_feature(struct usb_device *dev,
+				      int port, int feature)
+{
+	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+				USB_REQ_CLEAR_FEATURE, USB_RT_PORT, feature,
+				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
+}
+
+static int usb_hub_set_port_feature(struct usb_device *dev,
+				    int port, int feature)
+{
+	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+				USB_REQ_SET_FEATURE, USB_RT_PORT, feature,
+				port, NULL, 0, NULL, USB_CNTL_TIMEOUT);
+}
+
+static int usb_hub_get_status(struct usb_device *dev, void *data)
+{
+	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
+			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_HUB, 0, 0,
+			data, sizeof(struct usb_hub_status),
+			NULL, USB_CNTL_TIMEOUT);
+}
+
+static int usb_hub_get_port_status(struct usb_device *dev,
+				   int port, void *data)
+{
+	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
+			USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_PORT, 0, port,
+			data, sizeof(struct usb_hub_status),
+			NULL, USB_CNTL_TIMEOUT);
+}
+
+static inline const char *usb_hub_portspeed(int portstatus)
 {
 	char *speed_str;
 	int portmask = (USB_PORT_STAT_LOW_SPEED|USB_PORT_STAT_HIGH_SPEED);
@@ -525,10 +633,10 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 
 	DPRINTF("%s: resetting port %d...\n", __func__, port);
 	for (tries = 0; tries < MAX_TRIES; tries++) {
-		usb_set_port_feature(dev, port + 1, USB_PORT_FEAT_RESET);
+		usb_hub_set_port_feature(dev, port + 1, USB_PORT_FEAT_RESET);
 		vmm_mdelay(200);
 
-		err = usb_get_port_status(dev, port + 1, portsts);
+		err = usb_hub_get_port_status(dev, port + 1, portsts);
 		if (err < 0) {
 			vmm_printf("%s: get_port_status failed error=%d\n",
 				   __func__, err);
@@ -540,7 +648,7 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 
 		DPRINTF("%s: portstatus 0x%x, change 0x%x, %s\n",
 			__func__, portstatus, portchange,
-			portspeed(portstatus));
+			usb_hub_portspeed(portstatus));
 
 		DPRINTF("%s: STAT_C_CONNECTION = %d STAT_CONNECTION = %d" \
 		        " USB_PORT_STAT_ENABLE %d\n", __func__,
@@ -566,109 +674,12 @@ static int usb_hub_port_reset(struct usb_device *dev, int port,
 		return VMM_EFAIL;
 	}
 
-	usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_RESET);
+	usb_hub_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_RESET);
 	*portstat = portstatus;
 
 	vmm_free(portsts);
 
 	return VMM_OK;
-}
-
-static struct usb_hub_device *usb_hub_alloc(void)
-{
-	struct usb_hub_device *hub;
-
-	hub = vmm_zalloc(sizeof(struct usb_hub_device));
-	if (!hub) {
-		return NULL;
-	}
-
-	INIT_LIST_HEAD(&hub->head);
-	hub->configured = FALSE;
-
-	return hub;
-}
-
-static void usb_hub_start(struct usb_hub_device *hub)
-{
-	vmm_mutex_lock(&usb_hub_list_lock);
-	usb_ref_device(hub->dev);
-	list_add_tail(&hub->head, &usb_hub_list);
-	vmm_mutex_unlock(&usb_hub_list_lock);
-}
-
-static void usb_hub_stop(struct usb_hub_device *hub)
-{
-	vmm_mutex_lock(&usb_hub_list_lock);
-	list_del(&hub->head);
-	usb_dref_device(hub->dev);
-	vmm_mutex_unlock(&usb_hub_list_lock);
-}
-
-static struct usb_hub_device *usb_hub_find(struct usb_device *dev)
-{
-	struct dlist *l;
-	struct usb_hub_device *thub, *hub = NULL;
-
-	vmm_mutex_lock(&usb_hub_list_lock);
-
-	list_for_each(l, &usb_hub_list) {
-		thub = list_entry(l, struct usb_hub_device, head);
-		if (thub->dev == dev) {
-			hub = thub;
-			break;
-		}
-	}
-
-	vmm_mutex_unlock(&usb_hub_list_lock);
-
-	return hub;
-}
-
-static struct usb_hub_device *usb_hub_get(int index)
-{
-	struct dlist *l;
-	struct usb_hub_device *thub, *hub = NULL;
-
-	if (index < 0) {
-		return NULL;
-	}
-
-	vmm_mutex_lock(&usb_hub_list_lock);
-
-	list_for_each(l, &usb_hub_list) {
-		thub = list_entry(l, struct usb_hub_device, head);
-		if (!index) {
-			hub = thub;
-			break;
-		}
-		index--;
-	}
-
-	vmm_mutex_unlock(&usb_hub_list_lock);
-
-	return hub;
-}
-
-static u32 usb_hub_count(void)
-{
-	u32 ret = 0;
-	struct dlist *l;
-
-	vmm_mutex_lock(&usb_hub_list_lock);
-
-	list_for_each(l, &usb_hub_list) {
-		ret++;
-	}
-
-	vmm_mutex_unlock(&usb_hub_list_lock);
-
-	return ret;
-}
-
-static void usb_hub_free(struct usb_hub_device *hub)
-{
-	vmm_free(hub);
 }
 
 static void usb_hub_power_on(struct usb_hub_device *hub)
@@ -692,7 +703,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	 */
 	DPRINTF("%s: enabling power on all ports\n", __func__);
 	for (i = 0; i < dev->maxchild; i++) {
-		usb_clear_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
+		usb_hub_clear_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
 		DPRINTF("%s: port %d returns 0x%lx\n",
 			__func__, i + 1, dev->status);
 	}
@@ -701,7 +712,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	vmm_mdelay(pgood_delay);
 
 	for (i = 0; i < dev->maxchild; i++) {
-		ret = usb_get_port_status(dev, i + 1, portsts);
+		ret = usb_hub_get_port_status(dev, i + 1, portsts);
 		if (ret < 0) {
 			DPRINTF("%s: port %d get_port_status failed\n",
 				__func__, i + 1);
@@ -729,7 +740,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	}
 
 	for (i = 0; i < dev->maxchild; i++) {
-		usb_set_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
+		usb_hub_set_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
 		DPRINTF("%s: port %d returns 0x%lx\n",
 			__func__, i + 1, dev->status);
 	}
@@ -745,7 +756,8 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	usb_dref_device(dev);
 }
 
-static int usb_hub_configure(struct usb_device *dev)
+static int usb_hub_configure(struct usb_device *dev,
+			     struct usb_interface *intf)
 {
 	int i, err = VMM_OK;
 	u8 *bitmap, *buffer;
@@ -769,9 +781,10 @@ static int usb_hub_configure(struct usb_device *dev)
 		goto done;
 	}
 	hub->dev = dev;
+	hub->intf = intf;
 
 	/* Get Hub descriptor */
-	if (usb_get_hub_descriptor(dev, buffer, 4) < 0) {
+	if (usb_hub_get_descriptor(dev, buffer, 4) < 0) {
 		DPRINTF("%s: failed to get hub descriptor, giving up 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
@@ -789,7 +802,7 @@ static int usb_hub_configure(struct usb_device *dev)
 		goto done;
 	}
 
-	if (usb_get_hub_descriptor(dev, buffer, descriptor->bLength) < 0) {
+	if (usb_hub_get_descriptor(dev, buffer, descriptor->bLength) < 0) {
 		DPRINTF("%s: failed to hub descriptor 2nd giving up 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
@@ -876,7 +889,7 @@ static int usb_hub_configure(struct usb_device *dev)
 		goto done;
 	}
 
-	if (usb_get_hub_status(dev, buffer) < 0) {
+	if (usb_hub_get_status(dev, buffer) < 0) {
 		DPRINTF("%s: failed to get Status 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
@@ -905,58 +918,14 @@ static int usb_hub_configure(struct usb_device *dev)
 	/* Mark hub as configured */
 	hub->configured = TRUE;
 
-	/* Start hub polling */
-	usb_hub_start(hub);
+	/* Add hub to gobal list */
+	usb_hub_add(hub);
 
 done:
 	usb_dref_device(dev);
 	vmm_free(buffer);
 
 	return err;
-}
-
-static bool usb_hub_check_interface(struct usb_device *dev)
-{
-	struct usb_interface *intf = &dev->config.intf[0];
-	struct usb_endpoint_descriptor *ep = &intf->ep_desc[0];
-
-	/* Is it a hub? */
-	if (intf->desc.bInterfaceClass != USB_CLASS_HUB)
-		return FALSE;
-
-	/* Some hubs have a subclass of 1, which AFAICT according to the */
-	/*  specs is not defined, but it works */
-	if ((intf->desc.bInterfaceSubClass != 0) &&
-	    (intf->desc.bInterfaceSubClass != 1))
-		return FALSE;
-
-	/* Multiple endpoints? What kind of mutant ninja-hub is this? */
-	if (intf->desc.bNumEndpoints != 1)
-		return FALSE;
-
-	/* Output endpoint? Curiousier and curiousier.. */
-	if (!(ep->bEndpointAddress & USB_DIR_IN))
-		return FALSE;
-
-	/* If it's not an interrupt endpoint, we'd better punt! */
-	if ((ep->bmAttributes & 3) != 3)
-		return FALSE;
-
-	return TRUE;
-}
-
-static int usb_hub_probe(struct usb_device *dev)
-{
-	/* Check if it is a hub */
-	if (!usb_hub_check_interface(dev)) {
-		return VMM_ENODEV;
-	}
-
-	/* We found a hub */
-	DPRINTF("%s: USB hub found\n", __func__);
-
-	/* Configure the hub */
-	return usb_hub_configure(dev);
 }
 
 static int usb_hub_detect_new_device(struct usb_device *parent,
@@ -1109,7 +1078,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	if (err < 0) {
 		vmm_printf("%s: Cannot read configuration, "
 			   "skipping device %04x:%04x\n", __func__,
-			   dev->descriptor.idVendor, 
+			   dev->descriptor.idVendor,
 			   dev->descriptor.idProduct);
 		goto done;
 	}
@@ -1143,23 +1112,19 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	usb_set_device_state(dev, USB_STATE_CONFIGURED);
 
 	/* Inform everyone about new USB device */
-	announce_device(dev);
+	usb_announce_device(dev);
 
 	/* Register new device to devdrv */
 	vmm_devdrv_register_device(&dev->dev);
 
-	/* Now probe the device interfaces */
-	err = usb_hub_probe(dev);
-	if (err == VMM_OK) {
-		dev->config.intf[0].dev.autoprobe_disabled = TRUE;
-		vmm_devdrv_register_device(&dev->config.intf[0].dev);
-	} else if (err == VMM_ENODEV) {
-		for (i = 0; i < dev->config.no_of_intf; i++) {
-			vmm_devdrv_register_device(&dev->config.intf[i].dev);
-		}
-		err = VMM_OK;
-	} else {
-		usb_set_device_state(dev, USB_STATE_NOTATTACHED);
+	/* Register interface devices to devdrv */
+	for (i = 0; i < dev->config.no_of_intf; i++) {
+		vmm_devdrv_register_device(&dev->config.intf[i].dev);
+	}
+
+	/* Inform everyone about new non-root-hub device */
+	if (dev->dev.parent) {
+		usb_notify_add_device(dev);
 	}
 
 done:
@@ -1172,22 +1137,7 @@ done:
 	return err;
 }
 
-static void usb_hub_disconnect(struct usb_device *dev)
-{
-	struct usb_hub_device *hub = usb_hub_find(dev);
-
-	if (!hub) {
-		return;
-	}
-
-	vmm_devdrv_unregister_device(&dev->config.intf[0].dev);
-
-	usb_hub_stop(hub);
-
-	usb_hub_free(hub);
-}
-
-static void recursively_disconnect(struct usb_device *dev)
+static void usb_recursively_disconnect(struct usb_device *dev)
 {
 	int i;
 	irq_flags_t flags;
@@ -1200,7 +1150,7 @@ static void recursively_disconnect(struct usb_device *dev)
 			continue;
 		}
 		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
-		recursively_disconnect(dev->children[i]);
+		usb_recursively_disconnect(dev->children[i]);
 		vmm_spin_lock_irqsave(&dev->children_lock, flags);
 	}
 	dev->maxchild = 0;
@@ -1209,34 +1159,25 @@ static void recursively_disconnect(struct usb_device *dev)
 	/* Mark device as not attached */
 	usb_set_device_state(dev, USB_STATE_NOTATTACHED);
 
-	/* Now disconnect the device */
-	if (usb_hub_check_interface(dev)) {
-		usb_hub_disconnect(dev);
-	} else {
-		for (i = 0; i < dev->config.no_of_intf; i++) {
-			intf = &dev->config.intf[i];
-			vmm_devdrv_unregister_device(&intf->dev);
-		}
+	/* Unregister interface devices from devdrv */
+	for (i = 0; i < dev->config.no_of_intf; i++) {
+		intf = &dev->config.intf[i];
+		vmm_devdrv_unregister_device(&intf->dev);
+	}
+
+	/* Inform everyone about removed non-root-hub devices */
+	if (dev->dev.parent) {
+		usb_notify_remove_device(dev);
 	}
 
 	/* Unregister from devdrv */
 	vmm_devdrv_unregister_device(&dev->dev);
 
+	/* Flush all HUB work related to this USB device */
+	usb_hub_flush_dev_work(dev);
+
 	/* Free the device */
 	usb_dref_device(dev);
-}
-
-static int usb_hub_disconnect_device(struct usb_device *dev)
-{
-	/* Sanity check on device state */
-	if (usb_get_device_state(dev) != USB_STATE_NOTATTACHED) {
-		return VMM_EINVALID;
-	}
-
-	/* recursively disconnect this device and all child devices */
-	recursively_disconnect(dev);
-
-	return VMM_OK;
 }
 
 static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
@@ -1255,17 +1196,19 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	usb_ref_device(dev);
 
 	/* Check status */
-	if (usb_get_port_status(dev, port + 1, portsts) < 0) {
+	if (usb_hub_get_port_status(dev, port + 1, portsts) < 0) {
 		DPRINTF("%s: get_port_status failed\n", __func__);
 		goto done;
 	}
 
 	portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
-	DPRINTF("%s: portstatus %x, change %x, %s\n", __func__, portstatus,
-		vmm_le16_to_cpu(portsts->wPortChange), portspeed(portstatus));
+	DPRINTF("%s: portstatus %x, change %x, %s\n",
+		__func__, portstatus,
+		vmm_le16_to_cpu(portsts->wPortChange),
+		usb_hub_portspeed(portstatus));
 
 	/* Clear the connection change status */
-	usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_CONNECTION);
+	usb_hub_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_CONNECTION);
 
 	/* Skip if no connection change */
 	if (!(portstatus & USB_PORT_STAT_CONNECTION) &&
@@ -1282,7 +1225,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	    !(portstatus & USB_PORT_STAT_CONNECTION)) {
 		usb = dev->children[port];
 		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
-		recursively_disconnect(usb);
+		usb_recursively_disconnect(usb);
 		goto done;
 	}
 	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
@@ -1333,7 +1276,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 		dev->children[port] = NULL;
 		vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 		DPRINTF("%s: disabling port %d\n", __func__, port + 1);
-		usb_clear_port_feature(dev, port + 1, USB_PORT_FEAT_ENABLE);
+		usb_hub_clear_port_feature(dev, port + 1, USB_PORT_FEAT_ENABLE);
 	}
 
 done:
@@ -1341,11 +1284,7 @@ done:
 	vmm_free(portsts);
 }
 
-/*
- * ==================== USB Hub Status Polling ====================
- */
-
-static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
+static int usb_hub_poll_status(struct usb_hub_device *hub)
 {
 	int i, err;
 	u16 portstatus, portchange;
@@ -1365,7 +1304,7 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 	usb_ref_device(dev);
 
 	for (i = 0; i < dev->maxchild; i++) {
-		err = usb_get_port_status(dev, i + 1, portsts);
+		err = usb_hub_get_port_status(dev, i + 1, portsts);
 		if (err < 0) {
 			DPRINTF("%s: get_port_status failed\n",
 				__func__);
@@ -1386,21 +1325,21 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 		if (portchange & USB_PORT_STAT_C_ENABLE) {
 			DPRINTF("%s: port %d enable change, status 0x%x\n",
 				__func__, i + 1, portstatus);
-			usb_clear_port_feature(dev, i + 1,
+			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_ENABLE);
 		}
 
 		if (portstatus & USB_PORT_STAT_SUSPEND) {
 			DPRINTF("%s: port %d suspend change\n",
 				__func__, i + 1);
-			usb_clear_port_feature(dev, i + 1,
+			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_SUSPEND);
 		}
 
 		if (portchange & USB_PORT_STAT_C_OVERCURRENT) {
 			DPRINTF("%s: port %d over-current change\n",
 				__func__, i + 1);
-			usb_clear_port_feature(dev, i + 1,
+			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_OVER_CURRENT);
 			usb_hub_power_on(hub);
 		}
@@ -1408,7 +1347,7 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 		if (portchange & USB_PORT_STAT_C_RESET) {
 			DPRINTF("%s: port %d reset change\n",
 				__func__, i + 1);
-			usb_clear_port_feature(dev, i + 1,
+			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_RESET);
 		}
 	}
@@ -1419,6 +1358,14 @@ static int usb_hub_mon_poll_status(struct usb_hub_device *hub)
 
 	return VMM_OK;
 }
+
+/*
+ * ==================== USB Hub Monitor Work ====================
+ */
+
+#define USB_HUB_MON_EVENT_NSECS		2000000000ULL
+static struct usb_hub_work usb_hub_mon_work;
+static struct vmm_timer_event usb_hub_mon_event;
 
 static int usb_hub_mon_work_func(struct usb_hub_work *work)
 {
@@ -1432,7 +1379,7 @@ static int usb_hub_mon_work_func(struct usb_hub_work *work)
 			break;
 		}
 
-		err = usb_hub_mon_poll_status(hub);
+		err = usb_hub_poll_status(hub);
 		if (err) {
 			vmm_printf("%s: Hub status poll failed (error %d)\n",
 				   __func__, err);
@@ -1450,255 +1397,78 @@ static void usb_hub_mon_event_func(struct vmm_timer_event *ev)
 }
 
 /*
- * ==================== General APIs ====================
+ * ==================== USB Hub Device Driver ====================
  */
 
-enum usb_device_state usb_get_device_state(struct usb_device *udev)
+static int usb_hub_driver_probe(struct usb_interface *intf,
+				const struct usb_device_id *id)
 {
-	irq_flags_t flags;
-	enum usb_device_state ret;
+	struct usb_device *dev = interface_to_usbdev(intf);
+	struct usb_endpoint_descriptor *ep = &intf->ep_desc[0];
 
-	vmm_spin_lock_irqsave(&device_state_lock, flags);
-	ret = udev->state;
-	vmm_spin_unlock_irqrestore(&device_state_lock, flags);
+	/* Is it a hub? */
+	if (intf->desc.bInterfaceClass != USB_CLASS_HUB)
+		return VMM_ENODEV;
 
-	return ret;
-}
-VMM_EXPORT_SYMBOL(usb_get_device_state);
+	/* Some hubs have a subclass of 1, which AFAICT according to the */
+	/*  specs is not defined, but it works */
+	if ((intf->desc.bInterfaceSubClass != 0) &&
+	    (intf->desc.bInterfaceSubClass != 1))
+		return VMM_ENODEV;
 
-static void recursively_mark_NOTATTACHED(struct usb_device *udev)
-{
-	int i;
-	irq_flags_t flags;
+	/* Multiple endpoints? What kind of mutant ninja-hub is this? */
+	if (intf->desc.bNumEndpoints != 1)
+		return VMM_ENODEV;
 
-	vmm_spin_lock_irqsave(&udev->children_lock, flags);
-	for (i = 0; i < udev->maxchild; ++i) {
-		if (!udev->children[i]) {
-			continue;
-		}
-		vmm_spin_unlock_irqrestore(&udev->children_lock, flags);
-		recursively_mark_NOTATTACHED(udev->children[i]);
-		vmm_spin_lock_irqsave(&udev->children_lock, flags);
-	}
-	vmm_spin_unlock_irqrestore(&udev->children_lock, flags);
+	/* Output endpoint? Curiousier and curiousier.. */
+	if (!(ep->bEndpointAddress & USB_DIR_IN))
+		return VMM_ENODEV;
 
-	if (udev->state == USB_STATE_SUSPENDED) {
-		udev->active_duration -= vmm_timer_timestamp();
-	}
+	/* If it's not an interrupt endpoint, we'd better punt! */
+	if ((ep->bmAttributes & 3) != 3)
+		return VMM_ENODEV;
 
-	udev->state = USB_STATE_NOTATTACHED;
-}
+	/* We found a hub */
+	vmm_printf("%s: USB hub found\n", intf->dev.name);
 
-void usb_set_device_state(struct usb_device *udev,
-			  enum usb_device_state new_state)
-{
-	irq_flags_t flags;
-
-	vmm_spin_lock_irqsave(&device_state_lock, flags);
-	if (udev->state == USB_STATE_NOTATTACHED) {
-		;	/* do nothing */
-	} else if (new_state != USB_STATE_NOTATTACHED) {
-		if (udev->state == USB_STATE_SUSPENDED &&
-			new_state != USB_STATE_SUSPENDED)
-			udev->active_duration -= vmm_timer_timestamp();
-		else if (new_state == USB_STATE_SUSPENDED &&
-				udev->state != USB_STATE_SUSPENDED)
-			udev->active_duration += vmm_timer_timestamp();
-		udev->state = new_state;
-	} else {
-		recursively_mark_NOTATTACHED(udev);
-	}
-	vmm_spin_unlock_irqrestore(&device_state_lock, flags);
-}
-VMM_EXPORT_SYMBOL(usb_set_device_state);
-
-static void usb_release_device(struct vmm_device *ddev)
-{
-	irq_flags_t flags;
-	struct usb_device *dev = to_usb_device(ddev);
-	struct usb_device *parent = (ddev->parent) ?
-				to_usb_device(ddev->parent) : NULL;
-
-	/* Update HCD device number bitmap */
-	vmm_spin_lock_irqsave(&dev->hcd->devicemap_lock, flags);
-	__clear_bit(dev->devnum - 1, dev->hcd->devicemap);
-	vmm_spin_unlock_irqrestore(&dev->hcd->devicemap_lock, flags);
-
-	/* Update parent device */
-	if (parent) {
-		vmm_spin_lock_irqsave(&parent->children_lock, flags);
-		parent->children[dev->portnum] = NULL;
-		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
-	}
-
-	/* Flush all HUB work related to this USB device */
-	usb_hub_flush_dev_work(dev);
-
-	/* Root hubs aren't true devices, so free HCD resources */
-	if (dev->hcd->driver->free_dev && parent) {
-		dev->hcd->driver->free_dev(dev->hcd, dev);
-	}
-
-	/* Destroy HCD this will reduce HCD referenece count */
-	usb_dref_hcd(dev->hcd);
-
-	/* Release memory of the usb device */
-	vmm_free(dev);
+	/* Configure the hub */
+	return usb_hub_configure(dev, intf);
 }
 
-static void usb_release_interface(struct vmm_device *ddev)
+static void usb_hub_driver_disconnect(struct usb_interface *intf)
 {
-	/* Nothing to do here because usb interface device will
-	 * be released automatically when parent usb device is
-	 * released.
-	 */
+	struct usb_hub_device *hub =
+			usb_hub_find(interface_to_usbdev(intf), intf);
+
+	if (!hub) {
+		return;
+	}
+
+	/* Remove the hub from global list */
+	usb_hub_remove(hub);
+
+	/* Free the hub */
+	usb_hub_free(hub);
 }
 
-struct vmm_device_type usb_device_type = {
-	.name = "usb_device",
-	.release = usb_release_device,
+static const struct usb_device_id usb_hub_driver_id_table[] = {
+    { .match_flags = USB_DEVICE_ID_MATCH_DEV_CLASS,
+      .bDeviceClass = USB_CLASS_HUB},
+    { .match_flags = USB_DEVICE_ID_MATCH_INT_CLASS,
+      .bInterfaceClass = USB_CLASS_HUB},
+    { }						/* Terminating entry */
 };
-VMM_EXPORT_SYMBOL(usb_device_type);
 
-struct vmm_device_type usb_interface_type = {
-	.name = "usb_interface",
-	.release = usb_release_interface,
+static struct usb_driver usb_hub_driver = {
+	.name		= "usb_hub",
+	.id_table	= usb_hub_driver_id_table,
+	.probe		= usb_hub_driver_probe,
+	.disconnect	= usb_hub_driver_disconnect,
 };
-VMM_EXPORT_SYMBOL(usb_interface_type);
 
-struct usb_device *usb_alloc_device(struct usb_device *parent,
-				    struct usb_hcd *hcd, unsigned port)
-{
-	int i;
-	irq_flags_t flags;
-	struct usb_device *dev;
-
-	/* Sanity checks */
-	if (parent) {
-		if (USB_MAXCHILDREN <= port) {
-			return NULL;
-		}
-		vmm_spin_lock_irqsave(&parent->children_lock, flags);
-		if (parent->children[port]) {
-			vmm_spin_unlock_irqrestore(&parent->children_lock,
-						   flags);
-			return NULL;
-		}
-		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
-	}
-
-	/* Alloc new device */
-	dev = vmm_zalloc(sizeof(*dev));
-	if (!dev) {
-		return NULL;
-	}
-
-	/* Initialize devdrv context */
-	vmm_devdrv_initialize_device(&dev->dev);
-	dev->dev.autoprobe_disabled = TRUE;
-	dev->dev.parent = (parent) ? &parent->dev : NULL;
-	dev->dev.bus = &usb_bus_type;
-	dev->dev.type = &usb_device_type;
-
-	/* Increment reference count of HCD */
-	usb_ref_hcd(hcd);
-
-	/* Root hubs aren't true devices, so don't allocate HCD resources */
-	if (hcd->driver->alloc_dev && parent &&
-		!hcd->driver->alloc_dev(hcd, dev)) {
-		usb_dref_hcd(hcd);
-		vmm_free(dev);
-		return NULL;
-	}
-
-	/* Update device state */
-	dev->state = USB_STATE_NOTATTACHED;
-
-	/* Update device name, devpath, route, and level */
-	if (unlikely(!parent)) {
-		dev->devpath[0] = '0';
-		dev->route = 0;
-		dev->level = 0;
-		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
-			     "usb%d", hcd->bus_num);
-	} else {
-		if (parent->level == 0) {
-			/* Root hub port is not counted in route string
-			 * because it is always zero.
-			 */
-			vmm_snprintf(dev->devpath, sizeof(dev->devpath),
-				     "%d", port);
-		} else {
-			vmm_snprintf(dev->devpath, sizeof(dev->devpath),
-				     "%s.%d", parent->devpath, port);
-		}
-		/* Route string assumes hubs have less than 16 ports */
-		if (port < 15) {
-			dev->route = parent->route +
-				(port << (parent->level * 4));
-		} else {
-			dev->route = parent->route +
-				(15 << (parent->level * 4));
-		}
-		dev->level = parent->level + 1;
-		vmm_snprintf(dev->dev.name, sizeof(dev->dev.name),
-			     "usb%d-%s", hcd->bus_num, dev->devpath);
-		/* FIXME: hub driver sets up TT records */
-		/* Update parent device */
-		vmm_spin_lock_irqsave(&parent->children_lock, flags);
-		parent->children[port] = dev;
-		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
-	}
-
-	/* Update rest of the device fields */
-	dev->portnum = port;
-	dev->hcd = hcd;
-	dev->maxchild = 0;
-	INIT_SPIN_LOCK(&dev->children_lock);
-	for (i = 0; i < USB_MAXCHILDREN; i++) {
-		dev->children[i] = NULL;
-	}
-
-	/* Assign device number based on HCD device bitmap
-	 * Note: Device number starts from 1.
-	 * Note: Device number 0 is default device.
-	 */
-	vmm_spin_lock_irqsave(&hcd->devicemap_lock, flags);
-	dev->devnum = 0;
-	for (i = 0; i < USB_MAXCHILDREN; i++) {
-		if (!test_bit(i, hcd->devicemap)) {
-			__set_bit(i, hcd->devicemap);
-			dev->devnum = i + 1;
-			break;
-		}
-	}
-	i = dev->devnum;
-	vmm_spin_unlock_irqrestore(&hcd->devicemap_lock, flags);
-	if (i == 0) {
-		usb_dref_hcd(hcd);
-		vmm_free(dev);
-		return NULL;
-	}
-
-	return dev;
-}
-VMM_EXPORT_SYMBOL(usb_alloc_device);
-
-void usb_ref_device(struct usb_device *dev)
-{
-	if (dev) {
-		vmm_devdrv_ref_device(&dev->dev);
-	}
-}
-VMM_EXPORT_SYMBOL(usb_ref_device);
-
-void usb_dref_device(struct usb_device *dev)
-{
-	if (dev) {
-		vmm_devdrv_dref_device(&dev->dev);
-	}
-}
-VMM_EXPORT_SYMBOL(usb_dref_device);
+/*
+ * ==================== USB Hub Notification Handling ====================
+ */
 
 static int usb_new_device_work(struct usb_hub_work *work)
 {
@@ -1709,91 +1479,129 @@ static int usb_new_device_work(struct usb_hub_work *work)
 	return usb_hub_detect_new_device(parent, dev);
 }
 
-int usb_new_device(struct usb_device *dev)
+static void usb_new_device(struct usb_device *dev)
 {
 	struct usb_hub_work *w;
-
-	if (!dev) {
-		return VMM_EINVALID;
-	}
 
 	w = usb_hub_alloc_work(usb_new_device_work, dev);
 	if (w) {
 		usb_hub_queue_work(w);
 	}
-
-	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(usb_new_device);
 
 static int usb_disconnect_work(struct usb_hub_work *work)
 {
-	return usb_hub_disconnect_device(work->dev);
-}
+	struct usb_device *dev = work->dev;
 
-int usb_disconnect(struct usb_device *dev)
-{
-	struct usb_hub_work *w;
-
-	if (!dev) {
+	/* Sanity check on device state */
+	if (usb_get_device_state(dev) != USB_STATE_NOTATTACHED) {
 		return VMM_EINVALID;
 	}
+
+	/* recursively disconnect this device and all child devices */
+	usb_recursively_disconnect(dev);
+
+	return VMM_OK;
+}
+
+static void usb_disconnect(struct usb_device *dev)
+{
+	struct usb_hub_work *w;
 
 	w = usb_hub_alloc_work(usb_disconnect_work, dev);
 	if (w) {
 		usb_hub_queue_work(w);
 	}
-
-	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(usb_disconnect);
 
-struct usb_device *usb_hub_find_child(struct usb_device *hdev, int port1)
+static int usb_hub_notifier_call(struct vmm_notifier_block *nb,
+				 unsigned long event, void *data)
 {
-	irq_flags_t flags;
-	struct usb_device *ret;
+	int ret = NOTIFY_DONE;
+	struct usb_device *dev;
 
-	if (port1 < 1 || port1 > hdev->maxchild)
-		return NULL;
-
-	vmm_spin_lock_irqsave(&hdev->children_lock, flags);
-	ret = hdev->children[port1 - 1];
-	vmm_spin_unlock_irqrestore(&hdev->children_lock, flags);
+	/* We only care about root hub devices */
+	switch (event) {
+	case USB_DEVICE_ADD:
+		dev = data;
+		if (!dev->dev.parent) {
+			usb_new_device(dev);
+			ret = NOTIFY_OK;
+		}
+		break;
+	case USB_DEVICE_REMOVE:
+		dev = data;
+		if (!dev->dev.parent) {
+			usb_disconnect(dev);
+			ret = NOTIFY_OK;
+		}
+		break;
+	default:
+		break;
+	};
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(usb_hub_find_child);
+
+static struct vmm_notifier_block usb_hub_nb = {
+	.notifier_call = usb_hub_notifier_call,
+};
+
+/*
+ * ==================== USB Hub Init/Exit ====================
+ */
 
 int __init usb_hub_init(void)
 {
+	int rc;
+
+	/* Register hub driver */
+	rc = usb_register(&usb_hub_driver);
+	if (rc) {
+		return rc;
+	}
+
+	/* Create hub worker thread */
 	usb_hub_worker_thread = vmm_threads_create("hubd",
-						   usb_hub_worker_thread_main,
-						   NULL,
+						   usb_hub_worker_main, NULL,
 						   VMM_THREAD_DEF_PRIORITY,
 						   VMM_THREAD_DEF_TIME_SLICE);
 	if (!usb_hub_worker_thread) {
 		return VMM_EFAIL;
 	}
-
 	vmm_threads_start(usb_hub_worker_thread);
 
-	usb_hub_init_work(&usb_hub_mon_work, usb_hub_mon_work_func,
+	/* Initialize hub monitor work */
+	usb_hub_init_work(&usb_hub_mon_work,
+			  usb_hub_mon_work_func,
 			  FALSE, NULL);
-
 	INIT_TIMER_EVENT(&usb_hub_mon_event, usb_hub_mon_event_func, NULL);
 	vmm_timer_event_start(&usb_hub_mon_event, USB_HUB_MON_EVENT_NSECS);
+
+	/* Register event notifier */
+	usb_register_notify(&usb_hub_nb);
 
 	return VMM_OK;
 }
 
 void __exit usb_hub_exit(void)
 {
+	/* Unregister event notifier */
+	usb_unregister_notify(&usb_hub_nb);
+
+	/* Stop hub monitor work */
+	vmm_timer_event_stop(&usb_hub_mon_event);
+
+	/* Destroy hub worker thread */
 	if (usb_hub_worker_thread) {
 		vmm_threads_stop(usb_hub_worker_thread);
-
 		vmm_threads_destroy(usb_hub_worker_thread);
 	}
-	
+
+	/* Flush all pending work */
 	usb_hub_flush_all_work();
+
+	/* Unregister hub driver */
+	usb_deregister(&usb_hub_driver);
 }
 

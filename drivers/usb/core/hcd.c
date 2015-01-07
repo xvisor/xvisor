@@ -30,7 +30,6 @@
 #include <libs/stringlib.h>
 #include <drv/usb.h>
 #include <drv/usb/hcd.h>
-#include <drv/usb/hub.h>
 
 /*
  * Protected list of usb host controllers.
@@ -196,28 +195,24 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 static int register_root_hub(struct usb_hcd *hcd)
 {
 	struct usb_device *rhdev = hcd->root_hub;
-	int retval;
 
 	usb_set_device_state(rhdev, USB_STATE_ADDRESS);
 
 	vmm_mutex_lock(&usb_hcd_list_lock);
 
-	retval = usb_new_device(rhdev);
-	if (retval) {
-		vmm_printf("%s: can't register root hub for %s, %d\n",
-			   __func__, hcd->dev->name, retval);
-	} else {
-		vmm_spin_lock_irq (&hcd_root_hub_lock);
-		hcd->rh_registered = 1;
-		vmm_spin_unlock_irq (&hcd_root_hub_lock);
+	usb_notify_add_device(rhdev);
 
-		/* Did the HC die before the root hub was registered? */
-		if (HCD_DEAD(hcd))
-			usb_hcd_died(hcd);	/* This time clean up */
-	}
+	vmm_spin_lock_irq (&hcd_root_hub_lock);
+	hcd->rh_registered = 1;
+	vmm_spin_unlock_irq (&hcd_root_hub_lock);
+
+	/* Did the HC die before the root hub was registered? */
+	if (HCD_DEAD(hcd))
+		usb_hcd_died(hcd);	/* This time clean up */
+
 	vmm_mutex_unlock(&usb_hcd_list_lock);
 
-	return retval;
+	return VMM_OK;
 }
 
 int usb_add_hcd(struct usb_hcd *hcd,
@@ -343,7 +338,7 @@ void usb_hcd_died(struct usb_hcd *hcd)
 		/* make hubd clean up old urbs and devices */
 		usb_set_device_state(hcd->root_hub,
 				USB_STATE_NOTATTACHED);
-		usb_disconnect(hcd->root_hub);
+		usb_notify_remove_device(hcd->root_hub);
 		hcd->root_hub = NULL;
 		hcd->rh_registered = 0;
 	}
@@ -368,7 +363,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	vmm_spin_unlock_irq (&hcd_root_hub_lock);
 
 	vmm_mutex_lock(&usb_hcd_list_lock);
-	usb_disconnect(rhdev);
+	usb_notify_remove_device(rhdev);
 	hcd->root_hub = NULL;
 	vmm_mutex_unlock(&usb_hcd_list_lock);
 

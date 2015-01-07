@@ -25,9 +25,11 @@ drivers-objs-$(CONFIG_USB) += usb/core/usb_core.o
 
 usb_core-y += core.o
 usb_core-y += urb.o
-usb_core-y += message.o
+usb_core-y += device.o
 usb_core-y += driver.o
 usb_core-y += hcd.o
+usb_core-y += notify.o
+usb_core-y += message.o
 usb_core-y += hub.o
 
 %/usb_core.o: $(foreach obj,$(usb_core-y),%/$(obj))

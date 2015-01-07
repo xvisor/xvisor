@@ -28,6 +28,7 @@
 #include <vmm_types.h>
 #include <vmm_macros.h>
 #include <vmm_spinlocks.h>
+#include <vmm_notifier.h>
 #include <vmm_devdrv.h>
 #include <libs/list.h>
 #include <drv/usb/ch9.h>
@@ -114,6 +115,10 @@ enum {
 	PACKET_SIZE_64  = 3,
 };
 
+/*-------------------------------------------------------------------*
+ *                    USB device support                             *
+ *-------------------------------------------------------------------*/
+
 struct usb_device {
 	struct vmm_device dev;
 
@@ -169,6 +174,90 @@ struct usb_device {
 
 #define	to_usb_device(_d)	container_of((_d), struct usb_device, dev)
 #define interface_to_usbdev(_i)	to_usb_device((_i)->dev.parent)
+
+/**
+ * usb_get_device_state - get device's current state (usbcore, hcds)
+ * @udev: pointer to device whose state is needed
+ *
+ * Note: This can be called from any context.
+ */
+enum usb_device_state usb_get_device_state(struct usb_device *udev);
+
+/**
+ * usb_set_device_state - change a device's current state (usbcore, hcds)
+ * @udev: pointer to device whose state should be changed
+ * @new_state: new state value to be stored
+ *
+ * udev->state is _not_ fully protected by the device lock.  Although
+ * most transitions are made only while holding the lock, the state can
+ * can change to USB_STATE_NOTATTACHED at almost any time.  This
+ * is so that devices can be marked as disconnected as soon as possible,
+ * without having to wait for any semaphores to be released.  As a result,
+ * all changes to any device's state must be protected by the
+ * device_state_lock spinlock.
+ *
+ * Once a device has been added to the device tree, all changes to its state
+ * should be made using this routine.  The state should _not_ be set directly.
+ *
+ * If udev->state is already USB_STATE_NOTATTACHED then no change is made.
+ * Otherwise udev->state is set to new_state, and if new_state is
+ * USB_STATE_NOTATTACHED then all of udev's descendants' states are also set
+ * to USB_STATE_NOTATTACHED.
+ *
+ * Note: This can be called from any context.
+ */
+void usb_set_device_state(struct usb_device *udev,
+		enum usb_device_state new_state);
+
+/**
+ * usb_alloc_device - usb device constructor (usbcore-internal)
+ * @parent: hub to which device is connected; null to allocate a root hub
+ * @hcd: pointer to the HCD representing the controller
+ * @port: one-based index of port; ignored for root hubs
+ *
+ * Only hub drivers (including virtual root hub drivers for host
+ * controllers) should ever call this.
+ *
+ * Note: This should be called from Thread (or Orphan) context.
+ */
+struct usb_device *usb_alloc_device(struct usb_device *parent,
+				    struct usb_hcd *hcd, unsigned port);
+
+/**
+ * usb_ref_device - increment reference count of usb device
+ * @dev: the usb_device structure of existing device
+ *
+ * Note: This can be called from any context.
+ */
+void usb_ref_device(struct usb_device *dev);
+
+/**
+ * usb_dref_device - de-refernce the usb device
+ * @dev: the usb_device structure of existing device
+ *
+ * Note: This should be called from Thread (or Orphan) context.
+ */
+void usb_dref_device(struct usb_device *dev);
+
+/**
+ * usb_find_child - find child device of a usb device (usbcore, hcds)
+ * @hdev: USB device whose child is needed
+ * @port1: port number to look for
+ *
+ * Note: This can be called from any context.
+ */
+struct usb_device *usb_find_child(struct usb_device *hdev, int port1);
+
+/**
+ * usb_hub_for_each_child - iterate over all child devices
+ * @hdev:  parent USB device
+ * @port1: portnum associated with child device
+ * @child: child device pointer
+ */
+#define usb_for_each_child(hdev, port1, child) \
+	for (port1 = 1,	child =	usb_find_child(hdev, port1); \
+		port1 <= hdev->maxchild; \
+		child = usb_find_child(hdev, ++port1))
 
 /*-------------------------------------------------------------------*
  *                    USB device driver support                      *
@@ -839,14 +928,77 @@ int usb_clear_halt(struct usb_device *dev, u32 pipe);
  *                       NOTIFIER CLIENT SUPPORT                     *
  *-------------------------------------------------------------------*/
 
-#if 0 /* FIXME: */
 /* Events from the usb core */
 #define USB_DEVICE_ADD		0x0001
 #define USB_DEVICE_REMOVE	0x0002
-#define USB_BUS_ADD		0x0003
-#define USB_BUS_REMOVE		0x0004
-extern void usb_register_notify(struct notifier_block *nb);
-extern void usb_unregister_notify(struct notifier_block *nb);
-#endif
+#define USB_HCD_ADD		0x0003
+#define USB_HCD_REMOVE		0x0004
+
+/**
+ * usb_register_notify - register a notifier callback whenever a usb change happens
+ * @nb: pointer to the notifier block for the callback events.
+ *
+ * These changes are either USB devices or busses being added or removed.
+ */
+void usb_register_notify(struct vmm_notifier_block *nb);
+
+/**
+ * usb_unregister_notify - unregister a notifier callback
+ * @nb: pointer to the notifier block for the callback events.
+ *
+ * usb_register_notify() must have been previously called for this function
+ * to work properly.
+ */
+void usb_unregister_notify(struct vmm_notifier_block *nb);
+
+/**
+ * usb_notify_add_device - Inform notify listeners about new device
+ * @udev: pointer to the usb device.
+ *
+ * Only hub drivers (including virtual root hub drivers for host
+ * controllers) should ever call this.
+ *
+ * When calling this function the usb device should be in one of
+ * the following states:
+ *
+ * USB_STATE_ATTACHED
+ * USB_STATE_POWERED
+ * USB_STATE_RECONNECTING
+ * USB_STATE_UNAUTHENTICATED
+ * USB_STATE_DEFAULT
+ * USB_STATE_ADDRESS
+ *
+ * If required use usb_set_device_state() before calling this function.
+ *
+ * Note: This should be called from Thread (or Orphan) context.
+ */
+void usb_notify_add_device(struct usb_device *udev);
+
+/**
+ * usb_notify_remove_device - Inform notify listeners about removed device
+ * @udev: pointer to the usb device.
+ *
+ * Only hub drivers (including virtual root hub drivers for host
+ * controllers) should ever call this.
+ *
+ * The usb device should be in USB_STATE_NOTATTACHED when this
+ * function is called hence use usb_set_device_state() before
+ * calling this function
+ *
+ * Note: This should be called from Thread (or Orphan) context.
+ */
+void usb_notify_remove_device(struct usb_device *udev);
+
+/**
+ * usb_notify_add_hcd - Inform notify listeners about new hcd
+ * @udev: pointer to the usb hcd.
+ */
+void usb_notify_add_hcd(struct usb_hcd *hcd);
+
+/**
+ * usb_notify_remove_hcd - Inform notify listeners about removed hcd
+ * @udev: pointer to the usb hcd.
+ */
+void usb_notify_remove_hcd(struct usb_hcd *hcd);
 
 #endif /* __USB_CORE_H_ */

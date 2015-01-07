@@ -25,7 +25,6 @@
 #include <vmm_modules.h>
 #include <drv/usb.h>
 #include <drv/usb/hcd.h>
-#include <drv/usb/hub.h>
 
 #define MODULE_DESC			"USB Core Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -33,6 +32,9 @@
 #define MODULE_IPRIORITY		USB_CORE_IPRIORITY
 #define	MODULE_INIT			usb_core_init
 #define	MODULE_EXIT			usb_core_exit
+
+extern int usb_hub_init(void);
+extern void usb_hub_exit(void);
 
 static int __init usb_core_init(void)
 {
