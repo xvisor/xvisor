@@ -984,6 +984,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 
 	/* Ensure that transfer buffer is cache aligned */
 	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
+		WARN_ON(1);
 		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
 			   __func__, u->dev->dev.name);
 		rc = VMM_EIO;
@@ -1096,9 +1097,8 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 				}
 			}
 
-			if (!(hcint & DWC2_HCINT_COMP_HLT)) {
-				vmm_printf("%s: Error (HCINT=%08x)\n",
-				       __func__, hcint);
+			if (hcint & DWC2_HCINT_STALL) {
+				vmm_printf("%s: Channel stalled\n", __func__);
 				rc = VMM_EIO;
 				goto out;
 			}
@@ -1174,6 +1174,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 
 	/* Ensure that transfer buffer is cache aligned */
 	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
+		WARN_ON(1);
 		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
 			   __func__, u->dev->dev.name);
 		rc = VMM_EIO;
@@ -1266,7 +1267,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 			}
 
 			if (hcint & DWC2_HCINT_STALL) {
-				vmm_printf("%s: Channel halted\n", __func__);
+				vmm_printf("%s: Channel stalled\n", __func__);
 				dwc2->bulk_data_toggle[devnum][ep] =
 							DWC2_HC_PID_DATA0;
 
