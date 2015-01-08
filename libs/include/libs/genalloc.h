@@ -41,7 +41,8 @@
 struct vmm_device;
 struct vmm_devtree_node;
 
-#include <linux/types.h>
+#include <vmm_types.h>
+#include <arch_atomic.h>
 #include <libs/list.h>
 
 /**

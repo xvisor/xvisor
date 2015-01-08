@@ -225,7 +225,7 @@ struct gen_pool *gen_pool_create(int min_alloc_order)
  * Returns 0 on success or a -ve errno on failure.
  */
 int gen_pool_add_virt(struct gen_pool *pool, unsigned long virt,
-		      phys_addr_t phys, size_t size)
+		      physical_addr_t phys, size_t size)
 {
 	struct gen_pool_chunk *chunk;
 	int nbits = size >> pool->min_alloc_order;
@@ -255,10 +255,10 @@ int gen_pool_add_virt(struct gen_pool *pool, unsigned long virt,
  *
  * Returns the physical address on success, or -1 on error.
  */
-phys_addr_t gen_pool_virt_to_phys(struct gen_pool *pool, unsigned long addr)
+physical_addr_t gen_pool_virt_to_phys(struct gen_pool *pool, unsigned long addr)
 {
 	struct gen_pool_chunk *chunk;
-	phys_addr_t paddr = -1;
+	physical_addr_t paddr = -1;
 
 	list_for_each_entry(chunk, &pool->chunks, next_chunk) {
 		if (addr >= chunk->start_addr && addr < chunk->end_addr) {
