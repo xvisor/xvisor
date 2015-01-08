@@ -270,6 +270,9 @@ static int usb_storage_BBB_transport(struct scsi_request *srb,
 		return rc;
 	}
 
+	/* Wait here for data to be ready */
+	vmm_msleep(10);
+
 	/* DATA phase + error handling */
 	data_actlen = 0;
 	/* no data, go immediately to the STATUS phase */
