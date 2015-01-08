@@ -35,6 +35,7 @@
 #include <linux/printk.h>
 #include <linux/fb.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/mod_devicetable.h>
 #include <video/ipu_pixfmt.h>
 

@@ -26,9 +26,9 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <libs/list.h>
-#include <linux/of.h>
 
 struct vmm_chardev;
 struct vmm_host_extirq_group;
@@ -49,10 +49,10 @@ struct vmm_host_extirq_group;
  * to setup the irq_desc when returning from map().
  */
 struct vmm_host_extirq_group_ops {
-	int (*match)(struct vmm_host_extirq_group *d, struct device_node *node);
+	int (*match)(struct vmm_host_extirq_group *d, struct vmm_devtree_node *node);
 	int (*map)(struct vmm_host_extirq_group *d, unsigned int virq, unsigned int hw);
 	void (*unmap)(struct vmm_host_extirq_group *d, unsigned int virq);
-	int (*xlate)(struct vmm_host_extirq_group *d, struct device_node *node,
+	int (*xlate)(struct vmm_host_extirq_group *d, struct vmm_devtree_node *node,
 		     const u32 *intspec, unsigned int intsize,
 		     unsigned long *out_hwirq, unsigned int *out_type);
 };
