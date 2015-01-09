@@ -22,4 +22,12 @@
 # */
 
 drivers-objs-$(CONFIG_IDE) += ide/core/ide_core.o
-drivers-objs-$(CONFIG_IDE) += ide/core/ata_core.o
+
+ide_core-y+= ide_main.o
+ide_core-y+= ide_libata.o
+
+%/ide_core.o: $(foreach obj,$(ide_core-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/ide_core.dep: $(foreach dep,$(ide_core-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)

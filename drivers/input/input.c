@@ -37,6 +37,7 @@
 #include <drv/input.h>
 #include <drv/input/mt.h>
 
+#define MODULE_NAME			input_core
 #define MODULE_DESC			"Input Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -1213,9 +1214,10 @@ static void input_exit(void)
 	vmm_devdrv_unregister_class(&input_class);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
-			MODULE_AUTHOR,
-			MODULE_LICENSE,
-			MODULE_IPRIORITY,
-			MODULE_INIT,
-			MODULE_EXIT);
+VMM_DECLARE_MODULE2(MODULE_NAME,
+		MODULE_DESC,
+		MODULE_AUTHOR,
+		MODULE_LICENSE,
+		MODULE_IPRIORITY,
+		MODULE_INIT,
+		MODULE_EXIT);

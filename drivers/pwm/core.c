@@ -817,9 +817,10 @@ bool pwm_can_sleep(struct pwm_device *pwm)
 }
 EXPORT_SYMBOL_GPL(pwm_can_sleep);
 
-VMM_DECLARE_MODULE("PWM device support",
-		   "Jimmy Durand Wesolowski",
-		   "GPL",
-		   PWM_IPRIORITY,
-		   NULL,
-		   NULL);
+VMM_DECLARE_MODULE2(pwm,
+		    "PWM device support",
+		    "Jimmy Durand Wesolowski",
+		    "GPL",
+		    PWM_IPRIORITY,
+		    NULL,
+		    NULL);

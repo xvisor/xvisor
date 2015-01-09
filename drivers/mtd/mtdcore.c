@@ -1227,7 +1227,8 @@ void __exit cleanup_mtd(void)
 #endif
 }
 
-VMM_DECLARE_MODULE("MTD Core",
+VMM_DECLARE_MODULE(mtd,
+		   "MTD Core",
 		   "Jimmy Durand Wesolowski",
 		   "GPL",
 		   MTD_IPRIORITY,

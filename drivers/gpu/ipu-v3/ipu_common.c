@@ -38,6 +38,7 @@
 #include "ipu_param_mem.h"
 #include "ipu_regs.h"
 
+#define MODULE_NAME		ipu_v3
 #define MODULE_AUTHOR		"Jimmy Durand Wesolowski"
 #define MODULE_LICENSE		"GPL"
 #define MODULE_DESC		"MXC IPU driver common API"
@@ -3178,7 +3179,8 @@ static void __exit ipu_gen_uninit(void)
 	vmm_devdrv_unregister_driver(&mxcipu_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+		   MODULE_DESC,
 		   MODULE_AUTHOR,
 		   MODULE_LICENSE,
 		   MODULE_IPRIORITY,

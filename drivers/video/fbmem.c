@@ -41,6 +41,7 @@
 #include <libs/bitops.h>
 #include <drv/fb.h>
 
+#define MODULE_NAME			fb
 #define MODULE_DESC			"Frame Buffer Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -746,7 +747,8 @@ static void __exit fb_exit(void)
 	vmm_devdrv_unregister_class(&fb_class);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+			MODULE_DESC,
 			MODULE_AUTHOR,
 			MODULE_LICENSE,
 			MODULE_IPRIORITY,

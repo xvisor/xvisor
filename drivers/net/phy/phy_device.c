@@ -38,6 +38,7 @@
 #include <asm/irq.h>
 #include <asm/uaccess.h>
 
+#define MODULE_DESC			libphy
 #define MODULE_DESC                     "Generic PHY Layer"
 #define MODULE_AUTHOR                   "Pranav Sawargaonkar"
 #define MODULE_LICENSE                  "GPL"

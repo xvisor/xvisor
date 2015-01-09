@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file ide_core.c
+ * @file ide_main.c
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief IDE core framework implementation.
+ * @brief IDE device driver main source.
  */
 
 #include <vmm_error.h>
@@ -33,6 +33,7 @@
 #include <libs/mathlib.h>
 #include <drv/ide/ide_core.h>
 
+#define MODULE_NAME			ide_core
 #define MODULE_DESC			"IDE Framework"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_LICENSE			"GPL"
@@ -358,7 +359,8 @@ static void __exit ide_core_exit(void)
 	/* Nothing to be done. */
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+		   MODULE_DESC,
 		   MODULE_AUTHOR,
 		   MODULE_LICENSE,
 		   MODULE_IPRIORITY,

@@ -37,6 +37,7 @@
 
 #define DRIVER_DESC	"PS/2 mouse driver"
 
+#define MODULE_NAME			psmouse
 #define MODULE_DESC			DRIVER_DESC
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -1837,9 +1838,10 @@ static void __exit psmouse_exit(void)
 	destroy_workqueue(kpsmoused_wq);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
-			MODULE_AUTHOR,
-			MODULE_LICENSE,
-			MODULE_IPRIORITY,
-			MODULE_INIT,
-			MODULE_EXIT);
+VMM_DECLARE_MODULE2(MODULE_NAME,
+		MODULE_DESC,
+		MODULE_AUTHOR,
+		MODULE_LICENSE,
+		MODULE_IPRIORITY,
+		MODULE_INIT,
+		MODULE_EXIT);

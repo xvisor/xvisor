@@ -306,9 +306,10 @@ int device_reset(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(device_reset);
 
-VMM_DECLARE_MODULE("Reset controller support",
-		   "Jimmy Durand Wesolowski",
-		   "GPL",
-		   RESET_CONTROLLER_IPRIORITY,
-		   NULL,
-		   NULL);
+VMM_DECLARE_MODULE2(reset,
+		    "Reset controller support",
+		    "Jimmy Durand Wesolowski",
+		    "GPL",
+		    RESET_CONTROLLER_IPRIORITY,
+		    NULL,
+		    NULL);

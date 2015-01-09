@@ -13,9 +13,9 @@
  * http://www.opensource.org/licenses/gpl-license.html
  * http://www.gnu.org/copyleft/gpl.html
  *
- * @file ipu_common.c
+ * @file reset-imx.c
  * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
- * @brief This file contains the IPU driver common API functions.
+ * @brief iMX reset driver source.
  */
 
 #include <linux/module.h>

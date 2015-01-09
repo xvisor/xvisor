@@ -31,6 +31,7 @@
 #include <libs/stringlib.h>
 #include <drv/rtc.h>
 
+#define MODULE_NAME			rtc_core
 #define MODULE_DESC			"RTC Device Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -203,7 +204,8 @@ static void __exit rtc_device_exit(void)
 	vmm_devdrv_unregister_class(&rtc_class);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+			MODULE_DESC,
 			MODULE_AUTHOR,
 			MODULE_LICENSE,
 			MODULE_IPRIORITY,

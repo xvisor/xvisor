@@ -26,6 +26,7 @@
 #include <drv/usb.h>
 #include <drv/usb/hcd.h>
 
+#define MODULE_NAME			usb_core
 #define MODULE_DESC			"USB Core Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -67,7 +68,8 @@ static void __exit usb_core_exit(void)
 	vmm_devdrv_unregister_bus(&usb_bus_type);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+			MODULE_DESC,
 			MODULE_AUTHOR,
 			MODULE_LICENSE,
 			MODULE_IPRIORITY,

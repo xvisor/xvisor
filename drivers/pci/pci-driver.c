@@ -47,6 +47,7 @@
 #include <linux/sched.h>
 #include "pci.h"
 
+#define MODULE_NAME			pci_core
 #define MODULE_DESC			"PCI Host Core Framework"
 #define MODULE_AUTHOR			"Himanshu Chauhan"
 #define MODULE_LICENSE			"GPL"
@@ -1354,7 +1355,8 @@ static void __exit pci_core_exit(void)
 	bus_unregister(&pci_bus_type);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+		   MODULE_DESC,
 		   MODULE_AUTHOR,
 		   MODULE_LICENSE,
 		   MODULE_IPRIORITY,

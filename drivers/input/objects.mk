@@ -21,13 +21,13 @@
 # @brief list of core objects to be build
 # */
 
-drivers-objs-$(CONFIG_INPUT)+= input/input-core.o
+drivers-objs-$(CONFIG_INPUT)+= input/input_core.o
 
-input-core-y += input.o
-input-core-y += input-mt.o
+input_core-y += input.o
+input_core-y += input-mt.o
 
-%/input-core.o: $(foreach obj,$(input-core-y),%/$(obj))
+%/input_core.o: $(foreach obj,$(input_core-y),%/$(obj))
 	$(call merge_objs,$@,$^)
 
-%/input-core.dep: $(foreach dep,$(input-core-y:.o=.dep),%/$(dep))
+%/input_core.dep: $(foreach dep,$(input_core-y:.o=.dep),%/$(dep))
 	$(call merge_deps,$@,$^)
