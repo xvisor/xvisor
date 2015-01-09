@@ -139,9 +139,15 @@ __modtbl struct vmm_module _var = {	\
 
 #define MODTBL_VAR(NAME)		\
 		MACRO_CONCAT2(MACRO_CONCAT(__modtbl__,NAME), __LINE__)
+
 #define VMM_DECLARE_MODULE(_desc,_author,_license,_ipriority,_init,_exit) \
 	__VMM_DECLARE_MODULE(MODTBL_VAR(VMM_MODNAME),\
 			     VMM_MODNAME,_desc,_author,\
+			     _license,_ipriority,_init,_exit)
+
+#define VMM_DECLARE_MODULE2(_name,_desc,_author,_license,_ipriority,_init,_exit) \
+	__VMM_DECLARE_MODULE(MODTBL_VAR(_name),\
+			     _name,_desc,_author,\
 			     _license,_ipriority,_init,_exit)
 
 #define VMM_EXPORT_SYMBOL(sym) \
