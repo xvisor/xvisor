@@ -22,4 +22,4 @@
 # */
 
 drivers-objs-$(CONFIG_RESET_CONTROLLER) += reset/core.o
-drivers-objs-$(CONFIG_IMX_RESET) += reset/imx_src.o
+drivers-objs-$(CONFIG_IMX_RESET) += reset/reset-imx.o
