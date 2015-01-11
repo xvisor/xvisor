@@ -58,6 +58,20 @@
  */
 #define VMM_PAGE_NTH(ptr, n)	((((virtual_addr_t)(ptr)) & ~VMM_PAGE_MASK) + \
 				((n) << VMM_PAGE_SHIFT))
+
+/** Align page frame address to page size */
+#define VMM_PFN_ALIGN(x)	\
+		(((unsigned long)(x) + (VMM_PAGE_SIZE - 1)) & VMM_PAGE_MASK)
+
+/** Round-up page frame number from page frame address */
+#define VMM_PFN_UP(x)		(((x) + VMM_PAGE_SIZE-1) >> VMM_PAGE_SHIFT)
+
+/** Round-down page frame number from page frame address */
+#define VMM_PFN_DOWN(x)		((x) >> VMM_PAGE_SHIFT)
+
+/** Page frame address from page frame number */
+#define VMM_PFN_PHYS(x)		((physical_addr_t)(x) << VMM_PAGE_SHIFT)
+
 enum vmm_host_memory_flags {
 	VMM_MEMORY_READABLE=0x00000001,
 	VMM_MEMORY_WRITEABLE=0x00000002,
