@@ -28,10 +28,10 @@
 #define __ASM_PCI_H
 
 #include <vmm_types.h>
+#include <arch_pci.h>
 
 /* Place holder */
-extern physical_addr_t pci_mem_start;
-#define PCIBIOS_MIN_IO		0x1000
+#define PCIBIOS_MIN_IO		(pci_io_start)
 #define PCIBIOS_MIN_MEM		(pci_mem_start)
 
 struct pci_sysdata {

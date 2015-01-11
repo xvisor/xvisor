@@ -32,8 +32,6 @@
 
 #include <linux/pci_ids.h>
 
-#include <arch_pci.h>
-
 #define PCI_CORE_IPRIORITY              (1)
 #define PCI_HOST_CONTROLLER_IPRIORITY	(PCI_CORE_IPRIORITY + 1)
 

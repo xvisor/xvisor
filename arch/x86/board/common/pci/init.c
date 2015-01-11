@@ -31,6 +31,7 @@
 #include <asm/pci_x86.h>
 #include <asm/x86_init.h>
 
+physical_addr_t pci_io_start = 0x1000ull;
 physical_addr_t pci_mem_start = 0xdeadbeeffadedeedull;
 
 /* arch_initcall has too random ordering, so call the initializers
