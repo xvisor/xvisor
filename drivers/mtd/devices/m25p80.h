@@ -98,25 +98,4 @@ static inline struct m25p *mtd_to_m25p(struct mtd_info *mtd)
 	return container_of(mtd, struct m25p, mtd);
 }
 
-int m25p_register_chardev(struct vmm_device *dev);
-int m25p_unregister_chardev(struct vmm_device *dev);
-
-# ifdef CONFIG_BLOCK
-
-int m25p_register_blockdev(struct vmm_device *dev);
-int m25p_unregister_blockdev(struct vmm_device *dev);
-
-# else /* !CONFIG_BLOCK */
-static inline int m25p_register_blockdev(struct vmm_device *dev)
-{
-	return VMM_OK;
-}
-
-static inline int m25p_unregister_blockdev(struct vmm_device *dev)
-{
-	return VMM_OK;
-}
-
-# endif /* ! CONFIG_BLOCK */
-
 #endif /* !__M25P80_H */

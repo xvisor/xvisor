@@ -1206,24 +1206,8 @@ static int m25p_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "Failed to register MTD device\n");
 		goto out_unset_drvdata;
 	}
-
-	err = m25p_register_chardev(&spi->dev);
-	if (0 != err) {
-		dev_err(&spi->dev, "Failed to register MTD character device\n");
-		goto out_unregister_mtd;
-	}
-
-	err = m25p_register_blockdev(&spi->dev);
-	if (0 != err) {
-		dev_err(&spi->dev, "Failed to register MTD block device\n");
-		goto out_unregister_chardev;
-	}
 	return err;
 
-out_unregister_chardev:
-	m25p_unregister_chardev(&spi->dev);
-out_unregister_mtd:
-	mtd_device_unregister(&flash->mtd);
 out_unset_drvdata:
 	spi_set_drvdata(spi, NULL);
 out_command_free:
@@ -1243,8 +1227,6 @@ static int m25p_remove(struct spi_device *spi)
 	flash = spi_get_drvdata(spi);
 
 	/* Clean up MTD stuff. */
-	m25p_unregister_blockdev(&spi->dev);
-	m25p_unregister_chardev(&spi->dev);
 	err = mtd_device_unregister(&flash->mtd);
 
 	devm_kfree(&spi->dev, flash->command);

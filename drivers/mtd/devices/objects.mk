@@ -21,14 +21,5 @@
 # @brief list of the MTD device objects
 # */
 
-drivers-objs-$(CONFIG_MTD_M25P80)+= mtd/devices/m25p80_mod.o
-
-m25p80_mod-y += m25p80.o m25p80_chardev.o
-m25p80_mod-$(CONFIG_MTD_M25P80_BLOCKDEV) += m25p80_blockdev.o
-
-%/m25p80_mod.o: $(foreach obj,$(m25p80_mod-y),%/$(obj))
-	$(call merge_objs,$@,$^)
-
-%/m25p80_mod.dep: $(foreach dep,$(m25p80_mod-y:.o=.dep),%/$(dep))
-	$(call merge_deps,$@,$^)
+drivers-objs-$(CONFIG_MTD_M25P80)+= mtd/devices/m25p80.o
 
