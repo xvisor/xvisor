@@ -163,7 +163,7 @@ __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 struct vmm_devtree_node {
 	struct dlist head;
 	atomic_t ref_count;
-	char *name;
+	char name[VMM_FIELD_NAME_SIZE];
 	void *system_data; /* System data pointer 
 			      (Arch. specific code can use this to 
 			       pass inforation to device driver) */

@@ -1531,14 +1531,12 @@ void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 		vmm_devtree_dref_node(parent);
 	}
 
-	vmm_free(node->name);
 	vmm_free(node);
 }
 
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name)
 {
-	u32 len;
 	struct vmm_devtree_node *node = NULL;
 
 	if (!name) {
@@ -1565,13 +1563,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	arch_atomic_write(&node->ref_count, 1);
 	INIT_LIST_HEAD(&node->attr_list);
 	INIT_LIST_HEAD(&node->child_list);
-	len = strlen(name) + 1;
-	node->name = vmm_malloc(len);
-	if (!node->name) {
-		vmm_free(node);
-		return NULL;
-	}
-	strcpy(node->name, name);
+	strncpy(node->name, name, sizeof(node->name));
 	node->system_data = NULL;
 	node->priv = NULL;
 
