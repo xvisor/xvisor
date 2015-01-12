@@ -1189,11 +1189,11 @@ int __init init_mtd(void)
 
 	proc_mtd = proc_create("mtd", 0, NULL, &mtd_proc_ops);
 
+#endif
 	ret = init_mtdchar();
 	if (ret)
 		/* goto out_procfs; */
 		goto err_bdi1;
-#endif
 
 	return 0;
 #if 0
@@ -1204,9 +1204,9 @@ err_bdi3:
 	bdi_destroy(&mtd_bdi_ro_mappable);
 err_bdi2:
 	bdi_destroy(&mtd_bdi_unmappable);
+#endif
 err_bdi1:
 	class_unregister(&mtd_class);
-#endif
 err_reg:
 	pr_err("Error registering mtd class or bdi: %d\n", ret);
 	return ret;
@@ -1214,8 +1214,8 @@ err_reg:
 
 void __exit cleanup_mtd(void)
 {
-#if 0
 	cleanup_mtdchar();
+#if 0
 	if (proc_mtd)
 		remove_proc_entry("mtd", NULL);
 #endif
