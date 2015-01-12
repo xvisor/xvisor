@@ -36,10 +36,11 @@
 
 /* Information about a "mounted" FAT filesystem. */
 struct fatfs_control {
-	struct vmm_blockdev *bdev;
-
 	/* FAT boot sector */
 	struct fat_bootsec bsec;
+
+	/* Underlying block device */
+	struct vmm_blockdev *bdev;
 
 	/* Frequently required boot sector info */
 	u16 bytes_per_sector;

@@ -712,16 +712,16 @@ int fatfs_control_init(struct fatfs_control *ctrl, struct vmm_blockdev *bdev)
 	u64 rlen;
 	struct fat_bootsec *bsec = &ctrl->bsec;
 
-	/* Save underlying block device pointer */
-	ctrl->bdev = bdev;
-
 	/* Read boot sector from block device */
-	rlen = vmm_blockdev_read(ctrl->bdev, (u8 *)bsec, 
+	rlen = vmm_blockdev_read(bdev, (u8 *)bsec,
 				FAT_BOOTSECTOR_OFFSET, 
 				sizeof(struct fat_bootsec));
 	if (rlen != sizeof(struct fat_bootsec)) {
 		return VMM_EIO;
 	}
+
+	/* Save underlying block device pointer */
+	ctrl->bdev = bdev;
 
 	/* Get bytes_per_sector and sector_per_cluster */
 	ctrl->bytes_per_sector = __le16(bsec->bytes_per_sector);
