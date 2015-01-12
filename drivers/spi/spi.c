@@ -114,6 +114,62 @@ struct bus_type spi_bus_type = {
 EXPORT_SYMBOL_GPL(spi_bus_type);
 
 
+static int spi_drv_probe(struct device *dev, const struct of_device_id *id)
+{
+	const struct spi_driver *sdrv = to_spi_driver(dev->driver);
+	struct spi_device *spi = to_spi_device(dev);
+	int ret;
+#ifdef CONFIG_ACPI
+	acpi_dev_pm_attach(&spi->dev, true);
+#endif /* CONFIG_ACPI */
+	ret = sdrv->probe(spi);
+#ifdef CONFIG_ACPI
+	if (ret)
+		acpi_dev_pm_detach(&spi->dev, true);
+#endif /* CONFIG_ACPI */
+	return ret;
+}
+
+static int spi_drv_remove(struct device *dev)
+{
+	const struct spi_driver *sdrv = to_spi_driver(dev->driver);
+	struct spi_device *spi = to_spi_device(dev);
+	int ret;
+	ret = sdrv->remove(spi);
+#ifdef CONFIG_ACPI
+	acpi_dev_pm_detach(&spi->dev, true);
+#endif /* CONFIG_ACPI */
+	return ret;
+}
+
+#if 0
+static void spi_drv_shutdown(struct device *dev)
+{
+	const struct spi_driver *sdrv = to_spi_driver(dev->driver);
+	sdrv->shutdown(to_spi_device(dev));
+}
+#endif /* 0 */
+
+/**
+ * spi_register_driver - register a SPI driver
+ * @sdrv: the driver to register
+ * Context: can sleep
+ */
+int spi_register_driver(struct spi_driver *sdrv)
+{
+	sdrv->driver.bus = &spi_bus_type;
+	if (sdrv->probe)
+		sdrv->driver.probe = spi_drv_probe;
+	if (sdrv->remove)
+		sdrv->driver.remove = spi_drv_remove;
+#if 0
+	if (sdrv->shutdown)
+		sdrv->driver.shutdown = spi_drv_shutdown;
+#endif /* 0 */
+	return driver_register(&sdrv->driver);
+}
+EXPORT_SYMBOL_GPL(spi_register_driver);
+
 /*-------------------------------------------------------------------------*/
 
 /* SPI devices should normally not be created by SPI device drivers; that
@@ -229,8 +285,8 @@ int spi_add_device(struct spi_device *spi)
 
 	d = bus_find_device_by_name(&spi_bus_type, NULL, dev_name(&spi->dev));
 	if (d != NULL) {
-		dev_err(dev, "chipselect %d already in use\n",
-				spi->chip_select);
+		dev_err(dev, "chipselect %d already in use (by %s)\n",
+			spi->chip_select, d->name);
 		put_device(d);
 		status = -EBUSY;
 		goto done;
@@ -821,6 +877,7 @@ static void of_register_spi_devices(struct spi_master *master)
 {
 	struct spi_device *spi;
 	struct device_node *nc;
+	const char *pos;
 	int rc;
 	u32 value;
 
@@ -846,7 +903,16 @@ static void of_register_spi_devices(struct spi_master *master)
 			spi_dev_put(spi);
 			continue;
 		}
-#endif
+#else
+		pos = strchr(nc->name, '@');
+		if (!pos)
+			strncpy(spi->modalias, nc->name, sizeof (spi->modalias));
+		else {
+			if (pos - nc->name > sizeof (spi->modalias))
+				pos = nc->name + sizeof (spi->modalias) - 1;
+			strncpy(spi->modalias, nc->name, pos - nc->name);
+		}
+#endif /* 1 */
 
 		/* Device address */
 		rc = of_property_read_u32(nc, "reg", &value);
@@ -1092,7 +1158,7 @@ struct spi_master *spi_alloc_master(struct device *dev, unsigned size)
 	master->num_chipselect = 1;
 	master->dev.class = &spi_master_class;
 	get_device(dev);
-	master->dev.parent = NULL;
+	master->dev.parent = dev;
 	spi_master_set_devdata(master, &master[1]);
 
 	return master;
@@ -1190,8 +1256,10 @@ int spi_register_master(struct spi_master *master)
 	 */
 	dev_set_name(&master->dev, "spi%u", master->bus_num);
 	status = device_add(&master->dev);
-	if (status < 0)
+	if (status < 0) {
+		vmm_printf("Failed to add device\n");
 		goto done;
+	}
 	dev_dbg(dev, "registered master %s\n", dev_name(&master->dev));
 
 	/* If we're using a queued driver, start the queue */
@@ -1200,6 +1268,7 @@ int spi_register_master(struct spi_master *master)
 	else {
 		status = spi_master_initialize_queue(master);
 		if (status) {
+			vmm_printf("Failed to initialize queue\n");
 			device_del(&master->dev);
 			goto done;
 		}

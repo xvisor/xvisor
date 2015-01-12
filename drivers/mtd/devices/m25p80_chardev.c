@@ -128,7 +128,7 @@ struct vmm_chardev m25p_chardev = {
 int m25p_register_chardev(struct vmm_device *dev)
 {
 	int			err = VMM_OK;
-	struct spi_device	*spi = vmm_devdrv_get_data(dev);
+	struct spi_device	*spi = to_spi_device(dev);
 	struct m25p		*flash = NULL;
 
 	if (!spi)

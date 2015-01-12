@@ -106,7 +106,7 @@ void m25p_flush(struct vmm_blockrq_nop *rqnop, void *priv)
 int m25p_register_blockdev(struct vmm_device *dev)
 {
 	int			err = 0;
-	struct spi_device	*spi = vmm_devdrv_get_data(dev);
+	struct spi_device	*spi = to_spi_device(dev);
 	struct vmm_blockdev	*bdev = NULL;
 	struct vmm_blockrq_nop	*rqnop = NULL;
 	struct m25p		*flash = NULL;

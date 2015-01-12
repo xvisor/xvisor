@@ -643,7 +643,7 @@ struct flash_info {
 };
 
 #define INFO(_jedec_id, _ext_id, _sector_size, _n_sectors, _flags)	\
-	(&(struct flash_info) {						\
+	((kernel_ulong_t)&(struct flash_info) {				\
 		.jedec_id = (_jedec_id),				\
 		.ext_id = (_ext_id),					\
 		.sector_size = (_sector_size),				\
@@ -653,7 +653,7 @@ struct flash_info {
 	})
 
 #define CAT25_INFO(_sector_size, _n_sectors, _page_size, _addr_width, _flags)	\
-	(&(struct flash_info) {						\
+	((kernel_ulong_t)&(struct flash_info) {				\
 		.sector_size = (_sector_size),				\
 		.n_sectors = (_n_sectors),				\
 		.page_size = (_page_size),				\
@@ -665,290 +665,303 @@ struct flash_info {
  * more flash chips.  This current list focusses on newer chips, which
  * have been converging on command sets which including JEDEC ID.
  */
-static const struct vmm_devtree_nodeid m25p_ids[] = {
+static const struct spi_device_id m25p_ids[] = {
 	/* Atmel -- some are (confusingly) marketed as "DataFlash" */
-	{ .compatible = "at25fs010",
-	  .data = INFO(0x1f6601, 0, 32 * 1024,   4, SECT_4K) },
-	{ .compatible = "at25fs040",
-	  .data =  INFO(0x1f6604, 0, 64 * 1024,   8, SECT_4K) },
+	{ .name = "at25fs010",
+	  .driver_data = INFO(0x1f6601, 0, 32 * 1024,   4, SECT_4K) },
+	{ .name = "at25fs040",
+	  .driver_data =  INFO(0x1f6604, 0, 64 * 1024,   8, SECT_4K) },
 
-	{ .compatible = "at25df041a",
-	  .data = INFO(0x1f4401, 0, 64 * 1024,   8, SECT_4K) },
-	{ .compatible = "at25df321a",
-	  .data = INFO(0x1f4701, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "at25df641",
-	  .data =  INFO(0x1f4800, 0, 64 * 1024, 128, SECT_4K) },
+	{ .name = "at25df041a",
+	  .driver_data = INFO(0x1f4401, 0, 64 * 1024,   8, SECT_4K) },
+	{ .name = "at25df321a",
+	  .driver_data = INFO(0x1f4701, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "at25df641",
+	  .driver_data =  INFO(0x1f4800, 0, 64 * 1024, 128, SECT_4K) },
 
-	{ .compatible = "at26f004",
-	  .data =   INFO(0x1f0400, 0, 64 * 1024,  8, SECT_4K) },
-	{ .compatible = "at26df081a",
-	  .data = INFO(0x1f4501, 0, 64 * 1024, 16, SECT_4K) },
-	{ .compatible = "at26df161a",
-	  .data = INFO(0x1f4601, 0, 64 * 1024, 32, SECT_4K) },
-	{ .compatible = "at26df321",
-	  .data =  INFO(0x1f4700, 0, 64 * 1024, 64, SECT_4K) },
+	{ .name = "at26f004",
+	  .driver_data =   INFO(0x1f0400, 0, 64 * 1024,  8, SECT_4K) },
+	{ .name = "at26df081a",
+	  .driver_data = INFO(0x1f4501, 0, 64 * 1024, 16, SECT_4K) },
+	{ .name = "at26df161a",
+	  .driver_data = INFO(0x1f4601, 0, 64 * 1024, 32, SECT_4K) },
+	{ .name = "at26df321",
+	  .driver_data =  INFO(0x1f4700, 0, 64 * 1024, 64, SECT_4K) },
 
-	{ .compatible = "at45db081d",
-	  .data = INFO(0x1f2500, 0, 64 * 1024, 16, SECT_4K) },
+	{ .name = "at45db081d",
+	  .driver_data = INFO(0x1f2500, 0, 64 * 1024, 16, SECT_4K) },
 
 	/* EON -- en25xxx */
-	{ .compatible = "en25f32",
-	  .data =    INFO(0x1c3116, 0, 64 * 1024,   64, SECT_4K) },
-	{ .compatible = "en25p32",
-	  .data =    INFO(0x1c2016, 0, 64 * 1024,   64, 0) },
-	{ .compatible = "en25q32b",
-	  .data =   INFO(0x1c3016, 0, 64 * 1024,   64, 0) },
-	{ .compatible = "en25p64",
-	  .data =    INFO(0x1c2017, 0, 64 * 1024,  128, 0) },
-	{ .compatible = "en25q64",
-	  .data =    INFO(0x1c3017, 0, 64 * 1024,  128, SECT_4K) },
-	{ .compatible = "en25qh256",
-	  .data =  INFO(0x1c7019, 0, 64 * 1024,  512, 0) },
+	{ .name = "en25f32",
+	  .driver_data =    INFO(0x1c3116, 0, 64 * 1024,   64, SECT_4K) },
+	{ .name = "en25p32",
+	  .driver_data =    INFO(0x1c2016, 0, 64 * 1024,   64, 0) },
+	{ .name = "en25q32b",
+	  .driver_data =   INFO(0x1c3016, 0, 64 * 1024,   64, 0) },
+	{ .name = "en25p64",
+	  .driver_data =    INFO(0x1c2017, 0, 64 * 1024,  128, 0) },
+	{ .name = "en25q64",
+	  .driver_data =    INFO(0x1c3017, 0, 64 * 1024,  128, SECT_4K) },
+	{ .name = "en25qh256",
+	  .driver_data =  INFO(0x1c7019, 0, 64 * 1024,  512, 0) },
 
 	/* ESMT */
-	{ .compatible = "f25l32pa",
-	  .data = INFO(0x8c2016, 0, 64 * 1024, 64, SECT_4K) },
+	{ .name = "f25l32pa",
+	  .driver_data = INFO(0x8c2016, 0, 64 * 1024, 64, SECT_4K) },
 
 	/* Everspin */
-	{ .compatible = "mr25h256",
-	  .data = CAT25_INFO( 32 * 1024, 1, 256, 2, M25P_NO_ERASE |
+	{ .name = "mr25h256",
+	  .driver_data = CAT25_INFO( 32 * 1024, 1, 256, 2, M25P_NO_ERASE |
 			      M25P_NO_FR) },
-	{ .compatible = "mr25h10",
-	  .data =  CAT25_INFO(128 * 1024, 1, 256, 3, M25P_NO_ERASE |
+	{ .name = "mr25h10",
+	  .driver_data =  CAT25_INFO(128 * 1024, 1, 256, 3, M25P_NO_ERASE |
 			      M25P_NO_FR) },
 
 	/* GigaDevice */
-	{ .compatible = "gd25q32",
-	  .data = INFO(0xc84016, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "gd25q64",
-	  .data = INFO(0xc84017, 0, 64 * 1024, 128, SECT_4K) },
+	{ .name = "gd25q32",
+	  .driver_data = INFO(0xc84016, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "gd25q64",
+	  .driver_data = INFO(0xc84017, 0, 64 * 1024, 128, SECT_4K) },
 
 	/* Intel/Numonyx -- xxxs33b */
-	{ .compatible = "160s33b",
-	  .data =  INFO(0x898911, 0, 64 * 1024,  32, 0) },
-	{ .compatible = "320s33b",
-	  .data =  INFO(0x898912, 0, 64 * 1024,  64, 0) },
-	{ .compatible = "640s33b",
-	  .data =  INFO(0x898913, 0, 64 * 1024, 128, 0) },
+	{ .name = "160s33b",
+	  .driver_data =  INFO(0x898911, 0, 64 * 1024,  32, 0) },
+	{ .name = "320s33b",
+	  .driver_data =  INFO(0x898912, 0, 64 * 1024,  64, 0) },
+	{ .name = "640s33b",
+	  .driver_data =  INFO(0x898913, 0, 64 * 1024, 128, 0) },
 
 	/* Macronix */
-	{ .compatible = "mx25l2005a",
-	  .data =  INFO(0xc22012, 0, 64 * 1024,   4, SECT_4K) },
-	{ .compatible = "mx25l4005a",
-	  .data =  INFO(0xc22013, 0, 64 * 1024,   8, SECT_4K) },
-	{ .compatible = "mx25l8005",
-	  .data =   INFO(0xc22014, 0, 64 * 1024,  16, 0) },
-	{ .compatible = "mx25l1606e",
-	  .data =  INFO(0xc22015, 0, 64 * 1024,  32, SECT_4K) },
-	{ .compatible = "mx25l3205d",
-	  .data =  INFO(0xc22016, 0, 64 * 1024,  64, 0) },
-	{ .compatible = "mx25l3255e",
-	  .data =  INFO(0xc29e16, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "mx25l6405d",
-	  .data =  INFO(0xc22017, 0, 64 * 1024, 128, 0) },
-	{ .compatible = "mx25l12805d",
-	  .data = INFO(0xc22018, 0, 64 * 1024, 256, 0) },
-	{ .compatible = "mx25l12855e",
-	  .data = INFO(0xc22618, 0, 64 * 1024, 256, 0) },
-	{ .compatible = "mx25l25635e",
-	  .data = INFO(0xc22019, 0, 64 * 1024, 512, 0) },
-	{ .compatible = "mx25l25655e",
-	  .data = INFO(0xc22619, 0, 64 * 1024, 512, 0) },
-	{ .compatible = "mx66l51235l",
-	  .data = INFO(0xc2201a, 0, 64 * 1024, 1024, 0) },
+	{ .name = "mx25l2005a",
+	  .driver_data =  INFO(0xc22012, 0, 64 * 1024,   4, SECT_4K) },
+	{ .name = "mx25l4005a",
+	  .driver_data =  INFO(0xc22013, 0, 64 * 1024,   8, SECT_4K) },
+	{ .name = "mx25l8005",
+	  .driver_data =   INFO(0xc22014, 0, 64 * 1024,  16, 0) },
+	{ .name = "mx25l1606e",
+	  .driver_data =  INFO(0xc22015, 0, 64 * 1024,  32, SECT_4K) },
+	{ .name = "mx25l3205d",
+	  .driver_data =  INFO(0xc22016, 0, 64 * 1024,  64, 0) },
+	{ .name = "mx25l3255e",
+	  .driver_data =  INFO(0xc29e16, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "mx25l6405d",
+	  .driver_data =  INFO(0xc22017, 0, 64 * 1024, 128, 0) },
+	{ .name = "mx25l12805d",
+	  .driver_data = INFO(0xc22018, 0, 64 * 1024, 256, 0) },
+	{ .name = "mx25l12855e",
+	  .driver_data = INFO(0xc22618, 0, 64 * 1024, 256, 0) },
+	{ .name = "mx25l25635e",
+	  .driver_data = INFO(0xc22019, 0, 64 * 1024, 512, 0) },
+	{ .name = "mx25l25655e",
+	  .driver_data = INFO(0xc22619, 0, 64 * 1024, 512, 0) },
+	{ .name = "mx66l51235l",
+	  .driver_data = INFO(0xc2201a, 0, 64 * 1024, 1024, 0) },
 
 	/* Micron */
-	{ .compatible = "n25q064",
-	  .data =     INFO(0x20ba17, 0, 64 * 1024,  128, 0) },
-	{ .compatible = "n25q128a11",
-	  .data =  INFO(0x20bb18, 0, 64 * 1024,  256, 0) },
-	{ .compatible = "n25q128a13",
-	  .data =  INFO(0x20ba18, 0, 64 * 1024,  256, 0) },
-	{ .compatible = "n25q256a",
-	  .data =    INFO(0x20ba19, 0, 64 * 1024,  512, SECT_4K) },
-	{ .compatible = "n25q512a",
-	  .data =    INFO(0x20bb20, 0, 64 * 1024, 1024, SECT_4K) },
+	{ .name = "n25q064",
+	  .driver_data =     INFO(0x20ba17, 0, 64 * 1024,  128, 0) },
+	{ .name = "n25q128a11",
+	  .driver_data =  INFO(0x20bb18, 0, 64 * 1024,  256, 0) },
+	{ .name = "n25q128a13",
+	  .driver_data =  INFO(0x20ba18, 0, 64 * 1024,  256, 0) },
+	{ .name = "n25q256a",
+	  .driver_data =    INFO(0x20ba19, 0, 64 * 1024,  512, SECT_4K) },
+	{ .name = "n25q512a",
+	  .driver_data =    INFO(0x20bb20, 0, 64 * 1024, 1024, SECT_4K) },
 
 	/* PMC */
-	{ .compatible = "pm25lv512",
-	  .data =   INFO(0,        0, 32 * 1024,    2, SECT_4K_PMC) },
-	{ .compatible = "pm25lv010",
-	  .data =   INFO(0,        0, 32 * 1024,    4, SECT_4K_PMC) },
-	{ .compatible = "pm25lq032",
-	  .data =   INFO(0x7f9d46, 0, 64 * 1024,   64, SECT_4K) },
+	{ .name = "pm25lv512",
+	  .driver_data =   INFO(0,        0, 32 * 1024,    2, SECT_4K_PMC) },
+	{ .name = "pm25lv010",
+	  .driver_data =   INFO(0,        0, 32 * 1024,    4, SECT_4K_PMC) },
+	{ .name = "pm25lq032",
+	  .driver_data =   INFO(0x7f9d46, 0, 64 * 1024,   64, SECT_4K) },
 
 	/* Spansion -- single (large) sector size only, at least
 	 * for the chips listed here (without boot sectors).
 	 */
-	{ .compatible = "s25sl032p",
-	  .data =  INFO(0x010215, 0x4d00,  64 * 1024,  64, 0) },
-	{ .compatible = "s25sl064p",
-	  .data =  INFO(0x010216, 0x4d00,  64 * 1024, 128, 0) },
-	{ .compatible = "s25fl256s0",
-	  .data = INFO(0x010219, 0x4d00, 256 * 1024, 128, 0) },
-	{ .compatible = "s25fl256s1",
-	  .data = INFO(0x010219, 0x4d01,  64 * 1024, 512, 0) },
-	{ .compatible = "s25fl512s",
-	  .data =  INFO(0x010220, 0x4d00, 256 * 1024, 256, 0) },
-	{ .compatible = "s70fl01gs",
-	  .data =  INFO(0x010221, 0x4d00, 256 * 1024, 256, 0) },
-	{ .compatible = "s25sl12800",
-	  .data = INFO(0x012018, 0x0300, 256 * 1024,  64, 0) },
-	{ .compatible = "s25sl12801",
-	  .data = INFO(0x012018, 0x0301,  64 * 1024, 256, 0) },
-	{ .compatible = "s25fl129p0",
-	  .data = INFO(0x012018, 0x4d00, 256 * 1024,  64, 0) },
-	{ .compatible = "s25fl129p1",
-	  .data = INFO(0x012018, 0x4d01,  64 * 1024, 256, 0) },
-	{ .compatible = "s25sl004a",
-	  .data =  INFO(0x010212,      0,  64 * 1024,   8, 0) },
-	{ .compatible = "s25sl008a",
-	  .data =  INFO(0x010213,      0,  64 * 1024,  16, 0) },
-	{ .compatible = "s25sl016a",
-	  .data =  INFO(0x010214,      0,  64 * 1024,  32, 0) },
-	{ .compatible = "s25sl032a",
-	  .data =  INFO(0x010215,      0,  64 * 1024,  64, 0) },
-	{ .compatible = "s25sl064a",
-	  .data =  INFO(0x010216,      0,  64 * 1024, 128, 0) },
-	{ .compatible = "s25fl016k",
-	  .data =  INFO(0xef4015,      0,  64 * 1024,  32, SECT_4K) },
-	{ .compatible = "s25fl064k",
-	  .data =  INFO(0xef4017,      0,  64 * 1024, 128, SECT_4K) },
+	{ .name = "s25sl032p",
+	  .driver_data =  INFO(0x010215, 0x4d00,  64 * 1024,  64, 0) },
+	{ .name = "s25sl064p",
+	  .driver_data =  INFO(0x010216, 0x4d00,  64 * 1024, 128, 0) },
+	{ .name = "s25fl256s0",
+	  .driver_data = INFO(0x010219, 0x4d00, 256 * 1024, 128, 0) },
+	{ .name = "s25fl256s1",
+	  .driver_data = INFO(0x010219, 0x4d01,  64 * 1024, 512, 0) },
+	{ .name = "s25fl512s",
+	  .driver_data =  INFO(0x010220, 0x4d00, 256 * 1024, 256, 0) },
+	{ .name = "s70fl01gs",
+	  .driver_data =  INFO(0x010221, 0x4d00, 256 * 1024, 256, 0) },
+	{ .name = "s25sl12800",
+	  .driver_data = INFO(0x012018, 0x0300, 256 * 1024,  64, 0) },
+	{ .name = "s25sl12801",
+	  .driver_data = INFO(0x012018, 0x0301,  64 * 1024, 256, 0) },
+	{ .name = "s25fl129p0",
+	  .driver_data = INFO(0x012018, 0x4d00, 256 * 1024,  64, 0) },
+	{ .name = "s25fl129p1",
+	  .driver_data = INFO(0x012018, 0x4d01,  64 * 1024, 256, 0) },
+	{ .name = "s25sl004a",
+	  .driver_data =  INFO(0x010212,      0,  64 * 1024,   8, 0) },
+	{ .name = "s25sl008a",
+	  .driver_data =  INFO(0x010213,      0,  64 * 1024,  16, 0) },
+	{ .name = "s25sl016a",
+	  .driver_data =  INFO(0x010214,      0,  64 * 1024,  32, 0) },
+	{ .name = "s25sl032a",
+	  .driver_data =  INFO(0x010215,      0,  64 * 1024,  64, 0) },
+	{ .name = "s25sl064a",
+	  .driver_data =  INFO(0x010216,      0,  64 * 1024, 128, 0) },
+	{ .name = "s25fl016k",
+	  .driver_data =  INFO(0xef4015,      0,  64 * 1024,  32, SECT_4K) },
+	{ .name = "s25fl064k",
+	  .driver_data =  INFO(0xef4017,      0,  64 * 1024, 128, SECT_4K) },
 
 	/* SST -- large erase sizes are "overlays", "sectors" are 4K */
-	{ .compatible = "sst25vf040b",
-	  .data = INFO(0xbf258d, 0, 64 * 1024,  8, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25vf080b",
-	  .data = INFO(0xbf258e, 0, 64 * 1024, 16, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25vf016b",
-	  .data = INFO(0xbf2541, 0, 64 * 1024, 32, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25vf032b",
-	  .data = INFO(0xbf254a, 0, 64 * 1024, 64, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25vf064c",
-	  .data = INFO(0xbf254b, 0, 64 * 1024, 128, SECT_4K) },
-	{ .compatible = "sst25wf512",
-	  .data =  INFO(0xbf2501, 0, 64 * 1024,  1, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25wf010",
-	  .data =  INFO(0xbf2502, 0, 64 * 1024,  2, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25wf020",
-	  .data =  INFO(0xbf2503, 0, 64 * 1024,  4, SECT_4K | SST_WRITE) },
-	{ .compatible = "sst25wf040",
-	  .data =  INFO(0xbf2504, 0, 64 * 1024,  8, SECT_4K | SST_WRITE) },
+	{ .name = "sst25vf040b",
+	  .driver_data = INFO(0xbf258d, 0, 64 * 1024,  8, SECT_4K |
+			      SST_WRITE) },
+	{ .name = "sst25vf080b",
+	  .driver_data = INFO(0xbf258e, 0, 64 * 1024, 16, SECT_4K |
+			      SST_WRITE) },
+	{ .name = "sst25vf016b",
+	  .driver_data = INFO(0xbf2541, 0, 64 * 1024, 32, SECT_4K |
+			      SST_WRITE) },
+	{ .name = "sst25vf032b",
+	  .driver_data = INFO(0xbf254a, 0, 64 * 1024, 64, SECT_4K |
+			      SST_WRITE) },
+	{ .name = "sst25vf064c",
+	  .driver_data = INFO(0xbf254b, 0, 64 * 1024, 128, SECT_4K) },
+	{ .name = "sst25wf512",
+	  .driver_data =  INFO(0xbf2501, 0, 64 * 1024,  1, SECT_4K |
+			       SST_WRITE) },
+	{ .name = "sst25wf010",
+	  .driver_data =  INFO(0xbf2502, 0, 64 * 1024,  2, SECT_4K |
+			       SST_WRITE) },
+	{ .name = "sst25wf020",
+	  .driver_data =  INFO(0xbf2503, 0, 64 * 1024,  4, SECT_4K |
+			       SST_WRITE) },
+	{ .name = "sst25wf040",
+	  .driver_data =  INFO(0xbf2504, 0, 64 * 1024,  8, SECT_4K |
+			       SST_WRITE) },
 
 	/* ST Microelectronics -- newer production may have feature updates */
-	{ .compatible = "m25p05",
-	  .data =  INFO(0x202010,  0,  32 * 1024,   2, 0) },
-	{ .compatible = "m25p10",
-	  .data =  INFO(0x202011,  0,  32 * 1024,   4, 0) },
-	{ .compatible = "m25p20",
-	  .data =  INFO(0x202012,  0,  64 * 1024,   4, 0) },
-	{ .compatible = "m25p40",
-	  .data =  INFO(0x202013,  0,  64 * 1024,   8, 0) },
-	{ .compatible = "m25p80",
-	  .data =  INFO(0x202014,  0,  64 * 1024,  16, 0) },
-	{ .compatible = "m25p16",
-	  .data =  INFO(0x202015,  0,  64 * 1024,  32, 0) },
-	{ .compatible = "m25p32",
-	  .data =  INFO(0x202016,  0,  64 * 1024,  64, 0) },
-	{ .compatible = "m25p64",
-	  .data =  INFO(0x202017,  0,  64 * 1024, 128, 0) },
-	{ .compatible = "m25p128",
-	  .data = INFO(0x202018,  0, 256 * 1024,  64, 0) },
-	{ .compatible = "n25q032",
-	  .data = INFO(0x20ba16,  0,  64 * 1024,  64, 0) },
+	{ .name = "m25p05",
+	  .driver_data =  INFO(0x202010,  0,  32 * 1024,   2, 0) },
+	{ .name = "m25p10",
+	  .driver_data =  INFO(0x202011,  0,  32 * 1024,   4, 0) },
+	{ .name = "m25p20",
+	  .driver_data =  INFO(0x202012,  0,  64 * 1024,   4, 0) },
+	{ .name = "m25p40",
+	  .driver_data =  INFO(0x202013,  0,  64 * 1024,   8, 0) },
+	{ .name = "m25p80",
+	  .driver_data =  INFO(0x202014,  0,  64 * 1024,  16, 0) },
+	{ .name = "m25p16",
+	  .driver_data =  INFO(0x202015,  0,  64 * 1024,  32, 0) },
+	{ .name = "m25p32",
+	  .driver_data =  INFO(0x202016,  0,  64 * 1024,  64, 0) },
+	{ .name = "m25p64",
+	  .driver_data =  INFO(0x202017,  0,  64 * 1024, 128, 0) },
+	{ .name = "m25p128",
+	  .driver_data = INFO(0x202018,  0, 256 * 1024,  64, 0) },
+	{ .name = "n25q032",
+	  .driver_data = INFO(0x20ba16,  0,  64 * 1024,  64, 0) },
 
-	{ .compatible = "m25p05-nonjedec",
-	  .data =  INFO(0, 0,  32 * 1024,   2, 0) },
-	{ .compatible = "m25p10-nonjedec",
-	  .data =  INFO(0, 0,  32 * 1024,   4, 0) },
-	{ .compatible = "m25p20-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024,   4, 0) },
-	{ .compatible = "m25p40-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024,   8, 0) },
-	{ .compatible = "m25p80-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024,  16, 0) },
-	{ .compatible = "m25p16-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024,  32, 0) },
-	{ .compatible = "m25p32-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024,  64, 0) },
-	{ .compatible = "m25p64-nonjedec",
-	  .data =  INFO(0, 0,  64 * 1024, 128, 0) },
-	{ .compatible = "m25p128-nonjedec",
-	  .data = INFO(0, 0, 256 * 1024,  64, 0) },
+	{ .name = "m25p05-nonjedec",
+	  .driver_data =  INFO(0, 0,  32 * 1024,   2, 0) },
+	{ .name = "m25p10-nonjedec",
+	  .driver_data =  INFO(0, 0,  32 * 1024,   4, 0) },
+	{ .name = "m25p20-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024,   4, 0) },
+	{ .name = "m25p40-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024,   8, 0) },
+	{ .name = "m25p80-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024,  16, 0) },
+	{ .name = "m25p16-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024,  32, 0) },
+	{ .name = "m25p32-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024,  64, 0) },
+	{ .name = "m25p64-nonjedec",
+	  .driver_data =  INFO(0, 0,  64 * 1024, 128, 0) },
+	{ .name = "m25p128-nonjedec",
+	  .driver_data = INFO(0, 0, 256 * 1024,  64, 0) },
 
-	{ .compatible = "m45pe10",
-	  .data = INFO(0x204011,  0, 64 * 1024,    2, 0) },
-	{ .compatible = "m45pe80",
-	  .data = INFO(0x204014,  0, 64 * 1024,   16, 0) },
-	{ .compatible = "m45pe16",
-	  .data = INFO(0x204015,  0, 64 * 1024,   32, 0) },
+	{ .name = "m45pe10",
+	  .driver_data = INFO(0x204011,  0, 64 * 1024,    2, 0) },
+	{ .name = "m45pe80",
+	  .driver_data = INFO(0x204014,  0, 64 * 1024,   16, 0) },
+	{ .name = "m45pe16",
+	  .driver_data = INFO(0x204015,  0, 64 * 1024,   32, 0) },
 
-	{ .compatible = "m25pe20",
-	  .data = INFO(0x208012,  0, 64 * 1024,  4,       0) },
-	{ .compatible = "m25pe80",
-	  .data = INFO(0x208014,  0, 64 * 1024, 16,       0) },
-	{ .compatible = "m25pe16",
-	  .data = INFO(0x208015,  0, 64 * 1024, 32, SECT_4K) },
+	{ .name = "m25pe20",
+	  .driver_data = INFO(0x208012,  0, 64 * 1024,  4,       0) },
+	{ .name = "m25pe80",
+	  .driver_data = INFO(0x208014,  0, 64 * 1024, 16,       0) },
+	{ .name = "m25pe16",
+	  .driver_data = INFO(0x208015,  0, 64 * 1024, 32, SECT_4K) },
 
-	{ .compatible = "m25px32",
-	  .data =    INFO(0x207116,  0, 64 * 1024, 64, SECT_4K) },
-	{ .compatible = "m25px32-s0",
-	  .data = INFO(0x207316,  0, 64 * 1024, 64, SECT_4K) },
-	{ .compatible = "m25px32-s1",
-	  .data = INFO(0x206316,  0, 64 * 1024, 64, SECT_4K) },
-	{ .compatible = "m25px64",
-	  .data =    INFO(0x207117,  0, 64 * 1024, 128, 0) },
+	{ .name = "m25px32",
+	  .driver_data =    INFO(0x207116,  0, 64 * 1024, 64, SECT_4K) },
+	{ .name = "m25px32-s0",
+	  .driver_data = INFO(0x207316,  0, 64 * 1024, 64, SECT_4K) },
+	{ .name = "m25px32-s1",
+	  .driver_data = INFO(0x206316,  0, 64 * 1024, 64, SECT_4K) },
+	{ .name = "m25px64",
+	  .driver_data =    INFO(0x207117,  0, 64 * 1024, 128, 0) },
 
 	/* Winbond -- w25x "blocks" are 64K, "sectors" are 4KiB */
-	{ .compatible = "w25x10",
-	  .data = INFO(0xef3011, 0, 64 * 1024,  2,  SECT_4K) },
-	{ .compatible = "w25x20",
-	  .data = INFO(0xef3012, 0, 64 * 1024,  4,  SECT_4K) },
-	{ .compatible = "w25x40",
-	  .data = INFO(0xef3013, 0, 64 * 1024,  8,  SECT_4K) },
-	{ .compatible = "w25x80",
-	  .data = INFO(0xef3014, 0, 64 * 1024,  16, SECT_4K) },
-	{ .compatible = "w25x16",
-	  .data = INFO(0xef3015, 0, 64 * 1024,  32, SECT_4K) },
-	{ .compatible = "w25x32",
-	  .data = INFO(0xef3016, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "w25q32",
-	  .data = INFO(0xef4016, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "w25q32dw",
-	  .data = INFO(0xef6016, 0, 64 * 1024,  64, SECT_4K) },
-	{ .compatible = "w25x64",
-	  .data = INFO(0xef3017, 0, 64 * 1024, 128, SECT_4K) },
-	{ .compatible = "w25q64",
-	  .data = INFO(0xef4017, 0, 64 * 1024, 128, SECT_4K) },
-	{ .compatible = "w25q128",
-	  .data = INFO(0xef4018, 0, 64 * 1024, 256, SECT_4K) },
-	{ .compatible = "w25q80",
-	  .data = INFO(0xef5014, 0, 64 * 1024,  16, SECT_4K) },
-	{ .compatible = "w25q80bl",
-	  .data = INFO(0xef4014, 0, 64 * 1024,  16, SECT_4K) },
-	{ .compatible = "w25q128",
-	  .data = INFO(0xef4018, 0, 64 * 1024, 256, SECT_4K) },
-	{ .compatible = "w25q256",
-	  .data = INFO(0xef4019, 0, 64 * 1024, 512, SECT_4K) },
+	{ .name = "w25x10",
+	  .driver_data = INFO(0xef3011, 0, 64 * 1024,  2,  SECT_4K) },
+	{ .name = "w25x20",
+	  .driver_data = INFO(0xef3012, 0, 64 * 1024,  4,  SECT_4K) },
+	{ .name = "w25x40",
+	  .driver_data = INFO(0xef3013, 0, 64 * 1024,  8,  SECT_4K) },
+	{ .name = "w25x80",
+	  .driver_data = INFO(0xef3014, 0, 64 * 1024,  16, SECT_4K) },
+	{ .name = "w25x16",
+	  .driver_data = INFO(0xef3015, 0, 64 * 1024,  32, SECT_4K) },
+	{ .name = "w25x32",
+	  .driver_data = INFO(0xef3016, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "w25q32",
+	  .driver_data = INFO(0xef4016, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "w25q32dw",
+	  .driver_data = INFO(0xef6016, 0, 64 * 1024,  64, SECT_4K) },
+	{ .name = "w25x64",
+	  .driver_data = INFO(0xef3017, 0, 64 * 1024, 128, SECT_4K) },
+	{ .name = "w25q64",
+	  .driver_data = INFO(0xef4017, 0, 64 * 1024, 128, SECT_4K) },
+	{ .name = "w25q128",
+	  .driver_data = INFO(0xef4018, 0, 64 * 1024, 256, SECT_4K) },
+	{ .name = "w25q80",
+	  .driver_data = INFO(0xef5014, 0, 64 * 1024,  16, SECT_4K) },
+	{ .name = "w25q80bl",
+	  .driver_data = INFO(0xef4014, 0, 64 * 1024,  16, SECT_4K) },
+	{ .name = "w25q128",
+	  .driver_data = INFO(0xef4018, 0, 64 * 1024, 256, SECT_4K) },
+	{ .name = "w25q256",
+	  .driver_data = INFO(0xef4019, 0, 64 * 1024, 512, SECT_4K) },
 
 	/* Catalyst / On Semiconductor -- non-JEDEC */
-	{ .compatible = "cat25c11",
-	  .data = CAT25_INFO(  16, 8, 16, 1, M25P_NO_ERASE | M25P_NO_FR) },
-	{ .compatible = "cat25c03",
-	  .data = CAT25_INFO(  32, 8, 16, 2, M25P_NO_ERASE | M25P_NO_FR) },
-	{ .compatible = "cat25c09",
-	  .data = CAT25_INFO( 128, 8, 32, 2, M25P_NO_ERASE | M25P_NO_FR) },
-	{ .compatible = "cat25c17",
-	  .data = CAT25_INFO( 256, 8, 32, 2, M25P_NO_ERASE | M25P_NO_FR) },
-	{ .compatible = "cat25128",
-	  .data = CAT25_INFO(2048, 8, 64, 2, M25P_NO_ERASE | M25P_NO_FR) },
+	{ .name = "cat25c11",
+	  .driver_data = CAT25_INFO(  16, 8, 16, 1, M25P_NO_ERASE |
+				      M25P_NO_FR) },
+	{ .name = "cat25c03",
+	  .driver_data = CAT25_INFO(  32, 8, 16, 2, M25P_NO_ERASE |
+				      M25P_NO_FR) },
+	{ .name = "cat25c09",
+	  .driver_data = CAT25_INFO( 128, 8, 32, 2, M25P_NO_ERASE |
+				     M25P_NO_FR) },
+	{ .name = "cat25c17",
+	  .driver_data = CAT25_INFO( 256, 8, 32, 2, M25P_NO_ERASE |
+				     M25P_NO_FR) },
+	{ .name = "cat25128",
+	  .driver_data = CAT25_INFO(2048, 8, 64, 2, M25P_NO_ERASE |
+				    M25P_NO_FR) },
 	{ },
 };
 MODULE_DEVICE_TABLE(spi, m25p_ids);
 
 
 
-static const struct vmm_devtree_nodeid *jedec_probe(struct spi_device *spi)
+static const struct spi_device_id *jedec_probe(struct spi_device *spi)
 {
 	int			tmp;
 	u8			code = OPCODE_RDID;
@@ -976,7 +989,7 @@ static const struct vmm_devtree_nodeid *jedec_probe(struct spi_device *spi)
 	ext_jedec = id[3] << 8 | id[4];
 
 	for (tmp = 0; tmp < ARRAY_SIZE(m25p_ids) - 1; tmp++) {
-		info = m25p_ids[tmp].data;
+		info = (void *)m25p_ids[tmp].driver_data;
 		if (info->jedec_id == jedec) {
 			if (info->ext_id != 0 && info->ext_id != ext_jedec)
 				continue;
@@ -992,61 +1005,48 @@ static const struct vmm_devtree_nodeid *jedec_probe(struct spi_device *spi)
  * matches what the READ command supports, at least until this driver
  * understands FAST_READ (for clocks over 25 MHz).
  */
-static int m25p_probe(struct vmm_device *dev,
-		      const struct vmm_devtree_nodeid *nodeid)
+static int m25p_probe(struct spi_device *spi)
 {
 	int				err = 0;
-	u16				bus = 0;
-	const struct flash_info		*info = nodeid->data;
-	struct spi_master		*master = NULL;
-	struct spi_device		*spi = NULL;
 	u32				val = 0;
+	const struct spi_device_id	*id = NULL;
 	struct m25p			*flash = NULL;
+	const struct flash_info		*info = NULL;
+	const char			*compat = NULL;
 	unsigned			i;
 	struct mtd_part_parser_data	ppdata;
 
+	id = spi_get_device_id(spi);
+	compat = vmm_devtree_attrval(spi->dev.node,
+				     VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 
-	if (!dev->parent || !dev->parent->node) {
-		dev_warn(dev, "no parent device to get bus id from\n");
-	} else {
-		if (vmm_devtree_read_u16_atindex(dev->parent->node, "bus",
-						 &bus, 0)) {
-			bus = 0;
+	/* Platform data helps sort out which chip type we have, as
+	 * well as how this board partitions it. If we don't have
+	 * a chip ID, try the JEDEC id commands; they'll work for most
+	 * newer chips, even if we don't recognize the particular chip.
+	 */
+	if (compat) {
+		const struct spi_device_id *plat_id;
+		for (i = 0; i < ARRAY_SIZE(m25p_ids) - 1; i++) {
+			plat_id = &m25p_ids[i];
+			if (strcmp(compat, plat_id->name))
+				continue;
+			break;
 		}
+		if (i < ARRAY_SIZE(m25p_ids) - 1)
+			id = plat_id;
+		else
+			dev_warn(&spi->dev, "unrecognized id %s\n", compat);
 	}
-
-	if (NULL == (master = spi_busnum_to_master(bus))) {
-		err = -ENODEV;
-		dev_err(dev, "master not found on SPI bus %d\n", bus);
-		goto out;
-	}
-
-	if (NULL == (spi = spi_alloc_device(master))) {
-		err = VMM_ENOMEM;
-		dev_err(dev, "failed to allocate device\n");
-		goto out;
-	}
-	vmm_devdrv_set_data(dev, spi);
-
-	if (VMM_OK == vmm_devtree_read_u32_atindex(dev->node,
-						   "spi-max-frequency",
-						   &val, 0)) {
-		spi->max_speed_hz = val;
-		dev_info(dev, "SPI device at %d Hz\n", val);
-	}
-
-	if (0 != (err = spi_add_device(spi))) {
-		dev_err(dev, "failed to add device\n");
-		goto out_spi_dev_put;
-	}
+	info = (void *)id->driver_data;
 
 	if (info->jedec_id) {
-		const struct vmm_devtree_nodeid *jid;
+		const struct spi_device_id *jid;
 
 		jid = jedec_probe(spi);
 		if (IS_ERR(jid)) {
 			return PTR_ERR(jid);
-		} else if (jid != nodeid) {
+		} else if (jid != id) {
 			/*
 			 * JEDEC knows better, so overwrite platform ID. We
 			 * can't trust partitions any longer, but we'll let
@@ -1055,25 +1055,25 @@ static int m25p_probe(struct vmm_device *dev,
 			 * information, even if it's not 100% accurate.
 			 */
 			dev_warn(&spi->dev, "found %s, expected %s\n",
-				 jid->compatible, nodeid->compatible);
-			nodeid = jid;
-			info = (void *)jid->data;
+				 jid->name, id->name);
+			id = jid;
+			info = (void *)jid->driver_data;
 		}
 		vmm_printf("Found %s compatible flash device\n",
-			   jid->compatible);
+			   jid->name);
 	}
 
 	flash = devm_kzalloc(&spi->dev, sizeof(*flash), GFP_KERNEL);
 	if (!flash) {
 		err = VMM_ENOMEM;
-		dev_err(dev, "failed to allocate flash device\n");
+		dev_err(&spi->dev, "failed to allocate flash device\n");
 		goto out_flash_free;
 	}
 
 	flash->command = devm_kzalloc(&spi->dev, MAX_CMD_SIZE, GFP_KERNEL);
 	if (!flash->command) {
 		err = VMM_ENOMEM;
-		dev_err(dev, "failed to allocate flash command\n");
+		dev_err(&spi->dev, "failed to allocate flash command\n");
 		goto out_command_free;
 	}
 
@@ -1093,7 +1093,7 @@ static int m25p_probe(struct vmm_device *dev,
 		write_sr(flash, 0);
 	}
 
-	flash->mtd.name = dev->name;
+	flash->mtd.name = spi->dev.name;
 	flash->mtd.type = MTD_NORFLASH;
 	flash->mtd.writesize = 1;
 	flash->mtd.flags = MTD_CAP_NORFLASH;
@@ -1133,8 +1133,8 @@ static int m25p_probe(struct vmm_device *dev,
 	flash->page_size = info->page_size;
 	flash->mtd.writebufsize = flash->page_size;
 
-	if (VMM_OK == vmm_devtree_read_u32_atindex(dev->node, "m25p,fast-read",
-						   &val, 0))
+	if (VMM_OK == vmm_devtree_read_u32_atindex(spi->dev.node,
+						   "m25p,fast-read", &val, 0))
 		/* If we were instantiated by DT, use it */
 		flash->fast_read = val;
 	else
@@ -1173,7 +1173,7 @@ static int m25p_probe(struct vmm_device *dev,
 		flash->addr_width = 3;
 	}
 
-	dev_info(&spi->dev, "%s (%lld Kbytes)\n", nodeid->name,
+	dev_info(&spi->dev, "%s (%lld Kbytes)\n", id->name,
 		 (long long)flash->mtd.size >> 10);
 
 	/* pr_debug */
@@ -1203,50 +1203,49 @@ static int m25p_probe(struct vmm_device *dev,
 	 */
 	err = mtd_device_parse_register(&flash->mtd, NULL, &ppdata, NULL, 0);
 	if (0 != err) {
-		dev_err(dev, "Failed to register MTD device\n");
+		dev_err(&spi->dev, "Failed to register MTD device\n");
 		goto out_unset_drvdata;
 	}
 
-	err = m25p_register_chardev(dev);
+	err = m25p_register_chardev(&spi->dev);
 	if (0 != err) {
-		dev_err(dev, "Failed to register MTD character device\n");
-		goto out_unset_drvdata;
+		dev_err(&spi->dev, "Failed to register MTD character device\n");
+		goto out_unregister_mtd;
 	}
 
-	m25p_register_blockdev(dev);
+	err = m25p_register_blockdev(&spi->dev);
 	if (0 != err) {
-		dev_err(dev, "Failed to register MTD block device\n");
-		goto out_unset_drvdata;
+		dev_err(&spi->dev, "Failed to register MTD block device\n");
+		goto out_unregister_chardev;
 	}
 	return err;
 
+out_unregister_chardev:
+	m25p_unregister_chardev(&spi->dev);
+out_unregister_mtd:
+	mtd_device_unregister(&flash->mtd);
 out_unset_drvdata:
 	spi_set_drvdata(spi, NULL);
 out_command_free:
 	devm_kfree(&spi->dev, flash->command);
 out_flash_free:
 	devm_kfree(&spi->dev, flash);
-out_spi_dev_put:
-	spi_dev_put(spi);
-out:
+
 	return err;
 }
 
 
-static int m25p_remove(struct vmm_device *dev)
+static int m25p_remove(struct spi_device *spi)
 {
 	int err = VMM_OK;
-	struct spi_device *spi = vmm_devdrv_get_data(dev);
 	struct m25p	*flash = NULL;
 
-	if (!spi)
-		return VMM_EFAIL;
 	flash = spi_get_drvdata(spi);
 
 	/* Clean up MTD stuff. */
+	m25p_unregister_blockdev(&spi->dev);
+	m25p_unregister_chardev(&spi->dev);
 	err = mtd_device_unregister(&flash->mtd);
-	m25p_unregister_blockdev(dev);
-	m25p_unregister_chardev(dev);
 
 	devm_kfree(&spi->dev, flash->command);
 	devm_kfree(&spi->dev, flash);
@@ -1256,12 +1255,14 @@ static int m25p_remove(struct vmm_device *dev)
 }
 
 
-static struct vmm_driver m25p80_driver = {
-	.name		= "m25p80",
-	.match_table	= m25p_ids,
+/* FIXME */
+struct spi_driver m25p80_driver = {
+	.id_table	= m25p_ids,
 	.probe		= m25p_probe,
 	.remove		= m25p_remove,
-
+	.driver		= {
+		.name		= "m25p80",
+	},
 	/* REVISIT: many of these chips have deep power-down modes, which
 	 * should clearly be entered on suspend() to minimize power use.
 	 * And also when they're otherwise idle...
@@ -1270,7 +1271,7 @@ static struct vmm_driver m25p80_driver = {
 
 static int __init m25p80_init(void)
 {
-	return vmm_devdrv_register_driver(&m25p80_driver);
+	return spi_register_driver(&m25p80_driver);
 	/* TODO: If we do not have a chip ID, try the JEDEC id command. */
 }
 

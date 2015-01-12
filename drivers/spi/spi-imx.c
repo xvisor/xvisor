@@ -913,13 +913,6 @@ static int spi_imx_probe(struct vmm_device *dev,
 		goto out_clk_put;
 	}
 
-	master->dev.parent = dev->parent;
-	if (0 != (ret = spi_register_master(master))) {
-		goto out_bitbang_stop;
-	}
-
-	dev_info(dev, "SPI master probed on bus %d\n", master->bus_num);
-
 	/* FIXME: This should not disable the clock, as they are still set as
 	   used by the UART */
 #if 0
@@ -929,8 +922,6 @@ static int spi_imx_probe(struct vmm_device *dev,
 
 	return ret;
 
-out_bitbang_stop:
-	ret = spi_bitbang_stop(&spi_imx->bitbang);
 out_clk_put:
 	/* FIXME: This should not disable the clock, as they are still set as
 	   used by the UART */
