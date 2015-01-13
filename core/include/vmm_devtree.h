@@ -26,6 +26,7 @@
 #include <vmm_limits.h>
 #include <vmm_compiler.h>
 #include <vmm_types.h>
+#include <vmm_spinlocks.h>
 #include <arch_atomic.h>
 #include <libs/list.h>
 
@@ -163,7 +164,9 @@ __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 struct vmm_devtree_node {
 	/* Private fields */
 	struct dlist head;
+	vmm_rwlock_t attr_lock;
 	struct dlist attr_list;
+	vmm_rwlock_t child_lock;
 	struct dlist child_list;
 	atomic_t ref_count;
 	/* Public fields */

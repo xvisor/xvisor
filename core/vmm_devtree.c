@@ -236,34 +236,48 @@ u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node,
 
 bool vmm_devtree_have_attr(const struct vmm_devtree_node *node)
 {
-	if (!node) {
+	bool ret;
+	irq_flags_t flags;
+	struct vmm_devtree_node *np = (struct vmm_devtree_node *)node;
+
+	if (!np) {
 		return FALSE;
 	}
 
-	return list_empty(&node->attr_list) ? FALSE : TRUE;
+	vmm_read_lock_irqsave_lite(&np->attr_lock, flags);
+	ret = list_empty(&np->attr_list) ? FALSE : TRUE;
+	vmm_read_unlock_irqrestore_lite(&np->attr_lock, flags);
+
+	return ret;
 }
 
 struct vmm_devtree_attr *vmm_devtree_next_attr(
 					const struct vmm_devtree_node *node,
 					struct vmm_devtree_attr *current)
 {
-	if (!node) {
+	irq_flags_t flags;
+	struct vmm_devtree_attr *ret = NULL;
+	struct vmm_devtree_node *np = (struct vmm_devtree_node *)node;
+
+	if (!np) {
 		return NULL;
 	}
 
+	vmm_read_lock_irqsave_lite(&np->attr_lock, flags);
 	if (!current) {
-		if (!list_empty(&node->attr_list)) {
-			return list_first_entry(&node->attr_list,
+		if (!list_empty(&np->attr_list)) {
+			ret = list_first_entry(&np->attr_list,
 						struct vmm_devtree_attr,
 						head);
 		}
-	} else if (!list_is_last(&current->head, &node->attr_list)) {
-		return list_first_entry(&current->head,
+	} else if (!list_is_last(&current->head, &np->attr_list)) {
+		ret = list_first_entry(&current->head,
 					struct vmm_devtree_attr,
 					head);
 	}
+	vmm_read_unlock_irqrestore_lite(&np->attr_lock, flags);
 
-	return NULL;
+	return ret;
 }
 
 int vmm_devtree_setattr(struct vmm_devtree_node *node,
@@ -272,6 +286,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 {
 	u32 i, sz, cnt;
 	bool found;
+	irq_flags_t flags;
 	struct vmm_devtree_attr *attr;
 
 	if (!node || !name ||
@@ -300,7 +315,6 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 		if (attr->len) {
 			attr->value = vmm_malloc(attr->len);
 			if (!attr->value) {
-				vmm_free(attr->name);
 				vmm_free(attr);
 				return VMM_ENOMEM;
 			}
@@ -308,7 +322,9 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 		} else {
 			attr->value = NULL;
 		}
+		vmm_write_lock_irqsave_lite(&node->attr_lock, flags);
 		list_add_tail(&attr->head, &node->attr_list);
+		vmm_write_unlock_irqrestore_lite(&node->attr_lock, flags);
 	} else {
 		attr->type = type;
 		if (attr->len != len) {
@@ -420,6 +436,7 @@ struct vmm_devtree_attr *vmm_devtree_getattr(
 
 int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name)
 {
+	irq_flags_t flags;
 	struct vmm_devtree_attr *attr;
 
 	if (!node || !name) {
@@ -434,7 +451,11 @@ int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name)
 	if (attr->value) {
 		vmm_free(attr->value);
 	}
+
+	vmm_write_lock_irqsave_lite(&node->attr_lock, flags);
 	list_del(&attr->head);
+	vmm_write_unlock_irqrestore_lite(&node->attr_lock, flags);
+
 	vmm_free(attr);
 
 	return VMM_OK;
@@ -1524,6 +1545,7 @@ void vmm_devtree_ref_node(struct vmm_devtree_node *node)
 void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 {
 	int rc;
+	irq_flags_t flags;
 	struct vmm_devtree_attr *attr, *attr_next;
 	struct vmm_devtree_node *parent;
 
@@ -1539,18 +1561,24 @@ void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 		dtree_ctrl.root = NULL;
 	}
 
+	vmm_read_lock_irqsave_lite(&node->attr_lock, flags);
 	list_for_each_entry_safe(attr, attr_next,
 				 &node->attr_list, head) {
+		vmm_read_unlock_irqrestore_lite(&node->attr_lock, flags);
 		if ((rc = vmm_devtree_delattr(node, attr->name))) {
 			vmm_printf("%s: Failed to delete attibute=%s "
 				   "from node=%s (error %d)\n",
 				   __func__, attr->name, node->name, rc);
 		}
+		vmm_read_lock_irqsave_lite(&node->attr_lock, flags);
 	}
+	vmm_read_unlock_irqrestore_lite(&node->attr_lock, flags);
 
 	if (node->parent) {
 		parent = node->parent;
+		vmm_write_lock_irqsave_lite(&parent->child_lock, flags);
 		list_del(&node->head);
+		vmm_write_unlock_irqrestore_lite(&parent->child_lock, flags);
 		node->parent = NULL;
 		vmm_devtree_dref_node(parent);
 	}
@@ -1560,40 +1588,55 @@ void vmm_devtree_dref_node(struct vmm_devtree_node *node)
 
 bool vmm_devtree_have_child(const struct vmm_devtree_node *node)
 {
-	if (!node) {
+	bool ret;
+	irq_flags_t flags;
+	struct vmm_devtree_node *np = (struct vmm_devtree_node *)node;
+
+	if (!np) {
 		return FALSE;
 	}
 
-	return list_empty(&node->child_list) ? FALSE : TRUE;
+	vmm_read_lock_irqsave_lite(&np->child_lock, flags);
+	ret = list_empty(&np->child_list) ? FALSE : TRUE;
+	vmm_read_unlock_irqrestore_lite(&np->child_lock, flags);
+
+	return ret;
 }
 
 struct vmm_devtree_node *vmm_devtree_next_child(
 					const struct vmm_devtree_node *node,
 					struct vmm_devtree_node *current)
 {
-	if (!node) {
+	irq_flags_t flags;
+	struct vmm_devtree_node *ret = NULL;
+	struct vmm_devtree_node *np = (struct vmm_devtree_node *)node;
+
+	if (!np) {
 		return NULL;
 	}
 
+	vmm_read_lock_irqsave_lite(&np->child_lock, flags);
 	if (!current) {
-		if (!list_empty(&node->child_list)) {
-			return list_first_entry(&node->child_list,
+		if (!list_empty(&np->child_list)) {
+			ret = list_first_entry(&np->child_list,
 						struct vmm_devtree_node,
 						head);
 		}
-	} else if ((current->parent == node) &&
-		   !list_is_last(&current->head, &node->child_list)) {
-		return list_first_entry(&current->head,
+	} else if ((current->parent == np) &&
+		   !list_is_last(&current->head, &np->child_list)) {
+		ret = list_first_entry(&current->head,
 					struct vmm_devtree_node,
 					head);
 	}
+	vmm_read_unlock_irqrestore_lite(&np->child_lock, flags);
 
-	return NULL;
+	return ret;
 }
 
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name)
 {
+	irq_flags_t flags;
 	struct vmm_devtree_node *node = NULL;
 
 	if (!name) {
@@ -1617,19 +1660,22 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 		return NULL;
 	}
 	INIT_LIST_HEAD(&node->head);
-	arch_atomic_write(&node->ref_count, 1);
+	INIT_RW_LOCK(&node->attr_lock);
 	INIT_LIST_HEAD(&node->attr_list);
+	INIT_RW_LOCK(&node->child_lock);
 	INIT_LIST_HEAD(&node->child_list);
+	arch_atomic_write(&node->ref_count, 1);
 	strncpy(node->name, name, sizeof(node->name));
+	node->parent = NULL;
 	node->system_data = NULL;
 	node->priv = NULL;
 
 	if (parent) {
 		vmm_devtree_ref_node(parent);
 		node->parent = parent;
+		vmm_write_lock_irqsave_lite(&parent->child_lock, flags);
 		list_add_tail(&node->head, &parent->child_list);
-	} else {
-		node->parent = NULL;
+		vmm_write_unlock_irqrestore_lite(&parent->child_lock, flags);
 	}
 
 	return node;
@@ -1693,18 +1739,23 @@ int vmm_devtree_copynode(struct vmm_devtree_node *parent,
 int vmm_devtree_delnode(struct vmm_devtree_node *node)
 {
 	int rc;
+	irq_flags_t flags;
 	struct vmm_devtree_node *child, *child_next;
 
 	if (!node) {
 		return VMM_EFAIL;
 	}
 
+	vmm_read_lock_irqsave_lite(&node->child_lock, flags);
 	list_for_each_entry_safe(child, child_next,
 				 &node->child_list, head) {
+		vmm_read_unlock_irqrestore_lite(&node->child_lock, flags);
 		if ((rc = vmm_devtree_delnode(child))) {
 			return rc;
 		}
+		vmm_read_lock_irqsave_lite(&node->child_lock, flags);
 	}
+	vmm_read_unlock_irqrestore_lite(&node->child_lock, flags);
 
 	vmm_devtree_dref_node(node);
 
