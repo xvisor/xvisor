@@ -152,7 +152,7 @@ int __init arch_smp_init_cpus(void)
 	}
 
 	dn = NULL;
-	devtree_for_each_node(dn, cpus) {
+	vmm_devtree_for_each_child(dn, cpus) {
 		break;
 	}
 	if (!dn) {
@@ -173,7 +173,7 @@ int __init arch_smp_init_cpus(void)
 	smp_read_ops(dn, 0);
 
 	dn = NULL;
-	devtree_for_each_node(dn, cpus) {
+	vmm_devtree_for_each_child(dn, cpus) {
 		physical_addr_t hwid;
 
 		/*

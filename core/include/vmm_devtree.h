@@ -161,23 +161,19 @@ __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 #endif
 
 struct vmm_devtree_node {
+	/* Private fields */
 	struct dlist head;
+	struct dlist attr_list;
+	struct dlist child_list;
 	atomic_t ref_count;
+	/* Public fields */
 	char name[VMM_FIELD_SHORT_NAME_SIZE];
+	struct vmm_devtree_node *parent;
 	void *system_data; /* System data pointer 
 			      (Arch. specific code can use this to 
 			       pass inforation to device driver) */
 	void *priv; /* Generic Private pointer */
-	struct vmm_devtree_node *parent;
-	struct dlist attr_list;
-	struct dlist child_list;
 };
-
-#define devtree_for_each_attr(attr, node) \
-	list_for_each_entry(attr, &(node)->attr_list, head)
-
-#define devtree_for_each_node(child, node) \
-	list_for_each_entry(child, &(node)->child_list, head)
 
 #define VMM_MAX_PHANDLE_ARGS		8
 struct vmm_devtree_phandle_args {
@@ -204,6 +200,19 @@ const void *vmm_devtree_attrval(const struct vmm_devtree_node *node,
 /** Get length of attribute value */
 u32 vmm_devtree_attrlen(const struct vmm_devtree_node *node, 
 			const char *attrib);
+
+/** Check if a device tree node have any attribute */
+bool vmm_devtree_have_attr(const struct vmm_devtree_node *node);
+
+/** Get next attribute of a device tree node */
+struct vmm_devtree_attr *vmm_devtree_next_attr(
+					const struct vmm_devtree_node *node,
+					struct vmm_devtree_attr *current);
+
+/** Itreate over each attribute of a device tree node */
+#define vmm_devtree_for_each_attr(attr, node) \
+	for (attr = vmm_devtree_next_attr(node, NULL); attr; \
+	     attr = vmm_devtree_next_attr(node, attr))
 
 /** Set an attribute for a device tree node */
 int vmm_devtree_setattr(struct vmm_devtree_node *node,
@@ -544,6 +553,19 @@ void vmm_devtree_ref_node(struct vmm_devtree_node *node);
 
 /** De-refernce a device tree node */
 void vmm_devtree_dref_node(struct vmm_devtree_node *node);
+
+/** Check if a device tree node have any child node */
+bool vmm_devtree_have_child(const struct vmm_devtree_node *node);
+
+/** Get next child node of a device tree node */
+struct vmm_devtree_node *vmm_devtree_next_child(
+					const struct vmm_devtree_node *node,
+					struct vmm_devtree_node *current);
+
+/** Itreate over each child node of a device tree node */
+#define vmm_devtree_for_each_child(child, node) \
+	for (child = vmm_devtree_next_child(node, NULL); child; \
+	     child = vmm_devtree_next_child(node, child))
 
 /** Add new node to device tree with given name
  *  NOTE: This function allows parent == NULL to enable creation of

@@ -113,10 +113,10 @@ static inline struct property *of_find_property(const struct device_node *np,
 #define	of_property_read_string		vmm_devtree_read_string
 
 #define	for_each_child_of_node(np, child)		\
-		devtree_for_each_node(child, np)
+		vmm_devtree_for_each_child(child, np)
 
 #define	for_each_available_child_of_node(np, child)	\
-		devtree_for_each_node(child, np)
+		vmm_devtree_for_each_child(child, np)
 
 #define	of_device_is_compatible(device, name)		\
 		vmm_devtree_is_compatible(device, name)
