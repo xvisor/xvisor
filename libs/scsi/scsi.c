@@ -322,7 +322,7 @@ int scsi_get_info(struct scsi_info *info, unsigned int lun,
 	cap[0] = vmm_cpu_to_be32(cap[0]);
 	cap[1] = vmm_cpu_to_be32(cap[1]);
 
-	info->capacity = cap[0];
+	info->capacity = cap[0] + 1;
 	info->blksz = cap[1];
 
 	info->readonly = TRUE;
