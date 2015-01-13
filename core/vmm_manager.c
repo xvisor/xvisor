@@ -1131,7 +1131,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		goto fail_destroy_guest;
 	}
 
-	list_for_each_entry(vnode, &vsnode->child_list, head) {
+	vmm_devtree_for_each_child(vnode, vsnode) {
 		/* Sanity checks */
 		if (CONFIG_MAX_VCPU_COUNT <= mngr.vcpu_count) {
 			vmm_printf("%s: No more free VCPUs\n"

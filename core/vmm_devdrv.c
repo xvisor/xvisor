@@ -508,7 +508,7 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 		return rc;
 	}
 
-	list_for_each_entry(child, &node->child_list, head) {
+	vmm_devtree_for_each_child(child, node) {
 		devdrv_probe(child, dev);
 	}
 

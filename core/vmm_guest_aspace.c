@@ -956,7 +956,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	}
 
 	/* Create regions */
-	list_for_each_entry(rnode, &aspace->node->child_list, head) {
+	vmm_devtree_for_each_child(rnode, aspace->node) {
 		rc = region_add(guest, rnode, NULL);
 		if (rc) {
 			return rc;
