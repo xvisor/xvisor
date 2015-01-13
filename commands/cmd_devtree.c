@@ -124,7 +124,6 @@ static void cmd_devtree_print_node(struct vmm_chardev *cdev,
 {
 	int i;
 	bool braceopen;
-	struct dlist *l;
 	struct vmm_devtree_attr *attr;
 	struct vmm_devtree_node *child;
 
@@ -144,8 +143,7 @@ static void cmd_devtree_print_node(struct vmm_chardev *cdev,
 			vmm_cprintf(cdev, " {\n");
 			braceopen = TRUE;
 		}
-		list_for_each(l, &node->attr_list) {
-			attr = list_entry(l, struct vmm_devtree_attr, head);
+		list_for_each_entry(attr, &node->attr_list, head) {
 			cmd_devtree_print_attribute(cdev, attr, indent);
 		}
 
@@ -156,8 +154,7 @@ static void cmd_devtree_print_node(struct vmm_chardev *cdev,
 		}
 	}
 
-	list_for_each(l, &node->child_list) {
-		child = list_entry(l, struct vmm_devtree_node, head);
+	list_for_each_entry(child, &node->child_list, head) {
 		cmd_devtree_print_node(cdev, child, showattr, indent + 1);
 	}
 
@@ -173,7 +170,6 @@ static void cmd_devtree_print_node(struct vmm_chardev *cdev,
 
 static int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 {
-	struct dlist *l;
 	struct vmm_devtree_attr *attr;
 	struct vmm_devtree_node *node = vmm_devtree_getnode(path);
 
@@ -182,8 +178,7 @@ static int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 		return VMM_EFAIL;
 	}
 
-	list_for_each(l, &node->attr_list) {
-		attr = list_entry(l, struct vmm_devtree_attr, head);
+	list_for_each_entry(attr, &node->attr_list, head) {
 		cmd_devtree_print_attribute(cdev, attr, 0);
 	}
 
