@@ -138,23 +138,23 @@ static void cmd_devtree_print_node(struct vmm_chardev *cdev,
 
 	braceopen = FALSE;
 	if (showattr) {
-		if (!list_empty(&node->child_list) ||
-		    !list_empty(&node->attr_list)) {
+		if (vmm_devtree_have_child(node) ||
+		    vmm_devtree_have_attr(node)) {
 			vmm_cprintf(cdev, " {\n");
 			braceopen = TRUE;
 		}
-		list_for_each_entry(attr, &node->attr_list, head) {
+		vmm_devtree_for_each_attr(attr, node) {
 			cmd_devtree_print_attribute(cdev, attr, indent);
 		}
 
 	} else {
-		if (!list_empty(&node->child_list)) {
+		if (vmm_devtree_have_child(node)) {
 			vmm_cprintf(cdev, " {\n");
 			braceopen = TRUE;
 		}
 	}
 
-	list_for_each_entry(child, &node->child_list, head) {
+	vmm_devtree_for_each_child(child, node) {
 		cmd_devtree_print_node(cdev, child, showattr, indent + 1);
 	}
 
@@ -178,7 +178,7 @@ static int cmd_devtree_attr_show(struct vmm_chardev *cdev, char *path)
 		return VMM_EFAIL;
 	}
 
-	list_for_each_entry(attr, &node->attr_list, head) {
+	vmm_devtree_for_each_attr(attr, node) {
 		cmd_devtree_print_attribute(cdev, attr, 0);
 	}
 
