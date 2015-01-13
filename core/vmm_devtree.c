@@ -245,7 +245,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 	if (!node || !name ||
 	    (len && !value) ||
 	    (VMM_DEVTREE_MAX_ATTRTYPE <= type)) {
-		return VMM_EFAIL;
+		return VMM_EINVALID;
 	}
 
 	found = FALSE;
@@ -264,13 +264,7 @@ int vmm_devtree_setattr(struct vmm_devtree_node *node,
 		INIT_LIST_HEAD(&attr->head);
 		attr->len = len;
 		attr->type = type;
-		len = strlen(name) + 1;
-		attr->name = vmm_malloc(len);
-		if (!attr->name) {
-			vmm_free(attr);
-			return VMM_ENOMEM;
-		}
-		strcpy(attr->name, name);
+		strncpy(attr->name, name, sizeof(attr->name));
 		if (attr->len) {
 			attr->value = vmm_malloc(attr->len);
 			if (!attr->value) {
@@ -405,7 +399,6 @@ int vmm_devtree_delattr(struct vmm_devtree_node *node, const char *name)
 		return VMM_EFAIL;
 	}
 
-	vmm_free(attr->name);
 	if (attr->value) {
 		vmm_free(attr->value);
 	}

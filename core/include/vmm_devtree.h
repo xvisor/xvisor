@@ -116,14 +116,14 @@ enum vmm_devtree_attrypes {
 
 struct vmm_devtree_attr {
 	struct dlist head;
-	char *name;
+	char name[VMM_FIELD_SHORT_NAME_SIZE];
 	u32 type;
 	void *value;
 	u32 len;
 };
 
 struct vmm_devtree_nodeid {
-	char name[VMM_FIELD_NAME_SIZE];
+	char name[VMM_FIELD_SHORT_NAME_SIZE];
 	char type[VMM_FIELD_TYPE_SIZE];
 	char compatible[VMM_FIELD_COMPAT_SIZE];
 	const void *data;
@@ -133,7 +133,7 @@ struct vmm_devtree_nodeid {
 
 struct vmm_devtree_nidtbl_entry {
 	u32 signature;
-	char subsys[VMM_FIELD_NAME_SIZE];
+	char subsys[VMM_FIELD_SHORT_NAME_SIZE];
 	struct vmm_devtree_nodeid nodeid;
 };
 
@@ -163,7 +163,7 @@ __nidtbl struct vmm_devtree_nidtbl_entry __##nid = { \
 struct vmm_devtree_node {
 	struct dlist head;
 	atomic_t ref_count;
-	char name[VMM_FIELD_NAME_SIZE];
+	char name[VMM_FIELD_SHORT_NAME_SIZE];
 	void *system_data; /* System data pointer 
 			      (Arch. specific code can use this to 
 			       pass inforation to device driver) */
