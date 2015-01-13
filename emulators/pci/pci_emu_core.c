@@ -237,7 +237,7 @@ static int pci_emu_enumerate_bars(struct vmm_guest *guest,
 		return VMM_OK;
 	}
 
-	list_for_each_entry(bars, &bar_node->child_list, head) {
+	vmm_devtree_for_each_child(bars, bar_node) {
 		rc = vmm_devtree_read_u32(bars, "barnum", &barnum);
 		if (rc) {
 			vmm_printf("%s: Bar number not specified for %s\n",
@@ -301,7 +301,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 			return VMM_EFAIL;
 		}
 
-		list_for_each_entry(tnode, &devs_node->child_list, head) {
+		vmm_devtree_for_each_child(tnode, devs_node) {
 			list_for_each_entry(emu, &pci_emu_dectrl.emu_list, head) {
 				dev_node = vmm_devtree_find_matching(tnode,
 								     emu->match_table);
