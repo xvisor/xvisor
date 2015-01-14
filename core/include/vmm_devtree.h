@@ -408,7 +408,8 @@ const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 				    const char *cur);
 
 /** Create a path string for a given node */
-int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node);
+int vmm_devtree_getpath(char *out, size_t out_len,
+			const struct vmm_devtree_node *node);
 
 /** Get child node below a given node
  *  NOTE: The returned node will have increased refrence count

@@ -59,10 +59,15 @@ static void cmd_guest_usage(struct vmm_chardev *cdev)
 
 static int guest_list_iter(struct vmm_guest *guest, void *priv)
 {
+	int rc;
 	char path[256];
 	struct vmm_chardev *cdev = priv;
 
-	vmm_devtree_getpath(path, guest->node);
+	rc = vmm_devtree_getpath(path, sizeof(path), guest->node);
+	if (rc) {
+		vmm_snprintf(path, sizeof(path),
+			     "----- (error %d)", rc);
+	}
 	vmm_cprintf(cdev, " %-6d %-17s %-13s %-39s\n",
 		    guest->id, guest->name,
 		    (guest->is_big_endian) ? "big" : "little",

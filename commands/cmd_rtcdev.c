@@ -60,19 +60,32 @@ static void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 
 static void cmd_rtcdev_list(struct vmm_chardev *cdev)
 {
-	int num, count;
-	char path[1024];
+	int rc, num, count;
+	char path[256];
 	struct rtc_device *rd;
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-24s %-53s\n", 
+			  "Name", "Device Path");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 	count = rtc_device_count();
 	for (num = 0; num < count; num++) {
 		rd = rtc_device_get(num);
 		if (rd->dev.parent && rd->dev.parent->node) {
-			vmm_devtree_getpath(path, rd->dev.parent->node);
-			vmm_cprintf(cdev, "%s: %s\n", rd->name, path);
+			rc = vmm_devtree_getpath(path, sizeof(path),
+					    rd->dev.parent->node);
+			if (rc) {
+				vmm_snprintf(path, sizeof(path),
+					     "----- (error %d)", rc);
+			}
 		} else {
-			vmm_cprintf(cdev, "%s: ---\n", rd->name);
+			strcpy(path, "-----");
 		}
+		vmm_cprintf(cdev, " %-24s %-53s\n", rd->name, path);
 	}
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
 }
 
 static int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev,

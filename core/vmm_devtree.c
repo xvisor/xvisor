@@ -1073,32 +1073,61 @@ const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 	return NULL;
 }
 
-static void recursive_getpath(char **out, const struct vmm_devtree_node *node)
+static int recursive_getpath(char **out, size_t *out_len,
+			     const struct vmm_devtree_node *node)
 {
-	if (!node)
-		return;
+	int rc;
+	size_t len;
+
+	if (!node) {
+		return VMM_EINVALID;
+	}
 
 	if (node->parent) {
-		recursive_getpath(out, node->parent);
+		rc = recursive_getpath(out, out_len, node->parent);
+		if (rc) {
+			return rc;
+		}
+		if (*out_len < 2) {
+			return VMM_ENOSPC;
+		}
 		**out = VMM_DEVTREE_PATH_SEPARATOR;
 		(*out) += 1;
 		**out = '\0';
+		*out_len -= 1;
 	}
 
-	strcat(*out, node->name);
-	(*out) += strlen(node->name);
+	len = strlen(node->name);
+
+	if (*out_len < (len + 1)) {
+		return VMM_ENOSPC;
+	}
+
+	strncpy(*out, node->name, len);
+	(*out) += len;
+	**out = '\0';
+	*out_len -= len;
+
+	return VMM_OK;
 }
 
-int vmm_devtree_getpath(char *out, const struct vmm_devtree_node *node)
+int vmm_devtree_getpath(char *out, size_t out_len,
+			const struct vmm_devtree_node *node)
 {
+	int rc;
 	char *out_ptr = out;
+	size_t out_ptr_len = out_len;
 
-	if (!node)
+	if (!node || !out || (out_len < 2)) {
 		return VMM_EFAIL;
+	}
 
 	out[0] = 0;
 
-	recursive_getpath(&out_ptr, node);
+	rc = recursive_getpath(&out_ptr, &out_ptr_len, node);
+	if (rc) {
+		return rc;
+	}
 
 	if (strcmp(out, "") == 0) {
 		out[0] = VMM_DEVTREE_PATH_SEPARATOR;

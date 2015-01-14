@@ -45,8 +45,8 @@ static void cmd_chardev_usage(struct vmm_chardev *cdev)
 
 static void cmd_chardev_list(struct vmm_chardev *cdev)
 {
-	int num, count;
-	char path[1024];
+	int rc, num, count;
+	char path[256];
 	struct vmm_chardev *cd;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -58,7 +58,12 @@ static void cmd_chardev_list(struct vmm_chardev *cdev)
 	for (num = 0; num < count; num++) {
 		cd = vmm_chardev_get(num);
 		if (cd->dev.parent && cd->dev.parent->node) {
-			vmm_devtree_getpath(path, cd->dev.parent->node);
+			rc = vmm_devtree_getpath(path, sizeof(path),
+						 cd->dev.parent->node);
+			if (rc) {
+				vmm_snprintf(path, sizeof(path),
+					     "----- (error %d)", rc);
+			}
 		} else {
 			strcpy(path, "-----");
 		}
