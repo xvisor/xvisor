@@ -786,6 +786,34 @@ struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid)
 	return vcpu;
 }
 
+struct vmm_vcpu *vmm_manager_guest_next_vcpu(const struct vmm_guest *guest,
+					     struct vmm_vcpu *current)
+{
+	irq_flags_t flags;
+	struct vmm_vcpu *ret = NULL;
+	struct vmm_guest *g = (struct vmm_guest *)guest;
+
+	if (!g) {
+		return NULL;
+	}
+
+	vmm_read_lock_irqsave_lite(&g->vcpu_lock, flags);
+
+	if (!current) {
+		if (!list_empty(&g->vcpu_list)) {
+			ret = list_first_entry(&g->vcpu_list,
+						struct vmm_vcpu, head);
+		}
+	} else if (!list_is_last(&current->head, &g->vcpu_list)) {
+		ret = list_first_entry(&current->head,
+					struct vmm_vcpu, head);
+	}
+
+	vmm_read_unlock_irqrestore_lite(&g->vcpu_lock, flags);
+
+	return ret;
+}
+
 int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
 				   int (*iter)(struct vmm_vcpu *, void *), 
 				   void *priv)

@@ -322,12 +322,14 @@ u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest);
 /** Retrieve VCPU belonging to a given Guest with particular subid */
 struct vmm_vcpu *vmm_manager_guest_vcpu(struct vmm_guest *guest, u32 subid);
 
-/** For loop to Iterate over each VCPU of a given Guest */
-#define for_each_guest_vcpu(__i, __t, __g)	\
-		for (__i = 0; \
-		     (__i < vmm_manager_guest_vcpu_count(__g)) && \
-		     ((__t = vmm_manager_guest_vcpu(__g, __i)) != NULL); \
-		     __i++)
+/** Get next VCPU of a given Guest */
+struct vmm_vcpu *vmm_manager_guest_next_vcpu(const struct vmm_guest *guest,
+					     struct vmm_vcpu *current);
+
+/** Iterate over each VCPU of a given Guest */
+#define vmm_manager_for_each_guest_vcpu(__v, __g)	\
+		for (__v = vmm_manager_guest_next_vcpu(__g, NULL); __v; \
+		     __v = vmm_manager_guest_next_vcpu(__g, __v))
 
 /** Iterate over each VCPU of a given Guest with guest->vcpu_lock held */
 int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,

@@ -79,7 +79,6 @@ static unsigned long psci_vcpu_off(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 static unsigned long psci_vcpu_on(struct vmm_vcpu *source_vcpu,
 				  arch_regs_t *regs)
 {
-	u32 i;
 	unsigned long cpu_id;
 	unsigned long context_id;
 	unsigned long mpidr;
@@ -91,7 +90,7 @@ static unsigned long psci_vcpu_on(struct vmm_vcpu *source_vcpu,
 		cpu_id &= ~((u32) 0);
 	}
 
-	for_each_guest_vcpu(i, tmp, source_vcpu->guest) {
+	vmm_manager_for_each_guest_vcpu(tmp, source_vcpu->guest) {
 		mpidr = emulate_psci_get_mpidr(tmp);
 		if ((mpidr & MPIDR_HWID_BITMASK) ==
 				(cpu_id & MPIDR_HWID_BITMASK)) {
@@ -147,7 +146,6 @@ static unsigned long psci_vcpu_on(struct vmm_vcpu *source_vcpu,
 static unsigned long psci_vcpu_affinity_info(struct vmm_vcpu *vcpu,
 					     arch_regs_t *regs)
 {
-	u32 i;
 	unsigned long mpidr;
 	unsigned long target_affinity;
 	unsigned long target_affinity_mask;
@@ -168,7 +166,7 @@ static unsigned long psci_vcpu_affinity_info(struct vmm_vcpu *vcpu,
 	/* If one or more VCPU matching target affinity are running
 	 * then ON else OFF
 	 */
-	for_each_guest_vcpu(i, tmp, vcpu->guest) {
+	vmm_manager_for_each_guest_vcpu(tmp, vcpu->guest) {
 		mpidr = emulate_psci_get_mpidr(tmp);
 		if (((mpidr & target_affinity_mask) == target_affinity) &&
 		    (vmm_manager_vcpu_get_state(tmp) & VMM_VCPU_STATE_INTERRUPTIBLE)) {
