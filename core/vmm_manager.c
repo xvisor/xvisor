@@ -715,6 +715,40 @@ struct vmm_guest *vmm_manager_guest_find(const char *guest_name)
 	return ret;	
 }
 
+int vmm_manager_guest_iterate(int (*iter)(struct vmm_guest *, void *),
+			      void *priv)
+{
+	int rc, g;
+	struct vmm_guest *guest;
+
+	/* If no iteration callback then return */
+	if (!iter) {
+		return VMM_EINVALID;
+	}
+
+	/* Acquire manager lock */
+	vmm_manager_lock();
+
+	/* Iterate over each used VCPU instance */
+	rc = VMM_OK;
+	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {		
+		if (mngr.guest_avail_array[g]) {
+			continue;
+		}
+		guest = &mngr.guest_array[g];
+
+		rc = iter(guest, priv);
+		if (rc) {
+			break;
+		}
+	}
+
+	/* Release manager lock */
+	vmm_manager_unlock();
+
+	return rc;
+}
+
 u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest)
 {
 	if (!guest) {

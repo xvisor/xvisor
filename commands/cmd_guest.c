@@ -57,28 +57,29 @@ static void cmd_guest_usage(struct vmm_chardev *cdev)
 			  "device tree node\n");
 }
 
+static int guest_list_iter(struct vmm_guest *guest, void *priv)
+{
+	char path[256];
+	struct vmm_chardev *cdev = priv;
+
+	vmm_devtree_getpath(path, guest->node);
+	vmm_cprintf(cdev, " %-6d %-17s %-13s %-39s\n",
+		    guest->id, guest->name,
+		    (guest->is_big_endian) ? "big" : "little",
+		    path);
+
+	return VMM_OK;
+}
+
 static void cmd_guest_list(struct vmm_chardev *cdev)
 {
-	int id, count;
-	char path[256];
-	struct vmm_guest *guest;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
-	vmm_cprintf(cdev, " %-6s %-17s %-13s %-39s\n", 
+	vmm_cprintf(cdev, " %-6s %-17s %-13s %-39s\n",
 			 "ID ", "Name", "Endianness", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
-	count = vmm_manager_max_guest_count();
-	for (id = 0; id < count; id++) {
-		if (!(guest = vmm_manager_guest(id))) {
-			continue;
-		}
-		vmm_devtree_getpath(path, guest->node);
-		vmm_cprintf(cdev, " %-6d %-17s %-13s %-39s\n", 
-				  id, guest->name, 
-				  (guest->is_big_endian) ? "big" : "little",
-				  path);
-	}
+	vmm_manager_guest_iterate(guest_list_iter, cdev);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
 }
@@ -242,10 +243,10 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 
 	vmm_cprintf(cdev, "%s physical memory ", name);
 	if (sizeof(u64) == sizeof(physical_addr_t)) {
-		vmm_cprintf(cdev, "0x%016llx - 0x%016llx:\n", 
+		vmm_cprintf(cdev, "0x%016llx - 0x%016llx:\n",
 			    (u64)gphys_addr, (u64)(gphys_addr + len));
 	} else {
-		vmm_cprintf(cdev, "0x%08x - 0x%08x:\n", 
+		vmm_cprintf(cdev, "0x%08x - 0x%08x:\n",
 			    (u32)gphys_addr, (u32)(gphys_addr + len));
 	}
 	while (total_loaded < len) {
@@ -342,9 +343,9 @@ static void __exit cmd_guest_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_guest);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

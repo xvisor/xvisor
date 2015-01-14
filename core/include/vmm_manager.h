@@ -312,6 +312,10 @@ struct vmm_guest *vmm_manager_guest(u32 guest_id);
  */
 struct vmm_guest *vmm_manager_guest_find(const char *guest_name);
 
+/** Iterate over each Guest with manager lock held */
+int vmm_manager_guest_iterate(int (*iter)(struct vmm_guest *, void *),
+			      void *priv);
+
 /** Number of VCPUs belonging to a given Guest */
 u32 vmm_manager_guest_vcpu_count(struct vmm_guest *guest);
 
