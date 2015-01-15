@@ -227,9 +227,6 @@ int vmm_devdrv_bus_device_iterate(struct vmm_bus *bus,
 			struct vmm_device *start, void *data,
 			int (*fn)(struct vmm_device *dev, void *data));
 
-/** Get device on a bus */
-struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index);
-
 /** Count available devices on a bus */
 u32 vmm_devdrv_bus_device_count(struct vmm_bus *bus);
 

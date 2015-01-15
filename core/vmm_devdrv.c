@@ -1285,37 +1285,6 @@ int vmm_devdrv_bus_device_iterate(struct vmm_bus *bus,
 	return rc;
 }
 
-struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index)
-{
-	bool found;
-	struct vmm_device *d;
-
-	if (!bus || index < 0) {
-		return NULL;
-	}
-
-	d = NULL;
-	found = FALSE;
-
-	vmm_mutex_lock(&bus->lock);
-
-	list_for_each_entry(d, &bus->device_list, bus_head) {
-		if (!index) {
-			found = TRUE;
-			break;
-		}
-		index--;
-	}
-
-	vmm_mutex_unlock(&bus->lock);
-
-	if (!found) {
-		return NULL;
-	}
-
-	return d;
-}
-
 u32 vmm_devdrv_bus_device_count(struct vmm_bus *bus)
 {
 	u32 retval;
