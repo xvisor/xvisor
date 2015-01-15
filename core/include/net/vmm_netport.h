@@ -71,9 +71,9 @@ struct vmm_netport {
 	struct vmm_netswitch *nsw;
 	struct vmm_device dev;
 
-	/* Per-port pool of xfer instances 
+	/* Per-port pool of xfer instances
 	 * Having all these blocks contiguous eases alloc
-	 * and free operations 
+	 * and free operations
 	 */
 	u32 free_count;
 	struct dlist free_list;
@@ -81,9 +81,9 @@ struct vmm_netport {
 	struct vmm_netport_xfer xfer_pool[VMM_NETPORT_MAX_QUEUE_SIZE];
 
 	/* Link status changed */
-	void (*link_changed) (struct vmm_netport *); 
+	void (*link_changed) (struct vmm_netport *);
 	/* Callback to determine if the port can RX */
-	int (*can_receive) (struct vmm_netport *); 
+	int (*can_receive) (struct vmm_netport *);
 	/* Handle RX from switch to port */
 	vmm_spinlock_t switch2port_xfer_lock;
 	int (*switch2port_xfer) (struct vmm_netport *, struct vmm_mbuf *);
@@ -97,7 +97,7 @@ struct vmm_netport {
 struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port);
 
 /** Free netport xfer instance */
-void vmm_netport_free_xfer(struct vmm_netport *port, 
+void vmm_netport_free_xfer(struct vmm_netport *port,
 			   struct vmm_netport_xfer *xfer);
 
 /** Allocate new netport */
@@ -112,27 +112,17 @@ int vmm_netport_register(struct vmm_netport *port);
 /** Unregister netport from networking framework */
 int vmm_netport_unregister(struct vmm_netport *port);
 
-/** Count number of netports */
-u32 vmm_netport_count(void);
-
 /** Find a netport in networking framework */
 struct vmm_netport *vmm_netport_find(const char *name);
 
-/** Get netport with given number */
-struct vmm_netport *vmm_netport_get(int num);
+/** Iterate over each netport in networking framework */
+int vmm_netport_iterate(struct vmm_netport *start, void *data,
+			int (*fn)(struct vmm_netport *dev, void *data));
 
+/** Count number of netports */
+u32 vmm_netport_count(void);
+
+/** Get pointer to port mac address */
 #define vmm_netport_mac(port)	((port)->macaddr)
-
-#if 0
-static inline void vmm_netport_getmac(struct vmm_netport *port, char *dst)
-{
-	memcpy(dst, port->macaddr, 6);
-}
-
-static inline void vmm_netport_setmac(struct vmm_netport *port, char *src)
-{
-	memcpy(port->macaddr, src, 6);
-}
-#endif
 
 #endif /* __VMM_NETPORT_H_ */

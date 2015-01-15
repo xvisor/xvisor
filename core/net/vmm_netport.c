@@ -55,7 +55,7 @@ struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
 }
 VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
 
-void vmm_netport_free_xfer(struct vmm_netport *port, 
+void vmm_netport_free_xfer(struct vmm_netport *port,
 			   struct vmm_netport_xfer *xfer)
 {
 	irq_flags_t flags;
@@ -189,18 +189,36 @@ struct vmm_netport *vmm_netport_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_netport_find);
 
-struct vmm_netport *vmm_netport_get(int num)
-{
-	struct vmm_device *dev;
+struct netport_iterate_priv {
+	void *data;
+	int (*fn)(struct vmm_netport *port, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&netport_class, num);
-	if (!dev) {
-		return NULL;
+static int netport_iterate(struct vmm_device *dev, void *data)
+{
+	struct netport_iterate_priv *p = data;
+	struct vmm_netport *port = vmm_devdrv_get_data(dev);
+
+	return p->fn(port, p->data);
+}
+
+int vmm_netport_iterate(struct vmm_netport *start, void *data,
+			int (*fn)(struct vmm_netport *dev, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct netport_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&netport_class, st,
+						&p, netport_iterate);
 }
-VMM_EXPORT_SYMBOL(vmm_netport_get);
+VMM_EXPORT_SYMBOL(vmm_netport_iterate);
 
 u32 vmm_netport_count(void)
 {
