@@ -54,7 +54,6 @@ static int netdev_register_port(struct net_device *ndev)
 	struct vmm_device *dev = ndev->vmm_dev;
 
         port = vmm_netport_alloc(ndev->name, VMM_NETPORT_DEF_QUEUE_SIZE);
-
         if (!port) {
                 vmm_printf("Failed to allocate netport for %s\n", ndev->name);
                 return VMM_ENOMEM;
@@ -79,17 +78,17 @@ static int netdev_register_port(struct net_device *ndev)
 			nsw = vmm_netswitch_find(attr);
 			if (!nsw) {
 				vmm_panic("%s: Cannot find netswitch \"%s\"\n",
-						ndev->name, attr);
+					  ndev->name, attr);
 			}
 			vmm_netswitch_port_add(nsw, port);
 		} else {
 			/* Add port to default switch if not specified. */
-			if (vmm_netswitch_count()) {
-				nsw = vmm_netswitch_get(0);
-				if (!nsw) {
-					vmm_panic("Cannot find switch index 0\n");
-				}
+			nsw = vmm_netswitch_default();
+			if (nsw) {
 				vmm_netswitch_port_add(nsw, port);
+			} else {
+				vmm_panic("%s: Failed to find default "
+				          "netswitch\n", ndev->name);
 			}
 		}
 	}

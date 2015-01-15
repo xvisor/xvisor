@@ -859,11 +859,11 @@ static int __init lwip_netstack_init(void)
 		/* Find netswitch with given name */
 		nsw = vmm_netswitch_find(str);
 	} else {
-		/* Get the first netswitch */
-		nsw = vmm_netswitch_get(0);
+		/* Get default netswitch */
+		nsw = vmm_netswitch_default();
 	}
 	if (!nsw) {
-		vmm_panic("No netswitch found\n");
+		vmm_panic("%s: No netswitch found\n", __func__);
 	}
 
 	/* Release netstack device tree node */
@@ -872,7 +872,7 @@ static int __init lwip_netstack_init(void)
 	/* Allocate a netport */
 	lns.port = vmm_netport_alloc("lwip-netport", VMM_NETPORT_DEF_QUEUE_SIZE);
 	if (!lns.port) {
-		vmm_printf("lwIP netport_alloc() failed\n");
+		vmm_printf("%s: vmm_netport_alloc() failed\n", __func__);
 		rc = VMM_ENOMEM;
 		goto fail;
 	}

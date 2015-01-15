@@ -46,11 +46,11 @@ struct vmm_netswitch {
 	/* List of ports */
 	struct dlist port_list;
 	/* Handle RX packets from port to switch */
-	int (*port2switch_xfer) (struct vmm_netswitch *, 
-				 struct vmm_netport *, 
+	int (*port2switch_xfer) (struct vmm_netswitch *,
+				 struct vmm_netport *,
 				 struct vmm_mbuf *);
 	/* Handle enabling of a port */
-	int (*port_add) (struct vmm_netswitch *, 
+	int (*port_add) (struct vmm_netswitch *,
 			 struct vmm_netport *);
 	/* Handle disabling of a port */
 	int (*port_remove) (struct vmm_netswitch *,
@@ -60,20 +60,20 @@ struct vmm_netswitch {
 };
 
 /** Transfer packets from port to switch */
-int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, 
+int vmm_port2switch_xfer_mbuf(struct vmm_netport *src,
 			      struct vmm_mbuf *mbuf);
 
 /** Lazy transfer from port to switch */
-int vmm_port2switch_xfer_lazy(struct vmm_netport *src, 
+int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
 			 void *lazy_arg, int lazy_budget);
 
 /** Transfer packets from switch to port */
 int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
-			      struct vmm_netport *dst, 
+			      struct vmm_netport *dst,
 			      struct vmm_mbuf *mbuf);
 
-/** Allocate new network switch 
+/** Allocate new network switch
  *  @name name of the network switch
  */
 struct vmm_netswitch *vmm_netswitch_alloc(char *name);
@@ -82,28 +82,32 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name);
 void vmm_netswitch_free(struct vmm_netswitch *nsw);
 
 /** Add a port to the netswitch */
-int vmm_netswitch_port_add(struct vmm_netswitch *nsw, 
+int vmm_netswitch_port_add(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port);
 
 /** Remove a port to the netswitch */
 int vmm_netswitch_port_remove(struct vmm_netport *port);
 
 /** Register network switch to network switch framework */
-int vmm_netswitch_register(struct vmm_netswitch *nsw, 
+int vmm_netswitch_register(struct vmm_netswitch *nsw,
 			   struct vmm_device *parent,
 			   void *priv);
 
 /** Unregister network switch from network switch framework */
 int vmm_netswitch_unregister(struct vmm_netswitch *nsw);
 
-/** Count number of network switches */
-u32 vmm_netswitch_count(void);
-
 /** Find a network switch in device driver framework */
 struct vmm_netswitch *vmm_netswitch_find(const char *name);
 
-/** Get network switch with given number */
-struct vmm_netswitch *vmm_netswitch_get(int num);
+/** Iterate over each network switch in networking framework */
+int vmm_netswitch_iterate(struct vmm_netswitch *start, void *data,
+			  int (*fn)(struct vmm_netswitch *nsw, void *data));
+
+/** Get default network switch */
+struct vmm_netswitch *vmm_netswitch_default(void);
+
+/** Count number of network switches */
+u32 vmm_netswitch_count(void);
 
 #endif /* __VMM_NETSWITCH_H_ */
 

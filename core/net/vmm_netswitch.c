@@ -278,15 +278,15 @@ static int netswitch_bh_main(void *param)
 		}
 
 		/* Print debug info */
-		DPRINTF("%s: nsw=%s xfer_type=%d\n", __func__, 
+		DPRINTF("%s: nsw=%s xfer_type=%d\n", __func__,
 			xfer_nsw->name, xfer_type);
 
 		/* Process xfer request */
 		switch (xfer_type) {
 		case VMM_NETPORT_XFER_LAZY:
 			/* Call lazy xfer function */
-			xfer_lazy_xfer(xfer_port, 
-					xfer_lazy_arg, 
+			xfer_lazy_xfer(xfer_port,
+					xfer_lazy_arg,
 					xfer_lazy_budget);
 
 			break;
@@ -347,7 +347,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	/* Add xfer request to xfer ring */
 	rc = netswitch_bh_ring_enqueue(nbp, xfer);
 	if (rc) {
-		vmm_printf("%s: nsw=%s src=%s xfer bh enqueue failed.\n", 
+		vmm_printf("%s: nsw=%s src=%s xfer bh enqueue failed.\n",
 			   __func__, nsw->name, src->name);
 		vmm_netport_free_xfer(xfer->port, xfer);
 	}
@@ -356,7 +356,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 }
 VMM_EXPORT_SYMBOL(vmm_port2switch_xfer_mbuf);
 
-int vmm_port2switch_xfer_lazy(struct vmm_netport *src, 
+int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
 			 void *lazy_arg, int lazy_budget)
 {
@@ -404,7 +404,7 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 VMM_EXPORT_SYMBOL(vmm_port2switch_xfer_lazy);
 
 int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
-			      struct vmm_netport *dst, 
+			      struct vmm_netport *dst,
 			      struct vmm_mbuf *mbuf)
 {
 	int rc;
@@ -565,7 +565,7 @@ static struct vmm_class nsw_class = {
 	.name = VMM_NETSWITCH_CLASS_NAME,
 };
 
-int vmm_netswitch_register(struct vmm_netswitch *nsw, 
+int vmm_netswitch_register(struct vmm_netswitch *nsw,
 			   struct vmm_device *parent,
 			   void *priv)
 {
@@ -639,18 +639,58 @@ struct vmm_netswitch *vmm_netswitch_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_find);
 
-struct vmm_netswitch *vmm_netswitch_get(int num)
-{
-	struct vmm_device *dev;
+struct netswitch_iterate_priv {
+	void *data;
+	int (*fn)(struct vmm_netswitch *nsw, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&nsw_class, num);
-	if (!dev) {
-		return NULL;
+static int netswitch_iterate(struct vmm_device *dev, void *data)
+{
+	struct netswitch_iterate_priv *p = data;
+	struct vmm_netswitch *nsw = vmm_devdrv_get_data(dev);
+
+	return p->fn(nsw, p->data);
+}
+
+int vmm_netswitch_iterate(struct vmm_netswitch *start, void *data,
+			  int (*fn)(struct vmm_netswitch *nsw, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct netswitch_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&nsw_class, st,
+						&p, netswitch_iterate);
 }
-VMM_EXPORT_SYMBOL(vmm_netswitch_get);
+VMM_EXPORT_SYMBOL(vmm_netswitch_iterate);
+
+static int netswitch_default_iterate(struct vmm_netswitch *nsw,
+				     void *data)
+{
+	struct vmm_netswitch **out_nsw = data;
+
+	if (!(*out_nsw)) {
+		*out_nsw = nsw;
+	}
+
+	return VMM_OK;
+}
+
+struct vmm_netswitch *vmm_netswitch_default(void)
+{
+	struct vmm_netswitch *nsw = NULL;
+
+	vmm_netswitch_iterate(NULL, &nsw, netswitch_default_iterate);
+
+	return nsw;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_default);
 
 u32 vmm_netswitch_count(void)
 {
@@ -668,7 +708,7 @@ static void __init vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
 		     VMM_NETSWITCH_CLASS_NAME, cpu);
 
 	nbp->thread = vmm_threads_create(name, netswitch_bh_main,
-					 nbp, VMM_THREAD_DEF_PRIORITY, 
+					 nbp, VMM_THREAD_DEF_PRIORITY,
 					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!nbp->thread) {
 		vmm_printf("%s: CPU%d: Failed to create thread\n",

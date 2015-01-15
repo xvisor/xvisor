@@ -58,16 +58,16 @@ static int cmd_net_port_list_iter(struct vmm_netport *port, void *data)
 	char hwaddr[20];
 	struct cmd_net_list_priv *p = data;
 
-	vmm_cprintf(p->cdev, " %-3d %-19s", p->num++, port->name);
+	vmm_cprintf(p->cdev, " %-5d %-19s", p->num++, port->name);
 	if (port->nsw) {
 		vmm_cprintf(p->cdev, " %-13s", port->nsw->name);
 	} else {
 		vmm_cprintf(p->cdev, " %-13s", "--");
 	}
 	if (port->flags & VMM_NETPORT_LINK_UP) {
-		vmm_cprintf(p->cdev, " %-6s", "UP");
+		vmm_cprintf(p->cdev, " %-4s", "UP");
 	} else {
-		vmm_cprintf(p->cdev, " %-6s", "DOWN");
+		vmm_cprintf(p->cdev, " %-4s", "DOWN");
 	}
 	vmm_cprintf(p->cdev, " %-18s %-5d\n",
 		    ethaddr_to_str(hwaddr, port->macaddr), port->mtu);
@@ -87,8 +87,8 @@ static int cmd_net_port_list(struct vmm_chardev *cdev,
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "------------------------------\n");
-	vmm_cprintf(cdev, " %-3s %-19s %-13s %-6s %-18s %-5s\n",
-		    "ID", "Port", "Switch", "Link", "HW-Address", "MTU");
+	vmm_cprintf(cdev, " %-5s %-19s %-13s %-4s %-18s %-5s\n",
+		    "Num#", "Port", "Switch", "Link", "HW-Address", "MTU");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "------------------------------\n");
 	vmm_netport_iterate(NULL, &p, cmd_net_port_list_iter);
@@ -98,29 +98,53 @@ static int cmd_net_port_list(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
+static int cmd_net_switch_list_iter(struct vmm_netswitch *nsw, void *data)
+{
+	u32 pos = 0;
+	struct vmm_netport *port;
+	struct cmd_net_list_priv *p = data;
+
+	list_for_each_entry(port, &nsw->port_list, head) {
+		if (pos == 0) {
+			vmm_cprintf(p->cdev, " %-5d %-13s +--%-46s\n",
+				    p->num, nsw->name, port->name);
+		} else {
+			vmm_cprintf(p->cdev, " %-5s %-13s +--%-46s\n",
+				    "", "", port->name);
+		}
+		pos++;
+	}
+	p->num++;
+
+	vmm_cprintf(p->cdev, "----------------------------------------"
+			     "------------------------------\n");
+
+	return VMM_OK;
+}
+
 static int cmd_net_switch_list(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	int num, count;
-	struct vmm_netswitch *nsw;
-	struct dlist *list;
-	struct vmm_netport *port;
+	struct cmd_net_list_priv p = { .num = 0, .cdev = cdev };
+
 	if (argc != 2) {
 		cmd_net_usage(cdev);
 		return VMM_EFAIL;
 	}
-	count = vmm_netswitch_count();
-	vmm_cprintf(cdev, "-----------------------------------------\n");
-	vmm_cprintf(cdev, " %-13s     %s\n", "Switch", "Port List");
-	for (num = 0; num < count; num++) {
-		vmm_cprintf(cdev, "\r-----------------------------------------\n");
-		nsw = vmm_netswitch_get(num);
-		vmm_cprintf(cdev, " %-13s +", nsw->name);
-		list_for_each(list, &nsw->port_list) {
-			port = list_port(list);
-			vmm_cprintf(cdev, "-- %s\n %-13s +", port->name, "");
-		}
+
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "------------------------------\n");
+	vmm_cprintf(cdev, " %-5s %-13s %-49s\n",
+			  "Num#", "Switch", "Port List");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "------------------------------\n");
+	vmm_netswitch_iterate(NULL, &p, cmd_net_switch_list_iter);
+	if (p.num) {
+		goto done;
 	}
-	vmm_cprintf(cdev, "\r-----------------------------------------\n");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "------------------------------\n");
+
+done:
 	return VMM_OK;
 }
 
