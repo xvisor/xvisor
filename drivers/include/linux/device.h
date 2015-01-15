@@ -106,7 +106,7 @@
 #define bus_find_device_by_name(bus, start, name)	\
 			vmm_devdrv_bus_find_device_by_name(bus, start, name)
 #define bus_for_each_device(bus, start, data, fn)	\
-			vmm_devdrv_bus_for_each_device(bus, start, data, fn)
+			vmm_devdrv_bus_device_iterate(bus, start, data, fn)
 
 static inline int dev_to_node(struct device *dev) { return -1; }
 static inline void set_dev_node(struct device *dev, int node) { }

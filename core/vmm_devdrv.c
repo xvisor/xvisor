@@ -836,7 +836,7 @@ struct vmm_device *vmm_devdrv_class_find_device_by_name(
 	return d;
 }
 
-int vmm_devdrv_class_for_each_device(struct vmm_class *cls,
+int vmm_devdrv_class_device_iterate(struct vmm_class *cls,
 			struct vmm_device *start, void *data,
 			int (*fn)(struct vmm_device *dev, void *data))
 {
@@ -1248,7 +1248,7 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 					  devdrv_name_match);
 }
 
-int vmm_devdrv_bus_for_each_device(struct vmm_bus *bus,
+int vmm_devdrv_bus_device_iterate(struct vmm_bus *bus,
 			struct vmm_device *start, void *data,
 			int (*fn)(struct vmm_device *dev, void *data))
 {

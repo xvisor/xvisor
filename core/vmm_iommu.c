@@ -379,7 +379,7 @@ static struct vmm_notifier_block iommu_bus_nb = {
 static void iommu_bus_init(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
 {
 	vmm_devdrv_bus_register_notifier(bus, &iommu_bus_nb);
-	vmm_devdrv_bus_for_each_device(bus, NULL, ops, add_iommu_group);
+	vmm_devdrv_bus_device_iterate(bus, NULL, ops, add_iommu_group);
 }
 
 int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
