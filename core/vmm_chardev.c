@@ -126,16 +126,34 @@ struct vmm_chardev *vmm_chardev_find(const char *name)
 	return vmm_devdrv_get_data(dev);
 }
 
-struct vmm_chardev *vmm_chardev_get(int num)
-{
-	struct vmm_device *dev;
+struct chardev_iterate_priv {
+	void *data;
+	int (*fn)(struct vmm_chardev *dev, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&chardev_class, num);
-	if (!dev) {
-		return NULL;
+static int chardev_iterate(struct vmm_device *dev, void *data)
+{
+	struct chardev_iterate_priv *p = data;
+	struct vmm_chardev *cdev = vmm_devdrv_get_data(dev);
+
+	return p->fn(cdev, p->data);
+}
+
+int vmm_chardev_iterate(struct vmm_chardev *start, void *data,
+			int (*fn)(struct vmm_chardev *dev, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct chardev_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&chardev_class, st,
+						&p, chardev_iterate);
 }
 
 u32 vmm_chardev_count(void)

@@ -43,32 +43,36 @@ static void cmd_chardev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   chardev list\n");
 }
 
+static int cmd_chardev_list_iter(struct vmm_chardev *cd, void *data)
+{
+	int rc;
+	char path[256];
+	struct vmm_chardev *cdev = data;
+
+	if (cd->dev.parent && cd->dev.parent->node) {
+		rc = vmm_devtree_getpath(path, sizeof(path),
+					 cd->dev.parent->node);
+		if (rc) {
+			vmm_snprintf(path, sizeof(path),
+				     "----- (error %d)", rc);
+		}
+	} else {
+		strcpy(path, "-----");
+	}
+	vmm_cprintf(cdev, " %-24s %-53s\n", cd->name, path);
+
+	return VMM_OK;
+}
+
 static void cmd_chardev_list(struct vmm_chardev *cdev)
 {
-	int rc, num, count;
-	char path[256];
-	struct vmm_chardev *cd;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-24s %-53s\n", 
 			  "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_chardev_count();
-	for (num = 0; num < count; num++) {
-		cd = vmm_chardev_get(num);
-		if (cd->dev.parent && cd->dev.parent->node) {
-			rc = vmm_devtree_getpath(path, sizeof(path),
-						 cd->dev.parent->node);
-			if (rc) {
-				vmm_snprintf(path, sizeof(path),
-					     "----- (error %d)", rc);
-			}
-		} else {
-			strcpy(path, "-----");
-		}
-		vmm_cprintf(cdev, " %-24s %-53s\n", cd->name, path);
-	}
+	vmm_chardev_iterate(NULL, cdev, cmd_chardev_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }

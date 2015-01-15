@@ -63,8 +63,9 @@ int vmm_chardev_unregister(struct vmm_chardev *cdev);
 /** Find a character device in device driver framework */
 struct vmm_chardev *vmm_chardev_find(const char *name);
 
-/** Get character device with given number */
-struct vmm_chardev *vmm_chardev_get(int num);
+/** Iterate over each character device */
+int vmm_chardev_iterate(struct vmm_chardev *start, void *data,
+			int (*fn)(struct vmm_chardev *dev, void *data));
 
 /** Count number of character devices */
 u32 vmm_chardev_count(void);
