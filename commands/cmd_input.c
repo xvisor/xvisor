@@ -44,27 +44,30 @@ static void cmd_input_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   input handlers\n");
 }
 
+static int cmd_input_devices_iter(struct input_dev *idev, void *data)
+{
+	char id[27];
+	struct vmm_chardev *cdev = data;
+
+	vmm_snprintf(id, sizeof(id),
+		     "0x%02x:0x%02x:0x%02x:0x%04x",
+		     idev->id.bustype, idev->id.vendor,
+		     idev->id.product, idev->id.version);
+	vmm_cprintf(cdev, " %-18s %-32s %-27s\n",
+		    idev->phys, idev->name, id);
+
+	return VMM_OK;
+}
+
 static void cmd_input_devices(struct vmm_chardev *cdev)
 {
-	int num, count;
-	char id[27];
-	struct input_dev *idev;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
+	vmm_cprintf(cdev, " %-18s %-32s %-27s\n",
 			  "Phys", "Name", "Bus:Vendor:Product:Version");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = input_count_device();
-	for (num = 0; num < count; num++) {
-		idev = input_get_device(num);
-		vmm_snprintf(id, sizeof(id),
-				"0x%02x:0x%02x:0x%02x:0x%04x",
-				idev->id.bustype, idev->id.vendor, 
-				idev->id.product, idev->id.version);
-		vmm_cprintf(cdev, " %-18s %-32s %-27s\n", 
-				  idev->phys, idev->name, id);
-	}
+	input_iterate_device(NULL, cdev, cmd_input_devices_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }
@@ -76,7 +79,7 @@ static void cmd_input_handlers(struct vmm_chardev *cdev)
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-10s %-67s\n", 
+	vmm_cprintf(cdev, " %-10s %-67s\n",
 			  "Num", "Name");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -125,9 +128,9 @@ static void __exit cmd_input_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_input);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

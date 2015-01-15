@@ -236,7 +236,7 @@ static int input_handle_abs_event(struct input_dev *dev,
 	}
 
 	/* Flush pending "slot" event */
-	if (is_mt_event && mt && 
+	if (is_mt_event && mt &&
 	    mt->slot != input_abs_get_val(dev, ABS_MT_SLOT)) {
 		input_abs_set_val(dev, ABS_MT_SLOT, mt->slot);
 		input_pass_event(dev, EV_ABS, ABS_MT_SLOT, mt->slot);
@@ -358,8 +358,8 @@ static void input_handle_event(struct input_dev *dev,
 		input_pass_event(dev, type, code, value);
 }
 
-void input_event(struct input_dev *dev, 
-		     unsigned int type, unsigned int code, int value)
+void input_event(struct input_dev *dev,
+		 unsigned int type, unsigned int code, int value)
 {
 	irq_flags_t flags;
 
@@ -371,8 +371,8 @@ void input_event(struct input_dev *dev,
 }
 VMM_EXPORT_SYMBOL(input_event);
 
-void input_set_capability(struct input_dev *dev, 
-			      unsigned int type, unsigned int code)
+void input_set_capability(struct input_dev *dev,
+			  unsigned int type, unsigned int code)
 {
 	switch (type) {
 	case EV_KEY:
@@ -412,7 +412,7 @@ void input_set_capability(struct input_dev *dev,
 		break;
 
 	default:
-		vmm_panic("%s: unknown type %u (code %u)\n", 
+		vmm_panic("%s: unknown type %u (code %u)\n",
 			   __func__, type, code);
 		return;
 	}
@@ -555,7 +555,7 @@ static int input_default_setkeycode(struct input_dev *dev,
 void input_alloc_absinfo(struct input_dev *dev)
 {
 	if (!dev->absinfo) {
-		dev->absinfo = 
+		dev->absinfo =
 			vmm_malloc(ABS_CNT * sizeof(struct input_absinfo));
 	}
 
@@ -582,7 +582,7 @@ void input_set_abs_params(struct input_dev *dev, unsigned int axis,
 }
 VMM_EXPORT_SYMBOL(input_set_abs_params);
 
-int input_get_keycode(struct input_dev *dev, 
+int input_get_keycode(struct input_dev *dev,
 			  struct input_keymap_entry *ke)
 {
 	irq_flags_t flags;
@@ -902,18 +902,36 @@ struct input_dev *input_find_device(const char *phys)
 }
 VMM_EXPORT_SYMBOL(input_find_device);
 
-struct input_dev *input_get_device(int index)
-{
-	struct vmm_device *dev;
+struct input_iterate_device_priv {
+	void *data;
+	int (*fn)(struct input_dev *dev, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&input_class, index);
-	if (!dev) {
-		return NULL;
+static int __input_iterate_device(struct vmm_device *dev, void *data)
+{
+	struct input_iterate_device_priv *p = data;
+	struct input_dev *idev = vmm_devdrv_get_data(dev);
+
+	return p->fn(idev, p->data);
+}
+
+int input_iterate_device(struct input_dev *start, void *data,
+			 int (*fn)(struct input_dev *dev, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct input_iterate_device_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&input_class, st,
+						&p, __input_iterate_device);
 }
-VMM_EXPORT_SYMBOL(input_get_device);
+VMM_EXPORT_SYMBOL(input_iterate_device);
 
 u32 input_count_device(void)
 {
@@ -1038,7 +1056,7 @@ int input_connect_handler(struct input_handler *ihnd)
 			if (!dev->users && dev->open) {
 				rc = dev->open(dev);
 				if (rc) {
-					vmm_printf("%s: failed to open %s", 
+					vmm_printf("%s: failed to open %s",
 						   __func__, dev->phys);
 				}
 			}

@@ -54,7 +54,7 @@ struct input_id {
 };
 
 /**
- * struct input_absinfo - 
+ * struct input_absinfo -
  * @value: latest reported value for the axis.
  * @minimum: specifies minimum value for the axis.
  * @maximum: specifies maximum value for the axis.
@@ -1043,7 +1043,7 @@ struct input_dev {
 	int (*open)(struct input_dev *dev);
 	void (*close)(struct input_dev *dev);
 	int (*flush)(struct input_dev *dev);
-	int (*event)(struct input_dev *dev, 
+	int (*event)(struct input_dev *dev,
 		     unsigned int type, unsigned int code, int value);
 
 	vmm_spinlock_t event_lock;
@@ -1069,8 +1069,7 @@ struct input_dev {
  * @event: callback function of input handler to handle events
  * @priv: handler specific data
  */
-struct input_handler 
-{
+struct input_handler {
 	struct dlist head;
 
 	bool connected;
@@ -1080,8 +1079,8 @@ struct input_handler
 
 	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];
 
-	int (*event)(struct input_handler *ihnd, 
-		     struct input_dev *dev, 
+	int (*event)(struct input_handler *ihnd,
+		     struct input_dev *dev,
 		     unsigned int type, unsigned int code, int value);
 
 	void *priv;
@@ -1097,18 +1096,18 @@ static inline void input_set_drvdata(struct input_dev *dev, void *data)
 	dev->priv = data;
 }
 
-/** Allocate an input device 
+/** Allocate an input device
  *
  * Returns prepared struct input_dev or NULL.
  */
 struct input_dev *input_allocate_device(void);
 
-/** Free an input device 
+/** Free an input device
  * @dev: input device to free
  */
 void input_free_device(struct input_dev *dev);
 
-/** Register input device 
+/** Register input device
  * @dev: device to be registered
  *
  * This function registers device with input core. The device must be
@@ -1117,7 +1116,7 @@ void input_free_device(struct input_dev *dev);
  */
 int input_register_device(struct input_dev *dev);
 
-/** Unregister input device 
+/** Unregister input device
  * @dev: device to be unregistered
  *
  * This function unregisters an input device. Once device is unregistered
@@ -1125,7 +1124,7 @@ int input_register_device(struct input_dev *dev);
  */
 int input_unregister_device(struct input_dev *dev);
 
-/** Reset/restore input device 
+/** Reset/restore input device
  * @dev: input device whose state needs to be reset
  *
  * This function tries to reset the state of an opened input device and
@@ -1134,7 +1133,7 @@ int input_unregister_device(struct input_dev *dev);
  */
 void input_reset_device(struct input_dev *dev);
 
-/** Flush input device 
+/** Flush input device
  * @dev: input device whose state needs to be reset
  *
  * This function tries to flush an input device.
@@ -1144,8 +1143,9 @@ int input_flush_device(struct input_dev *dev);
 /** Find a input device based on its physical name */
 struct input_dev *input_find_device(const char *phys);
 
-/** Get input device with given index */
-struct input_dev *input_get_device(int index);
+/** Iterate over each input device */
+int input_iterate_device(struct input_dev *start, void *data,
+			 int (*fn)(struct input_dev *dev, void *data));
 
 /** Count number of input devices */
 u32 input_count_device(void);
@@ -1171,7 +1171,7 @@ struct input_handler *input_get_handler(int index);
 /** Count number of input handler */
 u32 input_count_handler(void);
 
-/** Report new input event 
+/** Report new input event
  * @dev: device that generated the event
  * @type: type of the event
  * @code: event code
@@ -1180,40 +1180,40 @@ u32 input_count_handler(void);
  * This function should be used by drivers implementing various input
  * devices to report input events.
  */
-void input_event(struct input_dev *dev, 
-		     unsigned int type, unsigned int code, int value);
+void input_event(struct input_dev *dev,
+		 unsigned int type, unsigned int code, int value);
 
 /** Report EV_KEY from input device */
-static inline void input_report_key(struct input_dev *dev, 
-					unsigned int code, int value)
+static inline void input_report_key(struct input_dev *dev,
+				    unsigned int code, int value)
 {
 	input_event(dev, EV_KEY, code, !!value);
 }
 
 /** Report EV_REL from input device */
-static inline void input_report_rel(struct input_dev *dev, 
-					unsigned int code, int value)
+static inline void input_report_rel(struct input_dev *dev,
+				    unsigned int code, int value)
 {
 	input_event(dev, EV_REL, code, value);
 }
 
 /** Report EV_ABS from input device */
-static inline void input_report_abs(struct input_dev *dev, 
-					unsigned int code, int value)
+static inline void input_report_abs(struct input_dev *dev,
+				    unsigned int code, int value)
 {
 	input_event(dev, EV_ABS, code, value);
 }
 
 /** Report EV_FF_STATUS from input device */
-static inline void input_report_ff_status(struct input_dev *dev, 
-					      unsigned int code, int value)
+static inline void input_report_ff_status(struct input_dev *dev,
+					  unsigned int code, int value)
 {
 	input_event(dev, EV_FF_STATUS, code, value);
 }
 
 /** Report EV_SW from input device */
-static inline void input_report_switch(struct input_dev *dev, 
-					   unsigned int code, int value)
+static inline void input_report_switch(struct input_dev *dev,
+				       unsigned int code, int value)
 {
 	input_event(dev, EV_SW, code, !!value);
 }
@@ -1230,7 +1230,7 @@ static inline void input_mt_sync(struct input_dev *dev)
 	input_event(dev, EV_SYN, SYN_MT_REPORT, 0);
 }
 
-/** Set capability of input device to generate event of give type and code 
+/** Set capability of input device to generate event of give type and code
  * @dev: device that is capable of emitting or accepting event
  * @type: type of the event (EV_KEY, EV_REL, etc...)
  * @code: event code
@@ -1238,8 +1238,8 @@ static inline void input_mt_sync(struct input_dev *dev)
  * In addition to setting up corresponding bit in appropriate capability
  * bitmap the function also adjusts dev->evbit.
  */
-void input_set_capability(struct input_dev *dev, 
-			      unsigned int type, unsigned int code);
+void input_set_capability(struct input_dev *dev,
+			  unsigned int type, unsigned int code);
 
 /**
  * Tell handlers about the driver event rate
@@ -1252,7 +1252,7 @@ void input_set_capability(struct input_dev *dev,
  * to minimize information loss.
  */
 static inline void input_set_events_per_packet(struct input_dev *dev,
-						   int n_events)
+					       int n_events)
 {
 	dev->hint_events_per_packet = n_events;
 }
@@ -1291,7 +1291,7 @@ INPUT_GENERATE_ABS_ACCESSORS(fuzz, fuzz)
 INPUT_GENERATE_ABS_ACCESSORS(flat, flat)
 INPUT_GENERATE_ABS_ACCESSORS(res, resolution)
 
-/** Convert input keymap scancode to scalar value 
+/** Convert input keymap scancode to scalar value
  * @ke: keymap entry containing scancode to be converted.
  * @scancode: pointer to the location where converted scancode should
  *	be stored.
@@ -1303,17 +1303,17 @@ INPUT_GENERATE_ABS_ACCESSORS(res, resolution)
 int input_scancode_to_scalar(const struct input_keymap_entry *ke,
 				 unsigned int *scancode);
 
-/** Retrieve keycode currently mapped to a given scancode 
+/** Retrieve keycode currently mapped to a given scancode
  * @dev: input device which keymap is being queried
  * @ke: keymap entry
  *
  * This function should be called by anyone interested in retrieving current
  * keymap. Presently evdev handlers use it.
  */
-int input_get_keycode(struct input_dev *dev, 
+int input_get_keycode(struct input_dev *dev,
 			  struct input_keymap_entry *ke);
 
-/** Attribute a keycode to a given scancode 
+/** Attribute a keycode to a given scancode
  * @dev: input device which keymap is being updated
  * @ke: new keymap entry
  *
