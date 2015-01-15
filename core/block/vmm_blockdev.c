@@ -242,7 +242,7 @@ static int blockdev_rw_blocks(struct vmm_blockdev *bdev,
 	return VMM_OK;
 }
 
-u64 vmm_blockdev_rw(struct vmm_blockdev *bdev, 
+u64 vmm_blockdev_rw(struct vmm_blockdev *bdev,
 			enum vmm_request_type type,
 			u8 *buf, u64 off, u64 len)
 {
@@ -423,15 +423,15 @@ int vmm_blockdev_register(struct vmm_blockdev *bdev)
 	/* Broadcast register event */
 	event.bdev = bdev;
 	event.data = NULL;
-	vmm_blocking_notifier_call(&bdev_notifier_chain, 
-				   VMM_BLOCKDEV_EVENT_REGISTER, 
+	vmm_blocking_notifier_call(&bdev_notifier_chain,
+				   VMM_BLOCKDEV_EVENT_REGISTER,
 				   &event);
 
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_register);
 
-int vmm_blockdev_add_child(struct vmm_blockdev *bdev, 
+int vmm_blockdev_add_child(struct vmm_blockdev *bdev,
 			   u64 start_lba, u64 num_blocks)
 {
 	int rc;
@@ -515,8 +515,8 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev)
 	/* Broadcast unregister event */
 	event.bdev = bdev;
 	event.data = NULL;
-	vmm_blocking_notifier_call(&bdev_notifier_chain, 
-				   VMM_BLOCKDEV_EVENT_UNREGISTER, 
+	vmm_blocking_notifier_call(&bdev_notifier_chain,
+				   VMM_BLOCKDEV_EVENT_UNREGISTER,
 				   &event);
 
 	return vmm_devdrv_unregister_device(&bdev->dev);
@@ -536,18 +536,36 @@ struct vmm_blockdev *vmm_blockdev_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_find);
 
-struct vmm_blockdev *vmm_blockdev_get(int num)
-{
-	struct vmm_device *dev;
+struct blockdev_iterate_priv {
+	void *data;
+	int (*fn)(struct vmm_blockdev *dev, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&bdev_class, num);
-	if (!dev) {
-		return NULL;
+static int blockdev_iterate(struct vmm_device *dev, void *data)
+{
+	struct blockdev_iterate_priv *p = data;
+	struct vmm_blockdev *bdev = vmm_devdrv_get_data(dev);
+
+	return p->fn(bdev, p->data);
+}
+
+int vmm_blockdev_iterate(struct vmm_blockdev *start, void *data,
+			 int (*fn)(struct vmm_blockdev *dev, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct blockdev_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&bdev_class, st,
+						&p, blockdev_iterate);
 }
-VMM_EXPORT_SYMBOL(vmm_blockdev_get);
+VMM_EXPORT_SYMBOL(vmm_blockdev_iterate);
 
 u32 vmm_blockdev_count(void)
 {

@@ -210,8 +210,9 @@ int vmm_blockdev_unregister(struct vmm_blockdev *bdev);
 /** Find a block device in device driver framework */
 struct vmm_blockdev *vmm_blockdev_find(const char *name);
 
-/** Get block device with given number */
-struct vmm_blockdev *vmm_blockdev_get(int num);
+/** Iterate over each block device */
+int vmm_blockdev_iterate(struct vmm_blockdev *start, void *data,
+			 int (*fn)(struct vmm_blockdev *dev, void *data));
 
 /** Count number of block devices */
 u32 vmm_blockdev_count(void);

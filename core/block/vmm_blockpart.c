@@ -91,7 +91,7 @@ static struct blockpart_work *blockpart_pop_work(void)
 	return w;
 }
 
-static void blockpart_add_work(enum blockpart_work_type type, 
+static void blockpart_add_work(enum blockpart_work_type type,
 				struct vmm_blockdev *bdev)
 {
 	bool found;
@@ -125,7 +125,7 @@ static void blockpart_add_work(enum blockpart_work_type type,
 	vmm_spin_unlock_irqrestore(&bpctrl.work_list_lock, flags);
 }
 
-static void blockpart_del_work(enum blockpart_work_type type, 
+static void blockpart_del_work(enum blockpart_work_type type,
 				struct vmm_blockdev *bdev)
 {
 	irq_flags_t flags;
@@ -289,7 +289,7 @@ int vmm_blockpart_manager_register(struct vmm_blockpart_manager *mngr)
 
 	vmm_spin_unlock_irqrestore(&bpctrl.mngr_list_lock, flags);
 
-	/* Some blockpart work might not have been processed due to 
+	/* Some blockpart work might not have been processed due to
 	 * unavailability of appropriate partition manager.
 	 * To solve, we give dummy wakeup signal for each available work.
 	 */
@@ -389,10 +389,21 @@ u32 vmm_blockpart_manager_count(void)
 }
 VMM_EXPORT_SYMBOL(vmm_blockpart_manager_count);
 
+static int __init blockpart_init_iter(struct vmm_blockdev *bdev, void *data)
+{
+	if (!bdev || bdev->parent) {
+		goto done;
+	}
+	blockpart_add_work(BLOCKPART_WORK_PARSE, bdev);
+	blockpart_signal_one_work();
+
+done:
+	return VMM_OK;
+}
+
 static int __init vmm_blockpart_init(void)
 {
-	int rc, b, count;
-	struct vmm_blockdev *bdev;
+	int rc;
 
 	/* Initialize manager list lock */
 	INIT_SPIN_LOCK(&bpctrl.mngr_list_lock);
@@ -421,25 +432,23 @@ static int __init vmm_blockpart_init(void)
 	}
 
 	/* Create blockpart work thread */
-	bpctrl.work_thread = vmm_threads_create("partd", 
-						blockpart_thread_main, NULL, 
+	bpctrl.work_thread = vmm_threads_create("partd",
+						blockpart_thread_main, NULL,
 						VMM_THREAD_DEF_PRIORITY,
 						VMM_THREAD_DEF_TIME_SLICE);
 	if (!bpctrl.work_thread) {
+		vmm_blockdev_unregister_client(&bpctrl.client);
 		return VMM_EFAIL;
 	}
 
-	/* We may have block device alread created so 
-	 * add raw block device with no parent for parsing partitions 
+	/* We may have block device already created so we add
+	 * raw block devices with no parent for partition parsing
 	 */
-	count = vmm_blockdev_count();
-	for (b = 0; b < count; b++) {
-		bdev = vmm_blockdev_get(b);
-		if (!bdev || bdev->parent) {
-			continue;
-		}
-		blockpart_add_work(BLOCKPART_WORK_PARSE, bdev);
-		blockpart_signal_one_work();
+	rc = vmm_blockdev_iterate(NULL, NULL, blockpart_init_iter);
+	if (rc) {
+		vmm_threads_destroy(bpctrl.work_thread);
+		vmm_blockdev_unregister_client(&bpctrl.client);
+		return rc;
 	}
 
 	/* Start blockpart work thread */

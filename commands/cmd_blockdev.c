@@ -50,10 +50,10 @@ static int cmd_blockdev_info(struct vmm_chardev *cdev,
 			     struct vmm_blockdev *bdev)
 {
 	vmm_cprintf(cdev, "Name       : %s\n", bdev->name);
-	vmm_cprintf(cdev, "Parent     : %s\n", 
+	vmm_cprintf(cdev, "Parent     : %s\n",
 				(bdev->parent) ? bdev->parent->name : "---");
 	vmm_cprintf(cdev, "Description: %s\n", bdev->desc);
-	vmm_cprintf(cdev, "Access     : %s\n", 
+	vmm_cprintf(cdev, "Access     : %s\n",
 		(bdev->flags & VMM_BLOCKDEV_RW) ? "Read-Write" : "Read-Only");
 	vmm_cprintf(cdev, "Start LBA  : %ll\n", bdev->start_lba);
 	vmm_cprintf(cdev, "Block Size : %d\n", bdev->block_size);
@@ -62,29 +62,28 @@ static int cmd_blockdev_info(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
+static int cmd_blockdev_list_iter(struct vmm_blockdev *bdev, void *data)
+{
+	struct vmm_chardev *cdev = data;
+
+	vmm_cprintf(cdev, " %-16s %-16s %-16ll %-11d %-16ll\n",
+		    bdev->name,  (bdev->parent) ? bdev->parent->name : "---",
+		    bdev->start_lba, bdev->block_size, bdev->num_blocks);
+
+	return VMM_OK;
+}
+
 static void cmd_blockdev_list(struct vmm_chardev *cdev)
 {
-	int num, count;
-	struct vmm_blockdev *bdev;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-16s %-16s %-16s %-11s %-16s\n", 
+	vmm_cprintf(cdev, " %-16s %-16s %-16s %-11s %-16s\n",
 			  "Name", "Parent", "Start LBA", "Blk Sz", "Blk Cnt");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = vmm_blockdev_count();
-	for (num = 0; num < count; num++) {
-		bdev = vmm_blockdev_get(num);
-		vmm_cprintf(cdev, " %-16s %-16s %-16ll %-11d %-16ll\n", 
-			    bdev->name, 
-			    (bdev->parent) ? bdev->parent->name : "---",
-			    bdev->start_lba, 
-			    bdev->block_size, 
-			    bdev->num_blocks);
-	}
+	vmm_blockdev_iterate(NULL, cdev, cmd_blockdev_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-
 }
 
 static int cmd_blockdev_dump8(struct vmm_chardev *cdev,
@@ -190,9 +189,9 @@ static void __exit cmd_blockdev_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_blockdev);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
