@@ -105,9 +105,12 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 	char name[25];
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
-	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Present Count", vmm_num_present_cpus());
-	vmm_cprintf(cdev, "%-25s: %d\n", "CPU Possible Count", vmm_num_possible_cpus());
-	vmm_cprintf(cdev, "%-25s: %u\n", "CPU Online Count", vmm_num_online_cpus());
+	vmm_cprintf(cdev, "%-25s: %d\n",
+			  "CPU Present Count", vmm_num_present_cpus());
+	vmm_cprintf(cdev, "%-25s: %d\n",
+			  "CPU Possible Count", vmm_num_possible_cpus());
+	vmm_cprintf(cdev, "%-25s: %u\n",
+			  "CPU Online Count", vmm_num_online_cpus());
 	for_each_online_cpu(c) {
 		vmm_sprintf(name, "CPU%d Estimated Speed", c);
 		khz = vmm_delay_estimate_cpu_khz(c);
@@ -126,9 +129,9 @@ static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "-------------------------\n");
-	vmm_cprintf(cdev, " %4s %15s %13s %12s %16s\n", 
-		    "CPU#", "Speed (MHz)", "Util. (%)",
-		    "IRQs (%)", "Active VCPUs");
+	vmm_cprintf(cdev, " %4s %15s %13s %12s %16s\n",
+			  "CPU#", "Speed (MHz)", "Util. (%)",
+			  "IRQs (%)", "Active VCPUs");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "-------------------------\n");
 
@@ -153,7 +156,8 @@ static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
 			    udiv32(util, 10), umod32(util, 10));
 
 		util = 1;
-		for (p = VMM_VCPU_MIN_PRIORITY; p <= VMM_VCPU_MAX_PRIORITY; p++) {
+		for (p = VMM_VCPU_MIN_PRIORITY;
+		     p <= VMM_VCPU_MAX_PRIORITY; p++) {
 			util += vmm_scheduler_ready_count(c, p);
 		}
 		vmm_cprintf(cdev, " %15d ", util);
@@ -177,7 +181,7 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "------------");
 	}
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, " %-7s %-15s %-10s", 
+	vmm_cprintf(cdev, " %-7s %-15s %-10s",
 			  "IRQ#", "Name", "Chip");
 	for_each_online_cpu(cpu) {
 		vmm_cprintf(cdev, " CPU%-8d", cpu);
@@ -198,7 +202,7 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		if (!chip || !chip->name) {
 			continue;
 		}
-		vmm_cprintf(cdev, " %-7d %-15s %-10s", 
+		vmm_cprintf(cdev, " %-7d %-15s %-10s",
 				  num, irq_name, chip->name);
 		for_each_online_cpu(cpu) {
 			stats = vmm_host_irq_get_count(irq, cpu);
@@ -229,7 +233,7 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 	} else {
 		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
 	}
-	vmm_cprintf(cdev, "Frame Size   : %d (0x%08x)\n", 
+	vmm_cprintf(cdev, "Frame Size   : %d (0x%08x)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Free Frames  : %d (0x%08x)\n", free, free);
 	vmm_cprintf(cdev, "Total Frames : %d (0x%08x)\n", total, total);
@@ -245,11 +249,11 @@ static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 	for (ite = 0; ite < total; ite++) {
 		if (umod32(ite, colcnt) == 0) {
 			if (sizeof(u64) == sizeof(physical_addr_t)) {
-				vmm_cprintf(cdev, "\n0x%016llx: ", 
-						base + ite * VMM_PAGE_SIZE);
+				vmm_cprintf(cdev, "\n0x%016llx: ",
+					    base + ite * VMM_PAGE_SIZE);
 			} else {
-				vmm_cprintf(cdev, "\n0x%08x: ", 
-						base + ite * VMM_PAGE_SIZE);
+				vmm_cprintf(cdev, "\n0x%08x: ",
+					    base + ite * VMM_PAGE_SIZE);
 			}
 		}
 		if (vmm_host_ram_frame_isfree(base + ite * VMM_PAGE_SIZE)) {
@@ -272,7 +276,7 @@ static void cmd_host_vapool_info(struct vmm_chardev *cdev)
 	} else {
 		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
 	}
-	vmm_cprintf(cdev, "Page Size    : %d (0x%08x)\n", 
+	vmm_cprintf(cdev, "Page Size    : %d (0x%08x)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Free Pages   : %d (0x%08x)\n", free, free);
 	vmm_cprintf(cdev, "Total Pages  : %d (0x%08x)\n", total, total);
@@ -293,11 +297,11 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	for (ite = 0; ite < total; ite++) {
 		if (umod32(ite, colcnt) == 0) {
 			if (sizeof(u64) == sizeof(virtual_addr_t)) {
-				vmm_cprintf(cdev, "\n0x%016llx: ", 
-						base + ite * VMM_PAGE_SIZE);
+				vmm_cprintf(cdev, "\n0x%016llx: ",
+					    base + ite * VMM_PAGE_SIZE);
 			} else {
-				vmm_cprintf(cdev, "\n0x%08x: ", 
-						base + ite * VMM_PAGE_SIZE);
+				vmm_cprintf(cdev, "\n0x%08x: ",
+					    base + ite * VMM_PAGE_SIZE);
 			}
 		}
 		if (vmm_host_vapool_page_isfree(base + ite * VMM_PAGE_SIZE)) {
@@ -309,49 +313,61 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
+struct cmd_host_list_iter {
+	u32 num;
+	struct vmm_chardev *cdev;
+};
+
 static void cmd_host_bus_list(struct vmm_chardev *cdev)
 {
 	u32 num, dcount, count = vmm_devdrv_bus_count();
 	struct vmm_bus *b;
 
 	vmm_cprintf(cdev, "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-7s %-15s %-15s\n", 
+	vmm_cprintf(cdev, " %-7s %-15s %-15s\n",
 			  "Num#", "Bus Name", "Device Count");
 	vmm_cprintf(cdev, "----------------------------------------\n");
 	for (num = 0; num < count; num++) {
 		b = vmm_devdrv_bus(num);
 		dcount = vmm_devdrv_bus_device_count(b);
-		vmm_cprintf(cdev, " %-7d %-15s %-15d\n", 
+		vmm_cprintf(cdev, " %-7d %-15s %-15d\n",
 				  num, b->name, dcount);
 	}
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
+static int cmd_host_bus_device_list_iter(struct vmm_device *d,
+					 void *data)
+{
+	struct cmd_host_list_iter *p = data;
+
+	vmm_cprintf(p->cdev, " %-7d %-25s %-25s\n",
+		    p->num++, d->name,
+		    (d->parent) ? d->parent->name : "---");
+
+	return VMM_OK;
+}
+
 static int cmd_host_bus_device_list(struct vmm_chardev *cdev,
 				    const char *bus_name)
 {
-	u32 num, count = vmm_devdrv_bus_count();
 	struct vmm_bus *b;
-	struct vmm_device *d;
+	struct cmd_host_list_iter p = { .num = 0, .cdev = cdev };
 
 	b = vmm_devdrv_find_bus(bus_name);
 	if (!b) {
 		vmm_cprintf(cdev, "Failed to find %s bus\n", bus_name);
 		return VMM_ENOTAVAIL;
 	}
-	count = vmm_devdrv_bus_device_count(b);
 
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
-	vmm_cprintf(cdev, " %-7s %-25s %-25s\n", 
+	vmm_cprintf(cdev, " %-7s %-25s %-25s\n",
 			  "Num#", "Device Name", "Parent Name");
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
-	for (num = 0; num < count; num++) {
-		d = vmm_devdrv_bus_device(b, num);
-		vmm_cprintf(cdev, " %-7d %-25s %-25s\n", 
-			num, d->name, (d->parent) ? d->parent->name : "---");
-	}
+	vmm_devdrv_bus_device_iterate(b, NULL, &p,
+				      cmd_host_bus_device_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
 
@@ -364,43 +380,50 @@ static void cmd_host_class_list(struct vmm_chardev *cdev)
 	struct vmm_class *c;
 
 	vmm_cprintf(cdev, "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-7s %-15s %-15s\n", 
+	vmm_cprintf(cdev, " %-7s %-15s %-15s\n",
 			  "Num#", "Class Name", "Device Count");
 	vmm_cprintf(cdev, "----------------------------------------\n");
 	for (num = 0; num < count; num++) {
 		c = vmm_devdrv_class(num);
 		dcount = vmm_devdrv_class_device_count(c);
-		vmm_cprintf(cdev, " %-7d %-15s %-15d\n", 
+		vmm_cprintf(cdev, " %-7d %-15s %-15d\n",
 				  num, c->name, dcount);
 	}
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
+static int cmd_host_class_device_list_iter(struct vmm_device *d,
+					   void *data)
+{
+	struct cmd_host_list_iter *p = data;
+
+	vmm_cprintf(p->cdev, " %-7d %-25s %-25s\n",
+		    p->num++, d->name,
+		    (d->parent) ? d->parent->name : "---");
+
+	return VMM_OK;
+}
+
 static int cmd_host_class_device_list(struct vmm_chardev *cdev,
 				      const char *class_name)
 {
-	u32 num, count = vmm_devdrv_class_count();
 	struct vmm_class *c;
-	struct vmm_device *d;
+	struct cmd_host_list_iter p = { .num = 0, .cdev = cdev };
 
 	c = vmm_devdrv_find_class(class_name);
 	if (!c) {
 		vmm_cprintf(cdev, "Failed to find %s class\n", class_name);
 		return VMM_ENOTAVAIL;
 	}
-	count = vmm_devdrv_class_device_count(c);
 
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
-	vmm_cprintf(cdev, " %-7s %-25s %-25s\n", 
+	vmm_cprintf(cdev, " %-7s %-25s %-25s\n",
 			  "Num#", "Device Name", "Parent Name");
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
-	for (num = 0; num < count; num++) {
-		d = vmm_devdrv_class_device(c, num);
-		vmm_cprintf(cdev, " %-7d %-25s %-25s\n", 
-			num, d->name, (d->parent) ? d->parent->name : "---");
-	}
+	vmm_devdrv_class_device_iterate(c, NULL, &p,
+					cmd_host_class_device_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------");
 	vmm_cprintf(cdev, "--------------------\n");
 
@@ -503,9 +526,9 @@ static void __exit cmd_host_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_host);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
