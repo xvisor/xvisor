@@ -173,18 +173,36 @@ struct rtc_device *rtc_device_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(rtc_device_find);
 
-struct rtc_device *rtc_device_get(int num)
-{
-	struct vmm_device *dev;
+struct rtc_device_iterate_priv {
+	void *data;
+	int (*fn)(struct rtc_device *dev, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&rtc_class, num);
-	if (!dev) {
-		return NULL;
+static int __rtc_device_iterate(struct vmm_device *dev, void *data)
+{
+	struct rtc_device_iterate_priv *p = data;
+	struct rtc_device *rdev = vmm_devdrv_get_data(dev);
+
+	return p->fn(rdev, p->data);
+}
+
+int rtc_device_iterate(struct rtc_device *start, void *data,
+			int (*fn)(struct rtc_device *rdev, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct rtc_device_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&rtc_class, st,
+						&p, __rtc_device_iterate);
 }
-VMM_EXPORT_SYMBOL(rtc_device_get);
+VMM_EXPORT_SYMBOL(rtc_device_iterate);
 
 u32 rtc_device_count(void)
 {

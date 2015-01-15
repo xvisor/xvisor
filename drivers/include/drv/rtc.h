@@ -116,8 +116,9 @@ int rtc_device_unregister(struct rtc_device *rdev);
 /** Find a rtc device in device driver framework */
 struct rtc_device *rtc_device_find(const char *name);
 
-/** Get rtc device with given number */
-struct rtc_device *rtc_device_get(int num);
+/** Iterate over each rtc device */
+int rtc_device_iterate(struct rtc_device *start, void *data,
+			int (*fn)(struct rtc_device *rdev, void *data));
 
 /** Count number of rtc devices */
 u32 rtc_device_count(void);

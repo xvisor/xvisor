@@ -58,32 +58,36 @@ static void cmd_rtcdev_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   <year>    = any value greater than 1970\n");
 }
 
+static int cmd_rtcdev_list_iter(struct rtc_device *rd, void *data)
+{
+	int rc;
+	char path[256];
+	struct vmm_chardev *cdev = data;
+
+	if (rd->dev.parent && rd->dev.parent->node) {
+		rc = vmm_devtree_getpath(path, sizeof(path),
+				    rd->dev.parent->node);
+		if (rc) {
+			vmm_snprintf(path, sizeof(path),
+				     "----- (error %d)", rc);
+		}
+	} else {
+		strcpy(path, "-----");
+	}
+	vmm_cprintf(cdev, " %-24s %-53s\n", rd->name, path);
+
+	return VMM_OK;
+}
+
 static void cmd_rtcdev_list(struct vmm_chardev *cdev)
 {
-	int rc, num, count;
-	char path[256];
-	struct rtc_device *rd;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-24s %-53s\n", 
+	vmm_cprintf(cdev, " %-24s %-53s\n",
 			  "Name", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = rtc_device_count();
-	for (num = 0; num < count; num++) {
-		rd = rtc_device_get(num);
-		if (rd->dev.parent && rd->dev.parent->node) {
-			rc = vmm_devtree_getpath(path, sizeof(path),
-					    rd->dev.parent->node);
-			if (rc) {
-				vmm_snprintf(path, sizeof(path),
-					     "----- (error %d)", rc);
-			}
-		} else {
-			strcpy(path, "-----");
-		}
-		vmm_cprintf(cdev, " %-24s %-53s\n", rd->name, path);
-	}
+	rtc_device_iterate(NULL, cdev, cmd_rtcdev_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }
@@ -101,8 +105,8 @@ static int cmd_rtcdev_sync_wallclock(struct vmm_chardev *cdev,
 
 	rc = rtc_device_sync_wallclock(rtc);
 	if (rc) {
-		vmm_cprintf(cdev, "Error: sync_wallclock failed for rtc %s\n", 
-									 name);
+		vmm_cprintf(cdev, "Error: sync_wallclock failed "
+				  "for rtc %s\n", name);
 		return rc;
 	}
 
@@ -213,8 +217,8 @@ static int cmd_rtcdev_get_time(struct vmm_chardev *cdev, const char *name)
 		vmm_cprintf(cdev, "Error: Invalid month\n");
 	};
 
-	vmm_cprintf(cdev, "%2d %d:%d:%d UTC %d", tm.tm_mday, 
-				tm.tm_hour, tm.tm_min, tm.tm_sec, 
+	vmm_cprintf(cdev, "%2d %d:%d:%d UTC %d", tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec,
 				tm.tm_year + 1900);
 
 	vmm_cprintf(cdev, "\n");
@@ -351,9 +355,9 @@ static void __exit cmd_rtcdev_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_rtcdev);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
