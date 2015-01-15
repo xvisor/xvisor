@@ -185,9 +185,16 @@ struct vmm_device *vmm_devdrv_class_find_device_by_name(
 						struct vmm_class *cls,
 						const char *dname);
 
+/** Iterate over each device of a class with class->lock held */
+int vmm_devdrv_class_for_each_device(struct vmm_class *cls,
+			struct vmm_device *start, void *data,
+			int (*fn)(struct vmm_device *dev, void *data));
+
+
 /** Get device of a class */
 struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index);
 
+/* Count available devices in a class */
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls);
 
 /** Register bus */
@@ -216,11 +223,10 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 						struct vmm_device *start,
 						const char *dname);
 
-/** Iterate over each device of a bus */
-int vmm_devdrv_bus_for_each_dev(struct vmm_bus *bus,
-				struct vmm_device *start,
-				void *data,
-				int (*fn)(struct vmm_device *dev, void *data));
+/** Iterate over each device of a bus with bus->lock held */
+int vmm_devdrv_bus_for_each_device(struct vmm_bus *bus,
+			struct vmm_device *start, void *data,
+			int (*fn)(struct vmm_device *dev, void *data));
 
 /** Get device on a bus */
 struct vmm_device *vmm_devdrv_bus_device(struct vmm_bus *bus, int index);

@@ -584,7 +584,9 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls)
 	}
 
 	/* Clean release to nuke all devices */
+	vmm_mutex_lock(&c->lock);
 	__class_release(c);
+	vmm_mutex_unlock(&c->lock);
 
 	list_del(&c->head);
 
@@ -832,6 +834,43 @@ struct vmm_device *vmm_devdrv_class_find_device_by_name(
 	}
 
 	return d;
+}
+
+int vmm_devdrv_class_for_each_device(struct vmm_class *cls,
+			struct vmm_device *start, void *data,
+			int (*fn)(struct vmm_device *dev, void *data))
+{
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_device *d = NULL;
+
+	if (!cls || !fn) {
+		return VMM_EINVALID;
+	}
+	if (start && start->class != cls) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&cls->lock);
+
+	list_for_each_entry(d, &cls->device_list, class_head) {
+		if (!start_found) {
+			if (start && start == d) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(d, data);
+		if (rc) {
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&cls->lock);
+
+	return rc;
 }
 
 struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index)
@@ -1209,10 +1248,9 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 					  devdrv_name_match);
 }
 
-int vmm_devdrv_bus_for_each_dev(struct vmm_bus *bus,
-				struct vmm_device *start,
-				void *data,
-				int (*fn)(struct vmm_device *dev, void *data))
+int vmm_devdrv_bus_for_each_device(struct vmm_bus *bus,
+			struct vmm_device *start, void *data,
+			int (*fn)(struct vmm_device *dev, void *data))
 {
 	int rc = VMM_OK;
 	bool start_found = (start) ? FALSE : TRUE;
