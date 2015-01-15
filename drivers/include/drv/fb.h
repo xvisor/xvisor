@@ -867,6 +867,10 @@ int fb_unregister(struct fb_info *info);
 /** Find a frame buffer in device driver framework */
 struct fb_info *fb_find(const char *name);
 
+/** Iterate over each frame buffer */
+int fb_iterate(struct fb_info *start, void *data,
+		int (*fn)(struct fb_info *info, void *data));
+
 /** Get frame buffer with given number */
 struct fb_info *fb_get(int num);
 

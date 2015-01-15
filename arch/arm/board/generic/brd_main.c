@@ -174,7 +174,7 @@ int __init arch_board_final_init(void)
 
 	/* Create VTEMU instace if available */
 #if defined(CONFIG_VTEMU)
-	info = fb_get(0);
+	info = fb_find("fb0");
 	if (info) {
 		generic_vt = vtemu_create(info->name, info, NULL);
 	}

@@ -131,7 +131,7 @@ int __init arch_board_final_init(void)
 	 * and make it our stdio device.
 	 */
 #if defined(CONFIG_VTEMU)
-	info = fb_get(0);
+	info = fb_find("fb0");
 	if (info) {
 		x86_vt = vtemu_create(info->dev.name, info, NULL);
 		if (x86_vt) {

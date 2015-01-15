@@ -167,7 +167,7 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	if (fb_name) {
 		info = fb_find(fb_name);
 	} else {
-		info = fb_get(0);
+		info = fb_find("fb0");
 	}
 	if (!info) {
 		vmm_cprintf(cdev, "Failed to find fb_info %s\n",

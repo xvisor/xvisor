@@ -53,33 +53,37 @@ static void cmd_fb_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   fb image <fb_name> <image_path> [<x>] [<y>]\n");
 }
 
+static int cmd_fb_list_iter(struct fb_info *info, void *data)
+{
+	int rc;
+	char path[256];
+	struct vmm_chardev *cdev = data;
+
+	if (info->dev.parent && info->dev.parent->node) {
+		rc = vmm_devtree_getpath(path, sizeof(path),
+					 info->dev.parent->node);
+		if (rc) {
+			vmm_snprintf(path, sizeof(path),
+				     "----- (error %d)", rc);
+		}
+	} else {
+		strcpy(path, "-----");
+	}
+	vmm_cprintf(cdev, " %-16s %-20s %-40s\n",
+		    info->name, info->fix.id, path);
+
+	return VMM_OK;
+}
+
 static void cmd_fb_list(struct vmm_chardev *cdev)
 {
-	int rc, num, count;
-	char path[256];
-	struct fb_info *info;
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-16s %-20s %-40s\n", 
+	vmm_cprintf(cdev, " %-16s %-20s %-40s\n",
 			  "Name", "ID", "Device Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	count = fb_count();
-	for (num = 0; num < count; num++) {
-		info = fb_get(num);
-		if (info->dev.parent && info->dev.parent->node) {
-			rc = vmm_devtree_getpath(path, sizeof(path),
-						 info->dev.parent->node);
-			if (rc) {
-				vmm_snprintf(path, sizeof(path),
-					     "----- (error %d)", rc);
-			}
-		} else {
-			strcpy(path, "-----");
-		}
-		vmm_cprintf(cdev, " %-16s %-20s %-40s\n", 
-				  info->name, info->fix.id, path);
-	}
+	fb_iterate(NULL, cdev, cmd_fb_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 }
@@ -515,9 +519,9 @@ static void __exit cmd_fb_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_fb);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

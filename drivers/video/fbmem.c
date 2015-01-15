@@ -716,16 +716,61 @@ struct fb_info *fb_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(fb_find);
 
-struct fb_info *fb_get(int num)
-{
-	struct vmm_device *dev;
+struct fb_iterate_priv {
+	void *data;
+	int (*fn)(struct fb_info *info, void *data);
+};
 
-	dev = vmm_devdrv_class_device(&fb_class, num);
-	if (!dev) {
-		return NULL;
+static int __fb_iterate(struct vmm_device *dev, void *data)
+{
+	struct fb_iterate_priv *p = data;
+	struct fb_info *info = vmm_devdrv_get_data(dev);
+
+	return p->fn(info, p->data);
+}
+
+int fb_iterate(struct fb_info *start, void *data,
+		int (*fn)(struct fb_info *info, void *data))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct fb_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_get_data(dev);
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&fb_class, st,
+						&p, __fb_iterate);
+}
+VMM_EXPORT_SYMBOL(fb_iterate);
+
+struct fb_get_priv {
+	int num;
+	struct fb_info *info;
+};
+
+static int __fb_get(struct fb_info *info, void *data)
+{
+	struct fb_get_priv *p = data;
+
+	if (!p->num) {
+		p->info = info;
+	}
+	p->num--;
+
+	return VMM_OK;
+}
+
+struct fb_info *fb_get(int num)
+{
+	struct fb_get_priv p = { .num = num, .info = NULL };
+
+	fb_iterate(NULL, &p, __fb_get);
+
+	return p.info;
 }
 VMM_EXPORT_SYMBOL(fb_get);
 
