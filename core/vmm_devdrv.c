@@ -873,37 +873,6 @@ int vmm_devdrv_class_device_iterate(struct vmm_class *cls,
 	return rc;
 }
 
-struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index)
-{
-	bool found;
-	struct vmm_device *d;
-
-	if (!cls || index < 0) {
-		return NULL;
-	}
-
-	d = NULL;
-	found = FALSE;
-
-	vmm_mutex_lock(&cls->lock);
-
-	list_for_each_entry(d, &cls->device_list, class_head) {
-		if (!index) {
-			found = TRUE;
-			break;
-		}
-		index--;
-	}
-
-	vmm_mutex_unlock(&cls->lock);
-
-	if (!found) {
-		return NULL;
-	}
-
-	return d;
-}
-
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls)
 {
 	u32 retval;

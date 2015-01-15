@@ -190,9 +190,6 @@ int vmm_devdrv_class_device_iterate(struct vmm_class *cls,
 			struct vmm_device *start, void *data,
 			int (*fn)(struct vmm_device *dev, void *data));
 
-/** Get device of a class */
-struct vmm_device *vmm_devdrv_class_device(struct vmm_class *cls, int index);
-
 /* Count available devices in a class */
 u32 vmm_devdrv_class_device_count(struct vmm_class *cls);
 
