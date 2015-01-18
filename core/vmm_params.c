@@ -150,6 +150,25 @@ static int parse_args(const char *doing,
 	return 0;
 }
 
+int vmm_get_option(char **str, int *pint)
+{
+        char *cur = *str;
+
+        if (!cur || !(*cur))
+                return 0;
+        *pint = strtol(cur, str, 0);
+        if (cur == *str)
+                return 0;
+        if (**str == ',') {
+                (*str)++;
+                return 2;
+        }
+        if (**str == '-')
+                return 3;
+
+        return 1;
+}
+
 void __init vmm_parse_early_options(const char *cmdline)
 {
         parse_args("early options", (char *)cmdline, 0, 0, 0, do_early_param);

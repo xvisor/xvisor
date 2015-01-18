@@ -27,6 +27,10 @@
 #include <vmm_types.h>
 #include <arch_io.h>
 
+#ifndef ARCH_IO_SPACE_LIMIT
+#define ARCH_IO_SPACE_LIMIT 0xffff
+#endif
+
 /** Endianness related helper macros */
 #define vmm_cpu_to_le16(data)	arch_cpu_to_le16(data)
 

@@ -5,7 +5,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_host_io.h>
 
-#define IO_SPACE_LIMIT	0xffff
+#define IO_SPACE_LIMIT			ARCH_IO_SPACE_LIMIT
 
 /** I/O access functions (Assumed to be Little Endian) */
 #define inb				vmm_inb

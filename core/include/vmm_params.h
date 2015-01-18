@@ -48,6 +48,9 @@ struct vmm_setup_param {
 #define vmm_early_param(str, fn)		\
         __setup_param(str, fn, fn, 1)
 
+/* Parse comma seprated int values of early parameter */
+int vmm_get_option(char **str, int *pint);
+
 /* Parse boot time or early parameters */
 void vmm_parse_early_options(const char *cmdline);
 

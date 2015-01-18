@@ -123,7 +123,5 @@ typedef u64 phys_addr_t;
 typedef u32 phys_addr_t;
 #endif
 
-typedef phys_addr_t resource_size_t;
-
 #endif	/* __KERNEL__ */
 #endif /* _LINUX_TYPES_H */
