@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
+#include <vmm_resource.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_ram.h>
 #include <libs/stringlib.h>
@@ -38,6 +39,7 @@ struct vmm_host_ram_ctrl {
 	u32 ram_frame_count;
 	physical_addr_t ram_start;
 	physical_size_t ram_size;
+	struct vmm_resource ram_res;
 };
 
 static struct vmm_host_ram_ctrl rctrl;
@@ -222,6 +224,8 @@ int __init vmm_host_ram_init(physical_addr_t base,
 			     physical_size_t size,
 			     virtual_addr_t hkbase)
 {
+	int rc;
+
 	memset(&rctrl, 0, sizeof(rctrl));
 
 	INIT_SPIN_LOCK(&rctrl.ram_bmap_lock);
@@ -236,6 +240,15 @@ int __init vmm_host_ram_init(physical_addr_t base,
 	rctrl.ram_bmap_free = rctrl.ram_frame_count;
 
 	bitmap_zero(rctrl.ram_bmap, rctrl.ram_frame_count);
+
+	rctrl.ram_res.start = base;
+	rctrl.ram_res.end = base + size - 1;
+	rctrl.ram_res.name = "System RAM";
+	rctrl.ram_res.flags = 0;
+	rc = vmm_request_resource(&vmm_hostmem_resource, &rctrl.ram_res);
+	if (rc) {
+		return rc;
+	}
 
 	return VMM_OK;
 }
