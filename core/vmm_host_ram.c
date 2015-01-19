@@ -244,7 +244,7 @@ int __init vmm_host_ram_init(physical_addr_t base,
 	rctrl.ram_res.start = base;
 	rctrl.ram_res.end = base + size - 1;
 	rctrl.ram_res.name = "System RAM";
-	rctrl.ram_res.flags = 0;
+	rctrl.ram_res.flags = VMM_IORESOURCE_MEM | VMM_IORESOURCE_BUSY;
 	rc = vmm_request_resource(&vmm_hostmem_resource, &rctrl.ram_res);
 	if (rc) {
 		return rc;
