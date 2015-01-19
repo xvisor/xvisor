@@ -25,6 +25,7 @@
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_resource.h>
 #include <vmm_host_io.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
@@ -198,7 +199,7 @@ static int devtree_node_is_compatible(const struct vmm_devtree_node *node,
 	return 0;
 }
 
-const void *vmm_devtree_attrval(const struct vmm_devtree_node *node, 
+const void *vmm_devtree_attrval(const struct vmm_devtree_node *node,
 				const char *attrib)
 {
 	struct vmm_devtree_attr *attr;
@@ -1224,7 +1225,7 @@ const struct vmm_devtree_nodeid *vmm_devtree_match_node(
 	while (matches->name[0] || matches->type[0] || matches->compatible[0]) {
 		int match = 1;
 		if (matches->name[0])
-			match &= node->name && 
+			match &= node->name &&
 				 !strcmp(matches->name, node->name);
 		if (matches->type[0])
 			match &= type && !strcmp(matches->type, type);
@@ -1270,7 +1271,7 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 
 void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 				  const struct vmm_devtree_nodeid *matches,
-				  void (*found)(struct vmm_devtree_node *node, 
+				  void (*found)(struct vmm_devtree_node *node,
 				      const struct vmm_devtree_nodeid *match,
 				      void *data),
 				  void *found_data)
@@ -1294,7 +1295,7 @@ void vmm_devtree_iterate_matching(struct vmm_devtree_node *node,
 	}
 
 	vmm_devtree_for_each_child(child, node) {
-		vmm_devtree_iterate_matching(child, matches, 
+		vmm_devtree_iterate_matching(child, matches,
 					     found, found_data);
 	}
 
@@ -1432,7 +1433,7 @@ static int devtree_parse_phandle_with_args(
 			 * below.
 			 */
 			if (cells_name || cur_index == index) {
-				node = 
+				node =
 				   vmm_devtree_find_node_by_phandle(phandle);
 				if (!node) {
 					vmm_printf("%s: phandle not found\n",
@@ -1442,12 +1443,12 @@ static int devtree_parse_phandle_with_args(
 			}
 
 			if (cells_name) {
-				cells_val = 
+				cells_val =
 					vmm_devtree_attrval(node, cells_name);
 				if (!cells_val) {
 					vmm_printf("%s: could not get "
 						   "%s for %s\n",
-						np->name, cells_name, 
+						np->name, cells_name,
 						node->name);
 					goto err;
 				}
@@ -1550,7 +1551,7 @@ int vmm_devtree_parse_phandle_with_fixed_args(
 {
 	if (index < 0)
 		return VMM_EINVALID;
-	return devtree_parse_phandle_with_args(node, list_name, NULL, 
+	return devtree_parse_phandle_with_args(node, list_name, NULL,
 						cells_count, index, out);
 }
 
@@ -1802,7 +1803,7 @@ int vmm_devtree_clock_frequency(struct vmm_devtree_node *node,
 			VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME, clock_freq);
 }
 
-int vmm_devtree_irq_get(struct vmm_devtree_node *node, 
+int vmm_devtree_irq_get(struct vmm_devtree_node *node,
 		        u32 *irq, int index)
 {
 	u32 alen;
@@ -1856,7 +1857,7 @@ u32 vmm_devtree_is_available(struct vmm_devtree_node *node)
 	return 0;
 }
 
-int vmm_devtree_regsize(struct vmm_devtree_node *node, 
+int vmm_devtree_regsize(struct vmm_devtree_node *node,
 		        physical_size_t *size, int regset)
 {
 	int rc;
@@ -1915,7 +1916,7 @@ int vmm_devtree_regsize(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-int vmm_devtree_regaddr(struct vmm_devtree_node *node, 
+int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 		        physical_addr_t *addr, int regset)
 {
 	int rc;
@@ -1974,7 +1975,7 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-int vmm_devtree_regmap(struct vmm_devtree_node *node, 
+int vmm_devtree_regmap(struct vmm_devtree_node *node,
 		       virtual_addr_t *addr, int regset)
 {
 	int rc;
@@ -2011,7 +2012,7 @@ int vmm_devtree_regmap(struct vmm_devtree_node *node,
 	return VMM_OK;
 }
 
-int vmm_devtree_regunmap(struct vmm_devtree_node *node, 
+int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 		         virtual_addr_t addr, int regset)
 {
 	int rc;
@@ -2042,6 +2043,94 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	}
 
 	return vmm_host_iounmap(addr);
+}
+
+int vmm_devtree_request_regmap(struct vmm_devtree_node *node,
+			       virtual_addr_t *addr, int regset,
+			       const char *resname)
+{
+	int rc;
+	physical_addr_t pa;
+	physical_size_t sz;
+
+	if (!node || !addr || (regset < 0) || !resname) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_devtree_read_virtaddr_atindex(node,
+					VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME,
+					addr, regset);
+	if (!rc) {
+		return VMM_EINVALID;
+	}
+
+	rc = vmm_devtree_regsize(node, &sz, regset);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_regaddr(node, &pa, regset);
+	if (rc) {
+		return rc;
+	}
+
+	if (vmm_request_mem_region(pa, sz, resname)) {
+		return VMM_EBUSY;
+	}
+
+	if (!sz) {
+		return VMM_EINVALID;
+	}
+
+	*addr = vmm_host_iomap(pa, sz);
+
+	return VMM_OK;
+}
+
+int vmm_devtree_regunmap_release(struct vmm_devtree_node *node,
+				 virtual_addr_t addr, int regset)
+{
+	int rc;
+	physical_addr_t pa;
+	physical_size_t sz;
+	virtual_addr_t vva;
+	virtual_size_t vsz;
+
+	if (!node || regset < 0) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_getattr(node, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
+		return VMM_EINVALID;
+	}
+
+	rc = vmm_devtree_regsize(node, &sz, regset);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_regaddr(node, &pa, regset);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_host_vapool_find(addr, &vva, &vsz);
+	if (rc) {
+		return rc;
+	}
+
+	if (sz != vsz) {
+		return VMM_EINVALID;
+	}
+
+	rc = vmm_host_iounmap(addr);
+	if (rc) {
+		return rc;
+	}
+
+	vmm_release_mem_region(pa, sz);
+
+	return VMM_OK;
 }
 
 u32 vmm_devtree_nidtbl_count(void)
