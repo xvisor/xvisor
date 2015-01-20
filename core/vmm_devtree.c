@@ -2074,13 +2074,11 @@ int vmm_devtree_request_regmap(struct vmm_devtree_node *node,
 		return rc;
 	}
 
-	if (vmm_request_mem_region(pa, sz, resname)) {
-		return VMM_EBUSY;
-	}
-
 	if (!sz) {
 		return VMM_EINVALID;
 	}
+
+	vmm_request_mem_region(pa, sz, resname);
 
 	*addr = vmm_host_iomap(pa, sz);
 
