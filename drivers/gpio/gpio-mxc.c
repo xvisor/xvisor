@@ -500,7 +500,8 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 	if (!port)
 		return -ENOMEM;
 
-	err = vmm_devtree_regmap(np, (virtual_addr_t *)&port->base, 0);
+	err = vmm_devtree_request_regmap(np, (virtual_addr_t *)&port->base, 0,
+					 "MXC GPIO");
 	if (VMM_OK != err) {
 		dev_err(dev, "fail to map registers from the device tree\n");
 		goto out_regmap;
@@ -611,7 +612,7 @@ out_irq_reg_high:
 	vmm_host_irq_unregister(port->irq, dev);
 out_irq_reg:
 out_irq_get:
-	vmm_devtree_regunmap(np, (virtual_addr_t)port->base, 0);
+	vmm_devtree_regunmap_release(np, (virtual_addr_t)port->base, 0);
 out_regmap:
 	devm_kfree(dev, port);
 	dev_info(dev, "%s failed with errno %d\n", __func__, err);

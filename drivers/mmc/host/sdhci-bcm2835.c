@@ -169,7 +169,8 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 	}
 	bcm_host = sdhci_priv(host);
 
-	rc = vmm_devtree_regmap(dev->node, &bcm_host->base, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &bcm_host->base, 0,
+					"BCM2835 SDHCI");
 	if (rc) {
 		goto free_host;
 	}
@@ -217,7 +218,7 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 free_clk:
 	clk_put(bcm_host->clk);
 free_reg:
-	vmm_devtree_regunmap(dev->node, bcm_host->base, 0);
+	vmm_devtree_regunmap_release(dev->node, bcm_host->base, 0);
 free_host:
 	sdhci_free_host(host);
 free_nothing:
@@ -232,7 +233,7 @@ static int bcm2835_sdhci_driver_remove(struct vmm_device *dev)
 	if (host && bcm_host) {
 		sdhci_remove_host(host, 1);
 
-		vmm_devtree_regunmap(dev->node, bcm_host->base, 0);
+		vmm_devtree_regunmap_release(dev->node, bcm_host->base, 0);
 
 		sdhci_free_host(host);
 

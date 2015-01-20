@@ -111,7 +111,7 @@ static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 	struct clk *clk;
 	struct sp804_clocksource *cs;
 
-	rc = vmm_devtree_regmap(node, &base, 0);
+	rc = vmm_devtree_request_regmap(node, &base, 0, "SP804 Timer");
 	if (rc) {
 		return rc;
 	}
@@ -124,12 +124,12 @@ static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 		clk = clk_get_sys("sp804", "arm,sp804");
 	}
 	if (!clk) {
-		vmm_devtree_regunmap(node, base, 0);
+		vmm_devtree_regunmap_release(node, base, 0);
 		return VMM_ENODEV;
 	}
 	hz = sp804_get_clock_rate(clk);
 	if (hz < 0) {
-		vmm_devtree_regunmap(node, base, 0);
+		vmm_devtree_regunmap_release(node, base, 0);
 		return (int)hz;
 	}
 	freq_hz = (u32)hz;

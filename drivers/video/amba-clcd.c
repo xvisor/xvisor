@@ -496,7 +496,9 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 	}
 	fb->fb.fix.mmio_len	= mmio_sz;
 
-	ret = vmm_devtree_regmap(fb->dev->node, (virtual_addr_t *)&fb->regs, 0);
+	ret = vmm_devtree_request_regmap(fb->dev->node,
+					 (virtual_addr_t *)&fb->regs, 0,
+					 "AMBA CLCD");
 	if (ret) {
 		printk(KERN_ERR "CLCD: unable to map registers\n");
 		ret = -ENOMEM;
@@ -578,7 +580,8 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 
 	fb_dealloc_cmap(&fb->fb.cmap);
  unmap:
-	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
+	vmm_devtree_regunmap_release(fb->dev->node,
+				     (virtual_addr_t)fb->regs, 0);
  clk_unprep:
 	clk_unprepare(fb->clk);
  free_clk:
@@ -643,7 +646,8 @@ static int clcdfb_remove(struct vmm_device *dev)
 	unregister_framebuffer(&fb->fb);
 	if (fb->fb.cmap.len)
 		fb_dealloc_cmap(&fb->fb.cmap);
-	vmm_devtree_regunmap(fb->dev->node, (virtual_addr_t)fb->regs, 0);
+	vmm_devtree_regunmap_release(fb->dev->node,
+				     (virtual_addr_t)fb->regs, 0);
 	clk_unprepare(fb->clk);
 	clk_put(fb->clk);
 

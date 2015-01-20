@@ -358,7 +358,8 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 		}
 		port->base = ioport;
 	} else {
-		rc = vmm_devtree_regmap(dev->node, &port->base, 0);
+		rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
+						"UART 8250");
 		if (rc) {
 			goto free_port;
 		}
@@ -424,7 +425,7 @@ free_all:
 #endif
 free_reg:
 	if (!port->use_ioport) {
-		vmm_devtree_regunmap(dev->node, port->base, 0);
+		vmm_devtree_regunmap_release(dev->node, port->base, 0);
 	}
 free_port:
 	vmm_free(port);
@@ -439,7 +440,7 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 	if (port) {
 		vmm_chardev_unregister(&port->cd);
 		if (!port->use_ioport) {
-			vmm_devtree_regunmap(dev->node, port->base, 0);
+			vmm_devtree_regunmap_release(dev->node, port->base, 0);
 		}
 		vmm_free(port);
 		dev->priv = NULL;

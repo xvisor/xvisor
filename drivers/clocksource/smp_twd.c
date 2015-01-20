@@ -160,7 +160,8 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	struct twd_clockchip *cc = &this_cpu(twd_cc);
 
 	if (!twd_base) {
-		rc = vmm_devtree_regmap(node, &twd_base, 0);
+		rc = vmm_devtree_request_regmap(node, &twd_base, 0,
+						"ARM Local Timer");
 		if (rc) {
 			goto fail;
 		}
@@ -244,7 +245,7 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 fail_unreg_irq:
 	vmm_host_irq_unregister(twd_ppi_irq, cc);
 fail_regunmap:
-	vmm_devtree_regunmap(node, twd_base, 0);
+	vmm_devtree_regunmap_release(node, twd_base, 0);
 fail:
 	return rc;
 }

@@ -2059,7 +2059,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
 
-	rc = vmm_devtree_regmap(dev->node, &addr, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &addr, 0, "SMC911x");
 	if (rc) {
 		vmm_printf("Failed to ioreamp\n");
 		goto free_ndev;
@@ -2094,9 +2094,10 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	return rc;
 
 free_ioreamp_mem:
-	vmm_devtree_regunmap(dev->node, addr, 0);
+	vmm_devtree_regunmap_release(dev->node, addr, 0);
 free_ndev:
-	if (ndev->priv) vmm_free(ndev->priv);
+	if (ndev->priv)
+		vmm_free(ndev->priv);
 	vmm_free(ndev);
 exit_probe:
 	return rc;

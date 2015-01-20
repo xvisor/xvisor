@@ -217,7 +217,8 @@ static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 b, i = 0, irq;
 
-	rc = vmm_devtree_regmap(node, &intc.base_va, 0);
+	rc = vmm_devtree_request_regmap(node, &intc.base_va, 0,
+					"BCM2835 INTC");
 	if (rc) {
 		return rc;
 	}

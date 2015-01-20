@@ -131,7 +131,7 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	/* Map timer registers */
-	rc = vmm_devtree_regmap(node, &acs->base, 0);
+	rc = vmm_devtree_request_regmap(node, &acs->base, 0, "Sun4i Timer");
 	if (rc) {
 		vmm_free(acs);
 		return rc;
@@ -164,7 +164,7 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	/* Register clocksource */
 	rc = vmm_clocksource_register(&acs->clksrc);
 	if (rc) {
-		vmm_devtree_regunmap(node, acs->base, 0);
+		vmm_devtree_regunmap_release(node, acs->base, 0);
 		vmm_free(acs);
 		return rc;
 	}

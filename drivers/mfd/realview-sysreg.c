@@ -195,7 +195,8 @@ void __init realview_sysreg_of_early_init(void)
 
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,realview-sysreg");
 	if (node) {
-		err = vmm_devtree_regmap(node, &base_va, 0);
+		err = vmm_devtree_request_regmap(node, &base_va, 0,
+						 "Realview Sysreg");
 		if (err) {
 			vmm_printf("%s: Faild to map registers (err %d)\n",
 				   __func__, err);
@@ -213,7 +214,8 @@ static int realview_sysreg_probe(struct vmm_device *dev,
 	virtual_addr_t base_va;
 
 	if (!realview_sysreg_base) {
-		err = vmm_devtree_regmap(dev->node, &base_va, 0);
+		err = vmm_devtree_request_regmap(dev->node, &base_va, 0,
+						 "Realview Sysreg");
 		if (err) {
 			return err;
 		}

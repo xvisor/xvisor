@@ -480,7 +480,8 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 	clk_put(rtc_clk);
 	rtc_clk = NULL;
 
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t) s3c_rtc_base, 0);
+	vmm_devtree_regunmap_release(dev->node,
+				(virtual_addr_t)s3c_rtc_base, 0);
 
 	return 0;
 }
@@ -509,8 +510,9 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	/* get the memory region */
 
-	rc = vmm_devtree_regmap(pdev->node, (virtual_addr_t *)&s3c_rtc_base,
-				0);
+	rc = vmm_devtree_request_regmap(pdev->node,
+				(virtual_addr_t *)&s3c_rtc_base, 0,
+				"S3C RTC");
 	if (rc) {
 		dev_err(pdev, "failed ioremap()\n");
 		ret = rc;
@@ -611,7 +613,8 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 	clk_put(rtc_clk);
 
  err_clk:
-	vmm_devtree_regunmap(pdev->node, (virtual_addr_t) s3c_rtc_base, 0);
+	vmm_devtree_regunmap_release(pdev->node,
+				(virtual_addr_t)s3c_rtc_base, 0);
 
  err_nomap:
 	return ret;

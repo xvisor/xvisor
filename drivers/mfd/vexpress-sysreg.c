@@ -372,7 +372,8 @@ void __init vexpress_sysreg_of_early_init(void)
 
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,vexpress-sysreg");
 	if (node) {
-		err = vmm_devtree_regmap(node, &base_va, 0);
+		err = vmm_devtree_request_regmap(node, &base_va, 0,
+						 "VExpress Sysreg");
 		if (err) {
 			vmm_printf("%s: Faild to map registers (err %d)\n",
 				   __func__, err);
@@ -490,7 +491,8 @@ static int vexpress_sysreg_probe(struct vmm_device *dev,
 	virtual_addr_t base_va;
 
 	if (!vexpress_sysreg_base) {
-		err = vmm_devtree_regmap(dev->node, &base_va, 0);
+		err = vmm_devtree_request_regmap(dev->node, &base_va, 0,
+						 "VExpress Sysreg");
 		if (err) {
 			return err;
 		}		

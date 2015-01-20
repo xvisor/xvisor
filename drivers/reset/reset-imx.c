@@ -153,7 +153,8 @@ static int imx_src_probe(struct vmm_device *dev,
 	struct vmm_devtree_node *np = dev->node;
 	u32 val;
 
-	ret = vmm_devtree_regmap(np, (virtual_addr_t *)&src_base, 0);
+	ret = vmm_devtree_request_regmap(np, (virtual_addr_t *)&src_base, 0,
+					 "i.MX Reset Control");
 	if (VMM_OK != ret) {
 		vmm_printf("Failed to retrive %s register mapping\n");
 		return ret;
@@ -183,7 +184,7 @@ static int imx_src_remove(struct vmm_device *dev)
 	reset_controller_unregister(&imx_reset_controller);
 #endif /* CONFIG_RESET_CONTROLLER */
 
-	vmm_host_iounmap((virtual_addr_t)src_base);
+	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)src_base, 0);
 	src_base = NULL;
 
 	return 0;

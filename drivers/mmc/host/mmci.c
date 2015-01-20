@@ -427,7 +427,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	}
 	host = mmc_priv(mmc);
 
-	rc = vmm_devtree_regmap(dev->node, &base, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &base, 0, "PL180 MMCI");
 	if (rc) {
 		goto free_host;
 	}
@@ -509,7 +509,8 @@ free_irq1:
 free_irq0:
 	vmm_host_irq_unregister(host->irq0, mmc);
 free_reg:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->base, 0);
+	vmm_devtree_regunmap_release(dev->node,
+				(virtual_addr_t)host->base, 0);
 free_host:
 	mmc_free_host(mmc);
 free_nothing:
@@ -533,7 +534,8 @@ static int mmci_driver_remove(struct vmm_device *dev)
 			vmm_host_irq_unregister(host->irq1, mmc);
 		}
 		vmm_host_irq_unregister(host->irq0, mmc);
-		vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->base, 0);
+		vmm_devtree_regunmap_release(dev->node,
+					(virtual_addr_t)host->base, 0);
 		mmc_free_host(mmc);
 		dev->priv = NULL;
 	}

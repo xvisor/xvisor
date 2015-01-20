@@ -199,7 +199,7 @@ static int __init fpga_init(struct vmm_devtree_node *node)
 
 	BUG_ON(!vmm_smp_is_bootcpu());
 
-	rc = vmm_devtree_regmap(node, &base, 0);
+	rc = vmm_devtree_request_regmap(node, &base, 0, "Versatile SIC");
 	WARN(rc, "unable to map fpga irq registers\n");
 
 	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {

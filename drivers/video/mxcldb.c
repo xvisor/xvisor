@@ -565,8 +565,9 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 	}
 
 	if (!ldb->inited) {
-		ret = vmm_devtree_regmap(ldb->dev->node,
-					 (virtual_addr_t *)&ldb->reg, 0);
+		ret = vmm_devtree_request_regmap(ldb->dev->node,
+					(virtual_addr_t *)&ldb->reg, 0,
+					"MXC LDB");
 		if (VMM_OK != ret) {
 			dev_err(ldb->dev, "get register mapping fail.\n");
 			return VMM_ENOMEM;

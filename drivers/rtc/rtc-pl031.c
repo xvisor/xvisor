@@ -334,7 +334,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	rc = vmm_devtree_regmap(dev->node, &reg_base, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &reg_base, 0, "PL031 RTC");
 	if (rc) {
 		goto free_ldata;
 	}
@@ -399,7 +399,8 @@ static int pl031_driver_probe(struct vmm_device *dev,
 free_irq:
 	vmm_host_irq_unregister(ldata->irq, ldata);
 free_reg:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
+	vmm_devtree_regunmap_release(dev->node,
+				(virtual_addr_t)ldata->base, 0);
 free_ldata:
 	vmm_free(ldata);
 free_nothing:
@@ -413,7 +414,8 @@ static int pl031_driver_remove(struct vmm_device *dev)
 	if (ldata) {
 		rtc_device_unregister(&ldata->rtc);
 		vmm_host_irq_unregister(ldata->irq, ldata);
-		vmm_devtree_regunmap(dev->node, (virtual_addr_t)ldata->base, 0);
+		vmm_devtree_regunmap_release(dev->node,
+					(virtual_addr_t)ldata->base, 0);
 		vmm_free(ldata);
 		dev->priv = NULL;
 	}

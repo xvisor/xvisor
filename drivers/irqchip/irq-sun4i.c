@@ -172,7 +172,8 @@ static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 i = 0;
 
-	rc = vmm_devtree_regmap(node, &aw_vic_base, 0);
+	rc = vmm_devtree_request_regmap(node, &aw_vic_base, 0,
+					"Allwinner INTC");
 	if (rc) {
 		return rc;
 	}

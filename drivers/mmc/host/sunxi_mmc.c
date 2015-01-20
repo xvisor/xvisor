@@ -708,7 +708,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Acquire resources */
-	rc = vmm_devtree_regmap(dev->node, &base, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &base, 0, "Sunxi MMC");
 	if (rc) {
 		goto free_host;
 	}
@@ -814,7 +814,7 @@ free_hclkbase:
 free_mclkbase:
 	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->mclkbase, 1);
 free_reg:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->reg, 0);
+	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)host->reg, 0);
 free_host:
 	mmc_free_host(mmc);
 free_nothing:
@@ -847,7 +847,7 @@ static int sunxi_mmc_driver_remove(struct vmm_device *dev)
 		base = (virtual_addr_t)host->mclkbase;
 		vmm_devtree_regunmap(dev->node, base, 1);
 		base = (virtual_addr_t)host->reg;
-		vmm_devtree_regunmap(dev->node, base, 0);
+		vmm_devtree_regunmap_release(dev->node, base, 0);
 
 		/* Free MMC host */
 		mmc_free_host(mmc);

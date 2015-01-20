@@ -72,7 +72,7 @@ static int __init bcm2835_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	/* Map timer registers */
-	rc = vmm_devtree_regmap(node, &bcs->base, 0);
+	rc = vmm_devtree_request_regmap(node, &bcs->base, 0, "BCM2835 Timer");
 	if (rc) {
 		vmm_free(bcs);
 		return rc;
@@ -92,7 +92,7 @@ static int __init bcm2835_clocksource_init(struct vmm_devtree_node *node)
 	/* Register clocksource */
 	rc = vmm_clocksource_register(&bcs->clksrc);
 	if (rc) {
-		vmm_devtree_regunmap(node, bcs->base, 0);
+		vmm_devtree_regunmap_release(node, bcs->base, 0);
 		vmm_free(bcs);
 		return rc;
 	}

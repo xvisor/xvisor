@@ -1514,7 +1514,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 		goto fail_destroy_hcd;
 	}
 
-	rc = vmm_devtree_regmap(dev->node, &regs, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &regs, 0, "DWC2");
 	if (rc) {
 		goto fail_destroy_hcd;
 	}
@@ -1563,7 +1563,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 fail_destroy_thread:
 	vmm_threads_destroy(dwc2->urb_thread);
 fail_unmap_regs:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)dwc2->regs, 0);
+	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)dwc2->regs, 0);
 fail_destroy_hcd:
 	usb_dref_hcd(hcd);
 fail:
@@ -1581,7 +1581,7 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 
 	vmm_threads_destroy(dwc2->urb_thread);
 
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)dwc2->regs, 0);
+	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)dwc2->regs, 0);
 
 	usb_dref_hcd(hcd);
 

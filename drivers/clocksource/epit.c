@@ -137,7 +137,8 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	/* Map timer registers */
-	rc = vmm_devtree_regmap(node, &ecs->base, 0);
+	rc = vmm_devtree_request_regmap(node, &ecs->base, 0,
+					"Freescale EPIT");
 	if (rc) {
 		goto regmap_fail;
 	}
@@ -161,7 +162,7 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 
  register_fail:
-	vmm_devtree_regunmap(node, ecs->base, 0);
+	vmm_devtree_regunmap_release(node, ecs->base, 0);
  regmap_fail:
 	vmm_free(ecs);
  fail:

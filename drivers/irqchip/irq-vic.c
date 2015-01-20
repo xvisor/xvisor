@@ -167,7 +167,7 @@ static int __cpuinit vic_devtree_init(struct vmm_devtree_node *node,
 	virtual_addr_t base;
 	struct vic_chip_data *v_data;
 
-	rc = vmm_devtree_regmap(node, &base, 0);
+	rc = vmm_devtree_request_regmap(node, &base, 0, "Versatile VIC");
 	if (rc) {
 		return rc;
 	}

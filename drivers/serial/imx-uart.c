@@ -363,7 +363,8 @@ static int imx_driver_probe(struct vmm_device *dev,
 	INIT_COMPLETION(&port->write_possible);
 #endif
 
-	rc = vmm_devtree_regmap(dev->node, &port->base, 0);
+	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
+					"iMX UART");
 	if (rc) {
 		goto free_port;
 	}
@@ -453,7 +454,7 @@ clk_disable_unprepare_uart:
 clk_disable_unprepare_ipg:
 	clk_disable_unprepare(clk_ipg);
 free_reg:
-	vmm_devtree_regunmap(dev->node, port->base, 0);
+	vmm_devtree_regunmap_release(dev->node, port->base, 0);
 free_port:
 	vmm_free(port);
 free_nothing:
@@ -467,7 +468,7 @@ static int imx_driver_remove(struct vmm_device *dev)
 
 	if (port) {
 		rc = vmm_chardev_unregister(&port->cd);
-		vmm_devtree_regunmap(dev->node, port->base, 0);
+		vmm_devtree_regunmap_release(dev->node, port->base, 0);
 		vmm_free(port);
 		dev->priv = NULL;
 	}

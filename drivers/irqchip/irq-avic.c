@@ -136,7 +136,7 @@ static int __init avic_init(struct vmm_devtree_node *node)
 	u32 i;
 
 	/* Map AVIC registers */
-	rc = vmm_devtree_regmap(node, &avic_base, 0);
+	rc = vmm_devtree_request_regmap(node, &avic_base, 0, "AVIC");
 	WARN(rc, "unable to map avic registers\n");
 	if (rc) {
 		return rc;

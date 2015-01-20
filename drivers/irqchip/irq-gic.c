@@ -448,13 +448,13 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 		return VMM_ENODEV;
 	}
 
-	rc = vmm_devtree_regmap(node, &dist_base, 0);
+	rc = vmm_devtree_request_regmap(node, &dist_base, 0, "GIC Dist");
 	WARN(rc, "unable to map gic dist registers\n");
 
-	rc = vmm_devtree_regmap(node, &cpu_base, 1);
+	rc = vmm_devtree_request_regmap(node, &cpu_base, 1, "GIC CPU");
 	WARN(rc, "unable to map gic cpu registers\n");
 
-	rc = vmm_devtree_regmap(node, &cpu2_base, 4);
+	rc = vmm_devtree_request_regmap(node, &cpu2_base, 4, "GIC CPU2");
 	if (rc) {
 		cpu2_base = cpu_base + 0x1000;
 	}

@@ -2555,7 +2555,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 		goto out_release_attrib;
 	}
 #endif
-	ret = vmm_devtree_regmap(pdev->node, &reg_addr, 0);
+	ret = vmm_devtree_request_regmap(pdev->node, &reg_addr, 0, "SMC91x");
 	if (ret) {
 		vmm_printf("Failed to ioreamp\n");
 		goto out_release_attrib;

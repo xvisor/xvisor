@@ -272,9 +272,9 @@ static int imx_pwm_probe(struct vmm_device *dev,
 	imx->chip.base = -1;
 	imx->chip.npwm = 1;
 
-	ret = vmm_devtree_regmap(dev->node,
-				 (virtual_addr_t *)&imx->mmio_base,
-				 0);
+	ret = vmm_devtree_request_regmap(dev->node,
+				 (virtual_addr_t *)&imx->mmio_base, 0,
+				 "i.MX PWM");
 	if (ret)
 		return ret;
 

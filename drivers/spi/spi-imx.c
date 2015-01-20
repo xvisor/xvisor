@@ -859,7 +859,7 @@ static int spi_imx_probe(struct vmm_device *dev,
 
 	spi_imx->devtype_data = devid->data;
 
-	ret = vmm_devtree_regmap(dev->node, &vaddr, 0);
+	ret = vmm_devtree_request_regmap(dev->node, &vaddr, 0, "i.MX SPI");
 	if (VMM_OK != ret) {
 		ret = PTR_ERR(spi_imx->base);
 		goto out_gpio_free;

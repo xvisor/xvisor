@@ -860,7 +860,8 @@ static int emac_probe(struct vmm_device *pdev,
 
 	spin_lock_init(&db->lock);
 
-	if ((ret = vmm_devtree_regmap(np, &reg_addr, 0))) {
+	if ((ret = vmm_devtree_request_regmap(np, &reg_addr, 0,
+					      "Sun4i EMAC"))) {
 		vmm_printf("%s: Failed to ioreamp\n", __func__);
 		return -ENOMEM;
 	}
