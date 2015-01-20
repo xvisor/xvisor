@@ -25,6 +25,7 @@
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_cpumask.h>
+#include <vmm_resource.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_irq.h>
@@ -62,6 +63,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool info\n");
 	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
+	vmm_cprintf(cdev, "   host resources\n");
 	vmm_cprintf(cdev, "   host bus_list\n");
 	vmm_cprintf(cdev, "   host bus_device_list <bus_name>\n");
 	vmm_cprintf(cdev, "   host class_list\n");
@@ -313,6 +315,33 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
+static int cmd_host_resources_print(const char *name,
+				    u64 start, u64 end,
+				    unsigned long flags,
+				    int level, void *arg)
+{
+	struct vmm_chardev *cdev = arg;
+
+	while (level > 0) {
+		vmm_cputs(cdev, "   ");
+		level--;
+	}
+
+	vmm_cprintf(cdev, "[0x%016llx-0x%016llx] (0x%08lx) %s\n",
+		    start, end, (u32)flags, (name) ? name : "Unknown");
+
+	return VMM_OK;
+}
+
+static void cmd_host_resources(struct vmm_chardev *cdev)
+{
+	vmm_walk_tree_res(&vmm_hostio_resource, cdev,
+			  cmd_host_resources_print);
+
+	vmm_walk_tree_res(&vmm_hostmem_resource, cdev,
+			  cmd_host_resources_print);
+}
+
 struct cmd_host_list_iter {
 	u32 num;
 	struct vmm_chardev *cdev;
@@ -490,6 +519,9 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			cmd_host_vapool_bitmap(cdev, colcnt);
 			return VMM_OK;
 		}
+	} else if ((strcmp(argv[1], "resources") == 0) && (2 == argc)) {
+		cmd_host_resources(cdev);
+		return VMM_OK;
 	} else if ((strcmp(argv[1], "bus_list") == 0) && (2 == argc)) {
 		cmd_host_bus_list(cdev);
 		return VMM_OK;
