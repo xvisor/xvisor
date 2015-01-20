@@ -103,7 +103,7 @@ static void *r_next(void *v, loff_t *pos)
 {
 	struct vmm_resource *p = v;
 	(*pos)++;
-	return (void *)next_resource(p, false);
+	return (void *)next_resource(p, FALSE);
 }
 
 #define free_resource(res)	vmm_free(res)
@@ -219,18 +219,22 @@ void vmm_release_child_resources(struct vmm_resource *r)
 }
 
 /*
- * Finds the lowest hostmem reosurce exists with-in [res->start.res->end)
+ * Finds the lowest resource that exists with-in [res->start.res->end)
  * the caller must specify res->start, res->end, res->flags and "name".
  * If found, returns 0, res is overwritten, if not found, returns -1.
  * This walks through whole tree and not just first level children
  * until and unless first_level_children_only is true.
  */
-static int find_next_hostmem_res(struct vmm_resource *res, char *name,
-			         bool first_level_children_only)
+static int find_next_res(struct vmm_resource *root,
+			 struct vmm_resource *res,
+			 int *res_level,
+			 char *name,
+			 bool check_flags,
+		         bool first_level_children_only)
 {
 	resource_size_t start, end;
 	struct vmm_resource *p;
-	bool sibling_only = false;
+	bool sibling_only = FALSE;
 
 	BUG_ON(!res);
 
@@ -239,13 +243,13 @@ static int find_next_hostmem_res(struct vmm_resource *res, char *name,
 	BUG_ON(start >= end);
 
 	if (first_level_children_only)
-		sibling_only = true;
+		sibling_only = TRUE;
 
 	vmm_read_lock(&resource_lock);
 
-	for (p = vmm_hostmem_resource.child; p;
+	for (p = root->child; p;
 	     p = next_resource(p, sibling_only)) {
-		if (p->flags != res->flags)
+		if (check_flags && p->flags != res->flags)
 			continue;
 		if (name && strcmp(p->name, name))
 			continue;
@@ -260,12 +264,63 @@ static int find_next_hostmem_res(struct vmm_resource *res, char *name,
 	vmm_read_unlock(&resource_lock);
 	if (!p)
 		return -1;
+
 	/* copy data */
+	res->name = p->name;
 	if (res->start < p->start)
 		res->start = p->start;
 	if (res->end > p->end)
 		res->end = p->end;
+	res->flags = p->flags;
+
+	/* determine level */
+	if (res_level) {
+		*res_level = 0;
+		while (p && p != root) {
+			(*res_level)++;
+			p = p->parent;
+		}
+	}
+
 	return 0;
+}
+
+int vmm_walk_tree_res(struct vmm_resource *root, void *arg,
+			int (*func)(const char *name,
+				    u64 start, u64 end,
+				    unsigned long flags,
+				    int level, void *arg))
+{
+	struct vmm_resource res;
+	u64 orig_end;
+	int ret = -1, level = 0;
+
+	if (!root || !func)
+		return -1;
+
+	ret = (*func)(root->name, root->start, root->end, root->flags,
+		      level, arg);
+	if (ret) {
+		return ret;
+	} else {
+		ret = -1;
+	}
+
+	res.start = root->start;
+	res.end = root->end;
+	res.flags = 0;
+	orig_end = res.end;
+	while ((res.start < res.end) &&
+		(!find_next_res(root, &res, &level, NULL, FALSE, FALSE))) {
+		ret = (*func)(res.name, res.start, res.end, res.flags,
+			      level, arg);
+		if (ret)
+			break;
+		res.start = res.end + 1;
+		res.end = orig_end;
+	}
+
+	return ret;
 }
 
 int vmm_walk_hostmem_res(char *name, unsigned long flags,
@@ -281,13 +336,15 @@ int vmm_walk_hostmem_res(char *name, unsigned long flags,
 	res.flags = flags;
 	orig_end = res.end;
 	while ((res.start < res.end) &&
-		(!find_next_hostmem_res(&res, name, false))) {
+		(!find_next_res(&vmm_hostmem_resource,
+				&res, NULL, name, TRUE, FALSE))) {
 		ret = (*func)(res.start, res.end, arg);
 		if (ret)
 			break;
 		res.start = res.end + 1;
 		res.end = orig_end;
 	}
+
 	return ret;
 }
 
@@ -303,13 +360,15 @@ int vmm_walk_system_ram_res(u64 start, u64 end, void *arg,
 	res.flags = VMM_IORESOURCE_MEM | VMM_IORESOURCE_BUSY;
 	orig_end = res.end;
 	while ((res.start < res.end) &&
-		(!find_next_hostmem_res(&res, "System RAM", true))) {
+		(!find_next_res(&vmm_hostmem_resource,
+				&res, NULL, "System RAM", TRUE, TRUE))) {
 		ret = (*func)(res.start, res.end, arg);
 		if (ret)
 			break;
 		res.start = res.end + 1;
 		res.end = orig_end;
 	}
+
 	return ret;
 }
 
@@ -329,7 +388,8 @@ int vmm_walk_system_ram_range(unsigned long start_pfn,
 	res.flags = VMM_IORESOURCE_MEM | VMM_IORESOURCE_BUSY;
 	orig_end = res.end;
 	while ((res.start < res.end) &&
-		(find_next_hostmem_res(&res, "System RAM", TRUE) >= 0)) {
+		(find_next_res(&vmm_hostmem_resource,
+				&res, NULL, "System RAM", TRUE, TRUE) >= 0)) {
 		pfn = (res.start + VMM_PAGE_SIZE - 1) >> VMM_PAGE_SHIFT;
 		end_pfn = (res.end + 1) >> VMM_PAGE_SHIFT;
 		if (end_pfn > pfn)
@@ -339,6 +399,7 @@ int vmm_walk_system_ram_range(unsigned long start_pfn,
 		res.start = res.end + 1;
 		res.end = orig_end;
 	}
+
 	return ret;
 }
 
@@ -791,10 +852,10 @@ void __init vmm_reserve_region_with_split(struct vmm_resource *root,
 	vmm_write_unlock(&resource_lock);
 }
 
-struct vmm_resource * __vmm_request_region(struct vmm_resource *parent,
-					   resource_size_t start,
-					   resource_size_t n,
-					   const char *name, int flags)
+struct vmm_resource *__vmm_request_region(struct vmm_resource *parent,
+					  resource_size_t start,
+					  resource_size_t n,
+					  const char *name, int flags)
 {
 	struct vmm_resource *res = alloc_resource();
 

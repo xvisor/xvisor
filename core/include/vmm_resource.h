@@ -230,6 +230,18 @@ int vmm_walk_hostmem_res(char *name, unsigned long flags,
 			 int (*func)(u64, u64, void *));
 
 /**
+ * Walk through each resources under given resource tree and
+ * call func() on each resource tree node.
+ *
+ * @root: root of resource tree
+ */
+int vmm_walk_tree_res(struct vmm_resource *root, void *arg,
+			int (*func)(const char *name,
+				    u64 start, u64 end,
+				    unsigned long flags,
+				    int level, void *arg));
+
+/**
  * Inserts resource in the resource tree
  * @parent: parent of the new resource
  * @new: new resource to insert
