@@ -64,14 +64,14 @@
       		device_type = "pic";
       		compatible = "arm,cortex-a9-gic";
       		reg = <0x1E001000 0x1000
-		       0x1E000100 0x1000>;
+		       0x1E000100 0x100>;
 	};
 
 	twd-timer { /* Local Timer */
       		device_type = "timer";
       		compatible = "arm,cortex-a9-twd-timer";
-      		reg = <0x1E000600 0x1000	/* Local timer registers */
-		       0x1000005C 0x1000>;	/* Reference counter address */
+		reg = <0x1E000600 0x100	/* Local timer registers */
+		       0x1000005C 0x4>;	/* Reference counter address */
 		ref-counter-freq = <24000000>;	/* Reference counter frequency */
 		interrupts = <29>;
 	};
