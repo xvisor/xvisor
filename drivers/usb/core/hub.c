@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
+#include <vmm_cache.h>
 #include <vmm_delay.h>
 #include <vmm_heap.h>
 #include <vmm_timer.h>
@@ -834,7 +835,8 @@ static int usb_hub_configure(struct usb_device *dev,
 	}
 
 	dev->maxchild = descriptor->bNbrPorts;
-	DPRINTF("%s: %d ports detected\n", __func__, dev->maxchild);
+	DPRINTF("%s: %d ports detected on %s\n",
+		__func__, dev->maxchild, dev->dev.name);
 
 	hubCharacteristics = get_unaligned(&hub->desc.wHubCharacteristics);
 	switch (hubCharacteristics & HUB_CHAR_LPSM) {
@@ -1018,7 +1020,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		/* reset the port for the second time */
 		err = usb_hub_port_reset(parent, port, &portstatus);
 		if (err) {
-			vmm_printf("%s: couldn't reset port %i\n",
+			vmm_printf("%s: couldn't reset port %d\n",
 				   __func__, port);
 			dev->devnum = addr;
 			goto done;
@@ -1180,43 +1182,32 @@ static void usb_recursively_disconnect(struct usb_device *dev)
 	usb_dref_device(dev);
 }
 
-static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
+static void usb_hub_port_connect_change(struct usb_hub_device *hub,
+					struct usb_port_status *portsts,
+					int port)
 {
-	u16 portstatus;
+	u16 portstatus, portchange;
 	u16 portmask = (USB_PORT_STAT_LOW_SPEED|USB_PORT_STAT_HIGH_SPEED);
 	irq_flags_t flags;
 	struct usb_device *usb;
 	struct usb_device *dev = hub->dev;
-	struct usb_port_status *portsts;
 
-	portsts = vmm_malloc(sizeof(*portsts));
-	if (!portsts) {
-		return;
-	}
 	usb_ref_device(dev);
 
-	/* Check status */
-	if (usb_hub_get_port_status(dev, port + 1, portsts) < 0) {
-		DPRINTF("%s: get_port_status failed\n", __func__);
-		goto done;
-	}
-
 	portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
-	DPRINTF("%s: portstatus %x, change %x, %s\n",
-		__func__, portstatus,
-		vmm_le16_to_cpu(portsts->wPortChange),
+	portchange = vmm_le16_to_cpu(portsts->wPortChange);
+
+	DPRINTF("%s: dev %s port %d status 0x%x, change 0x%x, %s\n",
+		__func__, dev->dev.name, port + 1, portstatus, portchange,
 		usb_hub_portspeed(portstatus));
 
 	/* Clear the connection change status */
 	usb_hub_clear_port_feature(dev, port + 1, USB_PORT_FEAT_C_CONNECTION);
 
 	/* Skip if no connection change */
-	if (!(portstatus & USB_PORT_STAT_CONNECTION) &&
-	    !(portstatus & USB_PORT_STAT_ENABLE)) {
-		/* Return now if nothing is connected */
-		if (!(portstatus & USB_PORT_STAT_CONNECTION)) {
-			goto done;
-		}
+	if (!(portchange & USB_PORT_STAT_C_CONNECTION) &&
+	    !(portchange & USB_PORT_STAT_C_ENABLE)) {
+		goto done;
 	}
 
 	/* Disconnect any existing devices under this port */
@@ -1231,7 +1222,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	vmm_spin_unlock_irqrestore(&dev->children_lock, flags);
 
 	/* Wait for clear connection to finish */
-	vmm_mdelay(200);
+	vmm_msleep(200);
 
 	/* Reset the port */
 	if (usb_hub_port_reset(dev, port, &portstatus) < 0) {
@@ -1241,7 +1232,7 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 	}
 
 	/* Wait for reset to finish */
-	vmm_mdelay(200);
+	vmm_msleep(200);
 
 	/* Allocate a new device struct for it */
 	usb = usb_alloc_device(dev, dev->hcd, port);
@@ -1281,7 +1272,6 @@ static void usb_hub_port_connect_change(struct usb_hub_device *hub, int port)
 
 done:
 	usb_dref_device(dev);
-	vmm_free(portsts);
 }
 
 static int usb_hub_poll_status(struct usb_hub_device *hub)
@@ -1289,72 +1279,66 @@ static int usb_hub_poll_status(struct usb_hub_device *hub)
 	int i, err;
 	u16 portstatus, portchange;
 	struct usb_device *dev = hub->dev;
-	struct usb_port_status *portsts;
+	struct usb_port_status __cacheline_aligned portsts;
 
 	if (!hub->configured) {
 		vmm_printf("%s: Hub not configured\n", __func__);
 		return VMM_EINVALID;
 	}
 
-	portsts = vmm_zalloc(sizeof(struct usb_port_status));
-	if (!portsts) {
-		return VMM_ENOMEM;
-	}
-
 	usb_ref_device(dev);
 
 	for (i = 0; i < dev->maxchild; i++) {
-		err = usb_hub_get_port_status(dev, i + 1, portsts);
+		err = usb_hub_get_port_status(dev, i + 1, &portsts);
 		if (err < 0) {
-			DPRINTF("%s: get_port_status failed\n",
-				__func__);
+			DPRINTF("%s: dev %s port %d get_port_status failed\n",
+				__func__, i + 1, dev->dev.name);
 			continue;
 		}
-		portstatus = vmm_le16_to_cpu(portsts->wPortStatus);
-		portchange = vmm_le16_to_cpu(portsts->wPortChange);
+		portstatus = vmm_le16_to_cpu(portsts.wPortStatus);
+		portchange = vmm_le16_to_cpu(portsts.wPortChange);
 
-		DPRINTF("%s: port %d status 0x%x change 0x%x\n",
-			__func__, i + 1, portstatus, portchange);
+		DPRINTF("%s: dev %s port %d status 0x%x change 0x%x\n",
+			__func__, dev->dev.name, i + 1,
+			portstatus, portchange);
 
 		if (portchange & USB_PORT_STAT_C_CONNECTION) {
-			DPRINTF("%s: port %d connection change\n",
-				__func__, i + 1);
-			usb_hub_port_connect_change(hub, i);
+			DPRINTF("%s: dev %s port %d connection change\n",
+				__func__, dev->dev.name, i + 1);
+			usb_hub_port_connect_change(hub, &portsts, i);
 		}
 
 		if (portchange & USB_PORT_STAT_C_ENABLE) {
-			DPRINTF("%s: port %d enable change, status 0x%x\n",
-				__func__, i + 1, portstatus);
+			DPRINTF("%s: dev %s port %d enable change\n",
+				__func__, dev->dev.name, i + 1);
 			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_ENABLE);
 		}
 
 		if (portstatus & USB_PORT_STAT_SUSPEND) {
-			DPRINTF("%s: port %d suspend change\n",
-				__func__, i + 1);
+			DPRINTF("%s: dev %s port %d suspend change\n",
+				__func__, dev->dev.name, i + 1);
 			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_SUSPEND);
 		}
 
 		if (portchange & USB_PORT_STAT_C_OVERCURRENT) {
-			DPRINTF("%s: port %d over-current change\n",
-				__func__, i + 1);
+			DPRINTF("%s: dev %s port %d over-current change\n",
+				__func__, dev->dev.name, i + 1);
 			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_OVER_CURRENT);
 			usb_hub_power_on(hub);
 		}
 
 		if (portchange & USB_PORT_STAT_C_RESET) {
-			DPRINTF("%s: port %d reset change\n",
-				__func__, i + 1);
+			DPRINTF("%s: dev %s port %d reset change\n",
+				__func__, dev->dev.name, i + 1);
 			usb_hub_clear_port_feature(dev, i + 1,
 						USB_PORT_FEAT_C_RESET);
 		}
 	}
 
 	usb_dref_device(dev);
-
-	vmm_free(portsts);
 
 	return VMM_OK;
 }
@@ -1604,4 +1588,3 @@ void __exit usb_hub_exit(void)
 	/* Unregister hub driver */
 	usb_deregister(&usb_hub_driver);
 }
-
