@@ -1723,7 +1723,8 @@ static int __init vgic_emulator_init(void)
 		goto fail_unmap_cpu2;
 	}
 
-	rc = vmm_devtree_regmap(node, &vgich.hctrl_va, 2);
+	rc = vmm_devtree_request_regmap(node, &vgich.hctrl_va, 2,
+					"GIC HCTRL");
 	if (rc) {
 		goto fail_unmap_cpu2;
 	}
@@ -1738,7 +1739,8 @@ static int __init vgic_emulator_init(void)
 		goto fail_unmap_hctrl;
 	}
 
-	rc = vmm_devtree_regmap(node, &vgich.vcpu_va, 3);
+	rc = vmm_devtree_request_regmap(node, &vgich.vcpu_va, 3,
+					"GIC VCPU");
 	if (rc) {
 		goto fail_unmap_hctrl;
 	}
@@ -1781,9 +1783,9 @@ static int __init vgic_emulator_init(void)
 fail_unreg_dist:
 	vmm_devemu_unregister_emulator(&vgic_dist_emulator);
 fail_unmap_vcpu:
-	vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
+	vmm_devtree_regunmap_release(node, vgich.vcpu_va, 3);
 fail_unmap_hctrl:
-	vmm_devtree_regunmap(node, vgich.hctrl_va, 2);
+	vmm_devtree_regunmap_release(node, vgich.hctrl_va, 2);
 fail_unmap_cpu2:
 	if (vgich.cpu2_mapped) {
 		vmm_devtree_regunmap(node, vgich.cpu2_va, 4);
