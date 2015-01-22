@@ -321,11 +321,6 @@ void dump_vcpu_regs(arch_regs_t *regs)
 	__dump_vcpu_regs(NULL, regs);
 }
 
-void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu) 
-{
-	__dump_vcpu_regs(cdev, &vcpu->regs);
-}
-
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	/* For now no arch specific stats */
@@ -422,6 +417,15 @@ static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 		}
 	}
 	vmm_printf("]\n");
+}
+
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
+{
+	struct vcpu_hw_context *context = x86_vcpu_hw_context(vcpu);
+
+	if (context) {
+		dump_guest_vcpu_state(context);
+	}
 }
 
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context)
