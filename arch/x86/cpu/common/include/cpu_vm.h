@@ -75,6 +75,8 @@ enum guest_regs {
 #define IO_INTCPT_TBL_SZ	(12 << 10)
 #define MSR_INTCPT_TBL_SZ	(8 << 10)
 
+#define GUEST_PGLIST_ORDER	(7)
+
 /**
  * \define The list of pages which are used in page tables itself.
  *
@@ -84,7 +86,7 @@ enum guest_regs {
  * the thrashing will happen. We will kick off some used entries
  * to make room for new ones.
  */
-#define NR_32BIT_PGLIST_PAGES	(128)
+#define NR_32BIT_PGLIST_PAGES	(0x1 << GUEST_PGLIST_ORDER)
 
 struct vcpu_intercept_table {
 	physical_addr_t io_table_phys;
