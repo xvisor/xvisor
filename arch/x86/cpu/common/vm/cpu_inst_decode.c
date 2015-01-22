@@ -118,6 +118,14 @@ int x86_decode_inst(x86_inst inst, x86_decoded_inst_t *dinst)
 		}
 		break;
 
+	case OPC_INVLPG:
+		rm.byte = *cinst;
+		cinst++;
+		dinst->inst_type = INST_TYPE_CACHE;
+		dinst->inst_size = 3;
+		dinst->inst.src_reg = rm.f.src;
+		break;
+
 	default:
 		return VMM_EFAIL;
 	}

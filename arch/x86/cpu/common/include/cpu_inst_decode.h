@@ -31,6 +31,7 @@ typedef unsigned char x86_inst[X86_MAX_INST_LEN];
 typedef enum {
 	INST_TYPE_MOV,
 	INST_TYPE_MOV_CR,
+	INST_TYPE_CACHE, /* TLB and cache operation */
 } inst_type;
 
 /* Operand type in instruction */
@@ -96,6 +97,8 @@ typedef union mod_rm {
 /******************************
  *          OPCODES           *
  ******************************/
+/* invalidate page */
+#define OPC_INVLPG		0x01
 /* move reg to reg */
 #define OPC_MOVL_RR		0x89
 /* move byte from seg:off to register */
@@ -131,6 +134,10 @@ typedef struct {
 			u64 src_reg;
 			u64 dst_reg;
 		} crn_mov;
+
+		struct {
+			u8 src_reg;
+		};
 	} inst;
 } x86_decoded_inst_t;
 
