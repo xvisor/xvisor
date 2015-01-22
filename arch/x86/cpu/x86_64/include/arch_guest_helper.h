@@ -42,7 +42,6 @@ struct x86_guest_priv {
 	 * when required.
 	 */
 	void *pic_list;
-	struct page_table *g_npt; /**< Guest's nested page table */
 	struct cmos_rtc_state *rtc_cmos;
 	struct i8259_state *master_pic;
 	u64 tot_ram_sz;
