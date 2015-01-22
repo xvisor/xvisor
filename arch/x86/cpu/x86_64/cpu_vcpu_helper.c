@@ -99,10 +99,14 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				func_response->resp_edx =
 					(CPUID_FEAT_EDX_CLF
 					 | CPUID_FEAT_EDX_FPU
-					 | CPUID_FEAT_EDX_MSR
 					 | CPUID_FEAT_EDX_APIC);
 				break;
+
 			default:
+				func_response->resp_eax = 0;
+				func_response->resp_ebx = 0;
+				func_response->resp_ecx = 0;
+				func_response->resp_edx = 0;
 				break;
 			}
 		}
@@ -115,7 +119,9 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 
 			switch (funcs) {
 			case CPUID_EXTENDED_BASE:
-				func_response->resp_eax = CPUID_EXTENDED_FUNC_LIMIT;
+				func_response->resp_eax =
+					CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER
+					- CPUID_EXTENDED_BASE;
 				func_response->resp_ebx = 0x73697658; /*sivX*/
 				func_response->resp_ecx = 0x7658726f; /*vXor*/
 				func_response->resp_edx = 0x726f7369; /*rosi*/
@@ -134,9 +140,9 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 					 | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
 				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
 				func_response->resp_edx =
-					(CPUID_FEAT_EDX_CLF
-					 | CPUID_FEAT_EDX_FPU
-					 | CPUID_FEAT_EDX_MSR
+					(CPUID_FEAT_EDX_NX
+					 | CPUID_FEAT_EDX_CMOV
+					 | CPUID_FEAT_EDX_SEP
 					 | CPUID_FEAT_EDX_APIC);
 				break;
 
@@ -170,9 +176,26 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				break;
 
 			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
-				/* FIXME: Write where whatever Qemu spits out */
+				cpuid(CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER,
+				      &func_response->resp_eax,
+				      &func_response->resp_ebx,
+				      &func_response->resp_ecx,
+				      &func_response->resp_edx);
 				break;
+
+			case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
+				cpuid(CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER,
+				      &func_response->resp_eax,
+				      &func_response->resp_ebx,
+				      &func_response->resp_ecx,
+				      &func_response->resp_edx);
+				break;
+
 			default:
+				func_response->resp_eax = 0;
+				func_response->resp_ebx = 0;
+				func_response->resp_ecx = 0;
+				func_response->resp_edx = 0;
 				break;
 			}
 		}

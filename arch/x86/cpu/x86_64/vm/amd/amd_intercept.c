@@ -557,11 +557,23 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_EXTENDED_BRANDSTRING:
 	case CPUID_EXTENDED_BRANDSTRINGMORE:
 	case CPUID_EXTENDED_BRANDSTRINGEND:
+	case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
+	case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
 		func = &priv->extended_funcs[context->vmcb->rax - CPUID_EXTENDED_BASE];
 		context->vmcb->rax = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		break;
+
+	case CPUID_BASE_FEAT_FLAGS:
+	case CPUID_EXTENDED_FEATURES:
+	case CPUID_EXTENDED_ADDR_NR_PROC:
+	case CPUID_EXTENDED_CAPABILITIES:
+		context->vmcb->rax = 0;
+		context->g_regs[GUEST_REGS_RBX] = 0;
+		context->g_regs[GUEST_REGS_RCX] = 0;
+		context->g_regs[GUEST_REGS_RDX] = 0;
 		break;
 
 	default:
