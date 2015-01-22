@@ -72,9 +72,6 @@ static char *exception_names[] = {
 	"#Unknown31",	/* 31 */
 };
 
-extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			       physical_addr_t paddr, size_t size);
-
 static inline int guest_in_realmode(struct vcpu_hw_context *context)
 {
 	return (!(context->vmcb->cr0 & X86_CR0_PE));
@@ -177,32 +174,68 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		VM_LOG(LVL_DEBUG, "Guest fault: 0x%x (rIP: %x)\n",
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
-		u64 fault_gphys = context->vmcb->exitinfo2;
+		physical_addr_t fault_gphys = context->vmcb->exitinfo2;
 		u64 fault_offset;
+		physical_addr_t lookedup_gphys;
+		struct vmm_region *g_reg;
 
-		/* Guest is in real mode so faulting guest virtual is
-		 * guest physical address. We just need to add faulting
-		 * address as offset to host physical address to get
-		 * the destination physical address.
-		 */
-		struct vmm_region *g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
-								 fault_gphys,
-								 VMM_REGION_MEMORY,
-								 FALSE);
-		if (!g_reg) {
-			VM_LOG(LVL_ERR, "ERROR: Can't find the host physical address for guest physical: 0x%lx\n",
-			       fault_gphys);
-			goto guest_bad_fault;
+		if (!(context->g_cr0 & X86_CR0_PG)) {
+			/* Guest is in real mode so faulting guest virtual is
+			 * guest physical address. We just need to add faulting
+			 * address as offset to host physical address to get
+			 * the destination physical address.
+			 */
+			g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
+						      fault_gphys,
+						      VMM_REGION_MEMORY,
+						      FALSE);
+			if (!g_reg) {
+				VM_LOG(LVL_ERR, "ERROR: No region mapped to "
+				       "guest physical: 0x%lx\n",
+				       fault_gphys);
+				goto guest_bad_fault;
+			}
+
+			fault_offset = fault_gphys - g_reg->gphys_addr;
+		} else {
+			/* Guest has enabled paging, search for an entry
+			 * in guest's page table.
+			 */
+			if (lookup_guest_pagetable(context, fault_gphys,
+						   &lookedup_gphys) != VMM_OK) {
+				VM_LOG(LVL_ERR, "ERROR: No page table entry "
+				       "created by guest for fault address "
+				       "0x%lx\n",
+				       fault_gphys);
+				goto guest_bad_fault;
+			}
+
+			/* Find the region for guest physical */
+			g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
+						      lookedup_gphys,
+						      VMM_REGION_MEMORY,
+						      FALSE);
+			if (!g_reg) {
+				VM_LOG(LVL_ERR, "ERROR: No region mapped to "
+				       "looked up guest physical: 0x%x (Guest Virtual: 0x%lx)\n",
+				       (u32)lookedup_gphys, fault_gphys);
+				goto guest_bad_fault;
+			}
+
+			fault_offset = lookedup_gphys - g_reg->gphys_addr;
 		}
-
-		fault_offset = fault_gphys - g_reg->gphys_addr;
 
 		/* If fault is on a RAM backed address, map and return. Otherwise do emulate. */
 		if (g_reg->flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
-			if (realmode_map_memory(context, fault_gphys,
-						(g_reg->hphys_addr + fault_offset),
-						PAGE_SIZE) != VMM_OK) {
-				VM_LOG(LVL_ERR, "ERROR: Failed to create map in guest's shadow page table.\n");
+			if (create_guest_shadow_map(context, fault_gphys,
+						    (g_reg->hphys_addr + fault_offset),
+						    PAGE_SIZE) != VMM_OK) {
+				VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
+				       "guest's shadow page table.\n"
+				       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
+				       "Gphys: 0x%lx Host Phys: %lx\n",
+				       g_reg->gphys_addr, fault_offset,
+				       fault_gphys, g_reg->hphys_addr);
 				goto guest_bad_fault;
 			}
 			context->vmcb->cr2 = context->vmcb->exitinfo2;
