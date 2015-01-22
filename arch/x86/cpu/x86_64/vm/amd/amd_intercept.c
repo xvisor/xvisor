@@ -359,17 +359,23 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 				rvalue = context->g_cr3;
 				break;
 
+			case RM_REG_CR4:
+				rvalue = context->g_cr4;
+				break;
+
 			default:
-				VM_LOG(LVL_ERR, "Unknown CR reg %d read by guest\n", dinst.inst.crn_mov.src_reg);
+				VM_LOG(LVL_ERR, "Unknown CR reg %d read by guest\n",
+				       dinst.inst.crn_mov.src_reg);
 				goto guest_bad_fault;
 			}
 
 			if (!dinst.inst.crn_mov.dst_reg)
 				context->vmcb->rax = rvalue;
 
-			context->g_regs[dinst.inst.crn_mov.dst_reg] = context->g_cr0;
+			context->g_regs[dinst.inst.crn_mov.dst_reg] = rvalue;
 			context->vmcb->rip += dinst.inst_size;
-			VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n", context->g_cr0, context->vmcb->cr0);
+			VM_LOG(LVL_DEBUG, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n",
+			       context->g_cr0, context->vmcb->cr0);
 		} else {
 			VM_LOG(LVL_ERR, "Unknown fault instruction: 0x%lx\n", ins64);
 			goto guest_bad_fault;
