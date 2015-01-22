@@ -136,8 +136,8 @@ static void set_control_params (struct vcpu_hw_context *context)
 				      //INTRCPT_GDTR_WR    |
 				      //INTRCPT_IDTR_RD    |
 				      //INTRCPT_IDTR_WR    |
-				      INTRCPT_LDTR_RD    |
-				      INTRCPT_LDTR_WR    |
+				      //INTRCPT_LDTR_RD    |
+				      //INTRCPT_LDTR_WR    |
 				      INTRCPT_TR_RD      |
 				      INTRCPT_TR_WR      |
 				      //INTRCPT_RDTSC      |
