@@ -44,32 +44,6 @@ int arch_guest_init(struct vmm_guest * guest)
 		return VMM_EFAIL;
 	}
 
-	/*
-	 * Create the nested paging table that map guest physical to host physical
-	 * return the (host) physical base address of the table.
-	 * Note: Nested paging table must use the same paging mode as the host,
-	 * regardless of guest paging mode - See AMD man vol2:
-	 * The extra translation uses the same paging mode as the VMM used when it
-	 * executed the most recent VMRUN.
-	 *
-	 * Also, it is important to note that gCR3 and the guest page table entries
-	 * contain guest physical addresses, not system physical addresses.
-	 * Hence, before accessing a guest page table entry, the table walker first
-	 * translates that entry's guest physical address into a system physical
-	 * address.
-	 *
-	 * npt should be created should be used when nested page table
-	 * walking is available. But we will create it anyways since
-	 * we are creating only the first level.
-	 */
-	priv->g_npt = mmu_pgtbl_alloc(&host_pgtbl_ctl, PGTBL_STAGE_2);
-
-	if (priv->g_npt == NULL) {
-		VM_LOG(LVL_ERR, "ERROR: Failed to create nested page table for guest.\n");
-		vmm_free(priv);
-		return VMM_EFAIL;
-	}
-
 	guest->arch_priv = (void *)priv;
 
 	VM_LOG(LVL_VERBOSE, "Guest init successful!\n");
@@ -81,9 +55,6 @@ int arch_guest_deinit(struct vmm_guest * guest)
 	struct x86_guest_priv *priv = x86_guest_priv(guest);
 
 	if (priv) {
-		if (mmu_pgtbl_free(&host_pgtbl_ctl, priv->g_npt) != VMM_OK)
-			VM_LOG(LVL_ERR, "ERROR: Failed to unmap the nested page table. Will Leak.\n");
-
 		vmm_free(priv);
 	}
 
