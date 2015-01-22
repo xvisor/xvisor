@@ -396,6 +396,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 	u32 bits_clrd;
 	u32 bits_set;
 	u64 htr;
+	u64 n_cr3;
 
 	/* Check if host support instruction decode assistance */
 	if (context->cpuinfo->decode_assist) {
@@ -426,32 +427,101 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 					bits_clrd = (context->g_cr0 & ~context->vmcb->rax);
 					context->g_cr0 = context->vmcb->rax;
 				} else {
-					bits_set = (~context->g_cr0 & context->g_regs[dinst.inst.crn_mov.src_reg]);
-					bits_clrd = (context->g_cr0 & ~context->g_regs[dinst.inst.crn_mov.src_reg]);
-					context->g_cr0 = context->g_regs[dinst.inst.crn_mov.src_reg];
+					bits_set = (~context->g_cr0 &
+						    context->g_regs[dinst.inst.crn_mov.src_reg]);
+					bits_clrd = (context->g_cr0 &
+						     ~context->g_regs[dinst.inst.crn_mov.src_reg]);
+					context->g_cr0
+						= context->g_regs[dinst.inst.crn_mov.src_reg];
 				}
 
-				if (bits_set & X86_CR0_PE)
+				if (bits_set & X86_CR0_PE) {
 					context->vmcb->cr0 |= X86_CR0_PE;
+				}
 
-				if (bits_set & X86_CR0_PG)
+				if (bits_set & X86_CR0_PG) {
 					context->vmcb->cr0 |= X86_CR0_PG;
+					VM_LOG(LVL_DEBUG, "Purging guest shadow page table.\n");
+					purge_guest_shadow_pagetable(context);
+				}
 
-				if (bits_clrd & X86_CR0_CD)
+				if (bits_set & X86_CR0_AM) {
+					context->vmcb->cr0 |= X86_CR0_AM;
+				}
+
+				if (bits_set & X86_CR0_MP) {
+					context->vmcb->cr0 |= X86_CR0_MP;
+				}
+
+				if (bits_set & X86_CR0_WP) {
+					context->vmcb->cr0 |= X86_CR0_WP;
+				}
+
+				if (bits_set & X86_CR0_CD) {
+					context->vmcb->cr0 |= X86_CR0_CD;
+				}
+
+				if (bits_set & X86_CR0_NW) {
+					context->vmcb->cr0 |= X86_CR0_NW;
+				}
+
+				/* Clear the required bits */
+				if (bits_clrd & X86_CR0_PE) {
+					context->vmcb->cr0 &= ~X86_CR0_PE;
+				}
+
+				if (bits_clrd & X86_CR0_PG) {
+					context->vmcb->cr0 &= ~X86_CR0_PG;
+				}
+
+				if (bits_clrd & X86_CR0_AM) {
+					context->vmcb->cr0 &= ~X86_CR0_AM;
+				}
+
+				if (bits_clrd & X86_CR0_MP) {
+					context->vmcb->cr0 &= ~X86_CR0_MP;
+				}
+
+				if (bits_clrd & X86_CR0_WP) {
+					context->vmcb->cr0 &= ~X86_CR0_WP;
+				}
+
+				if (bits_clrd & X86_CR0_CD) {
 					context->vmcb->cr0 &= ~X86_CR0_CD;
+				}
 
-				if (bits_clrd & X86_CR0_NW)
+				if (bits_clrd & X86_CR0_NW) {
 					context->vmcb->cr0 &= ~X86_CR0_NW;
+				}
 
 				break;
 
 			case RM_REG_CR3:
 				if (!dinst.inst.crn_mov.src_reg) {
-					context->g_cr3 = context->vmcb->rax;
+					n_cr3 = context->vmcb->rax;
 				} else {
-					context->g_cr3 = context->g_regs[dinst.inst.crn_mov.src_reg];
+					n_cr3 = context->g_regs[dinst.inst.crn_mov.src_reg];
 				}
-				/* TODO: Flush the TLBs in shadow for guest */
+
+				/* Update only when there is a change in CR3 */
+				if (likely(n_cr3 != context->g_cr3)) {
+					context->g_cr3 = n_cr3;
+
+					/* If the guest has paging enabled, flush the shadow pagetable */
+					if (likely(context->g_cr0 & X86_CR0_PG)) {
+						VM_LOG(LVL_DEBUG, "Purging guest shadow page table.\n");
+						purge_guest_shadow_pagetable(context);
+					}
+				}
+				break;
+
+			case RM_REG_CR4:
+				if (!dinst.inst.crn_mov.src_reg) {
+					context->g_cr4 = context->vmcb->rax;
+				} else {
+					context->g_cr4 = context->g_regs[dinst.inst.crn_mov.src_reg];
+				}
+				VM_LOG(LVL_DEBUG, "Guest wrote 0x%lx to CR4\n", context->g_cr4);
 				break;
 
 			default:
