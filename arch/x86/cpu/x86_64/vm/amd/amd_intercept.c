@@ -723,6 +723,44 @@ void __handle_halt(struct vcpu_hw_context *context)
 		context->vcpu_emergency_shutdown(context);
 }
 
+void __handle_invalpg(struct vcpu_hw_context *context)
+{
+	u64 inval_va;
+	x86_inst ins64;
+	x86_decoded_inst_t dinst;
+
+	if (guest_read_fault_inst(context, &ins64)) {
+		VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+		goto guest_bad_fault;
+	}
+
+	if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+		VM_LOG(LVL_ERR, "Failed to code instruction.\n");
+		goto guest_bad_fault;
+	}
+
+	if (likely(dinst.inst_type == INST_TYPE_CACHE)) {
+		inval_va = context->g_regs[dinst.inst.src_reg];
+
+		__asm__ volatile("movl %[guest_asid], %%ecx\n"
+				 "movl %[flush_va], %%eax\n"
+				 "invlpga\n"
+				 ::[guest_asid]"g"(context->vmcb->guest_asid),
+				  [flush_va]"g"(inval_va)
+				 :"eax","ecx", "memory");
+
+		context->vmcb->rip += dinst.inst_size;
+	}
+
+	invalidate_shadow_entry(context, inval_va);
+
+	return;
+
+ guest_bad_fault:
+	if (context->vcpu_emergency_shutdown)
+		context->vcpu_emergency_shutdown(context);
+}
+
 void handle_vcpuexit(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_DEBUG, "**** #VMEXIT - exit code: %x\n", (u32) context->vmcb->exitcode);
@@ -747,6 +785,7 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 	case VMEXIT_GDTR_WRITE: __handle_vm_gdt_write(context); break;
 	case VMEXIT_INTR: break; /* silently */
 	case VMEXIT_HLT: __handle_halt(context); break;
+	case VMEXIT_INVLPG: __handle_invalpg(context); break;
 	default:
 		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: %x\n",
 		       (u32)context->vmcb->exitcode);
