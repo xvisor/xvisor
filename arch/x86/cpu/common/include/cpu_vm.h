@@ -105,6 +105,9 @@ struct vcpu_hw_context {
 	u64 g_cr1;
 	u64 g_cr2;
 	u64 g_cr3;
+	u64 g_cr4;
+	u64 g_efer;
+	u64 g_cr8;
 
 	unsigned int asid;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
@@ -163,6 +166,9 @@ struct x86_vcpu_priv {
 };
 
 #define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))
+#define x86_vcpu_hw_context(vcpu)					\
+	((struct vcpu_hw_context *)					\
+	 (((struct x86_vcpu_priv *)((vcpu)->arch_priv))->hw_context))	\
 
 extern void print_page_errorcode(u64 errcode);
 
