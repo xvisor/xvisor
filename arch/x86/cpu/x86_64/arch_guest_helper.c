@@ -269,8 +269,18 @@ int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, physical_
 	return VMM_OK;
 }
 
-int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			physical_addr_t paddr, size_t size)
+int purge_guest_shadow_pagetable(struct vcpu_hw_context *context)
+{
+	bitmap_zero(context->shadow32_pg_map, NR_32BIT_PGLIST_PAGES);
+	memset(context->shadow32_pg_list, 0,
+	       NR_32BIT_PGLIST_PAGES * VMM_PAGE_SIZE);
+	context->pgmap_free_cache = 0;
+
+	return VMM_OK;
+}
+
+int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			    physical_addr_t paddr, size_t size)
 {
 	union page32 pde, pte;
 	union page32 *pde_addr, *temp;
@@ -287,14 +297,17 @@ int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			context->pgmap_free_cache = 0;
 		} else {
 			boffs = bitmap_find_free_region(context->shadow32_pg_map,
-							NR_32BIT_PGLIST_PAGES, 0);
+							NR_32BIT_PGLIST_PAGES, 1);
 			index = boffs;
 			context->pgmap_free_cache = boffs+1;
 		}
 
 		pde_addr->present = 1;
 		pde_addr->rw = 1;
-		tvaddr = (virtual_addr_t)(((virtual_addr_t)context->shadow32_pg_list) + (index * PAGE_SIZE));
+		tvaddr = (virtual_addr_t)
+			(((virtual_addr_t)context->shadow32_pg_list)
+			 + (index * PAGE_SIZE));
+
 		if (vmm_host_va2pa(tvaddr, &tpaddr) != VMM_OK)
 			vmm_panic("%s: Failed to map vaddr to paddr for pde.\n",
 				  __func__);
@@ -321,12 +334,54 @@ int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 				  sizeof(pte), TRUE) < sizeof(pte))
 		return VMM_EFAIL;
 
+	invalidate_vaddr_tlb(vaddr);
+
 	return VMM_OK;
 }
 
-int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			  size_t size)
+int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			   size_t size)
 {
+	return VMM_OK;
+}
+
+int lookup_guest_pagetable(struct vcpu_hw_context *context,
+			   physical_addr_t fault_addr,
+			   physical_addr_t *lookedup_addr)
+{
+	union page32 pd, pt;
+	u32 pdindex, ptindex, pd_addr, pt_addr;
+
+	if (unlikely(!context->g_cr3))
+		return VMM_EFAIL;
+
+	if (unlikely(!lookedup_addr))
+		return VMM_EFAIL;
+
+	pdindex = ((u32)fault_addr) >> 22;
+	ptindex = (((u32)fault_addr) >> 12) & 0x3ff;
+
+	pd_addr = context->g_cr3 + (pdindex * sizeof(u32));
+
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest,
+				  pd_addr, &pd, sizeof(pd), 0) != sizeof(pd))
+		return VMM_EFAIL;
+
+	if (!pd.present)
+		return VMM_EFAIL;
+
+	pt_addr = ((pd.paddr << PAGE_SHIFT) + (ptindex * sizeof(u32)));
+
+	if (vmm_guest_memory_read(context->assoc_vcpu->guest,
+				  pt_addr, &pt, sizeof(pt), 0) != sizeof(pt))
+		return VMM_EFAIL;
+
+	if (!pt.present)
+		return VMM_EFAIL;
+
+
+	*lookedup_addr = ((pt.paddr << PAGE_SHIFT) | (fault_addr & (~PAGE_MASK)));
+
 	return VMM_OK;
 }
 
