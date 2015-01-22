@@ -215,7 +215,7 @@ int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_a
 		return VMM_OK;
 	}
 
-	return VMM_EFAIL;
+	return lookup_guest_pagetable(context, vaddr, gpa);
 }
 
 /*!
