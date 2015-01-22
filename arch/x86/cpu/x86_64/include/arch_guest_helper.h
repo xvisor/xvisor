@@ -52,10 +52,14 @@ struct x86_guest_priv {
 
 extern int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_addr_t *gpa);
 extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, physical_addr_t *hpa);
-extern int realmode_map_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			       physical_addr_t paddr, size_t size);
-extern int realmode_unmap_memory(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-				 size_t size);
+extern int purge_guest_shadow_pagetable(struct vcpu_hw_context *context);
+extern int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+				   physical_addr_t paddr, size_t size);
+extern int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+				  size_t size);
+int lookup_guest_pagetable(struct vcpu_hw_context *context,
+			   physical_addr_t fault_addr,
+			   physical_addr_t *lookedup_addr);
 extern void arch_guest_halt(struct vmm_guest *guest);
 extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
 
