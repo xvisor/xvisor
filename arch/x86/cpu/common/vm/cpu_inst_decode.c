@@ -65,8 +65,8 @@ int x86_decode_inst(x86_inst inst, x86_decoded_inst_t *dinst)
 		if (is_rex) dinst->inst_size++;
 		rm.byte = *cinst;
 		dinst->inst.crn_mov.op_size = opsize;
-		dinst->inst.crn_mov.src_reg = rm.f.src + RM_REG_CR0;
-		dinst->inst.crn_mov.dst_reg = rm.f.dst;
+		dinst->inst.crn_mov.src_reg = rm.f.dst + RM_REG_CR0;
+		dinst->inst.crn_mov.dst_reg = rm.f.src;
 		break;
 
 	case OPC_MOV_R_TO_CR:
