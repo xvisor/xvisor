@@ -80,6 +80,7 @@ enum {
 	CPUID_FEAT_EDX_PSE36        = 1 << 17,
 	CPUID_FEAT_EDX_PSN          = 1 << 18,
 	CPUID_FEAT_EDX_CLF          = 1 << 19,
+	CPUID_FEAT_EDX_NX           = 1 << 20,
 	CPUID_FEAT_EDX_DTES         = 1 << 21,
 	CPUID_FEAT_EDX_ACPI         = 1 << 22,
 	CPUID_FEAT_EDX_MMX          = 1 << 23,
