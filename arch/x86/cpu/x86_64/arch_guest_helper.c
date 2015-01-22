@@ -385,6 +385,40 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 	return VMM_OK;
 }
 
+void invalidate_shadow_entry(struct vcpu_hw_context *context,
+			     virtual_addr_t invl_va)
+{
+	union page32 pde, pte;
+	union page32 *pde_addr, *temp;
+	physical_addr_t pte_addr;
+
+	pde_addr = &context->shadow32_pgt[((invl_va >> 22) & 0x3ff)];
+	pde = *pde_addr;
+
+	if (unlikely(!pde.present))
+		return;
+
+	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
+	pte_addr = (physical_addr_t)(temp + ((invl_va >> 12) & 0x3ff));
+
+	if (vmm_host_memory_read(pte_addr, (void *)&pte,
+				 sizeof(pte), TRUE) < sizeof(pte))
+		return;
+
+	if (!pte.present)
+		return;
+
+	pte.present = 0;
+	pte.rw = 0;
+	pte.paddr = 0;
+
+	/* FIXME: Should this be cacheable memory access ? */
+	if (vmm_host_memory_write(pte_addr, (void *)&pte,
+				  sizeof(pte), TRUE) < sizeof(pte))
+		return;
+
+}
+
 /**
  * \brief Take exception to handle VM EXIT
  *

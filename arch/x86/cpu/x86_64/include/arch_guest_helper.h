@@ -60,6 +60,8 @@ extern int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_
 int lookup_guest_pagetable(struct vcpu_hw_context *context,
 			   physical_addr_t fault_addr,
 			   physical_addr_t *lookedup_addr);
+void invalidate_shadow_entry(struct vcpu_hw_context *context,
+			     virtual_addr_t invl_va);
 extern void arch_guest_halt(struct vmm_guest *guest);
 extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
 
