@@ -1,0 +1,61 @@
+setenv bootargs ""
+setenv bootdir /
+
+dtbname="vmm-imx6";
+if itest.s x6SOLO == "x$cpu" ; then
+    dtbname=${dtbname}dl-;
+elif itest.s x6DL == "x$cpu" ; then
+    dtbname=${dtbname}dl-;
+else
+    dtbname=${dtbname}q-;
+fi
+
+if itest.s x == "x$board" ; then
+    board=sabrelite
+fi
+dtbname=${dtbname}${board}.dtb;
+
+if itest.s x == x${bootdir} ; then
+    bootdir=/boot/
+fi
+
+echo "Search device tree ${dtbname}";
+if itest.s "$boottype" == "tftp" ; then
+    echo "Load device tree from tftp server";
+    if tftpboot 12000000 ${dtbname} ; then
+        havedtb=1;
+        setenv fdt_addr 0x11000000
+        setenv fdt_high 0xffffffff
+    else
+        havedtb=
+    fi
+else
+    if ${fs}load ${dtype} ${disk}:1 12000000 ${bootdir}$dtbname ; then
+        havedtb=1;
+        setenv fdt_addr 0x11000000
+        setenv fdt_high 0xffffffff
+    else
+        havedtb=
+    fi
+fi
+
+if itest.s "$boottype" == "tftp" ; then
+    echo "Load Xvisor from tftp server";
+    if tftpboot 10800000 uvmm.bin ; then
+        if itest.s x$havedtb == x ; then
+            bootm 10800000
+        else
+            bootm 10800000 - 12000000
+        fi
+    fi
+else
+    echo "Load Xvisor from local memory";
+    if ${fs}load ${dtype} ${disk}:1 10800000 ${bootdir}uvmm.bin ; then
+        if itest.s x$havedtb == x ; then
+            bootm 10800000 ;
+        else
+            bootm 10800000 - 12000000
+        fi
+    fi
+fi
+echo "Error loading Xvisor image";

@@ -1,0 +1,59 @@
+	Xvisor on Sabre LITE (or Nitrogen6X) using SD Booting
+
+This section of readme explains how to build & run Xvisor on real hardware
+Sabre LITE using SD booting feature Boundary Devices preconfigured U-Boot.
+
+TODO: guests have not been tested yet.
+
+We need to add 2 images in boot partition of SD card that is shipped with
+Sabre LITE:
+ 1) U-Boot compatible Xvisor binary (uvmm.bin).
+ 2) Boot script used by Boundary's U-Boot configuration (6x_bootscript)
+
+Following steps to create these images and then boot Xvisor on Sabre LITE:
+
+  [1. Build environment]
+  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
+  # export CROSS_COMPILE
+  (NOTE: Also place your compiler in PATH.)
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Sabre LITE (or Nitrogen6X) host default settings]
+  # make ARCH=arm sabrelite-defconfig
+
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
+
+  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [6. Make the script to boot the card as preconfigured U-Boot expect]
+  # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/sabrelite-bootscript build/6x_bootscript
+
+  [8. Unplug SD card from Sabre LITE and plug it on your development machine]
+
+  [9. Mount boot partition (or partition 0) of SD card on your development machine]
+
+  [10. Copy uvmm.bin to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+
+  [11. Copy and rename the device tree to boot partition of SD card]
+  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite/one_guest_vexpress-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-sabrelite.dtb
+  OR on Nitrogen6X:
+  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite/one_guest_vexpress-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-nitrogen6x.dtb
+
+  [12. Copy the boot script to boot partition of SD card]
+  # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>
+
+  [13. Unmount boot partition (or partition 0) of SD card from your development machine]
+
+  [14. Unplug SD card from your development machine and plug it back on Sabre LITE]
+
+  [15. Connect to serial port of Sabre LITE using Putty or Minicom]
+
+  [16. Power-up or Reset Sabre LITE]
+
+  (Note: replace all <> brackets based on your workspace)
+
