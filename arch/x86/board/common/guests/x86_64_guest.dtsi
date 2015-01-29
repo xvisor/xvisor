@@ -154,7 +154,8 @@
 					base_irq = <0>;
 					num_irq = <8>;
 					child_pic = <1>;
-					parent_irq = <16>; /* vector 16 to be presented on LAPIC */
+					parent_irq = <256>; /* vector 16 to be presented on LAPIC */
+					master = <1>;
 				};
 
 				i8259@1 {
