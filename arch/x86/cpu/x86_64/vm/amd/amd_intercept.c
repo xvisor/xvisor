@@ -249,7 +249,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 				goto guest_bad_fault;
 			}
 
-			if (x86_decode_inst(ins, &dinst) != VMM_OK) {
+			if (x86_decode_inst(context, ins, &dinst) != VMM_OK) {
 				VM_LOG(LVL_ERR, "Failed to decode guest instruction.\n");
 				goto guest_bad_fault;
 			}
@@ -369,7 +369,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			goto guest_bad_fault;
 		}
 
-		if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+		if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
 			VM_LOG(LVL_ERR, "Failed to decode instruction.\n");
 			goto guest_bad_fault;
 		}
@@ -447,7 +447,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			goto guest_bad_fault;
 		}
 
-		if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+		if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
 			VM_LOG(LVL_ERR, "Failed to code instruction.\n");
 			goto guest_bad_fault;
 		}
@@ -734,7 +734,7 @@ void __handle_invalpg(struct vcpu_hw_context *context)
 		goto guest_bad_fault;
 	}
 
-	if (x86_decode_inst(ins64, &dinst) != VMM_OK) {
+	if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
 		VM_LOG(LVL_ERR, "Failed to code instruction.\n");
 		goto guest_bad_fault;
 	}

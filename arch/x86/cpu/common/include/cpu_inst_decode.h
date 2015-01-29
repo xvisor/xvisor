@@ -31,6 +31,8 @@ typedef unsigned char x86_inst[X86_MAX_INST_LEN];
 typedef enum {
 	INST_TYPE_MOV,
 	INST_TYPE_MOV_CR,
+	INST_TYPE_CLR_CR, /* directly modify cR e.g. clts */
+	INT_TYPE_SET_CR,
 	INST_TYPE_CACHE, /* TLB and cache operation */
 } inst_type;
 
@@ -99,8 +101,12 @@ typedef union mod_rm {
  ******************************/
 /* invalidate page */
 #define OPC_INVLPG		0x01
+/* CLTS (clear task switched in Cr0) */
+#define OPC_CLTS		0x06
 /* move reg to reg */
 #define OPC_MOVL_RR		0x89
+/* move reg/memory to reg */
+#define OPC_MOVL_MMRR_RR	0x8b
 /* move byte from seg:off to register */
 #define OPC_MOVB_MM_AX		0xa0
 /* move word/double word from seg:off to AX */
@@ -142,6 +148,7 @@ typedef struct {
 } x86_decoded_inst_t;
 
 
-int x86_decode_inst(x86_inst inst, x86_decoded_inst_t *dinst);
+int x86_decode_inst(struct vcpu_hw_context *context, x86_inst inst,
+		    x86_decoded_inst_t *dinst);
 
 #endif /* __CPU_INST_DECODE_H_ */

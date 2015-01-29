@@ -34,7 +34,8 @@
 #include <arch_guest_helper.h>
 #include <cpu_inst_decode.h>
 
-int x86_decode_inst(x86_inst inst, x86_decoded_inst_t *dinst)
+int x86_decode_inst(struct vcpu_hw_context *context, x86_inst inst,
+		    x86_decoded_inst_t *dinst)
 {
 	u8 opcode;
 	u8 opsize = 4, is_rex = 0;
@@ -118,12 +119,30 @@ int x86_decode_inst(x86_inst inst, x86_decoded_inst_t *dinst)
 		}
 		break;
 
+	case OPC_MOVL_MMRR_RR:
+		rm.byte = *cinst;
+		dinst->inst_type = INST_TYPE_MOV;
+		dinst->inst_size = 2;
+		dinst->inst.gen_mov.op_size = 4;
+		dinst->inst.gen_mov.src_type = OP_TYPE_MEM;
+		dinst->inst.gen_mov.dst_type = OP_TYPE_REG;
+		dinst->inst.gen_mov.src_addr = context->g_regs[rm.f.src];
+		dinst->inst.gen_mov.dst_addr = rm.f.dst;
+		break;
+
 	case OPC_INVLPG:
 		rm.byte = *cinst;
 		cinst++;
 		dinst->inst_type = INST_TYPE_CACHE;
 		dinst->inst_size = 3;
 		dinst->inst.src_reg = rm.f.src;
+		break;
+
+	case OPC_CLTS:
+		dinst->inst_type = INST_TYPE_CLR_CR;
+		dinst->inst_size = 2;
+		dinst->inst.crn_mov.dst_reg = RM_REG_CR0;
+		dinst->inst.crn_mov.src_reg = X86_CR0_TS;
 		break;
 
 	default:
