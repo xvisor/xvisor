@@ -345,6 +345,41 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	return VMM_OK;
 }
 
+int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+			       u32 pgprot)
+{
+	union page32 pte;
+	union page32 *pde_addr, *temp;
+	physical_addr_t pte_addr;
+
+	pde_addr = &context->shadow32_pgt[((vaddr >> 22) & 0x3ff)];
+
+	if (unlikely(!PagePresent(pde_addr)))
+		return VMM_EFAIL;
+
+	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
+	pte_addr = (physical_addr_t)(temp + ((vaddr >> 12) & 0x3ff));
+
+	if (vmm_host_memory_read(pte_addr, (void *)&pte,
+				 sizeof(pte), TRUE) < sizeof(pte))
+		return VMM_EFAIL;
+
+	if (unlikely(!PagePresent(&pte)))
+		return VMM_EFAIL;
+
+	/* set the protection that guest has set. */
+	pte._val |= (pgprot & PGPROT_MASK);
+
+	/* FIXME: Should this be cacheable memory access ? */
+	if (vmm_host_memory_write(pte_addr, (void *)&pte,
+				  sizeof(pte), TRUE) < sizeof(pte))
+		return VMM_EFAIL;
+
+	invalidate_vaddr_tlb(vaddr);
+
+	return VMM_OK;
+}
+
 int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			   size_t size)
 {

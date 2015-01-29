@@ -55,6 +55,8 @@ extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, ph
 extern int purge_guest_shadow_pagetable(struct vcpu_hw_context *context);
 extern int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 				   physical_addr_t paddr, size_t size, u32 pgprot);
+extern int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+				      u32 pgprot);
 extern int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 				  size_t size);
 extern int lookup_guest_pagetable(struct vcpu_hw_context *context,
