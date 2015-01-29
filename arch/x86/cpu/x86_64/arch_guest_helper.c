@@ -280,7 +280,7 @@ int purge_guest_shadow_pagetable(struct vcpu_hw_context *context)
 }
 
 int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			    physical_addr_t paddr, size_t size)
+			    physical_addr_t paddr, size_t size, u32 pgprot)
 {
 	union page32 pde, pte;
 	union page32 *pde_addr, *temp;
@@ -330,8 +330,9 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	if (pte.present)
 		return VMM_EFAIL;
 
-	pte.present = 1;
-	pte.rw = 1;
+	/* set the protection that guest has set. */
+	pte._val |= (pgprot & PGPROT_MASK);
+
 	pte.paddr = (paddr >> PAGE_SHIFT);
 
 	/* FIXME: Should this be cacheable memory access ? */
