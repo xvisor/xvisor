@@ -174,6 +174,11 @@ inline void *arch_get_guest_pic_list(struct vmm_guest *guest)
 	return ((void *)x86_guest_priv(guest)->pic_list);
 }
 
+inline struct i8259_state *arch_get_guest_master_pic(struct vmm_guest *guest)
+{
+	return x86_guest_priv(guest)->master_pic;
+}
+
 inline void arch_set_guest_pic_list(struct vmm_guest *guest, void *plist)
 {
 	x86_guest_priv(guest)->pic_list = plist;
