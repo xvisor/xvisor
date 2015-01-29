@@ -108,25 +108,6 @@
 
 					pci_bus0 {
 						devices {
-							psm {
-								device_type = "psm"; /* PCI Shared Memory */
-								compatible = "xpsm"; /* Xvisor PCI Shared Memory device */
-								manifest_type = "virtual";
-								address_type = "memory";
-								device_id = <1>;
-
-								bars {
-									bar0@psm {
-										device_type = "psm";
-										compatible = "xpsm,bar";
-										manifest_type = "virtual";
-										address_type = "memory";
-										barnum = <0>;
-										guest_physical_addr = <0x5000000>;
-										physical_size = <0x1000>;
-									};
-								};
-							};
 							virtio-blk0 {
 								device_type = "virtio";
 								compatible = "virtio,pci";
