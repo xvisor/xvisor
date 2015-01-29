@@ -215,7 +215,7 @@ int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_a
 		return VMM_OK;
 	}
 
-	return lookup_guest_pagetable(context, vaddr, gpa);
+	return lookup_guest_pagetable(context, vaddr, gpa, NULL);
 }
 
 /*!
@@ -353,7 +353,8 @@ int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr
 
 int lookup_guest_pagetable(struct vcpu_hw_context *context,
 			   physical_addr_t fault_addr,
-			   physical_addr_t *lookedup_addr)
+			   physical_addr_t *lookedup_addr,
+			   union page32 *pte)
 {
 	union page32 pd, pt;
 	u32 pdindex, ptindex, pd_addr, pt_addr;
@@ -373,7 +374,7 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 				  pd_addr, &pd, sizeof(pd), 0) != sizeof(pd))
 		return VMM_EFAIL;
 
-	if (!pd.present)
+	if (!PagePresent(&pd))
 		return VMM_EFAIL;
 
 	pt_addr = ((pd.paddr << PAGE_SHIFT) + (ptindex * sizeof(u32)));
@@ -382,11 +383,20 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 				  pt_addr, &pt, sizeof(pt), 0) != sizeof(pt))
 		return VMM_EFAIL;
 
-	if (!pt.present)
+	if (!PagePresent(&pt))
 		return VMM_EFAIL;
 
 
-	*lookedup_addr = ((pt.paddr << PAGE_SHIFT) | (fault_addr & (~PAGE_MASK)));
+	if (lookedup_addr)
+		*lookedup_addr = ((pt.paddr << PAGE_SHIFT)
+				  | (fault_addr & (~PAGE_MASK)));
+
+	if (pte)
+		memcpy(pte, &pt, sizeof(union page32));
+
+	return VMM_OK;
+}
+
 
 	return VMM_OK;
 }
