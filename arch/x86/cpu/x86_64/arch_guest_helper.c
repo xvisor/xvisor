@@ -510,6 +510,83 @@ void invalidate_shadow_entry(struct vcpu_hw_context *context,
 
 }
 
+void mark_guest_interrupt_pending(struct vcpu_hw_context *context,
+				  u32 intno)
+{
+	struct x86_vcpu_priv *vcpu_priv = NULL;
+	irq_flags_t flags;
+
+	vcpu_priv = x86_vcpu_priv(context->assoc_vcpu);
+
+	vmm_spin_lock_irqsave(&vcpu_priv->lock, flags);
+	context->vmcb->vintr.fields.irq = 1; /* pending */
+	context->vmcb->vintr.fields.tpr = 0;
+	context->vmcb->vintr.fields.prio = 0;
+	context->vmcb->vintr.fields.ign_tpr = 0;
+	context->vmcb->vintr.fields.intr_masking = 1;
+	context->vmcb->vintr.fields.vector = 48;
+	vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
+}
+
+void inject_guest_interrupt(struct vcpu_hw_context *context,
+			    u32 intno)
+{
+	struct x86_vcpu_priv *vcpu_priv = NULL;
+	irq_flags_t flags;
+
+	vcpu_priv = x86_vcpu_priv(context->assoc_vcpu);
+
+	vmm_spin_lock_irqsave(&vcpu_priv->lock, flags);
+
+	if (context->vmcb->eventinj.fields.v) {
+		vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
+		return;
+	}
+	context->vmcb->eventinj.fields.vector = intno;
+	context->vmcb->eventinj.fields.type = EVENT_TYPE_INTR;
+	context->vmcb->eventinj.fields.v = 1;
+	context->vmcb->eventinj.fields.ev = 1;
+	context->vmcb->eventinj.fields.errorcode = 0;
+
+	vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
+}
+
+void inject_guest_exception(struct vcpu_hw_context *context,
+			    u32 exception)
+{
+	struct x86_vcpu_priv *vcpu_priv = NULL;
+	irq_flags_t flags;
+
+	vcpu_priv = x86_vcpu_priv(context->assoc_vcpu);
+
+	vmm_spin_lock_irqsave(&vcpu_priv->lock, flags);
+	if (context->vmcb->eventinj.fields.v) {
+		vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
+		return;
+	}
+
+	switch (exception) {
+	case VM_EXCEPTION_PAGE_FAULT:
+		context->g_cr2 = context->vmcb->exitinfo2;
+		context->vmcb->eventinj.fields.vector = exception;
+		context->vmcb->eventinj.fields.type = EVENT_TYPE_EXCEPTION;
+		context->vmcb->eventinj.fields.ev = 1;
+		context->vmcb->eventinj.fields.errorcode
+			= context->vmcb->exitinfo1;
+		context->vmcb->eventinj.fields.v = 1;
+		break;
+
+	case VM_EXCEPTION_DEBUG:
+		context->vmcb->eventinj.fields.vector = exception;
+		context->vmcb->eventinj.fields.type = EVENT_TYPE_EXCEPTION;
+		context->vmcb->eventinj.fields.ev = 0;
+		context->vmcb->eventinj.fields.v = 1;
+		break;
+	}
+
+	vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
+}
+
 void invalidate_guest_tlb(struct vcpu_hw_context *context, u32 inval_va)
 {
 	__asm__ volatile("movl %[guest_asid], %%ecx\n"

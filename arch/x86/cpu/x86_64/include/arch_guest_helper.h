@@ -67,6 +67,14 @@ extern int lookup_shadow_pagetable(struct vcpu_hw_context *context,
 				   physical_addr_t fault_addr,
 				   physical_addr_t *lookedup_addr,
 				   union page32 *pte);
+extern void invalidate_shadow_entry(struct vcpu_hw_context *context,
+				    virtual_addr_t invl_va);
+extern void mark_guest_interrupt_pending(struct vcpu_hw_context *context,
+					 u32 intno);
+extern void inject_guest_exception(struct vcpu_hw_context *context,
+				   u32 exception);
+extern void inject_guest_interrupt(struct vcpu_hw_context *context,
+				   u32 intno);
 extern void invalidate_guest_tlb(struct vcpu_hw_context *context, u32 inval_va);
 extern void arch_guest_halt(struct vmm_guest *guest);
 extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
