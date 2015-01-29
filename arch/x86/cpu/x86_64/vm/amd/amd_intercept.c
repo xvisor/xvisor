@@ -178,6 +178,8 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		u64 fault_offset;
 		physical_addr_t lookedup_gphys;
 		struct vmm_region *g_reg;
+		union page32 pte, pte1;
+		u32 prot, prot1;
 
 		if (!(context->g_cr0 & X86_CR0_PG)) {
 			/* Guest is in real mode so faulting guest virtual is
@@ -197,29 +199,106 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 			}
 
 			fault_offset = fault_gphys - g_reg->gphys_addr;
+
+			/* present and read/write */
+			prot = 0x3;
 		} else {
+			if (context->vmcb->exitinfo1 & 0x1) {
+				VM_LOG(LVL_DEBUG, "Resident page fault exit info 1: 0x%lx 2: 0x%lx rip: 0x%lx\n",
+				       context->vmcb->exitinfo1, context->vmcb->exitinfo2, context->vmcb->rip);
+
+				if (lookup_guest_pagetable(context, fault_gphys,
+							   &lookedup_gphys, &pte)) {
+					inject_guest_exception(context,
+							       VM_EXCEPTION_PAGE_FAULT);
+
+					/* invalidate guest TLB */
+					invalidate_guest_tlb(context, fault_gphys);
+				}
+
+				if (lookup_shadow_pagetable(context, fault_gphys,
+							    &lookedup_gphys, &pte1)) {
+					VM_LOG(LVL_ERR, "ERROR: No entry in shadow page table? Arrrgh! (Guest virtual: 0x%lx)\n",
+					       fault_gphys);
+					goto guest_bad_fault;
+				}
+
+
+				prot = (pte._val & PGPROT_MASK);
+				prot1 = (pte1._val & PGPROT_MASK);
+
+				if (unlikely(prot != prot1)) {
+					if (update_guest_shadow_pgprot(context, fault_gphys, prot)
+					    != VMM_OK) {
+						VM_LOG(LVL_ERR, "ERROR: Could not upgage pgprot in shadow (Guest virtual: 0x%lx)\n",
+						       fault_gphys);
+						goto guest_bad_fault;
+					}
+				} else {
+					inject_guest_exception(context,
+							       VM_EXCEPTION_PAGE_FAULT);
+				}
+
+				/* invalidate guest TLB */
+				invalidate_guest_tlb(context, fault_gphys);
+
+				return;
+			}
+
 			/* Guest has enabled paging, search for an entry
 			 * in guest's page table.
 			 */
 			if (lookup_guest_pagetable(context, fault_gphys,
-						   &lookedup_gphys) != VMM_OK) {
+						   &lookedup_gphys, &pte)
+			    != VMM_OK) {
 				VM_LOG(LVL_ERR, "ERROR: No page table entry "
 				       "created by guest for fault address "
-				       "0x%lx\n",
-				       fault_gphys);
-				goto guest_bad_fault;
+				       "0x%lx (rIP: 0x%lx)\n",
+				       fault_gphys, context->vmcb->rip);
+				VM_LOG(LVL_ERR, "EXITINFO1: 0x%lx\n",
+				       context->vmcb->exitinfo1);
+				inject_guest_exception(context,
+						       VM_EXCEPTION_PAGE_FAULT);
+				return;
+			}
+
+			prot = (pte._val & PGPROT_MASK);
+
+			/*
+			 * If page is present and marked readonly, page fault
+			 * needs to be delivered to guest. This is because
+			 * page protection flags are same as what guest had
+			 * programmed.
+			 */
+			if (PagePresent(&pte) && PageReadOnly(&pte)) {
+				if (!(context->vmcb->cr0 & (0x1UL << 16))) {
+					VM_LOG(LVL_ERR, "Page fault in guest "
+					       "on valid page and WP unset.\n");
+					goto guest_bad_fault;
+				}
+
 			}
 
 			/* Find the region for guest physical */
 			g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
-						      lookedup_gphys,
+						      (u32)lookedup_gphys,
 						      VMM_REGION_MEMORY,
 						      FALSE);
 			if (!g_reg) {
-				VM_LOG(LVL_ERR, "ERROR: No region mapped to "
-				       "looked up guest physical: 0x%x (Guest Virtual: 0x%lx)\n",
-				       (u32)lookedup_gphys, fault_gphys);
-				goto guest_bad_fault;
+				/*
+				 * Find the region which is marked as virtual (its probably a
+				 * device read/write fault.
+				 */
+				g_reg = vmm_guest_find_region(context->assoc_vcpu->guest,
+							      (u32)lookedup_gphys,
+							      (VMM_REGION_MEMORY | VMM_REGION_VIRTUAL),
+							      FALSE);
+				if (!g_reg) {
+					VM_LOG(LVL_ERR, "ERROR: No region mapped to "
+					       "looked up guest physical: 0x%x (Guest Virtual: 0x%lx)\n",
+					       (u32)lookedup_gphys, fault_gphys);
+					goto guest_bad_fault;
+				}
 			}
 
 			fault_offset = lookedup_gphys - g_reg->gphys_addr;
@@ -229,7 +308,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		if (g_reg->flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
 			if (create_guest_shadow_map(context, fault_gphys,
 						    (g_reg->hphys_addr + fault_offset),
-						    PAGE_SIZE) != VMM_OK) {
+						    PAGE_SIZE, prot) != VMM_OK) {
 				VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
 				       "guest's shadow page table.\n"
 				       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
@@ -238,7 +317,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 				       fault_gphys, g_reg->hphys_addr);
 				goto guest_bad_fault;
 			}
-			context->vmcb->cr2 = context->vmcb->exitinfo2;
+			//context->vmcb->cr2 = context->vmcb->exitinfo2;
 		} else {
 			x86_inst ins;
 			x86_decoded_inst_t dinst;
