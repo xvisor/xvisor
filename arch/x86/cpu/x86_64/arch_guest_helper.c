@@ -286,7 +286,8 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	union page32 *pde_addr, *temp;
 	physical_addr_t tpaddr, pte_addr;
 	virtual_addr_t tvaddr;
-	u32 index, boffs;
+	u32 index;
+	int boffs;
 
 	pde_addr = &context->shadow32_pgt[((vaddr >> 22) & 0x3ff)];
 	pde = *pde_addr;
@@ -296,8 +297,12 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 			index = context->pgmap_free_cache;
 			context->pgmap_free_cache = 0;
 		} else {
-			boffs = bitmap_find_free_region(context->shadow32_pg_map,
-							NR_32BIT_PGLIST_PAGES, 1);
+			if ((boffs = bitmap_find_free_region(context->shadow32_pg_map,
+							     NR_32BIT_PGLIST_PAGES, 1)) == VMM_ENOMEM) {
+				vmm_printf("%s: No free pages to alloc for shadow page table.\n",
+					   __func__);
+				return VMM_EFAIL;
+			}
 			index = boffs;
 			context->pgmap_free_cache = boffs+1;
 		}
