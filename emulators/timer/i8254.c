@@ -96,6 +96,7 @@ s64 pit_get_next_transition_time(pit_channel_state_t *s, s64 current_time)
 
 	d = muldiv64(current_time - s->count_load_time, PIT_FREQ,
 		     1000000000ul);
+
 	switch (s->mode) {
 	default:
 	case 0:
@@ -134,9 +135,11 @@ s64 pit_get_next_transition_time(pit_channel_state_t *s, s64 current_time)
 		}
 		break;
 	}
+
 	/* convert to timer units */
 	next_time = s->count_load_time + muldiv64(next_time, 1000000000ul,
 						  PIT_FREQ);
+
 	/* fix potential rounding problems */
 	/* XXX: better solution: use a clock at PIT_FREQ Hz */
 	if (next_time <= current_time) {
@@ -383,7 +386,8 @@ static void pit_irq_timer_update(pit_channel_state_t *s, s64 current_time)
 	s->next_transition_time = expire_time;
 	if (expire_time != -1) {
 		vmm_timer_event_stop(&s->irq_timer);
-		vmm_timer_event_start(&s->irq_timer, expire_time);
+		vmm_timer_event_start(&s->irq_timer,
+				      (expire_time - s->count_load_time));
 	} else {
 		vmm_timer_event_stop(&s->irq_timer);
 	}
