@@ -50,7 +50,7 @@
 					manifest_type = "real";
 					address_type = "memory";
 					guest_physical_addr = <0x01000000>;
-					physical_size = <0x3190000>; /* 49.5625 MiB */
+					physical_size = <0x7100000>; /* 113 MiB */
 					device_type = "alloced_ram";
 					align_order = <12>; /* 4K alignment */
 				};
