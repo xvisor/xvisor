@@ -510,6 +510,16 @@ void invalidate_shadow_entry(struct vcpu_hw_context *context,
 
 }
 
+void invalidate_guest_tlb(struct vcpu_hw_context *context, u32 inval_va)
+{
+	__asm__ volatile("movl %[guest_asid], %%ecx\n"
+			 "movl %[flush_va], %%eax\n"
+			 "invlpga\n"
+			 ::[guest_asid]"g"(context->vmcb->guest_asid),
+			  [flush_va]"g"(inval_va)
+			 :"eax","ecx", "memory");
+}
+
 /**
  * \brief Take exception to handle VM EXIT
  *
