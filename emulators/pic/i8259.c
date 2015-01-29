@@ -137,29 +137,44 @@ static int pic_get_irq(i8259_state_t *s)
 static void pic_update_irq(i8259_state_t *s)
 {
 	int irq;
-	int action;
 	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, 0);
 	unsigned int level;
+	u32 vec;
 
 	if (!vcpu)
 		return;
 
 	irq = pic_get_irq(s);
 
+	if (irq < 0)
+		return;
+
 	if (!s->master) {
 		level = SLAVE_IRQ_ENCODE(0, 0, 0, irq, 0);
+		I8259_LOG(VERBOSE, "[slave]: IRQ# %d Level# 0x%lx\n",
+			  __func__, s->parent_irq, level);
 		vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
 	} else {
-		action = (irq >= 0 ? PIC_ASSERT_INT : PIC_DEASSERT_INT);
+		if (s->parent_irq == 256) {
+			vec = pic_read_irq(s);
+			if (vec < 32) {
+				vmm_printf("vectors not set by guest (%d)\n", vec);
+				return;
+			}
+			vmm_vcpu_irq_assert(vcpu, vec, 0);
+			I8259_LOG(VERBOSE, "[master] i8259 assert IRQ# %d\n",
+				  __func__, irq);
+		} else {
+			I8259_LOG(VERBOSE, "[master] i8259 assert IRQ# %d on LAPIC\n",
+				  irq);
+			/* we are slave to LAPIC. Send interrupt to it. */
+			level = SLAVE_IRQ_ENCODE(0, 0, 0, irq, 0);
+			vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
+		}
 
-		/* change level on CPU interrupt line */
-		if (action == PIC_DEASSERT_INT)
-			vmm_vcpu_irq_deassert(vcpu, irq);
-		else
-			vmm_vcpu_irq_assert(vcpu, irq, 0);
 	}
-	I8259_LOG(VERBOSE, "pic%d: imr=%x irr=%x padd=%d int=0x%x action=%d\n",
-		  s->master ? 0 : 1, s->imr, s->irr, s->priority_add, irq, action);
+	I8259_LOG(VERBOSE, "pic%d: imr=%x irr=%x padd=%d int=0x%x\n",
+		  s->master ? 0 : 1, s->imr, s->irr, s->priority_add, irq);
 }
 
 /* set irq level. If an edge is detected, then the IRR is set to 1 */
@@ -254,7 +269,9 @@ int pic_read_irq(i8259_state_t *s)
 			slave_pic = get_slave_pic(s, 2);
 
 			if (!slave_pic) {
-				I8259_LOG(ERR, "FATAL: Interrupt %d from slave PIC but no slave PIC registered on interrupt!\n", irq);
+				I8259_LOG(ERR, "FATAL: Interrupt %d from slave"
+					  "PIC but no slave PIC registered on "
+					  "interrupt!\n", irq);
 				arch_guest_halt(s->guest);
 			}
 	
@@ -576,15 +593,17 @@ static int i8259_emulator_probe(struct vmm_guest *guest,
 	}
 
 	if (vmm_devtree_getattr(edev->node, "child_pic")) {
-		s->master = FALSE;
 		/* if child get parent irq */
 		rc = vmm_devtree_read_u32(edev->node, "parent_irq", &s->parent_irq);
 		if (rc) {
 			goto i8259_emulator_probe_freestate_fail;
 		}
-	} else {
-		s->master = TRUE;
 	}
+
+	if (vmm_devtree_getattr(edev->node, "master"))
+		s->master = true;
+	else
+		s->master = false;
 
 	if (vmm_devtree_read_u32(edev->node, "base_irq", &s->base_irq)) {
 		I8259_LOG(ERR, "Base IRQ not defined!\n");
