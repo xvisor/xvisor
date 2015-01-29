@@ -131,6 +131,7 @@ static void set_control_params (struct vcpu_hw_context *context)
 
 	vmcb->general1_intercepts |= (INTRCPT_INTN       |
 				      INTRCPT_INTR       |
+				      INTRCPT_VINTR	 |
 				      INTRCPT_CR0_WR     |
 				      //INTRCPT_GDTR_RD    |
 				      //INTRCPT_GDTR_WR    |
@@ -398,6 +399,12 @@ static void svm_run(struct vcpu_hw_context *context)
 
 	/* TR is not reloaded back the cpu after VM exit. */
 	reload_host_tss();
+
+	context->g_regs[GUEST_REGS_RAX] = context->vmcb->rax;
+
+	/* invalidate the previously injected event */
+	if (context->vmcb->eventinj.fields.v)
+		context->vmcb->eventinj.fields.v = 0;
 
 	stgi();
 

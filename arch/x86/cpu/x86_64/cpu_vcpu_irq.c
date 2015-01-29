@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_vm.h>
+#include <arch_guest_helper.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {
@@ -48,13 +49,9 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	struct x86_vcpu_priv *vcpu_priv = NULL;
-	irq_flags_t flags;
-
 	vcpu_priv = x86_vcpu_priv(vcpu);
 
-	vmm_spin_lock_irqsave_lite(&vcpu_priv->lock, flags);
-	x86_vcpu_priv(vcpu)->int_pending = irq_no;
-	vmm_spin_unlock_irqrestore_lite(&vcpu_priv->lock, flags);
+	mark_guest_interrupt_pending(vcpu_priv->hw_context, irq_no);
 
 	return VMM_OK;
 }

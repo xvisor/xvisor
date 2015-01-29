@@ -883,8 +883,10 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 	case VMEXIT_INTR: break; /* silently */
 	case VMEXIT_HLT: __handle_halt(context); break;
 	case VMEXIT_INVLPG: __handle_invalpg(context); break;
+	case VMEXIT_VINTR: inject_guest_interrupt(context, 48); break;
 	default:
-		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: %x\n",
+		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: (0x%x:%d)\n",
+		       (u32)context->vmcb->exitcode,
 		       (u32)context->vmcb->exitcode);
 		if (context->vcpu_emergency_shutdown)
 			context->vcpu_emergency_shutdown(context);
