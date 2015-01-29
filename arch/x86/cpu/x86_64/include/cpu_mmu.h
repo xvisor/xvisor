@@ -80,6 +80,7 @@
 
 extern struct pgtbl_ctrl host_pgtbl_ctl;
 
+
 static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
 {
 	__asm__ __volatile__("invlpg (%0)\n\t"
@@ -121,6 +122,114 @@ union page {
 		u64 execution_disable:1;
 	} bits;
 };
+
+#define PGPROT_MASK	(~PAGE_MASK)
+
+/* Page Helpers */
+static inline bool PageReadOnly(union page32 *pg)
+{
+	return (!pg->rw);
+}
+
+static inline bool PagePresent(union page32 *pg)
+{
+	return (pg->present);
+}
+
+static inline bool PageGlobal(union page32 *pg)
+{
+	return (pg->global);
+}
+
+static inline bool PageCacheable(union page32 *pg)
+{
+	return (!pg->cache_disable);
+}
+
+static inline bool PageDirty(union page32 *pg)
+{
+	return (pg->dirty);
+}
+
+static inline bool PageAccessed(union page32 *pg)
+{
+	return (pg->accessed);
+}
+
+static inline bool PageWriteThrough(union page32 *pg)
+{
+	return (pg->write_through);
+}
+
+static inline void SetPageReadOnly(union page32 *pg)
+{
+	pg->rw = 0;
+}
+
+static inline void SetPageReadWrite(union page32 *pg)
+{
+	pg->rw = 1;
+}
+
+static inline void SetPagePresent(union page32 *pg)
+{
+	pg->present = 1;
+}
+
+static inline void SetPageAbsent(union page32 *pg)
+{
+	pg->present = 0;
+}
+
+static inline void SetPageGlobal(union page32 *pg)
+{
+	pg->global = 1;
+}
+
+static inline void SetPageLocal(union page32 *pg)
+{
+	pg->global = 0;
+}
+
+static inline void SetPageCacheable(union page32 *pg)
+{
+	pg->cache_disable = 0;
+}
+
+static inline void SetPageUncacheable(union page32 *pg)
+{
+	pg->cache_disable = 1;
+}
+
+static inline void SetPageDirty(union page32 *pg)
+{
+	pg->dirty = 1;
+}
+
+static inline void SetPageWashed(union page32 *pg)
+{
+	pg->dirty = 0;
+}
+
+static inline void SetPageAccessed(union page32 *pg)
+{
+	pg->accessed = 1;
+}
+
+static inline void SetPageUnaccessed(union page32 *pg)
+{
+	pg->accessed = 0;
+}
+
+static inline void SetPageWriteThrough(union page32 *pg)
+{
+	pg->write_through = 1;
+}
+
+static inline void SetPageNoWriteThrough(union page32 *pg)
+{
+	pg->write_through = 0;
+}
 
 struct page_table {
 	struct dlist head;
