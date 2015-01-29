@@ -259,47 +259,65 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 				goto guest_bad_fault;
 			}
 
-			if ((dinst.inst.gen_mov.src_addr >= g_reg->gphys_addr) &&
-			    (dinst.inst.gen_mov.src_addr < (g_reg->gphys_addr + g_reg->phys_size))) {
-				if (vmm_devemu_emulate_read(context->assoc_vcpu, fault_gphys,
-							    &guest_rd, dinst.inst.gen_mov.op_size,
-							    VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
-					vmm_printf("Failed to emulate IO instruction in guest.\n");
-					goto guest_bad_fault;
-				}
+			switch (dinst.inst_type) {
+			case INST_TYPE_MOV:
+				switch (dinst.inst.gen_mov.src_type) {
+				case OP_TYPE_MEM:
+					if (gva_to_gpa(context,
+						       dinst.inst.gen_mov.src_addr,
+						       (physical_addr_t *)&dinst.inst.gen_mov.src_addr)
+					    != VMM_OK) {
+						VM_LOG(LVL_ERR, "Failed to map guest"
+						       " va %x to pa\n",
+						       dinst.inst.gen_mov.src_addr);
+						goto guest_bad_fault;
+					}
 
-				if (dinst.inst.gen_mov.dst_addr >= RM_REG_AX &&
-				    dinst.inst.gen_mov.dst_addr < RM_REG_MAX) {
-					context->g_regs[dinst.inst.gen_mov.dst_addr] = guest_rd;
-					if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
-						context->vmcb->rax = guest_rd;
-				} else {
-					VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
-					goto guest_bad_fault;
-				}
-			}
+					if ((dinst.inst.gen_mov.src_addr >= g_reg->gphys_addr) &&
+					    (dinst.inst.gen_mov.src_addr
+					     < (g_reg->gphys_addr + g_reg->phys_size))) {
+						if (vmm_devemu_emulate_read(context->assoc_vcpu, fault_gphys,
+									    &guest_rd, dinst.inst.gen_mov.op_size,
+									    VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+							vmm_printf("Failed to emulate IO instruction in guest.\n");
+							goto guest_bad_fault;
+						}
 
-			if ((dinst.inst.gen_mov.dst_addr >= g_reg->gphys_addr) &&
-			    (dinst.inst.gen_mov.dst_addr < (g_reg->gphys_addr + g_reg->phys_size))) {
-				if (dinst.inst.gen_mov.src_type == OP_TYPE_IMM) {
-					guest_rd = dinst.inst.gen_mov.src_addr;
-				} else if (dinst.inst.gen_mov.src_addr >= RM_REG_AX &&
-					   dinst.inst.gen_mov.src_addr < RM_REG_MAX) {
-					if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
-						guest_rd = context->vmcb->rax;
-					else
-						guest_rd = context->g_regs[dinst.inst.gen_mov.src_addr];
-				} else {
-					VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
-					goto guest_bad_fault;
-				}
+						if (dinst.inst.gen_mov.dst_addr >= RM_REG_AX &&
+						    dinst.inst.gen_mov.dst_addr < RM_REG_MAX) {
+							context->g_regs[dinst.inst.gen_mov.dst_addr] = guest_rd;
+							if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
+								context->vmcb->rax = guest_rd;
+						} else {
+							VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
+							goto guest_bad_fault;
+						}
+					}
 
-				if (vmm_devemu_emulate_write(context->assoc_vcpu, fault_gphys,
-							     &guest_rd, dinst.inst.gen_mov.op_size,
-							     VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
-					vmm_printf("Failed to emulate IO instruction in guest.\n");
-					goto guest_bad_fault;
+					if ((dinst.inst.gen_mov.dst_addr >= g_reg->gphys_addr) &&
+					    (dinst.inst.gen_mov.dst_addr < (g_reg->gphys_addr + g_reg->phys_size))) {
+						if (dinst.inst.gen_mov.src_type == OP_TYPE_IMM) {
+							guest_rd = dinst.inst.gen_mov.src_addr;
+						} else if (dinst.inst.gen_mov.src_addr >= RM_REG_AX &&
+							   dinst.inst.gen_mov.src_addr < RM_REG_MAX) {
+							if (dinst.inst.gen_mov.dst_addr == RM_REG_AX)
+								guest_rd = context->vmcb->rax;
+							else
+								guest_rd = context->g_regs[dinst.inst.gen_mov.src_addr];
+						} else {
+							VM_LOG(LVL_ERR, "Memory to memory move instruction not supported.\n");
+							goto guest_bad_fault;
+						}
+
+						if (vmm_devemu_emulate_write(context->assoc_vcpu, fault_gphys,
+									     &guest_rd, dinst.inst.gen_mov.op_size,
+									     VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+							vmm_printf("Failed to emulate IO instruction in guest.\n");
+							goto guest_bad_fault;
+						}
+					}
 				}
+				break;
 			}
 			context->vmcb->rip += dinst.inst_size;
 		}
@@ -310,7 +328,6 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		       exception_names[context->vmcb->exitcode - 0x40],
 		       context->vmcb->rip);
 		goto guest_bad_fault;
-		break;
 	}
 
 	return;
@@ -344,8 +361,7 @@ void __handle_vm_vmmcall (struct vcpu_hw_context *context)
 void __handle_vm_iret(struct vcpu_hw_context *context)
 {
 	VM_LOG(LVL_INFO, "Unhandled Intercept: iret.\n");
-	if (context->vcpu_emergency_shutdown)
-		context->vcpu_emergency_shutdown(context);
+	return;
 }
 
 void __handle_crN_read(struct vcpu_hw_context *context)
@@ -562,17 +578,24 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 				       dinst.inst.crn_mov.dst_reg - RM_REG_CR0);
 				goto guest_bad_fault;
 			}
-
-			context->vmcb->rip += dinst.inst_size;
-
-			asm volatile("str %0\n"
-				     :"=r"(htr));
-			VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
-			       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
+		} else if (dinst.inst_type == INST_TYPE_CLR_CR) {
+			switch(dinst.inst.crn_mov.dst_reg) {
+			case RM_REG_CR0:
+				context->g_cr0 &= ~(dinst.inst.crn_mov.src_reg);
+				context->vmcb->cr0 &= ~(dinst.inst.crn_mov.src_reg);
+				break;
+			}
 		} else {
 			VM_LOG(LVL_ERR, "Unknown fault instruction\n");
 			goto guest_bad_fault;
 		}
+
+		context->vmcb->rip += dinst.inst_size;
+
+		asm volatile("str %0\n"
+			     :"=r"(htr));
+		VM_LOG(LVL_DEBUG, "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
+		       context->g_cr0, context->vmcb->cr0, context->vmcb->tr, htr);
 	}
 
 	return;
@@ -742,12 +765,7 @@ void __handle_invalpg(struct vcpu_hw_context *context)
 	if (likely(dinst.inst_type == INST_TYPE_CACHE)) {
 		inval_va = context->g_regs[dinst.inst.src_reg];
 
-		__asm__ volatile("movl %[guest_asid], %%ecx\n"
-				 "movl %[flush_va], %%eax\n"
-				 "invlpga\n"
-				 ::[guest_asid]"g"(context->vmcb->guest_asid),
-				  [flush_va]"g"(inval_va)
-				 :"eax","ecx", "memory");
+		invalidate_guest_tlb(context, inval_va);
 
 		context->vmcb->rip += dinst.inst_size;
 	}
