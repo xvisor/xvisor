@@ -61,6 +61,10 @@ extern int lookup_guest_pagetable(struct vcpu_hw_context *context,
 				  physical_addr_t fault_addr,
 				  physical_addr_t *lookedup_addr,
 				  union page32 *pte);
+extern int lookup_shadow_pagetable(struct vcpu_hw_context *context,
+				   physical_addr_t fault_addr,
+				   physical_addr_t *lookedup_addr,
+				   union page32 *pte);
 extern void arch_guest_halt(struct vmm_guest *guest);
 extern void arch_guest_handle_vm_exit(struct vcpu_hw_context *context);
 

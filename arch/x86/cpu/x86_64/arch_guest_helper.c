@@ -397,6 +397,46 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 	return VMM_OK;
 }
 
+int lookup_shadow_pagetable(struct vcpu_hw_context *context,
+			    physical_addr_t fault_addr,
+			    physical_addr_t *lookedup_addr,
+			    union page32 *pte)
+{
+	union page32 pd, pt;
+	u32 pdindex, ptindex, pd_addr, pt_addr;
+
+	if (unlikely(!context->vmcb->cr3))
+		return VMM_EFAIL;
+
+	if (unlikely(!lookedup_addr))
+		return VMM_EFAIL;
+
+	pdindex = ((u32)fault_addr) >> 22;
+	ptindex = (((u32)fault_addr) >> 12) & 0x3ff;
+
+	pd_addr = context->vmcb->cr3 + (pdindex * sizeof(u32));
+
+	if (vmm_host_memory_read(pd_addr, &pd, sizeof(pd), 0) != sizeof(pd))
+		return VMM_EFAIL;
+
+	if (!PagePresent(&pd))
+		return VMM_EFAIL;
+
+	pt_addr = ((pd.paddr << PAGE_SHIFT) + (ptindex * sizeof(u32)));
+
+	if (vmm_host_memory_read(pt_addr, &pt, sizeof(pt), 0) != sizeof(pt))
+		return VMM_EFAIL;
+
+	if (!PagePresent(&pt))
+		return VMM_EFAIL;
+
+
+	if (lookedup_addr)
+		*lookedup_addr = ((pt.paddr << PAGE_SHIFT)
+				  | (fault_addr & (~PAGE_MASK)));
+
+	if (pte)
+		memcpy(pte, &pt, sizeof(union page32));
 
 	return VMM_OK;
 }
