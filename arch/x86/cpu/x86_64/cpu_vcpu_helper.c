@@ -98,8 +98,7 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
 				func_response->resp_edx =
 					(CPUID_FEAT_EDX_CLF
-					 | CPUID_FEAT_EDX_FPU
-					 | CPUID_FEAT_EDX_APIC);
+					 | CPUID_FEAT_EDX_FPU);
 				break;
 
 			default:
@@ -142,8 +141,7 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				func_response->resp_edx =
 					(CPUID_FEAT_EDX_NX
 					 | CPUID_FEAT_EDX_CMOV
-					 | CPUID_FEAT_EDX_SEP
-					 | CPUID_FEAT_EDX_APIC);
+					 | CPUID_FEAT_EDX_SEP);
 				break;
 
 			case CPUID_EXTENDED_BRANDSTRING:
