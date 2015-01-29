@@ -167,15 +167,13 @@ unsigned long int_sqrt(unsigned long x);
  */
 static inline u64 muldiv64(u64 a, u32 b, u32 c)
 {
-	u64 rem;
-
 	union {
 		u64 ll;
 		struct {
-#if BYTE_ORDER == BIG_ENDIAN
-			u32 high, low;
-#else
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			u32 low, high;
+#else
+			u32 high, low;
 #endif
 		} l;
 	} u, res;
@@ -186,8 +184,7 @@ static inline u64 muldiv64(u64 a, u32 b, u32 c)
 	rh = (u64)u.l.high * (u64)b;
 	rh += (rl >> 32);
 	res.l.high = udiv64(rh, c);
-	rem = umod64(rh, c);
-	res.l.low = ((rem << 32) + (rl & 0xffffffff)) / c;
+	res.l.low = udiv64(((umod64(rh, c) << 32) + (rl & 0xffffffff)), c);
 	return res.ll;
 }
 
