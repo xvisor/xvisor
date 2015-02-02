@@ -77,7 +77,8 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 
 /** Add a new region from a given node in DTS */
 int vmm_guest_add_region_from_node(struct vmm_guest *guest,
-				   struct vmm_devtree_node *node);
+				   struct vmm_devtree_node *node,
+				   void *rpriv);
 
 /** Add new guest region */
 int vmm_guest_add_region(struct vmm_guest *guest,
@@ -90,7 +91,23 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 physical_addr_t gphys_addr,
 			 physical_addr_t hphys_addr,
 			 physical_size_t phys_size,
-			 u32 align_order);
+			 u32 align_order,
+			 void *rpriv);
+
+/** Get private pointer of guest region */
+static inline void *vmm_guest_get_region_priv(struct vmm_region *reg)
+{
+	return (reg) ? reg->priv : NULL;
+}
+
+/** Set private pointer of guest region */
+static inline void vmm_guest_set_region_priv(struct vmm_region *reg,
+					     void *rpriv)
+{
+	if (reg) {
+		reg->priv = rpriv;
+	}
+}
 
 /** Delete a guest region */
 int vmm_guest_del_region(struct vmm_guest *guest,

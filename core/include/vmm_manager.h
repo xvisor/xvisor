@@ -70,6 +70,7 @@ struct vmm_region {
 	u32 align_order;
 	u32 flags;
 	void *devemu_priv;
+	void *priv;
 };
 
 struct vmm_guest_aspace {

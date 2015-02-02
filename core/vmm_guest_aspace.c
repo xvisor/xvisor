@@ -404,7 +404,8 @@ static void region_overlap_message(const char *func,
 
 static int region_add(struct vmm_guest *guest,
 		      struct vmm_devtree_node *rnode,
-		      struct vmm_region **new_reg)
+		      struct vmm_region **new_reg,
+		      void *rpriv)
 {
 	int rc;
 	const char *aval;
@@ -533,6 +534,7 @@ static int region_add(struct vmm_guest *guest,
 	}
 
 	reg->devemu_priv = NULL;
+	reg->priv = rpriv;
 
 	/* Ensure region does not overlap other regions */
 	if (is_region_overlapping(guest, reg, &reg_overlap)) {
@@ -738,9 +740,10 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 }
 
 int vmm_guest_add_region_from_node(struct vmm_guest *guest,
-				   struct vmm_devtree_node *node)
+				   struct vmm_devtree_node *node,
+				   void *rpriv)
 {
-	return region_add(guest, node, NULL);
+	return region_add(guest, node, NULL, rpriv);
 }
 
 int vmm_guest_add_region(struct vmm_guest *guest,
@@ -753,7 +756,8 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 physical_addr_t gphys_addr,
 			 physical_addr_t hphys_addr,
 			 physical_size_t phys_size,
-			 u32 align_order)
+			 u32 align_order,
+			 void *rpriv)
 {
 	int rc;
 	struct vmm_devtree_node *rnode;
@@ -872,7 +876,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 	}
 
 	/* Add region */
-	rc = region_add(guest, rnode, NULL);
+	rc = region_add(guest, rnode, NULL, rpriv);
 	if (rc) {
 		goto failed_delnode;
 	}
@@ -957,7 +961,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 	/* Create regions */
 	vmm_devtree_for_each_child(rnode, aspace->node) {
-		rc = region_add(guest, rnode, NULL);
+		rc = region_add(guest, rnode, NULL, NULL);
 		if (rc) {
 			return rc;
 		}
