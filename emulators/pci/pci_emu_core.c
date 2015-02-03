@@ -213,7 +213,7 @@ static int pci_emu_register_bar(struct vmm_guest *guest,
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_guest_add_region_from_node(guest, bar_node)) != VMM_OK)
+	if ((rc = vmm_guest_add_region_from_node(guest, bar_node, NULL)) != VMM_OK)
 		return rc;
 
 	class->conf_header.bars[barnum] = addr;
