@@ -108,7 +108,7 @@ void mtdchar_add(struct mtd_info *mtd)
 {
 	struct vmm_chardev *cdev = NULL;
 
-	if (NULL == (cdev = vmm_malloc(sizeof (struct vmm_chardev)))) {
+	if (NULL == (cdev = vmm_zalloc(sizeof (struct vmm_chardev)))) {
 		dev_err(&mtd->dev, "Failed to allocate MTD character "
 			"device\n");
 		return;
@@ -119,7 +119,10 @@ void mtdchar_add(struct mtd_info *mtd)
 	cdev->write = mtd_chardev_write;
 	cdev->priv = mtd;
 
-	vmm_chardev_register(cdev);
+	if (VMM_OK != vmm_chardev_register(cdev)) {
+		vmm_free(cdev);
+		dev_err(&mtd->dev, "Failed to register MTD char device\n");
+	}
 }
 
 void mtdchar_remove(struct mtd_info *mtd)
