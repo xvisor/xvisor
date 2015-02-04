@@ -1819,10 +1819,8 @@ int pci_vpd_find_tag(const u8 *buf, unsigned int off, unsigned int len, u8 rdt);
 int pci_vpd_find_info_keyword(const u8 *buf, unsigned int off,
 			      unsigned int len, const char *kw);
 
-#undef CONFIG_OF
-
 /* PCI <-> OF binding helpers */
-#ifdef CONFIG_OF
+#if 0 /* CONFIG_OF */
 struct device_node;
 void pci_set_of_node(struct pci_dev *dev);
 void pci_release_of_node(struct pci_dev *dev);

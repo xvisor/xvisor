@@ -8,10 +8,6 @@
 #include <asm/byteorder.h>
 #include <asm/errno.h>
 
-#ifndef CONFIG_OF
-#define CONFIG_OF
-#endif
-
 typedef u32 phandle;
 
 #define	device_node			vmm_devtree_node
