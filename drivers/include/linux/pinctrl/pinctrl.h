@@ -16,9 +16,8 @@
 
 #include <linux/radix-tree.h>
 #include <linux/list.h>
-#if 0
+#include <linux/device.h>
 #include <linux/seq_file.h>
-#endif
 #include <linux/pinctrl/pinctrl-state.h>
 
 struct device;

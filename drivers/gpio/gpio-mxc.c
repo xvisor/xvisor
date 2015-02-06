@@ -602,7 +602,7 @@ out_irqdesc_free:
 	irq_free_descs(irq_base, 32);
 #endif
 out_gpiochip_remove:
-	WARN_ON(gpiochip_remove(&port->bgc.gc) < 0);
+	gpiochip_remove(&port->bgc.gc);
 out_bgpio_remove:
 	bgpio_remove(&port->bgc);
 out_bgio:

@@ -1035,8 +1035,7 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 	return 0;
 
 gpiochip_error:
-	if (gpiochip_remove(pctl->chip))
-		dev_err(pdev, "failed to remove gpio chip\n");
+	gpiochip_remove(pctl->chip);
 pinctrl_error:
 	pinctrl_unregister(pctl->pctl_dev);
 	return ret;
