@@ -365,6 +365,15 @@
 			late_init = <0>;
 			status = "disabled";
 		};
+
+		backlight_lvds {
+			compatible = "pwm-backlight";
+			pwms = <&pwm4 0 5000000>;
+			brightness-levels = <0 4 8 16 32 64 128 255>;
+			default-brightness-level = <7>;
+			/* power-supply = <&reg_3p3v>; */
+			status = "okay";
+		};
 	};
 };
 

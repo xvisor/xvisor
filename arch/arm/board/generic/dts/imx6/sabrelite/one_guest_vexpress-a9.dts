@@ -22,7 +22,9 @@
 
 	chosen {
 		console = &SERIAL2;
-		bootcmd = "";
+		bootcmd = "backlight brightness backlight_lvds 6",
+			  "fb logo fb0 350 329";
+
 			  /* /\* Create rbd0 device *\/ */
 			  /* "rbd create rbd0 0x11000000 0x01000000", */
 
