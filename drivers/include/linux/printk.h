@@ -29,12 +29,19 @@
 					vmm_printf("%s: ", (dev)->name); \
 					vmm_printf(args); \
 					} while (0)
+
 #define dev_warn(dev, args...)		do { \
 					vmm_printf("WARNING: %s: ", (dev)->name); \
 					vmm_printf(args); \
 					} while (0)
+
 #define dev_err(dev, args...)		do { \
 					vmm_printf("ERROR: %s: ", (dev)->name); \
+					vmm_printf(args); \
+					} while (0)
+
+#define dev_crit(dev, args...)		do { \
+					vmm_printf("CRITCAL: %s: ", (dev)->name); \
 					vmm_printf(args); \
 					} while (0)
 
