@@ -3,8 +3,6 @@
 
 #include <vmm_cache.h>
 
-#define __maybe_unused
-
 #define ____cacheline_aligned		__cacheline_aligned
 #define ____cacheline_aligned_in_smp	__cacheline_aligned_in_smp
 

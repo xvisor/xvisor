@@ -31,6 +31,7 @@
 #define __noinline		__attribute__ ((noinline))
 #define __always_inline 	inline __attribute__((always_inline))
 #define __unused		__attribute__((unused))
+#define __maybe_unused		__attribute__((unused))
 #define __used			__attribute__((used))
 #define __aligned(x)		__attribute__((aligned(x)))
 #define __noreturn		__attribute__((noreturn))
@@ -38,6 +39,7 @@
 #define __packed		__attribute__((packed))
 #define __weak			__attribute__((weak))
 #define __mustcheck		__attribute__((warn_unused_result))
+#define __printf(a, b)		__attribute__((format(printf, a, b)))
 
 #define __section(S)		__attribute__((section(#S)))
 #define __read_mostly		__section(".readmostly.data")
