@@ -755,6 +755,7 @@ struct fb_user {
 
 struct fb_info {
 	char name[VMM_FIELD_NAME_SIZE];
+	int node;
 	atomic_t count;				/* Reference counting for open operation */
 	struct vmm_device dev;			/* This is this fb device */
 	struct dlist user_list;			/* List of fb users who have opened fb */
