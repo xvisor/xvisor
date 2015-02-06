@@ -45,6 +45,7 @@ commands-objs-$(CONFIG_CMD_VSCREEN)+= cmd_vscreen.o
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
 commands-objs-$(CONFIG_CMD_FB)+= cmd_fb_mod.o
+commands-objs-$(CONFIG_CMD_FB_BACKLIGHT)+= cmd_backlight.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
 commands-objs-$(CONFIG_CMD_RBD)+= cmd_rbd.o
 commands-objs-$(CONFIG_CMD_FLASH)+= cmd_flash.o
