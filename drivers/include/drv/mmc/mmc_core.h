@@ -276,6 +276,24 @@ struct mmc_host_ops {
 	int (*get_wp)(struct mmc_host *mmc);
 };
 
+/**
+ * struct mmc_slot - MMC slot functions
+ *
+ * @cd_irq:		MMC/SD-card slot hotplug detection IRQ or -EINVAL
+ * @lock:		protect the @handler_priv pointer
+ * @handler_priv:	MMC/SD-card slot context
+ *
+ * Some MMC/SD host controllers implement slot-functions like card and
+ * write-protect detection natively. However, a large number of controllers
+ * leave these functions to the CPU. This struct provides a hook to attach
+ * such slot-function drivers.
+ */
+struct mmc_slot {
+	int cd_irq;
+	struct vmm_mutex lock;
+	void *handler_priv;
+};
+
 struct mmc_host {
 	struct dlist link;
 	struct vmm_device *dev;
@@ -310,6 +328,12 @@ struct mmc_host {
 #define MMC_CAP_MODE_SPI		0x00000400
 #define MMC_CAP_MODE_HC			0x00000800
 #define MMC_CAP_NEEDS_POLL		0x00001000
+#define MMC_CAP_NONREMOVABLE		0x00002000	/* Nonremovable e.g. eMMC */
+
+	u32 caps2;
+
+#define MMC_CAP2_CD_ACTIVE_HIGH	(1 << 10)	/* Card-detect signal active high */
+#define MMC_CAP2_RO_ACTIVE_HIGH	(1 << 11)	/* Write-protect signal active high */
 
 	u32 f_min;
 	u32 f_max;
@@ -328,6 +352,8 @@ struct mmc_host {
 	struct mmc_ios ios;
 
 	struct mmc_card *card;
+
+	struct mmc_slot slot;
 
 	unsigned long priv[0];
 };

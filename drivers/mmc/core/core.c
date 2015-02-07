@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file mmc_core.c
+ * @file core.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief MMC/SD/SDIO core framework implementation
  *
@@ -41,6 +41,7 @@
 #include <libs/mathlib.h>
 #include <drv/mmc/mmc_core.h>
 
+#define MODULE_NAME			mmc_core
 #define MODULE_DESC			"MMC/SD/SDIO Framework"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -1622,6 +1623,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct vmm_device *dev)
 	INIT_LIST_HEAD(&host->io_list);
 	INIT_SPIN_LOCK(&host->io_list_lock);
 
+	INIT_MUTEX(&host->slot.lock);
+	host->slot.cd_irq = VMM_EINVALID;
+
 	INIT_COMPLETION(&host->io_avail);
 	host->io_thread = NULL;
 
@@ -1719,7 +1723,8 @@ static void __exit mmc_core_exit(void)
 	/* Nothing to be done. */
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC,
+VMM_DECLARE_MODULE2(MODULE_NAME,
+			MODULE_DESC,
 			MODULE_AUTHOR,
 			MODULE_LICENSE,
 			MODULE_IPRIORITY,

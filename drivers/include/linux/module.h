@@ -6,6 +6,7 @@
 #include <linux/types.h>
 #include <linux/export.h>
 #include <linux/init.h>
+#include <linux/device.h>
 
 #define KBUILD_MODNAME			stringify(VMM_MODNAME)
 #define KBUILD_BASENAME			stringify(VMM_MODNAME)

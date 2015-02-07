@@ -22,3 +22,12 @@
 # */
 
 drivers-objs-$(CONFIG_MMC) += mmc/core/mmc_core.o
+
+mmc_core-y += core.o
+mmc_core-y += slot-gpio.o
+
+%/mmc_core.o: $(foreach obj,$(mmc_core-y),%/$(obj))
+	$(call merge_objs,$@,$^)
+
+%/mmc_core.dep: $(foreach dep,$(mmc_core-y:.o=.dep),%/$(dep))
+	$(call merge_deps,$@,$^)
