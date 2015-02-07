@@ -412,11 +412,16 @@ static int sdhci_set_clock(struct mmc_host *mmc, u32 clock)
 	struct sdhci_host *host = (struct sdhci_host *)mmc->priv;
 	u32 div, clk, timeout;
 
-	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
+	if (host->ops.set_clock) {
+		host->ops.set_clock(host, clock);
+		return VMM_OK;
+	}
 
 	if (clock == 0) {
 		return VMM_OK;
 	}
+
+	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
 	if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >= SDHCI_SPEC_300) {
 		/* Version 3.00 divisors must be a multiple of 2. */
@@ -438,10 +443,6 @@ static int sdhci_set_clock(struct mmc_host *mmc, u32 clock)
 		}
 	}
 	div >>= 1;
-
-	if (host->ops.set_clock) {
-		host->ops.set_clock(host, div);
-	}
 
 	clk = (div & SDHCI_DIV_MASK) << SDHCI_DIVIDER_SHIFT;
 	clk |= ((div & SDHCI_DIV_HI_MASK) >> SDHCI_DIV_MASK_LEN)
