@@ -245,6 +245,11 @@
 #define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER	(1 << 7)
 #define SDHCI_QUIRK_NO_CARD_NO_RESET		(1 << 8)
 
+/* Controller reports inverted write-protect state */
+#define SDHCI_QUIRK_INVERTED_WRITE_PROTECT	(1 << 16)
+/* The read-only detection via SDHCI_PRESENT_STATE register is unstable */
+#define SDHCI_QUIRK_UNSTABLE_RO_DETECT		(1 << 31)
+
 /* to make gcc happy */
 struct sdhci_host;
 
@@ -264,6 +269,7 @@ struct sdhci_ops {
 #endif
 	void (*set_control_reg)(struct sdhci_host *host);
 	void (*set_clock)(struct sdhci_host *host, unsigned int div);
+	unsigned int (*get_wp)(struct sdhci_host *host);
 };
 
 struct sdhci_host {

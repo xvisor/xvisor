@@ -2,6 +2,11 @@
  * Copyright (c) 2013 Anup Patel.
  * All rights reserved.
  *
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * All rights reserved.
+ * Modified by Jimmy Durand Wesolowski to add the card detection and write
+ * protect checking support from a pin or the SDHCI controller register.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -40,6 +45,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/mmc/sdhci.h>
+#include <drv/mmc/slot-gpio.h>
 
 #define MODULE_DESC			"SDHCI Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -541,6 +547,60 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 }
 
+static int sdhci_get_cd(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+	int gpio_cd = mmc_gpio_get_cd(mmc);
+
+	/* If polling/nonremovable, assume that the card is always present. */
+	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) ||
+	    (host->mmc->caps & MMC_CAP_NONREMOVABLE))
+		return 1;
+
+	/* Try slot gpio detect */
+	if (!gpio_cd >= 0)
+		return !!gpio_cd;
+
+	/* Host native card detect */
+	return !!(sdhci_readl(host, SDHCI_PRESENT_STATE) & SDHCI_CARD_PRESENT);
+}
+
+static int sdhci_check_wp(struct sdhci_host *host)
+{
+	int is_readonly;
+
+	if (host->ops.get_wp)
+		is_readonly = host->ops.get_wp(host);
+	else
+		is_readonly = !(sdhci_readl(host, SDHCI_PRESENT_STATE)
+				& SDHCI_WRITE_PROTECT);
+
+	/* This quirk needs to be replaced by a callback-function later */
+	return host->quirks & SDHCI_QUIRK_INVERTED_WRITE_PROTECT ?
+		!is_readonly : is_readonly;
+}
+
+#define SAMPLE_COUNT    5
+
+static int sdhci_get_wp(struct mmc_host *mmc)
+{
+	int i, ro_count;
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (!(host->quirks & SDHCI_QUIRK_UNSTABLE_RO_DETECT))
+		return sdhci_check_wp(host);
+
+	ro_count = 0;
+	for (i = 0; i < SAMPLE_COUNT; i++) {
+		if (sdhci_check_wp(host)) {
+			if (++ro_count > SAMPLE_COUNT / 2)
+				return 1;
+		}
+		vmm_msleep(30);
+	}
+	return 0;
+}
+
 static int sdhci_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
@@ -685,8 +745,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	mmc->ops.send_cmd = sdhci_send_command;
 	mmc->ops.set_ios = sdhci_set_ios;
 	mmc->ops.init_card = sdhci_init_card;
-	mmc->ops.get_cd = NULL;
-	mmc->ops.get_wp = NULL;
+	mmc->ops.get_cd = sdhci_get_cd;
+	mmc->ops.get_wp = sdhci_get_wp;
 
 	if (host->max_clk) {
 		mmc->f_max = host->max_clk;
