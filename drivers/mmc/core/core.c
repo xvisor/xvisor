@@ -1673,9 +1673,7 @@ int mmc_add_host(struct mmc_host *host)
 	__mmc_detect_card_inserted(host);
 	vmm_mutex_unlock(&host->lock);
 
-	vmm_threads_start(host->io_thread);
-
-	return VMM_OK;
+	return vmm_threads_start(host->io_thread);
 }
 VMM_EXPORT_SYMBOL(mmc_add_host);
 
