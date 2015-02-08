@@ -24,6 +24,7 @@
 drivers-objs-$(CONFIG_ARM_TIMER_SP804)+= clocksource/sp804_timer.o
 drivers-objs-$(CONFIG_ARM_TWD)+= clocksource/smp_twd.o
 drivers-objs-$(CONFIG_MXC_EPIT)+= clocksource/epit.o
+drivers-objs-$(CONFIG_MXC_GPT)+= clocksource/gpt.o
 drivers-objs-$(CONFIG_BCM2835_TIMER)+= clocksource/bcm2835_timer.o
 drivers-objs-$(CONFIG_SUN4I_TIMER)+= clocksource/sun4i_timer.o
 

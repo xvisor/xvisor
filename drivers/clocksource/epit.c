@@ -145,7 +145,7 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 
 	/* Setup clocksource */
 	ecs->clksrc.name = node->name;
-	ecs->clksrc.rating = 300;
+	ecs->clksrc.rating = 200;
 	ecs->clksrc.read = epit_clksrc_read;
 	ecs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	vmm_clocks_calc_mult_shift(&ecs->clksrc.mult,

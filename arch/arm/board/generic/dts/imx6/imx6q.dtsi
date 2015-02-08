@@ -324,7 +324,7 @@
 				device_type = "timer";
 				compatible = "fsl,imx6q-gpt";
 				reg = <0x02098000 0x4000>;
-				clock-frequency = <1000000>;
+				clock-frequency = <32000>;
 				timer_num = <2>;
 				interrupts = <87>;
 			};
