@@ -1300,7 +1300,8 @@ static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
 	/* SPI multiblock writes terminate using a special
 	 * token, not a STOP_TRANSMISSION request.
 	 */
-	if (!mmc_host_is_spi(host) && blkcnt > 1) {
+	if (!(host->caps2 & MMC_CAP2_AUTO_CMD12) && !mmc_host_is_spi(host) &&
+	    blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 		cmd.cmdarg = 0;
 		cmd.resp_type = MMC_RSP_R1b;
@@ -1370,7 +1371,7 @@ static u32 __mmc_read_blocks(struct mmc_host *host, struct mmc_card *card,
 		return 0;
 	}
 
-	if (blkcnt > 1) {
+	if (!(host->caps2 & MMC_CAP2_AUTO_CMD12) && (blkcnt > 1)) {
 		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 		cmd.cmdarg = 0;
 		cmd.resp_type = MMC_RSP_R1b;

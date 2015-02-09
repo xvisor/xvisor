@@ -334,6 +334,7 @@ struct mmc_host {
 
 #define MMC_CAP2_CD_ACTIVE_HIGH	(1 << 10)	/* Card-detect signal active high */
 #define MMC_CAP2_RO_ACTIVE_HIGH	(1 << 11)	/* Write-protect signal active high */
+#define MMC_CAP2_AUTO_CMD12	(1 << 18)
 
 	u32 f_min;
 	u32 f_max;
