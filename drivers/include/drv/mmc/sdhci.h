@@ -290,6 +290,8 @@ struct sdhci_host {
 	u32 sdhci_caps; 
 
 	void *aligned_buffer; /* Used when DMA address has to be 8-byte aligned */
+	struct vmm_completion wait_command;
+	struct vmm_completion wait_dma;
 
 	unsigned long priv[0];
 };
