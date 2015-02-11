@@ -15,8 +15,8 @@
  * @brief Generic GPIO card-detect helper header
  */
 
-#ifndef MMC_SLOT_GPIO_H
-#define MMC_SLOT_GPIO_H
+#ifndef __DRV_MMC_SLOT_GPIO_H__
+#define __DRV_MMC_SLOT_GPIO_H__
 
 struct mmc_host;
 

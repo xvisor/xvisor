@@ -31,8 +31,8 @@
  * The original code is licensed under the GPL.
  */
 
-#ifndef __MMC_CORE_H__
-#define __MMC_CORE_H__
+#ifndef __DRV_MMC_CORE_H__
+#define __DRV_MMC_CORE_H__
 
 #include <vmm_compiler.h>
 #include <vmm_types.h>
@@ -43,6 +43,22 @@
 #include <libs/list.h>
 
 #define MMC_CORE_IPRIORITY		(VMM_BLOCKDEV_CLASS_IPRIORITY + 1)
+
+/* This belongs to host.h */
+#define MMC_BUS_WIDTH_1		0
+#define MMC_BUS_WIDTH_4		2
+#define MMC_BUS_WIDTH_8		3
+
+#define MMC_TIMING_LEGACY	0
+#define MMC_TIMING_MMC_HS	1
+#define MMC_TIMING_SD_HS	2
+#define MMC_TIMING_UHS_SDR12	3
+#define MMC_TIMING_UHS_SDR25	4
+#define MMC_TIMING_UHS_SDR50	5
+#define MMC_TIMING_UHS_SDR104	6
+#define MMC_TIMING_UHS_DDR50	7
+#define MMC_TIMING_MMC_HS200	8
+
 
 #define MMC_DATA_READ			1
 #define MMC_DATA_WRITE			2
@@ -62,6 +78,7 @@
 #define MMC_CMD_SET_BLOCKLEN		16
 #define MMC_CMD_READ_SINGLE_BLOCK	17
 #define MMC_CMD_READ_MULTIPLE_BLOCK	18
+#define MMC_CMD_SET_BLOCK_COUNT		23   /* adtc [31:0] data addr   R1  */
 #define MMC_CMD_WRITE_SINGLE_BLOCK	24
 #define MMC_CMD_WRITE_MULTIPLE_BLOCK	25
 #define MMC_CMD_ERASE_GROUP_START	35
@@ -166,6 +183,12 @@
 #define MMC_RSP_BUSY			(1 << 3)	/* card may send busy */
 #define MMC_RSP_OPCODE			(1 << 4)	/* response contains opcode */
 
+#define MMC_CMD_MASK			(3 << 5)	/* non-SPI command type */
+#define MMC_CMD_AC			(0 << 5)
+#define MMC_CMD_ADTC			(1 << 5)
+#define MMC_CMD_BC			(2 << 5)
+#define MMC_CMD_BCR			(3 << 5)
+
 #define MMC_RSP_NONE			(0)
 #define MMC_RSP_R1			(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 #define MMC_RSP_R1b			(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE| \
@@ -205,6 +228,16 @@ struct mmc_data {
 	u32 flags;
 	u32 blocks;
 	u32 blocksize;
+};
+
+struct mmc_request {
+	struct mmc_cmd		*sbc;		/* SET_BLOCK_COUNT for multiblock */
+	struct mmc_cmd		*cmd;
+	struct mmc_cmd		*stop;
+
+	struct vmm_completion	completion;
+	void			(*done)(struct mmc_request *);/* completion function */
+	struct mmc_host		*host;
 };
 
 struct mmc_ios {

@@ -29,8 +29,8 @@
  * The original code is licensed under the GPL.
  */
 
-#ifndef __SDHCI_H__
-#define __SDHCI_H__
+#ifndef __DRV_MMC_SDHCI_H__
+#define __DRV_MMC_SDHCI_H__
 
 #include <vmm_types.h>
 #include <vmm_host_io.h>
@@ -56,6 +56,7 @@
 #define  SDHCI_TRNS_DMA			0x01
 #define  SDHCI_TRNS_BLK_CNT_EN		0x02
 #define  SDHCI_TRNS_ACMD12		0x04
+#define  SDHCI_TRNS_ACMD23		0x08
 #define  SDHCI_TRNS_READ		0x10
 #define  SDHCI_TRNS_MULTI		0x20
 
@@ -176,7 +177,23 @@
 
 #define SDHCI_ACMD12_ERR		0x3C
 
-/* 3E-3F reserved */
+#define SDHCI_HOST_CONTROL2		0x3E
+#define  SDHCI_CTRL_UHS_MASK		0x0007
+#define   SDHCI_CTRL_UHS_SDR12		0x0000
+#define   SDHCI_CTRL_UHS_SDR25		0x0001
+#define   SDHCI_CTRL_UHS_SDR50		0x0002
+#define   SDHCI_CTRL_UHS_SDR104		0x0003
+#define   SDHCI_CTRL_UHS_DDR50		0x0004
+#define   SDHCI_CTRL_HS_SDR200		0x0005 /* reserved value in SDIO spec */
+#define  SDHCI_CTRL_VDD_180		0x0008
+#define  SDHCI_CTRL_DRV_TYPE_MASK	0x0030
+#define   SDHCI_CTRL_DRV_TYPE_B		0x0000
+#define   SDHCI_CTRL_DRV_TYPE_A		0x0010
+#define   SDHCI_CTRL_DRV_TYPE_C		0x0020
+#define   SDHCI_CTRL_DRV_TYPE_D		0x0030
+#define  SDHCI_CTRL_EXEC_TUNING		0x0040
+#define  SDHCI_CTRL_TUNED_CLK		0x0080
+#define  SDHCI_CTRL_PRESET_VAL_ENABLE	0x8000
 
 #define SDHCI_CAPABILITIES		0x40
 #define  SDHCI_TIMEOUT_CLK_MASK		0x0000003F
@@ -197,9 +214,31 @@
 #define  SDHCI_CAN_VDD_180		0x04000000
 #define  SDHCI_CAN_64BIT		0x10000000
 
+#define  SDHCI_SUPPORT_SDR50	0x00000001
+#define  SDHCI_SUPPORT_SDR104	0x00000002
+#define  SDHCI_SUPPORT_DDR50	0x00000004
+#define  SDHCI_DRIVER_TYPE_A	0x00000010
+#define  SDHCI_DRIVER_TYPE_C	0x00000020
+#define  SDHCI_DRIVER_TYPE_D	0x00000040
+#define  SDHCI_RETUNING_TIMER_COUNT_MASK	0x00000F00
+#define  SDHCI_RETUNING_TIMER_COUNT_SHIFT	8
+#define  SDHCI_USE_SDR50_TUNING			0x00002000
+#define  SDHCI_RETUNING_MODE_MASK		0x0000C000
+#define  SDHCI_RETUNING_MODE_SHIFT		14
+#define  SDHCI_CLOCK_MUL_MASK	0x00FF0000
+#define  SDHCI_CLOCK_MUL_SHIFT	16
+
 #define SDHCI_CAPABILITIES_1		0x44
 
 #define SDHCI_MAX_CURRENT		0x48
+#define  SDHCI_MAX_CURRENT_LIMIT	0xFF
+#define  SDHCI_MAX_CURRENT_330_MASK	0x0000FF
+#define  SDHCI_MAX_CURRENT_330_SHIFT	0
+#define  SDHCI_MAX_CURRENT_300_MASK	0x00FF00
+#define  SDHCI_MAX_CURRENT_300_SHIFT	8
+#define  SDHCI_MAX_CURRENT_180_MASK	0xFF0000
+#define  SDHCI_MAX_CURRENT_180_SHIFT	16
+#define   SDHCI_MAX_CURRENT_MULTIPLIER	4
 
 /* 4C-4F reserved for more max current */
 
@@ -244,11 +283,46 @@
 #define SDHCI_QUIRK_WAIT_SEND_CMD		(1 << 6)
 #define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER	(1 << 7)
 #define SDHCI_QUIRK_NO_CARD_NO_RESET		(1 << 8)
+/* Controller has an unusable ADMA engine */
+#define SDHCI_QUIRK_BROKEN_ADMA			(1 << 9)
+/* Controller provides an incorrect timeout value for transfers */
+#define SDHCI_QUIRK_BROKEN_TIMEOUT_VAL		(1 << 12)
+/* Controller does not provide transfer-complete interrupt when not busy */
+#define SDHCI_QUIRK_NO_BUSY_IRQ			(1 << 14)
+/* Controller has nonstandard clock management */
 
 /* Controller reports inverted write-protect state */
 #define SDHCI_QUIRK_INVERTED_WRITE_PROTECT	(1 << 16)
+#define SDHCI_QUIRK_NONSTANDARD_CLOCK		(1 << 17)
+/* Controller does not like fast PIO transfers */
+#define SDHCI_QUIRK_PIO_NEEDS_DELAY		(1 << 18)
+/* Controller losing signal/interrupt enable states after reset */
+#define SDHCI_QUIRK_RESTORE_IRQS_AFTER_RESET	(1 << 19)
+/* Controller has to be forced to use block size of 2048 bytes */
+#define SDHCI_QUIRK_FORCE_BLK_SZ_2048		(1 << 20)
+/* Controller cannot do multi-block transfers */
+#define SDHCI_QUIRK_NO_MULTIBLOCK		(1 << 21)
+/* Controller can only handle 1-bit data transfers */
+#define SDHCI_QUIRK_FORCE_1_BIT_DATA		(1 << 22)
+/* Controller uses SDCLK instead of TMCLK for data timeouts */
+#define SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK	(1 << 24)
+/* Controller cannot support End Attribute in NOP ADMA descriptor */
+#define SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC	(1 << 26)
+/* Controller treats ADMA descriptors with length 0000h incorrectly */
+#define SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC	(1 << 30)
 /* The read-only detection via SDHCI_PRESENT_STATE register is unstable */
 #define SDHCI_QUIRK_UNSTABLE_RO_DETECT		(1 << 31)
+
+#define SDHCI_QUIRK2_HOST_OFF_CARD_ON		(1 << 0)
+#define SDHCI_QUIRK2_HOST_NO_CMD23		(1 << 1)
+/* The system physically doesn't support 1.8v, even if the host does */
+#define SDHCI_QUIRK2_NO_1_8_V			(1 << 2)
+#define SDHCI_QUIRK2_PRESET_VALUE_BROKEN	(1 << 3)
+#define SDHCI_QUIRK2_CARD_ON_NEEDS_BUS_ON	(1 << 4)
+/* Controller has a non-standard host control register */
+#define SDHCI_QUIRK2_BROKEN_HOST_CONTROL	(1 << 5)
+/* Controller does not support HS200 */
+#define SDHCI_QUIRK2_BROKEN_HS200		(1 << 6)
 
 /* to make gcc happy */
 struct sdhci_host;
@@ -279,6 +353,7 @@ struct sdhci_host {
 	void *ioaddr; /* pointer to registers */
 	int irq; /* less than zero means no interrupt */
 	u32 quirks; /* quirks or hacks */
+	u32 quirks2; /* quirks or hacks */
 	u32 caps; /* forced mmc_host capablities */
 	u32 clock; /* input clock */
 	u32 max_clk; /* max output clock */
@@ -287,7 +362,10 @@ struct sdhci_host {
 	struct sdhci_ops ops; /* controller operations */
 
 	u32 sdhci_version;
-	u32 sdhci_caps; 
+	u32 sdhci_caps;
+
+	/* struct mmc_request *mrq; /\* associated request *\/ */
+	struct mmc_cmd *cmd;	/* Current command */
 
 	void *aligned_buffer; /* Used when DMA address has to be 8-byte aligned */
 	struct vmm_completion wait_command;
@@ -384,6 +462,10 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 	return vmm_readb(host->ioaddr + reg);
 }
 #endif
+
+int sdhci_send_command(struct mmc_host *mmc,
+		       struct mmc_cmd *cmd,
+		       struct mmc_data *data);
 
 struct sdhci_host *sdhci_alloc_host(struct vmm_device *dev, int extra);
 
