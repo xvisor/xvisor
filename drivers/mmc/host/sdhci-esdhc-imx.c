@@ -289,7 +289,6 @@ static u32 esdhc_readl_le(struct sdhci_host *host, int reg)
 			val &= ~SDHCI_INT_RESPONSE;
 			writel(SDHCI_INT_RESPONSE, host->ioaddr +
 						   SDHCI_INT_STATUS);
-			imx_data->multiblock_status = NO_CMD_PENDING;
 		}
 	}
 
@@ -332,15 +331,6 @@ static void esdhc_writel_le(struct sdhci_host *host, u32 val, int reg)
 			v = readl(host->ioaddr + ESDHC_VENDOR_SPEC);
 			v &= ~ESDHC_VENDOR_SPEC_SDIO_QUIRK;
 			writel(v, host->ioaddr + ESDHC_VENDOR_SPEC);
-
-			if (imx_data->multiblock_status == MULTIBLK_IN_PROCESS)
-			{
-				/* send a manual CMD12 with RESPTYP=none */
-				data = MMC_CMD_STOP_TRANSMISSION << 24 |
-				       SDHCI_CMD_ABORTCMD << 16;
-				writel(data, host->ioaddr + SDHCI_TRANSFER_MODE);
-				imx_data->multiblock_status = WAIT_FOR_INT;
-			}
 	}
 
 	if (unlikely(reg == SDHCI_INT_ENABLE || reg == SDHCI_SIGNAL_ENABLE)) {
@@ -490,10 +480,6 @@ static void esdhc_writew_le(struct sdhci_host *host, u16 val, int reg)
 	case SDHCI_COMMAND:
 		if (host->cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 			val |= SDHCI_CMD_ABORTCMD;
-
-		if ((host->cmd->cmdidx == MMC_CMD_SET_BLOCK_COUNT) &&
-		    (imx_data->socdata->flags & ESDHC_FLAG_MULTIBLK_NO_INT))
-			imx_data->multiblock_status = MULTIBLK_IN_PROCESS;
 
 		if (esdhc_is_usdhc(imx_data))
 			writel(val << 16,
@@ -966,12 +952,6 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 	}
 
 	vmm_writel(0, host->ioaddr + SDHCI_PRESENT_STATE);
-
-	err = vmm_readl(host->ioaddr + SDHCI_CLOCK_CONTROL);
-	vmm_writel(err | (1 << 24), host->ioaddr + SDHCI_CLOCK_CONTROL);
-	while (vmm_readl(host->ioaddr + SDHCI_CLOCK_CONTROL) &
-	       (1 << 24))
-		;
 
 	imx_data->socdata = devid->data;
 	imx_data->clk_ipg = devm_clk_get(dev, "ipg");
