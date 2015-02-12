@@ -373,7 +373,9 @@ int sdhci_send_command(struct mmc_host *mmc,
 			if (host->quirks & SDHCI_QUIRK_BROKEN_R1B) {
 				return VMM_OK;
 			} else {
-				vmm_printf("%s: Status update timeout!\n", __func__);
+				vmm_printf("%s: Status update timeout on CMD%d, arg "
+					   "0x%08x!\n",__func__, cmd->cmdidx,
+					   cmd->cmdarg);
 				return VMM_ETIMEDOUT;
 			}
 		}
@@ -389,10 +391,12 @@ int sdhci_send_command(struct mmc_host *mmc,
 		} while ((stat & mask) != mask);
 
 		if (retry == 0) {
-			if (host->quirks & SDHCI_QUIRK_BROKEN_R1B)
+			if (host->quirks & SDHCI_QUIRK_BROKEN_R1B) {
 				return VMM_OK;
-			else {
-				vmm_printf("%s: Status update timeout!\n", __func__);
+			} else {
+				vmm_printf("%s: Status update timeout on CMD%d, arg "
+					   "0x%08x!\n",__func__, cmd->cmdidx,
+					   cmd->cmdarg);
 				return VMM_ETIMEDOUT;
 			}
 		}
@@ -665,7 +669,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 
 static vmm_irq_return_t sdhci_irq_handler(int irq_no, void *dev)
 {
-	u32 intmask, unexpected = 0;
+	u32 intmask;
 	vmm_irq_return_t result;
 	struct sdhci_host *host = dev;
 
@@ -708,9 +712,13 @@ static vmm_irq_return_t sdhci_irq_handler(int irq_no, void *dev)
 		sdhci_cmd_irq(host, intmask & SDHCI_INT_CMD_MASK);
 	}
 
-	if (intmask & SDHCI_INT_DATA_MASK) {
-		sdhci_writel(host, intmask & SDHCI_INT_DATA_MASK,
-			SDHCI_INT_STATUS);
+	if (intmask & (SDHCI_INT_DATA_MASK | SDHCI_INT_DMA_END)) {
+		if (!(intmask & SDHCI_INT_DATA_MASK)) {
+			vmm_printf("DMA ended, transfer not complete!\n");
+		}
+		sdhci_writel(host, intmask & (SDHCI_INT_DATA_MASK |
+					      SDHCI_INT_DMA_END),
+			     SDHCI_INT_STATUS);
 		sdhci_data_irq(host, intmask & SDHCI_INT_DATA_MASK);
 	}
 
@@ -727,7 +735,7 @@ static vmm_irq_return_t sdhci_irq_handler(int irq_no, void *dev)
 	intmask &= ~SDHCI_INT_BUS_POWER;
 
 	if (intmask) {
-		unexpected |= intmask;
+		vmm_printf("SDHCI: Unexpected interrupt 0x%08x\n", intmask);
 		sdhci_writel(host, intmask, SDHCI_INT_STATUS);
 	}
 
