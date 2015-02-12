@@ -280,6 +280,8 @@ int sdhci_send_command(struct mmc_host *mmc,
 		if (timeout == 0) {
 			vmm_printf("%s: Controller never released "
 				   "inhibit bit(s).\n", __func__);
+			sdhci_reset(host, SDHCI_RESET_CMD);
+
 			return VMM_EIO;
 		}
 		timeout--;
