@@ -305,7 +305,9 @@ struct mmc_host_ops {
 	void (*set_ios)(struct mmc_host *mmc, 
 			struct mmc_ios *ios);
 	int (*init_card)(struct mmc_host *mmc, struct mmc_card *card);
-	int (*get_cd)(struct mmc_host *mmc);
+	int (*get_cd)(struct mmc_host *mmc); /* Returns
+						0: No Card
+						1: Card Present */
 	int (*get_wp)(struct mmc_host *mmc);
 };
 

@@ -168,7 +168,7 @@ static int __mmc_getcd(struct mmc_host *host)
 		return host->ops.get_cd(host);
 	}
 
-	return 1;
+	return VMM_ENOTSUPP;
 }
 
 static int __mmc_send_cmd(struct mmc_host *host, 
@@ -1248,18 +1248,23 @@ detect_done:
 
 static void __mmc_detect_card_change(struct mmc_host *host)
 {
-	int timeout = 1000;
+	int rc, timeout = 1000;
 
 	if (!host) {
 		return;
 	}
 
+	rc = __mmc_getcd(host);
 	if (host->card) {
-		if (__mmc_send_status(host, host->card, timeout)) {
+		if (rc == VMM_ENOTSUPP) {
+			if (__mmc_send_status(host, host->card, timeout)) {
+				__mmc_detect_card_removed(host);
+			}
+		} else if (rc == 0) {
 			__mmc_detect_card_removed(host);
 		}
 	} else {
-		if (__mmc_getcd(host)) {
+		if ((rc == VMM_ENOTSUPP) || (rc > 0)) {
 			__mmc_detect_card_inserted(host);
 		}
 	}
