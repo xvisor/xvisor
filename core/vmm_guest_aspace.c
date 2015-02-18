@@ -62,8 +62,11 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	bool found = FALSE;
 	u32 cmp_flags;
 	irq_flags_t flags;
-	struct vmm_guest_aspace *aspace;
+	vmm_rwlock_t *root_lock = NULL;
+	struct rb_root *root = NULL;
+	struct rb_node *pos = NULL;
 	struct vmm_region *reg = NULL;
+	struct vmm_guest_aspace *aspace;
 
 	if (!guest) {
 		return NULL;
@@ -76,19 +79,34 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	/* Determine flags we need to compare */
 	cmp_flags = reg_flags & ~VMM_REGION_MANIFEST_MASK;
 
+	/* Find out region tree root */
+	if (reg_flags & VMM_REGION_IO) {
+		root = &aspace->reg_iotree;
+		root_lock = &aspace->reg_iotree_lock;
+	} else {
+		root = &aspace->reg_memtree;
+		root_lock = &aspace->reg_memtree_lock;
+	}
+
 	/* Try to find region ignoring required manifest flags */
 	reg = NULL;
 	found = FALSE;
-	vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_for_each_entry(reg, &aspace->reg_list, head) {
-		if (((reg->flags & cmp_flags) == cmp_flags) &&
-		    (reg->gphys_addr <= gphys_addr) &&
-		    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
-			found = TRUE;
+	vmm_read_lock_irqsave_lite(root_lock, flags);
+	pos = root->rb_node;
+	while (pos) {
+		reg = rb_entry(pos, struct vmm_region, head);
+		if (gphys_addr < VMM_REGION_GPHYS_START(reg)) {
+			pos = pos->rb_left;
+		} else if (VMM_REGION_GPHYS_END(reg) <= gphys_addr) {
+			pos = pos->rb_right;
+		} else {
+			if ((reg->flags & cmp_flags) == cmp_flags) {
+				found = TRUE;
+			}
 			break;
 		}
 	}
-	vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	vmm_read_unlock_irqrestore_lite(root_lock, flags);
 	if (!found) {
 		return NULL;
 	}
@@ -100,19 +118,25 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 
 	/* Resolve aliased regions */
 	while (reg->flags & VMM_REGION_ALIAS) {
-		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
-		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
+		gphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		reg = NULL;
 		found = FALSE;
-		list_for_each_entry(reg, &aspace->reg_list, head) {
-			if (((reg->flags & cmp_flags) == cmp_flags) &&
-			    (reg->gphys_addr <= gphys_addr) &&
-			    (gphys_addr < (reg->gphys_addr + reg->phys_size))) {
-				found = TRUE;
+		vmm_read_lock_irqsave_lite(root_lock, flags);
+		pos = root->rb_node;
+		while (pos) {
+			reg = rb_entry(pos, struct vmm_region, head);
+			if (gphys_addr < VMM_REGION_GPHYS_START(reg)) {
+				pos = pos->rb_left;
+			} else if (VMM_REGION_GPHYS_END(reg) <= gphys_addr) {
+				pos = pos->rb_right;
+			} else {
+				if ((reg->flags & cmp_flags) == cmp_flags) {
+					found = TRUE;
+				}
 				break;
 			}
 		}
-		vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+		vmm_read_unlock_irqrestore_lite(root_lock, flags);
 		if (!found) {
 			return NULL;
 		}
@@ -146,7 +170,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 			break;
 		}
 
-		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		to_read = (reg->gphys_addr + reg->phys_size - gphys_addr);
 		to_read = ((len - bytes_read) < to_read) ? 
 			  (len - bytes_read) : to_read;
@@ -184,7 +208,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 			break;
 		}
 
-		hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		to_write = (reg->gphys_addr + reg->phys_size - gphys_addr);
 		to_write = ((len - bytes_written) < to_write) ? 
 			   (len - bytes_written) : to_write;
@@ -210,7 +234,6 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 			   physical_size_t *hphys_size,
 			   u32 *reg_flags)
 {
-	/* FIXME: Need to implement dynamic RAM allocation for RAM region */
 	struct vmm_region *reg = NULL;
 
 	if (!guest || !hphys_addr) {
@@ -226,7 +249,7 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
-		gphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+		gphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		reg = vmm_guest_find_region(guest, gphys_addr, 
 					    VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
@@ -234,7 +257,7 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		}
 	}
 
-	*hphys_addr = reg->hphys_addr + (gphys_addr - reg->gphys_addr);
+	*hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 
 	if (hphys_size) {
 		*hphys_size = reg->gphys_addr + reg->phys_size - gphys_addr;
@@ -254,7 +277,9 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 			     physical_addr_t gphys_addr,
 			     physical_size_t gphys_size)
 {
-	/* FIXME: */
+	/* We don't have dynamic host RAM allocation so
+	 * Nothing to do here.
+	 */
 	return VMM_OK;
 }
 
@@ -347,41 +372,40 @@ static bool is_region_overlapping(struct vmm_guest *guest,
 {
 	bool ret = FALSE;
 	irq_flags_t flags;
-	struct vmm_guest_aspace *aspace;
+	vmm_rwlock_t *root_lock = NULL;
+	struct rb_root *root = NULL;
+	struct rb_node *pos = NULL;
 	struct vmm_region *treg = NULL;
-	physical_addr_t reg_start, reg_end;
-	physical_addr_t treg_start, treg_end;
+	struct vmm_guest_aspace *aspace = &guest->aspace;
 
-	aspace = &guest->aspace;
-	reg_start = reg->gphys_addr;
-	reg_end = reg->gphys_addr + reg->phys_size;
+	if (reg->flags & VMM_REGION_IO) {
+		root = &aspace->reg_iotree;
+		root_lock = &aspace->reg_iotree_lock;
+	} else {
+		root = &aspace->reg_memtree;
+		root_lock = &aspace->reg_memtree_lock;
+	}
 
-	vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_for_each_entry(treg, &aspace->reg_list, head) {
-		if ((treg->flags & VMM_REGION_MEMORY) && 
-		    !(reg->flags & VMM_REGION_MEMORY)) {
-			continue;
-		}
-		if ((treg->flags & VMM_REGION_IO) && 
-		    !(reg->flags & VMM_REGION_IO)) {
-			continue;
-		}
-		treg_start = treg->gphys_addr;
-		treg_end = treg->gphys_addr + treg->phys_size;
-		if ((treg_start <= reg_start) && (reg_start < treg_end)) {
-			if (overlapping)
-				*overlapping = treg;
-			ret = TRUE;
-			break;
-		}
-		if ((treg_start < reg_end) && (reg_end < treg_end)) {
+	vmm_read_lock_irqsave_lite(root_lock, flags);
+
+	pos = root->rb_node;
+	while (pos) {
+		treg = rb_entry(pos, struct vmm_region, head);
+		if (VMM_REGION_GPHYS_END(reg) <=
+				VMM_REGION_GPHYS_START(treg)) {
+			pos = pos->rb_left;
+		} else if (VMM_REGION_GPHYS_END(treg) <=
+				VMM_REGION_GPHYS_START(reg)) {
+			pos = pos->rb_right;
+		} else {
 			if (overlapping)
 				*overlapping = treg;
 			ret = TRUE;
 			break;
 		}
 	}
-	vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+
+	vmm_read_unlock_irqrestore_lite(root_lock, flags);
 
 	return ret;
 }
@@ -410,7 +434,10 @@ static int region_add(struct vmm_guest *guest,
 	int rc;
 	const char *aval;
 	irq_flags_t flags;
-	struct vmm_region *reg = NULL;
+	vmm_rwlock_t *root_lock = NULL;
+	struct rb_root *root = NULL;
+	struct rb_node **new = NULL, *pnode = NULL;
+	struct vmm_region *reg = NULL, *pnode_reg = NULL;
 	struct vmm_guest_aspace *aspace = &guest->aspace;
 	struct vmm_region *reg_overlap = NULL;
 
@@ -425,7 +452,7 @@ static int region_add(struct vmm_guest *guest,
 
 	/* Allocate region instance */
 	reg = vmm_zalloc(sizeof(struct vmm_region));
-	INIT_LIST_HEAD(&reg->head);
+	RB_CLEAR_NODE(&reg->head);
 
 	/* Fillup region details */
 	reg->node = rnode;
@@ -604,10 +631,34 @@ static int region_add(struct vmm_guest *guest,
 		goto region_unprobe_fail;
 	}
 
-	/* Add region to region list */
-	vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_add_tail(&reg->head, &aspace->reg_list);
-	vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	/* Add region to tree */
+	if (reg->flags & VMM_REGION_IO) {
+		root = &aspace->reg_iotree;
+		root_lock = &aspace->reg_iotree_lock;
+	} else {
+		root = &aspace->reg_memtree;
+		root_lock = &aspace->reg_memtree_lock;
+	}
+	vmm_write_lock_irqsave_lite(root_lock, flags);
+	new = &root->rb_node;
+	while (*new) {
+		pnode = *new;
+		pnode_reg = rb_entry(pnode, struct vmm_region, head);
+		if (VMM_REGION_GPHYS_END(reg) <=
+				VMM_REGION_GPHYS_START(pnode_reg)) {
+			new = &pnode->rb_left;
+		} else if (VMM_REGION_GPHYS_END(pnode_reg) <=
+				VMM_REGION_GPHYS_START(reg)) {
+			new = &pnode->rb_right;
+		} else {
+			rc = VMM_EINVALID;
+			vmm_write_unlock_irqrestore_lite(root_lock, flags);
+			goto region_arch_del_fail;
+		}
+	}
+	rb_link_node(&reg->head, pnode, new);
+	rb_insert_color(&reg->head, root);
+	vmm_write_unlock_irqrestore_lite(root_lock, flags);
 
 	if (new_reg) {
 		*new_reg = reg;
@@ -615,6 +666,8 @@ static int region_add(struct vmm_guest *guest,
 
 	return VMM_OK;
 
+region_arch_del_fail:
+	arch_guest_del_region(guest, reg);
 region_unprobe_fail:
 	if ((reg->flags & VMM_REGION_ISDEVICE) &&
 	    !(reg->flags & VMM_REGION_ALIAS)) {
@@ -640,18 +693,27 @@ region_fail:
 
 static int region_del(struct vmm_guest *guest,
 		      struct vmm_region *reg,
-		      bool reg_list_del)
+		      bool reg_tree_del)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
+	vmm_rwlock_t *root_lock;
+	struct rb_root *root = NULL;
 	struct vmm_devtree_node *rnode = reg->node;
 	struct vmm_guest_aspace *aspace = &guest->aspace;
 
 	/* Remove it from region list if not removed already */
-	if (reg_list_del) {
-		vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-		list_del(&reg->head);
-		vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	if (reg_tree_del) {
+		if (reg->flags & VMM_REGION_IO) {
+			root = &aspace->reg_iotree;
+			root_lock = &aspace->reg_iotree_lock;
+		} else {
+			root = &aspace->reg_memtree;
+			root_lock = &aspace->reg_memtree_lock;
+		}
+		vmm_write_lock_irqsave_lite(root_lock, flags);
+		rb_erase(&reg->head, root);
+		vmm_write_unlock_irqrestore_lite(root_lock, flags);
 	}
 
 	/* Call arch specific del region callback */
@@ -698,9 +760,10 @@ static int region_del(struct vmm_guest *guest,
 int vmm_guest_aspace_reset(struct vmm_guest *guest)
 {
 	irq_flags_t flags;
-	struct dlist *l, *l1;
+	vmm_rwlock_t *root_lock = NULL;
+	struct rb_root *root = NULL;
 	struct vmm_guest_aspace *aspace;
-	struct vmm_region *reg = NULL;
+	struct vmm_region *reg = NULL, *next_reg = NULL;
 	struct vmm_guest_aspace_event evt;
 
 	/* Sanity Check */
@@ -712,18 +775,33 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	}
 	aspace = &guest->aspace;
 
-	/* Reset device emulation for virtual regions */
-	vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
-	list_for_each_safe(l, l1, &aspace->reg_list) {
-		reg = list_entry(l, struct vmm_region, head);
-		vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	/* Reset device emulation for io regions */
+	root = &aspace->reg_iotree;
+	root_lock = &aspace->reg_iotree_lock;
+	vmm_read_lock_irqsave_lite(root_lock, flags);
+	rbtree_postorder_for_each_entry_safe(reg, next_reg, root, head) {
+		vmm_read_unlock_irqrestore_lite(root_lock, flags);
 		if ((reg->flags & VMM_REGION_ISDEVICE) &&
 		    !(reg->flags & VMM_REGION_ALIAS)) {
 			vmm_devemu_reset_region(guest, reg);
 		}
-		vmm_read_lock_irqsave_lite(&aspace->reg_list_lock, flags);
+		vmm_read_lock_irqsave_lite(root_lock, flags);
 	}
-	vmm_read_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+	vmm_read_unlock_irqrestore_lite(root_lock, flags);
+
+	/* Reset device emulation for mem regions */
+	root = &aspace->reg_memtree;
+	root_lock = &aspace->reg_memtree_lock;
+	vmm_read_lock_irqsave_lite(root_lock, flags);
+	rbtree_postorder_for_each_entry_safe(reg, next_reg, root, head) {
+		vmm_read_unlock_irqrestore_lite(root_lock, flags);
+		if ((reg->flags & VMM_REGION_ISDEVICE) &&
+		    !(reg->flags & VMM_REGION_ALIAS)) {
+			vmm_devemu_reset_region(guest, reg);
+		}
+		vmm_read_lock_irqsave_lite(root_lock, flags);
+	}
+	vmm_read_unlock_irqrestore_lite(root_lock, flags);
 
 	/*
 	 * Notify the listeners about reset event.
@@ -950,8 +1028,10 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 		return VMM_EFAIL;
 	}
 	aspace->guest = guest;
-	INIT_RW_LOCK(&aspace->reg_list_lock);
-	INIT_LIST_HEAD(&aspace->reg_list);
+	INIT_RW_LOCK(&aspace->reg_iotree_lock);
+	aspace->reg_iotree = RB_ROOT;
+	INIT_RW_LOCK(&aspace->reg_memtree_lock);
+	aspace->reg_memtree = RB_ROOT;
 	guest->aspace.devemu_priv = NULL;
 
 	/* Initialize device emulation context */
@@ -987,6 +1067,9 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 {
 	int rc;
 	irq_flags_t flags;
+	vmm_rwlock_t *root_lock;
+	struct rb_root *root;
+	struct rb_node *rb;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
 	struct vmm_guest_aspace_event evt;
@@ -1011,26 +1094,41 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 	/* Mark address space as uninitialized */
 	aspace->initialized = FALSE;
 
-	/* Lock region list */
-	vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);
+	/* One-by-one remove all io regions */
+	root = &aspace->reg_iotree;
+	root_lock = &aspace->reg_iotree_lock;
+	vmm_write_lock_irqsave_lite(root_lock, flags);
+	while ((rb = rb_first_postorder(root))) {
+		reg = rb_entry_safe(rb, struct vmm_region, head);
 
-	/* One-by-one remove all regions */
-	while (!list_empty(&guest->aspace.reg_list)) {
-		reg = list_first_entry(&guest->aspace.reg_list,
-					struct vmm_region, head);
-		list_del(&reg->head);
+		/* Remove region from tree */
+		rb_erase(rb, root);
 
 		/* Delete the region */
-		vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+		vmm_write_unlock_irqrestore_lite(root_lock, flags);
 		region_del(guest, reg, FALSE);
-		vmm_write_lock_irqsave_lite(&aspace->reg_list_lock, flags);
+		vmm_write_lock_irqsave_lite(root_lock, flags);
 	}
+	*root = RB_ROOT;
+	vmm_write_unlock_irqrestore_lite(root_lock, flags);
 
-	/* Reset region list */
-	INIT_LIST_HEAD(&aspace->reg_list);
+	/* One-by-one remove all mem regions */
+	root = &aspace->reg_memtree;
+	root_lock = &aspace->reg_memtree_lock;
+	vmm_write_lock_irqsave_lite(root_lock, flags);
+	while ((rb = rb_first_postorder(root))) {
+		reg = rb_entry_safe(rb, struct vmm_region, head);
 
-	/* Unlock region list */
-	vmm_write_unlock_irqrestore_lite(&aspace->reg_list_lock, flags);
+		/* Remove region from tree */
+		rb_erase(rb, root);
+
+		/* Delete the region */
+		vmm_write_unlock_irqrestore_lite(root_lock, flags);
+		region_del(guest, reg, FALSE);
+		vmm_write_lock_irqsave_lite(root_lock, flags);
+	}
+	*root = RB_ROOT;
+	vmm_write_unlock_irqrestore_lite(root_lock, flags);
 
 	/* DeInitialize device emulation context */
 	if ((rc = vmm_devemu_deinit_context(guest))) {

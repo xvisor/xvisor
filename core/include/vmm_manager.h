@@ -32,6 +32,7 @@
 #include <vmm_devtree.h>
 #include <vmm_cpumask.h>
 #include <libs/list.h>
+#include <libs/rbtree.h>
 
 enum vmm_region_flags {
 	VMM_REGION_REAL=0x00000001,
@@ -61,7 +62,7 @@ struct vmm_vcpu;
 struct vmm_guest;
 
 struct vmm_region {
-	struct dlist head;
+	struct rb_node head;
 	struct vmm_devtree_node *node;
 	struct vmm_guest_aspace *aspace;
 	physical_addr_t gphys_addr;
@@ -73,12 +74,23 @@ struct vmm_region {
 	void *priv;
 };
 
+#define VMM_REGION_GPHYS_START(reg)	((reg)->gphys_addr)
+#define VMM_REGION_GPHYS_END(reg)	((reg)->gphys_addr + (reg)->phys_size)
+#define VMM_REGION_HPHYS_START(reg)	((reg)->hphys_addr)
+#define VMM_REGION_HPHYS_END(reg)	((reg)->hphys_addr + (reg)->phys_size)
+#define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
+			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
+#define VMM_REGION_HPHYS_TO_GPHYS(reg, hphys)	\
+			((reg)->gphys_addr + ((hphys) - (reg)->hphys_addr))
+
 struct vmm_guest_aspace {
 	struct vmm_devtree_node *node;
 	struct vmm_guest *guest;
 	bool initialized;
-	vmm_rwlock_t reg_list_lock;
-	struct dlist reg_list;
+	vmm_rwlock_t reg_iotree_lock;
+	struct rb_root reg_iotree;
+	vmm_rwlock_t reg_memtree_lock;
+	struct rb_root reg_memtree;
 	void *devemu_priv;
 };
 

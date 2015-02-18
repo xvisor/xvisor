@@ -1169,8 +1169,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	INIT_LIST_HEAD(&guest->vcpu_list);
 	memset(&guest->aspace, 0, sizeof(guest->aspace));
 	guest->aspace.initialized = FALSE;
-	INIT_RW_LOCK(&guest->aspace.reg_list_lock);
-	INIT_LIST_HEAD(&guest->aspace.reg_list);
+	INIT_RW_LOCK(&guest->aspace.reg_iotree_lock);
+	guest->aspace.reg_iotree = RB_ROOT;
+	INIT_RW_LOCK(&guest->aspace.reg_memtree_lock);
+	guest->aspace.reg_memtree = RB_ROOT;
 	guest->arch_priv = NULL;
 
 	/* Determine guest endianness from guest node */
