@@ -569,9 +569,6 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	INIT_LIST_HEAD(&vcpu->wq_head);
 	vcpu->wq_priv = NULL;
 
-	/* Initialize device emulation context */
-	vcpu->devemu_priv = NULL;
-
 	/* Notify scheduler about new VCPU */
 	if (vmm_manager_vcpu_set_state(vcpu, 
 					VMM_VCPU_STATE_RESET)) {
@@ -1345,9 +1342,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		/* Initialize waitqueue context */
 		INIT_LIST_HEAD(&vcpu->wq_head);
 		vcpu->wq_priv = NULL;
-
-		/* Initialize device emulation context */
-		vcpu->devemu_priv = NULL;
 
 		/* Notify scheduler about new VCPU */
 		if (vmm_manager_vcpu_set_state(vcpu, VMM_VCPU_STATE_RESET)) {

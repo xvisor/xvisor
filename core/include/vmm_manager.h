@@ -212,9 +212,6 @@ struct vmm_vcpu {
 	/* Waitqueue parameters */
 	struct dlist wq_head;
 	void *wq_priv;
-
-	/* Device Emulation Context */
-	void *devemu_priv;
 };
 
 /** Acquire manager lock */

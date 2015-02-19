@@ -31,25 +31,6 @@
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
 
-struct vmm_devemu_vcpu_context {
-	u32 rd_mem_victim;
-	physical_addr_t rd_mem_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t rd_mem_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *rd_mem_reg[CONFIG_VGPA2REG_CACHE_SIZE];
-	u32 wr_mem_victim;
-	physical_addr_t wr_mem_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t wr_mem_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *wr_mem_reg[CONFIG_VGPA2REG_CACHE_SIZE];
-	u32 rd_io_victim;
-	physical_addr_t rd_io_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t rd_io_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *rd_io_reg[CONFIG_VGPA2REG_CACHE_SIZE];
-	u32 wr_io_victim;
-	physical_addr_t wr_io_gstart[CONFIG_VGPA2REG_CACHE_SIZE];
-	physical_size_t wr_io_gend[CONFIG_VGPA2REG_CACHE_SIZE];
-	struct vmm_region *wr_io_reg[CONFIG_VGPA2REG_CACHE_SIZE];
-};
-
 struct vmm_devemu_guest_irq {
 	struct dlist head;
 	const char *name;
@@ -70,7 +51,7 @@ struct vmm_devemu_ctrl {
 
 static struct vmm_devemu_ctrl dectrl;
 
-static int devemu_doread(struct vmm_emudev *edev, 
+static int devemu_doread(struct vmm_emudev *edev,
 			 physical_addr_t offset,
 			 void *dst, u32 dst_len,
 			 enum vmm_devemu_endianness dst_endian)
@@ -224,7 +205,7 @@ static int devemu_doread(struct vmm_emudev *edev,
 	return rc;
 }
 
-static int devemu_dowrite(struct vmm_emudev *edev, 
+static int devemu_dowrite(struct vmm_emudev *edev,
 			  physical_addr_t offset,
 			  void *src, u32 src_len,
 			  enum vmm_devemu_endianness src_endian)
@@ -356,48 +337,23 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 	return rc;
 }
 
-int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len,
 			    enum vmm_devemu_endianness dst_endian)
 {
-	int ite, rc;
-	bool found;
-	struct vmm_devemu_vcpu_context *ev;
+	int rc;
 	struct vmm_region *reg;
 
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
-	ev = vcpu->devemu_priv;
-	found = FALSE;
-	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->rd_mem_reg[ite] && 
-		    (ev->rd_mem_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->rd_mem_gend[ite])) {
-			reg = ev->rd_mem_reg[ite];
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
-				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto skip;
-		}
-		ev->rd_mem_gstart[ev->rd_mem_victim] = reg->gphys_addr;
-		ev->rd_mem_gend[ev->rd_mem_victim] = 
-					reg->gphys_addr + reg->phys_size;
-		ev->rd_mem_reg[ev->rd_mem_victim] = reg;
-		if (ev->rd_mem_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->rd_mem_victim = 0;
-		} else {
-			ev->rd_mem_victim++;
-		}
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr,
+			VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+	if (!reg) {
+		rc = VMM_ENOTAVAIL;
+		goto skip;
 	}
 
 	rc = devemu_doread(reg->devemu_priv,
@@ -414,48 +370,23 @@ skip:
 	return rc;
 }
 
-int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len,
 			     enum vmm_devemu_endianness src_endian)
 {
-	int ite, rc;
-	bool found;
-	struct vmm_devemu_vcpu_context *ev;
+	int rc;
 	struct vmm_region *reg;
 
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
-	ev = vcpu->devemu_priv;
-	found = FALSE;
-	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->wr_mem_reg[ite] && 
-		    (ev->wr_mem_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->wr_mem_gend[ite])) {
-			reg = ev->wr_mem_reg[ite];
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
-				VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto skip;
-		}
-		ev->wr_mem_gstart[ev->wr_mem_victim] = reg->gphys_addr;
-		ev->wr_mem_gend[ev->wr_mem_victim] = 
-					reg->gphys_addr + reg->phys_size;
-		ev->wr_mem_reg[ev->wr_mem_victim] = reg;
-		if (ev->wr_mem_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->wr_mem_victim = 0;
-		} else {
-			ev->wr_mem_victim++;
-		}
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr,
+			VMM_REGION_VIRTUAL | VMM_REGION_MEMORY, FALSE);
+	if (!reg) {
+		rc = VMM_ENOTAVAIL;
+		goto skip;
 	}
 
 	rc = devemu_dowrite(reg->devemu_priv,
@@ -472,48 +403,23 @@ skip:
 	return rc;
 }
 
-int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 			      physical_addr_t gphys_addr,
 			      void *dst, u32 dst_len,
 			      enum vmm_devemu_endianness dst_endian)
 {
-	int ite, rc;
-	bool found;
-	struct vmm_devemu_vcpu_context *ev;
+	int rc;
 	struct vmm_region *reg;
 
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
-	ev = vcpu->devemu_priv;
-	found = FALSE;
-	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->rd_io_reg[ite] && 
-		    (ev->rd_io_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->rd_io_gend[ite])) {
-			reg = ev->rd_io_reg[ite];
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
-				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto skip;
-		}
-		ev->rd_io_gstart[ev->rd_io_victim] = reg->gphys_addr;
-		ev->rd_io_gend[ev->rd_io_victim] = 
-					reg->gphys_addr + reg->phys_size;
-		ev->rd_io_reg[ev->rd_io_victim] = reg;
-		if (ev->rd_io_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->rd_io_victim = 0;
-		} else {
-			ev->rd_io_victim++;
-		}
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr,
+			VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
+	if (!reg) {
+		rc = VMM_ENOTAVAIL;
+		goto skip;
 	}
 
 	rc = devemu_doread(reg->devemu_priv,
@@ -530,48 +436,23 @@ skip:
 	return rc;
 }
 
-int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 			       physical_addr_t gphys_addr,
 			       void *src, u32 src_len,
 			       enum vmm_devemu_endianness src_endian)
 {
-	int ite, rc;
-	bool found;
-	struct vmm_devemu_vcpu_context *ev;
+	int rc;
 	struct vmm_region *reg;
 
 	if (!vcpu || !vcpu->guest) {
 		return VMM_EFAIL;
 	}
 
-	ev = vcpu->devemu_priv;
-	found = FALSE;
-	for (ite = 0; ite < CONFIG_VGPA2REG_CACHE_SIZE; ite++) {
-		if (ev->wr_io_reg[ite] && 
-		    (ev->wr_io_gstart[ite] <= gphys_addr) &&
-		    (gphys_addr < ev->wr_io_gend[ite])) {
-			reg = ev->wr_io_reg[ite];
-			found = TRUE;
-			break;
-		}
-	}
-
-	if (!found) {
-		reg = vmm_guest_find_region(vcpu->guest, gphys_addr, 
-				VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto skip;
-		}
-		ev->wr_io_gstart[ev->wr_io_victim] = reg->gphys_addr;
-		ev->wr_io_gend[ev->wr_io_victim] = 
-					reg->gphys_addr + reg->phys_size;
-		ev->wr_io_reg[ev->wr_io_victim] = reg;
-		if (ev->wr_io_victim == (CONFIG_VGPA2REG_CACHE_SIZE - 1)) {
-			ev->wr_io_victim = 0;
-		} else {
-			ev->wr_io_victim++;
-		}
+	reg = vmm_guest_find_region(vcpu->guest, gphys_addr,
+			VMM_REGION_VIRTUAL | VMM_REGION_IO, FALSE);
+	if (!reg) {
+		rc = VMM_ENOTAVAIL;
+		goto skip;
 	}
 
 	rc = devemu_dowrite(reg->devemu_priv,
@@ -861,41 +742,11 @@ u32 vmm_devemu_emulator_count(void)
 
 int vmm_devemu_reset_context(struct vmm_guest *guest)
 {
-	u32 ite;
-	struct vmm_devemu_vcpu_context *ev;
-	struct vmm_vcpu *vcpu;
-
 	if (!guest) {
 		return VMM_EFAIL;
 	}
 
-	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
-		if (!vcpu->devemu_priv) {
-			continue;
-		}
-
-		ev = vcpu->devemu_priv;
-		ev->rd_mem_victim = 0;
-		ev->wr_mem_victim = 0;
-		ev->rd_io_victim = 0;
-		ev->wr_io_victim = 0;
-		for (ite = 0; 
-		     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
-		     ite++) {
-			ev->rd_mem_gstart[ite] = 0;
-			ev->rd_mem_gend[ite] = 0;
-			ev->rd_mem_reg[ite] = NULL;
-			ev->wr_mem_gstart[ite] = 0;
-			ev->wr_mem_gend[ite] = 0;
-			ev->wr_mem_reg[ite] = NULL;
-			ev->rd_io_gstart[ite] = 0;
-			ev->rd_io_gend[ite] = 0;
-			ev->rd_io_reg[ite] = NULL;
-			ev->wr_io_gstart[ite] = 0;
-			ev->wr_io_gend[ite] = 0;
-			ev->wr_io_reg[ite] = NULL;
-		}
-	}
+	/* For now nothing to do here. */
 
 	return VMM_OK;
 }
@@ -966,7 +817,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			   guest->name, reg->node->name);
 #endif
 		if ((rc = emu->probe(guest, einst, match))) {
-			vmm_printf("%s: %s/%s probe error %d\n", 
+			vmm_printf("%s: %s/%s probe error %d\n",
 			__func__, guest->name, reg->node->name, rc);
 			vmm_devtree_dref_node(einst->node);
 			einst->node = NULL;
@@ -976,7 +827,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			return rc;
 		}
 		if ((rc = emu->reset(einst))) {
-			vmm_printf("%s: %s/%s reset error %d\n", 
+			vmm_printf("%s: %s/%s reset error %d\n",
 			__func__, guest->name, reg->node->name, rc);
 			vmm_devtree_dref_node(einst->node);
 			einst->node = NULL;
@@ -991,7 +842,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	if (!found) {
-		vmm_printf("%s: No compatible emulator found for %s/%s\n", 
+		vmm_printf("%s: No compatible emulator found for %s/%s\n",
 		__func__, guest->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
@@ -1034,9 +885,7 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 {
 	int rc = VMM_OK;
 	u32 ite;
-	struct vmm_devemu_vcpu_context *ev;
 	struct vmm_devemu_guest_context *eg;
-	struct vmm_vcpu *vcpu;
 
 	if (!guest) {
 		rc = VMM_EFAIL;
@@ -1055,7 +904,7 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 
 	eg->g_irq = NULL;
 	eg->g_irq_count = 0;
-	rc = vmm_devtree_read_u32(guest->aspace.node, 
+	rc = vmm_devtree_read_u32(guest->aspace.node,
 			VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME, &eg->g_irq_count);
 	if (rc) {
 		goto devemu_init_context_free;
@@ -1069,52 +918,10 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 		INIT_LIST_HEAD(&eg->g_irq[ite]);
 	}
 
-	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
-		if (vcpu->devemu_priv) {
-			continue;
-		}
-		ev = vmm_zalloc(sizeof(struct vmm_devemu_vcpu_context));
-		if (!ev) {
-			rc = VMM_ENOMEM;
-			goto devemu_init_context_free_g;
-		}
-		ev->rd_mem_victim = 0;
-		ev->wr_mem_victim = 0;
-		ev->rd_io_victim = 0;
-		ev->wr_io_victim = 0;
-		for (ite = 0; 
-		     ite < CONFIG_VGPA2REG_CACHE_SIZE; 
-		     ite++) {
-			ev->rd_mem_gstart[ite] = 0;
-			ev->rd_mem_gend[ite] = 0;
-			ev->rd_mem_reg[ite] = NULL;
-			ev->wr_mem_gstart[ite] = 0;
-			ev->wr_mem_gend[ite] = 0;
-			ev->wr_mem_reg[ite] = NULL;
-			ev->rd_io_gstart[ite] = 0;
-			ev->rd_io_gend[ite] = 0;
-			ev->rd_io_reg[ite] = NULL;
-			ev->wr_io_gstart[ite] = 0;
-			ev->wr_io_gend[ite] = 0;
-			ev->wr_io_reg[ite] = NULL;
-		}
-		vcpu->devemu_priv = ev;
-	}
-
 	guest->aspace.devemu_priv = eg;
 
 	goto devemu_init_context_done;
 
-devemu_init_context_free_g:
-	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
-		if (vcpu->devemu_priv) {
-			vmm_free(vcpu->devemu_priv);
-			vcpu->devemu_priv = NULL;
-		}
-	}
-	vmm_free(eg->g_irq);
-	eg->g_irq = NULL;
-	eg->g_irq_count = 0;
 devemu_init_context_free:
 	vmm_free(eg);
 devemu_init_context_done:
@@ -1125,18 +932,10 @@ devemu_init_context_done:
 int vmm_devemu_deinit_context(struct vmm_guest *guest)
 {
 	int rc = VMM_OK;
-	struct vmm_vcpu *vcpu;
 	struct vmm_devemu_guest_context *eg;
 
 	if (!guest) {
 		return VMM_EFAIL;
-	}
-
-	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
-		if (vcpu->devemu_priv) {
-			vmm_free(vcpu->devemu_priv);
-			vcpu->devemu_priv = NULL;
-		}
 	}
 
 	eg = guest->aspace.devemu_priv;
