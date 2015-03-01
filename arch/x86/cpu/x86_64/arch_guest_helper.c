@@ -318,6 +318,7 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 			(((virtual_addr_t)context->shadow32_pg_list)
 			 + (index * PAGE_SIZE));
 
+		memset((void *)tvaddr, 0, PAGE_SIZE);
 		if (vmm_host_va2pa(tvaddr, &tpaddr) != VMM_OK)
 			vmm_panic("%s: Failed to map vaddr to paddr for pde.\n",
 				  __func__);
@@ -552,6 +553,13 @@ void inject_guest_interrupt(struct vcpu_hw_context *context,
 	context->vmcb->eventinj.fields.v = 1;
 	context->vmcb->eventinj.fields.ev = 1;
 	context->vmcb->eventinj.fields.errorcode = 0;
+
+	context->vmcb->vintr.fields.irq = 0; /* no longer pending */
+	context->vmcb->vintr.fields.tpr = 0;
+	context->vmcb->vintr.fields.prio = 0;
+	context->vmcb->vintr.fields.ign_tpr = 0;
+	context->vmcb->vintr.fields.intr_masking = 1;
+	context->vmcb->vintr.fields.vector = 0;
 
 	vmm_spin_unlock_irqrestore(&vcpu_priv->lock, flags);
 }
