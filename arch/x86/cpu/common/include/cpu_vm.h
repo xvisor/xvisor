@@ -145,6 +145,8 @@ struct vcpu_hw_context {
 #define VMM_CS64	40  /* entry 7 of gdt */
 #define VMM_DS64	56  /* entry 5 of gdt */
 
+#define GUEST_DEV_MMIO_REGION	(VMM_REGION_MEMORY | VMM_REGION_VIRTUAL)
+
 struct cpuid_response {
 	u32 resp_eax;
 	u32 resp_ebx;
