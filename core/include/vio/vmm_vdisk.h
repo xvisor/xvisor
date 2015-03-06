@@ -133,6 +133,9 @@ int vmm_vdisk_current_block_device(struct vmm_vdisk *vdisk,
 void vmm_vdisk_attach_block_device(struct vmm_vdisk *vdisk,
 				   const char *bdev_name);
 
+/** Detach block device from virtual disk */
+void vmm_vdisk_detach_block_device(struct vmm_vdisk *vdisk);
+
 /** Create a virtual disk */
 struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
 	void (*completed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
