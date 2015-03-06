@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.5
-# Thu Jan  1 19:06:15 2015
+# Fri Mar  6 23:05:36 2015
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -112,6 +112,7 @@ CONFIG_NET_BH_TIMEOUT_SECS=30
 # Virtual IO Support
 #
 CONFIG_VSERIAL=y
+CONFIG_VDISK=y
 # CONFIG_VDISPLAY is not set
 CONFIG_VINPUT=y
 CONFIG_VINPUT_KEYMAP_AR=y
@@ -176,6 +177,7 @@ CONFIG_CMD_MODULE=y
 # Virtual I/O Commands
 #
 CONFIG_CMD_VSERIAL=y
+CONFIG_CMD_VDISK=y
 CONFIG_CMD_VINPUT=y
 
 #
@@ -264,6 +266,7 @@ CONFIG_LIBAUTH_DEFAULT_USERNAME="admin"
 CONFIG_LIBAUTH_DEFAULT_PASSWD="EQuiN0X"
 # CONFIG_GENALLOC is not set
 # CONFIG_IMAGE_LOADER is not set
+# CONFIG_SCSI is not set
 
 #
 # Device Drivers
@@ -272,6 +275,7 @@ CONFIG_LIBAUTH_DEFAULT_PASSWD="EQuiN0X"
 #
 # Generic Configuration
 #
+CONFIG_OF=y
 CONFIG_GENERIC_IO=y
 CONFIG_HAS_IOPORT_MAP=y
 
@@ -291,6 +295,7 @@ CONFIG_HAS_IOPORT_MAP=y
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
 # CONFIG_MXC_EPIT is not set
+# CONFIG_MXC_GPT is not set
 # CONFIG_BCM2835_TIMER is not set
 # CONFIG_SUN4I_TIMER is not set
 
@@ -328,6 +333,10 @@ CONFIG_SERIAL_8250_UART=y
 # USB drivers
 #
 # CONFIG_USB is not set
+
+#
+# USB Device Drivers
+#
 
 #
 # USB Host Controller Drivers
@@ -375,6 +384,7 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 # CONFIG_FB_MODE_HELPERS is not set
 # CONFIG_FB_TILEBLITTING is not set
 CONFIG_FB_VESA=y
+# CONFIG_FB_BACKLIGHT is not set
 
 #
 # Network Device Support

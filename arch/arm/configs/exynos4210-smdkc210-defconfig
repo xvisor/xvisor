@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.5
-# Thu Nov 27 21:50:28 2014
+# Fri Mar  6 22:59:19 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -76,8 +76,10 @@ CONFIG_ARM_SMP_IPI=y
 # CONFIG_OMAP is not set
 CONFIG_SAMSUNG_MCT=y
 CONFIG_SAMSUNG_MCT_LOCAL_TIMERS=y
+# CONFIG_ARCH_MXC is not set
 # CONFIG_SABRELITE_CONFIG is not set
 # CONFIG_IMX_CPU is not set
+# CONFIG_IMX6_CMD is not set
 # CONFIG_IMX6Q_CLK is not set
 # CONFIG_IMX6Q_PM is not set
 
@@ -132,17 +134,9 @@ CONFIG_LOADBAL_CRUDE=y
 # Device Support
 #
 # CONFIG_IOMMU is not set
-
-#
-# Block Device Support
-#
 CONFIG_BLOCK=y
 CONFIG_BLOCKPART=y
 CONFIG_BLOCKPART_DOS=y
-
-#
-# Networking Support
-#
 CONFIG_NET=y
 CONFIG_NET_MBUF_POOL_SIZE=2048
 CONFIG_NET_MBUF_EXT_POOL_SIZE_KB=256
@@ -152,6 +146,7 @@ CONFIG_NET_BH_TIMEOUT_SECS=30
 # Virtual IO Support
 #
 CONFIG_VSERIAL=y
+CONFIG_VDISK=y
 CONFIG_VDISPLAY=y
 CONFIG_VINPUT=y
 CONFIG_VINPUT_KEYMAP_AR=y
@@ -216,6 +211,7 @@ CONFIG_CMD_MODULE=y
 # Virtual I/O Commands
 #
 CONFIG_CMD_VSERIAL=y
+CONFIG_CMD_VDISK=y
 CONFIG_CMD_VDISPLAY=y
 CONFIG_CMD_VINPUT=y
 
@@ -260,15 +256,25 @@ CONFIG_VFS=y
 # CONFIG_VFS_CPIO is not set
 CONFIG_VFS_EXT4=y
 CONFIG_VFS_FAT=y
+# CONFIG_VFS_ISO9660 is not set
 
 #
 # Cryptographic Options
 #
 # CONFIG_CRYPTO is not set
+# CONFIG_GENALLOC is not set
+# CONFIG_SCSI is not set
 
 #
 # Device Drivers
 #
+
+#
+# Generic Configuration
+#
+CONFIG_OF=y
+CONFIG_GENERIC_IO=y
+CONFIG_HAS_IOPORT_MAP=y
 
 #
 # Interrupt Controller Drivers
@@ -286,6 +292,7 @@ CONFIG_ARM_GIC=y
 # CONFIG_ARM_TIMER_SP804 is not set
 # CONFIG_ARM_TWD is not set
 # CONFIG_MXC_EPIT is not set
+# CONFIG_MXC_GPT is not set
 # CONFIG_BCM2835_TIMER is not set
 # CONFIG_SUN4I_TIMER is not set
 
@@ -327,6 +334,19 @@ CONFIG_BLOCK_RBD=y
 # CONFIG_USB is not set
 
 #
+# USB Device Drivers
+#
+
+#
+# USB Host Controller Drivers
+#
+
+#
+# PCI Bus Support
+#
+# CONFIG_PCI is not set
+
+#
 # Input Device Support
 #
 # CONFIG_INPUT is not set
@@ -340,6 +360,7 @@ CONFIG_BLOCK_RBD=y
 # Graphics Drivers
 #
 # CONFIG_FB is not set
+# CONFIG_FB_BACKLIGHT is not set
 
 #
 # Network Device Support
@@ -349,6 +370,7 @@ CONFIG_ETHERNET_DRIVERS=y
 CONFIG_ETHER_SMSC_911x=y
 # CONFIG_ETHER_SMSC_91x is not set
 # CONFIG_ETHER_ALLWINNER_SUN4I_EMAC is not set
+# CONFIG_ETHER_REALTEK is not set
 # CONFIG_PHYLIB is not set
 
 #
@@ -391,6 +413,21 @@ CONFIG_ETHER_SMSC_911x=y
 # SPI drivers
 #
 # CONFIG_SPI is not set
+
+#
+# PWM Drivers
+#
+# CONFIG_PWM is not set
+
+#
+# Reset drivers
+#
+# CONFIG_RESET_CONTROLLER is not set
+
+#
+# Miscellaneous Drivers
+#
+# CONFIG_SRAM is not set
 
 #
 # Device Emulators
