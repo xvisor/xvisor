@@ -225,12 +225,6 @@ u64 vmm_vdisk_capacity(struct vmm_vdisk *vdisk)
 }
 VMM_EXPORT_SYMBOL(vmm_vdisk_capacity);
 
-u32 vmm_vdisk_block_size(struct vmm_vdisk *vdisk)
-{
-	return vdisk->block_size;
-}
-VMM_EXPORT_SYMBOL(vmm_vdisk_block_size);
-
 int vmm_vdisk_current_block_device(struct vmm_vdisk *vdisk,
 				   char *name, u32 name_len)
 {

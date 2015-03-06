@@ -110,11 +110,20 @@ int vmm_vdisk_abort_request(struct vmm_vdisk *vdisk,
 /** Flush cached IO from virtual disk */
 int vmm_vdisk_flush_cache(struct vmm_vdisk *vdisk);
 
+/** Name of virtual disk */
+static inline const char *vmm_vdisk_name(struct vmm_vdisk *vdisk)
+{
+	return (vdisk) ? vdisk->name : NULL;
+}
+
+/** Block size of virtual disk */
+static inline u32 vmm_vdisk_block_size(struct vmm_vdisk *vdisk)
+{
+	return (vdisk) ? vdisk->block_size : 0;
+}
+
 /** Block count of virtual disk based on attached block device */
 u64 vmm_vdisk_capacity(struct vmm_vdisk *vdisk);
-
-/** Block size of virtual disk based on attached block device */
-u32 vmm_vdisk_block_size(struct vmm_vdisk *vdisk);
 
 /** Current block device attached to virtual disk */
 int vmm_vdisk_current_block_device(struct vmm_vdisk *vdisk,
