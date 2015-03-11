@@ -81,7 +81,7 @@ static int cmd_vinput_keyboards(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-45s %-10s %-10s %-10s\n", 
+	vmm_cprintf(cdev, " %-45s %-10s %-10s %-10s\n",
 			  "Name", "NumLock", "CapsLock", "ScrollLock");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -164,35 +164,35 @@ static int cmd_vinput_mouse_event(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
-static int cmd_vinput_mouses(struct vmm_chardev *cdev)
+static int cmd_vinput_mouses_iter(struct vmm_vmouse *vm, void *data)
 {
 	u32 gw, gh, gr;
-	int num, count;
 	const char *is_abs;
-	struct vmm_vmouse *vm;
+	struct vmm_chardev *cdev = data;
 
-	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-10s %-34s %-8s %-6s %-7s %-8s\n", 
-			  "Num", "Name", "Absolute", "Width", "Height", "Rotation");
-	vmm_cprintf(cdev, "----------------------------------------"
-			  "----------------------------------------\n");
-
-	count = vmm_vmouse_count();
-	for (num = 0; num < count; num++) {
-		vm = vmm_vmouse_get(num);
-		if (vmm_vmouse_is_absolute(vm)) {
-			is_abs = "Yes";
-		} else {
-			is_abs = "No";
-		}
-		gw = vmm_vmouse_get_graphics_width(vm);
-		gh = vmm_vmouse_get_graphics_height(vm);
-		gr = vmm_vmouse_get_graphics_rotation(vm);
-		vmm_cprintf(cdev, " %-10d %-34s %-8s %-6d %-7d %-8d\n",
-			    num, vm->name, is_abs, gw, gh, gr);
+	if (vmm_vmouse_is_absolute(vm)) {
+		is_abs = "Yes";
+	} else {
+		is_abs = "No";
 	}
+	gw = vmm_vmouse_get_graphics_width(vm);
+	gh = vmm_vmouse_get_graphics_height(vm);
+	gr = vmm_vmouse_get_graphics_rotation(vm);
+	vmm_cprintf(cdev, " %-45s %-8s %-6d %-7d %-8d\n",
+		    vm->name, is_abs, gw, gh, gr);
 
+	return VMM_OK;
+}
+
+static int cmd_vinput_mouses(struct vmm_chardev *cdev)
+{
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %-45s %-8s %-6s %-7s %-8s\n",
+			  "Name", "Absolute", "Width", "Height", "Rotation");
+	vmm_cprintf(cdev, "----------------------------------------"
+			  "----------------------------------------\n");
+	vmm_vmouse_iterate(NULL, cdev, cmd_vinput_mouses_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
 
@@ -212,7 +212,7 @@ static int cmd_vinput_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		}
 	} else if (argc > 2) {
 		if ((argc > 3) && strcmp(argv[1], "keyboard_event") == 0) {
-			return cmd_vinput_keyboard_event(cdev, argv[2], 
+			return cmd_vinput_keyboard_event(cdev, argv[2],
 							 argc - 3, &argv[3]);
 		} else if ((argc > 6) && strcmp(argv[1], "mouse_event") == 0) {
 			return cmd_vinput_mouse_event(cdev, argv[2],
@@ -240,9 +240,9 @@ static void __exit cmd_vinput_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_vinput);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

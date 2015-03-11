@@ -618,37 +618,39 @@ struct vmm_vmouse *vmm_vmouse_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_vmouse_find);
 
-struct vmm_vmouse *vmm_vmouse_get(int index)
+int vmm_vmouse_iterate(struct vmm_vmouse *start, void *data,
+		       int (*fn)(struct vmm_vmouse *vmou, void *data))
 {
-	bool found;
-	struct vmm_vmouse *vm;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_vmouse *vm = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	vm = NULL;
-	found = FALSE;
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
 
 	list_for_each_entry(vm, &victrl.vmou_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == vm) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(vm, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&victrl.vmou_list_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return vm;
+	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_vmouse_get);
+VMM_EXPORT_SYMBOL(vmm_vmouse_iterate);
 
 u32 vmm_vmouse_count(void)
 {

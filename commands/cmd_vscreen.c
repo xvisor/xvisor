@@ -57,6 +57,7 @@ struct vscreen_iter {
 	struct vmm_guest *guest;
 	struct vmm_vdisplay *vdis;
 	struct vmm_vkeyboard *vkbd;
+	struct vmm_vmouse *vmou;
 };
 
 static int cmd_vscreen_vdisplay_iter(struct vmm_vdisplay *vdis, void *data)
@@ -105,13 +106,33 @@ static int cmd_vscreen_vkeyboard_iter(struct vmm_vkeyboard *vkbd, void *data)
 	return VMM_OK;
 }
 
+static int cmd_vscreen_vmouse_iter(struct vmm_vmouse *vmou, void *data)
+{
+	struct vscreen_iter *iter = data;
+
+	if (!strncmp(vmou->name, iter->guest->name,
+		     strlen(iter->guest->name))) {
+		if (iter->print) {
+			if (!iter->found) {
+				vmm_cprintf(iter->cdev, " (default)");
+			} else {
+				vmm_cprintf(iter->cdev, "          ");
+			}
+			vmm_cprintf(iter->cdev, " %s\n", vmou->name);
+		}
+		if (!iter->vmou) {
+			iter->vmou = vmou;
+		}
+		iter->found = TRUE;
+	}
+
+	return VMM_OK;
+}
+
 static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 				   const char *guest_name)
 {
-	bool found;
-	int num, count;
 	struct vmm_guest *guest = NULL;
-	struct vmm_vmouse *vmou = NULL;
 	struct vscreen_iter iter;
 
 	guest = vmm_manager_guest_find(guest_name);
@@ -128,6 +149,7 @@ static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 	iter.guest = guest;
 	iter.vdis = NULL;
 	iter.vkbd = NULL;
+	iter.vmou = NULL;
 	vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
 	vmm_cprintf(cdev, "\n");
 
@@ -138,25 +160,19 @@ static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 	iter.guest = guest;
 	iter.vdis = NULL;
 	iter.vkbd = NULL;
+	iter.vmou = NULL;
 	vmm_vkeyboard_iterate(NULL, &iter, cmd_vscreen_vkeyboard_iter);
 	vmm_cprintf(cdev, "\n");
 
-	found = FALSE;
-	count = vmm_vmouse_count();
 	vmm_cprintf(cdev, "Virtual Mouse List\n");
-	for (num = 0; num < count; num++) {
-		vmou = vmm_vmouse_get(num);
-		if (!strncmp(vmou->name, guest->name,
-			     strlen(guest->name))) {
-			if (!found) {
-				vmm_cprintf(cdev, " (default)");
-			} else {
-				vmm_cprintf(cdev, "          ");
-			}
-			vmm_cprintf(cdev, " %s\n", vmou->name);
-			found = TRUE;
-		}
-	}
+	iter.found = FALSE;
+	iter.print = TRUE;
+	iter.cdev = cdev;
+	iter.guest = guest;
+	iter.vdis = NULL;
+	iter.vkbd = NULL;
+	iter.vmou = NULL;
+	vmm_vmouse_iterate(NULL, &iter, cmd_vscreen_vmouse_iter);
 	vmm_cprintf(cdev, "\n");
 
 	return VMM_OK;
@@ -171,8 +187,7 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 			    const char *vkeyboard_name,
 			    const char *vmouse_name)
 {
-	bool found;
-	int rc, num, count;
+	int rc;
 	u32 rate, ekey[3];
 	struct fb_info *info;
 	struct vmm_guest *guest = NULL;
@@ -223,6 +238,7 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 		iter.guest = guest;
 		iter.vdis = NULL;
 		iter.vkbd = NULL;
+		iter.vmou = NULL;
 		vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
 		vdis = (iter.found) ? iter.vdis : NULL;
 	}
@@ -242,6 +258,7 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 		iter.guest = guest;
 		iter.vdis = NULL;
 		iter.vkbd = NULL;
+		iter.vmou = NULL;
 		vmm_vkeyboard_iterate(NULL, &iter, cmd_vscreen_vkeyboard_iter);
 		vkbd = (iter.found) ? iter.vkbd : NULL;
 	}
@@ -254,19 +271,15 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	if (vmouse_name) {
 		vmou = vmm_vmouse_find(vmouse_name);
 	} else {
-		found = FALSE;
-		count = vmm_vmouse_count();
-		for (num = 0; num < count; num++) {
-			vmou = vmm_vmouse_get(num);
-			if (!strncmp(vmou->name, guest->name,
-				     strlen(guest->name))) {
-				found = TRUE;
-				break;
-			}
-		}
-		if (!found) {
-			vmou = NULL;
-		}
+		iter.found = FALSE;
+		iter.print = FALSE;
+		iter.cdev = cdev;
+		iter.guest = guest;
+		iter.vdis = NULL;
+		iter.vkbd = NULL;
+		iter.vmou = NULL;
+		vmm_vmouse_iterate(NULL, &iter, cmd_vscreen_vmouse_iter);
+		vmou = (iter.found) ? iter.vmou : NULL;
 	}
 	if (!vmou && vmouse_name) {
 		vmm_cprintf(cdev, "Failed to find virtual mouse %s\n",
@@ -347,9 +360,9 @@ static void __exit cmd_vscreen_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_vscreen);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

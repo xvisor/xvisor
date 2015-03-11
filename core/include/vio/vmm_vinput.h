@@ -193,8 +193,9 @@ u32 vmm_vmouse_get_graphics_rotation(struct vmm_vmouse *vmou);
 /** Find a virtual mouse with given name */
 struct vmm_vmouse *vmm_vmouse_find(const char *name);
 
-/** Get a virtual mouse with given index */
-struct vmm_vmouse *vmm_vmouse_get(int index);
+/** Iterate over each virtual mouse */
+int vmm_vmouse_iterate(struct vmm_vmouse *start, void *data,
+		       int (*fn)(struct vmm_vmouse *vmou, void *data));
 
 /** Count of available virtual mouses */
 u32 vmm_vmouse_count(void);
