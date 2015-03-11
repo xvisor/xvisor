@@ -335,37 +335,39 @@ struct vmm_vkeyboard *vmm_vkeyboard_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_vkeyboard_find);
 
-struct vmm_vkeyboard *vmm_vkeyboard_get(int index)
+int vmm_vkeyboard_iterate(struct vmm_vkeyboard *start, void *data,
+			  int (*fn)(struct vmm_vkeyboard *vk, void *data))
 {
-	bool found;
-	struct vmm_vkeyboard *vk;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_vkeyboard *vk = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	vk = NULL;
-	found = FALSE;
 
 	vmm_mutex_lock(&victrl.vkbd_list_lock);
 
 	list_for_each_entry(vk, &victrl.vkbd_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == vk) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(vk, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&victrl.vkbd_list_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return vk;
+	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_vkeyboard_get);
+VMM_EXPORT_SYMBOL(vmm_vkeyboard_iterate);
 
 u32 vmm_vkeyboard_count(void)
 {

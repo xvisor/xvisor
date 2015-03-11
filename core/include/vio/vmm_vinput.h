@@ -114,8 +114,9 @@ int vmm_vkeyboard_get_ledstate(struct vmm_vkeyboard *vkbd);
 /** Find a virtual keyboard with given name */
 struct vmm_vkeyboard *vmm_vkeyboard_find(const char *name);
 
-/** Get a virtual keyboard with given index */
-struct vmm_vkeyboard *vmm_vkeyboard_get(int index);
+/** Iterate over each virtual keyboard */
+int vmm_vkeyboard_iterate(struct vmm_vkeyboard *start, void *data,
+			  int (*fn)(struct vmm_vkeyboard *vkbd, void *data));
 
 /** Count of available virtual keyboards */
 u32 vmm_vkeyboard_count(void);

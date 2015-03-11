@@ -56,6 +56,7 @@ struct vscreen_iter {
 	struct vmm_chardev *cdev;
 	struct vmm_guest *guest;
 	struct vmm_vdisplay *vdis;
+	struct vmm_vkeyboard *vkbd;
 };
 
 static int cmd_vscreen_vdisplay_iter(struct vmm_vdisplay *vdis, void *data)
@@ -81,13 +82,35 @@ static int cmd_vscreen_vdisplay_iter(struct vmm_vdisplay *vdis, void *data)
 	return VMM_OK;
 }
 
+static int cmd_vscreen_vkeyboard_iter(struct vmm_vkeyboard *vkbd, void *data)
+{
+	struct vscreen_iter *iter = data;
+
+	if (!strncmp(vkbd->name, iter->guest->name,
+		     strlen(iter->guest->name))) {
+		if (iter->print) {
+			if (!iter->found) {
+				vmm_cprintf(iter->cdev, " (default)");
+			} else {
+				vmm_cprintf(iter->cdev, "          ");
+			}
+			vmm_cprintf(iter->cdev, " %s\n", vkbd->name);
+		}
+		if (!iter->vkbd) {
+			iter->vkbd = vkbd;
+		}
+		iter->found = TRUE;
+	}
+
+	return VMM_OK;
+}
+
 static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 				   const char *guest_name)
 {
 	bool found;
 	int num, count;
 	struct vmm_guest *guest = NULL;
-	struct vmm_vkeyboard *vkbd = NULL;
 	struct vmm_vmouse *vmou = NULL;
 	struct vscreen_iter iter;
 
@@ -99,31 +122,23 @@ static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 	}
 
 	vmm_cprintf(cdev, "Virtual Display List\n");
-	memset(&iter, 0, sizeof(iter));
 	iter.found = FALSE;
 	iter.print = TRUE;
 	iter.cdev = cdev;
 	iter.guest = guest;
 	iter.vdis = NULL;
+	iter.vkbd = NULL;
 	vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
 	vmm_cprintf(cdev, "\n");
 
-	found = FALSE;
-	count = vmm_vkeyboard_count();
 	vmm_cprintf(cdev, "Virtual Keyboard List\n");
-	for (num = 0; num < count; num++) {
-		vkbd = vmm_vkeyboard_get(num);
-		if (!strncmp(vkbd->name, guest->name,
-			     strlen(guest->name))) {
-			if (!found) {
-				vmm_cprintf(cdev, " (default)");
-			} else {
-				vmm_cprintf(cdev, "          ");
-			}
-			vmm_cprintf(cdev, " %s\n", vkbd->name);
-			found = TRUE;
-		}
-	}
+	iter.found = FALSE;
+	iter.print = TRUE;
+	iter.cdev = cdev;
+	iter.guest = guest;
+	iter.vdis = NULL;
+	iter.vkbd = NULL;
+	vmm_vkeyboard_iterate(NULL, &iter, cmd_vscreen_vkeyboard_iter);
 	vmm_cprintf(cdev, "\n");
 
 	found = FALSE;
@@ -202,12 +217,12 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	if (vdisplay_name) {
 		vdis = vmm_vdisplay_find(vdisplay_name);
 	} else {
-		memset(&iter, 0, sizeof(iter));
 		iter.found = FALSE;
 		iter.print = FALSE;
 		iter.cdev = cdev;
 		iter.guest = guest;
 		iter.vdis = NULL;
+		iter.vkbd = NULL;
 		vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
 		vdis = (iter.found) ? iter.vdis : NULL;
 	}
@@ -221,19 +236,14 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	if (vkeyboard_name) {
 		vkbd = vmm_vkeyboard_find(vkeyboard_name);
 	} else {
-		found = FALSE;
-		count = vmm_vkeyboard_count();
-		for (num = 0; num < count; num++) {
-			vkbd = vmm_vkeyboard_get(num);
-			if (!strncmp(vkbd->name, guest->name,
-				     strlen(guest->name))) {
-				found = TRUE;
-				break;
-			}
-		}
-		if (!found) {
-			vkbd = NULL;
-		}
+		iter.found = FALSE;
+		iter.print = FALSE;
+		iter.cdev = cdev;
+		iter.guest = guest;
+		iter.vdis = NULL;
+		iter.vkbd = NULL;
+		vmm_vkeyboard_iterate(NULL, &iter, cmd_vscreen_vkeyboard_iter);
+		vkbd = (iter.found) ? iter.vkbd : NULL;
 	}
 	if (!vkbd && vkeyboard_name) {
 		vmm_cprintf(cdev, "Failed to find virtual keyboard %s\n",

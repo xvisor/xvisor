@@ -49,45 +49,45 @@ static void cmd_vinput_usage(struct vmm_chardev *cdev)
 			  "<dx> <dy> <dz> <left|right|middle|none>\n");
 }
 
+static int cmd_vinput_keyboards_iter(struct vmm_vkeyboard *vk, void *data)
+{
+	int ledstate;
+	const char *num_lock, *caps_lock, *scroll_lock;
+	struct vmm_chardev *cdev = data;
+
+	ledstate = vmm_vkeyboard_get_ledstate(vk);
+	if (ledstate & VMM_NUM_LOCK_LED) {
+		num_lock = "ON";
+	} else {
+		num_lock = "OFF";
+	}
+	if (ledstate & VMM_CAPS_LOCK_LED) {
+		caps_lock = "ON";
+	} else {
+		caps_lock = "OFF";
+	}
+	if (ledstate & VMM_SCROLL_LOCK_LED) {
+		scroll_lock = "ON";
+	} else {
+		scroll_lock = "OFF";
+	}
+	vmm_cprintf(cdev, " %-45s %-10s %-10s %-10s\n",
+		    vk->name, num_lock, caps_lock, scroll_lock);
+
+	return VMM_OK;
+}
+
 static int cmd_vinput_keyboards(struct vmm_chardev *cdev)
 {
-	int num, count, ledstate;
-	const char *num_lock, *caps_lock, *scroll_lock;
-	struct vmm_vkeyboard *vk;
-
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-10s %-34s %-10s %-10s %-10s\n", 
-			  "Num", "Name", "NumLock", "CapsLock", "ScrollLock");
+	vmm_cprintf(cdev, " %-45s %-10s %-10s %-10s\n", 
+			  "Name", "NumLock", "CapsLock", "ScrollLock");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-
-	count = vmm_vkeyboard_count();
-	for (num = 0; num < count; num++) {
-		vk = vmm_vkeyboard_get(num);
-		ledstate = vmm_vkeyboard_get_ledstate(vk);
-		if (ledstate & VMM_NUM_LOCK_LED) {
-			num_lock = "ON";
-		} else {
-			num_lock = "OFF";
-		}
-		if (ledstate & VMM_CAPS_LOCK_LED) {
-			caps_lock = "ON";
-		} else {
-			caps_lock = "OFF";
-		}
-		if (ledstate & VMM_SCROLL_LOCK_LED) {
-			scroll_lock = "ON";
-		} else {
-			scroll_lock = "OFF";
-		}
-		vmm_cprintf(cdev, " %-10d %-34s %-10s %-10s %-10s\n",
-			    num, vk->name, num_lock, caps_lock, scroll_lock);
-	}
-
+	vmm_vkeyboard_iterate(NULL, cdev, cmd_vinput_keyboards_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-
 	return VMM_OK;
 }
 
