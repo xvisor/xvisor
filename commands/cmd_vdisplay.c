@@ -43,18 +43,21 @@ static void cmd_vdisplay_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vdisplay list\n");
 }
 
+static int cmd_vdisplay_list_iter(struct vmm_vdisplay *vdis, void *data)
+{
+	struct vmm_chardev *cdev = data;
+
+	vmm_cprintf(cdev, " %-39s\n", vdis->name);
+
+	return VMM_OK;
+}
+
 static void cmd_vdisplay_list(struct vmm_chardev *cdev)
 {
-	int num, count;
-	struct vmm_vdisplay *vdis;
 	vmm_cprintf(cdev, "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-39s\n", "Name");
 	vmm_cprintf(cdev, "----------------------------------------\n");
-	count = vmm_vdisplay_count();
-	for (num = 0; num < count; num++) {
-		vdis = vmm_vdisplay_get(num);
-		vmm_cprintf(cdev, " %-39s\n", vdis->name);
-	}
+	vmm_vdisplay_iterate(NULL, cdev, cmd_vdisplay_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 

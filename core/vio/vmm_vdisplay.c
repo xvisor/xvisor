@@ -917,37 +917,39 @@ struct vmm_vdisplay *vmm_vdisplay_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_vdisplay_find);
 
-struct vmm_vdisplay *vmm_vdisplay_get(int index)
+int vmm_vdisplay_iterate(struct vmm_vdisplay *start, void *data,
+			 int (*fn)(struct vmm_vdisplay *vdis, void *data))
 {
-	bool found;
-	struct vmm_vdisplay *vd;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_vdisplay *vd = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	vd = NULL;
-	found = FALSE;
 
 	vmm_mutex_lock(&vdctrl.vdis_list_lock);
 
 	list_for_each_entry(vd, &vdctrl.vdis_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == vd) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(vd, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&vdctrl.vdis_list_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return vd;
+	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_vdisplay_get);
+VMM_EXPORT_SYMBOL(vmm_vdisplay_iterate);
 
 u32 vmm_vdisplay_count(void)
 {

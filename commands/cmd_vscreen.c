@@ -50,15 +50,46 @@ static void cmd_vscreen_usage(struct vmm_chardev *cdev)
 			  "[<vkeyboard_name>] [<vmouse_name>]\n");
 }
 
+struct vscreen_iter {
+	bool found;
+	bool print;
+	struct vmm_chardev *cdev;
+	struct vmm_guest *guest;
+	struct vmm_vdisplay *vdis;
+};
+
+static int cmd_vscreen_vdisplay_iter(struct vmm_vdisplay *vdis, void *data)
+{
+	struct vscreen_iter *iter = data;
+
+	if (!strncmp(vdis->name, iter->guest->name,
+		     strlen(iter->guest->name))) {
+		if (iter->print) {
+			if (!iter->found) {
+				vmm_cprintf(iter->cdev, " (default)");
+			} else {
+				vmm_cprintf(iter->cdev, "          ");
+			}
+			vmm_cprintf(iter->cdev, " %s\n", vdis->name);
+		}
+		if (!iter->vdis) {
+			iter->vdis = vdis;
+		}
+		iter->found = TRUE;
+	}
+
+	return VMM_OK;
+}
+
 static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 				   const char *guest_name)
 {
 	bool found;
 	int num, count;
 	struct vmm_guest *guest = NULL;
-	struct vmm_vdisplay *vdis = NULL;
 	struct vmm_vkeyboard *vkbd = NULL;
 	struct vmm_vmouse *vmou = NULL;
+	struct vscreen_iter iter;
 
 	guest = vmm_manager_guest_find(guest_name);
 	if (!guest) {
@@ -67,22 +98,14 @@ static int cmd_vscreen_device_list(struct vmm_chardev *cdev,
 		return VMM_ENOTAVAIL;
 	}
 
-	found = FALSE;
-	count = vmm_vdisplay_count();
 	vmm_cprintf(cdev, "Virtual Display List\n");
-	for (num = 0; num < count; num++) {
-		vdis = vmm_vdisplay_get(num);
-		if (!strncmp(vdis->name, guest->name,
-			     strlen(guest->name))) {
-			if (!found) {
-				vmm_cprintf(cdev, " (default)");
-			} else {
-				vmm_cprintf(cdev, "          ");
-			}
-			vmm_cprintf(cdev, " %s\n", vdis->name);
-			found = TRUE;
-		}
-	}
+	memset(&iter, 0, sizeof(iter));
+	iter.found = FALSE;
+	iter.print = TRUE;
+	iter.cdev = cdev;
+	iter.guest = guest;
+	iter.vdis = NULL;
+	vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
 	vmm_cprintf(cdev, "\n");
 
 	found = FALSE;
@@ -141,6 +164,7 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	struct vmm_vdisplay *vdis = NULL;
 	struct vmm_vkeyboard *vkbd = NULL;
 	struct vmm_vmouse *vmou = NULL;
+	struct vscreen_iter iter;
 
 	guest = vmm_manager_guest_find(guest_name);
 	if (!guest) {
@@ -178,19 +202,14 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	if (vdisplay_name) {
 		vdis = vmm_vdisplay_find(vdisplay_name);
 	} else {
-		found = FALSE;
-		count = vmm_vdisplay_count();
-		for (num = 0; num < count; num++) {
-			vdis = vmm_vdisplay_get(num);
-			if (!strncmp(vdis->name, guest->name,
-				     strlen(guest->name))) {
-				found = TRUE;
-				break;
-			}
-		}
-		if (!found) {
-			vdis = NULL;
-		}
+		memset(&iter, 0, sizeof(iter));
+		iter.found = FALSE;
+		iter.print = FALSE;
+		iter.cdev = cdev;
+		iter.guest = guest;
+		iter.vdis = NULL;
+		vmm_vdisplay_iterate(NULL, &iter, cmd_vscreen_vdisplay_iter);
+		vdis = (iter.found) ? iter.vdis : NULL;
 	}
 	if (!vdis) {
 		vmm_cprintf(cdev, "Failed to find virtual display%s %s\n",

@@ -380,8 +380,9 @@ static inline void *vmm_vdisplay_priv(struct vmm_vdisplay *vdis)
 /** Find a virtual display with given name */
 struct vmm_vdisplay *vmm_vdisplay_find(const char *name);
 
-/** Get a virtual display with given index */
-struct vmm_vdisplay *vmm_vdisplay_get(int index);
+/** Iterate over each virtual display */
+int vmm_vdisplay_iterate(struct vmm_vdisplay *start, void *data,
+			 int (*fn)(struct vmm_vdisplay *vdis, void *data));
 
 /** Count of available virtual displays */
 u32 vmm_vdisplay_count(void);
