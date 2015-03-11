@@ -26,9 +26,17 @@
  * disk controller type. It also provides a convient way of
  * tracking various virtual disk instances of a guest.
  *
- * Each virtual disk can be attached to a block device. If the
- * block device is unregistered then virtual disk is dettached
- * automatically using block device notifiers.
+ * Each virtual disk can be attached to a block device. If a
+ * block device attached to virtual disk is unregistered then
+ * virtual disk is dettached automatically.
+ *
+ * All IO on virtual disk have to be done using opaque struct
+ * vmm_vdisk_request. The struct vmm_vdisk_request is a wrapper
+ * struct on-top of struct vmm_request. The emulators don't need
+ * to explicity fill properties of vmm_vdisk_request because
+ * vmm_vdisk_submit_request() will automatically fill it. If
+ * the emulators still need access to individual properties of
+ * vmm_vdisk_request then they will have to use vmm_vdisk APIs.
  */
 
 #ifndef _VMM_VDISK_H__
@@ -64,6 +72,8 @@ struct vmm_vdisk {
 	char name[VMM_FIELD_NAME_SIZE];
 	u32 block_size;
 
+	void (*attached)(struct vmm_vdisk *);
+	void (*detached)(struct vmm_vdisk *);
 	void (*completed)(struct vmm_vdisk *, struct vmm_vdisk_request *);
 	void (*failed)(struct vmm_vdisk *, struct vmm_vdisk_request *);
 
@@ -91,10 +101,74 @@ int vmm_vdisk_register_client(struct vmm_notifier_block *nb);
 /** Unregister a notifier client to not receive virtual disk events */
 int vmm_vdisk_unregister_client(struct vmm_notifier_block *nb);
 
+/** Set vdisk pointer of given virtual disk request */
+static inline void vmm_vdisk_set_request_disk(struct vmm_vdisk_request *vreq,
+					      struct vmm_vdisk *vdisk)
+{
+	if (vreq) {
+		vreq->vdisk = vdisk;
+	}
+}
+
+/** Get vdisk pointer of given virtual disk request */
+static inline struct vmm_vdisk *vmm_vdisk_get_request_disk(
+					struct vmm_vdisk_request *vreq)
+{
+	return (vreq) ? vreq->vdisk : NULL;
+}
+
+/** Set type of given virtual disk request */
+void vmm_vdisk_set_request_type(struct vmm_vdisk_request *vreq,
+				enum vmm_vdisk_request_type type);
+
+/** Get type of given virtual disk request */
+enum vmm_vdisk_request_type vmm_vdisk_get_request_type(
+					struct vmm_vdisk_request *vreq);
+
+/** Set lba of given virtual disk request */
+static inline void vmm_vdisk_set_request_lba(struct vmm_vdisk_request *vreq,
+					     u64 lba)
+{
+	if (vreq) {
+		vreq->r.lba = lba;
+	}
+}
+
+/** Get lba of given virtual disk request */
+static inline u64 vmm_vdisk_get_request_lba(struct vmm_vdisk_request *vreq)
+{
+	return (vreq) ? vreq->r.lba : 0;
+}
+
+/** Set data of given virtual disk request */
+static inline void vmm_vdisk_set_request_data(struct vmm_vdisk_request *vreq,
+					      void *data)
+{
+	if (vreq) {
+		vreq->r.data = data;
+	}
+}
+
+/** Get data of given virtual disk request */
+static inline void *vmm_vdisk_get_request_data(struct vmm_vdisk_request *vreq)
+{
+	return (vreq) ? vreq->r.data : NULL;
+}
+
+/** Set data length of given virtual disk request
+ *  NOTE: This function will only work if vreq->vdisk is set
+ */
+void vmm_vdisk_set_request_len(struct vmm_vdisk_request *vreq, u32 data_len);
+
+/** Get data length of given virtual disk request
+ *  NOTE: This function will only work if vreq->vdisk is set
+ */
+u32 vmm_vdisk_get_request_len(struct vmm_vdisk_request *vreq);
+
 /** Retrive private context of virtual disk */
 static inline void *vmm_vdisk_priv(struct vmm_vdisk *vdisk)
 {
-	return (vdisk) ? vdisk->priv : NULL;
+	return (vdisk) ? vdisk->priv: NULL;
 }
 
 /** Submit IO request to virtual disk */
@@ -138,6 +212,8 @@ void vmm_vdisk_detach_block_device(struct vmm_vdisk *vdisk);
 
 /** Create a virtual disk */
 struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
+	void (*attached)(struct vmm_vdisk *),
+	void (*detached)(struct vmm_vdisk *),
 	void (*completed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
 	void (*failed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
 	const char *bdev_name,

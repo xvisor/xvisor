@@ -95,6 +95,87 @@ static void vdisk_req_failed(struct vmm_request *r)
 		__func__, vdisk->name, (u64)r->lba, r->bcnt);
 }
 
+void vmm_vdisk_set_request_type(struct vmm_vdisk_request *vreq,
+				enum vmm_vdisk_request_type type)
+{
+	if (!vreq) {
+		return;
+	}
+
+	switch (type) {
+	case VMM_VDISK_REQUEST_READ:
+		vreq->r.type = VMM_REQUEST_READ;
+		break;
+	case VMM_VDISK_REQUEST_WRITE:
+		vreq->r.type = VMM_REQUEST_WRITE;
+		break;
+	default:
+		vreq->r.type = VMM_REQUEST_UNKNOWN;
+		break;
+	};
+}
+
+enum vmm_vdisk_request_type vmm_vdisk_get_request_type(
+					struct vmm_vdisk_request *vreq)
+{
+	enum vmm_vdisk_request_type type;
+
+	if (!vreq) {
+		return VMM_VDISK_REQUEST_UNKNOWN;
+	}
+
+	switch (vreq->r.type) {
+	case VMM_REQUEST_READ:
+		type = VMM_VDISK_REQUEST_READ;
+		break;
+	case VMM_REQUEST_WRITE:
+		type = VMM_VDISK_REQUEST_WRITE;
+		break;
+	default:
+		type = VMM_VDISK_REQUEST_UNKNOWN;
+		break;
+	};
+
+	return type;
+}
+VMM_EXPORT_SYMBOL(vmm_vdisk_get_request_type);
+
+void vmm_vdisk_set_request_len(struct vmm_vdisk_request *vreq, u32 data_len)
+{
+	irq_flags_t flags;
+	struct vmm_vdisk *vdisk;
+
+	if (!vreq || !vreq->vdisk) {
+		return;
+	}
+
+	vdisk = vreq->vdisk;
+	vmm_spin_lock_irqsave_lite(&vdisk->blk_lock, flags);
+	vreq->r.bcnt =
+		udiv32(data_len, vdisk->block_size) * vdisk->blk_factor;
+	vmm_spin_unlock_irqrestore_lite(&vdisk->blk_lock, flags);
+}
+VMM_EXPORT_SYMBOL(vmm_vdisk_set_request_len);
+
+u32 vmm_vdisk_get_request_len(struct vmm_vdisk_request *vreq)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+	struct vmm_vdisk *vdisk;
+
+	if (!vreq || !vreq->vdisk) {
+		return 0;
+	}
+
+	vdisk = vreq->vdisk;
+	vmm_spin_lock_irqsave_lite(&vdisk->blk_lock, flags);
+	ret = udiv32(vreq->r.bcnt, vdisk->blk_factor) * vdisk->block_size;
+	vmm_spin_unlock_irqrestore_lite(&vdisk->blk_lock, flags);
+
+	return ret;
+}
+VMM_EXPORT_SYMBOL(vmm_vdisk_get_request_len);
+
 int vmm_vdisk_submit_request(struct vmm_vdisk *vdisk,
 			     struct vmm_vdisk_request *vreq,
 			     enum vmm_vdisk_request_type type,
@@ -104,9 +185,6 @@ int vmm_vdisk_submit_request(struct vmm_vdisk *vdisk,
 	irq_flags_t flags;
 
 	if (!vdisk || !vreq || !data) {
-		return VMM_EINVALID;
-	}
-	if (vreq->vdisk != vdisk) {
 		return VMM_EINVALID;
 	}
 	if (data_len < vdisk->block_size) {
@@ -140,6 +218,7 @@ int vmm_vdisk_submit_request(struct vmm_vdisk *vdisk,
 		vreq->r.priv = NULL;
 		rc = vmm_blockdev_submit_request(vdisk->blk, &vreq->r);
 	} else {
+		vdisk->failed(vdisk, vreq);
 		rc = VMM_ENODEV;
 	}
 	vmm_spin_unlock_irqrestore_lite(&vdisk->blk_lock, flags);
@@ -255,12 +334,14 @@ struct vdisk_attach_priv {
 
 static int vdisk_attach_iter(struct vmm_blockdev *dev, void *data)
 {
+	bool attached;
 	irq_flags_t flags;
 	struct vdisk_attach_priv *ap = data;
 	const char *bdev_name = ap->bdev_name;
 	struct vmm_vdisk *vdisk = ap->vdisk;
 
 	if (strncmp(dev->name, bdev_name, sizeof(dev->name))==0) {
+		attached = FALSE;
 		vmm_spin_lock_irqsave_lite(&vdisk->blk_lock, flags);
 		if (!vdisk->blk &&
 		    (dev->block_size <= vdisk->block_size) &&
@@ -268,8 +349,12 @@ static int vdisk_attach_iter(struct vmm_blockdev *dev, void *data)
 			vdisk->blk = dev;
 			vdisk->blk_factor = udiv32(vdisk->block_size,
 					           vdisk->blk->block_size);
+			attached = TRUE;
 		}
 		vmm_spin_unlock_irqrestore_lite(&vdisk->blk_lock, flags);
+		if (attached && vdisk->attached) {
+			vdisk->attached(vdisk);
+		}
 	}
 
 	return VMM_OK;
@@ -292,23 +377,32 @@ VMM_EXPORT_SYMBOL(vmm_vdisk_attach_block_device);
 
 void vmm_vdisk_detach_block_device(struct vmm_vdisk *vdisk)
 {
+	bool detached;
 	irq_flags_t flags;
 
 	if (!vdisk) {
 		return;
 	}
 
+	detached = FALSE;
 	vmm_spin_lock_irqsave_lite(&vdisk->blk_lock, flags);
 	if (vdisk->blk) {
 		vmm_blockdev_flush_cache(vdisk->blk);
+		detached = TRUE;
 	}
 	vdisk->blk = NULL;
 	vdisk->blk_factor = 1;
 	vmm_spin_unlock_irqrestore_lite(&vdisk->blk_lock, flags);
+
+	if (detached && vdisk->detached) {
+		vdisk->detached(vdisk);
+	}
 }
 VMM_EXPORT_SYMBOL(vmm_vdisk_detach_block_device);
 
 struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
+	void (*attached)(struct vmm_vdisk *),
+	void (*detached)(struct vmm_vdisk *),
 	void (*completed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
 	void (*failed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
 	const char *bdev_name,
@@ -353,6 +447,8 @@ struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
 		return NULL;
 	}
 	vdisk->block_size = block_size;
+	vdisk->attached = attached;
+	vdisk->detached = detached;
 	vdisk->completed = completed;
 	vdisk->failed = failed;
 	INIT_SPIN_LOCK(&vdisk->blk_lock);
