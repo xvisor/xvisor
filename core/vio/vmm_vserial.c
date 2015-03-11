@@ -359,37 +359,39 @@ struct vmm_vserial *vmm_vserial_find(const char *name)
 }
 VMM_EXPORT_SYMBOL(vmm_vserial_find);
 
-struct vmm_vserial *vmm_vserial_get(int index)
+int vmm_vserial_iterate(struct vmm_vserial *start, void *data,
+			int (*fn)(struct vmm_vserial *vs, void *data))
 {
-	bool found;
-	struct vmm_vserial *vs;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_vserial *vs = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	vs = NULL;
-	found = FALSE;
 
 	vmm_mutex_lock(&vsctrl.vser_list_lock);
 
 	list_for_each_entry(vs, &vsctrl.vser_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == vs) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(vs, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&vsctrl.vser_list_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return vs;
+	return rc;
 }
-VMM_EXPORT_SYMBOL(vmm_vserial_get);
+VMM_EXPORT_SYMBOL(vmm_vserial_iterate);
 
 u32 vmm_vserial_count(void)
 {

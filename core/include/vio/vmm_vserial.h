@@ -107,8 +107,9 @@ int vmm_vserial_destroy(struct vmm_vserial *vser);
 /** Find a virtual serial port with given name */
 struct vmm_vserial *vmm_vserial_find(const char *name);
 
-/** Get a virtual serial port with given index */
-struct vmm_vserial *vmm_vserial_get(int index);
+/** Iterate over each virtual serial port */
+int vmm_vserial_iterate(struct vmm_vserial *start, void *data,
+		        int (*fn)(struct vmm_vserial *vser, void *data));
 
 /** Count of available virtual serial ports */
 u32 vmm_vserial_count(void);
