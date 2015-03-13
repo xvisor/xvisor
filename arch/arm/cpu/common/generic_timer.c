@@ -455,7 +455,7 @@ fail_unreg_htimer:
 	vmm_host_irq_unregister(irq[GENERIC_HYPERVISOR_TIMER],
 					&generic_hyp_timer_handler);
 fail_unreg_cc:
-	vmm_clockchip_register(cc);
+	vmm_clockchip_unregister(cc);
 fail_free_cc:
 	vmm_free(cc);
 	return rc;
