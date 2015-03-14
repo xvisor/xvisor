@@ -743,42 +743,42 @@ u32 cpu_vcpu_cp15_find_page(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_assert_fault(struct vmm_vcpu *vcpu,
-			      arch_regs_t *regs,
-			      u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
+			       struct cpu_vcpu_cp15_fault_info *info)
 {
 	u32 fsr;
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
 
 	if (!(cp15->c1_sctlr & SCTLR_M_MASK)) {
-		cpu_vcpu_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, info->regs);
 		return VMM_EFAIL;
 	}
-	if (xn) {
-		fsr = (fs & DFSR_FS_MASK);
-		fsr |= ((dom << DFSR_DOM_SHIFT) & DFSR_DOM_MASK);
+
+	if (info->xn) {
+		fsr = (info->fs & DFSR_FS_MASK);
+		fsr |= ((info->dom << DFSR_DOM_SHIFT) & DFSR_DOM_MASK);
 		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
-			fsr |= ((fs >> 4) << DFSR_FS4_SHIFT);
-			fsr |= ((wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
+			fsr |= ((info->fs >> 4) << DFSR_FS4_SHIFT);
+			fsr |= ((info->wnr << DFSR_WNR_SHIFT) & DFSR_WNR_MASK);
 		}
 		cp15->c5_dfsr = fsr;
-		cp15->c6_dfar = far;
+		cp15->c6_dfar = info->far;
 		vmm_vcpu_irq_assert(vcpu, CPU_DATA_ABORT_IRQ, 0x0);
 	} else {
-		fsr = fs & IFSR_FS_MASK;
+		fsr = info->fs & IFSR_FS_MASK;
 		if (arm_feature(vcpu, ARM_FEATURE_V6)) {
-			fsr |= ((fs >> 4) << IFSR_FS4_SHIFT);
-			cp15->c6_ifar = far;
+			fsr |= ((info->fs >> 4) << IFSR_FS4_SHIFT);
+			cp15->c6_ifar = info->far;
 		}
 		cp15->c5_ifsr = fsr;
 		vmm_vcpu_irq_assert(vcpu, CPU_PREFETCH_ABORT_IRQ, 0x0);
 	}
+
 	return VMM_OK;
 }
 
 int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
-			      arch_regs_t *regs,
-			      u32 far, u32 fs, u32 dom,
-			      u32 wnr, u32 xn, bool force_user)
+			      struct cpu_vcpu_cp15_fault_info *info,
+			      bool force_user)
 {
 	u32 orig_domain, tre_index, tre_inner, tre_outer, tre_type;
 	u32 ecode, reg_flags;
@@ -791,13 +791,13 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 	/* If VCPU tried to access hypervisor space then
 	 * halt the VCPU very early.
 	 */
-	if (vmm_host_vapool_isvalid(far)) {
+	if (vmm_host_vapool_isvalid(info->far)) {
 		vmm_manager_vcpu_halt(vcpu);
 		return VMM_EINVALID;
 	}
 
-	if (xn) {
-		if (wnr) {
+	if (info->xn) {
+		if (info->wnr) {
 			access_type = CP15_ACCESS_WRITE;
 		} else {
 			access_type = CP15_ACCESS_READ;
@@ -816,16 +816,16 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	if ((ecode = cpu_vcpu_cp15_find_page(vcpu, far,
+	if ((ecode = cpu_vcpu_cp15_find_page(vcpu, info->far,
 					     access_type, is_user, &pg))) {
-		return cpu_vcpu_cp15_assert_fault(vcpu, regs,
-						  far, (ecode >> 4),
-						  (ecode & 0xF), wnr, xn);
+		info->fs = (ecode >> 4);
+		info->dom = (ecode & 0xF);
+		return cpu_vcpu_cp15_assert_fault(vcpu, info);
 	}
 	if (pg.sz > TTBL_L2TBL_SMALL_PAGE_SIZE) {
 		pg.sz = TTBL_L2TBL_SMALL_PAGE_SIZE;
-		pg.pa = pg.pa + ((far & ~(pg.sz - 1)) - pg.va);
-		pg.va = far & ~(pg.sz - 1);
+		pg.pa = pg.pa + ((info->far & ~(pg.sz - 1)) - pg.va);
+		pg.va = info->far & ~(pg.sz - 1);
 	}
 
 	if ((rc = vmm_guest_physical_map(vcpu->guest,
@@ -971,25 +971,23 @@ int cpu_vcpu_cp15_trans_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_access_fault(struct vmm_vcpu *vcpu,
-			       arch_regs_t *regs,
-			       u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
+			       struct cpu_vcpu_cp15_fault_info *info)
 {
 	/* If VCPU tried to access hypervisor space then
 	 * halt the VCPU very early.
 	 */
-	if (vmm_host_vapool_isvalid(far)) {
+	if (vmm_host_vapool_isvalid(info->far)) {
 		vmm_manager_vcpu_halt(vcpu);
 		return VMM_EINVALID;
 	}
 
 	/* We don't do anything about access fault */
 	/* Assert fault to vcpu */
-	return cpu_vcpu_cp15_assert_fault(vcpu, regs, far, fs, dom, wnr, xn);
+	return cpu_vcpu_cp15_assert_fault(vcpu, info);
 }
 
 int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
-			       arch_regs_t *regs,
-			       u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
+			       struct cpu_vcpu_cp15_fault_info *info)
 {
 	int rc = VMM_OK;
 	struct cpu_page pg;
@@ -998,27 +996,26 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 	/* If VCPU tried to access hypervisor space then
 	 * halt the VCPU very early.
 	 */
-	if (vmm_host_vapool_isvalid(far)) {
+	if (vmm_host_vapool_isvalid(info->far)) {
 		vmm_manager_vcpu_halt(vcpu);
 		return VMM_EINVALID;
 	}
 
 	/* Try to retrieve the faulting page */
-	if ((rc = cpu_mmu_get_page(cp15->l1, far, &pg))) {
+	if ((rc = cpu_mmu_get_page(cp15->l1, info->far, &pg))) {
 		/* Remove fault address from VTLB */
-		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, info->far);
 
 		/* Force TTBL walk If MMU is enabled so that
 		 * appropriate fault will be generated.
 		 */
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					       far, fs, dom, wnr, xn, FALSE);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, info, FALSE);
 		if (rc) {
 			return rc;
 		}
 
 		/* Try again to retrieve the faulting page */
-		rc = cpu_mmu_get_page(cp15->l1, far, &pg);
+		rc = cpu_mmu_get_page(cp15->l1, info->far, &pg);
 		if (rc == VMM_ENOTAVAIL) {
 			return VMM_OK;
 		} else if (rc) {
@@ -1028,18 +1025,17 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 
 	if ((arm_priv(vcpu)->cpsr & CPSR_MODE_MASK) == CPSR_MODE_USER) {
 		/* Remove fault address from VTLB */
-		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, info->far);
 
 		/* Force TTBL walk If MMU is enabled so that
 		 * appropriate fault will be generated.
 		 */
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					       far, fs, dom, wnr, xn, FALSE);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, info, FALSE);
 		if (rc) {
 			return rc;
 		}
 	} else {
-		cpu_vcpu_halt(vcpu, regs);
+		cpu_vcpu_halt(vcpu, info->regs);
 		rc = VMM_EFAIL;
 	}
 
@@ -1047,8 +1043,7 @@ int cpu_vcpu_cp15_domain_fault(struct vmm_vcpu *vcpu,
 }
 
 int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
-			     arch_regs_t *regs,
-			     u32 far, u32 fs, u32 dom, u32 wnr, u32 xn)
+			     struct cpu_vcpu_cp15_fault_info *info)
 {
 	int rc = VMM_OK;
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
@@ -1057,27 +1052,26 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 	/* If VCPU tried to access hypervisor space then
 	 * halt the VCPU very early.
 	 */
-	if (vmm_host_vapool_isvalid(far)) {
+	if (vmm_host_vapool_isvalid(info->far)) {
 		vmm_manager_vcpu_halt(vcpu);
 		return VMM_EINVALID;
 	}
 
 	/* Try to retrieve the faulting page */
-	if ((rc = cpu_mmu_get_page(cp15->l1, far, pg))) {
+	if ((rc = cpu_mmu_get_page(cp15->l1, info->far, pg))) {
 		/* Remove fault address from VTLB */
-		cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+		cpu_vcpu_cp15_vtlb_flush_va(cp15, info->far);
 
 		/* Force TTBL walk If MMU is enabled so that
 		 * appropriate fault will be generated.
 		 */
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-					       far, fs, dom, wnr, xn, FALSE);
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, info, FALSE);
 		if (rc) {
 			return rc;
 		}
 
 		/* Try again to retrieve the faulting page */
-		rc = cpu_mmu_get_page(cp15->l1, far, pg);
+		rc = cpu_mmu_get_page(cp15->l1, info->far, pg);
 		if (rc == VMM_ENOTAVAIL) {
 			return VMM_OK;
 		} else if (rc) {
@@ -1086,22 +1080,23 @@ int cpu_vcpu_cp15_perm_fault(struct vmm_vcpu *vcpu,
 	}
 
 	/* Check if vcpu was trying read/write to virtual space */
-	if (xn && ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
+	if (info->xn &&
+	    ((pg->ap == TTBL_AP_SRW_U) || (pg->ap == TTBL_AP_SR_U))) {
 		/* Emulate load/store instructions */
 		cp15->virtio_active = TRUE;
-		if (regs->cpsr & CPSR_THUMB_ENABLED) {
-			rc = emulate_thumb_inst(vcpu, regs,
-						*((u32 *) regs->pc));
+		if (info->regs->cpsr & CPSR_THUMB_ENABLED) {
+			rc = emulate_thumb_inst(vcpu, info->regs,
+						*((u32 *)info->regs->pc));
 		} else {
-			rc = emulate_arm_inst(vcpu, regs,
-						*((u32 *) regs->pc));
+			rc = emulate_arm_inst(vcpu, info->regs,
+					      *((u32 *)info->regs->pc));
 		}
 		cp15->virtio_active = FALSE;
 		return rc;
 	}
 
 	/* Remove fault address from VTLB */
-	return cpu_vcpu_cp15_vtlb_flush_va(cp15, far);
+	return cpu_vcpu_cp15_vtlb_flush_va(cp15, info->far);
 }
 
 bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,

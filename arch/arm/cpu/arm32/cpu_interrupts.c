@@ -121,6 +121,7 @@ void do_prefetch_abort(arch_regs_t *regs)
 	bool crash_dump = FALSE;
 	u32 ifsr, ifar, fs;
 	struct vmm_vcpu *vcpu;
+	struct cpu_vcpu_cp15_fault_info info;
 
 	ifsr = read_ifsr();
 	ifar = read_ifar();
@@ -184,26 +185,46 @@ void do_prefetch_abort(arch_regs_t *regs)
 		break;
 	case IFSR_FS_TRANS_FAULT_SECTION:
 	case IFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						ifar, fs, 0, 0, 0, FALSE);
+		info.regs = regs;
+		info.far = ifar;
+		info.fs = fs;
+		info.dom = 0;
+		info.wnr = 0;
+		info.xn = 0;
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, &info, FALSE);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_ACCESS_FAULT_SECTION:
 	case IFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs,
-						ifar, fs, 0, 0, 0);
+		info.regs = regs;
+		info.far = ifar;
+		info.fs = fs;
+		info.dom = 0;
+		info.wnr = 0;
+		info.xn = 0;
+		rc = cpu_vcpu_cp15_access_fault(vcpu, &info);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_DOMAIN_FAULT_SECTION:
 	case IFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs,
-						ifar, fs, 0, 0, 0);
+		info.regs = regs;
+		info.far = ifar;
+		info.fs = fs;
+		info.dom = 0;
+		info.wnr = 0;
+		info.xn = 0;
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, &info);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_PERM_FAULT_SECTION:
 	case IFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs,
-						ifar, fs, 0, 0, 0);
+		info.regs = regs;
+		info.far = ifar;
+		info.fs = fs;
+		info.dom = 0;
+		info.wnr = 0;
+		info.xn = 0;
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, &info);
 		crash_dump = TRUE;
 		break;
 	case IFSR_FS_DEBUG_EVENT:
@@ -240,6 +261,7 @@ void do_data_abort(arch_regs_t *regs)
 	struct vmm_vcpu *vcpu;
 	struct cpu_l1tbl *l1;
 	struct cpu_page pg;
+	struct cpu_vcpu_cp15_fault_info info;
 
 	dfsr = read_dfsr();
 	dfar = read_dfar();
@@ -266,8 +288,14 @@ void do_data_abort(arch_regs_t *regs)
 			 */
 			if (vmm_scheduler_normal_context()) {
 				vcpu = vmm_scheduler_current_vcpu();
-				if (!cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						dfar, fs, dom, wnr, 1, FALSE))
+				info.regs = regs;
+				info.far = dfar;
+				info.fs = fs;
+				info.dom = dom;
+				info.wnr = wnr;
+				info.xn = 1;
+				if (!cpu_vcpu_cp15_trans_fault(vcpu,
+							&info, FALSE))
 					return;
 			}
 		}
@@ -317,28 +345,48 @@ void do_data_abort(arch_regs_t *regs)
 		break;
 	case DFSR_FS_TRANS_FAULT_SECTION:
 	case DFSR_FS_TRANS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						dfar, fs, dom, wnr, 1, FALSE);
+		info.regs = regs;
+		info.far = dfar;
+		info.fs = fs;
+		info.dom = dom;
+		info.wnr = wnr;
+		info.xn = 1;
+		rc = cpu_vcpu_cp15_trans_fault(vcpu, &info, FALSE);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_ACCESS_FAULT_SECTION:
 	case DFSR_FS_ACCESS_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_access_fault(vcpu, regs,
-						dfar, fs, dom, wnr, 1);
+		info.regs = regs;
+		info.far = dfar;
+		info.fs = fs;
+		info.dom = dom;
+		info.wnr = wnr;
+		info.xn = 1;
+		rc = cpu_vcpu_cp15_access_fault(vcpu, &info);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_DOMAIN_FAULT_SECTION:
 	case DFSR_FS_DOMAIN_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_domain_fault(vcpu, regs,
-						dfar, fs, dom, wnr, 1);
+		info.regs = regs;
+		info.far = dfar;
+		info.fs = fs;
+		info.dom = dom;
+		info.wnr = wnr;
+		info.xn = 1;
+		rc = cpu_vcpu_cp15_domain_fault(vcpu, &info);
 		crash_dump = TRUE;
 		break;
 	case DFSR_FS_PERM_FAULT_SECTION:
 	case DFSR_FS_PERM_FAULT_PAGE:
-		rc = cpu_vcpu_cp15_perm_fault(vcpu, regs,
-						dfar, fs, dom, wnr, 1);
+		info.regs = regs;
+		info.far = dfar;
+		info.fs = fs;
+		info.dom = dom;
+		info.wnr = wnr;
+		info.xn = 1;
+		rc = cpu_vcpu_cp15_perm_fault(vcpu, &info);
 		if ((dfar & ~(TTBL_L2TBL_SMALL_PAGE_SIZE - 1)) !=
-						arm_priv(vcpu)->cp15.ovect_base) {
+					arm_priv(vcpu)->cp15.ovect_base) {
 			crash_dump = FALSE;
 		}
 		break;

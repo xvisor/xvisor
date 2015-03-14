@@ -50,8 +50,14 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 		if ((vind = cpu_vcpu_cp15_find_page(vcpu, addr,
 						     CP15_ACCESS_READ,
 						     force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-					(vind >> 4), (vind & 0xF), 0, 1);
+			struct cpu_vcpu_cp15_fault_info vinfo;
+			vinfo.regs = regs;
+			vinfo.far = addr;
+			vinfo.fs = (vind >> 4);
+			vinfo.dom = (vind & 0xF);
+			vinfo.wnr = 0;
+			vinfo.xn = 1;
+			cpu_vcpu_cp15_assert_fault(vcpu, &vinfo);
 			return VMM_EFAIL;
 		}
 		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
@@ -81,13 +87,25 @@ int cpu_vcpu_mem_read(struct vmm_vcpu *vcpu,
 			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
 			if (rc == VMM_ENOTAVAIL) {
 				if (pgp->va) {
-					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						addr, DFSR_FS_TRANS_FAULT_PAGE,
-						0, 0, 1, force_unpriv);
+					struct cpu_vcpu_cp15_fault_info vinfo;
+					vinfo.regs = regs;
+					vinfo.far = addr;
+					vinfo.fs = DFSR_FS_TRANS_FAULT_PAGE;
+					vinfo.dom = 0;
+					vinfo.wnr = 0;
+					vinfo.xn = 1;
+					rc = cpu_vcpu_cp15_trans_fault(vcpu,
+							&vinfo, force_unpriv);
 				} else {
-					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						addr, DFSR_FS_TRANS_FAULT_SECTION,
-						0, 0, 1, force_unpriv);
+					struct cpu_vcpu_cp15_fault_info vinfo;
+					vinfo.regs = regs;
+					vinfo.far = addr;
+					vinfo.fs = DFSR_FS_TRANS_FAULT_SECTION;
+					vinfo.dom = 0;
+					vinfo.wnr = 0;
+					vinfo.xn = 1;
+					rc = cpu_vcpu_cp15_trans_fault(vcpu,
+							&vinfo, force_unpriv);
 				}
 				if (!rc) {
 					rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
@@ -166,9 +184,14 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 		if ((vind = cpu_vcpu_cp15_find_page(vcpu, addr,
 						     CP15_ACCESS_WRITE,
 						     force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-						   (vind >> 4), (vind & 0xF),
-						   1, 1);
+			struct cpu_vcpu_cp15_fault_info vinfo;
+			vinfo.regs = regs;
+			vinfo.far = addr;
+			vinfo.fs = (vind >> 4);
+			vinfo.dom = (vind & 0xF);
+			vinfo.wnr = 1;
+			vinfo.xn = 1;
+			cpu_vcpu_cp15_assert_fault(vcpu, &vinfo);
 			return VMM_EFAIL;
 		}
 		vind = addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1);
@@ -199,13 +222,25 @@ int cpu_vcpu_mem_write(struct vmm_vcpu *vcpu,
 			rc = cpu_mmu_get_page(cp15->l1, addr, &pg);
 			if (rc == VMM_ENOTAVAIL) {
 				if (pgp->va) {
-					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						addr, DFSR_FS_TRANS_FAULT_PAGE,
-						0, 1, 1, force_unpriv);
+					struct cpu_vcpu_cp15_fault_info vinfo;
+					vinfo.regs = regs;
+					vinfo.far = addr;
+					vinfo.fs = DFSR_FS_TRANS_FAULT_PAGE;
+					vinfo.dom = 0;
+					vinfo.wnr = 1;
+					vinfo.xn = 1;
+					rc = cpu_vcpu_cp15_trans_fault(vcpu,
+							&vinfo, force_unpriv);
 				} else {
-					rc = cpu_vcpu_cp15_trans_fault(vcpu, regs,
-						addr, DFSR_FS_TRANS_FAULT_SECTION,
-						0, 1, 1, force_unpriv);
+					struct cpu_vcpu_cp15_fault_info vinfo;
+					vinfo.regs = regs;
+					vinfo.far = addr;
+					vinfo.fs = DFSR_FS_TRANS_FAULT_SECTION;
+					vinfo.dom = 0;
+					vinfo.wnr = 1;
+					vinfo.xn = 1;
+					rc = cpu_vcpu_cp15_trans_fault(vcpu,
+							&vinfo, force_unpriv);
 				}
 				if (!rc) {
 					rc = cpu_mmu_get_page(cp15->l1, addr, pgp);
@@ -279,9 +314,14 @@ int cpu_vcpu_mem_readex(struct vmm_vcpu *vcpu,
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
 						CP15_ACCESS_READ,
 						force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-					(ecode >> 4), (ecode & 0xF),
-					0, 1);
+			struct cpu_vcpu_cp15_fault_info vinfo;
+			vinfo.regs = regs;
+			vinfo.far = addr;
+			vinfo.fs = (ecode >> 4);
+			vinfo.dom = (ecode & 0xF);
+			vinfo.wnr = 0;
+			vinfo.xn = 1;
+			cpu_vcpu_cp15_assert_fault(vcpu, &vinfo);
 			return VMM_EFAIL;
 		}
 		vind = (addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
@@ -329,9 +369,14 @@ int cpu_vcpu_mem_writeex(struct vmm_vcpu *vcpu,
 		if ((ecode = cpu_vcpu_cp15_find_page(vcpu, addr,
 						CP15_ACCESS_READ,
 						force_unpriv, &pg))) {
-			cpu_vcpu_cp15_assert_fault(vcpu, regs, addr,
-					(ecode >> 4), (ecode & 0xF),
-					0, 1);
+			struct cpu_vcpu_cp15_fault_info vinfo;
+			vinfo.regs = regs;
+			vinfo.far = addr;
+			vinfo.fs = (ecode >> 4);
+			vinfo.dom = (ecode & 0xF);
+			vinfo.wnr = 0;
+			vinfo.xn = 1;
+			cpu_vcpu_cp15_assert_fault(vcpu, &vinfo);
 			return VMM_EFAIL;
 		}
 		vind = (addr & (TTBL_L2TBL_SMALL_PAGE_SIZE - 1))/4;
