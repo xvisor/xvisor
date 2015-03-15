@@ -303,10 +303,9 @@ enum cpu_vcpu_cp15_access_permission {
  */
 static inline enum cpu_vcpu_cp15_access_permission check_ap(
 			   struct vmm_vcpu *vcpu,
+			   struct arm_priv_cp15 *cp15,
 			   int ap, int access_type, int is_user)
 {
-	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;
-
 	switch (ap) {
 	case TTBL_AP_S_U:
 		if (access_type == CP15_ACCESS_WRITE) {
@@ -375,15 +374,10 @@ static inline enum cpu_vcpu_cp15_access_permission check_ap(
 	return CP15_ACCESS_DENIED;
 }
 
-static physical_addr_t get_level1_table_pa(struct arm_priv_cp15 *cp15,
-					   virtual_addr_t va)
-{
-	if (va & cp15->c2_mask) {
-		return cp15->c2_ttbr1 & 0xffffc000;
-	}
-
-	return cp15->c2_ttbr0 & cp15->c2_base_mask;
-}
+#define get_level1_table_pa(cp15, va)	\
+		(((va) & (cp15)->c2_mask) ? \
+			((cp15)->c2_ttbr1 & 0xffffc000) : \
+			((cp15)->c2_ttbr0 & (cp15)->c2_base_mask))
 
 static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 			int access_type, int is_user,
@@ -400,12 +394,15 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor. */
 	table = get_level1_table_pa(cp15, va);
 
+	/* compute the L1 descriptor physical location */
 	table |= (va >> 18) & 0x3ffc;
+
 	/* FIXME: Should this be cacheable memory access ? */
 	if (!vmm_guest_memory_read(vcpu->guest, table,
 				   &desc, sizeof(desc), TRUE)) {
 		return VMM_EFAIL;
 	}
+
 	type = (desc & 3);
 	if (type == 0) {
 		/* Section translation fault. */
@@ -419,14 +416,14 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* Section or page. */
 		pg->dom = (desc >> 5) & 0xF;
 	}
+
 	domain = (cp15->c3_dacr >> (pg->dom << 1)) & 3;
 	if (domain == 0 || domain == 2) {
-		if (type == 2)
-			*fs = 9;	/* Section domain fault. */
-		else
-			*fs = 11;	/* Page domain fault. */
+		/* Section / Page domain fault ?? */
+		*fs = (type == 2) ? 9 : 11;
 		goto do_fault;
 	}
+
 	if (type == 2) {
 		if (desc & (1 << 18)) {
 			/* Supersection. */
@@ -449,11 +446,13 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		/* Lookup l2 entry. */
 		table = (desc & 0xfffffc00);
 		table |= ((va >> 10) & 0x3fc);
+
 		/* FIXME: Should this be cacheable memory access ? */
 		if (!vmm_guest_memory_read(vcpu->guest, table,
 					   &desc, sizeof(desc), TRUE)) {
 			return VMM_EFAIL;
 		}
+
 		switch (desc & 3) {
 		case 0:	/* Page translation fault. */
 			*fs = 7;
@@ -484,6 +483,7 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		pg->b = (desc >> 2) & 0x1;
 		*fs = 15;
 	}
+
 	if (domain == 3) {
 		/* Page permission not to be checked so,
 		 * give full access using access permissions.
@@ -500,13 +500,15 @@ static int ttbl_walk_v6(struct vmm_vcpu *vcpu, virtual_addr_t va,
 			*fs = (*fs == 15) ? 6 : 3;
 			goto do_fault;
 		}
-		if (check_ap(vcpu, pg->ap, access_type, is_user) ==
+		if (check_ap(vcpu, cp15, pg->ap, access_type, is_user) ==
 							CP15_ACCESS_DENIED) {
 			/* Access permission fault. */
 			goto do_fault;
 		}
 	}
+
 	return VMM_OK;
+
  do_fault:
 	return VMM_EFAIL;
 }
@@ -526,7 +528,7 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 	/* Lookup l1 descriptor. */
 	table = get_level1_table_pa(cp15, va);
 
-	/* compute the L1 descripto physical location */
+	/* compute the L1 descriptor physical location */
 	table |= (va >> 18) & 0x3ffc;
 
 	/* get it */
@@ -679,7 +681,7 @@ static int ttbl_walk_v5(struct vmm_vcpu *vcpu, virtual_addr_t va,
 		 * give full access using access permissions.
 		 */
 		pg->ap = TTBL_AP_SRW_URW;
-	} else if (check_ap(vcpu, pg->ap, access_type, is_user) ==
+	} else if (check_ap(vcpu, cp15, pg->ap, access_type, is_user) ==
 						CP15_ACCESS_DENIED) {
 		/* Access permission fault. */
 		goto do_fault;
