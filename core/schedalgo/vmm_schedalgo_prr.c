@@ -109,14 +109,16 @@ int vmm_schedalgo_rq_enqueue(void *rq, struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
-struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq)
+int vmm_schedalgo_rq_dequeue(void *rq,
+			     struct vmm_vcpu **next,
+			     u64 *next_time_slice)
 {
 	int p;
 	struct vmm_schedalgo_rq_entry *rq_entry;
 	struct vmm_schedalgo_rq *rqi;
 	
 	if (!rq) {
-		return NULL;
+		return VMM_EFAIL;
 	}
 
 	rqi = rq;
@@ -130,15 +132,22 @@ struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq)
 	}
 
 	if (!p) {
-		return NULL;
+		return VMM_ENOTAVAIL;
 	}
 
 	p = p - 1;
 	rq_entry = list_first_entry(&rqi->list[p],
 				struct vmm_schedalgo_rq_entry, head);
 	list_del(&rq_entry->head);
-	
-	return rq_entry->vcpu;
+
+	if (next) {
+		*next = rq_entry->vcpu;
+	}
+	if (next_time_slice) {
+		*next_time_slice = rq_entry->vcpu->time_slice;
+	}
+
+	return VMM_OK;
 }
 
 int vmm_schedalgo_rq_detach(void *rq, struct vmm_vcpu *vcpu)

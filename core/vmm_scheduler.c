@@ -66,13 +66,15 @@ struct vmm_scheduler_ctrl {
 
 static DEFINE_PER_CPU(struct vmm_scheduler_ctrl, sched);
 
-static struct vmm_vcpu *rq_dequeue(struct vmm_scheduler_ctrl *schedp)
+static int rq_dequeue(struct vmm_scheduler_ctrl *schedp,
+		      struct vmm_vcpu **next,
+		      u64 *next_time_slice)
 {
-	struct vmm_vcpu *ret;
+	int ret;
 	irq_flags_t flags;
 	
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
-	ret = vmm_schedalgo_rq_dequeue(schedp->rq);
+	ret = vmm_schedalgo_rq_dequeue(schedp->rq, next, next_time_slice);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
 
 	return ret;
@@ -132,18 +134,20 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			       struct vmm_timer_event *ev,
 			       arch_regs_t *regs)
 {
-	irq_flags_t cf, nf;
+	int rc;
+	irq_flags_t cf, nf = 0;
+	u32 current_state;
+	u64 next_time_slice = VMM_VCPU_DEF_TIME_SLICE;
 	u64 tstamp = vmm_timer_timestamp();
 	struct vmm_vcpu *next = NULL;
 	struct vmm_vcpu *tcurrent = NULL, *current = schedp->current_vcpu;
-	u32 current_state;
 
 	/* First time scheduling */
 	if (!current) {
-		next = rq_dequeue(schedp);
-		if (!next) {
+		rc = rq_dequeue(schedp, &next, &next_time_slice);
+		if (rc) {
 			/* This should never happen !!! */
-			vmm_panic("%s: no vcpu to switch to.\n", __func__);
+			vmm_panic("%s: dequeue error %d\n", __func__, rc);
 		}
 
 		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
@@ -154,7 +158,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		next->state_tstamp = tstamp;
 		schedp->current_vcpu = next;
 		schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
-		vmm_timer_event_start(ev, next->time_slice);
+		vmm_timer_event_start(ev, next_time_slice);
 
 		vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
 
@@ -180,10 +184,10 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		tcurrent = current;
 	}
 
-	next = rq_dequeue(schedp);
-	if (!next) {
+	rc = rq_dequeue(schedp, &next, &next_time_slice);
+	if (rc) {
 		/* This should never happen !!! */
-		vmm_panic("%s: no vcpu to switch to.\n", __func__);
+		vmm_panic("%s: dequeue error %d\n", __func__, rc);
 	}
 
 	if (next != current) {
@@ -196,7 +200,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
-	vmm_timer_event_start(ev, next->time_slice);
+	vmm_timer_event_start(ev, next_time_slice);
 
 	if (next != current) {
 		vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);

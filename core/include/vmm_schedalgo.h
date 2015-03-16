@@ -36,7 +36,9 @@ int vmm_schedalgo_vcpu_cleanup(struct vmm_vcpu *vcpu);
 int vmm_schedalgo_rq_enqueue(void *rq, struct vmm_vcpu *vcpu);
 
 /** Dequeue VCPU from a ready queue */
-struct vmm_vcpu *vmm_schedalgo_rq_dequeue(void *rq);
+int vmm_schedalgo_rq_dequeue(void *rq,
+			     struct vmm_vcpu **next,
+			     u64 *next_time_slice);
 
 /** Detach VCPU from its ready queue */
 int vmm_schedalgo_rq_detach(void *rq, struct vmm_vcpu *vcpu);
