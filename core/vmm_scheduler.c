@@ -783,6 +783,8 @@ int __cpuinit vmm_scheduler_init(void)
 						(virtual_addr_t)&idle_orphan,
 						IDLE_VCPU_STACK_SZ,
 						IDLE_VCPU_PRIORITY,
+						IDLE_VCPU_TIMESLICE,
+						IDLE_VCPU_TIMESLICE,
 						IDLE_VCPU_TIMESLICE);
 	if (!schedp->idle_vcpu) {
 		return VMM_EFAIL;

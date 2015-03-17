@@ -106,7 +106,7 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id)
 	return ret;
 }
 
-static void manager_vcpu_ipi_reset(void *vcpu_ptr, 
+static void manager_vcpu_ipi_reset(void *vcpu_ptr,
 				   void *dummy1, void *dummy2)
 {
 	vmm_scheduler_state_change(vcpu_ptr, VMM_VCPU_STATE_RESET);
@@ -187,27 +187,27 @@ int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
 	/* Syncup statistics based on current timestamp */
 	switch (current_state) {
 	case VMM_VCPU_STATE_READY:
-		vcpu->state_ready_nsecs += 
+		vcpu->state_ready_nsecs +=
 				current_tstamp - vcpu->state_tstamp;
 		vcpu->state_tstamp = current_tstamp;
 		break;
 	case VMM_VCPU_STATE_RUNNING:
-		vcpu->state_running_nsecs += 
+		vcpu->state_running_nsecs +=
 				current_tstamp - vcpu->state_tstamp;
 		vcpu->state_tstamp = current_tstamp;
 		break;
 	case VMM_VCPU_STATE_PAUSED:
-		vcpu->state_paused_nsecs += 
+		vcpu->state_paused_nsecs +=
 				current_tstamp - vcpu->state_tstamp;
 		vcpu->state_tstamp = current_tstamp;
 		break;
 	case VMM_VCPU_STATE_HALTED:
-		vcpu->state_halted_nsecs += 
+		vcpu->state_halted_nsecs +=
 				current_tstamp - vcpu->state_tstamp;
 		vcpu->state_tstamp = current_tstamp;
 		break;
 	default:
-		break; 
+		break;
 	}
 
 	/* Retrive statistics */
@@ -254,10 +254,10 @@ int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 new_state)
 		return VMM_EFAIL;
 	}
 
-	/* If new_state == VMM_VCPU_STATE_RESET then 
+	/* If new_state == VMM_VCPU_STATE_RESET then
 	 * we use sync IPI for proper working of VCPU reset.
-	 * 
-	 * For all other states we can directly call 
+	 *
+	 * For all other states we can directly call
 	 * scheduler state change
 	 */
 
@@ -288,7 +288,7 @@ int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 	return VMM_OK;
 }
 
-static void manager_vcpu_movto_hcpu(void *vcpu_ptr, 
+static void manager_vcpu_movto_hcpu(void *vcpu_ptr,
 				    void *new_hcpu, void *dummy)
 {
 	int rc;
@@ -298,7 +298,7 @@ static void manager_vcpu_movto_hcpu(void *vcpu_ptr,
 
 	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
 	if (rc) {
-		DPRINTF("%s: Failed to pause VCPU=%s on CPU%d (%d)\n", 
+		DPRINTF("%s: Failed to pause VCPU=%s on CPU%d (%d)\n",
 			__func__, vcpu->name, vmm_smp_processor_id(), rc);
 		return;
 	}
@@ -428,7 +428,7 @@ const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu)
 	return cpu_mask;
 }
 
-int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu, 
+int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 				  const struct vmm_cpumask *cpu_mask)
 {
 	int rc;
@@ -473,7 +473,9 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_size_t stack_sz,
 					    u8 priority,
-					    u64 time_slice_nsecs)
+					    u64 time_slice_nsecs,
+					    u64 deadline,
+					    u64 periodicity)
 {
 	u32 vnum;
 	struct vmm_vcpu *vcpu = NULL;
@@ -543,7 +545,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	}
 	vcpu->stack_sz = stack_sz;
 
-	/* Intialize scheduling context */
+	/* Intialize dynamic scheduling context */
 	INIT_RW_LOCK(&vcpu->sched_lock);
 	vcpu->hcpu = vmm_loadbal_good_hcpu(priority);
 	vcpu->cpu_affinity = cpu_online_mask;
@@ -555,9 +557,13 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->reset_count = 0;
 	vcpu->reset_tstamp = 0;
 	vcpu->preempt_count = 0;
+	vcpu->sched_priv = NULL;
+
+	/* Intialize static scheduling context */
 	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
-	vcpu->sched_priv = NULL;
+	vcpu->deadline = deadline;
+	vcpu->periodicity = periodicity;
 
 	/* Initialize architecture specific context */
 	vcpu->arch_priv = NULL;
@@ -570,7 +576,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->wq_priv = NULL;
 
 	/* Notify scheduler about new VCPU */
-	if (vmm_manager_vcpu_set_state(vcpu, 
+	if (vmm_manager_vcpu_set_state(vcpu,
 					VMM_VCPU_STATE_RESET)) {
 		goto fail_vcpu_deinit;
 	}
@@ -612,7 +618,7 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 	vmm_waitqueue_forced_remove(vcpu);
 
 	/* Reset the VCPU */
-	if ((rc = vmm_manager_vcpu_set_state(vcpu, 
+	if ((rc = vmm_manager_vcpu_set_state(vcpu,
 					VMM_VCPU_STATE_RESET))) {
 		return rc;
 	}
@@ -812,7 +818,7 @@ struct vmm_vcpu *vmm_manager_guest_next_vcpu(const struct vmm_guest *guest,
 }
 
 int vmm_manager_guest_vcpu_iterate(struct vmm_guest *guest,
-				   int (*iter)(struct vmm_vcpu *, void *), 
+				   int (*iter)(struct vmm_vcpu *, void *),
 				   void *priv)
 {
 	int rc = VMM_OK;
@@ -853,7 +859,7 @@ int vmm_manager_guest_reset(struct vmm_guest *guest)
 	guest->reset_count++;
 	guest->reset_tstamp = vmm_timer_timestamp();
 
-	rc = vmm_manager_guest_vcpu_iterate(guest, 
+	rc = vmm_manager_guest_vcpu_iterate(guest,
 				manager_guest_reset_iter, NULL);
 	if (rc) {
 		return rc;
@@ -873,7 +879,7 @@ u64 vmm_manager_guest_reset_timestamp(struct vmm_guest *guest)
 
 static int manager_guest_kick_iter(struct vmm_vcpu *vcpu, void *priv)
 {
-	/* Do not kick VCPU with poweroff flag set 
+	/* Do not kick VCPU with poweroff flag set
 	 * when Guest is kicked.
 	 */
 	if (vcpu->is_poweroff) {
@@ -884,7 +890,7 @@ static int manager_guest_kick_iter(struct vmm_vcpu *vcpu, void *priv)
 
 int vmm_manager_guest_kick(struct vmm_guest *guest)
 {
-	return vmm_manager_guest_vcpu_iterate(guest, 
+	return vmm_manager_guest_vcpu_iterate(guest,
 					manager_guest_kick_iter, NULL);
 }
 
@@ -895,7 +901,7 @@ static int manager_guest_pause_iter(struct vmm_vcpu *vcpu, void *priv)
 
 int vmm_manager_guest_pause(struct vmm_guest *guest)
 {
-	return vmm_manager_guest_vcpu_iterate(guest, 
+	return vmm_manager_guest_vcpu_iterate(guest,
 					manager_guest_pause_iter, NULL);
 }
 
@@ -906,7 +912,7 @@ static int manager_guest_resume_iter(struct vmm_vcpu *vcpu, void *priv)
 
 int vmm_manager_guest_resume(struct vmm_guest *guest)
 {
-	return vmm_manager_guest_vcpu_iterate(guest, 
+	return vmm_manager_guest_vcpu_iterate(guest,
 					manager_guest_resume_iter, NULL);
 }
 
@@ -1121,7 +1127,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		if ((guest->node == gnode) ||
 		    (strcmp(guest->name, gnode->name) == 0)) {
 			vmm_manager_unlock();
-			vmm_printf("%s: Duplicate Guest %s detected\n", 
+			vmm_printf("%s: Duplicate Guest %s detected\n",
 					__func__, gnode->name);
 			return NULL;
 		}
@@ -1137,7 +1143,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	}
 	if (!guest) {
 		vmm_manager_unlock();
-		vmm_printf("%s: No available Guest instance found\n", 
+		vmm_printf("%s: No available Guest instance found\n",
 			   __func__);
 		return NULL;
 	}
@@ -1264,7 +1270,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		/* Setup start program counter and stack */
 		vmm_devtree_read_virtaddr(vnode,
 			VMM_DEVTREE_START_PC_ATTR_NAME, &vcpu->start_pc);
-		vcpu->stack_va = 
+		vcpu->stack_va =
 			(virtual_addr_t)vmm_malloc(CONFIG_IRQ_STACK_SIZE);
 		if (!vcpu->stack_va) {
 			vmm_printf("%s: stack alloc failed "
@@ -1279,7 +1285,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		}
 		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
 
-		/* Initialize scheduling context */
+		/* Initialize dynamic scheduling context */
 		INIT_RW_LOCK(&vcpu->sched_lock);
 		vcpu->state_tstamp = vmm_timer_timestamp();
 		vcpu->state_ready_nsecs = 0;
@@ -1289,6 +1295,11 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->reset_count = 0;
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
+		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
+		vcpu->cpu_affinity = cpu_online_mask;
+		vcpu->sched_priv = NULL;
+
+		/* Initialize static scheduling context */
 		if (vmm_devtree_read_u32(vnode,
 			VMM_DEVTREE_PRIORITY_ATTR_NAME, &val)) {
 			vcpu->priority = VMM_VCPU_DEF_PRIORITY;
@@ -1305,9 +1316,14 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			VMM_DEVTREE_TIME_SLICE_ATTR_NAME, &vcpu->time_slice)) {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
-		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
-		vcpu->cpu_affinity = cpu_online_mask;
-		vcpu->sched_priv = NULL;
+		if (vmm_devtree_read_u64(vnode,
+			VMM_DEVTREE_DEADLINE_ATTR_NAME, &vcpu->deadline)) {
+			vcpu->deadline = vcpu->time_slice;
+		}
+		if (vmm_devtree_read_u64(vnode,
+			VMM_DEVTREE_PERIODICITY_ATTR_NAME, &vcpu->periodicity)) {
+			vcpu->periodicity = vcpu->deadline;
+		}
 
 		/* Initialize architecture specific context */
 		vcpu->arch_priv = NULL;
@@ -1518,7 +1534,7 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 		/* Set VCPU state to unknown
 		 * (This will clean scheduling context)
 		 */
-		if ((rc = vmm_manager_vcpu_set_state(vcpu, 
+		if ((rc = vmm_manager_vcpu_set_state(vcpu,
 						VMM_VCPU_STATE_UNKNOWN))) {
 			return rc;
 		}

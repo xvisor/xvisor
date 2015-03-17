@@ -185,7 +185,7 @@ struct vmm_vcpu {
 	virtual_addr_t stack_va;
 	virtual_size_t stack_sz;
 
-	/* Scheduling & load balancing context */
+	/* Scheduler dynamic context */
 	vmm_rwlock_t sched_lock;
 	u32 hcpu;
 	const struct vmm_cpumask *cpu_affinity;
@@ -197,10 +197,14 @@ struct vmm_vcpu {
 	u64 state_halted_nsecs;
 	u32 reset_count;
 	u64 reset_tstamp;
-	u8 priority;
 	u32 preempt_count;
-	u64 time_slice;
 	void *sched_priv;
+
+	/* Scheduler static context */
+	u8 priority;
+	u64 time_slice;
+	u64 deadline;
+	u64 periodicity;
 
 	/* Architecture specific context */
 	arch_regs_t regs;
@@ -301,7 +305,9 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_size_t stack_sz,
 					    u8 priority,
-					    u64 time_slice_nsecs);
+					    u64 time_slice_nsecs,
+					    u64 deadline,
+					    u64 periodicity);
 
 /** Destroy an orphan VCPU */
 int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu);

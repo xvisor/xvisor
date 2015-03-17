@@ -305,6 +305,8 @@ int __cpuinit vmm_smp_ipi_init(void)
 						(virtual_addr_t)&smp_ipi_main,
 						IPI_VCPU_STACK_SZ,
 						IPI_VCPU_PRIORITY, 
+						IPI_VCPU_TIMESLICE,
+						IPI_VCPU_TIMESLICE,
 						IPI_VCPU_TIMESLICE);
 	if (!ictlp->ipi_vcpu) {
 		rc = VMM_EFAIL;

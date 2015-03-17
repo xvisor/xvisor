@@ -44,10 +44,12 @@ struct vmm_thread {
 	struct dlist head;		/* thread list head */
 	struct vmm_vcpu *tvcpu;	/* vcpu on which thread runs */
 	int (*tfn) (void *udata);	/* thread functions */
-	void *tdata;			/* data passed to thread 
+	void *tdata;			/* data passed to thread
 					 * function on execution */
 	int tretval;			/* thread return value */
 	u64 tnsecs;			/* thread time slice in nanoseconds */
+	u64 tdeadline;			/* thread deadline in nanoseconds */
+	u64 tperiodicity;		/* thread periodicity in nanoseconds */
 };
 
 /** Start a thread */
@@ -84,7 +86,7 @@ int vmm_thread_set_hcpu(struct vmm_thread *tinfo, u32 hcpu);
 const struct vmm_cpumask *vmm_threads_get_affinity(struct vmm_thread *tinfo);
 
 /** Update host CPU affinity of given thread */
-int vmm_threads_set_affinity(struct vmm_thread *tinfo, 
+int vmm_threads_set_affinity(struct vmm_thread *tinfo,
 			     const struct vmm_cpumask *cpu_mask);
 
 /** Retrive thread instance from thread id */
@@ -96,12 +98,30 @@ struct vmm_thread *vmm_threads_index2thread(int index);
 /** Count number of threads */
 u32 vmm_threads_count(void);
 
+/** Create a new thread with explicitly specified deadline and periodicity.
+ *  This is more real-time friendly API so that users can specify deadline
+ *  and periodicity for a VCPU.
+ */
+struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
+					 int (*thread_fn) (void *udata),
+					 void *thread_data,
+					 u8 thread_priority,
+				         u64 thread_nsecs,
+					 u64 thread_deadline,
+					 u64 thread_periodicity);
+
 /** Create a new thread */
-struct vmm_thread *vmm_threads_create(const char *thread_name, 
-				      int (*thread_fn) (void *udata),
-				      void *thread_data,
-				      u8 thread_priority,
-				      u64 thread_nsecs);
+static inline struct vmm_thread *vmm_threads_create(
+					const char *thread_name,
+					int (*thread_fn) (void *udata),
+					void *thread_data,
+					u8 thread_priority,
+					u64 thread_nsecs)
+{
+	return vmm_threads_create_rt(thread_name, thread_fn, thread_data,
+				     thread_priority, thread_nsecs,
+				     thread_nsecs, thread_nsecs);
+}
 
 /** Destroy a thread */
 int vmm_threads_destroy(struct vmm_thread *tinfo);

@@ -137,9 +137,9 @@ int vmm_threads_get_state(struct vmm_thread *tinfo)
 		rc =  -1;
 	} else {
 		state = vmm_manager_vcpu_get_state(tinfo->tvcpu);
-		if (state & VMM_VCPU_STATE_RESET) { 
+		if (state & VMM_VCPU_STATE_RESET) {
 			rc = VMM_THREAD_STATE_CREATED;
-		} else if (state & 
+		} else if (state &
 			  (VMM_VCPU_STATE_READY | VMM_VCPU_STATE_RUNNING)) {
 			rc = VMM_THREAD_STATE_RUNNING;
 		} else if (state & VMM_VCPU_STATE_PAUSED) {
@@ -181,7 +181,7 @@ const struct vmm_cpumask *vmm_threads_get_affinity(struct vmm_thread *tinfo)
 	return vmm_manager_vcpu_get_affinity(tinfo->tvcpu);
 }
 
-int vmm_threads_set_affinity(struct vmm_thread *tinfo, 
+int vmm_threads_set_affinity(struct vmm_thread *tinfo,
 			     const struct vmm_cpumask *cpu_mask)
 {
 	if (!tinfo || !cpu_mask) {
@@ -283,16 +283,18 @@ static void vmm_threads_entry(void)
 	
 	/* Nothing else to do for this thread.
 	 * Let us hope someone else will destroy it.
-	 * For now just hang. :( :( 
+	 * For now just hang. :( :(
          */
 	vmm_hang();
 }
 
-struct vmm_thread *vmm_threads_create(const char *thread_name, 
-				      int (*thread_fn) (void *udata),
-				      void *thread_data,
-				      u8 thread_priority,
-				      u64 thread_nsecs)
+struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
+					 int (*thread_fn) (void *udata),
+					 void *thread_data,
+					 u8 thread_priority,
+				         u64 thread_nsecs,
+					 u64 thread_deadline,
+					 u64 thread_periodicity)
 {
 	irq_flags_t flags;
 	struct vmm_thread *tinfo;
@@ -305,12 +307,14 @@ struct vmm_thread *vmm_threads_create(const char *thread_name,
 	tinfo->tfn = thread_fn;
 	tinfo->tdata = thread_data;
 	tinfo->tnsecs = thread_nsecs;
+	tinfo->tdeadline = thread_deadline;
+	tinfo->tperiodicity = thread_periodicity;
 
 	/* Create an orphan vcpu for this thread */
 	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
 			(virtual_addr_t)&vmm_threads_entry,
-			CONFIG_THREAD_STACK_SIZE,
-			thread_priority, thread_nsecs);
+			CONFIG_THREAD_STACK_SIZE, thread_priority,
+			thread_nsecs, thread_deadline, thread_periodicity);
 	if (!tinfo->tvcpu) {
 		vmm_free(tinfo);
 		return NULL;

@@ -84,6 +84,8 @@
 #define VMM_DEVTREE_START_PC_ATTR_NAME		"start_pc"
 #define VMM_DEVTREE_PRIORITY_ATTR_NAME		"priority"
 #define VMM_DEVTREE_TIME_SLICE_ATTR_NAME	"time_slice"
+#define VMM_DEVTREE_DEADLINE_ATTR_NAME		"deadline"
+#define VMM_DEVTREE_PERIODICITY_ATTR_NAME	"periodicity"
 #define VMM_DEVTREE_ADDRSPACE_NODE_NAME		"aspace"
 #define VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME	"guest_irq_count"
 #define VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME	"manifest_type"
