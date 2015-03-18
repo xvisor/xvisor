@@ -563,7 +563,13 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
 	vcpu->deadline = deadline;
+	if (vcpu->deadline < vcpu->time_slice) {
+		vcpu->deadline = vcpu->time_slice;
+	}
 	vcpu->periodicity = periodicity;
+	if (vcpu->periodicity < vcpu->deadline) {
+		vcpu->periodicity = vcpu->deadline;
+	}
 
 	/* Initialize architecture specific context */
 	vcpu->arch_priv = NULL;
@@ -1316,12 +1322,21 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			VMM_DEVTREE_TIME_SLICE_ATTR_NAME, &vcpu->time_slice)) {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
 		}
+		if (vcpu->time_slice == 0) {
+			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
+		}
 		if (vmm_devtree_read_u64(vnode,
 			VMM_DEVTREE_DEADLINE_ATTR_NAME, &vcpu->deadline)) {
+			vcpu->deadline = VMM_VCPU_DEF_DEADLINE;
+		}
+		if (vcpu->deadline < vcpu->time_slice) {
 			vcpu->deadline = vcpu->time_slice;
 		}
 		if (vmm_devtree_read_u64(vnode,
 			VMM_DEVTREE_PERIODICITY_ATTR_NAME, &vcpu->periodicity)) {
+			vcpu->periodicity = VMM_VCPU_DEF_PERIODICITY;
+		}
+		if (vcpu->periodicity < vcpu->deadline) {
 			vcpu->periodicity = vcpu->deadline;
 		}
 

@@ -167,6 +167,8 @@ enum vmm_vcpu_states {
 #define VMM_VCPU_MAX_PRIORITY		7
 #define VMM_VCPU_DEF_PRIORITY		3
 #define VMM_VCPU_DEF_TIME_SLICE		(CONFIG_TSLICE_MS * 1000000)
+#define VMM_VCPU_DEF_DEADLINE		(VMM_VCPU_DEF_TIME_SLICE * 10)
+#define VMM_VCPU_DEF_PERIODICITY	(VMM_VCPU_DEF_DEADLINE * 10)
 
 struct vmm_vcpu {
 	struct dlist head;

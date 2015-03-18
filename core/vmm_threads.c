@@ -307,8 +307,17 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 	tinfo->tfn = thread_fn;
 	tinfo->tdata = thread_data;
 	tinfo->tnsecs = thread_nsecs;
+	if (tinfo->tnsecs == 0) {
+		tinfo->tnsecs = VMM_THREAD_DEF_TIME_SLICE;
+	}
 	tinfo->tdeadline = thread_deadline;
+	if (tinfo->tdeadline < tinfo->tnsecs) {
+		tinfo->tdeadline = tinfo->tnsecs;
+	}
 	tinfo->tperiodicity = thread_periodicity;
+	if (tinfo->tperiodicity < tinfo->tdeadline) {
+		tinfo->tperiodicity = tinfo->tdeadline;
+	}
 
 	/* Create an orphan vcpu for this thread */
 	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,

@@ -78,6 +78,8 @@ bool vmm_smp_is_bootcpu(void)
 #define IPI_VCPU_STACK_SZ 		CONFIG_THREAD_STACK_SIZE
 #define IPI_VCPU_PRIORITY 		VMM_VCPU_MAX_PRIORITY
 #define IPI_VCPU_TIMESLICE 		VMM_VCPU_DEF_TIME_SLICE
+#define IPI_VCPU_DEADLINE 		VMM_VCPU_DEF_DEADLINE
+#define IPI_VCPU_PERIODICITY		VMM_VCPU_DEF_PERIODICITY
 
 struct smp_ipi_call {
 	u32 src_cpu;
@@ -306,8 +308,8 @@ int __cpuinit vmm_smp_ipi_init(void)
 						IPI_VCPU_STACK_SZ,
 						IPI_VCPU_PRIORITY, 
 						IPI_VCPU_TIMESLICE,
-						IPI_VCPU_TIMESLICE,
-						IPI_VCPU_TIMESLICE);
+						IPI_VCPU_DEADLINE,
+						IPI_VCPU_PERIODICITY);
 	if (!ictlp->ipi_vcpu) {
 		rc = VMM_EFAIL;
 		goto fail_free_async;

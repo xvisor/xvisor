@@ -32,6 +32,8 @@
 #define VMM_THREAD_MIN_PRIORITY VMM_VCPU_MIN_PRIORITY
 #define VMM_THREAD_DEF_PRIORITY	VMM_VCPU_DEF_PRIORITY
 #define VMM_THREAD_DEF_TIME_SLICE VMM_VCPU_DEF_TIME_SLICE
+#define VMM_THREAD_DEF_DEADLINE VMM_VCPU_DEF_DEADLINE
+#define VMM_THREAD_DEF_PERIODICITY VMM_VCPU_DEF_PERIODICITY
 
 enum vmm_thread_states {
 	VMM_THREAD_STATE_CREATED=0,
@@ -120,7 +122,7 @@ static inline struct vmm_thread *vmm_threads_create(
 {
 	return vmm_threads_create_rt(thread_name, thread_fn, thread_data,
 				     thread_priority, thread_nsecs,
-				     thread_nsecs, thread_nsecs);
+				     thread_nsecs * 10, thread_nsecs * 100);
 }
 
 /** Destroy a thread */
