@@ -32,6 +32,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_delay.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <libs/vfs.h>
@@ -60,7 +61,8 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs help\n");
 	vmm_cprintf(cdev, "   vfs fslist\n");
 	vmm_cprintf(cdev, "   vfs mplist\n");
-	vmm_cprintf(cdev, "   vfs mount <bdev_name> <path_to_mount>\n");
+	vmm_cprintf(cdev, "   vfs mount <bdev_name> <path_to_mount> "
+			  "[wait_sec]\n");
 	vmm_cprintf(cdev, "   vfs umount <path_to_unmount>\n");
 	vmm_cprintf(cdev, "   vfs ls <path_to_dir>\n");
 	vmm_cprintf(cdev, "   vfs cat <path_to_file>\n");
@@ -150,16 +152,24 @@ static int cmd_vfs_mplist(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-static int cmd_vfs_mount(struct vmm_chardev *cdev, 
-			 const char *dev, const char *path)
+static int cmd_vfs_mount(struct vmm_chardev *cdev,
+			 const char *dev, const char *path,
+			 long *pwait)
 {
 	int rc;
 	bool found;
 	int fd, num, count;
 	struct vmm_blockdev *bdev;
 	struct filesystem *fs;
+	long wait = (pwait) ? *pwait : 0;
 
-	bdev = vmm_blockdev_find(dev);
+	do {
+		bdev = vmm_blockdev_find(dev);
+		if (bdev || (wait <= 0))
+			break;
+		vmm_msleep(1000);
+		wait -= 1;
+	} while (wait > 0);
 	if (!bdev) {
 		vmm_cprintf(cdev, "Block device %s not found\n", dev);
 		return VMM_ENODEV;
@@ -1156,8 +1166,13 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_fslist(cdev);
 	} else if ((strcmp(argv[1], "mplist") == 0) && (argc == 2)) {
 		return cmd_vfs_mplist(cdev);
-	} else if ((strcmp(argv[1], "mount") == 0) && (argc == 4)) {
-		return cmd_vfs_mount(cdev, argv[2], argv[3]);
+	} else if (strcmp(argv[1], "mount") == 0) {
+		if (argc == 4) {
+			return cmd_vfs_mount(cdev, argv[2], argv[3], NULL);
+		} else if (argc == 5) {
+			long wait = strtol(argv[4], NULL, 10);
+			return cmd_vfs_mount(cdev, argv[2], argv[3], &wait);
+		}
 	} else if ((strcmp(argv[1], "umount") == 0) && (argc == 3)) {
 		return cmd_vfs_umount(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "ls") == 0) && (argc == 3)) {
