@@ -940,6 +940,8 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_EXTENDED_FEATURES:
 	case CPUID_EXTENDED_ADDR_NR_PROC:
 	case CPUID_EXTENDED_CAPABILITIES:
+	case CPUID_BASE_PWR_MNG:
+	case CPUID_EXTENDED_SVM_IDENTIFIER:
 		context->vmcb->rax = 0;
 		context->g_regs[GUEST_REGS_RBX] = 0;
 		context->g_regs[GUEST_REGS_RCX] = 0;
