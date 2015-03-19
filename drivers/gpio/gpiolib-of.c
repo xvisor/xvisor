@@ -37,6 +37,10 @@ struct gg_data {
 static int of_gpiochip_find_and_xlate(struct gpio_chip *gc, void *data)
 {
 	struct gg_data *gg_data = data;
+#if 0
+#else
+	u32 flags;
+#endif
 	int ret;
 
 	if ((gc->of_node != gg_data->gpiospec.np) ||
@@ -44,7 +48,13 @@ static int of_gpiochip_find_and_xlate(struct gpio_chip *gc, void *data)
 	    (!gc->of_xlate))
 		return false;
 
+#if 0
 	ret = gc->of_xlate(gc, &gg_data->gpiospec, gg_data->flags);
+#else
+	flags = *gg_data->flags;
+	ret = gc->of_xlate(gc, &gg_data->gpiospec, &flags);
+	*gg_data->flags = (enum of_gpio_flags)flags;
+#endif
 	if (ret < 0)
 		return false;
 
