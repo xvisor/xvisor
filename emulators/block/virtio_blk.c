@@ -476,11 +476,6 @@ static int virtio_blk_connect(struct virtio_device *dev,
 	}
 	vbdev->vdev = dev;
 
-	if (vmm_devtree_read_string(dev->edev->node,
-				    "blkdev", &attr) != VMM_OK) {
-		attr = NULL;
-	}
-
 	vbdev->config.capacity = 0;
 	vbdev->config.seg_max = VIRTIO_BLK_DISK_SEG_MAX,
 	vbdev->config.blk_size = VIRTIO_BLK_SECTOR_SIZE;
@@ -490,11 +485,18 @@ static int virtio_blk_connect(struct virtio_device *dev,
 					virtio_blk_detached,
 					virtio_blk_req_completed,
 					virtio_blk_req_failed,
-					attr, vbdev);
+					vbdev);
 	if (!vbdev->vdisk) {
 		vmm_free(vbdev);
 		return VMM_EFAIL;
 	}
+
+	/* Attach block device */
+	if (vmm_devtree_read_string(dev->edev->node,
+				    "blkdev", &attr) != VMM_OK) {
+		attr = NULL;
+	}
+	vmm_vdisk_attach_block_device(vbdev->vdisk, attr);
 
 	dev->emu_data = vbdev;
 

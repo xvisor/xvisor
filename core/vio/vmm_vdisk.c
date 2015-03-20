@@ -405,7 +405,6 @@ struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
 	void (*detached)(struct vmm_vdisk *),
 	void (*completed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
 	void (*failed)(struct vmm_vdisk *, struct vmm_vdisk_request *),
-	const char *bdev_name,
 	void *priv)
 {
 	bool found;
@@ -466,9 +465,6 @@ struct vmm_vdisk *vmm_vdisk_create(const char *name, u32 block_size,
 	vmm_blocking_notifier_call(&vdctrl.notifier_chain,
 				   VMM_VDISK_EVENT_CREATE,
 				   &event);
-
-	/* Attach block device */
-	vmm_vdisk_attach_block_device(vdisk, bdev_name);
 
 	return vdisk;
 }
