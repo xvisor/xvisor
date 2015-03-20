@@ -59,6 +59,7 @@
 #define VMM_EUCLEAN		-32	/* Structure needs cleaning */
 #define VMM_ENOTSUPP		-33
 #define VMM_EAGAIN		-34
+#define VMM_EPROTO		-35	/* Protocol error */
 
 #define VMM_MAX_ERRNO		4095
 

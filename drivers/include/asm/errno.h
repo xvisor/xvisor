@@ -36,5 +36,5 @@
 #define E2BIG			-(VMM_EINVALID)
 #define ENOTTY			-(VMM_ENODEV)
 #define EAGAIN			-(VMM_EAGAIN)
-
+#define EPROTO			-(VMM_EPROTO)
 #endif /* defined(_ASM_ERRNO_H) */
