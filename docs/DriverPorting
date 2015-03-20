@@ -1,0 +1,46 @@
+		Linux driver porting recommendations
+
+
+The whole point is to keep the diff between original Linux driver and ported
+driver to minimum. This will help someone else to update the driver or driver
+framework later.
+
+1. Don't use "//" or "/* */" comments to disable code, instead prefer "#if 0"
+2. Don't comment out header include lines if linux header does not exist,
+   instead create place-holder linux compatible header
+3. When changing function prototypes try to keep original function prototype
+   using "#if 0"
+4. Add headers in drivers/include/drv only if:
+   a) We are implementing device driver framework that is
+      not ported from Linux (e.g. MMC, USB, etc)
+   b) There are too many non-driver locations where header
+      will be accessed (e.g. FB, Input, RTC, etc.).
+   In general, headers in driver/include/drv should have minimal dependency on
+   Linux headers because it is the Linux headers that would depend on
+   "drivers/include/drv" headers and not the other way around (e.g. drv/fb.h,
+   drv/input.h, etc.).
+
+
+The 3 methods of providing a Linux compatible driver framework:
+  a) Straight away port code from Linux to Xvisor with updates to Linux
+     compatible headers as required.
+     In this case, no device driver header will reside in
+     "drivers/include/drv" (e.g. CLK, GPIO, Backlight, etc).
+  b) Implement a device driver framework from scratch or by extending
+     uboot/grub2 source.
+     In this case, device driver header will reside in "drivers/include/drv"
+     and we provide Linux compatible header in-terms of functionality provided
+     by headers in "drivers/include/drv" (e.g. MMC, USB, Serial, etc.).
+  c) Strip down linux device driver framework and convert it into device driver
+     framework for Xvisor only.
+     In this case, device driver header will reside in "drivers/include/drv"
+     and we provide Linux compatible header in-terms of functionality provided
+     by headers in "drivers/include/drv" (e.g. FB, Input, RTC, etc.).
+From the above, method a) is most preferred method for us.
+We choose method b) only if corresponding Linux driver
+framework is too bulky. We choose method c) if Linux
+driver framework is not complex but we might end-up
+using driver framework from too many non-driver locations.
+
+If we have code that include both Xvisor headers and Linux compatible header
+then all Xvisor header should be include before Linux compatible headers.
