@@ -1417,6 +1417,43 @@ struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index)
 	return d;
 }
 
+int vmm_devdrv_bus_driver_iterate(struct vmm_bus *bus,
+			struct vmm_driver *start, void *data,
+			int (*fn)(struct vmm_driver *drv, void *data))
+{
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_driver *d = NULL;
+
+	if (!bus || !fn) {
+		return VMM_EINVALID;
+	}
+	if (start && start->bus != bus) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&bus->lock);
+
+	list_for_each_entry(d, &bus->driver_list, head) {
+		if (!start_found) {
+			if (start && start == d) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(d, data);
+		if (rc) {
+			break;
+		}
+	}
+
+	vmm_mutex_unlock(&bus->lock);
+
+	return rc;
+}
+
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus)
 {
 	u32 retval;
@@ -1522,6 +1559,31 @@ bool vmm_devdrv_isregistered_device(struct vmm_device *dev)
 bool vmm_devdrv_isattached_device(struct vmm_device *dev)
 {
 	return (dev) ? ((dev->driver) ? TRUE : FALSE) : FALSE;
+}
+
+int vmm_devdrv_for_each_child(struct vmm_device *dev, void *data,
+			      int (*fn)(struct vmm_device *dev, void *data))
+{
+	int err = 0;
+	struct vmm_device *child = NULL;
+	struct vmm_device *temp = NULL;
+
+	if (!dev) {
+		return VMM_EFAIL;
+	}
+
+	vmm_mutex_lock(&dev->child_list_lock);
+
+	list_for_each_entry_safe(child, temp, &dev->child_list, child_head) {
+		if (VMM_OK != (err = fn(child, data))) {
+			vmm_mutex_unlock(&dev->child_list_lock);
+			return err;
+		}
+	}
+
+	vmm_mutex_unlock(&dev->child_list_lock);
+
+	return VMM_OK;
 }
 
 int vmm_devdrv_register_device(struct vmm_device *dev)

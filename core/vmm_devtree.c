@@ -1857,6 +1857,67 @@ u32 vmm_devtree_is_available(struct vmm_devtree_node *node)
 	return 0;
 }
 
+int vmm_devtree_alias_get_id(struct vmm_devtree_node *node,
+			     const char *stem)
+{
+	int id;
+	struct vmm_devtree_attr *attr;
+	struct vmm_devtree_node *aliases;
+
+	aliases = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				      VMM_DEVTREE_ALIASES_NODE_NAME);
+	if (!aliases) {
+		return VMM_ENODEV;
+	}
+
+	id = VMM_ENODEV;
+	vmm_devtree_for_each_attr(attr, aliases) {
+		const char *start = attr->name;
+		const char *end = start + strlen(start);
+		struct vmm_devtree_node *np;
+		int len;
+
+		/* Skip those we do not want to proceed */
+		if (!strcmp(attr->name, "name") ||
+		    !strcmp(attr->name, "phandle") ||
+		    !strcmp(attr->name, "linux,phandle")) {
+			continue;
+		}
+
+		/* Walk the alias backwards to extract the id and
+		 * work out the 'stem' string
+		 */
+		while (isdigit(*(end-1)) && end > start) {
+			end--;
+		}
+		len = end - start;
+
+		/* Compare stem to alias attribute name */
+		if (strncmp(stem, start, len)) {
+			continue;
+		}
+
+		/* Find the node by path */
+		np = vmm_devtree_getnode(attr->value);
+		if (!np) {
+			continue;
+		}
+
+		/* Found node should be same as given node */
+		if (node != np) {
+			id = atoi(end);
+		}
+		vmm_devtree_dref_node(np);
+
+		/* If id found then we are done */
+		if (id >= 0) {
+			break;
+		}
+	}
+
+	return id;
+}
+
 int vmm_devtree_regsize(struct vmm_devtree_node *node,
 		        physical_size_t *size, int regset)
 {

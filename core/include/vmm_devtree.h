@@ -617,6 +617,16 @@ u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
  */
 u32 vmm_devtree_is_available(struct vmm_devtree_node *node);
 
+/** vmm_devtree_alias_get_id - Get alias id for the given device_node
+ * @np:         Pointer to the given device_node
+ * @stem:       Alias stem of the given device_node
+ *
+ * The function scans all the properties of 'aliases' node to get the alias id
+ * for the given device_node and alias stem.  It returns the alias id if found.
+ */
+int vmm_devtree_alias_get_id(struct vmm_devtree_node *node,
+			     const char *stem);
+
 /** Get physical size of device registers
  *  NOTE: This is based on 'reg' and 'virtual-reg' attributes
  *  of device tree node

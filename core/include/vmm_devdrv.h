@@ -242,6 +242,11 @@ struct vmm_driver *vmm_devdrv_bus_find_driver(struct vmm_bus *bus,
 /** Get driver for a bus */
 struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index);
 
+/** Iterate over each device of a bus with bus->lock held */
+int vmm_devdrv_bus_driver_iterate(struct vmm_bus *bus,
+			struct vmm_driver *start, void *data,
+			int (*fn)(struct vmm_driver *drv, void *data));
+
 /** Count available device drivers for a bus */
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus);
 
@@ -281,6 +286,10 @@ bool vmm_devdrv_isregistered_device(struct vmm_device *dev);
 
 /** Check whether device is attached to driver or not */
 bool vmm_devdrv_isattached_device(struct vmm_device *dev);
+
+/** Iterate over each child device of given device */
+int vmm_devdrv_for_each_child(struct vmm_device *dev, void *data,
+			      int (*fn)(struct vmm_device *dev, void *data));
 
 /** Register device */
 int vmm_devdrv_register_device(struct vmm_device *dev);
