@@ -90,6 +90,8 @@ static inline struct property *of_find_property(const struct device_node *np,
 	return pp;
 }
 
+#define of_alias_get_id		vmm_devtree_alias_get_id
+
 #define of_count_phandle_with_args \
 				vmm_devtree_count_phandle_with_args
 #define	of_parse_phandle_with_args \

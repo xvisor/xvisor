@@ -132,11 +132,7 @@ static inline struct spi_device *to_spi_device(struct device *dev)
 /* most drivers won't need to care about device refcounting */
 static inline struct spi_device *spi_dev_get(struct spi_device *spi)
 {
-#if 0
 	return (spi && get_device(&spi->dev)) ? spi : NULL;
-#else
-	return spi;
-#endif
 }
 
 static inline void spi_dev_put(struct spi_device *spi)

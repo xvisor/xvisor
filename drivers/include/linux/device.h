@@ -107,6 +107,13 @@
 			vmm_devdrv_bus_find_device_by_name(bus, start, name)
 #define bus_for_each_device(bus, start, data, fn)	\
 			vmm_devdrv_bus_device_iterate(bus, start, data, fn)
+#define bus_for_each_dev(bus, start, data, fn)	\
+			vmm_devdrv_bus_device_iterate(bus, start, data, fn)
+#define bus_for_each_drv(bus, start, data, fn)	\
+			vmm_devdrv_bus_driver_iterate(bus, start, data, fn)
+
+#define device_for_each_child(dev, data, fn)		\
+			vmm_devdrv_for_each_child(dev, data, fn)
 
 static inline int dev_to_node(struct device *dev) { return -1; }
 static inline void set_dev_node(struct device *dev, int node) { }
@@ -114,6 +121,38 @@ static inline void set_dev_node(struct device *dev, int node) { }
 #define dev_WARN	dev_warn
 #define dev_WARN_ONCE(dev, condition, format, arg...)	\
 	dev_warn(dev, format, ##arg)
+
+/**
+ * module_driver() - Helper macro for drivers that don't do anything
+ * special in module init/exit. This eliminates a lot of boilerplate.
+ * Each module may only use this macro once, and calling it replaces
+ * module_init() and module_exit().
+ *
+ * @__driver: driver name
+ * @__register: register function for this driver type
+ * @__unregister: unregister function for this driver type
+ * @...: Additional arguments to be passed to __register and __unregister.
+ *
+ * Use this macro to construct bus specific macros for registering
+ * drivers, and do not use it on its own.
+ */
+#define module_driver(__desc, __author, __license, __ipriority,	\
+		      __driver, __register, __unregister, ...)	\
+static int __init __driver##_init(void)				\
+{								\
+	return __register(&(__driver) , ##__VA_ARGS__);		\
+}								\
+static void __exit __driver##_exit(void)			\
+{								\
+	__unregister(&(__driver) , ##__VA_ARGS__);		\
+}								\
+VMM_DECLARE_MODULE(__desc,					\
+		   __author,					\
+		   __license,					\
+		   __ipriority,					\
+		   __driver##_init,				\
+		   __driver##_exit);
+
 
 /* interface for exporting device attributes */
 

@@ -63,5 +63,6 @@ do {									\
 })
 
 #define wake_up(wqptr)			vmm_waitqueue_wakeall(wqptr)
+#define schedule()			vmm_scheduler_yield()
 
 #endif /* defined(_LINUX_SCHED_H) */
