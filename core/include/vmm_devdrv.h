@@ -271,7 +271,7 @@ int vmm_devdrv_bus_unregister_notifier(struct vmm_bus *bus,
 void vmm_devdrv_initialize_device(struct vmm_device *dev);
 
 /** Increment reference count of device */
-void vmm_devdrv_ref_device(struct vmm_device *dev);
+struct vmm_device *vmm_devdrv_ref_device(struct vmm_device *dev);
 
 /** Decrement reference count of device */
 void vmm_devdrv_dref_device(struct vmm_device *dev);

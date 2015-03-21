@@ -1478,13 +1478,14 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 	INIT_LIST_HEAD(&dev->deferred_head);
 }
 
-void vmm_devdrv_ref_device(struct vmm_device *dev)
+struct vmm_device *vmm_devdrv_ref_device(struct vmm_device *dev)
 {
 	if (!dev) {
-		return;
+		return NULL;
 	}
 
 	arch_atomic_inc(&dev->ref_count);
+	return dev;
 }
 
 void vmm_devdrv_dref_device(struct vmm_device *dev)
