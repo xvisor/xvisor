@@ -625,35 +625,40 @@ struct vmm_class *vmm_devdrv_find_class(const char *cname)
 	return c;
 }
 
-struct vmm_class *vmm_devdrv_class(int index)
+int vmm_devdrv_class_iterate(struct vmm_class *start, void *data,
+			     int (*fn)(struct vmm_class *cls, void *data))
 {
-	bool found;
-	struct vmm_class *c;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_class *c = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	c = NULL;
-	found = FALSE;
+	if (start) {
+		return VMM_EINVALID;
+	}
 
 	vmm_mutex_lock(&ddctrl.class_lock);
 
 	list_for_each_entry(c, &ddctrl.class_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == c) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(c, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&ddctrl.class_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return c;
+	return rc;
 }
 
 u32 vmm_devdrv_class_count(void)
@@ -1004,35 +1009,40 @@ struct vmm_bus *vmm_devdrv_find_bus(const char *bname)
 	return b;
 }
 
-struct vmm_bus *vmm_devdrv_bus(int index)
+int vmm_devdrv_bus_iterate(struct vmm_bus *start, void *data,
+			   int (*fn)(struct vmm_bus *bus, void *data))
 {
-	bool found;
-	struct vmm_bus *b;
+	int rc = VMM_OK;
+	bool start_found = (start) ? FALSE : TRUE;
+	struct vmm_bus *b = NULL;
 
-	if (index < 0) {
-		return NULL;
+	if (!fn) {
+		return VMM_EINVALID;
 	}
-
-	b = NULL;
-	found = FALSE;
+	if (start) {
+		return VMM_EINVALID;
+	}
 
 	vmm_mutex_lock(&ddctrl.bus_lock);
 
 	list_for_each_entry(b, &ddctrl.bus_list, head) {
-		if (!index) {
-			found = TRUE;
+		if (!start_found) {
+			if (start && start == b) {
+				start_found = TRUE;
+			} else {
+				continue;
+			}
+		}
+
+		rc = fn(b, data);
+		if (rc) {
 			break;
 		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&ddctrl.bus_lock);
 
-	if (!found) {
-		return NULL;
-	}
-
-	return b;
+	return rc;
 }
 
 u32 vmm_devdrv_bus_count(void)
@@ -1375,37 +1385,6 @@ struct vmm_driver *vmm_devdrv_bus_find_driver(struct vmm_bus *bus,
 			found = TRUE;
 			break;
 		}
-	}
-
-	vmm_mutex_unlock(&bus->lock);
-
-	if (!found) {
-		return NULL;
-	}
-
-	return d;
-}
-
-struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index)
-{
-	bool found;
-	struct vmm_driver *d;
-
-	if (!bus || index < 0) {
-		return NULL;
-	}
-
-	d = NULL;
-	found = FALSE;
-
-	vmm_mutex_lock(&bus->lock);
-
-	list_for_each_entry(d, &bus->driver_list, head) {
-		if (!index) {
-			found = TRUE;
-			break;
-		}
-		index--;
 	}
 
 	vmm_mutex_unlock(&bus->lock);

@@ -347,21 +347,26 @@ struct cmd_host_list_iter {
 	struct vmm_chardev *cdev;
 };
 
+static int cmd_host_bus_list_iter(struct vmm_bus *b, void *data)
+{
+	u32 dcount;
+	struct cmd_host_list_iter *p = data;
+
+	dcount = vmm_devdrv_bus_device_count(b);
+	vmm_cprintf(p->cdev, " %-7d %-15s %-15d\n", p->num++, b->name, dcount);
+
+	return VMM_OK;
+}
+
 static void cmd_host_bus_list(struct vmm_chardev *cdev)
 {
-	u32 num, dcount, count = vmm_devdrv_bus_count();
-	struct vmm_bus *b;
+	struct cmd_host_list_iter p = { .num = 0, .cdev = cdev };
 
 	vmm_cprintf(cdev, "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-7s %-15s %-15s\n",
 			  "Num#", "Bus Name", "Device Count");
 	vmm_cprintf(cdev, "----------------------------------------\n");
-	for (num = 0; num < count; num++) {
-		b = vmm_devdrv_bus(num);
-		dcount = vmm_devdrv_bus_device_count(b);
-		vmm_cprintf(cdev, " %-7d %-15s %-15d\n",
-				  num, b->name, dcount);
-	}
+	vmm_devdrv_bus_iterate(NULL, &p, cmd_host_bus_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 
@@ -403,21 +408,26 @@ static int cmd_host_bus_device_list(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
+static int cmd_host_class_list_iter(struct vmm_class *c, void *data)
+{
+	u32 dcount;
+	struct cmd_host_list_iter *p = data;
+
+	dcount = vmm_devdrv_class_device_count(c);
+	vmm_cprintf(p->cdev, " %-7d %-15s %-15d\n", p->num++, c->name, dcount);
+
+	return VMM_OK;
+}
+
 static void cmd_host_class_list(struct vmm_chardev *cdev)
 {
-	u32 num, dcount, count = vmm_devdrv_class_count();
-	struct vmm_class *c;
+	struct cmd_host_list_iter p = { .num = 0, .cdev = cdev };
 
 	vmm_cprintf(cdev, "----------------------------------------\n");
 	vmm_cprintf(cdev, " %-7s %-15s %-15s\n",
 			  "Num#", "Class Name", "Device Count");
 	vmm_cprintf(cdev, "----------------------------------------\n");
-	for (num = 0; num < count; num++) {
-		c = vmm_devdrv_class(num);
-		dcount = vmm_devdrv_class_device_count(c);
-		vmm_cprintf(cdev, " %-7d %-15s %-15d\n",
-				  num, c->name, dcount);
-	}
+	vmm_devdrv_class_iterate(NULL, &p, cmd_host_class_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------\n");
 }
 

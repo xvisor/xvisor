@@ -169,8 +169,9 @@ int vmm_devdrv_unregister_class(struct vmm_class *cls);
 /** Find a registered class */
 struct vmm_class *vmm_devdrv_find_class(const char *cname);
 
-/** Get a registered class */
-struct vmm_class *vmm_devdrv_class(int index);
+/* Iterate over each registered class */
+int vmm_devdrv_class_iterate(struct vmm_class *start, void *data,
+			     int (*fn)(struct vmm_class *cls, void *data));
 
 /** Count available classes */
 u32 vmm_devdrv_class_count(void);
@@ -202,8 +203,9 @@ int vmm_devdrv_unregister_bus(struct vmm_bus *bus);
 /** Find a registered bus */
 struct vmm_bus *vmm_devdrv_find_bus(const char *bname);
 
-/** Get a registered bus */
-struct vmm_bus *vmm_devdrv_bus(int index);
+/* Iterate over each registered bus */
+int vmm_devdrv_bus_iterate(struct vmm_bus *start, void *data,
+			   int (*fn)(struct vmm_bus *bus, void *data));
 
 /** Count available buses */
 u32 vmm_devdrv_bus_count(void);
@@ -239,15 +241,12 @@ int vmm_devdrv_bus_unregister_driver(struct vmm_bus *bus,
 struct vmm_driver *vmm_devdrv_bus_find_driver(struct vmm_bus *bus,
 					      const char *dname);
 
-/** Get driver for a bus */
-struct vmm_driver *vmm_devdrv_bus_driver(struct vmm_bus *bus, int index);
-
-/** Iterate over each device of a bus with bus->lock held */
+/** Iterate over each driver of a bus with bus->lock held */
 int vmm_devdrv_bus_driver_iterate(struct vmm_bus *bus,
 			struct vmm_driver *start, void *data,
 			int (*fn)(struct vmm_driver *drv, void *data));
 
-/** Count available device drivers for a bus */
+/** Count available drivers for a bus */
 u32 vmm_devdrv_bus_driver_count(struct vmm_bus *bus);
 
 /** Register a client for bus events */
