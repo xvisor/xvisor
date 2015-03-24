@@ -335,15 +335,11 @@ static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 	}
 
 	if (info->var.xres <= (x + w)) {
-		vmm_cprintf(cdev, "Error: x+width should be less than %d\n",
-			    info->var.xres);
-		return VMM_EINVALID;
+		w = info->var.xres - x;
 	}
 
 	if (info->var.yres <= (y + h)) {
-		vmm_cprintf(cdev, "Error: y+height should be less than %d\n",
-			    info->var.yres);
-		return VMM_EINVALID;
+		h = info->var.yres - y;
 	}
 
 	return fb_write_image(info, image, x, y, w, h);
