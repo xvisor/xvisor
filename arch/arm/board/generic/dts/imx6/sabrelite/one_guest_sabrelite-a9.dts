@@ -1,0 +1,43 @@
+/*
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Originally from Jean-Christophe Dubois, and modified by
+ * Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
+ * to split device tree files between i.MX6-specific and Sabrelite-specific
+ * definitions.
+ */
+
+/dts-v1/;
+
+#include "sabrelite.dtsi"
+
+/ {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &SERIAL2;
+		bootcmd =
+			"backlight brightness backlight_lvds 6",
+			"fb logo fb0",
+
+			/* Mount SD device */
+			"vfs mount mmc0p0 / wait 500",
+
+			/* Load guest0 device tree from file */
+			"vfs fdt_load /guests guest0 /sabrelite-a9.dtb mem0,physical_size,physsize,0x06000000",
+
+			/* Create guest0 */
+			"guest create guest0",
+
+			/* Load guest0 images */
+			"vfs guest_load_list guest0 /nor_flash.list",
+			"guest kick guest0",
+			"vfs umount /";
+	};
+};
