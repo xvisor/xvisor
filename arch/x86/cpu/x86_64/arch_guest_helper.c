@@ -284,6 +284,29 @@ int purge_guest_shadow_pagetable(struct vcpu_hw_context *context)
 	return VMM_OK;
 }
 
+static inline int free_page_index_in_pglist(struct vcpu_hw_context *context)
+{
+	int boffs;
+
+	if (context->pgmap_free_cache) {
+		boffs = context->pgmap_free_cache;
+		context->pgmap_free_cache = 0;
+		return boffs;
+	}
+
+	if ((boffs = bitmap_find_free_region(context->shadow32_pg_map,
+					     NR_32BIT_PGLIST_PAGES,
+					     1)) == VMM_ENOMEM) {
+		vmm_printf("%s: No free pages to alloc for shadow table.\n",
+			   __func__);
+		return VMM_EFAIL;
+	}
+
+	context->pgmap_free_cache = boffs+1;
+
+	return boffs;
+}
+
 int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 			    physical_addr_t paddr, size_t size, u32 pgprot)
 {
@@ -291,26 +314,16 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	union page32 *pde_addr, *temp;
 	physical_addr_t tpaddr, pte_addr;
 	virtual_addr_t tvaddr;
-	u32 index;
-	int boffs;
+	int index;
 
 	pde_addr = &context->shadow32_pgt[((vaddr >> 22) & 0x3ff)];
 	pde = *pde_addr;
 
 	if (!pde.present) {
-		if (context->pgmap_free_cache) {
-			index = context->pgmap_free_cache;
-			context->pgmap_free_cache = 0;
-		} else {
-			if ((boffs = bitmap_find_free_region(context->shadow32_pg_map,
-							     NR_32BIT_PGLIST_PAGES, 1)) == VMM_ENOMEM) {
-				vmm_printf("%s: No free pages to alloc for shadow page table.\n",
-					   __func__);
-				return VMM_EFAIL;
-			}
-			index = boffs;
-			context->pgmap_free_cache = boffs+1;
-		}
+		index = free_page_index_in_pglist(context);
+
+		if (index == VMM_EFAIL)
+			return VMM_EFAIL;
 
 		pde_addr->present = 1;
 		pde_addr->rw = 1;
@@ -327,7 +340,7 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 
 	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
 	pte_addr = (physical_addr_t)(temp + ((vaddr >> 12) & 0x3ff));
-	/*pte_addr = ((pde_addr->paddr << PAGE_SHIFT) + ((vaddr >> 10) & 0xffc));*/
+
 	/* FIXME: Should this be cacheable memory access ? */
 	if (vmm_host_memory_read(pte_addr, (void *)&pte,
 				 sizeof(pte), TRUE) < sizeof(pte))
