@@ -50,6 +50,7 @@ commands-objs-$(CONFIG_CMD_FB_BACKLIGHT)+= cmd_backlight.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
 commands-objs-$(CONFIG_CMD_RBD)+= cmd_rbd.o
 commands-objs-$(CONFIG_CMD_FLASH)+= cmd_flash.o
+commands-objs-$(CONFIG_CMD_I2C)+= cmd_i2c.o
 
 commands-objs-$(CONFIG_CMD_NET)+= cmd_net.o
 commands-objs-$(CONFIG_CMD_IPCONFIG)+= cmd_ipconfig.o
@@ -67,4 +68,3 @@ cmd_fb_mod-$(CONFIG_CMD_FB_LOGO_SYSTEMX) += cmd_fb_logo_sx.o
 
 %/cmd_fb_mod.dep: $(foreach dep,$(cmd_fb_mod-y:.o=.dep),%/$(dep))
 	$(call merge_deps,$@,$^)
-
