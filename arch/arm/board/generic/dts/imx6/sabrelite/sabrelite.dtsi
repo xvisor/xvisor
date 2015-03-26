@@ -86,3 +86,8 @@
 	default_bpp = <16>;
 	mode_str ="LDB-XGA";
 };
+
+&i2c3 {
+	status = "okay";
+	clock-frequency = <100000>;
+};
