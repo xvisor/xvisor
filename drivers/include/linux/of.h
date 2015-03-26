@@ -58,17 +58,6 @@ static inline struct device_node *of_get_next_parent(struct device_node *node)
         return parent;
 }
 
-static inline unsigned int irq_of_parse_and_map(struct device_node *dev,
-						int index)
-{
-	u32 irq;
-
-	if (vmm_devtree_irq_get(dev, &irq, index))
-		return 0;
-
-	return irq;
-}
-
 static inline const void *of_get_property(const struct device_node *np,
 					  const char *name, int *lenp)
 {
@@ -88,6 +77,20 @@ static inline struct property *of_find_property(const struct device_node *np,
 		*lenp = pp->len;
 
 	return pp;
+}
+
+static inline int of_modalias_node(struct device_node *node,
+  char *modalias, int len)
+{
+	const char *compatible, *p;
+	int cplen;
+
+	compatible = of_get_property(node, "compatible", &cplen);
+	if (!compatible || strlen(compatible) > cplen)
+		return -ENODEV;
+	p = strchr(compatible, ',');
+	strlcpy(modalias, p ? p + 1 : compatible, len);
+	return 0;
 }
 
 #define of_alias_get_id		vmm_devtree_alias_get_id
@@ -142,5 +145,6 @@ static inline struct property *of_find_property(const struct device_node *np,
 #define of_property_match_string	vmm_devtree_match_string
 #define	of_property_read_string_index	vmm_devtree_string_index
 #define	of_find_node_by_phandle		vmm_devtree_find_node_by_phandle
+#define irq_of_parse_and_map		vmm_devtree_extirq_parse_map
 
 #endif /* _LINUX_OF_H */
