@@ -26,7 +26,6 @@
  * The original code is licensed under the GPL.
  */
 
-#include <vmm_modules.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
@@ -208,7 +207,6 @@ unsigned int vmm_devtree_extirq_create_mapping(
 
 	return virq;
 }
-VMM_EXPORT_SYMBOL_GPL(vmm_devtree_extirq_create_mapping);
 
 /**
  * vmm_devtree_extirq_parse_map - Parse and map an interrupt into Xvisor space
@@ -228,4 +226,3 @@ unsigned int vmm_devtree_extirq_parse_map(struct vmm_devtree_node *dev,
 
 	return vmm_devtree_extirq_create_mapping(&oirq);
 }
-VMM_EXPORT_SYMBOL_GPL(vmm_devtree_extirq_parse_map);
