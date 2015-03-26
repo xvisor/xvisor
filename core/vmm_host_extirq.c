@@ -55,7 +55,7 @@ struct vmm_host_irq *vmm_host_extirq_get(unsigned int irq)
 	return extirqctrl.irqs[irq];
 }
 
-int vmm_host_extirq_to_hwirq(struct vmm_host_extirq_group *group,
+int vmm_host_extirq_to_hwirq(extirq_grp_t *group,
 			     unsigned int irq)
 {
 	if (irq < group->base || irq > group->end)
@@ -63,20 +63,42 @@ int vmm_host_extirq_to_hwirq(struct vmm_host_extirq_group *group,
 	return irq - group->base;
 }
 
-int vmm_host_extirq_find_mapping(struct vmm_host_extirq_group *group,
+int vmm_host_extirq_find_mapping(extirq_grp_t *group,
 				 unsigned int offset)
 {
 	if (offset > group->count)
 		return -1;
 
-	return group->base + offset;
+	if (vmm_host_extirq_get(group->base + offset))
+		return group->base + offset;
+
+	return -1;
+}
+
+extirq_grp_t *vmm_host_extirq_group_match(void *data,
+					  int (*fn)(extirq_grp_t *,
+						    void *))
+{
+	extirq_grp_t *group= NULL;
+	extirq_grp_t *found = NULL;
+
+	vmm_mutex_lock(&extirqctrl.lock);
+	list_for_each_entry(group, &extirqctrl.groups, head) {
+		if (fn(group, data)) {
+			found = group;
+			break;
+		}
+	}
+	vmm_mutex_unlock(&extirqctrl.lock);
+
+	return found;
 }
 
 void vmm_host_extirq_debug_dump(struct vmm_chardev *cdev)
 {
 	int idx = 0;
 	struct vmm_host_irq *irq = NULL;
-	struct vmm_host_extirq_group *group = NULL;
+	extirq_grp_t *group = NULL;
 
 	vmm_cprintf(cdev, "%d extended IRQs\n", extirqctrl.count);
 	vmm_cprintf(cdev, "  BITMAP:\n");
@@ -202,10 +224,9 @@ static int extirq_find_free_region(unsigned int size)
 	return pos;
 }
 
-struct vmm_host_extirq_group *
-vmm_host_extirq_group_get(unsigned int	irq_num)
+extirq_grp_t *vmm_host_extirq_group_get(unsigned int	irq_num)
 {
-	struct vmm_host_extirq_group *group = NULL;
+	extirq_grp_t *group = NULL;
 
 	if (irq_num < (CONFIG_HOST_IRQ_COUNT))
 		return NULL;
@@ -221,11 +242,12 @@ vmm_host_extirq_group_get(unsigned int	irq_num)
 	return NULL;
 }
 
-int vmm_host_extirq_create_mapping(struct vmm_host_extirq_group *group,
+int vmm_host_extirq_create_mapping(extirq_grp_t *group,
 				   unsigned int	irq_num)
 {
 	int name_len = 0;
 	char *name = NULL;
+	int virq = 0;
 	struct vmm_host_irq *irq = NULL;
 
 	if (!group)
@@ -233,6 +255,12 @@ int vmm_host_extirq_create_mapping(struct vmm_host_extirq_group *group,
 
 	if (irq_num > group->count)
 		return VMM_ENOTAVAIL;
+
+	/* Check if mapping already exists */
+	virq = vmm_host_extirq_find_mapping(group, irq_num);
+	if (virq >= 0) {
+		return virq;
+	}
 
 	if (NULL == (irq = vmm_malloc(sizeof (struct vmm_host_irq)))) {
 		vmm_printf("%s: Failed to allocate IRQ\n", __func__);
@@ -271,16 +299,15 @@ void vmm_host_extirq_dispose_mapping(unsigned int irq_num)
 	vmm_free(irq);
 }
 
-struct vmm_host_extirq_group *
-vmm_host_extirq_add(struct vmm_devtree_node *of_node,
-		    unsigned int size,
-		    const struct vmm_host_extirq_group_ops *ops,
-		    void *host_data)
+extirq_grp_t *vmm_host_extirq_add(struct vmm_devtree_node *of_node,
+				  unsigned int size,
+				  const struct vmm_host_extirq_group_ops *ops,
+				  void *host_data)
 {
 	int pos = 0;
-	struct vmm_host_extirq_group *newgroup = NULL;
+	extirq_grp_t *newgroup = NULL;
 
-	newgroup = vmm_zalloc(sizeof (struct vmm_host_extirq_group));
+	newgroup = vmm_zalloc(sizeof (extirq_grp_t));
 
 	if (0 > (pos = extirq_find_free_region(size))) {
 		vmm_printf("%s: Failed to find available slot for IRQ\n",
@@ -303,7 +330,7 @@ vmm_host_extirq_add(struct vmm_devtree_node *of_node,
 	return newgroup;
 }
 
-void vmm_host_extirq_remove(struct vmm_host_extirq_group *group)
+void vmm_host_extirq_remove(extirq_grp_t *group)
 {
 	unsigned int pos = 0;
 

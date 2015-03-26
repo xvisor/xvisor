@@ -32,6 +32,7 @@ core-objs-y+= vmm_devemu.o
 core-objs-y+= vmm_resource.o
 core-objs-y+= vmm_host_irq.o
 core-objs-y+= vmm_host_extirq.o
+core-objs-$(CONFIG_OF)+= vmm_devtree_extirq.o
 core-objs-y+= vmm_host_ram.o
 core-objs-y+= vmm_host_vapool.o
 core-objs-y+= vmm_host_aspace.o
