@@ -150,6 +150,7 @@ void useage()
   */
 int main(int argc, char **argv)
 {
+	int retcode = 1;
 	uint32_t start_address, size;
 	char *nand_image;
 
@@ -164,7 +165,7 @@ int main(int argc, char **argv)
 
 	if (argc != 4) {
 		useage();
-		exit(1);
+		exit(retcode);
 	}
 
 	nand_image = argv[1];
@@ -175,50 +176,71 @@ int main(int argc, char **argv)
 	nand_fd = open(nand_image, O_RDWR);
 	if (nand_fd < 0) {
 		printf("Can not open nand image %s \n", nand_image);
-		exit(1);
+		exit(retcode);
 	}
 
 	if (start_address >= BB_NAND_SIZE) {
 		printf("start_address can no be more than 0x%x \n",
 		       BB_NAND_SIZE);
-		exit(1);
+		goto error;
 	}
 	if ((start_address % BB_NAND_PAGE_SIZE) != 0) {
 		printf("start_address should be aligned to page boundary \n");
-		exit(1);
+		goto error;
 	}
 
 	if (size == 0) {
 		printf("size can no be zero \n");
-		exit(1);
+		goto error;
 	}
 	if ((size % BB_NAND_PAGE_SIZE) != 0) {
 		printf("size should be aligned to page boundary \n");
-		exit(1);
+		goto error;
 	}
-
 
 	pagenumber = start_address / BB_NAND_PAGE_SIZE;
 	pages = size / BB_NAND_PAGE_SIZE;
 
 	for (i = 0; i < pages; i++) {
-		lseek(nand_fd,
-		      pagenumber * (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE),
-		      SEEK_SET);
-		read(nand_fd, page_data, BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE);
+		if (lseek
+		    (nand_fd,
+		     pagenumber * (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE),
+		     SEEK_SET) == -1) {
+			printf("failed to seek page %d\n", pagenumber + i);
+			goto error;
+		}
+		if (read
+		    (nand_fd, page_data,
+		     BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE) !=
+		    (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE)) {
+			printf("failed to read page %d\n", pagenumber + i);
+			goto error;
+		}
 
 		for (j = 0; j < BB_NAND_PAGE_SIZE / 256; j++) {
 			nand_calculate_ecc(page_data + j * 256, ecc_data);
 			memcpy(page_data + BB_NAND_PAGE_SIZE +
 			       BB_NAND_ECC_OFFSET + j * 3, ecc_data, 3);
 		}
-		lseek(nand_fd,
-		      pagenumber * (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE),
-		      SEEK_SET);
-		write(nand_fd, page_data, BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE);
+		if (lseek
+		    (nand_fd,
+		     pagenumber * (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE),
+		     SEEK_SET) == -1) {
+			printf("failed to seek page %d\n", pagenumber + i);
+			goto error;
+		}
+		if (write
+		    (nand_fd, page_data,
+		     BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE) !=
+		    (BB_NAND_PAGE_SIZE + BB_NAND_OOB_SIZE)) {
+			printf("failed to write page %d\n", pagenumber + i);
+			goto error;
+		}
 		pagenumber++;
 	}
 
+	retcode = 0;
+ error:
 	close(nand_fd);
-	return (1);
+	return (retcode);
 }
