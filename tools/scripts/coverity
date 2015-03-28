@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # In order to run this script you need to:
 # * have coverity installed on your system (see
@@ -12,6 +12,16 @@
 # can be submited to the Coverity scan web site.
 #
 
+AARCH64_CROSS_COMPILE_LIST="aarch64-linux-gnu-"
+AARCH64_CROSS_COMPILE_LIST+=" aarch64-elf-"
+AARCH64_CROSS_COMPILE_LIST+=" aarch64-none-elf-"
+
+ARM32_CROSS_COMPILE_LIST="arm-none-eabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-none-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-unknown-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
+
 get_cross_compiler() {
 	FOUND=0
 
@@ -21,9 +31,9 @@ get_cross_compiler() {
 	"arm")
 		if [ "$2" = "generic-v8-defconfig" ]
 		then
-			CROSS_COMPILE_LIST="aarch64-linux-gnu- aarch64-elf- aarch64-none-elf-"
+			CROSS_COMPILE_LIST=$AARCH64_CROSS_COMPILE_LIST
 		else
-			CROSS_COMPILE_LIST="arm-unknown-linux-gnueabi- arm-none-linux-gnueabi- arm-linux-gnueabi-"
+			CROSS_COMPILE_LIST=$ARM32_CROSS_COMPILE_LIST
 		fi
 
 		# Try to find a reasonable CROSS_COMPILE for arm
@@ -105,6 +115,7 @@ do
 		trap 'echo build failed for $ARCH:$DEFCONFIG' EXIT
 
 		CROSS_COMPILE=`get_cross_compiler $ARCH $DEFCONFIG`
+
 		rm -rf build
 		make ARCH=$ARCH $DEFCONFIG
 		cov-build --dir cov-int make CROSS_COMPILE=$CROSS_COMPILE -j 4
