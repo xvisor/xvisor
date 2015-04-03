@@ -27,6 +27,7 @@
 #include <vmm_chardev.h>
 #include <vmm_spinlocks.h>
 #include <vmm_stdio.h>
+#include <arch_atomic.h>
 #include <arch_defterm.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
@@ -40,6 +41,7 @@
 #define PRINT_BUF_LEN	64
 
 struct vmm_stdio_ctrl {
+	atomic_t loglevel;
         vmm_spinlock_t lock;
         struct vmm_chardev *dev;
 };
@@ -681,6 +683,16 @@ int vmm_stdio_change_device(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
+long vmm_stdio_loglevel(void)
+{
+	return arch_atomic_read(&stdio_ctrl.loglevel);
+}
+
+void vmm_stdio_change_loglevel(long loglevel)
+{
+	arch_atomic_write(&stdio_ctrl.loglevel, loglevel);
+}
+
 /* size of early buffer.
  * This should be enough to hold 80x25 characters
  */
@@ -715,6 +727,9 @@ int __init vmm_stdio_init(void)
 
 	/* Reset memory of control structure */
 	memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
+
+	/* Initialize loglevel */
+	ARCH_ATOMIC_INIT(&stdio_ctrl.loglevel, VMM_LOGLEVEL_DEFAULT);
 
 	/* Initialize lock */
 	INIT_SPIN_LOCK(&stdio_ctrl.lock);

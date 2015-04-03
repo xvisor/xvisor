@@ -116,6 +116,35 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 /** Print formatted string to default device */
 #define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__)
 
+/** Predefined log levels */
+enum vmm_print_level {
+	VMM_LOGLEVEL_EMERGENCY=0,
+	VMM_LOGLEVEL_ALERT=1,
+	VMM_LOGLEVEL_CRITICAL=2,
+	VMM_LOGLEVEL_ERROR=3,
+	VMM_LOGLEVEL_WARNING=4,
+	VMM_LOGLEVEL_NOTICE=5,
+	VMM_LOGLEVEL_INFO=6,
+	VMM_LOGLEVEL_DEFAULT=7
+};
+
+/** Print formatted string to default device if current
+ *  stdio log level is less than or equal to specified level
+ */
+#define vmm_lprintf(level, msg...) \
+	do {								\
+		if (vmm_stdio_loglevel() <= (level))			\
+			vmm_printf(msg);				\
+	} while (0)
+
+#define vmm_lemergency(msg...)	vmm_lprintf(VMM_LOGLEVEL_EMERGENCY, msg)
+#define vmm_lalert(msg...)	vmm_lprintf(VMM_LOGLEVEL_ALERT, msg)
+#define vmm_lcritical(msg...)	vmm_lprintf(VMM_LOGLEVEL_CRITICAL, msg)
+#define vmm_lerror(msg...)	vmm_lprintf(VMM_LOGLEVEL_ERROR, msg)
+#define vmm_lwarning(msg...)	vmm_lprintf(VMM_LOGLEVEL_WARNING, msg)
+#define vmm_lnotice(msg...)	vmm_lprintf(VMM_LOGLEVEL_NOTICE, msg)
+#define vmm_linfo(msg...)	vmm_lprintf(VMM_LOGLEVEL_INFO, msg)
+
 /** Panic & Print formatted message
  * Note: This function is less verbose so perfer vmm_panic().
  */
@@ -152,6 +181,12 @@ struct vmm_chardev *vmm_stdio_device(void);
 
 /** Change default character device used by stdio */
 int vmm_stdio_change_device(struct vmm_chardev *cdev);
+
+/** Get log level used by stdio */
+long vmm_stdio_loglevel(void);
+
+/** Change log level used by stdio */
+void vmm_stdio_change_loglevel(long loglevel);
 
 /** Initialize standerd IO library */
 int vmm_stdio_init(void);

@@ -40,11 +40,13 @@ static void cmd_stdio_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   stdio help\n");
-	vmm_cprintf(cdev, "   stdio curdev\n");
-	vmm_cprintf(cdev, "   stdio chdev <chardev_name>\n");
+	vmm_cprintf(cdev, "   stdio device\n");
+	vmm_cprintf(cdev, "   stdio change_device <chardev_name>\n");
+	vmm_cprintf(cdev, "   stdio loglevel\n");
+	vmm_cprintf(cdev, "   stdio change_loglevel <loglevel>\n");
 }
 
-static int cmd_stdio_curdev(struct vmm_chardev *cdev)
+static int cmd_stdio_device(struct vmm_chardev *cdev)
 {
 	struct vmm_chardev *cd;
 	cd = vmm_stdio_device();
@@ -56,7 +58,8 @@ static int cmd_stdio_curdev(struct vmm_chardev *cdev)
 	return VMM_OK;
 }
 
-static int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
+static int cmd_stdio_change_device(struct vmm_chardev *cdev,
+				   char *chardev_name)
 {
 	int ret;
 	struct vmm_chardev *cd = vmm_chardev_find(chardev_name);
@@ -77,22 +80,41 @@ static int cmd_stdio_chdev(struct vmm_chardev *cdev, char *chardev_name)
 	return VMM_OK;
 }
 
+static int cmd_stdio_loglevel(struct vmm_chardev *cdev)
+{
+	vmm_cprintf(cdev, "Current Log Level : %d\n", vmm_stdio_loglevel());
+
+	return VMM_OK;
+}
+
+static int cmd_stdio_change_loglevel(struct vmm_chardev *cdev, int loglevel)
+{
+	vmm_stdio_change_loglevel(loglevel);
+
+	return VMM_OK;
+}
+
 static int cmd_stdio_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
 			cmd_stdio_usage(cdev);
 			return VMM_OK;
-		} else if (strcmp(argv[1], "curdev") == 0) {
-			return cmd_stdio_curdev(cdev);
+		} else if (strcmp(argv[1], "device") == 0) {
+			return cmd_stdio_device(cdev);
+		} else if (strcmp(argv[1], "loglevel") == 0) {
+			return cmd_stdio_loglevel(cdev);
 		}
 	}
 	if (argc < 3) {
 		cmd_stdio_usage(cdev);
 		return VMM_EFAIL;
 	}
-	if (strcmp(argv[1], "chdev") == 0) {
-		return cmd_stdio_chdev(cdev, argv[2]);
+	if (strcmp(argv[1], "change_device") == 0) {
+		return cmd_stdio_change_device(cdev, argv[2]);
+	} else if (strcmp(argv[1], "change_loglevel") == 0) {
+		long loglevel = strtol(argv[2], NULL, 10);
+		return cmd_stdio_change_loglevel(cdev, loglevel);
 	} else {
 		cmd_stdio_usage(cdev);
 		return VMM_EFAIL;
