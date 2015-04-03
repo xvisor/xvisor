@@ -135,10 +135,11 @@ int vmm_host_active_irq_exec(u32 cpu_irq_no)
 	 */
 	exec_count = 16;
 	hirq_no = hirqctrl.active(cpu_irq_no);
-	while (exec_count && (hirq_no < CONFIG_HOST_IRQ_COUNT)) {
+	while (hirq_no < CONFIG_HOST_IRQ_COUNT) {
 		vmm_host_generic_irq_exec(hirq_no);
-		exec_count--;
 
+		if (!exec_count--)
+			break;
 		hirq_no = hirqctrl.active(cpu_irq_no);
 	}
 
