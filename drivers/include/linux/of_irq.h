@@ -1,7 +1,6 @@
 #ifndef __OF_IRQ_H
 #define __OF_IRQ_H
 
-#include <vmm_devtree_extirq.h>
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/irq.h>

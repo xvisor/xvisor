@@ -16,9 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_devtree_extirq.c
+ * @file vmm_devtree_irq.c
  * @author Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
- * @brief Host extended IRQ device tree functions
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Host IRQ device tree functions
  *
  * The source has been largely adapted from the Linux kernel v3.16:
  * drivers/of/irq.c and kernel/irq/irqdomain.c
@@ -29,6 +30,7 @@
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
+#include <vmm_host_irq.h>
 #include <vmm_host_extirq.h>
 
 #define pr_warn(msg...)			vmm_printf(msg)
@@ -38,13 +40,45 @@
 #define pr_debug(msg...)
 #endif
 
-/**
- * of_irq_find_parent - Given a device node, find its interrupt parent node
- * @child: pointer to device node
- *
- * Returns a pointer to the interrupt parent node, or NULL if the interrupt
- * parent could not be determined.
- */
+int vmm_devtree_irq_get(struct vmm_devtree_node *node,
+		        u32 *irq, int index)
+{
+	u32 alen;
+	const char *aval;
+
+	if (!node || !irq || index < 0) {
+		return VMM_EFAIL;
+	}
+
+	aval = vmm_devtree_attrval(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+	if (!aval) {
+		return VMM_ENOTAVAIL;
+	}
+
+	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+	if (alen < (index * sizeof(u32))) {
+		return VMM_ENOTAVAIL;
+	}
+
+	aval += index * sizeof(u32);
+	*irq  = vmm_be32_to_cpu(*((u32 *)aval));
+
+	return VMM_OK;
+}
+
+u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
+{
+	u32 alen;
+
+	if (!node) {
+		return 0;
+	}
+
+	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+
+	return alen / sizeof(u32);
+}
+
 struct vmm_devtree_node *vmm_devtree_extirq_find_parent(
 	struct vmm_devtree_node *child)
 {
@@ -72,16 +106,6 @@ struct vmm_devtree_node *vmm_devtree_extirq_find_parent(
 	return p;
 }
 
-/**
- * vmm_devtree_extirq_parse_one - Resolve an interrupt for a device
- * @device: the device whose interrupt is to be resolved
- * @index: index of the interrupt to resolve
- * @out_irq: structure filled by this function
- *
- * This function resolves an interrupt for a node by walking the interrupt tree,
- * finding which interrupt controller node it is attached to, and returning the
- * interrupt specifier that can be used to retrieve an Xvisor IRQ number.
- */
 int vmm_devtree_extirq_parse_one(struct vmm_devtree_node *device,
 				 int index,
 				 struct vmm_devtree_phandle_args *out_irq)
@@ -208,14 +232,6 @@ unsigned int vmm_devtree_extirq_create_mapping(
 	return virq;
 }
 
-/**
- * vmm_devtree_extirq_parse_map - Parse and map an interrupt into Xvisor space
- * @dev: Device node of the device whose interrupt is to be mapped
- * @index: Index of the interrupt to map
- *
- * This function is a wrapper that chains of_irq_parse_one() and
- * irq_create_of_mapping() to make things easier to callers
- */
 unsigned int vmm_devtree_extirq_parse_map(struct vmm_devtree_node *dev,
 					  int index)
 {

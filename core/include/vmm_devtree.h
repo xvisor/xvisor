@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2010 Anup Patel.
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  *
  * @file vmm_devtree.h
  * @author Anup Patel (anup@brainfault.org)
+ * @author Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
  * @brief Device Tree Header File.
  */
 #ifndef __VMM_DEVTREE_H_
@@ -608,6 +610,38 @@ int vmm_devtree_irq_get(struct vmm_devtree_node *node,
  *  NOTE: This is based on 'irq' attribute of device tree node
  */
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
+
+/**
+ * Given a device tree node, find its interrupt parent node
+ * @child: pointer to device node
+ *
+ * Returns a pointer to the interrupt parent node, or NULL if
+ * the interrupt parent could not be determined.
+ */
+struct vmm_devtree_node *vmm_devtree_extirq_find_parent(
+				struct vmm_devtree_node *child);
+
+/**
+ * Resolve an interrupt for a device
+ * @device: the device whose interrupt is to be resolved
+ * @index: index of the interrupt to resolve
+ * @out_irq: structure filled by this function
+ *
+ * This function resolves an interrupt for a node by walking the interrupt tree,
+ * finding which interrupt controller node it is attached to, and returning the
+ * interrupt specifier that can be used to retrieve an Xvisor IRQ number.
+ */
+int vmm_devtree_extirq_parse_one(struct vmm_devtree_node *device,
+				 int index,
+				 struct vmm_devtree_phandle_args *out_irq);
+
+/**
+ * Parse and map an interrupt into Xvisor space
+ * @dev: Device node of the device whose interrupt is to be mapped
+ * @index: Index of the interrupt to map
+ */
+unsigned int vmm_devtree_extirq_parse_map(struct vmm_devtree_node *dev,
+					  int index);
 
 /** vmm_devtree_is_available - check if a device is available for use
  *  @node: Node to check for availability
