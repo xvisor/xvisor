@@ -368,10 +368,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				break;
 			}
 		} else {
-			rc = VMM_EFAIL;
+			rc = VMM_EINVALID;
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
+		if ((current_state == VMM_VCPU_STATE_READY) ||
+		    (current_state == VMM_VCPU_STATE_RUNNING)) {
+			goto skip_state_change;
+		}
 		if ((current_state == VMM_VCPU_STATE_RESET) ||
 		    (current_state == VMM_VCPU_STATE_PAUSED)) {
 			/* Enqueue VCPU to ready queue */
@@ -380,8 +384,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				preempt = rq_prempt_needed(schedp);
 			}
 		} else {
-			rc = VMM_EFAIL;
+			rc = VMM_EINVALID;
 		}
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		/* Only scheduler can set RUNNING state.
+		 * Any request for setting RUNNING state is invalid.
+		 */
+		rc = VMM_EINVALID;
 		break;
 	case VMM_VCPU_STATE_PAUSED:
 	case VMM_VCPU_STATE_HALTED:
@@ -397,10 +407,10 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				rc = rq_detach(schedp, vcpu);
 			}
 		} else {
-			rc = VMM_EFAIL;
+			rc = VMM_EINVALID;
 		}
 		break;
-	}
+	};
 
 	if (rc == VMM_OK) {
 		tstamp = vmm_timer_timestamp();
@@ -435,6 +445,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		vcpu->state_tstamp = tstamp;
 	}
 
+skip_state_change:
 	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
 	if (preempt && schedp->current_vcpu) {
@@ -449,6 +460,13 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		} else {
 			rc = vmm_scheduler_force_resched(vhcpu);
 		}
+	}
+
+	if (rc) {
+		vmm_printf("vcpu=%s current_state=0x%x to new_state=0x%x "
+			   "failed (error %d)\n",
+			   vcpu->name, new_state, current_state, rc);
+		WARN_ON(1);
 	}
 
 	return rc;
