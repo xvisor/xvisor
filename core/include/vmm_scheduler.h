@@ -44,6 +44,12 @@ int vmm_scheduler_force_resched(u32 hcpu);
  */
 int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state);
 
+/** Retrive host CPU assigned to given VCPU */
+int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu);
+
+/** Update host CPU assigned to given VCPU */
+int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu);
+
 /** Enter IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context);
 

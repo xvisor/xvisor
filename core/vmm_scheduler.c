@@ -74,7 +74,7 @@ static int rq_dequeue(struct vmm_scheduler_ctrl *schedp,
 {
 	int ret;
 	irq_flags_t flags;
-	
+
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
 	ret = vmm_schedalgo_rq_dequeue(schedp->rq, next, next_time_slice);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
@@ -82,12 +82,13 @@ static int rq_dequeue(struct vmm_scheduler_ctrl *schedp,
 	return ret;
 }
 
+/* NOTE: Must be called with vcpu->sched_lock held */
 static int rq_enqueue(struct vmm_scheduler_ctrl *schedp,
 		      struct vmm_vcpu *vcpu)
 {
 	int ret;
 	irq_flags_t flags;
-	
+
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
 	ret = vmm_schedalgo_rq_enqueue(schedp->rq, vcpu);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
@@ -95,12 +96,13 @@ static int rq_enqueue(struct vmm_scheduler_ctrl *schedp,
 	return ret;
 }
 
+/* NOTE: Must be called with vcpu->sched_lock held */
 static int rq_detach(struct vmm_scheduler_ctrl *schedp,
 		     struct vmm_vcpu *vcpu)
 {
 	int ret;
 	irq_flags_t flags;
-	
+
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
 	ret = vmm_schedalgo_rq_detach(schedp->rq, vcpu);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
@@ -112,7 +114,7 @@ static bool rq_prempt_needed(struct vmm_scheduler_ctrl *schedp)
 {
 	bool ret;
 	irq_flags_t flags;
-	
+
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
 	ret = vmm_schedalgo_rq_prempt_needed(schedp->rq, schedp->current_vcpu);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
@@ -124,7 +126,7 @@ static u32 rq_length(struct vmm_scheduler_ctrl *schedp, u32 priority)
 {
 	u32 ret;
 	irq_flags_t flags;
-	
+
 	vmm_spin_lock_irqsave_lite(&schedp->rq_lock, flags);
 	ret = vmm_schedalgo_rq_length(schedp->rq, priority);
 	vmm_spin_unlock_irqrestore_lite(&schedp->rq_lock, flags);
@@ -181,7 +183,12 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
 			arch_atomic_write(&current->state, VMM_VCPU_STATE_READY);
 			current->state_tstamp = tstamp;
-			rq_enqueue(schedp, current);
+			if (current->hcpu != current->next_ready_hcpu) {
+				current->hcpu = current->next_ready_hcpu;
+				rq_enqueue(&per_cpu(sched, current->hcpu), current);
+			} else {
+				rq_enqueue(schedp, current);
+			}
 		}
 		tcurrent = current;
 	}
@@ -470,6 +477,81 @@ skip_state_change:
 	}
 
 	return rc;
+}
+
+int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
+{
+	irq_flags_t flags;
+
+	if ((vcpu == NULL) || (hcpu == NULL)) {
+		return VMM_EFAIL;
+	}
+
+	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	*hcpu = vcpu->hcpu;
+	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	return VMM_OK;
+}
+
+int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
+{
+	u32 old_hcpu, state;
+	irq_flags_t flags;
+	bool force_old_resched = FALSE;
+	bool force_new_resched = FALSE;
+
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+
+	/* Lock VCPU scheduling */
+	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	/* Current hcpu */
+	old_hcpu = vcpu->hcpu;
+
+	/* If hcpu not changing then do nothing */
+	if (old_hcpu == hcpu) {
+		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+		return VMM_OK;
+	}
+
+	/* Match affinity with new hcpu */
+	if (!vmm_cpumask_test_cpu(hcpu, vcpu->cpu_affinity)) {
+		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+		return VMM_EINVALID;
+	}
+
+	/* Check if we don't need to migrate VCPU to new hcpu */
+	state = arch_atomic_read(&vcpu->state);
+	if (state == VMM_VCPU_STATE_READY) {
+		rq_detach(&per_cpu(sched, old_hcpu), vcpu);
+		vcpu->hcpu = hcpu;
+		rq_enqueue(&per_cpu(sched, hcpu), vcpu);
+		force_new_resched = TRUE;
+	} else if (state == VMM_VCPU_STATE_RUNNING) {
+		force_old_resched = TRUE;
+		force_new_resched = TRUE;
+	} else {
+		vcpu->hcpu = hcpu;
+	}
+	vcpu->next_ready_hcpu = hcpu;
+
+	/* Unlock VCPU scheduling */
+	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	/* If required trigger rescheduling on old host CPU */
+	if (force_old_resched) {
+		vmm_scheduler_force_resched(old_hcpu);
+	}
+
+	/* If required trigger rescheduling on new host CPU */
+	if (force_new_resched) {
+		vmm_scheduler_force_resched(hcpu);
+	}
+
+	return VMM_OK;
 }
 
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)

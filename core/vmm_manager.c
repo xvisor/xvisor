@@ -275,94 +275,12 @@ int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 new_state)
 
 int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 {
-	irq_flags_t flags;
-
-	if ((vcpu == NULL) || (hcpu == NULL)) {
-		return VMM_EFAIL;
-	}
-
-	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
-	*hcpu = vcpu->hcpu;
-	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	return VMM_OK;
-}
-
-static void manager_vcpu_movto_hcpu(void *vcpu_ptr,
-				    void *new_hcpu, void *dummy)
-{
-	int rc;
-	irq_flags_t flags;
-	u32 hcpu = (u32)(virtual_addr_t)new_hcpu;
-	struct vmm_vcpu *vcpu = vcpu_ptr;
-
-	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
-	if (rc) {
-		DPRINTF("%s: Failed to pause VCPU=%s on CPU%d (%d)\n",
-			__func__, vcpu->name, vmm_smp_processor_id(), rc);
-		return;
-	}
-
-	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
-	vcpu->hcpu = hcpu;
-	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY);
-	if (rc) {
-		DPRINTF("%s: Failed to resume VCPU=%s on CPU%d (%d)\n",
-			__func__, vcpu->name, vmm_smp_processor_id(), rc);
-		return;
-	}
+	return vmm_scheduler_get_hcpu(vcpu, hcpu);
 }
 
 int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 {
-	u32 old_hcpu;
-	irq_flags_t flags;
-	u32 state;
-
-	if (!vcpu) {
-		return VMM_EFAIL;
-	}
-
-	/* Lock VCPU scheduling */
-	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
-
-	/* Current hcpu */
-	old_hcpu = vcpu->hcpu;
-
-	/* If hcpu not changing then do nothing */
-	if (old_hcpu == hcpu) {
-		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		return VMM_OK;
-	}
-
-	/* Match affinity with new hcpu */
-	if (!vmm_cpumask_test_cpu(hcpu, vcpu->cpu_affinity)) {
-		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		return VMM_EINVALID;
-	}
-
-	state = arch_atomic_read(&vcpu->state);
-
-	/* Check if we don't need to migrate VCPU to new hcpu */
-	if ((state != VMM_VCPU_STATE_READY) &&
-	    (state != VMM_VCPU_STATE_RUNNING)) {
-		vcpu->hcpu = hcpu;
-		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		return VMM_OK;
-	}
-
-	/* Unlock VCPU scheduling */
-	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	/* Try to migrate running/ready VCPU to new host CPU */
-	vmm_smp_ipi_async_call(vmm_cpumask_of(old_hcpu),
-			       manager_vcpu_movto_hcpu,
-			       vcpu, (void *)(virtual_addr_t)hcpu,
-			       NULL);
-
-	return VMM_OK;
+	return vmm_scheduler_set_hcpu(vcpu, hcpu);
 }
 
 int vmm_manager_vcpu_hcpu_resched(struct vmm_vcpu *vcpu)
@@ -548,6 +466,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	/* Intialize dynamic scheduling context */
 	INIT_RW_LOCK(&vcpu->sched_lock);
 	vcpu->hcpu = vmm_loadbal_good_hcpu(priority);
+	vcpu->next_ready_hcpu = vcpu->hcpu;
 	vcpu->cpu_affinity = cpu_online_mask;
 	vcpu->state_tstamp = vmm_timer_timestamp();
 	vcpu->state_ready_nsecs = 0;
@@ -1302,6 +1221,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
 		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
+		vcpu->next_ready_hcpu = vcpu->hcpu;
 		vcpu->cpu_affinity = cpu_online_mask;
 		vcpu->sched_priv = NULL;
 
@@ -1434,6 +1354,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 
 			/* Set hcpu as the first CPU in the mask */
 			vcpu->hcpu = vmm_cpumask_first(affinity_mask);
+			vcpu->next_ready_hcpu = vcpu->hcpu;
 			if (vcpu->hcpu > CONFIG_CPU_COUNT) {
 				vmm_manager_vcpu_set_state(vcpu,
 						VMM_VCPU_STATE_UNKNOWN);
