@@ -68,6 +68,15 @@ int vmm_completion_wait_timeout(struct vmm_completion *cmpl, u64 *timeout);
 /** Signal completion and wake first sleeping Orphan VCPU */
 int vmm_completion_complete(struct vmm_completion *cmpl);
 
+/** Signal completion once and wake first sleeping Orphan VCPU
+ *  Note: Signal completion once will only consider first complete
+ *  call. If complete signal was already done then subsequent
+ *  complete calls are ignored. This function can help avoid
+ *  unwanted wake calls by clubing multiple complete calls into
+ *  one signal completion.
+ */
+int vmm_completion_complete_once(struct vmm_completion *cmpl);
+
 /** Signal completion and wake all sleeping Orphan VCPUs */
 int vmm_completion_complete_all(struct vmm_completion *cmpl);
 

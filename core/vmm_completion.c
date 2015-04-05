@@ -93,6 +93,25 @@ int vmm_completion_complete(struct vmm_completion *cmpl)
 	return rc;
 }
 
+int vmm_completion_complete_once(struct vmm_completion *cmpl)
+{
+	int rc = VMM_OK;
+	irq_flags_t flags;
+
+	BUG_ON(!cmpl);
+
+	vmm_spin_lock_irqsave(&cmpl->wq.lock, flags);
+
+	if (!cmpl->done) {
+		cmpl->done++;
+		rc = __vmm_waitqueue_wakefirst(&cmpl->wq);
+	}
+
+	vmm_spin_unlock_irqrestore(&cmpl->wq.lock, flags);
+
+	return rc;
+}
+
 int vmm_completion_complete_all(struct vmm_completion *cmpl)
 {
 	int rc = VMM_OK;
