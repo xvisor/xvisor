@@ -224,6 +224,48 @@ struct ip_header {
 #define ip_chksum(ip_frame)	vmm_be16_to_cpu(((struct ip_header *)(ip_frame))->ipchksum)
 #define ip_payload(ip_frame)	(((struct ip_header *)(ip_frame))->payload)
 
+struct icmp_header {
+	u8 type;
+	u8 code;
+	u16 checksum;
+	u16 id;
+	u16 sequence;
+	u8 payload[0];
+} __packed;
+
+#define ICMP_HLEN	(sizeof(struct icmp_header))
+
+#define icmp_type(icmp_frame) (((struct icmp_header *)(icmp_frame))->type)
+#define icmp_code(icmp_frame) (((struct icmp_header *)(icmp_frame))->code)
+#define icmp_checksum(icmp_frame) vmm_be16_to_cpu(((struct icmp_header *)(icmp_frame))->checksum)
+#define icmp_id(icmp_frame)	vmm_be16_to_cpu(((struct icmp_header *)(icmp_frame))->id)
+#define icmp_sequence(icmp_frame) vmm_be16_to_cpu(((struct tcp_header *)(icmp_frame))->sequence)
+#define icmp_payload(icmp_frame) (((struct icmp_header *)(icmp_frame))->payload)
+
+struct tcp_header {
+	u16 srcport;
+	u16 dstport;
+	u32 sequence;
+	u32 acknumber;
+	u16 flags;
+	u16 window;
+	u16 checksum;
+	u16 urgent;
+	u8 payload[0];
+} __packed;
+
+#define TCP_HLEN	(sizeof(struct tcp_header))
+
+#define tcp_srcport(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->srcport)
+#define tcp_dstport(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->dstport)
+#define tcp_sequence(tcp_frame)	vmm_be32_to_cpu(((struct tcp_header *)(tcp_frame))->sequence)
+#define tcp_acknumber(tcp_frame) vmm_be32_to_cpu(((struct tcp_header *)(tcp_frame))->acknumber)
+#define tcp_flags(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->flags)
+#define tcp_window(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->window)
+#define tcp_checksum(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->checksum)
+#define tcp_urgent(tcp_frame)	vmm_be16_to_cpu(((struct tcp_header *)(tcp_frame))->urgent)
+#define tcp_payload(tcp_frame)	(((struct tcp_header *)(tcp_frame))->payload)
+
 struct arp_header {
 	u16 htype;
 	u16 ptype;
@@ -247,16 +289,6 @@ struct arp_header {
 #define	arp_spa(arp_frame)	(((struct arp_header *)(arp_frame))->spa) 
 #define	arp_tha(arp_frame)	(((struct arp_header *)(arp_frame))->tha) 
 #define	arp_tpa(arp_frame)	(((struct arp_header *)(arp_frame))->tpa) 
-
-struct icmp_echo_header {
-	u8 type;
-	u8 icode;
-	u16 chksum;
-	u16 id;
-	u16 seqno;
-} __packed;
-
-#define ICMP_HLEN	(sizeof(struct icmp_echo_header))
 
 #define	IN_CLASSA(a)		((((u8 *)(a))[0] & 0x80) == 0)
 #define	IN_CLASSB(a)		((((u8 *)(a))[0] & 0xc0) == 0x80)
