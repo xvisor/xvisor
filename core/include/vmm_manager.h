@@ -190,7 +190,6 @@ struct vmm_vcpu {
 	/* Scheduler dynamic context */
 	vmm_rwlock_t sched_lock;
 	u32 hcpu;
-	u32 next_ready_hcpu;
 	const struct vmm_cpumask *cpu_affinity;
 	atomic_t state;
 	u64 state_tstamp;

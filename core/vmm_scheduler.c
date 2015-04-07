@@ -183,12 +183,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 			schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
 			arch_atomic_write(&current->state, VMM_VCPU_STATE_READY);
 			current->state_tstamp = tstamp;
-			if (current->hcpu != current->next_ready_hcpu) {
-				current->hcpu = current->next_ready_hcpu;
-				rq_enqueue(&per_cpu(sched, current->hcpu), current);
-			} else {
-				rq_enqueue(schedp, current);
-			}
+			rq_enqueue(schedp, current);
 		}
 		tcurrent = current;
 	}
@@ -494,12 +489,44 @@ int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 	return VMM_OK;
 }
 
+static void scheduler_ipi_migrate_vcpu(void *arg0, void *arg1, void *arg2)
+{
+	irq_flags_t flags;
+	u32 old_hcpu = vmm_smp_processor_id();
+	u32 state, new_hcpu = (u32)(virtual_addr_t)arg1;
+	struct vmm_vcpu *vcpu = arg0;
+
+	/* Lock VCPU scheduling */
+	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	/* The VCPU has to be in READY state otherwise we skip */
+	state = arch_atomic_read(&vcpu->state);
+	if ((state != VMM_VCPU_STATE_READY) ||
+	    (vcpu->hcpu != old_hcpu) ||
+	    (vcpu->hcpu == new_hcpu)) {
+		goto skip;
+	}
+
+	/* Detach VCPU from old hcpu ready queue */
+	rq_detach(&per_cpu(sched, old_hcpu), vcpu);
+
+	/* Enqueue VCPU to new hcpu ready queue */
+	vcpu->hcpu = new_hcpu;
+	rq_enqueue(&per_cpu(sched, new_hcpu), vcpu);
+
+	/* Trigger re-scheduling on new hcpu */
+	vmm_scheduler_force_resched(new_hcpu);
+
+skip:
+	/* Unlock VCPU scheduling */
+	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+}
+
 int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 {
 	u32 old_hcpu, state;
 	irq_flags_t flags;
-	bool force_old_resched = FALSE;
-	bool force_new_resched = FALSE;
+	bool migrate_vcpu = FALSE;
 
 	if (!vcpu) {
 		return VMM_EFAIL;
@@ -525,30 +552,21 @@ int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 
 	/* Check if we don't need to migrate VCPU to new hcpu */
 	state = arch_atomic_read(&vcpu->state);
-	if (state == VMM_VCPU_STATE_READY) {
-		rq_detach(&per_cpu(sched, old_hcpu), vcpu);
-		vcpu->hcpu = hcpu;
-		rq_enqueue(&per_cpu(sched, hcpu), vcpu);
-		force_new_resched = TRUE;
-	} else if (state == VMM_VCPU_STATE_RUNNING) {
-		force_old_resched = TRUE;
-		force_new_resched = TRUE;
+	if ((state == VMM_VCPU_STATE_READY) ||
+	    (state == VMM_VCPU_STATE_RUNNING)) {
+		migrate_vcpu = TRUE;
 	} else {
 		vcpu->hcpu = hcpu;
 	}
-	vcpu->next_ready_hcpu = hcpu;
 
 	/* Unlock VCPU scheduling */
 	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
-	/* If required trigger rescheduling on old host CPU */
-	if (force_old_resched) {
-		vmm_scheduler_force_resched(old_hcpu);
-	}
-
-	/* If required trigger rescheduling on new host CPU */
-	if (force_new_resched) {
-		vmm_scheduler_force_resched(hcpu);
+	/* If required trigger VCPU migration on old host CPU */
+	if (migrate_vcpu) {
+		vmm_smp_ipi_async_call(vmm_cpumask_of(old_hcpu),
+					scheduler_ipi_migrate_vcpu, vcpu,
+					(void *)(virtual_addr_t)hcpu, NULL);
 	}
 
 	return VMM_OK;
