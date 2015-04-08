@@ -148,8 +148,13 @@ static void sdhci_init(struct sdhci_host *host, int soft)
 	sdhci_writel(host, SDHCI_INT_DATA_MASK | SDHCI_INT_CMD_MASK,
 		     SDHCI_INT_ENABLE);
 
-	/* Mask all sdhci interrupt sources */
-	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
+	if (host->sdhci_caps & SDHCI_CAN_DO_SDMA) {
+		/* Mask all sdhci interrupt sources, except commands */
+		sdhci_writel(host, SDHCI_INT_CMD_MASK, SDHCI_SIGNAL_ENABLE);
+	} else {
+		/* Mask all sdhci interrupt sources */
+		sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
+	}
 }
 
 static void sdhci_cmd_done(struct sdhci_host *host, struct mmc_cmd *cmd)
