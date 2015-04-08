@@ -340,17 +340,6 @@ static void esdhc_writel_le(struct sdhci_host *host, u32 val, int reg)
 		}
 	}
 
-	if (unlikely(reg == SDHCI_DMA_ADDRESS)) {
-		u32 paddr = 0;
-
-		/* Check TC bit? See the end of the datasheet p5630. */
-		if (VMM_OK != vmm_host_va2pa(val, &paddr)) {
-			dev_info(host->mmc->dev, "Failed to get physical "
-				 "address for DMA (va: 0x%X)\n", val);
-		}
-		val = paddr;
-	}
-
 	writel(val, host->ioaddr + reg);
 }
 
