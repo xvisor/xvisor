@@ -663,7 +663,7 @@ static int i2c_imx_probe(struct vmm_device *dev,
 		return ret;
 	}
 
-	ret = vmm_devtree_regmap(dev->node, &base, 0);
+	ret = vmm_devtree_request_regmap(dev->node, &base, 0, "i.MX I2C");
 	if (VMM_OK != ret) {
 		vmm_printf("%s: can't get mapping\n", dev->name);
 		return ret;
