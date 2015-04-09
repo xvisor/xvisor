@@ -125,7 +125,6 @@ enum vmm_print_level {
 	VMM_LOGLEVEL_WARNING=4,
 	VMM_LOGLEVEL_NOTICE=5,
 	VMM_LOGLEVEL_INFO=6,
-	VMM_LOGLEVEL_DEFAULT=7
 };
 
 /** Print formatted string to default device if current

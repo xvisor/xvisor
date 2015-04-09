@@ -729,7 +729,7 @@ int __init vmm_stdio_init(void)
 	memset(&stdio_ctrl, 0, sizeof(stdio_ctrl));
 
 	/* Initialize loglevel */
-	ARCH_ATOMIC_INIT(&stdio_ctrl.loglevel, VMM_LOGLEVEL_DEFAULT);
+	ARCH_ATOMIC_INIT(&stdio_ctrl.loglevel, CONFIG_LOG_LEVEL);
 
 	/* Initialize lock */
 	INIT_SPIN_LOCK(&stdio_ctrl.lock);
