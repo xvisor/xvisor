@@ -655,25 +655,22 @@ static int i2c_imx_probe(struct vmm_device *dev,
 		return ret;
 	}
 
-	vmm_printf("%s: <%s>\n", dev->name, __func__);
-
 	ret = vmm_devtree_irq_get(dev->node, &irq, 0);
 	if (VMM_OK != ret) {
-		vmm_printf("%s: can't get irq number\n", dev->name);
+		dev_err(dev, "can't get irq number\n");
 		return ret;
 	}
 
 	ret = vmm_devtree_request_regmap(dev->node, &base, 0, "i.MX I2C");
 	if (VMM_OK != ret) {
-		vmm_printf("%s: can't get mapping\n", dev->name);
+		dev_err(dev, "can't get mapping\n");
 		return ret;
 	}
 
 	i2c_imx = devm_kzalloc(dev, sizeof(struct imx_i2c_struct),
 			       GFP_KERNEL);
 	if (!i2c_imx) {
-		vmm_printf("%s: can't allocate i.MX i2c structure\n",
-			   dev->name);
+		dev_err(dev, "can't allocate i.MX i2c structure\n");
 		ret = -ENOMEM;
 		goto err_alloc;
 	}
@@ -693,20 +690,20 @@ static int i2c_imx_probe(struct vmm_device *dev,
 	/* Get I2C clock */
 	i2c_imx->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(i2c_imx->clk)) {
-		vmm_printf("%s: can't get I2C clock\n", dev->name);
+		dev_err(dev, "can't get I2C clock\n");
 		ret = PTR_ERR(i2c_imx->clk);
 		goto err_pa;
 	}
 
 	ret = clk_prepare_enable(i2c_imx->clk);
 	if (ret) {
-		vmm_printf("%s: can't enable I2C clock\n", dev->name);
+		dev_err(dev, "can't enable I2C clock\n");
 		goto err_clk_enable;
 	}
 	/* Request IRQ */
 	ret = vmm_host_irq_register(irq, dev->name, i2c_imx_isr, i2c_imx);
 	if (ret) {
-		vmm_printf("%s: can't claim irq %d\n", dev->name, irq);
+		dev_err(dev, "can't claim irq %d\n", irq);
 		goto err_irq_req;
 	}
 
