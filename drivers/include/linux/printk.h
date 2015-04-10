@@ -18,36 +18,40 @@
 #if defined(DEV_DEBUG)
 #define dev_dbg(dev, args...)						\
 	do {								\
-		vmm_printf("%s: ", (dev)->name);			\
-		vmm_printf(args);					\
+		vmm_lnotice("%s: ", (dev)->name);			\
+		vmm_lnotice(args);					\
 	} while (0)
 #else
 #define dev_dbg(...)
 #endif
 
 #define dev_info(dev, args...)		do { \
-					vmm_printf("%s: ", (dev)->name); \
-					vmm_printf(args); \
+					vmm_linfo("%s: ", (dev)->name); \
+					vmm_linfo(args); \
 					} while (0)
 
 #define dev_warn(dev, args...)		do { \
-					vmm_printf("WARNING: %s: ", (dev)->name); \
-					vmm_printf(args); \
+					vmm_lwarning("WARNING: %s: ", \
+						     (dev)->name);    \
+					vmm_lwarning(args);	      \
 					} while (0)
 
 #define dev_err(dev, args...)		do { \
-					vmm_printf("ERROR: %s: ", (dev)->name); \
-					vmm_printf(args); \
+					vmm_lerror("ERROR: %s: ", \
+						   (dev)->name);  \
+					vmm_lerror(args); \
 					} while (0)
 
 #define dev_crit(dev, args...)		do { \
-					vmm_printf("CRITCAL: %s: ", (dev)->name); \
-					vmm_printf(args); \
+					vmm_lcritical("CRITCAL: %s: ", \
+						      (dev)->name);    \
+					vmm_lcritical(args); \
 					} while (0)
 
 #define dev_notice(dev, args...)	do { \
-					vmm_printf("NOTICE: %s: ", (dev)->name); \
-					vmm_printf(args); \
+					vmm_lnotice("NOTICE: %s: ", \
+						    (dev)->name);   \
+					vmm_lnotice(args); \
 					} while (0)
 
 #define dev_printk(level, dev, args...)	do { \
