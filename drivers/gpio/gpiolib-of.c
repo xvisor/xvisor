@@ -53,7 +53,9 @@ static int of_gpiochip_find_and_xlate(struct gpio_chip *gc, void *data)
 #else
 	flags = *gg_data->flags;
 	ret = gc->of_xlate(gc, &gg_data->gpiospec, &flags);
-	*gg_data->flags = (enum of_gpio_flags)flags;
+	if (gg_data->flags) {
+		*gg_data->flags = (enum of_gpio_flags)flags;
+	}
 #endif
 	if (ret < 0)
 		return false;
