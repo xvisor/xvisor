@@ -128,11 +128,11 @@ enum vmm_print_level {
 };
 
 /** Print formatted string to default device if current
- *  stdio log level is less than or equal to specified level
+ *  stdio log level is greater than or equal to specified level
  */
 #define vmm_lprintf(level, msg...) \
 	do {								\
-		if (vmm_stdio_loglevel() <= (level))			\
+		if (vmm_stdio_loglevel() >= (level))			\
 			vmm_printf(msg);				\
 	} while (0)
 
