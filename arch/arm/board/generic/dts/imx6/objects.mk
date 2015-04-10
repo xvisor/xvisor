@@ -22,4 +22,4 @@
 # */
 
 board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite/one_guest_sabrelite-a9.dtb
-
+board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite/two_guest_sabrelite-a9.dtb
