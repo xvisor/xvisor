@@ -917,7 +917,7 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 	struct pltfm_imx_data *imx_data;
 
 	if (!vmm_devtree_is_available(dev->node)) {
-		dev_info(dev, "device is disabled\n");
+		vmm_linfo("%s: device is disabled\n", dev->name);
 		return err;
 	}
 
