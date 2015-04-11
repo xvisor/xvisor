@@ -781,21 +781,6 @@ spi_imx_unprepare_message(struct spi_master *master, struct spi_message *msg)
 	return 0;
 }
 
-/* Bus ID mapping:
- * (0x02008000 & 0x1C000) >> 14 - 2 -> 0
- * (0x0200c000 & 0x1C000) >> 14 - 2 -> 1
- * (0x02010000 & 0x1C000) >> 14 - 2 -> 2
- * (0x02014000 & 0x1C000) >> 14 - 2 -> 3
- * (0x02018000 & 0x1C000) >> 14 - 2 -> 4
- */
-static u16 spi_imx_bus(struct vmm_devtree_node *node)
-{
-	physical_addr_t pa = 0;
-
-	vmm_devtree_regaddr(node, &pa, 0);
-	return ((pa & 0x1C000) >> 14) - 2;
-}
-
 static int spi_imx_probe(struct vmm_device *dev,
 			 const struct vmm_devtree_nodeid *devid)
 {
@@ -807,7 +792,7 @@ static int spi_imx_probe(struct vmm_device *dev,
 	u32 num_cs;
 
 	if (!vmm_devtree_is_available(dev->node)) {
-		dev_info(dev, "device is disabled\n");
+		vmm_linfo("%s: device is disabled\n", dev->name);
 		return ret;
 	}
 
@@ -865,8 +850,11 @@ static int spi_imx_probe(struct vmm_device *dev,
 		goto out_gpio_free;
 	}
 	spi_imx->base = (void __iomem *)vaddr;
-
-	master->bus_num = spi_imx_bus(dev->node);
+	master->bus_num = vmm_devtree_alias_get_id(dev->node, "spi");
+	if (0 > master->bus_num) {
+		ret = master->bus_num;
+		goto out_gpio_free;
+	}
 
 	ret = vmm_devtree_irq_get(dev->node, &spi_imx->irq, 0);
 	if (VMM_OK != ret) {

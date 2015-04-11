@@ -44,10 +44,6 @@
 	pinctrl-0 = <&pinctrl_ecspi1_1>;
 	status = "okay";
 
-	/* This must be add to specify the SPI bus number, used by the flash
-	   driver. */
-	bus = <0>;
-
 	flash: m25p80@0 {
 		compatible = "sst25vf016b";
 		spi-max-frequency = <20000000>;
