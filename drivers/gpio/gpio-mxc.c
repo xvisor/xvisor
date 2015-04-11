@@ -488,7 +488,6 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 {
 	struct device_node *np = dev->node;
 	struct mxc_gpio_port *port;
-	physical_addr_t paddr = 0;
 	int err = VMM_OK;
 	int port_num = 0;
 	char *name = NULL;
@@ -512,26 +511,8 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 	if (VMM_OK != err)
 		goto out_irq_get;
 
-	/*
-	 * FIXME: As alias does not exist in Xvisor, the node name "gpiox"
-	 * cannot be retrieved, and thus, the gpio id.
-	 */
-	/*
-	 * Get the id from the base address:
-	 * GPIO 1 (idx 0): (0x0209C000 & 0x3C000) >> 14 = 7
-	 * GPIO 2 (idx 1): (0x020A0000 & 0x3C000) >> 14 = 8
-	 * GPIO 3 (idx 2): (0x020A4000 & 0x3C000) >> 14 = 9
-	 * GPIO 4 (idx 3): (0x020A8000 & 0x3C000) >> 14 = 10
-	 * GPIO 5 (idx 4): (0x020AC000 & 0x3C000) >> 14 = 11
-	 * GPIO 6 (idx 5): (0x020B0000 & 0x3C000) >> 14 = 12
-	 * GPIO 7 (idx 6): (0x020B4000 & 0x3C000) >> 14 = 13
-	 */
-	if (VMM_OK != (err = vmm_host_va2pa((virtual_addr_t)port->base,
-					    &paddr))) {
-		goto out_bgio;
-	}
-	port_num = ((paddr & 0x3C000) >> 14) - 6;
 	name = vmm_malloc(PORT_NAME_LEN);
+	port_num = vmm_devtree_alias_get_id(dev->node, "gpio");
 	snprintf(name, PORT_NAME_LEN, "gpio_mxc%d", port_num);
 
 	/* disable the interrupt and clear the status */

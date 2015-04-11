@@ -18,6 +18,9 @@
 	chosen { };
 
 	aliases {
+                gpio0 = &gpio1;
+                gpio2 = &gpio3;
+                gpio6 = &gpio7;
 		ipu0 = &ipu1;
 		ipu1 = &ipu2;
 		i2c0 = &i2c1;
