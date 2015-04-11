@@ -28,6 +28,8 @@
 #include <vmm_modules.h>
 #include <vmm_spinlocks.h>
 #include <vmm_completion.h>
+#include <vmm_threads.h>
+#include <vmm_workqueue.h>
 #include <arch_atomic.h>
 #include <vio/vmm_keymaps.h>
 #include <libs/list.h>
@@ -38,8 +40,8 @@
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(VSCREEN_IPRIORITY)
-#define	MODULE_INIT			NULL
-#define	MODULE_EXIT			NULL
+#define	MODULE_INIT			vscreen_init
+#define	MODULE_EXIT			vscreen_exit
 
 #undef DEBUG
 
@@ -116,6 +118,20 @@ struct vscreen_context {
 	struct vmm_notifier_block vdis_client;
 	struct vmm_notifier_block vinp_client;
 };
+
+struct vscreen_ctrl {
+	vmm_spinlock_t vscreen_list_lock;
+	struct dlist vscreen_list;
+};
+
+struct vscreen_list_elt {
+	struct dlist head;
+	struct vmm_thread *thread;
+	struct vscreen_context *cntx;
+	struct vmm_work cleanup_work;
+};
+
+static struct vscreen_ctrl vscreenctrl;
 
 static void vscreen_enqueue_work(struct vscreen_context *cntx,
 				 u32 type)
@@ -1228,6 +1244,64 @@ static int vscreen_cleanup(struct vscreen_context *cntx)
 	return VMM_OK;
 }
 
+static void vscreen_cleanup_work(struct vmm_work *work)
+{
+	struct vscreen_list_elt *velt = 
+		container_of(work, struct vscreen_list_elt, cleanup_work);
+	irq_flags_t flags;
+
+	/* Remove framebuffer from list */
+	vmm_spin_lock_irqsave(&vscreenctrl.vscreen_list_lock, flags);
+	list_del(&velt->head);
+	vmm_spin_unlock_irqrestore(&vscreenctrl.vscreen_list_lock, flags);
+
+	/* Free vscreen context */
+	vmm_free(velt->cntx);
+
+	/* Destroy thread */
+	vmm_threads_destroy(velt->thread);
+
+	/* Free vscreen list element */
+	vmm_free(velt);
+}
+
+static int vscreen_thread(void *data)
+{
+	int rc = VMM_OK;
+	struct vscreen_list_elt *velt = data;
+	struct vscreen_context *cntx = velt->cntx;
+
+	/* Process work until some one signals exit */
+	vscreen_process(cntx);
+
+	/* Cleanup vscreen */
+	rc = vscreen_cleanup(cntx);
+
+	/* Schedule a thread cleanup work */
+	vmm_workqueue_schedule_work(NULL, &velt->cleanup_work);
+
+	return rc;
+}
+
+static struct vscreen_list_elt *vscreen_fb_info_find(struct fb_info *info)
+{
+	irq_flags_t flags;
+	struct vscreen_list_elt *velt = NULL;
+
+	vmm_spin_lock_irqsave(&vscreenctrl.vscreen_list_lock, flags);
+	list_for_each_entry(velt, &vscreenctrl.vscreen_list, head) {
+		if (velt->cntx->info == info) {
+			vmm_spin_unlock_irqrestore(
+				&vscreenctrl.vscreen_list_lock,
+				flags);
+			return velt;
+		}
+	}
+	vmm_spin_unlock_irqrestore(&vscreenctrl.vscreen_list_lock, flags);
+
+	return NULL;
+}
+
 int vscreen_bind(bool is_hard,
 		 u32 refresh_rate,
 		 u32 esc_key_code0,
@@ -1238,8 +1312,11 @@ int vscreen_bind(bool is_hard,
 		 struct vmm_vkeyboard *vkbd,
 		 struct vmm_vmouse *vmou)
 {
-	int rc;
+	int rc = VMM_EFAIL;
 	struct vscreen_context *cntx;
+	struct vscreen_list_elt *velt = NULL;
+	irq_flags_t flags;
+	char name[VMM_FIELD_NAME_SIZE];
 
 	/* Can be called from Orphan (or Thread) context only */
 	BUG_ON(!vmm_scheduler_orphan_context());
@@ -1254,10 +1331,16 @@ int vscreen_bind(bool is_hard,
 		return VMM_EINVALID;
 	}
 
+	/* Ensure this framebuffer is not already binded */
+	if (NULL != vscreen_fb_info_find(info)) {
+			return VMM_EALREADY;
+	}
+
 	/* Alloc vscreen context */
 	cntx = vmm_zalloc(sizeof(struct vscreen_context));
 	if (!cntx) {
-		return VMM_ENOMEM;
+		rc = VMM_ENOMEM;
+		goto err_list;
 	}
 
 	/* Save parameters */
@@ -1275,21 +1358,94 @@ int vscreen_bind(bool is_hard,
 	rc = vscreen_setup(cntx);
 	if (rc) {
 		vmm_free(cntx);
-		return rc;
+		goto err_cntx;
 	}
 
-	/* Process work until some one signals exit */
-	vscreen_process(cntx);
+	/* Allocate and add framebuffer info list element */
+	velt = vmm_zalloc(sizeof (struct vscreen_list_elt));
+	if (!velt) {
+		rc = VMM_ENOMEM;
+		goto err_setup;
+	}
+	velt->cntx = cntx;
+	INIT_LIST_HEAD(&velt->head);
+	INIT_WORK(&velt->cleanup_work, vscreen_cleanup_work);
 
-	/* Cleanup vscreen */
-	rc = vscreen_cleanup(cntx);
+	vmm_spin_lock_irqsave(&vscreenctrl.vscreen_list_lock, flags);
+	list_add(&velt->head, &vscreenctrl.vscreen_list);
+	vmm_spin_unlock_irqrestore(&vscreenctrl.vscreen_list_lock, flags);
 
-	/* Free vscreen context */
+	/* Create and run vscreen thread */
+	vmm_snprintf(name, sizeof (name), "vscreen/%s", info->name);
+	velt->thread = vmm_threads_create(name, vscreen_thread, velt,
+					  VMM_THREAD_DEF_PRIORITY,
+					  VMM_THREAD_DEF_TIME_SLICE);
+	if (!velt->thread) {
+		rc = VMM_EFAIL;
+		goto err_thread_create;
+	}
+
+	rc = vmm_threads_start(velt->thread);
+	if (VMM_OK != rc) {
+		goto err_thread_start;
+	}
+
+	return VMM_OK;
+
+err_thread_start:
+	vmm_threads_destroy(velt->thread);
+err_thread_create:
+	vmm_spin_lock_irqsave(&vscreenctrl.vscreen_list_lock, flags);
+	list_del(&velt->head);
+	vmm_spin_unlock_irqrestore(&vscreenctrl.vscreen_list_lock, flags);
+	vmm_free(velt);
+err_setup:
+	vscreen_cleanup(cntx);
+err_cntx:
 	vmm_free(cntx);
+err_list:
 
 	return rc;
 }
 VMM_EXPORT_SYMBOL(vscreen_bind);
+
+int vscreen_unbind(struct fb_info *info)
+{
+	struct vscreen_list_elt *velt = NULL;
+
+	velt = vscreen_fb_info_find(info);
+	if (NULL == velt) {
+		return VMM_ENOTAVAIL;
+	}
+
+	vscreen_enqueue_work(velt->cntx, VSCREEN_WORK_EXIT);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vscreen_unbind);
+
+static int __init vscreen_init(void)
+{
+	INIT_SPIN_LOCK(&vscreenctrl.vscreen_list_lock);
+	INIT_LIST_HEAD(&vscreenctrl.vscreen_list);
+
+	return 0;
+}
+
+static void __exit vscreen_exit(void)
+{
+	irq_flags_t flags;
+	struct vscreen_list_elt *velt = NULL;
+
+	/* TODO: The module memory might be freed before exit work
+	 * is executed by vscreen thread.
+	 */
+	vmm_spin_lock_irqsave(&vscreenctrl.vscreen_list_lock, flags);
+	list_for_each_entry(velt, &vscreenctrl.vscreen_list, head) {
+		vscreen_enqueue_work(velt->cntx, VSCREEN_WORK_EXIT);
+	}
+	vmm_spin_unlock_irqrestore(&vscreenctrl.vscreen_list_lock, flags);
+}
 
 VMM_DECLARE_MODULE(MODULE_DESC,
 			MODULE_AUTHOR,

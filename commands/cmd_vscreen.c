@@ -48,6 +48,7 @@ static void cmd_vscreen_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vscreen soft_bind <guest_name> "
 			  "[<refresh_rate>] [<fb_name>] [<vdisplay_name>] "
 			  "[<vkeyboard_name>] [<vmouse_name>]\n");
+	vmm_cprintf(cdev, "   vscreen unbind [<fb_name>]\n");
 }
 
 struct vscreen_iter {
@@ -314,6 +315,25 @@ static int cmd_vscreen_bind(struct vmm_chardev *cdev,
 	return rc;
 }
 
+static int cmd_vscreen_unbind(struct vmm_chardev *cdev,
+			      const char *fb_name)
+{
+	struct fb_info *info;
+
+	if (fb_name) {
+		info = fb_find(fb_name);
+	} else {
+		info = fb_find("fb0");
+	}
+
+	if (!info) {
+		vmm_cprintf(cdev, "Failed to find fb_info\n");
+		return VMM_ENODEV;
+	}
+
+	return vscreen_unbind(info);
+}
+
 static int cmd_vscreen_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	if (argc < 2) {
@@ -337,6 +357,8 @@ static int cmd_vscreen_exec(struct vmm_chardev *cdev, int argc, char **argv)
 					(argc > 4) ? argv[4] : NULL,
 					(argc > 5) ? argv[5] : NULL,
 					(argc > 6) ? argv[6] : NULL);
+	} else if ((strcmp(argv[1], "unbind") == 0) && (argc <= 3)) {
+		return cmd_vscreen_unbind(cdev, (argc == 3) ? argv[2] : NULL);
 	}
 cmd_vscreen_fail:
 	cmd_vscreen_usage(cdev);

@@ -50,6 +50,8 @@ int vscreen_bind(bool is_hard,
 		 struct vmm_vkeyboard *vkbd,
 		 struct vmm_vmouse *vmou);
 
+int vscreen_unbind(struct fb_info *info);
+
 /** Software emulated virtual screen capturing on frame buffer device */
 static inline int vscreen_soft_bind(u32 refresh_rate,
 				    u32 esc_key_code0,
