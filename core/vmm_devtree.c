@@ -1842,6 +1842,19 @@ int vmm_devtree_alias_get_id(struct vmm_devtree_node *node,
 			continue;
 		}
 
+		/* Find the node by path */
+		np = vmm_devtree_getnode(attr->value);
+		if (!np) {
+			continue;
+		}
+
+		/* Found node should be same as given node */
+		if (node != np) {
+			vmm_devtree_dref_node(np);
+			continue;
+		}
+		vmm_devtree_dref_node(np);
+
 		/* Walk the alias backwards to extract the id and
 		 * work out the 'stem' string
 		 */
@@ -1855,18 +1868,7 @@ int vmm_devtree_alias_get_id(struct vmm_devtree_node *node,
 			continue;
 		}
 
-		/* Find the node by path */
-		np = vmm_devtree_getnode(attr->value);
-		if (!np) {
-			continue;
-		}
-
-		/* Found node should be same as given node */
-		if (node != np) {
-			id = atoi(end);
-		}
-		vmm_devtree_dref_node(np);
-
+		id = atoi(end);
 		/* If id found then we are done */
 		if (id >= 0) {
 			break;
