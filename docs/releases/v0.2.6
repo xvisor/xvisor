@@ -1,0 +1,56 @@
+			Xvisor v0.2.6
+	(Last Commit: -----------------------------)
+		(Release Date: 01-May-2015)
+
+In this release, we have lot of new features, libraries, drivers,
+and driver frameworks.
+
+New Features:
+ - Crypto library with MD5 and SHA-256 support
+ - User authentication library based on crypto library
+ - Optional Login/Logout in managment terminal
+ - Linux-compatible IOMMU framework (EXPERIEMENTAL)
+ - Linux-compatible SPI driver framework
+ - Linux-compatible MTD driver framework
+ - General purpose allocator library
+ - Bit reverse library
+ - Simple image loader library
+ - NOP strategy based block device request queue
+ - ISO9660 read-only filesystem support
+ - Linux-compatible USB framework (EXPERIEMENTAL)
+ - SCSI library
+ - Linux-compatible PCI driver framework
+ - Linux-compatible Framebuffer Backlight driver framework
+ - Virtual disk emulator framework
+ - Linux-compatible I2C driver framework
+ - Loglevel support in standart I/O
+
+New Commands:
+ - flash command to access MTD devices
+ - fb image sub-command for displaying splash screen
+ - vcpu monitor sub-commad for displaying active vcpus
+ - backlight command to control framebuffer backlight
+ - vdisk command for managing virtual disks
+ - i2c command for managing i2c slave devices
+ - imx6 board specifig command 
+
+New Drivers:
+ - MXC GPIO driver
+ - Freescale i.MX6 SPI driver
+ - GPIO bitbanging SPI driver
+ - M25P80 flash MTD driver
+ - Freescale i.MX6 pinctrl driver
+ - Freescale i.MX6 framebuffer driver
+ - USB hub class driver
+ - USB mass-storage class driver
+ - Realtek 8139 fast ethernet PCI driver
+ - PWM based backlight driver
+ - Freescale i.MX6 eSDHC driver
+ - Freescale i.MX6 I2C driver
+
+ARM Ports:
+ - Use GCC -O2 optimization level
+
+x86_64 Port:
+ - Able to boot linux as guest upto user space initialization
+
