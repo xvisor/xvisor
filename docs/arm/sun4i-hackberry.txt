@@ -21,7 +21,7 @@ Following are steps to create these images and then boot Xvisor on Allwinner
 A10:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
+  # CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

@@ -43,6 +43,11 @@ FW_CPPFLAGS+=-DARM_ARCH_v7
 FW_CFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
 FW_ASFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
 endif
+ifeq ($(board_arch),v7ve)
+FW_CPPFLAGS+=-DARM_ARCH_v7ve
+FW_CFLAGS+=-march=armv7ve $(FW_CPPFLAGS)
+FW_ASFLAGS+=-march=armv7ve $(FW_CPPFLAGS)
+endif
 FW_LDFLAGS=$(FW_CFLAGS)
 FW_AS=$(FW_CROSS_COMPILE)gcc
 FW_CC=$(FW_CROSS_COMPILE)gcc
@@ -62,6 +67,12 @@ FIRMWARE_OBJS=$(obj_dir)/arm_entry_v6.o \
 endif
 
 ifeq ($(board_arch),v7)
+FIRMWARE_OBJS=$(obj_dir)/arm_entry_v7.o \
+		$(obj_dir)/arm_cache_v7.o \
+		$(obj_dir)/arm_mmu_v7.o
+endif
+
+ifeq ($(board_arch),v7ve)
 FIRMWARE_OBJS=$(obj_dir)/arm_entry_v7.o \
 		$(obj_dir)/arm_cache_v7.o \
 		$(obj_dir)/arm_mmu_v7.o

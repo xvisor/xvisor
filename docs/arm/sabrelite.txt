@@ -13,7 +13,7 @@ Sabre LITE:
 Following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-unknown-linux-gnueabi-
+  # CROSS_COMPILE=arm-linux-gnueabi-
   # export CROSS_COMPILE
   (NOTE: Also place your compiler in PATH.)
 

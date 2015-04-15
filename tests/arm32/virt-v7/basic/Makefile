@@ -32,7 +32,7 @@ endif
 obj_dir=$(build_dir)/tests/arm32/virt-v7/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
-board_arch       = v7
+board_arch       = v7ve
 board_text_start = 0x41000000
 board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
