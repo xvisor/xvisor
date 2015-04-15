@@ -396,6 +396,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		rc = VMM_EINVALID;
 		break;
 	case VMM_VCPU_STATE_PAUSED:
+		if (current_state == VMM_VCPU_STATE_PAUSED) {
+			goto skip_state_change;
+		}
 	case VMM_VCPU_STATE_HALTED:
 		if ((current_state == VMM_VCPU_STATE_READY) ||
 		    (current_state == VMM_VCPU_STATE_RUNNING)) {
