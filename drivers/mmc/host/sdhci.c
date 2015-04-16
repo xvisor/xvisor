@@ -204,7 +204,7 @@ static void sdhci_transfer_pio(struct sdhci_host *host, struct mmc_data *data)
 	}
 }
 
-static int sdhci_transfer_data(struct sdhci_host *host, 
+static int sdhci_transfer_data(struct sdhci_host *host,
 				struct mmc_data *data,
 				u32 start_addr)
 {
@@ -216,7 +216,7 @@ static int sdhci_transfer_data(struct sdhci_host *host,
 	do {
 		stat = sdhci_readl(host, SDHCI_INT_STATUS);
 		if (stat & SDHCI_INT_ERROR) {
-			vmm_printf("%s: Error detected in status(0x%X)!\n", 
+			vmm_printf("%s: Error detected in status(0x%X)!\n",
 				   __func__, stat);
 			return VMM_EFAIL;
 		}
@@ -384,6 +384,9 @@ int sdhci_send_command(struct mmc_host *mmc,
 				return VMM_ETIMEDOUT;
 			}
 		}
+
+		sdhci_cmd_done(host, cmd);
+		sdhci_writel(host, mask, SDHCI_INT_STATUS);
 	} else {
 		do {
 			stat = sdhci_readl(host, SDHCI_INT_STATUS);
@@ -405,10 +408,14 @@ int sdhci_send_command(struct mmc_host *mmc,
 				return VMM_ETIMEDOUT;
 			}
 		}
-	}
 
-	sdhci_cmd_done(host, cmd);
-	sdhci_writel(host, mask, SDHCI_INT_STATUS);
+		if ((stat & (SDHCI_INT_ERROR | mask)) == mask) {
+			sdhci_cmd_done(host, cmd);
+			sdhci_writel(host, mask, SDHCI_INT_STATUS);
+		} else {
+			ret = VMM_EFAIL;
+		}
+	}
 
 	if (!ret && data) {
 		if (host->sdhci_caps & SDHCI_CAN_DO_SDMA) {
@@ -595,7 +602,7 @@ static int sdhci_get_cd(struct mmc_host *mmc)
 	/* If polling/nonremovable, assume that the card is always present. */
 	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) ||
 	    (host->mmc->caps & MMC_CAP_NONREMOVABLE))
-		return 1;
+		return VMM_ENOTSUPP;
 
 	/* Try slot gpio detect */
 	if (!gpio_cd >= 0)
