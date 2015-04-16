@@ -339,7 +339,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 
 	current_state = arch_atomic_read(&vcpu->state);
 
-	switch(new_state) {
+	switch (new_state) {
 	case VMM_VCPU_STATE_UNKNOWN:
 		/* Existing VCPU being destroyed */
 		rc = vmm_schedalgo_vcpu_cleanup(vcpu);
@@ -370,7 +370,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				break;
 			}
 		} else {
-			rc = VMM_EINVALID;
+			goto skip_state_change;
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
