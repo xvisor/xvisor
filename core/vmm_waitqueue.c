@@ -186,26 +186,38 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
+static int __vmm_waitqueue_wake(struct vmm_waitqueue *wq,
+				struct vmm_vcpu *vcpu)
+{
+	return vmm_manager_vcpu_resume(vcpu);
+}
+
 int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
 {
 	int rc = VMM_OK;
+	irq_flags_t flags;
+	struct vmm_waitqueue *wq;
 
 	/* Sanity checks */
 	if (!vcpu || !vcpu->wq_priv) {
 		return VMM_EFAIL;
 	}
+	wq = vcpu->wq_priv;
 
-	/* Try to Resume VCPU */
-	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
-		return rc;
-	}
+	/* Lock waitqueue */
+	vmm_spin_lock_irqsave(&wq->lock, flags);
 
-	return VMM_OK;
+	/* Try to wake VCPU */
+	rc = __vmm_waitqueue_wake(wq, vcpu);
+
+	/* Unlock waitqueue */
+	vmm_spin_unlock_irqrestore(&wq->lock, flags);
+
+	return rc;
 }
 
 int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 {
-	int rc = VMM_OK;
 	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 
@@ -222,12 +234,7 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 	vcpu = list_entry(l, struct vmm_vcpu, wq_head);
 
 	/* Try to Resume VCPU */
-	if ((rc = vmm_manager_vcpu_resume(vcpu))) {
-		/* Return Failure */
-		return rc;
-	}
-
-	return VMM_OK;
+	return __vmm_waitqueue_wake(wq, vcpu);
 }
 
 int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
@@ -269,7 +276,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 		vcpu = list_entry(l, struct vmm_vcpu, wq_head);
 
 		/* Try to Resume VCPU */
-		if ((rc = vmm_manager_vcpu_resume(vcpu))) {
+		if ((rc = __vmm_waitqueue_wake(wq, vcpu))) {
 			/* Return Failure */
 			return rc;
 		}
