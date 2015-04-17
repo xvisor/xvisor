@@ -74,7 +74,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irq(&wq->lock);
-	
+
 	/* Try to Pause VCPU */
 	rc = vmm_manager_vcpu_pause(vcpu);
 
@@ -95,13 +95,13 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	if (rc) {
 		/* Failed to pause VCPU so remove from waitqueue */
 		/* Destroy timeout event */
-		if(timeout_nsecs) {
+		if (timeout_nsecs) {
 			vmm_timer_event_stop(&wake_event);
 		}
 	} else {
 		/* VCPU Wakeup so remove from waitqueue */
 		/* If timeout was used than destroy timer event */
-		if(timeout_nsecs) {
+		if (timeout_nsecs) {
 			u64 now, expiry;
 			expiry = wake_event.expiry_tstamp;
 			vmm_timer_event_stop(&wake_event);
@@ -116,7 +116,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	return rc;
 }
 
-int vmm_waitqueue_sleep(struct vmm_waitqueue *wq) 
+int vmm_waitqueue_sleep(struct vmm_waitqueue *wq)
 {
 	int rc;
 
@@ -126,7 +126,8 @@ int vmm_waitqueue_sleep(struct vmm_waitqueue *wq)
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);
-	
+
+	/* Put VCPU to sleep without timeout */
 	rc = __vmm_waitqueue_sleep(wq, NULL);
 
 	/* Unlock waitqueue */
@@ -145,7 +146,8 @@ int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq, u64 *timeout_usecs)
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irq(&wq->lock);
-	
+
+	/* Put VCPU to sleep with timeout */
 	rc = __vmm_waitqueue_sleep(wq, timeout_usecs);
 
 	/* Unlock waitqueue */
@@ -180,7 +182,7 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irqrestore(&wq->lock, flags);
-	
+
 	return VMM_OK;
 }
 
@@ -244,7 +246,7 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irqrestore(&wq->lock, flags);
-	
+
 	return rc;
 }
 
@@ -265,7 +267,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 	/* Try resume every VCPU till empty */
 	list_for_each(l, &wq->vcpu_list) {
 		vcpu = list_entry(l, struct vmm_vcpu, wq_head);
-		
+
 		/* Try to Resume VCPU */
 		if ((rc = vmm_manager_vcpu_resume(vcpu))) {
 			/* Return Failure */
@@ -292,7 +294,7 @@ int vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 
 	/* Unlock waitqueue */
 	vmm_spin_unlock_irqrestore(&wq->lock, flags);
-	
+
 	return rc;
 }
 
