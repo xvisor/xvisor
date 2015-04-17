@@ -350,6 +350,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			rc = vmm_schedalgo_vcpu_setup(vcpu);
 		} else if (current_state != VMM_VCPU_STATE_RESET) {
 			/* Existing VCPU */
+			/* Reset resume count */
+			vcpu->resume_count = 0;
 			/* Make sure VCPU is not in a ready queue */
 			if ((schedp->current_vcpu != vcpu) &&
 			    (current_state == VMM_VCPU_STATE_READY)) {
@@ -374,9 +376,13 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
-		if ((current_state == VMM_VCPU_STATE_READY) ||
-		    (current_state == VMM_VCPU_STATE_RUNNING)) {
-			goto skip_state_change;
+		if (current_state & VMM_VCPU_STATE_INTERRUPTIBLE) {
+			/* Increment resume count */
+			vcpu->resume_count++;
+			/* If resume count < 0 than skip with error */
+			if (vcpu->resume_count < 0) {
+				goto skip_state_change;
+			}
 		}
 		if ((current_state == VMM_VCPU_STATE_RESET) ||
 		    (current_state == VMM_VCPU_STATE_PAUSED)) {
@@ -385,6 +391,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			if (!rc && (schedp->current_vcpu != vcpu)) {
 				preempt = rq_prempt_needed(schedp);
 			}
+		} else if ((current_state == VMM_VCPU_STATE_READY) ||
+			   (current_state == VMM_VCPU_STATE_RUNNING)) {
+			goto skip_state_change;
 		} else {
 			rc = VMM_EINVALID;
 		}
@@ -396,6 +405,14 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		rc = VMM_EINVALID;
 		break;
 	case VMM_VCPU_STATE_PAUSED:
+		if (current_state & VMM_VCPU_STATE_INTERRUPTIBLE) {
+			/* Decrement resume count */
+			vcpu->resume_count--;
+			/* If resume count >= 0 then skip without error */
+			if (vcpu->resume_count >= 0) {
+				goto skip_state_change;
+			}
+		}
 		if (current_state == VMM_VCPU_STATE_PAUSED) {
 			goto skip_state_change;
 		}
@@ -470,7 +487,7 @@ skip_state_change:
 	if (rc) {
 		vmm_printf("vcpu=%s current_state=0x%x to new_state=0x%x "
 			   "failed (error %d)\n",
-			   vcpu->name, new_state, current_state, rc);
+			   vcpu->name, current_state, new_state, rc);
 		WARN_ON(1);
 	}
 

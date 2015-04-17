@@ -200,6 +200,7 @@ struct vmm_vcpu {
 	u32 reset_count;
 	u64 reset_tstamp;
 	u32 preempt_count;
+	int resume_count;
 	void *sched_priv;
 
 	/* Scheduler static context */
