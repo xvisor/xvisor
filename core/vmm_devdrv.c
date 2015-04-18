@@ -52,14 +52,21 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 
 static void deferred_probe_work_func(struct vmm_work *work)
 {
+	u32 dcount;
 	struct vmm_device *d;
 
 	vmm_mutex_lock(&ddctrl.deferred_probe_lock);
 
-	while (!list_empty(&ddctrl.deferred_probe_list)) {
+	dcount = 0;
+	list_for_each_entry(d, &ddctrl.deferred_probe_list, deferred_head) {
+		dcount++;
+	}
+
+	while (dcount && !list_empty(&ddctrl.deferred_probe_list)) {
 		d = list_first_entry(&ddctrl.deferred_probe_list,
 					struct vmm_device, deferred_head);
 		list_del_init(&d->deferred_head);
+		dcount--;
 
 		vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
 
@@ -77,7 +84,10 @@ static void deferred_probe_work_func(struct vmm_work *work)
 
 static void deferred_probe_invoke(void)
 {
-	vmm_workqueue_schedule_work(NULL, &ddctrl.deferred_probe_work);
+	if (!vmm_workqueue_work_inprogress(&ddctrl.deferred_probe_work)) {
+		vmm_workqueue_schedule_work(NULL,
+					&ddctrl.deferred_probe_work);
+	}
 }
 
 static void deferred_probe_add(struct vmm_device *dev)
