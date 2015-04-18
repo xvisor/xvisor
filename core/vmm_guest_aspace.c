@@ -614,6 +614,10 @@ static int region_add(struct vmm_guest *guest,
 					   guest->name, reg->node->name);
 				goto region_free_fail;
 			}
+			if (reg->flags & VMM_REGION_ISROM) {
+				vmm_host_memory_set(reg->hphys_addr, 0,
+						    reg->phys_size, FALSE);
+			}
 		}
 	}
 

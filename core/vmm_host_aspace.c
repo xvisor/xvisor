@@ -276,6 +276,34 @@ u32 vmm_host_memory_write(physical_addr_t hpa,
 	return bytes_written;
 }
 
+u32 vmm_host_memory_set(physical_addr_t hpa,
+			  u8 byte, u32 len, bool cacheable)
+{
+	u8 buf[256];
+	u32 to_wr, wr, total_written = 0;
+	physical_addr_t pos, end;
+
+	memset(buf, byte, sizeof(buf));
+
+	pos = hpa;
+	end = hpa + len;
+	while (pos < end) {
+		to_wr = (sizeof(buf) < (end - pos)) ?
+					sizeof(buf) : (end - pos);
+
+		wr = vmm_host_memory_write(pos, buf, to_wr, cacheable);
+
+		pos += to_wr;
+		total_written += to_wr;
+
+		if (wr < to_wr) {
+			break;
+		}
+	}
+
+	return total_written;
+}
+
 u32 vmm_host_free_initmem(void)
 {
 	int rc;

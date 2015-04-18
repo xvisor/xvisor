@@ -154,6 +154,12 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 u32 vmm_host_memory_write(physical_addr_t hpa,
 			  void *src, u32 len, bool cacheable);
 
+/** Write a byte pattern to host memory
+ *  Note: We assume non-IO (or non-device) physical address
+ */
+u32 vmm_host_memory_set(physical_addr_t hpa,
+			  u8 byte, u32 len, bool cacheable);
+
 /** Free memory used by initialization functions */
 u32 vmm_host_free_initmem(void);
 
