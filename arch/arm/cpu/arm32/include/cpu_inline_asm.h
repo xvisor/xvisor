@@ -268,7 +268,7 @@ static inline u16 rev16(u16 v)
 				" mcr     p15, 0, %0, c2, c0, 1\n\t" \
 				:: "r" ((val)) : "memory", "cc")
 
-#if defined(CONFIG_ARMV7A)
+#ifndef CONFIG_ARMV5
 
 #define read_vbar()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c12, c0, 0\n\t" \
@@ -513,7 +513,7 @@ extern unsigned int *_ifar;
 
 /* CPU feature checking macros */
 
-#ifdef CONFIG_ARMV7A
+#ifndef CONFIG_ARMV5
 
 #define cpu_supports_thumbee()	(((read_pfr0() & ID_PFR0_STATE3_MASK) \
 					>> ID_PFR0_STATE3_SHIFT) == 0x1)

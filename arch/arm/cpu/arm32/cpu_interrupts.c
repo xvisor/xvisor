@@ -459,6 +459,7 @@ int __cpuinit arch_cpu_irq_setup(void)
 	if (cpu_supports_securex()) {
 		write_vbar(CPU_IRQ_LOWVEC_BASE);
 	}
+	write_sctlr(read_sctlr() & ~SCTLR_V_MASK);
 	vectors = (u32 *)CPU_IRQ_LOWVEC_BASE;
 #endif
 
