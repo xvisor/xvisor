@@ -30,9 +30,21 @@ RootFS for ARM64 Linux guest:
   # sudo chown -R root:root ./_install
 
   [7. Create RootFS image]
-  # fakeroot /bin/bash -c "genext2fs -b 5120 -N 1024 -D <xvisor_source_directory>/tests/arm64/common/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs64.img"
+  # fakeroot /bin/bash -c "genext2fs -b 5120 -N 1024 -D <xvisor_source_directory>/tests/arm64/common/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs64.ext2"
 
-  (Note: <busybox_rootfs_directory>/rootfs64.img is our final RAMDISK)
+  [8. Create RootFS CPIO image]
+  # mkdir -p <busybox_rootfs_directory>/tmp
+  # sudo mount -o loop <busybox_rootfs_directory>/rootfs64.ext2 <busybox_rootfs_directory>/tmp
+  # cd <busybox_rootfs_directory>/tmp; sudo find ./ | cpio -o -H newc > <busybox_rootfs_directory>/rootfs64.img; cd -
+  # sudo umount <busybox_rootfs_directory>/tmp
+  OR
+  # mkdir -p <busybox_rootfs_directory>/tmp
+  # sudo mount -o loop <busybox_rootfs_directory>/rootfs64.ext2 <busybox_rootfs_directory>/tmp
+  # cd <busybox_rootfs_directory>/tmp; sudo find ./ | cpio -o -H newc | gzip -9 > <busybox_rootfs_directory>/rootfs64.img; cd -
+  # sudo umount <busybox_rootfs_directory>/tmp
+
+  (Note: <busybox_rootfs_directory>/rootfs64.img is our final INITRAMFS RootFS)
+  (Note: you can also use <busybox_rootfs_directory>/rootfs64.ext2 as your final INITRD RootFS)
   (Note: replace all <> brackets based on your workspace)
   (Note: you are free to the change ordering of above steps based on your workspace)
 
