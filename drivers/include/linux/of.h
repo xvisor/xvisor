@@ -145,6 +145,6 @@ static inline int of_modalias_node(struct device_node *node,
 #define of_property_match_string	vmm_devtree_match_string
 #define	of_property_read_string_index	vmm_devtree_string_index
 #define	of_find_node_by_phandle		vmm_devtree_find_node_by_phandle
-#define irq_of_parse_and_map		vmm_devtree_extirq_parse_map
+#define irq_of_parse_and_map		vmm_devtree_irq_parse_map
 
 #endif /* _LINUX_OF_H */

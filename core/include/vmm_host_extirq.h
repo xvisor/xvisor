@@ -33,8 +33,6 @@
 struct vmm_chardev;
 struct vmm_host_extirq_group;
 
-typedef struct vmm_host_extirq_group	extirq_grp_t;
-
 /**
  * struct vmm_host_extirq_group_ops - Methods for vmm_host_extirq_group objects
  * @match: Match an interrupt controller device node to a host, returns
@@ -51,10 +49,10 @@ typedef struct vmm_host_extirq_group	extirq_grp_t;
  * to setup the irq_desc when returning from map().
  */
 struct vmm_host_extirq_group_ops {
-	int (*match)(extirq_grp_t *d, struct vmm_devtree_node *node);
-	int (*map)(extirq_grp_t *d, unsigned int virq, unsigned int hw);
-	void (*unmap)(extirq_grp_t *d, unsigned int virq);
-	int (*xlate)(extirq_grp_t *d, struct vmm_devtree_node *node,
+	int (*match)(struct vmm_host_extirq_group *d, struct vmm_devtree_node *node);
+	int (*map)(struct vmm_host_extirq_group *d, unsigned int virq, unsigned int hw);
+	void (*unmap)(struct vmm_host_extirq_group *d, unsigned int virq);
+	int (*xlate)(struct vmm_host_extirq_group *d, struct vmm_devtree_node *node,
 		     const u32 *intspec, unsigned int intsize,
 		     unsigned long *out_hwirq, unsigned int *out_type);
 };
@@ -85,19 +83,18 @@ struct vmm_host_extirq_group {
 
 struct vmm_host_irq *vmm_host_extirq_get(u32 eirq_no);
 
-int vmm_host_extirq_to_hwirq(extirq_grp_t *group,
+int vmm_host_extirq_to_hwirq(struct vmm_host_extirq_group *group,
 			     unsigned int irq);
 
-int vmm_host_extirq_find_mapping(extirq_grp_t *group,
+int vmm_host_extirq_find_mapping(struct vmm_host_extirq_group *group,
 				 unsigned int offset);
 
-extirq_grp_t *vmm_host_extirq_group_get(unsigned int	irq_num);
+struct vmm_host_extirq_group *vmm_host_extirq_group_get(unsigned int irq_num);
 
-extirq_grp_t *vmm_host_extirq_group_match(void *data,
-					  int (*fn)(extirq_grp_t *,
-						    void *));
+struct vmm_host_extirq_group *vmm_host_extirq_group_match(void *data,
+			int (*fn)(struct vmm_host_extirq_group *, void *));
 
-int vmm_host_extirq_create_mapping(extirq_grp_t *group,
+int vmm_host_extirq_create_mapping(struct vmm_host_extirq_group *group,
 				   unsigned int	irq_num);
 
 void vmm_host_extirq_dispose_mapping(unsigned int irq_num);
@@ -111,12 +108,13 @@ void vmm_host_extirq_debug_dump(struct vmm_chardev *cdev);
  * @ops: map/unmap domain callbacks.
  * @host_data: Controller private data pointer.
  */
-extirq_grp_t *vmm_host_extirq_add(struct vmm_devtree_node *of_node,
-				  unsigned int size,
-				  const struct vmm_host_extirq_group_ops *ops,
-				  void *host_data);
+struct vmm_host_extirq_group *vmm_host_extirq_add(
+				struct vmm_devtree_node *of_node,
+				unsigned int size,
+				const struct vmm_host_extirq_group_ops *ops,
+				void *host_data);
 
-void vmm_host_extirq_remove(extirq_grp_t *group);
+void vmm_host_extirq_remove(struct vmm_host_extirq_group *group);
 
 int vmm_host_extirq_init(void);
 

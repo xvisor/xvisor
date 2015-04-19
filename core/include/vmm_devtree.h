@@ -618,7 +618,7 @@ u32 vmm_devtree_irq_count(struct vmm_devtree_node *node);
  * Returns a pointer to the interrupt parent node, or NULL if
  * the interrupt parent could not be determined.
  */
-struct vmm_devtree_node *vmm_devtree_extirq_find_parent(
+struct vmm_devtree_node *vmm_devtree_irq_find_parent(
 				struct vmm_devtree_node *child);
 
 /**
@@ -631,17 +631,16 @@ struct vmm_devtree_node *vmm_devtree_extirq_find_parent(
  * finding which interrupt controller node it is attached to, and returning the
  * interrupt specifier that can be used to retrieve an Xvisor IRQ number.
  */
-int vmm_devtree_extirq_parse_one(struct vmm_devtree_node *device,
-				 int index,
-				 struct vmm_devtree_phandle_args *out_irq);
+int vmm_devtree_irq_parse_one(struct vmm_devtree_node *device, int index,
+			      struct vmm_devtree_phandle_args *out_irq);
 
 /**
  * Parse and map an interrupt into Xvisor space
  * @dev: Device node of the device whose interrupt is to be mapped
  * @index: Index of the interrupt to map
  */
-unsigned int vmm_devtree_extirq_parse_map(struct vmm_devtree_node *dev,
-					  int index);
+unsigned int vmm_devtree_irq_parse_map(struct vmm_devtree_node *dev,
+					int index);
 
 /** vmm_devtree_is_available - check if a device is available for use
  *  @node: Node to check for availability
