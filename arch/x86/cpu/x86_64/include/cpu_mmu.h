@@ -231,6 +231,12 @@ static inline void SetPageNoWriteThrough(union page32 *pg)
 	pg->write_through = 0;
 }
 
+static inline void SetPageProt(union page32 *pg, u32 pgprot)
+{
+	pg->_val &= ~PGPROT_MASK;
+	pg->_val |= pgprot;
+}
+
 struct page_table {
 	struct dlist head;
 	struct page_table *parent;
