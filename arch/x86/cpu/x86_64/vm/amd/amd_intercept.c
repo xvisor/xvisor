@@ -138,51 +138,87 @@ static inline void dump_guest_exception_insts(struct vcpu_hw_context *context)
 	vmm_printf("\n");
 }
 
+/*
+ * There can be 2 things here:
+ * 1. Our shadow pagetable entry is stale
+ *    This can be for 2 reasons:
+ *       I. Linux has done lazy TLB where it has updated its page tables but
+ *          didn't flush the TLB. There is no way for Xvisor to know that such
+ *          thing has happened. We will handle it now.
+ *       II. This is an actual fault that Linux wanted. The guest page in such
+ *           case will be the same as ours. To handle this, a similar page fault
+ *           with same reason should be injected in the guest. After this is
+ *           done and the guest is resume it should update its page tables and
+ *           it will resume from where it left. This will result in same page
+ *           fault again because our shadow page table entries are still out of
+ *           sync. But this time we will fall in reason III.
+ *       III.
+ *    a. Linux might have a different copy than ours.
+ *       i. If so, update our page table entry and resume
+ *          the guest.
+ * 2. Our shadow pagetable entry is in sync with guest.
+ *    a. Linux might have done a lazy TLB flush but
+ */
 static inline
 void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 {
 	physical_addr_t fault_gphys = context->vmcb->exitinfo2;
 	physical_addr_t lookedup_gphys;
-	union page32 pte, pte1;
-	u32 prot, prot1;
+	union page32 pte, pte1, pde, pde1;
+	u32 prot, prot1, pdprot, pdprot1;
 
 	VM_LOG(LVL_DEBUG, "Resident page fault exit info 1: 0x%lx "
 	       "2: 0x%lx rip: 0x%lx\n", context->vmcb->exitinfo1,
 	       context->vmcb->exitinfo2, context->vmcb->rip);
 
 	if (lookup_guest_pagetable(context, fault_gphys,
-				   &lookedup_gphys,
-				   &pte)) {
-		inject_guest_exception(context,
-				       VM_EXCEPTION_PAGE_FAULT);
-
-		/* invalidate guest TLB */
-		invalidate_guest_tlb(context, fault_gphys);
+				   &lookedup_gphys, &pde, &pte)) {
+		/* Lazy TLB flush by guest? */
+		VM_LOG(LVL_ERR, "ERROR: No entry in guest page table in "
+		       "protection fault! Arrrgh! (Guest virtual: 0x%lx)\n",
+		       fault_gphys);
+		goto guest_bad_fault;
 	}
 
 	if (lookup_shadow_pagetable(context, fault_gphys,
-				    &lookedup_gphys, &pte1)) {
+				    &lookedup_gphys, &pde1, &pte1)) {
 		VM_LOG(LVL_ERR, "ERROR: No entry in shadow page table? "
 		       "Arrrgh! (Guest virtual: 0x%lx)\n",
 		       fault_gphys);
 		goto guest_bad_fault;
 	}
 
-
 	prot = (pte._val & PGPROT_MASK);
 	prot1 = (pte1._val & PGPROT_MASK);
+	pdprot = (pde._val & PGPROT_MASK);
+	pdprot1 = (pde1._val & PGPROT_MASK);
 
-	if (unlikely(prot != prot1)) {
-		if (update_guest_shadow_pgprot(context, fault_gphys, prot)
+	if ((pdprot == pdprot1) && (prot == prot1)) {
+		inject_guest_exception(context, VM_EXCEPTION_PAGE_FAULT);
+		invalidate_guest_tlb(context, fault_gphys);
+		return;
+	}
+
+	if (pdprot != pdprot1) {
+		if (update_guest_shadow_pgprot(context, fault_gphys,
+					       GUEST_PG_LVL_1, pdprot)
 		    != VMM_OK) {
-			VM_LOG(LVL_ERR, "ERROR: Could not upgage pgprot in "
-			       "shadow (Guest virtual: 0x%lx)\n",
+			VM_LOG(LVL_ERR, "ERROR: Could not update level 2 "
+			       "pgprot in shadow table(Guest virtual: 0x%lx)\n",
 			       fault_gphys);
 			goto guest_bad_fault;
 		}
-	} else {
-		inject_guest_exception(context,
-				       VM_EXCEPTION_PAGE_FAULT);
+	}
+
+	if (prot != prot1) {
+		if (update_guest_shadow_pgprot(context, fault_gphys,
+					       GUEST_PG_LVL_2, prot)
+		    != VMM_OK) {
+			VM_LOG(LVL_ERR, "ERROR: Could not update level 1 "
+			       "pgprot in shadow (Guest virtual: 0x%lx)\n",
+			       fault_gphys);
+			goto guest_bad_fault;
+		}
 	}
 
 	/* invalidate guest TLB */
@@ -215,7 +251,7 @@ void handle_guest_realmode_page_fault(struct vcpu_hw_context *context)
 
 	if (create_guest_shadow_map(context, fault_gphys,
 				    (g_reg->hphys_addr + fault_offset),
-				    PAGE_SIZE, 0x3) != VMM_OK) {
+				    PAGE_SIZE, 0x3, 0x3) != VMM_OK) {
 		VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
 		       "guest's shadow page table.\n"
 		       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
@@ -364,8 +400,8 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	u64 fault_offset;
 	physical_addr_t lookedup_gphys;
 	struct vmm_region *g_reg;
-	union page32 pte;
-	u32 prot;
+	union page32 pte, pde;
+	u32 prot, pdprot;
 
 	if (context->vmcb->exitinfo1 & 0x1) {
 		handle_guest_resident_page_fault(context);
@@ -376,13 +412,13 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	 * in guest's page table.
 	 */
 	if (lookup_guest_pagetable(context, fault_gphys,
-				   &lookedup_gphys, &pte)
+				   &lookedup_gphys, &pde, &pte)
 	    != VMM_OK) {
-		VM_LOG(LVL_ERR, "ERROR: No page table entry "
+		VM_LOG(LVL_DEBUG, "ERROR: No page table entry "
 		       "created by guest for fault address "
 		       "0x%lx (rIP: 0x%lx)\n",
 		       fault_gphys, context->vmcb->rip);
-		VM_LOG(LVL_ERR, "EXITINFO1: 0x%lx\n",
+		VM_LOG(LVL_DEBUG, "EXITINFO1: 0x%lx\n",
 		       context->vmcb->exitinfo1);
 		inject_guest_exception(context,
 				       VM_EXCEPTION_PAGE_FAULT);
@@ -390,6 +426,7 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	}
 
 	prot = (pte._val & PGPROT_MASK);
+	pdprot = (pde._val & PGPROT_MASK);
 
 	/*
 	 * If page is present and marked readonly, page fault
@@ -397,14 +434,14 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	 * page protection flags are same as what guest had
 	 * programmed.
 	 */
-	if (PagePresent(&pte) && PageReadOnly(&pte)) {
+	if ((PagePresent(&pte) && PageReadOnly(&pte))
+	    ||(PagePresent(&pde) && PageReadOnly(&pde))) {
 		if (!(context->vmcb->cr0 & (0x1UL << 16))) {
 			VM_LOG(LVL_ERR, "Page fault in guest "
 			       "on valid page and WP unset.\n");
 			goto guest_bad_fault;
 		}
 	}
-
 
 	/*
 	 * Find the region which is marked as virtual.
@@ -442,7 +479,8 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	if (g_reg->flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
 		if (create_guest_shadow_map(context, fault_gphys,
 					    (g_reg->hphys_addr + fault_offset),
-					    PAGE_SIZE, prot) != VMM_OK) {
+					    PAGE_SIZE, pdprot,
+					    prot) != VMM_OK) {
 			VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
 			       "guest's shadow page table.\n"
 			       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
