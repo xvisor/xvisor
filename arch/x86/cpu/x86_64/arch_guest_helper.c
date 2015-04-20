@@ -220,7 +220,7 @@ int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_a
 		return VMM_OK;
 	}
 
-	return lookup_guest_pagetable(context, vaddr, gpa, NULL);
+	return lookup_guest_pagetable(context, vaddr, gpa, NULL, NULL);
 }
 
 /*!
@@ -307,8 +307,9 @@ static inline int free_page_index_in_pglist(struct vcpu_hw_context *context)
 	return boffs;
 }
 
-int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-			    physical_addr_t paddr, size_t size, u32 pgprot)
+int create_guest_shadow_map(struct vcpu_hw_context *context,
+			    virtual_addr_t vaddr, physical_addr_t paddr,
+			    size_t size, u32 pdprot, u32 pgprot)
 {
 	union page32 pde, pte;
 	union page32 *pde_addr, *temp;
@@ -325,17 +326,18 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 		if (index == VMM_EFAIL)
 			return VMM_EFAIL;
 
-		pde_addr->present = 1;
-		pde_addr->rw = 1;
 		tvaddr = (virtual_addr_t)
 			(((virtual_addr_t)context->shadow32_pg_list)
 			 + (index * PAGE_SIZE));
 
 		memset((void *)tvaddr, 0, PAGE_SIZE);
+
 		if (vmm_host_va2pa(tvaddr, &tpaddr) != VMM_OK)
 			vmm_panic("%s: Failed to map vaddr to paddr for pde.\n",
 				  __func__);
+
 		pde_addr->paddr = (tpaddr >> PAGE_SHIFT);
+		SetPageProt(pde_addr, pdprot);
 	}
 
 	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
@@ -349,10 +351,10 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	if (pte.present)
 		return VMM_EFAIL;
 
-	/* set the protection that guest has set. */
-	pte._val |= (pgprot & PGPROT_MASK);
+	memset(&pte, 0, sizeof(pte));
 
 	pte.paddr = (paddr >> PAGE_SHIFT);
+	SetPageProt(&pte, pgprot);
 
 	/* FIXME: Should this be cacheable memory access ? */
 	if (vmm_host_memory_write(pte_addr, (void *)&pte,
@@ -364,7 +366,8 @@ int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vadd
 	return VMM_OK;
 }
 
-int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+int update_guest_shadow_pgprot(struct vcpu_hw_context *context,
+			       virtual_addr_t vaddr, u32 level,
 			       u32 pgprot)
 {
 	union page32 pte;
@@ -376,6 +379,11 @@ int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t v
 	if (unlikely(!PagePresent(pde_addr)))
 		return VMM_EFAIL;
 
+	if (level == GUEST_PG_LVL_1) {
+		SetPageProt(pde_addr, pgprot);
+		return VMM_OK;
+	}
+
 	temp = (union page32 *)((u64)(pde_addr->paddr << PAGE_SHIFT));
 	pte_addr = (physical_addr_t)(temp + ((vaddr >> 12) & 0x3ff));
 
@@ -386,15 +394,13 @@ int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t v
 	if (unlikely(!PagePresent(&pte)))
 		return VMM_EFAIL;
 
-	/* set the protection that guest has set. */
-	pte._val |= (pgprot & PGPROT_MASK);
+	/* Update the protection bits */
+	SetPageProt(&pte, pgprot);
 
 	/* FIXME: Should this be cacheable memory access ? */
 	if (vmm_host_memory_write(pte_addr, (void *)&pte,
 				  sizeof(pte), TRUE) < sizeof(pte))
 		return VMM_EFAIL;
-
-	invalidate_vaddr_tlb(vaddr);
 
 	return VMM_OK;
 }
@@ -408,6 +414,7 @@ int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr
 int lookup_guest_pagetable(struct vcpu_hw_context *context,
 			   physical_addr_t fault_addr,
 			   physical_addr_t *lookedup_addr,
+			   union page32 *pde,
 			   union page32 *pte)
 {
 	union page32 pd, pt;
@@ -430,6 +437,9 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 
 	if (!PagePresent(&pd))
 		return VMM_EFAIL;
+
+	if (pde)
+		memcpy(pde, &pd, sizeof(union page32));
 
 	pt_addr = ((pd.paddr << PAGE_SHIFT) + (ptindex * sizeof(u32)));
 
@@ -454,6 +464,7 @@ int lookup_guest_pagetable(struct vcpu_hw_context *context,
 int lookup_shadow_pagetable(struct vcpu_hw_context *context,
 			    physical_addr_t fault_addr,
 			    physical_addr_t *lookedup_addr,
+			    union page32 *pde,
 			    union page32 *pte)
 {
 	union page32 pd, pt;
@@ -475,6 +486,9 @@ int lookup_shadow_pagetable(struct vcpu_hw_context *context,
 
 	if (!PagePresent(&pd))
 		return VMM_EFAIL;
+
+	if (pde)
+		memcpy(pde, &pd, sizeof(union page32));
 
 	pt_addr = ((pd.paddr << PAGE_SHIFT) + (ptindex * sizeof(u32)));
 

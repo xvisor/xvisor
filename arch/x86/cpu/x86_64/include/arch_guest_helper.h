@@ -50,22 +50,30 @@ struct x86_guest_priv {
 /*!def x86_guest_priv(guest) is to access guest private information */
 #define x86_guest_priv(guest) ((struct x86_guest_priv *)(guest->arch_priv))
 
-extern int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr, physical_addr_t *gpa);
-extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr, physical_addr_t *hpa);
+extern int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+		      physical_addr_t *gpa);
+extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr,
+		      physical_addr_t *hpa);
 extern int purge_guest_shadow_pagetable(struct vcpu_hw_context *context);
-extern int create_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
-				   physical_addr_t paddr, size_t size, u32 pgprot);
-extern int update_guest_shadow_pgprot(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+extern int create_guest_shadow_map(struct vcpu_hw_context *context,
+				   virtual_addr_t vaddr, physical_addr_t paddr,
+				   size_t size, u32 pdprot, u32 pgprot);
+extern int update_guest_shadow_pgprot(struct vcpu_hw_context *context,
+				      virtual_addr_t vaddr,
+				      u32 level,
 				      u32 pgprot);
-extern int purge_guest_shadow_map(struct vcpu_hw_context *context, virtual_addr_t vaddr,
+extern int purge_guest_shadow_map(struct vcpu_hw_context *context,
+				  virtual_addr_t vaddr,
 				  size_t size);
 extern int lookup_guest_pagetable(struct vcpu_hw_context *context,
 				  physical_addr_t fault_addr,
 				  physical_addr_t *lookedup_addr,
+				  union page32 *pde,
 				  union page32 *pte);
 extern int lookup_shadow_pagetable(struct vcpu_hw_context *context,
 				   physical_addr_t fault_addr,
 				   physical_addr_t *lookedup_addr,
+				   union page32 *pde,
 				   union page32 *pte);
 extern void invalidate_shadow_entry(struct vcpu_hw_context *context,
 				    virtual_addr_t invl_va);
