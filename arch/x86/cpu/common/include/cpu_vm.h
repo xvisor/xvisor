@@ -88,6 +88,13 @@ enum guest_regs {
  */
 #define NR_32BIT_PGLIST_PAGES	(0x1 << GUEST_PGLIST_ORDER)
 
+enum {
+	GUEST_PG_LVL_1,
+	GUEST_PG_LVL_2,
+
+	GUEST_PG_LVL_MAX
+};
+
 struct vcpu_intercept_table {
 	physical_addr_t io_table_phys;
 	physical_addr_t msr_table_phys;
