@@ -153,8 +153,16 @@ static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 	return 1;
 }
 
+int __weak vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
+{
+	/* Nothing to do here. */
+	/* The pinctrl framework will provide actual implementation */
+	return VMM_OK;
+}
+
 static int platform_bus_probe(struct vmm_device *dev)
 {
+	int rc;
 	struct vmm_driver *drv;
 	const struct vmm_devtree_nodeid *match;
 
@@ -165,6 +173,11 @@ static int platform_bus_probe(struct vmm_device *dev)
 
 	if (!drv->match_table) {
 		return VMM_EFAIL;
+	}
+
+	rc = vmm_devdrv_pinctrl_bind(dev);
+	if (rc == VMM_EPROBE_DEFER) {
+		return rc;
 	}
 
 	match = vmm_devtree_match_node(drv->match_table, dev->node);
@@ -328,14 +341,8 @@ static void __bus_shutdown_device_driver(struct vmm_bus *bus,
 static void __bus_probe_this_device(struct vmm_bus *bus,
 				    struct vmm_device *dev)
 {
-	int rc;
+	int rc = VMM_OK;
 	struct vmm_driver *drv;
-
-	/* Try to bind pins for this device */
-	rc = vmm_devdrv_pinctrl_bind(dev);
-	if (rc == VMM_EPROBE_DEFER) {
-		goto done;
-	}
 
 	/* Try each and every driver of this bus */
 	list_for_each_entry(drv, &bus->driver_list, head) {
@@ -345,7 +352,6 @@ static void __bus_probe_this_device(struct vmm_bus *bus,
 		}
 	}
 
-done:
 	/* Defer device probing if rc == VMM_EPROBE_DEFER */
 	if (rc == VMM_EPROBE_DEFER) {
 		/* Add device to deferred list */
@@ -477,13 +483,6 @@ void __class_release(struct vmm_class *cls)
 		/* Decrement reference count of device */
 		vmm_devdrv_dref_device(d);
 	}
-}
-
-int __weak vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
-{
-	/* Nothing to do here. */
-	/* The pinctrl framework will provide actual implementation */
-	return VMM_OK;
 }
 
 static int devdrv_probe(struct vmm_devtree_node *node,
