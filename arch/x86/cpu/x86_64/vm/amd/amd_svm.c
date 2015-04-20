@@ -129,23 +129,10 @@ static void set_control_params (struct vcpu_hw_context *context)
 	/* Intercept the VMRUN and VMMCALL instructions */
 	vmcb->general2_intercepts = (INTRCPT_VMRUN | INTRCPT_VMMCALL);
 
-	vmcb->general1_intercepts |= (INTRCPT_INTN       |
-				      INTRCPT_INTR       |
+	vmcb->general1_intercepts |= (INTRCPT_INTR       |
 				      INTRCPT_VINTR	 |
 				      INTRCPT_CR0_WR     |
-				      //INTRCPT_GDTR_RD    |
-				      //INTRCPT_GDTR_WR    |
-				      //INTRCPT_IDTR_RD    |
-				      //INTRCPT_IDTR_WR    |
-				      //INTRCPT_LDTR_RD    |
-				      //INTRCPT_LDTR_WR    |
-				      //INTRCPT_TR_RD      |
-				      //INTRCPT_TR_WR      |
-				      //INTRCPT_RDTSC      |
-				      //INTRCPT_PUSHF      |
-				      //INTRCPT_POPF       |
 				      INTRCPT_CPUID      |
-				      //INTRCPT_IRET       |
 				      INTRCPT_IOIO_PROT  |
 				      INTRCPT_MSR_PROT   |
 				      INTRCPT_TASKSWITCH |
