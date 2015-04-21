@@ -32,7 +32,7 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_threads.h>
-#include <vmm_waitqueue.h>
+#include <vmm_completion.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_netswitch.h>
@@ -48,194 +48,156 @@
 	do { vmm_printf(fmt , ## __VA_ARGS__); } while (0)
 
 #define DUMP_NETSWITCH_PKT(mbuf) 					\
-do{									\
-	char tname[30];							\
-	const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));		\
-	const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));		\
+do {									\
+char tname[30];								\
+const u8 *srcmac = ether_srcmac(mtod(mbuf, u8 *));			\
+const u8 *dstmac = ether_dstmac(mtod(mbuf, u8 *));			\
+const u8 *ip_frame, *icmp_frame, *tcp_frame;				\
 									\
-	DPRINTF("%s: got pkt with srcaddr[%s]", __func__,		\
-			ethaddr_to_str(tname, srcmac));			\
-	DPRINTF(", dstaddr[%s]", ethaddr_to_str(tname, dstmac));	\
-	DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));	\
-	if(ether_type(mtod(mbuf, u8 *)) == 0x0806	/* ARP */) {	\
-		DPRINTF("\tARP-HType: 0x%04X\n", 			\
-			arp_htype(ether_payload(mtod(mbuf, u8 *))));	\
-		DPRINTF("\tARP-PType: 0x%04X\n", 			\
-			arp_ptype(ether_payload(mtod(mbuf, u8 *))));	\
-		DPRINTF("\tARP-Hlen: 0x%02X\n",  			\
-			arp_hlen(ether_payload(mtod(mbuf, u8 *))));	\
-		DPRINTF("\tARP-Plen: 0x%02X\n",  			\
-			arp_plen(ether_payload(mtod(mbuf, u8 *))));	\
-		DPRINTF("\tARP-Oper: 0x%04X\n",  			\
-			arp_oper(ether_payload(mtod(mbuf, u8 *))));	\
-		DPRINTF("\tARP-SHA: %s\n", ethaddr_to_str(tname, 	\
-			arp_sha(ether_payload((mtod(mbuf, u8 *))))));	\
-		DPRINTF("\tARP-SPA: %s\n", ip4addr_to_str(tname, 	\
-			arp_spa(ether_payload((mtod(mbuf, u8 *))))));	\
-		DPRINTF("\tARP-THA: %s\n", ethaddr_to_str(tname, 	\
-			arp_tha(ether_payload((mtod(mbuf, u8 *))))));	\
-		DPRINTF("\tARP-TPA: %s\n", ip4addr_to_str(tname, 	\
-			arp_tpa(ether_payload((mtod(mbuf, u8 *))))));	\
-	} else if(ether_type(mtod(mbuf, u8 *)) == 0x0800/* IPv4 */) {	\
-		DPRINTF("\tIP-SRC: %s\n", ip4addr_to_str(tname, 	\
-			ip_srcaddr(ether_payload((mtod(mbuf, u8 *))))));\
-		DPRINTF("\tIP-DST: %s\n", ip4addr_to_str(tname, 	\
-			ip_dstaddr(ether_payload((mtod(mbuf, u8 *))))));\
-		DPRINTF("\tIP-LEN: %d\n", 				\
-			ip_len(ether_payload((mtod(mbuf, u8 *)))));	\
-		DPRINTF("\tIP-TTL: %d\n", 				\
-			ip_ttl(ether_payload((mtod(mbuf, u8 *)))));	\
-		DPRINTF("\tIP-CHKSUM: 0x%04X\n",			\
-			ip_chksum(ether_payload((mtod(mbuf, u8 *)))));	\
-		DPRINTF("\tIP-PROTOCOL: %d\n",				\
-			ip_protocol(ether_payload((mtod(mbuf, u8 *)))));\
+DPRINTF("%s: got pkt with srcaddr[%s]", __func__,			\
+		ethaddr_to_str(tname, srcmac));				\
+DPRINTF(", dstaddr[%s]", ethaddr_to_str(tname, dstmac));		\
+DPRINTF(", ethertype: 0x%04X\n", ether_type(mtod(mbuf, u8 *)));		\
+if (ether_type(mtod(mbuf, u8 *)) == 0x0806	/* ARP */) {		\
+	DPRINTF("\tARP-HType: 0x%04X\n", 				\
+		arp_htype(ether_payload(mtod(mbuf, u8 *))));		\
+	DPRINTF("\tARP-PType: 0x%04X\n", 				\
+		arp_ptype(ether_payload(mtod(mbuf, u8 *))));		\
+	DPRINTF("\tARP-Hlen: 0x%02X\n",  				\
+		arp_hlen(ether_payload(mtod(mbuf, u8 *))));		\
+	DPRINTF("\tARP-Plen: 0x%02X\n",  				\
+		arp_plen(ether_payload(mtod(mbuf, u8 *))));		\
+	DPRINTF("\tARP-Oper: 0x%04X\n",  				\
+		arp_oper(ether_payload(mtod(mbuf, u8 *))));		\
+	DPRINTF("\tARP-SHA: %s\n", ethaddr_to_str(tname, 		\
+		arp_sha(ether_payload((mtod(mbuf, u8 *))))));		\
+	DPRINTF("\tARP-SPA: %s\n", ip4addr_to_str(tname, 		\
+		arp_spa(ether_payload((mtod(mbuf, u8 *))))));		\
+	DPRINTF("\tARP-THA: %s\n", ethaddr_to_str(tname, 		\
+		arp_tha(ether_payload((mtod(mbuf, u8 *))))));		\
+	DPRINTF("\tARP-TPA: %s\n", ip4addr_to_str(tname, 		\
+		arp_tpa(ether_payload((mtod(mbuf, u8 *))))));		\
+} else if (ether_type(mtod(mbuf, u8 *)) == 0x0800/* IPv4 */) {		\
+	ip_frame = ether_payload(mtod(mbuf, u8 *));			\
+	DPRINTF("\tIP-SRC: %s\n", ip4addr_to_str(tname, 		\
+		ip_srcaddr(ip_frame)));					\
+	DPRINTF("\tIP-DST: %s\n", ip4addr_to_str(tname, 		\
+		ip_dstaddr(ip_frame)));					\
+	DPRINTF("\tIP-LEN: %d\n", 					\
+		ip_len(ip_frame));					\
+	DPRINTF("\tIP-TTL: %d\n", 					\
+		ip_ttl(ip_frame));					\
+	DPRINTF("\tIP-CHKSUM: 0x%04X\n",				\
+		ip_chksum(ip_frame));					\
+	DPRINTF("\tIP-PROTOCOL: %d\n",					\
+		ip_protocol(ip_frame));					\
+	if (ip_protocol(ip_frame) == 0x01/* ICMP */) {			\
+		icmp_frame = ip_payload(ip_frame); 			\
+		DPRINTF("\t\tICMP-TYPE: 0x%x\n", 			\
+			icmp_type(icmp_frame));				\
+		DPRINTF("\t\tICMP-CODE: 0x%x\n", 			\
+			icmp_code(icmp_frame));				\
+		DPRINTF("\t\tICMP-CHECKSUM: 0x%x\n", 			\
+			icmp_checksum(icmp_frame));			\
+		DPRINTF("\t\tICMP-ID: 0x%x\n", 				\
+			icmp_id(icmp_frame));				\
+		DPRINTF("\t\tICMP-SEQUENCE: 0x%x\n", 			\
+			icmp_sequence(icmp_frame));			\
+	} else if (ip_protocol(ip_frame) == 0x06/* TCP */) {		\
+		tcp_frame = ip_payload(ip_frame); 			\
+		DPRINTF("\t\tTCP-SRCPORT: %d\n", 			\
+			tcp_srcport(tcp_frame));			\
+		DPRINTF("\t\tTCP-DSTPORT: %d\n", 			\
+			tcp_dstport(tcp_frame));			\
+		DPRINTF("\t\tTCP-SEQUENCE: 0x%x\n", 			\
+			tcp_sequence(tcp_frame));			\
+		DPRINTF("\t\tTCP-ACKNUMBER: 0x%x\n", 			\
+			tcp_acknumber(tcp_frame));			\
+		DPRINTF("\t\tTCP-FLAGS: 0x%x\n", 			\
+			tcp_flags(tcp_frame));				\
+		DPRINTF("\t\tTCP-CHECKSUM: 0x%x\n", 			\
+			tcp_checksum(tcp_frame));			\
+		DPRINTF("\t\tTCP-URGENT: 0x%x\n", 			\
+			tcp_urgent(tcp_frame));				\
 	}								\
-}while(0)
+}									\
+} while(0)
 #else
 #define DPRINTF(fmt, ...) do {} while(0)
 #define DUMP_NETSWITCH_PKT(mbuf)
 #endif
 
-#define NETSWITCH_BH_XFER_RING_SZ	(1 << 10)
-#define NETSWITCH_BH_XFER_RING_MASK	(NETSWITCH_BH_XFER_RING_SZ - 1)
-
 struct vmm_netswitch_bh_ctrl {
 	struct vmm_thread *thread;
-	struct vmm_waitqueue wq;
-	unsigned long produce;
-	unsigned long consume;
-	struct vmm_netport_xfer *ring[NETSWITCH_BH_XFER_RING_SZ];
+	struct vmm_completion xfer_cmpl;
+	vmm_spinlock_t xfer_list_lock;
+	struct dlist xfer_list;
 };
 
 static DEFINE_PER_CPU(struct vmm_netswitch_bh_ctrl, nbctrl);
 
-static bool netswitch_bh_ring_produceop(unsigned long *produce,
-					unsigned long consume,
-					unsigned long limit,
-					unsigned long *oldproduce)
+static void __init netswitch_bh_init(struct vmm_netswitch_bh_ctrl *nbp)
 {
-	bool ret = FALSE;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-
-	if (*produce < (consume + limit)) {
-		*oldproduce = *produce;
-		*produce = *produce + 1;
-		ret = TRUE;
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return ret;
+	INIT_COMPLETION(&nbp->xfer_cmpl);
+	INIT_SPIN_LOCK(&nbp->xfer_list_lock);
+	INIT_LIST_HEAD(&nbp->xfer_list);
 }
 
-static bool netswitch_bh_ring_consumeop(unsigned long *consume,
-					unsigned long produce,
-					unsigned long *oldconsume)
-{
-	bool ret = FALSE;
-	irq_flags_t flags;
-
-	arch_cpu_irq_save(flags);
-
-	if (*consume < produce) {
-		*oldconsume = *consume;
-		*consume = *consume + 1;
-		ret = TRUE;
-	}
-
-	arch_cpu_irq_restore(flags);
-
-	return ret;
-}
-
-static void __init netswitch_bh_ring_init(struct vmm_netswitch_bh_ctrl *nbp)
-{
-	nbp->produce = 0;
-	nbp->consume = 0;
-	memset(&nbp->ring, 0, sizeof(nbp->ring));
-}
-
-static int netswitch_bh_ring_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
+static int netswitch_bh_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
 				     struct vmm_netport_xfer *xfer)
 {
-	u32 try, index;
-	unsigned long produce = 0;
+	irq_flags_t flags;
 
-	try = 10;
-	while (try && !netswitch_bh_ring_produceop(&nbp->produce,
-						   nbp->consume,
-						   NETSWITCH_BH_XFER_RING_SZ,
-						   &produce)) {
-		vmm_waitqueue_wakeall(&nbp->wq);
-		try--;
-	}
-	if (!try) {
-		return VMM_ENOSPC;
-	}
+	vmm_spin_lock_irqsave_lite(&nbp->xfer_list_lock, flags);
+	list_add_tail(&xfer->head, &nbp->xfer_list);
+	vmm_spin_unlock_irqrestore_lite(&nbp->xfer_list_lock, flags);
 
-	index = produce & NETSWITCH_BH_XFER_RING_MASK;
-	nbp->ring[index] = xfer;
-
-	vmm_waitqueue_wakeall(&nbp->wq);
+	vmm_completion_complete_once(&nbp->xfer_cmpl);
 
 	return VMM_OK;
 }
 
-static struct vmm_netport_xfer *netswitch_bh_ring_dequeue(
+static struct vmm_netport_xfer *netswitch_bh_dequeue(
 				struct vmm_netswitch_bh_ctrl *nbp)
 {
-#define NETSWITCH_TRIES_PER_PHASE_BITS	4
-#define NETSWITCH_TRIES_PER_PHASE	(1 << NETSWITCH_TRIES_PER_PHASE_BITS)
-#define NETSWITCH_PHASE_COUNT		100
-	u32 index, try, phase;
-	u64 timeout;
-	unsigned long consume;
+	irq_flags_t flags;
 	struct vmm_netport_xfer *xfer;
 
-	try = 0;
-	while (!netswitch_bh_ring_consumeop(&nbp->consume,
-					    nbp->produce,
-					    &consume)) {
-		phase = try >> NETSWITCH_TRIES_PER_PHASE_BITS;
-		if (phase == 0) {
-			vmm_scheduler_yield();
-		} else {
-			timeout = CONFIG_NET_BH_TIMEOUT_SECS;
-			timeout = timeout * 1000000000ULL;
-			if (phase < NETSWITCH_PHASE_COUNT) {
-				timeout = udiv64(timeout,
-					NETSWITCH_PHASE_COUNT - (phase - 1));
-			}
-			vmm_waitqueue_sleep_timeout(&nbp->wq, &timeout);
-		}
-		try++;
+	vmm_spin_lock_irqsave_lite(&nbp->xfer_list_lock, flags);
+
+	while (list_empty(&nbp->xfer_list)) {
+		vmm_spin_unlock_irqrestore_lite(&nbp->xfer_list_lock, flags);
+		vmm_completion_wait(&nbp->xfer_cmpl);
+		vmm_spin_lock_irqsave_lite(&nbp->xfer_list_lock, flags);
 	}
 
-	index = consume & NETSWITCH_BH_XFER_RING_MASK;
-	xfer = nbp->ring[index];
-	nbp->ring[index] = NULL;
+	xfer = list_entry(list_pop(&nbp->xfer_list),
+			  struct vmm_netport_xfer, head);
+
+	vmm_spin_unlock_irqrestore_lite(&nbp->xfer_list_lock, flags);
 
 	return xfer;
 }
 
-static void netswitch_bh_ring_port_flush(struct vmm_netswitch_bh_ctrl *nbp,
+static void netswitch_bh_port_flush(struct vmm_netswitch_bh_ctrl *nbp,
 					 struct vmm_netport *port)
 {
-	u32 index;
-	struct vmm_netport_xfer *xfer;
+	irq_flags_t flags;
+	struct vmm_netport_xfer *xfer, *nxfer;
 
-	for (index = 0; index < NETSWITCH_BH_XFER_RING_SZ; index++) {
-		xfer = nbp->ring[index];
-		if (xfer && xfer->port == port) {
-			nbp->ring[index] = NULL;
+	vmm_spin_lock_irqsave_lite(&nbp->xfer_list_lock, flags);
+
+	list_for_each_entry_safe(xfer, nxfer, &nbp->xfer_list, head) {
+		if (xfer->port == port) {
+			list_del(&xfer->head);
 			if (xfer->mbuf) {
 				m_freem(xfer->mbuf);
 			}
 			vmm_netport_free_xfer(xfer->port, xfer);
 		}
 	}
+
+	vmm_spin_unlock_irqrestore_lite(&nbp->xfer_list_lock, flags);
 }
 
 static int netswitch_bh_main(void *param)
@@ -252,7 +214,7 @@ static int netswitch_bh_main(void *param)
 
 	while (1) {
 		/* Try to get xfer request from xfer ring */
-		xfer = netswitch_bh_ring_dequeue(nbp);
+		xfer = netswitch_bh_dequeue(nbp);
 		if (!xfer) {
 			continue;
 		}
@@ -345,7 +307,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	xfer->mbuf = mbuf;
 
 	/* Add xfer request to xfer ring */
-	rc = netswitch_bh_ring_enqueue(nbp, xfer);
+	rc = netswitch_bh_enqueue(nbp, xfer);
 	if (rc) {
 		vmm_printf("%s: nsw=%s src=%s xfer bh enqueue failed.\n",
 			   __func__, nsw->name, src->name);
@@ -392,7 +354,7 @@ int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
 	xfer->lazy_xfer = lazy_xfer;
 
 	/* Add xfer request to xfer ring */
-	rc = netswitch_bh_ring_enqueue(nbp, xfer);
+	rc = netswitch_bh_enqueue(nbp, xfer);
 	if (rc) {
 		vmm_printf("%s: nsw=%s src=%s xfer bh enqueue failed.\n",
 			   __func__, nsw->name, src->name);
@@ -526,7 +488,7 @@ static void netswitch_port_remove(struct vmm_netswitch *nsw,
 	/* Flush all xfer request related to this port */
 	for_each_online_cpu(c) {
 		nbp = &per_cpu(nbctrl, c);
-		netswitch_bh_ring_port_flush(nbp, port);
+		netswitch_bh_port_flush(nbp, port);
 	}
 
 	/* Remove the port from port_list */
@@ -723,8 +685,7 @@ static void __init vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
 		return;
 	}
 
-	INIT_WAITQUEUE(&nbp->wq, NULL);
-	netswitch_bh_ring_init(nbp);
+	netswitch_bh_init(nbp);
 
 	vmm_threads_start(nbp->thread);
 }
