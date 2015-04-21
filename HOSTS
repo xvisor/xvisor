@@ -45,6 +45,16 @@ S:	Able to boot Realview-PB-A8 linux guest on ODroid-X board
 S:	Able to boot VExpress-A9 linux guest on ODroid-X board
 D:	docs/arm/exynos4-odroidx.txt
 
+M:	i.MX6 SOC (Sabrelite or Nitrogen6X board)
+A:	ARM 32-bit (ARMv7a)
+C:	Cortex-A9
+V:	Freescale Semiconductor Inc. (http://www.freescale.com/)
+E:	---
+G:	Only Sabrelite guests supported (modified VExpress-A9 guests)
+S:	Able to boot Sabrelite guests on Freescale Sabrelite board
+S:	Able to boot Sabrelite guests on Boundary Devices Nitrogen6X board
+D:	docs/arm/sabrelite.txt
+
 M:	Foundation v8 Machine
 A:	ARM 64-bit (ARMv8a)
 C:	Foundation ARMv8 CPU
