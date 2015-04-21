@@ -1,9 +1,9 @@
 		Supported Host Hardware
 
-Note: This list is meant to remain in alphabetical order. Please add new 
+Note: This list is meant to remain in alphabetical order. Please add new
 machines or boards in alphabetical order so that it is much easier to find
 and edit them later. It is formatted to allow easy grepping and beautification
-by scripts. The fields are: Host Machine Name (M), Host Architecture (A), 
+by scripts. The fields are: Host Machine Name (M), Host Architecture (A),
 Host CPU Name (C), Host CPU Vendor (V), Emulator for Host Machine (E),
 Guest support (G), Current status (S), and Relevant documentation files (D).
 If a field spans multiple lines then simply add field prefix to every line.
@@ -17,14 +17,14 @@ V:	Broadcom Corporation (http://www.broadcom.com/)
 E:	Raspberry-Pi QEMU (https://github.com/Torlus/qemu)
 G:	Only Realview-EB-MPCore guest supported
 S:	Able to boot Realview-EB-MPCore linux guest on Raspberry Pi hardware
-	and Raspberry Pi emulated by QEMU 
+	and Raspberry Pi emulated by QEMU
 D:	docs/arm/bcm2835-raspi.txt
 
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
 V:	Samsung (http://www.samsung.com)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on smdkc210 emulated by
 	Linaro QEMU.
@@ -51,7 +51,7 @@ C:	Foundation ARMv8 CPU
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARMv8 Foundation Model (http://www.arm.com/products/tools/models/fast-models/foundation-model.php)
 G:	Realview-PB-A8, VExpress-A9 VExpress-A15, and Virt-v8 guests supported
-S:	Able to boot Realview-PB-A8 linux guest on Foundation v8 Machine 
+S:	Able to boot Realview-PB-A8 linux guest on Foundation v8 Machine
 	emulated by ARMv8 Foundation Model.
 S:	Able to boot VExpress-A9 linux guest on Foundation v8 Machine emulated
 	by ARMv8 Foundation Model.
@@ -68,48 +68,62 @@ V:	Texax Instruments (http://www.ti.com/)
 E:	QEMU Linaro (https://launchpad.net/qemu-linaro)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on BeagleBoard-xM Hardware
-	and BeagleBoard emulated by Linaro QEMU 
+	and BeagleBoard emulated by Linaro QEMU
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
-	BeagleBoard emulated by Linaro QEMU 
+	BeagleBoard emulated by Linaro QEMU
 D:	docs/arm/omap3-beagle.txt
 
 M:	Realview-EB-MPCore
 A:	ARM 32-bit (ARMv6k)
 C:	ARM11MPCore
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Only Realview-EB-MPCore guest supported
 S:	Able to boot Realview-EB-MPCore linux guest on Realview-EB-MPCore
-	emulated by QEMU 
+	emulated by QEMU
 D:	docs/arm/realview-eb-mpcore.txt
 
 M:	Realview-PB-A8
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on Realview-PB-A8 emulated by
-	QEMU 
+	QEMU
 S:	Able to boot VExpress-A9 linux guest on Realview-PB-A8 emulated by QEMU
 D:	docs/arm/realview-pb-a8.txt
 
-M:	Sun4i SOC (or Allwinner A10) (Hackberry or pcduino board)
+M:	Sun4i SOC (or Allwinner A10) (Hackberry or Cubieboard or Pcduino board)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A8
-V:	Allwinner Technology Co. (http://www.allwinner.com/product/A10.php)
-E:	---
+V:	Allwinner Technology (http://www.allwinner.com)
+E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on Hackberry board
 S:	Able to boot VExpress-A9 linux guest on Hackberry board
 D:	docs/arm/sun4i-hackberry.txt
 D:	docs/arm/sun4i-pcduino.txt
+D:	docs/arm/sun4i-cubieboard.txt
+D:	docs/arm/sun4i-cubieboard-qemu.txt
+
+M:	Sun7i SOC (or Allwinner A20) (Cubieboard2)
+A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
+C:	Cortex-A7
+V:	Allwinner Technology (http://www.allwinner.com)
+E:	QEMU (http://qemu.org/)
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v7 guests supported
+S:	Able to boot Realview-PB-A8 linux guest on Cubieboard2
+S:	Able to boot VExpress-A9 linux guest on Cubieboard2
+S:	Able to boot VExpress-A15 linux guest on Cubieboard2
+S:	Able to boot Virt-v7 linux guest on Cubieboard2
+D:	docs/arm/sun7i-cubieboard2.txt
 
 M:	VersatilePB
 A:	ARM 32-bit (ARMv5)
 C:	ARM926
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Only VersatilePB guest supported
 S:	Able to boot VersatilePB linux guests on VersatilePB emulated by QEMU
 D:	docs/arm/versatilepb.txt
@@ -118,7 +132,7 @@ M:	VExpress-A9
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
 V:	ARM Ltd. (http://www.arm.com/)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on VExpress-A9 emulated by
 	Linaro QEMU.
@@ -130,12 +144,14 @@ A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
 C:	Cortex-A15
 V:	ARM Ltd. (http://www.arm.com/)
 E:	ARM Fast Models 7.0 or higher (https://www.arm.com/)
-G:	Realview-PB-A8, VExpress-A9 and VExpress-A15 guests supported
-S:	Able to boot Realview-PB-A8 linux guest on VExpress-A15 emulated by 
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v7 guests supported
+S:	Able to boot Realview-PB-A8 linux guest on VExpress-A15 emulated by
 	ARM fast models.
-S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by 
+S:	Able to boot VExpress-A9 linux guest on VExpress-A15 emulated by
 	ARM fast models.
-S:	Able to boot VExpress-A15 linux guest on VExpress-A15 emulated by 
+S:	Able to boot VExpress-A15 linux guest on VExpress-A15 emulated by
+	ARM fast models.
+S:	Able to boot Virt-v7 linux guest on VExpress-A15 emulated by
 	ARM fast models.
 D:	docs/arm/vexpress-a15.txt
 
@@ -143,7 +159,7 @@ M:	x86_64 Generic
 A:	x86 64-bit
 C:	x86_64
 V:	Intel (http://www.intel.com)
-E:	QEMU (http://wiki.qemu.org/)
+E:	QEMU (http://qemu.org/)
 G:	Work-In-Progress.
 S:	Work-In-Progress.
 D:	docs/x86/x86_64_generic.txt
