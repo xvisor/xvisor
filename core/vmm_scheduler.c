@@ -478,6 +478,14 @@ skip_state_change:
 				vmm_scheduler_preempt_orphan(schedp->irq_regs);
 			} else {
 				arch_vcpu_preempt_orphan();
+				/* We should only be back here after
+				 * the VCPU is resumed hence. On some
+				 * hosts, invocation of the function
+				 * vmm_scheduler_preempt_orphan() is
+				 * bit delayed hence we wait here.
+				 */
+				while (arch_atomic_read(&vcpu->state) !=
+						VMM_VCPU_STATE_RUNNING);
 			}
 		} else {
 			rc = vmm_scheduler_force_resched(vhcpu);
