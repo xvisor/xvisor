@@ -27,4 +27,5 @@ drivers-objs-$(CONFIG_MXC_EPIT)+= clocksource/fsl_epit.o
 drivers-objs-$(CONFIG_MXC_GPT)+= clocksource/fsl_gpt.o
 drivers-objs-$(CONFIG_BCM2835_TIMER)+= clocksource/bcm2835_timer.o
 drivers-objs-$(CONFIG_SUN4I_TIMER)+= clocksource/sun4i_timer.o
+drivers-objs-$(CONFIG_SAMSUNG_MCT)+= clocksource/exynos_mct.o
 
