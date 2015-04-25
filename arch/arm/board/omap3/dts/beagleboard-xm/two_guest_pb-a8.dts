@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "omap3.dtsi"
+/include/ "../omap3.dtsi"
 
 / {
 	vmm {
