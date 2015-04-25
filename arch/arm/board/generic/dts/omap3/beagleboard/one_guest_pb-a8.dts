@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "../omap3.dtsi"
+/include/ "omap3-beagle.dtsi"
 
 / {
 	vmm {
@@ -16,18 +16,18 @@
 	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Create rbd0 device */
-			  "rbd create rbd0 0x89000000 0x01000000",
+			  "rbd create rbd0 0x81000000 0x01000000",
 
 			  /* Mount rbd0 device */
 			  "vfs mount rbd0 /",
 
 			  /* Load guest0 device tree from file */
-			  "vfs fdt_load /guests guest0 /images/arm32/vexpress-a9x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
+			  "vfs fdt_load /guests guest0 /images/arm32/realview-pb-a8.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
 
 			  /* Create guest0 */
 			  "guest create guest0",
 
 			  /* Load guest0 images */
-			  "vfs guest_load_list guest0 /images/arm32/vexpress-a9/nor_flash.list";
+			  "vfs guest_load_list guest0 /images/arm32/realview-pb-a8/nor_flash.list";
 	};
 };

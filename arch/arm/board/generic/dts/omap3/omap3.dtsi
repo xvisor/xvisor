@@ -3,21 +3,24 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 	model = "OMAP3xxx";
-	compatible = "ti,omap3";
 		
 	chosen { };
 	aliases { };
 
 	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		cpu@0 {
 			device_type = "cpu";
 			model = "Cortex-A8";
+			reg = <0>;
 		};
 	};
 
 	memory {
 		device_type = "memory"; 
-		reg = <0x88000000 0x20000000>; /* 256 MB */
+		reg = <0x80000000 0x10000000>; /* 256 MB */
 	};
 
 	/*

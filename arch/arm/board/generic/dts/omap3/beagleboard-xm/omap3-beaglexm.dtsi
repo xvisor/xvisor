@@ -1,0 +1,12 @@
+
+/include/ "../omap3.dtsi"
+
+/ {
+        model = "BeagleBoard-xM";
+	compatible = "ti,omap3";
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x88000000 0x10000000>; /* 256 MB */
+	};
+};

@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file brd_main.c
+ * @file omap3.c
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief main source file for board specific code
+ * @brief main source file for OMAP3 specific code
  */
 
 #include <vmm_error.h>
@@ -27,7 +27,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <arch_board.h>
+#include <generic_board.h>
 #include <omap/sdrc.h>
 
 /*
@@ -381,15 +381,6 @@ static void omap3_gpt_clock_enable(u32 gpt_num)
 }
 
 /*
- * Print board information
- */
-
-void arch_board_print_info(struct vmm_chardev *cdev)
-{
-	/* FIXME: To be implemented. */
-}
-
-/*
  * Initialization functions
  */
 
@@ -470,7 +461,7 @@ static void omap3_gpt_clk_init(struct vmm_devtree_node *node,
 /** OMAP3/OMAP343X SMS Base Physical Address */
 #define OMAP3_SMS_BASE				0x6C000000
 
-int __init arch_board_early_init(void)
+static int __init omap3_early_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	struct vmm_devtree_nodeid gpt_match[2];
@@ -525,26 +516,16 @@ int __init arch_board_early_init(void)
 	return 0;
 }
 
-int __init arch_board_final_init(void)
+static int __init omap3_final_init(struct vmm_devtree_node *node)
 {
-	int rc;
-	struct vmm_devtree_node *node;
-
-	/* All VMM API's are available here */
-	/* We can register a Board specific resource here */
-
-	/* Find simple-bus node */
-	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	/* Do probing using device driver framework */
-	rc = vmm_devdrv_probe(node);
-	vmm_devtree_dref_node(node);
-	if (rc) {
-		return rc;
-	}
-
+	/* Nothing to do here. */
 	return VMM_OK;
 }
+
+static struct generic_board omap3_info = {
+	.name		= "OMAP3",
+	.early_init	= omap3_early_init,
+	.final_init	= omap3_final_init,
+};
+
+GENERIC_BOARD_DECLARE(omap3, "ti,omap3", &omap3_info);

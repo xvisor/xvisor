@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2011 Pranav Sawargaonkar.
+# Copyright (c) 2015 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,15 +17,15 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
-# @brief list of OMAP3 SOC objects.
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of OMAP3 DTBs.
 # */
 
-board-objs-y+=brd_main.o
-board-objs-$(CONFIG_OMAP3_ONE_GUEST_PBA8_DTS)+=dts/beagleboard-xm/one_guest_pb-a8.o
-board-objs-$(CONFIG_OMAP3_ONE_GUEST_VEX_A9_DTS)+=dts/beagleboard-xm/one_guest_vexpress-a9.o
-board-objs-$(CONFIG_OMAP3_TWO_GUEST_PBA8_DTS)+=dts/beagleboard-xm/two_guest_pb-a8.o
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard/two_guest_pb-a8.dtb
 
-board-dtbs-y+=dts/beagleboard-xm/one_guest_pb-a8.dtb
-board-dtbs-y+=dts/beagleboard-xm/one_guest_vexpress-a9.dtb
-board-dtbs-y+=dts/beagleboard-xm/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard-xm/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard-xm/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard-xm/two_guest_pb-a8.dtb
+

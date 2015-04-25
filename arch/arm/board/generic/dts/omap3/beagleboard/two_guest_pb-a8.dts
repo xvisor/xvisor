@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "../omap3.dtsi"
+/include/ "omap3-beagle.dtsi"
 
 / {
 	vmm {
@@ -16,7 +16,7 @@
 	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Create rbd0 device */
-			  "rbd create rbd0 0x89000000 0x01000000",
+			  "rbd create rbd0 0x81000000 0x01000000",
 
 			  /* Mount rbd0 device */
 			  "vfs mount rbd0 /",

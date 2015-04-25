@@ -26,4 +26,5 @@ board-objs-y+= dts/skeleton.o
 board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
 board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
 board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o
+board-objs-$(CONFIG_GENERIC_OMAP3)+= omap3.o
 board-objs-$(CONFIG_GENERIC_SABRELITE)+= sabrelite.o
