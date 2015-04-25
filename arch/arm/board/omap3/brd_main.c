@@ -22,25 +22,17 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_macros.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <arch_board.h>
-#include <arch_timer.h>
 #include <omap/sdrc.h>
-#include <omap/gpt.h>
-#include <omap/s32k-timer.h>
 
-/* ===== SDRC & SMS ===== */
-
-/** OMAP3/OMAP343X SDRC Base Physical Address */
-#define OMAP3_SDRC_BASE				0x6D000000
-
-/** OMAP3/OMAP343X SMS Base Physical Address */
-#define OMAP3_SMS_BASE				0x6C000000
-
-/* ===== PRM & CM ===== */
+/*
+ * OMAP3 Power, Reset, and Clock Managment
+ */
 
 /** OMAP3/OMAP343X PRCM Base Physical Address */
 #define OMAP3_PRCM_BASE				0x48004000
@@ -53,181 +45,42 @@
 #define OMAP3_PRM_BASE				0x48306000
 #define OMAP3_PRM_SIZE				0x2000
 
-/* ===== INTC ===== */
+#define OMAP3_SYSCLK_S12M			12000000
+#define OMAP3_SYSCLK_S13M			13000000
+#define OMAP3_SYSCLK_S19_2M			19200000
+#define OMAP3_SYSCLK_S24M			24000000
+#define OMAP3_SYSCLK_S26M			26000000
+#define OMAP3_SYSCLK_S38_4M			38400000
 
-/** OMAP3/OMAP343X INTC Base Physical Address */
-#define OMAP3_MPU_INTC_BASE			0x48200000
+#define OMAP3_IVA2_CM				0x0000
+#define OMAP3_OCP_SYS_REG_CM			0x0800
+#define OMAP3_MPU_CM				0x0900
+#define OMAP3_CORE_CM				0x0A00
+#define OMAP3_SGX_CM				0x0B00
+#define OMAP3_WKUP_CM				0x0C00
+#define OMAP3_CLOCK_CTRL_REG_CM			0x0D00
+#define OMAP3_DSS_CM				0x0E00
+#define OMAP3_CAM_CM				0x0F00
+#define OMAP3_PER_CM				0x1000
+#define OMAP3_EMU_CM				0x1100
+#define OMAP3_GLOBAL_REG_CM			0x1200
+#define OMAP3_NEON_CM				0x1300
+#define OMAP3_USBHOST_CM			0x1400
 
-/** OMAP3/OMAP343X INTC IRQ Count */
-#define OMAP3_MPU_INTC_NRIRQ			96
-
-#define OMAP3_MPU_INTC_EMUINT			0
-#define OMAP3_MPU_INTC_COMMTX			1
-#define OMAP3_MPU_INTC_COMMRX			2
-#define OMAP3_MPU_INTC_BENCH			3
-#define OMAP3_MPU_INTC_MCBSP2_ST_IRQ		4
-#define OMAP3_MPU_INTC_MCBSP3_ST_IRQ		5
-#define OMAP3_MPU_INTC_RESERVED0		6
-#define OMAP3_MPU_INTC_SYS_NIRQ			7
-#define OMAP3_MPU_INTC_RESERVED1		8
-#define OMAP3_MPU_INTC_SMX_DBG_IRQ		9
-#define OMAP3_MPU_INTC_SMX_APP_IRQ		10
-#define OMAP3_MPU_INTC_PRCM_MPU_IRQ		11
-#define OMAP3_MPU_INTC_SDMA_IRQ_0		12
-#define OMAP3_MPU_INTC_SDMA_IRQ_1		13
-#define OMAP3_MPU_INTC_SDMA_IRQ_2		14
-#define OMAP3_MPU_INTC_SDMA_IRQ_3		15
-#define OMAP3_MPU_INTC_MCBSP1_IRQ		16
-#define OMAP3_MPU_INTC_MCBSP2_IRQ		17
-#define OMAP3_MPU_INTC_RESERVED2		18
-#define OMAP3_MPU_INTC_RESERVED3		19
-#define OMAP3_MPU_INTC_GPMC_IRQ			20
-#define OMAP3_MPU_INTC_SGX_IRQ			21
-#define OMAP3_MPU_INTC_MCBSP3_IRQ		22
-#define OMAP3_MPU_INTC_MCBSP4_IRQ		23
-#define OMAP3_MPU_INTC_CAM_IRQ0			24
-#define OMAP3_MPU_INTC_DSS_IRQ			25
-#define OMAP3_MPU_INTC_MAIL_U0_MPU_IRQ		26
-#define OMAP3_MPU_INTC_MCBSP5_IRQ		27
-#define OMAP3_MPU_INTC_IVA2_MMU_IRQ		28
-#define OMAP3_MPU_INTC_GPIO1_MPU_IRQ		29
-#define OMAP3_MPU_INTC_GPIO2_MPU_IRQ		30
-#define OMAP3_MPU_INTC_GPIO3_MPU_IRQ		31
-#define OMAP3_MPU_INTC_GPIO4_MPU_IRQ		32
-#define OMAP3_MPU_INTC_GPIO5_MPU_IRQ		33
-#define OMAP3_MPU_INTC_GPIO6_MPU_IRQ		34
-#define OMAP3_MPU_INTC_RESERVED4		35
-#define OMAP3_MPU_INTC_WDT3_IRQ			36
-#define OMAP3_MPU_INTC_GPT1_IRQ			37
-#define OMAP3_MPU_INTC_GPT2_IRQ			38
-#define OMAP3_MPU_INTC_GPT3_IRQ			39
-#define OMAP3_MPU_INTC_GPT4_IRQ			40
-#define OMAP3_MPU_INTC_GPT5_IRQ			41
-#define OMAP3_MPU_INTC_GPT6_IRQ			42
-#define OMAP3_MPU_INTC_GPT7_IRQ			43
-#define OMAP3_MPU_INTC_GPT8_IRQ			44
-#define OMAP3_MPU_INTC_GPT9_IRQ			45
-#define OMAP3_MPU_INTC_GPT10_IRQ		46
-#define OMAP3_MPU_INTC_GPT11_IRQ		47
-#define OMAP3_MPU_INTC_SPI4_IRQ			48
-#define OMAP3_MPU_INTC_RESERVED5		49
-#define OMAP3_MPU_INTC_RESERVED6		50
-#define OMAP3_MPU_INTC_RESERVED7		51
-#define OMAP3_MPU_INTC_RESERVED8		52
-#define OMAP3_MPU_INTC_RESERVED9		53
-#define OMAP3_MPU_INTC_MCBSP4_IRQ_TX		54
-#define OMAP3_MPU_INTC_MCBSP4_IRQ_RX		55
-#define OMAP3_MPU_INTC_I2C1_IRQ			56
-#define OMAP3_MPU_INTC_I2C2_IRQ			57
-#define OMAP3_MPU_INTC_HDQ_IRQ			58
-#define OMAP3_MPU_INTC_McBSP1_IRQ_TX		59
-#define OMAP3_MPU_INTC_McBSP1_IRQ_RX		60
-#define OMAP3_MPU_INTC_I2C3_IRQ			61
-#define OMAP3_MPU_INTC_McBSP2_IRQ_TX		62
-#define OMAP3_MPU_INTC_McBSP2_IRQ_RX		63
-#define OMAP3_MPU_INTC_RESERVED10		64
-#define OMAP3_MPU_INTC_SPI1_IRQ			65
-#define OMAP3_MPU_INTC_SPI2_IRQ			66
-#define OMAP3_MPU_INTC_RESERVED11		67
-#define OMAP3_MPU_INTC_RESERVED12		68
-#define OMAP3_MPU_INTC_RESERVED13		69
-#define OMAP3_MPU_INTC_RESERVED14		70
-#define OMAP3_MPU_INTC_RESERVED15		71
-#define OMAP3_MPU_INTC_UART1_IRQ		72
-#define OMAP3_MPU_INTC_UART2_IRQ		73
-#define OMAP3_MPU_INTC_UART3_IRQ		74
-#define OMAP3_MPU_INTC_PBIAS_IRQ		75
-#define OMAP3_MPU_INTC_OHCI_IRQ			76
-#define OMAP3_MPU_INTC_EHCI_IRQ			77
-#define OMAP3_MPU_INTC_TLL_IRQ			78
-#define OMAP3_MPU_INTC_RESERVED16		79
-#define OMAP3_MPU_INTC_RESERVED17		80
-#define OMAP3_MPU_INTC_MCBSP5_IRQ_TX		81
-#define OMAP3_MPU_INTC_MCBSP5_IRQ_RX		82
-#define OMAP3_MPU_INTC_MMC1_IRQ			83
-#define OMAP3_MPU_INTC_RESERVED18		84
-#define OMAP3_MPU_INTC_RESERVED19		85
-#define OMAP3_MPU_INTC_MMC2_IRQ			86
-#define OMAP3_MPU_INTC_MPU_ICR_IRQ		87
-#define OMAP3_MPU_INTC_D2DFRINT			88
-#define OMAP3_MPU_INTC_MCBSP3_IRQ_TX		89
-#define OMAP3_MPU_INTC_MCBSP3_IRQ_RX		90
-#define OMAP3_MPU_INTC_SPI3_IRQ			91
-#define OMAP3_MPU_INTC_HSUSB_MC_NINT		92
-#define OMAP3_MPU_INTC_HSUSB_DMA_NINT		93
-#define OMAP3_MPU_INTC_MMC3_IRQ			94
-#define OMAP3_MPU_INTC_RESERVED20		95
-
-/* ===== Synchronous 32k Timer ===== */
-
-/** OMAP3/OMAP343X S32K Base Physical Address */
-#define OMAP3_S32K_BASE 			0x48320000
-
-/* ===== General Purpose Timers ===== */
-
-/** OMAP3/OMAP343X GPT Base Physical Addresses */
-#define OMAP3_GPT1_BASE 			0x48318000
-#define OMAP3_GPT2_BASE 			0x49032000
-#define OMAP3_GPT3_BASE 			0x49034000
-#define OMAP3_GPT4_BASE 			0x49036000
-#define OMAP3_GPT5_BASE 			0x49038000
-#define OMAP3_GPT6_BASE 			0x4903A000
-#define OMAP3_GPT7_BASE 			0x4903C000
-#define OMAP3_GPT8_BASE 			0x4903E000
-#define OMAP3_GPT9_BASE 			0x49040000
-#define OMAP3_GPT10_BASE 			0x48086000
-#define OMAP3_GPT11_BASE 			0x48088000
-#define OMAP3_GPT12_BASE 			0x48304000
-
-/* ===== UART (or Serial Port) ===== */
-
-#define OMAP3_COM_FREQ   	48000000L
-
-/** OMAP3/OMAP343X UART Base Physical Address */
-#define OMAP3_UART_BASE 	0x49020000
-#define OMAP3_UART_BAUD 	115200
-#define OMAP3_UART_INCLK 	OMAP3_COM_FREQ
-
-/*
- * OMAP3 Power, Reset, and Clock Managment
- */
-
-#define OMAP3_SYSCLK_S12M		12000000
-#define OMAP3_SYSCLK_S13M		13000000
-#define OMAP3_SYSCLK_S19_2M		19200000
-#define OMAP3_SYSCLK_S24M		24000000
-#define OMAP3_SYSCLK_S26M		26000000
-#define OMAP3_SYSCLK_S38_4M		38400000
-
-#define OMAP3_IVA2_CM			0x0000
-#define OMAP3_OCP_SYS_REG_CM		0x0800
-#define OMAP3_MPU_CM			0x0900
-#define OMAP3_CORE_CM			0x0A00
-#define OMAP3_SGX_CM			0x0B00
-#define OMAP3_WKUP_CM			0x0C00
-#define OMAP3_CLOCK_CTRL_REG_CM		0x0D00
-#define OMAP3_DSS_CM			0x0E00
-#define OMAP3_CAM_CM			0x0F00
-#define OMAP3_PER_CM			0x1000
-#define OMAP3_EMU_CM			0x1100
-#define OMAP3_GLOBAL_REG_CM		0x1200
-#define OMAP3_NEON_CM			0x1300
-#define OMAP3_USBHOST_CM		0x1400
-
-#define OMAP3_IVA2_PRM			0x0000
-#define OMAP3_OCP_SYS_REG_PRM		0x0800
-#define OMAP3_MPU_PRM			0x0900
-#define OMAP3_CORE_PRM			0x0A00
-#define OMAP3_SGX_PRM			0x0B00
-#define OMAP3_WKUP_PRM			0x0C00
-#define OMAP3_CLOCK_CTRL_REG_PRM	0x0D00
-#define OMAP3_DSS_PRM			0x0E00
-#define OMAP3_CAM_PRM			0x0F00
-#define OMAP3_PER_PRM			0x1000
-#define OMAP3_EMU_PRM			0x1100
-#define OMAP3_GLOBAL_REG_PRM		0x1200
-#define OMAP3_NEON_PRM			0x1300
-#define OMAP3_USBHOST_PRM		0x1400
+#define OMAP3_IVA2_PRM				0x0000
+#define OMAP3_OCP_SYS_REG_PRM			0x0800
+#define OMAP3_MPU_PRM				0x0900
+#define OMAP3_CORE_PRM				0x0A00
+#define OMAP3_SGX_PRM				0x0B00
+#define OMAP3_WKUP_PRM				0x0C00
+#define OMAP3_CLOCK_CTRL_REG_PRM		0x0D00
+#define OMAP3_DSS_PRM				0x0E00
+#define OMAP3_CAM_PRM				0x0F00
+#define OMAP3_PER_PRM				0x1000
+#define OMAP3_EMU_PRM				0x1100
+#define OMAP3_GLOBAL_REG_PRM			0x1200
+#define OMAP3_NEON_PRM				0x1300
+#define OMAP3_USBHOST_PRM			0x1400
 
 #define OMAP3_PRM_CLKSRC_CTRL			0x70
 #define OMAP3_PRM_CLKSRC_CTRL_SYSCLKDIV_S	6
@@ -281,7 +134,6 @@
 #define OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_S	0
 #define OMAP3_CM_CLKSEL_WKUP_CLKSEL_GPT1_M	(1 << 0)
 
-
 #define OMAP3_CM_FCLKEN_PER			0x00
 #define OMAP3_CM_FCLKEN_PER_EN_GPT2_S		3
 #define OMAP3_CM_FCLKEN_PER_EN_GPT2_M		(1 << 3)
@@ -294,9 +146,9 @@
 #define OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_S	0
 #define OMAP3_CM_CLKSEL_PER_CLKSEL_GPT2_M	(1 << 0)
 
-#define OMAP3_CM_ICLKEN			0x00
-#define OMAP3_CM_FCLKEN			0x10
-#define OMAP3_CM_CLKSEL			0x40
+#define OMAP3_CM_ICLKEN				0x00
+#define OMAP3_CM_FCLKEN				0x10
+#define OMAP3_CM_CLKSEL				0x40
 
 static virtual_addr_t cm_base = 0;
 
@@ -367,110 +219,27 @@ void prm_clrbits(u32 domain, u32 offset, u32 mask)
 }
 
 /*
- * Print board information
+ * GPT Helper routines
  */
 
-void arch_board_print_info(struct vmm_chardev *cdev)
-{
-	/* FIXME: To be implemented. */
-}
+/** OMAP3/OMAP343X S32K Base Physical Address */
+#define OMAP3_S32K_BASE 			0x48320000
 
-/*
- * Initialization functions
- */
-
-/* Micron MT46H32M32LF-6 */
-/* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
-static struct sdrc_params mt46h32m32lf6_sdrc_params[] = {
-	[0] = {
-		.rate	     = 166000000,
-		.actim_ctrla = 0x9a9db4c6,
-		.actim_ctrlb = 0x00011217,
-		.rfr_ctrl    = 0x0004dc01,
-		.mr	     = 0x00000032,
-	},
-	[1] = {
-		.rate	     = 165941176,
-		.actim_ctrla = 0x9a9db4c6,
-		.actim_ctrlb = 0x00011217,
-		.rfr_ctrl    = 0x0004dc01,
-		.mr	     = 0x00000032,
-	},
-	[2] = {
-		.rate	     = 83000000,
-		.actim_ctrla = 0x51512283,
-		.actim_ctrlb = 0x0001120c,
-		.rfr_ctrl    = 0x00025501,
-		.mr	     = 0x00000032,
-	},
-	[3] = {
-		.rate	     = 82970588,
-		.actim_ctrla = 0x51512283,
-		.actim_ctrlb = 0x0001120c,
-		.rfr_ctrl    = 0x00025501,
-		.mr	     = 0x00000032,
-	},
-	[4] = {
-		.rate	     = 0
-	},
-};
-
-int __init arch_board_early_init(void)
-{
-	int rc;
-
-	/* Host virtual memory, device tree, heap is up.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-
-	/* The function omap3_beagle_init_early() of 
-	 * <linux>/arch/arm/mach-omap2/board-omap3beagle.c
-	 * does the following:
-	 *   1. Initialize Clock & Power Domains using function 
-	 *      omap2_init_common_infrastructure() of
-	 *      <linux>/arch/arm/mach-omap2/io.c
-	 *   2. Initialize & Reprogram Clock of SDRC using function
-	 *      omap2_sdrc_init() of <linux>/arch/arm/mach-omap2/sdrc.c
-	 */
-
-	/* Initialize Clock Mamagment */
-	if ((rc = cm_init())) {
-		return rc;
-	}
-
-	/* Initialize Power & Reset Mamagment */
-	if ((rc = prm_init())) {
-		return rc;
-	}
-
-	/* Enable I-clock for S32K timer 
-	 * Note: S32K is our reference clocksource and also used
-	 * as clock reference for GPTs
-	 */
-	cm_setbits(OMAP3_WKUP_CM, 
-		   OMAP3_CM_ICLKEN_WKUP, 
-		   OMAP3_CM_ICLKEN_WKUP_EN_32KSYNC_M);
-
-	/* Initialize SDRAM Controller (SDRC) */
-	if ((rc = sdrc_init(OMAP3_SDRC_BASE,
-			    OMAP3_SMS_BASE,
-			    mt46h32m32lf6_sdrc_params, 
-			    mt46h32m32lf6_sdrc_params))) {
-		return rc;
-	}
-
-	return 0;
-}
-
-#define OMAP3_CLK_EVENT_GPT	0 
-
-#ifndef CONFIG_OMAP3_CLKSRC_S32KT
-#define OMAP3_CLK_SRC_GPT	1 
-#endif
+/** OMAP3/OMAP343X GPT Base Physical Addresses */
+#define OMAP3_GPT1_BASE 			0x48318000
+#define OMAP3_GPT2_BASE 			0x49032000
+#define OMAP3_GPT3_BASE 			0x49034000
+#define OMAP3_GPT4_BASE 			0x49036000
+#define OMAP3_GPT5_BASE 			0x49038000
+#define OMAP3_GPT6_BASE 			0x4903A000
+#define OMAP3_GPT7_BASE 			0x4903C000
+#define OMAP3_GPT8_BASE 			0x4903E000
+#define OMAP3_GPT9_BASE 			0x49040000
+#define OMAP3_GPT10_BASE 			0x48086000
+#define OMAP3_GPT11_BASE 			0x48088000
+#define OMAP3_GPT12_BASE 			0x48304000
 
 struct gpt_cfg {
-	const char *name;
 	physical_addr_t base_pa;
 	u32 cm_domain;
 	u32 clksel_offset;
@@ -481,12 +250,10 @@ struct gpt_cfg {
 	u32 fclken_mask;
 	bool src_sys_clk;
 	u32 clk_hz;
-	u32 irq_no;
 };
 
 struct gpt_cfg omap3_gpt[] = {
 	{
-		.name		= "gpt1",
 		.base_pa	= OMAP3_GPT1_BASE,
 		.cm_domain	= OMAP3_WKUP_CM,
 		.clksel_offset	= OMAP3_CM_CLKSEL,
@@ -496,10 +263,9 @@ struct gpt_cfg omap3_gpt[] = {
 		.fclken_offset	= OMAP3_CM_FCLKEN,
 		.fclken_mask	= OMAP3_CM_FCLKEN_WKUP_EN_GPT1_M,	
 		.src_sys_clk	= TRUE,
-		.irq_no	=	OMAP3_MPU_INTC_GPT1_IRQ
+		.clk_hz		= 0, /* Determined at runtime */
 	},
 	{
-		.name		= "gpt2",
 		.base_pa	= OMAP3_GPT2_BASE,
 		.cm_domain	= OMAP3_PER_CM,
 		.clksel_offset	= OMAP3_CM_CLKSEL,
@@ -509,11 +275,18 @@ struct gpt_cfg omap3_gpt[] = {
 		.fclken_offset	= OMAP3_CM_FCLKEN,
 		.fclken_mask	= OMAP3_CM_FCLKEN_PER_EN_GPT2_M,	
 		.src_sys_clk	= TRUE,
-		.irq_no		= OMAP3_MPU_INTC_GPT2_IRQ
+		.clk_hz		= 0, /* Determined at runtime */
 	}
 };
 
-static u32 get_osc_clk_speed(u32 gpt_num, u32 sys_clk_div)
+#define S32K_FREQ_HZ				32768
+#define S32K_CR	 				0x10
+#define GPT_TCLR				0x024
+#define GPT_TCRR				0x028
+#define GPT_TLDR				0x02C
+#define GPT_TCLR_ST_M				0x00000001
+
+static u32 omap3_gpt_get_osc_clk_speed(u32 gpt_num, u32 sys_clk_div)
 {
 	u32 osc_clk_hz = 0, regval;
 	u32 start, cstart, cend, cdiff;
@@ -588,7 +361,7 @@ static void omap3_gpt_clock_enable(u32 gpt_num)
 			   omap3_gpt[gpt_num].clksel_offset,
 			   omap3_gpt[gpt_num].clksel_mask);
 		omap3_gpt[gpt_num].clk_hz = 
-					get_osc_clk_speed(gpt_num, sys_div);
+				omap3_gpt_get_osc_clk_speed(gpt_num, sys_div);
 	} else {
 		cm_clrbits(omap3_gpt[gpt_num].cm_domain, 
 			   omap3_gpt[gpt_num].clksel_offset,
@@ -607,31 +380,149 @@ static void omap3_gpt_clock_enable(u32 gpt_num)
 		   omap3_gpt[gpt_num].fclken_mask);
 }
 
-int __init arch_clocksource_init(void)
+/*
+ * Print board information
+ */
+
+void arch_board_print_info(struct vmm_chardev *cdev)
 {
-#ifdef CONFIG_OMAP3_CLKSRC_S32KT
-	return s32k_clocksource_init(OMAP3_S32K_BASE);
-#else
-	u32 gpt_num = OMAP3_CLK_SRC_GPT;
-
-	omap3_gpt_clock_enable(gpt_num);
-
-	return gpt_clocksource_init(omap3_gpt[gpt_num].name, 
-				    omap3_gpt[gpt_num].base_pa, 
-				    omap3_gpt[gpt_num].clk_hz);
-#endif
+	/* FIXME: To be implemented. */
 }
 
-int __cpuinit arch_clockchip_init(void)
-{
-	u32 gpt_num = OMAP3_CLK_EVENT_GPT;
+/*
+ * Initialization functions
+ */
 
+/* Micron MT46H32M32LF-6 */
+/* XXX Using ARE = 0x1 (no autorefresh burst) -- can this be changed? */
+static struct sdrc_params mt46h32m32lf6_sdrc_params[] = {
+	[0] = {
+		.rate	     = 166000000,
+		.actim_ctrla = 0x9a9db4c6,
+		.actim_ctrlb = 0x00011217,
+		.rfr_ctrl    = 0x0004dc01,
+		.mr	     = 0x00000032,
+	},
+	[1] = {
+		.rate	     = 165941176,
+		.actim_ctrla = 0x9a9db4c6,
+		.actim_ctrlb = 0x00011217,
+		.rfr_ctrl    = 0x0004dc01,
+		.mr	     = 0x00000032,
+	},
+	[2] = {
+		.rate	     = 83000000,
+		.actim_ctrla = 0x51512283,
+		.actim_ctrlb = 0x0001120c,
+		.rfr_ctrl    = 0x00025501,
+		.mr	     = 0x00000032,
+	},
+	[3] = {
+		.rate	     = 82970588,
+		.actim_ctrla = 0x51512283,
+		.actim_ctrlb = 0x0001120c,
+		.rfr_ctrl    = 0x00025501,
+		.mr	     = 0x00000032,
+	},
+	[4] = {
+		.rate	     = 0
+	},
+};
+
+static void omap3_gpt_clk_init(struct vmm_devtree_node *node,
+				const struct vmm_devtree_nodeid *match,
+				void *data)
+{
+	int i, rc, gpt_num = -1;
+	physical_addr_t base;
+
+	/* Find out GPT index */
+	for (i = 0; i < array_size(omap3_gpt); i++) {
+		rc = vmm_devtree_regaddr(node, &base, 0);
+		if (rc) {
+			continue;
+		}
+
+		if (base == omap3_gpt[i].base_pa) {
+			gpt_num = i;
+			break;
+		}
+	}
+	if (gpt_num < 0) {
+		return;
+	}
+
+	/* Enable clocks for GPTx */
 	omap3_gpt_clock_enable(gpt_num);
 
-	return gpt_clockchip_init(omap3_gpt[gpt_num].name, 
-				  omap3_gpt[gpt_num].base_pa, 
-				  omap3_gpt[gpt_num].clk_hz,
-				  omap3_gpt[gpt_num].irq_no);
+	/* Update clock-frequency in GPTx device tree */
+	vmm_devtree_setattr(node,
+			    VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME,
+			    &omap3_gpt[gpt_num].clk_hz,
+			    VMM_DEVTREE_ATTRTYPE_UINT32,
+			    sizeof(omap3_gpt[gpt_num].clk_hz),
+			    FALSE);
+}
+
+/** OMAP3/OMAP343X SDRC Base Physical Address */
+#define OMAP3_SDRC_BASE				0x6D000000
+
+/** OMAP3/OMAP343X SMS Base Physical Address */
+#define OMAP3_SMS_BASE				0x6C000000
+
+int __init arch_board_early_init(void)
+{
+	int rc;
+	struct vmm_devtree_nodeid gpt_match[2];
+
+	/* Host virtual memory, device tree, heap is up.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
+
+	/* The function omap3_beagle_init_early() of 
+	 * <linux>/arch/arm/mach-omap2/board-omap3beagle.c
+	 * does the following:
+	 *   1. Initialize Clock & Power Domains using function 
+	 *      omap2_init_common_infrastructure() of
+	 *      <linux>/arch/arm/mach-omap2/io.c
+	 *   2. Initialize & Reprogram Clock of SDRC using function
+	 *      omap2_sdrc_init() of <linux>/arch/arm/mach-omap2/sdrc.c
+	 */
+
+	/* Initialize Clock Mamagment */
+	if ((rc = cm_init())) {
+		return rc;
+	}
+
+	/* Initialize Power & Reset Mamagment */
+	if ((rc = prm_init())) {
+		return rc;
+	}
+
+	/* Enable I-clock for S32K timer 
+	 * Note: S32K is our reference clocksource and also used
+	 * as clock reference for GPTs
+	 */
+	cm_setbits(OMAP3_WKUP_CM, 
+		   OMAP3_CM_ICLKEN_WKUP, 
+		   OMAP3_CM_ICLKEN_WKUP_EN_32KSYNC_M);
+
+	/* Initialize SDRAM Controller (SDRC) */
+	if ((rc = sdrc_init(OMAP3_SDRC_BASE,
+			    OMAP3_SMS_BASE,
+			    mt46h32m32lf6_sdrc_params, 
+			    mt46h32m32lf6_sdrc_params))) {
+		return rc;
+	}
+
+	/* Iterate over each GPT device tree node */
+	memset(gpt_match, 0, sizeof(gpt_match));
+	strcpy(gpt_match[0].compatible, "ti,omap3430-timer");
+	vmm_devtree_iterate_matching(NULL, gpt_match,
+				     omap3_gpt_clk_init, NULL);
+
+	return 0;
 }
 
 int __init arch_board_final_init(void)

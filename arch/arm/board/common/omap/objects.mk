@@ -21,7 +21,5 @@
 # @brief list of OMAP platform objects.
 # */
 
-board-common-objs-$(CONFIG_OMAP)+= omap/gpt.o
-board-common-objs-$(CONFIG_OMAP)+= omap/s32k-timer.o
 board-common-objs-$(CONFIG_OMAP)+= omap/sdrc.o
 

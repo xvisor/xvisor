@@ -16,17 +16,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file s32k-timer.c
+ * @file omap_s32k.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief source code for OMAP 32K sync timer
+ * @brief OMAP 32K sync counter
  */
 
 #include <vmm_error.h>
 #include <vmm_clockchip.h>
 #include <vmm_clocksource.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
-#include <omap/s32k-timer.h>
+
+#define S32K_FREQ_HZ	32768
+
+#define S32K_CR	 	0x10
 
 static u64 s32k_clocksource_read(struct vmm_clocksource *cs)
 {
@@ -41,16 +45,19 @@ static struct vmm_clocksource s32k_clksrc = {
 	.read = &s32k_clocksource_read
 };
 
-int __init s32k_clocksource_init(physical_addr_t base)
+int __init s32k_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	virtual_addr_t synct_base;
+	virtual_addr_t base;
 
 	/* Map registers */
-	synct_base = vmm_host_iomap(base, 0x1000);
+	rc = vmm_devtree_request_regmap(node, &base, 0, "omap-s32k");
+	if (rc) {
+		return rc;
+	}
 
 	/* Save pointer to registers in clocksource private */
-	s32k_clksrc.priv = (void *)synct_base;
+	s32k_clksrc.priv = (void *)base;
 
 	/* Compute mult for clocksource */
 	vmm_clocks_calc_mult_shift(&s32k_clksrc.mult, &s32k_clksrc.shift, 
@@ -58,9 +65,12 @@ int __init s32k_clocksource_init(physical_addr_t base)
 
 	/* Register clocksource */
 	if ((rc = vmm_clocksource_register(&s32k_clksrc))) {
+		vmm_devtree_regunmap_release(node, base, 0);
 		return rc;
 	}
 
 	return VMM_OK;
 }
-
+VMM_CLOCKSOURCE_INIT_DECLARE(omap32kclksrc,
+			     "ti,omap-counter32k",
+			     s32k_clocksource_init);

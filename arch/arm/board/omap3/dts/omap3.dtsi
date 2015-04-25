@@ -32,10 +32,31 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		intc {
+		counter32k: counter@48320000 {
+			compatible = "ti,omap-counter32k";
+			reg = <0x48320000 0x20>;
+			ti,hwmods = "counter_32k";
+		};
+
+		intc: interrupt-controller@48200000 {
 			device_type = "pic";
 			compatible = "ti,omap2-intc";
 			reg = <0x48200000 0x1000>;
+		};
+
+		timer1: timer@48318000 {
+			compatible = "ti,omap3430-timer";
+			reg = <0x48318000 0x400>;
+			interrupts = <37>;
+			ti,hwmods = "timer1";
+			ti,timer-alwon;
+		};
+
+		timer2: timer@49032000 {
+			compatible = "ti,omap3430-timer";
+			reg = <0x49032000 0x400>;
+			interrupts = <38>;
+			ti,hwmods = "timer2";
 		};
 
 		SERIAL0: uart0 {

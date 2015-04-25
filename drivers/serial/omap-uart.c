@@ -455,7 +455,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 	INIT_COMPLETION(&port->write_possible);
 
 	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
-					"OMAP UART");
+					"omap-uart");
 	if(rc) {
 		goto free_port;
 	}
