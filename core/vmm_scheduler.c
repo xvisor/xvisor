@@ -390,6 +390,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state,
 			 */
 			vcpu->resumed = TRUE;
 			goto skip_state_change;
+		} else if (current_state == VMM_VCPU_STATE_READY) {
+			/* READY->READY is a valid scenario... Do nothing. */
+			goto skip_state_change;
 		} else {
 			rc = VMM_EINVALID;
 		}
