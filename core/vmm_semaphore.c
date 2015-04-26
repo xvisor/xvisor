@@ -80,11 +80,12 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 {
 	int rc = VMM_OK;
+	irq_flags_t flags;
 
 	BUG_ON(!sem);
 	BUG_ON(!vmm_scheduler_orphan_context());
 
-	vmm_spin_lock_irq(&sem->wq.lock);
+	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
 	while (!sem->value) {
 		rc = __vmm_waitqueue_sleep(&sem->wq, timeout);
@@ -97,7 +98,7 @@ static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 		sem->value--;
 	}
 
-	vmm_spin_unlock_irq(&sem->wq.lock);
+	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
 
 	return rc;
 }

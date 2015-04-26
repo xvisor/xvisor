@@ -103,11 +103,12 @@ int vmm_mutex_trylock(struct vmm_mutex *mut)
 static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 {
 	int rc = VMM_OK;
+	irq_flags_t flags;
 
 	BUG_ON(!mut);
 	BUG_ON(!vmm_scheduler_orphan_context());
 
-	vmm_spin_lock_irq(&mut->wq.lock);
+	vmm_spin_lock_irqsave(&mut->wq.lock, flags);
 
 	while (mut->lock) {
 		rc = __vmm_waitqueue_sleep(&mut->wq, timeout);
@@ -121,7 +122,7 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 		mut->owner = vmm_scheduler_current_vcpu();
 	}
 
-	vmm_spin_unlock_irq(&mut->wq.lock);
+	vmm_spin_unlock_irqrestore(&mut->wq.lock, flags);
 
 	return rc;
 }

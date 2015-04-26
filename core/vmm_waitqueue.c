@@ -72,14 +72,9 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 		vmm_timer_event_start(&wake_event, *timeout_nsecs);
 	}
 
-	/* Unlock waitqueue */
-	vmm_spin_unlock_irq(&wq->lock);
-
 	/* Try to Pause VCPU */
-	rc = vmm_manager_vcpu_pause(vcpu);
-
-	/* Lock waitqueue */
-	vmm_spin_lock_irq(&wq->lock);
+	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED,
+					&wq->lock);
 
 	/* Remove VCPU from waitqueue */
 	list_del(&vcpu->wq_head);
@@ -187,7 +182,7 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 static int __vmm_waitqueue_wake(struct vmm_waitqueue *wq,
 				struct vmm_vcpu *vcpu)
 {
-	return vmm_manager_vcpu_resume(vcpu);
+	return vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY, NULL);
 }
 
 int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
@@ -197,7 +192,7 @@ int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
 	struct vmm_waitqueue *wq;
 
 	/* Sanity checks */
-	if (!vcpu || !vcpu->wq_priv) {
+	if (!vcpu || vcpu->is_normal ||!vcpu->wq_priv) {
 		return VMM_EFAIL;
 	}
 	wq = vcpu->wq_priv;
@@ -216,7 +211,6 @@ int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
 
 int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 {
-	struct dlist *l;
 	struct vmm_vcpu *vcpu;
 
 	/* Sanity checks */
@@ -228,8 +222,8 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 	}
 
 	/* Get first VCPU from waitqueue list */
-	l = list_first(&wq->vcpu_list);
-	vcpu = list_entry(l, struct vmm_vcpu, wq_head);
+	vcpu = list_entry(list_first(&wq->vcpu_list),
+			  struct vmm_vcpu, wq_head);
 
 	/* Try to Resume VCPU */
 	return __vmm_waitqueue_wake(wq, vcpu);
@@ -258,8 +252,7 @@ int vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 {
 	int rc;
-	struct dlist *l;
-	struct vmm_vcpu *vcpu;
+	struct vmm_vcpu *vcpu, *nvcpu;
 
 	/* Sanity checks */
 	BUG_ON(!wq);
@@ -270,9 +263,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 	}
 
 	/* Try resume every VCPU till empty */
-	list_for_each(l, &wq->vcpu_list) {
-		vcpu = list_entry(l, struct vmm_vcpu, wq_head);
-
+	list_for_each_entry_safe(vcpu, nvcpu, &wq->vcpu_list, wq_head) {
 		/* Try to Resume VCPU */
 		if ((rc = __vmm_waitqueue_wake(wq, vcpu))) {
 			/* Return Failure */

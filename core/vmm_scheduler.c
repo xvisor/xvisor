@@ -318,7 +318,8 @@ int vmm_scheduler_force_resched(u32 hcpu)
 	return VMM_OK;
 }
 
-int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state,
+			       vmm_spinlock_t *wq_lock)
 {
 	u64 tstamp;
 	int rc = VMM_OK;
@@ -468,15 +469,13 @@ skip_state_change:
 			} else if (schedp->irq_context) {
 				vmm_scheduler_preempt_orphan(schedp->irq_regs);
 			} else {
+				if (wq_lock) {
+					vmm_spin_unlock(wq_lock);
+				}
 				arch_vcpu_preempt_orphan();
-				/* We should only be back here after
-				 * the VCPU is resumed hence. On some
-				 * hosts, invocation of the function
-				 * vmm_scheduler_preempt_orphan() is
-				 * bit delayed hence we wait here.
-				 */
-				while (arch_atomic_read(&vcpu->state) !=
-						VMM_VCPU_STATE_RUNNING);
+				if (wq_lock) {
+					vmm_spin_lock(wq_lock);
+				}
 			}
 		} else {
 			rc = vmm_scheduler_force_resched(vhcpu);

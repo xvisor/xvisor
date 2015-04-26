@@ -57,21 +57,21 @@ struct vmm_waitqueue {
 
 /** Lowlevel waitqueue sleep.
  *  Note: This function should only be called with wq->lock held using
- *  vmm_spin_lock_irq() API
+ *  any vmm_spin_lock_xxx() API except lite APIs
  *  Note: This function can only be called from Orphan Context
  */
 int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs);
 
 /** Lowlevel waitqueue wakeup first VCPU.
  *  Note: This function should only be called with wq->lock held using
- *  any vmm_spin_lock_xxx() API
+ *  any vmm_spin_lock_xxx() API except lite APIs
  *  Note: This function can be called from any context
  */
 int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq);
 
 /** Lowlevel waitqueue wakeup all VCPUs.
  *  Note: This function should only be called with wq->lock held using
- *  any vmm_spin_lock_xxx() API
+ *  any vmm_spin_lock_xxx() API except lite APIs
  *  Note: This function can be called from any context
  */
 int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq);

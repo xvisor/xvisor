@@ -47,11 +47,12 @@ bool vmm_completion_done(struct vmm_completion *cmpl)
 static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 {
 	int rc = VMM_OK;
+	irq_flags_t flags;
 
 	BUG_ON(!cmpl);
 	BUG_ON(!vmm_scheduler_orphan_context());
 
-	vmm_spin_lock_irq(&cmpl->wq.lock);
+	vmm_spin_lock_irqsave(&cmpl->wq.lock, flags);
 
 	if (!cmpl->done) {
 		rc = __vmm_waitqueue_sleep(&cmpl->wq, timeout);
@@ -60,7 +61,7 @@ static int completion_wait_common(struct vmm_completion *cmpl, u64 *timeout)
 		cmpl->done--;
 	}
 
-	vmm_spin_unlock_irq(&cmpl->wq.lock);
+	vmm_spin_unlock_irqrestore(&cmpl->wq.lock, flags);
 
 	return rc;
 }
