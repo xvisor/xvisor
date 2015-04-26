@@ -475,7 +475,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->reset_count = 0;
 	vcpu->reset_tstamp = 0;
 	vcpu->preempt_count = 0;
-	vcpu->resume_count = 0;
+	vcpu->resumed = FALSE;
 	vcpu->sched_priv = NULL;
 
 	/* Intialize static scheduling context */
@@ -1220,7 +1220,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->reset_count = 0;
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
-		vcpu->resume_count = 0;
+		vcpu->resumed = FALSE;
 		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
 		vcpu->cpu_affinity = cpu_online_mask;
 		vcpu->sched_priv = NULL;

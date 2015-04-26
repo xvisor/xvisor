@@ -350,8 +350,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			rc = vmm_schedalgo_vcpu_setup(vcpu);
 		} else if (current_state != VMM_VCPU_STATE_RESET) {
 			/* Existing VCPU */
-			/* Reset resume count */
-			vcpu->resume_count = 0;
+			/* Clear resumed flag */
+			vcpu->resumed = FALSE;
 			/* Make sure VCPU is not in a ready queue */
 			if ((schedp->current_vcpu != vcpu) &&
 			    (current_state == VMM_VCPU_STATE_READY)) {
@@ -376,14 +376,6 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		}
 		break;
 	case VMM_VCPU_STATE_READY:
-		if (current_state & VMM_VCPU_STATE_INTERRUPTIBLE) {
-			/* Increment resume count */
-			vcpu->resume_count++;
-			/* If resume count < 0 than skip with error */
-			if (vcpu->resume_count < 0) {
-				goto skip_state_change;
-			}
-		}
 		if ((current_state == VMM_VCPU_STATE_RESET) ||
 		    (current_state == VMM_VCPU_STATE_PAUSED)) {
 			/* Enqueue VCPU to ready queue */
@@ -391,8 +383,11 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			if (!rc && (schedp->current_vcpu != vcpu)) {
 				preempt = rq_prempt_needed(schedp);
 			}
-		} else if ((current_state == VMM_VCPU_STATE_READY) ||
-			   (current_state == VMM_VCPU_STATE_RUNNING)) {
+		} else if (current_state == VMM_VCPU_STATE_RUNNING) {
+			/* Set resumed flag. This means we catch
+			 * resume event while VCPU is RUNNING.
+			 */
+			vcpu->resumed = TRUE;
 			goto skip_state_change;
 		} else {
 			rc = VMM_EINVALID;
@@ -405,24 +400,20 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		rc = VMM_EINVALID;
 		break;
 	case VMM_VCPU_STATE_PAUSED:
-		if (current_state & VMM_VCPU_STATE_INTERRUPTIBLE) {
-			/* Decrement resume count */
-			vcpu->resume_count--;
-			/* If resume count >= 0 then skip without error */
-			if (vcpu->resume_count >= 0) {
-				goto skip_state_change;
-			}
-		}
 		if (current_state == VMM_VCPU_STATE_PAUSED) {
 			goto skip_state_change;
 		}
 	case VMM_VCPU_STATE_HALTED:
 		if ((current_state == VMM_VCPU_STATE_READY) ||
 		    (current_state == VMM_VCPU_STATE_RUNNING)) {
-			/* Expire timer event if current VCPU
-			 * is paused or halted
-			 */
+			if (vcpu->resumed &&
+			    (new_state == VMM_VCPU_STATE_PAUSED)) {
+				vcpu->resumed = FALSE;
+				goto skip_state_change;
+			}
+			vcpu->resumed = FALSE;
 			if (schedp->current_vcpu == vcpu) {
+				/* Preempt current VCPU if paused or halted */
 				preempt = TRUE;
 			} else if (current_state == VMM_VCPU_STATE_READY) {
 				/* Make sure VCPU is not in a ready queue */
