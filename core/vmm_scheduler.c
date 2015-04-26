@@ -470,7 +470,7 @@ skip_state_change:
 			if (schedp->current_vcpu->is_normal) {
 				schedp->yield_on_irq_exit = TRUE;
 			} else if (schedp->irq_context) {
-				vmm_scheduler_preempt_orphan(schedp->irq_regs);
+				vmm_scheduler_switch(schedp, schedp->irq_regs);
 			} else {
 				if (wq_lock) {
 					vmm_spin_unlock(wq_lock);
