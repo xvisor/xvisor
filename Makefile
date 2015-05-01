@@ -28,7 +28,7 @@
 # Current Version
 MAJOR = 0
 MINOR = 2
-RELEASE = 5
+RELEASE = 6
 
 # Select Make Options:
 # o  Do not use make's built-in rules and variables
