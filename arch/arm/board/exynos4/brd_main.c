@@ -35,7 +35,6 @@
 #include <arch_timer.h>
 
 #include <exynos/plat/cpu.h>
-#include <exynos/mct_timer.h>
 #include <exynos/regs-watchdog.h>
 #include <exynos/regs-clock.h>
 
@@ -147,101 +146,6 @@ int __init arch_board_early_init(void)
 	 * memory or boot time memory reservation here.
 	 */
 	return 0;
-}
-
-static virtual_addr_t mct_timer_base;
-static u32 mct_clk_rate = 24000000;
-
-int __init arch_clocksource_init(void)
-{
-	int rc;
-	struct vmm_devtree_node *node;
-
-	/* Map timer0 registers */
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
-	if (rc) {
-		goto skip_mct_timer_init;
-	}
-
-	if (!mct_timer_base) {
-		rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
-		if (rc) {
-			goto skip_mct_timer_init;
-		}
-	}
-
-	/* Initialize mct as clocksource */
-	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
-				      mct_clk_rate);
-	if (rc) {
-		goto skip_mct_timer_init;
-	}
-
- skip_mct_timer_init:
-	vmm_devtree_dref_node(node);
-	return rc;
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	int rc;
-	struct vmm_devtree_node *node;
-	u32 val;
-
-	if (vmm_smp_is_bootcpu()) {
-		/* Map timer0 registers */
-		node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-					   "mct");
-		if (!node) {
-			goto skip_mct_timer_init;
-		}
-
-		if (!mct_timer_base) {
-			rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
-			if (rc) {
-				vmm_devtree_dref_node(node);
-				return rc;
-			}
-		}
-
-		rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
-		if (rc) {
-			vmm_devtree_dref_node(node);
-			return rc;
-		}
-
-		/* Get MCT irq */
-		rc = vmm_devtree_irq_get(node, &val, 0);
-		if (rc) {
-			vmm_devtree_dref_node(node);
-			return rc;
-		}
-
-		/* Initialize MCT as clockchip */
-		rc = exynos4_clockchip_init(mct_timer_base, val, node->name,
-					    300, mct_clk_rate, 0);
-		if (rc) {
-			vmm_devtree_dref_node(node);
-			return rc;
-		}
-
-		vmm_devtree_dref_node(node);
-	}
-skip_mct_timer_init:
-
-#if CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
-	if (mct_timer_base) {
-		exynos4_local_timer_init(mct_timer_base, 0, "mct_tick", 450,
-					 mct_clk_rate);
-	}
-#endif
-
-	return VMM_OK;
 }
 
 int __init arch_board_final_init(void)
