@@ -280,7 +280,9 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 		int rc;
 		u32 irq;
 		u32 clock;
+#ifdef CONFIG_SMP
 		u32 cpu = vmm_smp_processor_id();
+#endif
 
 		rc = vmm_devtree_clock_frequency(node, &clock);
 		if (rc) {
@@ -330,11 +332,11 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 					   &mct_comp_device))) {
 			return rc;
 		}
-
 #ifdef CONFIG_SMP
 		/* Set host irq affinity to target cpu */
 		if ((rc =
-		     vmm_host_irq_set_affinity(irq, vmm_cpumask_of(cpu), TRUE))) {
+		     vmm_host_irq_set_affinity(irq, vmm_cpumask_of(cpu),
+					       TRUE))) {
 			vmm_host_irq_unregister(irq, &mct_comp_device);
 			return rc;
 		}
@@ -344,7 +346,6 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 			return rc;
 		}
 	}
-
 #ifdef CONFIG_SAMSUNG_MCT_LOCAL_TIMERS
 	return exynos4_local_timer_init(node);
 #else
@@ -494,10 +495,23 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 	u32 clock;
 
 	if (mct_int_type == MCT_INT_UNKNOWN) {
-		if ((soc_is_exynos4210()) || (soc_is_exynos5250())) {
+		const char *interrupt_type;
+		rc = vmm_devtree_read_string(node, "interrupt-type",
+					     &interrupt_type);
+		if (rc) {
+			vmm_printf("%s: missing interrupt-type attribute\n",
+				   node->name);
+			return rc;
+		}
+
+		if (strcmp(interrupt_type, "PPI") == 0) {
+			mct_int_type = MCT_INT_PPI;
+		} else if (strcmp(interrupt_type, "SPI") == 0) {
 			mct_int_type = MCT_INT_SPI;
 		} else {
-			mct_int_type = MCT_INT_PPI;
+			vmm_printf("%s: %s is unsupported interrupt-type\n",
+				   interrupt_type, node->name);
+			return VMM_ENOTAVAIL;
 		}
 	}
 
@@ -540,40 +554,36 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
-		if (vmm_smp_is_bootcpu()) {
-			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
-						   mevt->name,
-						   exynos4_mct_tick_isr, mevt);
-			if (rc) {
-				return rc;
-			}
-			rc = vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L0,
-						       vmm_cpumask_of(cpu),
-						       TRUE);
-			if (rc) {
-				vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L0,
-							mevt);
-				return rc;
-			}
-		} else {
-			rc = vmm_host_irq_register(EXYNOS4_IRQ_MCT_L1,
-						   mevt->name,
-						   exynos4_mct_tick_isr, mevt);
-			if (rc) {
-				return rc;
-			}
-			rc = vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L1,
-						       vmm_cpumask_of(cpu),
-						       TRUE);
-			if (rc) {
-				vmm_host_irq_unregister(EXYNOS4_IRQ_MCT_L1,
-							mevt);
-				return rc;
-			}
+		u32 irq;
+
+		/* Get MCT irq */
+		rc = vmm_devtree_irq_get(node, &irq, 1 + cpu);
+		if (rc) {
+			return rc;
 		}
+
+		rc = vmm_host_irq_register(irq, mevt->name,
+					   exynos4_mct_tick_isr, mevt);
+		if (rc) {
+			return rc;
+		}
+
+		rc = vmm_host_irq_set_affinity(irq, vmm_cpumask_of(cpu), TRUE);
+		if (rc) {
+			vmm_host_irq_unregister(irq, mevt);
+			return rc;
+		}
+
 	} else {
-		rc = vmm_host_irq_register(EXYNOS_IRQ_MCT_LOCALTIMER,
-					   "mct_tick_local",
+		u32 irq;
+
+		/* Get MCT irq */
+		rc = vmm_devtree_irq_get(node, &irq, 1);
+		if (rc) {
+			return rc;
+		}
+
+		rc = vmm_host_irq_register(irq, "mct_tick_local",
 					   exynos4_mct_tick_isr, mevt);
 		if (rc) {
 			return rc;
