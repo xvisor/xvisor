@@ -40,37 +40,6 @@
 static virtual_addr_t exynos4_sys_base;
 
 /*
- * Samsung processor revision variables
- */
-static u32 __samsung_cpu_id = 0;
-static u32 __samsung_cpu_rev = 0;
-
-static void __init exynos_init_cpu(physical_addr_t cpuid_addr)
-{
-        virtual_addr_t virt_addr = vmm_host_iomap(cpuid_addr, sizeof(__samsung_cpu_id));
-
-        if (virt_addr) {
-                __samsung_cpu_id = vmm_readl((void *)virt_addr);
-                __samsung_cpu_rev = __samsung_cpu_id & 0xFF;
-
-                vmm_host_iounmap(virt_addr);
-        }
-}
-
-/*
- * Samsung processor revision API
- */
-u32 samsung_rev(void)
-{
-        return __samsung_cpu_rev;
-}
-
-u32 samsung_cpu_id(void)
-{
-        return __samsung_cpu_id;
-}
-
-/*
  * Reset & Shutdown
  */
 
@@ -79,9 +48,9 @@ static int exynos4_reset(void)
 	if (exynos4_sys_base) {
 		/* Trigger a Software reset */
 		vmm_writel(0x1, (void *)(exynos4_sys_base + EXYNOS_SWRESET));
-	}
 
-	vmm_mdelay(500);
+		vmm_mdelay(500);
+	}
 
 	return VMM_EFAIL;
 }
@@ -91,9 +60,9 @@ static int exynos4_shutdown(void)
 	if (exynos4_sys_base) {
 		/* Trigger a Software reset */
 		vmm_writel(0x1, (void *)(exynos4_sys_base + EXYNOS_SWRESET));
-	}
 
-	vmm_mdelay(500);
+		vmm_mdelay(500);
+	}
 
 	return VMM_EFAIL;
 }
@@ -115,14 +84,12 @@ static int __init exynos4_early_init(struct vmm_devtree_node *node)
 	 * ....
 	 */
 
-	/* Initalize some code that will help determine the SOC type */
-	exynos_init_cpu(EXYNOS_PA_CHIPID);
-
 	/* Map sysreg */
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,a9mpcore-priv");
 	if (!node) {
 		return VMM_ENODEV;
 	}
+
 	rc = vmm_devtree_regmap(node, &exynos4_sys_base, 0);
 	vmm_devtree_dref_node(node);
 	if (rc) {
@@ -133,19 +100,12 @@ static int __init exynos4_early_init(struct vmm_devtree_node *node)
 	vmm_register_system_reset(exynos4_reset);
 	vmm_register_system_shutdown(exynos4_shutdown);
 
-	return 0;
-}
-
-static int __init exynos4_final_init(struct vmm_devtree_node *node)
-{
-	/* Nothing to do here. */
 	return VMM_OK;
 }
 
 static struct generic_board exynos4_info = {
 	.name		= "Exynos4",
 	.early_init	= exynos4_early_init,
-	.final_init	= exynos4_final_init,
 };
 
 GENERIC_BOARD_DECLARE(exynos4, "samsung,exynos4", &exynos4_info);
