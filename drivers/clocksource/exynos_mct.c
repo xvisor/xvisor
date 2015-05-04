@@ -276,11 +276,12 @@ static struct vmm_clockchip mct_comp_device;
 
 static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 {
-	int rc;
-	u32 irq;
-	u32 clock;
-
 	if (vmm_smp_is_bootcpu()) {
+		int rc;
+		u32 irq;
+		u32 clock;
+		u32 cpu = vmm_smp_processor_id();
+
 		rc = vmm_devtree_clock_frequency(node, &clock);
 		if (rc) {
 			return rc;
@@ -305,7 +306,7 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 		mct_comp_device.hirq = irq;
 		mct_comp_device.rating = 300;
 #ifdef CONFIG_SMP
-		mct_comp_device.cpumask = vmm_cpumask_of(0);
+		mct_comp_device.cpumask = vmm_cpumask_of(cpu);
 #else
 		mct_comp_device.cpumask = cpu_all_mask;
 #endif
@@ -333,7 +334,7 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 #ifdef CONFIG_SMP
 		/* Set host irq affinity to target cpu */
 		if ((rc =
-		     vmm_host_irq_set_affinity(irq, vmm_cpumask_of(0), TRUE))) {
+		     vmm_host_irq_set_affinity(irq, vmm_cpumask_of(cpu), TRUE))) {
 			vmm_host_irq_unregister(irq, &mct_comp_device);
 			return rc;
 		}

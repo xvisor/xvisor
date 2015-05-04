@@ -2,7 +2,8 @@
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
-	model = "exynos4412";
+	model = "exynos4210";
+	compatible = "samsung,exynos4";
 
 	chosen { };
 	aliases { };
@@ -23,22 +24,6 @@
 			device_type = "cpu";
 			model = "Cortex-A9";
 			reg = <1>;
-			enable-method = "smp-scu";
-			cpu-release-addr = <0x10020814>;
-		};
-
-		cpu@2 {
-			device_type = "cpu";
-			model = "Cortex-A9";
-			reg = <2>;
-			enable-method = "smp-scu";
-			cpu-release-addr = <0x10020814>;
-		};
-
-		cpu@3 {
-			device_type = "cpu";
-			model = "Cortex-A9";
-			reg = <3>;
 			enable-method = "smp-scu";
 			cpu-release-addr = <0x10020814>;
 		};
@@ -73,6 +58,7 @@
 	sfrregion {
 		#address-cells = <1>;
 		#size-cells = <1>;
+		compatible = "simple-bus";
 
 		RTC0: s3c-rtc {
 			device_type = "rtc";
@@ -81,33 +67,38 @@
 			interrupts = <76 77>;
 		};
 
-		SERIAL0: exynos4210-uart.0 {
+		SERIAL0: uart@13800000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
+			clock-frequency = <100000000>;
 			interrupts = <84>;
 		};
 
-		SERIAL1: exynos4210-uart.1 {
+		SERIAL1: uart@13810000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
+			clock-frequency = <100000000>;
 			interrupts = <85>;
 		};
 
-		SERIAL2: exynos4210-uart.2 {
+		SERIAL2: uart@13820000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
+			clock-frequency = <100000000>;
 			interrupts = <86>;
 		};
 
-		SERIAL3: exynos4210-uart.3 {
+		SERIAL3: uart@13830000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
+			clock-frequency = <100000000>;
 			interrupts = <87>;
 		};
 
-		SERIAL4: exynos4210-uart.4 {
+		SERIAL4: uart@13840000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
+			clock-frequency = <100000000>;
 			interrupts = <88>;
 		};
 

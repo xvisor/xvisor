@@ -2,7 +2,8 @@
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
-	model = "exynos4212";
+	model = "exynos4412";
+	compatible = "samsung,exynos4";
 
 	chosen { };
 	aliases { };
@@ -22,7 +23,23 @@
 		cpu@1 {
 			device_type = "cpu";
 			model = "Cortex-A9";
-			reg = <0>;
+			reg = <1>;
+			enable-method = "smp-scu";
+			cpu-release-addr = <0x10020814>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			model = "Cortex-A9";
+			reg = <2>;
+			enable-method = "smp-scu";
+			cpu-release-addr = <0x10020814>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			model = "Cortex-A9";
+			reg = <3>;
 			enable-method = "smp-scu";
 			cpu-release-addr = <0x10020814>;
 		};
@@ -57,6 +74,7 @@
 	sfrregion {
 		#address-cells = <1>;
 		#size-cells = <1>;
+		compatible = "simple-bus";
 
 		RTC0: s3c-rtc {
 			device_type = "rtc";

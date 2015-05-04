@@ -40,7 +40,7 @@
 
 #include <vmm_types.h>
 
-extern u32 samsung_cpu_id;
+extern u32 samsung_cpu_id();
 
 #define S3C24XX_CPU_ID		0x32400000
 #define S3C24XX_CPU_MASK	0xFFF00000
@@ -70,7 +70,7 @@ extern u32 samsung_cpu_id;
 #define IS_SAMSUNG_CPU(name, id, mask)		\
 static inline int is_samsung_##name(void)	\
 {						\
-	return ((samsung_cpu_id & mask) == (id & mask));	\
+	return ((samsung_cpu_id() & mask) == (id & mask));	\
 }
 
 IS_SAMSUNG_CPU(s3c24xx, S3C24XX_CPU_ID, S3C24XX_CPU_MASK)
