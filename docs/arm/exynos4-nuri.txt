@@ -17,7 +17,7 @@ guest with Xvisor running on QEMU NURI Host:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with NURI default settings]
-  # make ARCH=arm exynos4210-nuri-defconfig
+  # make ARCH=arm generic-v7-defconfig
 
   [4. Build Xvisor]
   # make
@@ -36,7 +36,7 @@ guest with Xvisor running on QEMU NURI Host:
   # ./tools/scripts/memimg.py -a 0x40010000 -o build/qemu.img build/vmm.bin@0x40010000 build/disk.img@0x41000000
 
   [8. Launch QEMU]
-  # qemu-system-arm -M nuri -m 256M -display none -serial stdio -kernel build/qemu.img
+  # qemu-system-arm -M nuri -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/exynos4/nuri/one_guest_pb-a8.dtb
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

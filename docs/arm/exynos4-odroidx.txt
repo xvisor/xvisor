@@ -24,7 +24,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with ODroid-X host default settings]
-  # make ARCH=arm exynos4412-odroidx-defconfig
+  # make ARCH=arm generic-v7-defconfig
 
   [4. Build Xvisor]
   # make
@@ -60,31 +60,33 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [9. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [10. Copy uvmm.bin to boot partition of SD card]
+  [10. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-
-  [11. Copy disk image to boot partition of SD card]
+  # cp -f build/arch/arm/board/generic/dts/exynos4/odroidx/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [13. Unplug SD card from your development machine and plug it back on ODroid-X]
+  [12. Unplug SD card from your development machine and plug it back on ODroid-X]
 
-  [14. Connect to serial port of ODroid-X using Putty or Minicom]
+  [13. Connect to serial port of ODroid-X using Putty or Minicom]
 
-  [15. Power-up or Reset ODroid-X and press any key when U-Boot shows auto-boot count down]
+  [14. Power-up or Reset ODroid-X and press any key when U-Boot shows auto-boot count down]
 
-  [16. Enabled MMC interface from U-Boot command line interface]
+  [15. Enabled MMC interface from U-Boot command line interface]
   ODROIDX# mmc dev 0:2
 
-  [17. Copy Xvisor from SD card to SDRAM]
+  [16. Copy Xvisor from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x40200000 uvmm.bin
+
+  [17. Copy the Xvisor DTB from SD card to SDRAM]
+  ODROIDX# fatload mmc 0 0x40800000 one_guest_pb-a8.dtb
 
   [18. Copy disk image from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x41000000 disk.img
 
   [19. Jump into Xvisor after disabling MMU, interrupts, etc]
-  ODROIDX# bootm 0x40200000
+  ODROIDX# bootm 0x40200000 - 0x40800000
 
   [20. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
