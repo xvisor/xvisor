@@ -493,25 +493,19 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 	u32 cpu = vmm_smp_processor_id();
 	static u32 mct_int_type = MCT_INT_UNKNOWN;
 	u32 clock;
+	u32 irq;
 
 	if (mct_int_type == MCT_INT_UNKNOWN) {
-		const char *interrupt_type;
-		rc = vmm_devtree_read_string(node, "interrupt-type",
-					     &interrupt_type);
+		/* Get MCT irq */
+		rc = vmm_devtree_irq_get(node, &irq, 1);
 		if (rc) {
-			vmm_printf("%s: missing interrupt-type attribute\n",
-				   node->name);
 			return rc;
 		}
 
-		if (strcmp(interrupt_type, "PPI") == 0) {
+		if (vmm_host_irq_is_per_cpu(vmm_host_irq_get(irq))) {
 			mct_int_type = MCT_INT_PPI;
-		} else if (strcmp(interrupt_type, "SPI") == 0) {
-			mct_int_type = MCT_INT_SPI;
 		} else {
-			vmm_printf("%s: %s is unsupported interrupt-type\n",
-				   interrupt_type, node->name);
-			return VMM_ENOTAVAIL;
+			mct_int_type = MCT_INT_SPI;
 		}
 	}
 
@@ -554,8 +548,6 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 			  mevt->timer_base + MCT_L_TCNTB_OFFSET);
 
 	if (mct_int_type == MCT_INT_SPI) {
-		u32 irq;
-
 		/* Get MCT irq */
 		rc = vmm_devtree_irq_get(node, &irq, 1 + cpu);
 		if (rc) {

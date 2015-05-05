@@ -52,7 +52,6 @@
 		compatible = "samsung,exynos4210-mct";
 		reg = <0x10050000 0x1000>;
 		clock-frequency = <24000000>;
-		interrupt-type = "SPI";
 		interrupts = <89 74 80>;
 	};
 
