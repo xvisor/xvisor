@@ -25,25 +25,18 @@
 #include <vmm_heap.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <drv/serial.h>
 #include <drv/pl011.h>
-
-/* Enable UART_PL011_USE_TXINTR to use TX interrupt.
- * Generally the FIFOs are small so its better to poll on Tx 
- * for smoother vmm_prints.
- */
-#undef UART_PL011_USE_TXINTR
 
 #define MODULE_DESC			"PL011 Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(SERIAL_IPRIORITY+1)
 #define	MODULE_INIT			pl011_driver_init
 #define	MODULE_EXIT			pl011_driver_exit
 
@@ -105,7 +98,7 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	 * Set baud rate
 	 *
 	 * IBRD = UART_CLK / (16 * BAUD_RATE)
-	 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE))) 
+	 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE)))
 	 *        / (16 * BAUD_RATE))
 	 */
 	temp = 16 * baudrate;
@@ -117,13 +110,13 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	vmm_out_le16((void *)(base + UART_PL011_IBRD), (u16) divider);
 	vmm_out_8((void *)(base + UART_PL011_FBRD), (u8) fraction);
 
-	/* Set the UART to be 8 bits, 1 stop bit, 
-	 * no parity, fifo enabled 
+	/* Set the UART to be 8 bits, 1 stop bit,
+	 * no parity, fifo enabled
 	 */
 	vmm_out_8((void *)(base + UART_PL011_LCRH),
 		  UART_PL011_LCRH_WLEN_8 | UART_PL011_LCRH_FEN);
 
-	/* Ensure RX FIFO not empty triggered when 
+	/* Ensure RX FIFO not empty triggered when
 	 * RX FIFO becomes 1/8 full
 	 */
 	temp = vmm_in_8((void *)(base + UART_PL011_IFLS));
@@ -137,9 +130,7 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 }
 
 struct pl011_port {
-	struct vmm_chardev cd;
-	struct vmm_completion read_possible;
-	struct vmm_completion write_possible;
+	struct serial *p;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -149,28 +140,20 @@ struct pl011_port {
 
 static vmm_irq_return_t pl011_irq_handler(int irq_no, void *dev)
 {
+	u8 ch;
 	u16 data;
 	struct pl011_port *port = (struct pl011_port *)dev;
 
 	/* Get masked interrupt status */
 	data = vmm_in_le16((void *)(port->base + UART_PL011_MIS));
 
-	/* handle RX FIFO not empty */
+	/* Handle RX FIFO not empty */
 	if (data & (UART_PL011_MIS_RXMIS | UART_PL011_MIS_RTMIS)) {
-		/* Mask RX interrupts till RX FIFO is empty */
-		port->mask &= ~(UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
-		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completion sleeping thread */
-		vmm_completion_complete(&port->read_possible);
-	}
-
-	/* handle TX FIFO not full */
-	if (data & UART_PL011_MIS_TXMIS) {
-		/* Mask TX interrupts till TX FIFO is full */
-		port->mask &= ~UART_PL011_IMSC_TXIM;
-		vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
-		/* Signal work completion to sleeping thread */
-		vmm_completion_complete(&port->write_possible);
+		/* Pull-out bytes from RX FIFO */
+		while (pl011_lowlevel_can_getc(port->base)) {
+			ch = pl011_lowlevel_getc(port->base);
+			serial_rx(port->p, &ch, 1);
+		}
 	}
 
 	/* Clear all interrupts */
@@ -179,103 +162,17 @@ static vmm_irq_return_t pl011_irq_handler(int irq_no, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static u8 pl011_getc_sleepable(struct pl011_port *port)
-{
-	/* Wait until there is data in the FIFO */
-	while (!pl011_lowlevel_can_getc(port->base)) {
-		/* Enable the RX interrupt */
-		port->mask |= (UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
-		vmm_out_le16((void *)(port->base + UART_PL011_IMSC),
-			     port->mask);
-
-		/* Wait for completion */
-		vmm_completion_wait(&port->read_possible);
-	}
-
-	/* Read data to destination */
-	return pl011_lowlevel_getc(port->base);
-}
-
-static u32 pl011_read(struct vmm_chardev *cdev,
-		      u8 *dest, size_t len, off_t __unused *off, bool sleep)
+static u32 pl011_tx(struct serial *p, u8 *src, size_t len)
 {
 	u32 i;
-	struct pl011_port *port;
+	struct pl011_port *port = serial_tx_priv(p);
 
-	if (!(cdev && dest && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			dest[i] = pl011_getc_sleepable(port);
-		}
-	} else {
-		for (i = 0; i < len; i++) {
-			if (!pl011_lowlevel_can_getc(port->base)) {
-				break;
-			}
-			dest[i] = pl011_lowlevel_getc(port->base);
-		}
-	}
-
-	return i;
-}
-
-#if defined(UART_PL011_USE_TXINTR)
-static void pl011_putc_sleepable(struct pl011_port *port, u8 ch)
-{
-	/* Wait until there is space in the FIFO */
-	if (!pl011_lowlevel_can_putc(port->base)) {
-		/* Enable the TX interrupt */
-		port->mask |= UART_PL011_IMSC_TXIM;
-		vmm_out_le16((void *)(port->base + UART_PL011_IMSC),
-			     port->mask);
-
-		/* Wait for completion */
-		vmm_completion_wait(&port->write_possible);
-	}
-
-	/* Write data to FIFO */
-	vmm_out_8((void *)(port->base + UART_PL011_DR), ch);
-}
-#endif
-
-static u32 pl011_write(struct vmm_chardev *cdev,
-		       u8 *src, size_t len, off_t __unused *off, bool sleep)
-{
-	u32 i;
-	struct pl011_port *port;
-
-	if (!(cdev && src && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-
-#if defined(UART_PL011_USE_TXINTR)
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			pl011_putc_sleepable(port, src[i]);
-		}
-	} else {
-		for (i = 0; i < len; i++) {
-			if (!pl011_lowlevel_can_putc(port->base)) {
-				break;
-			}
-			pl011_lowlevel_putc(port->base, src[i]);
-		}
-	}
-#else
 	for (i = 0; i < len; i++) {
 		if (!pl011_lowlevel_can_putc(port->base)) {
 			break;
 		}
 		pl011_lowlevel_putc(port->base, src[i]);
 	}
-#endif
 
 	return i;
 }
@@ -291,20 +188,6 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
-
-	if (strlcpy(port->cd.name, dev->name, sizeof(port->cd.name)) >=
-	    sizeof(port->cd.name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_port;
-	}
-	port->cd.dev.parent = dev;
-	port->cd.ioctl = NULL;
-	port->cd.read = pl011_read;
-	port->cd.write = pl011_write;
-	port->cd.priv = port;
-
-	INIT_COMPLETION(&port->read_possible);
-	INIT_COMPLETION(&port->write_possible);
 
 	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
 					"PL011 UART");
@@ -334,12 +217,19 @@ static int pl011_driver_probe(struct vmm_device *dev,
 	/* Call low-level init function */
 	pl011_lowlevel_init(port->base, port->baudrate, port->input_clock);
 
-	rc = vmm_chardev_register(&port->cd);
-	if (rc) {
+	/* Create Serial Port */
+	port->p = serial_create(dev, 256, pl011_tx, port);
+	if (VMM_IS_ERR_OR_NULL(port->p)) {
+		rc = VMM_PTR_ERR(port->p);
 		goto free_irq;
 	}
 
+	/* Save port pointer */
 	dev->priv = port;
+
+	/* Unmask Rx Interrupt */
+	port->mask |= (UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
+	vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
 
 	return VMM_OK;
 
@@ -357,13 +247,20 @@ static int pl011_driver_remove(struct vmm_device *dev)
 {
 	struct pl011_port *port = dev->priv;
 
-	if (port) {
-		vmm_chardev_unregister(&port->cd);
-		vmm_host_irq_unregister(port->irq, port);
-		vmm_devtree_regunmap_release(dev->node, port->base, 0);
-		vmm_free(port);
-		dev->priv = NULL;
+	if (!port) {
+		return VMM_OK;
 	}
+
+	/* Mask RX interrupts */
+	port->mask &= ~(UART_PL011_IMSC_RXIM | UART_PL011_IMSC_RTIM);
+	vmm_out_le16((void *)(port->base + UART_PL011_IMSC), port->mask);
+
+	/* Free-up resources */
+	serial_destroy(port->p);
+	vmm_host_irq_unregister(port->irq, port);
+	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_free(port);
+	dev->priv = NULL;
 
 	return VMM_OK;
 }
