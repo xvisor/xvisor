@@ -26,22 +26,20 @@
 #define __UART_H_
 
 #include <vmm_types.h>
-#include <vmm_completion.h>
-#include <vmm_chardev.h>
 
-#define UART_RBR_OFFSET		0 /* In:  Recieve Buffer Register */
-#define UART_THR_OFFSET		0 /* Out: Transmitter Holding Register */
-#define UART_DLL_OFFSET		0 /* Out: Divisor Latch Low */
-#define UART_IER_OFFSET		1 /* I/O: Interrupt Enable Register */
-#define UART_DLM_OFFSET		1 /* Out: Divisor Latch High */
-#define UART_FCR_OFFSET		2 /* Out: FIFO Control Register */
-#define UART_IIR_OFFSET		2 /* I/O: Interrupt Identification Register */
-#define UART_LCR_OFFSET		3 /* Out: Line Control Register */
-#define UART_MCR_OFFSET		4 /* Out: Modem Control Register */
-#define UART_LSR_OFFSET		5 /* In:  Line Status Register */
-#define UART_MSR_OFFSET		6 /* In:  Modem Status Register */
-#define UART_SCR_OFFSET		7 /* I/O: Scratch Register */
-#define UART_MDR1_OFFSET	8 /* I/O:  Mode Register */
+#define UART_RBR_OFFSET		0	/* In:  Recieve Buffer Register */
+#define UART_THR_OFFSET		0	/* Out: Transmitter Holding Register */
+#define UART_DLL_OFFSET		0	/* Out: Divisor Latch Low */
+#define UART_IER_OFFSET		1	/* I/O: Interrupt Enable Register */
+#define UART_DLM_OFFSET		1	/* Out: Divisor Latch High */
+#define UART_FCR_OFFSET		2	/* Out: FIFO Control Register */
+#define UART_IIR_OFFSET		2	/* I/O: Interrupt Identification Register */
+#define UART_LCR_OFFSET		3	/* Out: Line Control Register */
+#define UART_MCR_OFFSET		4	/* Out: Modem Control Register */
+#define UART_LSR_OFFSET		5	/* In:  Line Status Register */
+#define UART_MSR_OFFSET		6	/* In:  Modem Status Register */
+#define UART_SCR_OFFSET		7	/* I/O: Scratch Register */
+#define UART_MDR1_OFFSET	8	/* I/O:  Mode Register */
 
 #define UART_LSR_FIFOE		0x80    /* Fifo error */
 #define UART_LSR_TEMT		0x40    /* Transmitter empty */
@@ -67,9 +65,10 @@
 #define UART_IER_THRI		0x02    /* Enable Transmitter holding register int. */
 #define UART_IER_RDI		0x01    /* Enable receiver data interrupt */
 
+struct serial;
+
 struct uart_8250_port {
-	struct vmm_completion read_possible;
-	struct vmm_chardev cd;
+	struct serial *p;
 	bool use_ioport;
 	virtual_addr_t base;
 	u32 baudrate;
@@ -79,9 +78,6 @@ struct uart_8250_port {
 	u32 irq;
 	u32 ier;
 	u32 lcr_last;
-	char *rxbuf;
-	u32 rxhead, rxtail;
-	vmm_spinlock_t rxlock;
 };
 
 bool uart_8250_lowlevel_can_getc(struct uart_8250_port *port);
