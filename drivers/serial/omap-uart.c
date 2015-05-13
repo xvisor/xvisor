@@ -22,36 +22,26 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_host_io.h>
 #include <vmm_heap.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <drv/serial.h>
 #include <drv/omap-uart.h>
-
-/* Enable OMAP_UART_USE_TXINTR to use TX interrupt.
- * Generally the FIFOs are small so its better to poll on Tx 
- * for smoother vmm_prints.
- */
-#undef OMAP_UART_USE_TXINTR
 
 #define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(SERIAL_IPRIORITY+1)
 #define	MODULE_INIT			omap_uart_driver_init
 #define	MODULE_EXIT			omap_uart_driver_exit
 
 struct omap_uart_port {
-	struct vmm_chardev cd;
-	struct vmm_completion read_possible;
-	struct vmm_completion write_possible;
+	struct serial *p;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -64,8 +54,10 @@ struct omap_uart_port {
 	u32 efr;
 };
 
-#define omap_serial_in(reg) (vmm_in_8((u8 *)REG_##reg(base, 1 << reg_shift))) 
-#define omap_serial_out(reg, val) vmm_out_8((u8 *)REG_##reg(base, 1 << reg_shift), (val))
+#define omap_serial_in(reg)		\
+		(vmm_in_8((u8 *)REG_##reg(base, 1 << reg_shift)))
+#define omap_serial_out(reg, val)	\
+		vmm_out_8((u8 *)REG_##reg(base, 1 << reg_shift), (val))
 
 bool omap_uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_shift)
 {
@@ -99,7 +91,7 @@ void omap_uart_lowlevel_putc(virtual_addr_t base, u32 reg_shift, u8 ch)
 	omap_serial_out(UART_THR, ch);
 }
 
-void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift, 
+void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
 				u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
@@ -112,7 +104,7 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
 	omap_serial_out(UART_OMAP_MDR1, UART_OMAP_MDR1_DISABLE);
 	omap_serial_out(UART_LCR, UART_LCR_CONF_MODE_A);
 	omap_serial_out(UART_DLL, 0);
-	omap_serial_out(UART_DLM, 0); 
+	omap_serial_out(UART_DLM, 0);
 	omap_serial_out(UART_LCR, 0);
 
 	/* no modem control DTR RTS */
@@ -125,7 +117,7 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
 	/* set baudrate divisor */
 	omap_serial_out(UART_LCR, UART_LCR_CONF_MODE_B);
 	omap_serial_out(UART_DLL, bdiv & 0xFF);
-	omap_serial_out(UART_DLM, (bdiv >> 8) & 0xFF); 
+	omap_serial_out(UART_DLM, (bdiv >> 8) & 0xFF);
 	omap_serial_out(UART_LCR, UART_LCR_WLEN8);
 
 	/* set mode select to 16x mode  */
@@ -134,8 +126,10 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
 
 #undef omap_serial_in
 #undef omap_serial_out
-#define omap_serial_in(port, reg) (vmm_in_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift))) 
-#define omap_serial_out(port, reg, val) vmm_out_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift), (val))
+#define omap_serial_in(port, reg)	\
+	(vmm_in_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift)))
+#define omap_serial_out(port, reg, val)	\
+	vmm_out_8((u8 *)REG_##reg(port->base, 1 << port->reg_shift), (val))
 
 void uart_configure_xonxoff(struct omap_uart_port *port)
 {
@@ -304,125 +298,36 @@ static vmm_irq_return_t omap_uart_irq_handler(int irq_no, void *dev)
         lsr = omap_serial_in(port, UART_LSR);
 
 	/* Handle RX FIFO not empty */
-         if (iir & (UART_IIR_RLSI | UART_IIR_RTO | UART_IIR_RDI)) { 
+         if (iir & (UART_IIR_RLSI | UART_IIR_RTO | UART_IIR_RDI)) {
 		if (lsr & UART_LSR_DR) {
-			/* Mask RX interrupts till RX FIFO is empty */
-			port->ier &= ~(UART_IER_RDI | UART_IER_RLSI);
-			/* Signal work completion to sleeping thread */
-			vmm_completion_complete(&port->read_possible);
-		} else if (lsr & (UART_LSR_OE | UART_LSR_PE | UART_LSR_BI | UART_LSR_FE) ) {
-			while(1);
+			do {
+				u8 ch = omap_serial_in(port, UART_RBR);
+				serial_rx(port->p, &ch, 1);
+			} while (omap_serial_in(port, UART_LSR) &
+					      (UART_LSR_DR | UART_LSR_OE));
+		} else if (lsr & (UART_LSR_OE | \
+				  UART_LSR_PE | \
+				  UART_LSR_BI | UART_LSR_FE) ) {
+			while (1);
 		}
         }
-
-	/* Handle TX FIFO not full */
-	if ((lsr & UART_LSR_THRE) && (iir & UART_IIR_THRI)) {
-		/* Mask TX interrupts till TX FIFO is full */
-		port->ier &= ~UART_IER_THRI;
-		/* Signal work completion to sleeping thread */
-		vmm_completion_complete(&port->write_possible);
-	}
 
 	omap_serial_out(port, UART_IER, port->ier);
 
 	return VMM_IRQ_HANDLED;
 }
 
-static u8 omap_uart_getc_sleepable(struct omap_uart_port *port)
-{
-	/* Wait until there is data in the FIFO */
-	if (!(omap_serial_in(port, UART_LSR) & UART_LSR_DR)) {
-		/* Enable the RX interrupt */
-		port->ier |= (UART_IER_RDI | UART_IER_RLSI);
-		omap_serial_out(port, UART_IER, port->ier);
-
-		/* Wait for completion */
-		vmm_completion_wait(&port->read_possible);
-	}
-
-	/* Read data to destination */
-	return (omap_serial_in(port, UART_RBR));
-}
-
-#if defined(OMAP_UART_USE_TXINTR)
-static void omap_uart_putc_sleepable(struct omap_uart_port *port, u8 ch)
-{
-	/* Wait until there is space in the FIFO */
-	if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
-		/* Enable the TX interrupt */
-		port->ier |= UART_IER_THRI;
-		omap_serial_out(port, UART_IER, port->ier);
-
-		/* Wait for completion */
-		vmm_completion_wait(&port->write_possible);
-	}
-
-	/* Write data to FIFO */
-	omap_serial_out(port, UART_THR, ch);
-}
-#endif
-
-static u32 omap_uart_read(struct vmm_chardev *cdev, 
-			  u8 *dest, size_t len, off_t __unused *off, bool sleep)
+static u32 omap_uart_tx(struct serial *p, u8 *src, size_t len)
 {
 	u32 i;
-	struct omap_uart_port *port;
+	struct omap_uart_port *port = serial_tx_priv(p);
 
-	if (!(cdev && dest && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			dest[i] = omap_uart_getc_sleepable(port);
-		}
-	} else {
-		for(i = 0; i < len; i++) {
-			if (!omap_uart_lowlevel_can_getc(port->base, port->reg_shift)) {
-				break;
-			}
-			dest[i] = omap_uart_lowlevel_getc(port->base, port->reg_shift);
-		}
-	}
-
-	return i;
-}
-
-static u32 omap_uart_write(struct vmm_chardev *cdev, 
-			   u8 *src, size_t len, off_t __unused *off, bool sleep)
-{
-	u32 i;
-	struct omap_uart_port *port;
-
-	if (!(cdev && src && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-
-#if defined(OMAP_UART_USE_TXINTR)
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			omap_uart_putc_sleepable(port, src[i]);
-		}
-	} else {
-		for (i = 0; i < len; i++) {
-			if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
-				break;
-			}
-			omap_uart_lowlevel_putc(port->base, port->reg_shift, src[i]);
-		}
-	}
-#else
 	for (i = 0; i < len; i++) {
 		if (!omap_uart_lowlevel_can_putc(port->base, port->reg_shift)) {
 			break;
 		}
 		omap_uart_lowlevel_putc(port->base, port->reg_shift, src[i]);
 	}
-#endif
 
 	return i;
 }
@@ -434,29 +339,14 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 	struct omap_uart_port *port;
 	
 	port = vmm_zalloc(sizeof(struct omap_uart_port));
-	if(!port) {
+	if (!port) {
 		rc = VMM_ENOMEM;
 		goto free_nothing;
 	}
 
-	if (strlcpy(port->cd.name, dev->name, sizeof(port->cd.name)) >=
-	    sizeof(port->cd.name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_port;
-	}
-
-	port->cd.dev.parent = dev;
-	port->cd.ioctl = NULL;
-	port->cd.read = omap_uart_read;
-	port->cd.write = omap_uart_write;
-	port->cd.priv = port;
-
-	INIT_COMPLETION(&port->read_possible);
-	INIT_COMPLETION(&port->write_possible);
-
 	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
 					"omap-uart");
-	if(rc) {
+	if (rc) {
 		goto free_port;
 	}
 
@@ -487,12 +377,19 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	rc = vmm_chardev_register(&port->cd);
-	if (rc) {
+	/* Create Serial Port */
+	port->p = serial_create(dev, 256, omap_uart_tx, port);
+	if (VMM_IS_ERR_OR_NULL(port->p)) {
+		rc = VMM_PTR_ERR(port->p);
 		goto free_irq;
 	}
 
+	/* Save port pointer */
 	dev->priv = port;
+
+	/* Unmask Rx interrupt */
+	port->ier |= (UART_IER_RDI | UART_IER_RLSI);
+	omap_serial_out(port, UART_IER, port->ier);
 
 	return VMM_OK;
 
@@ -510,13 +407,20 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 {
 	struct omap_uart_port *port = dev->priv;
 
-	if (port) {
-		vmm_chardev_unregister(&port->cd);
-		vmm_host_irq_unregister(port->irq, port);
-		vmm_devtree_regunmap_release(dev->node, port->base, 0);
-		vmm_free(port);
-		dev->priv = NULL;
+	if (!port) {
+		return VMM_OK;
 	}
+
+	/* Mask Rx interrupt */
+	port->ier &= ~(UART_IER_RDI | UART_IER_RLSI);
+	omap_serial_out(port, UART_IER, port->ier);
+
+	/* Free-up resources */
+	serial_destroy(port->p);
+	vmm_host_irq_unregister(port->irq, port);
+	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_free(port);
+	dev->priv = NULL;
 
 	return VMM_OK;
 }
@@ -543,9 +447,9 @@ static void __exit omap_uart_driver_exit(void)
 	vmm_devdrv_unregister_driver(&omap_uart_driver);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
