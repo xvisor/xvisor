@@ -65,29 +65,26 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [15. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
+  [15. Launch QEMU 1.7.xx or higher]
+  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/versatile/pb/one_guest_versatile.dtb -initrd build/disk.img
 
-  [16. Launch QEMU 1.7.xx or higher]
-  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/versatile/pb/one_guest_versatile.dtb
-
-  [17. Kick Guest0 for starting Basic Firmware]
+  [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [18. Bind to virtual UART0 of Linux Guest]
+  [17. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command for executing commands from NOR flash)
   (Note: The <xvisor_source_directory>/tests/arm32/versatilepb/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [19. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
