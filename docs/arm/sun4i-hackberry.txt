@@ -59,58 +59,61 @@ A10:
   (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
    <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [8. Unplug bootable SD card from the A10 board and plug it on your development machine]
+  [8. Make U-boot compatible initrd for use with bootm command]
+  # mkimage -A arm -O linux -T ramdisk -a 0x41000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
-  [9. Mount boot partition (or partition 0) of SD card on your development machine]
+  [9. Unplug bootable SD card from the A10 board and plug it on your development machine]
 
-  [10. Copy uvmm.bin to boot partition of SD card]
+  [10. Mount boot partition (or partition 0) of SD card on your development machine]
+
+  [11. Copy uvmm.bin to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/arch/arm/board/generic/dts/sun4i/hackberry/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [12. Unplug SD card from your development machine and plug it back on A10 board]
+  [13. Unplug SD card from your development machine and plug it back on A10 board]
 
-  [13. Connect to serial port of A10 board using Putty or Minicom]
+  [14. Connect to serial port of A10 board using Putty or Minicom]
 
-  [14. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
+  [15. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
 
-  [15. Enable MMC interface from U-Boot command line]
+  [16. Enable MMC interface from U-Boot command line]
   sun4i# mmc dev 0:0
 
-  [16. Copy Xvisor from SD card to SDRAM]
+  [17. Copy Xvisor from SD card to SDRAM]
   sun4i# fatload mmc 0 0x40200000 uvmm.bin
 
-  [17. Copy Xvisor DTB from SD card to SDRAM]
+  [18. Copy Xvisor DTB from SD card to SDRAM]
   sun4i# fatload mmc 0 0x40800000 one_guest_pb-a8.dtb
 
-  [18. Copy disk image from SD card to SDRAM]
-  sun4i# fatload mmc 0 0x41000000 disk.img
+  [19. Copy disk image from SD card to SDRAM]
+  sun4i# fatload mmc 0 0x42000000 udisk.img
 
-  [19. Jump into Xvisor after disabling MMU, interrupts, etc]
-  sun4i# bootm 0x40200000 - 0x40800000
+  [20. Jump into Xvisor after disabling MMU, interrupts, etc]
+  sun4i# bootm 0x40200000 0x42000000 0x40800000
 
-  [20. Kick Guest0 for starting Basic Firmware]
+  [21. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [21. Bind to virtual UART]
+  [22. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [22. Say 'hi' to Basic Firmware]
+  [23. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
   (Note: If you had linux images loaded in guest NOR flash
    then instead of above step you can start booting linux,
    basic# autoexec)
 
-  [23. Say 'hello' to Basic Firmware]
+  [24. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [24. Check various commands of Basic Firmware]
+  [25. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [25. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [26. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)

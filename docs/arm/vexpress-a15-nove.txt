@@ -1,14 +1,14 @@
-		Xvisor on Linaro QEMU NURI Host
+		Xvisor on QEMU Vexpress-A15 Host
 
-This section of readme explains how to build & run Xvisor for NURI emulated
-by QEMU.
+This section of readme explains how to build & run Xvisor for Vexpress-A15 
+emulated by QEMU. 
 
-By default, Xvisor for NURI supports Realview-PB-A8 guest so we will show
-how to run Basic Firmware on Realview-PB-A8 guest. For more info refer,
-<xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+By default, Xvisor for Vexpress-A15 supports Realview-PB-A8 guest so we will
+show how to run Basic Firmware on Realview-PB-A8 guest. For more info
+refer, <xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
 
-Please follow the steps below to build & run Basic Firmware on Realview-PB-A8
-guest with Xvisor running on QEMU NURI Host:
+Please follow the steps below to build & run Basic Firmware on Realview-PB-A8 
+guest with Xvisor running on QEMU Vexpress-A15 Host:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=arm-linux-gnueabi-
@@ -16,11 +16,11 @@ guest with Xvisor running on QEMU NURI Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with NURI default settings]
+  [3. Configure Xvisor with Generic-v7 default settings]
   # make ARCH=arm generic-v7-defconfig
 
-  [4. Build Xvisor]
-  # make
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
@@ -33,7 +33,7 @@ guest with Xvisor running on QEMU NURI Host:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [7. Launch QEMU]
-  # qemu-system-arm -M nuri -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/exynos4/nuri/one_guest_pb-a8.dtb -initrd build/disk.img
+  # qemu-system-arm -M vexpress-a15 -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/vexpress/a15-nove/one_guest_pb-a8.dtb -initrd build/disk.img
 
   [8. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
