@@ -42,7 +42,7 @@
 static LIST_HEAD(rbd_list);
 static DEFINE_SPINLOCK(rbd_list_lock);
 
-static int rbd_make_request(struct vmm_request_queue *rq, 
+static int rbd_make_request(struct vmm_request_queue *rq,
 			    struct vmm_request *r)
 {
 	struct rbd *d = rq->priv;
@@ -69,7 +69,7 @@ static int rbd_make_request(struct vmm_request_queue *rq,
 	return VMM_OK;
 }
 
-static int rbd_abort_request(struct vmm_request_queue *rq, 
+static int rbd_abort_request(struct vmm_request_queue *rq,
 			     struct vmm_request *r)
 {
 	/* Do nothing to abort */
@@ -77,12 +77,13 @@ static int rbd_abort_request(struct vmm_request_queue *rq,
 }
 
 static struct rbd *__rbd_create(struct vmm_device *dev,
-				const char *name, 
-				physical_addr_t pa, 
+				const char *name,
+				physical_addr_t pa,
 				physical_size_t sz)
 {
 	struct rbd *d;
 	irq_flags_t flags;
+	physical_addr_t check_pa;
 
 	if (!name) {
 		return NULL;
@@ -103,7 +104,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 
 	/* Setup block device instance */
 	strncpy(d->bdev->name, name, VMM_FIELD_NAME_SIZE);
-	strncpy(d->bdev->desc, "RAM backed block device", 
+	strncpy(d->bdev->desc, "RAM backed block device",
 		VMM_FIELD_DESC_SIZE);
 	d->bdev->dev.parent = dev;
 	d->bdev->flags = VMM_BLOCKDEV_RW;
@@ -126,9 +127,20 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 		goto free_bdev_rq;
 	}
 
-	/* Reserve RAM space */
-	if (vmm_host_ram_reserve(d->addr, d->size)) {
-		goto unreg_bdev;
+	/* Reserve RAM space If required */
+	d->reserve_ram = TRUE;
+	check_pa = d->addr;
+	while (check_pa < (d->addr + d->size)) {
+		if (!vmm_host_ram_frame_isfree(check_pa)) {
+			d->reserve_ram = FALSE;
+			break;
+		}
+		check_pa += VMM_PAGE_SIZE;
+	}
+	if (d->reserve_ram) {
+		if (vmm_host_ram_reserve(d->addr, d->size)) {
+			goto unreg_bdev;
+		}
 	}
 
 	/* Add to list of RBD instances */
@@ -150,8 +162,8 @@ free_nothing:
 	return NULL;
 }
 
-struct rbd *rbd_create(const char *name, 
-			physical_addr_t pa, 
+struct rbd *rbd_create(const char *name,
+			physical_addr_t pa,
 			physical_size_t sz)
 {
 	return __rbd_create(NULL, name, pa, sz);
@@ -162,13 +174,21 @@ void rbd_destroy(struct rbd *d)
 {
 	irq_flags_t flags;
 
+	/* Sanity check */
+	if (!d) {
+		return;
+	}
+
 	/* Remove from list of RBD instances */
 	vmm_spin_lock_irqsave(&rbd_list_lock, flags);
 	list_del(&d->head);
 	vmm_spin_unlock_irqrestore(&rbd_list_lock, flags);
 
 	/* Unreserver RAM space */
-	vmm_host_ram_free(d->addr, d->size);
+	if (d->reserve_ram) {
+		vmm_host_ram_free(d->addr, d->size);
+		d->reserve_ram = FALSE;
+	}
 
 	/* Unregister block device */
 	vmm_blockdev_unregister(d->bdev);
