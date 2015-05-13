@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.5
-# Fri Mar  6 22:52:10 2015
+# Version: 0.2.6
+# Fri May  8 19:32:50 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -45,8 +45,6 @@ CONFIG_CPU_LE=y
 CONFIG_ARM32_STACKTRACE=y
 # CONFIG_ARM32_HIGHVEC is not set
 CONFIG_ARM_ERRATA_411920=y
-# CONFIG_BOARD_OMAP3 is not set
-# CONFIG_BOARD_EXYNOS4 is not set
 CONFIG_BOARD_GENERIC=y
 
 #
@@ -62,8 +60,6 @@ CONFIG_ARM_SMP_SPIN_TABLE=y
 CONFIG_ARM_SMP_IPI=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
-# CONFIG_SAMSUNG_MCT is not set
-# CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
 # CONFIG_ARCH_MXC is not set
 # CONFIG_SABRELITE_CONFIG is not set
 # CONFIG_IMX_CPU is not set
@@ -80,6 +76,7 @@ CONFIG_VERSATILE_CLCD=y
 #
 CONFIG_MODULES=y
 # CONFIG_VERBOSE_MODE is not set
+CONFIG_LOG_LEVEL=6
 # CONFIG_BANNER_NONE is not set
 # CONFIG_BANNER_BANNER3 is not set
 # CONFIG_BANNER_BANNER4 is not set
@@ -221,7 +218,7 @@ CONFIG_CMD_RBD=y
 CONFIG_CMD_NET=y
 
 #
-# Miscellenous Commands
+# Filesystem Commands
 #
 CONFIG_CMD_VFS=y
 
@@ -295,6 +292,7 @@ CONFIG_ARM_GIC=y
 CONFIG_MXC_AVIC=y
 CONFIG_BCM2835_INTC=y
 # CONFIG_SUN4I_VIC is not set
+# CONFIG_OMAP_INTC is not set
 
 #
 # Clocksource Drivers
@@ -304,6 +302,8 @@ CONFIG_ARM_TWD=y
 CONFIG_MXC_EPIT=y
 # CONFIG_MXC_GPT is not set
 CONFIG_BCM2835_TIMER=y
+# CONFIG_OMAP_S32K is not set
+# CONFIG_OMAP2_TIMER is not set
 # CONFIG_SUN4I_TIMER is not set
 
 #
@@ -327,6 +327,7 @@ CONFIG_RTC_PL031=y
 # Block Drivers
 #
 CONFIG_BLOCK_RBD=y
+CONFIG_BLOCK_INITRD=y
 
 #
 # MTD drivers
@@ -469,6 +470,11 @@ CONFIG_REALVIEW_CONFIG=y
 # SPI drivers
 #
 # CONFIG_SPI is not set
+
+#
+# I2C support
+#
+# CONFIG_I2C is not set
 
 #
 # PWM Drivers

@@ -61,58 +61,61 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
    <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [8. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
+  [8. Make U-boot compatible initrd for use with bootm command]
+  # mkimage -A arm -O linux -T ramdisk -a 0x01000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
-  [9. Mount boot partition (or partition 0) of SD card on your development machine]
+  [9. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
 
-  [10. Copy uvmm.bin, DTB, and disk.im to boot partition of SD card]
+  [10. Mount boot partition (or partition 0) of SD card on your development machine]
+
+  [11. Copy uvmm.bin, DTB, and disk.im to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/disk.img <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [11. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [12. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [12. Unplug SD card from your development machine and plug it back on Raspberry Pi]
+  [13. Unplug SD card from your development machine and plug it back on Raspberry Pi]
 
-  [13. Connect to serial port of Raspberry Pi using Putty or Minicom]
+  [14. Connect to serial port of Raspberry Pi using Putty or Minicom]
 
-  [14. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
+  [15. Power-up or Reset Raspberry Pi and press any key when U-Boot shows auto-boot count down]
 
-  [15. Enable MMC interface from U-Boot command line]
+  [16. Enable MMC interface from U-Boot command line]
   U-Boot> mmc dev 0:0
 
-  [16. Copy Xvisor from SD card to SDRAM]
+  [17. Copy Xvisor from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x00200000 uvmm.bin
 
-  [17. Copy Xvisor DTB from SD card to SDRAM]
+  [18. Copy Xvisor DTB from SD card to SDRAM]
   U-Boot> fatload mmc 0 0x00800000 one_guest_ebmp.dtb
 
-  [18. Copy disk image from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x01000000 disk.img
+  [19. Copy disk image from SD card to SDRAM]
+  U-Boot> fatload mmc 0 0x02000000 udisk.img
 
-  [19. Jump into Xvisor after disabling MMU, interrupts, etc]
-  U-Boot> bootm 0x00200000 - 0x00800000
+  [20. Jump into Xvisor after disabling MMU, interrupts, etc]
+  U-Boot> bootm 0x00200000 0x02000000 0x00800000
 
-  [20. Kick Guest0 for starting Basic Firmware]
+  [21. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [21. Bind to virtual UART]
+  [22. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [22. Say 'hi' to Basic Firmware]
+  [23. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
   (Note: If you had linux images loaded in guest NOR flash then
    instead of above step you can start booting linux,
    basic# autoexec)
 
-  [23. Say 'hello' to Basic Firmware]
+  [24. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [24. Check various commands of Basic Firmware]
+  [25. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [25. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [26. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
@@ -121,7 +124,8 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 	Xvisor on QEMU Raspberry-Pi (or BCM2835 SOC) Host
 
 This section of readme explains how to build & run Xvisor on Raspberry-Pi QEMU
-(Raspberry-Pi QEMU source, https://github.com/Torlus/qemu.git).
+(Raspberry-Pi QEMU source, https://github.com/Torlus/qemu.git, and use the
+rpi branch).
 
 By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
 show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
@@ -165,32 +169,29 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   (Note: For creating <busybox_rootfs_directory>/rootfs.img refer
    <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
-  [7. Create qemu.img for running it on QEMU]
-  # ./tools/scripts/memimg.py -a 0x00010000 -o build/qemu.img build/vmm.bin@0x00010000 build/disk.img@0x01000000
+  [7. Launch QEMU]
+  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb -initrd build/disk.img
 
-  [8. Launch QEMU]
-  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/qemu.img -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb
-
-  [9. Kick Guest0 for starting Basic Firmware]
+  [8. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [10. Bind to virtual UART]
+  [9. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [11. Say 'hi' to Basic Firmware]
+  [10. Say 'hi' to Basic Firmware]
   [guest0/uart0] basic# hi
 
   (Note: If you had linux images loaded in guest NOR flash then
    instead of above step you can start booting linux,
    basic# autoexec)
 
-  [12. Say 'hello' to Basic Firmware]
+  [11. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
 
-  [13. Check various commands of Basic Firmware]
+  [12. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [14. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
