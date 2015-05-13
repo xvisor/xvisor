@@ -107,7 +107,7 @@ int arch_devtree_ram_size(physical_size_t *size)
 	struct fdt_node_header *fdt_root;
 	struct fdt_node_header *fdt_node;
 	u32 tmp, address_cells, size_cells;
-	physical_size_t data[2];
+	physical_size_t data[4] = {0, 0, 0, 0};
 	
 	address_cells = sizeof(physical_addr_t) / sizeof(fdt_cell_t);
 	size_cells = sizeof(physical_size_t) / sizeof(fdt_cell_t);
@@ -166,6 +166,10 @@ int arch_devtree_ram_size(physical_size_t *size)
 	}
 
 	*size = data[1];
+
+	if (data[2] == (data[0] + data[1])) {
+		*size += data[3];
+	}
 
 	return VMM_OK;
 }
