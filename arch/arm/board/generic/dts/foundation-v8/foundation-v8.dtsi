@@ -4,7 +4,10 @@
 	#size-cells = <2>;
 	model = "foundation-v8";
 
-	chosen { };
+	chosen {
+		linux,initrd-start = <0x0 0x81000000>;
+		linux,initrd-end = <0x0 0x82000000>;
+	};
 	aliases { };
 		
 	cpus {

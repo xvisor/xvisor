@@ -189,3 +189,12 @@ input_bin:
 	.incbin	stringify(IMAGE)
 	.globl	input_bin_end
 input_bin_end:
+#ifdef INITRD
+	/* INITRD binary */
+	.globl	initrd
+	.balign 0x1000000
+initrd:
+	.incbin	stringify(INITRD)
+	.globl	initrd_end
+initrd_end:
+#endif
