@@ -35,7 +35,6 @@
 struct rbd {
 	struct dlist head;
 	struct vmm_blockdev *bdev;
-	bool reserve_ram;
 	physical_addr_t addr;
 	physical_size_t size;
 };
@@ -43,7 +42,8 @@ struct rbd {
 /** Create RBD instance */
 struct rbd *rbd_create(const char *name,
 			physical_addr_t pa,
-			physical_size_t sz);
+			physical_size_t sz,
+			bool ignore_overlap);
 
 /** Destroy RBD instance */
 void rbd_destroy(struct rbd *d);

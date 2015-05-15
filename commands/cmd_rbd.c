@@ -88,7 +88,7 @@ static int cmd_rbd_create(struct vmm_chardev *cdev, const char *name,
 {
 	struct rbd *d;
 
-	d = rbd_create(name, addr, size);
+	d = rbd_create(name, addr, size, false);
 	if (!d) {
 		vmm_cprintf(cdev, "Failed to create %s RBD instance\n", name);
 		return VMM_EFAIL;

@@ -77,7 +77,8 @@ static int __init initrd_driver_init(void)
 		if ((initrd_rdb = rbd_create("initrd",
 					(physical_addr_t)initrd_start,
 					(physical_size_t)(initrd_end -
-						  initrd_start))) == NULL) {
+						  initrd_start), true))
+					== NULL) {
 			vmm_printf("initrd: rbd_create() failed\n");
 			goto error;
 		}

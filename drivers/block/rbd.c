@@ -79,11 +79,11 @@ static int rbd_abort_request(struct vmm_request_queue *rq,
 static struct rbd *__rbd_create(struct vmm_device *dev,
 				const char *name,
 				physical_addr_t pa,
-				physical_size_t sz)
+				physical_size_t sz,
+				bool ignore_overlap)
 {
 	struct rbd *d;
 	irq_flags_t flags;
-	physical_addr_t check_pa;
 
 	if (!name) {
 		return NULL;
@@ -128,16 +128,18 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	}
 
 	/* Reserve RAM space If required */
-	d->reserve_ram = TRUE;
-	check_pa = d->addr;
-	while (check_pa < (d->addr + d->size)) {
-		if (!vmm_host_ram_frame_isfree(check_pa)) {
-			d->reserve_ram = FALSE;
-			break;
+	if (ignore_overlap) {
+		physical_addr_t check_pa = d->addr;
+		while (check_pa < (d->addr + d->size)) {
+			if (vmm_host_ram_frame_isfree(check_pa)) {
+				if (vmm_host_ram_reserve(check_pa,
+							 VMM_PAGE_SIZE)) {
+					goto unreg_bdev;
+				}
+			}
+			check_pa += VMM_PAGE_SIZE;
 		}
-		check_pa += VMM_PAGE_SIZE;
-	}
-	if (d->reserve_ram) {
+	} else {
 		if (vmm_host_ram_reserve(d->addr, d->size)) {
 			goto unreg_bdev;
 		}
@@ -164,9 +166,10 @@ free_nothing:
 
 struct rbd *rbd_create(const char *name,
 			physical_addr_t pa,
-			physical_size_t sz)
+			physical_size_t sz,
+			bool ignore_overlap)
 {
-	return __rbd_create(NULL, name, pa, sz);
+	return __rbd_create(NULL, name, pa, sz, ignore_overlap);
 }
 VMM_EXPORT_SYMBOL(rbd_create);
 
@@ -185,10 +188,7 @@ void rbd_destroy(struct rbd *d)
 	vmm_spin_unlock_irqrestore(&rbd_list_lock, flags);
 
 	/* Unreserver RAM space */
-	if (d->reserve_ram) {
-		vmm_host_ram_free(d->addr, d->size);
-		d->reserve_ram = FALSE;
-	}
+	vmm_host_ram_free(d->addr, d->size);
 
 	/* Unregister block device */
 	vmm_blockdev_unregister(d->bdev);
@@ -308,7 +308,7 @@ static int rbd_driver_probe(struct vmm_device *dev,
 		return rc;
 	}
 
-	dev->priv = __rbd_create(dev, dev->name, pa, sz);
+	dev->priv = __rbd_create(dev, dev->name, pa, sz, false);
 	if (!dev->priv) {
 		return VMM_EFAIL;
 	}
