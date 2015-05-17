@@ -25,19 +25,18 @@
 #include <vmm_heap.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
-#include <vmm_completion.h>
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_chardev.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <drv/serial.h>
 #include <drv/samsung-uart.h>
 
 #define MODULE_DESC			"Samsung Serial Driver"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		0
+#define MODULE_IPRIORITY		(SERIAL_IPRIORITY+1)
 #define	MODULE_INIT			samsung_driver_init
 #define	MODULE_EXIT			samsung_driver_exit
 
@@ -124,11 +123,7 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 }
 
 struct samsung_port {
-	struct vmm_chardev cd;
-	struct vmm_completion read_possible;
-#if defined(UART_SAMSUNG_USE_TXINTR)
-	struct vmm_completion write_possible;
-#endif
+	struct serial *p;
 	virtual_addr_t base;
 	u32 baudrate;
 	u32 input_clock;
@@ -147,22 +142,11 @@ static vmm_irq_return_t samsung_irq_handler(int irq_no, void *dev)
 	/* handle RX FIFO not empty */
 	if (data & S3C64XX_UINTM_RXD_MSK) {
 		/* Mask RX interrupts till RX FIFO is empty */
-		port->mask &= ~S3C64XX_UINTM_RXD_MSK;
-		vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
-		/* Signal work completion sleeping thread */
-		vmm_completion_complete(&port->read_possible);
+		while (samsung_lowlevel_can_getc(port->base)) {
+			u8 ch = samsung_lowlevel_getc(port->base);
+			serial_rx(port->p, &ch, 1);
+		}
 	}
-
-#if defined(UART_SAMSUNG_USE_TXINTR)
-	/* handle TX FIFO not full */
-	if (data & S3C64XX_UINTM_TXD_MSK) {
-		/* Mask TX interrupts till TX FIFO is full */
-		port->mask &= ~S3C64XX_UINTM_TXD_MSK;
-		vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
-		/* Signal work completion to sleeping thread */
-		vmm_completion_complete(&port->write_possible);
-	}
-#endif
 
 	/* Clear all interrupts */
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTP), data);
@@ -170,99 +154,17 @@ static vmm_irq_return_t samsung_irq_handler(int irq_no, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static u8 samsung_getc_sleepable(struct samsung_port *port)
-{
-	/* Wait until there is data in the FIFO */
-	while (!samsung_lowlevel_can_getc(port->base)) {
-		u32 ucon = vmm_in_le32((void *)(port->base + S3C2410_UCON));
-		/* Enable the RX interrupt */
-		ucon |= S3C2410_UCON_RXIRQMODE;
-		vmm_out_le32((void *)(port->base + S3C2410_UCON), ucon);
-		/* Wait for completion */
-		vmm_completion_wait(&port->read_possible);
-	}
-
-	/* Read data to destination */
-	return samsung_lowlevel_getc(port->base);
-}
-
-static u32 samsung_read(struct vmm_chardev *cdev,
-			u8 *dest, size_t len, off_t __unused *off, bool sleep)
+static u32 samsung_tx(struct serial *p, u8 *src, size_t len)
 {
 	u32 i;
-	struct samsung_port *port;
+	struct samsung_port *port = serial_tx_priv(p);
 
-	if (!(cdev && dest && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			dest[i] = samsung_getc_sleepable(port);
-		}
-	} else {
-		for (i = 0; i < len; i++) {
-			if (!samsung_lowlevel_can_getc(port->base)) {
-				break;
-			}
-			dest[i] = samsung_lowlevel_getc(port->base);
-		}
-	}
-
-	return i;
-}
-
-#if defined(UART_SAMSUNG_USE_TXINTR)
-static void samsung_putc_sleepable(struct samsung_port *port, u8 ch)
-{
-	/* Wait until there is space in the FIFO */
-	if (!samsung_lowlevel_can_putc(port->base)) {
-		/* Enable the TX interrupt */
-		port->mask |= S3C64XX_UINTM_TXD_MSK;
-		vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
-		/* Wait for completion */
-		vmm_completion_wait(&port->write_possible);
-	}
-
-	/* Write data to FIFO */
-	vmm_out_8((void *)(port->base + S3C2410_URXH), ch);
-}
-#endif
-
-static u32 samsung_write(struct vmm_chardev *cdev,
-			 u8 *src, size_t len, off_t __unused *off, bool sleep)
-{
-	u32 i;
-	struct samsung_port
-	*port;
-	if (!(cdev && src && cdev->priv)) {
-		return 0;
-	}
-
-	port = cdev->priv;
-#if defined(UART_SAMSUNG_USE_TXINTR)
-	if (sleep) {
-		for (i = 0; i < len; i++) {
-			samsung_putc_sleepable(port, src[i]);
-		}
-	} else {
-		for (i = 0; i < len; i++) {
-			if (!samsung_lowlevel_can_putc(port->base)) {
-				break;
-			}
-			samsung_lowlevel_putc(port->base, src[i]);
-		}
-	}
-#else
 	for (i = 0; i < len; i++) {
 		if (!samsung_lowlevel_can_putc(port->base)) {
 			break;
 		}
 		samsung_lowlevel_putc(port->base, src[i]);
 	}
-#endif
 
 	return i;
 }
@@ -270,6 +172,7 @@ static u32 samsung_write(struct vmm_chardev *cdev,
 static int samsung_driver_probe(struct vmm_device *dev,
 				const struct vmm_devtree_nodeid *devid)
 {
+	u32 ucon;
 	int rc = VMM_EFAIL;
 	struct samsung_port *port = NULL;
 
@@ -279,36 +182,15 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	if (strlcpy(port->cd.name, dev->name, sizeof(port->cd.name)) >=
-	    sizeof(port->cd.name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_port;
-	}
-	port->cd.dev.parent = dev;
-	port->cd.ioctl = NULL;
-	port->cd.read = samsung_read;
-	port->cd.write = samsung_write;
-	port->cd.priv = port;
-
-	INIT_COMPLETION(&port->read_possible);
-#if defined(UART_SAMSUNG_USE_TXINTR)
-	INIT_COMPLETION(&port->write_possible);
-#endif
-
 	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
 					"Samsung UART");
 	if (rc) {
 		goto free_port;
 	}
 
+	/* Make sure all interrupts except Rx are masked. */
 	port->mask = S3C64XX_UINTM_RXD_MSK;
-
-#if defined(UART_SAMSUNG_USE_TXINTR)
-	port->mask |= S3C64XX_UINTM_TXD_MSK;
-#endif
-
 	port->mask = ~port->mask;
-
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
 
 	if (vmm_devtree_read_u32(dev->node, "baudrate",
@@ -334,12 +216,20 @@ static int samsung_driver_probe(struct vmm_device *dev,
 	/* Call low-level init function */
 	samsung_lowlevel_init(port->base, port->baudrate, port->input_clock);
 
-	rc = vmm_chardev_register(&port->cd);
-	if (rc) {
+	/* Create Serial Port */
+	port->p = serial_create(dev, 256, samsung_tx, port);
+	if (VMM_IS_ERR_OR_NULL(port->p)) {
+		rc = VMM_PTR_ERR(port->p);
 		goto free_irq;
 	}
 
+	/* Save port pointer */
 	dev->priv = port;
+
+	/* Unmask RX interrupt */
+	ucon = vmm_in_le32((void *)(port->base + S3C2410_UCON));
+	ucon |= S3C2410_UCON_RXIRQMODE;
+	vmm_out_le32((void *)(port->base + S3C2410_UCON), ucon);
 
 	return VMM_OK;
 
@@ -355,18 +245,19 @@ static int samsung_driver_probe(struct vmm_device *dev,
 
 static int samsung_driver_remove(struct vmm_device *dev)
 {
-	int rc = VMM_OK;
 	struct samsung_port *port = dev->priv;
 
-	if (port) {
-		rc = vmm_chardev_unregister(&port->cd);
-		vmm_host_irq_unregister(port->irq, port);
-		vmm_devtree_regunmap_release(dev->node, port->base, 0);
-		vmm_free(port);
-		dev->priv = NULL;
+	if (!port) {
+		return VMM_OK;
 	}
 
-	return rc;
+	serial_destroy(port->p);
+	vmm_host_irq_unregister(port->irq, port);
+	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_free(port);
+	dev->priv = NULL;
+
+	return VMM_OK;
 }
 
 static struct vmm_devtree_nodeid samsung_devid_table[] = {
@@ -392,8 +283,8 @@ static void __exit samsung_driver_exit(void)
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
