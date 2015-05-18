@@ -25,15 +25,25 @@
 
 #include <vmm_devtree.h>
 
-/** Get RAM start physical address
+/** Setup/Configure/Parse RAM banks
  *  Note: This function will be called before populating device tree
  */
-int arch_devtree_ram_start(physical_addr_t *addr);
+int arch_devtree_ram_bank_setup(void);
 
-/** Get RAM physical size
+/** Get RAM bank count
  *  Note: This function will be called before populating device tree
  */
-int arch_devtree_ram_size(physical_size_t *size);
+int arch_devtree_ram_bank_count(u32 *bank_count);
+
+/** Get start physical address of RAM bank
+ *  Note: This function will be called before populating device tree
+ */
+int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr);
+
+/** Get physical size of RAM bank
+ *  Note: This function will be called before populating device tree
+ */
+int arch_devtree_ram_bank_size(u32 bank, physical_size_t *size);
 
 /** Count reserved RAM areas
  *  Note: This function will be called before populating device tree

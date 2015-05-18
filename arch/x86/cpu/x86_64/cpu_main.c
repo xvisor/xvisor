@@ -42,7 +42,19 @@ u8 boot_cmd_line[MAX_CMD_LINE];
 extern u32 dt_blob_start;
 volatile int wait_for_gdb = 0;
 
-int arch_devtree_ram_start(physical_addr_t *addr)
+int arch_devtree_ram_bank_setup(void)
+{
+	/* For now nothing to do here. */
+	return VMM_OK;
+}
+
+int arch_devtree_ram_bank_count(u32 *bank_count)
+{
+	*bank_count = 1;
+	return VMM_OK;
+}
+
+int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
 {
 #if 0
 	int rc = VMM_OK;
@@ -70,13 +82,19 @@ int arch_devtree_ram_start(physical_addr_t *addr)
 
 	*addr = data[0];
 #else
+	if (bank > 0) {
+		return VMM_EINVALID;
+	}
 	*addr = 0x100000UL;
 #endif
 	return VMM_OK;
 }
 
-int arch_devtree_ram_size(physical_size_t *size)
+int arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
 {
+	if (bank > 0) {
+		return VMM_EINVALID;
+	}
 	*size = boot_info.mem_upper * 1024;
 	return VMM_OK;
 }

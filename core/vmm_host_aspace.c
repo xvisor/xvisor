@@ -324,7 +324,7 @@ u32 vmm_host_free_initmem(void)
 int __cpuinit vmm_host_aspace_init(void)
 {
 	int rc, cpu;
-	u32 resv, resv_count;
+	u32 resv, resv_count, ram_count = 0x0;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart;
@@ -359,11 +359,20 @@ int __cpuinit vmm_host_aspace_init(void)
 	/* Determine VAPOOL house-keeping size based on VAPOOL size */
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
 
-	/* Determine RAM start and size */
-	if ((rc = arch_devtree_ram_start(&ram_start))) {
+	/* Determine RAM bank count, start and size */
+	if ((rc = arch_devtree_ram_bank_setup())) {
 		return rc;
 	}
-	if ((rc = arch_devtree_ram_size(&ram_size))) {
+	if ((rc = arch_devtree_ram_bank_count(&ram_count))) {
+		return rc;
+	}
+	if (ram_count == 0) {
+		return VMM_ENOMEM;
+	}
+	if ((rc = arch_devtree_ram_bank_start(0, &ram_start))) {
+		return rc;
+	}
+	if ((rc = arch_devtree_ram_bank_size(0, &ram_size))) {
 		return rc;
 	}
 	if (ram_start & VMM_PAGE_MASK) {
