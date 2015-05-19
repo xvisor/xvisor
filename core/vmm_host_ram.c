@@ -27,6 +27,7 @@
 #include <vmm_resource.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_ram.h>
+#include <arch_devtree.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <libs/bitmap.h>
@@ -215,23 +216,45 @@ physical_size_t vmm_host_ram_size(void)
 	return rctrl.ram_size;
 }
 
-virtual_size_t vmm_host_ram_estimate_hksize(physical_size_t ram_size)
+virtual_size_t vmm_host_ram_estimate_hksize(void)
 {
+	int rc;
+	physical_size_t ram_size;
+
+	/* FIXME: Only consider bank0 */
+	if ((rc = arch_devtree_ram_bank_size(0, &ram_size))) {
+		return 0;
+	}
+
 	return bitmap_estimate_size(ram_size >> VMM_PAGE_SHIFT);
 }
 
-int __init vmm_host_ram_init(physical_addr_t base, 
-			     physical_size_t size,
-			     virtual_addr_t hkbase)
+int __init vmm_host_ram_init(virtual_addr_t hkbase)
 {
 	int rc;
+	physical_addr_t ram_start;
+	physical_size_t ram_size;
+
+	/* FIXME: Only consider bank0 */
+	if ((rc = arch_devtree_ram_bank_start(0, &ram_start))) {
+		return rc;
+	}
+	if (ram_start & VMM_PAGE_MASK) {
+		return VMM_EINVALID;
+	}
+	if ((rc = arch_devtree_ram_bank_size(0, &ram_size))) {
+		return rc;
+	}
+	if (ram_size & VMM_PAGE_MASK) {
+		return VMM_EINVALID;
+	}
 
 	memset(&rctrl, 0, sizeof(rctrl));
 
 	INIT_SPIN_LOCK(&rctrl.ram_bmap_lock);
 
-	rctrl.ram_start = base;
-	rctrl.ram_size = size;
+	rctrl.ram_start = ram_start;
+	rctrl.ram_size = ram_size;
 	rctrl.ram_start &= ~VMM_PAGE_MASK;
 	rctrl.ram_size &= ~VMM_PAGE_MASK;
 	rctrl.ram_frame_count = rctrl.ram_size >> VMM_PAGE_SHIFT;
@@ -241,8 +264,8 @@ int __init vmm_host_ram_init(physical_addr_t base,
 
 	bitmap_zero(rctrl.ram_bmap, rctrl.ram_frame_count);
 
-	rctrl.ram_res.start = base;
-	rctrl.ram_res.end = base + size - 1;
+	rctrl.ram_res.start = ram_start;
+	rctrl.ram_res.end = ram_start + ram_size - 1;
 	rctrl.ram_res.name = "System RAM";
 	rctrl.ram_res.flags = VMM_IORESOURCE_MEM | VMM_IORESOURCE_BUSY;
 	rc = vmm_request_resource(&vmm_hostmem_resource, &rctrl.ram_res);

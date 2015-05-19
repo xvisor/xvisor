@@ -53,11 +53,9 @@ u32 vmm_host_ram_total_frame_count(void);
 physical_size_t vmm_host_ram_size(void);
 
 /** Estimate House-keeping size of RAM */
-virtual_size_t vmm_host_ram_estimate_hksize(physical_size_t ram_size);
+virtual_size_t vmm_host_ram_estimate_hksize(void);
 
 /* Initialize RAM managment */
-int vmm_host_ram_init(physical_addr_t base, 
-		      physical_size_t size,
-		      virtual_addr_t hkbase);
+int vmm_host_ram_init(virtual_addr_t hkbase);
 
 #endif /* __VMM_HOST_RAM_H_ */

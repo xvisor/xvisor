@@ -36,8 +36,8 @@
 
 static virtual_addr_t host_mem_rw_va[CONFIG_CPU_COUNT];
 
-virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
-			       virtual_size_t sz, 
+virtual_addr_t vmm_host_memmap(physical_addr_t pa,
+			       virtual_size_t sz,
 			       u32 mem_flags)
 {
 	int rc, ite;
@@ -54,8 +54,8 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 	tpa = pa & ~VMM_PAGE_MASK;
 
 	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-		rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE, 
-					tpa + ite * VMM_PAGE_SIZE, 
+		rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE,
+					tpa + ite * VMM_PAGE_SIZE,
 					mem_flags);
 		if (rc) {
 			/* We were not able to map physical address */
@@ -185,13 +185,13 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 		page_offset = hpa & VMM_PAGE_MASK;
 
 		page_read = VMM_PAGE_SIZE - page_offset;
-		page_read = (page_read < (len - bytes_read)) ? 
+		page_read = (page_read < (len - bytes_read)) ?
 			     page_read : (len - bytes_read);
 
 		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_MEMORY_READWRITE)
-		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
+		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK,
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
 					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
@@ -238,13 +238,13 @@ u32 vmm_host_memory_write(physical_addr_t hpa,
 		page_offset = hpa & VMM_PAGE_MASK;
 
 		page_write = VMM_PAGE_SIZE - page_offset;
-		page_write = (page_write < (len - bytes_written)) ? 
+		page_write = (page_write < (len - bytes_written)) ?
 			      page_write : (len - bytes_written);
 
 		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_MEMORY_READWRITE)
-		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK, 
+		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK,
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
 					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
@@ -323,8 +323,8 @@ u32 vmm_host_free_initmem(void)
 
 int __cpuinit vmm_host_aspace_init(void)
 {
-	int rc, cpu;
-	u32 resv, resv_count, ram_count = 0x0;
+	int rc, cpu, bank_found = 0;
+	u32 resv, resv_count, bank, bank_count = 0x0;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart;
@@ -363,32 +363,40 @@ int __cpuinit vmm_host_aspace_init(void)
 	if ((rc = arch_devtree_ram_bank_setup())) {
 		return rc;
 	}
-	if ((rc = arch_devtree_ram_bank_count(&ram_count))) {
+	if ((rc = arch_devtree_ram_bank_count(&bank_count))) {
 		return rc;
 	}
-	if (ram_count == 0) {
+	if (bank_count == 0) {
 		return VMM_ENOMEM;
 	}
-	if ((rc = arch_devtree_ram_bank_start(0, &ram_start))) {
-		return rc;
+	bank_found = 0;
+	for (bank = 0; bank < bank_count; bank++) {
+		if ((rc = arch_devtree_ram_bank_start(bank, &ram_start))) {
+			return rc;
+		}
+		if (ram_start & VMM_PAGE_MASK) {
+			return VMM_EINVALID;
+		}
+		if ((rc = arch_devtree_ram_bank_size(bank, &ram_size))) {
+			return rc;
+		}
+		if (ram_size & VMM_PAGE_MASK) {
+			return VMM_EINVALID;
+		}
+		if ((ram_start <= arch_code_paddr_start()) &&
+		    (arch_code_paddr_start() < (ram_start + ram_size))) {
+			bank_found = 1;
+			break;
+		}
 	}
-	if ((rc = arch_devtree_ram_bank_size(0, &ram_size))) {
-		return rc;
-	}
-	if (ram_start & VMM_PAGE_MASK) {
-		ram_size -= VMM_PAGE_SIZE;
-		ram_size += ram_start & VMM_PAGE_MASK;
-		ram_start += VMM_PAGE_SIZE;
-		ram_start -= ram_start & VMM_PAGE_MASK;
-	}
-	if (ram_size & VMM_PAGE_MASK) {
-		ram_size -= ram_size & VMM_PAGE_MASK;
+	if (!bank_found) {
+		return VMM_ENODEV;
 	}
 
-	/* Determine RAM house-keeping size based on RAM size */
-	ram_hksize = vmm_host_ram_estimate_hksize(ram_size);
+	/* Determine RAM house-keeping size */
+	ram_hksize = vmm_host_ram_estimate_hksize();
 
-	/* Calculate physical address, virtual address, and size of 
+	/* Calculate physical address, virtual address, and size of
 	 * core reserved space for VAPOOL and RAM house-keeping
 	 */
 	hk_total_size = vapool_hksize + ram_hksize;
@@ -411,8 +419,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	 * The arch_primary_cpu_aspace_init() can change these parameter
 	 * as needed.
 	 */
-	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa, 
-						&core_resv_va, 
+	if ((rc = arch_cpu_aspace_primary_init(&core_resv_pa,
+						&core_resv_va,
 						&core_resv_sz,
 						&arch_resv_pa,
 						&arch_resv_va,
@@ -422,7 +430,7 @@ int __cpuinit vmm_host_aspace_init(void)
 	if (core_resv_sz < hk_total_size) {
 		return VMM_EFAIL;
 	}
-	if ((vapool_size <= core_resv_sz) || 
+	if ((vapool_size <= core_resv_sz) ||
 	    (ram_size <= core_resv_sz)) {
 		return VMM_EFAIL;
 	}
@@ -430,16 +438,14 @@ int __cpuinit vmm_host_aspace_init(void)
 	ram_hkstart = core_resv_va + vapool_hksize;
 
 	/* Initialize VAPOOL managment */
-	if ((rc = vmm_host_vapool_init(vapool_start, 
-					vapool_size, 
+	if ((rc = vmm_host_vapool_init(vapool_start,
+					vapool_size,
 					vapool_hkstart))) {
 		return rc;
 	}
 
 	/* Initialize RAM managment */
-	if ((rc = vmm_host_ram_init(ram_start, 
-				    ram_size, 
-				    ram_hkstart))) {
+	if ((rc = vmm_host_ram_init(ram_hkstart))) {
 		return rc;
 	}
 
@@ -455,7 +461,7 @@ int __cpuinit vmm_host_aspace_init(void)
 	if (arch_code_paddr_start() < core_resv_pa) {
 		core_resv_pa = arch_code_paddr_start();
 	}
-	if ((arch_resv_sz > 0) && 
+	if ((arch_resv_sz > 0) &&
 	    (arch_resv_pa < core_resv_pa)) {
 		core_resv_pa = arch_resv_pa;
 	}
@@ -464,7 +470,7 @@ int __cpuinit vmm_host_aspace_init(void)
 		core_resv_sz =
 		(arch_code_vaddr_start() + arch_code_size()) - core_resv_va;
 	}
-	if ((arch_resv_sz > 0) && 
+	if ((arch_resv_sz > 0) &&
 	    ((core_resv_va + core_resv_sz) < (arch_resv_va + arch_resv_sz))) {
 		core_resv_sz = (arch_resv_va + arch_resv_sz) - core_resv_va;
 	}
@@ -472,7 +478,7 @@ int __cpuinit vmm_host_aspace_init(void)
 					  core_resv_sz))) {
 		return rc;
 	}
-	if ((rc = vmm_host_ram_reserve(core_resv_pa, 
+	if ((rc = vmm_host_ram_reserve(core_resv_pa,
 				       core_resv_sz))) {
 		return rc;
 	}
@@ -502,7 +508,7 @@ int __cpuinit vmm_host_aspace_init(void)
 
 	/* Setup temporary virtual address for physical read/write */
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
-		rc = vmm_host_vapool_alloc(&host_mem_rw_va[cpu], 
+		rc = vmm_host_vapool_alloc(&host_mem_rw_va[cpu],
 					   VMM_PAGE_SIZE);
 		if (rc) {
 			return rc;
