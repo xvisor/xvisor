@@ -30,9 +30,8 @@
  */
 extern u32 dt_blob_start;
 
-/* Note: For all ARM boards we support upto 8 RAM banks */
 static u32 bank_nr;
-static physical_addr_t bank_data[16];
+static physical_addr_t bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 
 int arch_devtree_ram_bank_setup(void)
 {
@@ -123,24 +122,6 @@ int arch_devtree_ram_bank_setup(void)
 				bank_data[(2*i)+1] = bank_data[(2*j)+1];
 				bank_data[(2*j)+1] = tmp;
 			}
-		}
-	}
-
-	/* Merge consecutive banks */
-	for (i = 1; i < bank_nr; i++) {
-		if (bank_data[(2*i)] !=
-			(bank_data[(2*(i-1))] + bank_data[(2*(i-1))+1])) {
-			continue;
-		}
-		bank_data[(2*(i-1))+1] += bank_data[(2*i)+1];
-		bank_data[(2*i)] = 0;
-		bank_data[(2*i)+1] = 0;
-		bank_nr--;
-		for (j = i; j < bank_nr; j++) {
-			bank_data[(2*j)] = bank_data[(2*(j+1))];
-			bank_data[(2*j)+1] = bank_data[(2*(j+1))+1];
-			bank_data[(2*(j+1))] = 0;
-			bank_data[(2*(j+1))+1] = 0;
 		}
 	}
 
