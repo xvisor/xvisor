@@ -369,6 +369,9 @@ int __cpuinit vmm_host_aspace_init(void)
 	if (bank_count == 0) {
 		return VMM_ENOMEM;
 	}
+	if (bank_count > CONFIG_MAX_RAM_BANK_COUNT) {
+		return VMM_EINVALID;
+	}
 	bank_found = 0;
 	for (bank = 0; bank < bank_count; bank++) {
 		if ((rc = arch_devtree_ram_bank_start(bank, &ram_start))) {
@@ -500,7 +503,7 @@ int __cpuinit vmm_host_aspace_init(void)
 			ram_size += ram_start & VMM_PAGE_MASK;
 			ram_start -= ram_start & VMM_PAGE_MASK;
 		}
-		ram_size = VMM_ROUNDUP2_PAGE_SIZE(ram_size);
+		ram_size &= ~VMM_PAGE_MASK;
 		if ((rc = vmm_host_ram_reserve(ram_start, ram_size))) {
 			return rc;
 		}

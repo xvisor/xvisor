@@ -226,45 +226,79 @@ static void cmd_host_extirq_stats(struct vmm_chardev *cdev)
 
 static void cmd_host_ram_info(struct vmm_chardev *cdev)
 {
-	u32 free = vmm_host_ram_free_frame_count();
-	u32 total = vmm_host_ram_total_frame_count();
-	physical_addr_t base = vmm_host_ram_base();
+	u32 bn, bank_count = vmm_host_ram_bank_count();
+	u32 free = vmm_host_ram_total_free_frames();
+	u32 count = vmm_host_ram_total_frame_count();
+	physical_addr_t start;
+	physical_size_t size;
 
-	if (sizeof(u64) == sizeof(physical_addr_t)) {
-		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
-	} else {
-		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
-	}
-	vmm_cprintf(cdev, "Frame Size   : %d (0x%08x)\n",
+	vmm_cprintf(cdev, "Frame Size        : %d (0x%08x)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
-	vmm_cprintf(cdev, "Free Frames  : %d (0x%08x)\n", free, free);
-	vmm_cprintf(cdev, "Total Frames : %d (0x%08x)\n", total, total);
+	vmm_cprintf(cdev, "Bank Count        : %d (0x%08x)\n",
+					bank_count, bank_count);
+	vmm_cprintf(cdev, "Total Free Frames : %d (0x%08x)\n",
+					free, free);
+	vmm_cprintf(cdev, "Total Frame Count : %d (0x%08x)\n",
+					count, count);
+	for (bn = 0; bn < bank_count; bn++) {
+		start = vmm_host_ram_bank_start(bn);
+		size = vmm_host_ram_bank_size(bn);
+		free = vmm_host_ram_bank_free_frames(bn);
+		count = vmm_host_ram_bank_frame_count(bn);
+		vmm_cprintf(cdev, "\n");
+		if (sizeof(u64) == sizeof(physical_addr_t)) {
+			vmm_cprintf(cdev, "Bank%02d Start      : 0x%016llx\n",
+					bn, start);
+		} else {
+			vmm_cprintf(cdev, "Bank%02d Start      : 0x%08x\n",
+					bn, start);
+		}
+		if (sizeof(u64) == sizeof(physical_size_t)) {
+			vmm_cprintf(cdev, "Bank%02d Size       : 0x%016llx\n",
+					bn, size);
+		} else {
+			vmm_cprintf(cdev, "Bank%02d Size       : 0x%08x\n",
+					bn, size);
+		}
+		vmm_cprintf(cdev, "Bank%02d Free Frames: %d (0x%08x)\n",
+					bn, free, free);
+		vmm_cprintf(cdev, "Bank%02d Frame Count: %d (0x%08x)\n",
+					bn, count, count);
+	}
 }
 
 static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
-	u32 ite, total = vmm_host_ram_total_frame_count();
-	physical_addr_t base = vmm_host_ram_base();
+	u32 ite, count, bn, bank_count = vmm_host_ram_bank_count();
+	physical_addr_t start;
 
-	vmm_cprintf(cdev, "0 : free\n");
-	vmm_cprintf(cdev, "1 : used");
-	for (ite = 0; ite < total; ite++) {
-		if (umod32(ite, colcnt) == 0) {
-			if (sizeof(u64) == sizeof(physical_addr_t)) {
-				vmm_cprintf(cdev, "\n0x%016llx: ",
-					    base + ite * VMM_PAGE_SIZE);
+	for (bn = 0; bn < bank_count; bn++) {
+		if (bn) {
+			vmm_cprintf(cdev, "\n");
+		}
+		start = vmm_host_ram_bank_start(bn);
+		count = vmm_host_ram_bank_frame_count(bn);
+		vmm_cprintf(cdev, "Bank%02d\n", bn);
+		vmm_cprintf(cdev, "0 : free\n");
+		vmm_cprintf(cdev, "1 : used");
+		for (ite = 0; ite < count; ite++) {
+			if (umod32(ite, colcnt) == 0) {
+				if (sizeof(u64) == sizeof(physical_addr_t)) {
+					vmm_cprintf(cdev, "\n0x%016llx: ",
+						    start + ite * VMM_PAGE_SIZE);
+				} else {
+					vmm_cprintf(cdev, "\n0x%08x: ",
+						    start + ite * VMM_PAGE_SIZE);
+				}
+			}
+			if (vmm_host_ram_frame_isfree(start + ite * VMM_PAGE_SIZE)) {
+				vmm_cprintf(cdev, "0");
 			} else {
-				vmm_cprintf(cdev, "\n0x%08x: ",
-					    base + ite * VMM_PAGE_SIZE);
+				vmm_cprintf(cdev, "1");
 			}
 		}
-		if (vmm_host_ram_frame_isfree(base + ite * VMM_PAGE_SIZE)) {
-			vmm_cprintf(cdev, "0");
-		} else {
-			vmm_cprintf(cdev, "1");
-		}
+		vmm_cprintf(cdev, "\n");
 	}
-	vmm_cprintf(cdev, "\n");
 }
 
 static void cmd_host_vapool_info(struct vmm_chardev *cdev)

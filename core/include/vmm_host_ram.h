@@ -37,20 +37,32 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz);
 /** Free physical space to RAM */
 int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz);
 
-/** Base address of RAM */
-physical_addr_t vmm_host_ram_base(void);
-
 /** Check if a RAM physical address is free */
 bool vmm_host_ram_frame_isfree(physical_addr_t pa);
 
-/** Free frame count of RAM */
-u32 vmm_host_ram_free_frame_count(void);
+/** Total free frames of all RAM banks */
+u32 vmm_host_ram_total_free_frames(void);
 
-/** Total frame count of RAM */
+/** Total frame count of all RAM banks */
 u32 vmm_host_ram_total_frame_count(void);
 
-/** Total size of RAM */
-physical_size_t vmm_host_ram_size(void);
+/** Total size of all RAM Banks */
+physical_size_t vmm_host_ram_total_size(void);
+
+/** Number of RAM Banks */
+u32 vmm_host_ram_bank_count(void);
+
+/** Start address of RAM Bank */
+physical_addr_t vmm_host_ram_bank_start(u32 bank);
+
+/** Size of RAM Bank */
+physical_size_t vmm_host_ram_bank_size(u32 bank);
+
+/** Frame count of RAM Bank */
+u32 vmm_host_ram_bank_frame_count(u32 bank);
+
+/** Free frames of RAM Bank */
+u32 vmm_host_ram_bank_free_frames(u32 bank);
 
 /** Estimate House-keeping size of RAM */
 virtual_size_t vmm_host_ram_estimate_hksize(void);

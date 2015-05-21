@@ -236,7 +236,7 @@ static int cmd_vcpu_monitor(struct vmm_chardev *cdev,
 				vfree/1024, (vtotal-vfree)/1024, vtotal/1024);
 		}
 		/* Print RAM usage */
-		pfree = vmm_host_ram_free_frame_count();
+		pfree = vmm_host_ram_total_free_frames();
 		pfree *= VMM_PAGE_SIZE;
 		ptotal = vmm_host_ram_total_frame_count();
 		ptotal *= VMM_PAGE_SIZE;
