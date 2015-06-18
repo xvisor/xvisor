@@ -1,8 +1,9 @@
 
 		Xvisor Design Document
 
-This is document gives an overview of the xvisor design. It gives very 
-important insight required for writing architecture support for Xvisor.
+This is document gives high-level view of the xvisor design. It gives very
+important insights to developers about Xvisor so that they can contribute
+to any part of Xvisor or even write architecture support for Xvisor.
 
 
 	 	Chapter 1: Modeling Virtual Machines
@@ -10,106 +11,129 @@ important insight required for writing architecture support for Xvisor.
 A virtual machine (VM) is a software emulation/simulation of a physical machine
 (i.e. a computer system) that can executes programs or operating systems.
 
-Virtual machines are separated into two major categories (based on their use): 
+Virtual machines are separated into two major categories (based on their use):
   * System Virtual Machine: A system virtual machine provides a complete system
-    platform which supports the execution of a complete operating system (OS). 
-  * Process Virtual Machine: A process virtual machine is designed to run a 
-    single program, which means that it supports a single process. 
+    platform which supports the execution of a complete operating system (OS).
+  * Process Virtual Machine: A process virtual machine is designed to run a
+    single program, which means that it supports a single process.
 
-An essential characteristic of a virtual machine is that the software running 
-inside is limited to the resources and abstractions provided by the virtual 
+An essential characteristic of a virtual machine is that the software running
+inside is limited to the resources and abstractions provided by the virtual
 machine—it cannot break out of its virtual world.
 
 (Citation: Refer Wikipedia page on "Virtual Machine" and "Hypervisor")
 
 Xvisor is a hardware assisted system virtualization software (i.e. implements
 system virtual machine with hardware acceleration) running directly on a host
-machine (i.e. physical machine/hardware). In short, we can say that Xvisor 
+machine (i.e. physical machine/hardware). In short, we can say that Xvisor
 is a Native (or Type-1) Hypervisor (or Virtual Machine Monitor).
 
 We refer system virtual machine instances as "Guest" instances and virtual CPUs
 of system virtual machines as "VCPU" instances in Xvisor. Also, VCPU belonging
-to a Guest is refered as "Normal VCPU" and VCPU not belonging to any guest is 
-referred as "Orphan VCPU". Xvisor creates Orphan VCPUs for various background 
-processing and running managment daemons. 
+to a Guest is refered as "Normal VCPU" and VCPU not belonging to any guest is
+referred as "Orphan VCPU". Xvisor creates Orphan VCPUs for various background
+processing and running managment daemons.
 
 Any modern CPU architecure has atleast two priviledge modes: User Mode, and
 Supervisor Mode. The User Mode has lowest priviledge and Supervisor Mode has
 highest priviledge. Xvisor runs Normal VCPUs in User Mode and Orphan VCPUs in
-Supervisor Mode (Note: Architecture specific code has to treat Normal and 
-Orphan VCPUs differently). 
+Supervisor Mode (Note: Architecture specific code has to treat Normal and
+Orphan VCPUs differently).
 
-The figure 1 below gives a clear picture of the System Virtual Machine Model 
+The figure 1 below gives a clear picture of the System Virtual Machine Model
 implemented by Xvisor.
 
-+--------------------------+    +--------------------------+    +------------+
-|          Guest_0         |    |          Guest_N         |    |            |
-+--------------------------+    +--------------------------+    | +--------+ |
-| +--------+    +--------+ |    | +--------+    +--------+ |    | |        | |
-| |        |    |        | |    | |        |    |        | |    | | Orphan | |
-| | VCPU_0 | .. | VCPU_M | |    | | VCPU_0 | .. | VCPU_K | |    | | VCPU_R | |
-| |        |    |        | |    | |        |    |        | |    | |        | |
-| +--------+    +--------+ | .. | +--------+    +--------+ |    | +--------+ |
-+--------------------------+    +--------------------------+    |      .     |
-|       Address Space      |    |       Address Space      |    |      .     |
-|+--------+ +-----+ +-----+|    |+--------+ +-----+ +-----+|    |      .     |
-|| Memory | | PIC | | PIT ||    || Memory | | PIC | | PIT ||    | +--------+ |
-|+--------+ +-----+ +-----+|    |+--------+ +-----+ +-----+|    | |        | |
-|+-----+ +------+ +-----+  |    |+-----+ +------+ +-----+  |    | | Orphan | |
-|| ROM | | UART | | LCD |  |    || ROM | | UART | | LCD |  |    | | VCPU_0 | |
-|+-----+ +------+ +-----+  |    |+-----+ +------+ +-----+  |    | |        | |
-+--------------------------+    +--------------------------+    | +--------+ |
-+---------------------------------------------------------------+            |
-|                                                                            |
-|                 eXtensible Versatile hypervISOR (Xvisor)                   |
-|                                                                            |
-+----------------------------------------------------------------------------+
-+----------------------------------------------------------------------------+
-|                                                                            |
-|            Host Machine (Host CPU + Host Memory + Host Devices)            |
-|                                                                            |
-+----------------------------------------------------------------------------+
++--------------------------+                  +--------------------------+
+|          Guest_0         |                  |          Guest_N         |
++--------------------------+                  +--------------------------+
+| +--------+    +--------+ |                  | +--------+    +--------+ |
+| |        |    |        | |                  | |        |    |        | |
+| | VCPU_0 | .. | VCPU_M | |                  | | VCPU_0 | .. | VCPU_K | |
+| |        |    |        | |                  | |        |    |        | |
+| +--------+    +--------+ | ................ | +--------+    +--------+ |
++--------------------------+                  +--------------------------+
+|       Address Space      |                  |       Address Space      |
+|+--------+ +-----+ +-----+|                  |+--------+ +-----+ +-----+|
+|| Memory | | PIC | | PIT ||                  || Memory | | PIC | | PIT ||
+|+--------+ +-----+ +-----+|                  |+--------+ +-----+ +-----+|
+| +-----+ +------+ +-----+ |                  | +-----+ +------+ +-----+ |
+| | ROM | | UART | | LCD | |                  | | ROM | | UART | | LCD | |
+| +-----+ +------+ +-----+ |                  | +-----+ +------+ +-----+ |
++--------------------------+                  +--------------------------+
++------------------------------------------------------------------------+
+|                                                                        |
+|                 eXtensible Versatile hypervISOR (Xvisor)               |
+|                                                                        |
+|  +----------------+  +----------+  +----------------+  +------------+  |
+|  |     Guest      |  |  Command |  |  Virtualized   |  | Management |  |
+|  |     Device     |  |  Manager |  |      I/O       |  |  Daemons   |  |
+|  |   Emulators    |  +----------+  |   Frameworks   |  +------------+  |
+|  +----------------+                +----------------+                  |
+|                                                                        |
+|  +---------------+  +------------+  +---------------+  +------------+  |
+|  |  Hypervisor   |  | Hypervisor |  |   Hypervisor  |  | Hypervisor |  |
+|  | Configuration |  |   Manager  |  | Load Balancer |  | Scheduler  |  |
+|  +---------------+  +------------+  +---------------+  +------------+  |
+|                                                                        |
+|  +----------------+  +----------------+  +----------+  +------------+  |
+|  |    Storage     |  |    Network     |  | Standard |  | Hypervisor |  |
+|  | Virtualization |  | Virtualization |  |    I/O   |  |   Timer    |  |
+|  +----------------+  +----------------+  +----------+  +------------+  |
+|                                                         +-----------+  |
+|                                                        +-----------+|  |
+|  +---------------+  +--------------+  +------------+  +-----------+||  |
+|  |     Misc      |  |     Host     |  |    Host    |  |  Orphan   |||  |
+|  |    Driver     |  |    Device    |  |   Memory   |  |   VCPUs   ||+  |
+|  |   Frameworks  |  |    Drivers   |  | Management |  | (Threads) |+   |
+|  +---------------+  +--------------+  +------------+  +-----------+    |
+|                                                                        |
++------------------------------------------------------------------------+
++------------------------------------------------------------------------+
+|                                                                        |
+|            Host Machine (Host CPU + Host Memory + Host Devices)        |
+|                                                                        |
++------------------------------------------------------------------------+
 
 
 	 	Chapter 2: Hypervisor Configuration
 
-In the “early days”, configuring OS for a system was simple because it had a 
-single central-processing-unit (CPU) core executing an operating system (OS). 
+In the “early days”, configuring OS for a system was simple because it had a
+single central-processing-unit (CPU) core executing an operating system (OS).
 Yet in today’s world powerful single-core and multicore processors can actually
-be configured in many different configurations. A multicore processor can be 
+be configured in many different configurations. A multicore processor can be
 managed by a single symmetrical- multiprocessing (SMP) operating system, which
-manages all of the cores. Alternatively, each core can be given to a separate 
-OS in an asymmetrical-multiprocessing (AMP) configuration. SMP and AMP both 
-have their challenges and advantages. For example, SMP doesn’t always scale 
-well, depending on workload. For its part, AMP can be difficult to configure 
-with regard to which OS gets access to which device. Operating systems assume 
-that they have full control over the hardware devices that they detect. Often, 
-this creates conflicts in the AMP case. Xvisor provides technology to partition 
-or virtualize processing cores, memory, and devices between the multiple OSs 
+manages all of the cores. Alternatively, each core can be given to a separate
+OS in an asymmetrical-multiprocessing (AMP) configuration. SMP and AMP both
+have their challenges and advantages. For example, SMP doesn’t always scale
+well, depending on workload. For its part, AMP can be difficult to configure
+with regard to which OS gets access to which device. Operating systems assume
+that they have full control over the hardware devices that they detect. Often,
+this creates conflicts in the AMP case. Xvisor provides technology to partition
+or virtualize processing cores, memory, and devices between the multiple OSs
 that are used to build a system.
 
-Xvisor maintians its configuration in the form of tree data structure called 
-"device tree" to ease the task of configuring Xvisor running on a single-core 
-or multi-core system. It is highly inspired from Device Tree Script (DTS) used 
-by of_platform of Linux kernel. As a result, system designers can utilize a 
-wide variety of configurations—including mixes of AMP, SMP, and core 
-virtualization—to build their next-generation systems. 
+Xvisor maintians its configuration in the form of tree data structure called
+"device tree" to ease the task of configuring Xvisor running on a single-core
+or multi-core system. It is highly inspired from Device Tree Script (DTS) used
+by of_platform of Linux kernel. As a result, system designers can utilize a
+wide variety of configurations—including mixes of AMP, SMP, and core
+virtualization—to build their next-generation systems.
 
-In Linux, if an architecture (e.g. PowerPC) is using of_platform then at 
-booting time Linux kernel will expect a DTB file (Flattened device tree file) 
-from the boot loader. The DTB file is binary file generated by compiling a DTS 
-(Device tree script) using DTC (Device tree compiler). An of_platform enabled 
-Linux kernel only probes those drivers which are compatible or matching to the 
+In Linux, if an architecture (e.g. PowerPC) is using of_platform then at
+booting time Linux kernel will expect a DTB file (Flattened device tree file)
+from the boot loader. The DTB file is binary file generated by compiling a DTS
+(Device tree script) using DTC (Device tree compiler). An of_platform enabled
+Linux kernel only probes those drivers which are compatible or matching to the
 devices mentioned in the device tree populated from DTB file. Unlike Linux
 of_platform using DTB file is not mandatory for Xvisor. The Xvisor architecture
 specific code (or board specific code more precisely) can populate the device
-tree from various sources such as DTB or ACPI tables. In simpler words, device 
+tree from various sources such as DTB or ACPI tables. In simpler words, device
 tree in Xvisor is a data structure used for managing hypervisor configuration.
 
-(Note: For more information on device tree syntax used by PowerPC Linux Kernel 
+(Note: For more information on device tree syntax used by PowerPC Linux Kernel
 refer https://www.power.org/resources/downloads/Power_ePAPR_APPROVED_v1.0.pdf)
 
-Although Xvisor device tree just a data structure, following constraints must 
+Although Xvisor device tree just a data structure, following constraints must
 be ensured while updating/populating Xvisor device tree:
   * Node Name: It must have characters from one of the following only,
       -> digit: [0-9]
@@ -124,16 +148,16 @@ be ensured while updating/populating Xvisor device tree:
       -> underscore: _
       -> dash: -
       -> hash: #
-  * Attribute String Value: A string attribute value must end with NULL 
-    character (i.e. '\0' or character value 0). For a string list, each string 
+  * Attribute String Value: A string attribute value must end with NULL
+    character (i.e. '\0' or character value 0). For a string list, each string
     must be seperated by excatly one NULL character.
   * Attribute 32-bit unsigned Value: A 32-bit integer value must be represented
     in big-endian format or little-endian format based on the endianess of host
-    CPU architecture. 
+    CPU architecture.
   * Attribute 64-bit unsigned Value: A 64-bit integer value must be represented
     in big-endian format or little-endian format based on the endianess of host
-    CPU architecture. 
-(Note: Architecture specific code must ensure that the above constraints are 
+    CPU architecture.
+(Note: Architecture specific code must ensure that the above constraints are
 satisfied while populating device tree)
 (Note: For standard attributes used by Xvisor refer source code.)
 
@@ -170,11 +194,6 @@ shown in figure 1 of chapter 1.
     +----------|  vmm   |
     |          +--------+
     |
-    |     (Guest Templates)
-    |          +-----------+
-    +----------| templates |
-    |          +-----------+
-    |
     |     (Guests Instances)
     |          +--------+
     +----------| guests |
@@ -210,27 +229,27 @@ shown in figure 1 of chapter 1.
                    |                             |          ----------
                    |                             +----------| Memory |
                    |                             |          ----------
-                   |                             |               
+                   |                             |
                    |                             |        (Guest Region)
                    |                             |          +--------+
                    |                             +----------|  PIC   |
                    |                             |          +--------+
-                   |                             |               
+                   |                             |
                    |                             |        (Guest Region)
                    |                             |          +--------+
                    |                             +----------|  PIT   |
                    |                             |          +--------+
-                   |                             |               
+                   |                             |
                    |                             |        (Guest Region)
                    |                             |          +--------+
                    |                             +----------|  UART  |
                    |                             |          +--------+
-                   |                             |               
+                   |                             |
                    |                             |        (Guest Region)
                    |                             |          +--------+
                    |                             +----------|  LCD   |
                    |                             |          +--------+
-                   |                             |               
+                   |                             |
                    |                             |        (Guest Region)
                    |                             |          ----------
                    |                             +----------|  ROM   |
@@ -266,182 +285,218 @@ shown in figure 1 of chapter 1.
                                                  |          +--------+
                                                  +----------| Memory |
                                                  |          +--------+
-                                                 |               
+                                                 |
                                                  |        (Guest Region)
                                                  |          +--------+
                                                  +----------|  PIC   |
                                                  |          +--------+
-                                                 |               
+                                                 |
                                                  |        (Guest Region)
                                                  |          +--------+
                                                  +----------|  PIT   |
                                                  |          +--------+
-                                                 |               
+                                                 |
                                                  |        (Guest Region)
                                                  |          ----------
                                                  +----------|  UART  |
                                                  |          +--------+
-                                                 |               
+                                                 |
                                                  |        (Guest Region)
                                                  |          +--------+
                                                  +----------|  LCD   |
                                                  |          +--------+
-                                                 |               
+                                                 |
                                                  |        (Guest Region)
                                                  |          +--------+
                                                  +----------|  ROM   |
                                                             +--------+
 
 By default, Xvisor will always support configuring device tree using DTS.
-It also includes a DTC compiler taken from Linux kernel source code and a 
-light-weight DTB parsing library (libfdt) which can be used by architecture 
+It also includes a DTC compiler taken from Linux kernel source code and a
+light-weight DTB parsing library (libfdt) which can be used by architecture
 specific code (or board specific code) to populate device tree for Xvisor.
 
 
 	 	Chapter 3: Hypervisor Timer
 
-Like any OS, a hypervisor also needs to keep track of passing time using a 
-timekeeping subsystem. We refer timekeeping subsystem of Xvisor as hypervisor 
+Like any OS, a hypervisor also needs to keep track of passing time using a
+timekeeping subsystem. We refer timekeeping subsystem of Xvisor as hypervisor
 timer. A timekeeping subsystem of an OS does two crucial tasks, which are:
   1. Keep track of passing time: The legacy way of achiving this is to count
-     periodic interrupts, but this method is very imprecise and with low 
-     resolution. The more precise and low overhead way of achiving this to 
-     use a clocksource device (i.e. free-running cycle accurate hardware 
+     periodic interrupts, but this method is very imprecise and with low
+     resolution. The more precise and low overhead way of achiving this to
+     use a clocksource device (i.e. free-running cycle accurate hardware
      counter) as reference for time elapsed.
-  2. Schedule events in future: To achive this an OS will keep per-CPU list 
+  2. Schedule events in future: To achive this an OS will keep per-CPU list
      of events sorted ascending based upon their expiry time. The OS will use
-     per-CPU clockevent device (i.e. PIT) to schedule events one-by-one from 
-     the sorted events with earliest expiring event first. All OSes will 
+     per-CPU clockevent device (i.e. PIT) to schedule events one-by-one from
+     the sorted events with earliest expiring event first. All OSes will
      differ only in how they maintain per-CPU sorted event list.
 
-Unlike any OS, Timekeeping is especially problematic for hypervisors because 
-a number of challenges. The most obvious problem is that time is now shared 
+Unlike any OS, Timekeeping is especially problematic for hypervisors because
+a number of challenges. The most obvious problem is that time is now shared
 between the host and, potentially many guest instances. The guest OS never
-gets 100% of CPU execution time, despite the fact that it may very well make 
-that assumption. It may expect it to remain true to very exacting bounds when 
-interrupt sources are disabled, but in reality only its virtual interrupt 
+gets 100% of CPU execution time, despite the fact that it may very well make
+that assumption. It may expect it to remain true to very exacting bounds when
+interrupt sources are disabled, but in reality only its virtual interrupt
 sources are disabled, and the machine may still be preempted at any time. This
-causes problems as the passage of real time, the injection of guest interrupts 
-and the associated clock sources are no longer completely synchronized with 
+causes problems as the passage of real time, the injection of guest interrupts
+and the associated clock sources are no longer completely synchronized with
 real time.
 
 One of the most immediate problems that occurs with legacy guest OSes is that
-the system timekeeping routines are often designed to keep track of time by 
-counting periodic interrupts. These interrupts may come from the PIT or the 
-RTC, but the problem is the same: the host virtualization engine may not be 
-able to deliver interrupts at proper rate, and so guest time may fall behind. 
-This is especially problematic if a high interrupt rate (such as 1000 HZ) is 
+the system timekeeping routines are often designed to keep track of time by
+counting periodic interrupts. These interrupts may come from the PIT or the
+RTC, but the problem is the same: the host virtualization engine may not be
+able to deliver interrupts at proper rate, and so guest time may fall behind.
+This is especially problematic if a high interrupt rate (such as 1000 HZ) is
 selected which is unfortunately the default for many Linux guests.
 
 There are three approaches to solving this problem:
-  1. It may be possible to simply ignore it for guests which have a separate 
-     time source for tracking 'wall clock' or 'real time' may not need any 
+  1. It may be possible to simply ignore it for guests which have a separate
+     time source for tracking 'wall clock' or 'real time' may not need any
      adjustment of their interrupts to maintain proper time.
-  2. If this is not sufficient, it may be necessary to inject additional 
-     interrupts into the guest in order to increase the effective interrupt 
-     rate. This approach leads to complications in extreme conditions, where 
+  2. If this is not sufficient, it may be necessary to inject additional
+     interrupts into the guest in order to increase the effective interrupt
+     rate. This approach leads to complications in extreme conditions, where
      host load or guest lag is too much to compensate for.
-  3. The guest may need to become aware of lost ticks and compensate for them 
-     internally. Although promising in theory, the implementation of this 
-     policy in Linux has been extremely error prone, and a number of buggy 
-     variants of lost tick compensation are distributed across commonly used 
+  3. The guest may need to become aware of lost ticks and compensate for them
+     internally. Although promising in theory, the implementation of this
+     policy in Linux has been extremely error prone, and a number of buggy
+     variants of lost tick compensation are distributed across commonly used
      Linux systems.
 
-From the above it is clear that a hypervisor will have to keep track of time 
+From the above it is clear that a hypervisor will have to keep track of time
 elapsed with low overhead, high precision and high resolution (i.e. we cannot
-count periodic interrupts for tracking elapsed time). In simpler words, the 
+count periodic interrupts for tracking elapsed time). In simpler words, the
 timekeeping in hypervisor has to be tickless and high resolution. Further the
 PIT emulators in hypervisor may have to keep backlogs of pending periodic
 interrupts.
 
-The hypervisor timer subsystem of Xvisor is highly inspired from Linux hrtimer 
+The hypervisor timer subsystem of Xvisor is highly inspired from Linux hrtimer
 subsystem and is completely tickless. It provides the following features:
   1. 64-bit Timestamp: The timestamp represents nanoseconds elapsed since
      Xvisor was booted. (i.e. uptime of Xvisor in-terms of nanoseconds)
-  2. Timer events: We can create or destroy timer event with associated 
-     expirey time in nanoseconds and an expiry call back handler. The timer 
+  2. Timer events: We can create or destroy timer event with associated
+     expirey time in nanoseconds and an expiry call back handler. The time
      events are one shot events (i.e. they are stopped automatically when
-     they expire) and to have periodic timer events we will have to manually 
+     they expire) and to have periodic timer events we will have to manually
      re-start the timer event from its expiry call back handler.
 
 The hypervisor timer requires architecture specific code to provide one global
-clocksource device and one clockevent device for each host CPU to provide 
+clocksource device and one clockevent device for each host CPU to provide
 above mentioned features.
 
 
 	 	Chapter 4: Hypervisor Manager
 
-The VCPU & Guest instances in Xvisor are created & managed by the Hypervisor 
-Manager. It also provides routines for triggering VCPU state changes and it 
-notifies the hypervisor scheduler whenever a VCPU state changes.
+The VCPU & Guest instances in Xvisor are created & managed by the Hypervisor
+Manager. It also provides routines for VCPU state changes, VCPU statistics,
+and VCPU host CPU changes which are built on-top of hypervisor scheduler
+routinges.
 
-Just like any OS, a VCPU instance in Xvisor has an architecture dependent part
-and an architecture independent part. 
+Just like any OS, a VCPU instance in Xvisor has an architecture dependent
+part and an architecture independent part.
 
 The architecture dependent part of VCPU context consist of:
-  1. Arch Registers: Registers which are updated by processor in user mode 
-     (or unprivileged mode) only. This registers are usually general purpose 
+  1. Arch Registers: Registers which are updated by processor in user mode
+     (or unprivileged mode) only. This registers are usually general purpose
      registers and status flags which are automatically updated by processor
      (e.g. comparision flags, overflow flag, zero flag, etc). Both Normal and
-     Orphan VCPUs require their own copy or arch registers. We refer arch 
+     Orphan VCPUs require their own copy or arch registers. We refer arch
      registers of a VCPU as "arch_regs_t *regs" member of our VCPU structure.
-  2. Arch Private: Registers which are updated by processor in supervisor 
-     mode (or privileged mode) only. Whenever Normal VCPU tries to read/write 
-     such register, we get an exception and we can return/update its virtual 
+  2. Arch Private: Registers which are updated by processor in supervisor
+     mode (or privileged mode) only. Whenever Normal VCPU tries to read/write
+     such register, we get an exception and we can return/update its virtual
      value. In most cases there are also some additional data structures
-     (like MMU context, shadow TLB, shadow page table, ... etc) in arch 
-     private. Orphan VCPUs usually dont require arch private, only Normal 
-     VCPUs require them. We refer arch private of a VCPU as "void *arch_priv" 
+     (like MMU context, shadow TLB, shadow page table, ... etc) in arch
+     private. Orphan VCPUs usually dont require arch private, only Normal
+     VCPUs require them. We refer arch private of a VCPU as "void *arch_priv"
      member of our VCPU structure.
 
-The architecture independent part of VCPU context consist of:
+The VCPU context consist of the following:
   1.  ID: Globally unique identification number
-  2.  SUBID: Identification number unique within parent Guest. (Only for 
+  2.  SUBID: Identification number unique within parent Guest. (Only for
       Normal VCPUs)
   3.  Name: The name given for this VCPU. (Only for Orphan VCPUs)
   4.  Device Tree Node: Pointer to VCPU device tree node. (Only for
       Normal VCPUs)
   5.  Is Normal: Flag showing whether this VCPU is Normal or Orphan.
-  6.  Guest: Pointer to parent Guest. (Only for Normal VCPUs)
-  7.  State: Current VCPU state. (Explained below.)
-  8.  Reset Count: Number of times the VCPU has been resetted.
-  9.  Start PC: Starting value of Program Counter.
-  10. Start SP: Starting value of Stack Pointer. (Only for Orphan VCPUs)
-  11. Virtual IRQ Info.: Management information for VCPU Virtual interrupts.
-  12. Scheduling Info.: Managment information required by scheduler 
-      (e.g. priority, prempt_count, time_slice, etc)
-  13. Waitqueue Info.: Information required by waitqueues.
-  14. Device Emulation Context: Pointer to private information required by
+  6.  Is PowerOff: Flag showing whether VCPU should be in RESET state
+      after Guest reset. (Only for Normal VCPUs)
+  7.  Guest: Pointer to parent Guest.
+  8.  Start PC: Starting value of Program Counter.
+  9.  Stack VA: Starting value of Stack Pointer. For Orphan VCPU (or Threads),
+      this will be runtime stack whereas for Normal VCPU this will be special
+      stack for handling exceptions and interrupts.
+  10. Stack Size: Size of VCPU Stack.
+  11. Sched Lock: Read-Write spinlock for protect dynanmic scheduler context.
+  12. Host CPU: The host CPU on which VCPU will be running. (Protected using
+      sched lock)
+  13. Host CPU Affinity: Mask representing host CPUs on which VCPU can run.
+      (Protected using sched lock)
+  14. State: Current VCPU state. (Protected using sched lock)
+      (Explained below)
+  15. State Timestamp: The timestamp of when VCPU entered its current state.
+      (Protexted using sched lock)
+  16. State Ready Nanosecs: Amount of time spend by VCPU in READY state.
+      (Protected using sched lock)
+  17. State Running Nanosecs: Amount of time spend by VCPU in RUNNING state.
+      (Protected using sched lock)
+  18. State Paused Nanosecs: Amount of time spend by VCPU in PAUSED state.
+      (Protected using sched lock)
+  19. State Halted Nanosecs: Amount of time spend by VCPU in HALTED state.
+      (Protected using sched lock)
+  20. Reset Count: Number of times the VCPU has been resetted. (Protected
+      using sched lock)
+  21. Reset Timestamp: The timestamp of when VCPU was in RESET state.
+      (Protected using sched lock)
+  22. Preempt Count: Number of times preemption is disabled for VCPU.
+      (Protected using sched lock)
+  23. Resumed: Flag showing whether VCPU was resumed while in READY or
+      RUNNING state before it entered PAUSED state. (Protected using
+      sched lock)
+  24. Private Scheduling Context: Private context of scheduling strategy
+      for this VCPU. (Protected using sched lock)
+  25. Static Scheduling Parameters: Scheduling parameters provided at VCPU
+      creation time which will be used by scheduling strategy. (e.g. priority,
+      time_slice, deadline, and periodicity)
+  26. Architecture specific context: The architecture specific context of
+      this VCPU. The architecture specific code is responsible for managing
+      this context.
+  27. Virtual IRQ Info.: Management information for VCPU Virtual interrupts.
+  28. Waitqueue Info.: Information required by waitqueues.
+  29. Device Emulation Context: Pointer to private information required by
       device emulation framework per VCPU.
 
-A VCPU can be in excatly one state at any give instance of time. Below is a 
+A VCPU can be in excatly one state at any give instance of time. Below is a
 brief description of all possible states:
-  * UNKNOWN: VCPU does not belong to any Guest and is not Orphan VCPU. To 
-    enforce lower memory foot print, we pre-allocate memory based on maximum 
+  * UNKNOWN: VCPU does not belong to any Guest and is not Orphan VCPU. To
+    enforce lower memory foot print, we pre-allocate memory based on maximum
     number of VCPUs and put them in this state.
   * RESET: VCPU is initialized and is waiting for someone to kick it to READY
-    state. To create a new VCPU, the VCPU scheduler picks up a VCPU in UNKNOWN 
+    state. To create a new VCPU, the VCPU scheduler picks up a VCPU in UNKNOWN
     state from pre-allocated VCPUs and intialize it. After initialization the
     newly created VCPU is put in RESET state.
   * READY: VCPU is ready to run on hardware.
   * RUNNING: VCPU is currently running on hardware.
-  * PAUSED: VCPU has been stopped and can resume later. A VCPU is set in this 
+  * PAUSED: VCPU has been stopped and can resume later. A VCPU is set in this
     state (usually by architecture specific code) when it detects that the VCPU
     is idle and can be scheduled out.
-  * HALTED: VCPU has been stopped and cannot resume. A VCPU is set in this 
+  * HALTED: VCPU has been stopped and cannot resume. A VCPU is set in this
     state (usually by architecture specific code) when some errorneous access
     is done by that VCPU.
 
-A VCPU state change can occur from various locations such as architecture 
-specific code, some hypervisor thread, scheduler, some emulated device, etc. 
-Its not possible to have an exhaustive list of all possible scenarios that 
-would require a VCPU state change, but the VCPU state changes have to strictly 
-follow a finite-state machine which is ensured by the hypervisor manager. 
+A VCPU state change can occur from various locations such as architecture
+specific code, some hypervisor thread, scheduler, some emulated device, etc.
+Its not possible to have an exhaustive list of all possible scenarios that
+would require a VCPU state change, but the VCPU state changes have to strictly
+follow a finite-state machine which is ensured by the hypervisor scheduler.
 
 The figure 3 shows finite-state machine for VCPU state changes.
 
                                            +---------+
-                               [Reset]     |         |      [Halt]     
+                               [Reset]     |         |      [Halt]
                            +---------------|  HALTED |<-----------------+
                            |               |         |                  |
                            |               +---------+                  |
@@ -466,8 +521,8 @@ The figure 3 shows finite-state machine for VCPU state changes.
                                              [Reset]
 
 The number of virtual interrupts per VCPU and their priority are provided by
-architecture specific code. The assertion/deassertion of any virtual interrupt 
-is triggered from architecture independent code. Also, A VCPU can wait/pause 
+architecture specific code. The assertion/deassertion of any virtual interrupt
+is triggered from architecture independent code. Also, A VCPU can wait/pause
 till the next assertion of a virtual interrupt.
 
 A Guest instance consist of the following:
@@ -479,38 +534,38 @@ A Guest instance consist of the following:
       physical address space.
   6.  Arch Private: Architecture dependent context of this Guest.
 
-A Guest Address Space is also architecture independent abstraction. It consist 
-of the following: 
+A Guest Address Space is also architecture independent abstraction which
+consist of the following:
   1.  Device Tree Node: Pointer to Guest Address Space device tree node
   2.  Guest: Pointer to Guest to which this Guest Address Space belongs.
-  3.  Region List: A set of "Guest Regions" 
-  4.  Device Emulation Context: Pointer to private information required by
-      device emulation framework per Guest Address Space.
+  3.  Region List: A set of "Guest Regions"
+  4.  Device Emulation Context: Pointer to private information required
+      by device emulation framework per Guest Address Space.
 
-Each Guest Region has a unique Guest Physical Address (i.e. Physical address at
-which region is accessible to Guest VCPUs) and Physical Size (i.e. Size of 
+Each Guest Region has a unique Guest Physical Address (i.e. Physical address
+at which region is accessible to Guest VCPUs) and Physical Size (i.e. Size of
 Guest Region). Further a Guest Region can be one of the three forms:
-  * Real Guest Region: A Real Guest Region gives direct access to a Host 
+  * Real Guest Region: A Real Guest Region gives direct access to a Host
     Machine Device/Memory (e.g. RAM, UART, etc). This type of regions directly
-    map guest physical adress to Host Physical Address (i.e. Physical address 
+    map guest physical adress to Host Physical Address (i.e. Physical address
     in Host Machine).
   * Virtual Guest Region: A Virtual Guest Region gives access to an emulated
     device (e.g. emulated PIC, emulated Timer, etc). This type of region is
-    typically linked with an emulated device. The architecture specific code 
+    typically linked with an emulated device. The architecture specific code
     is responsible for redirecting virtual guest region read/write access to
-    the Xvisor device emulation framework. 
+    the Xvisor device emulation framework.
   * Aliased Guest Region: An Aliased Guest Region gives access to another Guest
-    Region at an alternate Guest Physical Address. 
+    Region at an alternate Guest Physical Address.
 
 
 	 	Chapter 5: Hypervisor Scheduler
 
-The hypervisor scheduler of Xvisor is generic and pluggable with respect to the 
+The hypervisor scheduler of Xvisor is generic and pluggable with respect to the
 scheduling strategy (or scheduling algorithm). It updates per-CPU ready queues
 whenever it gets notifications from hypervisor manager about VCPU state change.
-The hypervisor scheduler uses per-CPU hypervisor timer event to allocate time 
-slice for a VCPU. When a scheduler timer event expires for a CPU, the scheduler 
-will find next VCPU using some scheduling strategy (or algorithm) and configure 
+The hypervisor scheduler uses per-CPU hypervisor timer event to allocate time
+slice for a VCPU. When a scheduler timer event expires for a CPU, the scheduler
+will find next VCPU using some scheduling strategy (or algorithm) and configure
 the scheduler timer event for next VCPU.
 
 For Xvisor a Normal VCPU is a black box (i.e. any thing could be running on the
@@ -518,79 +573,109 @@ VCPU) and exception or interrupt is the only way to get back control. Whenever
 we are executing Xvisor code we could be in any one of following contexts:
   1. IRQ Context: When serving an interrupt generated from some external device
      of host machine.
-  2. Normal Context: When emulating some functionality or instruction or IO on 
-     behalf of Normal VCPU in Xvisor.
-  3. Orphan Context: When running some part of Xvisor code as Orphan VCPU or
-     Thread (Note: Threads are described later.)
+  2. Normal Context: When emulating some functionality or instruction or
+     emulating IO on behalf of Normal VCPU in Xvisor.
+  3. Orphan Context: When running some part of Xvisor as Orphan VCPU
+     or Thread (Note: Hypervisor threads are described later.)
 
-The scheduler keeps track of the current execution context with the help from 
-architecture specific exception or interrupt handlers. 
+Unlike other hypervisors, Xvisor has a special context called Normal context.
+The hypervisor is in Normal context only when it is doing something on behalf
+of a Normal VCPU such as handling exceptions, emulating IO, etc. The Normal
+context is non-sleepable which means a Normal VCPU cannot be scheduled-out
+while it is in Normal context. In fact, a Normal VCPU is only scheduled-out
+when Xvisor is exiting IRQ Context or Normal Context. This helps Xvisor ensure
+predictable delay in handling exceptions or emulating IO.
+
+The scheduler keeps track of the current execution context with the help from
+architecture specific exception or interrupt handlers.
 
 The expected high-level steps involved in architecture specific VCPU context
-switching (i.e. arch_vcpu_switch()) are as follows:
-  1. Save arch registers (or arch_regs_t) from stack (saved by architecture 
+switching are as follows:
+  1. Save arch registers (or arch_regs_t) from stack (saved by architecture
      specific exception or interrupt handler) to current VCPU arch registers
      (or arch_regs_t).
-  2. Restore arch register (or arch_regs_t) of next VCPU on stack (will be 
+  2. Restore arch register (or arch_regs_t) of next VCPU on stack (will be
      restored when returning from exception or interrupt handler C code).
-  3. Switch context of architecture specific CPU resources such as MMU, 
+  3. Switch context of architecture specific CPU resources such as MMU,
      Floating point subsystem, etc.
 
 The possible scenarios in which a VCPU context switch is invoked by scheduler
 are as follows:
-  1. When time slice alloted to current VCPU expires we invoke VCPU context 
+  1. When time slice alloted to current VCPU expires we invoke VCPU context
      switch. We call this situation as VCPU premption.
-  2. If a Normal VCPU misbehaves (i.e. does invalid register/memory access) 
-     then architecture specific code can detect such situation and halt/pause 
+  2. If a Normal VCPU misbehaves (i.e. does invalid register/memory access)
+     then architecture specific code can detect such situation and halt/pause
      the responsible Normal VCPU using APIs from hypervisor manager.
   3. An Orphan VCPU (or Thread) chooses to voluntarily pause (i.e. sleep).
   4. An Orphan VCPU (or Thread) chooses to voluntarily yield its time slice.
   5. The VCPU state can also be changed from some other VCPU using hypervisor
      manager APIs.
 
-We can choose between different scheduling strategies (or algorithms) from 
-Xvisor menuconfig options. Any scheduling strategy (or algorithm) will get 
+We can choose between different scheduling strategies (or algorithms) from
+Xvisor menuconfig options. Any scheduling strategy (or algorithm) will get
 following scheduling information per-VCPU:
   1. Priority: Priority of the VCPU. Higher the value higher the priority.
   2. Time Slice: Minimum amount of time in nano-seconds that a VCPU must get
      once it is scheduled.
-  3. Prempt Count: Number of locks held by this VCPU. If prempt count of 
-     current VCPU is greater than zero then we cannot prempt.
-  4. Private Pointer: In addition to above scheduling strategy (or alogrithm) 
-     can maintain per-VCPU private information.
+  3. Deadline: Maximum amount of time in nano-seconds within which VCPU must
+     scheduled to run.
+  4. Periodicity: Rate in nano-seconds at which the VCPU becomes ready or
+     at which VCPU gets work.
 
 Currently, scheduling strategies (or algorithms) available are:
-  1. Round-Robin (RR)
-  2. Priority Based Round-Robin (PRR)
-(Note: By default Xvisor uses Priority Based Round-Robin strategy)
+  1. Fixed Priority Round-Robin (PRR)
+  2. Fixed Priority Earliest Deadline First (PEDF)
+(Note: By default Xvisor uses Fixed Priority Round-Robin strategy)
 
 
 	 	Chapter 6: Hypervisor Load Balancer
 
-TBD.
+In addition to scheduling tasks on each host CPU, a scheduler of general
+purpose OS or hypervisor must also load balance number of tasks accross
+multiple host CPUs on SMP host.
+
+Unlike traditional general purpose OSes, the load balancing is not done
+by the hypervisor scheduler of Xvisor. Instead the Xvisor hypervisor
+scheduler keeps separate context for each host CPU and only does the
+job of per-Host-CPU scheduling. The job of balancing VCPUs (Normal or
+Orphan) on multiple host CPUs is done separate entity in Xvisor called
+the hypervisor load balancer.
+
+The hypervisor load balancer is implemented as Orphan VCPU (or thread)
+which runs on fixed host CPUs. It will provide hints to hypervisor
+manager about "hcpu" to be assigned for a given VCPU at VCPU creation
+time. It will also get invoked periodically at interval of few seconds
+to balance the VCPUs accross host CPUs. Further, the load balancing
+strategy of the hypervisor load balancer is runtime pluggable. Currently,
+we have "crude" load balancing strategy which balances VCPUs based on
+host CPU utilization. Users of Xvisor can write their own load balancing
+strategy based on their use-case or based on their host hardware.
+
+To sumarize, the hypervisor load balancer of Xvisor is a pluggable lazy
+worker thread which balances VCPUs accross multiple host CPUs.
 
 
 	 	Chapter 7: Hypervisor Threads
 
-The threading framework for managing background threads in Xvisor is called 
-Hypervisor Threads. Threads in Xvisor are no different from Orphan VCPUs, 
-in-fact each thread is a wrapper over an orphan VCPU. The best example of a
-thread would be our management terminal (mterm).
+The threading framework for managing background threads in Xvisor is called
+Hypervisor Threads. Threads in Xvisor are no different from Orphan VCPUs,
+in-fact each thread is a wrapper over an orphan VCPU. The best example of
+a thread would be our management terminal (mterm).
 
 To create a thread in Xvisor we will require five mandatory things:
   1. Name: The name assigned to this thread.
   2. Function: Thread entry function pointer.
-  3. Data: Void pointer to arbitary data to be passed as argument to thread
-     entry function.
-  4. Priority: Priority of the thread (or underlying Orphan VCPU). Higher the 
-     value higher the priority.
-  5. Time Slice: Minimum amount of time in nano-seconds that a thread (or 
-     underlying Orphan VCPU) must get once it is scheduled.
+  3. Data: Void pointer to arbitary data to be passed as argument
+     to thread entry function.
+  4. Priority: Priority of the thread (or underlying Orphan VCPU).
+     Higher the value higher the priority.
+  5. Time Slice: Minimum amount of time in nano-seconds that a
+     thread (or underlying Orphan VCPU) must get once it is scheduled.
 
-We don't need to explicitly create stack for each thread. The hyprevisor 
-threads framework automatically creates fixed sized stack for each thread when
-they are created. The stack size for all threads can be changed at compile time
-using Xvisor menuconfig options.
+We don't need to explicitly create stack for each thread because hypervisor
+manager will automatically creates fixed sized stack for each Orphan VCPU
+(i.e. thread) at VCPU creation time. The default stack size for all threads
+can be changed at compile time using Xvisor menuconfig options.
 
 The thread ID, Priority, and Time Slice will be same as ID, Priority, and
 Time Slice of the underlying Orphan VCPU.
@@ -599,54 +684,331 @@ A thread can be in one of the following states at any point of time:
   * CREATED: The thread is freshly created one and it is not running yet.
   * RUNNING: The thread is running.
   * SLEEPING: The thread is sleeping in a waitqueue.
-  * STOPPED: The thread has stopped. Either it was forcefully stopped or it is
-    done with its task.
-(Note: Orphan VCPU states can be directly mapped to one of the thread states, 
+  * STOPPED: The thread has stopped. Either it was forcefully stopped
+    or it is done with its task.
+(Note: Orphan VCPU states can be directly mapped to one of the thread states,
 hence to get current thread state we look at state of underlying Orphan VCPU.)
 
 For inter-thread synchronization we have following synchronization primitives:
-  1. Spinlocks: Typically used for smaller critical sections, and for 
+  1. Spinlocks: Typically used for smaller critical sections, and for
      syncronization between IRQ context, Normal context and Orphan context.
-  2. Completion: Typcially used when a thread (or Orphan VCPU) wants to wait 
+  2. Completion: Typcially used when a thread (or Orphan VCPU) wants to wait
      for an event (for e.g. interrupt from host device) to occur.
-  3. Semaphore: Traditional semaphore lock which allows thread (or Orphan VCPU) 
-     to sleep when lock (or resource) not available. 
-  4. Mutex: Traditional mutex lock which allows thread (or Orphan VCPU) to 
+  3. Semaphore: Traditional semaphore lock which allows thread (or Orphan VCPU)
+     to sleep when lock (or resource) not available.
+  4. Mutex: Traditional mutex lock which allows thread (or Orphan VCPU) to
      sleep when lock not available.
 
-From the above Completion, Semaphore, and Mutex use Xvisor waitqueues for 
-sleeping. Only a thread (or Orphan VCPU) can sleep in a waitqueue because we
-cannot sleep in IRQ and Normal context. Due to this sleepable operations on 
-Completion, Semaphore, and Mutex should only be done in Orphan context.
+From the above Completion, Semaphore, and Mutex use Xvisor waitqueues for
+sleeping. Only a thread (or Orphan VCPU) can sleep in a waitqueue because
+we cannot sleep in IRQ and Normal context. Due to this sleepable operations
+on Completion, Semaphore, and Mutex should only be done in Orphan context.
 
 
 		Chapter 8: Device Driver Framework
 
-TBD. Also explain Character Device Framework as an example.
+The Xvisor device driver framework is very similar to Linux kernel device
+driver model in-terms of abstarctions and available APIs. This similarity
+with Linux device driver model helps Xvisor provide Linux compatiblity
+headers for device driver porting. We also have Linux-like device resource
+management APIs which are used by Xvisor to track host resources used by
+various device drivers.
+
+Following are the entities defined by Xvisor device driver framework:
+
+vmm_bus
+Logical representation of a BUS on which multiple devices can reside.
+E.g. platform, usb, spi, i2c, etc.
+
+vmm_class
+Logical representation of a functionality CLASS implemented by a set
+of devices.
+E.g. vmm_chardev, vmm_blockdev, vmm_netport, vmm_netswtich, etc.
+
+vmm_device
+Logical represetnation of a DEVICE which is either resides on a BUS or
+is part of a CLASS but not both. A DEVICE can be a child of some other
+DEVICE and it can also have its own child DEVICEs. If DEVICE X resides
+on BUS and implements functionality of CLASS A and CLASS B then we will
+have pseduo DEVICEs XA and XB which are part of CLASS A and CLASS B with
+parent DEVICE as X.
+
+vmm_driver
+Logical representation of a DEVICE DRIVER for DEVICE residing on a BUS.
+We can only register DEVICE DRIVERS to a BUS but not to a CLASS.
+
+Instances of above defined entities are registered at runtime by various
+Xvisor modules. The default BUS in Xvisor is platform BUS which is a pseudo
+BUS for all DEVICES to be probed via Xvisor device tree. The vmm_chardev
+is a default CLASS that is always available in Xvisor because Standard IO
+subsystem (described later) nad Command Manager (described later) are
+heavily dependent on character devices.
 
 
 		Chapter 9: Device Emulation Framework
 
-TBD.
+The device emululation framework is one of the most crucial components in
+any hypervisor. It helps hypervisor provide a specific virtual HW for guest.
+The Xvisor device emulation framework is designed to be flexible, light-weight
+and fast. The most important entities of Xvisor device emulation framework
+are: vmm_emulator and vmm_emudev. The vmm_emulator is a logical reprensenation
+of a device emulator registered by device emulator module whereas vmm_emudev
+is a logical representation of any emulated/pass-through device.
+
+At time of guest creation the hypervisor manager will create one vmm_emudev
+instance for each virutal and pass-through guest region with help from device
+emulation framework. The framework will try to probe a matching vmm_emulator
+for each newly created vmm_emudev instance and guest creation fails if the
+framework fails to find matching vmm_emulator or if probe function of the
+vmm_emulator returns error.
+
+In addition to above, Xvisor device emulation framework provides special
+support for interrupt controller emulator and GPIO controller emulator by
+providing fixed number of guest irq lines. The total number of guest irq lines
+can be specified at guest creation time via guest device tree. Both interrupt
+controller and GPIO controller emulators will provide callback functions to
+monitor changes in level of certain guest irq lines. The interrupt controller
+emulator will trigger guest VCPU interrupt based on level changes in guest irq
+lines while GPIO controller emulator will perform certain actions based on
+level changes in guest irq lines.
+
+All read/write callbacks of vmm_emulator are called in Normal context hence
+device emulators cannot sleep or use sleepable locks in read/write callbacks
+and if sleeping is absolutly necessary then device emulators will have to use
+background worker threads (or Orphan VCPUs). This "No sleep in context of
+device emulation" helps Xvisor ensure predictable delays in device emulation
+which is very crucial for real-time systems.
 
 
-		Chapter 10: Workqueue Framework
+		Chapter 10: Standard I/O
 
-TBD.
+Any general purpose OS or real-time OS would require a way to print and
+scan ascii text. Xvisor is no exception so we have standard IO subsystem
+in Xvisor which implements various forms of printing and scanning APIs.
+
+The standard I/O subsystem requires the following to achieve its task:
+
+1. defterm functions from architecture specific code
+   The default way of printing and scanning ascii text is to use defterm
+   functions provided by architecture specific code. The architecture
+   specific code will provide init, getc and putc functions for defterm.
+   These defterm functions are mandatory for all architectures but the
+   architecture specific code can choose to provide stub implementations.
+
+2. defterm early print function from architecture specific code
+   The standard I/O subsystem is initialized as part of the bootup process.
+   There is lot of initialization which is done even before standard I/O
+   subsystem is initialized so we have defterm early print function from
+   architecture specific code which will be called if some part of Xvisor
+   tries to print ascii text before standard I/O subsystem is initialized.
+   The architecture independent code includes a weak implementation of
+   defterm early print function so providing this function is totally
+   optional for the architecture specific code. In general, defterm early
+   print function is only debugging purpose and it should be disabled by
+   default on most architectures.
+
+3. character device
+   The standard I/O subsystem can of print/scan characters from any character
+   device instance (i.e. vmm_chardev). It will use defterm functions only if
+   no character device instance is set for standard I/O. One can set character
+   device for standard I/O using various standard I/O commands from management
+   daemons or by calling the change device API of standard I/O subsystem. It
+   is not mandatory to use same character device set for all interactions to
+   standard I/O. In fact, the standard I/O subsystem provides APIs to print or
+   scan characters over a particular character device instance which could be
+   different from the character device instance already set for standard I/O.
+
+In addition to above, the standard I/O subsystem also provides lot of
+debug macros and stacktrace printing APIs. To print stacktrace the
+standard I/O subsystem will again depend on architecture specific code.
 
 
 		Chapter 11: Command Manager
 
-TBD.
+Being a monolithic hypervisor, Xvisor requires command line interface but
+there are several transport mediums for command line interface such as:
+1. over serial port
+2. over VT-100 based graphical console on framebuffer
+3. over network via telnet connection
+4. ----- many more -----
+
+The Xvisor command manager provides transport independent way of mananging
+and executing commands so that we can share Xvisor commands across various
+managment daemons without any changes. Most importantly, it provides APIs
+to execute command string with input-output of commands over a specified
+character device. It also provide APIs to register, unregister and manage
+commands.
+
+There are several types of commands available via command manager such as:
+1. Architecture specific commands
+2. General commands
+3. Virtual I/O related commands
+4. Device driver related commands
+5. Networking commands
+6. Filesystem commands
+7. ----- Many More -----
 
 
-		Chapter 12: Wall-Clock Subsystem
+		Chapter 12: Storage Virtualization
 
-TBD.
+Storage Virtualization in Xvisor is very simple and light-weight. It has two
+curcial entities that is vmm_blockdev and vmm_vdisk.
+
+Block device framework in Xvisor will be the most crucial part of storage
+virtualization in Xvisor. A vmm_blockdev is a logical representation of
+block device instance registered under block class of Xvisor device driver
+framework. Each vmm_blockdev is associated with a request queue represented
+by vmm_request_queue entity. All IO on a vmm_blockdev is asynchronous and
+submitted in-form of vmm_request entity. The partitions of a vmm_blockdev
+will represented as child vmm_blockdev instances which have the same
+vmm_request_queue as the parent vmm_blockdev.
+
+Filesystem is not mandatory for achieving storage virtualization. In fact,
+the filesystem library in Xvisor (called "VFS") is totally optional and only
+used for loading guest images, scripts and logging.
+
+Disk controller emulators in Xvisor create one vmm_vdisk instance for each
+virtual disk of guest instance. A vmm_vdisk is a logical wrapper on-top of
+vmm_blockdev instance and it has to be attached to a vmm_blockdev instance
+at guest creation time or at runtime using Xvisor commands. If vmm_blockdev
+attached to a vmm_vdisk is unregistered at runtime then it will automatically
+detach from vmm_vdisk. All IO request to a vmm_vdisk will fail if it is not
+attached to any vmm_blockdev. Further, the vmm_vdisk block size has to be
+multiple of vmm_blockdev block size.
 
 
-		Chapter 13: Virtual Serial Port Framework
+		Chapter 13: Network Virtualization
 
-TBD.
+Networking virtualization in Xvisor is provided in form of light-weight
+packet switching framework. It primarily provides abstractions to share
+host network interfaces using some packet switching policy. The network
+stack (or netstack or network socket library) is totally optional for
+Xvisor because we don't need full-blown network stack to provide network
+virtualization. Only network based managment daemons require network socket
+APIs and for most of the use cases we can have these daemons disabled.
+
+Overall, the Xvisor networking support consist of four crucial components:
+
+1. Network switching framework
+   (Located under: <xvisor_source>/core/net)
+
+   The main idea behind Xvisor networking is to have a fast packet
+   switching framework. The networking core implements vmm_mbuf,
+   vmm_netswitch and vmm_netport.
+
+   The vmm_mbuf is a BSD-like representation of a packet. Its a very
+   generic packet representation and in-fact we can represent Linux
+   sk_buff in-terms of Xvisor vmm_mbuf.
+
+   A vmm_netswitch is an emulated network switch which can have multiple
+   vmm_netports connected to it. The vmm_netswitch can have different
+   policies such as: hub, bridge, router, VLAN switch, etc. Currently,
+   we have MAC-level bridge policy and HUB/Repeater policy available.
+   One can create a vmm_netswitch with given policy at Xvisor boot time
+   or using commands from managment terminal.
+
+   A vmm_netport is a logical connection between vmm_netswitch and
+   driver or emulator or netstack. A vmm_netport not connected to any
+   vmm_netswitch will drop packets.
+
+2. Network device drivers
+   (Located under: <xvisor_source>/drivers/net)
+
+   The host network device drivers will create vmm_netport and connect
+   it to a vmm_netswitch. The MAC address of the vmm_netport in this
+   case will be same as actual MAC address of host network device. The
+   Linux compatible APIs for porting network device drivers will provide:
+   "struct net_device" using vmm_netport and
+   "struct sk_buff" using vmm_mbuf.
+
+   We never assigne any IP address to vmm_netports of host network
+   devices. These vmm_netports run in promiscuous mode accepting
+   packets with any destination IP address. The vmm_netswitch will
+   decide which vmm_netports to forward the packets based on its
+   switching policy.
+
+3. Network device emulators
+   (Located under: <xvisor_source>/emulators/net)
+
+   The network device emulators also create vmm_netport and connect
+   it to a vmm_netswitch. All packets received on this vmm_netport
+   are received by guest OS and all packets transmitted by guest OS
+   are transmitted via this vmm_netport. The MAC address of the
+   vmm_netport is specified at guest creation time or generated
+   using random numbers. The IP address for vmm_netport is assigned
+   in the Guest OS and Xvisor is not aware of it.
+
+4. Optional network stack (or netstack or network socket library)
+   (Located under: <xvisor_source>/libs/netstack)
+
+   As mentioned above, the network stack (or netstack or network
+   socket library) is totally optional and we can integrate any GPLv2
+   compatible network stack in Xvisor provided it implements APIs
+   defined in libs/include/libs/netstack.h.
+
+   Typically, the network stack will be implemented using one-or-more
+   pseudo vmm_netports connected to a vmm_netswitch. The MAC address
+   of pseudo vmm_netports can be specified at Xvisor boot time or
+   generated using random numbers. Currently, we have choosen lwIP as
+   our optional networt stack and in-future we might do something else
+   but the libs/netstack.h APIs will remain the same.
+
+   When network stack is enabled in Xvisor, it will also need an
+   IP address and other network settings for each of its vmm_netports
+   so for this we have "net" command. We can also "ping" IP addresses
+   assigned to vmm_netports of network stack from outside or Guest OS.
 
 
+		Chapter 14: Virtualized I/O Frameworks
+
+Apart from Storage and Network virtualization, there are many type of
+I/O which require virtualization for better sharing the host hardware
+such as:
+1. Serial Port
+2. Input devices (e.g. Keyboard, Mouse, Multi-touch, Joystick, etc.)
+3. Display devices (e.g. Frame buffer, LED, etc.)
+4. USB devices
+5. CAN Bus
+6. Sensor devices (e.g. GPS, Temprature, Gyrometer, etc.)
+7. ----- Many More -----
+
+We cannot have common virtualization framework for all of the above devices
+so in Xvisor we have specialized virtualization framework based on the type
+of I/O device. These virtualized I/O frameworks act as a bridge between guest
+emulated devices and host devices thereby enabling sharing of host devices
+among multiple guest instances.
+
+Currently, we have following virtualized I/O frameworks:
+
+vmm_vserial
+The virtual serial port subsystem consist of two entities namely vmm_vserial
+and vmm_vserial_receiver. The vmm_vserial is a logical representation of a
+virtual serial port. The guest serial port emulators create one vmm_vserial
+instance for each guest serial port. All characters send to a vmm_vserial
+instance are received by corresponding guest and all characters received
+from guest are received by the vmm_vserial instances. Serial port capturing
+daemons will register vmm_vserial_receiver instance to a vmm_vserial instance
+for receiving characters from vmm_vserial instance. These daemons can send
+characters to vmm_serial instance using send APIs.
+
+vmm_vinput
+The virtual input subsystem consist of two entities namely vmm_vkeyboard
+and vmm_vmouse. The guest keyboard emulators will create one vmm_vkeyboard
+instance for each guest keyboard whereas guest mouse emulators will create
+one vmm_vmouse instance for each guest mouse. Display daemons can inject
+key press events and mouse movement events to vmm_vkeyboard instance and
+vmm_vmouse instance respectively. All events received by vmm_vkeyboard
+instance and vmm_vmouse instance are injected to guest as virtual key
+press events and virtual mouse movement events.
+
+vmm_vdisplay
+The virtual display subsystem has two important entites namely
+vmm_vdisplay and vmm_surface. GUI rendering daemons (such as, VNC daemon
+or VScreen daemon or ...) create vmm_surface instance and add/bind it to
+a vmm_vdisplay instance. More than one GUI rendering daemons can add their
+vmm_surface instances to a single vmm_vdisplay instance. The GUI rendering
+daemons will also update APIs of vmm_vdisplay to periodically update/sync
+vmm_surface instances with the vmm_vdisplay instance. Display emulators
+create vmm_vdisplay instance to emulate a virtual display. These display
+emulators will also use surface related APIs of vmm_vdisplay to give hints
+to vmm_surface instances about changes in virtual display.
