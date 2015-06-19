@@ -46,10 +46,12 @@
 #define GPTCNT				(0x24)
 
 #define GPTCR_SWRST			(1 << 15)
+#define GPTCR_CLK_MASK			(7 << 6)
 #define GPTCR_CLK_32K			(4 << 6)
 #define GPTCR_EN			(1 << 0)
 
 #define GPTPR_PRESC_MASK		(0xFFF)
+
 #define GPTIR_ROV			(1 << 5)
 #define GPTIR_IF2			(1 << 4)
 #define GPTIR_IF1			(1 << 3)
@@ -75,7 +77,7 @@ static u64 gpt_clksrc_read(struct vmm_clocksource *cs)
 {
 	struct gpt_clocksource *gcs = cs->priv;
 
-	return vmm_readl((u32 *)(gcs->base + GPTCNT));
+	return vmm_readl((u32 *) (gcs->base + GPTCNT));
 }
 
 static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
@@ -83,6 +85,7 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 clock;
 	struct gpt_clocksource *gcs;
+	u32 status;
 
 	/* Read clock frequency from node */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -98,9 +101,34 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	/* Map timer registers */
-	rc = vmm_devtree_regmap(node, &gcs->base, 0);
+	rc = vmm_devtree_request_regmap(node, &gcs->base, 0, "Freescale GPT");
 	if (rc) {
 		goto regmap_fail;
+	}
+
+	/*
+	 * Disable all interrupts
+	 */
+	vmm_writel(0, (u32 *) (gcs->base + GPTIR));
+
+	/*
+	 * Enable the timer.
+	 * We also need to make sure a valid clocksource is selected.
+	 */
+	status = vmm_readl((u32 *) (gcs->base + GPTCR));
+
+	/*
+	 * If no clocksource is selected then we select the default
+	 * 32KHz clock
+	 */
+	if (!(status & GPTCR_CLK_MASK)) {
+		/*
+		 * We need to disable the timer to change the clocksource
+		 */
+		vmm_writel(status & ~GPTCR_EN, (u32 *) (gcs->base + GPTCR));
+
+		clock = 32768;
+		status |= GPTCR_CLK_32K;
 	}
 
 	/* Setup clocksource */
@@ -112,9 +140,11 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 				   &gcs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
 	gcs->clksrc.priv = gcs;
-	vmm_writel(0, (u32 *)(gcs->base + GPTIR));
-	vmm_writel(vmm_readl((u32 *)(gcs->base + GPTCR)) | GPTCR_EN,
-		   (u32 *)(gcs->base + GPTCR));
+
+	/*
+	 * Enable the timer.
+	 */
+	vmm_writel(status | GPTCR_EN, (u32 *) (gcs->base + GPTCR));
 
 	/* Register clocksource */
 	rc = vmm_clocksource_register(&gcs->clksrc);
@@ -131,6 +161,6 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
  fail:
 	return rc;
 }
+
 VMM_CLOCKSOURCE_INIT_DECLARE(gptclksrc,
-			     "fsl,imx6q-gpt",
-			     gpt_clocksource_init);
+			     "freescale,gpt-timer", gpt_clocksource_init);
