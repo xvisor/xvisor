@@ -46,13 +46,40 @@
 			interrupts = <27>;
 		};
 
-		gpt {
+		gpt1 {
 			device_type = "timer";
 			compatible = "freescale,gpt-timer";
 			reg = <0x53f90000 0x4000>;
 			clock-frequency = <1000000>;
 			timer_num = <2>;
+			interrupts = <54>;
+		};
+
+		gpt2 {
+			device_type = "timer";
+			compatible = "freescale,gpt-timer";
+			reg = <0x53f8c000 0x4000>;
+			clock-frequency = <1000000>;
+			timer_num = <3>;
+			interrupts = <53>;
+		};
+
+		gpt3 {
+			device_type = "timer";
+			compatible = "freescale,gpt-timer";
+			reg = <0x53f88000 0x4000>;
+			clock-frequency = <1000000>;
+			timer_num = <4>;
 			interrupts = <29>;
+		};
+
+		gpt4 {
+			device_type = "timer";
+			compatible = "freescale,gpt-timer";
+			reg = <0x53f84000 0x4000>;
+			clock-frequency = <1000000>;
+			timer_num = <5>;
+			interrupts = <1>;
 		};
 
 		avic {
@@ -80,6 +107,13 @@
 			reg = <0x5000c000 0x4000>;
 			clock-frequency = <3000000>;
 			interrupts = <18>;
+		};
+
+		SERIAL4: uart4 {
+			compatible = "freescale,imx-uart";
+			reg = <0x50008000 0x4000>;
+			clock-frequency = <3000000>;
+			interrupts = <5>;
 		};
 	};
 };
