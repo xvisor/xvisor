@@ -120,6 +120,8 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 	/*
 	 * If no clocksource is selected then we select the default
 	 * 32KHz clock
+	 * If a clock source is selected, we assume the value in the 
+	 * device tree is he correct one.
 	 */
 	if (!(status & GPTCR_CLK_MASK)) {
 		/*
@@ -129,6 +131,14 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 
 		clock = 32768;
 		status |= GPTCR_CLK_32K;
+
+		/*
+		 * Change the value of frequency in the device tree in order
+		 * to match the value we are going to set.
+		 */
+		vmm_devtree_setattr(node, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME,
+				    &clock, VMM_DEVTREE_ATTRTYPE_UINT32,
+				    sizeof(clock), FALSE);
 	}
 
 	/* Setup clocksource */
