@@ -60,6 +60,7 @@
 #define EPITCR_OCIEN			(1 << 2)
 #define EPITCR_RLD			(1 << 3)
 #define EPITCR_PRESC(x)			(((x) & 0xfff) << 4)
+#define EPITCR_PRESC_MASK		(0xfff << 4)
 #define EPITCR_SWR			(1 << 16)
 #define EPITCR_IOVW			(1 << 17)
 #define EPITCR_DBGEN			(1 << 18)
@@ -72,8 +73,9 @@
 #define EPITCR_OM_SET			(3 << 22)
 #define EPITCR_CLKSRC_OFF		(0 << 24)
 #define EPITCR_CLKSRC_PERIPHERAL	(1 << 24)
-#define EPITCR_CLKSRC_REF_HIGH		(1 << 24)
+#define EPITCR_CLKSRC_REF_HIGH		(2 << 24)
 #define EPITCR_CLKSRC_REF_LOW		(3 << 24)
+#define EPITCR_CLKSRC_REF_MASK		EPITCR_CLKSRC_REF_LOW
 
 #define EPITSR_OCIF			(1 << 0)
 
@@ -122,6 +124,7 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 clock;
 	struct epit_clocksource *ecs;
+	u32 status;
 
 	/* Read clock frequency from node */
 	rc = vmm_devtree_clock_frequency(node, &clock);
@@ -137,10 +140,44 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 	}
 
 	/* Map timer registers */
-	rc = vmm_devtree_request_regmap(node, &ecs->base, 0,
-					"Freescale EPIT");
+	rc = vmm_devtree_request_regmap(node, &ecs->base, 0, "Freescale EPIT");
 	if (rc) {
 		goto regmap_fail;
+	}
+
+	/*
+	 * Read the status register
+	 */
+	status = vmm_readl((u32 *) (ecs->base + EPITCR));
+
+	/*
+	 * Disable the timer and the interrupts
+	 */
+	status &= ~(EPITCR_OCIEN & EPITCR_EN);
+	vmm_writel(status, (u32 *) (ecs->base + EPITCR));
+
+	/*
+	 * If no clocksource is selected then we select the default
+	 * 32KHz clock
+	 * If a clock source is selected, we assume the value in the 
+	 * device tree is he correct one.
+	 */
+	if (!(status & EPITCR_CLKSRC_REF_MASK)) {
+		/*
+		 * Change clock to 32KHz
+		 */
+		clock = 32768;
+		status |= EPITCR_CLKSRC_REF_LOW;
+		status &= ~EPITCR_PRESC_MASK;
+		status |= EPITCR_PRESC(0);
+
+		/*
+		 * Change the value of frequency in the device tree in order
+		 * to match the value we are going to set.
+		 */
+		vmm_devtree_setattr(node, VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME,
+				    &clock, VMM_DEVTREE_ATTRTYPE_UINT32,
+				    sizeof(clock), FALSE);
 	}
 
 	/* Setup clocksource */
@@ -152,6 +189,17 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 				   &ecs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
 	ecs->clksrc.priv = ecs;
+
+	/*
+	 * Initialize the load register to the max value to decrement.
+	 */
+	vmm_writel(0xffffffff, (void *)(ecs->base + EPITLR));
+
+	/*
+	 * Enable the timer and allow it to work in WAIT mode.
+	 */
+	status |= EPITCR_EN | EPITCR_WAITEN;
+	vmm_writel(status, (u32 *) (ecs->base + EPITCR));
 
 	/* Register clocksource */
 	rc = vmm_clocksource_register(&ecs->clksrc);
@@ -168,9 +216,9 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
  fail:
 	return rc;
 }
+
 VMM_CLOCKSOURCE_INIT_DECLARE(fepitclksrc,
-			     "freescale,epit-timer",
-			     epit_clocksource_init);
+			     "freescale,epit-timer", epit_clocksource_init);
 
 struct epit_clockchip {
 	u32 match_mask;
@@ -329,6 +377,12 @@ static int __cpuinit epit_clockchip_init(struct vmm_devtree_node *node)
 		goto regmap_fail;
 	}
 
+	/*
+	 * The clock source and the prescaler have been verified in the
+	 * clocksource init function (the clocksourse is always initialized
+	 * before the clockchip).
+	 */
+
 	ecc->match_mask = 1 << timer_num;
 	ecc->timer_num = timer_num;
 
@@ -348,21 +402,6 @@ static int __cpuinit epit_clockchip_init(struct vmm_devtree_node *node)
 	ecc->clkchip.set_mode = epit_set_mode;
 	ecc->clkchip.set_next_event = epit_set_next_event;
 	ecc->clkchip.priv = ecc;
-
-	/*
-	 * Initialise to a known state (all timers off, and timing reset)
-	 */
-	vmm_writel(0x0, (void *)(ecc->base + EPITCR));
-	/*
-	 * Initialize the load register to the max value to decrement.
-	 */
-	vmm_writel(0xffffffff, (void *)(ecc->base + EPITLR));
-	/*
-	 * enable the timer, set it to the high reference clock,
-	 * allow the timer to work in WAIT mode.
-	 */
-	vmm_writel(EPITCR_EN | EPITCR_CLKSRC_REF_HIGH | EPITCR_WAITEN,
-		   (void *)(ecc->base + EPITCR));
 
 	/* Register interrupt handler */
 	rc = vmm_host_irq_register(hirq, ecc->clkchip.name,
@@ -388,7 +427,6 @@ static int __cpuinit epit_clockchip_init(struct vmm_devtree_node *node)
  fail:
 	return rc;
 }
-VMM_CLOCKCHIP_INIT_DECLARE(fepitclkchip,
-			   "freescale,epit-timer",
-			   epit_clockchip_init);
 
+VMM_CLOCKCHIP_INIT_DECLARE(fepitclkchip,
+			   "freescale,epit-timer", epit_clockchip_init);
