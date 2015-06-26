@@ -185,15 +185,17 @@ compile_cpp = $(V)mkdir -p `dirname $(1)`; \
 	     $(cpp) $(cppflags) $(2) | grep -v "\#" > $(1)
 compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
-	     echo -n `dirname $(1)`/ > $(1); \
-	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
+	     echo -n `dirname $(1)`/ > $(1) && \
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2))   \
+	       -MM $(2) >> $(1) || rm -f $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
 	     $(cc) $(cflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
-	     echo -n `dirname $(1)`/ > $(1); \
-	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2)) -MM $(2) >> $(1)
+	     echo -n `dirname $(1)`/ > $(1) && \
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2))  \
+	       -MM $(2) >> $(1) || rm -f $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
 	     $(as) $(asflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
