@@ -65,7 +65,7 @@ endif
 export PROJECT_NAME = Xvisor (eXtensible Versatile hypervISOR)
 export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
 export CONFIG_DIR=$(build_dir)/tmpconf
-export CONFIG_FILE=$(build_dir)/.config
+export CONFIG_FILE=$(CONFIG_DIR)/.config
 
 # Openconf settings
 export OPENCONF_PROJECT = $(PROJECT_NAME)
@@ -399,14 +399,20 @@ all-deps-2 = $(if $(findstring clean,$(MAKECMDGOALS)),,$(all-deps-1))
 .PHONY: clean
 clean:
 ifeq ($(build_dir),$(CURDIR)/build)
-	$(if $(V), @echo " (rm)        $(build_dir)")
-	$(V)rm -rf $(build_dir)
+	$(if $(V), @echo " (clean)     $(build_dir)")
+	$(V)find $(build_dir) -type d ! -name '$(shell basename $(CONFIG_DIR))' -a \
+	! -name '$(shell basename $(build_dir))' -exec rm -rf {} +
+	$(V)find $(build_dir) -maxdepth 1 -type f -exec rm -rf {} +
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/dtc clean
 
 # Rule for "make distclean"
 .PHONY: distclean
 distclean:
+ifeq ($(build_dir),$(CURDIR)/build)
+	$(if $(V), @echo " (rm)       $(build_dir)")
+	$(V)rm -rf $(build_dir)
+endif
 	$(V)$(MAKE) -C $(src_dir)/tools/openconf clean
 
 # Include config file rules
