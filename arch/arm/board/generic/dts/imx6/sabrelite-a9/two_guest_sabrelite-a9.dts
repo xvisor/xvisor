@@ -27,7 +27,7 @@
 			/* "fb logo fb0", */
 
 			/* Mount SD device */
-			"vfs mount mmc0p0 / 500",
+			"vfs mount mmc0p0 / 2",
 
 			/* Load guest0 device tree from file */
 			"vfs fdt_load /guests guest0 /images/arm32/sabrelite-a9.dtb mem0,physical_size,physsize,0x06000000",
