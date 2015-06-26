@@ -32,6 +32,7 @@
 #include <libs/mathlib.h>
 
 #include <imx-common.h>
+#include <imx6qdl-clock.h>
 
 #define do_readw(X)			readw((virtual_addr_t *)(X))
 #define do_readl(X)			readl((virtual_addr_t *)(X))
@@ -73,7 +74,7 @@ static int cmd_uart_info(struct vmm_chardev *cdev, unsigned int port)
 		return VMM_ENODEV;
 	}
 
-	clk = imx_clk_get(uart_serial);
+	clk = imx_clk_get(IMX6QDL_CLK_UART_SERIAL);
 	freq = __clk_get_rate(clk);
 	vmm_printf("%s is set to %d MHz\n", __clk_get_name(clk),
 		   udiv32(freq, 1000000));
