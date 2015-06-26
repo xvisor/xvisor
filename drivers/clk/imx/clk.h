@@ -57,7 +57,8 @@ struct clk *imx_clk_pllv3(enum imx_pllv3_type type, const char *name,
 struct clk *clk_register_gate2(struct device *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		void __iomem *reg, u8 bit_idx,
-		u8 clk_gate_flags, spinlock_t *lock);
+		u8 clk_gate_flags, spinlock_t *lock,
+		unsigned int *share_count);
 
 struct clk * imx_obtain_fixed_clock(
 			const char *name, unsigned long rate);
@@ -66,7 +67,15 @@ static inline struct clk *imx_clk_gate2(const char *name, const char *parent,
 		void __iomem *reg, u8 shift)
 {
 	return clk_register_gate2(NULL, name, parent, CLK_SET_RATE_PARENT, reg,
-			shift, 0, &imx_ccm_lock);
+			shift, 0, &imx_ccm_lock, NULL);
+}
+
+static inline struct clk *imx_clk_gate2_shared(const char *name,
+		const char *parent, void __iomem *reg, u8 shift,
+		unsigned int *share_count)
+{
+	return clk_register_gate2(NULL, name, parent, CLK_SET_RATE_PARENT, reg,
+			shift, 0, &imx_ccm_lock, share_count);
 }
 
 struct clk *imx_clk_pfd(const char *name, const char *parent_name,
