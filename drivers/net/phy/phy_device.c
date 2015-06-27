@@ -1072,7 +1072,10 @@ int phy_driver_register(struct phy_driver *new_driver)
 {
 	int retval;
 
-	//new_driver->driver.name = new_driver->name;
+	if (!strlen(new_driver->driver.name)) {
+		strncpy(new_driver->driver.name, new_driver->name,
+			sizeof (new_driver->driver.name));
+	}
 	new_driver->driver.bus = &mdio_bus_type;
 	new_driver->driver.probe = phy_probe;
 	new_driver->driver.remove = phy_remove;
