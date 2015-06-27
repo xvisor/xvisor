@@ -276,7 +276,11 @@ int vmm_workqueue_schedule_delayed_work(struct vmm_workqueue *wq,
 					struct vmm_delayed_work *work,
 					u64 nsecs)
 {
-	if (!wq || !work) {
+	if (!wq) {
+		wq = wqctrl.syswq[vmm_smp_processor_id()];
+	}
+
+	if (!work) {
 		return VMM_EFAIL;
 	}
 
