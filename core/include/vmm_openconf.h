@@ -18,11 +18,20 @@
  *
  * @file vmm_openconf.h
  * @author Anup Patel (anup@brainfault.org)
+ * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
  * @brief Useful preprocessor macros & defines for openconf
+ *
+ * This file is adapted from Linux kernel version 3.18 header:
+ * include/linux/kconfig.h
  */
 
 #ifndef __VMM_OPENCONF_H__
 #define __VMM_OPENCONF_H__
+
+/*
+ * Helper macros to use CONFIG_ options in C/CPP expressions. Note that
+ * these only work with boolean and tristate options.
+ */
 
 /*
  * Getting something that works in C and CPP for an arg that may or may
@@ -45,5 +54,18 @@
  */
 #define IS_ENABLED(option) \
 	(config_enabled(option) || config_enabled(option##_MODULE))
+
+/*
+ * IS_BUILTIN(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'y', 0
+ * otherwise. For boolean options, this is equivalent to
+ * IS_ENABLED(CONFIG_FOO).
+ */
+#define IS_BUILTIN(option) config_enabled(option)
+
+/*
+ * IS_MODULE(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'm', 0
+ * otherwise.
+ */
+#define IS_MODULE(option) config_enabled(option##_MODULE)
 
 #endif /* __VMM_OPENCONF_H__ */
