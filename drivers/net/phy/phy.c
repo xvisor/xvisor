@@ -940,7 +940,7 @@ static inline void mmd_phy_indirect(struct mii_bus *bus, int prtad, int devad,
 
 /**
  * phy_read_mmd_indirect - reads data from the MMD registers
- * @bus: the target MII bus
+ * @phydev: the PHY device
  * @prtad: MMD Address
  * @devad: MMD DEVAD
  * @addr: PHY address on the MII bus
@@ -953,22 +953,27 @@ static inline void mmd_phy_indirect(struct mii_bus *bus, int prtad, int devad,
  * 3) Write reg 13 // MMD Data Command for MMD DEVAD
  * 3) Read  reg 14 // Read MMD data
  */
-static int phy_read_mmd_indirect(struct mii_bus *bus, int prtad, int devad,
+static int phy_read_mmd_indirect(struct phy_device *phydev, int prtad, int devad,
 				 int addr)
 {
+	struct phy_driver *phydrv = phydev->drv;
 	u32 ret;
 
-	mmd_phy_indirect(bus, prtad, devad, addr);
+	if (phydrv->read_mmd_indirect == NULL) {
+		mmd_phy_indirect(phydev->bus, prtad, devad, addr);
 
-	/* Read the content of the MMD's selected register */
-	ret = bus->read(bus, addr, MII_MMD_DATA);
+		/* Read the content of the MMD's selected register */
+		ret = phydev->bus->read(phydev->bus, addr, MII_MMD_DATA);
+	} else {
+		ret = phydrv->read_mmd_indirect(phydev, prtad, devad, addr);
+	}
 
 	return ret;
 }
 
 /**
  * phy_write_mmd_indirect - writes data to the MMD registers
- * @bus: the target MII bus
+ * @phydev: the PHY device
  * @prtad: MMD Address
  * @devad: MMD DEVAD
  * @addr: PHY address on the MII bus
@@ -982,13 +987,19 @@ static int phy_read_mmd_indirect(struct mii_bus *bus, int prtad, int devad,
  * 3) Write reg 13 // MMD Data Command for MMD DEVAD
  * 3) Write reg 14 // Write MMD data
  */
-static void phy_write_mmd_indirect(struct mii_bus *bus, int prtad, int devad,
+static void phy_write_mmd_indirect(struct phy_device *phydev, int prtad, int devad,
 				   int addr, u32 data)
 {
-	mmd_phy_indirect(bus, prtad, devad, addr);
+	struct phy_driver *phydrv = phydev->drv;
 
-	/* Write the data into MMD's selected register */
-	bus->write(bus, addr, MII_MMD_DATA, data);
+	if (phydrv->write_mmd_indirect == NULL) {
+		mmd_phy_indirect(phydev->bus, prtad, devad, addr);
+
+		/* Write the data into MMD's selected register */
+		phydev->bus->write(phydev->bus, addr, MII_MMD_DATA, data);
+	} else {
+		phydrv->write_mmd_indirect(phydev, prtad, devad, addr, data);
+	}
 }
 
 /**
@@ -1023,7 +1034,7 @@ int phy_init_eee(struct phy_device *phydev, bool clk_stop_enable)
 			return status;
 
 		/* First check if the EEE ability is supported */
-		eee_cap = phy_read_mmd_indirect(phydev->bus, MDIO_PCS_EEE_ABLE,
+		eee_cap = phy_read_mmd_indirect(phydev, MDIO_PCS_EEE_ABLE,
 						MDIO_MMD_PCS, phydev->addr);
 		if (eee_cap < 0)
 			return eee_cap;
@@ -1035,12 +1046,12 @@ int phy_init_eee(struct phy_device *phydev, bool clk_stop_enable)
 		/* Check which link settings negotiated and verify it in
 		 * the EEE advertising registers.
 		 */
-		eee_lp = phy_read_mmd_indirect(phydev->bus, MDIO_AN_EEE_LPABLE,
+		eee_lp = phy_read_mmd_indirect(phydev, MDIO_AN_EEE_LPABLE,
 					       MDIO_MMD_AN, phydev->addr);
 		if (eee_lp < 0)
 			return eee_lp;
 
-		eee_adv = phy_read_mmd_indirect(phydev->bus, MDIO_AN_EEE_ADV,
+		eee_adv = phy_read_mmd_indirect(phydev, MDIO_AN_EEE_ADV,
 						MDIO_MMD_AN, phydev->addr);
 		if (eee_adv < 0)
 			return eee_adv;
@@ -1055,14 +1066,14 @@ int phy_init_eee(struct phy_device *phydev, bool clk_stop_enable)
 			/* Configure the PHY to stop receiving xMII
 			 * clock while it is signaling LPI.
 			 */
-			int val = phy_read_mmd_indirect(phydev->bus, MDIO_CTRL1,
+			int val = phy_read_mmd_indirect(phydev, MDIO_CTRL1,
 							MDIO_MMD_PCS,
 							phydev->addr);
 			if (val < 0)
 				return val;
 
 			val |= MDIO_PCS_CTRL1_CLKSTOP_EN;
-			phy_write_mmd_indirect(phydev->bus, MDIO_CTRL1,
+			phy_write_mmd_indirect(phydev, MDIO_CTRL1,
 					       MDIO_MMD_PCS, phydev->addr, val);
 		}
 
@@ -1083,7 +1094,7 @@ EXPORT_SYMBOL(phy_init_eee);
  */
 int phy_get_eee_err(struct phy_device *phydev)
 {
-	return phy_read_mmd_indirect(phydev->bus, MDIO_PCS_EEE_WK_ERR,
+	return phy_read_mmd_indirect(phydev, MDIO_PCS_EEE_WK_ERR,
 				     MDIO_MMD_PCS, phydev->addr);
 
 }
@@ -1103,21 +1114,21 @@ int phy_ethtool_get_eee(struct phy_device *phydev, struct ethtool_eee *data)
 	int val;
 
 	/* Get Supported EEE */
-	val = phy_read_mmd_indirect(phydev->bus, MDIO_PCS_EEE_ABLE,
+	val = phy_read_mmd_indirect(phydev, MDIO_PCS_EEE_ABLE,
 				    MDIO_MMD_PCS, phydev->addr);
 	if (val < 0)
 		return val;
 	data->supported = mmd_eee_cap_to_ethtool_sup_t(val);
 
 	/* Get advertisement EEE */
-	val = phy_read_mmd_indirect(phydev->bus, MDIO_AN_EEE_ADV,
+	val = phy_read_mmd_indirect(phydev, MDIO_AN_EEE_ADV,
 				    MDIO_MMD_AN, phydev->addr);
 	if (val < 0)
 		return val;
 	data->advertised = mmd_eee_adv_to_ethtool_adv_t(val);
 
 	/* Get LP advertisement EEE */
-	val = phy_read_mmd_indirect(phydev->bus, MDIO_AN_EEE_LPABLE,
+	val = phy_read_mmd_indirect(phydev, MDIO_AN_EEE_LPABLE,
 				    MDIO_MMD_AN, phydev->addr);
 	if (val < 0)
 		return val;
@@ -1139,7 +1150,7 @@ int phy_ethtool_set_eee(struct phy_device *phydev, struct ethtool_eee *data)
 	int val;
 
 	val = ethtool_adv_to_mmd_eee_adv_t(data->advertised);
-	phy_write_mmd_indirect(phydev->bus, MDIO_AN_EEE_ADV, MDIO_MMD_AN,
+	phy_write_mmd_indirect(phydev, MDIO_AN_EEE_ADV, MDIO_MMD_AN,
 			       phydev->addr, val);
 
 	return 0;
