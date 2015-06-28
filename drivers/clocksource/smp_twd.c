@@ -179,11 +179,11 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 		if (!twd_clk) {
 			twd_clk = of_clk_get(node, 0);
 		}
-		if (VMM_IS_ERR(twd_clk)) {
+		if (VMM_IS_ERR_OR_NULL(twd_clk)) {
 			twd_clk = clk_get_sys("smp_twd", NULL);
 		}
 
-		if (!VMM_IS_ERR(twd_clk)) {
+		if (!VMM_IS_ERR_OR_NULL(twd_clk)) {
 			/* Use TWD clock to find frequency */
 			rc = clk_prepare_enable(twd_clk);
 			if (rc) {

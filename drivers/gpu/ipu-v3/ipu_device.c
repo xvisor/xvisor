@@ -3652,7 +3652,7 @@ int register_ipu_device(struct ipu_soc *ipu, int id)
 		}
 #endif /* 0 */
 		ipu_class = vmm_zalloc(sizeof (struct vmm_class));
-		if (VMM_IS_ERR(ipu_class)) {
+		if (VMM_IS_ERR_OR_NULL(ipu_class)) {
 			ret = VMM_PTR_ERR(ipu_class);
 #if 0
 			goto ipu_class_fail;
@@ -3666,7 +3666,7 @@ int register_ipu_device(struct ipu_soc *ipu, int id)
 #if 0
 		ipu_dev = device_create(ipu_class, NULL, MKDEV(major, 0),
 				NULL, "mxc_ipu");
-		if (VMM_IS_ERR(ipu_dev)) {
+		if (VMM_IS_ERR_OR_NULL(ipu_dev)) {
 			ret = VMM_PTR_ERR(ipu_dev);
 			goto dev_create_fail;
 		}

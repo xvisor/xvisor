@@ -1965,7 +1965,7 @@ static int mxcfb_dispdrv_init(struct vmm_device *dev,
 	dev_info(dev, "register mxc display driver %s\n", disp_dev);
 
 	mxcfbi->dispdrv = mxc_dispdrv_gethandle(disp_dev, &setting);
-	if (VMM_IS_ERR(mxcfbi->dispdrv)) {
+	if (VMM_IS_ERR_OR_NULL(mxcfbi->dispdrv)) {
 		ret = VMM_PTR_ERR(mxcfbi->dispdrv);
 		dev_err(dev, "NO mxc display driver found!\n");
 		return ret;
@@ -2238,7 +2238,7 @@ static int mxcfb_setup_overlay(struct vmm_device *dev, struct fb_info *fbi_bg,
 	mxcfbi_fg = (struct mxcfb_info *)ovfbi->par;
 
 	mxcfbi_fg->ipu = ipu_get_soc(mxcfbi_bg->ipu_id);
-	if (VMM_IS_ERR(mxcfbi_fg->ipu)) {
+	if (VMM_IS_ERR_OR_NULL(mxcfbi_fg->ipu)) {
 		ret = VMM_ENODEV;
 		goto get_ipu_failed;
 	}
@@ -2480,7 +2480,7 @@ static int mxcfb_probe(struct vmm_device *dev,
 	}
 
 	mxcfbi->ipu = ipu_get_soc(mxcfbi->ipu_id);
-	if (VMM_IS_ERR(mxcfbi->ipu)) {
+	if (VMM_IS_ERR_OR_NULL(mxcfbi->ipu)) {
 		ret = VMM_ENODEV;
 		goto get_ipu_failed;
 	}

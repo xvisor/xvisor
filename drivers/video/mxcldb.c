@@ -384,7 +384,7 @@ static int ldb_disp_setup(struct mxc_dispdrv_handle *disp, struct fb_info *fbi)
 	pixel_clk = (PICOS2KHZ(fbi->var.pixclock)) * 1000UL;
 
 	ldb_clk_parent = clk_get_parent(ldb->setting[setting_idx].div_3_5_clk);
-	if (VMM_IS_ERR(ldb_clk_parent)) {
+	if (VMM_IS_ERR_OR_NULL(ldb_clk_parent)) {
 		dev_err(ldb->dev, "get ldb di parent clk fail\n");
 		return VMM_PTR_ERR(ldb_clk_parent);
 	}
@@ -637,7 +637,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 	div_sel_clk[2] = '0' + lvds_channel;
 	ldb->setting[setting_idx].ldb_di_clk = clk_get(ldb->dev,
 			ldb_clk);
-	if (VMM_IS_ERR(ldb->setting[setting_idx].ldb_di_clk)) {
+	if (VMM_IS_ERR_OR_NULL(ldb->setting[setting_idx].ldb_di_clk)) {
 		dev_err(ldb->dev, "get ldb clk failed\n");
 		if (!ldb->inited)
 			iounmap(ldb->reg);
@@ -647,7 +647,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 	di_clk[3] = '1' + setting->dev_id;
 	di_clk[7] = '0' + setting->disp_id;
 	ldb->setting[setting_idx].di_clk = clk_get(ldb->dev, di_clk);
-	if (VMM_IS_ERR(ldb->setting[setting_idx].di_clk)) {
+	if (VMM_IS_ERR_OR_NULL(ldb->setting[setting_idx].di_clk)) {
 		dev_err(ldb->dev, "get di clk0 failed\n");
 		if (!ldb->inited)
 			iounmap(ldb->reg);
@@ -658,7 +658,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 
 	ldb->setting[setting_idx].div_3_5_clk = clk_get(ldb->dev,
 							div_3_5_clk);
-	if (VMM_IS_ERR(ldb->setting[setting_idx].div_3_5_clk)) {
+	if (VMM_IS_ERR_OR_NULL(ldb->setting[setting_idx].div_3_5_clk)) {
 		dev_err(ldb->dev, "get div 3.5 clk failed\n");
 		if (!ldb->inited)
 			iounmap(ldb->reg);
@@ -667,7 +667,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 
 	ldb->setting[setting_idx].div_sel_clk = clk_get(ldb->dev,
 							div_sel_clk);
-	if (VMM_IS_ERR(ldb->setting[setting_idx].div_sel_clk)) {
+	if (VMM_IS_ERR_OR_NULL(ldb->setting[setting_idx].div_sel_clk)) {
 		dev_err(ldb->dev, "get div sel clk failed\n");
 		if (!ldb->inited)
 			iounmap(ldb->reg);

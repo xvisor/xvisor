@@ -182,7 +182,7 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 	}
 
 	bcm_host->clk = clk_get(dev, NULL);
-	if (VMM_IS_ERR(bcm_host->clk)) {
+	if (VMM_IS_ERR_OR_NULL(bcm_host->clk)) {
 		rc = VMM_PTR_ERR(bcm_host->clk);
 		goto free_reg;
 	}

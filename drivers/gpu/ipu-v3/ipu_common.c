@@ -159,7 +159,7 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 			(const char **)ipu_pixel_clk_sel[pdata->id],
 			ARRAY_SIZE(ipu_pixel_clk_sel[pdata->id]),
 			0, pdata->id, 0, 0);
-	if (VMM_IS_ERR(clk)) {
+	if (VMM_IS_ERR_OR_NULL(clk)) {
 		dev_err(ipu->dev, "clk_register mux di0 failed");
 		return VMM_PTR_ERR(clk);
 	}
@@ -168,7 +168,7 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 			(const char **)ipu_pixel_clk_sel[pdata->id],
 			ARRAY_SIZE(ipu_pixel_clk_sel[pdata->id]),
 			0, pdata->id, 1, 0);
-	if (VMM_IS_ERR(clk)) {
+	if (VMM_IS_ERR_OR_NULL(clk)) {
 		dev_err(ipu->dev, "clk_register mux di1 failed");
 		return VMM_PTR_ERR(clk);
 	}
@@ -177,14 +177,14 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 	clk = clk_register_div_pix_clk(ipu->dev, pixel_clk_0_div[pdata->id],
 				       pixel_clk_0_sel[pdata->id], 0,
 				       pdata->id, 0, 0);
-	if (VMM_IS_ERR(clk)) {
+	if (VMM_IS_ERR_OR_NULL(clk)) {
 		dev_err(ipu->dev, "clk register di0 div failed");
 		return VMM_PTR_ERR(clk);
 	}
 	clk = clk_register_div_pix_clk(ipu->dev, pixel_clk_1_div[pdata->id],
 				       pixel_clk_1_sel[pdata->id],
 				       CLK_SET_RATE_PARENT, pdata->id, 1, 0);
-	if (VMM_IS_ERR(clk)) {
+	if (VMM_IS_ERR_OR_NULL(clk)) {
 		dev_err(ipu->dev, "clk register di1 div failed");
 		return VMM_PTR_ERR(clk);
 	}
@@ -194,7 +194,7 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 						      pixel_clk_0_div[pdata->id],
 						      CLK_SET_RATE_PARENT,
 						      pdata->id, 0, 0);
-	if (VMM_IS_ERR(ipu->pixel_clk[0])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->pixel_clk[0])) {
 		dev_err(ipu->dev, "clk register di0 gate failed");
 		return VMM_PTR_ERR(ipu->pixel_clk[0]);
 	}
@@ -204,7 +204,7 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 					  pixel_clk_1_div[pdata->id],
 					  CLK_SET_RATE_PARENT,
 					  pdata->id, 1, 0);
-	if (VMM_IS_ERR(ipu->pixel_clk[1])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->pixel_clk[1])) {
 		dev_err(ipu->dev, "clk register di1 gate failed");
 		return VMM_PTR_ERR(ipu->pixel_clk[1]);
 	}
@@ -222,23 +222,23 @@ static int ipu_clk_setup_enable(struct ipu_soc *ipu,
 	}
 
 	ipu->di_clk[0] = devm_clk_get(ipu->dev, "di0");
-	if (VMM_IS_ERR(ipu->di_clk[0])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->di_clk[0])) {
 		dev_err(ipu->dev, "clk_get di0 failed");
 		return VMM_PTR_ERR(ipu->di_clk[0]);
 	}
 	ipu->di_clk[1] = devm_clk_get(ipu->dev, "di1");
-	if (VMM_IS_ERR(ipu->di_clk[1])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->di_clk[1])) {
 		dev_err(ipu->dev, "clk_get di1 failed");
 		return VMM_PTR_ERR(ipu->di_clk[1]);
 	}
 
 	ipu->di_clk_sel[0] = devm_clk_get(ipu->dev, "di0_sel");
-	if (VMM_IS_ERR(ipu->di_clk_sel[0])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->di_clk_sel[0])) {
 		dev_err(ipu->dev, "clk_get di0_sel failed");
 		return VMM_PTR_ERR(ipu->di_clk_sel[0]);
 	}
 	ipu->di_clk_sel[1] = devm_clk_get(ipu->dev, "di1_sel");
-	if (VMM_IS_ERR(ipu->di_clk_sel[1])) {
+	if (VMM_IS_ERR_OR_NULL(ipu->di_clk_sel[1])) {
 		dev_err(ipu->dev, "clk_get di1_sel failed");
 		return VMM_PTR_ERR(ipu->di_clk_sel[1]);
 	}
@@ -443,9 +443,9 @@ static int ipu_probe(struct vmm_device *dev,
 	dev_dbg(ipu->dev, "IPU VDI Regs = %p\n", ipu->vdi_reg);
 
 	ipu->ipu_clk = devm_clk_get(ipu->dev, "bus");
-	if (VMM_IS_ERR(ipu->ipu_clk)) {
+	if (VMM_IS_ERR_OR_NULL(ipu->ipu_clk)) {
 		dev_err(ipu->dev, "clk_get ipu failed");
-		return PTR_ERR(ipu->ipu_clk);
+		return VMM_PTR_ERR(ipu->ipu_clk);
 	}
 
 	/* ipu_clk is always prepared */
@@ -2518,7 +2518,7 @@ VMM_EXPORT_SYMBOL(ipu_disable_channel);
 int32_t ipu_channel_disable(struct ipu_chan *ipu_chan, bool wait_for_stop)
 {
 	if (ipu_chan)
-		if (!VMM_IS_ERR(ipu_chan))
+		if (!VMM_IS_ERR_OR_NULL(ipu_chan))
 			return ipu_disable_channel(ipu_chan->ipu, ipu_chan->channel, wait_for_stop);
 	return 0;
 }
