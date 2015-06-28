@@ -24,6 +24,7 @@
 board-common-objs-$(CONFIG_IMX_CPU)+= imx/cpu.o
 board-common-objs-$(CONFIG_IMX6Q_CLK)+= imx/gpc.o
 board-common-objs-$(CONFIG_IMX6Q_PM)+= imx/pm-imx6q.o
+board-common-objs-$(CONFIG_IMX6Q_PHY)+= imx/imx6q-phy.o
 board-common-objs-$(CONFIG_IMX6_CMD)+= imx/cmd_imx6.o
 board-common-objs-$(CONFIG_ARCH_MXC)+= imx/mxc_dispdrv.o
 

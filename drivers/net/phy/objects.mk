@@ -23,6 +23,7 @@
 
 drivers-objs-$(CONFIG_PHYLIB)+= net/phy/libphy.o
 drivers-objs-$(CONFIG_MDIO_SUN4I)+= net/phy/mdio-sun4i.o
+drivers-objs-$(CONFIG_MICREL_PHY)+= net/phy/micrel.o
 
 libphy-y += phy.o
 libphy-y += mdio_bus.o
