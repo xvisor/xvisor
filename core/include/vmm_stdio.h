@@ -144,6 +144,18 @@ enum vmm_print_level {
 #define vmm_lnotice(msg...)	vmm_lprintf(VMM_LOGLEVEL_NOTICE, msg)
 #define vmm_linfo(msg...)	vmm_lprintf(VMM_LOGLEVEL_INFO, msg)
 
+#define vmm_lprintf_once(level, msg...)				\
+	({							\
+		static bool __print_once __read_mostly;		\
+                                                                \
+		if (!__print_once) {				\
+			__print_once = TRUE;			\
+			vmm_lprintf(level, msg);		\
+		}						\
+	})
+
+#define vmm_lerror_once(msg...)	vmm_lprintf_once(VMM_LOGLEVEL_ERROR, msg)
+
 /** Panic & Print formatted message
  * Note: This function is less verbose so perfer vmm_panic().
  */

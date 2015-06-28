@@ -105,4 +105,7 @@
 	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
 #endif
 
+#define pr_err_once(msg...) \
+	vmm_lerror_once(msg)
+
 #endif
