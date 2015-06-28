@@ -1660,6 +1660,23 @@ struct vmm_devtree_node *vmm_devtree_next_child(
 	return ret;
 }
 
+struct vmm_devtree_node *vmm_devtree_get_child_by_name(
+					struct vmm_devtree_node *node,
+					const char *name)
+{
+	struct vmm_devtree_node *ret = NULL, *child;
+
+	vmm_devtree_for_each_child(node, child) {
+		if (child->name && (strcasecmp(child->name, name) == 0)) {
+			vmm_devtree_ref_node(child);
+			ret = child;
+			break;
+		}
+	}
+
+	return ret;
+}
+
 struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 					     const char *name)
 {

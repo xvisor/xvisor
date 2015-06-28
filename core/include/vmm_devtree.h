@@ -575,6 +575,20 @@ struct vmm_devtree_node *vmm_devtree_next_child(
 	for (child = vmm_devtree_next_child(node, NULL); child; \
 	     child = vmm_devtree_next_child(node, child))
 
+/**     vmm_devtree_get_child_by_name - Find the child node by name for a given parent
+ *      @node:  parent node
+ *      @name:  child name to look for.
+ *
+ *      This function looks for child node for given matching name
+ *
+ *      Returns a node pointer if found, with refcount incremented, use
+ *      vmm_devtree_dref_node() on it when done.
+ *      Returns NULL if node is not found.
+ */
+struct vmm_devtree_node *vmm_devtree_get_child_by_name(
+					struct vmm_devtree_node *node,
+					const char *name);
+
 /** Add new node to device tree with given name
  *  NOTE: This function allows parent == NULL to enable creation of
  *  root node but only once.

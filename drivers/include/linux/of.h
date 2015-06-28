@@ -120,6 +120,9 @@ static inline int of_modalias_node(struct device_node *node,
 #define	for_each_available_child_of_node(np, child)	\
 		vmm_devtree_for_each_child(child, np)
 
+#define	of_get_child_by_name(np, name)	\
+		vmm_devtree_get_child_by_name(np, name)
+
 #define	of_device_is_compatible(device, name)		\
 		vmm_devtree_is_compatible(device, name)
 
