@@ -64,7 +64,7 @@
 #define VMM_MAX_ERRNO		4095
 
 #define VMM_IS_ERR_VALUE(x)						\
-	((unsigned long)(x) <= (unsigned long)VMM_MAX_ERRNO)
+	((x) && ((unsigned long)(x) <= (unsigned long)VMM_MAX_ERRNO))
 
 static inline void *VMM_ERR_PTR(long error)
 {
