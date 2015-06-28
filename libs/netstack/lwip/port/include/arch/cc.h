@@ -46,10 +46,10 @@ typedef virtual_addr_t mem_ptr_t;
 /** Printf formatting macros */
 #define U16_F	"u"
 #define S16_F	"d"
-#define X16_F	"04x"
+#define X16_F	"x"
 #define U32_F	"u"
 #define S32_F	"d"
-#define X32_F	"08x"
+#define X32_F	"x"
 #define SZT_F	"u"
 
 /** Endianness macros */
@@ -69,7 +69,7 @@ typedef virtual_addr_t mem_ptr_t;
 #define PACK_STRUCT_END
 
 /** Debug macros */
-#define LWIP_PLATFORM_DIAG(x)		vmm_printf(x)
+#define LWIP_PLATFORM_DIAG(x)		vmm_printf x
 #define LWIP_PLATFORM_ASSERT(x)		vmm_panic(x)
 
 /** Light-weight protection */
