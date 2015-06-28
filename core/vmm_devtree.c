@@ -1664,7 +1664,7 @@ struct vmm_devtree_node *vmm_devtree_get_child_by_name(
 					struct vmm_devtree_node *node,
 					const char *name)
 {
-	struct vmm_devtree_node *ret = NULL, *child;
+	struct vmm_devtree_node *ret = NULL, *child = NULL;
 
 	vmm_devtree_for_each_child(node, child) {
 		if (child->name && (strcasecmp(child->name, name) == 0)) {
