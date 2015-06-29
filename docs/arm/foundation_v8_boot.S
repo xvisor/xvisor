@@ -18,6 +18,7 @@
  *
  * @file foundation_v8_boot.S
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief light-weight boot-wrapper for ARMv8 foundation models
  */
 
@@ -51,12 +52,17 @@ _start:
 	/* Setup generic timer cntfrq */
 	ldr	x0, __gentimer_freq
 	msr	cntfrq_el0, x0
+	b	_gentimer_done
+	.align 3
+__gentimer_freq:
+	.dword GENTIMER_FREQ
+_gentimer_done:
 
-	/* GIC Distributor Interface Init */
+	/* GIC Secured Distributor Interface Init */
 	mrs	x4, mpidr_el1
 	ldr	x5, __mpidr_mask
 	and	x4, x4, x5			/* CPU affinity */
-__gic_dist_init:
+_gic_dist_init:
 	ldr	x0, __gic_dist_base		/* Dist GIC base */
 	mov	x1, #0				/* non-0 cpus should at least */						
 	cmp	x4, xzr				/* program IGROUP0 */
@@ -70,58 +76,54 @@ __gic_dist_init:
 2:	str	w3, [x2], #4
 	subs	x1, x1, #1
 	bge	2b
-
-__gic_cpu_init:
 	/* GIC Secured CPU Interface Init */
+_gic_cpu_init:
 	ldr	x0, __gic_cpu_base		/* GIC CPU base */
 	mov	x1, #0x80
 	str	w1, [x0, #0x4]			/* GIC CPU Priority Mask */
 	mov	x1, #0x3			/* Enable group0 & group1 */
 	str	w1, [x0]			/* GIC CPU Control */
+	b	_gic_init_done
+	.align 3
+__gic_dist_base:
+	.dword GIC_DIST_BASE
+__gic_cpu_base:
+	.dword GIC_CPU_BASE
+_gic_init_done:
 
+_switch_el3_to_el2:
 	/* Clear EL2 control register */
 	msr	sctlr_el2, xzr
-
 	/* Prepare the switch to EL2 mode from EL3 mode */
 	ldr	x0, __start_el2			/* Return after mode switch */
 	mov	x1, #0x3c9			/* EL2_SP1 | D | A | I | F */
 	msr	elr_el3, x0
 	msr	spsr_el3, x1
 	eret
-
 	.align 3
-__gentimer_freq:
-	.dword GENTIMER_FREQ
-__uart_base:
-	.dword UART_BASE
-__gic_dist_base:
-	.dword GIC_DIST_BASE
-__gic_cpu_base:
-	.dword GIC_CPU_BASE
 __start_el2:
 	.dword _start_el2
 
 _start_el2:
-	/* Skip secondary loop for Primary core */
+	/* Skip secondary spin loop for primary core */
 	mrs	x4, mpidr_el1
 	ldr	x5, __mpidr_mask
 	ands	x4, x4, x5
-	beq	__secondary_spin_skip
-
+	beq	__secondary_spin_code_end
 	/* Copy the secondary_spin(start, end) to SPIN_LOOP_ADDR */
 	adr	x0, __secondary_spin_code_start
 	adr	x1, __secondary_spin_code_end
 	ldr	x2, __secondary_spin_loc
-
 1:	ldr	x4, [x0], #8
 	str	x4, [x2], #8
 	cmp	x1, x0
 	bge	1b
+	/* Jump to copied over spin loop */
 	adr	x3, __secondary_spin
 	sub	x3, x3, x0
 	add	x3, x3, x2
 	br	x3
-	
+	/* Secondary spin loop */
 	.align 3
 __secondary_spin_code_start:
 	.dword	0x0
@@ -129,13 +131,6 @@ __secondary_spin_loc:
 	.dword	SPIN_LOOP_ADDR
 __mpidr_mask:
 	.dword	0xff00ffffff
-__leds_base:
-	.dword	0x1c010008
-#ifdef DTB
-__dtb_addr:
-	.dword	dtb
-#endif
-
 __secondary_spin:
 	ldr	x0, __secondary_spin_loc
 	sevl
@@ -143,33 +138,82 @@ __secondary_spin:
 	ldr	x1, [x0]
 	cmp	x1, xzr
 	beq	1b
-
-	ldr	x15, __leds_base
-	mov	w14, #1
-	str	w14, [x15]
-
 	br	x1
 __secondary_spin_code_end:
 
-__secondary_spin_skip:
+	/* UART initialisation */
+_uart_init:
+#define UART_PL011_DR                   0x00	 /*  Data read or written from the interface. */
+#define UART_PL011_FR                   0x18	 /*  Flag register (Read only). */
+#define UART_PL011_IBRD                 0x24
+#define UART_PL011_CR                   0x30
+#define UART_PL011_FR_TXFF              0x20
+#define UART_PL011_CR_CTSEN             (1 << 15)
+#define UART_PL011_CR_RTSEN             (1 << 14)
+#define UART_PL011_CR_RXE               (1 << 9)
+#define UART_PL011_CR_TXE               (1 << 8)
+#define UART_PL011_CR_UARTEN            (1 << 0)
+	ldr	x4, __uart_base			/* UART base */
+	ldr	x5, __uart_baud_magic
+	str	w5, [x4, #UART_PL011_IBRD]	/* IBRD */
+	mov	w5, #(UART_PL011_CR_CTSEN|UART_PL011_CR_RTSEN|UART_PL011_CR_RXE|UART_PL011_CR_TXE)
+	orr	w5, w5, #UART_PL011_CR_UARTEN	/* CR */
+	str	w5, [x4, #UART_PL011_CR]
+	b	_uart_init_done
+_uart_puts:
+	ldrb	w5, [x0], #1
+	cmp	w5, #0
+	beq	_uart_puts_done
+	ldr	x4, __uart_base			/* UART base */
+_uart_puts_check:
+	ldr	w6, [x4, #UART_PL011_FR]	/* FR */
+	and	x6, x6, #UART_PL011_FR_TXFF	/* FR.TXFF */
+	cmp	x6, #UART_PL011_FR_TXFF
+	beq	_uart_puts_check
+	str	w5, [x4, #UART_PL011_DR]	/* DR */
+	b	_uart_puts
+_uart_puts_done:
+	ret
+	.align 3
+__uart_base:
+	.dword UART_BASE
+__uart_baud_magic:
+#ifdef UART_BAUD_MAGIC
+	.dword UART_BAUD_MAGIC
+#else
+	.dword 0x10
+#endif
+_uart_init_done:
 
-	/* UART initialisation (38400 8N1) */
-	ldr	x4, __uart_base		/* UART base */
-	mov	w5, #0x10		/* ibrd */
-	str	w5, [x4, #0x24]
-	mov	w5, #0xc300
-	orr	w5, w5, #0x0001		/* cr */
-	str	w5, [x4, #0x30]
-
+	/* Print banner */
+	adr	x0, __banner
+	bl	_uart_puts
+	/* Jump to input kernel if available as-per Linux booting protocol */
 #ifdef DTB
-	/* if dtb provided load the address where we placed it */
+	/* If dtb provided load the address where we placed it */
 	ldr	x0, __dtb_addr
 #else
-	/* deliberately put a non-8B aligned value to x0 skip dtb checking */
+	/* Deliberately put a non-8B aligned value to x0 skip dtb checking */
 	mov	x0, #1
 #endif
+	mov	x1, #0
+	mov	x2, #0
+	mov	x3, #0
+#ifdef IMAGE
 	/* Jump to input binary */
 	b	input_bin
+#else
+	/* Just hang */
+	b	.
+#endif
+	.align 3
+__banner:
+	.ascii "Boot-wrapper initialization done.\r\nJumping to input kernel...\r\n"
+	.align 3
+#ifdef DTB
+__dtb_addr:
+	.dword	dtb
+#endif
 
 #define	str(s)		#s
 #define	stringify(s)	str(s)
@@ -182,13 +226,15 @@ __secondary_spin_skip:
 dtb:
 	.incbin	stringify(DTB)
 #endif
+#ifdef IMAGE
 	/* Input binary containing OS images */
 	.globl	input_bin
-	.balign 0x10000
+	.balign 0x80000
 input_bin:
 	.incbin	stringify(IMAGE)
 	.globl	input_bin_end
 input_bin_end:
+#endif
 #ifdef INITRD
 	/* INITRD binary */
 	.globl	initrd
