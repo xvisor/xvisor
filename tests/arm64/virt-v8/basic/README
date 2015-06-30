@@ -37,7 +37,7 @@ Guest with Xvisor running on Foundation v8 Model:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [7. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
-  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_BASE=0x1c090000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x84000000 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_BASE=0x1c090000 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
 
   [8. Launch Foundation v8 Model]
   # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat

@@ -1,4 +1,7 @@
 
+/memreserve/ 0x80000000 0x00020000;
+/memreserve/ 0x81000000 0x01000000;
+
 / {
 	#address-cells = <2>;
 	#size-cells = <2>;
@@ -20,7 +23,7 @@
 			model = "Cortex-A57";
 			reg = <0x0 0x0>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x0 0x84000000>;
+			cpu-release-addr = <0x0 0x8000fff8>;
 		};
 
 		cpu@1 {
@@ -29,7 +32,7 @@
 			model = "Cortex-A57";
 			reg = <0x0 0x1>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x0 0x84000000>;
+			cpu-release-addr = <0x0 0x8000fff8>;
 		};
 
 		cpu@2 {
@@ -38,7 +41,7 @@
 			model = "Cortex-A57";
 			reg = <0x0 0x2>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x0 0x84000000>;
+			cpu-release-addr = <0x0 0x8000fff8>;
 		};
 
 		cpu@3 {
@@ -47,7 +50,7 @@
 			model = "Cortex-A57";
 			reg = <0x0 0x3>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x0 0x84000000>;
+			cpu-release-addr = <0x0 0x8000fff8>;
 		};
 	};
 
