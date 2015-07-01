@@ -210,19 +210,20 @@ __secondary_spin:
 __secondary_spin_code_end:
 
 	/* UART initialisation */
+#if defined(UART_PL011)
 _uart_init:
-#define UART_PL011_DR                   0x00	 /*  Data read or written from the interface. */
-#define UART_PL011_FR                   0x18	 /*  Flag register (Read only). */
-#define UART_PL011_IBRD                 0x24
-#define UART_PL011_CR                   0x30
-#define UART_PL011_FR_TXFF              0x20
-#define UART_PL011_CR_CTSEN             (1 << 15)
-#define UART_PL011_CR_RTSEN             (1 << 14)
-#define UART_PL011_CR_RXE               (1 << 9)
-#define UART_PL011_CR_TXE               (1 << 8)
-#define UART_PL011_CR_UARTEN            (1 << 0)
-	ldr	x4, __uart_base			/* UART base */
-	ldr	x5, __uart_baud_magic
+	#define UART_PL011_DR                   0x00	 /*  Data read or written from the interface. */
+	#define UART_PL011_FR                   0x18	 /*  Flag register (Read only). */
+	#define UART_PL011_IBRD                 0x24
+	#define UART_PL011_CR                   0x30
+	#define UART_PL011_FR_TXFF              0x20
+	#define UART_PL011_CR_CTSEN             (1 << 15)
+	#define UART_PL011_CR_RTSEN             (1 << 14)
+	#define UART_PL011_CR_RXE               (1 << 9)
+	#define UART_PL011_CR_TXE               (1 << 8)
+	#define UART_PL011_CR_UARTEN            (1 << 0)
+	ldr	x4, __uart_pl011_base		/* UART base */
+	ldr	x5, __uart_pl011_ibrd
 	str	w5, [x4, #UART_PL011_IBRD]	/* IBRD */
 	mov	w5, #(UART_PL011_CR_CTSEN|UART_PL011_CR_RTSEN|UART_PL011_CR_RXE|UART_PL011_CR_TXE)
 	orr	w5, w5, #UART_PL011_CR_UARTEN	/* CR */
@@ -232,7 +233,7 @@ _uart_puts:
 	ldrb	w5, [x0], #1
 	cmp	w5, #0
 	beq	_uart_puts_done
-	ldr	x4, __uart_base			/* UART base */
+	ldr	x4, __uart_pl011_base		/* UART base */
 _uart_puts_check:
 	ldr	w6, [x4, #UART_PL011_FR]	/* FR */
 	and	x6, x6, #UART_PL011_FR_TXFF	/* FR.TXFF */
@@ -243,15 +244,22 @@ _uart_puts_check:
 _uart_puts_done:
 	ret
 	.align 3
-__uart_base:
-	.dword UART_BASE
-__uart_baud_magic:
-#ifdef UART_BAUD_MAGIC
-	.dword UART_BAUD_MAGIC
-#else
+__uart_pl011_base:
+	.dword UART_PL011_BASE
+__uart_pl011_ibrd:
+	#ifdef UART_PL011_IBRD
+	.dword UART_PL011_IBRD
+	#else
 	.dword 0x10
-#endif
+	#endif
 _uart_init_done:
+#else
+_uart_init:
+	b	_uart_init_done
+_uart_puts:
+	ret
+_uart_init_done:
+#endif
 
 	/* Print banner */
 	adr	x0, __banner
