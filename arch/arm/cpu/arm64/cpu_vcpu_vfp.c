@@ -34,12 +34,12 @@
 void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
-	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+	struct arm_priv_vfp *vfp = &p->vfp;
 
 	/* Do nothing if:
-	 * 1. Floating point access is disabled
+	 * 1. VCPU does not have VFPv3 feature
 	 */
-	if (p->cptr & CPTR_TFP_MASK) {
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		return;
 	}
 
@@ -50,12 +50,12 @@ void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu)
 void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
-	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
+	struct arm_priv_vfp *vfp = &p->vfp;
 
 	/* Do nothing if:
-	 * 1. Floating point access is disabled
+	 * 1. VCPU does not have VFPv3 feature
 	 */
-	if (p->cptr & CPTR_TFP_MASK) {
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		return;
 	}
 
