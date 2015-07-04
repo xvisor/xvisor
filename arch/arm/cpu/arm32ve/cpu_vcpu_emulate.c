@@ -31,6 +31,7 @@
 #include <cpu_vcpu_inject.h>
 #include <cpu_vcpu_cp14.h>
 #include <cpu_vcpu_cp15.h>
+#include <cpu_vcpu_vfp.h>
 #include <cpu_vcpu_emulate.h>
 
 #include <arm_features.h>
@@ -305,24 +306,68 @@ int cpu_vcpu_emulate_cp0_cp13(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs, 
 			      u32 il, u32 iss)
 {
-	/* We don't trap SIMD & VFP access so, we should never
-	 * reach here.
-	 *
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
+	int rc = VMM_OK;
+	u32 coproc;
+	bool next_inst = TRUE, is_asimd = FALSE;
+
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Skip this instruction */
+		goto done;
+	}
+
+	if (iss & ISS_CP0_TO_CP13_ASIMD_MASK) {
+		/* Forward ASIMD trap to VFP trap handler */
+		rc = cpu_vcpu_vfp_trap(vcpu, regs, il, iss, is_asimd);
+		next_inst = FALSE;
+	} else {
+		/* Determine coprocessor number */
+		coproc = (iss & ISS_CP0_TO_CP13_COPROC_MASK) >>
+					ISS_CP0_TO_CP13_COPROC_SHIFT;
+
+		/* Handle coprocessor traps */
+		switch (coproc) {
+		case 10:
+		case 11:
+			/* Forward CP10 & CP11 access to VFP trap handler */
+			rc = cpu_vcpu_vfp_trap(vcpu, regs, il, iss, is_asimd);
+			next_inst = FALSE;
+			break;
+		default:
+			rc = VMM_EFAIL;
+		};
+	}
+
+done:
+	if (!rc && next_inst) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+	}
+
+	return rc;
 }
 
 int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu, 
 			  arch_regs_t *regs, 
 			  u32 il, u32 iss)
 {
-	/* We don't trap VMRS/VMSR instructions so, we should
-	 * never reach here.
-	 *
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Skip this instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->cpsr & CPSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+		return VMM_OK;
+	}
+
+	/* Forward VMRS/VMSR instruction trap to VFP/ASIMD trap handler */
+	return cpu_vcpu_vfp_trap(vcpu, regs, il, iss, FALSE);
 }
 
 /* TODO: To be implemeted later */

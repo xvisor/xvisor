@@ -34,6 +34,12 @@ void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu);
 /** Restore VFP context for given VCPU */
 void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu);
 
+/** Handle VFP trap for given VCPU */
+int cpu_vcpu_vfp_trap(struct vmm_vcpu *vcpu,
+		      arch_regs_t *regs,
+		      u32 il, u32 iss,
+		      bool is_asimd);
+
 /** Print VFP context for given VCPU */
 void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
