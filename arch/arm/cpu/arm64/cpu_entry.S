@@ -357,10 +357,7 @@ __vtcr_set:
 		(0x1 << VTCR_ORGN0_SHIFT) | \
 		(0x1 << VTCR_IRGN0_SHIFT))
 __hcr_set:
-	.dword (HCR_AMO_MASK | \
-		HCR_IMO_MASK | \
-		HCR_FMO_MASK | \
-		HCR_VM_MASK)
+	.dword HCR_DEFAULT_BITS
 __hsctlr_clear:
 	.dword ~(SCTLR_A_MASK)
 __exec_start:

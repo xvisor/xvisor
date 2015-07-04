@@ -356,6 +356,10 @@
 #define HCR_SWIO_SHIFT					1          
 #define HCR_VM_MASK					0x000000001
 #define HCR_VM_SHIFT					0
+#define HCR_DEFAULT_BITS				(HCR_AMO_MASK | \
+							 HCR_IMO_MASK | \
+							 HCR_FMO_MASK | \
+							 HCR_VM_MASK)
 
 /* CPTR_EL2 */
 #define CPTR_INITVAL					0x00000000LU

@@ -68,7 +68,7 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		return regs->gpr[reg_num];
 	case 8:
 		if (mode == CPSR_MODE_FIQ) {
-			asm volatile (" mrs     %0, r8_fiq\n\t" 
+			asm volatile (" mrs     %0, r8_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.gpr_fiq[reg_num - 8] = hwreg;
 			return hwreg;
@@ -77,7 +77,7 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		}
 	case 9:
 		if (mode == CPSR_MODE_FIQ) {
-			asm volatile (" mrs     %0, r9_fiq\n\t" 
+			asm volatile (" mrs     %0, r9_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.gpr_fiq[reg_num - 8] = hwreg;
 			return hwreg;
@@ -86,7 +86,7 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		}
 	case 10:
 		if (mode == CPSR_MODE_FIQ) {
-			asm volatile (" mrs     %0, r10_fiq\n\t" 
+			asm volatile (" mrs     %0, r10_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.gpr_fiq[reg_num - 8] = hwreg;
 			return hwreg;
@@ -95,7 +95,7 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		}
 	case 11:
 		if (mode == CPSR_MODE_FIQ) {
-			asm volatile (" mrs     %0, r11_fiq\n\t" 
+			asm volatile (" mrs     %0, r11_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.gpr_fiq[reg_num - 8] = hwreg;
 			return hwreg;
@@ -104,7 +104,7 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		}
 	case 12:
 		if (mode == CPSR_MODE_FIQ) {
-			asm volatile (" mrs     %0, r12_fiq\n\t" 
+			asm volatile (" mrs     %0, r12_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.gpr_fiq[reg_num - 8] = hwreg;
 			return hwreg;
@@ -115,32 +115,32 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		switch (mode) {
 		case CPSR_MODE_USER:
 		case CPSR_MODE_SYSTEM:
-			asm volatile (" mrs     %0, SP_usr\n\t" 
+			asm volatile (" mrs     %0, SP_usr\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_usr = hwreg;
 			return hwreg;
 		case CPSR_MODE_FIQ:
-			asm volatile (" mrs     %0, SP_fiq\n\t" 
+			asm volatile (" mrs     %0, SP_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_fiq = hwreg;
 			return hwreg;
 		case CPSR_MODE_IRQ:
-			asm volatile (" mrs     %0, SP_irq\n\t" 
+			asm volatile (" mrs     %0, SP_irq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_irq = hwreg;
 			return hwreg;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" mrs     %0, SP_svc\n\t" 
+			asm volatile (" mrs     %0, SP_svc\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_svc = hwreg;
 			return hwreg;
 		case CPSR_MODE_ABORT:
-			asm volatile (" mrs     %0, SP_abt\n\t" 
+			asm volatile (" mrs     %0, SP_abt\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_abt = hwreg;
 			return hwreg;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" mrs     %0, SP_und\n\t" 
+			asm volatile (" mrs     %0, SP_und\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_und = hwreg;
 			return hwreg;
@@ -154,27 +154,27 @@ u32 cpu_vcpu_regmode_read(struct vmm_vcpu *vcpu,
 		case CPSR_MODE_SYSTEM:
 			return regs->lr;
 		case CPSR_MODE_FIQ:
-			asm volatile (" mrs     %0, LR_fiq\n\t" 
+			asm volatile (" mrs     %0, LR_fiq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.lr_fiq = hwreg;
 			return hwreg;
 		case CPSR_MODE_IRQ:
-			asm volatile (" mrs     %0, LR_irq\n\t" 
+			asm volatile (" mrs     %0, LR_irq\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.lr_irq = hwreg;
 			return hwreg;
 		case CPSR_MODE_SUPERVISOR:
-			asm volatile (" mrs     %0, LR_svc\n\t" 
+			asm volatile (" mrs     %0, LR_svc\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.lr_svc = hwreg;
 			return hwreg;
 		case CPSR_MODE_ABORT:
-			asm volatile (" mrs     %0, LR_abt\n\t" 
+			asm volatile (" mrs     %0, LR_abt\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.lr_abt = hwreg;
 			return hwreg;
 		case CPSR_MODE_UNDEFINED:
-			asm volatile (" mrs     %0, LR_und\n\t" 
+			asm volatile (" mrs     %0, LR_und\n\t"
 				      :"=r" (hwreg)::"memory", "cc");
 			arm_priv(vcpu)->bnk.lr_und = hwreg;
 			return hwreg;
@@ -261,7 +261,7 @@ void cpu_vcpu_regmode_write(struct vmm_vcpu *vcpu,
 			break;
 		case CPSR_MODE_FIQ:
 			asm volatile (" msr     SP_fiq, %0\n\t"
-				      ::"r" (reg_val) :"memory", "cc"); 
+				      ::"r" (reg_val) :"memory", "cc");
 			arm_priv(vcpu)->bnk.sp_fiq = reg_val;
 			break;
 		case CPSR_MODE_IRQ:
@@ -335,9 +335,9 @@ u32 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu,
 		      arch_regs_t *regs,
 		      u32 reg_num)
 {
-	return cpu_vcpu_regmode_read(vcpu, 
-				     regs, 
-				     regs->cpsr & CPSR_MODE_MASK, 
+	return cpu_vcpu_regmode_read(vcpu,
+				     regs,
+				     regs->cpsr & CPSR_MODE_MASK,
 				     reg_num);
 }
 
@@ -345,10 +345,10 @@ void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			u32 reg_num, u32 reg_val)
 {
-	cpu_vcpu_regmode_write(vcpu, 
-			       regs, 
-			       regs->cpsr & CPSR_MODE_MASK, 
-			       reg_num, 
+	cpu_vcpu_regmode_write(vcpu,
+			       regs,
+			       regs->cpsr & CPSR_MODE_MASK,
+			       reg_num,
 			       reg_val);
 }
 
@@ -372,17 +372,17 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 		arm_priv(vcpu)->bnk.spsr_und = hwreg;
 		return hwreg;
 	case CPSR_MODE_SUPERVISOR:
-		asm volatile (" mrs     %0, SPSR_svc\n\t" 
+		asm volatile (" mrs     %0, SPSR_svc\n\t"
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->bnk.spsr_svc = hwreg;
 		return hwreg;
 	case CPSR_MODE_IRQ:
-		asm volatile (" mrs     %0, SPSR_irq\n\t" 
+		asm volatile (" mrs     %0, SPSR_irq\n\t"
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->bnk.spsr_irq = hwreg;
 		return hwreg;
 	case CPSR_MODE_FIQ:
-		asm volatile (" mrs     %0, SPSR_fiq\n\t" 
+		asm volatile (" mrs     %0, SPSR_fiq\n\t"
 			      :"=r" (hwreg)::"memory", "cc");
 		arm_priv(vcpu)->bnk.spsr_fiq = hwreg;
 		return hwreg;
@@ -392,7 +392,7 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 	return 0;
 }
 
-int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu, 
+int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 			 u32 mode,
 			 u32 new_spsr)
 {
@@ -518,7 +518,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* For only Normal VCPUs */
-	rc = vmm_devtree_read_string(vcpu->node, 
+	rc = vmm_devtree_read_string(vcpu->node,
 			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
 	if (rc) {
 		goto fail;
@@ -670,9 +670,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	p->hcr &= ~(HCR_VA_MASK | HCR_VI_MASK | HCR_VF_MASK);
 	vmm_spin_unlock_irqrestore(&p->hcr_lock, flags);
 
-	/* Reset banked registers which are required 
+	/* Reset banked registers which are required
 	 * to have known values upon VCPU reset.
-	 */ 
+	 */
 	for (ite = 0; ite < CPU_FIQ_GPR_COUNT; ite++) {
 		p->bnk.gpr_fiq[ite] = 0x0;
 	}
@@ -716,12 +716,12 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Reset generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		if (vmm_devtree_read_u32(vcpu->node, 
+		if (vmm_devtree_read_u32(vcpu->node,
 					 "gentimer_phys_irq",
 					 &phys_timer_irq)) {
 			phys_timer_irq = 0;
 		}
-		if (vmm_devtree_read_u32(vcpu->node, 
+		if (vmm_devtree_read_u32(vcpu->node,
 					 "gentimer_virt_irq",
 					 &virt_timer_irq)) {
 			virt_timer_irq = 0;
@@ -806,6 +806,11 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	u32 ite;
 	irq_flags_t flags;
 	
+	/* Clear hypervisor context */
+	write_hcr(HCR_DEFAULT_BITS);
+	write_hcptr(0x0);
+	write_hstr(0x0);
+
 	if (tvcpu) {
 		/* Save general purpose registers */
 		arm_regs(tvcpu)->pc = regs->pc;
@@ -845,15 +850,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->cpsr = arm_regs(vcpu)->cpsr;
 	if (vcpu->is_normal) {
-		/* Restore hypervisor config */
-		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
-		write_hcr(arm_priv(vcpu)->hcr);
-		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
-		write_hcptr(arm_priv(vcpu)->hcptr);
-		write_hstr(arm_priv(vcpu)->hstr);
-		/* Restore Stage2 MMU context */
-		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
-			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 			generic_timer_vcpu_context_restore(vcpu,
@@ -869,11 +865,20 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_banked_regs_restore(&arm_priv(vcpu)->bnk);
 		/* Restore VGIC registers */
 		arm_vgic_restore(vcpu);
+		/* Update hypervisor context */
+		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
+		write_hcr(arm_priv(vcpu)->hcr);
+		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
+		write_hcptr(arm_priv(vcpu)->hcptr);
+		write_hstr(arm_priv(vcpu)->hstr);
+		/* Update hypervisor Stage2 MMU context */
+		mmu_lpae_stage2_chttbl(vcpu->guest->id,
+			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
 			 * we might have stale guest TLB enteries from
-			 * our previous run on new_hcpu host CPU 
+			 * our previous run on new_hcpu host CPU
 			 */
 			inv_tlb_guest_allis();
 			/* Invalidate i-cache due always fetch fresh
@@ -948,7 +953,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		    "HCR", p->hcr,
 		    "HCPTR", p->hcptr,
 		    "HSTR", p->hstr);
-	vmm_cprintf(cdev, " %7s=0x%016llx\n", 
+	vmm_cprintf(cdev, " %7s=0x%016llx\n",
 		    "VTTBR", arm_guest_priv(vcpu->guest)->ttbl->tbl_pa);
 
 	/* Print banked registers */

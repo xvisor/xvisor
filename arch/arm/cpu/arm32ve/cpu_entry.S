@@ -466,10 +466,7 @@ __hvc_stack_end:
 	 * Initial Hypervisor settings.
 	 */
 __hcr_initial_set:
-	.word (HCR_AMO_MASK | \
-		HCR_IMO_MASK | \
-		HCR_FMO_MASK | \
-		HCR_VM_MASK)
+	.word HCR_DEFAULT_BITS
 __hcr_initial_clear:
 	.word ~(0x0)
 

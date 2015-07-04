@@ -152,7 +152,7 @@ u32 cpu_vcpu_regmode32_read(arch_regs_t *regs, u32 mode, u32 reg)
 	return 0x0;
 }
 
-void cpu_vcpu_regmode32_write(arch_regs_t *regs, 
+void cpu_vcpu_regmode32_write(arch_regs_t *regs,
 			      u32 mode, u32 reg, u32 val)
 {
 	switch (reg) {
@@ -234,9 +234,9 @@ void cpu_vcpu_regmode32_write(arch_regs_t *regs,
 	};
 }
 
-u64 cpu_vcpu_reg64_read(struct vmm_vcpu *vcpu, 
-			arch_regs_t *regs, 
-			u32 reg) 
+u64 cpu_vcpu_reg64_read(struct vmm_vcpu *vcpu,
+			arch_regs_t *regs,
+			u32 reg)
 {
 	u64 ret;
 
@@ -257,8 +257,8 @@ u64 cpu_vcpu_reg64_read(struct vmm_vcpu *vcpu,
 	return ret;
 }
 
-void cpu_vcpu_reg64_write(struct vmm_vcpu *vcpu, 
-			  arch_regs_t *regs, 
+void cpu_vcpu_reg64_write(struct vmm_vcpu *vcpu,
+			  arch_regs_t *regs,
 			  u32 reg, u64 val)
 {
 	/* Truncate bits[63:32] for AArch32 mode */
@@ -275,24 +275,24 @@ void cpu_vcpu_reg64_write(struct vmm_vcpu *vcpu,
 	}
 }
 
-u64 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu, 
-		      arch_regs_t *regs, 
-		      u32 reg) 
+u64 cpu_vcpu_reg_read(struct vmm_vcpu *vcpu,
+		      arch_regs_t *regs,
+		      u32 reg)
 {
 	if (regs->pstate & PSR_MODE32) {
-		return cpu_vcpu_regmode32_read(regs, 
+		return cpu_vcpu_regmode32_read(regs,
 				regs->pstate & PSR_MODE32_MASK, reg & 0xF);
 	} else {
 		return cpu_vcpu_reg64_read(vcpu, regs, reg);
 	}
 }
 
-void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu, 
-		        arch_regs_t *regs, 
+void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu,
+		        arch_regs_t *regs,
 		        u32 reg, u64 val)
 {
 	if (regs->pstate & PSR_MODE32) {
-		cpu_vcpu_regmode32_write(regs, 
+		cpu_vcpu_regmode32_write(regs,
 			regs->pstate & PSR_MODE32_MASK, reg & 0xF, val);
 	} else {
 		cpu_vcpu_reg64_write(vcpu, regs, reg, val);
@@ -368,7 +368,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Following initialization for normal VCPUs only */
-	rc = vmm_devtree_read_string(vcpu->node, 
+	rc = vmm_devtree_read_string(vcpu->node,
 			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
 	if (rc) {
 		goto fail;
@@ -542,8 +542,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Clear virtual exception bits in HCR */
 	vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
-	arm_priv(vcpu)->hcr &= ~(HCR_VSE_MASK | 
-				 HCR_VI_MASK | 
+	arm_priv(vcpu)->hcr &= ~(HCR_VSE_MASK |
+				 HCR_VI_MASK |
 				 HCR_VF_MASK);
 	vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
 
@@ -564,12 +564,12 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Initialize generic timer context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
-		if (vmm_devtree_read_u32(vcpu->node, 
+		if (vmm_devtree_read_u32(vcpu->node,
 					 "gentimer_phys_irq",
 					 &phys_timer_irq)) {
 			phys_timer_irq = 0;
 		}
-		if (vmm_devtree_read_u32(vcpu->node, 
+		if (vmm_devtree_read_u32(vcpu->node,
 					 "gentimer_virt_irq",
 					 &virt_timer_irq)) {
 			virt_timer_irq = 0;
@@ -641,12 +641,17 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	return VMM_OK;
 }
 
-void arch_vcpu_switch(struct vmm_vcpu *tvcpu, 
-		      struct vmm_vcpu *vcpu, 
+void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
+		      struct vmm_vcpu *vcpu,
 		      arch_regs_t *regs)
 {
 	u32 ite;
 	irq_flags_t flags;
+
+	/* Clear hypervisor context */
+	msr(hcr_el2, HCR_DEFAULT_BITS);
+	msr(cptr_el2, 0x0);
+	msr(hstr_el2, 0x0);
 
 	/* Save user registers & banked registers */
 	if (tvcpu) {
@@ -682,15 +687,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	}
 	regs->pstate = arm_regs(vcpu)->pstate;
 	if (vcpu->is_normal) {
-		/* Restore hypervisor context */
-		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
-		msr(hcr_el2, arm_priv(vcpu)->hcr);
-		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
-		msr(cptr_el2, arm_priv(vcpu)->cptr);
-		msr(hstr_el2, arm_priv(vcpu)->hstr);
-		/* Restore Stage2 MMU context */
-		mmu_lpae_stage2_chttbl(vcpu->guest->id, 
-			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Restore generic timer */
 		if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 			generic_timer_vcpu_context_restore(vcpu,
@@ -702,11 +698,20 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_sysregs_restore(vcpu);
 		/* Restore VGIC context */
 		arm_vgic_restore(vcpu);
+		/* Update hypervisor context */
+		vmm_spin_lock_irqsave(&arm_priv(vcpu)->hcr_lock, flags);
+		msr(hcr_el2, arm_priv(vcpu)->hcr);
+		vmm_spin_unlock_irqrestore(&arm_priv(vcpu)->hcr_lock, flags);
+		msr(cptr_el2, arm_priv(vcpu)->cptr);
+		msr(hstr_el2, arm_priv(vcpu)->hstr);
+		/* Update hypervisor Stage2 MMU context */
+		mmu_lpae_stage2_chttbl(vcpu->guest->id,
+			       arm_guest_priv(vcpu->guest)->ttbl);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because
 			 * we might have stale guest TLB enteries from
-			 * our previous run on new_hcpu host CPU 
+			 * our previous run on new_hcpu host CPU
 			 */
 			inv_tlb_guest_allis();
 			/* Ensure changes are visible */
@@ -726,7 +731,7 @@ void arch_vcpu_preempt_orphan(void)
 	asm volatile ("hvc #0\t\n");
 }
 
-static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev, 
+static void __cpu_vcpu_dump_user_reg(struct vmm_chardev *cdev,
 				     arch_regs_t *regs)
 {
 	u32 i;
