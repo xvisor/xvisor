@@ -32,6 +32,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_sysregs.h>
 #include <cpu_vcpu_inject.h>
+#include <cpu_vcpu_vfp.h>
 #include <cpu_vcpu_emulate.h>
 #include <arm_features.h>
 #include <emulate_psci.h>
@@ -305,24 +306,76 @@ int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
 				  arch_regs_t *regs,
 				  u32 il, u32 iss)
 {
-	/* We don't trap SIMD & VFP access so, we should never
-	 * reach here.
-	 *
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+		return VMM_OK;
+	}
+
+	/* Forward this to VFP trap handler */
+	return cpu_vcpu_vfp_trap(vcpu, regs, il, iss);
 }
 
 int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 il, u32 iss)
 {
-	/* We don't trap VMRS/VMSR instructions so, we should
-	 * never reach here.
-	 *
-	 * For now, just return failure so that VCPU is halted.
-	 */
-	return VMM_EFAIL;
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+		return VMM_OK;
+	}
+
+	/* Forward this to VFP trap handler */
+	return cpu_vcpu_vfp_trap(vcpu, regs, il, iss);
+}
+
+int cpu_vcpu_emulate_fpexec_a32(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				u32 il, u32 iss)
+{
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+		return VMM_OK;
+	}
+
+	/* Forward this to VFP trap handler */
+	return cpu_vcpu_vfp_trap(vcpu, regs, il, iss);
+}
+
+int cpu_vcpu_emulate_fpexec_a64(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				u32 il, u32 iss)
+{
+	/* Check instruction condition */
+	if (!cpu_vcpu_condition_check(vcpu, regs, iss)) {
+		/* Next instruction */
+		regs->pc += (il) ? 4 : 2;
+		/* Update ITSTATE for Thumb mode */
+		if (regs->pstate & PSR_THUMB_ENABLED) {
+			cpu_vcpu_update_itstate(vcpu, regs);
+		}
+		return VMM_OK;
+	}
+
+	/* Forward this to VFP trap handler */
+	return cpu_vcpu_vfp_trap(vcpu, regs, il, iss);
 }
 
 static int do_psci_call(struct vmm_vcpu *vcpu,

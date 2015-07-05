@@ -63,6 +63,14 @@ void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
 	cpu_vcpu_vfp_regs_restore(vfp);
 }
 
+int cpu_vcpu_vfp_trap(struct vmm_vcpu *vcpu,
+		      arch_regs_t *regs,
+		      u32 il, u32 iss)
+{
+	/* For now we don't handle VFP trap so just return failure. */
+	return VMM_EFAIL;
+}
+
 void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
 	u32 i;

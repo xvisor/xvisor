@@ -129,9 +129,12 @@ void do_sync(arch_regs_t *regs, unsigned long mode)
 		rc = cpu_vcpu_emulate_simd_fp_regs(vcpu, regs, il, iss);
 		break;
 	case EC_FPEXC_A32:
+		/* FPU execution faults from Aarch32 */
+		rc = cpu_vcpu_emulate_fpexec_a32(vcpu, regs, il, iss);
+		break;
 	case EC_FPEXC_A64:
-		/* We dont expect any FP execution faults */
-		rc = VMM_EFAIL;
+		/* FPU execution faults from Aarch64 */
+		rc = cpu_vcpu_emulate_fpexec_a64(vcpu, regs, il, iss);
 		break;
 	case EC_TRAP_MRC_VMRS_CP10_A32:
 		/* MRC (or VMRS) to CP10 for MVFR0, MVFR1 or FPSID */

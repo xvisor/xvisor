@@ -291,69 +291,69 @@
 /* HCR_EL2 */
 #define HCR_INITVAL					0x000000000
 #define HCR_ID_MASK					0x200000000
-#define HCR_ID_SHIFT					33         
+#define HCR_ID_SHIFT					33
 #define HCR_CD_MASK					0x100000000
-#define HCR_CD_SHIFT					32         
+#define HCR_CD_SHIFT					32
 #define HCR_RW_MASK					0x080000000
-#define HCR_RW_SHIFT					31         
+#define HCR_RW_SHIFT					31
 #define HCR_TRVM_MASK					0x040000000
-#define HCR_TRVM_SHIFT					30         
+#define HCR_TRVM_SHIFT					30
 #define HCR_HCD_MASK					0x020000000
-#define HCR_HCD_SHIFT					29         
+#define HCR_HCD_SHIFT					29
 #define HCR_TDZ_MASK					0x010000000
-#define HCR_TDZ_SHIFT					28         
+#define HCR_TDZ_SHIFT					28
 #define HCR_TGE_MASK					0x008000000
-#define HCR_TGE_SHIFT					27         
+#define HCR_TGE_SHIFT					27
 #define HCR_TVM_MASK					0x004000000
-#define HCR_TVM_SHIFT					26         
+#define HCR_TVM_SHIFT					26
 #define HCR_TTLB_MASK					0x002000000
-#define HCR_TTLB_SHIFT					25         
+#define HCR_TTLB_SHIFT					25
 #define HCR_TPU_MASK					0x001000000
-#define HCR_TPU_SHIFT					24         
+#define HCR_TPU_SHIFT					24
 #define HCR_TPC_MASK					0x000800000
-#define HCR_TPC_SHIFT					23         
+#define HCR_TPC_SHIFT					23
 #define HCR_TSW_MASK					0x000400000
-#define HCR_TSW_SHIFT					22         
+#define HCR_TSW_SHIFT					22
 #define HCR_TACR_MASK					0x000200000
-#define HCR_TACR_SHIFT					21         
+#define HCR_TACR_SHIFT					21
 #define HCR_TIDCP_MASK					0x000100000
-#define HCR_TIDCP_SHIFT					20         
+#define HCR_TIDCP_SHIFT					20
 #define HCR_TSC_MASK					0x000080000
-#define HCR_TSC_SHIFT					19         
+#define HCR_TSC_SHIFT					19
 #define HCR_TID3_MASK					0x000040000
-#define HCR_TID3_SHIFT					18         
+#define HCR_TID3_SHIFT					18
 #define HCR_TID2_MASK					0x000020000
-#define HCR_TID2_SHIFT					17         
+#define HCR_TID2_SHIFT					17
 #define HCR_TID1_MASK					0x000010000
-#define HCR_TID1_SHIFT					16         
+#define HCR_TID1_SHIFT					16
 #define HCR_TID0_MASK					0x000008000
-#define HCR_TID0_SHIFT					15         
+#define HCR_TID0_SHIFT					15
 #define HCR_TWE_MASK					0x000004000
-#define HCR_TWE_SHIFT					14         
+#define HCR_TWE_SHIFT					14
 #define HCR_TWI_MASK					0x000002000
-#define HCR_TWI_SHIFT					13         
+#define HCR_TWI_SHIFT					13
 #define HCR_DC_MASK					0x000001000
-#define HCR_DC_SHIFT					12         
+#define HCR_DC_SHIFT					12
 #define HCR_BSU_MASK					0x000000C00
-#define HCR_BSU_SHIFT					10         
+#define HCR_BSU_SHIFT					10
 #define HCR_FB_MASK					0x000000200
-#define HCR_FB_SHIFT					9          
+#define HCR_FB_SHIFT					9
 #define HCR_VSE_MASK					0x000000100
-#define HCR_VSE_SHIFT					8          
+#define HCR_VSE_SHIFT					8
 #define HCR_VI_MASK					0x000000080
-#define HCR_VI_SHIFT					7          
+#define HCR_VI_SHIFT					7
 #define HCR_VF_MASK					0x000000040
-#define HCR_VF_SHIFT					6          
+#define HCR_VF_SHIFT					6
 #define HCR_AMO_MASK					0x000000020
-#define HCR_AMO_SHIFT					5          
+#define HCR_AMO_SHIFT					5
 #define HCR_IMO_MASK					0x000000010
-#define HCR_IMO_SHIFT					4          
+#define HCR_IMO_SHIFT					4
 #define HCR_FMO_MASK					0x000000008
-#define HCR_FMO_SHIFT					3          
+#define HCR_FMO_SHIFT					3
 #define HCR_PTW_MASK					0x000000004
-#define HCR_PTW_SHIFT					2          
+#define HCR_PTW_SHIFT					2
 #define HCR_SWIO_MASK					0x000000002
-#define HCR_SWIO_SHIFT					1          
+#define HCR_SWIO_SHIFT					1
 #define HCR_VM_MASK					0x000000001
 #define HCR_VM_SHIFT					0
 #define HCR_DEFAULT_BITS				(HCR_AMO_MASK | \
@@ -458,9 +458,11 @@
 #define ISS_COND_SHIFT					20
 
 /* MRS/MSR Trap ISS Encodings */
-#define ISS_SYSREG_ENC(op0, op2, op1, crn, crm)	(((op0) << 20) | \
-				((op2) << 17) | ((op1) << 14)  | \
-		 		((crn) << 10) | ((crm) << 1))	 
+#define ISS_SYSREG_ENC(op0, op2, op1, crn, crm)		(((op0) << 20) | \
+							 ((op2) << 17) | \
+							 ((op1) << 14)  | \
+							 ((crn) << 10) | \
+							 ((crm) << 1))
 
 #define ISS_SYSREG_MASK					0xfffffc1e
 #define ISS_RT_MASK					0x000003e0
@@ -503,6 +505,22 @@
 #define ISS_MCR_MRC_CRM_SHIFT				1
 #define ISS_MCR_MRC_DIR_MASK				0x00000001
 #define ISS_MCR_MRC_DIR_SHIFT				0
+
+/* FPU exception ISS Encodings */
+#define ISS_FPEXEC_TFV_MASK				0x00800000
+#define ISS_FPEXEC_TFV_SHIFT				23
+#define ISS_FPEXEC_IDF_MASK				0x00000080
+#define ISS_FPEXEC_IDF_SHIFT				7
+#define ISS_FPEXEC_IXF_MASK				0x00000010
+#define ISS_FPEXEC_IXF_SHIFT				4
+#define ISS_FPEXEC_UFF_MASK				0x00000008
+#define ISS_FPEXEC_UFF_SHIFT				3
+#define ISS_FPEXEC_OFF_MASK				0x00000004
+#define ISS_FPEXEC_OFF_SHIFT				2
+#define ISS_FPEXEC_DZF_MASK				0x00000002
+#define ISS_FPEXEC_DZF_SHIFT				1
+#define ISS_FPEXEC_IOF_MASK				0x00000001
+#define ISS_FPEXEC_IOF_SHIFT				0
 
 /* Instruction/Data Abort ISS Encodings */
 #define ISS_ABORT_ISV_MASK				0x01000000

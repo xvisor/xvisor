@@ -56,6 +56,16 @@ int cpu_vcpu_emulate_simd_fp_regs(struct vmm_vcpu *vcpu,
 				  arch_regs_t *regs,
 				  u32 il, u32 iss);
 
+/** Emulate FPU execution faults from Aarch32 */
+int cpu_vcpu_emulate_fpexec_a32(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				u32 il, u32 iss);
+
+/** Emulate FPU execution faults from Aarch64 */
+int cpu_vcpu_emulate_fpexec_a64(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				u32 il, u32 iss);
+
 /** Emulate MRC (or VMRS) to CP10 instruction */
 int cpu_vcpu_emulate_vmrs(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
