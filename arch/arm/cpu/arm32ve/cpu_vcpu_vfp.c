@@ -26,6 +26,7 @@
 #include <vmm_stdio.h>
 #include <arch_regs.h>
 #include <cpu_inline_asm.h>
+#include <cpu_vcpu_inject.h>
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_vfp.h>
 #include <arm_features.h>
@@ -42,22 +43,35 @@ void cpu_vcpu_vfp_save(struct vmm_vcpu *vcpu)
 		return;
 	}
 
-	cpu_vcpu_vfp_regs_save(vfp);
+	/* If VFP/ASIMD traps were disabled then:
+	 * 1. Save VFP/ASIMD regs
+	 * 2. Enable VFP/ASIMD traps
+	 */
+	if (!(p->hcptr & (HCPTR_TCP11_MASK|HCPTR_TCP10_MASK))) {
+		cpu_vcpu_vfp_regs_save(vfp);
+	}
+
+	/* Force disable FPU
+	 * Note: We don't use VFP in hypervisor so
+	 * better disable it.
+	 */
+	write_fpexc(read_fpexc() & ~FPEXC_EN_MASK);
 }
 
 void cpu_vcpu_vfp_restore(struct vmm_vcpu *vcpu)
 {
 	struct arm_priv *p = arm_priv(vcpu);
-	struct arm_priv_vfp *vfp = &p->vfp;
 
-	/* Do nothing if:
-	 * 1. VCPU does not have VFPv3 feature
+	/* Make sure we trap VFP/ASIMD */
+	p->hcptr |= (HCPTR_TASE_MASK);
+	p->hcptr |= (HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
+
+	/* Force enable FPU
+	 * Note: If FPU is not enabled then we don't get
+	 * VFP traps so we force enable FPU and setup
+	 * traps using HCPTR register.
 	 */
-	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
-		return;
-	}
-
-	cpu_vcpu_vfp_regs_restore(vfp);
+	write_fpexc(read_fpexc() | FPEXC_EN_MASK);
 }
 
 int cpu_vcpu_vfp_trap(struct vmm_vcpu *vcpu,
@@ -65,8 +79,28 @@ int cpu_vcpu_vfp_trap(struct vmm_vcpu *vcpu,
 		      u32 il, u32 iss,
 		      bool is_asimd)
 {
-	/* Currently not required hence return failure. */
-	return VMM_EFAIL;
+	struct arm_priv *p = arm_priv(vcpu);
+	struct arm_priv_vfp *vfp = &p->vfp;
+
+	/* Inject undefined exception if:
+	 * 1. VCPU does not have VFPv3 feature
+	 */
+	if (!arm_feature(vcpu, ARM_FEATURE_VFP3)) {
+		/* Inject undefined exception */
+		cpu_vcpu_inject_undef(vcpu, regs);
+		return VMM_OK;
+	}
+
+	/* If VFP/ASIMD traps were enabled then:
+	 * 1. Disable VFP/ASIMD traps
+	 * 2. Restore VFP/ASIMD regs
+	 */
+	p->hcptr &= ~(HCPTR_TASE_MASK);
+	p->hcptr &= ~(HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
+	write_hcptr(p->hcptr);
+	cpu_vcpu_vfp_regs_restore(vfp);
+
+	return VMM_OK;
 }
 
 void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
@@ -112,7 +146,6 @@ void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 {
 	u32 fpu;
-	struct arm_priv *p = arm_priv(vcpu);
 	struct arm_priv_vfp *vfp = &arm_priv(vcpu)->vfp;
 
 	/* Clear VCPU VFP context */
@@ -127,14 +160,11 @@ int cpu_vcpu_vfp_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* If Host HW does not support VFPv3 or higher then
-	 * don't allow CP10 & CP11 access to VCPU using HCPTR
+	 * clear all VFP feature flags so that VCPU always gets
+	 * undefined exception when accessing VFP registers.
 	 */
 	fpu = (read_fpsid() & FPSID_ARCH_MASK) >>  FPSID_ARCH_SHIFT;
-	if (cpu_supports_fpu() && (fpu > 1) &&
-	    arm_feature(vcpu, ARM_FEATURE_VFP3)) {
-		p->hcptr &= ~(HCPTR_TASE_MASK);
-		p->hcptr &= ~(HCPTR_TCP11_MASK|HCPTR_TCP10_MASK);
-	} else {
+	if ((fpu <= 1) || !arm_feature(vcpu, ARM_FEATURE_VFP3)) {
 		goto no_vfp_for_vcpu;
 	}
 
