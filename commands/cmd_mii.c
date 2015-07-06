@@ -38,16 +38,6 @@
 #include <linux/sockios.h>
 #include <uapi/linux/mii.h>
 
-/* network interface ioctl's for MII commands */
-#ifndef SIOCGMIIPHY
-#warning "SIOCGMIIPHY is not defined by your kernel source"
-#define SIOCGMIIPHY (SIOCDEVPRIVATE)	/* Read from current PHY */
-#define SIOCGMIIREG (SIOCDEVPRIVATE+1) 	/* Read any PHY register */
-#define SIOCSMIIREG (SIOCDEVPRIVATE+2) 	/* Write any PHY register */
-#define SIOCGPARAMS (SIOCDEVPRIVATE+3) 	/* Read operational parameters */
-#define SIOCSPARAMS (SIOCDEVPRIVATE+4) 	/* Set operational parameters */
-#endif
-
 #define ADVERTISE_ABILITY_MASK	0x07e0
 
 #define MODULE_DESC			"MII-tool commands"
