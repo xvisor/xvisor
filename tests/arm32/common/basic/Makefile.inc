@@ -22,7 +22,7 @@
 # */
 
 # Include top-level configuration file if present
--include $(build_dir)/.config
+-include $(build_dir)/tmpconf/.config
 
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
 FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
