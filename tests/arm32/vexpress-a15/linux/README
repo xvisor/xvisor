@@ -56,7 +56,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
-  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb <linux_source_directory>/arch/arm/boot/dts/vexpress-v2p-ca15-tc1.dts
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb ./tests/arm32/vexpress-a15/linux/vexpress-v2p-ca15-tc1.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 

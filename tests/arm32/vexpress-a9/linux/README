@@ -62,7 +62,7 @@ VExpress-A9 Guest with Xvisor running on QEMU VExpress-A9 Host:
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
-  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb <linux_source_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dts
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb ./tests/arm32/vexpress-a9/linux/vexpress-v2p-ca9.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 

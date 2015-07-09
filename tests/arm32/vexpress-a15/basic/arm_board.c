@@ -66,12 +66,6 @@ u32 arm_board_linux_machine_type(void)
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
-	/* VirtIO Network Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40100000:50");
-	/* VirtIO Block Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40200000:51");
-	/* VirtIO Console Device */
-	arm_strcat(cmdline, " virtio_mmio.device=4K@0x40300000:52");
 }
 
 u32 arm_board_flash_addr(void)

@@ -64,7 +64,7 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
   # cd <xvisor_source_directory>
 
   [15. Build, if not already done, the Linux kernel device tree]
-  # ./build/tools/dtc/dtc -I dts -O dtb <kernel path>/arch/arm/boot/dts/vexpress-v2p-ca9.dts -o build/vexpress-v2p-ca9.dtb
+  # ./build/tools/dtc/dtc -I dts -O dtb <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/vexpress-v2p-ca9.dts -o build/vexpress-v2p-ca9.dtb
 
   [16. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
   # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/
