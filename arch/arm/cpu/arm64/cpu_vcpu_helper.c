@@ -351,10 +351,11 @@ int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	int rc;
+	int rc = VMM_OK;
 	u32 cpuid = 0;
 	const char *attr;
 	irq_flags_t flags;
+	u32 saved_cptr_el2, saved_hstr_el2;
 	u32 phys_timer_irq, virt_timer_irq;
 
 	/* For both Orphan & Normal VCPUs */
@@ -367,11 +368,26 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		return VMM_OK;
 	}
 
+	/* Save CPTR_EL2 and HSTR_EL2 */
+	saved_cptr_el2 = mrs(cptr_el2);
+	saved_hstr_el2 = mrs(hstr_el2);
+
+	/* A VCPU running on different host CPU can be resetted
+	 * using sync IPI. This means we can reach here while VCPU
+	 * is running and coprocessor/system traps are enabled.
+	 *
+	 * We force disable coprocessor and system traps to ensure
+	 * that we don't touch coprocessor and system registers
+	 * while traps are enabled.
+	 */
+	msr(cptr_el2, 0x0);
+	msr(hstr_el2, 0x0);
+
 	/* Following initialization for normal VCPUs only */
 	rc = vmm_devtree_read_string(vcpu->node,
 			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
 	if (rc) {
-		goto fail;
+		goto done;
 	}
 	if (strcmp(attr, "armv7a,cortex-a8") == 0) {
 		cpuid = ARM_CPUID_CORTEXA8;
@@ -389,14 +405,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		cpuid = ARM_CPUID_ARMV8;
 	} else {
 		rc = VMM_EINVALID;
-		goto fail;
+		goto done;
 	}
 	if (arm_regs(vcpu)->pstate == PSR_MODE32) {
 		/* Check if the host supports A32 mode @ EL1 */
 		if (!cpu_supports_el1_a32()) {
 			vmm_printf("Host does not support AArch32 mode\n");
 			rc = VMM_ENOTAVAIL;
-			goto fail;
+			goto done;
 		}
 		arm_regs(vcpu)->pstate |= PSR_ZERO_MASK;
 		arm_regs(vcpu)->pstate |= PSR_MODE32_SUPERVISOR;
@@ -414,7 +430,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		vcpu->arch_priv = vmm_zalloc(sizeof(struct arm_priv));
 		if (!vcpu->arch_priv) {
 			rc = VMM_ENOMEM;
-			goto fail;
+			goto done;
 		}
 		/* Setup CPUID value expected by VCPU in MIDR register
 		 * as-per HW specifications.
@@ -583,7 +599,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	return VMM_OK;
+	rc = VMM_OK;
+	goto done;
 
 fail_gentimer_init:
 	if (!vcpu->reset_count) {
@@ -598,13 +615,17 @@ fail_sysregs_init:
 		vmm_free(vcpu->arch_priv);
 		vcpu->arch_priv = NULL;
 	}
-fail:
+
+done:
+	msr(cptr_el2, saved_cptr_el2);
+	msr(hstr_el2, saved_hstr_el2);
 	return rc;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
-	int rc;
+	int rc = VMM_OK;
+	u32 saved_cptr_el2, saved_hstr_el2;
 
 	/* For both Orphan & Normal VCPUs */
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
@@ -614,30 +635,45 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 		return VMM_OK;
 	}
 
+	/* Save CPTR_EL2 and HSTR_EL2 */
+	saved_cptr_el2 = mrs(cptr_el2);
+	saved_hstr_el2 = mrs(hstr_el2);
+
+	/* We force disable coprocessor and system traps to be
+	 * consistent with arch_vcpu_init() function.
+	 */
+	msr(cptr_el2, 0x0);
+	msr(hstr_el2, 0x0);
+
 	/* Free Generic Timer Context */
 	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
 		if ((rc = generic_timer_vcpu_context_deinit(vcpu,
 					&arm_gentimer_context(vcpu)))) {
-			return rc;
+			goto done;
 		}
 	}
 
 	/* Free VFP context */
 	rc = cpu_vcpu_vfp_deinit(vcpu);
 	if (rc) {
-		return rc;
+		goto done;
 	}
 
 	/* Free sysregs context */
 	rc = cpu_vcpu_sysregs_deinit(vcpu);
 	if (rc) {
-		return rc;
+		goto done;
 	}
 
 	/* Free private context */
 	vmm_free(vcpu->arch_priv);
 	vcpu->arch_priv = NULL;
 
+	rc = VMM_OK;
+
+done:
+	msr(cptr_el2, saved_cptr_el2);
+	msr(hstr_el2, saved_hstr_el2);
 	return VMM_OK;
 }
 
