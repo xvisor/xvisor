@@ -165,12 +165,12 @@ restore_skip_thumbee:
 cpu_vcpu_vfp_regs_save:
 	str	x1, [sp, #-8]!
 	/* Save floating point control registers */
+	mrs	x1, fpexc32_el2		/* fpexc32 */
+	str	w1, [x0, #ARM_PRIV_VFP_fpexc32]
 	mrs	x1, fpcr		/* fpcr */
 	str	w1, [x0, #ARM_PRIV_VFP_fpcr]
 	mrs	x1, fpsr		/* fpsr */
 	str	w1, [x0, #ARM_PRIV_VFP_fpsr]
-	mrs	x1, fpexc32_el2		/* fpexc32 */
-	str	w1, [x0, #ARM_PRIV_VFP_fpexc32]
 	/* Save floating point registers */
 	add	x1, x0, #ARM_PRIV_VFP_fpregs
 	stp	 q0,  q1, [x1, #0x000]
@@ -214,10 +214,10 @@ cpu_vcpu_vfp_regs_restore:
 	ldp	q28, q29, [x1, #0x1C0]
 	ldp	q30, q31, [x1, #0x1E0]
 	/* Restore floating point control registers */
-	ldr	w1, [x0, #ARM_PRIV_VFP_fpcr]
-	msr	fpcr, x1		/* fpcr */
 	ldr	w1, [x0, #ARM_PRIV_VFP_fpsr]
 	msr	fpsr, x1		/* fpsr */
+	ldr	w1, [x0, #ARM_PRIV_VFP_fpcr]
+	msr	fpcr, x1		/* fpcr */
 	ldr	w1, [x0, #ARM_PRIV_VFP_fpexc32]
 	msr	fpexc32_el2, x1		/* fpexc32 */
 	ldr	x1, [sp], #8
