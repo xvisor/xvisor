@@ -275,10 +275,10 @@ void arm_cmd_timer(int argc, char **argv)
 	arm_ulonglong2hexstr(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
-	arm_puts("  IRQ Delay:  0x");
-	arm_ulonglong2hexstr(str, irq_delay);
+	arm_puts("  IRQ Delay:  ");
+	arm_ulonglong2str(str, irq_delay);
 	arm_puts(str);
-	arm_puts("\n");
+	arm_puts(" nsecs\n");
 	arm_puts("  Time Stamp: 0x");
 	arm_ulonglong2hexstr(str, tstamp);
 	arm_puts(str);

@@ -275,10 +275,10 @@ void arm_cmd_timer(int argc, char **argv)
 	arm_ulonglong2hexstr(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
-	arm_puts("  IRQ Delay:  0x");
-	arm_ulonglong2hexstr(str, irq_delay);
+	arm_puts("  IRQ Delay:  ");
+	arm_ulonglong2str(str, irq_delay);
 	arm_puts(str);
-	arm_puts("\n");
+	arm_puts(" nsecs\n");
 	arm_puts("  Time Stamp: 0x");
 	arm_ulonglong2hexstr(str, tstamp);
 	arm_puts(str);
@@ -406,7 +406,7 @@ void arm_cmd_copy(int argc, char **argv)
 #define CONFIG_NR_CPUS		2
 char linux_cmdline[1024];
 
-typedef void (* linux_entry_t) (u64 fdt_addr);
+typedef void (* linux_entry_t) (u64 fdt_addr, u64 arg0, u64 arg1, u64 arg2);
 
 void dump_fdt(void *);
 
@@ -497,7 +497,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	 * r0 -> dtb address
 	 */
 	arm_puts("Jumping into linux ...\n");
-	((linux_entry_t)kernel_addr)(fdt_addr);
+	((linux_entry_t)kernel_addr)(fdt_addr, 0x0, 0x0, 0x0);
 
 	/* We should never reach here */
 	while (1);
