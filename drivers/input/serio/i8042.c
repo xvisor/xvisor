@@ -80,7 +80,7 @@ static bool i8042_notimeout;
 module_param_named(notimeout, i8042_notimeout, bool, 0);
 MODULE_PARM_DESC(notimeout, "Ignore timeouts signalled by i8042");
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 static bool i8042_dritek;
 module_param_named(dritek, i8042_dritek, bool, 0);
 MODULE_PARM_DESC(dritek, "Force enable the Dritek keyboard extension");
@@ -1082,7 +1082,7 @@ static long i8042_panic_blink(int state)
 
 #undef DELAY
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 static void i8042_dritek_enable(void)
 {
 	unsigned char param = 0x90;
@@ -1134,7 +1134,7 @@ static int i8042_controller_resume(bool force_reset)
 	}
 
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 	if (i8042_dritek)
 		i8042_dritek_enable();
 #endif
@@ -1427,7 +1427,7 @@ static int i8042_driver_probe(struct vmm_device *dev,
 	if (error)
 		return error;
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 	if (i8042_dritek)
 		i8042_dritek_enable();
 #endif

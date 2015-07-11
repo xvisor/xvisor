@@ -928,7 +928,7 @@ static inline bool fb_be_math(struct fb_info *info)
 #define FBINFO_FLAG_MODULE	FBINFO_MODULE
 #define FBINFO_FLAG_DEFAULT	FBINFO_DEFAULT
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 
 #define fb_readb vmm_readb
 #define fb_readw vmm_readw

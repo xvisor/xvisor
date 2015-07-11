@@ -3,7 +3,7 @@
 
 #include <asm/cache.h>
 
-#ifdef CONFIG_ARCH_x86
+#ifdef CONFIG_X86
 #define COMMAND_LINE_SIZE 2048
 #else
 #define COMMAND_LINE_SIZE 1024
