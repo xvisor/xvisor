@@ -98,6 +98,8 @@ static inline int of_modalias_node(struct device_node *node,
 
 #define of_count_phandle_with_args \
 				vmm_devtree_count_phandle_with_args
+#define	of_parse_phandle \
+				vmm_devtree_parse_phandle
 #define	of_parse_phandle_with_args \
 				vmm_devtree_parse_phandle_with_args
 #define	of_parse_phandle_with_fixed_args \
