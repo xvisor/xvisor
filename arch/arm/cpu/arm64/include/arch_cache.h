@@ -52,5 +52,11 @@
 						clean_invalidate_dcache_mva_range((start),(end)); \
 						} while (0)
 
-
+/* Prototype:
+ * void arch_clean_cache_range(virtual_addr_t start, virtual_addr_t end)
+ */
+#define ARCH_HAS_CLEAN_DCACHE_RANGE
+#define arch_clean_dcache_range(start, end)	do { \
+						clean_dcache_mva_range((start),(end)); \
+						} while (0)
 #endif /* _ARCH_CACHE_H__ */

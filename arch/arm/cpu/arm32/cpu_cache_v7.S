@@ -121,7 +121,34 @@ invalidate_dcache_mva:
 	mcr     p15, 0, r0, c7, c6, 1
 	isb
 	bx	lr
-	
+
+	/* Invalidate by memory region by mva range
+	 *  r0 - start address of region
+	 *  r1 - end address of region
+	 */
+	.globl invalidate_dcache_mva_range
+invalidate_dcache_mva_range:
+	push	{r0, r1, r2, r3}
+	dcache_line_size r2, r3
+	sub	r3, r2, #1
+	tst	r0, r3
+	bic	r0, r0, r3
+	/* clean & invalidate D / U line */
+	mcrne	p15, 0, r0, c7, c14, 1
+	tst	r1, r3
+	bic	r1, r1, r3
+	/* clean & invalidate D / U line */
+	mcrne	p15, 0, r1, c7, c14, 1
+1:
+	/* invalidate D / U line */
+	mcr	p15, 0, r0, c7, c6, 1
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
+	dsb	st
+	pop	{r0, r1, r2, r3}
+	bx	lr
+
 	/* clean by mva */
 	.globl clean_dcache_mva
 clean_dcache_mva:

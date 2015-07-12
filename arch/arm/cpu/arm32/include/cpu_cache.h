@@ -46,6 +46,9 @@ void invalidate_dcache(void);
 /** Invalidate data cache line by MVA */
 void invalidate_dcache_mva(virtual_addr_t mva);
 
+/** Invalidate data cache lines by MVA range */
+void invalidate_dcache_mva_range(virtual_addr_t start, virtual_addr_t end);
+
 /** Invalidate data cache line by set/way */
 void invalidate_dcache_line(u32 line);
 

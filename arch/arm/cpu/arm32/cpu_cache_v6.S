@@ -97,6 +97,49 @@ invalidate_dcache_mva:
 	ISB	r0
 	mov	pc, lr
 	
+	/* Invalidate by memory region by mva range
+	 *  r0 - start address of region
+	 *  r1 - end address of region
+	 */
+	.globl invalidate_dcache_mva_range
+invalidate_dcache_mva_range:
+	push	{r0, r1, r2, r3}
+#ifdef HARVARD_CACHE
+	mov	r2, #D_CACHE_LINE_SIZE
+#else
+	mov	r2, #CACHE_LINE_SIZE
+#endif
+	sub	r3, r2, #1
+	tst	r0, r3
+	bic	r0, r0, r3
+	/* clean & invalidate D / U line */
+#ifdef HARVARD_CACHE
+	mcrne   p15, 0, r0, c7, c14, 1		@ d-cache clean+invalidate by MVA
+#else
+	mcrne   p15, 0, r0, c7, c15, 1		@ cache unified clean+invalidate by MVA
+#endif
+	tst	r1, r3
+	bic	r1, r1, r3
+	/* clean & invalidate D / U line */
+#ifdef HARVARD_CACHE
+	mcrne   p15, 0, r1, c7, c14, 1		@ d-cache clean+invalidate by MVA
+#else
+	mcrne   p15, 0, r1, c7, c15, 1		@ cache unified clean+invalidate by MVA
+#endif
+1:
+	/* invalidate D / U line */
+#ifdef HARVARD_CACHE
+	mcr     p15, 0, r0, c7, c6, 1		@ d-cache invalidate by MVA
+#else
+	mcr     p15, 0, r0, c7, c7, 1		@ cache unified invalidate by MVA
+#endif
+	add	r0, r0, r2
+	cmp	r0, r1
+	blo	1b
+	DSB	r0
+	pop	{r0, r1, r2, r3}
+	bx	lr
+
 	/* clean by mva */
 	.globl clean_dcache_mva
 clean_dcache_mva:

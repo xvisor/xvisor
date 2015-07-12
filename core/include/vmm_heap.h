@@ -57,11 +57,37 @@ virtual_size_t vmm_normal_heap_free_size(void);
 /** Print Normal heap state */
 int vmm_normal_heap_print_state(struct vmm_chardev *cdev);
 
+enum dma_data_direction {
+	DMA_BIDIRECTIONAL = 0,
+	DMA_TO_DEVICE = 1,
+	DMA_FROM_DEVICE = 2,
+	DMA_NONE = 3,
+};
+
 /** Allocate DMA memory */
 void *vmm_dma_malloc(virtual_size_t size);
 
 /** Allocate DMA memory and zero set */
 void *vmm_dma_zalloc(virtual_size_t size);
+
+/** Allocate DMA memory and get its physical address */
+void *vmm_dma_zalloc_phy(virtual_size_t size, physical_addr_t *paddr);
+
+/* Set the buffer to be "owned" by the device */
+void vmm_dma_cpu_to_dev(virtual_addr_t start, virtual_addr_t end,
+			enum dma_data_direction dir);
+
+/* Set the buffer to be "owned" by the CPU */
+void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
+			enum dma_data_direction dir);
+
+/* Map a DMA buffer for the device */
+physical_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
+			    enum dma_data_direction dir);
+
+/* Unmap the DMA buffer, which can be then read by the CPU */
+void vmm_dma_unmap(virtual_addr_t *pvaddr, virtual_size_t size,
+		   enum dma_data_direction dir);
 
 /** Retrieve allocation size from DMA heap */
 virtual_size_t vmm_dma_alloc_size(const void *ptr);

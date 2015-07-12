@@ -235,6 +235,77 @@ void *vmm_dma_zalloc(virtual_size_t size)
 	return ret;
 }
 
+void *vmm_dma_zalloc_phy(virtual_size_t size,
+			 physical_addr_t *paddr)
+{
+	int ret;
+	void *cpu_addr;
+	dma_addr_t dma_addr = 0;
+
+#if defined(CONFIG_IOMMU)
+	/* TODO: Manage cases with IOMMU */
+	BUG();
+#endif /* defined(CONFIG_IOMMU) */
+
+	cpu_addr = vmm_dma_zalloc(size);
+	if (!cpu_addr)
+		return cpu_addr;
+
+	ret = vmm_host_va2pa((virtual_addr_t)cpu_addr, &dma_addr);
+	if (VMM_OK == ret) {
+		*paddr = dma_addr;
+	}
+
+	return cpu_addr;
+}
+
+void vmm_dma_cpu_to_dev(virtual_addr_t start, virtual_addr_t end,
+			enum dma_data_direction dir)
+{
+	if (dir == DMA_FROM_DEVICE) {
+		vmm_inv_dcache_range(start, end);
+		vmm_inv_outer_cache_range(start, end);
+	} else {
+		vmm_clean_dcache_range(start, end);
+		vmm_clean_outer_cache_range(start, end);
+	}
+}
+
+void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
+			enum dma_data_direction dir)
+{
+	if (dir == DMA_FROM_DEVICE) {
+		/* Cache prefetching */
+		vmm_inv_dcache_range(start, end);
+		vmm_inv_outer_cache_range(start, end);
+	}
+}
+
+physical_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
+			    enum dma_data_direction dir)
+{
+	int ret = VMM_OK;
+	dma_addr_t dma_addr = 0;
+	virtual_size_t vaddr = (virtual_size_t)pvaddr;
+
+	vmm_dma_cpu_to_dev(vaddr, vaddr + size, dir);
+
+	ret = vmm_host_va2pa(vaddr, &dma_addr);
+	if (ret != VMM_OK) {
+		return 0;
+	} else {
+		return dma_addr;
+	}
+}
+
+void vmm_dma_unmap(virtual_addr_t *pvaddr, virtual_size_t size,
+		   enum dma_data_direction dir)
+{
+	virtual_size_t vaddr = (virtual_size_t)pvaddr;
+
+	vmm_dma_dev_to_cpu(vaddr, vaddr + size, dir);
+}
+
 virtual_size_t vmm_dma_alloc_size(const void *ptr)
 {
 	return heap_alloc_size(&dma_heap, ptr);
