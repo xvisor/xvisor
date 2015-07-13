@@ -59,4 +59,21 @@
 #define arch_clean_dcache_range(start, end)	do { \
 						clean_dcache_mva_range((start),(end)); \
 						} while (0)
+
+/* Prefetching support.
+ * Prototype:
+ * void arch_prefetch(const void *ptr)
+ */
+#if defined(CONFIG_ARMV8)
+
+#define ARCH_HAS_PREFETCH
+static inline void arch_prefetch(const void *ptr)
+{
+	__asm__ __volatile__(
+		"prfm \tPLDL1KEEP, %a0"
+		:: "p" (ptr));
+}
+
+#endif /* CONFIG_ARMV8 */
+
 #endif /* _ARCH_CACHE_H__ */
