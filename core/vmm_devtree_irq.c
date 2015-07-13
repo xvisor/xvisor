@@ -56,7 +56,7 @@ int vmm_devtree_irq_get(struct vmm_devtree_node *node,
 	}
 
 	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
-	if (alen < (index * sizeof(u32))) {
+	if (alen <= (index * sizeof(u32))) {
 		return VMM_ENOTAVAIL;
 	}
 
