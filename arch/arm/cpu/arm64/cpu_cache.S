@@ -18,10 +18,10 @@
  *
  * @file cpu_cache.S
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief Low-level implementation of cache ARMv8 functions 
+ * @brief Low-level implementation of cache ARMv8 functions
  */
 
-/* Stack pushing/popping (register pairs only). 
+/* Stack pushing/popping (register pairs only).
    Equivalent to store decrement before, load increment after */
 
 .macro  push, xreg1, xreg2
@@ -46,7 +46,7 @@
 	lsl	\reg, \reg, \tmp		/* actual cache line size */
 .endm
 
-/* 
+/*
  * Registers x0 - x10 are used.
  */
 #define ARM_ENTIRE_DCACHE_OP(cacheop) 	\
@@ -104,8 +104,8 @@
 	pop	x2, x3			/* restore registers */;\
 	pop	x0, x1			/* restore registers */;\
 
-	/* 
-	 * Operations on entire data Cache to POC 
+	/*
+	 * Operations on entire data Cache to POC
 	 */
 
 	/* clean the entire data cache */	
@@ -124,9 +124,45 @@ clean_invalidate_dcache:
 	isb
 	ret
 
-	/* 
-	 * Operations on data cache by MVA 
+	/*
+	 * Operations on data cache by MVA
 	 */
+
+	/* invalidate by mva */
+	.globl invalidate_dcache_mva
+invalidate_dcache_mva:
+	dc	ivac, x0
+	dsb	sy
+	isb
+	ret
+
+	/* invalidate memory region by mva range
+	 *  x0 - start address of region
+	 *  x1 - end address of region
+	 */
+	.globl invalidate_dcache_mva_range
+invalidate_dcache_mva_range:
+	push	x2, x3
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	tst	x0, x3
+	bic	x0, x0, x3
+	beq	1f
+	dc	cvac, x0
+1:
+	tst	x1, x3
+	bic	x1, x1, x3
+	beq	2f
+	dc	cvac, x1
+2:
+	dc	ivac, x0
+	add	x0, x0, x2
+	cmp	x0, x1
+	blo	2b
+	dsb	sy
+	isb
+	pop	x2, x3
+	ret
 
 	/* clean by mva */
 	.globl clean_dcache_mva
@@ -136,7 +172,7 @@ clean_dcache_mva:
 	isb
 	ret
 
-	/* clean by memory region by mva range 
+	/* clean memory region by mva range
 	 *  x0 - start address of region
 	 *  x1 - end address of region
 	 */
@@ -184,7 +220,7 @@ clean_invalidate_dcache_mva_range:
 	pop	x2, x3
 	ret
 
-	/* 
+	/*
 	 * Operations on data cache line by set/way
 	 */
 
@@ -204,8 +240,8 @@ clean_invalidate_dcache_line:
 	isb
 	ret
 
-	/* 
-	 * Operation on entire Instruction cache 
+	/*
+	 * Operation on entire Instruction cache
 	 */
 
 	/* invalidate the entire i-cache */
@@ -222,8 +258,8 @@ invalidate_icache_mva:
 	isb
 	ret
 
-	/* 
-	 * Operations on entire instruction an data cache 
+	/*
+	 * Operations on entire instruction an data cache
 	 */
 
 	/* clean the entire i-cache and d-cache */
@@ -240,7 +276,7 @@ clean_invalidate_idcache:
 	ldr	lr, [sp], #8
 	ret
 
-	/* 
+	/*
 	 * operation on both i-cache and d-cache by mva
 	 */
 
@@ -258,7 +294,7 @@ clean_invalidate_idcache_mva:
 	ldr	lr, [sp], #8
 	ret
 
-	/* 
+	/*
 	 * operation on both i-cache and d-cache line by set/way
 	 */
 

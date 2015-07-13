@@ -31,6 +31,12 @@ void invalidate_icache(void);
 /** Invalidate instruction cache line by MVA to PoU */
 void invalidate_icache_mva(virtual_addr_t mva);
 
+/** Invalidate data cache line by MVA */
+void invalidate_dcache_mva(virtual_addr_t mva);
+
+/** Invalidate data cache lines by MVA range */
+void invalidate_dcache_mva_range(virtual_addr_t start, virtual_addr_t end);
+
 /** Clean data cache */
 void clean_dcache(void);
 
