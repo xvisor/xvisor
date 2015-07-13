@@ -193,4 +193,9 @@ static inline void skb_copy_and_csum_dev(const struct sk_buff *skb, void *to)
 	skb_copy_from_linear_data(skb, to, skb_len(skb));
 }
 
+static inline u16 skb_get_queue_mapping(const struct sk_buff *skb)
+{
+	return 0;
+}
+
 #endif /* __LINUX_SKBUFF_H_ */

@@ -69,6 +69,10 @@ typedef enum netdev_tx netdev_tx_t;
 struct phy_device;
 struct net_device;
 
+struct netdev_queue {
+	struct net_device	*ndev;
+};
+
 struct net_device_ops {
 	int (*ndo_init) (struct net_device *ndev);
 	int (*ndo_open) (struct net_device *ndev);
@@ -141,6 +145,7 @@ struct net_device {
 	int			watchdog_timeo;
 
 	struct vmm_device *vmm_dev;
+	struct netdev_queue _tx;
 };
 
 #define NETDEV_ALIGN            32
@@ -209,6 +214,21 @@ static inline bool netif_running(struct net_device *dev)
 	return false;
 }
 
+/* Multi-queue is not managed yet */
+#define netif_tx_wake_all_queues(dev)	netif_wake_queue(dev)
+#define netif_tx_start_all_queues(dev)	netif_start_queue(dev)
+
+/**
+ *	netif_device_present - is device available or removed
+ *	@dev: network device
+ *
+ * Check if device has not been removed from system.
+ */
+static inline bool netif_device_present(struct net_device *dev)
+{
+	return (NETDEV_REGISTERED & dev->state);
+}
+
 static inline void ether_setup(struct net_device *dev)
 {
 	dev->hw_addr_len = ETH_ALEN;
@@ -258,12 +278,34 @@ static inline void free_netdev(struct net_device *dev)
 	vmm_free(dev);
 }
 
+static inline
+struct netdev_queue *netdev_get_tx_queue(struct net_device *dev,
+					 unsigned int index)
+{
+	return &dev->_tx;
+}
+
+static inline void netif_tx_stop_queue(struct netdev_queue *dev_queue)
+{
+	netif_stop_queue(dev_queue->ndev);
+}
+
+static inline void netif_tx_wake_queue(struct netdev_queue *dev_queue)
+{
+	netif_wake_queue(dev_queue->ndev);
+}
+
 #define	netif_msg_link(x)		0
 #define	SET_NETDEV_DEV(ndev, pdev)	ndev->vmm_dev = (void *) pdev
 #define	unregister_netdev(ndev)		netdev_unregister(ndev)
 
 /** Allocate new network device */
 struct net_device *netdev_alloc(const char *name);
+
+struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
+		unsigned char name_assign_type,
+		void (*setup)(struct net_device *),
+		unsigned int txqs, unsigned int rxqs);
 
 /** Register network device to device driver framework */
 int register_netdev(struct net_device *ndev);

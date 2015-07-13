@@ -4,6 +4,9 @@
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
 
+struct net_device *alloc_etherdev_mqs(int sizeof_priv, unsigned int txqs,
+				      unsigned int rxqs);
+
 static inline int eth_validate_addr(struct net_device *dev)
 {
 	if (!is_valid_ether_addr(dev->dev_addr))
