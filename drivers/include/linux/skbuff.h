@@ -34,10 +34,26 @@
 #ifndef __LINUX_SKBUFF_H_
 #define __LINUX_SKBUFF_H_
 
+#include <vmm_host_aspace.h>
 #include <net/vmm_mbuf.h>
 #include <vmm_macros.h>
 #include <linux/printk.h>
 #include <linux/types.h>
+#include <linux/sched.h>
+#include <linux/irqflags.h>
+
+/* To allow 64K frame to be packed as single skb without frag_list we
+ * require 64K/PAGE_SIZE pages plus 1 additional page to allow for
+ * buffers which do not start on a page boundary.
+ *
+ * Since GRO uses frags we allocate at least 16 regardless of page
+ * size.
+ */
+#if (65536/VMM_PAGE_SIZE + 1) < 16
+#define MAX_SKB_FRAGS 16UL
+#else
+#define MAX_SKB_FRAGS (65536/VMM_PAGE_SIZE + 1)
+#endif
 
 /**
  * Our goal is not to be 100% compatibilty with sk_buff (as much as 
@@ -51,9 +67,9 @@
  */
 #define sk_buff	vmm_mbuf
 
-#define skb_head(skb)	(skb->m_extbuf)
-#define skb_data(skb)	(skb->m_data)
-#define skb_len(skb)	(skb->m_len)
+#define skb_head(skb)	((skb)->m_extbuf)
+#define skb_data(skb)	((skb)->m_data)
+#define skb_len(skb)	((skb)->m_len)
 
 static inline struct sk_buff *alloc_skb(unsigned int size,
 					u8 dummy_priority)
@@ -176,6 +192,20 @@ static inline struct sk_buff *dev_alloc_skb(unsigned int length)
 
 #define dev_kfree_skb(skb)		m_freem((struct vmm_mbuf *) skb)
 
+static inline void dev_kfree_skb_any(struct sk_buff *skb)
+{
+#if 0
+	if (in_irq() || irqs_disabled())
+		__dev_kfree_skb_irq(skb, reason);
+	else
+		dev_kfree_skb(skb);
+#else /* 0 */
+	/* FIXME: Not implemented yet */
+	BUG_ON(in_interrupt() || irqs_disabled());
+	dev_kfree_skb(skb);
+#endif /* 0 */
+}
+
 #define netdev_alloc_skb(dev, length)	dev_alloc_skb(length)
 
 #define skb_checksum_none_assert(skb)
@@ -196,6 +226,23 @@ static inline void skb_copy_and_csum_dev(const struct sk_buff *skb, void *to)
 static inline u16 skb_get_queue_mapping(const struct sk_buff *skb)
 {
 	return 0;
+}
+
+/**
+ * skb_tx_timestamp() - Driver hook for transmit timestamping
+ *
+ * Ethernet MAC Drivers should call this function in their hard_xmit()
+ * function immediately before giving the sk_buff to the MAC hardware.
+ *
+ * Specifically, one should make absolutely sure that this function is
+ * called before TX completion of this packet can trigger.  Otherwise
+ * the packet could potentially already be freed.
+ *
+ * @skb: A socket buffer.
+ */
+static inline void skb_tx_timestamp(struct sk_buff *skb)
+{
+	/* FIXME: Implement */
 }
 
 #endif /* __LINUX_SKBUFF_H_ */

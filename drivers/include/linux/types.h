@@ -2,6 +2,7 @@
 #define _LINUX_TYPES_H
 
 #include <vmm_types.h>
+#include <uapi/linux/types.h>
 
 #define __user
 #define __init_refok

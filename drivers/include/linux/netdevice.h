@@ -364,6 +364,74 @@ int netdev_switch2port_xfer(struct vmm_netport *port,
 			struct vmm_mbuf *mbuf);
 struct net_device *alloc_etherdev(int sizeof_priv);
 
+#define netdev_msg(level, ndev, msg...)					\
+	do {								\
+		vmm_lprintf(level, "%s: ", ndev->name);			\
+		vmm_lprintf(level, msg);				\
+	} while (0);
+
+#define netdev_info(ndev, msg...)				\
+	netdev_msg(VMM_LOGLEVEL_INFO, ndev, msg)
+#define netdev_err(ndev, msg...)				\
+	netdev_msg(VMM_LOGLEVEL_ERROR, ndev, msg)
+
+/* FIXME: Implement */
+#define rtnl_lock()
+#define rtnl_unlock()
+static inline void netif_tx_disable(struct net_device *dev)
+{
+#if 0
+	unsigned int i;
+	int cpu;
+
+	local_bh_disable();
+	cpu = smp_processor_id();
+	for (i = 0; i < dev->num_tx_queues; i++) {
+		struct netdev_queue *txq = netdev_get_tx_queue(dev, i);
+
+		__netif_tx_lock(txq, cpu);
+		netif_tx_stop_queue(txq);
+		__netif_tx_unlock(txq);
+	}
+	local_bh_enable();
+#endif /* 0 */
+}
+
+static inline void netif_tx_unlock(struct net_device *dev)
+{
+#if 0
+	unsigned int i;
+
+	for (i = 0; i < dev->num_tx_queues; i++) {
+		struct netdev_queue *txq = netdev_get_tx_queue(dev, i);
+
+		/* No need to grab the _xmit_lock here.  If the
+		 * queue is not stopped for another reason, we
+		 * force a schedule.
+		 */
+		clear_bit(__QUEUE_STATE_FROZEN, &txq->state);
+		netif_schedule_queue(txq);
+	}
+	spin_unlock(&dev->tx_global_lock);
+#endif /* 0 */
+}
+
+static inline void netif_tx_lock_bh(struct net_device *dev)
+{
+#if 0
+	local_bh_disable();
+	netif_tx_lock(dev);
+#endif /* 0 */
+}
+
+static inline void netif_tx_unlock_bh(struct net_device *dev)
+{
+#if 0
+	netif_tx_unlock(dev);
+	local_bh_enable();
+#endif /* 0 */
+}
+
 /* Default NAPI poll() weight
  * Device drivers are strongly advised to not use bigger value
  */

@@ -16,6 +16,7 @@
 #define MODULE_DEVICE_TABLE(p1,p2)
 
 #define module_param_named(p1,p2,p3,p4)
+#define module_param_array(p1,p2,p3,p4)
 #define module_param(p1,p2,p3)
 #define MODULE_PARM_DESC(p1,p2)
 
