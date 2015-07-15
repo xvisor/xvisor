@@ -148,6 +148,51 @@ struct net_device {
 	struct netdev_queue _tx;
 };
 
+/*
+ * Structure for NAPI scheduling similar to tasklet but with weighting
+ */
+struct napi_struct {
+#if 0
+	/* The poll_list must only be managed by the entity which
+	 * changes the state of the NAPI_STATE_SCHED bit.  This means
+	 * whoever atomically sets that bit can add this napi_struct
+	 * to the per-cpu poll_list, and whoever clears that bit
+	 * can remove from the list right before clearing the bit.
+	 */
+	struct list_head	poll_list;
+
+	unsigned long		state;
+	int			weight;
+	unsigned int		gro_count;
+#endif /* 0 */
+	int			(*poll)(struct napi_struct *, int);
+#if 0
+#ifdef CONFIG_NETPOLL
+	spinlock_t		poll_lock;
+	int			poll_owner;
+#endif
+#endif /* 0 */
+	struct net_device	*dev;
+#if 0
+	struct sk_buff		*gro_list;
+	struct sk_buff		*skb;
+	struct list_head	dev_list;
+	struct hlist_node	napi_hash_node;
+	unsigned int		napi_id;
+#else /* 0 */
+	struct vmm_netport_xfer	xfer;
+#endif /* 0 */
+};
+
+enum gro_result {
+	GRO_MERGED,
+	GRO_MERGED_FREE,
+	GRO_HELD,
+	GRO_NORMAL,
+	GRO_DROP,
+};
+typedef enum gro_result gro_result_t;
+
 #define NETDEV_ALIGN            32
 
 #include <linux/ethtool.h>
@@ -318,5 +363,74 @@ int netdev_can_receive(struct vmm_netport *port);
 int netdev_switch2port_xfer(struct vmm_netport *port,
 			struct vmm_mbuf *mbuf);
 struct net_device *alloc_etherdev(int sizeof_priv);
+
+/* Default NAPI poll() weight
+ * Device drivers are strongly advised to not use bigger value
+ */
+#define NAPI_POLL_WEIGHT 64
+extern int              netdev_budget;
+
+/**
+ *	netif_napi_add - initialize a napi context
+ *	@dev:  network device
+ *	@napi: napi context
+ *	@poll: polling function
+ *	@weight: default weight
+ *
+ * netif_napi_add() must be used to initialize a napi context prior to calling
+ * *any* of the other napi related functions.
+ */
+void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
+		    int (*poll)(struct napi_struct *, int), int weight);
+
+/**
+ *  netif_napi_del - remove a napi context
+ *  @napi: napi context
+ *
+ *  netif_napi_del() removes a napi context from the network device napi list
+ */
+void netif_napi_del(struct napi_struct *napi);
+
+/**
+ *	napi_complete - NAPI processing complete
+ *	@n: napi context
+ *
+ * Mark NAPI processing as complete.
+ */
+void __napi_complete(struct napi_struct *n);
+void napi_complete(struct napi_struct *n);
+
+/**
+ *	napi_disable - prevent NAPI from scheduling
+ *	@n: napi context
+ *
+ * Stop NAPI from being scheduled on this context.
+ * Waits till any outstanding processing completes.
+ */
+void napi_disable(struct napi_struct *n);
+
+/**
+ *	napi_enable - enable NAPI scheduling
+ *	@n: napi context
+ *
+ * Resume NAPI from being scheduled on this context.
+ * Must be paired with napi_disable.
+ */
+void napi_enable(struct napi_struct *n);
+
+/**
+ *	napi_schedule - schedule NAPI poll
+ *	@n: napi context
+ *
+ * Schedule NAPI poll routine to be called if it is not already
+ * running.
+ */
+void napi_schedule(struct napi_struct *n);
+
+static inline gro_result_t napi_gro_receive(struct napi_struct *napi,
+					    struct sk_buff *skb)
+{
+	return netif_rx(skb, napi->dev);
+}
 
 #endif /* __LINUX_NETDEVICE_H_ */

@@ -27,3 +27,4 @@ drivers-objs-$(CONFIG_NET_DEVICES)+= net/netdevice.o
 drivers-objs-$(CONFIG_NET_DEVICES)+= net/ethtool.o
 drivers-objs-$(CONFIG_NET_DEVICES)+= net/of_net.o
 drivers-objs-$(CONFIG_NET_DEVICES)+= net/eth.o
+drivers-objs-$(CONFIG_NET_NAPI)+= net/dev.o
