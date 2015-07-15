@@ -111,3 +111,30 @@
 		wakeup-gpios = <&gpio1 9 0>;
 	};
 };
+
+&fec {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet_4>;
+	phy-mode = "rgmii";
+	phy-reset-gpios = <&gpio1 27 0>;
+	txen-skew-ps = <0>;
+	txc-skew-ps = <3000>;
+	rxdv-skew-ps = <0>;
+	rxc-skew-ps = <3000>;
+	rxd0-skew-ps = <0>;
+	rxd1-skew-ps = <0>;
+	rxd2-skew-ps = <0>;
+	rxd3-skew-ps = <0>;
+	txd0-skew-ps = <0>;
+	txd1-skew-ps = <0>;
+	txd2-skew-ps = <0>;
+	txd3-skew-ps = <0>;
+	#address-cells = <0>;
+	#size-cells = <1>;
+	phy_int {
+		reg = <0x6>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <28 /* IRQ_TYPE_LEVEL_LOW */>;
+	};
+};
