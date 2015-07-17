@@ -99,52 +99,26 @@ arch_smp_id:
 	mrc	p15, 4, r0, c13, c0, 2
 	bx 	lr
 
+	.align	2
+	.globl proc_smp_counter
+proc_smp_counter:
+	.word	0x0
+
 	/* 
 	 * Setup SMP ID of current processor
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	mrc	p15, 0, r0, c0, c0, 0		@ Read Main ID register
-	and	r10, r0, #0xff000000		@ ARM?
-	teq	r10, #0x41000000
-	bne	arm_cpu_skip
-	ubfx	r0, r0, #4, #12			@ primary part number
+	/* Determine next SMP ID in r0 */
+	adr	r1, proc_smp_counter
+1:	ldrex	r0, [r1]
+	add	r0, r0, #1
+	strex	r2, r0, [r1]
+	teq	r2, #0
+	bne	1b
+	sub	r0, r0, #1
 
-	/* SMP ID setup for:
-	 *   Cortex-A15
-	 *   Cortex-A7
-	 * MPIDR fields:
-	 *   Cluster ID = MPIDR[11:8]
-	 *   CPU ID = MPIDR[1:0]
-	 */
-	ldr	r10, =0x00000c0f		@ Cortex-A15 primary part number
-	teq	r0, r10
-	beq	arm_cpu_4bit_2bit
-	ldr	r10, =0x00000c07		@ Cortex-A7 primary part number
-	teq	r0, r10
-	bne	arm_cpu_skip
-arm_cpu_4bit_2bit:
-	mrc     p15, 0, r0, c0, c0, 5
-	mov	r1, r0
-	lsr	r1, r1, #8
-	and	r1, r1, #0xF
-	lsl	r1, r1, #2
-	and	r0, r0, #0x3
-	orr	r0, r1, r0
-	b	setup_smp_id_check
-arm_cpu_skip:
-
-	/* SMP ID setup for:
-	 *   Unknown CPUs
-	 * MPIDR fields:
-	 *   CPU ID = MPIDR[7:0]
-	 */
-unknown_cpu:
-	mrc     p15, 0, r0, c0, c0, 5
-	and	r0, r0, #0xFF
-
-setup_smp_id_check:
-	/* Ensure that SMP ID in r0
+	/* Ensure that next SMP ID in r0
 	 * is less than CONFIG_CPU_COUNT
 	 */
 	ldr	r1, =CONFIG_CPU_COUNT

@@ -71,43 +71,25 @@ arch_smp_id:
 	mrs	x0, tpidr_el2
 	ret
 
+	.align	3
+	.globl proc_smp_counter
+proc_smp_counter:
+	.dword	0x0
+
 	/* 
 	 * Setup SMP ID of current processor
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	mrs	x0, midr_el1			/* Read Main ID register */
-	and	x10, x0, #0xff000000		/* ARM? */
-	lsr	x10, x10, 24
-	cmp	x10, #0x41
-	bne	arm_cpu_skip
-	ubfx	x0, x0, #4, #12			/* primary part number */
+	/* Determine next SMP ID in x0 */
+	adr	x1, proc_smp_counter
+1:	ldaxr	x0, [x1]
+	add	x0, x0, #1
+	stlxr	w2, x0, [x1]
+	cbnz	w2, 1b
+	sub	x0, x0, #1
 
-	/* SMP ID setup for:
-	 *   Foundation-v8
-	 * MPIDR fields:
-	 *   CPU ID = MPIDR[3:0]
-	 */
-	ldr	x10, =0x00000d00		/* Foundation-v8 primary part number */
-	cmp	x0, x10
-	bne	arm_cpu_skip
-arm_cpu_4bit:
-	mrs	x0, mpidr_el1
-	and	x0, x0, #0xF
-	b	setup_smp_id_check
-arm_cpu_skip:
-
-	/* SMP ID setup for:
-	 *   Unknown CPUs
-	 * MPIDR fields:
-	 *   CPU ID = MPIDR[7:0]
-	 */
-unknown_cpu:
-	mrs	x0, mpidr_el1
-	and	x0, x0, #0xFF
-
-setup_smp_id_check:
-	/* Ensure that SMP ID in r0
+	/* Ensure that next SMP ID in x0
 	 * is less than CONFIG_CPU_COUNT
 	 */
 	ldr	x1, =CONFIG_CPU_COUNT
