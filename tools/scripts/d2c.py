@@ -35,9 +35,9 @@ if __name__ == "__main__":
 	try:
 		filename = sys.argv[1]
 	except IndexError:
-		print "Usage: %s <filename>" % sys.argv[0]
+		print("Usage: %s <filename>" % sys.argv[0])
 		raise SystemExit
-    
+
 	contentFile = open(filename, "rb");
 	varname = filename;
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 	varszname = varname + "_size";
 	varname = varname + "_start";
 
-	print "const char %s[] = {" % varname,
+	print("const char %s[] = {" % varname)
 
 	filesize = 0;
 	while True:
@@ -55,9 +55,8 @@ if __name__ == "__main__":
 			break
 
 		filesize = filesize + 1
-		print "0x%02x," % ord(byte),
+		print("0x%02x," % ord(byte))
 
-	print "};\n"
+	print("};\n")
 
-	print "const unsigned long %s = %d;" % (varszname, filesize);
-
+	print("const unsigned long %s = %d;" % (varszname, filesize))
