@@ -1,0 +1,128 @@
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "brcm,bcm2836";
+	model = "Raspberry Pi2 Model B";
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0xf00>;
+			clock-frequency = <800000000>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x4000008C>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0xf01>;
+			clock-frequency = <800000000>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x4000009C>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0xf02>;
+			clock-frequency = <800000000>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x400000AC>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0xf02>;
+			clock-frequency = <800000000>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x400000BC>;
+		};
+	};
+
+	memory { 
+		device_type = "memory"; 
+		reg = <0x00000000 0x40000000>; /* 1 GB */
+	};
+
+	gen-timer { /* Generic Timer */
+      		device_type = "timer";
+      		compatible = "arm,armv7-timer";
+		clock-frequency = <19200000>;
+		interrupts = <2 1 3>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		intc {
+	      		device_type = "pic";
+			compatible = "brcm,bcm2836-armctrl-ic";
+			reg = <0x3f00b200 0x200>;
+		};
+
+		poweroff {
+			compatible = "brcm,bcm2835-poweroff";
+			reg = <0x3f100000 0x28>;
+		};
+
+		SERIAL0: uart0 {
+	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
+	      		reg = <0x3f201000 0x1000>;
+			clock-frequency = <3000000>;
+			interrupts = <89>;
+		};
+
+		sdhci {
+	      		device_type = "mmc";
+			compatible = "brcm,bcm2835-sdhci";
+			reg = <0x3f300000 0x1000>;
+			clocks = <&clk_mmc>;
+			interrupts = <94>;
+		};
+
+		dwc2 {
+			compatible = "brcm,bcm2835-usb";
+			reg = <0x3f980000 0x10000>;
+			interrupts = <73>;
+		};
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk_mmc: mmc {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>;
+		};
+
+		clk_i2c: i2c {
+			compatible = "fixed-clock";
+			reg = <1>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+
+		clk_spi: spi {
+			compatible = "fixed-clock";
+			reg = <2>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+	};
+};
+
