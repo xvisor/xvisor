@@ -83,11 +83,9 @@ proc_smp_counter:
 proc_setup_smp_id:
 	/* Determine next SMP ID in x0 */
 	adr	x1, proc_smp_counter
-1:	ldaxr	x0, [x1]
-	add	x0, x0, #1
-	stlxr	w2, x0, [x1]
-	cbnz	w2, 1b
-	sub	x0, x0, #1
+	ldr	x0, [x1]
+	add	x2, x0, #1
+	str	x2, [x1]
 
 	/* Ensure that next SMP ID in x0
 	 * is less than CONFIG_CPU_COUNT

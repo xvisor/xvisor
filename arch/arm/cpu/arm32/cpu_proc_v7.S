@@ -257,12 +257,9 @@ proc_smp_counter:
 proc_setup_smp_id:
 	/* Determine next SMP ID in r0 */
 	adr	r1, proc_smp_counter
-1:	ldrex	r0, [r1]
-	add	r0, r0, #1
-	strex	r2, r0, [r1]
-	teq	r2, #0
-	bne	1b
-	sub	r0, r0, #1
+	ldr	r0, [r1]
+	add	r2, r0, #1
+	str	r2, [r1]
 
 	/* Ensure that next SMP ID in r0
 	 * is less than CONFIG_CPU_COUNT
