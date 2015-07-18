@@ -42,6 +42,12 @@ virtual_size_t vmm_alloc_size(const void *ptr);
 /** Free Normal memory */
 void vmm_free(void *ptr);
 
+/* Translate a normal address to its virtual address */
+void *vmm_normal_pa2va(physical_addr_t pa);
+
+/* Translate a normal virtual address to its physical address */
+void *vmm_normal_va2pa(virtual_addr_t va);
+
 /** Starting virtual address of Normal heap */
 virtual_addr_t vmm_normal_heap_start_va(void);
 
@@ -94,6 +100,12 @@ virtual_size_t vmm_dma_alloc_size(const void *ptr);
 
 /** Free DMA memory */
 void vmm_dma_free(void *ptr);
+
+/* Translate a DMA physical address to its virtual address */
+void *vmm_dma_pa2va(dma_addr_t pa);
+
+/* Translate a DMA virtual address to its physical address */
+void *vmm_dma_va2pa(virtual_addr_t va);
 
 /** Starting virtual address of DMA heap */
 virtual_addr_t vmm_dma_heap_start_va(void);

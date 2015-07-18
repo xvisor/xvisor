@@ -39,6 +39,7 @@ struct vmm_heap_control {
 	void *mem_start;
 	unsigned long mem_size;
 	void *heap_start;
+	physical_addr_t heap_start_pa;
 	unsigned long heap_size;
 };
 
@@ -102,6 +103,23 @@ static void heap_free(struct vmm_heap_control *heap, void *ptr)
 	}
 }
 
+static void *heap_pa2va(struct vmm_heap_control *heap, physical_addr_t pa)
+{
+	BUG_ON(pa < heap->heap_start_pa);
+	BUG_ON((heap->heap_start_pa + heap->heap_size) <= pa);
+
+	return heap->heap_start + (pa - heap->heap_start_pa);
+}
+
+static void *heap_va2pa(struct vmm_heap_control *heap, virtual_addr_t va)
+{
+	BUG_ON(va < (virtual_addr_t)heap->heap_start);
+	BUG_ON((virtual_addr_t)(heap->heap_start + heap->heap_size) <= va);
+
+	return (void *)((va - (virtual_addr_t)heap->heap_start) +
+			heap->heap_start_pa);
+}
+
 static int heap_print_state(struct vmm_heap_control *heap,
 			    struct vmm_chardev *cdev, const char *name)
 {
@@ -133,6 +151,8 @@ static int heap_print_state(struct vmm_heap_control *heap,
 static int heap_init(struct vmm_heap_control *heap,
 		     bool is_normal, const u32 size_kb, u32 mem_flags)
 {
+	int rc;
+
 	memset(heap, 0, sizeof(*heap));
 
 	heap->heap_size = size_kb * 1024;
@@ -141,6 +161,12 @@ static int heap_init(struct vmm_heap_control *heap,
 					mem_flags);
 	if (!heap->heap_start) {
 		return VMM_ENOMEM;
+	}
+
+	rc = vmm_host_va2pa((virtual_addr_t)heap->heap_start,
+			    &heap->heap_start_pa);
+	if (rc) {
+		return rc;
 	}
 
 	/* 12.5 percent for house-keeping */
@@ -314,6 +340,16 @@ virtual_size_t vmm_dma_alloc_size(const void *ptr)
 void vmm_dma_free(void *ptr)
 {
 	heap_free(&dma_heap, ptr);
+}
+
+void *vmm_dma_pa2va(dma_addr_t pa)
+{
+	return heap_pa2va(&dma_heap, pa);
+}
+
+void *vmm_dma_va2pa(virtual_addr_t va)
+{
+	return heap_va2pa(&dma_heap, va);
 }
 
 virtual_addr_t vmm_dma_heap_start_va(void)
