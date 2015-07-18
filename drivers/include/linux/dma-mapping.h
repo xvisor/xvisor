@@ -56,10 +56,30 @@ static inline unsigned int dma_set_max_seg_size(struct device *dev,
 
 #define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
 #define dma_unmap_single_attrs(d, a, s, r, attrs)	\
-	vmm_dma_unmap((virtual_addr_t *)a, s, r)
+	vmm_dma_unmap((dma_addr_t *)a, s, r)
 
-#define dma_sync_single_for_device(d, a, s, r) vmm_dma_cpu_to_dev(a, a + s, r)
-#define dma_sync_single_for_cpu(d, a, s, r) vmm_dma_dev_to_cpu(a, a + s, r)
+typedef void (*sync_fct)(virtual_addr_t start,
+			 virtual_addr_t end,
+			 enum dma_data_direction dir);
+
+static inline void dma_sync_single(dma_addr_t handle,
+				   size_t size,
+				   enum dma_data_direction dir,
+				   sync_fct fct)
+{
+	virtual_addr_t start = 0;
+	virtual_addr_t end = 0;
+
+	start = VMM_PAGE_ADDR(vmm_dma_pa2va(handle));
+	end = VMM_PFN_PHYS(VMM_PFN_UP(start + size));
+	fct(start, end, dir);
+}
+
+#define dma_sync_single_for_device(d, a, s, r)				\
+	dma_sync_single(a, s, r, vmm_dma_cpu_to_dev)
+
+#define dma_sync_single_for_cpu(d, a, s, r)				\
+	dma_sync_single(a, s, r, vmm_dma_dev_to_cpu)
 
 static inline int dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 {

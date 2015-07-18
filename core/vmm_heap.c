@@ -307,8 +307,8 @@ void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
 	}
 }
 
-physical_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
-			    enum dma_data_direction dir)
+dma_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
+		       enum dma_data_direction dir)
 {
 	int ret = VMM_OK;
 	dma_addr_t dma_addr = 0;
@@ -324,12 +324,15 @@ physical_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
 	}
 }
 
-void vmm_dma_unmap(virtual_addr_t *pvaddr, virtual_size_t size,
+void vmm_dma_unmap(dma_addr_t* daddr, physical_size_t size,
 		   enum dma_data_direction dir)
 {
-	virtual_size_t vaddr = (virtual_size_t)pvaddr;
+	virtual_addr_t start = 0;
+	virtual_addr_t end = 0;
 
-	vmm_dma_dev_to_cpu(vaddr, vaddr + size, dir);
+	start = VMM_PAGE_ADDR(vmm_dma_pa2va((physical_addr_t)daddr));
+	end = VMM_PFN_PHYS(VMM_PFN_UP(start + size));
+	vmm_dma_dev_to_cpu(start, end, dir);
 }
 
 virtual_size_t vmm_dma_alloc_size(const void *ptr)

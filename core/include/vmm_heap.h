@@ -88,11 +88,11 @@ void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
 			enum dma_data_direction dir);
 
 /* Map a DMA buffer for the device */
-physical_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
-			    enum dma_data_direction dir);
+dma_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
+		       enum dma_data_direction dir);
 
 /* Unmap the DMA buffer, which can be then read by the CPU */
-void vmm_dma_unmap(virtual_addr_t *pvaddr, virtual_size_t size,
+void vmm_dma_unmap(dma_addr_t* daddr, physical_size_t size,
 		   enum dma_data_direction dir);
 
 /** Retrieve allocation size from DMA heap */
