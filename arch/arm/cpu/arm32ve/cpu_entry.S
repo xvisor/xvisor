@@ -285,6 +285,7 @@ _start_secondary_nopen:
 	dsb
 	isb
 	mcr     p15, 4, r0, c1, c0, 0
+	dsb
 	isb
 	/* Jump to reset code */
 	ldr	pc, __reset
