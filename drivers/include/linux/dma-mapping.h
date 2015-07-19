@@ -52,11 +52,11 @@ static inline unsigned int dma_set_max_seg_size(struct device *dev,
 
 #define dma_map_single(d, a, s, r) dma_map_single_attrs(d, a, s, r, NULL)
 #define dma_map_single_attrs(d, a, s, r, attrs)		\
-	vmm_dma_map((virtual_addr_t *)a, s, r)
+	vmm_dma_map((virtual_addr_t)a, s, r)
 
 #define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
 #define dma_unmap_single_attrs(d, a, s, r, attrs)	\
-	vmm_dma_unmap((dma_addr_t *)a, s, r)
+	vmm_dma_unmap((dma_addr_t)a, s, r)
 
 typedef void (*sync_fct)(virtual_addr_t start,
 			 virtual_addr_t end,

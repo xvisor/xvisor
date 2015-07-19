@@ -111,13 +111,13 @@ static void *heap_pa2va(struct vmm_heap_control *heap, physical_addr_t pa)
 	return heap->heap_start + (pa - heap->heap_start_pa);
 }
 
-static void *heap_va2pa(struct vmm_heap_control *heap, virtual_addr_t va)
+static physical_addr_t heap_va2pa(struct vmm_heap_control *heap, virtual_addr_t va)
 {
 	BUG_ON(va < (virtual_addr_t)heap->heap_start);
 	BUG_ON((virtual_addr_t)(heap->heap_start + heap->heap_size) <= va);
 
-	return (void *)((va - (virtual_addr_t)heap->heap_start) +
-			heap->heap_start_pa);
+	return (physical_addr_t)(va - (virtual_addr_t)heap->heap_start) +
+							heap->heap_start_pa;
 }
 
 static int heap_print_state(struct vmm_heap_control *heap,
@@ -307,12 +307,11 @@ void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
 	}
 }
 
-dma_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
+dma_addr_t vmm_dma_map(virtual_addr_t vaddr, virtual_size_t size,
 		       enum dma_data_direction dir)
 {
 	int ret = VMM_OK;
 	dma_addr_t dma_addr = 0;
-	virtual_size_t vaddr = (virtual_size_t)pvaddr;
 
 	vmm_dma_cpu_to_dev(vaddr, vaddr + size, dir);
 
@@ -324,7 +323,7 @@ dma_addr_t vmm_dma_map(virtual_addr_t *pvaddr, virtual_size_t size,
 	}
 }
 
-void vmm_dma_unmap(dma_addr_t* daddr, physical_size_t size,
+void vmm_dma_unmap(dma_addr_t daddr, physical_size_t size,
 		   enum dma_data_direction dir)
 {
 	virtual_addr_t start = 0;
@@ -350,7 +349,7 @@ void *vmm_dma_pa2va(dma_addr_t pa)
 	return heap_pa2va(&dma_heap, pa);
 }
 
-void *vmm_dma_va2pa(virtual_addr_t va)
+physical_addr_t vmm_dma_va2pa(virtual_addr_t va)
 {
 	return heap_va2pa(&dma_heap, va);
 }
