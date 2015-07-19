@@ -15,7 +15,7 @@ comes with Raspberry Pi2 board. To do this:
  # cd u-boot-2015.07
  # make rpi_2_defconfig
  # make all
- # cat <xvisor_source>/docs/bcm2836-raspi2-bootblk.bin.ift u-boot.bin > u-boot.hyp
+ # cat <xvisor_source>/docs/arm/bcm2836-raspi2-bootblk.bin.ift u-boot.bin > u-boot.hyp
  2) Mount the boot partition of pre-installed SD card
  3) Copy u-boot.hyp to <raspi2_sd_card_boot_partition>
  4) Create <raspi2_sd_card_boot_partition>/config.txt if it does not exist
