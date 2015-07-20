@@ -21,6 +21,11 @@
 			  /* Load guest0 device tree from file */
 			  "vfs fdt_load /guests guest0 /images/arm32/virt-v7x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0",
 
+			  /* Replace guest0 vGIC emulator with GIC emulator */
+			  "devtree attr set /guests/guest0/aspace/gic_dist compatible string virt,gic",
+			  "devtree attr set /guests/guest0/aspace/gic_dist physical_size physsize 0x20000",
+			  "devtree node del /guests/guest0/aspace/gic_cpu",
+
 			  /* Create guest0 */
 			  "guest create guest0",
 
