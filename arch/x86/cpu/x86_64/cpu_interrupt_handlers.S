@@ -147,7 +147,7 @@ END_EXCEPTION_HANDLER
 
 .extern do_page_fault
 EXCEPTION_HANDLER(_exception_page_fault) /* page fault */
-	movq  120(%rsp), %rdi /* error code as first argument */
+	movq  128(%rsp), %rdi /* error code as first argument */
 	movq  %rsp, %rsi /* trap frame */
 	callq do_page_fault
 END_EXCEPTION_HANDLER
