@@ -31,6 +31,7 @@ enum gic_type {
 	GIC_TYPE_REALVIEW,
 	GIC_TYPE_VEXPRESS,
 	GIC_TYPE_VEXPRESS_V2,
+	GIC_TYPE_VIRT,
 };
 
 /* GIC register write */
