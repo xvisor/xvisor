@@ -42,7 +42,7 @@
 		cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a7";
-			reg = <0xf02>;
+			reg = <0xf03>;
 			clock-frequency = <800000000>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0x400000BC>;
@@ -66,10 +66,26 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
+		timer {
+			device_type = "timer";
+			compatible = "brcm,bcm2835-system-timer";
+			reg = <0x3f003000 0x1000>;
+			clock-frequency = <1000000>;
+			interrupts = <64 65 66 67>;
+		};
+
+		local_intc {
+			device_type = "pic";
+			compatible = "brcm,bcm2836-l1-intc";
+			reg = <0x40000000 0x100>;
+		};
+
 		intc {
 	      		device_type = "pic";
-			compatible = "brcm,bcm2836-armctrl-ic";
+			compatible = "brcm,bcm2835-armctrl-ic";
 			reg = <0x3f00b200 0x200>;
+			irq_start = <32>;
+			interrupts = <31>; /* Cascaded to local INTC */
 		};
 
 		poweroff {
@@ -81,7 +97,7 @@
 	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
 	      		reg = <0x3f201000 0x1000>;
 			clock-frequency = <3000000>;
-			interrupts = <89>;
+			interrupts = <121>;
 		};
 
 		sdhci {
@@ -89,13 +105,13 @@
 			compatible = "brcm,bcm2835-sdhci";
 			reg = <0x3f300000 0x1000>;
 			clocks = <&clk_mmc>;
-			interrupts = <94>;
+			interrupts = <126>;
 		};
 
 		dwc2 {
 			compatible = "brcm,bcm2835-usb";
 			reg = <0x3f980000 0x10000>;
-			interrupts = <73>;
+			interrupts = <105>;
 		};
 	};
 
