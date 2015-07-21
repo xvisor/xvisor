@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Fri Jul 17 18:12:40 2015
+# Tue Jul 21 20:53:55 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -297,7 +297,7 @@ CONFIG_HAS_IOPORT_MAP=y
 CONFIG_ARM_GIC=y
 # CONFIG_VERSATILE_FPGA_IRQ is not set
 # CONFIG_MXC_AVIC is not set
-# CONFIG_BCM2835_INTC is not set
+CONFIG_BCM2835_INTC=y
 # CONFIG_SUN4I_VIC is not set
 # CONFIG_OMAP_INTC is not set
 
@@ -308,7 +308,7 @@ CONFIG_ARM_TIMER_SP804=y
 CONFIG_ARM_TWD=y
 # CONFIG_MXC_EPIT is not set
 # CONFIG_MXC_GPT is not set
-# CONFIG_BCM2835_TIMER is not set
+CONFIG_BCM2835_TIMER=y
 # CONFIG_OMAP_S32K is not set
 # CONFIG_OMAP2_TIMER is not set
 CONFIG_SUN4I_TIMER=y
