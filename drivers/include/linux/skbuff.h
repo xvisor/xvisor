@@ -135,8 +135,7 @@ static inline unsigned char *__skb_put(struct sk_buff *skb, unsigned int len)
 static inline unsigned char *skb_put(struct sk_buff *skb, unsigned int len)
 {
 	unsigned char *tmp = __skb_put(skb, len);
-	if(unlikely((skb_data(skb) + skb_len(skb)) > 
-				(skb_head(skb) + skb->m_extlen))) {
+	if (unlikely(skb_len(skb) > skb->m_extlen)) {
 		vmm_panic("%s: skb->tail crossing skb->end\n", __func__);
 	}
 	return tmp;
