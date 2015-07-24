@@ -46,6 +46,7 @@
 #include <vmm_wallclock.h>
 #include <vmm_chardev.h>
 #include <vmm_modules.h>
+#include <vmm_extable.h>
 #include <arch_cpu.h>
 #include <arch_board.h>
 
@@ -320,6 +321,13 @@ static void __init init_bootcpu(void)
 	/* Initialize heap */
 	vmm_printf("Initialize Heap Management\n");
 	ret = vmm_heap_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+        /* Initialize exception table */
+	vmm_printf("Initialize Exception Table\n");
+	ret = vmm_extable_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}

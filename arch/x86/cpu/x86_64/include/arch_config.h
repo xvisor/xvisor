@@ -26,4 +26,6 @@
 
 #define ARCH_HAS_DIVISON_OPERATION
 
+#define ARCH_HAS_EXTABLE
+
 #endif /* _ARCH_CONFIG_H__ */

@@ -62,3 +62,4 @@ core-objs-y+= vmm_modules.o
 core-objs-y+= vmm_params.o
 core-objs-$(CONFIG_PROFILE)+= vmm_profiler.o
 core-objs-$(CONFIG_IOMMU)+= vmm_iommu.o
+core-objs-y+= vmm_extable.o

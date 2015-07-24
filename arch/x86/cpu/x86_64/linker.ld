@@ -55,6 +55,7 @@ SECTIONS
 	.text :
  	{
 		*(.text)
+                *(.fixup)
 	}
 
 	.data :
@@ -116,6 +117,15 @@ SECTIONS
 		PROVIDE(_ist_stacks_end = .);
 		. += 0x7000; /* 7 stacks for size 4K each */
 		PROVIDE(_ist_stacks_start = .);
+        }
+
+        . = ALIGN(16);
+
+        .__ex_table :
+        {
+                PROVIDE(__start___ex_table = .);
+                *(__ex_table)
+                PROVIDE(__stop___ex_table = .);
         }
 
 	.init :

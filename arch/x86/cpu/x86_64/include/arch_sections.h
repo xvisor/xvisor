@@ -30,6 +30,18 @@ virtual_addr_t arch_code_vaddr_start(void);
 physical_addr_t arch_code_paddr_start(void);
 virtual_size_t arch_code_size(void);
 
+/** Exception table */
+extern u8 __start___ex_table;
+extern u8 __stop___ex_table;
+static inline virtual_addr_t arch_extable_start(void)
+{
+	return (virtual_addr_t)&__start___ex_table;
+}
+static inline virtual_addr_t arch_extable_end(void)
+{
+	return (virtual_size_t)&__stop___ex_table;
+}
+
 /** Module table */
 extern u8 _modtbl_start;
 extern u8 _modtbl_end;
