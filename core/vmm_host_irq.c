@@ -359,6 +359,28 @@ int vmm_host_irq_set_routed_state(u32 hirq_num, u32 val, u32 mask)
 	return VMM_OK;
 }
 
+int vmm_host_irq_mark_ipi(u32 hirq_num)
+{
+	struct vmm_host_irq *irq;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
+		return VMM_ENOTAVAIL;
+
+	irq->state |= VMM_IRQ_STATE_IPI;
+	return VMM_OK;
+}
+
+int vmm_host_irq_unmark_ipi(u32 hirq_num)
+{
+	struct vmm_host_irq *irq;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq_num)))
+		return VMM_ENOTAVAIL;
+
+	irq->state &= ~VMM_IRQ_STATE_IPI;
+	return VMM_OK;
+}
+
 int vmm_host_irq_enable(u32 hirq_num)
 {
 	struct vmm_host_irq *irq;
@@ -437,6 +459,33 @@ int vmm_host_irq_raise(u32 hirq_num,
 		irq->chip->irq_raise(irq, dest);
 	}
 	return VMM_OK;
+}
+
+int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq_num)
+{
+	u32 ite;
+	bool found = FALSE;
+	struct vmm_host_irq *irq;
+
+	if ((CONFIG_HOST_IRQ_COUNT <= hirq_start) || !hirq_num) {
+		return VMM_EINVALID;
+	}
+	if (!state_mask) {
+		return VMM_ENOTAVAIL;
+	}
+
+	for (ite = hirq_start; ite < CONFIG_HOST_IRQ_COUNT; ite++) {
+		if (NULL == (irq = vmm_host_irq_get(ite))) {
+			continue;
+		}
+		if ((irq->state & state_mask) == state_mask) {
+			found = TRUE;
+			*hirq_num = ite;
+			break;
+		}
+	}
+
+	return (found) ? VMM_OK : VMM_ENOTAVAIL;
 }
 
 static int host_irq_register(struct vmm_host_irq *irq,

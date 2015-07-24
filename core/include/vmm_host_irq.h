@@ -59,6 +59,7 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_AFFINITY_SET		- Interrupt affinity was set
  * @VMM_IRQ_STATE_LEVEL			- Interrupt is level triggered
  * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
+ * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  * @VMM_IRQ_STATE_INPROGRESS		- In progress state of the interrupt
@@ -69,6 +70,7 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_AFFINITY_SET	= (1 << 12),
 	VMM_IRQ_STATE_LEVEL		= (1 << 13),
 	VMM_IRQ_STATE_ROUTED		= (1 << 14),
+	VMM_IRQ_STATE_IPI		= (1 << 15),
 	VMM_IRQ_STATE_DISABLED		= (1 << 16),
 	VMM_IRQ_STATE_MASKED		= (1 << 17),
 	VMM_IRQ_STATE_INPROGRESS	= (1 << 18),
@@ -283,6 +285,12 @@ static inline bool vmm_host_irq_is_routed(struct vmm_host_irq *irq)
 	return (irq->state & VMM_IRQ_STATE_ROUTED) ? TRUE : FALSE;
 }
 
+/** Check if a host irq is inter-processor interrupt */
+static inline bool vmm_host_irq_is_ipi(struct vmm_host_irq *irq)
+{
+	return (irq->state & VMM_IRQ_STATE_IPI) ? TRUE : FALSE;
+}
+
 /** Check if a host irq is disabled */
 static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
 {
@@ -336,6 +344,12 @@ int vmm_host_irq_get_routed_state(u32 hirq_num, u32 *val, u32 mask);
 /** Set/update host irq routed state */
 int vmm_host_irq_set_routed_state(u32 hirq_num, u32 val, u32 mask);
 
+/** Mark host irq as inter-processor interrupt */
+int vmm_host_irq_mark_ipi(u32 hirq_num);
+
+/** UnMark host irq as inter-processor interrupt */
+int vmm_host_irq_unmark_ipi(u32 hirq_num);
+
 /** Enable a host irq (by default all irqs are disabled) */
 int vmm_host_irq_enable(u32 hirq_num);
 
@@ -351,6 +365,9 @@ int vmm_host_irq_mask(u32 hirq_num);
 /** Raise a host irq from software */
 int vmm_host_irq_raise(u32 hirq_num,
 		       const struct vmm_cpumask *dest);
+
+/** Find a host irq with matching state mask */
+int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq_num);
 
 /** Register function callback for given irq */
 int vmm_host_irq_register(u32 hirq_num,
