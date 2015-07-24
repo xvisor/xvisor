@@ -31,7 +31,7 @@
 #include <libs/bitops.h>
 
 /** Maximum number of IRQs in bcm2835 intc */
-#define BCM2835_INTC_MAX_IRQ		96
+#define BCM283x_INTC_MAX_IRQ		96
 
 #define ARM_IRQ0_BASE			0
 #define INTERRUPT_ARM_TIMER		(ARM_IRQ0_BASE + 0)
@@ -168,25 +168,25 @@ struct armctrl_ic {
 
 static struct armctrl_ic intc __read_mostly;
 
-static void bcm2835_intc_irq_mask(struct vmm_host_irq *irqd)
+static void bcm283x_intc_irq_mask(struct vmm_host_irq *irqd)
 {
 	vmm_writel(HWIRQ_BIT(intc.irq_start, irqd->num),
 		   intc.disable[HWIRQ_BANK(intc.irq_start, irqd->num)]);
 }
 
-static void bcm2835_intc_irq_unmask(struct vmm_host_irq *irqd)
+static void bcm283x_intc_irq_unmask(struct vmm_host_irq *irqd)
 {
 	vmm_writel(HWIRQ_BIT(intc.irq_start, irqd->num),
 		   intc.enable[HWIRQ_BANK(intc.irq_start, irqd->num)]);
 }
 
-static struct vmm_host_irq_chip bcm2835_intc_chip = {
+static struct vmm_host_irq_chip bcm283x_intc_chip = {
 	.name       = "INTC",
-	.irq_mask   = bcm2835_intc_irq_mask,
-	.irq_unmask = bcm2835_intc_irq_unmask,
+	.irq_mask   = bcm283x_intc_irq_mask,
+	.irq_unmask = bcm283x_intc_irq_unmask,
 };
 
-static u32 bcm2835_intc_active_irq(u32 cpu_irq_no)
+static u32 bcm283x_intc_active_irq(u32 cpu_irq_no)
 {
 	register u32 stat, irq;
 
@@ -218,12 +218,13 @@ static u32 bcm2835_intc_active_irq(u32 cpu_irq_no)
 
 static vmm_irq_return_t bcm2836_intc_cascade_irq(int irq, void *dev)
 {
-	vmm_host_generic_irq_exec(bcm2835_intc_active_irq(0));
+	vmm_host_generic_irq_exec(bcm283x_intc_active_irq(0));
 
 	return VMM_IRQ_HANDLED;
 }
 
-static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
+static int __init bcm283x_intc_init(struct vmm_devtree_node *node,
+				    bool is_bcm2836)
 {
 	int rc;
 	u32 b, i = 0, irq;
@@ -252,7 +253,7 @@ static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
 
 		for (i = 0; i < intc.irqs[b]; i++) {
 			irq = MAKE_HWIRQ(intc.irq_start, b, i);
-			vmm_host_irq_set_chip(irq, &bcm2835_intc_chip);
+			vmm_host_irq_set_chip(irq, &bcm283x_intc_chip);
 			vmm_host_irq_set_handler(irq, vmm_handle_level_irq);
 		}
 	}
@@ -263,12 +264,27 @@ static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
 			BUG();
 		}
 	} else {
-		vmm_host_irq_set_active_callback(bcm2835_intc_active_irq);
+		vmm_host_irq_set_active_callback(bcm283x_intc_active_irq);
 	}
 
 	return 0;
 }
+
+static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
+{
+	return bcm283x_intc_init(node, FALSE);
+}
+
 VMM_HOST_IRQ_INIT_DECLARE(bcm2835intc,
 			  "brcm,bcm2835-armctrl-ic",
 			  bcm2835_intc_init);
+
+static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
+{
+	return bcm283x_intc_init(node, TRUE);
+}
+
+VMM_HOST_IRQ_INIT_DECLARE(bcm2836intc,
+			  "brcm,bcm2836-armctrl-ic",
+			  bcm2836_intc_init);
 
