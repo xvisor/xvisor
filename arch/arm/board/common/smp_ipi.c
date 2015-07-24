@@ -27,34 +27,50 @@
 #include <vmm_compiler.h>
 #include <vmm_host_irq.h>
 
+static bool smp_ipi_available = FALSE;
+static u32 smp_ipi_irq = 0;
+
 static vmm_irq_return_t smp_ipi_handler(int irq_no, void *dev)
 {
-	/* Call core code to handle IPI1 */
-	vmm_smp_ipi_exec();	
+	/* Call core code to handle IPI */
+	vmm_smp_ipi_exec();
 
 	return VMM_IRQ_HANDLED;
 }
 
 void arch_smp_ipi_trigger(const struct vmm_cpumask *dest)
 {
-	/* Raise IPI1 to other cores */
-	vmm_host_irq_raise(1, dest);
+	/* Raise IPI to other cores */
+	if (smp_ipi_available) {
+		vmm_host_irq_raise(smp_ipi_irq, dest);
+	}
 }
 
 int __cpuinit arch_smp_ipi_init(void)
 {
 	int rc;
 
-	/* Ignore IPI initialization if IRQ1 is not per-CPU interrupt */
-	if (!vmm_host_irq_is_per_cpu(vmm_host_irq_get(1))) {
+	/* Find host irq which is marked as per-CPU and IPI */
+	rc = vmm_host_irq_find(0, VMM_IRQ_STATE_IPI|VMM_IRQ_STATE_PER_CPU,
+			       &smp_ipi_irq);
+	if (rc) {
+		/* If no IPI found then we don't have IPIs
+		 * on underlying host hence do nothing.
+		 */
+		smp_ipi_available = FALSE;
+		smp_ipi_irq = 0;
 		return VMM_OK;
 	}
 
-	/* Register IPI1 interrupt handler */
-	rc = vmm_host_irq_register(1, "IPI1", &smp_ipi_handler, NULL);
+	/* Register IPI interrupt handler */
+	rc = vmm_host_irq_register(smp_ipi_irq, "IPI",
+				   &smp_ipi_handler, NULL);
 	if (rc) {
 		return rc;
 	}
+
+	/* We are all set for IPIs so mark this. */
+	smp_ipi_available = TRUE;
 
 	return VMM_OK;
 }
