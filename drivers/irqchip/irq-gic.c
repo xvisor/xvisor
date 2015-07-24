@@ -347,6 +347,9 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 		/* Mark SGIs and PPIs as per-CPU IRQs */
 		if (i < 32) {
+			if (i < 16) {
+				vmm_host_irq_mark_ipi(i);
+			}
 			vmm_host_irq_mark_per_cpu(i);
 		}
 	}
