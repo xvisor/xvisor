@@ -58,7 +58,7 @@
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
 		clock-frequency = <19200000>;
-		interrupts = <2 1 3>;
+		interrupts = <98 97 99>;
 	};
 
 	soc {
@@ -71,21 +71,22 @@
 			compatible = "brcm,bcm2835-system-timer";
 			reg = <0x3f003000 0x1000>;
 			clock-frequency = <1000000>;
-			interrupts = <64 65 66 67>;
+			interrupts = <32 33 34 35>;
 		};
 
 		local_intc {
 			device_type = "pic";
 			compatible = "brcm,bcm2836-l1-intc";
 			reg = <0x40000000 0x100>;
+			irq_start = <96>;
 		};
 
 		intc {
 	      		device_type = "pic";
-			compatible = "brcm,bcm2835-armctrl-ic";
+			compatible = "brcm,bcm2836-armctrl-ic";
 			reg = <0x3f00b200 0x200>;
-			irq_start = <32>;
-			interrupts = <31>; /* Cascaded to local INTC */
+			irq_start = <0>;
+			interrupts = <106>; /* Cascaded to local INTC */
 		};
 
 		poweroff {
@@ -97,7 +98,7 @@
 	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
 	      		reg = <0x3f201000 0x1000>;
 			clock-frequency = <3000000>;
-			interrupts = <121>;
+			interrupts = <89>;
 		};
 
 		sdhci {
@@ -105,13 +106,13 @@
 			compatible = "brcm,bcm2835-sdhci";
 			reg = <0x3f300000 0x1000>;
 			clocks = <&clk_mmc>;
-			interrupts = <126>;
+			interrupts = <94>;
 		};
 
 		dwc2 {
 			compatible = "brcm,bcm2835-usb";
 			reg = <0x3f980000 0x10000>;
-			interrupts = <105>;
+			interrupts = <73>;
 		};
 	};
 
