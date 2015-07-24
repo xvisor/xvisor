@@ -27,6 +27,12 @@
 #include <vmm_stdio.h>
 #include <libs/list.h>
 
+/* A fast, small, non-recursive O(nlog n) sort from Linux
+ * kernel for portability */
+void simple_sort(void *base, size_t num, size_t size,
+                 int (*cmp)(const void *, const void *),
+                 void (*swap)(void *, void *, int));
+
 /** Sort array using smoothsort.
  *
  * Sort @a N elements from array @a base starting with index @a r with smoothsort.

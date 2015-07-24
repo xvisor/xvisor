@@ -40,6 +40,7 @@ libs-objs-y+= common/buddy.o
 libs-objs-y+= common/mempool.o
 libs-objs-y+= common/libfdt.o
 libs-objs-y+= common/bitrev.o
+libs-objs-y+= common/simple_sort.o
 
 libs-objs-$(CONFIG_LIBAUTH)+= common/libauth.o
 libs-objs-$(CONFIG_LIBAUTH_DEFAULT_USER)+= common/libauth_passwd.o
