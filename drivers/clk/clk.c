@@ -2098,7 +2098,12 @@ static int _clk_register(struct device *dev, struct clk_hw *hw, struct clk *clk)
 fail_parent_names_copy:
 	while (--i >= 0)
 		kfree(clk->parent_names[i]);
+#if 0
 	kfree(clk->parent_names);
+#else
+	if (clk->parent_names)
+		kfree(clk->parent_names);
+#endif
 fail_parent_names:
 	kfree(clk->name);
 fail_name:
