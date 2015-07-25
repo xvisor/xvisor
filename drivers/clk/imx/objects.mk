@@ -21,16 +21,19 @@
 # @brief list of imx SOC clocking objects
 # */
 
-drivers-objs-$(CONFIG_COMMON_CLK_MXC)+= clk/imx/clk-imx-drv.o
+drivers-objs-$(CONFIG_COMMON_CLK_MXC) += clk/imx/clk-imx-drv.o
 
 clk-imx-drv-y += clk-busy.o
 clk-imx-drv-y += clk-fixup-div.o
 clk-imx-drv-y += clk-gate2.o
-clk-imx-drv-y += clk-imx6q.o
-clk-imx-drv-y += clk-pllv3.o
+clk-imx-drv-$(CONFIG_CPU_GENERIC_V5) += clk-pllv1.o
+clk-imx-drv-$(CONFIG_CPU_GENERIC_V6) += clk-pllv1.o
+clk-imx-drv-$(CONFIG_CPU_GENERIC_V7) += clk-pllv3.o
 clk-imx-drv-y += clk.o
 clk-imx-drv-y += clk-fixup-mux.o
 clk-imx-drv-y += clk-pfd.o
+clk-imx-drv-$(CONFIG_CPU_GENERIC_V5) += clk-imx25.o
+clk-imx-drv-$(CONFIG_CPU_GENERIC_V7) += clk-imx6q.o
 
 %/clk-imx-drv.o: $(foreach obj,$(clk-imx-drv-y),%/$(obj))
 	$(call merge_objs,$@,$^)
