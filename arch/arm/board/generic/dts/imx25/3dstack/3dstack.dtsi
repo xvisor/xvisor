@@ -5,7 +5,7 @@
 	model = "3dstack";
 
 	chosen {
-		console = &SERIAL1;
+		console = &uart1;
 	};
 
 	memory { 
