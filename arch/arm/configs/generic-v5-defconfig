@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Thu Jun 18 08:13:54 2015
+# Thu Jul 23 21:52:59 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -25,6 +25,7 @@ CONFIG_ARMV5=y
 # CONFIG_ARMV7A is not set
 # CONFIG_ARMV7A_VE is not set
 # CONFIG_ARMV8 is not set
+CONFIG_ARM=y
 CONFIG_ARM32=y
 # CONFIG_ARM32VE is not set
 # CONFIG_ARM64 is not set
@@ -49,15 +50,22 @@ CONFIG_BOARD_GENERIC=y
 #
 CONFIG_BOARD="generic"
 CONFIG_GENERIC_VERSATILE=y
+CONFIG_GENERIC_IMX2X=y
 # CONFIG_DEFTERM_EARLY_PRINT is not set
+# CONFIG_DEFTERM_EARLY_UNKNOWN is not set
+# CONFIG_DEFTERM_EARLY_PL011 is not set
+# CONFIG_DEFTERM_EARLY_UART8250_8BIT is not set
+# CONFIG_DEFTERM_EARLY_UART8250_32BIT is not set
+# CONFIG_DEFTERM_EARLY_IMX is not set
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
-# CONFIG_ARCH_MXC is not set
+CONFIG_ARCH_MXC=y
 # CONFIG_SABRELITE_CONFIG is not set
-# CONFIG_IMX_CPU is not set
+CONFIG_IMX_CPU=y
 # CONFIG_IMX6_CMD is not set
 # CONFIG_IMX6Q_CLK is not set
 # CONFIG_IMX6Q_PM is not set
+# CONFIG_IMX6Q_PHY is not set
 
 #
 # Hypervisor Options
@@ -202,11 +210,13 @@ CONFIG_CMD_FB=y
 # CONFIG_CMD_FB_IMAGE is not set
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_RBD=y
+CONFIG_CMD_I2C=y
 
 #
 # Networking Commands
 #
 CONFIG_CMD_NET=y
+CONFIG_CMD_MII=y
 
 #
 # Filesystem Commands
@@ -392,18 +402,27 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 # CONFIG_FB_MODE_HELPERS is not set
 # CONFIG_FB_TILEBLITTING is not set
 CONFIG_FB_ARMCLCD=y
+# CONFIG_FB_MXC_LDB is not set
 # CONFIG_FB_BACKLIGHT is not set
 
 #
 # Network Device Support
 #
 CONFIG_NET_DEVICES=y
+CONFIG_NET_NAPI=y
 CONFIG_ETHERNET_DRIVERS=y
 # CONFIG_ETHER_SMSC_911x is not set
 CONFIG_ETHER_SMSC_91x=y
 # CONFIG_ETHER_ALLWINNER_SUN4I_EMAC is not set
 # CONFIG_ETHER_REALTEK is not set
-# CONFIG_PHYLIB is not set
+# NET_VENDOR_FREESCALE is not set
+CONFIG_PHYLIB=y
+
+#
+# MII PHY device drivers
+#
+# CONFIG_MDIO_SUN4I is not set
+# CONFIG_MICREL_PHY is not set
 
 #
 # Clock Drivers
@@ -413,6 +432,7 @@ CONFIG_COMMON_CLK=y
 CONFIG_COMMON_CLK_VERSATILE=y
 # CONFIG_COMMON_CLK_BCM2835 is not set
 # CONFIG_COMMON_CLK_SUNXI is not set
+CONFIG_COMMON_CLK_MXC=y
 
 #
 # Power Supply Drivers
@@ -437,22 +457,44 @@ CONFIG_COMMON_CLK_VERSATILE=y
 #
 # GPIO Device Support
 #
-# CONFIG_GPIOLIB is not set
+CONFIG_GPIOLIB=y
+CONFIG_ARCH_NR_GPIO=1024
+CONFIG_GPIO_GENERIC=y
+CONFIG_OF_GPIO=y
+CONFIG_GPIO_MXC=y
 
 #
 # Pin Controller
 #
 # CONFIG_PINCTRL is not set
+# CONFIG_PINCTRL_IMX6Q is not set
 
 #
 # SPI drivers
 #
-# CONFIG_SPI is not set
+CONFIG_SPI=y
+CONFIG_SPI_MASTER=y
+
+#
+# SPI Master Controller Drivers
+#
+CONFIG_SPI_BITBANG=y
+CONFIG_SPI_IMX=y
 
 #
 # I2C support
 #
-# CONFIG_I2C is not set
+CONFIG_I2C=y
+CONFIG_I2C_BOARDINFO=y
+
+#
+# I2C Hardware Bus support
+#
+
+#
+# I2C system bus drivers (mostly embedded / system-on-chip)
+#
+CONFIG_I2C_IMX=y
 
 #
 # PWM Drivers
