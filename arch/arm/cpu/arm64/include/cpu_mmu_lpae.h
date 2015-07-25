@@ -30,7 +30,7 @@
 #define TTBL_FIRST_LEVEL		1
 #define TTBL_LAST_LEVEL			3
 
-#define cpu_invalid_all_guest_tlbs()		inv_tlb_guest_allis()
+#define cpu_invalid_ipa_guest_tlb(ipa)		inv_tlb_guest_allis()
 #define cpu_invalid_va_hypervisor_tlb(va)	inv_tlb_hyp_vais((va))
 #define cpu_invalid_all_tlbs()			inv_tlb_hyp_all()
 

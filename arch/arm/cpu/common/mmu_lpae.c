@@ -504,7 +504,7 @@ int mmu_lpae_unmap_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 	cpu_mmu_sync_tte(&tte[index]);
 
 	if (ttbl->stage == TTBL_STAGE2) {
-		cpu_invalid_all_guest_tlbs();
+		cpu_invalid_ipa_guest_tlb((pg->ia));
 	} else {
 		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
 	}
