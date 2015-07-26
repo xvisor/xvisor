@@ -19,6 +19,13 @@
  * @file irq-versatile-fpga.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Support for Versatile FPGA-based IRQ controllers
+ *
+ * The source has been largely adapted from Linux
+ * drivers/irqchip/irq-versatile-fpga.c
+ *
+ * The original code is licensed under the GPL.
+ *
+ *  Support for Versatile FPGA-based IRQ controllers
  */
 
 #include <vmm_error.h>

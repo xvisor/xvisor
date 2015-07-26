@@ -19,7 +19,23 @@
  * @file irq-omap-intc.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief OMAP2 interrupt controller APIs
+ * @brief OMAP2+ interrupt controller driver
+ *
+ * The source has been largely adapted from Linux
+ * drivers/irqchip/irq-omap-intc.c
+ *
+ * The original code is licensed under the GPL.
+ *
+ * linux/arch/arm/mach-omap2/irq.c
+ *
+ * Interrupt handler for OMAP2 boards.
+ *
+ * Copyright (C) 2005 Nokia Corporation
+ * Author: Paul Mundt <paul.mundt@nokia.com>
+ *
+ * This file is subject to the terms and conditions of the GNU General Public
+ * License. See the file "COPYING" in the main directory of this archive
+ * for more details.
  */
 
 #include <vmm_error.h>

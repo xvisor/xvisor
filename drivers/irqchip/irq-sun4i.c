@@ -19,6 +19,25 @@
  * @file irq-sun4i.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Allwinner Sun4i interrupt controller
+ *
+ * The source has been largely adapted from Linux
+ * drivers/irqchip/irq-sun4i.c
+ *
+ * The original code is licensed under the GPL.
+ *
+ * Allwinner A1X SoCs IRQ chip driver.
+ *
+ * Copyright (C) 2012 Maxime Ripard
+ *
+ * Maxime Ripard <maxime.ripard@free-electrons.com>
+ *
+ * Based on code from
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Benn Huang <benn@allwinnertech.com>
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
  */
 
 #include <vmm_types.h>

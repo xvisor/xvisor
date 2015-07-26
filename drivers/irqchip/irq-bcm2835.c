@@ -18,7 +18,46 @@
  *
  * @file irq-bcm2835.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief BCM2835 intc driver
+ * @brief BCM2835/BCM2836 SOC intc driver
+ *
+ * The source has been largely adapted from Linux
+ * drivers/irqchip/irq-bcm2835.c
+ *
+ * The original code is licensed under the GPL.
+ *
+ * Copyright 2010 Broadcom
+ * Copyright 2012 Simon Arlott, Chris Boot, Stephen Warren
+ *
+ * Quirk 1: Shortcut interrupts don't set the bank 1/2 register pending bits
+ *
+ * If an interrupt fires on bank 1 that isn't in the shortcuts list, bit 8
+ * on bank 0 is set to signify that an interrupt in bank 1 has fired, and
+ * to look in the bank 1 status register for more information.
+ *
+ * If an interrupt fires on bank 1 that _is_ in the shortcuts list, its
+ * shortcut bit in bank 0 is set as well as its interrupt bit in the bank 1
+ * status register, but bank 0 bit 8 is _not_ set.
+ *
+ * Quirk 2: You can't mask the register 1/2 pending interrupts
+ *
+ * In a proper cascaded interrupt controller, the interrupt lines with
+ * cascaded interrupt controllers on them are just normal interrupt lines.
+ * You can mask the interrupts and get on with things. With this controller
+ * you can't do that.
+ *
+ * Quirk 3: The shortcut interrupts can't be (un)masked in bank 0
+ *
+ * Those interrupts that have shortcuts can only be masked/unmasked in
+ * their respective banks' enable/disable registers. Doing so in the bank 0
+ * enable/disable registers has no effect.
+ *
+ * The FIQ control register:
+ *  Bits 0-6: IRQ (index in order of interrupts from banks 1, 2, then 0)
+ *  Bit    7: Enable FIQ generation
+ *  Bits  8+: Unused
+ *
+ * An interrupt must be disabled before configuring it for FIQ generation
+ * otherwise both handlers will fire at the same time!
  */
 
 #include <vmm_error.h>

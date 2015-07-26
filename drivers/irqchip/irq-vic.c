@@ -19,6 +19,16 @@
  * @file irq-vic.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief PL190 Vectored Interrupt Controller source
+ *
+ * The source has been largely adapted from Linux
+ * drivers/irqchip/irq-vic.c
+ *
+ * The original code is licensed under the GPL.
+ *
+ *  linux/arch/arm/common/vic.c
+ *
+ *  Copyright (C) 1999 - 2003 ARM Limited
+ *  Copyright (C) 2000 Deep Blue Solutions Ltd
  */
 
 #include <vmm_error.h>
