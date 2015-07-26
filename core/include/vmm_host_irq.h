@@ -216,6 +216,9 @@ int vmm_host_irq_set_handler_data(u32 hirq_num, void *data);
 /** Get host irq handler data for given host irq number */
 void *vmm_host_irq_get_handler_data(u32 hirq_num);
 
+/** Per-CPU irq handler */
+void vmm_handle_percpu_irq(struct vmm_host_irq *irq, u32 cpu, void *data);
+
 /** Fast EOI irq handler */
 void vmm_handle_fast_eoi(struct vmm_host_irq *irq, u32 cpu, void *data);
 

@@ -40,6 +40,28 @@ struct vmm_host_irqs_ctrl {
 
 static struct vmm_host_irqs_ctrl hirqctrl;
 
+void vmm_handle_percpu_irq(struct vmm_host_irq *irq, u32 cpu, void *data)
+{
+	irq_flags_t flags;
+	struct vmm_host_irq_action *act;
+
+	if (irq->chip && irq->chip->irq_ack) {
+		irq->chip->irq_ack(irq);
+	}
+
+	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
+		if (act->func(irq->num, act->dev) == VMM_IRQ_HANDLED) {
+			break;
+		}
+	}
+	vmm_read_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
+
+	if (irq->chip && irq->chip->irq_eoi) {
+		irq->chip->irq_eoi(irq);
+	}
+}
+
 void vmm_handle_fast_eoi(struct vmm_host_irq *irq, u32 cpu, void *data)
 {
 	irq_flags_t flags;
