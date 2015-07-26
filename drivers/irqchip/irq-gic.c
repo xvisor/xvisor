@@ -370,13 +370,16 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	for (i = gic->irq_start; i < (gic->irq_start + gic->max_irqs); i++) {
 		vmm_host_irq_set_chip(i, &gic_chip);
 		vmm_host_irq_set_chip_data(i, gic);
-		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
-		/* Mark SGIs and PPIs as per-CPU IRQs */
 		if (i < 32) {
+			vmm_host_irq_set_handler(i, vmm_handle_percpu_irq);
 			if (i < 16) {
+				/* Mark SGIs as IPIs */
 				vmm_host_irq_mark_ipi(i);
 			}
+			/* Mark SGIs and PPIs as per-CPU IRQs */
 			vmm_host_irq_mark_per_cpu(i);
+		} else {
+			vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
 		}
 	}
 
