@@ -62,7 +62,6 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
- * @VMM_IRQ_STATE_INPROGRESS		- In progress state of the interrupt
  */
 enum vmm_irq_states {
 	VMM_IRQ_STATE_TRIGGER_MASK	= 0xf,
@@ -73,7 +72,6 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_IPI		= (1 << 15),
 	VMM_IRQ_STATE_DISABLED		= (1 << 16),
 	VMM_IRQ_STATE_MASKED		= (1 << 17),
-	VMM_IRQ_STATE_INPROGRESS	= (1 << 18),
 };
 
 /**
@@ -149,6 +147,7 @@ struct vmm_host_irq {
 	const char *name;
 	u32 state;
 	u32 count[CONFIG_CPU_COUNT];
+	bool in_progress[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
 	vmm_host_irq_handler_t handler;
@@ -304,9 +303,12 @@ static inline bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
 }
 
 /** Check if a host irq is in-progress */
-static inline bool vmm_host_irq_is_inprogress(struct vmm_host_irq *irq)
+static inline bool vmm_host_irq_is_inprogress(struct vmm_host_irq *irq, u32 cpu)
 {
-	return (irq->state & VMM_IRQ_STATE_INPROGRESS) ? TRUE : FALSE;
+	if (cpu < CONFIG_CPU_COUNT) {
+		return (irq) ? irq->in_progress[cpu] : FALSE;
+	}
+	return FALSE;
 }
 
 /** Get host irq count from host irq instance */

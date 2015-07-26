@@ -108,15 +108,11 @@ int vmm_host_generic_irq_exec(u32 hirq_no)
 
 	cpu = vmm_smp_processor_id();
 	irq->count[cpu]++;
-	if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
-		irq->state |= VMM_IRQ_STATE_INPROGRESS;
-	}
+	irq->in_progress[cpu] = TRUE;
 	if (irq->handler) {
 		irq->handler(irq, cpu, irq->handler_data);
 	}
-	if (!(irq->state & VMM_IRQ_STATE_PER_CPU)) {
-		irq->state &= ~VMM_IRQ_STATE_INPROGRESS;
-	}
+	irq->in_progress[cpu] = FALSE;
 
 	return VMM_OK;
 }
