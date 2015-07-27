@@ -82,11 +82,18 @@ void dump_trace(struct arch_regs *regs, unsigned long *stack,
 		unsigned long bp, const struct stacktrace_ops *ops,
 		void *data)
 {
-	unsigned long irq_stack_start = (unsigned long)&_ist_stacks_start;
-	unsigned long *irq_stack_end = (unsigned long *)(irq_stack_start + IRQ_STACK_SIZE);
+	unsigned long irq_stack_start = (unsigned long)(&_ist_stacks_start - ((REGULAR_INT_STACK - 1) * IRQ_STACK_SIZE));
+	unsigned long *irq_stack_end = (unsigned long *)(irq_stack_start - IRQ_STACK_SIZE);
 	unsigned long *execution_stack_end = (unsigned long *)&_stack_end;
+        unsigned long *execution_stack_start = (unsigned long *)&_stack_start;
 	unsigned used = 0;
 	unsigned long dummy;
+        unsigned long *irq_stack;
+        unsigned long *execution_stack;
+        execution_stack = (unsigned long *)((u64)execution_stack_end +
+                                            (EXEC_STACK_SIZE - 64) / sizeof(*execution_stack));
+        irq_stack = (unsigned long *)(irq_stack_end +
+                                      (IRQ_STACK_SIZE - 64) / sizeof(*irq_stack));
 
 	if (!stack) {
 		if (regs)
@@ -108,9 +115,8 @@ void dump_trace(struct arch_regs *regs, unsigned long *stack,
 	for (;;) {
 		char *id;
 		unsigned long *estack_end;
-		estack_end = in_exception_stack((unsigned long)stack, &used, &id);
 
-		if (estack_end) {
+		if ((estack_end = in_exception_stack((unsigned long)stack, &used, &id)) != 0) {
 			if (ops->stack(data, id) < 0)
 				break;
 
@@ -124,34 +130,20 @@ void dump_trace(struct arch_regs *regs, unsigned long *stack,
 			 */
 			stack = (unsigned long *) estack_end[-2];
 			continue;
-		}
-		if (irq_stack_end) {
-			unsigned long *irq_stack;
-			irq_stack = (unsigned long *)(irq_stack_end +
-						(0x1000UL - 64) / sizeof(*irq_stack));
+		} else if (irq_stack_end && in_irq_stack(stack, irq_stack, irq_stack_end)) {
+                        if (regs)
+                                ops->address(data, regs->rip, 1);
 
-			if (in_irq_stack(stack, irq_stack, irq_stack_end)) {
-				if (ops->stack(data, "IRQ") < 0)
-					break;
-				bp = ops->walk_stack(stack, bp,
-						ops, data, irq_stack_end);
-				/*
-				 * We link to the next stack (which would be
-				 * the process stack normally) the last
-				 * pointer (index -1 to end) in the IRQ stack:
-				 */
-				stack = (unsigned long *) (irq_stack_end[-1]);
-				irq_stack_end = NULL;
-				ops->stack(data, "EOI");
-				continue;
-			}
-		}
-		if (execution_stack_end) {
-			unsigned long *irq_stack;
-			irq_stack = (unsigned long *)((u64)execution_stack_end +
-						(0x2000UL - 64) / sizeof(*irq_stack));
+                        if (ops->stack(data, "IRQ") < 0)
+                                break;
 
-			if (in_irq_stack(stack, irq_stack, execution_stack_end)) {
+                        irq_stack_end = (unsigned long *)(regs->rsp & ~(IRQ_STACK_SIZE - 1));
+                        bp = ops->walk_stack(stack, bp,
+                                             ops, data, irq_stack_end);
+                        break;
+                } else if (execution_stack_end
+                           && in_irq_stack(stack, execution_stack_start,
+                                           execution_stack_end)) {
 				if (regs)
 					ops->address(data, regs->rip, 1);
 
@@ -168,9 +160,20 @@ void dump_trace(struct arch_regs *regs, unsigned long *stack,
 				execution_stack_end = NULL;
 				ops->stack(data, "EOI");
 				continue;
-			}
-		}
-		break;
+                } else {
+                        if (regs)
+                                ops->address(data, regs->rip, 1);
+
+                        if (ops->stack(data, "EXEC") < 0)
+                                break;
+
+                        execution_stack_end = (unsigned long *)(regs->rsp & ~(CONFIG_THREAD_STACK_SIZE - 1));
+
+                        bp = ops->walk_stack(stack, bp,
+                                             ops, data, execution_stack_end);
+                }
+
+                break;
 	}
 }
 
