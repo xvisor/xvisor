@@ -69,7 +69,6 @@ struct arch_regs {
 	u64 r13;
 	u64 r14;
 	u64 r15;
-	u64 frame;
 	u64 hw_err_code;
 	u64 rip;
 	u64 cs;
