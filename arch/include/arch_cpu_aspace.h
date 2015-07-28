@@ -48,16 +48,6 @@ int arch_cpu_aspace_unmap(virtual_addr_t page_va);
 int arch_cpu_aspace_va2pa(virtual_addr_t va, 
 			  physical_addr_t *pa);
 
-/** Reverse mapping of physical address to virtual address
- *  NOTE: If the arch code is not able to do the reverse
- *  mapping then it can simply do vmm_host_memmap() using
- *  'sz' and 'mem_flags' field.
- */
-int arch_cpu_aspace_pa2va(physical_addr_t pa,
-			  virtual_size_t sz,
-			  u32 mem_flags,
-			  virtual_addr_t *va);
-
 /** Read data from memory with given physical adress 
  *  NOTE: This arch function is optional.
  *  NOTE: The tmp_va is per host CPU temporary virtual address which
