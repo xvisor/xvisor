@@ -137,10 +137,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count);
 int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa);
 
 /** Convert physical address to its virtual address */
-int vmm_host_pa2va(physical_addr_t pa,
-		   virtual_size_t sz,
-		   u32 mem_flags,
-		   virtual_addr_t *va);
+int vmm_host_pa2va(physical_addr_t pa, virtual_addr_t *va);
 
 /** Read from host memory
  *  Note: We assume non-IO (or non-device) physical address
