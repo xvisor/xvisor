@@ -45,7 +45,7 @@ parser.add_option("-q", "--quiet",
 (options, add_args) = parser.parse_args()
 
 if not options.filename:
-	print "Error: No input ARM ELF32 file"
+	print("Error: No input ARM ELF32 file")
 	sys.exit()
 
 seccmd = os.environ.get("CROSS_COMPILE") + "objdump -h " + options.filename
@@ -84,10 +84,10 @@ while 1:
 		secs_parse_pos = secs_parse_pos + 1
 
 if len(secs)==0:
-       print "Error: Did not find code sections to scan"
+       print("Error: Did not find code sections to scan")
        sys.exit()
 
-#print secs
+#print(secs)
 #sys.exit()
 
 # Initialize data structures
@@ -591,7 +591,7 @@ for ln, l in enumerate(lines):
 	if vlnums[ln]:
 		sec = lsecs[ln];
 		if sec!=psec:
-			print "section," + sec
+			print("section," + sec)
 			psec = sec
 		w = l.split(" ")
 		if len(w)<3:
@@ -603,50 +603,50 @@ for ln, l in enumerate(lines):
 				continue
 		if (len(w)==3):
 			if (w[2].startswith("wfi")):
-				print "\t#", w[2]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_wfi_inst(w[1]))
+				print("\t#", w[2])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_wfi_inst(w[1])))
 			elif (w[2].startswith("wfe")):
-				print "\t#", w[2]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_wfe_inst(w[1]))
+				print("\t#", w[2])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_wfe_inst(w[1])))
 			elif (w[2].startswith("sev")):
-				print "\t#", w[2]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_sev_inst(w[1]))
+				print("\t#", w[2])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_sev_inst(w[1])))
 			elif (w[2].startswith("yield")):
-				print "\t#", w[2]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_yield_inst(w[1]))
+				print("\t#", w[2])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_yield_inst(w[1])))
 		elif (len(w)==4):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
-				print "\t#", w[2], w[3]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_cps_inst(w[1]))
+				print("\t#", w[2], w[3])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_cps_inst(w[1])))
 			elif (w[2]=="rfeda" or 
 				w[2]=="rfedb" or 
 				w[2]=="rfeia" or 
 				w[2]=="rfeib" or 
 				w[2]=="rfe"):
-				print "\t#", w[2], w[3]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_rfe_inst(w[1]))	
+				print("\t#", w[2], w[3])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_rfe_inst(w[1]))	)
 			elif (w[2].startswith("smc")):
-				print "\t#", w[2], w[3]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_smc_inst(w[1]))	
+				print("\t#", w[2], w[3])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_smc_inst(w[1]))	)
 		elif len(w)>=5: 
 			if (w[2]=="mrs"):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_mrs_inst(w[1]))
+				print("\t#", w[2], w[3], w[4])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_mrs_inst(w[1])))
 			elif (w[2]=="msr"):
-				print "\t#", w[2], w[3], w[4]
+				print("\t#", w[2], w[3], w[4])
 				# Check bit[25] to findout 
 				# whether instruction is immediate or literal
 				if int(w[1], 16) & 0x02000000:
-					print "\twrite32,0x%x,0x%08x" % (addr, convert_msr_i_inst(w[1]))
+					print("\twrite32,0x%x,0x%08x" % (addr, convert_msr_i_inst(w[1])))
 				else:
-					print "\twrite32,0x%x,0x%08x" % (addr, convert_msr_r_inst(w[1]))
+					print("\twrite32,0x%x,0x%08x" % (addr, convert_msr_r_inst(w[1])))
 			elif (w[2]=="srsda" or 
 				w[2]=="srsdb" or 
 				w[2]=="srsia" or 
 				w[2]=="srsib" or 
 				w[2]=="srs"):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_srs_inst(w[1]))
+				print("\t#", w[2], w[3], w[4])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_srs_inst(w[1])))
 			elif ((w[2]=="ldmda" or 
 				w[2]=="ldmdb" or 
 				w[2]=="ldmia" or 
@@ -654,8 +654,8 @@ for ln, l in enumerate(lines):
 				w[2]=="ldm") and
 				w[4].startswith("{") and
 				w[len(w)-1].endswith("}^")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_ldm_ue_inst(w[1]))
+				print("\t#", w[2], w[3], w[4])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_ldm_ue_inst(w[1])))
 			elif ((w[2]=="stmda" or 
 				w[2]=="stmdb" or 
 				w[2]=="stmia" or 
@@ -663,8 +663,8 @@ for ln, l in enumerate(lines):
 				w[2]=="stm") and
 				w[4].startswith("{") and
 				w[len(w)-1].endswith("}^")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_stm_u_inst(w[1]))
+				print("\t#", w[2], w[3], w[4])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_stm_u_inst(w[1])))
 			elif (((int(w[1], 16) & 0x0C10F000) == 0x0010F000) and
 				(w[2]=="ands" or 
 				 w[2]=="eors" or
@@ -678,6 +678,6 @@ for ln, l in enumerate(lines):
 				 w[2]=="movs" or
 				 w[2]=="bics" or
 				 w[2]=="mvns")):
-				print "\t#", w[2], w[3], w[4]
-				print "\twrite32,0x%x,0x%08x" % (addr, convert_subs_rel_inst(w[1]))
+				print("\t#", w[2], w[3], w[4])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_subs_rel_inst(w[1])))
 
