@@ -31,6 +31,17 @@
 
 #define PCI_CONFIG_HEADER_END	0x3f
 
+/* PCI HEADER_TYPE */
+#define  PCI_HEADER_TYPE_MULTI_FUNCTION 0x80
+
+/* Size of the standard PCI config header */
+#define PCI_CONFIG_HEADER_SIZE 0x40
+/* Size of the standard PCI config space */
+#define PCI_CONFIG_SPACE_SIZE 0x100
+/* Size of the standard PCIe config space: 4KB */
+#define PCIE_CONFIG_SPACE_SIZE  0x1000
+
+
 #define PCI_CONFIG_VENDOR_ID_OFFS	0
 #define PCI_CONFIG_DEVICE_ID_OFFS	2
 #define PCI_CONFIG_COMMAND_REG_OFFS	4
@@ -146,10 +157,14 @@ struct pci_dev_emulator {
 
 int pci_emu_register_device(struct pci_dev_emulator *emu);
 int pci_emu_unregister_device(struct pci_dev_emulator *emu);
+struct pci_bus *pci_find_bus_by_id(struct pci_host_controller *controller,
+				   u32 bus_id);
 struct pci_dev_emulator *pci_emu_find_device(const char *name);
 int pci_emu_find_pci_device(struct pci_host_controller *controller,
 			    int bus_id, int dev_id,
 			    struct pci_device **pdev);
+struct pci_device *pci_emu_pci_dev_find_by_addr(struct pci_host_controller
+						*controller, u32 addr);
 int pci_emu_probe_devices(struct vmm_guest *guest,
 			  struct pci_host_controller *controller,
 			  struct vmm_devtree_node *node);
