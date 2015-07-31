@@ -289,7 +289,6 @@ int do_generic_int_handler(int intno, arch_regs_t *regs)
 {
 	struct vmm_guest *guest;
 	struct vcpu_hw_context *context = NULL;
-        char *bad = 0x0;
 
 	if (intno == 0x80) {
 		if (regs->rdi == GUEST_HALT_SW_CODE) {
@@ -301,7 +300,6 @@ int do_generic_int_handler(int intno, arch_regs_t *regs)
 			vmm_scheduler_irq_enter(regs, TRUE);
 			context->vcpu_exit(context);
 			vmm_scheduler_irq_exit(regs);
-                        *bad = 0;
 		} else {
 			vmm_scheduler_preempt_orphan(regs);
 		}
