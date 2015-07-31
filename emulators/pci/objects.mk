@@ -23,3 +23,4 @@
 
 emulators-objs-$(CONFIG_EMU_PCI)+= pci/pci_emu_core.o
 emulators-objs-$(CONFIG_EMU_I440FX)+= pci/host/i440fx.o
+emulators-objs-$(CONFIG_EMU_GPEX)+= pci/host/gpex.o
