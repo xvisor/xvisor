@@ -164,7 +164,7 @@ static int host_mhash_del(physical_addr_t pa,
 			  virtual_size_t sz)
 {
 	int rc = VMM_OK;
-	u32 rflags;
+	u32 rflags = 0;
 	physical_addr_t rpa[2] = { 0, 0 };
 	virtual_addr_t rva[2] = { 0, 0 };
 	virtual_size_t rsz[2] = { 0, 0 };
