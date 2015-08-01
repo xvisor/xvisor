@@ -79,10 +79,10 @@ __symbol:
 
 #define EXCEPTION_HANDLER(_symbol)	\
 	FUNCTION(_symbol)		\
-	SAVE_ALL_IRQ			\
+	SAVE_ALL			\
 
 #define END_EXCEPTION_HANDLER		\
-	RESTORE_ALL_IRQ			\
+	RESTORE_ALL			\
 	iretq
 
 #define IRQ_HANDLER(_symbol)			\
