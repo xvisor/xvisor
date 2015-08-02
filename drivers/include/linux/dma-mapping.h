@@ -56,7 +56,9 @@ static inline unsigned int dma_set_max_seg_size(struct device *dev,
 
 #define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
 #define dma_unmap_single_attrs(d, a, s, r, attrs)	\
-	vmm_dma_unmap((dma_addr_t)a, s, r)
+	vmm_dma_unmap((physical_addr_t)a, s, r)
+
+#define dma_data_direction vmm_dma_direction
 
 typedef void (*sync_fct)(virtual_addr_t start,
 			 virtual_addr_t end,
@@ -76,10 +78,10 @@ static inline void dma_sync_single(dma_addr_t handle,
 }
 
 #define dma_sync_single_for_device(d, a, s, r)				\
-	dma_sync_single(a, s, r, vmm_dma_cpu_to_dev)
+	dma_sync_single(a, s, r, vmm_dma_sync_for_device)
 
 #define dma_sync_single_for_cpu(d, a, s, r)				\
-	dma_sync_single(a, s, r, vmm_dma_dev_to_cpu)
+	dma_sync_single(a, s, r, vmm_dma_sync_for_cpu)
 
 static inline int dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
 {

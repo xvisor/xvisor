@@ -103,21 +103,35 @@ static void heap_free(struct vmm_heap_control *heap, void *ptr)
 	}
 }
 
-static void *heap_pa2va(struct vmm_heap_control *heap, physical_addr_t pa)
+static int heap_pa2va(struct vmm_heap_control *heap,
+		      physical_addr_t pa, virtual_addr_t *va)
 {
-	BUG_ON(pa < heap->heap_start_pa);
-	BUG_ON((heap->heap_start_pa + heap->heap_size) <= pa);
+	int rc = VMM_OK;
 
-	return heap->heap_start + (pa - heap->heap_start_pa);
+	if ((heap->heap_start_pa <= pa) &&
+	    (pa < (heap->heap_start_pa + heap->heap_size))) {
+		*va = (virtual_addr_t)heap->heap_start + (pa - heap->heap_start_pa);
+	} else {
+		rc = vmm_host_pa2va(pa, va);
+	}
+
+	return rc;
 }
 
-static physical_addr_t heap_va2pa(struct vmm_heap_control *heap, virtual_addr_t va)
+static int heap_va2pa(struct vmm_heap_control *heap,
+		      virtual_addr_t va, physical_addr_t *pa)
 {
-	BUG_ON(va < (virtual_addr_t)heap->heap_start);
-	BUG_ON((virtual_addr_t)(heap->heap_start + heap->heap_size) <= va);
+	int rc = VMM_OK;
 
-	return (physical_addr_t)(va - (virtual_addr_t)heap->heap_start) +
-							heap->heap_start_pa;
+	if (((virtual_addr_t)heap->heap_start <= va) &&
+	    (va < ((virtual_addr_t)heap->heap_start + heap->heap_size))) {
+		*pa = (physical_addr_t)(va - (virtual_addr_t)heap->heap_start) +
+			heap->heap_start_pa;
+	} else {
+		rc = vmm_host_va2pa(va, pa);
+	}
+
+	return rc;
 }
 
 static int heap_print_state(struct vmm_heap_control *heap,
@@ -285,8 +299,34 @@ void *vmm_dma_zalloc_phy(virtual_size_t size,
 	return cpu_addr;
 }
 
-void vmm_dma_cpu_to_dev(virtual_addr_t start, virtual_addr_t end,
-			enum dma_data_direction dir)
+virtual_addr_t vmm_dma_pa2va(physical_addr_t pa)
+{
+	int rc;
+	virtual_addr_t va = 0x0;
+
+	rc = heap_pa2va(&dma_heap, pa, &va);
+	if (rc != VMM_OK) {
+		BUG_ON(1);
+	}
+
+	return va;
+}
+
+physical_addr_t vmm_dma_va2pa(virtual_addr_t va)
+{
+	int rc;
+	physical_addr_t pa = 0x0;
+
+	rc = heap_va2pa(&dma_heap, va, &pa);
+	if (rc != VMM_OK) {
+		BUG_ON(1);
+	}
+
+	return pa;
+}
+
+void vmm_dma_sync_for_device(virtual_addr_t start, virtual_addr_t end,
+			     enum vmm_dma_direction dir)
 {
 	if (dir == DMA_FROM_DEVICE) {
 		vmm_inv_dcache_range(start, end);
@@ -297,8 +337,8 @@ void vmm_dma_cpu_to_dev(virtual_addr_t start, virtual_addr_t end,
 	}
 }
 
-void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
-			enum dma_data_direction dir)
+void vmm_dma_sync_for_cpu(virtual_addr_t start, virtual_addr_t end,
+			  enum vmm_dma_direction dir)
 {
 	if (dir == DMA_FROM_DEVICE) {
 		/* Cache prefetching */
@@ -307,32 +347,20 @@ void vmm_dma_dev_to_cpu(virtual_addr_t start, virtual_addr_t end,
 	}
 }
 
-dma_addr_t vmm_dma_map(virtual_addr_t vaddr, virtual_size_t size,
-		       enum dma_data_direction dir)
+physical_addr_t vmm_dma_map(virtual_addr_t vaddr, virtual_size_t size,
+			    enum vmm_dma_direction dir)
 {
-	int ret;
-	dma_addr_t dma_addr = 0;
+	vmm_dma_sync_for_device(vaddr, vaddr + size, dir);
 
-	vmm_dma_cpu_to_dev(vaddr, vaddr + size, dir);
-
-	ret = vmm_host_va2pa(vaddr, &dma_addr);
-	if (ret != VMM_OK) {
-		return 0;
-	} else {
-		return dma_addr;
-	}
+	return vmm_dma_va2pa(vaddr);
 }
 
-void vmm_dma_unmap(dma_addr_t dma_addr, physical_size_t size,
-		   enum dma_data_direction dir)
+void vmm_dma_unmap(physical_addr_t dma_addr, physical_size_t size,
+		   enum vmm_dma_direction dir)
 {
-	int ret;
-	virtual_addr_t vaddr = 0;
+	virtual_addr_t vaddr = vmm_dma_pa2va((physical_addr_t)dma_addr);
 
-	ret = vmm_host_pa2va(dma_addr, &vaddr);
-	if (ret == VMM_OK) {
-		vmm_dma_dev_to_cpu(vaddr, vaddr + size, dir);
-	}
+	vmm_dma_sync_for_cpu(vaddr, vaddr + size, dir);
 }
 
 virtual_size_t vmm_dma_alloc_size(const void *ptr)
@@ -343,16 +371,6 @@ virtual_size_t vmm_dma_alloc_size(const void *ptr)
 void vmm_dma_free(void *ptr)
 {
 	heap_free(&dma_heap, ptr);
-}
-
-void *vmm_dma_pa2va(dma_addr_t pa)
-{
-	return heap_pa2va(&dma_heap, pa);
-}
-
-physical_addr_t vmm_dma_va2pa(virtual_addr_t va)
-{
-	return heap_va2pa(&dma_heap, va);
 }
 
 virtual_addr_t vmm_dma_heap_start_va(void)
