@@ -251,6 +251,16 @@ void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp)
 }
 VMM_EXPORT_SYMBOL(m_copydata);
 
+static void mbuf_pool_free(struct vmm_mbuf *m)
+{
+	mempool_free(mbpctrl.mpool, m);
+}
+
+static void mbuf_heap_free(struct vmm_mbuf *m)
+{
+	vmm_free(m);
+}
+
 /*
  * Space allocation routines.
  * These are also available as macros
@@ -259,11 +269,15 @@ VMM_EXPORT_SYMBOL(m_copydata);
 struct vmm_mbuf *m_get(int nowait, int flags)
 {
 	struct vmm_mbuf *m;
-	
+
 	/* TODO: implement non-blocking variant */
 
 	m = mempool_zalloc(mbpctrl.mpool);
-	if (!m) {
+	if (m) {
+		m->m_freefn = mbuf_pool_free;
+	} else if (NULL != (m = vmm_malloc(sizeof (struct vmm_mbuf)))) {
+		m->m_freefn = mbuf_heap_free;
+	} else {
 		return NULL;
 	}
 
@@ -328,7 +342,7 @@ void m_ext_free(struct vmm_mbuf *m)
 		}
 	}
 	if (!(--(m->m_ref))) {
-		mempool_free(mbpctrl.mpool, m);
+		m->m_freefn(m);
 	}
 }
 VMM_EXPORT_SYMBOL(m_ext_free);

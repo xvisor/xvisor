@@ -100,6 +100,8 @@ struct m_hdr {
 	u32 mh_refcnt;
 	struct vmm_mbuf *mh_next;	/* next buffer in chain */
 	char *mh_data;			/* location of data */
+	void (*mh_freefn)(struct vmm_mbuf *);
+					/* free routine */
 	int mh_len;			/* amount of data in this mbuf */
 	int mh_flags;			/* flags; see below */
 };
@@ -138,6 +140,7 @@ struct vmm_mbuf {
 #define m_extref	m_ext.ext_refcnt
 #define m_extfree	m_ext.ext_free
 #define m_extarg	m_ext.ext_arg
+#define m_freefn	m_hdr.mh_freefn
 
 #define m_list_entry(l)	list_entry(l, struct vmm_mbuf, m_list)
 /*
