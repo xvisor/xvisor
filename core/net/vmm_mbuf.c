@@ -275,7 +275,7 @@ struct vmm_mbuf *m_get(int nowait, int flags)
 	m = mempool_zalloc(mbpctrl.mpool);
 	if (m) {
 		m->m_freefn = mbuf_pool_free;
-	} else if (NULL != (m = vmm_malloc(sizeof (struct vmm_mbuf)))) {
+	} else if (NULL != (m = vmm_zalloc(sizeof(struct vmm_mbuf)))) {
 		m->m_freefn = mbuf_heap_free;
 	} else {
 		return NULL;
@@ -302,24 +302,46 @@ static void ext_pool_free(struct vmm_mbuf *m, void *ptr, u32 size, void *arg)
 	mempool_free(mp, ptr);
 }
 
-void *m_ext_get(struct vmm_mbuf *m, u32 size, int how)
+static void ext_heap_free(struct vmm_mbuf *m, void *ptr, u32 size, void *arg)
+{
+	vmm_free(ptr);
+}
+
+static void ext_dma_free(struct vmm_mbuf *m, void *ptr, u32 size, void *arg)
+{
+	vmm_dma_free(ptr);
+}
+
+void *m_ext_get(struct vmm_mbuf *m, u32 size, enum vmm_mbuf_alloc_types how)
 {
 	void *buf;
 	u32 slab;
-	struct mempool *mp;
+	struct mempool *mp = NULL;
 
-	mp = NULL;
-	for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
-		if (size <= epool_slab_buf_size(slab)) {
-			mp = mbpctrl.epool_slabs[slab];
-			break;
+	if (VMM_MBUF_ALLOC_DMA == how) {
+		buf = vmm_dma_malloc(size);
+		if (!buf) {
+			return NULL;
 		}
-	}
+		m->m_flags |= M_EXT_DMA;
+		MEXTADD(m, buf, size, ext_dma_free, NULL);
+	} else {
+		for (slab = 0; slab < EPOOL_SLAB_COUNT; slab++) {
+			if (size <= epool_slab_buf_size(slab)) {
+				mp = mbpctrl.epool_slabs[slab];
+				break;
+			}
+		}
 
-	if (mp && (buf = mempool_malloc(mp))) {
-		MEXTADD(m, buf, size, ext_pool_free, mp);
-	} else if ((buf = vmm_malloc(size))) {
-		MEXTADD(m, buf, size, NULL, NULL);
+		if (mp && (buf = mempool_malloc(mp))) {
+			m->m_flags |= M_EXT_POOL;
+			MEXTADD(m, buf, size, ext_pool_free, mp);
+		} else if ((buf = vmm_malloc(size))) {
+			m->m_flags |= M_EXT_HEAP;
+			MEXTADD(m, buf, size, ext_heap_free, NULL);
+		} else {
+			return NULL;
+		}
 	}
 
 	return m->m_extbuf;
@@ -338,11 +360,15 @@ void m_ext_free(struct vmm_mbuf *m)
 		if (m->m_extfree) {
 			(*m->m_extfree)(m, m->m_extbuf, m->m_extlen, m->m_extarg);
 		} else {
-			vmm_free(m->m_extbuf);
+			BUG_ON(1);
 		}
 	}
 	if (!(--(m->m_ref))) {
-		m->m_freefn(m);
+		if (m->m_freefn) {
+			m->m_freefn(m);
+		} else {
+			BUG_ON(1);
+		}
 	}
 }
 VMM_EXPORT_SYMBOL(m_ext_free);

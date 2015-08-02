@@ -154,11 +154,12 @@ struct vmm_mbuf {
 
 /* additional flags for M_EXT mbufs */
 #define	M_EXT_FLAGS	0xff000000
-#define	M_EXT_CLUSTER	0x01000000	/* ext is a cluster */
-#define	M_EXT_PAGES	0x02000000	/* ext_pgs is valid */
-#define	M_EXT_ROMAP	0x04000000	/* ext mapping is r-o at MMU */
-#define	M_EXT_RW	0x08000000	/* ext storage is writable */
-#define	M_EXT_DONTFREE	0x10000000	/* extfree not required */
+#define	M_EXT_RW	0x01000000	/* ext storage is writable */
+#define	M_EXT_ROMAP	0x02000000	/* ext mapping is r-o at MMU */
+#define	M_EXT_DONTFREE	0x04000000	/* extfree not required */
+#define	M_EXT_POOL	0x08000000	/* ext storage is pool alloced */
+#define	M_EXT_HEAP	0x10000000	/* ext storage is normal heap alloced */
+#define	M_EXT_DMA	0x20000000	/* ext storage is dma heap alloced */
 
 /* flags copied when copying m_pkthdr */
 #define	M_COPYFLAGS	(M_PKTHDR)
@@ -274,12 +275,23 @@ do {									\
  */
 #define	M_BUFADDR(m)	((m)->m_data)
 
-struct vmm_mbuf *m_free(struct vmm_mbuf *);
-struct vmm_mbuf *m_get(int, int);
-void *m_ext_get(struct vmm_mbuf *, u32, int);
-void m_copydata(struct vmm_mbuf *, int, int, void *);
-void m_freem(struct vmm_mbuf *);
-void m_ext_free(struct vmm_mbuf *);
+/*
+ * mbuf allocation types.
+ */
+enum vmm_mbuf_alloc_types {
+	VMM_MBUF_ALLOC_DEFAULT=0,
+	VMM_MBUF_ALLOC_DMA=1
+};
+
+/*
+ * mbuf APIs.
+ */
+struct vmm_mbuf *m_free(struct vmm_mbuf *m);
+struct vmm_mbuf *m_get(int nowait, int flags);
+void *m_ext_get(struct vmm_mbuf *m, u32 size, enum vmm_mbuf_alloc_types how);
+void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp);
+void m_freem(struct vmm_mbuf *m);
+void m_ext_free(struct vmm_mbuf *m);
 
 /*
  * mbuf pool initializaton and exit.
