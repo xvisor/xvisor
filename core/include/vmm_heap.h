@@ -86,6 +86,9 @@ virtual_addr_t vmm_dma_pa2va(physical_addr_t pa);
 /* Translate a DMA virtual address to its physical address */
 physical_addr_t vmm_dma_va2pa(virtual_addr_t va);
 
+/** Check if an address is allocated on the DMA heap */
+int vmm_is_dma(void *va);
+
 /* Sync the buffer to be "owned" by the device */
 void vmm_dma_sync_for_device(virtual_addr_t start, virtual_addr_t end,
 			     enum vmm_dma_direction dir);

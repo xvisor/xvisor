@@ -325,6 +325,12 @@ physical_addr_t vmm_dma_va2pa(virtual_addr_t va)
 	return pa;
 }
 
+int vmm_is_dma(void *va)
+{
+	return ((va > dma_heap.heap_start) &&
+		(va < (dma_heap.heap_start + dma_heap.heap_size)));
+}
+
 void vmm_dma_sync_for_device(virtual_addr_t start, virtual_addr_t end,
 			     enum vmm_dma_direction dir)
 {
