@@ -339,7 +339,7 @@ static void swap_buffer2(void *dst_buf, void *src_buf, int len)
 		*dst = swab32p(src);
 }
 
-#if FEC_DEBUG
+#ifdef FEC_DEBUG
 static void fec_dump(struct net_device *ndev)
 {
 	struct fec_enet_private *fep = netdev_priv(ndev);
@@ -936,6 +936,15 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	queue = skb_get_queue_mapping(skb);
 	txq = fep->tx_queue[queue];
 	nq = netdev_get_tx_queue(ndev, queue);
+#if 1
+	/* Check if the SKB data are not DMA allocated */
+	if (!vmm_is_dma(skb->m_extbuf)) {
+		/* Clean the caches */
+		vmm_dma_sync_for_device((virtual_addr_t)skb->m_extbuf,
+			(virtual_addr_t)(skb->m_extbuf + skb_len(skb)),
+			DMA_TO_DEVICE);
+	}
+#endif /* 1 */
 
 #if 0
 	if (skb_is_gso(skb))
@@ -1527,7 +1536,11 @@ static bool fec_enet_copybreak(struct net_device *ndev, struct sk_buff **skb,
 	if (length > fep->rx_copybreak)
 		return false;
 
+#if 0
 	new_skb = netdev_alloc_skb(ndev, length);
+#else
+	new_skb = __netdev_alloc_skb(ndev, length, M_EXT_DMA);
+#endif /* 0 */
 	if (!new_skb)
 		return false;
 
@@ -1654,7 +1667,12 @@ fec_enet_rx_queue(struct net_device *ndev, int budget, u16 queue_id)
 		is_copybreak = fec_enet_copybreak(ndev, &skb, bdp, pkt_len - 4,
 						  need_swap);
 		if (!is_copybreak) {
+#if 0
 			skb_new = netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE);
+#else
+			skb_new = __netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE,
+						     M_EXT_DMA);
+#endif /* 0 */
 			if (unlikely(!skb_new)) {
 				ndev->stats.rx_dropped++;
 				goto rx_processing_done;
@@ -2971,7 +2989,11 @@ fec_enet_alloc_rxq_buffers(struct net_device *ndev, unsigned int queue)
 	rxq = fep->rx_queue[queue];
 	bdp = rxq->rx_bd_base;
 	for (i = 0; i < rxq->rx_ring_size; i++) {
+#if 0
 		skb = netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE);
+#else
+		skb = __netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE, M_EXT_DMA);
+#endif /* 0 */
 		if (!skb)
 			goto err_alloc;
 
