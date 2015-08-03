@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #Required packages
-PACKAGES="gcc-multilib git-all cscope iasl cgdb xorriso libncurses5-dev m4 flex bison qemu-system-x86 autoconf expect qemu-system-x86 qemu-utils"
+PACKAGES="gcc-multilib git-all cscope iasl cgdb xorriso libncurses5-dev m4 flex bison qemu-system-x86 autoconf expect build-essential qemu-utils clang"
 #colors
 black='\E[30;47m'
 #red='\E[31;47m'
@@ -47,18 +47,40 @@ function prepare_environment() {
     run_or_die "sudo apt-get -y install ${PACKAGES}" "Building conducive environtment..."
 }
 
+function checkout_filo() {
+    if [ ! -e ${SANDBOX_PATH}/coreboot ]; then
+	cecho "Coreboot has not been checked out. Check that out first." $red
+	exit 255
+    fi
+
+    if [ ! -e ${SANDBOX_PATH}/coreboot/payloads/filo ]; then
+	pushd ${SANDBOX_PATH}/coreboot/payloads
+	run_or_die "git clone http://review.coreboot.org/filo.git"  "Checking out FILO... "
+	pushd ${SANDBOX_PATH}/coreboot/payloads/filo
+	run_or_die "wget -c http://xvisor-x86.org/patches/filo_virtio.patch" "Getting virtio patch..."
+	run_or_die "git apply --check filo_virtio.patch" "Checking if patch can be applied..."
+	run_or_die "git apply filo_virtio.patch" "Applying virtio patch to filo..."
+	popd
+	popd
+    else
+	echo "Payload directory doesn't exist in coreboot. Probably coreboot wasn't checkedout properly."
+	exit 255
+    fi
+}
+
 function checkout_coreboot() {
-    run_or_die "git clone http://review.coreboot.org/p/coreboot" "Checking out coreboot..."
-    pushd ${SANDBOX_PATH}/coreboot
-    run_or_die "git submodule update --init --checkout" "Checking out submodules..."
-    pushd ${SANDBOX_PATH}/coreboot/payloads
-    run_or_die "git clone http://review.coreboot.org/filo.git"  "Checking out FILO... "
-    popd
-    popd
+    if [ ! -e ${SANDBOX_PATH}/coreboot ]; then
+	run_or_die "git clone http://review.coreboot.org/p/coreboot" "Checking out coreboot..."
+	pushd ${SANDBOX_PATH}/coreboot
+	run_or_die "git submodule update --init --checkout" "Checking out submodules..."
+	popd
+    fi
 }
 
 function checkout_xvisor() {
-    run_or_die "git clone http://github.com/hschauhan/xvisor-x86_64.git" "Checking out Xvisor-x86_64... "
+    if [ ! -e xvisor-x86_64.git ]; then
+	run_or_die "git clone http://github.com/hschauhan/xvisor-x86_64.git" "Checking out Xvisor-x86_64... "
+    fi
 }
 
 function make_cross_toolchain() {
@@ -74,6 +96,7 @@ function make_cross_toolchain() {
 function prepare_configs() {
     run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/coreboot.config ${SANDBOX_PATH}/coreboot/.config" "Copying coreboot.config"
     run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/filo.config ${SANDBOX_PATH}/coreboot/payloads/filo/.config" "Copying filo.config"
+    run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/filo.lib.config ${SANDBOX_PATH}/coreboot/payloads/libpayload/.config" "Copying libpayload.config"
     run_or_die "cp ${SANDBOX_PATH}/xvisor-x86_64/tests/x86/bios/configs/filo.lib.config ${SANDBOX_PATH}/coreboot/payloads/filo/lib.config" "Copying libpayload.config"
 }
 
@@ -84,9 +107,23 @@ function build_filo() {
     popd
 }
 
+function clean_filo() {
+    pushd ${SANDBOX_PATH}/coreboot/payloads/filo
+    run_or_die "make distclean" "Cleaning FILO..."
+    run_or_die "make clean"
+    popd
+}
+
 function build_coreboot() {
     pushd ${SANDBOX_PATH}/coreboot
     run_or_die "make" "Building coreboot..."
+    popd
+}
+
+function clean_coreboot() {
+    pushd ${SANDBOX_PATH}/coreboot
+    run_or_die "make distclean" "Cleaning Coreboot..."
+    run_or_die "make clean"
     popd
 }
 
@@ -94,6 +131,13 @@ function build_xvisor() {
     pushd ${SANDBOX_PATH}/xvisor-x86_64
     run_or_die "make ARCH=x86 x86_64_generic-defconfig" "Making Xvisor Config..."
     run_or_die "make" "Building Xvisor..."
+    popd
+}
+
+function clean_xvisor() {
+    pushd ${SANDBOX_PATH}/xvisor-x86_64
+    run_or_die "make distclean" "Cleaning Xvisor..."
+    run_or_die "make clean"
     popd
 }
 
@@ -171,7 +215,25 @@ function run_pre_existing() {
 function run_fresh() {
     checkout_xvisor
     checkout_coreboot
+    checkout_filo
     do_common
+}
+
+function build_clean() {
+    clean_coreboot
+    clean_filo
+    clean_xvisor
+    prepare_configs
+    build_filo
+    build_coreboot
+    build_hdd_image
+    build_xvisor
+    build_boot_iso
+
+    cecho "Congratulations!!" $red
+    cecho "Your setup is ready!!!" $green
+    cecho "Run your setup with following command:" $green
+    cecho "qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-hd.disk -m 1024M -boot d -s -serial stdio" $green
 }
 
 function show_help() {
@@ -195,6 +257,8 @@ function show_help() {
     echo "-f: <no argument>. Use when you need create a setup from scratch."
     echo "    When using this option make sure that internet is accessible"
     echo "    because sources will be fetched from internet before building."
+    echo "-b: Build everything clean but don't checkout sources."
+    echo "-t: Build coreboot cross toolchain."
     echo "-s: <sandbox path>. Give an already existing sandbox path. If the"
     echo "    given path doesn't exist it is created. This script expects"
     echo "    a sandbox which is created by the script itself."
@@ -202,9 +266,13 @@ function show_help() {
     echo "    which this script expects with a certain name. Things may"
     echo "    fail if it doesn't find files with correct name at correct"
     echo "    location."
+    echo "-c: Checkout source. Argument can be \"xvisor\" or \"coreboot\""
+    echo "    or \"filo\". For Filo, coreboot must be checked out first."
+    echo "    This argument is to be accompanied by -s option."
     echo "-d: <no argument>. Do everything except for checking out sources"
     echo "    from internet. It builds everything. Toolchain for payload, "
     echo "    payload, Xvisor."
+    echo "-e: Install the required packages to build and run Xvisor."
     echo "-x: <no argument>. Build only Xvisor. It will create a bootable ISO."
     echo "-p: <no argument>. Build only payload. Payload is built and copied"
     echo "    to the harddisk image which the sandbox has."
@@ -213,31 +281,44 @@ function show_help() {
     exit 0
 }
 
-#function check_and_get_helpers() {
-#    helper_files="create_hdd_partitions.expt guest_init.cmd hdd.layout lomount.c"
-#    for hfile in ${helper_files}; do
-#	if [ ! -e ${hfile} ]; then
-#	    wget -c https://raw.githubusercontent.com/hschauhan/xvisor-x86_64/master/tests/x86/${hfile}
-#	fi
-#    done
-#}
-
 do_default=0
 build_only_xvisor=0
 build_payload=0
 build_only_iso=0
 build_fresh=0
+build_clean=0
+build_cross_tool=0
+checkout_what=""
 
 if [ $# -eq 0 ]; then
     show_help
     exit 255
 fi
 
-while getopts "fs:dxpih" optchar; do
+while getopts "tbfc:s:dxpieh" optchar; do
     case "${optchar}" in
 	f)
 	    echo "Will build fresh"
 	    build_fresh=1
+	    ;;
+	c)
+	    if [ "${OPTARG}" = "xvisor" ]; then
+		checkout_what="xvisor"
+	    fi
+
+	    if [ "${OPTARG}" = "coreboot" ]; then
+		checkout_what="coreboot"
+	    fi
+
+	    if [ "${OPTARG}" = "filo" ]; then
+		checkout_what="filo"
+	    fi
+	    ;;
+	b)
+	    build_clean=1
+	    ;;
+	t)
+	    build_cross_tool=1
 	    ;;
 	d)
 	    do_default=1
@@ -250,6 +331,11 @@ while getopts "fs:dxpih" optchar; do
 	    ;;
 	p)
 	    build_payload=1
+	    ;;
+	e)
+	    echo "Setting up environment"
+	    prepare_environment
+	    exit 0
 	    ;;
 	s)
 	    SANDBOX_PATH="${OPTARG}"
@@ -275,6 +361,23 @@ echo "SANDBOX: ${SANDBOX_PATH}"
 #check_and_get_helpers
 
 LOG_FILE=${SANDBOX_PATH}/output.log
+
+if [ "${checkout_what}" = "xvisor" ]; then
+    checkout_xvisor
+elif [ "${checkout_what}" = "coreboot" ]; then
+    checkout_coreboot
+elif [ "${checkout_what}" = "filo" ]; then
+    echo "Checking out filo"
+    checkout_filo
+fi
+
+if [ "${build_cross_tool}" = "1" ]; then
+    make_cross_toolchain
+fi
+
+if [ "${build_clean}" = "1" ]; then
+    build_clean
+fi
 
 if [ "${build_fresh}" = "1" ]; then
     if [ -d ${SANDBOX_PATH} ]; then

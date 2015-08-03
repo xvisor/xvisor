@@ -33,6 +33,7 @@
 
 static int save_stack_stack(void *data, char *name)
 {
+        vmm_printf("Crash Stack: %s\n", name);
 	return 0;
 }
 

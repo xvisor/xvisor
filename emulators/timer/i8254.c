@@ -530,6 +530,8 @@ static int i8254_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&s->channels[2].channel_lock);
 
 	INIT_TIMER_EVENT(&s->channels[0].irq_timer, pit_irq_timer, &s->channels[0]);
+    INIT_TIMER_EVENT(&s->channels[1].irq_timer, pit_irq_timer, &s->channels[1]);
+    INIT_TIMER_EVENT(&s->channels[2].irq_timer, pit_irq_timer, &s->channels[2]);
 
 	s->channels[0].guest = guest;
 	s->channels[1].guest = guest;

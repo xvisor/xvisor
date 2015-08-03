@@ -30,7 +30,6 @@
 #ifdef __ASSEMBLY__
 
 #define SAVE_ALL			\
-	pushq %rbp;			\
 	pushq %r15;			\
 	pushq %r14;			\
 	pushq %r13;			\
@@ -67,8 +66,7 @@
 	popq %r12;			\
 	popq %r13;			\
 	popq %r14;			\
-	popq %r15;			\
-	popq %rbp;
+	popq %r15;
 
 #define RESTORE_ALL_IRQ			\
 	RESTORE_ALL			\
@@ -81,10 +79,10 @@ __symbol:
 
 #define EXCEPTION_HANDLER(_symbol)	\
 	FUNCTION(_symbol)		\
-	SAVE_ALL_IRQ			\
+	SAVE_ALL			\
 
 #define END_EXCEPTION_HANDLER		\
-	RESTORE_ALL_IRQ			\
+	RESTORE_ALL			\
 	iretq
 
 #define IRQ_HANDLER(_symbol)			\

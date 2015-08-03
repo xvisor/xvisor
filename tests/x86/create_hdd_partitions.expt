@@ -3,7 +3,6 @@
 set diskimage [lindex $argv 0];
 
 spawn fdisk $diskimage
-send "\r\n"
 
 expect {
        "Command (m for help):" {
@@ -12,21 +11,21 @@ expect {
 		       "Select (default p):" {
 		       	       send "p\r"
 		       	       expect {
-		       	       	      "Partition number (1-4, default 1):" {
+		       	       	      "Partition number " {
 			      	      		 send "1\r"
 			      		 	 expect {
-			      	     	 	 	"First sector (2048-65535, default 2048):"  {
-				     			       send "2048\r"
+			      	     	 	 	"First sector "  {
+				     			       send "\r"
 				     			       expect {
-				     	    		       	      "Last sector, +sectors or +size{K,M,G} (2048-65535, default 65535):" {
-								      					    	      send "65535\r"
-					    	      								      expect {
-					    	      	     							      	     "Command (m for help):" {
-															     		send "w\r"
-					    										     }
-														      }
+				     	    		       	      "Last sector, " {
+								      	    send "\r"
+										expect {
+					    	      	     			       "Command (m for help):" {
+										       		send "w\r"
+					    						}
+										}
 								      }
-				                               }																				     
+				                               }
 		                                         }
 	                                          }
                                        }

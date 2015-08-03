@@ -197,7 +197,7 @@ static void setup_gate_handlers(void)
 	set_trap_gate(19, VIRT_TO_PHYS(_exception_simd_err), EXCEPTION_STACK);		/* simd coproc error */
 
 	set_interrupt_gate(2, VIRT_TO_PHYS(_exception_nmi), NMI_STACK);			/* NMI */
-	set_interrupt_gate(14, VIRT_TO_PHYS(_exception_page_fault), REGULAR_INT_STACK);	/* page fault */
+	set_interrupt_gate(14, VIRT_TO_PHYS(_exception_page_fault), DEBUG_STACK);	/* page fault */
 }
 
 int __cpuinit arch_cpu_irq_setup(void)
@@ -225,9 +225,8 @@ extern void print_stacktrace(struct stack_trace *trace);
 		trace.skip = 0;					\
 								\
 		dump_vcpu_regs(regs);					\
+                vmm_printf("\n");                                       \
 		arch_save_stacktrace_regs(regs, &trace);		\
-									\
-		vmm_printf("\n");					\
 		vmm_printf("call trace:\n");				\
 		print_stacktrace(&trace);				\
 	} while(0);

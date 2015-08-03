@@ -693,6 +693,7 @@ static struct pci_bus *pci_alloc_child_bus(struct pci_bus *parent,
 	 */
 	child->dev.class = &pcibus_class;
 	dev_set_name(&child->dev, "%04x:%02x", pci_domain_nr(child), busnr);
+	device_initialize(&child->dev);
 
 	/*
 	 * Set up the primary, secondary and subordinate
@@ -1141,6 +1142,7 @@ int pci_setup_device(struct pci_dev *dev)
 	dev->revision = class & 0xff;
 	dev->class = class >> 8;		    /* upper 3 bytes */
 
+
 	dev_printk(KERN_DEBUG, &dev->dev, "[%04x:%04x] type %02x class %#08x\n",
 		   dev->vendor, dev->devid, dev->hdr_type, dev->class);
 
@@ -1422,6 +1424,9 @@ struct pci_dev *pci_alloc_dev(struct pci_bus *bus)
 		return NULL;
 
 	INIT_LIST_HEAD(&dev->bus_list);
+
+	device_initialize(&dev->dev);
+
 #if 0
 	dev->dev.type = &pci_dev_type;
 #endif
