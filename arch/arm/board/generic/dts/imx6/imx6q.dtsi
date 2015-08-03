@@ -10,6 +10,8 @@
 #include "imx6q-pinfunc.h"
 #include <imx6qdl-clock.h>
 
+/memreserve/ 0x10000000 0x00001000;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
