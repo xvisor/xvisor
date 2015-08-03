@@ -71,20 +71,27 @@
 #define skb_data(skb)	((skb)->m_data)
 #define skb_len(skb)	((skb)->m_len)
 
-static inline struct sk_buff *alloc_skb(unsigned int size,
-					u8 dummy_priority)
+static inline struct sk_buff *__alloc_skb(unsigned int size,
+					  u8 dummy_priority,
+					  int ext_how)
 {
 	struct vmm_mbuf *m;
 	MGETHDR(m, 0, 0);
 	if(m == NULL) {
 		return NULL;
 	}
-	MEXTMALLOC(m, size, 0);
+	MEXTMALLOC(m, size, ext_how);
 	if(m->m_extbuf == NULL) {
 		m_freem(m);
 		return NULL;
 	}
 	return m;
+}
+
+static inline struct sk_buff *alloc_skb(unsigned int size,
+					u8 dummy_priority)
+{
+	return __alloc_skb(size, dummy_priority, 0);
 }
 
 static inline void skb_reserve(struct sk_buff *skb, int len)
@@ -169,6 +176,21 @@ static inline unsigned char *skb_push(struct sk_buff *skb, unsigned int len)
 #define NET_SKB_PAD	32
 #endif
 
+
+/**
+ * __dev_alloc_skb - Do the same as dev_alloc_skb (see below) but with
+ * allocation flags.
+ */
+static inline struct sk_buff *__dev_alloc_skb(unsigned int length,
+					      int how)
+{
+	struct sk_buff *skb;
+	skb = __alloc_skb(length + NET_SKB_PAD, 0, how);
+	if(likely(skb != NULL))
+		skb_reserve(skb, NET_SKB_PAD);
+	return skb;
+}
+
 /**
  * dev_alloc_skb - allocate an skbuff for receiving
  * @length: length to allocate
@@ -182,11 +204,7 @@ static inline unsigned char *skb_push(struct sk_buff *skb, unsigned int len)
  */
 static inline struct sk_buff *dev_alloc_skb(unsigned int length)
 {
-	struct sk_buff *skb;
-	skb = alloc_skb(length + NET_SKB_PAD, 0);
-	if(likely(skb != NULL))
-		skb_reserve(skb, NET_SKB_PAD);
-	return skb;
+	return __dev_alloc_skb(length, 0);
 }
 
 #define dev_kfree_skb(skb)		m_freem((struct vmm_mbuf *) skb)
@@ -206,6 +224,8 @@ static inline void dev_kfree_skb_any(struct sk_buff *skb)
 }
 
 #define netdev_alloc_skb(dev, length)	dev_alloc_skb(length)
+#define __netdev_alloc_skb(dev, length, flags)				\
+	__dev_alloc_skb(length, flags)
 
 #define skb_checksum_none_assert(skb)
 
