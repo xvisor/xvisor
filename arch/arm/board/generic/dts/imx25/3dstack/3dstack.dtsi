@@ -1,8 +1,32 @@
+/*
+ * Copyright (C) 2015 Jean-Christophe Dubois.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file 3dstack.dtsi
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @brief i.MX25 PDK DTS file
+ */
 
-/include/ "../imx25.dtsi"
+#include "../imx25-pinfunc.h"
+#include "../imx25.dtsi"
 
 / {
-	model = "3dstack";
+	model = "Freescale i.MX25 Product Development Kit";
+	compatible = "fsl,imx25-pdk", "fsl,imx25";
 
 	chosen {
 		console = &uart1;
@@ -13,10 +37,117 @@
 		 * unless specified by "-m" option. If you have
 		 * X MB then we will be able to access only first
 		 * X MB starting at physical_addr.
-                 * Note: the 3Dstack board only has 64 MB DDR.
+		 * Note: the 3Dstack board only has 64 MB DDR.
 		 */
 		device_type = "memory"; 
 		reg = <0x80000000 0x04000000>; /* 64 MB */
 	};
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_fec_3v3: regulator@0 {
+			compatible = "regulator-fixed";
+			reg = <0>;
+			regulator-name = "fec-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio2 3 0>;
+			enable-active-high;
+		};
+
+		reg_2p5v: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <1>;
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+		};
+
+		reg_3p3v: regulator@2 {
+			compatible = "regulator-fixed";
+			reg = <2>;
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
+
+		reg_can_3v3: regulator@3 {
+			compatible = "regulator-fixed";
+			reg = <3>;
+			regulator-name = "can-3v3";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			gpio = <&gpio4 6 0>;
+		};
+	};
 };
 
+&fec {
+	phy-mode = "rmii";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fec>;
+	phy-supply = <&reg_fec_3v3>;
+	phy-reset-gpios = <&gpio4 8 0>;
+	status = "okay";
+};
+
+&i2c1 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	status = "okay";
+
+	codec: sgtl5000@0a {
+		compatible = "fsl,sgtl5000";
+		reg = <0x0a>;
+		clocks = <&clks 129>;
+		VDDA-supply = <&reg_2p5v>;
+		VDDIO-supply = <&reg_3p3v>;
+	};
+};
+
+&iomuxc {
+	imx25-pdk {
+		pinctrl_fec: fecgrp {
+			fsl,pins = <
+				MX25_PAD_FEC_MDC__FEC_MDC	0x80000000
+				MX25_PAD_FEC_MDIO__FEC_MDIO	0x400001e0
+				MX25_PAD_FEC_TDATA0__FEC_TDATA0	0x80000000
+				MX25_PAD_FEC_TDATA1__FEC_TDATA1	0x80000000
+				MX25_PAD_FEC_TX_EN__FEC_TX_EN	0x80000000
+				MX25_PAD_FEC_RDATA0__FEC_RDATA0	0x80000000
+				MX25_PAD_FEC_RDATA1__FEC_RDATA1	0x80000000
+				MX25_PAD_FEC_RX_DV__FEC_RX_DV	0x80000000
+				MX25_PAD_FEC_TX_CLK__FEC_TX_CLK	0x1c0
+				MX25_PAD_A17__GPIO_2_3		0x80000000
+				MX25_PAD_D12__GPIO_4_8		0x80000000
+			>;
+		};
+
+		pinctrl_i2c1: i2c1grp {
+			fsl,pins = <
+				MX25_PAD_I2C1_CLK__I2C1_CLK	0x80000000
+				MX25_PAD_I2C1_DAT__I2C1_DAT	0x80000000
+			>;
+		};
+
+		pinctrl_uart1: uart1grp {
+			fsl,pins = <
+				MX25_PAD_UART1_RTS__UART1_RTS	0xe0
+				MX25_PAD_UART1_CTS__UART1_CTS	0xe0
+				MX25_PAD_UART1_TXD__UART1_TXD	0x80000000
+				MX25_PAD_UART1_RXD__UART1_RXD	0xc0
+			>;
+		};
+	};
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1>;
+	fsl,uart-has-rtscts;
+	status = "okay";
+};

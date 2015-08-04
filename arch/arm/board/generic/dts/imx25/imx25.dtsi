@@ -1,3 +1,25 @@
+/*
+ * Copyright (C) 2015 Jean-Christophe Dubois.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file imx25.dtsi
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @brief i.MX25 SOC DTSI file
+ */
 
 / {
 	#address-cells = <1>;
@@ -8,6 +30,10 @@
 
 	aliases {
 		ethernet0 = &fec;
+		gpio0 = &gpio1;
+		gpio1 = &gpio2;
+		gpio2 = &gpio3;
+		gpio3 = &gpio4;
 		i2c0 = &i2c1;
 		i2c1 = &i2c2;
 		i2c2 = &i2c3;
@@ -282,6 +308,46 @@
 				clock-frequency = <38999040>;
 				timer_num = <1>;
 				interrupts = <27>;
+			};
+
+			gpio4: gpio@53f9c000 {
+				compatible = "fsl,imx25-gpio", "fsl,imx35-gpio";
+				reg = <0x53f9c000 0x4000>;
+				interrupts = <23>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+			};
+
+			gpio3: gpio@53fa4000 {
+				compatible = "fsl,imx25-gpio", "fsl,imx35-gpio";
+				reg = <0x53fa4000 0x4000>;
+				interrupts = <16>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+			};
+
+			gpio1: gpio@53fcc000 {
+				compatible = "fsl,imx25-gpio", "fsl,imx35-gpio";
+				reg = <0x53fcc000 0x4000>;
+				interrupts = <52>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+			};
+
+			gpio2: gpio@53fd0000 {
+				compatible = "fsl,imx25-gpio", "fsl,imx35-gpio";
+				reg = <0x53fd0000 0x4000>;
+				interrupts = <51>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
 			};
 		};
 	};
