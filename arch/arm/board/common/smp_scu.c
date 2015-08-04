@@ -34,6 +34,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
+#include <arch_barrier.h>
 
 #include <smp_ops.h>
 
@@ -130,8 +131,8 @@ int scu_power_mode(void *scu_base, u32 mode)
 #if defined(CONFIG_ARM_SMP_OPS) && defined(CONFIG_ARM_GIC)
 
 static virtual_addr_t scu_base;
-static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];
-static virtual_addr_t release_addr[CONFIG_CPU_COUNT];
+static physical_addr_t clear_addr[CONFIG_CPU_COUNT];
+static physical_addr_t release_addr[CONFIG_CPU_COUNT];
 
 static struct vmm_devtree_nodeid scu_matches[] = {
 	{.compatible = "arm,arm11mp-scu"},
@@ -166,7 +167,7 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 	if (rc) {
 		clear_addr[cpu] = 0x0;
 	} else {
-		clear_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
+		clear_addr[cpu] = pa;
 	}
 
 	/* Map release address */
@@ -175,7 +176,7 @@ static int __init scu_cpu_init(struct vmm_devtree_node *node,
 	if (rc) {
 		release_addr[cpu] = 0x0;
 	} else {
-		release_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
+		release_addr[cpu] = pa;
 	}
 
 	/* Check core count from SCU */
@@ -197,6 +198,7 @@ extern u8 _start_secondary_nopen;
 static int __init scu_cpu_prepare(unsigned int cpu)
 {
 	int rc;
+	u32 val = 0;
 	physical_addr_t _start_secondary_pa;
 
 	/* Get physical address secondary startup code */
@@ -213,13 +215,18 @@ static int __init scu_cpu_prepare(unsigned int cpu)
 
 	/* Write to clear address */
 	if (clear_addr[cpu]) {
-		vmm_writel(~0x0, (void *)clear_addr[cpu]);
+		arch_wmb();
+		val = ~0x0;
+		vmm_host_memory_write(clear_addr[cpu],
+				      &val, sizeof(u32), FALSE);
 	}
 
 	/* Write to release address */
 	if (release_addr[cpu]) {
-		vmm_writel((u32)_start_secondary_pa,
-					(void *)release_addr[cpu]);
+		arch_wmb();
+		val = _start_secondary_pa;
+		vmm_host_memory_write(release_addr[cpu],
+				      &val, sizeof(u32), FALSE);
 	}
 
 	return VMM_OK;

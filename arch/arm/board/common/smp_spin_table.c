@@ -34,12 +34,13 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
+#include <arch_barrier.h>
 
 #include <cpu_defines.h>
 #include <smp_ops.h>
 
-static virtual_addr_t clear_addr[CONFIG_CPU_COUNT];
-static virtual_addr_t release_addr[CONFIG_CPU_COUNT];
+static physical_addr_t clear_addr[CONFIG_CPU_COUNT];
+static physical_addr_t release_addr[CONFIG_CPU_COUNT];
 
 static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
@@ -53,7 +54,7 @@ static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 	if (rc) {
 		release_addr[cpu] = 0x0;
 	} else {
-		release_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
+		release_addr[cpu] = pa;
 	}
 
 	/* Map clear address */
@@ -62,7 +63,7 @@ static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 	if (rc) {
 		clear_addr[cpu] = 0x0;
 	} else {
-		clear_addr[cpu] = vmm_host_iomap(pa, VMM_PAGE_SIZE);
+		clear_addr[cpu] = pa;
 	}
 
 	return VMM_OK;
@@ -73,6 +74,7 @@ extern u8 _start_secondary;
 static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 {
 	int rc;
+	u32 val = 0;
 	physical_addr_t _start_secondary_pa;
 #ifndef CONFIG_ARM64
 	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
@@ -87,13 +89,18 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 
 	/* Write to clear address */
 	if (clear_addr[cpu]) {
-		vmm_writel(~0x0, (void *)clear_addr[cpu]);
+		arch_wmb();
+		val = ~0x0;
+		vmm_host_memory_write(clear_addr[cpu],
+				      &val, sizeof (u32), FALSE);
 	}
 
 	/* Write to release address */
 	if (release_addr[cpu]) {
-		vmm_writel((u32)_start_secondary_pa,
-					(void *)release_addr[cpu]);
+		arch_wmb();
+		val = _start_secondary_pa;
+		vmm_host_memory_write(release_addr[cpu],
+				      &val, sizeof (u32), FALSE);
 	}
 
 #ifdef CONFIG_ARM64
