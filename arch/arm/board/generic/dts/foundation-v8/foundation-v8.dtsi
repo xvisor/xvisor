@@ -1,6 +1,6 @@
 
 /memreserve/ 0x80000000 0x00020000;
-/memreserve/ 0x80800000 0x01800000;
+/memreserve/ 0x80800000 0x01000000;
 
 / {
 	#address-cells = <2>;
