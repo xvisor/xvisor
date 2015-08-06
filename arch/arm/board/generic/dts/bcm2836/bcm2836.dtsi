@@ -86,7 +86,7 @@
 			compatible = "brcm,bcm2836-armctrl-ic";
 			reg = <0x3f00b200 0x200>;
 			irq_start = <0>;
-			interrupts = <106>; /* Cascaded to local INTC */
+			interrupts = <104>; /* GPU interrupt of local INTC */
 		};
 
 		poweroff {
