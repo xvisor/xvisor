@@ -262,7 +262,7 @@ int vmm_host_irq_set_affinity(u32 hirq_num,
 		return irq->chip->irq_set_affinity(irq, dest, force);
 	}
 
-	return VMM_EFAIL;
+	return VMM_OK;
 }
 
 int vmm_host_irq_set_type(u32 hirq_num, u32 type)
@@ -410,7 +410,7 @@ int vmm_host_irq_enable(u32 hirq_num)
 	if (irq->chip) {
 		if (irq->chip->irq_enable) {
 			irq->chip->irq_enable(irq);
-		} else {
+		} else if (irq->chip->irq_unmask) {
 			irq->chip->irq_unmask(irq);
 		}
 		return VMM_OK;
@@ -429,7 +429,7 @@ int vmm_host_irq_disable(u32 hirq_num)
 	if (irq->chip) {
 		if (irq->chip->irq_disable) {
 			irq->chip->irq_disable(irq);
-		} else {
+		} else if (irq->chip->irq_mask) {
 			irq->chip->irq_mask(irq);
 		}
 	}
@@ -445,7 +445,7 @@ int vmm_host_irq_unmask(u32 hirq_num)
 		return VMM_ENOTAVAIL;
 
 	if (irq->chip && irq->chip->irq_unmask) {
-		irq->chip->irq_mask(irq);
+		irq->chip->irq_unmask(irq);
 		irq->state &= ~VMM_IRQ_STATE_MASKED;
 	}
 	return VMM_OK;
@@ -563,7 +563,7 @@ int vmm_host_irq_register(u32 hirq_num,
 				       vmm_smp_processor_id());
 		if (rc) {
 			return rc;
-			}
+		}
 	} else {
 		for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 			rc = host_irq_register(irq, name, func,
