@@ -144,14 +144,14 @@ static struct vmm_host_irq_chip bcm2836_arm_irqchip_timer = {
 static void bcm2836_arm_irqchip_mask_mbox_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_mask_per_cpu_irq(LOCAL_MAILBOX_INT_CONTROL0,
-					     (hwirq(d) - LOCAL_IRQ_MAILBOX0),
+					     hwirq(d) - LOCAL_IRQ_MAILBOX0,
 					     vmm_smp_processor_id());
 }
 
 static void bcm2836_arm_irqchip_unmask_mbox_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_unmask_per_cpu_irq(LOCAL_MAILBOX_INT_CONTROL0,
-					       (hwirq(d) - LOCAL_IRQ_MAILBOX0),
+					       hwirq(d) - LOCAL_IRQ_MAILBOX0,
 					       vmm_smp_processor_id());
 }
 
@@ -291,7 +291,7 @@ static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
 					 &bcm2836_arm_irqchip_pmu);
 
 	/* Mask timer and mailbox interrupts */
-	for_each_possible_cpu(i) {
+	for (i = 0; i < 4; i++) {
 		bcm2836_arm_irqchip_mask_per_cpu_irq(
 			LOCAL_TIMER_INT_CONTROL0,
 			LOCAL_IRQ_CNTPSIRQ - LOCAL_IRQ_CNTPSIRQ, i);
