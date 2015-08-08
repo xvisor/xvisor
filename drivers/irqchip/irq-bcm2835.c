@@ -64,6 +64,7 @@
 #include <vmm_limits.h>
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
+#include <vmm_smp.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_devtree.h>
@@ -262,11 +263,15 @@ static vmm_irq_return_t bcm2836_intc_cascade_irq(int irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static int __init bcm283x_intc_init(struct vmm_devtree_node *node,
-				    bool is_bcm2836)
+static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
+					bool is_bcm2836)
 {
 	int rc;
 	u32 b, i = 0, irq;
+
+	if (!vmm_smp_is_bootcpu()) {
+		return VMM_OK;
+	}
 
 	if (vmm_devtree_irq_get(node, &intc.parent_irq, 0)) {
 		intc.parent_irq = UINT_MAX;
@@ -309,7 +314,7 @@ static int __init bcm283x_intc_init(struct vmm_devtree_node *node,
 	return 0;
 }
 
-static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
+static int __cpuinit bcm2835_intc_init(struct vmm_devtree_node *node)
 {
 	return bcm283x_intc_init(node, FALSE);
 }
@@ -318,7 +323,7 @@ VMM_HOST_IRQ_INIT_DECLARE(bcm2835intc,
 			  "brcm,bcm2835-armctrl-ic",
 			  bcm2835_intc_init);
 
-static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
+static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
 {
 	return bcm283x_intc_init(node, TRUE);
 }

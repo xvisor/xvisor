@@ -247,9 +247,13 @@ static u32 bcm2836_intc_active_irq(u32 cpu_irq_no)
 	return ret;
 }
 
-static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
+static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
 {
 	int rc, i;
+
+	if (!vmm_smp_is_bootcpu()) {
+		return VMM_OK;
+	}
 
 	if (vmm_devtree_read_u32(node, "irq_start", &intc.irq_start)) {
 		intc.irq_start = 0;
