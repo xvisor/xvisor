@@ -183,10 +183,10 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "------------");
 	}
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, " %-7s %-20s %-10s",
+	vmm_cprintf(cdev, " %-5s %-20s %-13s",
 			  "IRQ#", "Name", "Chip");
 	for_each_online_cpu(cpu) {
-		vmm_cprintf(cdev, " CPU%-8d", cpu);
+		vmm_cprintf(cdev, " CPU%-7d", cpu);
 	}
 	vmm_cprintf(cdev, "\n");
 	vmm_cprintf(cdev, "----------------------------------------");
@@ -204,11 +204,11 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		if (!chip || !chip->name) {
 			continue;
 		}
-		vmm_cprintf(cdev, " %-7d %-20s %-10s",
+		vmm_cprintf(cdev, " %-5d %-20s %-13s",
 				  num, irq_name, chip->name);
 		for_each_online_cpu(cpu) {
 			stats = vmm_host_irq_get_count(irq, cpu);
-			vmm_cprintf(cdev, " %-11d", stats);
+			vmm_cprintf(cdev, " %-10d", stats);
 		}
 		vmm_cprintf(cdev, "\n");
 	}
