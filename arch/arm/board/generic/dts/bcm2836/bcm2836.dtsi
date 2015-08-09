@@ -57,7 +57,6 @@
 	gen-timer { /* Generic Timer */
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
-		clock-frequency = <19200000>;
 		interrupts = <98 97 99>;
 	};
 

@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Thu Aug  6 21:24:26 2015
+# Sun Aug  9 14:15:13 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -55,6 +55,7 @@ CONFIG_BOARD_GENERIC=y
 #
 CONFIG_BOARD="generic"
 CONFIG_GENERIC_VEXPRESS=y
+CONFIG_GENERIC_BCM2836=y
 # CONFIG_DEFTERM_EARLY_PRINT is not set
 CONFIG_ARM_SCU=y
 CONFIG_ARM_SMP_OPS=y
