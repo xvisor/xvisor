@@ -46,18 +46,12 @@ static u32 generic_timer_hz = 0;
 static u32 generic_timer_mult = 0;
 static u32 generic_timer_shift = 0;
 
-static u64 generic_counter_read(struct vmm_clocksource *cs)
-{
-	return generic_timer_pcounter_read();
-}
-
-static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
+static u32 generic_timer_freq(struct vmm_devtree_node *node)
 {
 	int rc;
-	struct vmm_clocksource *cs;
 
 	if (generic_timer_hz == 0) {
-		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
+		rc = vmm_devtree_clock_frequency(node, &generic_timer_hz);
 		if (rc) {
 			/* Use preconfigured counter frequency 
 			 * in absence of dts node 
@@ -75,7 +69,20 @@ static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 		}
 	}
 
-	if (generic_timer_hz == 0) {
+	return generic_timer_hz;
+}
+
+static u64 generic_counter_read(struct vmm_clocksource *cs)
+{
+	return generic_timer_pcounter_read();
+}
+
+static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
+{
+	u32 freq = generic_timer_freq(node);
+	struct vmm_clocksource *cs;
+
+	if (freq == 0) {
 		return VMM_EFAIL;
 	}
 
@@ -88,7 +95,7 @@ static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->rating = 400;
 	cs->read = &generic_counter_read;
 	cs->mask = VMM_CLOCKSOURCE_MASK(56);
-	vmm_clocks_calc_mult_shift(&cs->mult, &cs->shift, 
+	vmm_clocks_calc_mult_shift(&cs->mult, &cs->shift,
 				   generic_timer_hz, VMM_NSEC_PER_SEC, 10);
 	generic_timer_mult = cs->mult;
 	generic_timer_shift = cs->shift;
@@ -199,8 +206,8 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu->is_normal) {
-		/* We accidently got an interrupt meant for normal VCPU 
-		 * that was previously running on this host CPU. 
+		/* We accidently got an interrupt meant for normal VCPU
+		 * that was previously running on this host CPU.
 		 */
 		vmm_printf("%s: In orphan context (current VCPU=%s)\n",
 			   __func__, vcpu->name);
@@ -266,8 +273,8 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu->is_normal) {
-		/* We accidently got an interrupt meant for normal VCPU 
-		 * that was previously running on this host CPU. 
+		/* We accidently got an interrupt meant for normal VCPU
+		 * that was previously running on this host CPU.
 		 */
 		vmm_printf("%s: In orphan context (current VCPU=%s)\n",
 			   __func__, vcpu->name);
@@ -317,7 +324,7 @@ u64 generic_timer_wakeup_timeout(void)
 		if (generic_timer_hz == 100000000) {
 			nsecs = nsecs * 10;
 		} else {
-			nsecs = 
+			nsecs =
 			udiv64((nsecs * 1000000000), (u64)generic_timer_hz);
 		}
 	}
@@ -330,45 +337,32 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 irq[3], num_irqs, val;
 	struct vmm_clockchip *cc;
+	u32 freq = generic_timer_freq(node);
 
-	/* Determine generic timer frequency */
-	if (generic_timer_hz == 0) {
-		rc =  vmm_devtree_clock_frequency(node, &generic_timer_hz);
-		if (rc) {
-			/* Use preconfigured counter frequency 
-			 * in absence of dts node
-			 */
-			generic_timer_hz = 
-				generic_timer_reg_read(GENERIC_TIMER_REG_FREQ);
-		} else if (generic_timer_freq_writeable()) {
-			/* Program the counter frequency as per the dts node */
-			generic_timer_reg_write(GENERIC_TIMER_REG_FREQ, 
-							generic_timer_hz);
-		}
-	}
-	if (generic_timer_hz == 0) {
+	/* Check generic timer frequency */
+	if (freq == 0) {
 		return VMM_EFAIL;
 	}
 
 	/* Get hypervisor timer irq number */
-	rc = vmm_devtree_irq_get(node, 
-				 &irq[GENERIC_HYPERVISOR_TIMER], 
+	rc = vmm_devtree_irq_get(node,
+				 &irq[GENERIC_HYPERVISOR_TIMER],
 				 GENERIC_HYPERVISOR_TIMER);
 	if (rc) {
 		return rc;
 	}
 
 	/* Get physical timer irq number */
-	rc = vmm_devtree_irq_get(node, 
-				 &irq[GENERIC_PHYSICAL_TIMER], 
+	rc = vmm_devtree_irq_get(node,
+				 &irq[GENERIC_PHYSICAL_TIMER],
 				 GENERIC_PHYSICAL_TIMER);
 	if (rc) {
 		return rc;
 	}
 
 	/* Get virtual timer irq number */
-	rc = vmm_devtree_irq_get(node, 
-				 &irq[GENERIC_VIRTUAL_TIMER], 
+	rc = vmm_devtree_irq_get(node,
+				 &irq[GENERIC_VIRTUAL_TIMER],
 				 GENERIC_VIRTUAL_TIMER);
 	if (rc) {
 		return rc;
@@ -393,7 +387,7 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	cc->rating = 400;
 	cc->cpumask = vmm_cpumask_of(vmm_smp_processor_id());
 	cc->features = VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift, 
+	vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift,
 				   VMM_NSEC_PER_SEC, generic_timer_hz, 10);
 	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, cc);
 	cc->max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFF, cc);
@@ -409,7 +403,7 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 
 	/* Register irq handler for hypervisor timer */
 	rc = vmm_host_irq_register(irq[GENERIC_HYPERVISOR_TIMER],
-				   "gen-hyp-timer", 
+				   "gen-hyp-timer",
 				   &generic_hyp_timer_handler, cc);
 	if (rc) {
 		goto fail_unreg_cc;
