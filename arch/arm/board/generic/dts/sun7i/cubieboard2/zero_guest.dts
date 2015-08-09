@@ -1,0 +1,19 @@
+
+/dts-v1/;
+
+/include/ "sun7i-a20-cubieboard2.dtsi"
+
+/ {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &uart0;
+	};
+};

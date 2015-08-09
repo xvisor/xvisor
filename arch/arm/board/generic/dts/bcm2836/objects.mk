@@ -21,6 +21,7 @@
 # @brief list of BCM2836 DTBs.
 # */
 
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/bcm2836/zero_guest.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/bcm2836/one_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/bcm2836/one_guest_vexpress-a9.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/bcm2836/one_guest_vexpress-a15.dtb
