@@ -46,7 +46,7 @@ static u32 generic_timer_hz = 0;
 static u32 generic_timer_mult = 0;
 static u32 generic_timer_shift = 0;
 
-static u32 generic_timer_freq(struct vmm_devtree_node *node)
+static void generic_timer_get_freq(struct vmm_devtree_node *node)
 {
 	int rc;
 
@@ -68,8 +68,6 @@ static u32 generic_timer_freq(struct vmm_devtree_node *node)
 			}
 		}
 	}
-
-	return generic_timer_hz;
 }
 
 static u64 generic_counter_read(struct vmm_clocksource *cs)
@@ -79,10 +77,10 @@ static u64 generic_counter_read(struct vmm_clocksource *cs)
 
 static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 {
-	u32 freq = generic_timer_freq(node);
 	struct vmm_clocksource *cs;
 
-	if (freq == 0) {
+	generic_timer_get_freq(node);
+	if (generic_timer_hz == 0) {
 		return VMM_EFAIL;
 	}
 
@@ -337,10 +335,10 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	int rc;
 	u32 irq[3], num_irqs, val;
 	struct vmm_clockchip *cc;
-	u32 freq = generic_timer_freq(node);
 
-	/* Check generic timer frequency */
-	if (freq == 0) {
+	/* Get and Check generic timer frequency */
+	generic_timer_get_freq(node);
+	if (generic_timer_hz == 0) {
 		return VMM_EFAIL;
 	}
 
