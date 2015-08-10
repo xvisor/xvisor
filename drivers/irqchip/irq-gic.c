@@ -97,8 +97,8 @@ struct gic_chip_data {
 static int gic_cnt = 0;
 static struct gic_chip_data gic_data[GIC_MAX_NR];
 
-#define gic_write(val, addr)	vmm_writel((val), (void *)(addr))
-#define gic_read(addr)		vmm_readl((void *)(addr))
+#define gic_write(val, addr)	vmm_writel_relaxed((val), (void *)(addr))
+#define gic_read(addr)		vmm_readl_relaxed((void *)(addr))
 #define gic_irq(gic, irq)	((irq)->num - (gic)->irq_start)
 
 static void gic_poke_irq(struct gic_chip_data *gic,
