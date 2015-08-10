@@ -163,31 +163,33 @@ static inline void arch_outsl(unsigned long p, const void *b, int c)
  * ------------------------
  */
 #define arch_in_8(a)		({u8 v = __raw_read8(a); __iormb(); v; })
-
 #define arch_out_8(a, v)	{__iowmb(); __raw_write8(a, v); }
-
 #define arch_in_le16(a)		({u16 v = __raw_read16(a); __iormb(); v; })
-
 #define arch_out_le16(a, v)	({__raw_write16(a, v); __iowmb(); })
-
 #define arch_in_be16(a)		({u16 v = __raw_read16(a); __iormb(); rev16(v); })
-
 #define arch_out_be16(a, v)	{__iowmb(); __raw_write16(a, (rev16(v))); }
-
 #define arch_in_le32(a)		({u32 v = __raw_read32(a); __iormb(); v; })
-
 #define arch_out_le32(a, v)	{__iowmb(); __raw_write32(a, v); }
-
 #define arch_in_be32(a)		({u32 v = __raw_read32(a); __iormb(); rev32(v); })
-
 #define arch_out_be32(a, v)	{__iowmb(); __raw_write32(a, rev32(v)); }
-
 #define arch_in_le64(a)		({u32 v = __raw_read64(a); __iormb(); v; })
-
 #define arch_out_le64(a, v)	{__iowmb(); __raw_write64(a, v); }
-
 #define arch_in_be64(a)		({u32 v = __raw_read64(a); __iormb(); rev64(v); })
-
 #define arch_out_be64(a, v)	{__iowmb(); __raw_write64(a, rev64(v)); }
+
+#define arch_in_8_relax(a)		({u8 v = __raw_read8(a); v; })
+#define arch_out_8_relax(a, v)		{ __raw_write8(a, v); }
+#define arch_in_le16_relax(a)		({u16 v = __raw_read16(a); v; })
+#define arch_out_le16_relax(a, v)	({ __raw_write16(a, v); })
+#define arch_in_be16_relax(a)		({u16 v = __raw_read16(a); rev16(v); })
+#define arch_out_be16_relax(a, v)	{ __raw_write16(a, (rev16(v))); }
+#define arch_in_le32_relax(a)		({u32 v = __raw_read32(a); v; })
+#define arch_out_le32_relax(a, v)	{__iowmb(); __raw_write32(a, v); }
+#define arch_in_be32_relax(a)		({u32 v = __raw_read32(a); rev32(v); })
+#define arch_out_be32_relax(a, v)	{ __raw_write32(a, rev32(v)); }
+#define arch_in_le64_relax(a)		({u32 v = __raw_read64(a); v; })
+#define arch_out_le64_relax(a, v)	{ __raw_write64(a, v); }
+#define arch_in_be64_relax(a)		({u32 v = __raw_read64(a); rev64(v); })
+#define arch_out_be64_relax(a, v)	{ __raw_write64(a, rev64(v)); }
 
 #endif

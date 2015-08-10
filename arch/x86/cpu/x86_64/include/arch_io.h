@@ -159,4 +159,19 @@ static inline void arch_out_be64(volatile u64* addr, u64 data)
 	*addr = bswap64(data);
 }
 
+#define arch_in_8_relax(a)		arch_in_8(a)
+#define arch_out_8_relax(a, v)		arch_out_8(a, v)
+#define arch_in_le16_relax(a)		arch_in_le16(a)
+#define arch_out_le16_relax(a, v)	arch_out_le16(a, v)
+#define arch_in_be16_relax(a)		arch_in_be16(a)
+#define arch_out_be16_relax(a, v)	arch_out_be16(a, v)
+#define arch_in_le32_relax(a)		arch_in_le32(a)
+#define arch_out_le32_relax(a, v)	arch_out_le32(a, v)
+#define arch_in_be32_relax(a)		arch_in_be32(a)
+#define arch_out_be32_relax(a, v)	arch_out_be32(a, v)
+#define arch_in_le64_relax(a)		arch_in_le64(a)
+#define arch_out_le64_relax(a, v)	arch_out_le64(a, v)
+#define arch_in_be64_relax(a)		arch_in_be64(a)
+#define arch_out_be64_relax(a, v)	arch_out_be64(a, v)
+
 #endif

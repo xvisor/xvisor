@@ -251,6 +251,47 @@ static inline void vmm_writesl(volatile void *addr, const void *buffer, int len)
 	}
 }
 
+/** Memory read/write relaxed legacy functions (Assumed to be Little Endian) */
+static inline u8 vmm_readb_relaxed(volatile void *addr)
+{
+	return arch_in_8_relax(addr);
+}
+
+static inline void vmm_writeb_relaxed(u8 data, volatile void *addr)
+{
+	arch_out_8_relax(addr, data);
+}
+
+static inline u16 vmm_readw_relaxed(volatile void *addr)
+{
+	return arch_in_le16_relax(addr);
+}
+
+static inline void vmm_writew_relaxed(u16 data, volatile void *addr)
+{
+	arch_out_le16_relax(addr, data);
+}
+
+static inline u32 vmm_readl_relaxed(volatile void *addr)
+{
+	return arch_in_le32_relax(addr);
+}
+
+static inline void vmm_writel_relaxed(u32 data, volatile void *addr)
+{
+	arch_out_le32_relax(addr, data);
+}
+
+static inline u64 vmm_readq_relaxed(volatile void *addr)
+{
+	return arch_in_le64_relax(addr);
+}
+
+static inline void vmm_writeq_relaxed(u64 data, volatile void *addr)
+{
+	arch_out_le64_relax(addr, data);
+}
+
 /** Memory read/write functions */
 static inline u8 vmm_in_8(volatile u8 * addr)
 {

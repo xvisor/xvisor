@@ -36,8 +36,8 @@
 #define writew				vmm_writew
 #define readl				vmm_readl
 #define writel				vmm_writel
-#define readl_relaxed			vmm_readl
-#define writel_relaxed			vmm_writel
+#define readq				vmm_readq
+#define writeq				vmm_writeq
 
 #define	readsl				vmm_readsl
 #define	readsw				vmm_readsw
@@ -45,6 +45,16 @@
 #define	writesl				vmm_writesl
 #define	writesw				vmm_writesw
 #define writesb				vmm_writesb
+
+/** Memory read/write relaxed legacy functions (Assumed to be Little Endian) */
+#define readb_relaxed			vmm_readb_relaxed
+#define writeb_relaxed			vmm_writeb_relaxed
+#define readw_relaxed			vmm_readw_relaxed
+#define writew_relaxed			vmm_writew_relaxed
+#define readl_relaxed			vmm_readl_relaxed
+#define writel_relaxed			vmm_writel_relaxed
+#define readq_relaxed			vmm_readq_relaxed
+#define writeq_relaxed			vmm_writeq_relaxed
 
 /** Memory read/write functions */
 #define in_8				vmm_in_8
