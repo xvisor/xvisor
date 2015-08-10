@@ -242,12 +242,13 @@ static void __vgic_save_vcpu_hwstate(struct vgic_vcpu_state *vs)
 {
 	u32 i;
 
-	vs->hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
-	vs->vmcr = vmm_readl((void *)vgich.hctrl_va + GICH_VMCR);
-	vs->apr = vmm_readl((void *)vgich.hctrl_va + GICH_APR);
-	vmm_writel(0x0, (void *)vgich.hctrl_va + GICH_HCR);
+	vs->hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
+	vs->vmcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_VMCR);
+	vs->apr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_APR);
+	vmm_writel_relaxed(0x0, (void *)vgich.hctrl_va + GICH_HCR);
 	for (i = 0; i < vgich.lr_cnt; i++) {
-		vs->lr[i] = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*i);
+		vs->lr[i] =
+		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_LR0 + 4*i);
 	}
 }
 
@@ -256,11 +257,12 @@ static void __vgic_restore_vcpu_hwstate(struct vgic_vcpu_state *vs)
 {
 	u32 i;
 
-	vmm_writel(vs->hcr, (void *)vgich.hctrl_va + GICH_HCR);
-	vmm_writel(vs->vmcr, (void *)vgich.hctrl_va + GICH_VMCR);
-	vmm_writel(vs->apr, (void *)vgich.hctrl_va + GICH_APR);
+	vmm_writel_relaxed(vs->hcr, (void *)vgich.hctrl_va + GICH_HCR);
+	vmm_writel_relaxed(vs->vmcr, (void *)vgich.hctrl_va + GICH_VMCR);
+	vmm_writel_relaxed(vs->apr, (void *)vgich.hctrl_va + GICH_APR);
 	for (i = 0; i < vgich.lr_cnt; i++) {
-		vmm_writel(vs->lr[i], (void *)vgich.hctrl_va + GICH_LR0 + 4*i);
+		vmm_writel_relaxed(vs->lr[i],
+				   (void *)vgich.hctrl_va + GICH_LR0 + 4*i);
 	}
 }
 
@@ -280,12 +282,13 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
 	if ((lr < vgich.lr_cnt) &&
 	    VGIC_TEST_LR_USED(vs, lr)) {
-		lrval = vmm_readl((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+		lrval =
+		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 		if ((GICH_LR_VIRTUALID & lrval) == irq) {
 			if ((lrval & GICH_LR_HW) ||
 			    (VGIC_LR_CPUID(lrval) == src_id)) {
 				lrval |= GICH_LR_PENDING;
-				vmm_writel(lrval,
+				vmm_writel_relaxed(lrval,
 				  (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 				return TRUE;
 			}
@@ -319,7 +322,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	}
 
 	DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
-	vmm_writel(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+	vmm_writel_relaxed(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
 
 	return TRUE;
 }
@@ -412,9 +415,9 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 	}
 
 	if (overflow) {
-		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
 		hcr |= GICH_HCR_UIE;
-		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
 }
 
@@ -458,9 +461,9 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 
 done:
 	if (overflow) {
-		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
 		hcr |= GICH_HCR_UIE;
-		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
 }
 
@@ -485,9 +488,10 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
 
 	/* Read empty LR status registers */
-	elrsr[0] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR0);
+	elrsr[0] = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_ELRSR0);
 	if (32 < vgich.lr_cnt) {
-		elrsr[1] = vmm_readl((void *)vgich.hctrl_va + GICH_ELRSR1);
+		elrsr[1] =
+		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_ELRSR1);
 	} else {
 		elrsr[1] = 0x0;
 	}
@@ -506,8 +510,8 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		}
 
 		/* Read and clear the LR register */
-		lrval = vmm_readl(lr_base + 4*lr);
-		vmm_writel(0x0, lr_base + 4*lr);
+		lrval = vmm_readl_relaxed(lr_base + 4*lr);
+		vmm_writel_relaxed(0x0, lr_base + 4*lr);
 		DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
 
 		/* Determine irq number & src_id */
@@ -652,14 +656,14 @@ static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 
 	/* Read maintainence interrupt state */
-	misr = vmm_readl((void *)vgich.hctrl_va + GICH_MISR);
+	misr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_MISR);
 	DPRINTF("%s: MISR = %08x\n", __func__, misr);
 
 	/* Clear underflow interrupt if enabled */
 	if (misr & GICH_MISR_U) {
-		hcr = vmm_readl((void *)vgich.hctrl_va + GICH_HCR);
+		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
 		hcr &= ~GICH_HCR_UIE;
-		vmm_writel(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
 	}
 
 	/* We should not get this interrupt when not
@@ -1295,7 +1299,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 			    (s->vstate[i].lr[j] & GICH_LR_PENDING)) {
 				hirq = s->vstate[i].lr[j] & GICH_LR_PHYSID;
 				hirq = hirq >> GICH_LR_PHYSID_SHIFT;
-				vmm_writel(hirq,
+				vmm_writel_relaxed(hirq,
 					(void *)vgich.cpu2_va + GICC2_DIR);
 			}
 		}
@@ -1766,7 +1770,7 @@ static int __init vgic_emulator_init(void)
 
 	vgich.avail = TRUE;
 
-	vgich.lr_cnt = vmm_readl((void *)vgich.hctrl_va + GICH_VTR);
+	vgich.lr_cnt = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_VTR);
 	vgich.lr_cnt = (vgich.lr_cnt & GICH_VTR_LRCNT_MASK) + 1;
 
 	vmm_smp_ipi_async_call(cpu_online_mask, vgic_enable_maint_irq,
