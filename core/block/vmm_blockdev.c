@@ -575,7 +575,7 @@ VMM_EXPORT_SYMBOL(vmm_blockdev_count);
 
 static int __init vmm_blockdev_init(void)
 {
-	vmm_printf("Initialize Block Device Framework\n");
+	vmm_printf("init: block device framework\n");
 
 	return vmm_devdrv_register_class(&bdev_class);
 }

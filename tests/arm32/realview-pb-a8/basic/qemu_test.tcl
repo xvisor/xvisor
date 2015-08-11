@@ -56,7 +56,7 @@ send -- "reset\r"
 expect $xvisor_prompt
 
 set reset_out $expect_out(buffer)
-if { [string first "Initialize Board Final" $reset_out] > -1 } {
+if { [string first "init: board final" $reset_out] > -1 } {
         puts "\n :: RESET TESTCASE PASS :: \n\n"
 } else {
         puts "\n :: RESET TESTCASE FAIL :: \n\n"

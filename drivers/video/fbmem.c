@@ -782,8 +782,6 @@ VMM_EXPORT_SYMBOL(fb_count);
 
 static int __init fb_init(void)
 {
-	vmm_printf("Initialize Frame Buffer Framework\n");
-
 	return vmm_devdrv_register_class(&fb_class);
 }
 

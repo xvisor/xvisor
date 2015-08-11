@@ -212,8 +212,6 @@ VMM_EXPORT_SYMBOL(rtc_device_count);
 
 static int __init rtc_device_init(void)
 {
-	vmm_printf("Initialize RTC Device Framework\n");
-
 	return vmm_devdrv_register_class(&rtc_class);
 }
 

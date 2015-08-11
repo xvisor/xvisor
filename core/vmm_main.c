@@ -83,15 +83,15 @@ static void system_postinit_work(struct vmm_work *work)
 	/* Print status of present host CPUs */
 	for_each_present_cpu(c) {
 		if (vmm_cpu_online(c)) {
-			vmm_printf("CPU%d: Online\n", c);
+			vmm_printf("init: CPU%d online\n", c);
 		} else {
-			vmm_printf("CPU%d: Possible\n", c);
+			vmm_printf("init: CPU%d possible\n", c);
 		}
 	}
-	vmm_printf("Brought Up %d CPUs\n", vmm_num_online_cpus());
+	vmm_printf("init: brought-up %d CPUs\n", vmm_num_online_cpus());
 
 	/* Free init memory */
-	vmm_printf("Freeing init memory: ");
+	vmm_printf("init: freeing init memory ");
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
 
@@ -111,7 +111,7 @@ static void system_postinit_work(struct vmm_work *work)
 		}
 		/* Set chosen console device as stdio device */
 		if (cdev) {
-			vmm_printf("Change stdio device to %s\n", cdev->name);
+			vmm_printf("init: change stdio device to %s\n", cdev->name);
 			vmm_stdio_change_device(cdev);
 		}
 
@@ -129,7 +129,7 @@ static void system_postinit_work(struct vmm_work *work)
 		/* Syncup wallclock time with chosen rtc device */
 		if (rdev) {
 			ret = rtc_device_sync_wallclock(rdev);
-			vmm_printf("Syncup wallclock using %s", rdev->name);
+			vmm_printf("init: syncup wallclock using %s", rdev->name);
 			if (ret) {
 				vmm_printf("(error %d)", ret);
 			}
@@ -171,24 +171,24 @@ static void system_init_work(struct vmm_work *work)
 #endif
 
 	/* Initialize wallclock */
-	vmm_printf("Initialize Wallclock Subsystem\n");
+	vmm_printf("init: wallclock subsystem\n");
 	ret = vmm_wallclock_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 #if defined(CONFIG_SMP)
 	/* Initialize secondary CPUs */
-	vmm_printf("Initialize Secondary CPUs\n");
+	vmm_printf("init: secondary CPUs\n");
 	ret = arch_smp_init_cpus();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Prepare secondary CPUs */
 	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Start each present secondary CPUs */
@@ -198,45 +198,45 @@ static void system_init_work(struct vmm_work *work)
 		}
 		ret = arch_smp_start_cpu(c);
 		if (ret) {
-			vmm_printf("Failed to start CPU%d (error %d)\n",
+			vmm_printf("init: failed to start CPU%d (error %d)\n",
 				   c, ret);
 		}
 	}
 
 	/* Initialize hypervisor load balancer */
-	vmm_printf("Initialize Hypervisor Load Balancer\n");
+	vmm_printf("init: hypervisor load balancer\n");
 	ret = vmm_loadbal_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 #endif
 
 	/* Initialize command manager */
-	vmm_printf("Initialize Command Manager\n");
+	vmm_printf("init: command manager\n");
 	ret = vmm_cmdmgr_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Initialize device driver framework */
-	vmm_printf("Initialize Device Driver Framework\n");
+	vmm_printf("init: device driver framework\n");
 	ret = vmm_devdrv_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Initialize device emulation framework */
-	vmm_printf("Initialize Device Emulation Framework\n");
+	vmm_printf("init: device emulation framework\n");
 	ret = vmm_devemu_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Initialize character device framework */
-	vmm_printf("Initialize Character Device Framework\n");
+	vmm_printf("init: character device framework\n");
 	ret = vmm_chardev_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 #if defined(CONFIG_SMP)
@@ -265,29 +265,34 @@ static void system_init_work(struct vmm_work *work)
 #endif
 
 	/* Initialize hypervisor modules */
-	vmm_printf("Initialize Hypervisor Modules\n");
+	vmm_printf("init: hypervisor modules\n");
 	ret = vmm_modules_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Initialize cpu final */
-	vmm_printf("Initialize CPU Final\n");
+	vmm_printf("init: CPU final\n");
 	ret = arch_cpu_final_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
-	/* Intialize board final */
-	vmm_printf("Initialize Board Final\n");
+	/* Initialize board final */
+	vmm_printf("init: board final\n");
 	ret = arch_board_final_init();
 	if (ret) {
-		vmm_panic("Error %d\n", ret);
+		goto fail;
 	}
 
 	/* Schedule system post-init work */
 	INIT_WORK(&sys_postinit, &system_postinit_work);
 	vmm_workqueue_schedule_work(NULL, &sys_postinit);
+
+	return;
+
+fail:
+	vmm_panic("%s: error %d\n", __func__, ret);
 }
 
 static void __init init_bootcpu(void)
@@ -311,36 +316,36 @@ static void __init init_bootcpu(void)
 		   __DATE__, __TIME__);
 	vmm_printf("\n");
 
-	/* Initialize host virtual address space */
-	vmm_printf("Initialize Host Address Space\n");
+	/* Initialize host address space */
+	vmm_printf("init: host address space\n");
 	ret = vmm_host_aspace_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize heap */
-	vmm_printf("Initialize Heap Management\n");
+	vmm_printf("init: heap management\n");
 	ret = vmm_heap_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
         /* Initialize exception table */
-	vmm_printf("Initialize Exception Table\n");
+	vmm_printf("init: exception table\n");
 	ret = vmm_extable_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize per-cpu area */
-	vmm_printf("Initialize PerCPU Areas\n");
+	vmm_printf("init: per-CPU areas\n");
 	ret = vmm_percpu_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize device tree */
-	vmm_printf("Initialize Device Tree\n");
+	vmm_printf("init: device tree\n");
 	ret = vmm_devtree_init();
 	if (ret) {
 		goto init_bootcpu_fail;
@@ -363,85 +368,85 @@ static void __init init_bootcpu(void)
 	}
 
 	/* Initialize host interrupts */
-	vmm_printf("Initialize Host IRQ\n");
+	vmm_printf("init: host irq subsystem\n");
 	ret = vmm_host_irq_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize CPU early */
-	vmm_printf("Initialize CPU Early\n");
+	vmm_printf("init: CPU early\n");
 	ret = arch_cpu_early_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize Board early */
-	vmm_printf("Initialize Board Early\n");
+	vmm_printf("init: board early\n");
 	ret = arch_board_early_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize standerd input/output */
-	vmm_printf("Initialize Standard I/O\n");
+	vmm_printf("init: standard I/O\n");
 	ret = vmm_stdio_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize clocksource manager */
-	vmm_printf("Initialize Clocksource Manager\n");
+	vmm_printf("init: clocksource manager\n");
 	ret = vmm_clocksource_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize clockchip manager */
-	vmm_printf("Initialize Clockchip Manager\n");
+	vmm_printf("init: clockchip manager\n");
 	ret = vmm_clockchip_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize hypervisor timer */
-	vmm_printf("Initialize Hypervisor Timer\n");
+	vmm_printf("init: hypervisor timer\n");
 	ret = vmm_timer_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize soft delay */
-	vmm_printf("Initialize Soft Delay\n");
+	vmm_printf("init: soft delay\n");
 	ret = vmm_delay_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize hypervisor manager */
-	vmm_printf("Initialize Hypervisor Manager\n");
+	vmm_printf("init: hypervisor manager\n");
 	ret = vmm_manager_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize hypervisor scheduler */
-	vmm_printf("Initialize Hypervisor Scheduler\n");
+	vmm_printf("init: hypervisor scheduler\n");
 	ret = vmm_scheduler_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 	/* Initialize hypervisor threads */
-	vmm_printf("Initialize Hypervisor Threads\n");
+	vmm_printf("init: hypervisor threads\n");
 	ret = vmm_threads_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
 #ifdef CONFIG_PROFILE
-	/* Intialize hypervisor profiler */
-	vmm_printf("Initialize Hypervisor Profiler\n");
+	/* Initialize hypervisor profiler */
+	vmm_printf("init: hypervisor profiler\n");
 	ret = vmm_profiler_init();
 	if (ret) {
 		goto init_bootcpu_fail;
@@ -450,7 +455,7 @@ static void __init init_bootcpu(void)
 
 #if defined(CONFIG_SMP)
 	/* Initialize inter-processor interrupts */
-	vmm_printf("Initialize Inter Processor Interrupts\n");
+	vmm_printf("init: inter-processor interrupts\n");
 	ret = vmm_smp_ipi_init();
 	if (ret) {
 		goto init_bootcpu_fail;
@@ -458,7 +463,7 @@ static void __init init_bootcpu(void)
 #endif
 
 	/* Initialize workqueue framework */
-	vmm_printf("Initialize Workqueue Framework\n");
+	vmm_printf("init: workqueue framework\n");
 	ret = vmm_workqueue_init();
 	if (ret) {
 		goto init_bootcpu_fail;
@@ -475,7 +480,7 @@ static void __init init_bootcpu(void)
 	vmm_hang();
 
 init_bootcpu_fail:
-	vmm_printf("Error %d\n", ret);
+	vmm_printf("%s: error %d\n", __func__, ret);
 	vmm_hang();
 }
 

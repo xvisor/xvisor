@@ -1210,8 +1210,6 @@ static int __init input_init(void)
 {
 	int i;
 
-	vmm_printf("Initialize Input Device Framework\n");
-
 	memset(&ictrl, 0, sizeof(struct input_ctrl));
 
 	INIT_SPIN_LOCK(&ictrl.dev_list_lock);

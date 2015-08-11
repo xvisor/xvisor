@@ -694,7 +694,7 @@ int __init vmm_netswitch_init(void)
 {
 	int rc;
 
-	vmm_printf("Initialize Network Switch Framework\n");
+	vmm_printf("init: network switch framework\n");
 
 	rc = vmm_devdrv_register_class(&nsw_class);
 	if (rc) {

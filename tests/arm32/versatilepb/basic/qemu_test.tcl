@@ -59,7 +59,7 @@ expect $xvisor_prompt
 
 set reset_out $expect_out(buffer)
 #puts $reset_out
-if { [string first "Initialize Board Final" $reset_out] > -1 } {
+if { [string first "init: board final" $reset_out] > -1 } {
         puts "The reset Command passed \n :: RESET TESTCASE PASS :: \n\n"
 } else {
         puts "The reset Command Failed \n :: RESET TESTCASE FAIL :: \n\n"

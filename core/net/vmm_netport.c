@@ -230,7 +230,7 @@ int __init vmm_netport_init(void)
 {
 	int rc;
 
-	vmm_printf("Initialize Network Port Framework\n");
+	vmm_printf("init: network port framework\n");
 
 	rc = vmm_devdrv_register_class(&netport_class);
 	if (rc) {
