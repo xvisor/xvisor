@@ -1696,18 +1696,19 @@ static int __init vgic_emulator_init(void)
 
 	node = vmm_devtree_find_matching(NULL, vgic_host_match);
 	if (!node) {
-		vmm_printf("%s: GIC node not found\n", __func__);
-		return VMM_ENODEV;
+		vmm_printf("vgic: GIC node not found\n");
+		rc = VMM_OK;
+		goto fail;
 	}
 
 	rc = vmm_devtree_regaddr(node, &vgich.cpu_pa, 1);
 	if (rc) {
-		goto fail;
+		goto fail_dref;
 	}
 
 	rc = vmm_devtree_regmap(node, &vgich.cpu_va, 1);
 	if (rc) {
-		goto fail;
+		goto fail_dref;
 	}
 
 	rc = vmm_devtree_regaddr(node, &vgich.cpu2_pa, 4);
@@ -1777,9 +1778,12 @@ static int __init vgic_emulator_init(void)
 			       (void *)(unsigned long)vgich.maint_irq,
 			       vgic_maint_irq, NULL);
 
-	DPRINTF("VGIC: HCTRL=0x%lx VCPU=0x%lx LR_CNT=%d\n",
-		(unsigned long)vgich.hctrl_pa,
-		(unsigned long)vgich.vcpu_pa, vgich.lr_cnt);
+	vmm_printf("vgic: hctrl=0x%lx vcpu=0x%lx\n",
+		   (unsigned long)vgich.hctrl_pa,
+		   (unsigned long)vgich.vcpu_pa);
+	vmm_printf("vgic: lr_cnt=%d maint_irq=%d\n",
+		   vgich.lr_cnt, vgich.maint_irq);
+	vmm_printf("vgic: emulator available\n");
 
 	vmm_devtree_dref_node(node);
 	return VMM_OK;
@@ -1796,8 +1800,10 @@ fail_unmap_cpu2:
 	}
 fail_unmap_cpu:
 	vmm_devtree_regunmap(node, vgich.cpu_va, 1);
-fail:
+fail_dref:
 	vmm_devtree_dref_node(node);
+fail:
+	vmm_printf("vgic: emulator not available\n");
 	return rc;
 }
 
