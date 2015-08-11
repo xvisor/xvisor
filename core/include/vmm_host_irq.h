@@ -187,16 +187,16 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num);
 u32 vmm_host_irq_count(void);
 
 /** Get host irq instance from host irq number */
-struct vmm_host_irq *vmm_host_irq_get(u32 hirq_num);
+struct vmm_host_irq *vmm_host_irq_get(u32 hirq);
 
 /** Set host irq chip for given host irq number */
-int vmm_host_irq_set_chip(u32 hirq_num, struct vmm_host_irq_chip *chip);
+int vmm_host_irq_set_chip(u32 hirq, struct vmm_host_irq_chip *chip);
 
 /** Get host irq chip instance from host irq instance */
 struct vmm_host_irq_chip *vmm_host_irq_get_chip(struct vmm_host_irq *irq);
 
 /** Set host irq chip data for given host irq number */
-int vmm_host_irq_set_chip_data(u32 hirq_num, void *chip_data);
+int vmm_host_irq_set_chip_data(u32 hirq, void *chip_data);
 
 /** Get host irq chip data from host irq instance */
 void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq);
@@ -205,16 +205,16 @@ void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq);
  *  NOTE: For second argument, mention one of the
  *  vmm_handle_xxxxx functions from below
  */
-int vmm_host_irq_set_handler(u32 hirq_num, vmm_host_irq_handler_t handler);
+int vmm_host_irq_set_handler(u32 hirq, vmm_host_irq_handler_t handler);
 
 /** Get host irq handler for given host irq number */
-vmm_host_irq_handler_t vmm_host_irq_get_handler(u32 hirq_num);
+vmm_host_irq_handler_t vmm_host_irq_get_handler(u32 hirq);
 
 /** Set host irq handler data for given host irq number  */
-int vmm_host_irq_set_handler_data(u32 hirq_num, void *data);
+int vmm_host_irq_set_handler_data(u32 hirq, void *data);
 
 /** Get host irq handler data for given host irq number */
-void *vmm_host_irq_get_handler_data(u32 hirq_num);
+void *vmm_host_irq_get_handler_data(u32 hirq);
 
 /** Per-CPU irq handler */
 void vmm_handle_percpu_irq(struct vmm_host_irq *irq, u32 cpu, void *data);
@@ -324,64 +324,64 @@ static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq, u32 cpu)
 }
 
 /** Set cpu affinity of given host irq */
-int vmm_host_irq_set_affinity(u32 hirq_num,
+int vmm_host_irq_set_affinity(u32 hirq,
 			      const struct vmm_cpumask *dest,
 			      bool force);
 
 /** Set trigger type for given host irq */
-int vmm_host_irq_set_type(u32 hirq_num, u32 type);
+int vmm_host_irq_set_type(u32 hirq, u32 type);
 
 /** Mark host irq as per cpu */
-int vmm_host_irq_mark_per_cpu(u32 hirq_num);
+int vmm_host_irq_mark_per_cpu(u32 hirq);
 
 /** UnMark host irq as per cpu */
-int vmm_host_irq_unmark_per_cpu(u32 hirq_num);
+int vmm_host_irq_unmark_per_cpu(u32 hirq);
 
 /** Mark host irq as routed to some guest */
-int vmm_host_irq_mark_routed(u32 hirq_num);
+int vmm_host_irq_mark_routed(u32 hirq);
 
 /** UnMark host irq as routed to some guest */
-int vmm_host_irq_unmark_routed(u32 hirq_num);
+int vmm_host_irq_unmark_routed(u32 hirq);
 
 /** Get host irq routed state */
-int vmm_host_irq_get_routed_state(u32 hirq_num, u32 *val, u32 mask);
+int vmm_host_irq_get_routed_state(u32 hirq, u32 *val, u32 mask);
 
 /** Set/update host irq routed state */
-int vmm_host_irq_set_routed_state(u32 hirq_num, u32 val, u32 mask);
+int vmm_host_irq_set_routed_state(u32 hirq, u32 val, u32 mask);
 
 /** Mark host irq as inter-processor interrupt */
-int vmm_host_irq_mark_ipi(u32 hirq_num);
+int vmm_host_irq_mark_ipi(u32 hirq);
 
 /** UnMark host irq as inter-processor interrupt */
-int vmm_host_irq_unmark_ipi(u32 hirq_num);
+int vmm_host_irq_unmark_ipi(u32 hirq);
 
 /** Enable a host irq (by default all irqs are disabled) */
-int vmm_host_irq_enable(u32 hirq_num);
+int vmm_host_irq_enable(u32 hirq);
 
 /** Disable a host irq */
-int vmm_host_irq_disable(u32 hirq_num);
+int vmm_host_irq_disable(u32 hirq);
 
 /** Unmask a host irq (by default all irqs are masked) */
-int vmm_host_irq_unmask(u32 hirq_num);
+int vmm_host_irq_unmask(u32 hirq);
 
 /** Mask a host irq */
-int vmm_host_irq_mask(u32 hirq_num);
+int vmm_host_irq_mask(u32 hirq);
 
 /** Raise a host irq from software */
-int vmm_host_irq_raise(u32 hirq_num,
+int vmm_host_irq_raise(u32 hirq,
 		       const struct vmm_cpumask *dest);
 
 /** Find a host irq with matching state mask */
-int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq_num);
+int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq);
 
 /** Register function callback for given irq */
-int vmm_host_irq_register(u32 hirq_num,
+int vmm_host_irq_register(u32 hirq,
 			  const char *name,
 			  vmm_host_irq_function_t func,
 			  void *dev);
 
 /** Unregister function callback for given irq */
-int vmm_host_irq_unregister(u32 hirq_num,
+int vmm_host_irq_unregister(u32 hirq,
 			    void *dev);
 
 /** Interrupts initialization function */
