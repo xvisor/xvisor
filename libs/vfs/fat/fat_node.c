@@ -224,8 +224,8 @@ u32 fatfs_node_read(struct fatfs_node *node, u32 pos, u32 len, u8 *buf)
 			if (rc) {
 				return r;
 			}
-			cl_len = (ctrl->bytes_per_cluster < len) ? 
-						ctrl->bytes_per_cluster : len;
+			cl_len = (ctrl->bytes_per_cluster < (len - r)) ? 
+					ctrl->bytes_per_cluster : (len - r);
 		}
 
 		/* Make sure cached cluster is updated */
