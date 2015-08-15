@@ -27,11 +27,12 @@
  * The original code is licensed under the GPL.
  */
 
+#include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_devtree.h>
 #include <vmm_host_irq.h>
-#include <vmm_host_extirq.h>
+#include <vmm_host_irqdomain.h>
 
 #define pr_warn(msg...)			vmm_printf(msg)
 #ifdef DEBUG
@@ -161,45 +162,44 @@ out:
 	return res;
 }
 
-static int vmm_host_extirq_match_node(struct vmm_host_extirq_group *group,
-				      struct vmm_devtree_node *node)
+static int devtree_irqdomain_match_node(struct vmm_host_irqdomain *domain,
+					void *node)
 {
-	if (group->of_node == node) {
+	if (domain->of_node == node) {
 		return 1;
 	}
 	return 0;
 }
 
-struct vmm_host_extirq_group *vmm_devtree_extirq_find_group(
+struct vmm_host_irqdomain *vmm_devtree_irqdomain_find(
 					struct vmm_devtree_node *node)
 {
-	return vmm_host_extirq_group_match(node,
-					(void *)vmm_host_extirq_match_node);
+	return vmm_host_irqdomain_match(node, &devtree_irqdomain_match_node);
 }
 
 static unsigned int vmm_devtree_irq_create_mapping(
 				struct vmm_devtree_phandle_args *irq_data)
 {
-	struct vmm_host_extirq_group *group = NULL;
+	int rc;
+	struct vmm_host_irqdomain *domain = NULL;
 	struct vmm_host_irq *irq = NULL;
 	long unsigned int hwirq;
-	unsigned int type = VMM_IRQ_TYPE_NONE;
-	unsigned int virq;
+	unsigned int hirq, type = VMM_IRQ_TYPE_NONE;
 
 	if (irq_data->np) {
-		group = vmm_devtree_extirq_find_group(irq_data->np);
+		domain = vmm_devtree_irqdomain_find(irq_data->np);
 	} else {
 		return irq_data->args[0];
 	}
 
-	if (!group) {
+	if (!domain) {
 		/* TODO:
-		 * If no group found then this is host irq.
+		 * If no domain found then this is static host irq.
 		 *
 		 * In this case, we call vmm_host_irq API to
 		 * find-out vmm_host_irq_chip which will have
 		 * xlate() callback similar (but not same as)
-		 * to xlate() callback of vmm_host_extirq_group.
+		 * to xlate() callback of vmm_host_irqdomain.
 		 *
 		 * The xlate() callback of vmm_host_irq_chip
 		 * will translate interrupt cells into host irq
@@ -214,27 +214,29 @@ static unsigned int vmm_devtree_irq_create_mapping(
 		return irq_data->args[0];
 	}
 
-	pr_debug("Group %s found\n", group->of_node->name);
+	pr_debug("Domain %s found\n", domain->of_node->name);
 
-	/* If group has no translation, then we assume interrupt line */
-	if (group->ops->xlate == NULL) {
+	/* If domain has no translation, then we assume interrupt line */
+	if (domain->ops->xlate == NULL) {
 		hwirq = irq_data->args[0];
 	} else {
-		if (group->ops->xlate(group, irq_data->np, irq_data->args,
+		if (domain->ops->xlate(domain, irq_data->np, irq_data->args,
 				      irq_data->args_count, &hwirq, &type)) {
 			return hwirq;
 		}
 	}
 
 	/* Create mapping */
-	virq = vmm_host_extirq_create_mapping(group, hwirq);
-	pr_debug("Extended IRQ %d set as the %dth irq on %s\n", virq, hwirq,
-		 group->of_node->name);
-	if (!virq) {
-		return virq;
+	rc = vmm_host_irqdomain_create_mapping(domain, hwirq);
+	if (rc < 0) {
+		return rc;
 	}
+	hirq = rc;
 
-	irq = vmm_host_irq_get(virq);
+	pr_debug("Extended IRQ %d set as the %dth irq on %s\n", hirq, hwirq,
+		 domain->of_node->name);
+
+	irq = vmm_host_irq_get(hirq);
 	if (!irq) {
 		return VMM_EFAIL;
 	}
@@ -242,10 +244,10 @@ static unsigned int vmm_devtree_irq_create_mapping(
 	/* Set type if specified and different than the current one */
 	if (type != VMM_IRQ_TYPE_NONE &&
 	    type != irq->state) {
-		vmm_host_irq_set_type(virq, type);
+		vmm_host_irq_set_type(hirq, type);
 	}
 
-	return virq;
+	return hirq;
 }
 
 unsigned int vmm_devtree_irq_parse_map(struct vmm_devtree_node *dev,

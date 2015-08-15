@@ -29,7 +29,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
 #include <vmm_host_irq.h>
-#include <vmm_host_extirq.h>
+#include <vmm_host_irqext.h>
 #include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
@@ -221,7 +221,7 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 
 static void cmd_host_extirq_stats(struct vmm_chardev *cdev)
 {
-	vmm_host_extirq_debug_dump(cdev);
+	vmm_host_irqext_debug_dump(cdev);
 }
 
 static void cmd_host_ram_info(struct vmm_chardev *cdev)

@@ -70,7 +70,7 @@ struct mxc_gpio_port {
 	void __iomem* base;
 	u32 irq;
 	u32 irq_high;
-	struct vmm_host_extirq_group *extirq_group;
+	struct vmm_host_irqdomain *domain;
 	struct bgpio_chip bgc;
 	u32 both_edges;
 };
@@ -177,7 +177,7 @@ static int gpio_set_irq_type(struct vmm_host_irq *d, u32 type)
 {
 	struct mxc_gpio_port *port = vmm_host_irq_get_chip_data(d);
 	u32 bit, val;
-	u32 gpio_idx = vmm_host_extirq_to_hwirq(port->extirq_group, d->num);
+	u32 gpio_idx = vmm_host_irqdomain_to_hwirq(port->domain, d->num);
 	u32 gpio = port->bgc.gc.base + gpio_idx;
 	int edge;
 	void __iomem *reg = port->base;
@@ -275,7 +275,7 @@ static void mxc_gpio_irq_handler(struct mxc_gpio_port *port, u32 irq_stat)
 		if (port->both_edges & (1 << irqoffset))
 			mxc_flip_edge(port, irqoffset);
 
-		irq_num = vmm_host_extirq_find_mapping(port->extirq_group,
+		irq_num = vmm_host_irqdomain_find_mapping(port->domain,
 						       irqoffset);
 		irq = vmm_host_irq_get(irq_num);
 		vmm_handle_level_irq(irq, cpu, port);
@@ -355,7 +355,7 @@ void irq_gc_ack_set_bit(struct vmm_host_irq *d)
 {
 	struct vmm_host_irq_chip *gc = vmm_host_irq_get_chip(d);
 	struct mxc_gpio_port *port = vmm_host_irq_get_chip_data(d);
-	int irqoffset = vmm_host_extirq_to_hwirq(port->extirq_group, d->num);
+	int irqoffset = vmm_host_irqdomain_to_hwirq(port->domain, d->num);
 
 	irq_gc_lock(gc);
 	writel(1 << irqoffset, port->base + GPIO_ISR);
@@ -373,7 +373,7 @@ void irq_gc_mask_clr_bit(struct vmm_host_irq *d)
 {
 	struct vmm_host_irq_chip *gc = vmm_host_irq_get_chip(d);
 	struct mxc_gpio_port *port = vmm_host_irq_get_chip_data(d);
-	int irqoffset = vmm_host_extirq_to_hwirq(port->extirq_group, d->num);
+	int irqoffset = vmm_host_irqdomain_to_hwirq(port->domain, d->num);
 	u32 mask = 0;
 
 	irq_gc_lock(gc);
@@ -393,7 +393,7 @@ void irq_gc_mask_set_bit(struct irq_data *d)
 {
 	struct vmm_host_irq_chip *gc = vmm_host_irq_get_chip(d);
 	struct mxc_gpio_port *port = vmm_host_irq_get_chip_data(d);
-	int irqoffset = vmm_host_extirq_to_hwirq(port->extirq_group, d->num);
+	int irqoffset = vmm_host_irqdomain_to_hwirq(port->domain, d->num);
 	u32 mask = 0;
 
 	irq_gc_lock(gc);
@@ -410,7 +410,7 @@ static int __init mxc_gpio_init_gc(struct mxc_gpio_port *port,
 	int irq = 0;
 	int i = 0;
 
-	if (NULL == (gc = vmm_zalloc(sizeof (struct vmm_host_irq_chip))))
+	if (NULL == (gc = vmm_zalloc(sizeof(struct vmm_host_irq_chip))))
 	{
 		pr_err("mxc: Failed to allocate IRQ chip\n");
 		return -ENOMEM;
@@ -422,13 +422,13 @@ static int __init mxc_gpio_init_gc(struct mxc_gpio_port *port,
 	gc->irq_unmask = irq_gc_mask_set_bit;
 	gc->irq_set_type = gpio_set_irq_type;
 
-	port->extirq_group = vmm_host_extirq_add(dev->node, sz,
-						 &extirq_simple_ops, port);
-	if (!port->extirq_group)
+	port->domain = vmm_host_irqdomain_add(dev->node, -1, sz,
+					  &irqdomain_simple_ops, port);
+	if (!port->domain)
 		return VMM_ENOTAVAIL;
 
 	for (i = 0; i < sz; ++i) {
-		irq = vmm_host_extirq_create_mapping(port->extirq_group, i);
+		irq = vmm_host_irqdomain_create_mapping(port->domain, i);
 		if (irq < 0) {
 			pr_err("mxc: Failed to map extended IRQs\n");
 			vmm_free(gc);
@@ -478,7 +478,7 @@ static int mxc_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 	struct mxc_gpio_port *port =
 		container_of(bgc, struct mxc_gpio_port, bgc);
 
-	return vmm_host_extirq_find_mapping(port->extirq_group, offset);
+	return vmm_host_irqdomain_find_mapping(port->domain, offset);
 }
 
 #define PORT_NAME_LEN	12

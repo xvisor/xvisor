@@ -10,18 +10,18 @@ struct irq_domain *irq_domain_add_linear(struct device_node *of_node,
 					 const struct irq_domain_ops *ops,
 					 void *host_data)
 {
-	return vmm_host_extirq_add(of_node, size, ops, host_data);
+	return vmm_host_irqdomain_add(of_node, -1, size, ops, host_data);
 }
 
 static inline unsigned int irq_create_mapping(struct irq_domain *domain,
 					      irq_hw_number_t hwirq)
 {
-	return vmm_host_extirq_create_mapping(domain, hwirq);
+	return vmm_host_irqdomain_create_mapping(domain, hwirq);
 }
 
-static inline void irq_dispose_mapping(unsigned int virq)
+static inline void irq_dispose_mapping(unsigned int hirq)
 {
-	return vmm_host_extirq_dispose_mapping(virq);
+	vmm_host_irqdomain_dispose_mapping(hirq);
 }
 
 #endif

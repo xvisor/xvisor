@@ -26,10 +26,11 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqext.h>
+#include <vmm_host_irqdomain.h>
 #include <arch_cpu_irq.h>
 #include <arch_host_irq.h>
 #include <libs/stringlib.h>
-#include <vmm_host_extirq.h>
 
 struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
@@ -117,7 +118,7 @@ struct vmm_host_irq *vmm_host_irq_get(u32 hirq)
 		return &hirqctrl.irq[hirq];
 	}
 
-	return vmm_host_extirq_get(hirq);
+	return vmm_host_irqext_get(hirq);
 }
 
 int vmm_host_generic_irq_exec(u32 hirq_no)
@@ -728,6 +729,18 @@ int __cpuinit vmm_host_irq_init(void)
 		/* Determine clockchip matches from nodeid table */
 		hirqctrl.matches = 
 			vmm_devtree_nidtbl_create_matches("host_irq");
+
+		/* Initialize extended host IRQs */
+		ret = vmm_host_irqext_init();
+		if (ret != VMM_OK) {
+			return ret;
+		}
+
+		/* Initialize host IRQ Domains */
+		ret = vmm_host_irqdomain_init();
+		if (ret != VMM_OK) {
+			return ret;
+		}
 	}
 
 	/* Initialize board specific PIC */
@@ -747,10 +760,6 @@ int __cpuinit vmm_host_irq_init(void)
 
 	/* Setup interrupts in CPU */
 	if ((ret = arch_cpu_irq_setup())) {
-		return ret;
-	}
-
-	if (VMM_OK != (ret = vmm_host_extirq_init())) {
 		return ret;
 	}
 
