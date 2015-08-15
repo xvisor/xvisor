@@ -174,7 +174,7 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 
 		if (pkt_len <= VIRTIO_NET_MTU) {
 			MGETHDR(mb, 0, 0);
-			MEXTMALLOC(mb, pkt_len, M_WAIT);
+			MEXTMALLOC(mb, pkt_len, 0);
 			virtio_iovec_to_buf_read(dev, 
 						 &iov[1], iov_cnt - 1,
 						 M_BUFADDR(mb), pkt_len);

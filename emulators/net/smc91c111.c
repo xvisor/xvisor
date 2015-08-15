@@ -287,7 +287,7 @@ static void smc91c111_do_tx(smc91c111_state *s)
 			s->tx_fifo_done[s->tx_fifo_done_len++] = packetnum;
 
 		MGETHDR(mbuf, 0, 0);
-		MEXTMALLOC(mbuf, SMC91C111_MTU, M_WAIT);
+		MEXTMALLOC(mbuf, SMC91C111_MTU, 0);
 		mbuf->m_len = len;
 		buf = mtod(mbuf, u8 *);
 		memcpy(buf, p, len);

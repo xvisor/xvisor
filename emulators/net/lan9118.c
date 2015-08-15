@@ -449,7 +449,7 @@ static int lan9118_state_reset(struct lan9118_state *s)
 		txp_mbuf(s) = NULL;
 	}
 	MGETHDR(txp_mbuf(s), 0, 0);
-	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, 0);
 	s->txp->fifo_used = 0;
 	s->tx_fifo_size = 4608;
 	s->tx_status_fifo_used = 0;
@@ -751,7 +751,7 @@ static void do_tx_packet(struct lan9118_state *s)
 			txp_mbuf(s)->m_pktlen = txp_mbuf(s)->m_len;
 			vmm_port2switch_xfer_mbuf(s->port, txp_mbuf(s));
 			MGETHDR(txp_mbuf(s), 0, 0);
-			MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+			MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, 0);
 		}
 	}
 	s->txp->fifo_used = 0;
@@ -1462,7 +1462,7 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 	INIT_TIMER_EVENT(&s->event, &gpt_event, s);
 
 	MGETHDR(txp_mbuf(s), 0, 0);
-	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, M_WAIT);
+	MEXTMALLOC(txp_mbuf(s), LAN9118_MTU, 0);
 
 	goto lan9118_emulator_probe_done;
 

@@ -167,10 +167,6 @@ struct vmm_mbuf {
 /* flag copied when shallow-copying external storage */
 #define	M_EXTCOPYFLAGS	(M_EXT_FLAGS)
 
-/* flags to m_get/MGET */
-#define	M_DONTWAIT	0
-#define	M_WAIT		1
-
 #define MCLBYTES	2048
 
 /*
