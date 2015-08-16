@@ -20,6 +20,18 @@ S:	Able to boot Realview-EB-MPCore linux guest on Raspberry Pi hardware
 	and Raspberry Pi emulated by QEMU
 D:	docs/arm/bcm2835-raspi.txt
 
+M:	BCM2836 SOC (Raspberry-Pi2 development board)
+A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
+C:	Cortex-A7
+V:	Broadcom Corporation (http://www.broadcom.com/)
+E:	---
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v7 guests supported
+S:	Able to boot Realview-PB-A8 linux guest on Cubieboard2
+S:	Able to boot VExpress-A9 linux guest on Cubieboard2
+S:	Able to boot VExpress-A15 linux guest on Cubieboard2
+S:	Able to boot Virt-v7 linux guest on Cubieboard2
+D:	docs/arm/bcm2836-raspi2.txt
+
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
@@ -121,7 +133,7 @@ M:	Sun7i SOC (or Allwinner A20) (Cubieboard2)
 A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
 C:	Cortex-A7
 V:	Allwinner Technology (http://www.allwinner.com)
-E:	QEMU (http://qemu.org/)
+E:	---
 G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v7 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on Cubieboard2
 S:	Able to boot VExpress-A9 linux guest on Cubieboard2
