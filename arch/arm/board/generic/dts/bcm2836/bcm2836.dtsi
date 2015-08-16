@@ -1,4 +1,6 @@
 
+/memreserve/ 0x00000000 0x00008000;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
