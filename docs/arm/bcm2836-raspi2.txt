@@ -22,6 +22,7 @@ comes with Raspberry Pi2 board. To do this:
  5) Add following lines to <raspi2_sd_card_boot_partition>/config.txt:
  kernel=u-boot.hyp
  kernel_old=1
+ gpu_mem=128
  6) Unmount the boot partition of pre-installed SD card
 
 Once we have u-boot installed on SD card, we add 3 more images to the boot
@@ -72,7 +73,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
    <xvisor_source_directory>/tests/arm32/common/busybox/README)
 
   [8. Make U-boot compatible initrd for use with bootm command]
-  # mkimage -A arm -O linux -T ramdisk -a 0x01000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
+  # mkimage -A arm -O linux -T ramdisk -a 0x00000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
   [9. Unplug bootable SD card from the Raspberry Pi2 board and plug it on your development machine]
 
@@ -92,29 +93,29 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
   [15. Power-up or Reset Raspberry Pi2 board and press any key when U-Boot shows auto-boot count down]
 
   [16. Enable MMC interface from U-Boot command line]
-  sun7i# mmc dev 0:0
+  U-Boot> mmc dev 0:0
 
   [17. Copy Xvisor from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x00200000 uvmm.bin
+  U-Boot> fatload mmc 0 0x200000 uvmm.bin
 
   [18. Copy the Xvisor DTB from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x00800000 one_guest_pb-a8.dtb
+  U-Boot> fatload mmc 0 0x800000 one_guest_pb-a8.dtb
 
   [19. Copy disk image from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x01000000 udisk.img
+  U-Boot> fatload mmc 0 0x2000000 udisk.img
 
   [20. Jump into Xvisor after disabling MMU, interrupts, etc]
-  sun7i# bootm 0x00200000 0x01000000 0x00800000
+  U-Boot> bootm 0x200000 0x2000000 0x800000
 
   (Note: If you want to "autoboot" then you need to create a boot.scr file
    on the root of the SD card. To do so edit a boot.cmd text file and add all
    the commmands you want to execute automatically. For example you can put
    the following commands in the "boot.cmd" file:
    mmc dev 0:0
-   fatload mmc 0 0x00200000 uvmm.bin
-   fatload mmc 0 0x00800000 one_guest_pb-a8.dtb
-   fatload mmc 0 0x01000000 udisk.img
-   bootm 0x00200000 0x01000000 0x00800000
+   fatload mmc 0 0x200000 uvmm.bin
+   fatload mmc 0 0x800000 one_guest_pb-a8.dtb
+   fatload mmc 0 0x2000000 udisk.img
+   bootm 0x200000 0x2000000 0x800000
    Then you can create the boot.scr file wit the following command:
    # mkimage -C none -A arm -T script -d boot.cmd boot.scr
    Put the boot.scr file a the root of your SD card.)
