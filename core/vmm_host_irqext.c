@@ -42,7 +42,7 @@ struct vmm_host_irqext_ctrl {
 
 static struct vmm_host_irqext_ctrl iectrl;
 
-struct vmm_host_irq *vmm_host_irqext_get(unsigned int hirq)
+struct vmm_host_irq *__vmm_host_irqext_get(unsigned int hirq)
 {
 	irq_flags_t flags;
 	struct vmm_host_irq *irq = NULL;
@@ -186,7 +186,7 @@ try_again:
 	return pos + CONFIG_HOST_IRQ_COUNT;
 }
 
-int vmm_host_irqext_create_mapping(u32 hirq)
+int vmm_host_irqext_create_mapping(u32 hirq, u32 hwirq)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
@@ -215,7 +215,7 @@ int vmm_host_irqext_create_mapping(u32 hirq)
 		goto done;
 	}
 
-	__vmm_host_irq_init_desc(irq, hirq);
+	__vmm_host_irq_init_desc(irq, hirq, hwirq);
 
 	iectrl.irqs[hirq - CONFIG_HOST_IRQ_COUNT] = irq;
 

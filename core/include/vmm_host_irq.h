@@ -144,6 +144,7 @@ struct vmm_host_irq_chip {
 /** Host IRQ Abstraction */
 struct vmm_host_irq {
 	u32 num;
+	u32 hwirq;
 	const char *name;
 	u32 state;
 	u32 count[CONFIG_CPU_COUNT];
@@ -181,10 +182,16 @@ void vmm_host_irq_set_active_callback(u32 (*active)(u32));
  *  Note: This function is for internal use only.
  *  Note: Do not call this function directly.
  */
-void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num);
+void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num, u32 hwirq);
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
+
+/** Set hwirq associated with host irq instance */
+int vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq);
+
+/** Get hwirq associated with host irq instance */
+u32 vmm_host_irq_get_hwirq(u32 hirq);
 
 /** Get host irq instance from host irq number */
 struct vmm_host_irq *vmm_host_irq_get(u32 hirq);

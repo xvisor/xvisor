@@ -49,8 +49,8 @@ struct vmm_host_irqdomain;
  */
 struct vmm_host_irqdomain_ops {
 	int (*match)(struct vmm_host_irqdomain *d, struct vmm_devtree_node *node);
-	int (*map)(struct vmm_host_irqdomain *d, unsigned int virq, unsigned int hw);
-	void (*unmap)(struct vmm_host_irqdomain *d, unsigned int virq);
+	int (*map)(struct vmm_host_irqdomain *d, unsigned int hirq, unsigned int hw);
+	void (*unmap)(struct vmm_host_irqdomain *d, unsigned int hirq);
 	int (*xlate)(struct vmm_host_irqdomain *d, struct vmm_devtree_node *node,
 		     const u32 *intspec, unsigned int intsize,
 		     unsigned long *out_hwirq, unsigned int *out_type);
@@ -65,7 +65,6 @@ struct vmm_host_irqdomain_ops {
  *
  * Optional elements
  * @of_node:	The device node using this domain
- * @hwirq:	The associated real HW irq.
  * @host_data:	The controller private data pointer. Not touched by extended
  *		IRQ core code.
  */
@@ -97,6 +96,10 @@ int vmm_host_irqdomain_create_mapping(struct vmm_host_irqdomain *domain,
 				      unsigned int hwirq);
 
 int vmm_host_irqdomain_dispose_mapping(unsigned int hirq);
+
+int vmm_host_irqdomain_xlate(struct vmm_host_irqdomain *domain,
+			     const u32 *intspec, unsigned int intsize,
+			     unsigned long *out_hwirq, unsigned int *out_type);
 
 /**
  * vmm_host_irqdomain_add() - Allocate and register a new extended IRQ domain.

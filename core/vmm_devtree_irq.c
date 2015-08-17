@@ -216,14 +216,11 @@ static unsigned int vmm_devtree_irq_create_mapping(
 
 	pr_debug("Domain %s found\n", domain->of_node->name);
 
-	/* If domain has no translation, then we assume interrupt line */
-	if (domain->ops->xlate == NULL) {
-		hwirq = irq_data->args[0];
-	} else {
-		if (domain->ops->xlate(domain, irq_data->np, irq_data->args,
-				      irq_data->args_count, &hwirq, &type)) {
-			return hwirq;
-		}
+	/* Determine translation */
+	rc = vmm_host_irqdomain_xlate(domain, irq_data->args,
+				      irq_data->args_count, &hwirq, &type);
+	if (rc < 0) {
+		return rc;
 	}
 
 	/* Create mapping */

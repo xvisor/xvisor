@@ -41,7 +41,7 @@ static struct vmm_host_irqdomain_ctrl idctrl;
 int vmm_host_irqdomain_to_hwirq(struct vmm_host_irqdomain *domain,
 				unsigned int hirq)
 {
-	if (hirq < domain->base || hirq > domain->end)
+	if (hirq < domain->base || hirq >= domain->end)
 		return VMM_ENOTAVAIL;
 
 	return hirq - domain->base;
@@ -50,13 +50,13 @@ int vmm_host_irqdomain_to_hwirq(struct vmm_host_irqdomain *domain,
 int vmm_host_irqdomain_find_mapping(struct vmm_host_irqdomain *domain,
 				    unsigned int hwirq)
 {
-	if (hwirq > domain->count)
-		return -1;
+	if (hwirq >= domain->count)
+		return VMM_ERANGE;
 
 	if (vmm_host_irq_get(domain->base + hwirq))
 		return domain->base + hwirq;
 
-	return -1;
+	return VMM_ENOTAVAIL;
 }
 
 struct vmm_host_irqdomain *vmm_host_irqdomain_match(void *data,
@@ -116,7 +116,7 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_get(unsigned int hirq)
 	vmm_read_lock_irqsave_lite(&idctrl.lock, flags);
 
 	list_for_each_entry(domain, &idctrl.domains, head) {
-		if ((hirq > domain->base) && (hirq < domain->end)) {
+		if ((hirq >= domain->base) && (hirq < domain->end)) {
 			vmm_read_unlock_irqrestore_lite(&idctrl.lock, flags);
 			return domain;
 		}
@@ -132,33 +132,69 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_get(unsigned int hirq)
 int vmm_host_irqdomain_create_mapping(struct vmm_host_irqdomain *domain,
 				      unsigned int hwirq)
 {
-	int hirq = 0;
+	int rc;
 
 	if (!domain)
 		return VMM_ENOTAVAIL;
 
-	if (hwirq > domain->count)
+	if (hwirq >= domain->count)
 		return VMM_ENOTAVAIL;
 
-	/* Check if mapping already exists */
-	hirq = vmm_host_irqdomain_find_mapping(domain, hwirq);
-	if (hirq >= 0) {
-		return hirq;
+	rc = vmm_host_irqext_create_mapping(domain->base + hwirq, hwirq);
+	if (rc) {
+		return rc;
 	}
 
-	hirq = vmm_host_irqext_create_mapping(domain->base + hwirq);
+	if (domain->ops && domain->ops->map) {
+		rc = domain->ops->map(domain, domain->base + hwirq, hwirq);
+		if (rc) {
+			return rc;
+		}
+	}
 
-	return (hirq < 0) ? hirq : domain->base + hwirq;
+	if ((domain->base + hwirq) < CONFIG_HOST_IRQ_COUNT) {
+		vmm_host_irq_set_hwirq(domain->base + hwirq, hwirq);
+	}
+
+	return domain->base + hwirq;
 }
 
 int vmm_host_irqdomain_dispose_mapping(unsigned int hirq)
 {
 	struct vmm_host_irqdomain *domain = vmm_host_irqdomain_get(hirq);
 
-	if (!domain)
+	if (!domain) {
 		return VMM_ENOTAVAIL;
+	}
+
+	if (hirq < CONFIG_HOST_IRQ_COUNT) {
+		vmm_host_irq_set_hwirq(hirq, hirq);
+	}
+
+	if (domain->ops && domain->ops->unmap) {
+		domain->ops->unmap(domain, hirq);
+	}
 
 	return vmm_host_irqext_dispose_mapping(hirq);
+}
+
+int vmm_host_irqdomain_xlate(struct vmm_host_irqdomain *domain,
+			     const u32 *intspec, unsigned int intsize,
+			     unsigned long *out_hwirq, unsigned int *out_type)
+{
+	if (!domain || !intspec || !out_hwirq || !out_type) {
+		return VMM_EINVALID;
+	}
+
+	/* If domain has no translation, then we assume interrupt line */
+	if (!domain->ops || !domain->ops->xlate) {
+		*out_hwirq = intspec[0];
+	} else {
+		return domain->ops->xlate(domain, domain->of_node, intspec,
+					  intsize, out_hwirq, out_type);
+	}
+
+	return VMM_OK;
 }
 
 struct vmm_host_irqdomain *vmm_host_irqdomain_add(
