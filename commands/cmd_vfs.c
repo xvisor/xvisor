@@ -367,17 +367,12 @@ closedir_fail:
 	return rc;
 }
 
-static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
+static int cmd_vfs_file_open_read(struct vmm_chardev *cdev, const char *path,
+				  int *fdp, u32 *len)
 {
-	int fd, rc;
-	u32 len;
-	size_t buf_rd;
-	char buf[VFS_LOAD_BUF_SZ];
+	int rc = VMM_OK;
+	int fd = -1;
 	struct stat st;
-	u32 tok_len;
-	char *token, *save;
-	const char *delim = "\n";
-	u32 end, cleanup = 0;
 
 	fd = vfs_open(path, O_RDONLY, 0);
 	if (fd < 0) {
@@ -398,12 +393,42 @@ static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
 		return VMM_EINVALID;
 	}
 
-	len = st.st_size;
-	while (len) {
-		memset(buf, 0, sizeof(buf));
+	*len = st.st_size;
+	*fdp = fd;
 
-		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
-		buf_rd = vfs_read(fd, buf, buf_rd);
+	return VMM_OK;
+}
+
+static int cmd_vfs_read(int fd, char buf[], u32 len)
+{
+	u32 len_rd = 0;
+
+	memset(buf, 0, VFS_LOAD_BUF_SZ);
+
+	len = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
+	len_rd = vfs_read(fd, buf, len);
+
+	return len_rd;
+}
+
+static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc;
+	u32 len;
+	size_t buf_rd;
+	char buf[VFS_LOAD_BUF_SZ];
+	u32 tok_len;
+	char *token, *save;
+	const char *delim = "\n";
+	u32 end, cleanup = 0;
+
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
+		return rc;
+	}
+
+	while (len) {
+		buf_rd = cmd_vfs_read(fd, buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -447,37 +472,17 @@ static int cmd_vfs_md5(struct vmm_chardev *cdev, const char *path)
 	u32 len;
 	size_t buf_rd;
 	u8 buf[VFS_LOAD_BUF_SZ];
-	struct stat st;
 	struct md5_context md5c;
 	u8 digest[16];
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		return fd;
-	}
-
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
 		return rc;
 	}
-
-	if (!(st.st_mode & S_IFREG)) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Cannot read %s\n", path);
-		return VMM_EINVALID;
-	}
-
-	len = st.st_size;
 	md5_init(&md5c);
 
 	while (len) {
-		memset(buf, 0, sizeof(buf));
-
-		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
-		buf_rd = vfs_read(fd, buf, buf_rd);
+		buf_rd = cmd_vfs_read(fd, buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -508,37 +513,17 @@ static int cmd_vfs_sha256(struct vmm_chardev *cdev, const char *path)
 	u32 len;
 	size_t buf_rd;
 	u8 buf[VFS_LOAD_BUF_SZ];
-	struct stat st;
 	struct sha256_context sha256c;
 	sha256_digest_t digest;
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		return fd;
-	}
-
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
 		return rc;
 	}
-
-	if (!(st.st_mode & S_IFREG)) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Cannot read %s\n", path);
-		return VMM_EINVALID;
-	}
-
-	len = st.st_size;
 	sha256_init(&sha256c);
 
 	while (len) {
-		memset(buf, 0, sizeof(buf));
-
-		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
-		buf_rd = vfs_read(fd, buf, buf_rd);
+		buf_rd = cmd_vfs_read(fd, buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -569,32 +554,15 @@ static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
 	bool found_non_printable;
 	size_t buf_rd;
 	char buf[VFS_LOAD_BUF_SZ];
-	struct stat st;
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		return fd;
-	}
-
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
 		return rc;
 	}
 
-	if (!(st.st_mode & S_IFREG)) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Cannot read %s\n", path);
-		return VMM_EINVALID;
-	}
-
 	off = 0;
-	len = st.st_size;
 	while (len) {
-		buf_rd = (len < VFS_LOAD_BUF_SZ) ? len : VFS_LOAD_BUF_SZ;
-		buf_rd = vfs_read(fd, buf, buf_rd);
+		buf_rd = cmd_vfs_read(fd, buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -706,12 +674,12 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 			    int aliasc, char **aliasv)
 {
 	int a, fd, rc = VMM_OK;
+	u32 len = 0;
 	char *astr;
 	const char *aname, *apath, *aattr, *atype;
 	size_t fdt_rd;
 	void *fdt_data, *val = NULL;
 	u32 val_type, val_len = 0;
-	struct stat st;
 	struct vmm_devtree_node *root, *anode, *node;
 	struct vmm_devtree_node *parent;
 	struct fdt_fileinfo fdt;
@@ -732,34 +700,20 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 		goto fail;
 	}
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		rc = fd;
-		goto fail;
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
+		return rc;
 	}
 
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vmm_cprintf(cdev, "Path %s does not exist.\n", path);
-		goto fail_closefd;
-	}
-
-	if (!(st.st_mode & S_IFREG)) {
-		vmm_cprintf(cdev, "Path %s should be regular file.\n", path);
-		rc = VMM_EINVALID;
-		goto fail_closefd;
-	}
-
-	if (!st.st_size) {
+	if (!len) {
 		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}
 
-	if (st.st_size > VFS_MAX_FDT_SZ) {
+	if (len > VFS_MAX_FDT_SZ) {
 		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
-			    path, (long)st.st_size, VFS_MAX_FDT_SZ);
+			    path, (long)len, VFS_MAX_FDT_SZ);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}
@@ -771,7 +725,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 	}
 
 	fdt_rd = vfs_read(fd, fdt_data, VFS_MAX_FDT_SZ);
-	if (fdt_rd < st.st_size) {
+	if (fdt_rd < len) {
 		rc = VMM_EIO;
 		goto fail_freedata;
 	}
@@ -963,7 +917,7 @@ fail:
 
 static int cmd_vfs_load(struct vmm_chardev *cdev,
 			struct vmm_guest *guest,
-			physical_addr_t pa, 
+			physical_addr_t pa,
 			const char *path, u32 off, u32 len)
 {
 	int fd, rc;
@@ -971,34 +925,19 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 	physical_addr_t wr_pa;
 	size_t buf_wr, buf_rd, buf_count, wr_count;
 	char buf[VFS_LOAD_BUF_SZ];
-	struct stat st;
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		return fd;
-	}
-
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
 		return rc;
 	}
 
-	if (!(st.st_mode & S_IFREG)) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Cannot read %s\n", path);
-		return VMM_EINVALID;
-	}
-
-	if (off >= st.st_size) {
+	if (off >= len) {
 		vfs_close(fd);
 		vmm_cprintf(cdev, "Offset greater than file size\n");
 		return VMM_EINVALID;
 	}
 
-	len = ((st.st_size - off) < len) ? (st.st_size - off) : len;
+	len = ((len - off) < len) ? (len - off) : len;
 
 	rd_off = 0;
 	wr_count = 0;
@@ -1050,28 +989,14 @@ static int cmd_vfs_load_list(struct vmm_chardev *cdev,
 			     const char *path)
 {
 	loff_t rd_off;
-	struct stat st;
+	u32 len;
 	int fd, rc, pos;
 	physical_addr_t pa;
 	char c, *addr, *file, buf[VFS_LOAD_BUF_SZ+1];
 
-	fd = vfs_open(path, O_RDONLY, 0);
-	if (fd < 0) {
-		vmm_cprintf(cdev, "Failed to open %s\n", path);
-		return fd;
-	}
-
-	rc = vfs_fstat(fd, &st);
-	if (rc) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Failed to stat %s\n", path);
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
 		return rc;
-	}
-
-	if (!(st.st_mode & S_IFREG)) {
-		vfs_close(fd);
-		vmm_cprintf(cdev, "Cannot read %s\n", path);
-		return VMM_EINVALID;
 	}
 
 	rd_off = 0;
