@@ -482,7 +482,7 @@ static int cmd_vfs_md5(struct vmm_chardev *cdev, const char *path)
 	md5_init(&md5c);
 
 	while (len) {
-		buf_rd = cmd_vfs_read(fd, buf, len);
+		buf_rd = cmd_vfs_read(fd, (char *)buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -523,7 +523,7 @@ static int cmd_vfs_sha256(struct vmm_chardev *cdev, const char *path)
 	sha256_init(&sha256c);
 
 	while (len) {
-		buf_rd = cmd_vfs_read(fd, buf, len);
+		buf_rd = cmd_vfs_read(fd, (char *)buf, len);
 		if (buf_rd < 1) {
 			break;
 		}
@@ -984,87 +984,108 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
+static const char cmd_vfs_esclist[] = {'\n', '\r', ' '};
+
+static int cmd_vfs_in_esclist(char c)
+{
+	u32 escpos = 0;
+
+	for (escpos = 0; escpos < sizeof (cmd_vfs_esclist); ++escpos) {
+		if (cmd_vfs_esclist[escpos] == c) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static char *cmd_vfs_next_token(char **bufp, u32 *len)
+{
+	u32 pos = 0;
+	char *buf = *bufp;
+	char *token = NULL;
+
+	while ((pos < *len) && cmd_vfs_in_esclist(buf[pos])) {
+		++pos;
+	}
+	token = buf;
+
+	while ((pos < *len) && !cmd_vfs_in_esclist(buf[pos])) {
+		if (!vmm_isprintable(buf[pos])) {
+			*len -= pos;
+			return NULL;
+		}
+		++pos;
+	}
+	buf[pos++] = '\0';
+
+	if (pos < *len) {
+		*bufp = buf + pos;
+		*len -= pos;
+	} else {
+		*len = 0;
+		*bufp = NULL;
+	}
+
+	return token;
+}
+
 static int cmd_vfs_load_list(struct vmm_chardev *cdev,
 			     struct vmm_guest *guest,
 			     const char *path)
 {
-	loff_t rd_off;
 	u32 len;
-	int fd, rc, pos;
+	int fd, rc;
 	physical_addr_t pa;
-	char c, *addr, *file, buf[VFS_LOAD_BUF_SZ+1];
+	char *buf = NULL;
+	char *buf_save = NULL;
+	char *token = NULL;
 
 	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
 	if (VMM_OK != rc) {
 		return rc;
 	}
 
-	rd_off = 0;
-	pos = 0;
-	while (vfs_read(fd, &c, 1) == 1) {
-		if (pos == VFS_LOAD_BUF_SZ) {
-			vmm_cprintf(cdev, "Line exceeds limit of "
-				    "%d chars at offset 0x%llx\n",
-				    VFS_LOAD_BUF_SZ, (u64)rd_off);
-			break;
-		}
-		if (c == '\n' || c == '\r') {
-			buf[pos] = '\0';
-			while ((pos > 0) &&
-			       ((buf[pos - 1] == ' ') ||
-				(buf[pos - 1] == '\t'))) {
-				pos--;
-				buf[pos] = '\0';
-			}
-
-			addr = &buf[0];
-			while ((*addr == ' ') || (*addr == '\t')) {
-				addr++;
-			}
-			if (*addr == '\0') {
-				goto skip_line;
-			}
-
-			file = addr;
-			while ((*file != ' ') &&
-			       (*file != '\t') &&
-			       (*file != '\0')) {
-				file++;
-			}
-			if (*file == '\0') {
-				goto skip_line;
-			}
-
-			while ((*file == ' ') || (*file == '\t')) {
-				*file = '\0';
-				file++;
-			}
-			if (*file == '\0') {
-				goto skip_line;
-			}
-
-			pa = (physical_addr_t)strtoull(addr, NULL, 0);
-			vmm_cprintf(cdev, "%s: Loading 0x%llx with file %s\n",
-				    (guest) ? (guest->name) : "host",
-				    (u64)pa, file);
-			rc = cmd_vfs_load(cdev, guest, pa,
-					  file, 0, 0xFFFFFFFF);
-			if (rc) {
-				vmm_cprintf(cdev, "error %d\n", rc);
-				break;
-			}
-skip_line:
-			pos = 0;
-		} else if (vmm_isprintable(c)) {
-			buf[pos] = c;
-			pos++;
-		} else {
-			vmm_cprintf(cdev, "Non-printable char at "
-				    "offset 0x%llx\n", (u64)rd_off);
-			break;
-		}
-		rd_off++;
+	if (VFS_LOAD_BUF_SZ <= len) {
+		vmm_cprintf(cdev, "List file exceeds limit of %d chars\n",
+			    VFS_LOAD_BUF_SZ);
 	}
+
+	if (NULL == (buf = vmm_zalloc(VFS_LOAD_BUF_SZ))) {
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to allocate buffer\n");
+		return VMM_ENOMEM;
+	}
+	buf_save = buf;
+
+	len = cmd_vfs_read(fd, buf, len);
+	if (len < 0) {
+		vmm_free(buf_save);
+		vfs_close(fd);
+		vmm_cprintf(cdev, "Failed to read %s, error %d\n", path, len);
+		return len;
+	}
+
+	while (buf) {
+		token = cmd_vfs_next_token(&buf, &len);
+		if (!token || !buf) {
+			vmm_cprintf(cdev, "Failed to read address\n");
+			break;
+		}
+		pa = (physical_addr_t)strtoull(token, NULL, 0);
+
+		token = cmd_vfs_next_token(&buf, &len);
+		vmm_cprintf(cdev, "%s: Loading 0x%llx with file %s\n",
+			    (guest) ? (guest->name) : "host",
+			    (u64)pa, token);
+
+		rc = cmd_vfs_load(cdev, guest, pa, token, 0, 0xFFFFFFFF);
+		if (rc) {
+			vmm_cprintf(cdev, "error %d\n", rc);
+			break;
+		}
+	}
+
+	vmm_free(buf_save);
 
 	rc = vfs_close(fd);
 	if (rc) {
