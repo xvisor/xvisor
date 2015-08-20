@@ -207,6 +207,9 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 	irq_flags_t flags;
 	struct vmm_host_irqdomain *newdomain = NULL;
 
+	if (!of_node) {
+		return NULL;
+	}
 	if ((base >= 0) &&
 	    ((CONFIG_HOST_IRQ_COUNT <= base) ||
 	     (CONFIG_HOST_IRQ_COUNT <= (base+size)))) {
@@ -229,6 +232,7 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 		pos = base;
 	}
 
+	vmm_devtree_ref_node(of_node);
 	INIT_LIST_HEAD(&newdomain->head);
 	newdomain->base = pos;
 	newdomain->count = size;
@@ -260,6 +264,7 @@ void vmm_host_irqdomain_remove(struct vmm_host_irqdomain *domain)
 		vmm_host_irqext_dispose_mapping(pos);
 	}
 
+	vmm_devtree_dref_node(domain->of_node);
 	vmm_free(domain);
 }
 
