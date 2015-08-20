@@ -118,34 +118,51 @@ int vmm_devtree_irq_parse_one(struct vmm_devtree_node *device, int index,
 	int res = VMM_EINVALID;
 	int i;
 
+	if (!device || (index < 0) || !out_irq) {
+		return VMM_EINVALID;
+	}
+
 	pr_debug("%s: dev=%s, index=%d\n", __func__, device->name, index);
 
 	attr = vmm_devtree_getattr(device, "interrupts");
-	/* FIXME: Linux interrupt-extended management not implemented yet */
 	if (NULL == attr) {
 		return VMM_EINVALID;
 	}
+
 	intlen = attr->len / sizeof(u32);
 	intspec = attr->value;
 	pr_debug(" intspec=%d intlen=%d\n", vmm_be32_to_cpu(*intspec), intlen);
 
 	/* Look for the interrupt parent. */
 	p = vmm_devtree_irq_find_parent(device);
-	if (p == NULL) {
-		return VMM_EINVALID;
+	if (NULL == p) {
+		/* If no interrupt-parent fount then try
+		 * the original vmm_devtree_irq_get() API
+		 */
+		res = vmm_devtree_irq_get(device, &intsize, index);
+		if (res != VMM_OK) {
+			return res;
+		}
+		out_irq->np = NULL;
+		out_irq->args_count = 1;
+		out_irq->args[0] = intsize;
+		return VMM_OK;
 	}
 
 	/* Get size of interrupt specifier */
 	res = vmm_devtree_read_u32(p, "#interrupt-cells", &intsize);
 	if (VMM_OK != res) {
-		goto out;
+		vmm_devtree_dref_node(p);
+		return res;
 	}
 
 	pr_debug(" intsize=%d intlen=%d\n", intsize, intlen);
 
 	/* Check index */
-	if ((index + 1) * intsize > intlen)
-		goto out;
+	if ((index + 1) * intsize > intlen) {
+		vmm_devtree_dref_node(p);
+		return VMM_EINVALID;
+	}
 
 	/* Copy intspec into irq structure */
 	intspec += index * intsize;
@@ -155,11 +172,7 @@ int vmm_devtree_irq_parse_one(struct vmm_devtree_node *device, int index,
 		out_irq->args[i] = vmm_be32_to_cpu(*intspec++);
 	}
 
-	/* FIXME interrupt-map translations checking not implemented yet */
 	return VMM_OK;
-out:
-	vmm_devtree_dref_node(device);
-	return res;
 }
 
 static int devtree_irqdomain_match_node(struct vmm_host_irqdomain *domain,
@@ -188,29 +201,26 @@ static unsigned int vmm_devtree_irq_create_mapping(
 
 	if (irq_data->np) {
 		domain = vmm_devtree_irqdomain_find(irq_data->np);
+		if (!domain) {
+			/* If no domain found then this is static host irq.
+			 *
+			 * In this case, we call vmm_host_irq API to
+			 * find-out vmm_host_irq_chip which will have
+			 * xlate() callback similar (but not same as)
+			 * to xlate() callback of vmm_host_irqdomain.
+			 *
+			 * The xlate() callback of vmm_host_irq_chip
+			 * will translate interrupt cells into host irq
+			 * number. It will also configure the host irq
+			 * if required.
+			 */
+
+			/* Currently as a work-around we return value
+			 * of first cell from interrupt cells.
+			 */
+			return irq_data->args[0];
+		}
 	} else {
-		return irq_data->args[0];
-	}
-
-	if (!domain) {
-		/* TODO:
-		 * If no domain found then this is static host irq.
-		 *
-		 * In this case, we call vmm_host_irq API to
-		 * find-out vmm_host_irq_chip which will have
-		 * xlate() callback similar (but not same as)
-		 * to xlate() callback of vmm_host_irqdomain.
-		 *
-		 * The xlate() callback of vmm_host_irq_chip
-		 * will translate interrupt cells into host irq
-		 * number. It will also configure the host irq
-		 * if required.
-		 */
-
-		/* TODO:
-		 * Currently as a work-around we return value
-		 * of first cell from interrupt cells.
-		 */
 		return irq_data->args[0];
 	}
 
@@ -250,10 +260,20 @@ static unsigned int vmm_devtree_irq_create_mapping(
 unsigned int vmm_devtree_irq_parse_map(struct vmm_devtree_node *dev,
 					int index)
 {
-	struct vmm_devtree_phandle_args oirq;
+	int hirq = 0;
+	struct vmm_devtree_phandle_args oirq = { .np = NULL, .args_count = 0 };
 
-	if (vmm_devtree_irq_parse_one(dev, index, &oirq))
+	if (vmm_devtree_irq_parse_one(dev, index, &oirq)) {
 		return 0;
+	}
 
-	return vmm_devtree_irq_create_mapping(&oirq);
+	if (oirq.args_count) {
+		hirq = vmm_devtree_irq_create_mapping(&oirq);
+	}
+
+	if (oirq.np) {
+		vmm_devtree_dref_node(oirq.np);
+	}
+
+	return (hirq < 0) ? 0 : hirq;
 }
