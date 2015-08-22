@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <libs/stringlib.h>
 #include <libs/libfdt.h>
 #include <arch_devtree.h>
 
@@ -32,6 +33,7 @@ extern u32 dt_blob_start;
 
 static u32 bank_nr;
 static physical_addr_t bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
+static physical_addr_t dt_bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 
 int arch_devtree_ram_bank_setup(void)
 {
@@ -91,11 +93,23 @@ int arch_devtree_ram_bank_setup(void)
 		size_cells = i;
 	}
 
+	memset(bank_data, 0, sizeof(bank_data));
+	memset(dt_bank_data, 0, sizeof(dt_bank_data));
+
 	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
 				 VMM_DEVTREE_REG_ATTR_NAME,
-				 bank_data, sizeof(bank_data));
+				 dt_bank_data, sizeof(dt_bank_data));
 	if (rc) {
 		return rc;
+	}
+
+	/* Remove Zero sized banks */
+	for (i = 0, j = 0 ; i < array_size(dt_bank_data); i += 2) {
+		if (dt_bank_data[i + 1]) {
+			bank_data[j] = dt_bank_data[i];
+			bank_data[j + 1] = dt_bank_data[i + 1];
+			j += 2;
+		}
 	}
 
 	/* Count of RAM banks */
