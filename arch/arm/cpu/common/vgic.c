@@ -1750,8 +1750,9 @@ static int __init vgic_emulator_init(void)
 		goto fail_unmap_hctrl;
 	}
 
-	rc = vmm_devtree_irq_get(node, &vgich.maint_irq, 0);
-	if (rc) {
+	vgich.maint_irq = vmm_devtree_irq_parse_map(node, 0);
+	if (!vgich.maint_irq) {
+		rc = VMM_ENODEV;
 		goto fail_unmap_vcpu;
 	}
 

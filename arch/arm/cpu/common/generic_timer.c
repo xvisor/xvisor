@@ -343,27 +343,24 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	/* Get hypervisor timer irq number */
-	rc = vmm_devtree_irq_get(node,
-				 &irq[GENERIC_HYPERVISOR_TIMER],
-				 GENERIC_HYPERVISOR_TIMER);
-	if (rc) {
-		return rc;
+	irq[GENERIC_HYPERVISOR_TIMER] = vmm_devtree_irq_parse_map(node,
+						GENERIC_HYPERVISOR_TIMER);
+	if (!irq[GENERIC_HYPERVISOR_TIMER]) {
+		return VMM_ENODEV;
 	}
 
 	/* Get physical timer irq number */
-	rc = vmm_devtree_irq_get(node,
-				 &irq[GENERIC_PHYSICAL_TIMER],
-				 GENERIC_PHYSICAL_TIMER);
-	if (rc) {
-		return rc;
+	irq[GENERIC_PHYSICAL_TIMER] = vmm_devtree_irq_parse_map(node,
+						GENERIC_PHYSICAL_TIMER);
+	if (!irq[GENERIC_PHYSICAL_TIMER]) {
+		return VMM_ENODEV;
 	}
 
 	/* Get virtual timer irq number */
-	rc = vmm_devtree_irq_get(node,
-				 &irq[GENERIC_VIRTUAL_TIMER],
-				 GENERIC_VIRTUAL_TIMER);
-	if (rc) {
-		return rc;
+	irq[GENERIC_VIRTUAL_TIMER] = vmm_devtree_irq_parse_map(node,
+						GENERIC_VIRTUAL_TIMER);
+	if (!irq[GENERIC_VIRTUAL_TIMER]) {
+		return VMM_ENODEV;
 	}
 
 	/* Number of generic timer irqs */
