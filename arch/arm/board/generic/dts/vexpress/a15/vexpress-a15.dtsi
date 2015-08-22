@@ -71,7 +71,7 @@
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
 		clock-frequency = <100000000>;
-		interrupts = <26 30 27>;
+		interrupts = <29 30 27 26>;
 	};
 
 	dcc {

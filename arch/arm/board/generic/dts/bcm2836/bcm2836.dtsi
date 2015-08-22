@@ -59,7 +59,7 @@
 	gen-timer { /* Generic Timer */
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
-		interrupts = <98 97 99>;
+		interrupts = <96 97 99 98>;
 	};
 
 	soc {

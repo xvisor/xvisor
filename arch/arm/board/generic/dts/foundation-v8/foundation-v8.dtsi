@@ -73,7 +73,7 @@
 		device_type = "timer";
 		compatible = "arm,armv8-timer";
 		clock-frequency = <100000000>;
-		interrupts = <26 30 27>;
+		interrupts = <29 30 27 26>;
 	};
 
 	motherboard {

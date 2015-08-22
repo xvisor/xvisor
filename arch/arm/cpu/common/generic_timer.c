@@ -37,9 +37,10 @@
 #include <libs/mathlib.h>
 
 enum gen_timer_type {
-	GENERIC_HYPERVISOR_TIMER,
+	GENERIC_SPHYSICAL_TIMER,
 	GENERIC_PHYSICAL_TIMER,
 	GENERIC_VIRTUAL_TIMER,
+	GENERIC_HYPERVISOR_TIMER,
 };
 
 static u32 generic_timer_hz = 0;
@@ -333,7 +334,7 @@ u64 generic_timer_wakeup_timeout(void)
 static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
-	u32 irq[3], num_irqs, val;
+	u32 irq[4], num_irqs, val;
 	struct vmm_clockchip *cc;
 
 	/* Get and Check generic timer frequency */
