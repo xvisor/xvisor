@@ -228,9 +228,9 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 		return VMM_ENODEV;
 	}
 
-	rc = vmm_devtree_irq_get(node, &hirq, 0);
-	if (rc) {
-		return rc;
+	hirq = vmm_devtree_irq_parse_map(node, 0);
+	if (!hirq) {
+		return VMM_ENODEV;
 	}
 
 	rc = vmm_devtree_regmap(node, &base, 0);

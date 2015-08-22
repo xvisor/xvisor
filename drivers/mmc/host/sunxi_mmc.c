@@ -751,8 +751,9 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	host->pdes_cnt = VMM_PAGE_SIZE / sizeof(struct sunxi_mmc_des);
 
 	/* Setup interrupt handler */
-	rc = vmm_devtree_irq_get(dev->node, &host->irq, 0);
-	if (rc) {
+	host->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!host->irq) {
+		rc = VMM_ENODEV;
 		goto free_pdes;
 	}
 	if ((rc = vmm_host_irq_register(host->irq, dev->name, 

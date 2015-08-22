@@ -506,10 +506,12 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 		goto out_regmap;
 	}
 
-	err = vmm_devtree_irq_get(np, &port->irq_high, 1);
-	err = vmm_devtree_irq_get(np, &port->irq, 0);
-	if (VMM_OK != err)
+	port->irq_high = vmm_devtree_irq_parse_map(np, 1);
+	port->irq = vmm_devtree_irq_parse_map(np, 0);
+	if (!port->irq || !port->irq_high) {
+		err = VMM_ENODEV;
 		goto out_irq_get;
+	}
 
 	name = vmm_malloc(PORT_NAME_LEN);
 	port_num = vmm_devtree_alias_get_id(dev->node, "gpio");

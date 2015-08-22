@@ -168,9 +168,9 @@ static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	/* Read irq attribute */
-	rc = vmm_devtree_irq_get(node, &hirq, DEFAULT_TIMER);
-	if (rc) {
-		return rc;
+	hirq = vmm_devtree_irq_parse_map(node, DEFAULT_TIMER);
+	if (!hirq) {
+		return VMM_ENODEV;
 	}
 
 	bcc = vmm_zalloc(sizeof(struct bcm2835_clockchip));

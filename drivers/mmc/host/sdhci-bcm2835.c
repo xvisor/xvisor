@@ -175,9 +175,9 @@ static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
 		goto free_host;
 	}
 
-	bcm_host->irq = 0;
-	rc = vmm_devtree_irq_get(dev->node, &bcm_host->irq, 0);
-	if (rc) {
+	bcm_host->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!bcm_host->irq) {
+		rc = VMM_ENODEV;
 		goto free_reg;
 	}
 

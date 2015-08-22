@@ -222,8 +222,9 @@ static int __init fpga_init(struct vmm_devtree_node *node)
 	}
 
 	/* Some chips are cascaded from a parent IRQ */
-	if (vmm_devtree_irq_get(node, &parent_irq, 0)) {
-		parent_irq = 0xFFFFFFFF;
+	parent_irq = vmm_devtree_irq_parse_map(node, 0);
+	if (!parent_irq) {
+		parent_irq = UINT_MAX;
 	}
 
 	fpga_irq_init((void *)base, "FPGA",

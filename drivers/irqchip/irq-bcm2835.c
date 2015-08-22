@@ -273,7 +273,8 @@ static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
 		return VMM_OK;
 	}
 
-	if (vmm_devtree_irq_get(node, &intc.parent_irq, 0)) {
+	intc.parent_irq = vmm_devtree_irq_parse_map(node, 0);
+	if (!intc.parent_irq) {
 		intc.parent_irq = UINT_MAX;
 	}
 

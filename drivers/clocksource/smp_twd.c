@@ -168,8 +168,9 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	if (!twd_ppi_irq) {
-		rc = vmm_devtree_irq_get(node, &twd_ppi_irq, 0);
-		if (rc) {
+		twd_ppi_irq = vmm_devtree_irq_parse_map(node, 0);
+		if (!twd_ppi_irq) {
+			rc = VMM_ENODEV;
 			goto fail_regunmap;
 		}
 	}

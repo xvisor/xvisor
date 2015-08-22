@@ -285,10 +285,10 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	acc->off = 0x10 + 0x10 * acc->num;
 
 	/* Read irq attribute */
-	rc = vmm_devtree_irq_get(node, &hirq, 0);
-	if (rc) {
+	hirq = vmm_devtree_irq_parse_map(node, 0);
+	if (!hirq) {
 		vmm_free(acc);
-		return rc;
+		return VMM_ENODEV;
 	}
 
 	/* Map timer registers */

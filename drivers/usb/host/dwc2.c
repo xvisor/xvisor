@@ -1520,8 +1520,9 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	}
 	dwc2->regs = (struct dwc2_core_regs *)regs;
 
-	rc = vmm_devtree_irq_get(dev->node, &dwc2->irq, 0);
-	if (rc) {
+	dwc2->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!dwc2->irq) {
+		rc = VMM_ENODEV;
 		goto fail_unmap_regs;
 	}
 

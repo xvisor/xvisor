@@ -3901,8 +3901,8 @@ static int fec_probe(struct vmm_device *dev,
 		goto failed_init;
 
 	for (i = 0; i < FEC_IRQ_NUM; i++) {
-		ret = vmm_devtree_irq_get(dev->node, &irq, i);
-		if (ret < 0) {
+		irq = irq_of_parse_and_map(dev->node, i);
+		if (!irq) {
 			if (i)
 				break;
 			vmm_printf("Failed to get IRQ#%d\n", i);

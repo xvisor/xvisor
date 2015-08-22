@@ -178,8 +178,8 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 		goto unmap;
 	}
 
-	ret = vmm_devtree_irq_get(dev->node, &kmi->irq, 0);
-	if (ret) {
+	kmi->irq = irq_of_parse_and_map(dev->node, 0);
+	if (!kmi->irq) {
 		ret = -EFAIL;
 		goto unmap;
 	}

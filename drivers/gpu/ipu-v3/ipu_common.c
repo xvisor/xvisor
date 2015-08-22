@@ -358,16 +358,16 @@ static int ipu_probe(struct vmm_device *dev,
 	spin_lock_init(&ipu->rdy_reg_spin_lock);
 	mutex_init(&ipu->mutex_lock);
 
-	ret = vmm_devtree_irq_get(dev->node, &ipu->irq_sync, 0);
-	if (ret) {
+	ipu->irq_sync = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!ipu->irq_sync) {
 		dev_err(ipu->dev, "request SYNC interrupt failed\n");
-		return ret;
+		return VMM_ENODEV;
 	}
 
-	ret = vmm_devtree_irq_get(dev->node, &ipu->irq_err, 1);
-	if (ret) {
+	ipu->irq_err = vmm_devtree_irq_parse_map(dev->node, 1);
+	if (!ipu->irq_err) {
 		dev_err(ipu->dev, "request ERR interrupt failed\n");
-		return ret;
+		return VMM_ENODEV;
 	}
 
 	ret = vmm_devtree_regaddr(dev->node, &ipu_base, 0);

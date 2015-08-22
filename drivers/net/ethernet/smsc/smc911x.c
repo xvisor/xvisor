@@ -2069,8 +2069,8 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 									addr);
 	lp->base = (void *) addr;
 
-	rc = vmm_devtree_irq_get(dev->node, &ndev->irq, 0);
-	if (rc) {
+	ndev->irq = irq_of_parse_and_map(dev->node, 0);
+	if (!ndev->irq) {
 		rc = VMM_EFAIL;
 		goto free_ioreamp_mem;
 	}

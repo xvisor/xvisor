@@ -290,9 +290,9 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 		}
 
 		/* Get MCT irq */
-		rc = vmm_devtree_irq_get(node, &irq, 0);
-		if (rc) {
-			return rc;
+		irq = vmm_devtree_irq_parse_map(node, 0);
+		if (!irq) {
+			return VMM_ENODEV;
 		}
 
 		if (!exynos4_sys_timer) {
@@ -497,9 +497,9 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 
 	if (mct_int_type == MCT_INT_UNKNOWN) {
 		/* Get MCT irq */
-		rc = vmm_devtree_irq_get(node, &irq, 1);
-		if (rc) {
-			return rc;
+		irq = vmm_devtree_irq_parse_map(node, 1);
+		if (!irq) {
+			return VMM_ENODEV;
 		}
 
 		if (vmm_host_irq_is_per_cpu(vmm_host_irq_get(irq))) {
@@ -549,9 +549,9 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 
 	if (mct_int_type == MCT_INT_SPI) {
 		/* Get MCT irq */
-		rc = vmm_devtree_irq_get(node, &irq, 1 + cpu);
-		if (rc) {
-			return rc;
+		irq = vmm_devtree_irq_parse_map(node, 1 + cpu);
+		if (!irq) {
+			return VMM_ENODEV;
 		}
 
 		rc = vmm_host_irq_register(irq, mevt->name,
@@ -567,12 +567,10 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 		}
 
 	} else {
-		u32 irq;
-
 		/* Get MCT irq */
-		rc = vmm_devtree_irq_get(node, &irq, 1);
-		if (rc) {
-			return rc;
+		irq = vmm_devtree_irq_parse_map(node, 1);
+		if (!irq) {
+			return VMM_ENODEV;
 		}
 
 		rc = vmm_host_irq_register(irq, "mct_tick_local",

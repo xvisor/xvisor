@@ -495,15 +495,15 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	/* find the IRQs */
 
-	rc = vmm_devtree_irq_get(pdev->node, &alarmno, 0);
-	if (rc) {
-		rc = VMM_EFAIL;
+	alarmno = vmm_devtree_irq_parse_map(pdev->node, 0);
+	if (!alarmno) {
+		rc = VMM_ENODEV;
 		return rc;
 	}
 	s3c_rtc_alarmno = alarmno;
-	rc = vmm_devtree_irq_get(pdev->node, &tickno, 1);
-	if (rc) {
-		rc = VMM_EFAIL;
+	tickno = vmm_devtree_irq_parse_map(pdev->node, 1);
+	if (!tickno) {
+		rc = VMM_ENODEV;
 		return rc;
 	}
 	s3c_rtc_tickno = tickno;

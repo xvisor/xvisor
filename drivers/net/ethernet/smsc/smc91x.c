@@ -2526,8 +2526,8 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	}
 #endif
 
-	ret = vmm_devtree_irq_get(pdev->node, &ndev->irq, 0);
-	if (ret) {
+	ndev->irq = irq_of_parse_and_map(pdev->node, 0);
+	if (!ndev->irq) {
 		ret = -ENODEV;
 		goto out_release_io;
 	}

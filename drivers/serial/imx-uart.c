@@ -297,8 +297,9 @@ static int imx_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Register interrupt handler */
-	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
-	if (rc) {
+	port->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!port->irq) {
+		rc = VMM_ENODEV;
 		goto clk_old_rate;
 	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->name,

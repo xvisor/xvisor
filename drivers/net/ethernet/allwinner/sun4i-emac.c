@@ -871,9 +871,10 @@ static int emac_probe(struct vmm_device *pdev,
 	/* fill in parameters for net-dev structure */
 	ndev->base_addr = (unsigned long)db->membase;
 
-	ret = vmm_devtree_irq_get(np, &ndev->irq, 0);
-	if (ret) {
+	ndev->irq = irq_of_parse_and_map(np, 0);
+	if (!ndev->irq) {
 		vmm_printf("%s: No irq resource\n", __func__);
+		ret = -ENODEV;
 		goto out;
 	}
 

@@ -856,9 +856,9 @@ static int spi_imx_probe(struct vmm_device *dev,
 		goto out_gpio_free;
 	}
 
-	ret = vmm_devtree_irq_get(dev->node, &spi_imx->irq, 0);
-	if (VMM_OK != ret) {
-		ret = PTR_ERR(spi_imx->base);
+	spi_imx->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!spi_imx->irq) {
+		ret = VMM_ENODEV;
 		goto out_gpio_free;
 	}
 

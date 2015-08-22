@@ -205,8 +205,9 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	rc = vmm_devtree_irq_get(dev->node, &port->irq, 0);
-	if (rc) {
+	port->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	if (!port->irq) {
+		rc = VMM_ENODEV;
 		goto free_reg;
 	}
 	if ((rc = vmm_host_irq_register(port->irq, dev->name,

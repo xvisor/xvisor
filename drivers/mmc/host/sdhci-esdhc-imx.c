@@ -935,7 +935,9 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 		goto free_sdhci;
 	}
 
-	if (vmm_devtree_irq_get(dev->node, (u32 *)&host->irq, 0)) {
+	host->irq = irq_of_parse_and_map(dev->node, 0);
+	if (!host->irq) {
+		err = VMM_ENODEV;
 		dev_err(dev, "fail to get IRQ from the device tree\n");
 		goto free_reg;
 	}

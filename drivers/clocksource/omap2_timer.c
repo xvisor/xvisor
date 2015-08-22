@@ -292,9 +292,9 @@ static int __cpuinit gpt_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	/* Read irq attribute */
-	rc = vmm_devtree_irq_get(node, &hirq, 0);
-	if (rc) {
-		return rc;
+	hirq = vmm_devtree_irq_parse_map(node, 0);
+	if (!hirq) {
+		return VMM_ENODEV;
 	}
 
 	/* Alloc GPT clockchip */

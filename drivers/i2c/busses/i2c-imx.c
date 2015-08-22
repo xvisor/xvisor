@@ -652,13 +652,13 @@ static int i2c_imx_probe(struct vmm_device *dev,
 
 	if (!vmm_devtree_is_available(dev->node)) {
 		dev_info(dev, "device is disabled\n");
-		return ret;
+		return -ENODEV;
 	}
 
-	ret = vmm_devtree_irq_get(dev->node, &irq, 0);
-	if (VMM_OK != ret) {
+	irq = irq_of_parse_and_map(dev->node, 0);
+	if (!irq) {
 		dev_err(dev, "can't get irq number\n");
-		return ret;
+		return -ENODEV;
 	}
 
 	ret = vmm_devtree_request_regmap(dev->node, &base, 0, "i.MX I2C");
