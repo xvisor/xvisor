@@ -51,3 +51,4 @@ cpu-objs-$(CONFIG_VEXT_AMD_SVM)+= vm/amd/amd_svm.o
 cpu-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/intel/intel_vmcs.o
 cpu-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/intel/intel_vmx.o
 cpu-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/intel/ivmx_helper.o
+cpu-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/intel/intel_intercept.o

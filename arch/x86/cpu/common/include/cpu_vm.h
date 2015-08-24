@@ -135,11 +135,15 @@ struct vcpu_hw_context {
 	unsigned int		host_msr_count;
 	struct vmx_msr_entry	*host_msr_area;
 
+	void *vmx_on_region;
+
 	int itc_flag;  /* flags specifying which interceptions were
 			  registered for this vm. */
 	int itc_skip_flag;
 	u64 guest_start_pc; /* Guest will start execution from here (comes from DTS) */
 	physical_addr_t vmcb_pa;
+	physical_addr_t vmcs_pa;
+	physical_addr_t vmxon_region_pa;
 
 	/* on & exit handler */
 	void (*vcpu_run) (struct vcpu_hw_context *context);

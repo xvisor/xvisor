@@ -78,7 +78,10 @@ u32 vmx_vmentry_default0 __read_mostly;
 u32 cpu_has_vmx_ept_2mb __read_mostly;
 
 u64 vmx_ept_vpid_cap __read_mostly;
+u32 vmx_on_size __read_mostly;
 u8 cpu_has_vmx_ins_outs_instr_info __read_mostly;
+u32 vmxon_region_size __read_mostly;
+u32 vmxon_region_nr_pages __read_mostly;
 
 static u32 vmcs_revision_id __read_mostly;
 
@@ -123,10 +126,15 @@ static void __init vmx_display_features(void)
 /* Intel IA-32 manual 3B 27.5.1 p. 222 */
 void vmx_detect_capability(void)
 {
-	cpu_read_msr32(MSR_IA32_VMX_BASIC, &vmx_basic_msr_low, &vmx_basic_msr_high);
+	cpu_read_msr32(MSR_IA32_VMX_BASIC, &vmx_basic_msr_low,
+                       &vmx_basic_msr_high);
 
 	/* save the revision_id */
 	vmcs_revision_id = vmx_basic_msr_low;
+
+	vmxon_region_size = VMM_ROUNDUP2_PAGE_SIZE(vmx_basic_msr_high
+						   & 0x1ffful);
+	vmxon_region_nr_pages = VMM_SIZE_TO_PAGE(vmxon_region_size);
 
 	/* Determine the default1 and default0 for control msrs
 	 *
@@ -179,14 +187,16 @@ void vmx_detect_capability(void)
 	}
 
 	/* detect EPT and VPID capability */
-	if (vmx_cpu_based_exec_default1 & CPU_BASED_ACTIVATE_SECONDARY_CONTROLS) {
+	if (vmx_cpu_based_exec_default1
+            & CPU_BASED_ACTIVATE_SECONDARY_CONTROLS) {
 		cpu_read_msr32(MSR_IA32_VMX_PROCBASED_CTLS2,
 			     &vmx_secondary_exec_default1,
 			     &vmx_secondary_exec_default0);
 
 		/* The IA32_VMX_EPT_VPID_CAP MSR exists only when EPT or VPID available */
-		if (vmx_secondary_exec_default1 & (SECONDARY_EXEC_ENABLE_EPT |
-						   SECONDARY_EXEC_ENABLE_VPID)) {
+		if (vmx_secondary_exec_default1
+		    & (SECONDARY_EXEC_ENABLE_EPT
+		       | SECONDARY_EXEC_ENABLE_VPID)) {
 			vmx_ept_vpid_cap = cpu_read_msr(MSR_IA32_VMX_EPT_VPID_CAP);
 		}
 	}
@@ -208,21 +218,30 @@ struct vmcs *alloc_vmcs(void)
 {
 	struct vmcs *vmcs;
 
-	/* FIXME: Here the alignment of allocation should be considered */
-	const unsigned long pfn = vmm_host_alloc_pages(1, VMM_MEMORY_FLAGS_IO);
+	vmcs  = (struct vmcs *)vmm_host_alloc_pages(1, /* number of pages */
+						    VMM_MEMORY_FLAGS_IO);
 
-	//vmm_printf("Free page for vmcb: %x\n", pfn);
-	vmcs = (struct vmcs *) (pfn << PAGE_SHIFT);
-	memset (( char *) vmcs, 0, PAGE_SIZE);
-
-	if ( vmcs != NULL ) {
-		vmcs->revision_id = vmcs_revision_id;
-	}
+	memset (( char *)vmcs, 0, (1 * PAGE_SIZE));
 
 	return vmcs;
 }
 
-struct vmcs* create_vmcs ( void )
+void *alloc_vmx_on_region(void)
+{
+	void *vmcs;
+
+	vmcs  = (void *)vmm_host_alloc_pages(vmxon_region_nr_pages, /* number of pages */
+					     VMM_MEMORY_FLAGS_IO);
+
+	if (!vmcs)
+		return NULL;
+
+	memset (( char *)vmcs, 0, (vmxon_region_nr_pages * PAGE_SIZE));
+
+	return vmcs;
+}
+
+struct vmcs* create_vmcs(void)
 {
 	/* verify settings */
 
@@ -247,10 +266,12 @@ struct vmcs* create_vmcs ( void )
 	/* Alloc a page for vmcs */
 	struct vmcs* vmcs = alloc_vmcs();
 
+	vmcs->revision_id = vmcs_revision_id;
+
 	return vmcs;
 }
 
-static void vmcs_init_host_env()
+static void vmcs_init_host_env(void)
 {
 	unsigned long cr0, cr4;
 	struct {
@@ -297,7 +318,7 @@ static void vmcs_init_host_env()
 
 }
 
-void vmx_set_control_params (struct vcpu_hw_context *context)
+void vmx_set_control_params(struct vcpu_hw_context *context)
 {
 	/* Initialize pin based control */
 	__vmwrite(PIN_BASED_VM_EXEC_CONTROL, vmx_pin_based_exec_control);
@@ -305,17 +326,18 @@ void vmx_set_control_params (struct vcpu_hw_context *context)
 	/* Initialize cpu based control */
 	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_SECONDARY_CONTROLS;
 
-	// IO bitmap
+	/* IO bitmap */
 	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_IO_BITMAP;
 
+        /* A and B - 4K each */
 	context->icept_table.io_table_phys =
 		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(8 << 10),
 						&context->icept_table.io_table_virt);
 
 	__vmwrite(IO_BITMAP_A, context->icept_table.io_table_virt);
-	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_virt + PAGE_SIZE);
+	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_virt + VMM_PAGE_SIZE);
 
-	// MSR bitmap
+	/* MSR bitmap */
 	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_MSR_BITMAP;
 
 	context->icept_table.msr_table_phys =
@@ -326,6 +348,7 @@ void vmx_set_control_params (struct vcpu_hw_context *context)
 
 	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_cpu_based_exec_control);
 
+#if defined(CONFIG_SLAT_SUPPORT)
 	/* Enable Extended Page Table (nested paging) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_EPT;
 
@@ -336,6 +359,7 @@ void vmx_set_control_params (struct vcpu_hw_context *context)
 	vmx_ept_control.asr = context->n_cr3; // nested cr3
 
 	__vmwrite(EPT_POINTER, vmx_ept_control.eptp);
+#endif
 
 	/* Enable Virtual-Processor Identification (asid) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_VPID;
@@ -358,52 +382,167 @@ void vmx_set_control_params (struct vcpu_hw_context *context)
 }
 
 struct xgt_desc {
-    unsigned short size;
-    unsigned long address __attribute__((packed));
+	unsigned short size;
+	unsigned long address __attribute__((packed));
 };
 
 void vmx_save_host_state(struct vcpu_hw_context *context)
 {
 	unsigned long rsp;
 
-    /*
-     * Skip end of cpu_user_regs when entering the hypervisor because the
-     * CPU does not save context onto the stack. SS,RSP,CS,RIP,RFLAGS,etc
-     * all get saved into the VMCS instead.
-     */
+	/*
+	 * Skip end of cpu_user_regs when entering the hypervisor because the
+	 * CPU does not save context onto the stack. SS,RSP,CS,RIP,RFLAGS,etc
+	 * all get saved into the VMCS instead.
+	 */
 	__asm__ __volatile__ ("movq %%rsp, %0 \n\t" : "=r"(rsp));
-    __vmwrite(HOST_RSP, rsp);
+	__vmwrite(HOST_RSP, rsp);
 }
 
 void vmx_disable_intercept_for_msr(struct vcpu_hw_context *context, u32 msr)
 {
-    unsigned long *msr_bitmap = (unsigned long *)context->icept_table.msr_table_virt;
+	unsigned long *msr_bitmap = (unsigned long *)context->icept_table.msr_table_virt;
 
-    /* VMX MSR bitmap supported? */
-    if ( msr_bitmap == NULL )
-        return;
+	/* VMX MSR bitmap supported? */
+	if (msr_bitmap == NULL)
+		return;
 
-    /*
-     * See Intel PRM Vol. 3, 20.6.9 (MSR-Bitmap Address). Early manuals
-     * have the write-low and read-high bitmap offsets the wrong way round.
-     * We can control MSRs 0x00000000-0x00001fff and 0xc0000000-0xc0001fff.
-     */
-    if ( msr <= 0x1fff )
-    {
-        clear_bit(msr, msr_bitmap + 0x000/BYTES_PER_LONG); /* read-low */
-        clear_bit(msr, msr_bitmap + 0x800/BYTES_PER_LONG); /* write-low */
-    }
-    else if ( (msr >= 0xc0000000) && (msr <= 0xc0001fff) )
-    {
-        msr &= 0x1fff;
-        clear_bit(msr, msr_bitmap + 0x400/BYTES_PER_LONG); /* read-high */
-        clear_bit(msr, msr_bitmap + 0xc00/BYTES_PER_LONG); /* write-high */
-    }
+	/*
+	 * See Intel PRM Vol. 3, 20.6.9 (MSR-Bitmap Address). Early manuals
+	 * have the write-low and read-high bitmap offsets the wrong way round.
+	 * We can control MSRs 0x00000000-0x00001fff and 0xc0000000-0xc0001fff.
+	 */
+	if (msr <= 0x1fff) {
+		clear_bit(msr, msr_bitmap + 0x000/BYTES_PER_LONG); /* read-low */
+		clear_bit(msr, msr_bitmap + 0x800/BYTES_PER_LONG); /* write-low */
+	} else if ((msr >= 0xc0000000) && (msr <= 0xc0001fff)) {
+		msr &= 0x1fff;
+		clear_bit(msr, msr_bitmap + 0x400/BYTES_PER_LONG); /* read-high */
+		clear_bit(msr, msr_bitmap + 0xc00/BYTES_PER_LONG); /* write-high */
+	}
+}
+
+void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
+{
+	physical_addr_t gcr3_pa;
+	struct vmcb *vmcb = context->vmcb;
+
+	/* MSR intercepts. */
+	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
+	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
+	__vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
+
+	__vmwrite(VM_ENTRY_INTR_INFO, 0);
+
+	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
+	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
+
+	__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
+	__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
+
+	__vmwrite(CR3_TARGET_COUNT, 0);
+
+	__vmwrite(GUEST_ACTIVITY_STATE, 0);
+
+	/*
+	 * Make the CS.RIP point to 0xFFFF0. The reset vector. The Bios seems
+	 * to be linked in a fashion that the reset vectors lies at0x3fff0.
+	 * The guest physical address will be 0xFFFF0 when the first page fault
+	 * happens in paged real mode. Hence, the the bios is loaded at 0xc0c0000
+	 * so that 0xc0c0000 + 0x3fff0 becomes 0xc0ffff0 => The host physical
+	 * for reset vector. Everything else then just falls in place.
+	 */
+
+	/* Guest segment bases. */
+	__vmwrite(GUEST_ES_BASE, 0);
+	__vmwrite(GUEST_ES_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_ES_AR_BYTES, 0x93);
+	__vmwrite(GUEST_ES_SELECTOR, 0);
+
+	__vmwrite(GUEST_SS_BASE, 0);
+	__vmwrite(GUEST_SS_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_SS_AR_BYTES, 0x193);
+	__vmwrite(GUEST_SS_SELECTOR, 0);
+
+	__vmwrite(GUEST_DS_BASE, 0);
+	__vmwrite(GUEST_DS_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_DS_AR_BYTES, 0x93);
+	__vmwrite(GUEST_DS_SELECTOR, 0);
+
+	__vmwrite(GUEST_FS_BASE, 0);
+	__vmwrite(GUEST_FS_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_FS_AR_BYTES, 0x93);
+	__vmwrite(GUEST_FS_SELECTOR, 0);
+
+	__vmwrite(GUEST_GS_BASE, 0);
+	__vmwrite(GUEST_GS_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_GS_AR_BYTES, 0x93);
+	__vmwrite(GUEST_GS_SELECTOR, 0);
+
+	__vmwrite(GUEST_CS_BASE, 0xF0000);
+	__vmwrite(GUEST_CS_LIMIT, 0xFFFF);
+	__vmwrite(GUEST_CS_AR_BYTES, 0x19b);
+	__vmwrite(GUEST_CS_SELECTOR, 0xF000);
+
+	/* Guest IDT. */
+	__vmwrite(GUEST_IDTR_BASE, 0);
+	__vmwrite(GUEST_IDTR_LIMIT, 0);
+
+	/* Guest GDT. */
+	__vmwrite(GUEST_GDTR_BASE, 0);
+	__vmwrite(GUEST_GDTR_LIMIT, 0xFFFF);
+
+	/* Guest LDT. */
+	__vmwrite(GUEST_LDTR_AR_BYTES, 0x0082); /* LDT */
+	__vmwrite(GUEST_LDTR_SELECTOR, 0);
+	__vmwrite(GUEST_LDTR_BASE, 0);
+	__vmwrite(GUEST_LDTR_LIMIT, 0xFFFF);
+
+	/* Guest TSS. */
+	__vmwrite(GUEST_TR_AR_BYTES, 0x008b); /* 32-bit TSS (busy) */
+	__vmwrite(GUEST_TR_BASE, 0);
+	__vmwrite(GUEST_TR_LIMIT, 0xFFFF);
+
+	__vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
+	__vmwrite(GUEST_DR7, 0);
+	__vmwrite(VMCS_LINK_POINTER, ~0UL);
+
+	__vmwrite(EXCEPTION_BITMAP, 0);
+
+	/* Control registers */
+	__vmwrite(GUEST_CR0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW | X86_CR0_PG));
+	__vmwrite(GUEST_CR3, 0);
+	__vmwrite(GUEST_CR4, 0);
+
+	/* G_PAT */
+	u64 host_pat, guest_pat;
+
+	host_pat = cpu_read_msr(MSR_IA32_CR_PAT);
+	guest_pat = MSR_IA32_CR_PAT_RESET;
+
+	__vmwrite(HOST_PAT, host_pat);
+	__vmwrite(GUEST_PAT, guest_pat);
+
+	/* Initial state */
+	__vmwrite(GUEST_RSP, 0x0);
+	__vmwrite(GUEST_RFLAGS, 0x2);
+	__vmwrite(GUEST_RIP, 0xFFF0);
+
+	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
+	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
+
+        /* Allocate shadow page table if we are not using SLAT */
+#if !defined(CONFIG_SLAT_SUPPORT)
+	if (vmm_host_va2pa((virtual_addr_t)context->shadow32_pgt, &gcr3_pa) != VMM_OK)
+		vmm_panic("ERROR: Couldn't convert guest shadow table virtual address to physical!\n");
+
+	/* Since this VCPU is in power-up stage, two-fold 32-bit page table apply to it */
+	vmcb->cr3 = gcr3_pa;
+#endif
 }
 
 void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
 {
-
 	/* MSR intercepts. */
 	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
 	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
@@ -563,9 +702,11 @@ int vmx_add_host_load_msr(struct vcpu_hw_context *context, u32 msr)
 	unsigned int i, msr_count = context->host_msr_count;
 	struct vmx_msr_entry *msr_area = context->host_msr_area;
 
-	if ( msr_area == NULL ) {
-		if ( (msr_area = (struct vmx_msr_entry *)vmm_host_alloc_pages(1, VMM_MEMORY_FLAGS_IO)) == NULL )
-			return -2;
+	if (msr_area == NULL) {
+		if ((msr_area = (struct vmx_msr_entry *)vmm_host_alloc_pages(1,
+									     VMM_MEMORY_FLAGS_IO))
+		    == NULL )
+			return VMM_ENOMEM;
 		context->host_msr_area = msr_area;
 		__vmwrite(VM_EXIT_MSR_LOAD_ADDR, (u64)msr_area);
 	}

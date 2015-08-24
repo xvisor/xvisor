@@ -410,6 +410,7 @@ static inline int __vmxon(u64 addr)
 
 #define EPT_PAGETABLE_ENTRIES       512
 
-extern void __init init_intel(struct vcpu_hw_context *context, struct cpuinfo_x86 *cpuinfo);
+extern int __init intel_init(struct cpuinfo_x86 *cpuinfo);
+extern int intel_setup_vm_control(struct vcpu_hw_context *context);
 
 #endif /* __VMX_H__ */

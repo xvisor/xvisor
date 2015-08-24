@@ -459,7 +459,7 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	return VMM_OK;
 }
 
-int init_amd(struct cpuinfo_x86 *cpuinfo)
+int amd_init(struct cpuinfo_x86 *cpuinfo)
 {
 	/* FIXME: SMP: This should be done by all CPUs? */
 	if (enable_svm (cpuinfo) != VMM_OK) {
