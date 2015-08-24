@@ -220,9 +220,7 @@ static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	int rc, cpuid;
 	u64 stack_start;
-	const char *attr;
 	extern struct cpuinfo_x86 cpu_info;
 
 	if (!vcpu->is_normal) {
@@ -235,18 +233,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		vcpu->regs.ss = VMM_DATA_SEG_SEL;
 		vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
-		rc = vmm_devtree_read_string(vcpu->node,
-				VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
-		if (rc) {
-			return rc;
-		}
-
-		if (strcmp(attr, "amd-k6") == 0) {
-			cpuid = x86_CPU_AMD_K6;
-		} else {
-			return VMM_EFAIL;
-		}
-
 		if (!vcpu->reset_count) {
 			vcpu->arch_priv = vmm_zalloc(sizeof(struct x86_vcpu_priv));
 
@@ -260,20 +246,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
 			x86_vcpu_priv(vcpu)->hw_context->assoc_vcpu = vcpu;
 
-			/*
-			 * !!KLUDGE!!
-			 * The Guest DTS tells the start PC for the guest. The core code
-			 * takes this start PC as the PC of the newly formed VCPU. This
-			 * address can not be used by the processor to run. The newly
-			 * formed VCPU has to run a trampoline code which will run in loop
-			 * and switch processor's mode to guest mode and then run the processor
-			 * from the address specified in DTS.
-			 *
-			 * So we save this start PC read from DTS in the VCPU hardware context
-			 * and when this VCPU switches to guest mode, it will make processor
-			 * run from this address.
-			 */
-			x86_vcpu_priv(vcpu)->hw_context->guest_start_pc = vcpu->start_pc;
 			x86_vcpu_priv(vcpu)->hw_context->vcpu_emergency_shutdown = arch_vcpu_emergency_shutdown;
 			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);
 
