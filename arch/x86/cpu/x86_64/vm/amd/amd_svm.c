@@ -62,24 +62,6 @@ static virtual_addr_t host_save_area;
 
 extern void handle_vcpuexit(struct vcpu_hw_context *context);
 
-void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
-{
-	u32 byte_offset = ioport >> 3;
-	u8 port_offset = ioport & 0x7;
-
-	u8 *iop_base = (u8 *)(context->icept_table.io_table_virt + byte_offset);
-	*iop_base |= (0x1 << port_offset);
-}
-
-void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
-{
-	u32 byte_offset = ioport >> 3;
-	u8 port_offset = ioport & 0x7;
-
-	u8 *iop_base = (u8 *)context->icept_table.io_table_virt + byte_offset;
-	*iop_base &= ~(0x1 << port_offset);
-}
-
 static virtual_addr_t alloc_host_save_area(void)
 {
 	/* FIXME: Make it write back */

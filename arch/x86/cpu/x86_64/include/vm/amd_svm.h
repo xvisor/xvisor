@@ -43,8 +43,6 @@ static inline void stgi(void)
 
 extern int amd_setup_vm_control(struct vcpu_hw_context *context);
 extern int init_amd(struct cpuinfo_x86 *cpuinfo);
-extern void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport);
-extern void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport);
 
 #endif
 

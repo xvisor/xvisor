@@ -109,6 +109,24 @@ void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 	}
 }
 
+void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+{
+	u32 byte_offset = ioport >> 3;
+	u8 port_offset = ioport & 0x7;
+
+	u8 *iop_base = (u8 *)(context->icept_table.io_table_virt + byte_offset);
+	*iop_base |= (0x1 << port_offset);
+}
+
+void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+{
+	u32 byte_offset = ioport >> 3;
+	u8 port_offset = ioport & 0x7;
+
+	u8 *iop_base = (u8 *)context->icept_table.io_table_virt + byte_offset;
+	*iop_base &= ~(0x1 << port_offset);
+}
+
 int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 			     struct vcpu_hw_context *context)
 {
