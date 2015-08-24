@@ -305,7 +305,7 @@ static inline void cpu_write_msr(u32 msr, u64 value)
 		      ::"a"(a),"d"(d),"c"(msr));
 }
 
-static inline void cp_write_msr32(u32 msr, u32 high, u32 low)
+static inline void cpu_write_msr32(u32 msr, u32 high, u32 low)
 {
 	asm volatile ("wrmsr\n\t"
 		      ::"a"(high),"d"(low),"c"(msr));
