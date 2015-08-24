@@ -728,7 +728,7 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 
 	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
 	if (VMM_OK != rc) {
-		return rc;
+		goto fail;
 	}
 
 	if (!len) {
