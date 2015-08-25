@@ -1047,6 +1047,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	vmm_devtree_for_each_child(rnode, aspace->node) {
 		rc = region_add(guest, rnode, NULL, NULL);
 		if (rc) {
+			vmm_devtree_dref_node(rnode);
 			return rc;
 		}
 	}

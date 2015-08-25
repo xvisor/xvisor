@@ -570,20 +570,24 @@ struct vmm_devtree_node *vmm_devtree_next_child(
 					const struct vmm_devtree_node *node,
 					struct vmm_devtree_node *current);
 
-/** Itreate over each child node of a device tree node */
+/** Itreate over each child node of a device tree node
+ *  NOTE: If we need to break-out of the loop in-between then
+ *  we will need use vmm_devtree_dref_node() on child node of
+ *  current iteration just before breaking-out loop.
+ */
 #define vmm_devtree_for_each_child(child, node) \
 	for (child = vmm_devtree_next_child(node, NULL); child; \
 	     child = vmm_devtree_next_child(node, child))
 
-/**     vmm_devtree_get_child_by_name - Find the child node by name for a given parent
- *      @node:  parent node
- *      @name:  child name to look for.
+/** Find the child node by name for a given parent
+ *  @node:  parent node
+ *  @name:  child name to look for.
  *
- *      This function looks for child node for given matching name
+ *  This function looks for child node for given matching name
  *
- *      Returns a node pointer if found, with refcount incremented, use
- *      vmm_devtree_dref_node() on it when done.
- *      Returns NULL if node is not found.
+ *  Returns a node pointer if found, with refcount incremented, use
+ *  vmm_devtree_dref_node() on it when done.
+ *  Returns NULL if node is not found.
  */
 struct vmm_devtree_node *vmm_devtree_get_child_by_name(
 					struct vmm_devtree_node *node,

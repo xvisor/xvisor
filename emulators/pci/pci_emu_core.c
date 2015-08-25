@@ -269,6 +269,7 @@ static int pci_emu_enumerate_bars(struct vmm_guest *guest,
 		if (rc) {
 			vmm_printf("%s: Bar number not specified for %s\n",
 				   __func__, bars->name);
+			vmm_devtree_dref_node(bars);
 			goto done;
 		}
 
@@ -276,14 +277,17 @@ static int pci_emu_enumerate_bars(struct vmm_guest *guest,
 			vmm_printf("%s: Bar number for %s is out of range: %d\n",
 				   __func__, bars->name, barnum);
 			rc = VMM_EINVALID;
+			vmm_devtree_dref_node(bars);
 			goto done;
 		}
 
 		vmm_sprintf(reg_name, "%s@%s", bars->name, bus_node->name);
 		/* FIXME: Unmap previously register bars, or let it go??? */
-		if ((rc = pci_emu_register_bar(guest, reg_name, class, barnum, bars)) != VMM_OK) {
+		if ((rc = pci_emu_register_bar(guest, reg_name,
+					class, barnum, bars)) != VMM_OK) {
 			vmm_printf("%s: Failed to register bar region %s\n",
 				   __func__, reg_name);
+			vmm_devtree_dref_node(bars);
 			goto done;
 		}
 	}
@@ -338,6 +342,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 				pdev = vmm_zalloc(sizeof(struct pci_device));
 				if (!pdev) {
 					/* FIXME: more cleanup to do */
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(dev_node);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
@@ -352,6 +357,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 					vmm_printf("%s: error getting device ID information.\n",
 						   __func__);
 					vmm_free(pdev);
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(dev_node);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
@@ -363,6 +369,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 					vmm_printf("%s: %s/%s probe error %d\n",
 						   __func__, guest->name, pdev->node->name, rc);
 					vmm_free(pdev);
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(dev_node);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
@@ -373,6 +380,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 					vmm_printf("%s: %s/%s reset error %d\n",
 						   __func__, guest->name, pdev->node->name, rc);
 					vmm_free(pdev);
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(dev_node);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
@@ -385,6 +393,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 					vmm_printf("%s: %s/%s couldn't attach PCI device to bus.\n",
 						   __func__, guest->name, pdev->node->name);
 					vmm_free(pdev);
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(dev_node);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
@@ -396,6 +405,7 @@ int pci_emu_probe_devices(struct vmm_guest *guest,
 				vmm_devtree_dref_node(dev_node);
 				if (rc != VMM_OK) {
 					vmm_free(pdev);
+					vmm_devtree_dref_node(tnode);
 					vmm_devtree_dref_node(devs_node);
 					vmm_mutex_unlock(&pci_emu_dectrl.emu_lock);
 					return rc;

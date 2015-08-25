@@ -1129,6 +1129,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No more free VCPUs\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 		if (vmm_devtree_read_string(vnode,
@@ -1136,12 +1137,14 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_printf("%s: No device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_VCPU) != 0) {
 			vmm_printf("%s: Invalid device_type attribute\n"
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 
@@ -1162,6 +1165,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   "for Guest %s VCPU %s\n",
 				   __func__, gnode->name, vnode->name);
 			vmm_manager_unlock();
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 
@@ -1177,6 +1181,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				   __func__, gnode->name, vnode->name);
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 		vmm_devtree_ref_node(vnode);
@@ -1206,7 +1211,8 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
-			goto fail_destroy_guest;
+			vmm_devtree_dref_node(vnode);
+			goto fail_dref_vsnode;
 		}
 		vcpu->stack_sz = CONFIG_IRQ_STACK_SIZE;
 
@@ -1272,6 +1278,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 
@@ -1287,6 +1294,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 
@@ -1307,6 +1315,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			mngr.vcpu_count--;
 			mngr.vcpu_avail_array[vcpu->id] = TRUE;
 			vmm_manager_unlock();
+			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
 		}
 
@@ -1347,6 +1356,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 					mngr.vcpu_count--;
 					mngr.vcpu_avail_array[vcpu->id] = TRUE;
 					vmm_manager_unlock();
+					vmm_devtree_dref_node(vnode);
 					goto fail_dref_vsnode;
 				}
 				index++;
@@ -1369,6 +1379,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 				mngr.vcpu_count--;
 				mngr.vcpu_avail_array[vcpu->id] = TRUE;
 				vmm_manager_unlock();
+				vmm_devtree_dref_node(vnode);
 				goto fail_dref_vsnode;
 			}
 

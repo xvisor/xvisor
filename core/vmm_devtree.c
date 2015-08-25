@@ -1140,7 +1140,7 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 {
 	u32 len;
 	bool found;
-	struct vmm_devtree_node *child;
+	struct vmm_devtree_node *np, *tp, *child;
 
 	if (!path || !node)
 		return NULL;
@@ -1149,9 +1149,10 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 		path++;
 	}
 
+	np = node;
 	while (*path) {
 		found = FALSE;
-		vmm_devtree_for_each_child(child, node) {
+		vmm_devtree_for_each_child(child, np) {
 			len = strlen(child->name);
 			if (strncmp(child->name, path, len) == 0) {
 				found = TRUE;
@@ -1168,16 +1169,24 @@ struct vmm_devtree_node *vmm_devtree_getchild(struct vmm_devtree_node *node,
 				break;
 			}
 		}
-		if (!found)
+		if (!found) {
+			for (tp = np; tp && (tp != node); tp = tp->parent) {
+				vmm_devtree_dref_node(tp);
+			}
 			return NULL;
-		node = child;
+		}
+		np = child;
 	};
 
-	if (node) {
-		vmm_devtree_ref_node(node);
+	if (np) {
+		vmm_devtree_ref_node(np);
 	}
 
-	return node;
+	for (tp = np; tp && (tp != node); tp = tp->parent) {
+		vmm_devtree_dref_node(tp);
+	}
+
+	return np;
 }
 
 struct vmm_devtree_node *vmm_devtree_getnode(const char *path)
@@ -1259,6 +1268,7 @@ struct vmm_devtree_node *vmm_devtree_find_matching(
 	vmm_devtree_for_each_child(child, node) {
 		ret = vmm_devtree_find_matching(child, matches);
 		if (ret) {
+			vmm_devtree_dref_node(child);
 			return ret;
 		}
 	}
@@ -1368,6 +1378,7 @@ static struct vmm_devtree_node *recursive_find_node_by_phandle(
 	vmm_devtree_for_each_child(child, node) {
 		ret = recursive_find_node_by_phandle(child, phandle);
 		if (ret) {
+			vmm_devtree_dref_node(child);
 			break;
 		}
 	}
@@ -1655,7 +1666,14 @@ struct vmm_devtree_node *vmm_devtree_next_child(
 					struct vmm_devtree_node,
 					head);
 	}
+	if (ret) {
+		vmm_devtree_ref_node(ret);
+	}
 	vmm_read_unlock_irqrestore_lite(&np->child_lock, flags);
+
+	if (current) {
+		vmm_devtree_dref_node(current);
+	}
 
 	return ret;
 }
@@ -1666,9 +1684,8 @@ struct vmm_devtree_node *vmm_devtree_get_child_by_name(
 {
 	struct vmm_devtree_node *ret = NULL, *child = NULL;
 
-	vmm_devtree_for_each_child(node, child) {
+	vmm_devtree_for_each_child(child, node) {
 		if (child->name && (strcasecmp(child->name, name) == 0)) {
-			vmm_devtree_ref_node(child);
 			ret = child;
 			break;
 		}
@@ -1694,6 +1711,7 @@ struct vmm_devtree_node *vmm_devtree_addnode(struct vmm_devtree_node *parent,
 	if (parent) {
 		vmm_devtree_for_each_child(node, parent) {
 			if (strcmp(node->name, name) == 0) {
+				vmm_devtree_dref_node(node);
 				return NULL;
 			}
 		}
@@ -1743,9 +1761,11 @@ static int devtree_copynode_recursive(struct vmm_devtree_node *dst,
 	vmm_devtree_for_each_child(schild, src) {
 		child = vmm_devtree_addnode(dst, schild->name);
 		if (!child) {
+			vmm_devtree_dref_node(schild);
 			return VMM_EFAIL;
 		}
 		if ((rc = devtree_copynode_recursive(child, schild))) {
+			vmm_devtree_dref_node(schild);
 			return rc;
 		}
 	}

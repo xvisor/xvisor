@@ -167,10 +167,12 @@ int __init arch_smp_init_cpus(void)
 	if (rc) {
 		vmm_printf("%s: Failed to find reg property for boot cpu\n",
 			   __func__);
+		vmm_devtree_dref_node(dn);
 		vmm_devtree_dref_node(cpus);
 		return rc;
 	}
 	smp_read_ops(dn, 0);
+	vmm_devtree_dref_node(dn);
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
