@@ -75,8 +75,6 @@ struct generic_timer_context {
 	struct vmm_timer_event phys_ev;
 }__packed;
 
-u64 generic_timer_wakeup_timeout(void);
-
 int generic_timer_vcpu_context_init(void *vcpu_ptr,
 				    void **context,
 				    u32 phys_irq, u32 virt_irq);

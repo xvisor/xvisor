@@ -293,44 +293,6 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-u64 generic_timer_wakeup_timeout(void)
-{
-	u32 vtval = 0, ptval = 0;
-	u64 nsecs = 0;
-
-	if (generic_timer_hz == 0) {
-		return 0;
-	}
-	
-	if (generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_CTRL) &
-						GENERIC_TIMER_CTRL_ENABLE) {
-		ptval = generic_timer_reg_read(GENERIC_TIMER_REG_PHYS_TVAL);
-	}
-	
-	if (generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_CTRL) &
-						GENERIC_TIMER_CTRL_ENABLE) {
-		vtval = generic_timer_reg_read(GENERIC_TIMER_REG_VIRT_TVAL);
-		
-	}
-
-	if ((ptval > 0) && (vtval > 0)) {
-		nsecs = (ptval > vtval) ? vtval : ptval;
-	} else {
-		nsecs = (ptval > vtval) ? ptval : vtval;
-	}
-
-	if (nsecs) {
-		if (generic_timer_hz == 100000000) {
-			nsecs = nsecs * 10;
-		} else {
-			nsecs =
-			udiv64((nsecs * 1000000000), (u64)generic_timer_hz);
-		}
-	}
-
-	return nsecs;
-}
-
 static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
