@@ -247,6 +247,28 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	return VMM_OK;
 }
 
+bool vmm_vcpu_irq_wait_state(struct vmm_vcpu *vcpu)
+{
+	bool ret = FALSE;
+	irq_flags_t flags;
+
+	/* Sanity Checks */
+	if (!vcpu || !vcpu->is_normal) {
+		return VMM_EFAIL;
+	}
+
+	/* Lock VCPU WFI */
+	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
+
+	/* Read VCPU WFI state */
+	ret = vcpu->irqs.wfi.state;
+
+	/* Unlock VCPU WFI */
+	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock, flags);
+
+	return ret;
+}
+
 int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 {
 	int rc;

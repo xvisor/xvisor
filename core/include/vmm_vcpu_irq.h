@@ -47,6 +47,9 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs);
 /** Wait for irq on given vcpu indefinetly (no timeout) */
 #define vmm_vcpu_irq_wait(vcpu)	vmm_vcpu_irq_wait_timeout(vcpu, 0)
 
+/** Current state of Wait for irq on given vcpu */
+bool vmm_vcpu_irq_wait_state(struct vmm_vcpu *vcpu);
+
 /** Initialize interrupts for given vcpu */
 int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu);
 
