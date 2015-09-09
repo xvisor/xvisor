@@ -508,7 +508,7 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 
 	port->irq_high = vmm_devtree_irq_parse_map(np, 1);
 	port->irq = vmm_devtree_irq_parse_map(np, 0);
-	if (!port->irq || !port->irq_high) {
+	if (!port->irq) {
 		err = VMM_ENODEV;
 		goto out_irq_get;
 	}
@@ -536,8 +536,15 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 	} else {
 		/* setup one handler for each entry */
 		irq_name = vmm_malloc(PORT_NAME_LEN + 5);
-		snprintf(irq_name, PORT_NAME_LEN + 5, "gpio_mxc%d 0-15",
-			 port_num);
+		if (port->irq_high > 0) {
+			/* only pin 0-15 on first interrupt */
+			snprintf(irq_name, PORT_NAME_LEN + 5,
+				 "gpio_mxc%d 0-15", port_num);
+		} else {
+			/* pin 0-31 on uniq interrupt */
+			snprintf(irq_name, PORT_NAME_LEN + 5,
+				 "gpio_mxc%d 0-31", port_num);
+		}
 		err = vmm_host_irq_register(port->irq, irq_name,
 					    mx3_gpio_irq_handler, port);
 		if (VMM_OK != err)
