@@ -26,6 +26,7 @@ cpu-common-objs-y+=emulate_thumb.o
 cpu-common-objs-y+=emulate_psci.o
 cpu-common-objs-$(CONFIG_ARM_LOCKS)+=arm_locks.o
 cpu-common-objs-$(CONFIG_ARM_VGIC)+=vgic.o
+cpu-common-objs-$(CONFIG_ARM_VGIC)+=vgic_v2.o
 cpu-common-objs-$(CONFIG_ARM_GENERIC_TIMER)+=generic_timer.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae_entry_ttbl.o

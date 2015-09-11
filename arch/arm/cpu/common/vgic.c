@@ -29,7 +29,6 @@
 #include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
 #include <vmm_scheduler.h>
@@ -39,6 +38,8 @@
 #include <arch_regs.h>
 #include <arch_atomic.h>
 #include <libs/bitmap.h>
+
+#include <vgic.h>
 
 #define MODULE_DESC			"GICv2 HW-assisted Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -55,66 +56,15 @@
 #define DPRINTF(msg...)
 #endif
 
-#define GICD_MAX_NIRQ			1020
-
-#define GICC_EOI			0x10
-
-#define GICC2_DIR			0x0
-
-#define GICH_HCR			0x0
-#define GICH_VTR			0x4
-#define GICH_VMCR			0x8
-#define GICH_MISR			0x10
-#define GICH_EISR0 			0x20
-#define GICH_EISR1 			0x24
-#define GICH_ELRSR0 			0x30
-#define GICH_ELRSR1 			0x34
-#define GICH_APR			0xf0
-#define GICH_LR0			0x100
-
-#define GICH_HCR_EN			(1 << 0)
-#define GICH_HCR_UIE			(1 << 1)
-
-#define GICH_VTR_LRCNT_MASK		0x3f
-
-#define GICH_LR_MAX_COUNT		0x40
-
-#define GICH_LR_HW			(1 << 31)
-#define GICH_LR_STATE			(3 << 28)
-#define GICH_LR_PENDING			(1 << 28)
-#define GICH_LR_ACTIVE			(1 << 29)
-#define GICH_LR_PRIO_SHIFT		(23)
-#define GICH_LR_PRIO			(0x1F << GICH_LR_PRIO_SHIFT)
-#define GICH_LR_PHYSID_SHIFT		(10)
-#define GICH_LR_PHYSID			(0x3ff << GICH_LR_PHYSID_SHIFT)
-#define GICH_LR_PHYSID_EOI_SHIFT	(1 << 19)
-#define GICH_LR_PHYSID_EOI		(1 << GICH_LR_PHYSID_EOI_SHIFT)
-#define GICH_LR_PHYSID_CPUID_SHIFT	(10)
-#define GICH_LR_PHYSID_CPUID		(7 << GICH_LR_PHYSID_CPUID_SHIFT)
-#define GICH_LR_VIRTUALID		(0x3ff << 0)
-
-#define GICH_MISR_EOI			(1 << 0)
-#define GICH_MISR_U			(1 << 1)
-
 #define VGIC_MAX_NCPU			8
 #define VGIC_MAX_NIRQ			256
 #define VGIC_LR_UNKNOWN			0xFF
 
 struct vgic_host_ctrl {
 	bool avail;
-	bool cpu2_mapped;
-	physical_addr_t cpu_pa;
-	virtual_addr_t  cpu_va;
-	physical_addr_t cpu2_pa;
-	virtual_addr_t  cpu2_va;
-	physical_addr_t hctrl_pa;
-	virtual_addr_t  hctrl_va;
-	physical_addr_t vcpu_pa;
-	physical_size_t vcpu_sz;
-	virtual_addr_t  vcpu_va;
-	u32 maint_irq;
-	u32 lr_cnt;
-	atomic_t host2guest_irq[GICD_MAX_NIRQ];
+	struct vgic_ops ops;
+	struct vgic_params params;
+	atomic_t host2guest_irq[VGIC_MAX_IRQS];
 };
 
 static struct vgic_host_ctrl vgich;
@@ -135,14 +85,11 @@ struct vgic_vcpu_state {
 	u32 parent_irq;
 
 	/* Register state */
-	u32 hcr;
-	u32 vmcr;
-	u32 apr;
-	u32 lr[GICH_LR_MAX_COUNT];
+	struct vgic_hw_state hw;
 
 	/* Maintainence Info */
 	u32 lr_used_count;
-	u32 lr_used[GICH_LR_MAX_COUNT / 32];
+	u32 lr_used[VGIC_MAX_LRS / 32];
 	u8 irq_lr[VGIC_MAX_NIRQ][VGIC_MAX_NCPU];
 };
 
@@ -194,7 +141,7 @@ struct vgic_guest_state {
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
 #define VGIC_TEST_TRIGGER(s, irq) \
-	(((irq < 32) || ((s)->irq_state[irq].host_irq < GICD_MAX_NIRQ)) ? \
+	(((irq < 32) || ((s)->irq_state[irq].host_irq < VGIC_MAX_IRQS)) ? \
 	1 : (s)->irq_state[irq].trigger)
 #define VGIC_GET_PRIORITY(s, irq, cpu) \
 	(((irq) < 32) ? (s)->priority1[irq][cpu] : (s)->priority2[(irq) - 32])
@@ -216,10 +163,6 @@ struct vgic_guest_state {
 #define VGIC_CLEAR_ELRSR(vs, lr) \
 	((elrsr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1F)))
 
-#define VGIC_MAKE_LR_PENDING(irq) (GICH_LR_PENDING | (irq))
-#define VGIC_LR_CPUID(lr_val) \
-	(((lr_val) & GICH_LR_PHYSID_CPUID) >> GICH_LR_PHYSID_CPUID_SHIFT)
-
 #define VGIC_HAVE_LR_USED(vs) ((vs)->lr_used_count)
 #define VGIC_TEST_LR_USED(vs, lr) \
 	((vs)->lr_used[((lr) >> 5)] & (1 << ((lr) & 0x1F)))
@@ -237,35 +180,6 @@ struct vgic_guest_state {
 #define VGIC_SET_LR_MAP(vs, irq, src_id, lr) ((vs)->irq_lr[irq][src_id] = (lr))
 #define VGIC_GET_LR_MAP(vs, irq, src_id) ((vs)->irq_lr[irq][src_id])
 
-/* Save current VGIC VCPU HW state */
-static void __vgic_save_vcpu_hwstate(struct vgic_vcpu_state *vs)
-{
-	u32 i;
-
-	vs->hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
-	vs->vmcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_VMCR);
-	vs->apr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_APR);
-	vmm_writel_relaxed(0x0, (void *)vgich.hctrl_va + GICH_HCR);
-	for (i = 0; i < vgich.lr_cnt; i++) {
-		vs->lr[i] =
-		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_LR0 + 4*i);
-	}
-}
-
-/* Restore current VGIC VCPU HW state */
-static void __vgic_restore_vcpu_hwstate(struct vgic_vcpu_state *vs)
-{
-	u32 i;
-
-	vmm_writel_relaxed(vs->hcr, (void *)vgich.hctrl_va + GICH_HCR);
-	vmm_writel_relaxed(vs->vmcr, (void *)vgich.hctrl_va + GICH_VMCR);
-	vmm_writel_relaxed(vs->apr, (void *)vgich.hctrl_va + GICH_APR);
-	for (i = 0; i < vgich.lr_cnt; i++) {
-		vmm_writel_relaxed(vs->lr[i],
-				   (void *)vgich.hctrl_va + GICH_LR0 + 4*i);
-	}
-}
-
 /* Queue interrupt to given VCPU
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
@@ -274,34 +188,34 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 			     struct vgic_vcpu_state *vs,
 			     u8 src_id, u32 irq)
 {
-	register u32 hirq, lr, lrval;
+	register u32 hirq, lr;
+	struct vgic_lr lrv = { .virtid = 0, .physid = 0,
+			       .cpuid = 0, .prio = 0, .flags = 0 };
 
 	DPRINTF("%s: IRQ=%d SRC_ID=%d VCPU=%s\n",
 		__func__, irq, src_id, vs->vcpu->name);
 
 	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
-	if ((lr < vgich.lr_cnt) &&
+	if ((lr < vgich.params.lr_cnt) &&
 	    VGIC_TEST_LR_USED(vs, lr)) {
-		lrval =
-		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
-		if ((GICH_LR_VIRTUALID & lrval) == irq) {
-			if ((lrval & GICH_LR_HW) ||
-			    (VGIC_LR_CPUID(lrval) == src_id)) {
-				lrval |= GICH_LR_PENDING;
-				vmm_writel_relaxed(lrval,
-				  (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+		vgich.ops.get_lr(lr, &lrv);
+		if (lrv.virtid == irq) {
+			if ((lrv.flags & VGIC_LR_HW) ||
+			    (lrv.cpuid == src_id)) {
+				lrv.flags |= VGIC_LR_STATE_PENDING;
+				vgich.ops.set_lr(lr, &lrv);
 				return TRUE;
 			}
 		}
 	}
 
 	/* Try to use another LR for this interrupt */
-	for (lr = 0; lr < vgich.lr_cnt; lr++) {
+	for (lr = 0; lr < vgich.params.lr_cnt; lr++) {
 		if (!VGIC_TEST_LR_USED(vs, lr)) {
 			break;
 		}
 	}
-	if (lr >= vgich.lr_cnt) {
+	if (lr >= vgich.params.lr_cnt) {
 		vmm_printf("%s: LR overflow IRQ=%d SRC_ID=%d VCPU=%s\n",
 			   __func__, vs->vcpu->name, irq, src_id);
 		return FALSE;
@@ -312,17 +226,20 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	VGIC_SET_LR_MAP(vs, irq, src_id, lr);
 	VGIC_SET_LR_USED(vs, lr);
 
-	lrval = VGIC_MAKE_LR_PENDING(irq);
+	lrv.virtid = irq;
+	lrv.physid = 0;
+	lrv.prio = 0;
+	lrv.cpuid = 0;
+	lrv.flags = VGIC_LR_STATE_PENDING;
 	hirq = VGIC_GET_HOST_IRQ(s, irq);
-	if (hirq < GICD_MAX_NIRQ) {
-		lrval |= GICH_LR_HW;
-		lrval |= (hirq << GICH_LR_PHYSID_SHIFT) & GICH_LR_PHYSID;
+	if (hirq < VGIC_MAX_IRQS) {
+		lrv.flags |= VGIC_LR_HW;
+		lrv.physid = hirq;
 	} else {
-		lrval |= (src_id) << GICH_LR_PHYSID_CPUID_SHIFT;
+		lrv.cpuid = src_id;
 	}
 
-	DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
-	vmm_writel_relaxed(lrval, (void *)vgich.hctrl_va + GICH_LR0 + 4*lr);
+	vgich.ops.set_lr(lr, &lrv);
 
 	return TRUE;
 }
@@ -392,7 +309,7 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 					  u32 irq)
 {
 	bool overflow = FALSE;
-	u32 hcr, cm = (1 << vs->vcpu->subid);
+	u32 cm = (1 << vs->vcpu->subid);
 
 	if (!s->enabled) {
 		return;
@@ -415,9 +332,7 @@ static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
 	}
 
 	if (overflow) {
-		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
-		hcr |= GICH_HCR_UIE;
-		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+		vgich.ops.enable_underflow();
 	}
 }
 
@@ -429,7 +344,7 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 				      struct vgic_vcpu_state *vs)
 {
 	bool overflow = FALSE;
-	u32 hcr, irq, cm = (1 << vs->vcpu->subid);
+	u32 irq, cm = (1 << vs->vcpu->subid);
 
 	if (!s->enabled) {
 		return;
@@ -461,9 +376,7 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 
 done:
 	if (overflow) {
-		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
-		hcr |= GICH_HCR_UIE;
-		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+		vgich.ops.enable_underflow();
 	}
 }
 
@@ -474,10 +387,11 @@ done:
 static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 				     struct vgic_vcpu_state *vs)
 {
-	void *lr_base;
 	u32 elrsr[2];
+	struct vgic_lr lrv = { .virtid = 0, .physid = 0,
+			       .cpuid = 0, .prio = 0, .flags = 0 };
 	register u8 src_id;
-	register u32 lr, lrval, irq, cm = (1 << vs->vcpu->subid);
+	register u32 lr, irq, cm = (1 << vs->vcpu->subid);
 
 	/* If no LR used then skip */
 	if (!VGIC_HAVE_LR_USED(vs)) {
@@ -488,13 +402,7 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 	DPRINTF("%s: vcpu = %s\n", __func__, vs->vcpu->name);
 
 	/* Read empty LR status registers */
-	elrsr[0] = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_ELRSR0);
-	if (32 < vgich.lr_cnt) {
-		elrsr[1] =
-		vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_ELRSR1);
-	} else {
-		elrsr[1] = 0x0;
-	}
+	vgich.ops.read_elrsr(&elrsr[0], &elrsr[1]);
 
 	/* Print crucial registers */
 	DPRINTF("%s: ELRSR0 = %08x\n", __func__, elrsr[0]);
@@ -503,20 +411,18 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 	/* Re-claim empty LR registers */
 	elrsr[0] &= vs->lr_used[0];
 	elrsr[1] &= vs->lr_used[1];
-	lr_base = (void *)vgich.hctrl_va + GICH_LR0;
-	for (lr = 0; lr < vgich.lr_cnt; lr++) {
+	for (lr = 0; lr < vgich.params.lr_cnt; lr++) {
 		if (!VGIC_TEST_ELRSR(elrsr, lr)) {
 			continue;
 		}
 
 		/* Read and clear the LR register */
-		lrval = vmm_readl_relaxed(lr_base + 4*lr);
-		vmm_writel_relaxed(0x0, lr_base + 4*lr);
-		DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
+		vgich.ops.get_lr(lr, &lrv);
+		vgich.ops.clear_lr(lr);
 
 		/* Determine irq number & src_id */
-		irq = lrval & GICH_LR_VIRTUALID;
-		src_id = VGIC_LR_CPUID(lrval);
+		irq = lrv.virtid;
+		src_id = lrv.cpuid;
 
 		/* Should be a valid irq number */
 		BUG_ON(irq >= VGIC_MAX_NIRQ);
@@ -649,21 +555,14 @@ done:
 /* Handle maintainence IRQ generated by VGIC */
 static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 {
-	u32 misr, hcr;
 	irq_flags_t flags;
 	struct vgic_guest_state *s;
 	struct vgic_vcpu_state *vs;
 	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 
-	/* Read maintainence interrupt state */
-	misr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_MISR);
-	DPRINTF("%s: MISR = %08x\n", __func__, misr);
-
 	/* Clear underflow interrupt if enabled */
-	if (misr & GICH_MISR_U) {
-		hcr = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_HCR);
-		hcr &= ~GICH_HCR_UIE;
-		vmm_writel_relaxed(hcr, (void *)vgich.hctrl_va + GICH_HCR);
+	if (vgich.ops.check_underflow()) {
+		vgich.ops.disable_underflow();
 	}
 
 	/* We should not get this interrupt when not
@@ -697,7 +596,7 @@ static vmm_irq_return_t vgic_routed_irq(int irq_no, void *dev)
 	struct vgic_guest_state *s = dev;
 
 	/* Sanity check */
-	if (!s || (GICD_MAX_NIRQ <= hirq)) {
+	if (!s || (VGIC_MAX_IRQS <= hirq)) {
 		goto done;
 	}
 
@@ -754,7 +653,7 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	/* Save VGIC HW registers for VCPU */
-	__vgic_save_vcpu_hwstate(vs);
+	vgich.ops.save_state(&vs->hw);
 }
 
 /* Restore VCPU context for current VCPU */
@@ -771,7 +670,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	vs = &s->vstate[vcpu->subid];
 
 	/* Restore VGIC HW registers for VCPU */
-	__vgic_restore_vcpu_hwstate(vs);
+	vgich.ops.restore_state(&vs->hw);
 
 	/* Lock VGIC distributor state */
 	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
@@ -1279,7 +1178,7 @@ static int vgic_dist_emulator_write32(struct vmm_emudev *edev,
 
 static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 {
-	u32 i, j, k, hirq;
+	u32 i, j, k;
 	irq_flags_t flags;
 	struct vgic_guest_state *s = edev->priv;
 
@@ -1294,23 +1193,9 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	 * 2. Deactivate host/HW interrupts for pending LRs.
 	 */
 	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
-		for (j = 0 ; j < vgich.lr_cnt; j++) {
-			if ((s->vstate[i].lr[j] & GICH_LR_HW) &&
-			    (s->vstate[i].lr[j] & GICH_LR_PENDING)) {
-				hirq = s->vstate[i].lr[j] & GICH_LR_PHYSID;
-				hirq = hirq >> GICH_LR_PHYSID_SHIFT;
-				vmm_writel_relaxed(hirq,
-					(void *)vgich.cpu2_va + GICC2_DIR);
-			}
-		}
-		s->vstate[i].hcr = GICH_HCR_EN;
-		s->vstate[i].vmcr = 0;
-		s->vstate[i].apr = 0;
-		for (j = 0; j < vgich.lr_cnt; j++) {
-			s->vstate[i].lr[j] = 0x0;
-		}
+		vgich.ops.reset_state(&s->vstate[i].hw);
 		s->vstate[i].lr_used_count = 0x0;
-		for (j = 0; j < (GICH_LR_MAX_COUNT / 32); j++) {
+		for (j = 0; j < (VGIC_MAX_LRS / 32); j++) {
 			s->vstate[i].lr_used[j] = 0x0;
 		}
 		for (j = 0; j < VGIC_NUM_IRQ(s); j++) {
@@ -1487,7 +1372,7 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 			goto fail;
 		}
 
-		if ((hirq < 32) || (GICD_MAX_NIRQ <= hirq)) {
+		if ((hirq < 32) || (VGIC_MAX_IRQS <= hirq)) {
 			vmm_printf("%s: Invalid host-irq %d in entry %d\n",
 				   __func__, hirq, i);
 			rc = VMM_EINVALID;
@@ -1635,14 +1520,14 @@ static int vgic_cpu_emulator_probe(struct vmm_guest *guest,
 
 	rc = vmm_devtree_setattr(edev->node,
 				 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-				 &vgich.vcpu_pa,
+				 &vgich.params.vcpu_pa,
 				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-				 sizeof(vgich.vcpu_pa), FALSE);
+				 sizeof(vgich.params.vcpu_pa), FALSE);
 	if (rc) {
 		return rc;
 	}
 
-	edev->reg->hphys_addr = vgich.vcpu_pa;
+	edev->reg->hphys_addr = vgich.params.vcpu_pa;
 
 	return VMM_OK;
 }
@@ -1669,11 +1554,6 @@ static struct vmm_emulator vgic_cpu_emulator = {
 	.reset = vgic_cpu_emulator_reset,
 };
 
-static const struct vmm_devtree_nodeid vgic_host_match[] = {
-	{ .compatible	= "arm,cortex-a15-gic",	},
-	{},
-};
-
 static void vgic_enable_maint_irq(void *arg0, void *arg1, void *arg3)
 {
 	int rc;
@@ -1690,75 +1570,23 @@ static void vgic_enable_maint_irq(void *arg0, void *arg1, void *arg3)
 static int __init vgic_emulator_init(void)
 {
 	int i, rc;
-	struct vmm_devtree_node *node;
 
 	vgich.avail = FALSE;
 
-	node = vmm_devtree_find_matching(NULL, vgic_host_match);
-	if (!node) {
+	rc = vgic_v2_probe(&vgich.ops, &vgich.params);
+	if (rc == VMM_ENODEV) {
 		vmm_printf("vgic: GIC node not found\n");
 		rc = VMM_OK;
 		goto fail;
 	}
-
-	rc = vmm_devtree_regaddr(node, &vgich.cpu_pa, 1);
-	if (rc) {
-		goto fail_dref;
-	}
-
-	rc = vmm_devtree_regmap(node, &vgich.cpu_va, 1);
-	if (rc) {
-		goto fail_dref;
-	}
-
-	rc = vmm_devtree_regaddr(node, &vgich.cpu2_pa, 4);
-	if (!rc) {
-		vgich.cpu2_mapped = TRUE;
-		rc = vmm_devtree_regmap(node, &vgich.cpu2_va, 4);
-		if (rc) {
-			goto fail_unmap_cpu;
-		}
-	} else {
-		vgich.cpu2_mapped = FALSE;
-		vgich.cpu2_va = vgich.cpu_va + 0x1000;
-	}
-
-	rc = vmm_devtree_regaddr(node, &vgich.hctrl_pa, 2);
-	if (rc) {
-		goto fail_unmap_cpu2;
-	}
-
-	rc = vmm_devtree_request_regmap(node, &vgich.hctrl_va, 2,
-					"GIC HCTRL");
-	if (rc) {
-		goto fail_unmap_cpu2;
-	}
-
-	rc = vmm_devtree_regaddr(node, &vgich.vcpu_pa, 3);
-	if (rc) {
-		goto fail_unmap_hctrl;
-	}
-
-	rc = vmm_devtree_regsize(node, &vgich.vcpu_sz, 3);
-	if (rc) {
-		goto fail_unmap_hctrl;
-	}
-
-	rc = vmm_devtree_request_regmap(node, &vgich.vcpu_va, 3,
-					"GIC VCPU");
-	if (rc) {
-		goto fail_unmap_hctrl;
-	}
-
-	vgich.maint_irq = vmm_devtree_irq_parse_map(node, 0);
-	if (!vgich.maint_irq) {
-		rc = VMM_ENODEV;
-		goto fail_unmap_vcpu;
+	if (rc != VMM_OK) {
+		vmm_printf("vgic: vgic_v2_probe() return error %d\n", rc);
+		goto fail;
 	}
 
 	rc = vmm_devemu_register_emulator(&vgic_dist_emulator);
 	if (rc) {
-		goto fail_unmap_vcpu;
+		goto fail_unprobe;
 	}
 
 	rc = vmm_devemu_register_emulator(&vgic_cpu_emulator);
@@ -1766,43 +1594,24 @@ static int __init vgic_emulator_init(void)
 		goto fail_unreg_dist;
 	}
 
-	for (i = 0; i < GICD_MAX_NIRQ; i++) {
+	for (i = 0; i < VGIC_MAX_IRQS; i++) {
 		ARCH_ATOMIC_INIT(&vgich.host2guest_irq[i], -1);
 	}
 
-	vgich.avail = TRUE;
-
-	vgich.lr_cnt = vmm_readl_relaxed((void *)vgich.hctrl_va + GICH_VTR);
-	vgich.lr_cnt = (vgich.lr_cnt & GICH_VTR_LRCNT_MASK) + 1;
-
 	vmm_smp_ipi_async_call(cpu_online_mask, vgic_enable_maint_irq,
-			       (void *)(unsigned long)vgich.maint_irq,
+			       (void *)(unsigned long)vgich.params.maint_irq,
 			       vgic_maint_irq, NULL);
 
-	vmm_printf("vgic: hctrl=0x%lx vcpu=0x%lx\n",
-		   (unsigned long)vgich.hctrl_pa,
-		   (unsigned long)vgich.vcpu_pa);
-	vmm_printf("vgic: lr_cnt=%d maint_irq=%d\n",
-		   vgich.lr_cnt, vgich.maint_irq);
 	vmm_printf("vgic: emulator available\n");
 
-	vmm_devtree_dref_node(node);
+	vgich.avail = TRUE;
+
 	return VMM_OK;
 
 fail_unreg_dist:
 	vmm_devemu_unregister_emulator(&vgic_dist_emulator);
-fail_unmap_vcpu:
-	vmm_devtree_regunmap_release(node, vgich.vcpu_va, 3);
-fail_unmap_hctrl:
-	vmm_devtree_regunmap_release(node, vgich.hctrl_va, 2);
-fail_unmap_cpu2:
-	if (vgich.cpu2_mapped) {
-		vmm_devtree_regunmap(node, vgich.cpu2_va, 4);
-	}
-fail_unmap_cpu:
-	vmm_devtree_regunmap(node, vgich.cpu_va, 1);
-fail_dref:
-	vmm_devtree_dref_node(node);
+fail_unprobe:
+	vgic_v2_remove(&vgich.ops, &vgich.params);
 fail:
 	vmm_printf("vgic: emulator not available\n");
 	return rc;
@@ -1822,36 +1631,21 @@ static void vgic_disable_maint_irq(void *arg0, void *arg1, void *arg3)
 
 static void __exit vgic_emulator_exit(void)
 {
-	struct vmm_devtree_node *node;
-
-	node = vmm_devtree_find_matching(NULL, vgic_host_match);
-	if (!node) {
+	if (!vgich.avail) {
 		vmm_printf("%s: GIC node not found\n", __func__);
 		return;
 	}
 
-	if (vgich.avail) {
-		vmm_smp_ipi_async_call(cpu_online_mask,
-				       vgic_disable_maint_irq,
-				       (void *)(unsigned long)vgich.maint_irq,
-				       NULL, NULL);
+	vmm_smp_ipi_async_call(cpu_online_mask,
+			       vgic_disable_maint_irq,
+			       (void *)(unsigned long)vgich.params.maint_irq,
+			       NULL, NULL);
 
-		vmm_devemu_unregister_emulator(&vgic_cpu_emulator);
+	vmm_devemu_unregister_emulator(&vgic_cpu_emulator);
 
-		vmm_devemu_unregister_emulator(&vgic_dist_emulator);
+	vmm_devemu_unregister_emulator(&vgic_dist_emulator);
 
-		vmm_devtree_regunmap(node, vgich.vcpu_va, 3);
-
-		vmm_devtree_regunmap(node, vgich.hctrl_va, 2);
-
-		if (vgich.cpu2_mapped) {
-			vmm_devtree_regunmap(node, vgich.cpu2_va, 4);
-		}
-
-		vmm_devtree_regunmap(node, vgich.cpu_va, 1);
-	}
-
-	vmm_devtree_dref_node(node);
+	vgic_v2_remove(&vgich.ops, &vgich.params);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,
