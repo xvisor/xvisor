@@ -545,7 +545,6 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 
 void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 {
-	u64 pcnt;
 	struct vmm_vcpu *vcpu = vcpu_ptr;
 	struct generic_timer_context *cntx = context;
 
@@ -560,6 +559,17 @@ void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 		cntx->cntvoff = vmm_manager_guest_reset_timestamp(vcpu->guest);
 		cntx->cntvoff = cntx->cntvoff * generic_timer_hz;
 		cntx->cntvoff = udiv64(cntx->cntvoff, 1000000000ULL);
+	}
+}
+
+void generic_timer_vcpu_context_post_restore(void *vcpu_ptr, void *context)
+{
+	u64 pcnt;
+	struct vmm_vcpu *vcpu = vcpu_ptr;
+	struct generic_timer_context *cntx = context;
+
+	if (!cntx) {
+		return;
 	}
 
 	pcnt = generic_timer_pcounter_read();
@@ -589,4 +599,3 @@ void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context)
 	generic_timer_reg_write(GENERIC_TIMER_REG_VIRT_CTRL, cntx->cntvctl);
 #endif
 }
-

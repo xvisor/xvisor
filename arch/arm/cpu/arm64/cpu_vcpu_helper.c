@@ -762,7 +762,16 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
-	/* Nothing to do here. */
+	/* Nothing to do here for Orphan VCPUs */
+	if (!vcpu->is_normal) {
+		return;
+	}
+
+	/* Post restore generic timer */
+	if (arm_feature(vcpu, ARM_FEATURE_GENERIC_TIMER)) {
+		generic_timer_vcpu_context_post_restore(vcpu,
+						arm_gentimer_context(vcpu));
+	}
 }
 
 void arch_vcpu_preempt_orphan(void)

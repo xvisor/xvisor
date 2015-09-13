@@ -85,6 +85,8 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context);
 
 void generic_timer_vcpu_context_restore(void *vcpu_ptr, void *context);
 
+void generic_timer_vcpu_context_post_restore(void *vcpu_ptr, void *context);
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* __GENERIC_TIMER_H__ */
