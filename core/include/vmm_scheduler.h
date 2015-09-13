@@ -48,6 +48,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state,
 /** Retrive host CPU assigned to given VCPU */
 int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu);
 
+/** Check host CPU assigned to given VCPU is current host CPU */
+bool vmm_scheduler_check_current_hcpu(struct vmm_vcpu *vcpu);
+
 /** Update host CPU assigned to given VCPU */
 int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu);
 

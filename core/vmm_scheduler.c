@@ -510,6 +510,22 @@ int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 	return VMM_OK;
 }
 
+bool vmm_scheduler_check_current_hcpu(struct vmm_vcpu *vcpu)
+{
+	bool ret;
+	irq_flags_t flags;
+
+	if (vcpu == NULL) {
+		return FALSE;
+	}
+
+	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	ret = (vcpu->hcpu == vmm_smp_processor_id()) ? TRUE : FALSE;
+	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	return ret;
+}
+
 static void scheduler_ipi_migrate_vcpu(void *arg0, void *arg1, void *arg2)
 {
 	irq_flags_t flags;

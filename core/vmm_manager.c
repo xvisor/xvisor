@@ -278,6 +278,11 @@ int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)
 	return vmm_scheduler_get_hcpu(vcpu, hcpu);
 }
 
+bool vmm_manager_vcpu_check_current_hcpu(struct vmm_vcpu *vcpu)
+{
+	return vmm_scheduler_check_current_hcpu(vcpu);
+}
+
 int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu)
 {
 	return vmm_scheduler_set_hcpu(vcpu, hcpu);
