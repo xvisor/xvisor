@@ -166,6 +166,8 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 
 		vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
 
+		arch_vcpu_post_switch(next, regs);
+
 		return;
 	}
 
@@ -211,6 +213,10 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 	}
 
 	vmm_write_unlock_irqrestore_lite(&current->sched_lock, cf);
+
+	if (next != current) {
+		arch_vcpu_post_switch(next, regs);
+	}
 }
 
 static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,

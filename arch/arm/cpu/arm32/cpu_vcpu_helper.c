@@ -1060,6 +1060,12 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	clrex();
 }
 
+void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs)
+{
+	/* Nothing to do here. */
+}
+
 void arch_vcpu_preempt_orphan(void)
 {
 	/* Trigger SVC call from supervisor mode. This will cause
