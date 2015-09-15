@@ -95,7 +95,15 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 }
 
-static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
+static void vcpu_irq_wfi_try_resume(struct vmm_vcpu *vcpu, void *data)
+{
+	/* Try to resume the VCPU */
+	if (data == (void *)TRUE) {
+		vmm_manager_vcpu_resume(vcpu);
+	}
+}
+
+static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu, bool use_async_ipi)
 {
 	int rc;
 	irq_flags_t flags;
@@ -127,8 +135,34 @@ static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock, flags);
 
 	/* Try to resume the VCPU */
-	if (try_vcpu_resume) {
-		rc = vmm_manager_vcpu_resume(vcpu);
+	if (use_async_ipi) {
+		/* The vcpu_irq_wfi_try_resume() will be executed by async
+		 * IPI worker on hcpu assigned to vcpu (i.e. vcpu->hcpu).
+		 * Case 1: try_vcpu_resume == TRUE
+		 *   The vcpu_irq_wfi_try_resume() will try to resume vcpu
+		 *   using vmm_manager_vcpu_resume(). This can fail if vcpu
+		 *   is already in READY or RUNNING state.
+		 * Case 2: try_resume == FALSE
+		 *   The vcpu_irq_wfi_try_resume() will do nothing but
+		 *   if vcpu was in RUNNING state then it will force atleast
+		 *   one context switch for vcpu. This will help hardware
+		 *   assisted interrupt-controller emulators to flush out
+		 *   pending interrupts when vcpu is restored.
+		 */
+		vmm_manager_vcpu_hcpu_func(vcpu,
+			VMM_VCPU_STATE_INTERRUPTIBLE,
+			vcpu_irq_wfi_try_resume,
+			(try_vcpu_resume) ? (void *)TRUE : (void *)FALSE);
+	} else {
+		/* Case 1: try_vcpu_resume == TRUE
+		 *   We directly resume vcpu using vmm_manager_vcpu_resume().
+		 *   This can fail if vcpu is in READY or RUNNING state.
+		 * Case 2: try_vcpu_resume == FALSE
+		 *   We do nothing.
+		 */
+		if (try_vcpu_resume) {
+			vmm_manager_vcpu_resume(vcpu);
+		}
 	}
 
 	return rc;
@@ -136,7 +170,7 @@ static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 
 static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 {
-	vcpu_irq_wfi_resume(ev->priv);
+	vcpu_irq_wfi_resume(ev->priv, FALSE);
 }
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
@@ -170,7 +204,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	}
 
 	/* Resume VCPU from wfi */
-	vcpu_irq_wfi_resume(vcpu);
+	vcpu_irq_wfi_resume(vcpu, FALSE);
 }
 
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
@@ -198,7 +232,7 @@ void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 	vcpu->irqs.irq[irq_no].reason = 0x0;
 }
 
-int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
+int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu, bool use_async_ipi)
 {
 	/* Sanity Checks */
 	if (!vcpu || !vcpu->is_normal) {
@@ -206,7 +240,7 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 	}
 
 	/* Resume VCPU from wfi */
-	return vcpu_irq_wfi_resume(vcpu);
+	return vcpu_irq_wfi_resume(vcpu, use_async_ipi);
 }
 
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)

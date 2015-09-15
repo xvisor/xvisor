@@ -39,7 +39,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no);
 
 /** Forcefully resume given VCPU if waiting for irq */
-int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu);
+int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu, bool use_async_ipi);
 
 /** Wait for irq on given vcpu with some timeout */
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs);

@@ -548,7 +548,7 @@ done:
 
 	/* Forcefully resume VCPU if waiting for IRQ */
 	if (irq_pending) {
-		vmm_vcpu_irq_wait_resume(vs->vcpu);
+		vmm_vcpu_irq_wait_resume(vs->vcpu, TRUE);
 	}
 }
 
@@ -1059,7 +1059,14 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			}
 			s->sgi_source[i][irq] |= (1 << cpu);
 			vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
-			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu);
+			/* TODO: We don't use async IPI to resume VCPU from
+			 * Wait-for-Interrupt here because SGIs are very
+			 * frequent on Guest Linux with heavy scheduling
+			 * work-load. Using async IPI here can reduce
+			 * performance for Guest Linux hence for now we
+			 * don't use async IPI here.
+			 */
+			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu, FALSE);
 			vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 		}
 	} else {
