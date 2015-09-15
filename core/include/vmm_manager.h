@@ -155,6 +155,8 @@ enum vmm_vcpu_states {
 	VMM_VCPU_STATE_HALTED = 0x20
 };
 
+#define VMM_VCPU_STATE_ALLMASK		0xff
+
 #define VMM_VCPU_STATE_SAVEABLE		( VMM_VCPU_STATE_RUNNING | \
 					  VMM_VCPU_STATE_PAUSED | \
 					  VMM_VCPU_STATE_HALTED )
@@ -294,8 +296,11 @@ int vmm_manager_vcpu_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu);
 /** Force re-scheduling on host CPU assigned to given VCPU */
 int vmm_manager_vcpu_hcpu_resched(struct vmm_vcpu *vcpu);
 
-/** Call function on host CPU assigned to given VCPU */
+/** Call function on host CPU assigned to given VCPU if
+ *  VCPU state matches given state_mask
+ */
 int vmm_manager_vcpu_hcpu_func(struct vmm_vcpu *vcpu,
+			       u32 state_mask,
 			       void (*func)(struct vmm_vcpu *, void *),
 			       void *data);
 

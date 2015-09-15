@@ -315,22 +315,27 @@ static void manager_vcpu_hcpu_func(void *fptr, void *vptr, void *data)
 }
 
 int vmm_manager_vcpu_hcpu_func(struct vmm_vcpu *vcpu,
+			       u32 state_mask,
 			       void (*func)(struct vmm_vcpu *, void *),
 			       void *data)
 {
 	irq_flags_t flags;
+	const struct vmm_cpumask *cpu_mask = NULL;
 
 	if (!vcpu || !func) {
 		return VMM_EINVALID;
 	}
 
 	vmm_read_lock_irqsave_lite(&vcpu->sched_lock, flags);
-
-	vmm_smp_ipi_async_call(vmm_cpumask_of(vcpu->hcpu),
-				manager_vcpu_hcpu_func,
-				func, vcpu, data);
-
+	if (arch_atomic_read(&vcpu->state) & state_mask) {
+		cpu_mask = vmm_cpumask_of(vcpu->hcpu);
+	}
 	vmm_read_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+
+	if (cpu_mask) {
+		vmm_smp_ipi_async_call(cpu_mask, manager_vcpu_hcpu_func,
+					func, vcpu, data);
+	}
 
 	return VMM_OK;
 }
