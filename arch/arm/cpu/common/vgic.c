@@ -117,7 +117,36 @@ struct vgic_guest_state {
 	u32 irq_target[VGIC_MAX_NIRQ];
 	u32 priority1[32][VGIC_MAX_NCPU];
 	u32 priority2[VGIC_MAX_NIRQ - 32];
+	u32 irq_pending[VGIC_MAX_NCPU][VGIC_MAX_NIRQ / 32];
 };
+
+/* Set interrupt pending
+ * Note: Must be called with VGIC distributor lock held
+ */
+static void __vgic_set_pending(struct vgic_guest_state *s, u32 irq, u32 cm)
+{
+	u32 i;
+	s->irq_state[irq].pending |= cm;
+	for (i = 0; i < s->num_cpu; i++) {
+		if (!(cm & (1 << i)))
+			continue;
+		s->irq_pending[i][irq >> 5] |= (1 << (irq & 0x1f));
+	}
+}
+
+/* Clear interrupt pending
+ * Note: Must be called with VGIC distributor lock held
+ */
+static void __vgic_clear_pending(struct vgic_guest_state *s, u32 irq, u32 cm)
+{
+	u32 i;
+	s->irq_state[irq].pending &= ~cm;
+	for (i = 0; i < s->num_cpu; i++) {
+		if (!(cm & (1 << i)))
+			continue;
+		s->irq_pending[i][irq >> 5] &= ~(1 << (irq & 0x1f));
+	}
+}
 
 #define VGIC_ALL_CPU_MASK(s) ((1 << (s)->num_cpu) - 1)
 #define VGIC_NUM_CPU(s) ((s)->num_cpu)
@@ -125,8 +154,8 @@ struct vgic_guest_state {
 #define VGIC_SET_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled |= (cm)
 #define VGIC_CLEAR_ENABLED(s, irq, cm) (s)->irq_state[irq].enabled &= ~(cm)
 #define VGIC_TEST_ENABLED(s, irq, cm) ((s)->irq_state[irq].enabled & (cm))
-#define VGIC_SET_PENDING(s, irq, cm) (s)->irq_state[irq].pending |= (cm)
-#define VGIC_CLEAR_PENDING(s, irq, cm) (s)->irq_state[irq].pending &= ~(cm)
+#define VGIC_SET_PENDING(s, irq, cm) __vgic_set_pending(s, irq, cm)
+#define VGIC_CLEAR_PENDING(s, irq, cm) __vgic_clear_pending(s, irq, cm)
 #define VGIC_TEST_PENDING(s, irq, cm) ((s)->irq_state[irq].pending & (cm))
 #define VGIC_SET_ACTIVE(s, irq, cm) (s)->irq_state[irq].active |= (cm)
 #define VGIC_CLEAR_ACTIVE(s, irq, cm) (s)->irq_state[irq].active &= ~(cm)
@@ -150,30 +179,30 @@ struct vgic_guest_state {
 #define VGIC_GET_HOST_IRQ(s, irq) (s)->irq_state[irq].host_irq
 
 #define VGIC_TEST_EISR(eisr, lr) \
-	((eisr)[((lr) >> 5) & 0x1] & (1 << ((lr) & 0x1F)))
+	((eisr)[((lr) >> 5) & 0x1] & (1 << ((lr) & 0x1f)))
 #define VGIC_SET_EISR(vs, lr) \
-	((eisr)[((lr) >> 5) & 0x1] |= (1 << ((lr) & 0x1F)))
+	((eisr)[((lr) >> 5) & 0x1] |= (1 << ((lr) & 0x1f)))
 #define VGIC_CLEAR_EISR(vs, lr) \
-	((eisr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1F)))
+	((eisr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1f)))
 
 #define VGIC_TEST_ELRSR(elrsr, lr) \
-	((elrsr)[((lr) >> 5) & 0x1] & (1 << ((lr) & 0x1F)))
+	((elrsr)[((lr) >> 5) & 0x1] & (1 << ((lr) & 0x1f)))
 #define VGIC_SET_ELRSR(vs, lr) \
-	((elrsr)[((lr) >> 5) & 0x1] |= (1 << ((lr) & 0x1F)))
+	((elrsr)[((lr) >> 5) & 0x1] |= (1 << ((lr) & 0x1f)))
 #define VGIC_CLEAR_ELRSR(vs, lr) \
-	((elrsr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1F)))
+	((elrsr)[((lr) >> 5) & 0x1] &= ~(1 << ((lr) & 0x1f)))
 
 #define VGIC_HAVE_LR_USED(vs) ((vs)->lr_used_count)
 #define VGIC_TEST_LR_USED(vs, lr) \
-	((vs)->lr_used[((lr) >> 5)] & (1 << ((lr) & 0x1F)))
+	((vs)->lr_used[((lr) >> 5)] & (1 << ((lr) & 0x1f)))
 #define VGIC_SET_LR_USED(vs, lr) \
 	do { \
-		(vs)->lr_used[((lr) >> 5)] |= (1 << ((lr) & 0x1F)); \
+		(vs)->lr_used[((lr) >> 5)] |= (1 << ((lr) & 0x1f)); \
 		(vs)->lr_used_count++;	\
 	} while (0)
 #define VGIC_CLEAR_LR_USED(vs, lr) \
 	do { \
-		(vs)->lr_used[((lr) >> 5)] &= ~(1 << ((lr) & 0x1F)); \
+		(vs)->lr_used[((lr) >> 5)] &= ~(1 << ((lr) & 0x1f)); \
 		(vs)->lr_used_count--;	\
 	} while (0)
 
@@ -300,42 +329,6 @@ static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
 	return FALSE;
 }
 
-/* Flush VGIC state to VGIC HW for IRQ on given VCPU
- * Note: Must be called only when given VCPU is current VCPU
- * Note: Must be called with VGIC distributor lock held
- */
-static void __vgic_flush_vcpu_hwstate_irq(struct vgic_guest_state *s,
-					  struct vgic_vcpu_state *vs,
-					  u32 irq)
-{
-	bool overflow = FALSE;
-	u32 cm = (1 << vs->vcpu->subid);
-
-	if (!s->enabled) {
-		return;
-	}
-
-	if (!VGIC_TEST_PENDING(s, irq, cm)) {
-		return;
-	}
-
-	DPRINTF("%s: vcpu=%s irq=%d\n", __func__, vs->vcpu->name, irq);
-
-	if (irq < 16) {
-		if (!__vgic_queue_sgi(s, vs, irq)) {
-			overflow = TRUE;
-		}
-	} else {
-		if (!__vgic_queue_hwirq(s, vs, irq)) {
-			overflow = TRUE;
-		}
-	}
-
-	if (overflow) {
-		vgich.ops.enable_underflow();
-	}
-}
-
 /* Flush VGIC state to VGIC HW for given VCPU
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
@@ -344,7 +337,7 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 				      struct vgic_vcpu_state *vs)
 {
 	bool overflow = FALSE;
-	u32 irq, cm = (1 << vs->vcpu->subid);
+	u32 i, irq, irq_pending;
 
 	if (!s->enabled) {
 		return;
@@ -352,25 +345,28 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 
 	DPRINTF("%s: vcpu=%s\n", __func__, vs->vcpu->name);
 
-	for (irq = 0; irq < 16; irq++) {
-		if (!VGIC_TEST_PENDING(s, irq, cm)) {
+	for (i = 0; i < VGIC_MAX_NIRQ / 32; i++) {
+		irq_pending = s->irq_pending[vs->vcpu->subid][i];
+		if (!irq_pending) {
 			continue;
 		}
 
-		if (!__vgic_queue_sgi(s, vs, irq)) {
-			overflow = TRUE;
-			goto done;
-		}
-	}
+		for (irq = 0; irq < 32; irq++) {
+			if (!(irq_pending & (0x1 << irq))) {
+				continue;
+			}
 
-	for (irq = 16; irq < VGIC_NUM_IRQ(s); irq++) {
-		if (!VGIC_TEST_PENDING(s, irq, cm)) {
-			continue;
-		}
-
-		if (!__vgic_queue_hwirq(s, vs, irq)) {
-			overflow = TRUE;
-			goto done;
+			if (i == 0 && irq < 16) {
+				if (!__vgic_queue_sgi(s, vs, i*32 + irq)) {
+					overflow = TRUE;
+					goto done;
+				}
+			} else {
+				if (!__vgic_queue_hwirq(s, vs, i*32 + irq)) {
+					overflow = TRUE;
+					goto done;
+				}
+			}
 		}
 	}
 
@@ -538,7 +534,7 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 		/* Flush IRQ state change to VGIC HW */
 		if (irq_pending) {
-			__vgic_flush_vcpu_hwstate_irq(s, vs, irq);
+			__vgic_flush_vcpu_hwstate(s, vs);
 		}
 	}
 
