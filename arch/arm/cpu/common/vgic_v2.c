@@ -95,7 +95,7 @@ struct vgic_v2_priv {
 
 static struct vgic_v2_priv vgicp;
 
-void vgic_v2_reset_state(struct vgic_hw_state *hw)
+static void vgic_v2_reset_state(struct vgic_hw_state *hw)
 {
 	u32 i, hirq;
 	for (i = 0 ; i < vgicp.lr_cnt; i++) {
@@ -115,7 +115,7 @@ void vgic_v2_reset_state(struct vgic_hw_state *hw)
 	}
 }
 
-void vgic_v2_save_state(struct vgic_hw_state *hw)
+static void vgic_v2_save_state(struct vgic_hw_state *hw)
 {
 	u32 i;
 
@@ -129,7 +129,7 @@ void vgic_v2_save_state(struct vgic_hw_state *hw)
 	}
 }
 
-void vgic_v2_restore_state(struct vgic_hw_state *hw)
+static void vgic_v2_restore_state(struct vgic_hw_state *hw)
 {
 	u32 i;
 
@@ -142,14 +142,14 @@ void vgic_v2_restore_state(struct vgic_hw_state *hw)
 	}
 }
 
-bool vgic_v2_check_underflow(void)
+static bool vgic_v2_check_underflow(void)
 {
 	u32 misr;
 	misr = vmm_readl_relaxed((void *)vgicp.hctrl_va + GICH_MISR);
 	return (misr & GICH_MISR_U) ? TRUE : FALSE;
 }
 
-void vgic_v2_enable_underflow(void)
+static void vgic_v2_enable_underflow(void)
 {
 	u32 hcr;
 	hcr = vmm_readl_relaxed((void *)vgicp.hctrl_va + GICH_HCR);
@@ -157,7 +157,7 @@ void vgic_v2_enable_underflow(void)
 	vmm_writel_relaxed(hcr, (void *)vgicp.hctrl_va + GICH_HCR);
 }
 
-void vgic_v2_disable_underflow(void)
+static void vgic_v2_disable_underflow(void)
 {
 	u32 hcr;
 	hcr = vmm_readl_relaxed((void *)vgicp.hctrl_va + GICH_HCR);
@@ -165,7 +165,7 @@ void vgic_v2_disable_underflow(void)
 	vmm_writel_relaxed(hcr, (void *)vgicp.hctrl_va + GICH_HCR);
 }
 
-void vgic_v2_read_elrsr(u32 *elrsr0, u32 *elrsr1)
+static void vgic_v2_read_elrsr(u32 *elrsr0, u32 *elrsr1)
 {
 	*elrsr0 = vmm_readl_relaxed((void *)vgicp.hctrl_va + GICH_ELRSR0);
 	if (32 < vgicp.lr_cnt) {
@@ -176,7 +176,7 @@ void vgic_v2_read_elrsr(u32 *elrsr0, u32 *elrsr1)
 	}
 }
 
-void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv)
+static void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv)
 {
 	u32 lrval = lrv->virtid & GICH_LR_VIRTUALID;
 
@@ -205,7 +205,7 @@ void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv)
 	vmm_writel_relaxed(lrval, (void *)vgicp.hctrl_va + GICH_LR0 + 4*lr);
 }
 
-void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv)
+static void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv)
 {
 	u32 lrval;
 
@@ -238,7 +238,7 @@ void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv)
 	}
 }
 
-void vgic_v2_clear_lr(u32 lr)
+static void vgic_v2_clear_lr(u32 lr)
 {
 	DPRINTF("%s: LR%d\n", __func__, lr);
 
