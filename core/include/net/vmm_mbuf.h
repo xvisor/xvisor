@@ -285,6 +285,7 @@ enum vmm_mbuf_alloc_types {
 struct vmm_mbuf *m_free(struct vmm_mbuf *m);
 struct vmm_mbuf *m_get(int nowait, int flags);
 void *m_ext_get(struct vmm_mbuf *m, u32 size, enum vmm_mbuf_alloc_types how);
+void m_ext_dma_ensure(struct vmm_mbuf *m);
 void m_copydata(struct vmm_mbuf *m, int off, int len, void *vp);
 void m_freem(struct vmm_mbuf *m);
 void m_ext_free(struct vmm_mbuf *m);

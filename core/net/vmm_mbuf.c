@@ -349,6 +349,28 @@ void *m_ext_get(struct vmm_mbuf *m, u32 size, enum vmm_mbuf_alloc_types how)
 VMM_EXPORT_SYMBOL(m_ext_get);
 
 /*
+ * m_ext_dma_ensure: Ensure that the data buffer is DMA proof, reallocating
+ * and copying data to do so.
+ */
+void m_ext_dma_ensure(struct vmm_mbuf *m)
+{
+	char *buf = NULL;
+
+	if (vmm_is_dma(m->m_extbuf)) {
+		return;
+	}
+
+	buf = vmm_dma_malloc(m->m_len);
+	memcpy(buf, m->m_extbuf, m->m_len);
+	if (m->m_extfree) {
+		m->m_extfree(m, m->m_extbuf, m->m_extlen, m->m_extarg);
+	} else {
+		vmm_free(m->m_extbuf);
+	}
+	MEXTADD(m, buf, m->m_len, ext_dma_free, 0);
+}
+
+/*
  * m_ext_free: release a reference to the mbuf external storage.
  * free the mbuf itself as well.
  */

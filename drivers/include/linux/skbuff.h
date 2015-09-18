@@ -94,6 +94,11 @@ static inline struct sk_buff *alloc_skb(unsigned int size,
 	return __alloc_skb(size, dummy_priority, 0);
 }
 
+static inline void skb_dma_ensure(struct sk_buff *skb)
+{
+	m_ext_dma_ensure(skb);
+}
+
 static inline void skb_reserve(struct sk_buff *skb, int len)
 {
 	skb_data(skb) += len;
