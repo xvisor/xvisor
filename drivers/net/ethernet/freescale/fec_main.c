@@ -937,13 +937,7 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	txq = fep->tx_queue[queue];
 	nq = netdev_get_tx_queue(ndev, queue);
 #if 1
-	/* Check if the SKB data are not DMA allocated */
-	if (!vmm_is_dma(skb->m_extbuf)) {
-		/* Clean the caches */
-		vmm_dma_sync_for_device((virtual_addr_t)skb->m_extbuf,
-			(virtual_addr_t)(skb->m_extbuf + skb_len(skb)),
-			DMA_TO_DEVICE);
-	}
+	skb_dma_ensure(skb);
 #endif /* 1 */
 
 #if 0
@@ -1539,7 +1533,7 @@ static bool fec_enet_copybreak(struct net_device *ndev, struct sk_buff **skb,
 #if 0
 	new_skb = netdev_alloc_skb(ndev, length);
 #else
-	new_skb = __netdev_alloc_skb(ndev, length, M_EXT_DMA);
+	new_skb = __netdev_alloc_skb(ndev, length, VMM_MBUF_ALLOC_DMA);
 #endif /* 0 */
 	if (!new_skb)
 		return false;
@@ -1671,7 +1665,7 @@ fec_enet_rx_queue(struct net_device *ndev, int budget, u16 queue_id)
 			skb_new = netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE);
 #else
 			skb_new = __netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE,
-						     M_EXT_DMA);
+						     VMM_MBUF_ALLOC_DMA);
 #endif /* 0 */
 			if (unlikely(!skb_new)) {
 				ndev->stats.rx_dropped++;
@@ -2992,7 +2986,8 @@ fec_enet_alloc_rxq_buffers(struct net_device *ndev, unsigned int queue)
 #if 0
 		skb = netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE);
 #else
-		skb = __netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE, M_EXT_DMA);
+		skb = __netdev_alloc_skb(ndev, FEC_ENET_RX_FRSIZE,
+					 VMM_MBUF_ALLOC_DMA);
 #endif /* 0 */
 		if (!skb)
 			goto err_alloc;
