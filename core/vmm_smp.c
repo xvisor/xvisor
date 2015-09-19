@@ -110,13 +110,16 @@ static void smp_ipi_sync_submit(struct smp_ipi_ctrl *ictlp,
 
 	try = SMP_IPI_WAIT_TRY_COUNT;
 	while (!fifo_enqueue(ictlp->sync_fifo, ipic, FALSE) && try) {
+		arch_smp_ipi_trigger(vmm_cpumask_of(ipic->dst_cpu));
 		vmm_udelay(SMP_IPI_WAIT_UDELAY);
 		try--;
 	}
 
 	if (!try) {
-		WARN(1, "CPU%d: IPI sync fifo full\n", ipic->dst_cpu);
+		vmm_panic("CPU%d: IPI sync fifo full\n", ipic->dst_cpu);
 	}
+
+	arch_smp_ipi_trigger(vmm_cpumask_of(ipic->dst_cpu));
 }
 
 static void smp_ipi_async_submit(struct smp_ipi_ctrl *ictlp, 
@@ -130,13 +133,16 @@ static void smp_ipi_async_submit(struct smp_ipi_ctrl *ictlp,
 
 	try = SMP_IPI_WAIT_TRY_COUNT;
 	while (!fifo_enqueue(ictlp->async_fifo, ipic, FALSE) && try) {
+		arch_smp_ipi_trigger(vmm_cpumask_of(ipic->dst_cpu));
 		vmm_udelay(SMP_IPI_WAIT_UDELAY);
 		try--;
 	}
 
 	if (!try) {
-		WARN(1, "CPU%d: IPI async fifo full\n", ipic->dst_cpu);
+		vmm_panic("CPU%d: IPI async fifo full\n", ipic->dst_cpu);
 	}
+
+	arch_smp_ipi_trigger(vmm_cpumask_of(ipic->dst_cpu));
 }
 
 static void smp_ipi_main(void)
@@ -177,15 +183,13 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
 			     void (*func)(void *, void *, void *),
 			     void *arg0, void *arg1, void *arg2)
 {
-	u32 c, trig_count, cpu = vmm_smp_processor_id();
-	struct vmm_cpumask trig_mask = VMM_CPU_MASK_NONE;
+	u32 c, cpu = vmm_smp_processor_id();
 	struct smp_ipi_call ipic;
 
 	if (!dest || !func) {
 		return;
 	}
 
-	trig_count = 0;
 	for_each_cpu(c, dest) {
 		if (c == cpu) {
 			func(arg0, arg1, arg2);
@@ -201,13 +205,7 @@ void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
 			ipic.arg1 = arg1;
 			ipic.arg2 = arg2;
 			smp_ipi_async_submit(&per_cpu(ictl, c), &ipic);
-			vmm_cpumask_set_cpu(c, &trig_mask);
-			trig_count++;
 		}
-	}
-
-	if (trig_count) {
-		arch_smp_ipi_trigger(&trig_mask);
 	}
 }
 
@@ -249,8 +247,6 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 	}
 
 	if (trig_count) {
-		arch_smp_ipi_trigger(&trig_mask);
-
 		rc = VMM_ETIMEDOUT;
 		timeout_tstamp = vmm_timer_timestamp();
 		timeout_tstamp += (u64)timeout_msecs * 1000000ULL;
