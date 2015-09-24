@@ -81,6 +81,15 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	pg.bits.present = 1;
 	pg.bits.rw = 1;
 
+	if (!(mem_flags & VMM_MEMORY_EXECUTABLE))
+		pg.bits.execution_disable = 1;
+
+	if (!(mem_flags & VMM_MEMORY_CACHEABLE))
+		pg.bits.cache_disable = 1;
+
+	if (!(mem_flags & VMM_MEMORY_WRITEABLE))
+		pg.bits.rw = 0;
+
 	return mmu_map_page(&host_pgtbl_ctl, host_pgtbl_ctl.base_pgtbl, page_va, &pg);
 }
 
