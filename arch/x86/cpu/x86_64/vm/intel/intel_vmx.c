@@ -72,9 +72,27 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 	cr0 = read_cr0();
 	vmx_cr0_fixed0 = cpu_read_msr(MSR_IA32_VMX_CR0_FIXED0);
 	vmx_cr0_fixed1 = cpu_read_msr(MSR_IA32_VMX_CR0_FIXED1);
+
+	/*
+	 * Appendix A.7 Intel Manual
+	 * If bit is 1 in CR0_FIXED0, then that bit of CR0 is fixed to 1.
+	 * if bit is 0 in CR0_FIXED1, then that bit of CR0 is fixed to 0.
+	 */
+	cr0 &= vmx_cr0_fixed1;
+	cr0 |= vmx_cr0_fixed0;
+
+	barrier();
+
+	write_cr0(cr0);
+
+	barrier();
+
+	cr0 = read_cr0();
+
 	if ((~cr0 & vmx_cr0_fixed0) || (cr0 & ~vmx_cr0_fixed1)) {
 		vmm_printf("Some settings of host CR0 are not allowed in VMX"
-			   " operation.\n");
+			   " operation. (Host CR0: 0x%lx CR0 Fixed0: 0x%lx CR0 Fixed1: 0x%lx)\n",
+			   cr0, vmx_cr0_fixed0, vmx_cr0_fixed1);
 		return VMM_EFAIL;
 	}
 
@@ -90,11 +108,6 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 			vmm_printf("VMX disabled by BIOS.\n");
 			return VMM_EFAIL;
 		}
-	} else {
-		/* lock VMXON, prevent guest from turnning on this feature */
-		eax  = IA32_FEATURE_CONTROL_MSR_LOCK;
-		eax |= IA32_FEATURE_CONTROL_MSR_ENABLE_VMXON_OUTSIDE_SMX;
-		cpu_write_msr32(IA32_FEATURE_CONTROL_MSR, 0, eax);
 	}
 
 	return VMM_OK;
@@ -153,11 +166,6 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 	vmx_set_control_params(context);
 
 	vmx_set_vm_to_powerup_state(context);
-
-	if (context->icept_table.io_table_phys)
-		context->vmcb->iopm_base_pa = context->icept_table.io_table_phys;
-
-	VM_LOG(LVL_INFO, "IOPM Base physical address: 0x%lx\n", context->vmcb->iopm_base_pa);
 
 	context->vcpu_run = vmx_vcpu_run;
 	context->vcpu_exit = vmx_vcpu_exit;
