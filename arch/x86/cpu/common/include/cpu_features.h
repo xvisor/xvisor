@@ -347,7 +347,7 @@ static inline void cpu_write_msr(u32 msr, u64 value)
 static inline void cpu_write_msr32(u32 msr, u32 high, u32 low)
 {
 	asm volatile ("wrmsr\n\t"
-		      ::"a"(high),"d"(low),"c"(msr));
+		      ::"a"(low),"d"(high),"c"(msr));
 }
 
 extern struct cpuinfo_x86 cpu_info;
