@@ -138,25 +138,27 @@ static virtual_addr_t __init find_root_system_descriptor(void)
 	struct acpi_search_area *carea = &acpi_areas[0];
 	virtual_addr_t area_map;
 	virtual_addr_t rsdp_base = 0;
+	virtual_size_t sz = 0;
 
 	while (carea->area_name) {
 		vmm_printf("Search for RSDP in %s... ", carea->area_name);
-		area_map = vmm_host_iomap(carea->phys_start,
-					  (carea->phys_end
-					   - carea->phys_start));
+
+		sz = carea->phys_end - carea->phys_start;
+
+		area_map = vmm_host_memmap(carea->phys_start, sz,
+					   VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
+
 		BUG_ON((void *)area_map == NULL);
 
 		if ((rsdp_base
-		     = locate_rsdp_in_area(area_map,
-					   (carea->phys_end
-					    - carea->phys_start))) != 0) {
+		     = locate_rsdp_in_area(area_map, sz)) != 0) {
 			vmm_printf("found.\n");
 			break;
 		}
 
 		rsdp_base = 0;
 		carea++;
-		vmm_host_iounmap(area_map);
+		vmm_host_memunmap(area_map);
 		vmm_printf("not found.\n");
 	}
 

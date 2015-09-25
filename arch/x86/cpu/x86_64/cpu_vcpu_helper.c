@@ -33,148 +33,132 @@
 #include <arch_cpu.h>
 #include <arch_regs.h>
 #include <libs/stringlib.h>
+#include <libs/bitops.h>
 #include <arch_guest_helper.h>
 
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context);
 
-/*
- * These are what we need to emulate in CPU:
- *
- * vendor_id: AuthenticAMD
- * cpu family: 6
- * model: 6
- * model name: Xvisor Virtual CPU
- * stepping: 3
- * cpu MHz: 1662.454
- * cache size: 512 KB
- * fpu: yes
- * fpu_exception: yes
- * cpuid level: 4
- * wp: yes
- * flags: fpu  pse  tsc     msr        pae     mce
- *        cx8  apic sep     mtrr       pge     mca
- *        cmov pat  pse36   clflush    mmx     fxsr
- *        sse  sse2 syscall nx         lm      nopl
- *        pni  cx16 popcnt  hypervisor lahf_lm svm
- *        abm  sse4a
- * TLB size: 1024 4K pages
- * clflush size: 64
- * cache_alignment: 64
- * address sizes: 40 bits physical, 48 bits virtual
- */
-static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct vmm_vcpu *vcpu)
+static void init_cpu_capabilities(struct vmm_vcpu *vcpu)
 {
-	u32 funcs;
+	u32 funcs, b, c, d;
 	struct x86_vcpu_priv *priv = x86_vcpu_priv(vcpu);
 	struct cpuid_response *func_response;
+	extern struct cpuinfo_x86 cpu_info;
 
-	switch(proc_gen) {
-	case x86_CPU_AMD_K6:
-		for (funcs = CPUID_BASE_VENDORSTRING;
-		     funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
-			func_response =
-				(struct cpuid_response *)
-				&priv->standard_funcs[funcs];
+	for (funcs = CPUID_BASE_VENDORSTRING;
+	     funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
+		func_response =
+			(struct cpuid_response *)
+			&priv->standard_funcs[funcs];
 
-			switch (funcs) {
-			case CPUID_BASE_VENDORSTRING:
-				func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
-				func_response->resp_ebx = 0x68747541; /* 41757468; htuA*/
-				func_response->resp_ecx = 0x444d4163; /* 63414d44; DMAc*/
-				func_response->resp_edx = 0x69746e65; /* 656e7469; itne*/
-				break;
+		switch (funcs) {
+		case CPUID_BASE_VENDORSTRING:
+			cpuid(CPUID_BASE_VENDORSTRING,
+			      &func_response->resp_eax,
+			      &func_response->resp_ebx,
+			      &func_response->resp_ecx,
+			      &func_response->resp_edx);
 
-			case CPUID_BASE_FEATURES:
-				func_response->resp_eax =
-					((0x0 << CPUID_EXTD_FAMILY_SHIFT)
-					 | (0x6 << CPUID_EXTD_MODEL_SHIFT)
-					 | (0x6 << CPUID_BASE_FAMILY_SHIFT)
-					 | (0x9 << CPUID_BASE_MODEL_SHIFT)
-					 | (0x3));
-				func_response->resp_ebx =
-					((0x0 << 24) /* Local APIC ID */
-					 | (0x1 << 16) /* Logical Processor count */
-					 | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
-				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
-				func_response->resp_edx =
-					(CPUID_FEAT_EDX_CLF
-					 | CPUID_FEAT_EDX_FPU);
-				break;
+			func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
+			break;
 
-			default:
-				func_response->resp_eax = 0;
-				func_response->resp_ebx = 0;
-				func_response->resp_ecx = 0;
-				func_response->resp_edx = 0;
-				break;
+		case CPUID_BASE_FEATURES:
+			cpuid(CPUID_BASE_FEATURES, &func_response->resp_eax,
+			      &b, &c, &d);
+
+			/* NR cpus and apic id */
+			clear_bits(16, 31, (volatile unsigned long *)&b);
+			b |= ((vcpu->subid << 24)
+			      | (vcpu->guest->vcpu_count << 16));
+			func_response->resp_ebx = b;
+
+			/* No VMX or x2APIC */
+			if (cpu_info.vendor == x86_VENDOR_INTEL) {
+				clear_bit(CPUID_FEAT_ECX_x2APIC_BIT, (volatile unsigned long *)&c);
+				clear_bit(CPUID_FEAT_ECX_VMX_BIT, (volatile unsigned long *)&c);
 			}
-		}
+			clear_bit(CPUID_FEAT_ECX_MONITOR_BIT, (volatile unsigned long *)&c);
+			func_response->resp_ecx = c;
 
+			/* No PAE, MTRR, PGE, ACPI, PSE & MSR */
+			clear_bit(CPUID_FEAT_EDX_PAE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_MTRR_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_PGE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_ACPI_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_HTT_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_PSE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_MSR_BIT, (volatile unsigned long *)&d);
+
+			func_response->resp_edx = d;
+			break;
+
+		default:
+			func_response->resp_eax = 0;
+			func_response->resp_ebx = 0;
+			func_response->resp_ecx = 0;
+			func_response->resp_edx = 0;
+			break;
+		}
+	}
+
+	for (funcs = CPUID_EXTENDED_BASE;
+	     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
+		func_response =
+			(struct cpuid_response *)
+			&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
+
+		switch (funcs) {
+		case CPUID_EXTENDED_BASE:
+			cpuid(CPUID_EXTENDED_FEATURES,
+			      &func_response->resp_eax,
+			      &func_response->resp_ebx,
+			      &func_response->resp_ecx,
+			      &func_response->resp_edx);
+
+			func_response->resp_eax =
+				CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER
+				- CPUID_EXTENDED_BASE;
+			break;
+
+		case CPUID_EXTENDED_FEATURES: /* replica of base features */
+			cpuid(CPUID_EXTENDED_FEATURES, &func_response->resp_eax,
+			      &b, &c, &d);
+
+			/* NR cpus and apic id */
+			clear_bits(16, 31, (volatile unsigned long *)&b);
+			b |= ((vcpu->subid << 24)
+			      | (vcpu->guest->vcpu_count << 16));
+			func_response->resp_ebx = b;
+
+			/* No VMX or x2APIC */
+			if (cpu_info.vendor == x86_VENDOR_INTEL) {
+				clear_bit(CPUID_FEAT_ECX_x2APIC_BIT, (volatile unsigned long *)&c);
+				clear_bit(CPUID_FEAT_ECX_VMX_BIT, (volatile unsigned long *)&c);
+			}
+			clear_bit(CPUID_FEAT_ECX_MONITOR_BIT, (volatile unsigned long *)&c);
+			func_response->resp_ecx = c;
+
+			/* No PAE, MTRR, PGE, ACPI, PSE & MSR */
+			clear_bit(CPUID_FEAT_EDX_PAE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_MTRR_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_PGE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_ACPI_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_HTT_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_PSE_BIT, (volatile unsigned long *)&d);
+			clear_bit(CPUID_FEAT_EDX_MSR_BIT, (volatile unsigned long *)&d);
+
+			func_response->resp_edx = d;
+			break;
+		}
+	}
+
+	switch(cpu_info.vendor) {
+	case x86_VENDOR_AMD:
 		for (funcs = CPUID_EXTENDED_BASE;
 		     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
-			func_response =
-				(struct cpuid_response *)
-				&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
-
-			switch (funcs) {
-			case CPUID_EXTENDED_BASE:
-				func_response->resp_eax =
-					CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER
-					- CPUID_EXTENDED_BASE;
-				func_response->resp_ebx = 0x73697658; /*sivX*/
-				func_response->resp_ecx = 0x7658726f; /*vXor*/
-				func_response->resp_edx = 0x726f7369; /*rosi*/
-				break;
-
-			case CPUID_EXTENDED_FEATURES: /* replica of base features */
-				func_response->resp_eax =
-					((0x0 << CPUID_EXTD_FAMILY_SHIFT)
-					 | (0x6 << CPUID_EXTD_MODEL_SHIFT)
-					 | (0x6 << CPUID_BASE_FAMILY_SHIFT)
-					 | (0x9 << CPUID_BASE_MODEL_SHIFT)
-					 | (0x3));
-				func_response->resp_ebx =
-					((0x0 << 24) /* Local APIC ID */
-					 | (0x1 << 16) /* Logical Processor count */
-					 | (0x40 << 8)); /* 64 bytes CFFLUSH ? */
-				func_response->resp_ecx = 0x0; /* no SSE3, AES etc support */
-				func_response->resp_edx =
-					(CPUID_FEAT_EDX_NX
-					 | CPUID_FEAT_EDX_CMOV
-					 | CPUID_FEAT_EDX_SEP);
-				break;
-
-			case CPUID_EXTENDED_BRANDSTRING:
-				memcpy((char *)&func_response->resp_eax,
-				       "Xvis", 4);
-				memcpy((char *)&func_response->resp_ebx,
-				       "or V", 4);
-				memcpy((char *)&func_response->resp_ecx,
-				       "irtu", 4);
-				memcpy((char *)&func_response->resp_edx,
-				       "al C", 4);
-				break;
-
-			case CPUID_EXTENDED_BRANDSTRINGMORE:
-				memcpy((char *)&func_response->resp_eax,
-				       "PU v", 4);
-				memcpy((char *)&func_response->resp_ebx,
-				       "ersi", 4);
-				memcpy((char *)&func_response->resp_ecx,
-				       "on 0", 4);
-				memcpy((char *)&func_response->resp_edx,
-				       ".1  ", 4);
-				break;
-
-			case CPUID_EXTENDED_BRANDSTRINGEND:
-				memset((void *)&func_response->resp_eax, 0, 4);
-				memset((void *)&func_response->resp_ebx, 0, 4);
-				memset((void *)&func_response->resp_ecx, 0, 4);
-				memset((void *)&func_response->resp_edx, 0, 4);
-				break;
-
-			case CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
-				cpuid(CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER,
+			switch(funcs) {
+			case AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
+				cpuid(AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER,
 				      &func_response->resp_eax,
 				      &func_response->resp_ebx,
 				      &func_response->resp_ecx,
@@ -188,24 +172,20 @@ static void init_cpu_capabilities(enum x86_processor_generation proc_gen, struct
 				      &func_response->resp_ecx,
 				      &func_response->resp_edx);
 				break;
-
-			default:
-				func_response->resp_eax = 0;
-				func_response->resp_ebx = 0;
-				func_response->resp_ecx = 0;
-				func_response->resp_edx = 0;
-				break;
 			}
 		}
-
 		break;
 
-	case x86_CPU_INTEL_PENTIUM:
-		VM_LOG(LVL_ERR, "ERROR: VCPU feature init on Intel."
-		       "Intel chips not supported yet!\n");
-		break;
+	case x86_VENDOR_INTEL:
+		for (funcs = CPUID_BASE_VENDORSTRING;
+		     funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
+			func_response =
+				(struct cpuid_response *)
+				&priv->standard_funcs[funcs];
 
-	case x86_NR_GENERATIONS:
+			switch (funcs) {
+			}
+		}
 		break;
 	}
 }
@@ -220,9 +200,7 @@ static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
-	int rc, cpuid;
 	u64 stack_start;
-	const char *attr;
 	extern struct cpuinfo_x86 cpu_info;
 
 	if (!vcpu->is_normal) {
@@ -235,18 +213,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		vcpu->regs.ss = VMM_DATA_SEG_SEL;
 		vcpu->regs.rflags = (X86_EFLAGS_IF | X86_EFLAGS_PF | X86_EFLAGS_CF);
 	} else {
-		rc = vmm_devtree_read_string(vcpu->node,
-				VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
-		if (rc) {
-			return rc;
-		}
-
-		if (strcmp(attr, "amd-k6") == 0) {
-			cpuid = x86_CPU_AMD_K6;
-		} else {
-			return VMM_EFAIL;
-		}
-
 		if (!vcpu->reset_count) {
 			vcpu->arch_priv = vmm_zalloc(sizeof(struct x86_vcpu_priv));
 
@@ -255,25 +221,11 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 			INIT_SPIN_LOCK(&x86_vcpu_priv(vcpu)->lock);
 
-			init_cpu_capabilities(cpuid, vcpu);
+			init_cpu_capabilities(vcpu);
 
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
 			x86_vcpu_priv(vcpu)->hw_context->assoc_vcpu = vcpu;
 
-			/*
-			 * !!KLUDGE!!
-			 * The Guest DTS tells the start PC for the guest. The core code
-			 * takes this start PC as the PC of the newly formed VCPU. This
-			 * address can not be used by the processor to run. The newly
-			 * formed VCPU has to run a trampoline code which will run in loop
-			 * and switch processor's mode to guest mode and then run the processor
-			 * from the address specified in DTS.
-			 *
-			 * So we save this start PC read from DTS in the VCPU hardware context
-			 * and when this VCPU switches to guest mode, it will make processor
-			 * run from this address.
-			 */
-			x86_vcpu_priv(vcpu)->hw_context->guest_start_pc = vcpu->start_pc;
 			x86_vcpu_priv(vcpu)->hw_context->vcpu_emergency_shutdown = arch_vcpu_emergency_shutdown;
 			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);
 

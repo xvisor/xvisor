@@ -33,6 +33,8 @@
 #include <arch_guest_helper.h>
 #include <vm/amd_svm.h>
 #include <vm/amd_intercept.h>
+#include <vm/intel_vmx.h>
+#include <vm/intel_intercept.h>
 
 int vm_default_log_lvl = VM_LOG_LVL_INFO;
 
@@ -109,6 +111,24 @@ void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags)
 	}
 }
 
+void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+{
+	u32 byte_offset = ioport >> 3;
+	u8 port_offset = ioport & 0x7;
+
+	u8 *iop_base = (u8 *)(context->icept_table.io_table_virt + byte_offset);
+	*iop_base |= (0x1 << port_offset);
+}
+
+void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport)
+{
+	u32 byte_offset = ioport >> 3;
+	u8 port_offset = ioport & 0x7;
+
+	u8 *iop_base = (u8 *)context->icept_table.io_table_virt + byte_offset;
+	*iop_base &= ~(0x1 << port_offset);
+}
+
 int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 			     struct vcpu_hw_context *context)
 {
@@ -164,6 +184,13 @@ int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo,
 		}
 		break;
 
+	case x86_VENDOR_INTEL:
+		if ((ret = intel_setup_vm_control(context)) != VMM_OK) {
+			VM_LOG(LVL_ERR, "ERROR: Failed to setup vm control.\n");
+			goto _error;
+		}
+		break;
+
 	default:
 		VM_LOG(LVL_ERR, "ERROR: Invalid vendor %d\n", cpuinfo->vendor);
 		goto _error;
@@ -198,11 +225,12 @@ int cpu_enable_vm_extensions(struct cpuinfo_x86 *cpuinfo)
 	switch (cpuinfo->vendor) {
 	case x86_VENDOR_AMD:
 		VM_LOG(LVL_VERBOSE, "Initializing SVM on AMD.\n");
-		ret = init_amd(cpuinfo);
+		ret = amd_init(cpuinfo);
 		break;
 
 	case x86_VENDOR_INTEL:
-		vmm_panic("Intel CPUs not supported yet!\n");
+		VM_LOG(LVL_VERBOSE, "Initializing VMX on Intel.\n");
+		ret = intel_init(cpuinfo);
 		break;
 
 	case x86_VENDOR_UNKNOWN:

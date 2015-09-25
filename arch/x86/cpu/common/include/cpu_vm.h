@@ -135,11 +135,15 @@ struct vcpu_hw_context {
 	unsigned int		host_msr_count;
 	struct vmx_msr_entry	*host_msr_area;
 
+	void *vmx_on_region;
+
 	int itc_flag;  /* flags specifying which interceptions were
 			  registered for this vm. */
 	int itc_skip_flag;
 	u64 guest_start_pc; /* Guest will start execution from here (comes from DTS) */
 	physical_addr_t vmcb_pa;
+	physical_addr_t vmcs_pa;
+	physical_addr_t vmxon_region_pa;
 
 	/* on & exit handler */
 	void (*vcpu_run) (struct vcpu_hw_context *context);
@@ -185,6 +189,8 @@ extern physical_addr_t cpu_create_vcpu_intercept_table(size_t size, virtual_addr
 extern int cpu_free_vcpu_intercept_table(virtual_addr_t vaddr, size_t size);
 extern void cpu_disable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
 extern void cpu_enable_vcpu_intercept(struct vcpu_hw_context *context, int flags);
+extern void enable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport);
+extern void disable_ioport_intercept(struct vcpu_hw_context *context, u32 ioport);
 extern int cpu_init_vcpu_hw_context(struct cpuinfo_x86 *cpuinfo, struct vcpu_hw_context *context);
 extern void cpu_boot_vcpu(struct vcpu_hw_context *context);
 

@@ -23,18 +23,18 @@
 #include <vm/intel_vmcs.h>
 
 typedef union {
-    struct {
-        u64 r       :   1,
-        w           :   1,
-        x           :   1,
-        emt         :   3, /* EPT Memory type */
-        ipat        :   1, /* Ignore PAT memory type */
-        sp          :   1, /* Is this a superpage? */
-        avail1      :   4,
-        mfn         :   40,
-        avail2      :   12;
-    };
-    u64 epte;
+	struct {
+		u64 r:1;
+		u64 w:1;
+		u64 x:1;
+		u64 emt:3;
+		u64 ipat:1;
+		u64 sp:1;
+		u64 avail1:4;
+		u64 mfn:40;
+		u64 avail2:12;
+	};
+	u64 epte;
 } ept_entry_t;
 
 #define EPT_TABLE_ORDER         9
@@ -152,46 +152,28 @@ typedef union {
 #define X86_SEG_AR_GRANULARITY  (1u << 15) /* 15, granularity */
 #define X86_SEG_AR_SEG_UNUSABLE (1u << 16) /* 16, segment unusable */
 
-#define VMCALL_OPCODE   ".byte 0x0f,0x01,0xc1\n"
-#define VMCLEAR_OPCODE  ".byte 0x66,0x0f,0xc7\n"        /* reg/opcode: /6 */
-#define VMLAUNCH_OPCODE ".byte 0x0f,0x01,0xc2\n"
-#define VMPTRLD_OPCODE  ".byte 0x0f,0xc7\n"             /* reg/opcode: /6 */
-#define VMPTRST_OPCODE  ".byte 0x0f,0xc7\n"             /* reg/opcode: /7 */
-#define VMREAD_OPCODE   ".byte 0x0f,0x78\n"
-#define VMRESUME_OPCODE ".byte 0x0f,0x01,0xc3\n"
-#define VMWRITE_OPCODE  ".byte 0x0f,0x79\n"
-#define INVEPT_OPCODE   ".byte 0x66,0x0f,0x38,0x80\n"   /* m128,r64/32 */
-#define INVVPID_OPCODE  ".byte 0x66,0x0f,0x38,0x81\n"   /* m128,r64/32 */
-#define VMXOFF_OPCODE   ".byte 0x0f,0x01,0xc4\n"
-#define VMXON_OPCODE    ".byte 0xf3,0x0f,0xc7\n"
-
-#define MODRM_EAX_08    ".byte 0x08\n" /* ECX, [EAX] */
-#define MODRM_EAX_06    ".byte 0x30\n" /* [EAX], with reg/opcode: /6 */
-#define MODRM_EAX_07    ".byte 0x38\n" /* [EAX], with reg/opcode: /7 */
-#define MODRM_EAX_ECX   ".byte 0xc1\n" /* EAX, ECX */
-
 extern u64 vmx_ept_vpid_cap;
 
-#define cpu_has_vmx_ept_wl4_supported           \
-    (vmx_ept_vpid_cap & VMX_EPT_WALK_LENGTH_4_SUPPORTED)
-#define cpu_has_vmx_ept_mt_uc                   \
-    (vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_UC)
-#define cpu_has_vmx_ept_mt_wb                   \
-    (vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_WB)
-#define cpu_has_vmx_ept_2mb                     \
-    (vmx_ept_vpid_cap & VMX_EPT_SUPERPAGE_2MB)
-#define cpu_has_vmx_ept_invept_single_context   \
-    (vmx_ept_vpid_cap & VMX_EPT_INVEPT_SINGLE_CONTEXT)
+#define cpu_has_vmx_ept_wl4_supported				\
+	(vmx_ept_vpid_cap & VMX_EPT_WALK_LENGTH_4_SUPPORTED)
+#define cpu_has_vmx_ept_mt_uc				\
+	(vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_UC)
+#define cpu_has_vmx_ept_mt_wb				\
+	(vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_WB)
+#define cpu_has_vmx_ept_2mb				\
+	(vmx_ept_vpid_cap & VMX_EPT_SUPERPAGE_2MB)
+#define cpu_has_vmx_ept_invept_single_context		\
+	(vmx_ept_vpid_cap & VMX_EPT_INVEPT_SINGLE_CONTEXT)
 
 #define INVEPT_SINGLE_CONTEXT   1
 #define INVEPT_ALL_CONTEXT      2
 
-#define cpu_has_vmx_vpid_invvpid_individual_addr                    \
-    (vmx_ept_vpid_cap & VMX_VPID_INVVPID_INDIVIDUAL_ADDR)
-#define cpu_has_vmx_vpid_invvpid_single_context                     \
-    (vmx_ept_vpid_cap & VMX_VPID_INVVPID_SINGLE_CONTEXT)
-#define cpu_has_vmx_vpid_invvpid_single_context_retaining_global    \
-    (vmx_ept_vpid_cap & VMX_VPID_INVVPID_SINGLE_CONTEXT_RETAINING_GLOBAL)
+#define cpu_has_vmx_vpid_invvpid_individual_addr		\
+	(vmx_ept_vpid_cap & VMX_VPID_INVVPID_INDIVIDUAL_ADDR)
+#define cpu_has_vmx_vpid_invvpid_single_context			\
+	(vmx_ept_vpid_cap & VMX_VPID_INVVPID_SINGLE_CONTEXT)
+#define cpu_has_vmx_vpid_invvpid_single_context_retaining_global	\
+	(vmx_ept_vpid_cap & VMX_VPID_INVVPID_SINGLE_CONTEXT_RETAINING_GLOBAL)
 
 #define INVVPID_INDIVIDUAL_ADDR                 0
 #define INVVPID_SINGLE_CONTEXT                  1
@@ -203,19 +185,17 @@ extern u64 vmx_ept_vpid_cap;
 
 static inline void __vmptrld(u64 addr)
 {
-	asm volatile ( VMPTRLD_OPCODE
-		       MODRM_EAX_06
+	asm volatile ("vmptrld (%0)\n"
 		       /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 1f ; ud2 ; 1:\n"
 		       :
-		       : "a" (&addr)
+		       : "a"(&addr)
 		       : "memory");
 }
 
 static inline void __vmptrst(u64 addr)
 {
-	asm volatile ( VMPTRST_OPCODE
-		       MODRM_EAX_07
+	asm volatile ("vmptrst (%0)\n"
 		       :
 		       : "a" (&addr)
 		       : "memory");
@@ -223,12 +203,11 @@ static inline void __vmptrst(u64 addr)
 
 static inline void __vmpclear(u64 addr)
 {
-	asm volatile ( VMCLEAR_OPCODE
-		       MODRM_EAX_06
+	asm volatile ("vmclear (%0)\n"
 		       /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 1f ; ud2 ; 1:\n"
 		       :
-		       : "a" (&addr)
+		       : "a"(&addr)
 		       : "memory");
 }
 
@@ -236,12 +215,11 @@ static inline unsigned long __vmread(unsigned long field)
 {
 	unsigned long ecx;
 
-	asm volatile ( VMREAD_OPCODE
-		       MODRM_EAX_ECX
+	asm volatile ("vmread %0, (%1)\n"
 		       /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 1f ; ud2 ; 1:\n"
-		       : "=c" (ecx)
-		       : "a" (field)
+		       : "=c"(ecx)
+		       : "a"(field)
 		       : "memory");
 
 	return ecx;
@@ -249,12 +227,11 @@ static inline unsigned long __vmread(unsigned long field)
 
 static inline void __vmwrite(unsigned long field, unsigned long value)
 {
-	asm volatile ( VMWRITE_OPCODE
-		       MODRM_EAX_ECX
+	asm volatile ("vmwrite %1, (%0)\n"
 		       /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 1f ; ud2 ; 1:\n"
 		       :
-		       : "a" (field) , "c" (value)
+		       : "a"(field) , "c"(value)
 		       : "memory");
 }
 
@@ -262,13 +239,12 @@ static inline unsigned long __vmread_safe(unsigned long field, int *error)
 {
 	unsigned long ecx;
 
-	asm volatile ( VMREAD_OPCODE
-		       MODRM_EAX_ECX
-		       /* CF==1 or ZF==1 --> rc = -1 */
-		       "setna %b0 ; neg %0"
-		       : "=q" (*error), "=c" (ecx)
-		       : "0" (0), "a" (field)
-		       : "memory");
+	asm volatile ("vmread %1, (%3)\n"
+		      /* CF==1 or ZF==1 --> rc = -1 */
+		      "setna %b0 ; neg %0"
+		      : "=q" (*error), "=c" (ecx)
+		      : "0" (0), "a" (field)
+		      : "memory");
 
 	return ecx;
 }
@@ -297,13 +273,12 @@ static inline void __invept(int type, u64 eptp, u64 gpa)
 	     !cpu_has_vmx_ept_invept_single_context )
 		type = INVEPT_ALL_CONTEXT;
 
-	asm volatile ( INVEPT_OPCODE
-		       MODRM_EAX_08
-		       /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 1f ; ud2 ; 1:\n"
-		       :
-		       : "a" (&operand), "c" (type)
-		       : "memory" );
+	asm volatile ("invept %1, (%0)\n"
+		      /* CF==1 or ZF==1 --> crash (ud2) */
+		      "ja 1f ; ud2 ; 1:\n"
+		      :
+		      : "a"(&operand), "c"(type)
+		      : "memory" );
 }
 
 static inline void __invvpid(int type, u16 vpid, u64 gva)
@@ -314,16 +289,19 @@ static inline void __invvpid(int type, u16 vpid, u64 gva)
 		u64 gva;
 	} __attribute__ ((packed)) operand = {vpid, 0, gva};
 
+	/* invvpid might fail if 32:64 are non-zero */
+	type &= 0xfffffffful;
+
 	/* Fix up #UD exceptions which occur when TLBs are flushed before VMXON. */
-	asm volatile ( "1: " INVVPID_OPCODE MODRM_EAX_08
-		       /* CF==1 or ZF==1 --> crash (ud2) */
+	asm volatile ("invvpid %1, %0\n"
+		      /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 2f ; ud2 ; 2:\n"
 		       ".section __ex_table,\"a\"\n"
 		       "    "__FIXUP_ALIGN"\n"
 		       "    "__FIXUP_WORD" 1b,2b\n"
 		       ".previous"
 		       :
-		       : "a" (&operand), "c" (type)
+		       : "a"(&operand), "c"(type)
 		       : "memory" );
 }
 
@@ -363,17 +341,15 @@ static inline void vpid_sync_all(void)
 
 static inline void __vmxoff(void)
 {
-	asm volatile (
-		      VMXOFF_OPCODE
-		      : : : "memory" );
+	asm volatile("vmxoff\n"
+                     : : : "memory" );
 }
 
 static inline int __vmxon(u64 addr)
 {
 	int rc;
 
-	asm volatile (
-		      "1: " VMXON_OPCODE MODRM_EAX_06 "\n"
+	asm volatile ("1: vmxon (%2)\n"
 		      "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
 		      "2:\n"
 		      ".section .fixup,\"ax\"\n"
@@ -410,6 +386,7 @@ static inline int __vmxon(u64 addr)
 
 #define EPT_PAGETABLE_ENTRIES       512
 
-extern void __init init_intel(struct vcpu_hw_context *context, struct cpuinfo_x86 *cpuinfo);
+extern int __init intel_init(struct cpuinfo_x86 *cpuinfo);
+extern int intel_setup_vm_control(struct vcpu_hw_context *context);
 
 #endif /* __VMX_H__ */

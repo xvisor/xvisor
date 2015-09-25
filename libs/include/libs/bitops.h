@@ -523,6 +523,24 @@ static inline void clear_bit(int nr, volatile unsigned long *addr)
 }
 
 /**
+ * clear_bits - Clears a set of contiguous bits in memory
+ * @sbit: Start bit to clear. Inclusive.
+ * @len: Number of bits to clear.
+ * @addr: Address to start counting from
+ */
+static inline void clear_bits(int sbit, int len, volatile unsigned long *addr)
+{
+	unsigned long ebit = (sbit + len);
+	unsigned long mask = (BIT_MASK(ebit - sbit) - 1) << sbit;
+	unsigned long *p = ((unsigned long *)addr) + BIT_WORD(sbit);
+	unsigned long flags;
+
+	_atomic_spin_lock_irqsave(p, flags);
+	*p &= ~mask;
+	_atomic_spin_unlock_irqrestore(p, flags);
+}
+
+/**
  * change_bit - Toggle a bit in memory
  * @nr: Bit to change
  * @addr: Address to start counting from

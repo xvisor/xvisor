@@ -107,7 +107,7 @@ static inline void gather_amd_features(struct cpuinfo_x86 *cpu_info)
 
 	gather_cpu_brandinfo(cpu_info);
 
-	cpuid(CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER, &a, &b, &c, &d);
+	cpuid(AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER, &a, &b, &c, &d);
 	cpu_info->l1_dcache_size = ((c >> CPUID_L1_CACHE_SIZE_SHIFT) & CPUID_L1_CACHE_SIZE_MASK);
 	cpu_info->l1_dcache_line_size = ((c >> CPUID_L1_CACHE_LINE_SHIFT) & CPUID_L1_CACHE_LINE_MASK);
 	cpu_info->l1_icache_size = ((d >> CPUID_L1_CACHE_SIZE_SHIFT) & CPUID_L1_CACHE_SIZE_MASK);
@@ -122,7 +122,7 @@ static inline void gather_amd_features(struct cpuinfo_x86 *cpu_info)
 
 	if (cpu_info->hw_virt_available) {
 		/* Check if nested paging is also available. */
-		cpuid(CPUID_EXTENDED_SVM_IDENTIFIER, &a, &b, &c, &d);
+		cpuid(AMD_CPUID_EXTENDED_SVM_IDENTIFIER, &a, &b, &c, &d);
 		cpu_info->hw_nested_paging = (d & 0x1UL);
 		cpu_info->hw_nr_asids = b;
 		cpu_info->decode_assist = ((d >> 7) & 0x1);
