@@ -82,6 +82,7 @@ int vmm_guest_add_region_from_node(struct vmm_guest *guest,
 
 /** Add new guest region */
 int vmm_guest_add_region(struct vmm_guest *guest,
+			 struct vmm_devtree_node *parent,
 			 const char *name,
 			 const char *device_type,
 			 const char *mainfest_type,

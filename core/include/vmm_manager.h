@@ -49,6 +49,7 @@ enum vmm_region_flags {
 	VMM_REGION_ISDEVICE=0x00000800,
 	VMM_REGION_ISRESERVED=0x00001000,
 	VMM_REGION_ISALLOCED=0x00002000,
+	VMM_REGION_ISADDED=0x00004000,
 };
 
 #define VMM_REGION_MANIFEST_MASK	(VMM_REGION_REAL | \
@@ -63,6 +64,7 @@ struct vmm_guest;
 
 struct vmm_region {
 	struct rb_node head;
+	struct dlist phead;
 	struct vmm_devtree_node *node;
 	struct vmm_guest_aspace *aspace;
 	physical_addr_t gphys_addr;
@@ -89,8 +91,10 @@ struct vmm_guest_aspace {
 	bool initialized;
 	vmm_rwlock_t reg_iotree_lock;
 	struct rb_root reg_iotree;
+	struct dlist reg_ioprobe_list;
 	vmm_rwlock_t reg_memtree_lock;
 	struct rb_root reg_memtree;
+	struct dlist reg_memprobe_list;
 	void *devemu_priv;
 };
 

@@ -429,12 +429,14 @@ static void region_overlap_message(const char *func,
 static int region_add(struct vmm_guest *guest,
 		      struct vmm_devtree_node *rnode,
 		      struct vmm_region **new_reg,
-		      void *rpriv)
+		      void *rpriv,
+		      bool add_probe_list)
 {
 	int rc;
 	const char *aval;
 	irq_flags_t flags;
 	vmm_rwlock_t *root_lock = NULL;
+	struct dlist *root_plist = NULL;
 	struct rb_root *root = NULL;
 	struct rb_node **new = NULL, *pnode = NULL;
 	struct vmm_region *reg = NULL, *pnode_reg = NULL;
@@ -453,6 +455,7 @@ static int region_add(struct vmm_guest *guest,
 	/* Allocate region instance */
 	reg = vmm_zalloc(sizeof(struct vmm_region));
 	RB_CLEAR_NODE(&reg->head);
+	INIT_LIST_HEAD(&reg->phead);
 
 	/* Fillup region details */
 	reg->node = rnode;
@@ -635,12 +638,14 @@ static int region_add(struct vmm_guest *guest,
 		goto region_unprobe_fail;
 	}
 
-	/* Add region to tree */
+	/* Add region to tree and probe list */
 	if (reg->flags & VMM_REGION_IO) {
 		root = &aspace->reg_iotree;
+		root_plist = &aspace->reg_ioprobe_list;
 		root_lock = &aspace->reg_iotree_lock;
 	} else {
 		root = &aspace->reg_memtree;
+		root_plist = &aspace->reg_memprobe_list;
 		root_lock = &aspace->reg_memtree_lock;
 	}
 	vmm_write_lock_irqsave_lite(root_lock, flags);
@@ -662,6 +667,9 @@ static int region_add(struct vmm_guest *guest,
 	}
 	rb_link_node(&reg->head, pnode, new);
 	rb_insert_color(&reg->head, root);
+	if (add_probe_list) {
+		list_add_tail(&reg->phead, root_plist);
+	}
 	vmm_write_unlock_irqrestore_lite(root_lock, flags);
 
 	if (new_reg) {
@@ -697,7 +705,8 @@ region_fail:
 
 static int region_del(struct vmm_guest *guest,
 		      struct vmm_region *reg,
-		      bool reg_tree_del)
+		      bool del_reg_tree,
+		      bool del_probe_list)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
@@ -706,8 +715,8 @@ static int region_del(struct vmm_guest *guest,
 	struct vmm_devtree_node *rnode = reg->node;
 	struct vmm_guest_aspace *aspace = &guest->aspace;
 
-	/* Remove it from region list if not removed already */
-	if (reg_tree_del) {
+	/* Remove it from region tree if not removed already */
+	if (del_reg_tree) {
 		if (reg->flags & VMM_REGION_IO) {
 			root = &aspace->reg_iotree;
 			root_lock = &aspace->reg_iotree_lock;
@@ -717,6 +726,18 @@ static int region_del(struct vmm_guest *guest,
 		}
 		vmm_write_lock_irqsave_lite(root_lock, flags);
 		rb_erase(&reg->head, root);
+		vmm_write_unlock_irqrestore_lite(root_lock, flags);
+	}
+
+	/* Remove it from probe list if not removed already */
+	if (del_probe_list) {
+		if (reg->flags & VMM_REGION_IO) {
+			root_lock = &aspace->reg_iotree_lock;
+		} else {
+			root_lock = &aspace->reg_memtree_lock;
+		}
+		vmm_write_lock_irqsave_lite(root_lock, flags);
+		list_del(&reg->phead);
 		vmm_write_unlock_irqrestore_lite(root_lock, flags);
 	}
 
@@ -825,10 +846,31 @@ int vmm_guest_add_region_from_node(struct vmm_guest *guest,
 				   struct vmm_devtree_node *node,
 				   void *rpriv)
 {
-	return region_add(guest, node, NULL, rpriv);
+	int rc;
+	struct vmm_region *reg = NULL;
+
+	/* Sanity checks */
+	if (!guest || !guest->aspace.node || !node) {
+		return VMM_EINVALID;
+	}
+
+	/* TODO: Make sure aspace node is not parent of given node */
+	/* TODO: Make sure aspace node is ancestor of given node */
+
+	/* Add region */
+	rc = region_add(guest, node, &reg, rpriv, FALSE);
+	if (rc) {
+		return rc;
+	}
+
+	/* Mark this region as dynamically added */
+	reg->flags |= VMM_REGION_ISADDED;
+
+	return VMM_OK;
 }
 
 int vmm_guest_add_region(struct vmm_guest *guest,
+			 struct vmm_devtree_node *parent,
 			 const char *name,
 			 const char *device_type,
 			 const char *mainfest_type,
@@ -842,21 +884,22 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 void *rpriv)
 {
 	int rc;
+	struct vmm_region *reg = NULL;
 	struct vmm_devtree_node *rnode;
 
 	/* Sanity checks */
-	if (!guest || !guest->aspace.node ||
+	if (!guest || !guest->aspace.node || !parent ||
 	    !name || !device_type|| !mainfest_type || !address_type) {
 		rc = VMM_EINVALID;
 		goto failed;
 	}
-	if (!guest->aspace.initialized) {
-		rc = VMM_ENOTAVAIL;
-		goto failed;
-	}
+
+	/* TODO: Make sure aspace node is parent/ancestor of given
+	 * parent node
+	 */
 
 	/* Create region node */
-	rnode = vmm_devtree_addnode(guest->aspace.node, name);
+	rnode = vmm_devtree_addnode(parent, name);
 	if (!rnode) {
 		rc = VMM_EINVALID;
 		goto failed;
@@ -958,10 +1001,13 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 	}
 
 	/* Add region */
-	rc = region_add(guest, rnode, NULL, rpriv);
+	rc = region_add(guest, rnode, &reg, rpriv, FALSE);
 	if (rc) {
 		goto failed_delnode;
 	}
+
+	/* Mark this region as dynamically added */
+	reg->flags |= VMM_REGION_ISADDED;
 
 	return VMM_OK;
 
@@ -986,13 +1032,13 @@ int vmm_guest_del_region(struct vmm_guest *guest,
 	if (reg->aspace->guest != guest) {
 		return VMM_EINVALID;
 	}
-	if (!guest->aspace.initialized) {
-		return VMM_ENOTAVAIL;
+	if (!(reg->flags & VMM_REGION_ISADDED)) {
+		return VMM_EINVALID;
 	}
 	rnode = reg->node;
 
 	/* Delete region */
-	rc = region_del(guest, reg, TRUE);
+	rc = region_del(guest, reg, TRUE, FALSE);
 	if (rc) {
 		return rc;
 	}
@@ -1034,8 +1080,10 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	aspace->guest = guest;
 	INIT_RW_LOCK(&aspace->reg_iotree_lock);
 	aspace->reg_iotree = RB_ROOT;
+	INIT_LIST_HEAD(&aspace->reg_ioprobe_list);
 	INIT_RW_LOCK(&aspace->reg_memtree_lock);
 	aspace->reg_memtree = RB_ROOT;
+	INIT_LIST_HEAD(&aspace->reg_memprobe_list);
 	guest->aspace.devemu_priv = NULL;
 
 	/* Initialize device emulation context */
@@ -1045,7 +1093,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 
 	/* Create regions */
 	vmm_devtree_for_each_child(rnode, aspace->node) {
-		rc = region_add(guest, rnode, NULL, NULL);
+		rc = region_add(guest, rnode, NULL, NULL, TRUE);
 		if (rc) {
 			vmm_devtree_dref_node(rnode);
 			return rc;
@@ -1074,7 +1122,7 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 	irq_flags_t flags;
 	vmm_rwlock_t *root_lock;
 	struct rb_root *root;
-	struct rb_node *rb;
+	struct dlist *root_plist;
 	struct vmm_guest_aspace *aspace;
 	struct vmm_region *reg = NULL;
 	struct vmm_guest_aspace_event evt;
@@ -1099,37 +1147,43 @@ int vmm_guest_aspace_deinit(struct vmm_guest *guest)
 	/* Mark address space as uninitialized */
 	aspace->initialized = FALSE;
 
-	/* One-by-one remove all io regions */
+	/* One-by-one remove all io regions in reverse probing order */
 	root = &aspace->reg_iotree;
+	root_plist = &aspace->reg_ioprobe_list;
 	root_lock = &aspace->reg_iotree_lock;
 	vmm_write_lock_irqsave_lite(root_lock, flags);
-	while ((rb = rb_first_postorder(root))) {
-		reg = rb_entry_safe(rb, struct vmm_region, head);
+	while (!list_empty(root_plist)) {
+		/* Get last region from probe list */
+		reg = list_entry(list_pop_tail(root_plist),
+				 struct vmm_region, phead);
 
 		/* Remove region from tree */
-		rb_erase(rb, root);
+		rb_erase(&reg->head, root);
 
 		/* Delete the region */
 		vmm_write_unlock_irqrestore_lite(root_lock, flags);
-		region_del(guest, reg, FALSE);
+		region_del(guest, reg, FALSE, FALSE);
 		vmm_write_lock_irqsave_lite(root_lock, flags);
 	}
 	*root = RB_ROOT;
 	vmm_write_unlock_irqrestore_lite(root_lock, flags);
 
-	/* One-by-one remove all mem regions */
+	/* One-by-one remove all mem regions in reverse probing order */
 	root = &aspace->reg_memtree;
+	root_plist = &aspace->reg_memprobe_list;
 	root_lock = &aspace->reg_memtree_lock;
 	vmm_write_lock_irqsave_lite(root_lock, flags);
-	while ((rb = rb_first_postorder(root))) {
-		reg = rb_entry_safe(rb, struct vmm_region, head);
+	while (!list_empty(root_plist)) {
+		/* Get last region from probe list */
+		reg = list_entry(list_pop_tail(root_plist),
+				 struct vmm_region, phead);
 
 		/* Remove region from tree */
-		rb_erase(rb, root);
+		rb_erase(&reg->head, root);
 
 		/* Delete the region */
 		vmm_write_unlock_irqrestore_lite(root_lock, flags);
-		region_del(guest, reg, FALSE);
+		region_del(guest, reg, FALSE, FALSE);
 		vmm_write_lock_irqsave_lite(root_lock, flags);
 	}
 	*root = RB_ROOT;
