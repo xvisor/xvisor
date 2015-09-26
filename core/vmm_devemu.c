@@ -801,7 +801,6 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		found = TRUE;
 		einst = vmm_zalloc(sizeof(struct vmm_emudev));
 		if (einst == NULL) {
-			/* FIXME: There is more cleanup to do */
 			vmm_mutex_unlock(&dectrl.emu_lock);
 			return VMM_ENOMEM;
 		}
@@ -816,6 +815,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		vmm_printf("Probe edevice %s/%s\n",
 			   guest->name, reg->node->name);
 #endif
+		vmm_mutex_unlock(&dectrl.emu_lock);
 		if ((rc = emu->probe(guest, einst, match))) {
 			vmm_printf("%s: %s/%s probe error %d\n",
 			__func__, guest->name, reg->node->name, rc);
@@ -823,7 +823,6 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			einst->node = NULL;
 			vmm_free(einst);
 			reg->devemu_priv = NULL;
-			vmm_mutex_unlock(&dectrl.emu_lock);
 			return rc;
 		}
 		if ((rc = emu->reset(einst))) {
@@ -833,9 +832,9 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			einst->node = NULL;
 			vmm_free(einst);
 			reg->devemu_priv = NULL;
-			vmm_mutex_unlock(&dectrl.emu_lock);
 			return rc;
 		}
+		vmm_mutex_lock(&dectrl.emu_lock);
 		break;
 	}
 
