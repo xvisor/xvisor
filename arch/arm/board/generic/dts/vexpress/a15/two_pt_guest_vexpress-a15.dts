@@ -28,8 +28,8 @@
 			  /* Map guest0/uart0 to host/uart1 */
 			  "devtree attr set /guests/guest0/aspace/uart0 manifest_type string real",
 			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x1C0A0000",
-			  "devtree attr set /guests/guest0/aspace/uart0 device_type string misc",
-			  "devtree attr set /guests/guest0/aspace/uart0 compatible string zero",
+			  "devtree attr set /guests/guest0/aspace/uart0 device_type string pt",
+			  "devtree attr set /guests/guest0/aspace/uart0 compatible string simple",
 
 			  /* Create guest0 */
 			  "guest create guest0",
@@ -46,8 +46,8 @@
 			  /* Map guest1/uart0 to host/uart2 */
 			  "devtree attr set /guests/guest1/aspace/uart0 manifest_type string real",
 			  "devtree attr set /guests/guest1/aspace/uart0 host_physical_addr physaddr 0x1C0B0000",
-			  "devtree attr set /guests/guest1/aspace/uart0 device_type string misc",
-			  "devtree attr set /guests/guest1/aspace/uart0 compatible string zero",
+			  "devtree attr set /guests/guest1/aspace/uart0 device_type string pt",
+			  "devtree attr set /guests/guest1/aspace/uart0 compatible string simple",
 
 			  /* Create guest1 */
 			  "guest create guest1",
