@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Fri Jul 31 18:27:08 2015
+# Sun Sep 27 19:39:09 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -99,6 +99,7 @@ CONFIG_DMA_HEAP_SIZE_KB=512
 # Scheduler Configuration
 #
 CONFIG_SCHEDALGO_PRR=y
+# CONFIG_SCHEDALGO_PRM is not set
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
@@ -288,6 +289,7 @@ CONFIG_ARM_VIC=y
 CONFIG_VERSATILE_FPGA_IRQ=y
 CONFIG_MXC_AVIC=y
 # CONFIG_BCM2835_INTC is not set
+# CONFIG_BCM2836_LOCAL_INTC is not set
 # CONFIG_SUN4I_VIC is not set
 # CONFIG_OMAP_INTC is not set
 
@@ -561,6 +563,11 @@ CONFIG_EMU_MISC_ZERO=y
 # CONFIG_EMU_MISC_FW_CFG is not set
 
 #
+# Pass-through Emulators
+#
+CONFIG_EMU_PT_SIMPLE=y
+
+#
 # Network Interface Controller Emulators
 #
 CONFIG_EMU_NET=y
@@ -613,6 +620,10 @@ CONFIG_EMU_RTC_PL031=y
 #
 CONFIG_EMU_GPIO=y
 CONFIG_EMU_GPIO_PL061=y
+
+#
+# PCI Bus Emulators
+#
 # CONFIG_EMU_PCI is not set
 
 #

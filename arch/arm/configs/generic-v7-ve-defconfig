@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Sun Aug  9 14:15:13 2015
+# Sun Sep 27 19:42:04 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -109,6 +109,7 @@ CONFIG_DMA_HEAP_SIZE_KB=512
 # Scheduler Configuration
 #
 CONFIG_SCHEDALGO_PRR=y
+# CONFIG_SCHEDALGO_PRM is not set
 # CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
 # CONFIG_TSLICE_100MS is not set
@@ -555,6 +556,11 @@ CONFIG_EMU_MISC_ZERO=y
 CONFIG_EMU_MISC_ARM11MPCORE=y
 CONFIG_EMU_MISC_A9MPCORE=y
 # CONFIG_EMU_MISC_FW_CFG is not set
+
+#
+# Pass-through Emulators
+#
+CONFIG_EMU_PT_SIMPLE=y
 
 #
 # Network Interface Controller Emulators
