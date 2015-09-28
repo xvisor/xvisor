@@ -352,8 +352,7 @@ static int cmd_profile_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	int index = 0;
 
 	if (argc > 3) {
-		cmd_profile_usage(cdev);
-		return VMM_EFAIL;
+		goto fail;
 	}
 
 	if (argc == 3) {
@@ -367,8 +366,8 @@ static int cmd_profile_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		index++;
 	}
 
+fail:
 	cmd_profile_usage(cdev);
-
 	return VMM_EFAIL;
 }
 

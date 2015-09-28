@@ -34,7 +34,6 @@
 #define	MODULE_INIT			cmd_flash_init
 #define	MODULE_EXIT			cmd_flash_exit
 
-
 static void cmd_flash_usage(struct vmm_chardev *cdev);
 
 static int cmd_flash_list(struct vmm_chardev *cdev,
@@ -365,6 +364,10 @@ static int cmd_flash_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int index = 0;
 
+	if (argc <= 1) {
+		goto fail;
+	}
+
 	while (command[index].name) {
 		if (strcmp(argv[1], command[index].name) == 0) {
 			return command[index].function(cdev, argc, argv);
@@ -372,6 +375,7 @@ static int cmd_flash_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		index++;
 	}
 
+fail:
 	cmd_flash_usage(cdev);
 	return VMM_EFAIL;
 }

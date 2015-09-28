@@ -107,6 +107,11 @@ static int cmd_vstelnet_destroy(struct vmm_chardev *cdev, u32 port)
 static int cmd_vstelnet_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 port;
+
+	if (argc <= 1) {
+		goto fail;
+	}
+
 	if (argc == 2) {
 		if (strcmp(argv[1], "help") == 0) {
 			cmd_vstelnet_usage(cdev);
@@ -116,6 +121,11 @@ static int cmd_vstelnet_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return VMM_OK;
 		}
 	}
+
+	if (argc < 3) {
+		goto fail;
+	}
+
 	if ((strcmp(argv[1], "create") == 0) && (argc == 4)) {
 		port = strtoul(argv[2], NULL, 0);
 		return cmd_vstelnet_create(cdev, port, argv[3]);
@@ -123,6 +133,8 @@ static int cmd_vstelnet_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		port = strtoul(argv[2], NULL, 0);
 		return cmd_vstelnet_destroy(cdev, port);
 	}
+
+fail:
 	cmd_vstelnet_usage(cdev);
 	return VMM_EFAIL;
 }

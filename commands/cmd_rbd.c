@@ -119,6 +119,11 @@ static int cmd_rbd_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	physical_addr_t addr;
 	physical_size_t size;
+
+	if (argc <= 1) {
+		goto fail;
+	}
+
 	if (strcmp(argv[1], "help") == 0) {
 		cmd_rbd_usage(cdev);
 		return VMM_OK;
@@ -131,6 +136,8 @@ static int cmd_rbd_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if ((strcmp(argv[1], "destroy") == 0) && (argc == 3)) {
 		return cmd_rbd_destroy(cdev, argv[2]);
 	}
+
+fail:
 	cmd_rbd_usage(cdev);
 	return VMM_EFAIL;
 }

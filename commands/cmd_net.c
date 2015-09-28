@@ -150,6 +150,10 @@ done:
 
 static int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	if (argc <= 1) {
+		goto fail;
+	}
+
 	if (strcmp(argv[1], "help") == 0) {
 		cmd_net_usage(cdev);
 		return VMM_OK;
@@ -158,6 +162,8 @@ static int cmd_net_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "switches") == 0) {
 		return cmd_net_switch_list(cdev, argc, argv);
 	}
+
+fail:
 	cmd_net_usage(cdev);
 	return VMM_EFAIL;
 }
