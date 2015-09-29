@@ -71,7 +71,10 @@
 
 	chosen {
 		console = &SERIAL0;
-		bootcmd = "vfs mount hda0p0 /";
+		bootcmd = "vfs mount hda0p0 /",
+
+			  /* Kick off the startup script */
+			  "vfs run /system/init/startup";
 	};
 };
 
