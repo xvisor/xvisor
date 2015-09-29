@@ -81,9 +81,6 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	pg.bits.present = 1;
 	pg.bits.rw = 1;
 
-	if (!(mem_flags & VMM_MEMORY_EXECUTABLE))
-		pg.bits.execution_disable = 1;
-
 	if (!(mem_flags & VMM_MEMORY_CACHEABLE))
 		pg.bits.cache_disable = 1;
 
