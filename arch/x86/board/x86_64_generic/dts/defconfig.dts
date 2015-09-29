@@ -71,7 +71,9 @@
 
 	chosen {
 		console = &SERIAL0;
-		bootcmd = "vfs mount hda0p0 /",
+		bootcmd = "echo Waiting for 3 seconds to let block devices settle down...",
+			  "sleep 3", /* Let block devices settle down */
+			  "vfs mount hda0p0 /",
 
 			  /* Kick off the startup script */
 			  "vfs run /system/init/startup";
