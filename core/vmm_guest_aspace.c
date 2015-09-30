@@ -864,7 +864,7 @@ int vmm_guest_add_region_from_node(struct vmm_guest *guest,
 	}
 
 	/* Mark this region as dynamically added */
-	reg->flags |= VMM_REGION_ISADDED;
+	reg->flags |= VMM_REGION_ISDYNAMIC;
 
 	return VMM_OK;
 }
@@ -1007,7 +1007,7 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 	}
 
 	/* Mark this region as dynamically added */
-	reg->flags |= VMM_REGION_ISADDED;
+	reg->flags |= VMM_REGION_ISDYNAMIC;
 
 	return VMM_OK;
 
@@ -1032,7 +1032,7 @@ int vmm_guest_del_region(struct vmm_guest *guest,
 	if (reg->aspace->guest != guest) {
 		return VMM_EINVALID;
 	}
-	if (!(reg->flags & VMM_REGION_ISADDED)) {
+	if (!(reg->flags & VMM_REGION_ISDYNAMIC)) {
 		return VMM_EINVALID;
 	}
 	rnode = reg->node;
