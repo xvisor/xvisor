@@ -193,7 +193,7 @@ int vmm_host_irqext_create_mapping(u32 hirq, u32 hwirq)
 	struct vmm_host_irq *irq = NULL;
 
 	if (hirq < CONFIG_HOST_IRQ_COUNT) {
-		return VMM_OK;
+		return vmm_host_irq_set_hwirq(hirq, hwirq);
 	}
 
 	vmm_write_lock_irqsave_lite(&iectrl.lock, flags);
@@ -232,7 +232,7 @@ int vmm_host_irqext_dispose_mapping(u32 hirq)
 	struct vmm_host_irq *irq = NULL;
 
 	if (hirq < CONFIG_HOST_IRQ_COUNT) {
-		return VMM_OK;
+		return vmm_host_irq_set_hwirq(hirq, hirq);
 	}
 
 	vmm_write_lock_irqsave_lite(&iectrl.lock, flags);

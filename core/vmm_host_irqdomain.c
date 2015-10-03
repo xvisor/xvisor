@@ -148,12 +148,9 @@ int vmm_host_irqdomain_create_mapping(struct vmm_host_irqdomain *domain,
 	if (domain->ops && domain->ops->map) {
 		rc = domain->ops->map(domain, domain->base + hwirq, hwirq);
 		if (rc) {
+			vmm_host_irqext_dispose_mapping(domain->base + hwirq);
 			return rc;
 		}
-	}
-
-	if ((domain->base + hwirq) < CONFIG_HOST_IRQ_COUNT) {
-		vmm_host_irq_set_hwirq(domain->base + hwirq, hwirq);
 	}
 
 	return domain->base + hwirq;
@@ -165,10 +162,6 @@ int vmm_host_irqdomain_dispose_mapping(unsigned int hirq)
 
 	if (!domain) {
 		return VMM_ENOTAVAIL;
-	}
-
-	if (hirq < CONFIG_HOST_IRQ_COUNT) {
-		vmm_host_irq_set_hwirq(hirq, hirq);
 	}
 
 	if (domain->ops && domain->ops->unmap) {
@@ -212,7 +205,7 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 	}
 	if ((base >= 0) &&
 	    ((CONFIG_HOST_IRQ_COUNT <= base) ||
-	     (CONFIG_HOST_IRQ_COUNT <= (base+size)))) {
+	     (CONFIG_HOST_IRQ_COUNT <= (base + size)))) {
 		return NULL;
 	}
 
