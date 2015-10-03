@@ -1,0 +1,6 @@
+
+/include/ "bcm2835.dtsi"
+
+/ {
+	model = "Raspberry Pi Model B";
+};

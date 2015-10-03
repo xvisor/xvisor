@@ -67,6 +67,7 @@
 #include <vmm_smp.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 #include <vmm_devtree.h>
 #include <libs/bitops.h>
 
@@ -165,9 +166,9 @@
 #define INTERRUPT_AVSPMON		(ARM_IRQ2_BASE + 31)
 
 /* Put the bank and irq (32 bits) into the hwirq */
-#define MAKE_HWIRQ(s, b, n)	((((b) << 5) | (n)) + (s))
-#define HWIRQ_BANK(s, i)	(((i) - (s)) >> 5)
-#define HWIRQ_BIT(s, i)		(1UL << (((i) - (s)) & 0x1f))
+#define MAKE_HWIRQ(b, n)	(((b) << 5) | (n))
+#define HWIRQ_BANK(i)		((i) >> 5)
+#define HWIRQ_BIT(i)		(1UL << ((i) & 0x1f))
 
 #define NR_IRQS_BANK0		8
 #define BANK0_HWIRQ_MASK	0xff
@@ -197,7 +198,7 @@ static const int shortcuts[] = {
 
 struct armctrl_ic {
 	u32 parent_irq;
-	u32 irq_start;
+	struct vmm_host_irqdomain *domain;
 	virtual_addr_t base_va;
 	void *base;
 	void *pending[NR_BANKS];
@@ -208,16 +209,14 @@ struct armctrl_ic {
 
 static struct armctrl_ic intc __read_mostly;
 
-static void bcm283x_intc_irq_mask(struct vmm_host_irq *irqd)
+static void bcm283x_intc_irq_mask(struct vmm_host_irq *d)
 {
-	vmm_writel(HWIRQ_BIT(intc.irq_start, irqd->num),
-		   intc.disable[HWIRQ_BANK(intc.irq_start, irqd->num)]);
+	vmm_writel(HWIRQ_BIT(d->hwirq), intc.disable[HWIRQ_BANK(d->hwirq)]);
 }
 
-static void bcm283x_intc_irq_unmask(struct vmm_host_irq *irqd)
+static void bcm283x_intc_irq_unmask(struct vmm_host_irq *d)
 {
-	vmm_writel(HWIRQ_BIT(intc.irq_start, irqd->num),
-		   intc.enable[HWIRQ_BANK(intc.irq_start, irqd->num)]);
+	vmm_writel(HWIRQ_BIT(d->hwirq), intc.enable[HWIRQ_BANK(d->hwirq)]);
 }
 
 static struct vmm_host_irq_chip bcm283x_intc_chip = {
@@ -228,32 +227,32 @@ static struct vmm_host_irq_chip bcm283x_intc_chip = {
 
 static u32 bcm283x_intc_active_irq(u32 cpu_irq_no)
 {
-	register u32 stat, irq;
+	register u32 stat, hwirq;
 
 	if ((stat = vmm_readl(intc.pending[0]))) {
 		if (stat & BANK0_HWIRQ_MASK) {
 			stat = stat & BANK0_HWIRQ_MASK;
-			irq = MAKE_HWIRQ(intc.irq_start, 0, ffs(stat) - 1);
+			hwirq = MAKE_HWIRQ(0, ffs(stat) - 1);
 		} else if (stat & SHORTCUT1_MASK) {
 			stat = (stat & SHORTCUT1_MASK) >> SHORTCUT_SHIFT;
-			irq = MAKE_HWIRQ(intc.irq_start, 1, shortcuts[ffs(stat) - 1]);
+			hwirq = MAKE_HWIRQ(1, shortcuts[ffs(stat) - 1]);
 		} else if (stat & SHORTCUT2_MASK) {
 			stat = (stat & SHORTCUT2_MASK) >> SHORTCUT_SHIFT;
-			irq = MAKE_HWIRQ(intc.irq_start, 2, shortcuts[ffs(stat) - 1]);
+			hwirq = MAKE_HWIRQ(2, shortcuts[ffs(stat) - 1]);
 		} else if (stat & BANK1_HWIRQ) {
 			stat = vmm_readl(intc.pending[1]);
-			irq = MAKE_HWIRQ(intc.irq_start, 1, ffs(stat) - 1);
+			hwirq = MAKE_HWIRQ(1, ffs(stat) - 1);
 		} else if (stat & BANK2_HWIRQ) {
 			stat = vmm_readl(intc.pending[2]);
-			irq = MAKE_HWIRQ(intc.irq_start, 2, ffs(stat) - 1);
+			hwirq = MAKE_HWIRQ(2, ffs(stat) - 1);
 		} else {
 			BUG();
 		}
 	} else {
-		irq = UINT_MAX;
+		hwirq = UINT_MAX;
 	}
 
-	return irq;
+	return vmm_host_irqdomain_find_mapping(intc.domain, hwirq);
 }
 
 static vmm_irq_return_t bcm2836_intc_cascade_irq(int irq, void *dev)
@@ -263,11 +262,38 @@ static vmm_irq_return_t bcm2836_intc_cascade_irq(int irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
+static int bcm283x_intc_xlate(struct vmm_host_irqdomain *d,
+			struct vmm_devtree_node *ctrlr,
+			const u32 *intspec, unsigned int intsize,
+			unsigned long *out_hwirq, unsigned int *out_type)
+{
+	if (WARN_ON(intsize != 2))
+		return VMM_EINVALID;
+
+	if (WARN_ON(intspec[0] >= NR_BANKS))
+		return VMM_EINVALID;
+
+	if (WARN_ON(intspec[1] >= IRQS_PER_BANK))
+		return VMM_EINVALID;
+
+	if (WARN_ON(intspec[0] == 0 && intspec[1] >= NR_IRQS_BANK0))
+		return VMM_EINVALID;
+
+	*out_hwirq = MAKE_HWIRQ(intspec[0], intspec[1]);
+	*out_type = VMM_IRQ_TYPE_NONE;
+
+	return 0;
+}
+
+static struct vmm_host_irqdomain_ops bcm283x_intc_ops = {
+	.xlate = bcm283x_intc_xlate,
+};
+
 static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
 					bool is_bcm2836)
 {
-	int rc;
-	u32 b, i = 0, irq;
+	int rc, irq;
+	u32 b, i = 0, irq_start = 0;
 
 	if (!vmm_smp_is_bootcpu()) {
 		return VMM_OK;
@@ -278,16 +304,23 @@ static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
 		intc.parent_irq = UINT_MAX;
 	}
 
-	if (vmm_devtree_read_u32(node, "irq_start", &intc.irq_start)) {
-		intc.irq_start = 0;
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
+
+	intc.domain = vmm_host_irqdomain_add(node, (int)irq_start,
+					     NR_BANKS*IRQS_PER_BANK,
+					     &bcm283x_intc_ops, NULL);
+	if (!intc.domain) {
+		return VMM_EFAIL;
 	}
 
 	rc = vmm_devtree_request_regmap(node, &intc.base_va, 0,
 					"BCM2835 INTC");
 	if (rc) {
+		vmm_host_irqdomain_remove(intc.domain);
 		return rc;
 	}
-
 	intc.base = (void *)intc.base_va;
 
 	for (b = 0; b < NR_BANKS; b++) {
@@ -297,7 +330,9 @@ static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
 		intc.irqs[b] = bank_irqs[b];
 
 		for (i = 0; i < intc.irqs[b]; i++) {
-			irq = MAKE_HWIRQ(intc.irq_start, b, i);
+			irq = vmm_host_irqdomain_create_mapping(intc.domain,
+							   MAKE_HWIRQ(b, i));
+			BUG_ON(irq < 0);
 			vmm_host_irq_set_chip(irq, &bcm283x_intc_chip);
 			vmm_host_irq_set_handler(irq, vmm_handle_level_irq);
 		}

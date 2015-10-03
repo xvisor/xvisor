@@ -2,7 +2,9 @@
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
-	model = "Raspberry Pi Model B";
+	compatible = "brcm,bcm2835";
+	model = "BCM2835";
+	interrupt-parent = <&intc>;
 
 	chosen { };
 	aliases { };
@@ -33,13 +35,15 @@
 			compatible = "brcm,bcm2835-system-timer";
 			reg = <0x20003000 0x1000>;
 			clock-frequency = <1000000>;
-			interrupts = <32 33 34 35>;
+			interrupts = <1 0>, <1 1>, <1 2>, <1 3>;
 		};
 
-		intc {
+		intc: intc {
 	      		device_type = "pic";
 			compatible = "brcm,bcm2835-armctrl-ic";
 			reg = <0x2000b200 0x200>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 		};
 
 		poweroff {
@@ -51,7 +55,7 @@
 	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
 	      		reg = <0x20201000 0x1000>;
 			clock-frequency = <3000000>;
-			interrupts = <89>;
+			interrupts = <2 25>;
 		};
 
 		sdhci {
@@ -59,13 +63,13 @@
 			compatible = "brcm,bcm2835-sdhci";
 			reg = <0x20300000 0x1000>;
 			clocks = <&clk_mmc>;
-			interrupts = <94>;
+			interrupts = <2 30>;
 		};
 
 		dwc2 {
 			compatible = "brcm,bcm2835-usb";
 			reg = <0x20980000 0x10000>;
-			interrupts = <73>;
+			interrupts = <2 9>;
 		};
 	};
 
@@ -95,4 +99,3 @@
 		};
 	};
 };
-
