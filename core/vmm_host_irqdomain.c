@@ -190,6 +190,20 @@ int vmm_host_irqdomain_xlate(struct vmm_host_irqdomain *domain,
 	return VMM_OK;
 }
 
+int vmm_host_irqdomain_xlate_onecell(struct vmm_host_irqdomain *domain,
+			struct vmm_devtree_node *node,
+			const u32 *intspec, unsigned int intsize,
+			unsigned long *out_hwirq, unsigned int *out_type)
+{
+	if (WARN_ON(intsize != 1))
+		return VMM_EINVALID;
+
+	*out_hwirq = intspec[0];
+	*out_type = VMM_IRQ_TYPE_NONE;
+
+	return VMM_OK;
+}
+
 struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 				struct vmm_devtree_node *of_node,
 				int base, unsigned int size,

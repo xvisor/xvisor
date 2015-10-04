@@ -79,30 +79,46 @@ struct vmm_host_irqdomain {
 	const struct vmm_host_irqdomain_ops	*ops;
 };
 
+/** Convert host IRQ to HW IRQ */
 int vmm_host_irqdomain_to_hwirq(struct vmm_host_irqdomain *domain,
 				unsigned int hirq);
 
+/** Find host IRQ for givne HW IRQ */
 int vmm_host_irqdomain_find_mapping(struct vmm_host_irqdomain *domain,
 				    unsigned int hwirq);
 
+/** Find matching host IRQ domain based on given match function */
 struct vmm_host_irqdomain *vmm_host_irqdomain_match(void *data,
 			int (*fn)(struct vmm_host_irqdomain *, void *));
 
+/** Dump host IRQ domain debug info */
 void vmm_host_irqdomain_debug_dump(struct vmm_chardev *cdev);
 
+/** Find host IRQ domain for given host IRQ */
 struct vmm_host_irqdomain *vmm_host_irqdomain_get(unsigned int hirq);
 
+/** Create mapping in host IRQ domain for given HW IRQ */
 int vmm_host_irqdomain_create_mapping(struct vmm_host_irqdomain *domain,
 				      unsigned int hwirq);
 
+/** Dispose mapping in host IRQ domain associated with given host IRQ */
 int vmm_host_irqdomain_dispose_mapping(unsigned int hirq);
 
+/** Translate device tree cells to HW IRQ for given host IRQ domain
+ *  using xlate() callback provided in host IRQ domain ops.
+ */
 int vmm_host_irqdomain_xlate(struct vmm_host_irqdomain *domain,
 			     const u32 *intspec, unsigned int intsize,
 			     unsigned long *out_hwirq, unsigned int *out_type);
 
+/** Common xlate() callback to translate device tree cell */
+int vmm_host_irqdomain_xlate_onecell(struct vmm_host_irqdomain *domain,
+			struct vmm_devtree_node *node,
+			const u32 *intspec, unsigned int intsize,
+			unsigned long *out_hwirq, unsigned int *out_type);
+
 /**
- * vmm_host_irqdomain_add() - Allocate and register a new extended IRQ domain.
+ * Allocate and register a new host IRQ domain.
  * @of_node: pointer to interrupt controller's device tree node.
  * @base: Base host IRQ number. If < 0 then extended IRQs are created.
  * @size: Number of interrupts in the domain.
@@ -115,8 +131,10 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 				const struct vmm_host_irqdomain_ops *ops,
 				void *host_data);
 
+/** Remove existing host IRQ domain */
 void vmm_host_irqdomain_remove(struct vmm_host_irqdomain *domain);
 
+/** Initialize host IRQ domain framework */
 int vmm_host_irqdomain_init(void);
 
 extern const struct vmm_host_irqdomain_ops irqdomain_simple_ops;
