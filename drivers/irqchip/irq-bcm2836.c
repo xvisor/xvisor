@@ -37,6 +37,7 @@
 #include <vmm_smp.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 #include <vmm_devtree.h>
 #include <libs/bitops.h>
 
@@ -89,19 +90,15 @@
 #define LOCAL_IRQ_GPU_FAST		8
 #define LOCAL_IRQ_PMU_FAST		9
 #define LAST_IRQ			LOCAL_IRQ_PMU_FAST
+#define NR_IRQS				(LAST_IRQ + 1)
 
 struct bcm2836_arm_irqchip_intc {
-	u32 irq_start;
+	struct vmm_host_irqdomain *domain;
 	virtual_addr_t base_va;
 	void *base;
 };
 
 static struct bcm2836_arm_irqchip_intc intc  __read_mostly;
-
-static u32 hwirq(struct vmm_host_irq *d)
-{
-	return (d->num - intc.irq_start);
-}
 
 static void bcm2836_arm_irqchip_mask_per_cpu_irq(unsigned int reg_offset,
 						 unsigned int bit,
@@ -124,14 +121,14 @@ static void bcm2836_arm_irqchip_unmask_per_cpu_irq(unsigned int reg_offset,
 static void bcm2836_arm_irqchip_mask_timer_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_mask_per_cpu_irq(LOCAL_TIMER_INT_CONTROL0,
-					     hwirq(d) - LOCAL_IRQ_CNTPSIRQ,
+					     d->hwirq - LOCAL_IRQ_CNTPSIRQ,
 					     vmm_smp_processor_id());
 }
 
 static void bcm2836_arm_irqchip_unmask_timer_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_unmask_per_cpu_irq(LOCAL_TIMER_INT_CONTROL0,
-					       hwirq(d) - LOCAL_IRQ_CNTPSIRQ,
+					       d->hwirq - LOCAL_IRQ_CNTPSIRQ,
 					       vmm_smp_processor_id());
 }
 
@@ -144,14 +141,14 @@ static struct vmm_host_irq_chip bcm2836_arm_irqchip_timer = {
 static void bcm2836_arm_irqchip_mask_mbox_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_mask_per_cpu_irq(LOCAL_MAILBOX_INT_CONTROL0,
-					     hwirq(d) - LOCAL_IRQ_MAILBOX0,
+					     d->hwirq - LOCAL_IRQ_MAILBOX0,
 					     vmm_smp_processor_id());
 }
 
 static void bcm2836_arm_irqchip_unmask_mbox_irq(struct vmm_host_irq *d)
 {
 	bcm2836_arm_irqchip_unmask_per_cpu_irq(LOCAL_MAILBOX_INT_CONTROL0,
-					       hwirq(d) - LOCAL_IRQ_MAILBOX0,
+					       d->hwirq - LOCAL_IRQ_MAILBOX0,
 					       vmm_smp_processor_id());
 }
 
@@ -164,7 +161,7 @@ static void bcm2836_arm_irqchip_raise(struct vmm_host_irq *d,
 
 	for_each_cpu(cpu, mask)	{
 		mbox = intc.base + LOCAL_MAILBOX0_SET0 + 0x10 * cpu;
-		mbox += (hwirq(d) - LOCAL_IRQ_MAILBOX0) * 0x4;
+		mbox += (d->hwirq - LOCAL_IRQ_MAILBOX0) * 0x4;
 		vmm_writel(1 << 0, mbox);
 	}
 }
@@ -214,7 +211,7 @@ static struct vmm_host_irq_chip bcm2836_arm_irqchip_pmu = {
 static void bcm2836_arm_irqchip_register_irq(u32 hwirq, bool is_ipi,
 					     struct vmm_host_irq_chip *chip)
 {
-	u32 irq = hwirq + intc.irq_start;
+	u32 irq = vmm_host_irqdomain_create_mapping(intc.domain, hwirq);
 
 	vmm_host_irq_mark_per_cpu(irq);
 	if (is_ipi) {
@@ -227,44 +224,55 @@ static void bcm2836_arm_irqchip_register_irq(u32 hwirq, bool is_ipi,
 static u32 bcm2836_intc_active_irq(u32 cpu_irq_no)
 {
 	u32 ret = UINT_MAX;
-	u32 cpu, stat, hirq;
+	u32 cpu, stat, hwirq;
 	void *mbox;
 
 	cpu = vmm_smp_processor_id();
 	stat = vmm_readl(intc.base + LOCAL_IRQ_PENDING0 + 0x4 * cpu);
 
 	if (stat) {
-		hirq = ffs(stat) - 1;
-		if (LOCAL_IRQ_MAILBOX0 <= hirq &&
-		    hirq <= LOCAL_IRQ_MAILBOX3) {
+		hwirq = ffs(stat) - 1;
+		if (LOCAL_IRQ_MAILBOX0 <= hwirq &&
+		    hwirq <= LOCAL_IRQ_MAILBOX3) {
 			mbox = intc.base + LOCAL_MAILBOX0_CLR0 + 0x10 * cpu;
-			mbox += (hirq - LOCAL_IRQ_MAILBOX0) * 0x4;
+			mbox += (hwirq - LOCAL_IRQ_MAILBOX0) * 0x4;
 			vmm_writel(vmm_readl(mbox), mbox);
 		}
-		ret = hirq + intc.irq_start;
+		ret = vmm_host_irqdomain_find_mapping(intc.domain, hwirq);
 	}
 
 	return ret;
 }
 
+static struct vmm_host_irqdomain_ops bcm2836_intc_ops = {
+	.xlate = vmm_host_irqdomain_xlate_onecell,
+};
+
 static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
 {
 	int rc, i;
+	u32 irq_start = 0;
 
 	if (!vmm_smp_is_bootcpu()) {
 		return VMM_OK;
 	}
 
-	if (vmm_devtree_read_u32(node, "irq_start", &intc.irq_start)) {
-		intc.irq_start = 0;
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
+
+	intc.domain = vmm_host_irqdomain_add(node, (int)irq_start, NR_IRQS,
+					     &bcm2836_intc_ops, NULL);
+	if (!intc.domain) {
+		return VMM_EFAIL;
 	}
 
 	rc = vmm_devtree_request_regmap(node, &intc.base_va, 0,
 					"BCM2836 LOCAL INTC");
 	if (rc) {
+		vmm_host_irqdomain_remove(intc.domain);
 		return rc;
 	}
-
 	intc.base = (void *)intc.base_va;
 
 	/* Setup up per-CPU interrupts */

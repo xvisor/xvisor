@@ -60,7 +60,7 @@
 	gen-timer { /* Generic Timer */
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
-		interrupts = <96 97 99 98>;
+		interrupts = <0>, <1>, <3>, <2>;
 		interrupt-parent = <&local_intc>;
 	};
 
@@ -93,7 +93,7 @@
 			irq_start = <0>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			interrupts = <104>; /* GPU interrupt of local INTC */
+			interrupts = <8>; /* GPU interrupt of local INTC */
 			interrupt-parent = <&local_intc>;
 		};
 
