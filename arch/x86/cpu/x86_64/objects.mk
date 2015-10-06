@@ -37,6 +37,7 @@ cpu-objs-y+= cpu_atomic64.o
 #endif
 cpu-objs-y+= cpu_main.o
 cpu-objs-y+= cpu_hacks.o
+cpu-objs-y+= cpu_string.o
 cpu-objs-$(CONFIG_MODULES)+= cpu_elf.o
 cpu-objs-y+= cpu_interrupts.o
 cpu-objs-y+= cpu_vcpu_irq.o
