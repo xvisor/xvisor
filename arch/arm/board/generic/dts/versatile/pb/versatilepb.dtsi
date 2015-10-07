@@ -4,6 +4,7 @@
 	#size-cells = <1>;
 	compatible = "arm,versatile";
 	model = "versatilepb";
+	interrupt-parent = <&vic>;
 
 	chosen { };
 	aliases { };
@@ -34,13 +35,15 @@
 			#size-cells = <1>;
 			compatible = "arm,amba-bus";
 
-			vic { /* Vectored Interrupt Controller */
+			vic: vic { /* Vectored Interrupt Controller */
 				device_type = "pic";
 				compatible = "arm,versatile-vic";
 				reg = <0x10140000 0x1000>;
+				interrupt-controller;
+				#interrupt-cells = <1>;
 			};
 
-			sic { /* Secondary Interrupt Controller */
+			sic: sic { /* Secondary Interrupt Controller */
 				device_type = "pic";
 				compatible = "arm,versatile-sic";
 				reg = <0x10003000 0x1000>;
@@ -49,6 +52,8 @@
 				valid-mask = <0x000003FF>; /* Interrupts 0 to 8 routed via VIC irq 31 */
 				picen-mask = <0xFFD00000>; /* Interrupts 21 to 31 routed directly to VIC */
 				interrupts = <31>; /* Cascaded to vic */
+				interrupt-controller;
+				#interrupt-cells = <1>;
 			};
 
 			sysreg { /* System Registers */
@@ -121,6 +126,7 @@
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
 				interrupts = <35>;
+				interrupt-parent = <&sic>;
 				clocks = <&refclk24mhz>;
 				clock-names = "KMIREFCLK";
 			};
@@ -130,6 +136,7 @@
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
 				interrupts = <36>;
+				interrupt-parent = <&sic>;
 				clocks = <&refclk24mhz>;
 				clock-names = "KMIREFCLK";
 			};

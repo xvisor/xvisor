@@ -38,7 +38,9 @@
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 
+#define VIC_NR_IRQS			32
 #define VIC_IRQ_STATUS			0x00
 #define VIC_FIQ_STATUS			0x04
 #define VIC_RAW_STATUS			0x08
@@ -60,9 +62,9 @@
 #define VIC_PL192_VECT_ADDR		0xF00
 
 struct vic_chip_data {
-	u32 irq_offset;
 	struct vmm_devtree_node *node;
-	virtual_addr_t cpu_base;
+	virtual_addr_t base;
+	struct vmm_host_irqdomain *domain;
 };
 
 #ifndef VIC_MAX_NR
@@ -71,62 +73,52 @@ struct vic_chip_data {
 
 static struct vic_chip_data vic_data[VIC_MAX_NR];
 
-static inline virtual_addr_t vic_cpu_base(struct vmm_host_irq *irq)
+static inline void *vic_base(struct vmm_host_irq *d)
 {
-	struct vic_chip_data *v_data = vmm_host_irq_get_chip_data(irq);
+	struct vic_chip_data *v = vmm_host_irq_get_chip_data(d);
 
-	return v_data->cpu_base;
-}
-
-static inline u32 vic_irq(struct vmm_host_irq *irq)
-{
-	struct vic_chip_data *v_data = vmm_host_irq_get_chip_data(irq);
-
-	return irq->num - v_data->irq_offset;
+	return (void *)v->base;
 }
 
 static u32 vic_active_irq(u32 cpu_nr)
 {
-	u32 i, int_status;
+	u32 hwirq, int_status, ret = UINT_MAX;
+	struct vic_chip_data *v = &vic_data[0];
 
-	int_status = vmm_readl((void *)vic_data[0].cpu_base + VIC_IRQ_STATUS);
-	if (int_status) {
-		for (i = 0; i < 32; i++) {
-			if ((int_status >> i) & 1) {
-				return i + vic_data[0].irq_offset;
-			}
-		}
+	int_status = vmm_readl((void *)v->base + VIC_IRQ_STATUS);
+	if (!int_status) {
+		goto done;
 	}
 
-	return UINT_MAX;
+	for (hwirq = 0; hwirq < VIC_NR_IRQS; hwirq++) {
+		if (!((int_status >> hwirq) & 0x1)) {
+			continue;
+		}
+		ret = vmm_host_irqdomain_find_mapping(v->domain, hwirq);
+		goto done;
+	}
+
+done:
+	return ret;
 }
 
-static void vic_mask_irq(struct vmm_host_irq *irq)
+static void vic_mask_irq(struct vmm_host_irq *d)
 {
-	volatile void *base = (volatile void *) vic_cpu_base(irq);
-	unsigned int irq_no = vic_irq(irq);
-
-	vmm_writel(1 << irq_no, base + VIC_INT_ENABLE_CLEAR);
+	vmm_writel(1 << d->hwirq, vic_base(d) + VIC_INT_ENABLE_CLEAR);
 }
 
-static void vic_unmask_irq(struct vmm_host_irq *irq)
+static void vic_unmask_irq(struct vmm_host_irq *d)
 {
-	volatile void *base = (volatile void *) vic_cpu_base(irq);
-	unsigned int irq_no = vic_irq(irq);
-
-	vmm_writel(1 << irq_no, base + VIC_INT_ENABLE);
+	vmm_writel(1 << d->hwirq, vic_base(d) + VIC_INT_ENABLE);
 }
 
-static void vic_ack_irq(struct vmm_host_irq *irq)
+static void vic_ack_irq(struct vmm_host_irq *d)
 {
-	volatile void *base = (volatile void *) vic_cpu_base(irq);
-	unsigned int irq_no = vic_irq(irq);
-
-	vmm_writel(1 << irq_no, base + VIC_INT_ENABLE_CLEAR);
+	vmm_writel(1 << d->hwirq, vic_base(d) + VIC_INT_ENABLE_CLEAR);
 	/* moreover, clear the soft-triggered, in case it was the reason */
-	vmm_writel(1 << irq_no, base + VIC_INT_SOFT_CLEAR);
+	vmm_writel(1 << d->hwirq, vic_base(d) + VIC_INT_SOFT_CLEAR);
 
-	vmm_writel(1 << irq_no, base + VIC_INT_ENABLE);
+	vmm_writel(1 << d->hwirq, vic_base(d) + VIC_INT_ENABLE);
 }
 
 static struct vmm_host_irq_chip vic_chip = {
@@ -170,36 +162,50 @@ static void vic_init2(void *base)
 	vmm_writel(32, base + VIC_PL190_DEF_VECT_ADDR);
 }
 
+static struct vmm_host_irqdomain_ops vic_ops = {
+	.xlate = vmm_host_irqdomain_xlate_onecell,
+};
+
 static int __cpuinit vic_devtree_init(struct vmm_devtree_node *node,
 				      struct vmm_devtree_node *parent)
 {
-	int i, rc;
-	virtual_addr_t base;
-	struct vic_chip_data *v_data;
+	int hirq, rc;
+	u32 hwirq, irq_start = 0;
+	struct vic_chip_data *v = &vic_data[0];
 
-	rc = vmm_devtree_request_regmap(node, &base, 0, "Versatile VIC");
+	v->node = node;
+
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
+
+	v->domain = vmm_host_irqdomain_add(node, (int)irq_start, VIC_NR_IRQS,
+					   &vic_ops, NULL);
+	if (!v->domain) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_devtree_request_regmap(node, &v->base, 0, "Versatile VIC");
 	if (rc) {
+		vmm_host_irqdomain_remove(v->domain);
 		return rc;
 	}
 
-	v_data = &vic_data[0];
-	v_data->node = node;
-	v_data->cpu_base = base;
-	v_data->irq_offset = 0;
-
-	for (i = v_data->irq_offset; i < v_data->irq_offset + 32; i++) {
-		vmm_host_irq_set_chip(i, &vic_chip);
-		vmm_host_irq_set_chip_data(i, v_data);
-		vmm_host_irq_set_handler(i, vmm_handle_level_irq);
+	for (hwirq = 0; hwirq < VIC_NR_IRQS; hwirq++) {
+		hirq = vmm_host_irqdomain_create_mapping(v->domain, hwirq);
+		BUG_ON(hirq < 0);
+		vmm_host_irq_set_chip(hirq, &vic_chip);
+		vmm_host_irq_set_chip_data(hirq, v);
+		vmm_host_irq_set_handler(hirq, vmm_handle_level_irq);
 	}
 
 	/* Disable all interrupts initially. */
-	vic_disable((void *)v_data->cpu_base);
+	vic_disable((void *)v->base);
 
 	/* Make sure we clear all existing interrupts */
-	vic_clear_interrupts((void *)v_data->cpu_base);
+	vic_clear_interrupts((void *)v->base);
 
-	vic_init2((void *)v_data->cpu_base);
+	vic_init2((void *)v->base);
 
 	vmm_host_irq_set_active_callback(vic_active_irq);
 
