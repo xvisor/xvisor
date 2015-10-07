@@ -25,7 +25,7 @@
  *
  * The original code is licensed under the GPL.
  *
- *  Support for Versatile FPGA-based IRQ controllers
+ * Support for Versatile FPGA-based IRQ controllers
  */
 
 #include <vmm_error.h>
@@ -35,8 +35,10 @@
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 #include <libs/stringlib.h>
 
+#define NR_IRQS			32
 #define IRQ_STATUS		0x00
 #define IRQ_RAW_STATUS		0x04
 #define IRQ_ENABLE_SET		0x08
@@ -61,7 +63,7 @@
  * @used_irqs: number of active IRQs on this controller
  */
 struct fpga_irq_data {
-	u32 irq_start;
+	struct vmm_host_irqdomain *domain;
 	struct vmm_devtree_node *node;
 	void *base;
 	struct vmm_host_irq_chip chip;
@@ -77,43 +79,42 @@ struct fpga_irq_data {
 static struct fpga_irq_data fpga_irq_devices[CONFIG_VERSATILE_FPGA_IRQ_NR];
 static int fpga_irq_id = 0;
 
-static inline u32 fpga_irq(struct vmm_host_irq *irq)
+static void fpga_irq_mask(struct vmm_host_irq *d)
 {
-	struct fpga_irq_data *f = vmm_host_irq_get_chip_data(irq);
-
-	return irq->num - f->irq_start;
-}
-
-static void fpga_irq_mask(struct vmm_host_irq *irq)
-{
-	struct fpga_irq_data *f = vmm_host_irq_get_chip_data(irq);
-	u32 mask = 1 << fpga_irq(irq);
+	struct fpga_irq_data *f = vmm_host_irq_get_chip_data(d);
+	u32 mask = 1 << d->hwirq;
 
 	vmm_writel(mask, f->base + IRQ_ENABLE_CLEAR);
 }
 
-static void fpga_irq_unmask(struct vmm_host_irq *irq)
+static void fpga_irq_unmask(struct vmm_host_irq *d)
 {
-	struct fpga_irq_data *f = vmm_host_irq_get_chip_data(irq);
-	u32 mask = 1 << fpga_irq(irq);
+	struct fpga_irq_data *f = vmm_host_irq_get_chip_data(d);
+	u32 mask = 1 << d->hwirq;
 
 	vmm_writel(mask, f->base + IRQ_ENABLE_SET);
 }
 
 static u32 fpga_find_active_irq(struct fpga_irq_data *f)
 {
-	u32 i, int_status;
+	u32 ret = UINT_MAX;
+	u32 hwirq, int_status;
 
 	int_status = vmm_readl(f->base + IRQ_STATUS);
-	if (int_status) {
-		for (i = 0; i < 32; i++) {
-			if (int_status & (1 << i)) {
-				return i + f->irq_start;
-			}
-		}
+	if (!int_status) {
+		goto done;
 	}
 
-	return UINT_MAX;
+	for (hwirq = 0; hwirq < NR_IRQS; hwirq++) {
+		if (!(int_status & (1 << hwirq))) {
+			continue;
+		}
+		ret = vmm_host_irqdomain_find_mapping(f->domain, hwirq);
+		goto done;
+	}
+
+done:
+	return ret;
 }
 
 static u32 fpga_active_irq(u32 cpu_nr)
@@ -147,12 +148,17 @@ static void __init fpga_cascade_irq(struct fpga_irq_data *f,
 	}
 }
 
+static struct vmm_host_irqdomain_ops fpga_ops = {
+	.xlate = vmm_host_irqdomain_xlate_onecell,
+};
+
 void __init fpga_irq_init(void *base, const char *name,
 			  u32 irq_start, u32 parent_irq,
 			  u32 valid, struct vmm_devtree_node *node)
 {
+	int hirq;
+	u32 hwirq;
 	struct fpga_irq_data *f;
-	int i;
 
 	if (fpga_irq_id >= array_size(fpga_irq_devices)) {
 		vmm_printf("%s: too few FPGA IRQ controllers, "
@@ -161,7 +167,15 @@ void __init fpga_irq_init(void *base, const char *name,
 		return;
 	}
 	f = &fpga_irq_devices[fpga_irq_id];
-	f->irq_start = irq_start;
+
+	f->domain = vmm_host_irqdomain_add(node, (int)irq_start, NR_IRQS,
+					   &fpga_ops, NULL);
+	if (!f->domain) {
+		vmm_printf("%s: failed to add vmm_host_irqdomain\n",
+			   __func__);
+		return;
+	}
+
 	f->node = node;
 	f->base = base;
 	f->chip.name = name;
@@ -171,22 +185,23 @@ void __init fpga_irq_init(void *base, const char *name,
 	f->valid = valid;
 	f->used_irqs = 0;
 
-	if (parent_irq != 0xFFFFFFFF) {
+	if (parent_irq != UINT_MAX) {
 		fpga_cascade_irq(f, name, parent_irq);
 	} else {
 		vmm_host_irq_set_active_callback(fpga_active_irq);
 	}
 
 	/* This will allocate all valid descriptors in the linear case */
-	for (i = 0; i < 32; i++) {
-		if (!(valid & (1 << i))) {
+	for (hwirq = 0; hwirq < NR_IRQS; hwirq++) {
+		if (!(valid & (1 << hwirq))) {
 			continue;
 		}
 
-		vmm_host_irq_set_chip(f->irq_start + i, &f->chip);
-		vmm_host_irq_set_chip_data(f->irq_start + i, f);
-		vmm_host_irq_set_handler(f->irq_start + i,
-					 vmm_handle_level_irq);
+		hirq = vmm_host_irqdomain_create_mapping(f->domain, hwirq);
+		BUG_ON(hirq < 0);
+		vmm_host_irq_set_chip(hirq, &f->chip);
+		vmm_host_irq_set_chip_data(hirq, f);
+		vmm_host_irq_set_handler(hirq, vmm_handle_level_irq);
 
 		f->used_irqs++;
 	}

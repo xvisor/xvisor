@@ -125,7 +125,7 @@
 		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
-				interrupts = <35>;
+				interrupts = <3>;
 				interrupt-parent = <&sic>;
 				clocks = <&refclk24mhz>;
 				clock-names = "KMIREFCLK";
@@ -135,7 +135,7 @@
 		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
-				interrupts = <36>;
+				interrupts = <4>;
 				interrupt-parent = <&sic>;
 				clocks = <&refclk24mhz>;
 				clock-names = "KMIREFCLK";
