@@ -211,7 +211,9 @@ static struct vmm_host_irq_chip bcm2836_arm_irqchip_pmu = {
 static void bcm2836_arm_irqchip_register_irq(u32 hwirq, bool is_ipi,
 					     struct vmm_host_irq_chip *chip)
 {
-	u32 irq = vmm_host_irqdomain_create_mapping(intc.domain, hwirq);
+	int irq = vmm_host_irqdomain_create_mapping(intc.domain, hwirq);
+
+	BUG_ON(irq < 0);
 
 	vmm_host_irq_mark_per_cpu(irq);
 	if (is_ipi) {
