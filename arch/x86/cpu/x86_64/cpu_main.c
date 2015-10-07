@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_main.h>
 #include <vmm_params.h>
+#include <vmm_host_aspace.h>
 #include <libs/libfdt.h>
 #include <libs/stringlib.h>
 #include <multiboot.h>
@@ -35,6 +36,9 @@
 #include <cpu_features.h>
 #include <linux/screen_info.h>
 #include <cpu_vm.h>
+
+/* place where the boot modules will be moved */
+#define BOOT_MODULES_MOVE_OFFSET	0x1000000ULL
 
 struct multiboot_info boot_info;
 u8 boot_cmd_line[MAX_CMD_LINE];
@@ -212,6 +216,96 @@ void arch_cpu_print_info(struct vmm_chardev *cdev)
 		(cpu_info.hw_virt_available ? "Supported" : "Unsupported"));
 }
 
+extern void __create_bootstrap_pgtbl_entry(u64 va, u64 pa);
+extern void __delete_bootstrap_pgtbl_entry(u64 va);
+
+/*
+ * Bootload might load the modules just after Xvisor binary.
+ * Since that is the area where Xvisor keeps its crucial
+ * data structure, move the modules far.
+ */
+static void __init boot_modules_move(struct multiboot_info *binfo)
+{
+	physical_addr_t mod_dest_base = 0;
+	struct multiboot_mod_list *modlist = NULL;
+	u32 total_mod_size = 0, mod_size, all_mod_end;
+	u64 daddr, saddr;
+	int i;
+
+	__create_bootstrap_pgtbl_entry(binfo->mods_addr, binfo->mods_addr);
+
+	modlist = (struct multiboot_mod_list *)((u64)binfo->mods_addr);
+
+	/*
+	 * If we are already beyond safe limit, we don't need
+	 * to move the modules.
+	 */
+	if ((modlist->mod_start >> 20) > CONFIG_VAPOOL_SIZE_MB)
+		return;
+
+	/* Calculate total size of modules to be moved. */
+	for (i = 0; i < binfo->mods_count; i++) {
+		total_mod_size += (modlist->mod_end
+				   - modlist->mod_start);
+		modlist++;
+	}
+
+	modlist = (struct multiboot_mod_list *)((u64)binfo->mods_addr);
+
+	all_mod_end = total_mod_size + modlist->mod_start;
+
+	/* New home of modules @32MB if size of all modules is less
+	 * than 32MB otherwise modules are shifted @ code end + total
+	 * module size
+	 */
+	if (all_mod_end > BOOT_MODULES_MOVE_OFFSET)
+		mod_dest_base = (u64)&_code_end
+			+ VMM_ROUNDUP2_PAGE_SIZE(total_mod_size);
+	else
+		mod_dest_base = BOOT_MODULES_MOVE_OFFSET;
+
+	daddr = VMM_PAGE_ALIGN(mod_dest_base);
+
+	for (i = 0; i < binfo->mods_count; i++) {
+		mod_size = modlist->mod_end - modlist->mod_start;
+		saddr = modlist->mod_start;
+		saddr = VMM_PAGE_ALIGN(saddr);
+
+		/* new home is always farther than the current one */
+		BUG_ON(saddr > daddr);
+
+		/*
+		 * We will copy on page boundaries so adjust the byte offset.
+		 * Update the new address accordingly.
+		 */
+		modlist->mod_start = (daddr
+				      + (modlist->mod_start & VMM_PAGE_MASK));
+		modlist->mod_end = daddr + mod_size;
+
+		mod_size = VMM_ROUNDUP2_PAGE_SIZE(mod_size);
+
+		while (mod_size) {
+			__create_bootstrap_pgtbl_entry(saddr, saddr);
+			__create_bootstrap_pgtbl_entry(daddr, daddr);
+			memcpy((void *)daddr, (void *)saddr, VMM_PAGE_SIZE);
+			__delete_bootstrap_pgtbl_entry(daddr);
+			__delete_bootstrap_pgtbl_entry(saddr);
+
+			daddr += VMM_PAGE_SIZE;
+			saddr += VMM_PAGE_SIZE;
+			mod_size -= VMM_PAGE_SIZE;
+		}
+
+		/* move next module */
+		modlist++;
+
+		/* headroom between two modules */
+		daddr += VMM_PAGE_SIZE;
+	}
+
+	__delete_bootstrap_pgtbl_entry(binfo->mods_addr);
+}
+
 void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 {
 	memcpy(&boot_info, binfo, sizeof(struct multiboot_info));
@@ -219,11 +313,15 @@ void __init cpu_init(struct multiboot_info *binfo, char *cmdline)
 
 	BUG_ON(!(binfo->flags & MULTIBOOT_INFO_MEMORY));
 
+	while (wait_for_gdb);
+
+	if (binfo->flags & MULTIBOOT_INFO_MODS) {
+		boot_modules_move(&boot_info);
+	}
+
 	vmm_parse_early_options((char *)boot_cmd_line);
 
 	indentify_cpu();
-
-	while (wait_for_gdb);
 
 	/* Initialize VMM (APIs only available after this) */
 	vmm_init();
