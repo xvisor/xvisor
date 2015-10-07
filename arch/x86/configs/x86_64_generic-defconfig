@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.6
-# Wed Oct  7 21:15:30 2015
+# Wed Oct  7 22:05:44 2015
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -59,7 +59,7 @@ CONFIG_X86_LEGACY_HOST=y
 # General Configuration
 #
 CONFIG_MODULES=y
-CONFIG_VERBOSE_MODE=y
+# CONFIG_VERBOSE_MODE is not set
 CONFIG_LOG_LEVEL=6
 CONFIG_BANNER_NONE=y
 # CONFIG_BANNER_BANNER3 is not set
