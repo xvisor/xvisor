@@ -3,6 +3,7 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 	model = "allwinner,sun4i";
+	interrupt-parent = <&intc>;
 
 	chosen { };
 
@@ -338,7 +339,7 @@
 			device_type = "nic";
                         compatible = "allwinner,sun4i-emac";
                         reg = <0x01c0b000 0x1000>;
-                        interrupts = <55>;
+                        interrupts = <1 23>;
                         clocks = <&ahb_gates 17>;
                         status = "disabled";
 			switch = "br0";
@@ -348,14 +349,13 @@
 			compatible = "allwinner,sun4i-ic";
 			reg = <0x01c20400 0x400>;
 			interrupt-controller;
-			#interrupt-cells = <1>;
+			#interrupt-cells = <2>;
 		};
 
 		pio: pinctrl@01c20800 {
 			compatible = "allwinner,sun4i-a10-pinctrl";
 			reg = <0x01c20800 0x400>;
-			interrupts = <28>;
-			interrupt-parent = <&intc>;
+			interrupts = <0 28>;
 			clocks = <&apb0_gates 5>;
 			gpio-controller;
 			interrupt-controller;
@@ -422,7 +422,7 @@
 			compatible = "allwinner,sun4i-timer";
 			reg = <0x01c20c00 0x90>;
 			timer_num = <1>; /* Timer1 */
-			interrupts = <23>;
+			interrupts = <0 23>;
 			clocks = <&osc24M>;
 		};
 
@@ -434,7 +434,7 @@
 		uart0: serial@01c28000 {
 			compatible = "snps,dw-apb-uart";
 			reg = <0x01c28000 0x400>;
-			interrupts = <1>;
+			interrupts = <0 1>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 16>;
@@ -445,7 +445,7 @@
 		uart1: serial@01c28400 {
 			compatible = "snps,dw-apb-uart";
 			reg = <0x01c28400 0x400>;
-			interrupts = <2>;
+			interrupts = <0 2>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 17>;
@@ -462,7 +462,7 @@
 				0X01C20800 0x1000>;	/* gpiobase */
 			clocks = <&ahb_gates 8>, <&mmc0_clk>;
 			clock-names = "ahb", "mod";
-			interrupts = <32>;
+			interrupts = <1 0>;
 			bus-width = <4>;
 		};
 	};

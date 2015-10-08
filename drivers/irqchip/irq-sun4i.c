@@ -43,9 +43,11 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_limits.h>
+#include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 #include <vmm_host_aspace.h>
 
 /* Max number of irqs */
@@ -89,6 +91,7 @@
 #define AW_INT_IRQNO_ENMI                 0
 
 struct aw_vic {
+	struct vmm_host_irqdomain *domain;
 	virtual_addr_t base;
 	void *protection;
 	void *nmi_ctrl;
@@ -176,18 +179,19 @@ static u32 aw_intc_irq_active(u32 cpu_irq_no)
 
 	/* Find pending irq */
 	for (i = 0; i < 3; i++) {
-		if ((s = vmm_readl(awvic.irq_pend0 + (i*4)))) {
-			i = i*32;
-			while (!(s & 0xF)) {
-				i += 4;
-				s >>= 4;
-			}
-			while (!(s & 0x1)) {
-				i += 1;
-				s >>= 1;
-			}
-			return i;
+		s = vmm_readl(awvic.irq_pend0 + (i*4));
+		if (!s)
+			continue;
+		i = i*32;
+		while (!(s & 0xF)) {
+			i += 4;
+			s >>= 4;
 		}
+		while (!(s & 0x1)) {
+			i += 1;
+			s >>= 1;
+		}
+		return vmm_host_irqdomain_find_mapping(awvic.domain, i);
 	}
 
 	/* Did not find any pending irq 
@@ -196,16 +200,52 @@ static u32 aw_intc_irq_active(u32 cpu_irq_no)
 	return UINT_MAX;
 }
 
+static int aw_intc_xlate(struct vmm_host_irqdomain *d,
+			struct vmm_devtree_node *ctrlr,
+			const u32 *intspec, unsigned int intsize,
+			unsigned long *out_hwirq, unsigned int *out_type)
+{
+	if (WARN_ON(intsize != 2))
+		return VMM_EINVALID;
+
+	if (WARN_ON(intspec[0] >= AW_NR_BANKS))
+		return VMM_EINVALID;
+
+	if (WARN_ON(intspec[1] >= AW_IRQS_PER_BANK))
+		return VMM_EINVALID;
+
+	*out_hwirq = intspec[0] * AW_IRQS_PER_BANK + intspec[1];
+	*out_type = VMM_IRQ_TYPE_NONE;
+
+	return 0;
+}
+
+static struct vmm_host_irqdomain_ops aw_intc_ops = {
+	.xlate = aw_intc_xlate,
+};
+
 static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 {
-	int rc;
-	u32 i = 0;
+	int hirq, rc;
+	u32 hwirq, irq_start = 0;
 	void *base;
+
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
+
+	/* Create irqdomain */
+	awvic.domain = vmm_host_irqdomain_add(node, (int)irq_start, AW_NR_IRQS,
+					      &aw_intc_ops, NULL);
+	if (!awvic.domain) {
+		return VMM_EFAIL;
+	}
 
 	/* Map registers */
 	rc = vmm_devtree_request_regmap(node, &awvic.base, 0,
 					"Allwinner INTC");
 	if (rc) {
+		vmm_host_irqdomain_remove(awvic.domain);
 		return rc;
 	}
 	base = (void *)awvic.base;
@@ -249,9 +289,11 @@ static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
 	vmm_writel(0x00, awvic.nmi_ctrl);
 
 	/* Setup irqdomain and irqchip */
-	for (i = 0; i < AW_NR_IRQS; i++) {
-		vmm_host_irq_set_chip(i, &aw_vic_chip);
-		vmm_host_irq_set_handler(i, vmm_handle_level_irq);
+	for (hwirq = 0; hwirq < AW_NR_IRQS; hwirq++) {
+		hirq = vmm_host_irqdomain_create_mapping(awvic.domain, hwirq);
+		BUG_ON(hirq < 0);
+		vmm_host_irq_set_chip(hirq, &aw_vic_chip);
+		vmm_host_irq_set_handler(hirq, vmm_handle_level_irq);
 	}
 
 	/* Set active irq callback */
