@@ -40,12 +40,14 @@
 
 #include <vmm_error.h>
 #include <vmm_limits.h>
-#include <vmm_host_aspace.h>
+#include <vmm_stdio.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 
 /** OMAP3/OMAP343X INTC IRQ Count */
-#define INTC_NRIRQ				96
+#define INTC_OMAP3_NR_IRQS			96
 
 #define INTC_BITS_PER_REG			32
 
@@ -129,54 +131,61 @@
 #define INTC_ILR_FIQNIRQ_S			1
 #define INTC_ILR_FIQNIRQ_M			0x00000001
 
-static virtual_addr_t intc_base;
-static u32 intc_nrirq;
+struct omap_intc {
+	struct vmm_host_irqdomain *domain;
+	void *base;
+	virtual_addr_t base_va;
+	u32 nr_irqs;
+};
+
+static struct omap_intc intc;
 
 #define intc_write(reg, val)	vmm_writel((val), \
-				(void *)(intc_base + (reg)))
-#define intc_read(reg)		vmm_readl((void *)(intc_base + (reg)))
+				(void *)(intc.base + (reg)))
+#define intc_read(reg)		vmm_readl((void *)(intc.base + (reg)))
 
 static u32 intc_active_irq(u32 cpu_irq)
 {
-	u32 ret;
+	u32 hwirq, ret = UINT_MAX;
 
 	if (cpu_irq == CPU_EXTERNAL_IRQ) {	/* armv7a IRQ */
-		ret = intc_read(INTC_SIR_IRQ);
+		hwirq = intc_read(INTC_SIR_IRQ);
 		/* Spurious IRQ ? */
-		if (ret & INTC_SIR_IRQ_SPURIOUSFLAG_M) {
-			return UINT_MAX;
+		if (hwirq & INTC_SIR_IRQ_SPURIOUSFLAG_M) {
+			goto done;
 		}
-		ret = (ret & INTC_SIR_IRQ_ACTIVEIRQ_M);
-		if (intc_nrirq <= ret) {
-			return UINT_MAX;
+		hwirq = (hwirq & INTC_SIR_IRQ_ACTIVEIRQ_M);
+		if (intc.nr_irqs <= hwirq) {
+			goto done;
 		}
+		ret = vmm_host_irqdomain_find_mapping(intc.domain, hwirq);
 	} else if (cpu_irq == CPU_EXTERNAL_FIQ) {	/* armv7a FIQ */
-		ret = intc_read(INTC_SIR_FIQ);
+		hwirq = intc_read(INTC_SIR_FIQ);
 		/* Spurious FIQ ? */
-		if (ret & INTC_SIR_FIQ_SPURIOUSFLAG_M) {
-			return UINT_MAX;
+		if (hwirq & INTC_SIR_FIQ_SPURIOUSFLAG_M) {
+			goto done;
 		}
-		ret = (ret & INTC_SIR_FIQ_ACTIVEIRQ_M);
-		if (intc_nrirq <= ret) {
-			return UINT_MAX;
+		hwirq = (hwirq & INTC_SIR_FIQ_ACTIVEIRQ_M);
+		if (intc.nr_irqs <= hwirq) {
+			goto done;
 		}
-	} else {
-		ret = UINT_MAX;
+		ret = vmm_host_irqdomain_find_mapping(intc.domain, hwirq);
 	}
 
+done:
 	return ret;
 }
 
 static void intc_mask(struct vmm_host_irq *irq)
 {
-	intc_write(INTC_MIR((irq->num / INTC_BITS_PER_REG)),
-		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
+	intc_write(INTC_MIR((irq->hwirq / INTC_BITS_PER_REG)),
+		   0x1 << (irq->hwirq & (INTC_BITS_PER_REG - 1)));
 }
 
 static void intc_unmask(struct vmm_host_irq *irq)
 {
-	intc_write(INTC_MIR_CLEAR((irq->num / INTC_BITS_PER_REG)),
-		   0x1 << (irq->num & (INTC_BITS_PER_REG - 1)));
+	intc_write(INTC_MIR_CLEAR((irq->hwirq / INTC_BITS_PER_REG)),
+		   0x1 << (irq->hwirq & (INTC_BITS_PER_REG - 1)));
 }
 
 static void intc_eoi(struct vmm_host_irq *irq)
@@ -191,16 +200,37 @@ static struct vmm_host_irq_chip intc_chip = {
 	.irq_eoi		= intc_eoi,
 };
 
-static int __init intc_init(physical_addr_t base, u32 nrirq)
+static struct vmm_host_irqdomain_ops intc_ops = {
+	.xlate = vmm_host_irqdomain_xlate_onecell,
+};
+
+static int __init intc_init(struct vmm_devtree_node *node, u32 nr_irqs)
 {
-	u32 i, tmp;
+	int hirq, rc;
+	u32 i, irq_start = 0;
 
-	intc_base = vmm_host_iomap(base, 0x1000);
-	intc_nrirq = nrirq;
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
 
-	tmp = intc_read(INTC_SYSCONFIG);
-	tmp |= INTC_SYSCONFIG_SOFTRST_M;	/* soft reset */
-	intc_write(INTC_SYSCONFIG, tmp);
+	intc.domain = vmm_host_irqdomain_add(node, (int)irq_start, nr_irqs,
+					     &intc_ops, NULL);
+	if (!intc.domain) {
+		return VMM_EFAIL;
+	}
+
+	rc = vmm_devtree_request_regmap(node, &intc.base_va, 0,
+					"omap-intc");
+	if (rc) {
+		vmm_host_irqdomain_remove(intc.domain);
+		return rc;
+	}
+	intc.base = (void *)intc.base_va;
+	intc.nr_irqs = nr_irqs;
+
+	i = intc_read(INTC_SYSCONFIG);
+	i |= INTC_SYSCONFIG_SOFTRST_M;	/* soft reset */
+	intc_write(INTC_SYSCONFIG, i);
 
 	/* Wait for reset to complete */
 	while (!(intc_read(INTC_SYSSTATUS) &
@@ -209,12 +239,12 @@ static int __init intc_init(physical_addr_t base, u32 nrirq)
 	/* Enable autoidle */
 	intc_write(INTC_SYSCONFIG, INTC_SYSCONFIG_AUTOIDLE_M);
 
-	/*
-	 * Setup the Host IRQ subsystem.
-	 */
-	for (i = 0; i < intc_nrirq; i++) {
-		vmm_host_irq_set_chip(i, &intc_chip);
-		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
+	/* Setup the Host IRQ subsystem. */
+	for (i = 0; i < intc.nr_irqs; i++) {
+		hirq = vmm_host_irqdomain_create_mapping(intc.domain, i);
+		BUG_ON(hirq < 0);
+		vmm_host_irq_set_chip(hirq, &intc_chip);
+		vmm_host_irq_set_handler(hirq, vmm_handle_fast_eoi);
 	}
 
 	/* Set active IRQ callback */
@@ -225,14 +255,6 @@ static int __init intc_init(physical_addr_t base, u32 nrirq)
 
 static int __cpuinit intc_init_dt(struct vmm_devtree_node *node)
 {
-	int rc;
-	physical_addr_t intc_pa;
-
-	rc = vmm_devtree_regaddr(node, &intc_pa, 0);
-	if (rc) {
-		return rc;
-	}
-
-	return intc_init(intc_pa, INTC_NRIRQ);
+	return intc_init(node, INTC_OMAP3_NR_IRQS);
 }
-VMM_HOST_IRQ_INIT_DECLARE(ointc, "ti,omap2-intc", intc_init_dt);
+VMM_HOST_IRQ_INIT_DECLARE(ointc, "ti,omap3-intc", intc_init_dt);

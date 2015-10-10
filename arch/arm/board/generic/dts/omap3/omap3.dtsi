@@ -1,8 +1,10 @@
 
 / {
+	model = "OMAP3xxx";
+	compatible = "ti,omap3430", "ti,omap3";
+	interrupt-parent = <&intc>;
 	#address-cells = <1>;
 	#size-cells = <1>;
-	model = "OMAP3xxx";
 		
 	chosen { };
 	aliases { };
@@ -42,8 +44,9 @@
 		};
 
 		intc: interrupt-controller@48200000 {
-			device_type = "pic";
-			compatible = "ti,omap2-intc";
+			compatible = "ti,omap3-intc";
+			interrupt-controller;
+			#interrupt-cells = <1>;
 			reg = <0x48200000 0x1000>;
 		};
 
