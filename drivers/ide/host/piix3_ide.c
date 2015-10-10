@@ -137,7 +137,7 @@ static int piix3_ide_probe(struct vmm_device *dev,
 }
 
 static struct vmm_devtree_nodeid piix3_ide_devid_table[] = {
-        {.type = "ide",.compatible = "piix3_ide", .data = NULL},
+        { .compatible = "piix3_ide" },
 	{ /* end of list */ },
 };
 

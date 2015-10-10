@@ -29,7 +29,6 @@
 		compatible = "simple-bus";
 
 		epit1 {
-	      		device_type = "timer";
 			compatible = "freescale,epit-timer";
 			reg = <0x53f94000 0x4000>;
 			clock-frequency = <38999040>;
@@ -38,7 +37,6 @@
 		};
 
 		epit2 {
-	      		device_type = "timer";
 			compatible = "freescale,epit-timer";
 			reg = <0x53f98000 0x4000>;
 			clock-frequency = <38999040>;
@@ -47,7 +45,6 @@
 		};
 
 		gpt {
-	      		device_type = "timer";
 			compatible = "freescale,gpt-timer";
 			reg = <0x53f90000 0x4000>;
 			clock-frequency = <1000000>;
@@ -56,7 +53,6 @@
 		};
 
 		avic {
-	      		device_type = "pic";
 			compatible = "freescale,avic";
 			reg = <0x68000000 0x1000>;
 		};
@@ -90,7 +86,6 @@
 		};
 
 		eth0 {
-			device_type = "nic";
 			compatible = "smc911x";
 			reg = <0xb6000000 0x1000>;
 			interrupts = <52>;

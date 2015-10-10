@@ -26,17 +26,15 @@
 		compatible = "simple-bus";
 
 		ps2 {
-			device_type = "serio";
 			compatible = "i8042";
 		};
 
 		ide {
-			device_type = "ide";
 			compatible = "piix3_ide";
 		};
 
 		pci_host {
-			device_type = "pci-host-controller";
+			device_type = "pci";
 			compatible = "x86-legacy";
 		};
 

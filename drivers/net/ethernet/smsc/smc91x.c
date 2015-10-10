@@ -2625,7 +2625,7 @@ static int smc_drv_remove(struct vmm_device *dev)
 
 
 static struct vmm_devtree_nodeid smc_devid_table[] = {
-	{ .type = "nic", .compatible = "smc91x"},
+	{ .compatible = "smc91x" },
 	{ /* end of list */ },
 };
 

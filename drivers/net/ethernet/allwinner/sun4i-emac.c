@@ -975,7 +975,7 @@ static int emac_resume(struct platform_device *dev)
 #endif
 
 static struct vmm_devtree_nodeid emac_of_match[] = {
-        { .type = "nic", .compatible = "allwinner,sun4i-emac"},
+        { .compatible = "allwinner,sun4i-emac" },
         { /* end of list */ },
 };
 

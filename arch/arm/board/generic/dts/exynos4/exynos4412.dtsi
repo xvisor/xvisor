@@ -46,25 +46,21 @@
 	};
 
 	scu { /* Snoop Control Unit */
-		device_type = "scu";
 		compatible = "arm,cortex-a9-scu";
 		reg = <0x10500000 0x1000>;
 	};
 
 	pmu { /* Performance Monitorig Unit */
-		device_type = "pmu";
 		compatible = "arm,a9mpcore-priv";
 		reg = <0x10020000 0x10000>;
 	};
 
 	gic {
-		device_type = "pic";
 		compatible = "arm,cortex-a9-gic";
 		reg = <0x10490000 0x1000 0x10480000 0x100>;
 	};
 
 	mct {
-		device_type = "timer";
 		compatible = "samsung,exynos4210-mct";
 		reg = <0x10050000 0x1000>;
 		clock-frequency = <24000000>;
@@ -77,7 +73,6 @@
 		compatible = "simple-bus";
 
 		RTC0: s3c-rtc {
-			device_type = "rtc";
 			compatible = "samsung,s3c6410-rtc";
 			reg = <0x10070000 0x100>;
 			interrupts = <76 77>;
@@ -114,7 +109,6 @@
 		};
 
 		timer0 {
-			device_type = "timer";
 			compatible = "samsung,exynos4210-PWMtimer";
 			reg = <0x139d0000 0x1000>;
 			interrupts = <69 70 71 72 73>;

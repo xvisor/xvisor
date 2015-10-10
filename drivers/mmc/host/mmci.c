@@ -569,8 +569,8 @@ static u32 mmci_v2[]= {
 };
 
 static struct vmm_devtree_nodeid mmci_devid_table[] = {
-	{.type = "mmc",.compatible = "arm,pl180", .data = &mmci_v1},
-	{.type = "mmc",.compatible = "arm,pl180v2", .data = &mmci_v2},
+	{ .compatible = "arm,pl180", .data = &mmci_v1 },
+	{ .compatible = "arm,pl180v2", .data = &mmci_v2 },
 	{ /* end of list */ },
 };
 

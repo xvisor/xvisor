@@ -31,7 +31,6 @@
 		compatible = "simple-bus";
 
 		timer {
-	      		device_type = "timer";
 			compatible = "brcm,bcm2835-system-timer";
 			reg = <0x20003000 0x1000>;
 			clock-frequency = <1000000>;
@@ -39,7 +38,6 @@
 		};
 
 		intc: intc {
-	      		device_type = "pic";
 			compatible = "brcm,bcm2835-armctrl-ic";
 			reg = <0x2000b200 0x200>;
 			interrupt-controller;
@@ -59,7 +57,6 @@
 		};
 
 		sdhci {
-	      		device_type = "mmc";
 			compatible = "brcm,bcm2835-sdhci";
 			reg = <0x20300000 0x1000>;
 			clocks = <&clk_mmc>;

@@ -324,7 +324,7 @@ static int rbd_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid rbd_devid_table[] = {
-	{.type = "block",.compatible = "rbd"},
+	{ .compatible = "rbd" },
 	{ /* end of list */ },
 };
 

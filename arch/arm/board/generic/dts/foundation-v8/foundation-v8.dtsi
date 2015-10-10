@@ -60,7 +60,6 @@
 	};
 
 	gic { /* Generic Interrupt Controller */
-		device_type = "pic";
 		compatible = "arm,cortex-a15-gic";
       		reg = <0x0 0x2C001000 0x0 0x1000	/* GIC Dist */
 		       0x0 0x2C002000 0x0 0x2000	/* GIC CPU */
@@ -70,7 +69,6 @@
 	};
 
 	gen-timer { /* Generic Timer */
-		device_type = "timer";
 		compatible = "arm,armv8-timer";
 		clock-frequency = <100000000>;
 		interrupts = <29 30 27 26>;
@@ -82,7 +80,6 @@
 		compatible = "simple-bus";
 
 		eth0 {
-			device_type = "nic";
 			compatible = "smc91x";
 			reg = <0x1A000000 0x10000>;
 			interrupts = <47>;
@@ -90,7 +87,6 @@
 		};
 
 		sysreg { /* System Registers */
-			device_type = "sys";
 			compatible = "arm,vexpress-sysreg";
 			reg = <0x1C010000 0x1000>;
 		};

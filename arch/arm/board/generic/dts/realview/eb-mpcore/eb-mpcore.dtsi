@@ -60,14 +60,12 @@
 		compatible = "simple-bus";
 
 		clcd {
-	      		device_type = "fb";
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
 			use_dma = <1>;
 		};
 
 		eth0 {
-			device_type = "nic";
 			compatible = "smc91x";
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
@@ -80,20 +78,17 @@
 			#size-cells = <1>;
 
 			scu { /* Snoop Control Unit */
-		      		device_type = "scu";
 				compatible = "arm,arm11mp-scu";
 				reg = <0x10100000 0x100>;
 			};
 
 			gic { /* Generic Interrupt Controller */
-		      		device_type = "pic";
 		      		compatible = "arm,realview-gic";
 		      		reg = <0x10101000 0x1000
 				       0x10100100 0x100>;
 			};
 
 			twd-timer { /* Local Timer */
-		      		device_type = "timer";
 		      		compatible = "arm,arm11mp-twd-timer";
 				reg = <0x10100600 0x100	/* Local timer registers */
 				       0x1000005C 0x4>;	/* Reference counter address */
@@ -102,7 +97,6 @@
 			};
 
 			sysreg { /* System Registers */
-		      		device_type = "sys";
 		      		compatible = "arm,realview-sysreg";
 		      		reg = <0x10000000 0x1000>;
 			};
@@ -112,7 +106,6 @@
 			};
 
 			sysctl: sysctl0 { /* System Controller */
-		      		device_type = "sys";
 		      		compatible = "arm,sp810";
 		      		reg = <0x10001000 0x1000>;
 				clocks = <&refclk32khz>, <&refclk1mhz>;
@@ -122,21 +115,18 @@
 			};
 
 			mmci0 { /* Multimedia Card Interface */
-		      		device_type = "mmc";
 		      		compatible = "arm,pl180";
 		      		reg = <0x10005000 0x1000>;
 				interrupts = <46 47>;
 			};
 
 			kmi0 { /* Keyboard */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
 				interrupts = <39>;
 			};
 
 			kmi1 { /* Mouse */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
 				interrupts = <40>;
@@ -150,7 +140,6 @@
 			};
 
 			timer01 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x10011000 0x1000>;
 				interrupts = <33>;
@@ -159,7 +148,6 @@
 			};
 
 			timer23 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x10012000 0x1000>;
 				interrupts = <34>;
@@ -168,7 +156,6 @@
 			};
 
 			RTC0: rtc0 {
-		      		device_type = "rtc";
 		      		compatible = "arm,pl031";
 		      		reg = <0x10017000 0x1000>;
 				interrupts = <38>;

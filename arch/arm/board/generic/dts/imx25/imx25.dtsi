@@ -64,7 +64,6 @@
 	};
 
 	avic: avic@0x68000000 {
-		device_type = "pic";
 		compatible = "freescale,avic";
 		#interrupt-cells = <1>;
 		reg = <0x68000000 0x1000>;
@@ -260,7 +259,6 @@
 			};
 
 			gpt3: timer@0x53f88000 {
-				device_type = "timer";
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f88000 0x4000>;
 				clocks = <&clks 94>, <&clks 47>;
@@ -271,7 +269,6 @@
 			};
 
 			gpt2: timer@0x53f8c000 {
-				device_type = "timer";
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f8c000 0x4000>;
 				clocks = <&clks 93>, <&clks 47>;
@@ -282,7 +279,6 @@
 			};
 
 			gpt1: timer@0x53f90000 {
-				device_type = "timer";
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f90000 0x4000>;
 				clocks = <&clks 93>, <&clks 47>;
@@ -293,7 +289,6 @@
 			};
 
 			epit1: timer@0x53f94000 {
-				device_type = "timer";
 				compatible = "freescale,epit-timer";
 				reg = <0x53f94000 0x4000>;
 				clock-frequency = <38999040>;
@@ -302,7 +297,6 @@
 			};
 
 			epit2: timer@0x53f98000 {
-				device_type = "timer";
 				compatible = "freescale,epit-timer";
 				reg = <0x53f98000 0x4000>;
 				clock-frequency = <38999040>;

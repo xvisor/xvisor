@@ -36,7 +36,6 @@
 			compatible = "arm,amba-bus";
 
 			vic: vic { /* Vectored Interrupt Controller */
-				device_type = "pic";
 				compatible = "arm,versatile-vic";
 				reg = <0x10140000 0x1000>;
 				interrupt-controller;
@@ -44,7 +43,6 @@
 			};
 
 			sic: sic { /* Secondary Interrupt Controller */
-				device_type = "pic";
 				compatible = "arm,versatile-sic";
 				reg = <0x10003000 0x1000>;
 				irq_start = <32>;
@@ -57,13 +55,11 @@
 			};
 
 			sysreg { /* System Registers */
-		      		device_type = "sys";
 		      		compatible = "arm,versatile-sysreg";
 		      		reg = <0x10000000 0x1000>;
 			};
 
 			eth0 {
-				device_type = "nic";
 				compatible = "smc91x";
 				reg = <0x10010000 0x1000>;
 				interrupts = <25>;
@@ -71,7 +67,6 @@
 			};
 
 			clcd {
-	     	 		device_type = "fb";
 	      			compatible = "arm,pl110,versatile";
 	      			reg = <0x10120000 0x1000>;
 				interrupts = <16>;
@@ -79,7 +74,6 @@
 			};
 
 			sysctl: sysctl0 { /* System Controller */
-		      		device_type = "sys";
 		      		compatible = "arm,sp810";
 		      		reg = <0x101E0000 0x1000>;
 				clocks = <&refclk32khz>, <&refclk1mhz>;
@@ -89,7 +83,6 @@
 			};
 
 			timer01 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x101E2000 0x1000>;
 				interrupts = <4>;
@@ -98,7 +91,6 @@
 			};
 
 			timer23 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x101E3000 0x1000>;
 				interrupts = <5>;
@@ -114,7 +106,6 @@
 			};
 
 			RTC0: rtc0 {
-				device_type = "rtc";
 				compatible = "arm,pl031";
 				reg = <0x101E8000 0x1000>;
 				clock-frequency = <1>;
@@ -122,7 +113,6 @@
 			};
 
 			kmi0 { /* Keyboard */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
 				interrupts = <3>;
@@ -132,7 +122,6 @@
 			};
 
 			kmi1 { /* Mouse */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
 				interrupts = <4>;

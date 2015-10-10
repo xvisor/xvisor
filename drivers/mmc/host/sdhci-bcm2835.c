@@ -244,7 +244,7 @@ static int bcm2835_sdhci_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid bcm2835_sdhci_devid_table[] = {
-	{.type = "mmc",.compatible = "brcm,bcm2835-sdhci"},
+	{ .compatible = "brcm,bcm2835-sdhci" },
 	{ /* end of list */ },
 };
 

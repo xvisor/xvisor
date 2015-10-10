@@ -58,7 +58,6 @@
 	};
 
 	gic { /* Generic Interrupt Controller */
-      		device_type = "pic";
       		compatible = "arm,cortex-a15-gic";
       		reg = <0x0 0x2C001000 0x0 0x1000	/* GIC Dist */
 		       0x0 0x2C002000 0x0 0x2000	/* GIC CPU */
@@ -68,7 +67,6 @@
 	};
 
 	gen-timer { /* Generic Timer */
-      		device_type = "timer";
       		compatible = "arm,armv7-timer";
 		clock-frequency = <100000000>;
 		interrupts = <29 30 27 26>;
@@ -144,7 +142,6 @@
 			compatible = "simple-bus";
 
 			eth0 {
-				device_type = "nic";
 				compatible = "smc91x";
 				reg = <0x1A000000 0x1000>;
 				interrupts = <47>;
@@ -156,13 +153,11 @@
 				#size-cells = <1>;
 
 				v2m_sysreg: sysreg@010000 { /* System Registers */
-			      		device_type = "sys";
 			      		compatible = "arm,vexpress-sysreg";
 			      		reg = <0x1C010000 0x1000>;
 				};
 
 				v2m_sysctl: sysctl@020000 { /* System Controller */
-			      		device_type = "sys";
 			      		compatible = "arm,sp810";
 			      		reg = <0x1C020000 0x1000>;
 					clocks = <&v2m_refclk32khz>, <&v2m_refclk1mhz>, <&smbclk>;
@@ -172,7 +167,6 @@
 				};
 
 				mmci@050000 { /* Multimedia Card Interface */
-			      		device_type = "mmc";
 			      		compatible = "arm,pl180";
 			      		reg = <0x1C050000 0x1000>;
 					interrupts = <41 42>;
@@ -181,7 +175,6 @@
 				};
 
 				kmi@060000 { /* Keyboard */
-			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x1C060000 0x1000>;
 					interrupts = <44>;
@@ -190,7 +183,6 @@
 				};
 
 				kmi@070000 { /* Mouse */
-			      		device_type = "serio";
 			      		compatible = "ambakmi";
 			      		reg = <0x1C070000 0x1000>;
 					interrupts = <45>;
@@ -208,7 +200,6 @@
 				};
 
 				v2m_timer01: timer@110000 {
-			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x1C110000 0x1000>;
 					interrupts = <34>;
@@ -217,7 +208,6 @@
 				};
 
 				v2m_timer23: timer@120000 {
-			      		device_type = "timer";
 			      		compatible = "arm,sp804";
 			      		reg = <0x1C120000 0x1000>;
 					interrupts = <35>;
@@ -226,7 +216,6 @@
 				};
 
 				RTC0: rtc@170000 {
-			      		device_type = "rtc";
 			      		compatible = "arm,pl031";
 			      		reg = <0x1C170000 0x1000>;
 					interrupts = <36>;
@@ -235,7 +224,6 @@
 				};
 
 				clcd@1f0000 {
-			      		device_type = "fb";
 			      		compatible = "arm,pl111";
 			      		reg = <0x1C1F0000 0x1000>;
 					clocks = <&v2m_oscclk1>, <&smbclk>;

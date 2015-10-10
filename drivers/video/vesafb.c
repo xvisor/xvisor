@@ -564,7 +564,7 @@ static int vesafb_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid vesafb_devid_table[] = {
-	{.type = "fb",.compatible = "vesafb"},
+	{ .compatible = "vesafb" },
 	{ /* end of list */ },
 };
 

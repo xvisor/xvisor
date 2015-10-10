@@ -51,7 +51,7 @@ static int x86_legacy_probe(struct vmm_device *dev,
 }
 
 static struct vmm_devtree_nodeid x86_legacy_pci_controller_devid_table[] = {
-        {.type = "pci-host-controller",.compatible = "x86-legacy", .data = NULL},
+        { .type = "pci", .compatible = "x86-legacy" },
 	{ /* end of list */ },
 };
 

@@ -214,8 +214,8 @@ static int amba_kmi_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid amba_kmi_devid_table[] = {
-	{.type = "serio",.compatible = "arm,pl050"},
-	{.type = "serio",.compatible = "ambakmi"},
+	{ .compatible = "arm,pl050" },
+	{ .compatible = "ambakmi" },
 	{ /* end of list */ },
 };
 

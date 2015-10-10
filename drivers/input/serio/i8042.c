@@ -1470,7 +1470,7 @@ static int i8042_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid def_i8042_devid_table[] = {
-	{ .type = "serio", .compatible = "i8042"},
+	{ .compatible = "i8042" },
 	{ /* end of list */ },
 };
 

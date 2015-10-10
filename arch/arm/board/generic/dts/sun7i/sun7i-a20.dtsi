@@ -376,7 +376,6 @@
 		#size-cells = <1>;
 
 		gic { /* Generic Interrupt Controller */
-			device_type = "pic";
 			compatible = "arm,cortex-a15-gic";
 			reg = <0x01c81000 0x1000	/* GIC Dist */
 			       0x01c82000 0x2000	/* GIC CPU */
@@ -386,14 +385,12 @@
 		};
 
 		gen-timer { /* Generic Timer */
-			device_type = "timer";
 			compatible = "arm,armv7-timer";
 			clock-frequency = <24000000>;
 			interrupts = <29 30 27 26>;
 		};
 
 		timer@01c20c00 {
-	      		device_type = "timer";
 			compatible = "allwinner,sun4i-timer";
 			reg = <0x01c20c00 0x90>;
 			timer_num = <1>; /* Timer1 */

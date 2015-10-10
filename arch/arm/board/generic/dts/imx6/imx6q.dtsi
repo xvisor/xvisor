@@ -94,21 +94,18 @@
 	};
 
 	scu { /* Snoop Control Unit */
-      		device_type = "scu";
       		compatible = "arm,cortex-a9-scu";
       		reg = <0x00a00000 0x100>;
 		interrupts = <53>;
 	};
 
 	gic { /* Generic Interrupt Controller */
-      		device_type = "pic";
       		compatible = "arm,cortex-a9-gic";
       		reg = <0x00a01000 0x1000
 		       0x00a00100 0x100>;
 	};
 
 	twd-timer { /* Local Timer */
-      		device_type = "timer";
       		compatible = "arm,cortex-a9-twd-timer";
       		reg = <0x00a00600 0x20>;	/* Local timer registers */
 		ref-counter-freq = <24000000>;	/* Reference counter frequency */
@@ -747,7 +744,6 @@
 			};
 
 			epit1 {
-				device_type = "timer";
 				compatible = "freescale,epit-timer";
 				reg = <0x020d0000 0x4000>;
 				clock-frequency = <38999040>;
@@ -756,7 +752,6 @@
 			};
 
 			epit2 {
-				device_type = "timer";
 				compatible = "freescale,epit-timer";
 				reg = <0x020d4000 0x4000>;
 				clock-frequency = <38999040>;
@@ -765,7 +760,6 @@
 			};
 
 			gpt {
-				device_type = "timer";
 				compatible = "freescale,gpt-timer";
 				reg = <0x02098000 0x4000>;
 				clock-frequency = <32000>;

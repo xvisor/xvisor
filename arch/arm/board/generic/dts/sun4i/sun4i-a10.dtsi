@@ -336,7 +336,6 @@
 		};
 
 		emac: ethernet@01c0b000 {
-			device_type = "nic";
                         compatible = "allwinner,sun4i-emac";
                         reg = <0x01c0b000 0x1000>;
                         interrupts = <1 23>;
@@ -418,7 +417,6 @@
 		};
 
 		timer@01c20c00 {
-	      		device_type = "timer";
 			compatible = "allwinner,sun4i-timer";
 			reg = <0x01c20c00 0x90>;
 			timer_num = <1>; /* Timer1 */
