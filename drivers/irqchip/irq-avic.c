@@ -47,6 +47,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 
 #define AVIC_INTCNTL		0x00	/* int control reg */
 #define AVIC_NIMASK		0x04	/* int mask reg */
@@ -68,9 +69,15 @@
 #define AVIC_FIPNDH		0x60	/* fast int pending high */
 #define AVIC_FIPNDL		0x64	/* fast int pending low */
 
-#define AVIC_NUM_IRQS 64
+#define AVIC_NUM_IRQS		64
 
-static virtual_addr_t avic_base = 0;
+struct avic_ctrl {
+	struct vmm_host_irqdomain *domain;
+	void *base;
+	virtual_addr_t base_va;
+};
+
+static struct avic_ctrl avic;
 
 static u32 avic_pending_int(u32 status)
 {
@@ -88,14 +95,14 @@ static u32 avic_pending_int(u32 status)
 
 static u32 avic_active_irq(u32 cpu_irq_no)
 {
-	u32 ret, int_status;
+	u32 ret = UINT_MAX, hwirq, status;
 
-	if ((int_status = vmm_readl((void *)avic_base + AVIC_NIPNDH))) {
-		ret = 32 + avic_pending_int(int_status);
-	} else if ((int_status = vmm_readl((void *)avic_base + AVIC_NIPNDL))) {
-		ret = avic_pending_int(int_status);
-	} else {
-		ret = UINT_MAX;
+	if ((status = vmm_readl(avic.base + AVIC_NIPNDH))) {
+		hwirq = 32 + avic_pending_int(status);
+		ret = vmm_host_irqdomain_find_mapping(avic.domain, hwirq);
+	} else if ((status = vmm_readl(avic.base + AVIC_NIPNDL))) {
+		hwirq = avic_pending_int(status);
+		ret = vmm_host_irqdomain_find_mapping(avic.domain, hwirq);
 	}
 
 	return ret;
@@ -103,68 +110,74 @@ static u32 avic_active_irq(u32 cpu_irq_no)
 
 static void avic_mask_irq(struct vmm_host_irq *irq)
 {
-	vmm_writel(irq->num, (void *)avic_base + AVIC_INTDISNUM);
+	vmm_writel(irq->hwirq, avic.base + AVIC_INTDISNUM);
 }
 
 static void avic_unmask_irq(struct vmm_host_irq *irq)
 {
-	vmm_writel(irq->num, (void *)avic_base + AVIC_INTENNUM);
-}
-
-static void avic_eoi_irq(struct vmm_host_irq *irq)
-{
-	/* Nothing to do */
-}
-
-static int avic_set_type(struct vmm_host_irq *irq, u32 type)
-{
-	/* For now, nothing to do */
-	return VMM_OK;
+	vmm_writel(irq->hwirq, avic.base + AVIC_INTENNUM);
 }
 
 static struct vmm_host_irq_chip avic_chip = {
 	.name		= "AVIC",
 	.irq_mask	= avic_mask_irq,
 	.irq_unmask	= avic_unmask_irq,
-	.irq_eoi	= avic_eoi_irq,
-	.irq_set_type	= avic_set_type,
+};
+
+static struct vmm_host_irqdomain_ops avic_ops = {
+	.xlate = vmm_host_irqdomain_xlate_onecell,
 };
 
 static int __init avic_init(struct vmm_devtree_node *node)
 {
-	int rc;
-	u32 i;
+	int hirq, rc;
+	u32 i, irq_start = 0;
+
+	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
+		irq_start = 0;
+	}
+
+	/* Create domain */
+	avic.domain = vmm_host_irqdomain_add(node, (int)irq_start,
+					     AVIC_NUM_IRQS, &avic_ops, NULL);
+	if (!avic.domain) {
+		return VMM_EFAIL;
+	}
 
 	/* Map AVIC registers */
-	rc = vmm_devtree_request_regmap(node, &avic_base, 0, "AVIC");
+	rc = vmm_devtree_request_regmap(node, &avic.base_va, 0, "AVIC");
 	WARN(rc, "unable to map avic registers\n");
 	if (rc) {
+		vmm_host_irqdomain_remove(avic.domain);
 		return rc;
 	}
+	avic.base = (void *)avic.base_va;
 
 	/* put the AVIC into the reset value with
 	 * all interrupts disabled
 	 */
-	vmm_writel(0, (void *)avic_base + AVIC_INTCNTL);
-	vmm_writel(0x1f, (void *)avic_base + AVIC_NIMASK);
+	vmm_writel(0, avic.base + AVIC_INTCNTL);
+	vmm_writel(0x1f, avic.base + AVIC_NIMASK);
 
 	/* disable all interrupts */
-	vmm_writel(0, (void *)avic_base + AVIC_INTENABLEH);
-	vmm_writel(0, (void *)avic_base + AVIC_INTENABLEL);
+	vmm_writel(0, avic.base + AVIC_INTENABLEH);
+	vmm_writel(0, avic.base + AVIC_INTENABLEL);
 
 	/* all IRQ no FIQ */
-	vmm_writel(0, (void *)avic_base + AVIC_INTTYPEH);
-	vmm_writel(0, (void *)avic_base + AVIC_INTTYPEL);
+	vmm_writel(0, avic.base + AVIC_INTTYPEH);
+	vmm_writel(0, avic.base + AVIC_INTTYPEL);
 
 	/* Set default priority value (0) for all IRQ's */
 	for (i = 0; i < 8; i++) {
-		vmm_writel(0, (void *)avic_base + AVIC_NIPRIORITY(i));
+		vmm_writel(0, avic.base + AVIC_NIPRIORITY(i));
 	}
 
-	/* Set default priority value (0) for all IRQ's */
+	/* Setup domain and chip */
 	for (i = 0; i < AVIC_NUM_IRQS; i++) {
-		vmm_host_irq_set_chip(i, &avic_chip);
-		vmm_host_irq_set_handler(i, vmm_handle_fast_eoi);
+		hirq = vmm_host_irqdomain_create_mapping(avic.domain, i);
+		BUG_ON(hirq < 0);
+		vmm_host_irq_set_chip(hirq, &avic_chip);
+		vmm_host_irq_set_handler(hirq, vmm_handle_fast_eoi);
 	}
 
 	/* Set active irq callback */

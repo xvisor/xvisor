@@ -22,11 +22,13 @@
  */
 
 / {
+	model = "imx25";
+	interrupt-parent = <&avic>;
 	#address-cells = <1>;
 	#size-cells = <1>;
-	model = "imx25";
 
 	chosen { };
+	aliases { };
 
 	aliases {
 		ethernet0 = &fec;
@@ -65,6 +67,7 @@
 
 	avic: avic@0x68000000 {
 		compatible = "freescale,avic";
+		interrupt-controller;
 		#interrupt-cells = <1>;
 		reg = <0x68000000 0x1000>;
 	};
