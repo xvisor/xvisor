@@ -79,11 +79,6 @@
 #define GICH_MISR_U			(1 << 1)
 
 struct vgic_v2_priv {
-	bool cpu2_mapped;
-	physical_addr_t cpu_pa;
-	virtual_addr_t  cpu_va;
-	physical_addr_t cpu2_pa;
-	virtual_addr_t  cpu2_va;
 	physical_addr_t hctrl_pa;
 	virtual_addr_t  hctrl_va;
 	physical_addr_t vcpu_pa;
@@ -97,16 +92,8 @@ static struct vgic_v2_priv vgicp;
 
 static void vgic_v2_reset_state(struct vgic_hw_state *hw)
 {
-	u32 i, hirq;
-	for (i = 0 ; i < vgicp.lr_cnt; i++) {
-		if ((hw->v2.lr[i] & GICH_LR_HW) &&
-		    (hw->v2.lr[i] & GICH_LR_PENDING)) {
-			hirq = hw->v2.lr[i] & GICH_LR_PHYSID;
-			hirq = hirq >> GICH_LR_PHYSID_SHIFT;
-			vmm_writel_relaxed(hirq,
-					   (void *)vgicp.cpu2_va + GICC2_DIR);
-		}
-	}
+	u32 i;
+
 	hw->v2.hcr = GICH_HCR_EN;
 	hw->v2.vmcr = 0;
 	hw->v2.apr = 0;
@@ -261,37 +248,15 @@ int vgic_v2_probe(struct vgic_ops *ops, struct vgic_params *params)
 		goto fail;
 	}
 
-	rc = vmm_devtree_regaddr(node, &vgicp.cpu_pa, 1);
-	if (rc) {
-		goto fail_dref;
-	}
-
-	rc = vmm_devtree_regmap(node, &vgicp.cpu_va, 1);
-	if (rc) {
-		goto fail_dref;
-	}
-
-	rc = vmm_devtree_regaddr(node, &vgicp.cpu2_pa, 4);
-	if (!rc) {
-		vgicp.cpu2_mapped = TRUE;
-		rc = vmm_devtree_regmap(node, &vgicp.cpu2_va, 4);
-		if (rc) {
-			goto fail_unmap_cpu;
-		}
-	} else {
-		vgicp.cpu2_mapped = FALSE;
-		vgicp.cpu2_va = vgicp.cpu_va + 0x1000;
-	}
-
 	rc = vmm_devtree_regaddr(node, &vgicp.hctrl_pa, 2);
 	if (rc) {
-		goto fail_unmap_cpu2;
+		goto fail_dref;
 	}
 
 	rc = vmm_devtree_request_regmap(node, &vgicp.hctrl_va, 2,
 					"GIC HCTRL");
 	if (rc) {
-		goto fail_unmap_cpu2;
+		goto fail_dref;
 	}
 
 	rc = vmm_devtree_regaddr(node, &vgicp.vcpu_pa, 3);
@@ -349,12 +314,6 @@ fail_unmap_vcpu:
 	vmm_devtree_regunmap_release(node, vgicp.vcpu_va, 3);
 fail_unmap_hctrl:
 	vmm_devtree_regunmap_release(node, vgicp.hctrl_va, 2);
-fail_unmap_cpu2:
-	if (vgicp.cpu2_mapped) {
-		vmm_devtree_regunmap(node, vgicp.cpu2_va, 4);
-	}
-fail_unmap_cpu:
-	vmm_devtree_regunmap(node, vgicp.cpu_va, 1);
 fail_dref:
 	vmm_devtree_dref_node(node);
 fail:
@@ -373,12 +332,6 @@ void vgic_v2_remove(struct vgic_ops *ops, struct vgic_params *params)
 	vmm_devtree_regunmap(node, vgicp.vcpu_va, 3);
 
 	vmm_devtree_regunmap(node, vgicp.hctrl_va, 2);
-
-	if (vgicp.cpu2_mapped) {
-		vmm_devtree_regunmap(node, vgicp.cpu2_va, 4);
-	}
-
-	vmm_devtree_regunmap(node, vgicp.cpu_va, 1);
 
 	vmm_devtree_dref_node(node);
 }
