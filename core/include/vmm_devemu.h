@@ -83,6 +83,11 @@ struct vmm_emudev {
 	void *priv;
 };
 
+struct vmm_devemu_irqchip {
+	const char *name;
+	void (*handle) (u32 irq, int cpu, int level, void *opaque);
+};
+
 /** Emulate memory read to virtual device for given VCPU */
 int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
 			    physical_addr_t gphys_addr,
@@ -119,16 +124,15 @@ extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 #define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, cpu, level) 
 
-/** Register guest irq handler */
-int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
-		const char *name,
-		void (*handle) (u32 irq, int cpu, int level, void *opaque),
-		void *opaque);
+/** Register guest irqchip */
+int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,
+				struct vmm_devemu_irqchip *chip,
+				void *opaque);
 
-/** Unregister guest irq handler */
-int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
-		void (*handle) (u32 irq, int cpu, int level, void *opaque),
-		void *opaque);
+/** Unregister guest irqchip */
+int vmm_devemu_unregister_irqchip(struct vmm_guest *guest, u32 irq,
+				  struct vmm_devemu_irqchip *chip,
+				  void *opaque);
 
 /** Count available irqs of a guest */
 u32 vmm_devemu_count_irqs(struct vmm_guest *guest);

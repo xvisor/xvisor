@@ -647,6 +647,11 @@ static struct vmm_vdisplay_ops pl110_ops = {
 	.gfx_update = pl110_display_update,
 };
 
+static struct vmm_devemu_irqchip pl110_mux_in_irqchip = {
+	.name = "PL110_MUX_IN",
+	.handle = pl110_mux_in_irq_handle,
+};
+
 static int pl110_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
 				const struct vmm_devtree_nodeid *eid)
@@ -694,9 +699,8 @@ static int pl110_emulator_probe(struct vmm_guest *guest,
 	}
 
 	if (s->mux_in != UINT_MAX) {
-		vmm_devemu_register_irq_handler(guest, s->mux_in,
-						edev->node->name, 
-						pl110_mux_in_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, s->mux_in,
+					    &pl110_mux_in_irqchip, s);
 	}
 
 	edev->priv = s;
@@ -714,14 +718,16 @@ static int pl110_emulator_remove(struct vmm_emudev *edev)
 	int rc = VMM_OK;
 	struct pl110_state *s = edev->priv;
 
-	if (s) {
-		if (s->mux_in != UINT_MAX) {
-			vmm_devemu_unregister_irq_handler(s->guest,
-				s->mux_in, pl110_mux_in_irq_handle, s);
-		}
-		vmm_vdisplay_destroy(s->vdis);
-		vmm_free(s);
+	if (!s) {
+		return VMM_EFAIL;
 	}
+
+	if (s->mux_in != UINT_MAX) {
+		vmm_devemu_unregister_irqchip(s->guest, s->mux_in,
+					      &pl110_mux_in_irqchip, s);
+	}
+	vmm_vdisplay_destroy(s->vdis);
+	vmm_free(s);
 
 	return rc;
 }

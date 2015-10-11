@@ -754,6 +754,11 @@ static void arm_sysregs_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	vmm_write_unlock(&s->lock);
 }
 
+struct vmm_devemu_irqchip arm_sysregs_irqchip = {
+	.name = "ARM_SYSREGS",
+	.handle = arm_sysregs_irq_handle,
+};
+
 static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
 				   const struct vmm_devtree_nodeid *eid)
@@ -823,12 +828,10 @@ static int arm_sysregs_emulator_probe(struct vmm_guest *guest,
 		goto arm_sysregs_emulator_probe_freeclock_fail;
 	}
 
-	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[0],
-					edev->node->name, 
-					arm_sysregs_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->mux_in_irq[1], 
-					edev->node->name,
-					arm_sysregs_irq_handle, s);
+	vmm_devemu_register_irqchip(guest, s->mux_in_irq[0],
+				    &arm_sysregs_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->mux_in_irq[1],
+				    &arm_sysregs_irqchip, s);
 
 	edev->priv = s;
 
@@ -859,10 +862,10 @@ static int arm_sysregs_emulator_remove(struct vmm_emudev *edev)
 		return VMM_EFAIL;
 	}
 
-	vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[0], 
-					  arm_sysregs_irq_handle, s);
-	vmm_devemu_unregister_irq_handler(s->guest, s->mux_in_irq[1], 
-					  arm_sysregs_irq_handle, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->mux_in_irq[0],
+				      &arm_sysregs_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->mux_in_irq[1],
+				      &arm_sysregs_irqchip, s);
 	if (s->db_clock) {
 		vmm_free(s->db_clock);
 	}

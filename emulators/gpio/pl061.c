@@ -20,7 +20,7 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief PrimeCell PL061 GPIO Controller Emulator.
  *
- * The source has been largely adapted from QEMU 0.14.xx hw/pl061.c 
+ * The source has been largely adapted from QEMU 0.14.xx hw/pl061.c
  *
  * Arm PrimeCell PL061 General Purpose IO with additional
  * Luminary Micro Stellaris bits.
@@ -93,8 +93,8 @@ static void pl061_update(struct pl061_state *s)
 	for (line = 0; line < 8; line++) {
 		mask = 1 << line;
 		if (changed & mask) {
-			vmm_devemu_emulate_irq(s->guest, 
-					       s->out_irq[line], 
+			vmm_devemu_emulate_irq(s->guest,
+					       s->out_irq[line],
 					       (out & mask) != 0);
 		}
 	}
@@ -283,7 +283,7 @@ static int pl061_reg_write(struct pl061_state *s,
 }
 
 static int pl061_emulator_read8(struct vmm_emudev *edev,
-				physical_addr_t offset, 
+				physical_addr_t offset,
 				u8 *dst)
 {
 	int rc;
@@ -298,7 +298,7 @@ static int pl061_emulator_read8(struct vmm_emudev *edev,
 }
 
 static int pl061_emulator_read16(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u16 *dst)
 {
 	int rc;
@@ -313,28 +313,28 @@ static int pl061_emulator_read16(struct vmm_emudev *edev,
 }
 
 static int pl061_emulator_read32(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u32 *dst)
 {
 	return pl061_reg_read(edev->priv, offset, dst);
 }
 
 static int pl061_emulator_write8(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u8 src)
 {
 	return pl061_reg_write(edev->priv, offset, 0xFFFFFF00, src);
 }
 
 static int pl061_emulator_write16(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
+				  physical_addr_t offset,
 				  u16 src)
 {
 	return pl061_reg_write(edev->priv, offset, 0xFFFF0000, src);
 }
 
 static int pl061_emulator_write32(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
+				  physical_addr_t offset,
 				  u32 src)
 {
 	return pl061_reg_write(edev->priv, offset, 0x00000000, src);
@@ -388,6 +388,11 @@ static void pl061_irq_handle(u32 irq, int cpu, int level, void *opaque)
 
 	vmm_spin_unlock(&s->lock);
 }
+
+static struct vmm_devemu_irqchip pl061_irqchip = {
+	.name = "PL061",
+	.handle = pl061_irq_handle,
+};
 
 static int pl061_emulator_probe(struct vmm_guest *guest,
 				struct vmm_emudev *edev,
@@ -443,30 +448,14 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	vmm_devemu_register_irq_handler(guest, s->in_irq[0], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[1], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[2], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[3], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[4], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[5], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[6], 
-					edev->node->name,
-					pl061_irq_handle, s);
-	vmm_devemu_register_irq_handler(guest, s->in_irq[7], 
-					edev->node->name,
-					pl061_irq_handle, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[0], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[1], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[2], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[3], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[4], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[5], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[6], &pl061_irqchip, s);
+	vmm_devemu_register_irqchip(guest, s->in_irq[7], &pl061_irqchip, s);
 
 	edev->priv = s;
 
@@ -482,26 +471,27 @@ static int pl061_emulator_remove(struct vmm_emudev *edev)
 {
 	struct pl061_state *s = edev->priv;
 
-	if (s) {
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[0],
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[1], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[2], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[3], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[4], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[5], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[6], 
-						  pl061_irq_handle, s);
-		vmm_devemu_unregister_irq_handler(s->guest, s->in_irq[7], 
-						  pl061_irq_handle, s);
-		vmm_free(s);
-		edev->priv = NULL;
+	if (!s) {
+		return VMM_EFAIL;
 	}
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[0],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[1],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[2],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[3],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[4],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[5],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[6],
+				      &pl061_irqchip, s);
+	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[7],
+				      &pl061_irqchip, s);
+	vmm_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }
@@ -510,8 +500,8 @@ static u8 pl061_id[12] =
   { 0x00, 0x00, 0x00, 0x00, 0x61, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
 
 static struct vmm_devtree_nodeid pl061_emuid_table[] = {
-	{ .type = "gpio", 
-	  .compatible = "primecell,pl061", 
+	{ .type = "gpio",
+	  .compatible = "primecell,pl061",
 	  .data = (void *)&pl061_id,
 	},
 	{ /* end of list */ },
@@ -542,9 +532,9 @@ static void __exit pl061_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&pl061_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

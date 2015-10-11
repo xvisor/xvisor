@@ -33,8 +33,7 @@
 
 struct vmm_devemu_guest_irq {
 	struct dlist head;
-	const char *name;
-	void (*handle) (u32 irq, int cpu, int level, void *opaque);
+	struct vmm_devemu_irqchip *chip;
 	void *opaque;
 };
 
@@ -486,23 +485,22 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 	}
 
 	list_for_each_entry(gi, &eg->g_irq[irq], head) {
-		gi->handle(irq, cpu, level, gi->opaque);
+		gi->chip->handle(irq, cpu, level, gi->opaque);
 	}
 
 	return VMM_OK;
 }
 
-int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
-		const char *name,
-		void (*handle) (u32 irq, int cpu, int level, void *opaque),
-		void *opaque)
+int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,
+				struct vmm_devemu_irqchip *chip,
+				void *opaque)
 {
 	bool found;
 	struct vmm_devemu_guest_irq *gi;
 	struct vmm_devemu_guest_context *eg;
 
 	/* Sanity checks */
-	if (!guest || !handle) {
+	if (!guest || !chip) {
 		return VMM_EFAIL;
 	}
 
@@ -513,11 +511,11 @@ int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
 		return VMM_EINVALID;
 	}
 
-	/* Check if handler is not already registered */
+	/* Check if irqchip is not already registered */
 	gi = NULL;
 	found = FALSE;
 	list_for_each_entry(gi, &eg->g_irq[irq], head) {
-		if (gi->handle == handle && gi->opaque == opaque) {
+		if (gi->chip == chip && gi->opaque == opaque) {
 			found = TRUE;
 			break;
 		}
@@ -534,8 +532,7 @@ int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
 
 	/* Initialize guest irq */
 	INIT_LIST_HEAD(&gi->head);
-	gi->name = name;
-	gi->handle = handle;
+	gi->chip = chip;
 	gi->opaque = opaque;
 
 	/* Add guest irq to list */
@@ -544,26 +541,26 @@ int vmm_devemu_register_irq_handler(struct vmm_guest *guest, u32 irq,
 	return VMM_OK;
 }
 
-int vmm_devemu_unregister_irq_handler(struct vmm_guest *guest, u32 irq,
-		void (*handle) (u32 irq, int cpu, int level, void *opaque),
-		void *opaque)
+int vmm_devemu_unregister_irqchip(struct vmm_guest *guest, u32 irq,
+				  struct vmm_devemu_irqchip *chip,
+				  void *opaque)
 {
 	bool found;
 	struct vmm_devemu_guest_irq *gi;
 	struct vmm_devemu_guest_context *eg;
 
 	/* Sanity checks */
-	if (!guest || !handle) {
+	if (!guest || !chip) {
 		return VMM_EFAIL;
 	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
 
-	/* Check if handler is not already unregistered */
+	/* Check if irqchip is not already unregistered */
 	gi = NULL;
 	found = FALSE;
 	list_for_each_entry(gi, &eg->g_irq[irq], head) {
-		if (gi->handle == handle && gi->opaque == opaque) {
+		if (gi->chip == chip && gi->opaque == opaque) {
 			found = TRUE;
 			break;
 		}

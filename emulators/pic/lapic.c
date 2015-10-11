@@ -951,13 +951,20 @@ static int apic_emulator_remove(struct vmm_emudev *edev)
 {
 	apic_state_t *s = edev->priv;
 
-	if (s) {
-		vmm_free(s);
-		edev->priv = NULL;
+	if (!s) {
+		return VMM_EFAIL;
 	}
+
+	vmm_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }
+
+static struct vmm_devemu_irqchip apic_irqchip = {
+	.name = "APIC",
+	.handle = apic_irq_handle,
+};
 
 static int apic_emulator_probe(struct vmm_guest *guest,
 			       struct vmm_emudev *edev,
@@ -1008,9 +1015,7 @@ static int apic_emulator_probe(struct vmm_guest *guest,
 	}
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-		vmm_devemu_register_irq_handler(guest, i, 
-						edev->node->name, 
-						apic_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, i, &apic_irqchip, s);
 	}
 
 	edev->priv = s;

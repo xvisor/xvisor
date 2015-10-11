@@ -312,7 +312,7 @@ static int pl190_reg_write(struct pl190_emulator_state *s,
 }
 
 static int pl190_emulator_read8(struct vmm_emudev *edev,
-				physical_addr_t offset, 
+				physical_addr_t offset,
 				u8 *dst)
 {
 	int rc;
@@ -327,7 +327,7 @@ static int pl190_emulator_read8(struct vmm_emudev *edev,
 }
 
 static int pl190_emulator_read16(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u16 *dst)
 {
 	int rc;
@@ -342,28 +342,28 @@ static int pl190_emulator_read16(struct vmm_emudev *edev,
 }
 
 static int pl190_emulator_read32(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u32 *dst)
 {
 	return pl190_reg_read(edev->priv, offset, dst);
 }
 
 static int pl190_emulator_write8(struct vmm_emudev *edev,
-				 physical_addr_t offset, 
+				 physical_addr_t offset,
 				 u8 src)
 {
 	return pl190_reg_write(edev->priv, offset, 0xFFFFFF00, src);
 }
 
 static int pl190_emulator_write16(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
+				  physical_addr_t offset,
 				  u16 src)
 {
 	return pl190_reg_write(edev->priv, offset, 0xFFFF0000, src);
 }
 
 static int pl190_emulator_write32(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
+				  physical_addr_t offset,
 				  u32 src)
 {
 	return pl190_reg_write(edev->priv, offset, 0x00000000, src);
@@ -386,6 +386,11 @@ static int pl190_emulator_reset(struct vmm_emudev *edev)
 
 	return VMM_OK;
 }
+
+static struct vmm_devemu_irqchip pl190_irqchip = {
+	.name = "PL190",
+	.handle = pl190_irq_handle,
+};
 
 static int pl190_emulator_probe(struct vmm_guest *guest,
 					 struct vmm_emudev *edev,
@@ -435,9 +440,7 @@ static int pl190_emulator_probe(struct vmm_guest *guest,
 	edev->priv = s;
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-		vmm_devemu_register_irq_handler(guest, i, 
-						edev->node->name, 
-						pl190_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, i, &pl190_irqchip, s);
 	}
 
 	goto pl190_emulator_probe_done;
@@ -454,14 +457,15 @@ static int pl190_emulator_remove(struct vmm_emudev *edev)
 	u32 i;
 	struct pl190_emulator_state *s = edev->priv;
 
-	if (s) {
-		for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-			vmm_devemu_unregister_irq_handler(s->guest, i,
-							  pl190_irq_handle, s);
-		}
-		vmm_free(s);
-		edev->priv = NULL;
+	if (!s) {
+		return VMM_EFAIL;
 	}
+
+	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+		vmm_devemu_unregister_irqchip(s->guest, i, &pl190_irqchip, s);
+	}
+	vmm_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }

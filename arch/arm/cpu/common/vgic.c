@@ -1218,6 +1218,11 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
+static struct vmm_devemu_irqchip vgic_irqchip = {
+	.name = "VGIC",
+	.handle = vgic_irq_handle,
+};
+
 static struct vgic_guest_state *vgic_state_alloc(const char *name,
 						 struct vmm_guest *guest,
 						 u32 num_cpu,
@@ -1258,10 +1263,9 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 
 	INIT_SPIN_LOCK(&s->dist_lock);
 
-	/* Register guest irq handler */
+	/* Register guest irqchip */
 	for (i = 0; i < VGIC_NUM_IRQ(s); i++) {
-		vmm_devemu_register_irq_handler(guest, i,
-						name, vgic_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, i, &vgic_irqchip, s);
 	}
 
 	/* Setup save/restore hooks */
@@ -1288,10 +1292,9 @@ static int vgic_state_free(struct vgic_guest_state *s)
 		arm_vgic_cleanup(vcpu);
 	}
 
-	/* Unregister guest irq handler */
+	/* Unregister guest irqchip */
 	for (i = 0; i < s->num_irq; i++) {
-		vmm_devemu_unregister_irq_handler(s->guest, i,
-						  vgic_irq_handle, s);
+		vmm_devemu_unregister_irqchip(s->guest, i, &vgic_irqchip, s);
 	}
 
 	/* Free VGIC state */

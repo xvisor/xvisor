@@ -1027,6 +1027,11 @@ static u32 gic_configs[][14] = {
 	},
 };
 
+static struct vmm_devemu_irqchip gic_irqchip = {
+	.name = "GIC",
+	.handle = gic_irq_handle,
+};
+
 struct gic_state *gic_state_alloc(const char *name,
 				  struct vmm_guest *guest,
 				  enum gic_type type,
@@ -1079,8 +1084,7 @@ struct gic_state *gic_state_alloc(const char *name,
 	INIT_RW_LOCK(&s->dist_lock);
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-		vmm_devemu_register_irq_handler(guest, i,
-						name, gic_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, i, &gic_irqchip, s);
 	}
 
 	return s;
@@ -1096,8 +1100,7 @@ int gic_state_free(struct gic_state *s)
 	}
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-		vmm_devemu_unregister_irq_handler(s->guest, i,
-						  gic_irq_handle, s);
+		vmm_devemu_unregister_irqchip(s->guest, i, &gic_irqchip, s);
 	}
 	vmm_free(s);
 

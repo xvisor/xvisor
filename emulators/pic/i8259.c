@@ -536,7 +536,7 @@ static u64 elcr_ioport_read(i8259_state_t *s, physical_addr_t addr,
 #endif
 
 /* Process IRQ asserted via device emulation framework */
-void i8259_irq_handle(u32 irq, int cpu, int level, void *opaque)
+static void i8259_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	irq_flags_t flags;
 	i8259_state_t *s = opaque;
@@ -548,19 +548,25 @@ void i8259_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	vmm_spin_unlock_irqrestore(&s->lock, flags);
 }
 
+static struct vmm_devemu_irqchip i8259_irqchip = {
+	.name = "I8259",
+	.handle = i8259_irq_handle,
+};
+
 static int i8259_emulator_remove(struct vmm_emudev *edev)
 {
 	u32 i;
 	i8259_state_t *s = edev->priv;
 
-	if (s) {
-		for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-			vmm_devemu_unregister_irq_handler(s->guest, i,
-							  i8259_irq_handle, s);
-		}
-		vmm_free(s);
-		edev->priv = NULL;
+	if (!s) {
+		return VMM_EFAIL;
 	}
+
+	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
+		vmm_devemu_unregister_irqchip(s->guest, i, &i8259_irqchip, s);
+	}
+	vmm_free(s);
+	edev->priv = NULL;
 
 	return VMM_OK;
 }
@@ -631,9 +637,7 @@ static int i8259_emulator_probe(struct vmm_guest *guest,
 		arch_set_guest_master_pic(guest, s);
 
 	for (i = s->base_irq; i < (s->base_irq + s->num_irq); i++) {
-		vmm_devemu_register_irq_handler(guest, i, 
-						edev->node->name, 
-						i8259_irq_handle, s);
+		vmm_devemu_register_irqchip(guest, i, &i8259_irqchip, s);
 	}
 
 	goto i8259_emulator_probe_done;
@@ -646,10 +650,7 @@ static int i8259_emulator_probe(struct vmm_guest *guest,
 }
 
 static struct vmm_devtree_nodeid i8259_emulator_emuid_table[] = {
-	{
-		.type = "pic",
-		.compatible = "i8259a",
-	},
+	{ .type = "pic", .compatible = "i8259a", },
 	{ /* end of list */ },
 };
 
