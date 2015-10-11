@@ -159,6 +159,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 		arch_vcpu_switch(NULL, next, regs);
 		next->state_ready_nsecs += tstamp - next->state_tstamp;
 		arch_atomic_write(&next->state, VMM_VCPU_STATE_RUNNING);
+		next->resumed = FALSE;
 		next->state_tstamp = tstamp;
 		schedp->current_vcpu = next;
 		schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
@@ -203,6 +204,7 @@ static void vmm_scheduler_next(struct vmm_scheduler_ctrl *schedp,
 
 	next->state_ready_nsecs += tstamp - next->state_tstamp;
 	arch_atomic_write(&next->state, VMM_VCPU_STATE_RUNNING);
+	next->resumed = FALSE;
 	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
