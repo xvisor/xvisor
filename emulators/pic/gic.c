@@ -358,42 +358,47 @@ static int __gic_dist_readb(struct gic_state *s, int cpu, u32 offset, u8 *dst)
 	}
 
 	done = 1;
-	switch (offset - (offset & 0x3)) {
-	case 0x000: /* Distributor control */
-		if (offset == 0x000) {
-			*dst = s->enabled;
-		} else {
-			*dst = 0x0;
-		}
+	switch (offset >> 8) {
+	case 0x0: /* Control */
+		switch (offset - (offset & 0x3)) {
+		case 0x000: /* Distributor control */
+			if (offset == 0x000) {
+				*dst = s->enabled;
+			} else {
+				*dst = 0x0;
+			}
+			break;
+		case 0x004: /* Controller type */
+			if (offset == 0x004) {
+				*dst = (GIC_NUM_CPU(s) - 1) << 5;
+				*dst |= (GIC_NUM_IRQ(s) / 32) - 1;
+			} else {
+				*dst = 0x0;
+			}
+			break;
+		default:
+			done = 0;
+			break;
+		};
 		break;
-	case 0x004: /* Controller type */
-		if (offset == 0x004) {
-			*dst = (GIC_NUM_CPU(s) - 1) << 5;
-			*dst |= (GIC_NUM_IRQ(s) / 32) - 1;
-		} else {
-			*dst = 0x0;
+	case 0x1: /* Enable */
+		irq = (offset & 0x7F) * 8;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
 		}
-		break;
-	case 0x100: /* Set-enable0 */
-	case 0x104: /* Set-enable1 */
-	case 0x108: /* Set-enable2 */
-	case 0x180: /* Clear-enable0 */
-	case 0x184: /* Clear-enable1 */
-	case 0x188: /* Clear-enable2 */
-		irq = (offset & 0xF) * 8;
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
 			*dst |= GIC_TEST_ENABLED(s, irq + i, (1 << cpu)) ?
 				(1 << i) : 0x0;
 		}
 		break;
-	case 0x200: /* Set-pending0 */
-	case 0x204: /* Set-pending1 */
-	case 0x208: /* Set-pending2 */
-	case 0x280: /* Clear-pending0 */
-	case 0x284: /* Clear-pending1 */
-	case 0x288: /* Clear-pending2 */
-		irq = (offset & 0xF) * 8;
+	case 0x2: /* Pending */
+		irq = (offset & 0x7F) * 8;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
 		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
@@ -401,10 +406,12 @@ static int __gic_dist_readb(struct gic_state *s, int cpu, u32 offset, u8 *dst)
 				(1 << i) : 0x0;
 		}
 		break;
-	case 0x300: /* Active0 */
-	case 0x304: /* Active1 */
-	case 0x308: /* Active2 */
-		irq = (offset & 0xF) * 8;
+	case 0x3: /* Active */
+		irq = (offset & 0x7F) * 8;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
 		mask = (irq < 32) ? (1 << cpu) : GIC_ALL_CPU_MASK(s);
 		*dst = 0;
 		for (i = 0; i < 8; i++) {
@@ -412,72 +419,59 @@ static int __gic_dist_readb(struct gic_state *s, int cpu, u32 offset, u8 *dst)
 				(1 << i) : 0x0;
 		}
 		break;
+	case 0x4: /* Priority */
+		irq = offset - 0x400;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
+		*dst = GIC_GET_PRIORITY(s, irq, cpu) << 4;
+		break;
+	case 0x8: /* CPU targets */
+		irq = offset - 0x800;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
+		if (irq < 32) {
+			*dst = 1 << cpu;
+		} else {
+			*dst = GIC_TARGET(s, irq);
+		}
+		break;
+	case 0xC: /* Configuration */
+		irq = (offset - 0xC00) * 4;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
+		*dst = 0;
+		for (i = 0; i < 4; i++) {
+			if (GIC_TEST_MODEL(s, irq + i)) {
+				*dst |= (1 << (i * 2));
+			}
+			if (GIC_TEST_TRIGGER(s, irq + i)) {
+				*dst |= (2 << (i * 2));
+			}
+		}
+		break;
+	case 0xF:
+		if (0xFE0 <= offset) {
+			if (offset & 0x3) {
+				*dst = 0;
+			} else {
+				*dst = s->id[(offset - 0xFE0) >> 2];
+			}
+		} else {
+			done = 0;
+		}
+		break;
 	default:
 		done = 0;
 		break;
 	};
 
-	if (!done) {
-		done = 1;
-		switch (offset >> 8) {
-		case 0x4: /* Priority */
-			irq = offset - 0x400;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			*dst = GIC_GET_PRIORITY(s, irq, cpu) << 4;
-			break;
-		case 0x8: /* CPU targets */
-			irq = offset - 0x800;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			if (irq < 32) {
-				*dst = 1 << cpu;
-			} else {
-				*dst = GIC_TARGET(s, irq);
-			}
-			break;
-		case 0xC: /* Configuration */
-			irq = (offset - 0xC00) * 4;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			*dst = 0;
-			for (i = 0; i < 4; i++) {
-				if (GIC_TEST_MODEL(s, irq + i)) {
-					*dst |= (1 << (i * 2));
-				}
-				if (GIC_TEST_TRIGGER(s, irq + i)) {
-					*dst |= (2 << (i * 2));
-				}
-			}
-			break;
-		case 0xF:
-			if (0xFE0 <= offset) {
-				if (offset & 0x3) {
-					*dst = 0;
-				} else {
-					*dst = s->id[(offset - 0xFE0) >> 2];
-				}
-			} else {
-				done = 0;
-			}
-			break;
-		default:
-			done = 0;
-			break;
-		};
-	}
-
-	if (!done) {
-		return VMM_EFAIL;
-	}
-
-	return VMM_OK;
+	return (done) ? VMM_OK : VMM_EFAIL;
 }
 
 static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
@@ -489,28 +483,36 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 	}
 
 	done = 1;
-	switch (offset - (offset & 0x3)) {
-	case 0x000: /* Distributor control */
-		if (offset == 0x000) {
-			s->enabled = src & 0x1 ? TRUE : FALSE;
-		}
+	switch (offset >> 8) {
+	case 0x0: /* Control */
+		switch (offset - (offset & 0x3)) {
+		case 0x000: /* Distributor control */
+			if (offset == 0x000) {
+				s->enabled = src & 0x1 ? TRUE : FALSE;
+			}
+			break;
+		case 0x004: /* Controller type */
+			/* Ignored. */
+			break;
+		default:
+			done = 0;
+			break;
+		};
 		break;
-	case 0x004: /* Controller type */
-		/* Ignored. */
-		break;
-	case 0x100: /* Set-enable0 */
-	case 0x104: /* Set-enable1 */
-	case 0x108: /* Set-enable2 */
-		irq = (offset & 0xF) *8;
+	case 0x1: /* Enable */
+		irq = (offset & 0x7F) * 8;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
 		}
-		if (irq < 16) {
-			src = 0xFF;
-		}
-		for (i = 0; i < 8; i++) {
-			if (src & (1 << i)) {
+		if (!(offset & 0x80)) { /* Set-enableX */
+			if (irq < 16) {
+				src = 0xFF;
+			}
+			for (i = 0; i < 8; i++) {
+				if (!(src & (1 << i))) {
+					continue;
+				}
 				mask = ((irq + i) < 32) ?
 					(1 << cpu) : GIC_TARGET(s, (irq + i));
 				cm = ((irq + i) < 32) ?
@@ -523,60 +525,98 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 					GIC_SET_PENDING(s, (irq + i), mask);
 				}
 			}
-		}
-		break;
-	case 0x180: /* Clear-enable0 */
-	case 0x184: /* Clear-enable1 */
-	case 0x188: /* Clear-enable2 */
-		irq = (offset & 0xF) *8;
-		if (GIC_NUM_IRQ(s) <= irq) {
-			done = 0;
-			break;
-		}
-		if (irq < 16) {
-			src = 0x00;
-		}
-		for (i = 0; i < 8; i++) {
-			if (src & (1 << i)) {
-				int cm = ((irq + i) < 32) ?
+		} else { /* Clear-enableX */
+			if (irq < 16) {
+				src = 0x00;
+			}
+			for (i = 0; i < 8; i++) {
+				if (!(src & (1 << i))) {
+					continue;
+				}
+				cm = ((irq + i) < 32) ?
 					(1 << cpu) : GIC_ALL_CPU_MASK(s);
 				GIC_CLEAR_ENABLED(s, irq + i, cm);
 			}
 		}
 		break;
-	case 0x200: /* Set-pending0 */
-	case 0x204: /* Set-pending1 */
-	case 0x208: /* Set-pending2 */
-		irq = (offset & 0xF) *8;
+	case 0x2: /* Pending */
+		irq = (offset & 0x7F) * 8;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
+		if (!(offset & 0x80)) { /* Set-pendingX */
+			if (irq < 16) {
+				src = 0x00;
+			}
+			for (i = 0; i < 8; i++) {
+				if (!(src & (1 << i))) {
+					continue;
+				}
+				mask = GIC_TARGET(s, irq + i);
+				GIC_SET_PENDING(s, irq + i, mask);
+			}
+		} else { /* Clear-pendingX */
+			/* ??? This currently clears the pending bit for
+			 * all CPUs, even for per-CPU interrupts. It's
+			 * unclear whether this is the corect behavior.
+			 */
+			mask = GIC_ALL_CPU_MASK(s);
+			for (i = 0; i < 8; i++) {
+				if (!(src & (1 << i))) {
+					continue;
+				}
+				GIC_CLEAR_PENDING(s, irq + i, mask);
+			}
+		}
+		break;
+	case 0x3: /* Active */
+		/* Ignore. */
+		break;
+	case 0x4: /* Priority */
+		irq = offset - 0x400;
+		if (GIC_NUM_IRQ(s) <= irq) {
+			done = 0;
+			break;
+		}
+		if (irq < 32) {
+			s->cpu_state[cpu].priority[irq] = src >> 4;
+		} else {
+			s->irq_state[irq].priority = src >> 4;
+		}
+		break;
+	case 0x8: /* CPU targets */
+		irq = offset - 0x800;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
 		}
 		if (irq < 16) {
-			src = 0x00;
+			src = 0x0;
+		} else if (irq < 32) {
+			src = GIC_ALL_CPU_MASK(s);
 		}
-		for (i = 0; i < 8; i++) {
-			if (src & (1 << i)) {
-				mask = GIC_TARGET(s, irq + i);
-				GIC_SET_PENDING(s, irq + i, mask);
-			}
-		}
+		s->irq_state[irq].target = src & GIC_ALL_CPU_MASK(s);
 		break;
-	case 0x280: /* Clear-pending0 */
-	case 0x284: /* Clear-pending1 */
-	case 0x288: /* Clear-pending2 */
-		irq = (offset & 0xF) *8;
+	case 0xC: /* Configuration */
+		irq = (offset - 0xC00) * 4;
 		if (GIC_NUM_IRQ(s) <= irq) {
 			done = 0;
 			break;
 		}
-		/* ??? This currently clears the pending bit for all CPUs, even
- 		 * for per-CPU interrupts.  It's unclear whether this is the
-		 * corect behavior.  */
-		mask = GIC_ALL_CPU_MASK(s);
-		for (i = 0; i < 8; i++) {
-			if (src & (1 << i)) {
-				GIC_CLEAR_PENDING(s, irq + i, mask);
+		if (irq < 32) {
+			src |= 0xAA;
+		}
+		for (i = 0; i < 4; i++) {
+			if (src & (1 << (i * 2))) {
+				GIC_SET_MODEL(s, irq + i);
+			} else {
+				GIC_CLEAR_MODEL(s, irq + i);
+			}
+			if (src & (2 << (i * 2))) {
+				GIC_SET_TRIGGER(s, irq + i);
+			} else {
+				GIC_CLEAR_TRIGGER(s, irq + i);
 			}
 		}
 		break;
@@ -585,71 +625,7 @@ static int __gic_dist_writeb(struct gic_state *s, int cpu, u32 offset, u8 src)
 		break;
 	};
 
-	if (!done) {
-		done = 1;
-		switch (offset >> 8) {
-		case 0x1: /* Reserved */
-		case 0x2: /* Reserved */
-		case 0x3: /* Reserved */
-			break;
-		case 0x4: /* Priority */
-			irq = offset - 0x400;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			if (irq < 32) {
-				s->cpu_state[cpu].priority[irq] = src >> 4;
-			} else {
-				s->irq_state[irq].priority = src >> 4;
-			}
-			break;
-		case 0x8: /* CPU targets */
-			irq = offset - 0x800;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			if (irq < 16) {
-				src = 0x0;
-			} else if (irq < 32) {
-				src = GIC_ALL_CPU_MASK(s);
-			}
-			s->irq_state[irq].target = src & GIC_ALL_CPU_MASK(s);
-			break;
-		case 0xC: /* Configuration */
-			irq = (offset - 0xC00) * 4;
-			if (GIC_NUM_IRQ(s) <= irq) {
-				done = 0;
-				break;
-			}
-			if (irq < 32) {
-				src |= 0xAA;
-			}
-			for (i = 0; i < 4; i++) {
-				if (src & (1 << (i * 2))) {
-					GIC_SET_MODEL(s, irq + i);
-				} else {
-					GIC_CLEAR_MODEL(s, irq + i);
-				}
-				if (src & (2 << (i * 2))) {
-					GIC_SET_TRIGGER(s, irq + i);
-				} else {
-					GIC_CLEAR_TRIGGER(s, irq + i);
-				}
-			}
-			break;
-		default:
-			done = 0;
-			break;
-		};
-	}
-
-	if (!done) {
-		return VMM_EFAIL;
-	}
-
-	return VMM_OK;
+	return (done) ? VMM_OK : VMM_EFAIL;
 }
 
 static int gic_dist_read(struct gic_state *s, int cpu, u32 offset, u32 *dst)
