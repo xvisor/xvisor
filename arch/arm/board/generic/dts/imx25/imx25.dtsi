@@ -28,7 +28,6 @@
 	#size-cells = <1>;
 
 	chosen { };
-	aliases { };
 
 	aliases {
 		ethernet0 = &fec;
