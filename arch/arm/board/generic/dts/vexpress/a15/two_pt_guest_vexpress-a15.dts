@@ -22,14 +22,13 @@
 			  /* Load guest0 device tree from file */
 			  "vfs fdt_load /guests guest0 /images/arm32/vexpress-a15x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
 
-			  /* Route host/uart1 irq to guest0/uart0 irq */
-			  "devtree attr set /guests/guest0/aspace/gic_dist host2guest uint32 38 37",
-
 			  /* Map guest0/uart0 to host/uart1 */
 			  "devtree attr set /guests/guest0/aspace/uart0 manifest_type string real",
-			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x1C0A0000",
+			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x1c0a0000",
 			  "devtree attr set /guests/guest0/aspace/uart0 device_type string pt",
 			  "devtree attr set /guests/guest0/aspace/uart0 compatible string simple",
+			  "devtree attr set /guests/guest0/aspace/uart0 host-interrupts uint32 38",
+			  "devtree attr set /guests/guest0/aspace/uart0 interrupts uint32 37",
 
 			  /* Create guest0 */
 			  "guest create guest0",
@@ -40,14 +39,13 @@
 			  /* Load guest1 device tree from file */
 			  "vfs fdt_load /guests guest1 /images/arm32/vexpress-a15x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
 
-			  /* Route host/uart2 irq to guest1/uart0 irq */
-			  "devtree attr set /guests/guest1/aspace/gic_dist host2guest uint32 39 37",
-
 			  /* Map guest1/uart0 to host/uart2 */
 			  "devtree attr set /guests/guest1/aspace/uart0 manifest_type string real",
-			  "devtree attr set /guests/guest1/aspace/uart0 host_physical_addr physaddr 0x1C0B0000",
+			  "devtree attr set /guests/guest1/aspace/uart0 host_physical_addr physaddr 0x1c0b0000",
 			  "devtree attr set /guests/guest1/aspace/uart0 device_type string pt",
 			  "devtree attr set /guests/guest1/aspace/uart0 compatible string simple",
+			  "devtree attr set /guests/guest1/aspace/uart0 host-interrupts uint32 39",
+			  "devtree attr set /guests/guest1/aspace/uart0 interrupts uint32 37",
 
 			  /* Create guest1 */
 			  "guest create guest1",
