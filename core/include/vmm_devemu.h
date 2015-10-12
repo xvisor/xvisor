@@ -86,6 +86,8 @@ struct vmm_emudev {
 struct vmm_devemu_irqchip {
 	const char *name;
 	void (*handle) (u32 irq, int cpu, int level, void *opaque);
+	void (*map_host2guest) (u32 irq, u32 host_irq, void *opaque);
+	void (*unmap_host2guest) (u32 irq, void *opaque);
 };
 
 /** Emulate memory read to virtual device for given VCPU */
@@ -116,13 +118,28 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 
 				    u32 irq, int cpu, int level);
 
-/** Emulate shared irq for guest */
+/** Emulate shared irq for guest
+ *  Note: This will only work after guest is created.
+ */
 #define vmm_devemu_emulate_irq(guest, irq, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, -1, level) 
 
-/** Emulate percpu irq for guest */
+/** Emulate percpu irq for guest
+ *  Note: This will only work after guest is created.
+ */
 #define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, cpu, level) 
+
+/** Map host irq to guest irq for guest
+ *  Note: This will only work after guest is created.
+ */
+int vmm_devemu_map_host2guest_irq(struct vmm_guest *guest, u32 irq,
+				  u32 host_irq);
+
+/** Unmap host irq to guest irq mapping for guest
+ *  Note: This will only work after guest is created.
+ */
+int vmm_devemu_unmap_host2guest_irq(struct vmm_guest *guest, u32 irq);
 
 /** Register guest irqchip */
 int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,

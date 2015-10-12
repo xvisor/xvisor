@@ -479,13 +479,61 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
-
 	if (eg->g_irq_count <= irq) {
 		return VMM_EINVALID;
 	}
 
 	list_for_each_entry(gi, &eg->g_irq[irq], head) {
 		gi->chip->handle(irq, cpu, level, gi->opaque);
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_map_host2guest_irq(struct vmm_guest *guest, u32 irq,
+				  u32 host_irq)
+{
+	struct vmm_devemu_guest_irq *gi;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
+
+	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (!gi->chip->map_host2guest) {
+			continue;
+		}
+		gi->chip->map_host2guest(irq, host_irq, gi->opaque);
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_unmap_host2guest_irq(struct vmm_guest *guest, u32 irq)
+{
+	struct vmm_devemu_guest_irq *gi;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
+
+	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (!gi->chip->unmap_host2guest) {
+			continue;
+		}
+		gi->chip->unmap_host2guest(irq, gi->opaque);
 	}
 
 	return VMM_OK;
@@ -502,6 +550,9 @@ int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,
 	/* Sanity checks */
 	if (!guest || !chip) {
 		return VMM_EFAIL;
+	}
+	if (!chip->handle) {
+		return VMM_EINVALID;
 	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
@@ -552,6 +603,9 @@ int vmm_devemu_unregister_irqchip(struct vmm_guest *guest, u32 irq,
 	/* Sanity checks */
 	if (!guest || !chip) {
 		return VMM_EFAIL;
+	}
+	if (!chip->handle) {
+		return VMM_EINVALID;
 	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
