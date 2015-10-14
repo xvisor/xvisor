@@ -36,6 +36,14 @@
 #include <cpu_generic_timer.h>
 #include <libs/mathlib.h>
 
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 enum gen_timer_type {
 	GENERIC_SPHYSICAL_TIMER,
 	GENERIC_PHYSICAL_TIMER,
@@ -196,7 +204,7 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 		/* We got interrupt without status bit set.
 		 * Looks like we are running on buggy hardware.
 		 */
-		vmm_printf("%s: suprious interrupt\n", __func__);
+		DPRINTF("%s: suprious interrupt\n", __func__);
 		return VMM_IRQ_NONE;
 	}
 
@@ -208,16 +216,16 @@ static vmm_irq_return_t generic_phys_timer_handler(int irq, void *dev)
 		/* We accidently got an interrupt meant for normal VCPU
 		 * that was previously running on this host CPU.
 		 */
-		vmm_printf("%s: In orphan context (current VCPU=%s)\n",
-			   __func__, vcpu->name);
+		DPRINTF("%s: In orphan context (current VCPU=%s)\n",
+			__func__, vcpu->name);
 		return VMM_IRQ_NONE;
 	}
 
 	cntx = arm_gentimer_context(vcpu);
 	if (!cntx) {
 		/* We accidently got an interrupt meant another normal VCPU */
-		vmm_printf("%s: Invalid normal context (current VCPU=%s)\n",
-			   __func__, vcpu->name);
+		DPRINTF("%s: Invalid normal context (current VCPU=%s)\n",
+			__func__, vcpu->name);
 		return VMM_IRQ_NONE;
 	}
 
@@ -263,7 +271,7 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 		/* We got interrupt without status bit set.
 		 * Looks like we are running on buggy hardware.
 		 */
-		vmm_printf("%s: suprious interrupt\n", __func__);
+		DPRINTF("%s: suprious interrupt\n", __func__);
 		return VMM_IRQ_NONE;
 	}
 
@@ -275,16 +283,16 @@ static vmm_irq_return_t generic_virt_timer_handler(int irq, void *dev)
 		/* We accidently got an interrupt meant for normal VCPU
 		 * that was previously running on this host CPU.
 		 */
-		vmm_printf("%s: In orphan context (current VCPU=%s)\n",
-			   __func__, vcpu->name);
+		DPRINTF("%s: In orphan context (current VCPU=%s)\n",
+			__func__, vcpu->name);
 		return VMM_IRQ_NONE;
 	}
 
 	cntx = arm_gentimer_context(vcpu);
 	if (!cntx) {
 		/* We accidently got an interrupt meant another normal VCPU */
-		vmm_printf("%s: Invalid normal context (current VCPU=%s)\n",
-			   __func__, vcpu->name);
+		DPRINTF("%s: Invalid normal context (current VCPU=%s)\n",
+			__func__, vcpu->name);
 		return VMM_IRQ_NONE;
 	}
 
