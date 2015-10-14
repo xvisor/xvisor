@@ -611,6 +611,12 @@ int mmu_lpae_map_page(struct cpu_ttbl *ttbl, struct cpu_page *pg)
 
 	cpu_mmu_sync_tte(&tte[index]);
 
+	if (ttbl->stage == TTBL_STAGE2) {
+		cpu_invalid_ipa_guest_tlb((pg->ia));
+	} else {
+		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
+	}
+
 	ttbl->tte_cnt++;
 
 	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
@@ -692,6 +698,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
 
 	cpu_mmu_sync_tte(tte);
+	cpu_invalid_va_hypervisor_tlb(tmp_va);
 
 	switch (len) {
 	case 1:
@@ -713,7 +720,6 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 
 	*tte = old_tte_val;
 	cpu_mmu_sync_tte(tte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
 
 	return VMM_OK;
 }
@@ -738,6 +744,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
 
 	cpu_mmu_sync_tte(tte);
+	cpu_invalid_va_hypervisor_tlb(tmp_va);
 
 	switch (len) {
 	case 1:
@@ -759,7 +766,6 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 
 	*tte = old_tte_val;
 	cpu_mmu_sync_tte(tte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
 
 	return VMM_OK;
 }
