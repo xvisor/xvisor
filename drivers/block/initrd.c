@@ -34,8 +34,11 @@
 #define	MODULE_INIT			initrd_driver_init
 #define	MODULE_EXIT			initrd_driver_exit
 
-#define INITRD_START_ATTR_NAME	"linux,initrd-start"
-#define INITRD_END_ATTR_NAME	"linux,initrd-end"
+#define INITRD_START_ATTR_NAME		"linux,initrd-start"
+#define INITRD_END_ATTR_NAME		"linux,initrd-end"
+
+#define INITRD_START_ATTR2_NAME		"initrd-start"
+#define INITRD_END_ATTR2_NAME		"initrd-end"
 
 static struct rbd *initrd_rdb;
 
@@ -44,51 +47,56 @@ static int __init initrd_driver_init(void)
 	struct vmm_devtree_node *node;
 	u64 initrd_start, initrd_end;
 
+	/* There should be a /chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
-
-	/* There should be a /chosen node */
 	if (!node) {
 		vmm_printf("initrd: No chosen node\n", __func__);
 		return VMM_ENODEV;
 	}
 
-	/* Is there a linux,initrd-start attribute */
+	/* Is there a start attribute */
 	if (vmm_devtree_read_u64(node,
-			INITRD_START_ATTR_NAME, &initrd_start) == VMM_OK) {
-
-		/* If so is there also a linux,initrd-end attribte */
+		INITRD_START_ATTR_NAME, &initrd_start) != VMM_OK) {
 		if (vmm_devtree_read_u64(node,
-			INITRD_END_ATTR_NAME, &initrd_end) != VMM_OK) {
-			vmm_printf("initrd: failed to find %s\n",
-				   INITRD_END_ATTR_NAME);
-			goto error;
-		}
-
-		/* Let's do a little bit os sanity check */
-		if (initrd_end <= initrd_start) {
-			vmm_printf("initrd: Error: %s > %s \n",
+			INITRD_START_ATTR2_NAME, &initrd_start) != VMM_OK) {
+			vmm_printf("initrd: %s/%s attribute not found\n",
 				   INITRD_START_ATTR_NAME,
-				   INITRD_END_ATTR_NAME);
+				   INITRD_START_ATTR2_NAME);
 			goto error;
 		}
-
-		/* OK, we know where the initrd device is located */
-		if ((initrd_rdb = rbd_create("initrd",
-					(physical_addr_t)initrd_start,
-					(physical_size_t)(initrd_end -
-						  initrd_start), true))
-					== NULL) {
-			vmm_printf("initrd: rbd_create() failed\n");
-			goto error;
-		}
-
-		vmm_printf("initrd: RBD created at 0x%016llx - 0x%016llx\n",
-			   initrd_start, initrd_end);
-	} else {
-		vmm_printf("initrd: no %s/%s attribute\n",
-			   INITRD_START_ATTR_NAME, INITRD_END_ATTR_NAME);
 	}
+
+	/* If so is there also a end attribte */
+	if (vmm_devtree_read_u64(node,
+		INITRD_END_ATTR_NAME, &initrd_end) != VMM_OK) {
+		if (vmm_devtree_read_u64(node,
+			INITRD_END_ATTR2_NAME, &initrd_end) != VMM_OK) {
+			vmm_printf("initrd: %s/%s attribute not found\n",
+				   INITRD_END_ATTR_NAME,
+				   INITRD_END_ATTR2_NAME);
+			goto error;
+		}
+	}
+
+	/* Let's do a little bit os sanity check */
+	if (initrd_end <= initrd_start) {
+		vmm_printf("initrd: error: initrd_start > initrd_end\n");
+		goto error;
+	}
+
+	/* OK, we know where the initrd device is located */
+	if ((initrd_rdb = rbd_create("initrd",
+				(physical_addr_t)initrd_start,
+				(physical_size_t)(initrd_end -
+					  initrd_start), true))
+				== NULL) {
+		vmm_printf("initrd: rbd_create() failed\n");
+		goto error;
+	}
+
+	vmm_printf("initrd: RBD created at 0x%llx - 0x%llx\n",
+		   initrd_start, initrd_end);
 
  error:
 	vmm_devtree_dref_node(node);
