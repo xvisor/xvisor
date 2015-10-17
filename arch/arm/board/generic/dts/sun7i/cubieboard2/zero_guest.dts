@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "sun7i-a20-cubieboard2.dtsi"
+#include "sun7i-a20-cubieboard2.dtsi"
 
 / {
 	vmm {

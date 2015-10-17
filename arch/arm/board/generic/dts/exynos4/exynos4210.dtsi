@@ -1,9 +1,12 @@
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	model = "exynos4210";
 	compatible = "samsung,exynos4";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	chosen { };
 	aliases { };
@@ -39,16 +42,21 @@
 		reg = <0x10020000 0x10000>;
 	};
 
-	gic {
+	gic: gic {
 		compatible = "arm,cortex-a9-gic";
-		reg = <0x10490000 0x1000 0x10480000 0x100>;
+		reg = <0x10490000 0x1000>,
+		      <0x10480000 0x100>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
 	};
 
 	mct {
 		compatible = "samsung,exynos4210-mct";
 		reg = <0x10050000 0x1000>;
 		clock-frequency = <24000000>;
-		interrupts = <89 74 80>;
+		interrupts = <GIC_SPI 57 IRQ_TYPE_NONE>,
+			     <GIC_SPI 42 IRQ_TYPE_NONE>,
+			     <GIC_SPI 48 IRQ_TYPE_NONE>;
 	};
 
 	sfrregion {
@@ -59,48 +67,53 @@
 		RTC0: s3c-rtc {
 			compatible = "samsung,s3c6410-rtc";
 			reg = <0x10070000 0x100>;
-			interrupts = <76 77>;
+			interrupts = <GIC_SPI 44 IRQ_TYPE_NONE>,
+				     <GIC_SPI 45 IRQ_TYPE_NONE>;
 		};
 
 		SERIAL0: uart@13800000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
 			clock-frequency = <100000000>;
-			interrupts = <84>;
+			interrupts = <GIC_SPI 52 IRQ_TYPE_NONE>;
 		};
 
 		SERIAL1: uart@13810000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
 			clock-frequency = <100000000>;
-			interrupts = <85>;
+			interrupts = <GIC_SPI 53 IRQ_TYPE_NONE>;
 		};
 
 		SERIAL2: uart@13820000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
 			clock-frequency = <100000000>;
-			interrupts = <86>;
+			interrupts = <GIC_SPI 54 IRQ_TYPE_NONE>;
 		};
 
 		SERIAL3: uart@13830000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
 			clock-frequency = <100000000>;
-			interrupts = <87>;
+			interrupts = <GIC_SPI 55 IRQ_TYPE_NONE>;
 		};
 
 		SERIAL4: uart@13840000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
 			clock-frequency = <100000000>;
-			interrupts = <88>;
+			interrupts = <GIC_SPI 56 IRQ_TYPE_NONE>;
 		};
 
 		timer0 {
 			compatible = "samsung,exynos4210-PWMtimer";
 			reg = <0x139d0000 0x1000>;
-			interrupts = <69 70 71 72 73>;
+			interrupts = <GIC_SPI 37 IRQ_TYPE_NONE>,
+				     <GIC_SPI 38 IRQ_TYPE_NONE>,
+				     <GIC_SPI 39 IRQ_TYPE_NONE>,
+				     <GIC_SPI 40 IRQ_TYPE_NONE>,
+				     <GIC_SPI 41 IRQ_TYPE_NONE>;
 		};
 	};
 };

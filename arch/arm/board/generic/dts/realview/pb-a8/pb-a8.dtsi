@@ -1,9 +1,12 @@
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	compatible = "arm,realview";
 	model = "realview-pb-a8";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	chosen { };
 	aliases { };
@@ -30,18 +33,16 @@
 		compatible = "simple-bus";
 
 		clcd {
-	      		device_type = "fb";
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
 			use_dma = <1>;
 		};
 
 		eth0 {
-			device_type = "nic";
 			compatible = "smc911x";
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
-			interrupts = <60>;
+			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 			switch = "br0";
 		};
 
@@ -49,15 +50,15 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			gic { /* Generic Interrupt Controller */
-		      		device_type = "pic";
+			gic: gic { /* Generic Interrupt Controller */
 		      		compatible = "arm,realview-gic";
-		      		reg = <0x1E001000 0x1000
-				       0x1E000000 0x1000>;
+				reg = <0x1E001000 0x1000>,
+				      <0x1E000000 0x1000>;
+				#interrupt-cells = <3>;
+				interrupt-controller;
 			};
 
 			sysreg { /* System Registers */
-		      		device_type = "sys";
 		      		compatible = "arm,realview-sysreg";
 		      		reg = <0x10000000 0x1000>;
 			};
@@ -67,7 +68,6 @@
 			};
 
 			sysctl: sysctl0 { /* System Controller */
-		      		device_type = "sys";
 		      		compatible = "arm,sp810";
 		      		reg = <0x10001000 0x1000>;
 				clocks = <&refclk32khz>, <&refclk1mhz>;
@@ -77,56 +77,51 @@
 			};
 
 			mmci0 { /* Multimedia Card Interface */
-		      		device_type = "mmc";
 		      		compatible = "arm,pl180";
 		      		reg = <0x10005000 0x1000>;
-				interrupts = <49 50>;
+				interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			kmi0 { /* Keyboard */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
-				interrupts = <52>;
+				interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			kmi1 { /* Mouse */
-		      		device_type = "serio";
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
-				interrupts = <53>;
+				interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL0: uart0 {
 		      		compatible = "arm,pl011";
 		      		reg = <0x10009000 0x1000>;
 				clock-frequency = <24000000>;
-				interrupts = <44>;
+				interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			timer01 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x10011000 0x1000>;
-				interrupts = <36>;
+				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&sysctl 0>, <&sysctl 1>;
 				clock-names = "timclken1", "timclken2";
 			};
 
 			timer23 {
-		      		device_type = "timer";
 		      		compatible = "arm,sp804";
 		      		reg = <0x10012000 0x1000>;
-				interrupts = <37>;
+				interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&sysctl 2>, <&sysctl 3>;
 				clock-names = "timclken1", "timclken2";
 			};
 
 			RTC0: rtc0 {
-		      		device_type = "rtc";
 		      		compatible = "arm,pl031";
 		      		reg = <0x10017000 0x1000>;
-				interrupts = <42>;
+				interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
 	};

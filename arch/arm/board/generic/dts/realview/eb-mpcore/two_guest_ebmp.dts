@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "eb-mpcore.dtsi"
+#include "eb-mpcore.dtsi"
 
 / {
 	vmm {

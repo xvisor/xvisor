@@ -1,9 +1,12 @@
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	compatible = "arm,realview";
 	model = "realview-eb-mpcore";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	chosen { };
 	aliases { };
@@ -69,7 +72,7 @@
 			compatible = "smc91x";
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
-			interrupts = <41>;
+			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
 			switch = "br0";
 		};
 
@@ -82,10 +85,12 @@
 				reg = <0x10100000 0x100>;
 			};
 
-			gic { /* Generic Interrupt Controller */
+			gic: gic { /* Generic Interrupt Controller */
 		      		compatible = "arm,realview-gic";
-		      		reg = <0x10101000 0x1000
-				       0x10100100 0x100>;
+				reg = <0x10101000 0x1000>,
+				      <0x10100100 0x100>;
+				#interrupt-cells = <3>;
+				interrupt-controller;
 			};
 
 			twd-timer { /* Local Timer */
@@ -93,7 +98,7 @@
 				reg = <0x10100600 0x100	/* Local timer registers */
 				       0x1000005C 0x4>;	/* Reference counter address */
 				ref-counter-freq = <24000000>;	/* Reference counter frequency */
-				interrupts = <29>;
+				interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(0xf) | IRQ_TYPE_LEVEL_HIGH)>;
 			};
 
 			sysreg { /* System Registers */
@@ -117,32 +122,33 @@
 			mmci0 { /* Multimedia Card Interface */
 		      		compatible = "arm,pl180";
 		      		reg = <0x10005000 0x1000>;
-				interrupts = <46 47>;
+				interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			kmi0 { /* Keyboard */
 		      		compatible = "ambakmi";
 		      		reg = <0x10006000 0x1000>;
-				interrupts = <39>;
+				interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			kmi1 { /* Mouse */
 		      		compatible = "ambakmi";
 		      		reg = <0x10007000 0x1000>;
-				interrupts = <40>;
+				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL0: uart0 {
 		      		compatible = "arm,pl011";
 		      		reg = <0x10009000 0x1000>;
 				clock-frequency = <24000000>;
-				interrupts = <36>;
+				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			timer01 {
 		      		compatible = "arm,sp804";
 		      		reg = <0x10011000 0x1000>;
-				interrupts = <33>;
+				interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&sysctl 0>, <&sysctl 1>;
 				clock-names = "timclken1", "timclken2";
 			};
@@ -150,7 +156,7 @@
 			timer23 {
 		      		compatible = "arm,sp804";
 		      		reg = <0x10012000 0x1000>;
-				interrupts = <34>;
+				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&sysctl 2>, <&sysctl 3>;
 				clock-names = "timclken1", "timclken2";
 			};
@@ -158,7 +164,7 @@
 			RTC0: rtc0 {
 		      		compatible = "arm,pl031";
 		      		reg = <0x10017000 0x1000>;
-				interrupts = <38>;
+				interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
 	};

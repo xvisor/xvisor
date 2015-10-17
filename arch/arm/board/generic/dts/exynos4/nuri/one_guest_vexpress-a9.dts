@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-/include/ "nuri.dtsi"
+#include "nuri.dtsi"
 
 / {
 	vmm {

@@ -9,14 +9,16 @@
 
 #include "imx6q-pinfunc.h"
 #include <imx6qdl-clock.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
 
 /memreserve/ 0x10000000 0x00001000;
 
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	compatible = "freescale,imx6";
 	model = "imx6q";
+	interrupt-parent = <&intc>;
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	chosen { };
 
@@ -96,20 +98,22 @@
 	scu { /* Snoop Control Unit */
       		compatible = "arm,cortex-a9-scu";
       		reg = <0x00a00000 0x100>;
-		interrupts = <53>;
+		interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	gic { /* Generic Interrupt Controller */
+	intc: gic { /* Generic Interrupt Controller */
       		compatible = "arm,cortex-a9-gic";
-      		reg = <0x00a01000 0x1000
-		       0x00a00100 0x100>;
+		reg = <0x00a01000 0x1000>,
+		      <0x00a00100 0x100>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
 	};
 
 	twd-timer { /* Local Timer */
       		compatible = "arm,cortex-a9-twd-timer";
       		reg = <0x00a00600 0x20>;	/* Local timer registers */
 		ref-counter-freq = <24000000>;	/* Reference counter frequency */
-		interrupts = <29>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(0xf) | IRQ_TYPE_EDGE_RISING)>;
 	};
 
 	soc {
@@ -133,7 +137,8 @@
 			gpio1: gpio@0209c000 {
 				compatible = "fsl,imx6q-gpio", "fsl,imx35-gpio";
 				reg = <0x0209c000 0x4000>;
-				interrupts = <98 99>;
+				interrupts = <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
 				gpio-controller;
 				#gpio-cells = <2>;
 				interrupt-controller;
@@ -143,7 +148,8 @@
 			gpio3: gpio@020a4000 {
 				compatible = "fsl,imx6q-gpio", "fsl,imx35-gpio";
 				reg = <0x020a4000 0x4000>;
-				interrupts = <102 103>;
+				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 				gpio-controller;
 				#gpio-cells = <2>;
 				interrupt-controller;
@@ -153,7 +159,8 @@
 			gpio7: gpio@020b4000 {
 				compatible = "fsl,imx6q-gpio", "fsl,imx35-gpio";
 				reg = <0x020b4000 0x4000>;
-				interrupts = <110 111>;
+				interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 79 IRQ_TYPE_LEVEL_HIGH>;
 				gpio-controller;
 				#gpio-cells = <2>;
 				interrupt-controller;
@@ -163,33 +170,38 @@
 			anatop: anatop@020c8000 {
 				compatible = "fsl,imx6q-anatop", "syscon", "simple-bus";
 				reg = <0x020c8000 0x1000>;
-				interrupts = <49 54 127>;
+				interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			gpc@020dc000 {
 				compatible = "fsl,imx6q-gpc";
 				reg = <0x020dc000 0x4000>;
-				interrupts = <89 90>;
+				interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			clks: ccm@020c4000 {
 				compatible = "fsl,imx6q-ccm";
 				reg = <0x020c4000 0x4000>;
-				interrupts = <87 88>;
+				interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 				#clock-cells = <1>;
 			};
 
 			src: src@020d8000 {
 				compatible = "fsl,imx6q-src", "fsl,imx51-src";
 				reg = <0x020d8000 0x4000>;
-				interrupts = <123 128>;
+				interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
 				#reset-cells = <1>;
 			};
 
 			vdoa@021e4000 {
 				compatible = "fsl,imx6q-vdoa";
 				reg = <0x021e4000 0x4000>;
-				interrupts = <40>;
+				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_VDOA>;
 				iram = <&ocram>;
 			};
@@ -543,7 +555,7 @@
 				ecspi1: ecspi@02008000 {
 					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
 					reg = <0x02008000 0x4000>;
-					interrupts = <63>;
+					interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6QDL_CLK_ECSPI1>,
 						 <&clks IMX6QDL_CLK_ECSPI1>;
 					clock-names = "ipg", "per";
@@ -553,7 +565,7 @@
 				ecspi2: ecspi@0200c000 {
 					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
 					reg = <0x0200c000 0x4000>;
-					interrupts = <64>;
+					interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6QDL_CLK_ECSPI2>,
 						 <&clks IMX6QDL_CLK_ECSPI2>;
 					clock-names = "ipg", "per";
@@ -563,7 +575,7 @@
 				ecspi3: ecspi@02010000 {
 					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
 					reg = <0x02010000 0x4000>;
-					interrupts = <65>;
+					interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6QDL_CLK_ECSPI3>,
 						 <&clks IMX6QDL_CLK_ECSPI3>;
 					clock-names = "ipg", "per";
@@ -573,7 +585,7 @@
 				ecspi4: ecspi@02014000 {
 					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
 					reg = <0x02014000 0x4000>;
-					interrupts = <66>;
+					interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6QDL_CLK_ECSPI4>,
 						 <&clks IMX6QDL_CLK_ECSPI4>;
 					clock-names = "ipg", "per";
@@ -583,7 +595,7 @@
 				ecspi5: ecspi@02018000 {
 					compatible = "fsl,imx6q-ecspi", "fsl,imx51-ecspi";
 					reg = <0x02018000 0x4000>;
-					interrupts = <67>;
+					interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6Q_CLK_ECSPI5>,
 						 <&clks IMX6Q_CLK_ECSPI5>;
 					clock-names = "ipg", "per";
@@ -594,7 +606,7 @@
 					#pwm-cells = <2>;
 					compatible = "fsl,imx6q-pwm", "fsl,imx27-pwm";
 					reg = <0x0208c000 0x4000>;
-					interrupts = <118>;
+					interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&clks IMX6QDL_CLK_IPG>,
 						 <&clks IMX6QDL_CLK_PWM4>;
 					clock-names = "ipg", "per";
@@ -607,7 +619,8 @@
 				/* interrupts-extended = */
 				/* 	<&intc 0 118 IRQ_TYPE_LEVEL_HIGH>, */
 				/* 	<&intc 0 119 IRQ_TYPE_LEVEL_HIGH>; */
-				interrupts = <150>, <151>;
+				interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_ENET>,
 					 <&clks IMX6QDL_CLK_ENET>,
 					 <&clks IMX6QDL_CLK_ENET_REF>;
@@ -618,7 +631,7 @@
 			usdhc1: usdhc@02190000 {
 				compatible = "fsl,imx6q-usdhc";
 				reg = <0x02190000 0x4000>;
-				interrupts = <54>;
+				interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_USDHC1>,
 					 <&clks IMX6QDL_CLK_USDHC1>,
 					 <&clks IMX6QDL_CLK_USDHC1>;
@@ -630,7 +643,7 @@
 			usdhc2: usdhc@02194000 {
 				compatible = "fsl,imx6q-usdhc";
 				reg = <0x02194000 0x4000>;
-				interrupts = <55>;
+				interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_USDHC2>,
 					 <&clks IMX6QDL_CLK_USDHC2>,
 					 <&clks IMX6QDL_CLK_USDHC2>;
@@ -642,7 +655,7 @@
 			usdhc3: usdhc@02198000 {
 				compatible = "fsl,imx6q-usdhc";
 				reg = <0x02198000 0x4000>;
-				interrupts = <56>;
+				interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_USDHC3>,
 					 <&clks IMX6QDL_CLK_USDHC3>,
 					 <&clks IMX6QDL_CLK_USDHC3>;
@@ -654,7 +667,7 @@
 			usdhc4: usdhc@0219c000 {
 				compatible = "fsl,imx6q-usdhc";
 				reg = <0x0219c000 0x4000>;
-				interrupts = <57>;
+				interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_USDHC4>,
 					 <&clks IMX6QDL_CLK_USDHC4>,
 					 <&clks IMX6QDL_CLK_USDHC4>;
@@ -668,7 +681,7 @@
 				#size-cells = <0>;
 				compatible = "fsl,imx6q-i2c", "fsl,imx21-i2c";
 				reg = <0x021a0000 0x4000>;
-				interrupts = <68>;
+				interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_I2C1>;
 				status = "disabled";
 			};
@@ -678,7 +691,7 @@
 				#size-cells = <0>;
 				compatible = "fsl,imx6q-i2c", "fsl,imx21-i2c";
 				reg = <0x021a4000 0x4000>;
-				interrupts = <69>;
+				interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_I2C2>;
 				status = "disabled";
 			};
@@ -688,7 +701,7 @@
 				#size-cells = <0>;
 				compatible = "fsl,imx6q-i2c", "fsl,imx21-i2c";
 				reg = <0x021a8000 0x4000>;
-				interrupts = <70>;
+				interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_I2C3>;
 				status = "disabled";
 			};
@@ -700,7 +713,7 @@
 					 <&clks IMX6QDL_CLK_UART_SERIAL>;
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
-				interrupts = <58>;
+				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL2: uart2 {
@@ -710,7 +723,7 @@
 					 <&clks IMX6QDL_CLK_UART_SERIAL>;
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
-				interrupts = <59>;
+				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL3: uart3 {
@@ -720,7 +733,7 @@
 					 <&clks IMX6QDL_CLK_UART_SERIAL>;
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
-				interrupts = <60>;
+				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL4: uart4 {
@@ -730,7 +743,7 @@
 					 <&clks IMX6QDL_CLK_UART_SERIAL>;
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
-				interrupts = <61>;
+				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			SERIAL5: uart5 {
@@ -740,7 +753,7 @@
 					 <&clks IMX6QDL_CLK_UART_SERIAL>;
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
-				interrupts = <62>;
+				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			epit1 {
@@ -748,7 +761,7 @@
 				reg = <0x020d0000 0x4000>;
 				clock-frequency = <38999040>;
 				timer_num = <0>;
-				interrupts = <88>;
+				interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			epit2 {
@@ -756,7 +769,7 @@
 				reg = <0x020d4000 0x4000>;
 				clock-frequency = <38999040>;
 				timer_num = <1>;
-				interrupts = <89>;
+				interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			gpt {
@@ -764,14 +777,15 @@
 				reg = <0x02098000 0x4000>;
 				clock-frequency = <32000>;
 				timer_num = <2>;
-				interrupts = <87>;
+				interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
 
 		ipu1: ipu@02400000 {
 			compatible = "fsl,imx6q-ipu";
 			reg = <0x02400000 0x400000>;
-			interrupts = <38 37>;
+			interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMX6QDL_CLK_IPU1>,
 				 <&clks IMX6QDL_CLK_IPU1_DI0>,
 				 <&clks IMX6QDL_CLK_IPU1_DI1>,
@@ -789,7 +803,8 @@
 		ipu2: ipu@02800000 {
 			compatible = "fsl,imx6q-ipu";
 			reg = <0x02800000 0x400000>;
-			interrupts = <40 39>;
+			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMX6QDL_CLK_IPU2>,
 				 <&clks IMX6QDL_CLK_IPU2_DI0>,
 				 <&clks IMX6QDL_CLK_IPU2_DI1>,

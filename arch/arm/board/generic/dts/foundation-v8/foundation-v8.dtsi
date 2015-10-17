@@ -1,15 +1,19 @@
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 /memreserve/ 0x80000000 0x00020000;
 /memreserve/ 0x80800000 0x01000000;
 
 / {
+	model = "Foundation-v8A";
+	compatible = "arm,foundation-aarch64", "arm,vexpress";
+	interrupt-parent = <&gic>;
 	#address-cells = <2>;
 	#size-cells = <2>;
-	model = "foundation-v8";
 
 	chosen {
-		linux,initrd-start = <0x0 0x80800000>;
-		linux,initrd-end = <0x0 0x81800000>;
+		initrd-start = <0x0 0x80800000>;
+		initrd-end = <0x0 0x81800000>;
 	};
 	aliases { };
 		
@@ -59,19 +63,24 @@
 		reg = <0x0 0x80000000 0x0 0x20000000>; /* 512 MB */
 	};
 
-	gic { /* Generic Interrupt Controller */
+	gic: gic { /* Generic Interrupt Controller */
 		compatible = "arm,cortex-a15-gic";
       		reg = <0x0 0x2C001000 0x0 0x1000	/* GIC Dist */
 		       0x0 0x2C002000 0x0 0x2000	/* GIC CPU */
 		       0x0 0x2C004000 0x0 0x2000	/* GIC VCPU Control */
 		       0x0 0x2C006000 0x0 0x2000>;	/* GIC VCPU */
-		interrupts = <25>;			/* GIC Maintanence IRQ */
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_HIGH)>;
 	};
 
 	gen-timer { /* Generic Timer */
 		compatible = "arm,armv8-timer";
 		clock-frequency = <100000000>;
-		interrupts = <29 30 27 26>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
 	motherboard {
@@ -82,7 +91,7 @@
 		eth0 {
 			compatible = "smc91x";
 			reg = <0x1A000000 0x10000>;
-			interrupts = <47>;
+			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 			switch = "br0";
 		};
 
@@ -95,7 +104,7 @@
 			compatible = "arm,pl011";
 			reg = <0x1C090000 0x1000>;
 			clock-frequency = <24000000>;
-			interrupts = <37>;
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
 };

@@ -1,5 +1,5 @@
 
-/include/ "../sun7i-a20.dtsi"
+#include "../sun7i-a20.dtsi"
 
 / {
 	model = "Cubietech Cubieboard2";

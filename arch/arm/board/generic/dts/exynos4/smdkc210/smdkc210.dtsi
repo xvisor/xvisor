@@ -1,5 +1,5 @@
 
-/include/ "../exynos4210.dtsi"
+#include "../exynos4210.dtsi"
 
 / {
 	model = "smdkc210";
@@ -16,7 +16,6 @@
 
 	sfrregion {
 		eth0 {
-			device_type = "nic";
 			compatible = "smc911x";
 			reg = <0x05000000 0x1000>;
 			interrupts = <53>;

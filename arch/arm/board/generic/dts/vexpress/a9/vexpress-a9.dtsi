@@ -1,9 +1,12 @@
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
 	compatible = "arm,vexpress";
 	model = "vexpress-a9";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	chosen { };
 	aliases { };
@@ -59,10 +62,12 @@
       		reg = <0x1E000000 0x1000>;
 	};
 
-	gic { /* Generic Interrupt Controller */
+	gic: gic { /* Generic Interrupt Controller */
       		compatible = "arm,cortex-a9-gic";
-      		reg = <0x1E001000 0x1000
-		       0x1E000100 0x100>;
+		reg = <0x1E001000 0x1000>,
+		      <0x1E000100 0x100>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
 	};
 
 	twd-timer { /* Local Timer */
@@ -70,7 +75,7 @@
 		reg = <0x1E000600 0x100	/* Local timer registers */
 		       0x1000005C 0x4>;	/* Reference counter address */
 		ref-counter-freq = <24000000>;	/* Reference counter frequency */
-		interrupts = <29>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(0xf) | IRQ_TYPE_LEVEL_HIGH)>;
 	};
 
 	dcc {
@@ -119,7 +124,7 @@
 				compatible = "smc911x";
 				reg = <0x4E000000 0x1000>;
 				smsc,irq-active-high;
-				interrupts = <47>;
+				interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 				switch = "br0";
 			};
 
@@ -144,7 +149,8 @@
 				mmci@05000 { /* Multimedia Card Interface */
 			      		compatible = "arm,pl180";
 			      		reg = <0x10005000 0x1000>;
-					interrupts = <41 42>;
+					interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>,
+						     <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_clk24mhz>, <&smbclk>;
 					clock-names = "mclk", "apb_pclk";
 				};
@@ -152,7 +158,7 @@
 				kmi@06000 { /* Keyboard */
 			      		compatible = "arm,pl050";
 			      		reg = <0x10006000 0x1000>;
-					interrupts = <44>;
+					interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_clk24mhz>, <&smbclk>;
 					clock-names = "KMIREFCLK", "apb_pclk";
 				};
@@ -160,7 +166,7 @@
 				kmi@07000 { /* Mouse */
 			      		compatible = "arm,pl050";
 			      		reg = <0x10007000 0x1000>;
-					interrupts = <45>;
+					interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_clk24mhz>, <&smbclk>;
 					clock-names = "KMIREFCLK", "apb_pclk";
 				};
@@ -169,7 +175,7 @@
 			      		compatible = "arm,pl011";
 			      		reg = <0x10009000 0x1000>;
 					clock-frequency = <24000000>;
-					interrupts = <37>;
+					interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_oscclk2>, <&smbclk>;
 					clock-names = "uartclk", "apb_pclk";
 				};
@@ -177,7 +183,7 @@
 				v2m_timer01: timer@11000 {
 			      		compatible = "arm,sp804";
 			      		reg = <0x10011000 0x1000>;
-					interrupts = <34>;
+					interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_sysctl 0>, <&v2m_sysctl 1>, <&smbclk>;
 					clock-names = "timclken1", "timclken2", "apb_pclk";
 				};
@@ -185,7 +191,7 @@
 				v2m_timer23: timer@12000 {
 			      		compatible = "arm,sp804";
 			      		reg = <0x10012000 0x1000>;
-					interrupts = <35>;
+					interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&v2m_sysctl 2>, <&v2m_sysctl 3>, <&smbclk>;
 					clock-names = "timclken1", "timclken2", "apb_pclk";
 				};
@@ -193,7 +199,7 @@
 				RTC0: v2m_rtc0: rtc@17000 {
 			      		compatible = "arm,pl031";
 			      		reg = <0x10017000 0x1000>;
-					interrupts = <36>;
+					interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 				};
 
 				clcd@1f000 {
@@ -302,4 +308,3 @@
 		};
 	};
 };
-

@@ -250,7 +250,6 @@
 			};
 
 			gpt4: timer@0x53f84000 {
-				device_type = "timer";
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f84000 0x4000>;
 				clocks = <&clks 95>, <&clks 47>;
