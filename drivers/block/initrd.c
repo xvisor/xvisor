@@ -18,29 +18,82 @@
  *
  * @file initrd.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief initrd block device driver.
  */
 
-#include <vmm_error.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <drv/rbd.h>
+#include <drv/initrd.h>
 
-#define MODULE_DESC			"initrd Driver"
+#define MODULE_DESC			"INITRD Driver"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(RBD_IPRIORITY + 1)
+#define MODULE_IPRIORITY		INITRD_IPRIORITY
 #define	MODULE_INIT			initrd_driver_init
 #define	MODULE_EXIT			initrd_driver_exit
 
-#define INITRD_START_ATTR_NAME		"linux,initrd-start"
-#define INITRD_END_ATTR_NAME		"linux,initrd-end"
+static struct rbd *initrd_rbd;
 
-#define INITRD_START_ATTR2_NAME		"initrd-start"
-#define INITRD_END_ATTR2_NAME		"initrd-end"
+void initrd_rbd_destroy(void)
+{
+	if (initrd_rbd) {
+		rbd_destroy(initrd_rbd);
+		initrd_rbd = NULL;
+	}
+}
+VMM_EXPORT_SYMBOL(initrd_rbd_destroy);
 
-static struct rbd *initrd_rdb;
+struct rbd *initrd_rbd_get(void)
+{
+	return initrd_rbd;
+}
+VMM_EXPORT_SYMBOL(initrd_rbd_get);
+
+int initrd_devtree_update(u64 start, u64 end)
+{
+	int rc = VMM_OK;
+	struct vmm_devtree_node *node;
+
+	/* Sanity checks */
+	if (start >= end) {
+		return VMM_EINVALID;
+	}
+	if (initrd_rbd) {
+		return VMM_EBUSY;
+	}
+
+	/* There should be a /chosen node */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	/* Update start attribute in /chosen node */
+	rc = vmm_devtree_setattr(node, INITRD_START_ATTR2_NAME,
+				 &start, VMM_DEVTREE_ATTRTYPE_UINT64,
+				 sizeof(start), FALSE);
+	if (rc) {
+		goto done;
+	}
+
+	/* Update end attribute in /chosen node */
+	rc = vmm_devtree_setattr(node, INITRD_END_ATTR2_NAME,
+				 &end, VMM_DEVTREE_ATTRTYPE_UINT64,
+				 sizeof(end), FALSE);
+	if (rc) {
+		goto done;
+	}
+
+done:
+	vmm_devtree_dref_node(node);
+
+	return rc;
+}
+VMM_EXPORT_SYMBOL(initrd_devtree_update);
 
 static int __init initrd_driver_init(void)
 {
@@ -86,7 +139,7 @@ static int __init initrd_driver_init(void)
 	}
 
 	/* OK, we know where the initrd device is located */
-	if ((initrd_rdb = rbd_create("initrd",
+	if ((initrd_rbd = rbd_create("initrd",
 				(physical_addr_t)initrd_start,
 				(physical_size_t)(initrd_end -
 					  initrd_start), true))
@@ -106,10 +159,7 @@ static int __init initrd_driver_init(void)
 
 static void __exit initrd_driver_exit(void)
 {
-	if (initrd_rdb) {
-		rbd_destroy(initrd_rdb);
-		initrd_rdb = NULL;
-	}
+	initrd_rbd_destroy();
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,
