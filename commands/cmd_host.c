@@ -57,6 +57,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host cpu info\n");
 	vmm_cprintf(cdev, "   host cpu stats\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
+	vmm_cprintf(cdev, "   host irq set_affinity <hirq> <hcpu>\n");
 	vmm_cprintf(cdev, "   host extirq stats\n");
 	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
@@ -217,6 +218,21 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "------------");
 	}
 	vmm_cprintf(cdev, "\n");
+}
+
+static int cmd_host_irq_set_affinity(struct vmm_chardev *cdev, u32 hirq, u32 hcpu)
+{
+	if (CONFIG_CPU_COUNT <= hcpu) {
+		vmm_cprintf(cdev, "%s: invalid host CPU%d\n", __func__, hcpu);
+		return VMM_EINVALID;
+	}
+
+	if (!vmm_cpu_online(hcpu)) {
+		vmm_cprintf(cdev, "%s: host CPU%d not online\n", __func__, hcpu);
+		return VMM_EINVALID;
+	}
+
+	return vmm_host_irq_set_affinity(hirq, vmm_cpumask_of(hcpu), TRUE);
 }
 
 static void cmd_host_extirq_stats(struct vmm_chardev *cdev)
@@ -505,7 +521,7 @@ static int cmd_host_class_device_list(struct vmm_chardev *cdev,
 
 static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	int colcnt;
+	int hirq, hcpu, colcnt;
 
 	if (argc <= 1) {
 		goto fail;
@@ -529,6 +545,10 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		if (strcmp(argv[2], "stats") == 0) {
 			cmd_host_irq_stats(cdev);
 			return VMM_OK;
+		} else if ((strcmp(argv[2], "set_affinity") == 0) && (4 < argc)) {
+			hirq = atoi(argv[3]);
+			hcpu = atoi(argv[4]);
+			return cmd_host_irq_set_affinity(cdev, hirq, hcpu);
 		}
 	} else if ((strcmp(argv[1], "extirq") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "stats") == 0) {
