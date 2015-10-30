@@ -279,6 +279,9 @@ int vmm_host_irq_set_affinity(u32 hirq,
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
 		return VMM_ENOTAVAIL;
 
+	if (vmm_host_irq_is_per_cpu(irq))
+		return VMM_EINVALID;
+
 	if (irq->chip && irq->chip->irq_set_affinity) {
 		irq->state |= VMM_IRQ_STATE_AFFINITY_SET;
 		return irq->chip->irq_set_affinity(irq, dest, force);
