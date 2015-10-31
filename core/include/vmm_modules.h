@@ -171,15 +171,11 @@ int vmm_modules_find_symbol(const char *symname, struct vmm_symbol *sym);
 /** Check if module is built-in */
 bool vmm_modules_isbuiltin(struct vmm_module *mod);
 
-#ifdef CONFIG_MODULES
-
 /** Load a loadable module */
 int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size);
 
 /** Unload a loadable module */
 int vmm_modules_unload(struct vmm_module *mod);
-
-#endif
 
 /** Retrive a module at with given index */
 struct vmm_module *vmm_modules_getmodule(u32 index);

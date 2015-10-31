@@ -716,6 +716,18 @@ int vmm_modules_unload(struct vmm_module *mod)
 	return VMM_OK;
 }
 
+#else
+
+int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size)
+{
+	return VMM_ENOTAVAIL;
+}
+
+int vmm_modules_unload(struct vmm_module *mod)
+{
+	return VMM_ENOTAVAIL;
+}
+
 #endif
 
 struct vmm_module *vmm_modules_getmodule(u32 index)
