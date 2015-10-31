@@ -52,7 +52,8 @@
 #define	MODULE_INIT			cmd_vfs_init
 #define	MODULE_EXIT			cmd_vfs_exit
 
-#define VFS_MAX_FDT_SZ			(32*1024)
+#define VFS_MAX_MODULE_SZ		(256 * 1024)
+#define VFS_MAX_FDT_SZ			(32 * 1024)
 #define VFS_LOAD_BUF_SZ			(4 * 1024)
 
 static void cmd_vfs_usage(struct vmm_chardev *cdev)
@@ -76,7 +77,8 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs mv <old_path> <new_path>\n");
 	vmm_cprintf(cdev, "   vfs rm <path_to_file>\n");
 	vmm_cprintf(cdev, "   vfs mkdir <path_to_dir>\n");
-	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");	
+	vmm_cprintf(cdev, "   vfs rmdir <path_to_dir>\n");
+	vmm_cprintf(cdev, "   vfs module_load <path_to_module_file>\n");
 	vmm_cprintf(cdev, "   vfs fdt_load <devtree_path> "
 			  "<devtree_root_name> <path_to_fdt_file> "
 			  "[<alias0>,<attr_name>,<attr_type>,<value>] "
@@ -124,7 +126,7 @@ static int cmd_vfs_mplist(struct vmm_chardev *cdev)
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
-	vmm_cprintf(cdev, " %-15s %-11s %-11s %-39s\n", 
+	vmm_cprintf(cdev, " %-15s %-11s %-11s %-39s\n",
 			  "BlockDev", "Filesystem", "Mode", "Path");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
@@ -142,8 +144,8 @@ static int cmd_vfs_mplist(struct vmm_chardev *cdev)
 			mode = "unknown";
 			break;
 		};
-		vmm_cprintf(cdev, " %-15s %-11s %-11s %-39s\n", 
-				  m->m_dev->name, m->m_fs->name, 
+		vmm_cprintf(cdev, " %-15s %-11s %-11s %-39s\n",
+				  m->m_dev->name, m->m_fs->name,
 				  mode, m->m_path);
 	}
 	vmm_cprintf(cdev, "----------------------------------------"
@@ -194,7 +196,7 @@ static int cmd_vfs_mount(struct vmm_chardev *cdev,
 		rc = vfs_mount(path, fs->name, dev, MOUNT_RW);
 		if (!rc) {
 			found = TRUE;
-			vmm_cprintf(cdev, "\n"); 
+			vmm_cprintf(cdev, "\n");
 			break;
 		}
 	}
@@ -215,9 +217,9 @@ static int cmd_vfs_umount(struct vmm_chardev *cdev, const char *path)
 
 	rc = vfs_unmount(path);
 	if (rc) {
-		vmm_cprintf(cdev, "Unmount failed\n"); 
+		vmm_cprintf(cdev, "Unmount failed\n");
 	} else {
-		vmm_cprintf(cdev, "Unmount successful\n"); 
+		vmm_cprintf(cdev, "Unmount successful\n");
 	}
 
 	return rc;
@@ -343,8 +345,8 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 		default:
 			break;
 		};
-		vmm_cprintf(cdev, "%02d %d %02d:%02d:%02d ", 
-				  ti.tm_mday, ti.tm_year + 1900, 
+		vmm_cprintf(cdev, "%02d %d %02d:%02d:%02d ",
+				  ti.tm_mday, ti.tm_year + 1900,
 				  ti.tm_hour, ti.tm_min, ti.tm_sec);
 		if (type[0] == 'd')
 			vmm_cprintf(cdev, "%s/\n", d.d_name);
@@ -620,7 +622,7 @@ static int cmd_vfs_cat(struct vmm_chardev *cdev, const char *path)
 	return VMM_OK;
 }
 
-static int cmd_vfs_mv(struct vmm_chardev *cdev, 
+static int cmd_vfs_mv(struct vmm_chardev *cdev,
 			const char *old_path, const char *new_path)
 {
 	int rc;
@@ -691,6 +693,58 @@ static int cmd_vfs_rmdir(struct vmm_chardev *cdev, const char *path)
 	}
 
 	return vfs_rmdir(path);
+}
+
+static int cmd_vfs_module_load(struct vmm_chardev *cdev, const char *path)
+{
+	int fd, rc = VMM_OK;
+	u32 len = 0;
+	size_t module_rd;
+	void *module_data;
+
+	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
+	if (VMM_OK != rc) {
+		goto fail;
+	}
+
+	if (!len) {
+		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	if (len > VFS_MAX_MODULE_SZ) {
+		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
+			    path, (long)len, VFS_MAX_MODULE_SZ);
+		rc = VMM_EINVALID;
+		goto fail_closefd;
+	}
+
+	module_data = vmm_zalloc(VFS_MAX_MODULE_SZ);
+	if (!module_data) {
+		rc = VMM_ENOMEM;
+		goto fail_closefd;
+	}
+
+	module_rd = vfs_read(fd, module_data, VFS_MAX_MODULE_SZ);
+	if (module_rd < len) {
+		rc = VMM_EIO;
+		goto fail_freedata;
+	}
+
+	if ((rc = vmm_modules_load((virtual_addr_t)module_data,
+				   (virtual_size_t)len))) {
+		goto fail_freedata;
+	} else {
+		vmm_cprintf(cdev, "Loaded module succesfully\n");
+	}
+
+fail_freedata:
+	vmm_free(module_data);
+fail_closefd:
+	vfs_close(fd);
+fail:
+	return rc;
 }
 
 static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
@@ -1175,6 +1229,8 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_mkdir(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "rmdir") == 0) && (argc == 3)) {
 		return cmd_vfs_rmdir(cdev, argv[2]);
+	} else if ((strcmp(argv[1], "module_load") == 0) && (argc == 3)) {
+		return cmd_vfs_module_load(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "fdt_load") == 0) && (argc >= 5)) {
 		return cmd_vfs_fdt_load(cdev, argv[2], argv[3], argv[4],
 					argc-5, (argc-5) ? &argv[5] : NULL);
@@ -1226,9 +1282,9 @@ static void __exit cmd_vfs_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_vfs);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
