@@ -35,6 +35,16 @@
 #define SERIAL_CONSOLE_NAME	"serial"
 #define VGA_CONSOLE_NAME	"vga"
 
+#define SERIAL0_CONFIG_DTS_PATH	"/motherboard/uart0"
+#define SERIAL1_CONFIG_DTS_PATH	"/motherboard/uart1"
+#define VGA_CONFIG_DTS_PATH	"/motherboard/vga"
+
+#define DEFAULT_CONSOLE_STR	"console=vga"
+
+#define CONSOLE_SETUP_STR_LEN	1024
+
+static char cmdline_console_string[CONSOLE_SETUP_STR_LEN];
+
 struct defterm_ops {
 	int (*putc)(u8 ch);
 	int (*getc)(u8 *ch);
@@ -58,9 +68,6 @@ static u32 defterm_key_flags;
 static struct input_handler defterm_hndl;
 static bool defterm_key_handler_registered;
 #endif
-
-/* If set to 1, Xvisor will use VGA and attached keyboard as console */
-static int use_stdio = 0;
 
 static u16 *memsetw(u16 *dest, u16 val, size_t count)
 {
@@ -268,25 +275,10 @@ static void init_console(struct vmm_devtree_node *node)
 	cls();
 }
 
-static int unknown_defterm_putc(u8 ch)
-{
-	return VMM_EFAIL;
-}
-
-static int unknown_defterm_getc(u8 *ch)
-{
-	return VMM_EFAIL;
-}
-
-static int __init unknown_defterm_init(struct vmm_devtree_node *node)
-{
-	return VMM_ENODEV;
-}
-
 #if defined(CONFIG_VTEMU)
 
-static int defterm_key_event(struct input_handler *ihnd, 
-			     struct input_dev *idev, 
+static int defterm_key_event(struct input_handler *ihnd,
+			     struct input_dev *idev,
 			     unsigned int type, unsigned int code, int value)
 {
 	int rc, i, len;
@@ -337,12 +329,12 @@ int arch_std_defterm_getc(u8 *ch)
 		defterm_hndl.event = defterm_key_event;
 		defterm_hndl.priv = NULL;
 
-		rc = input_register_handler(&defterm_hndl); 
+		rc = input_register_handler(&defterm_hndl);
 		if (rc) {
 			return rc;
 		}
 
-		rc = input_connect_handler(&defterm_hndl); 
+		rc = input_connect_handler(&defterm_hndl);
 		if (rc) {
 			return rc;
 		}
@@ -434,38 +426,37 @@ static int uart8250_defterm_getc(u8 *ch)
 
 static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 {
-	int rc;
-	physical_addr_t addr;
+       int rc;
+       physical_addr_t addr;
 
-	if (vmm_devtree_read_physaddr(node,
-			VMM_DEVTREE_REG_ATTR_NAME, &addr)) {
-		uart8250_port.base = 0x3f8;
-	} else {
-		uart8250_port.base = (virtual_addr_t)addr;
-	}
+       if (vmm_devtree_read_physaddr(node,
+				     VMM_DEVTREE_REG_ATTR_NAME,
+				     &addr) == VMM_OK) {
+               uart8250_port.base = (virtual_addr_t)addr;
+       }
 
-	rc = vmm_devtree_clock_frequency(node,
-				&uart8250_port.input_clock);
-	if (rc) {
-		return rc;
-	}
+       rc = vmm_devtree_clock_frequency(node,
+					&uart8250_port.input_clock);
+       if (rc) {
+	       return rc;
+       }
 
-	if (vmm_devtree_read_u32(node, "baudrate",
-				 &uart8250_port.baudrate)) {
-		uart8250_port.baudrate = 115200;
-	}
+       if (vmm_devtree_read_u32(node, "baudrate",
+				&uart8250_port.baudrate)) {
+	       uart8250_port.baudrate = 115200;
+       }
 
-	if (vmm_devtree_read_u32(node, "reg-shift",
-				 &uart8250_port.reg_shift)) {
-		uart8250_port.reg_shift = 2;
-	}
+       if (vmm_devtree_read_u32(node, "reg-shift",
+				&uart8250_port.reg_shift)) {
+	       uart8250_port.reg_shift = 2;
+       }
 
-	if (vmm_devtree_read_u32(node, "reg-io-width",
-				 &uart8250_port.reg_width)) {
-		uart8250_port.reg_width = 1;
-	}
+       if (vmm_devtree_read_u32(node, "reg-io-width",
+				&uart8250_port.reg_width)) {
+	       uart8250_port.reg_width = 1;
+       }
 
-	uart_8250_lowlevel_init(&uart8250_port);
+       uart_8250_lowlevel_init(&uart8250_port);
 
 	return VMM_OK;
 }
@@ -475,15 +466,6 @@ static struct defterm_ops uart8250_ops = {
 	.getc = uart8250_defterm_getc,
 	.init = uart8250_defterm_init
 };
-
-#else
-
-static struct defterm_ops uart8250_ops = {
-	.putc = unknown_defterm_putc,
-	.getc = unknown_defterm_getc,
-	.init = unknown_defterm_init
-};
-
 #endif
 
 typedef int (*EARLY_PUTC)(u8 ch);
@@ -501,6 +483,7 @@ static int init_early_vga_console(void)
 	return 0;
 }
 
+#if defined(CONFIG_SERIAL_8250_UART)
 static int setup_early_serial_console(physical_addr_t addr, u32 baud, u32 clock)
 {
 	uart8250_port.base = addr;
@@ -516,15 +499,18 @@ static int setup_early_serial_console(physical_addr_t addr, u32 baud, u32 clock)
 	return VMM_OK;
 }
 
-static int parse_early_serial_options(char *options)
+static int parse_early_serial_options(char *options, physical_addr_t *addr,
+				      u32 *baud, u32 *clock)
 {
 	char *opt_token, *opt_save;
 	const char *opt_delim = ",";
 	u32 opt_tok_len;
-	physical_addr_t addr=0x3f8;
-	u32 baud = 115200, clock = 24000000;
 	u32 opt_number = 0;
 	char *token;
+
+	*addr = 0x3f8;
+	*baud = 115200;
+	*clock = 24000000;
 
 	for (opt_token = strtok_r(options, opt_delim,
 				   &opt_save); opt_token;
@@ -535,7 +521,7 @@ static int parse_early_serial_options(char *options)
 		opt_tok_len = strlen(opt_token);
 
 		/* Empty */
-		if (opt_tok_len <= 1) {
+		if (!opt_tok_len) {
 			opt_number++;
 			continue;
 		}
@@ -544,25 +530,31 @@ static int parse_early_serial_options(char *options)
 
 		switch(opt_number) {
 		case 0:
-			addr = (physical_addr_t)strtoull(token, NULL, 16);
+			*addr = (physical_addr_t)strtoull(token, NULL, 16);
+
+			/* Port mnenomics */
+			if (*addr == 0) {
+				*addr = 0x3f8;
+			} else if (*addr == 1) {
+				*addr = 0x2f8;
+			}
+
 			opt_number++;
 			break;
 
 		case 1:
-			baud = strtoul(token, NULL, 10);
+			*baud = strtoul(token, NULL, 10);
 			opt_number++;
 			break;
 
 		case 2:
-			clock = strtoul(token, NULL, 10);
+			*clock = strtoul(token, NULL, 10);
 			opt_number++;
 			break;
 		}
 	}
 
-	setup_early_serial_console(addr, baud, clock);
-
-	return VMM_EFAIL;
+	return VMM_OK;
 }
 
 /* earlyprint=serial@<addr>,<baudrate> */
@@ -571,6 +563,8 @@ static int init_early_serial_console(char *setup_string)
 	char *port_token, *port_save;
 	const char *port_delim = "@";
 	u32 centry = 0, found = 0, port_tok_len, check_len;
+	physical_addr_t addr;
+	u32 baud, clock;
 
 	for (port_token = strtok_r(setup_string, port_delim,
 				   &port_save); port_token;
@@ -588,7 +582,12 @@ static int init_early_serial_console(char *setup_string)
 				found = 1;
 		} else {
 			if (found) {
-				parse_early_serial_options(port_token);
+				if (parse_early_serial_options(port_token,
+							       &addr, &baud,
+							       &clock) != VMM_OK) {
+					return VMM_EFAIL;
+				}
+				setup_early_serial_console(addr, baud, clock);
 				found = 0;
 				return VMM_OK;
 			}
@@ -599,6 +598,7 @@ static int init_early_serial_console(char *setup_string)
 	return VMM_EFAIL;
 
 }
+#endif /* CONFIG_SERIAL_8250_UART */
 
 void arch_defterm_early_putc(u8 ch)
 {
@@ -606,12 +606,22 @@ void arch_defterm_early_putc(u8 ch)
 		early_putc(ch);
 }
 
+static const struct defterm_ops *ops = &stdio_ops;
+
+/*
+ * Just set what is needed. Ops will be initialzied when
+ * arch_defterm_init will be called.
+ */
 static int __init setup_early_print(char *buf)
 {
-
-	if (!strncmp(buf, SERIAL_CONSOLE_NAME, strlen(SERIAL_CONSOLE_NAME)))
+#if defined(CONFIG_SERIAL_8250_UART)
+	if (!strncmp(buf, SERIAL_CONSOLE_NAME, strlen(SERIAL_CONSOLE_NAME))) {
 		init_early_serial_console(buf);
-	else if(!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
+		return 0;
+	}
+#endif
+
+	if(!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
 		init_early_vga_console();
 
 	return 0;
@@ -621,13 +631,33 @@ vmm_early_param("earlyprint", setup_early_print);
 
 static int __init set_default_console(char *buf)
 {
-	use_stdio = 1;
+	if (buf == NULL) return 0;
 
+#if defined(CONFIG_SERIAL_8250_UART)
+	if (!strncmp(buf, SERIAL_CONSOLE_NAME, strlen(SERIAL_CONSOLE_NAME))) {
+		memcpy(cmdline_console_string, buf, CONSOLE_SETUP_STR_LEN);
+		return 0;
+	}
+#endif
+
+	vmm_snprintf(cmdline_console_string, strlen(DEFAULT_CONSOLE_STR),
+		     DEFAULT_CONSOLE_STR);
 	return 0;
 }
 
 vmm_early_param("console", set_default_console);
 
+int arch_defterm_putc(u8 ch)
+{
+	return (ops) ? ops->putc(ch) : VMM_EFAIL;
+}
+
+int arch_defterm_getc(u8 *ch)
+{
+	return (ops) ? ops->getc(ch) : VMM_EFAIL;
+}
+
+#if defined(CONFIG_SERIAL_8250_UART)
 /*-------------- UART DEFTERM --------------- */
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "ns8250", .data = &uart8250_ops },
@@ -638,31 +668,16 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "ns16850", .data = &uart8250_ops },
 	{ /* end of list */ },
 };
-
-static const struct defterm_ops *ops = NULL;
-
-int arch_defterm_putc(u8 ch)
-{
-	return (ops) ? ops->putc(ch) : unknown_defterm_putc(ch);
-}
-
-int arch_defterm_getc(u8 *ch)
-{
-	return (ops) ? ops->getc(ch) : unknown_defterm_getc(ch);
-}
+#endif
 
 int __init arch_defterm_init(void)
 {
 	int rc;
 	const char *attr;
 	struct vmm_devtree_node *node;
+#if defined(CONFIG_SERIAL_8250_UART)
 	const struct vmm_devtree_nodeid *nodeid;
-
-	if (use_stdio) {
-		ops = &stdio_ops;
-		return ops->init(NULL);
-	}
-
+#endif
 	/* Find choosen console node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
@@ -670,30 +685,46 @@ int __init arch_defterm_init(void)
 		return VMM_ENODEV;
 	}
 
+#if defined(CONFIG_SERIAL_8250_UART)
+	if (!strcmp(cmdline_console_string, "serial@0"))
+		attr = SERIAL0_CONFIG_DTS_PATH;
+	else if (!strcmp(cmdline_console_string, "serial@1"))
+		attr = SERIAL1_CONFIG_DTS_PATH;
+	else
+#endif
+		attr = VGA_CONFIG_DTS_PATH;
+
+	rc = vmm_devtree_setattr(node, VMM_DEVTREE_CONSOLE_ATTR_NAME,
+				 (void *)attr, VMM_DEVTREE_ATTRTYPE_STRING,
+				 strlen(attr)+1, FALSE);
+
+
 	rc = vmm_devtree_read_string(node,
-			VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
+				     VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
 	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;
 	}
 
 	node = vmm_devtree_getnode(attr);
-	if (!node) {
+        if (!node) {
 		return VMM_ENODEV;
 	}
 
+#if defined(CONFIG_SERIAL_8250_UART)
 	/* Find appropriate defterm ops */
 	nodeid = vmm_devtree_match_node(defterm_devid_table, node);
-	if (nodeid) {
+        if (nodeid) {
 		ops = nodeid->data;
 	} else {
-		rc = VMM_ENODEV;
-		goto done;
+		/* default console is always VGA unless specified otherwise */
+		ops = &stdio_ops;
 	}
+#else
+	ops = &stdio_ops;
+#endif
 
-	rc = (ops) ? ops->init(node) : unknown_defterm_init(node);
+	rc = ops->init(node);
 
-done:
-	vmm_devtree_dref_node(node);
 	return rc;
 }

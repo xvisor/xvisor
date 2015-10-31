@@ -34,6 +34,7 @@
 #include <cpu_features.h>
 #include <control_reg_access.h>
 #include <vm/intel_vmcs.h>
+#include <vm/intel_vmx.h>
 
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
 
@@ -84,20 +85,6 @@ u32 vmxon_region_size __read_mostly;
 u32 vmxon_region_nr_pages __read_mostly;
 
 static u32 vmcs_revision_id __read_mostly;
-
-static void __vmwrite(unsigned long reg, unsigned long value)
-{
-}
-
-static unsigned long __vmread_safe(unsigned long field, int *rc)
-{
-	return 0;
-}
-
-static unsigned long __vmread(unsigned long field)
-{
-	return 0;
-}
 
 static void __init vmx_display_features(void)
 {

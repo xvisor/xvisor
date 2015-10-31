@@ -160,7 +160,7 @@ extern u64 vmx_ept_vpid_cap;
 	(vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_UC)
 #define cpu_has_vmx_ept_mt_wb				\
 	(vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_WB)
-#define cpu_has_vmx_ept_2mb				\
+#define cpu_has_vmx_ept_2MB				\
 	(vmx_ept_vpid_cap & VMX_EPT_SUPERPAGE_2MB)
 #define cpu_has_vmx_ept_invept_single_context		\
 	(vmx_ept_vpid_cap & VMX_EPT_INVEPT_SINGLE_CONTEXT)
@@ -227,7 +227,7 @@ static inline unsigned long __vmread(unsigned long field)
 
 static inline void __vmwrite(unsigned long field, unsigned long value)
 {
-	asm volatile ("vmwrite %1, (%0)\n"
+	asm volatile ("vmwrite %1, %0\n"
 		       /* CF==1 or ZF==1 --> crash (ud2) */
 		       "ja 1f ; ud2 ; 1:\n"
 		       :

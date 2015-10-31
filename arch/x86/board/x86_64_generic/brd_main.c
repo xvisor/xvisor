@@ -25,8 +25,10 @@
 #include <vmm_devtree.h>
 #include <vmm_error.h>
 #include <vmm_host_aspace.h>
+#include <vmm_host_ram.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
+#include <multiboot.h>
 #include <libs/vtemu.h>
 #include <libs/bitops.h>
 #include <arch_board.h>
@@ -77,6 +79,79 @@ static int generic_shutdown(void)
 	return VMM_EFAIL;
 }
 
+static int __init boot_module_initrd(physical_addr_t start, physical_addr_t end)
+{
+	int rc;
+	struct vmm_devtree_node *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+
+	/* There should be a /chosen node */
+	if (!node) {
+		vmm_printf("initrd: No chosen node\n", __func__);
+		rc = VMM_ENODEV;
+		goto _done;
+	}
+
+	/*
+	 * Assumption here is that start and end physical addresses
+	 * will be marked as reserved by the RBD driver.
+	 */
+	rc = vmm_devtree_setattr(node, "linux,initrd-start",
+				 &start, VMM_DEVTREE_ATTRTYPE_UINT64,
+				 sizeof(start), FALSE);
+	if (rc != VMM_OK)
+		goto _done;
+
+	rc = vmm_devtree_setattr(node, "linux,initrd-end",
+				 &end, VMM_DEVTREE_ATTRTYPE_UINT64,
+				 sizeof(end), FALSE);
+
+ _done:
+	return rc;
+}
+
+static int __init boot_modules_init(void)
+{
+	extern struct multiboot_info boot_info;
+	int i, rc;
+	struct multiboot_mod_list *modlist = NULL;
+
+	if (!boot_info.mods_count)
+		return VMM_OK;
+
+	modlist = (struct multiboot_mod_list *)vmm_host_memmap(boot_info.mods_addr,
+							       (boot_info.mods_count * (4 * 1024)),
+							       VMM_MEMORY_FLAGS_NORMAL);
+	if (modlist == NULL) {
+		vmm_printf("Boot info module address mapping failed!\n");
+		return VMM_EFAIL;
+	}
+
+	for (i = 0; i < boot_info.mods_count; i++) {
+		switch(i) {
+		case 0:
+			rc = boot_module_initrd(modlist->mod_start,
+						modlist->mod_end);
+			if (rc != VMM_OK)
+				goto _done;
+			break;
+
+		default:
+			rc = VMM_ENODEV;
+			vmm_printf("Unknown Mod Start: 0x%lx Mod End: 0x%lx\n",
+				   modlist->mod_start, modlist->mod_end);
+		}
+	}
+
+ _done:
+	if (modlist)
+		vmm_host_memunmap((virtual_addr_t)modlist);
+
+	return rc;
+}
+
 int __init arch_board_early_init(void)
 {
 	int rv;
@@ -87,6 +162,10 @@ int __init arch_board_early_init(void)
 	/* Register reset & shutdown callbacks */
 	vmm_register_system_reset(generic_reset);
 	vmm_register_system_shutdown(generic_shutdown);
+
+	if ((rv = boot_modules_init()) != VMM_OK) {
+		vmm_printf("Initializing boot modules failed!\n");
+	}
 
 	return VMM_OK;
 }

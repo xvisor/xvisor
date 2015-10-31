@@ -113,7 +113,7 @@ extern u8 cpu_has_vmx_ins_outs_instr_info;
 #define VMX_EPT_MEMORY_TYPE_UC                  0x00000100
 #define VMX_EPT_MEMORY_TYPE_WB                  0x00004000
 #define VMX_EPT_SUPERPAGE_2MB                   0x00010000
-#define VMX_EPT_SUPERPAGE_1GB					0x00020000
+#define VMX_EPT_SUPERPAGE_1GB			0x00020000
 #define VMX_EPT_INVEPT_INSTRUCTION              0x00100000
 #define VMX_EPT_INVEPT_SINGLE_CONTEXT           0x02000000
 #define VMX_EPT_INVEPT_ALL_CONTEXT              0x04000000

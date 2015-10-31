@@ -68,6 +68,91 @@ static void arch_preinit_pgtable_entries(void)
 		__pgdi[i] = ((u64)(pgti_base + (PAGE_SIZE * i)) & PAGE_MASK) + 3;
 }
 
+int __create_bootstrap_pgtbl_entry(u64 va, u64 pa)
+{
+	static int preinit_pgtables = 0;
+	union page ent;
+
+	ent._val = 0;
+
+	if (!preinit_pgtables) {
+		arch_preinit_pgtable_entries();
+		preinit_pgtables = 1;
+	}
+
+	u64 pml4_index = ((va >> PML4_SHIFT) & 0x1ff);
+	u64 pgdp_index = ((va >> PGDP_SHIFT) & 0x1ff);
+	u64 pgdi_index = ((va >> PGDI_SHIFT) & 0x1ff);
+	u64 pgti_index = ((va >> PGTI_SHIFT) & 0x1ff);
+
+	if (!(__pml4[pml4_index] & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgdp_base = (u64 *)(((u64)__pml4[pml4_index]) & ~0xff);
+
+	if (!(pgdp_base[pgdp_index]  & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgdi_base = (u64 *)(((u64)pgdp_base[pgdp_index]) & ~0xff);
+
+	if (!(pgdi_base[pgdp_index] & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgti_base = (u64 *)(((u64)pgdi_base[pgdi_index]) & ~0xff);
+
+	if (pgti_base[pgti_index] & 0x3)
+		return VMM_EFAIL;
+
+	ent.bits.paddr = pa >> PAGE_SHIFT;
+	ent.bits.present = 1;
+	ent.bits.rw = 1;
+	pgti_base[pgti_index] = ent._val;
+
+	invalidate_vaddr_tlb(va);
+
+	return VMM_OK;
+}
+
+int __delete_bootstrap_pgtbl_entry(u64 va)
+{
+	union page ent;
+
+	ent._val = 0;
+
+	u64 pml4_index = ((va >> PML4_SHIFT) & 0x1ff);
+	u64 pgdp_index = ((va >> PGDP_SHIFT) & 0x1ff);
+	u64 pgdi_index = ((va >> PGDI_SHIFT) & 0x1ff);
+	u64 pgti_index = ((va >> PGTI_SHIFT) & 0x1ff);
+
+	if (!(__pml4[pml4_index] & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgdp_base = (u64 *)(((u64)__pml4[pml4_index]) & ~0xff);
+
+	if (!(pgdp_base[pgdp_index]  & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgdi_base = (u64 *)(((u64)pgdp_base[pgdp_index]) & ~0xff);
+
+	if (!(pgdi_base[pgdp_index] & 0x3))
+		return VMM_EFAIL;
+
+	u64 *pgti_base = (u64 *)(((u64)pgdi_base[pgdi_index]) & ~0xff);
+
+	if (!(pgti_base[pgti_index] & 0x3))
+		return VMM_EFAIL;
+
+	ent._val = pgti_base[pgti_index];
+	ent.bits.paddr = 0;
+	ent.bits.present = 0;
+	ent.bits.rw = 0;
+	pgti_base[pgti_index] = ent._val;
+
+	invalidate_vaddr_tlb(va);
+
+	return VMM_OK;
+}
+
 /* mmu inline asm routines */
 int arch_cpu_aspace_map(virtual_addr_t page_va,
 			physical_addr_t page_pa,
@@ -80,9 +165,6 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	pg.bits.paddr = (page_pa >> PAGE_SHIFT);
 	pg.bits.present = 1;
 	pg.bits.rw = 1;
-
-	if (!(mem_flags & VMM_MEMORY_EXECUTABLE))
-		pg.bits.execution_disable = 1;
 
 	if (!(mem_flags & VMM_MEMORY_CACHEABLE))
 		pg.bits.cache_disable = 1;

@@ -244,7 +244,11 @@ int detect_ioapics(unsigned int *nr_ioapics)
 	if (ret)
 		return ret;
 
+#if !defined(CONFIG_SMP)
+	*nr_ioapics = 1;
+#else
 	if (nr_ioapics) *nr_ioapics = val;
+#endif
 
 	while (n < val) {
 		vmm_sprintf(apic_nm, VMM_DEVTREE_PATH_SEPARATOR_STRING
