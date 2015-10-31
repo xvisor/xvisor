@@ -55,3 +55,12 @@ ARM64 Port:
  - Force disable coprocessor and system traps in VCPU init
  - Added invalidate_dcache_mva() and invalidate_dcache_mva_range()
 
+x86 Port:
+ - Fix for a crash on multi-IOAPIC system.
+ - A lot in port of Intel VMX (currently in nascent state).
+ - Support for passing initrd to xvisor as root FS.
+ - Arch implementation of memcpy.
+ - Default console now can be overridden with console bootrags
+ - Boot time script for mounting root.
+ - Wait for block device settling.
+ - Tested boot on Intel and AMD based desk/laptops.
