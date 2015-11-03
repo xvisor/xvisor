@@ -923,7 +923,7 @@ err_release:
 static void fec_dump_stats(struct net_device *dev);
 #endif /* FEC_DEBUG */
 
-static netdev_tx_t
+static int
 fec_enet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 {
 	struct fec_enet_private *fep = netdev_priv(ndev);
