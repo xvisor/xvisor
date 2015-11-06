@@ -37,13 +37,13 @@
 			"vfs guest_load_list guest0 /images/arm32/sabrelite-a9/nor_flash.list",
 
 			/* Load guest1 device tree from file */
-			"vfs fdt_load /guests guest1 /images/arm32/sabrelite-a9_fw.dtb mem0,physical_size,physsize,0x00200000",
+			"vfs fdt_load /guests guest1 /images/arm32/sabrelite-a9.dtb mem0,physical_size,physsize,0x00200000",
 
 			/* Create guest1 */
 			"guest create guest1",
 
 			/* Load guest0 images */
-			"vfs guest_load_list guest1 /images/arm32/sabrelite-a9/nor_flash_fw.list",
+			"vfs guest_load_list guest1 /images/arm32/sabrelite-a9/nor_flash.list",
 			/* "guest kick guest0", */
 			/* "guest kick guest1", */
 
