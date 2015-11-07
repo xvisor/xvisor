@@ -782,6 +782,7 @@ static struct modules_list * __init aggregate_modules(u32 mod_start, u32 sz)
 		(struct modules_list *)vmm_malloc(sizeof(struct modules_list));
 
 	INIT_LIST_HEAD(&cong_mod_list->mod_list);
+	cong_mod_list->nr_modules = 0;
 	/*
 	 * Search for modules signatures from mod start to
 	 * end of modules area picking up modules information
