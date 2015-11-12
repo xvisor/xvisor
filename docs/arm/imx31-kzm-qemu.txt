@@ -1,0 +1,56 @@
+		Xvisor on QEMU i.MX31 KZM Host
+
+This readme explains how to build & run Xvisor for KZM on QEMU.
+
+By default, Xvisor for KZM supports realview-eb-mpcore guest so we will
+show how to run Basic Firmware on realview-eb-mpcore guest. For more info
+refer, <xvisor_source>/tests/arm32/realview-eb-mpcore/basic/README.
+
+Please follow the steps below to build & run Basic Firmware on
+realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=arm-linux-gnueabi-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-v5 default settings]
+  # make ARCH=arm generic-v6-defconfig
+
+  [4. Build Xvisor and DTBs]
+  # make; make dtbs
+
+  [5. Build Basic Firmware]
+  # make -C tests/arm32/realview-eb-mpcore/basic
+
+  [6. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+
+  [7. Launch QEMU]
+  # qemu-system-arm -M kzm -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/imx31/kzm/one_guest_ebmp.dtb -initrd build/disk.img
+
+  [8. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
+
+  [9. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [10. Say 'hi' to Basic Firmware]
+  [guest0/uart0] basic# hi
+
+  [11. Say 'hello' to Basic Firmware]
+  [guest0/uart0] basic# hello
+
+  [12. Check various commands of Basic Firmware]
+  [guest0/uart0] basic# help
+
+  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] basic# 
+
+  (Note: replace all <> brackets based on your workspace)
+
