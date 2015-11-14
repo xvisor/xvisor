@@ -159,6 +159,7 @@ extern void vmm_scheduler_preempt_enable(void);
 					int ret; \
 					vmm_scheduler_preempt_disable(); \
 					if ((lock)->__tlock) { \
+						vmm_scheduler_preempt_enable(); \
 						ret = 0; \
 					} else { \
 						(lock)->__tlock = 1; \
@@ -301,6 +302,8 @@ extern void vmm_scheduler_preempt_enable(void);
 					arch_cpu_irq_save((flags)); \
 					vmm_scheduler_preempt_disable(); \
 					if ((lock)->__tlock) { \
+						vmm_scheduler_preempt_enable(); \
+						arch_cpu_irq_restore(flags); \
 						ret = 0; \
 					} else { \
 						(lock)->__tlock = 1; \
