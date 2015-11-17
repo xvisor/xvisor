@@ -222,12 +222,11 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 	return (next != current) ? next : NULL;
 }
 
-/* Must be called with write lock held on current->sched_lock */
-static struct vmm_vcpu *__vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
-						struct vmm_vcpu *current,
-						arch_regs_t *regs)
+static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
+				 arch_regs_t *regs)
 {
-	struct vmm_vcpu *next = NULL;
+	struct vmm_vcpu *next;
+	struct vmm_vcpu *current = schedp->current_vcpu;
 
 	if (!regs) {
 		/* This should never happen !!! */
@@ -236,30 +235,18 @@ static struct vmm_vcpu *__vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp
 
 	if (current) {
 		if (!current->preempt_count) {
+			irq_flags_t cf;
+
+			vmm_write_lock_irqsave_lite(&current->sched_lock, cf);
 			next = __vmm_scheduler_next2(schedp, current, regs);
+			vmm_write_unlock_irqrestore_lite(&current->sched_lock,
+							 cf);
 		} else {
 			vmm_timer_event_restart(&schedp->ev);
+			next = NULL;
 		}
 	} else {
 		next = __vmm_scheduler_next1(schedp, regs);
-	}
-
-	return next;
-}
-
-static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
-				 arch_regs_t *regs)
-{
-	irq_flags_t cf;
-	struct vmm_vcpu *next = NULL;
-	struct vmm_vcpu *current = schedp->current_vcpu;
-
-	if (current) { /* Normal scheduling */
-		vmm_write_lock_irqsave_lite(&current->sched_lock, cf);
-		next = __vmm_scheduler_switch(schedp, current, regs);
-		vmm_write_unlock_irqrestore_lite(&current->sched_lock, cf);
-	} else { /* First time scheduling */
-		next = __vmm_scheduler_switch(schedp, NULL, regs);
 	}
 
 	if (next) {
