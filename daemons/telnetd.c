@@ -406,8 +406,10 @@ static int telnetd_main(void *data)
 		/* Flush Tx buffer */
 		telnetd_flush_tx_buffer();
 
-		/* Print Banner */
-		vmm_cprintf(&tdctrl.cdev, "%s", VMM_BANNER_STRING);
+		/* Print version string */
+		vmm_cprintf(&tdctrl.cdev, "%s v%d.%d.%d (%s %s)\n\n",
+			    VMM_NAME, VMM_VERSION_MAJOR, VMM_VERSION_MINOR,
+			    VMM_VERSION_RELEASE, __DATE__, __TIME__);
 
 		/* Flush Tx buffer */
 		telnetd_flush_tx_buffer();

@@ -70,8 +70,8 @@ static int mterm_main(void *udata)
 #endif
 
 	while (1) {
-		/* Print Banner */
-		vmm_printf("%s", VMM_BANNER_STRING);
+		/* Print empty line */
+		vmm_printf("\n");
 
 #ifdef CONFIG_LIBAUTH
 		/* Authentication loop */
