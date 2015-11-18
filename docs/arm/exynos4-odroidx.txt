@@ -36,12 +36,18 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # make -C tests/arm32/realview-pb-a8/basic
 
   [7. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
@@ -83,7 +89,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   ODROIDX# fatload mmc 0:2 0x40200000 uvmm.bin
 
   [18. Copy the Xvisor DTB from SD card to SDRAM]
-  ODROIDX# fatload mmc 0 0x40800000 one_guest_pb-a8.dtb
+  ODROIDX# fatload mmc 0:2 0x40800000 one_guest_pb-a8.dtb
 
   [19. Copy disk image from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x42000000 udisk.img
