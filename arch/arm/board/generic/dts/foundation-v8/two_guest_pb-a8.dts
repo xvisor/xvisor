@@ -49,6 +49,9 @@
 			  "guest create guest1",
 
 			  /* Load guest1 images */
-			  "vfs guest_load_list guest1 /images/arm32/realview-pb-a8/nor_flash.list";
+			  "vfs guest_load_list guest1 /images/arm32/realview-pb-a8/nor_flash.list",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
 	};
 };

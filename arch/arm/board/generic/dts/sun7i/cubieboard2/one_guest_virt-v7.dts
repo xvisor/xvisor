@@ -25,7 +25,10 @@
 			  "guest create guest0",
 
 			  /* Load guest0 images */
-			  "vfs guest_load_list guest0 /images/arm32/virt-v7/nor_flash.list";
+			  "vfs guest_load_list guest0 /images/arm32/virt-v7/nor_flash.list",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
 	};
 };
 
