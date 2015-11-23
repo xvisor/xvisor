@@ -16,7 +16,7 @@ RootFS on Virt-v7 (paravirtualized ARMv7) Guest with Xvisor running on
 ARM Fast Models Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
