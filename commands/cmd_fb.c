@@ -31,8 +31,6 @@
 #include <libs/image_loader.h>
 #include <drv/fb.h>
 
-#include "cmd_fb_logo.h"
-
 #define MODULE_DESC			"Command fb"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -49,7 +47,6 @@ static void cmd_fb_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   fb blank <fb_name> <value>\n");
 	vmm_cprintf(cdev, "   fb fillrect <fb_name> <x> <y> <w> <h> <c> "
 		    "[<rop>]\n");
-	vmm_cprintf(cdev, "   fb logo <fb_name> [<x>] [<y>] [<w>] [<h>]\n");
 	vmm_cprintf(cdev, "   fb image <fb_name> <image_path> [<x>] [<y>]\n");
 }
 
@@ -235,124 +232,6 @@ static int cmd_fb_fillrect(struct vmm_chardev *cdev, struct fb_info *info,
 	return VMM_OK;
 }
 
-#if IS_ENABLED(CONFIG_CMD_FB_LOGO)
-/**
- * Display images on the framebuffer.
- * The image and the framebuffer must have the same color space and color map.
- */
-static int fb_write_image(struct fb_info *info, const struct fb_image *image,
-			  unsigned int x, unsigned int y, unsigned int w,
-			  unsigned int h)
-{
-	const char *data = image->data;
-	char *screen = info->screen_base;
-	unsigned int img_stride = image->width * image->depth / 8;
-	unsigned int screen_stride = info->fix.line_length;
-
-	x *= image->depth / 8;
-
-	if (0 == w)
-		w = img_stride;
-	else
-		w *= image->depth / 8;
-
-	if (unlikely(w > screen_stride))
-		w = screen_stride;
-
-	if (0 == h)
-		h = image->height;
-
-	screen += screen_stride * y;
-
-	while (h--) {
-		memcpy(screen + x, data, w);
-		data += img_stride;
-		screen += screen_stride;
-	}
-
-	return VMM_OK;
-}
-#endif
-
-#if IS_ENABLED(CONFIG_CMD_FB_LOGO)
-static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
-		       int argc, char *argv[])
-{
-	unsigned int x = 0;
-	unsigned int y = 0;
-	unsigned int w = 0;
-	unsigned int h = 0;
-	const struct fb_image *image = &cmd_fb_logo_image;
-
-	if (!info->fbops || !info->fbops->fb_blank) {
-		vmm_cprintf(cdev, "FB 'blank' operation not defined\n");
-		return VMM_EFAIL;
-	}
-
-	if (info->fbops->fb_blank(FB_BLANK_UNBLANK, info)) {
-		vmm_cprintf(cdev, "FB 'blank' operation failed\n");
-		return VMM_EFAIL;
-	}
-
-	if (argc >= 1)
-		x = strtol(argv[0], NULL, 10);
-	else if (image->width < info->var.xres)
-		x = (info->var.xres - image->width) / 2;
-	else
-		x = 0;
-
-	if (argc >= 2)
-		y = strtol(argv[1], NULL, 10);
-	else if (image->height < info->var.yres)
-		y = (info->var.yres - image->height) / 2;
-	else
-		y = 0;
-
-	if (argc >= 3)
-		w = strtol(argv[2], NULL, 10);
-	else if (image->width < info->var.xres)
-		w = image->width;
-	else
-		w = info->var.xres - 1;
-
-	if (argc >= 4)
-		h = strtol(argv[3], NULL, 10);
-	else if (image->height < info->var.yres)
-		h = image->height;
-	else
-		h = info->var.yres - 1;
-
-	if (info->var.xres <= x) {
-		vmm_cprintf(cdev, "Error: x should be less than %d\n",
-			    info->var.xres);
-		return VMM_EINVALID;
-	}
-
-	if (info->var.yres <= y) {
-		vmm_cprintf(cdev, "Error: y should be less than %d\n",
-			    info->var.yres);
-		return VMM_EINVALID;
-	}
-
-	if (info->var.xres <= (x + w)) {
-		w = info->var.xres - x;
-	}
-
-	if (info->var.yres <= (y + h)) {
-		h = info->var.yres - y;
-	}
-
-	return fb_write_image(info, image, x, y, w, h);
-}
-#else
-static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
-		       int argc, char *argv[])
-{
-	vmm_cprintf(cdev, "fb logo command is not enabled.\n");
-	return VMM_EFAIL;
-}
-#endif /* CONFIG_CMD_FB_LOGO */
-
 static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
 			int argc, char **argv)
 {
@@ -497,8 +376,6 @@ static int cmd_fb_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_fb_blank(cdev, info, argc - 3, argv + 3);
 	} else if (0 == strcmp(argv[1], "fillrect")) {
 		return cmd_fb_fillrect(cdev, info, argc - 3, argv + 3);
-	} else if (0 == strcmp(argv[1], "logo")) {
-		return cmd_fb_logo(cdev, info, argc - 3, argv + 3);
 	} else if (0 == strcmp(argv[1], "image")) {
 		return cmd_fb_image(cdev, info, argc - 3, argv + 3);
 	}
