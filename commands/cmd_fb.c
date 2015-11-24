@@ -235,7 +235,7 @@ static int cmd_fb_fillrect(struct vmm_chardev *cdev, struct fb_info *info,
 	return VMM_OK;
 }
 
-#if IS_ENABLED(CONFIG_CMD_FB_LOGO) || IS_ENABLED(CONFIG_CMD_FB_IMAGE)
+#if IS_ENABLED(CONFIG_CMD_FB_LOGO)
 /**
  * Display images on the framebuffer.
  * The image and the framebuffer must have the same color space and color map.
@@ -353,7 +353,6 @@ static int cmd_fb_logo(struct vmm_chardev *cdev, struct fb_info *info,
 }
 #endif /* CONFIG_CMD_FB_LOGO */
 
-#if IS_ENABLED(CONFIG_CMD_FB_IMAGE)
 static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
 			int argc, char **argv)
 {
@@ -361,6 +360,7 @@ static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
 	unsigned int w = 0;
 	unsigned int h = 0;
 	struct fb_image image;
+	struct image_format fmt;
 
 	if (argc < 1) {
 		cmd_fb_usage(cdev);
@@ -368,8 +368,23 @@ static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
 	}
 
 	memset(&image, 0, sizeof(image));
+	memset(&fmt, 0, sizeof(fmt));
 
-	if (VMM_OK != (err = image_load(argv[0], &format_rgb565, &image))) {
+	fmt.bits_per_pixel = info->var.bits_per_pixel;
+	fmt.red.offset = info->var.red.offset;
+	fmt.red.length = info->var.red.length;
+	fmt.red.msb_right = info->var.red.msb_right;
+	fmt.blue.offset = info->var.blue.offset;
+	fmt.blue.length = info->var.blue.length;
+	fmt.blue.msb_right = info->var.blue.msb_right;
+	fmt.green.offset = info->var.green.offset;
+	fmt.green.length = info->var.green.length;
+	fmt.green.msb_right = info->var.green.msb_right;
+	fmt.transp.offset = info->var.transp.offset;
+	fmt.transp.length = info->var.transp.length;
+	fmt.transp.msb_right = info->var.transp.msb_right;
+
+	if (VMM_OK != (err = image_load(argv[0], &fmt, &image))) {
 		vmm_cprintf(cdev, "Error, failed to load image \"%s\" (%d)\n",
 			    argv[0], err);
 		return err;
@@ -399,20 +414,12 @@ static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
 	else
 		h = info->var.yres - 1;
 
-	err = fb_write_image(info, &image, image.dx, image.dy, w, h);
+	err = image_draw(info, &image, image.dx, image.dy, w, h);
 
 	image_release(&image);
 
 	return err;
 }
-#else
-static int cmd_fb_image(struct vmm_chardev *cdev, struct fb_info *info,
-			int argc, char **argv)
-{
-	vmm_cprintf(cdev, "fb image command is not available\n");
-	return VMM_EFAIL;
-}
-#endif /* CONFIG_CMD_FB_IMAGE */
 
 static int cmd_fb_blank(struct vmm_chardev *cdev, struct fb_info *info,
 			int argc, char **argv)

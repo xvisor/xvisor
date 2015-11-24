@@ -25,24 +25,49 @@
 #ifndef _IMAGE_LOADER_H
 #define _IMAGE_LOADER_H
 
+#include <vmm_error.h>
 #include <drv/fb.h>
 
 #define IMAGE_LOADER_IPRIORITY		1
 
-struct format {
-	int byte_size;
+struct image_format {
+	int bits_per_pixel;
 	struct fb_bitfield red;
 	struct fb_bitfield green;
 	struct fb_bitfield blue;
 	struct fb_bitfield transp;
 };
 
-extern struct format format_rgb565;
+#if IS_ENABLED(CONFIG_IMAGE_LOADER)
 
 int image_load(const char *path,
-	       struct format *output_format,
+	       struct image_format *fmt,
 	       struct fb_image *image);
 
 void image_release(struct fb_image *image);
+
+int image_draw(struct fb_info *info, const struct fb_image *image,
+		unsigned int x, unsigned int y, unsigned int w,
+		unsigned int h);
+
+#else
+
+static inline int image_load(const char *path,
+			     struct image_format *fmt,
+			     struct fb_image *image)
+{
+	return VMM_ENOTSUPP;
+}
+
+static inline void image_release(struct fb_image *image) {}
+
+static inline int image_draw(struct fb_info *info, const struct fb_image *image,
+			     unsigned int x, unsigned int y, unsigned int w,
+			     unsigned int h)
+{
+	return VMM_ENOTSUPP;
+}
+
+#endif
 
 #endif /* !_IMAGE_LOADER_H */

@@ -22,59 +22,40 @@
  * @brief Simple image loader.
  */
 
+#include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <drv/fb.h>
 #include <libs/vfs.h>
 #include <libs/stringlib.h>
 #include <libs/image_loader.h>
 
-struct format format_rgb565 = {
-	.byte_size = 2,
-	.red = {
-		.offset = 0,
-		.length = 5,
-		.msb_right = 0,
-	},
-	.green = {
-		.offset = 5,
-		.length = 6,
-		.msb_right = 0,
-	},
-	.blue = {
-		.offset = 11,
-		.length = 5,
-		.msb_right = 0,
-	},
-	.transp = {
-		.offset = 0,
-		.length = 0,
-		.msb_right = 0,
-	},
-};
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)		vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
 
 typedef	int (*parser)(char *buf,
 		      size_t len,
 		      struct fb_image *image,
-		      struct format *output_format);
+		      struct image_format *fmt);
 
-static int isnewline(const char	*buf)
+static int isnewline(const char *buf)
 {
 	return (('\r' == *buf) || ('\n' == *buf));
 }
 
-static char *next_token(char *buf, char	**token)
+static char *next_token(char *buf, char **token)
 {
-	char	*comment = NULL;
-
 	while (buf) {
 		buf = skip_spaces(buf);
 		if ('#' != *buf)
 			break;
-		comment = buf;
 		while (!isnewline(buf))
 			++buf;
 		*buf++ = '\0';
-		vmm_printf("Comment: %s\n", comment);
 		while (isnewline(buf))
 			++buf;
 	}
@@ -86,18 +67,35 @@ static char *next_token(char *buf, char	**token)
 	return buf + 1;
 }
 
+static unsigned int get_number(char **buf)
+{
+	char *val = NULL;
+
+	*buf = next_token(*buf, &val);
+	if (NULL == val) {
+		return 0;
+	}
+
+	return strtoul(val, NULL, 10);
+}
+
+static unsigned int get_number255(char **buf)
+{
+	return get_number(buf) & 0xFF;
+}
+
 static char* ppm_header(char *buf,
 			size_t len,
 			struct fb_image *image,
 			int *color_bytes)
 {
-	char	*width = NULL;
-	char	*height = NULL;
-	char	*maxval = NULL;
-	int	colors = 0;
+	char *width = NULL;
+	char *height = NULL;
+	char *maxval = NULL;
+	int colors = 0;
 
-	if (buf[1] == '3') {
-		vmm_printf("P3 PPM not managed yet\n");
+	if (buf[1] != '3') {
+		DPRINTF("Only PPM allowed\n");
 		return NULL;
 	}
 
@@ -118,13 +116,13 @@ static char* ppm_header(char *buf,
 		return NULL;
 	}
 
-	vmm_printf("Width: %s\n", width);
-	vmm_printf("Width: %s\n", height);
-	vmm_printf("Maxval: %s\n", maxval);
-
 	image->width = strtoul(width, NULL, 10);
 	image->height = strtoul(height, NULL, 10);
 	colors = strtoul(maxval, NULL, 10);
+
+	DPRINTF("Width: %d\n", (int)image->width);
+	DPRINTF("Height: %d\n", (int)image->height);
+	DPRINTF("Maxval: %d\n", colors);
 
 	if (colors >= 256)
 		*color_bytes = 2;
@@ -137,54 +135,75 @@ static char* ppm_header(char *buf,
 int ppm_parser(char *buf,
 		size_t len,
 		struct fb_image *image,
-		struct format *output_format)
+		struct image_format *fmt)
 {
-	int	color_bytes = 0;
-	size_t	i = 0;
-	size_t	j = 0;
-	size_t	size = 0;
-	char	red, green, blue;
-	unsigned short	*out = NULL;
+	int color_bytes = 0;
+	size_t i, size;
+	char *nbuf;
+	unsigned char red, green, blue;
+	unsigned int outv;
+	void *out = NULL;
 
-	if (NULL == (buf = ppm_header(buf, len, image, &color_bytes)))
+	if (NULL == (nbuf = ppm_header(buf, len, image, &color_bytes)))
 		return VMM_EFAIL;
+	len = len - (size_t)(nbuf - buf);
 
-	/* Overwritting in the correct format */
-	out = (unsigned short*)buf;
 	size = image->width * image->height;
-	image->depth = output_format->byte_size * 8;
+	image->depth = fmt->bits_per_pixel;
+	out = vmm_zalloc(size * (fmt->bits_per_pixel / 8));
+	if (!out)
+		return VMM_ENOMEM;
+	image->data = out;
 
-	for (i = 0; (i < size) && (j + 2 < len); ++i) {
-		red = buf[j + 2] >> (8 - output_format->red.length);
-		green = buf[j + 1] >> (8 - output_format->green.length);
-		blue = buf[j] >> (8 - output_format->blue.length);
-		out[i] = red << output_format->red.offset |
-			green << output_format->green.offset |
-			blue << output_format->blue.offset;
-		j += 3;
+	for (i = 0; i < size; i++) {
+		red = get_number255(&buf);
+		red = red >> (8 - fmt->red.length);
+		green = get_number255(&buf);
+		green = green >> (8 - fmt->green.length);
+		blue = get_number255(&buf);
+		blue = blue >> (8 - fmt->blue.length);
+		outv = red << fmt->red.offset |
+			green << fmt->green.offset |
+			blue << fmt->blue.offset;
+		DPRINTF("pos=%d red=0x%x green=0x%x blue=0x%x outv=0x%x\n",
+			i, red, green, blue, outv);
+		switch (fmt->bits_per_pixel) {
+		case 8:
+			((u8 *)out)[i] = (u8)outv;
+			break;
+		case 16:
+			((u16 *)out)[i] = (u16)outv;
+			break;
+		case 24:
+			((u32 *)out)[i] = (u32)outv;
+			break;
+		default:
+			break;
+		};
 	}
-	image->data = buf;
 
 	return VMM_OK;
 }
 
-parser		parser_get(const char		*buf,
-			   size_t		len)
+static parser parser_get(const char *buf, size_t len)
 {
 	if (!buf)
 		return NULL;
 
 	switch (buf[0]) {
 	case 'P':
-		if ((buf[1] == '3') || (buf[1] == '6'))
+		if (buf[1] == '3')
 			return ppm_parser;
+		break;
+	default:
+		break;
 	}
 
 	return NULL;
 }
 
 int image_load(const char *path,
-	       struct format *output_format,
+	       struct image_format *fmt,
 	       struct fb_image *image)
 {
 	int fd = 0;
@@ -212,16 +231,15 @@ int image_load(const char *path,
 	len = vfs_read(fd, buf, stat.st_size);
 
 	if (NULL == (parse_func = parser_get(buf, len))) {
-		vmm_printf("Unsupported format\n");
-		err = VMM_EFAIL;
+		DPRINTF("Unsupported format\n");
+		err = VMM_EINVALID;
 		goto out;
 	}
 
-	err = parse_func(buf, len, image, output_format);
+	err = parse_func(buf, len, image, fmt);
 
 out:
-	if ((VMM_OK != err) && buf)
-		vmm_free(buf);
+	vmm_free(buf);
 	if (fd >= 0)
 		vfs_close(fd);
 
@@ -239,6 +257,44 @@ void image_release(struct fb_image *image)
 	image->data = NULL;
 }
 VMM_EXPORT_SYMBOL(image_release);
+
+/**
+ * Display images on the framebuffer.
+ * The image and the framebuffer must have the same color space and color map.
+ */
+int image_draw(struct fb_info *info, const struct fb_image *image,
+		unsigned int x, unsigned int y, unsigned int w,
+		unsigned int h)
+{
+	const char *data = image->data;
+	char *screen = info->screen_base;
+	unsigned int img_stride = image->width * image->depth / 8;
+	unsigned int screen_stride = info->fix.line_length;
+
+	x *= image->depth / 8;
+
+	if (0 == w)
+		w = img_stride;
+	else
+		w *= image->depth / 8;
+
+	if (unlikely(w > screen_stride))
+		w = screen_stride;
+
+	if (0 == h)
+		h = image->height;
+
+	screen += screen_stride * y;
+
+	while (h--) {
+		memcpy(screen + x, data, w);
+		data += img_stride;
+		screen += screen_stride;
+	}
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(image_draw);
 
 VMM_DECLARE_MODULE("Image loader library",
 		   "Jimmy Durand Wesolowski",
