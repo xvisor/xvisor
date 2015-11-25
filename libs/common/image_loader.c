@@ -37,88 +37,98 @@
 #define DPRINTF(msg...)
 #endif
 
-typedef	int (*parser)(char *buf,
-		      size_t len,
+typedef	int (*parser_func_t)(int fd,
 		      struct fb_image *image,
 		      struct image_format *fmt);
 
-static int isnewline(const char *buf)
+static int isnewline(char ch)
 {
-	return (('\r' == *buf) || ('\n' == *buf));
+	return (('\r' == ch) || ('\n' == ch));
 }
 
-static char *next_token(char *buf, char **token)
+static int next_token(int fd, char *buf, size_t buf_len)
 {
-	while (buf) {
-		buf = skip_spaces(buf);
-		if ('#' != *buf)
-			break;
-		while (!isnewline(buf))
-			++buf;
-		*buf++ = '\0';
-		while (isnewline(buf))
-			++buf;
+	char ch;
+	size_t pos, rdcnt;
+
+	if (!buf || !buf_len) {
+		return VMM_EINVALID;
 	}
 
-	*token = buf;
-	while (!isspace(*buf))
-		++buf;
-	*buf = '\0';
-	return buf + 1;
+	rdcnt = vfs_read(fd, &ch, 1);
+	if (!rdcnt) {
+		return VMM_ENOTAVAIL;
+	}
+	while (ch) {
+		while ((ch == ' ') || (ch == '\t') || isnewline(ch)) {
+			rdcnt = vfs_read(fd, &ch, 1);
+			if (!rdcnt) {
+				return VMM_ENOTAVAIL;
+			}
+		}
+		if (ch != '#')
+			break;
+		while (!isnewline(ch)) {
+			rdcnt = vfs_read(fd, &ch, 1);
+			if (!rdcnt) {
+				return VMM_ENOTAVAIL;
+			}
+		}
+	}
+
+	pos = 0;
+	while (!isspace(ch) && (pos < (buf_len - 1))) {
+		buf[pos++] = ch;
+		rdcnt = vfs_read(fd, &ch, 1);
+		if (!rdcnt) {
+			break;
+		}
+	}
+	buf[pos] = '\0';
+
+	return VMM_OK;
 }
 
-static unsigned int get_number(char **buf)
+static unsigned int get_number(int fd)
 {
-	char *val = NULL;
+	int rc;
+	char val[128];
 
-	*buf = next_token(*buf, &val);
-	if (NULL == val) {
+	rc = next_token(fd, val, sizeof(val));
+	if (rc != VMM_OK) {
 		return 0;
 	}
 
 	return strtoul(val, NULL, 10);
 }
 
-static unsigned int get_number255(char **buf)
+static unsigned int get_number255(int fd)
 {
-	return get_number(buf) & 0xFF;
+	return get_number(fd) & 0xFF;
 }
 
-static char* ppm_header(char *buf,
-			size_t len,
-			struct fb_image *image,
-			int *color_bytes)
+static int ppm_header(int fd, struct fb_image *image, int *color_bytes)
 {
-	char *width = NULL;
-	char *height = NULL;
-	char *maxval = NULL;
-	int colors = 0;
+	char val[128];
+	int rc, colors = 0;
 
-	if (buf[1] != '3') {
-		DPRINTF("Only PPM allowed\n");
-		return NULL;
+	rc = next_token(fd, val, sizeof(val));
+	if (rc != VMM_OK) {
+		return rc;
 	}
+	image->width = strtoul(val, NULL, 10);
 
-	buf += 3;
-
-	buf = next_token(buf, &width);
-	if (NULL == width) {
-		return NULL;
+	rc = next_token(fd, val, sizeof(val));
+	if (rc != VMM_OK) {
+		return rc;
 	}
+	image->height = strtoul(val, NULL, 10);
 
-	buf = next_token(buf, &height);
-	if (NULL == height) {
-		return NULL;
+	rc = next_token(fd, val, sizeof(val));
+	if (rc != VMM_OK) {
+		return rc;
 	}
-
-	buf = next_token(buf, &maxval);
-	if (NULL == maxval) {
-		return NULL;
-	}
-
-	image->width = strtoul(width, NULL, 10);
-	image->height = strtoul(height, NULL, 10);
-	colors = strtoul(maxval, NULL, 10);
+	colors = strtoul(val, NULL, 10);
 
 	DPRINTF("Width: %d\n", (int)image->width);
 	DPRINTF("Height: %d\n", (int)image->height);
@@ -129,24 +139,27 @@ static char* ppm_header(char *buf,
 	else
 		*color_bytes = 1;
 
-	return buf;
+	return VMM_OK;
 }
 
-int ppm_parser(char *buf,
-		size_t len,
-		struct fb_image *image,
-		struct image_format *fmt)
+static int ppm_parser(int fd,
+		      struct fb_image *image,
+		      struct image_format *fmt)
 {
-	int color_bytes = 0;
+	int err, color_bytes = 0;
 	size_t i, size;
-	char *nbuf;
 	unsigned char red, green, blue;
 	unsigned int outv;
 	void *out = NULL;
 
-	if (NULL == (nbuf = ppm_header(buf, len, image, &color_bytes)))
-		return VMM_EFAIL;
-	len = len - (size_t)(nbuf - buf);
+	err = ppm_header(fd, image, &color_bytes);
+	if (err != VMM_OK) {
+		return err;
+	}
+
+	if (color_bytes != 1) {
+		return VMM_ENOTSUPP;
+	}
 
 	size = image->width * image->height;
 	image->depth = fmt->bits_per_pixel;
@@ -156,11 +169,11 @@ int ppm_parser(char *buf,
 	image->data = out;
 
 	for (i = 0; i < size; i++) {
-		red = get_number255(&buf);
+		red = get_number255(fd);
 		red = red >> (8 - fmt->red.length);
-		green = get_number255(&buf);
+		green = get_number255(fd);
 		green = green >> (8 - fmt->green.length);
-		blue = get_number255(&buf);
+		blue = get_number255(fd);
 		blue = blue >> (8 - fmt->blue.length);
 		outv = red << fmt->red.offset |
 			green << fmt->green.offset |
@@ -185,14 +198,19 @@ int ppm_parser(char *buf,
 	return VMM_OK;
 }
 
-static parser parser_get(const char *buf, size_t len)
+static parser_func_t parser_get(int fd)
 {
-	if (!buf)
-		return NULL;
+	char ch[2];
+	size_t rdcnt;
 
-	switch (buf[0]) {
+	rdcnt = vfs_read(fd, ch, sizeof(ch));
+	if (rdcnt < 2) {
+		return NULL;
+	}
+
+	switch (ch[0]) {
 	case 'P':
-		if (buf[1] == '3')
+		if (ch[1] == '3')
 			return ppm_parser;
 		break;
 	default:
@@ -206,40 +224,37 @@ int image_load(const char *path,
 	       struct image_format *fmt,
 	       struct fb_image *image)
 {
-	int fd = 0;
-	int err = 0;
-	char *buf = NULL;
-	size_t len = 0;
-	struct stat stat;
-	parser parse_func;
+	int fd = 0, err = 0;
+	struct stat st;
+	parser_func_t parse_func;
 
-	if (NULL == path)
-		return VMM_EFAIL;
+	if (!path) {
+		return VMM_EINVALID;
+	}
 
-	if (0 > (fd = vfs_open(path, O_RDONLY, 0)))
+	if ((fd = vfs_open(path, O_RDONLY, 0)) < 0) {
 		return fd;
+	}
 
-	if (VMM_OK != (err = vfs_fstat(fd, &stat))) {
+	if ((err = vfs_fstat(fd, &st)) != VMM_OK) {
 		goto out;
 	}
 
-	if (NULL == (buf = vmm_malloc(stat.st_size))) {
-		err = VMM_ENOMEM;
+	if (!(st.st_mode & S_IFREG)) {
+		DPRINTF("Cannot read %s\n", path);
+		err = VMM_EINVALID;
 		goto out;
 	}
 
-	len = vfs_read(fd, buf, stat.st_size);
-
-	if (NULL == (parse_func = parser_get(buf, len))) {
+	if (!(parse_func = parser_get(fd))) {
 		DPRINTF("Unsupported format\n");
 		err = VMM_EINVALID;
 		goto out;
 	}
 
-	err = parse_func(buf, len, image, fmt);
+	err = parse_func(fd, image, fmt);
 
 out:
-	vmm_free(buf);
 	if (fd >= 0)
 		vfs_close(fd);
 
