@@ -16,7 +16,7 @@ Follow the steps below to build & run Linux kernel with Busybox RootFS on
 Realview-PB-A8 Guest with Xvisor running on QEMU Realview-PB-A8 Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

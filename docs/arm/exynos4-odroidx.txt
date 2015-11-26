@@ -18,7 +18,7 @@ ODroid-X:
 Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

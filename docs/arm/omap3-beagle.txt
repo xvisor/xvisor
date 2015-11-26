@@ -15,7 +15,7 @@ Following are the steps to create these images and then boot Xvisor on
 Beagleboard-xM using U-Boot-2011.03 or higher:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -141,7 +141,7 @@ The steps to create these images and boot Xvisor on Beagleboard QEMU are as
 follows:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. Download and build U-Boot-2011.03 from source - this creates u-boot.bin]
   # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2011.03.tar.bz2

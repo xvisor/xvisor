@@ -10,7 +10,7 @@ Please follow the steps below to build & run Basic Firmware on
 realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
 
   [1. Build environment for Xvisor]
-  # CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
