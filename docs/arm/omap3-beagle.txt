@@ -36,6 +36,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
@@ -45,6 +46,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
@@ -170,6 +172,7 @@ follows:
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
@@ -179,6 +182,7 @@ follows:
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
   # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
