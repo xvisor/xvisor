@@ -1,8 +1,8 @@
 #
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.6
-# Sun Sep 27 19:40:16 2015
+# Version: 0.2.7
+# Mon Dec  7 21:43:02 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -176,6 +176,8 @@ CONFIG_VINPUT_KEYMAP_TR=y
 # General Commands
 #
 CONFIG_CMD_VERSION=y
+CONFIG_CMD_SLEEP=y
+CONFIG_CMD_ECHO=y
 CONFIG_CMD_RESET=y
 CONFIG_CMD_SHUTDOWN=y
 CONFIG_CMD_HOST=y
@@ -600,6 +602,12 @@ CONFIG_EMU_GPIO_PL061=y
 # PCI Bus Emulators
 #
 # CONFIG_EMU_PCI is not set
+
+#
+# Watchdog Emulators
+#
+CONFIG_EMU_WDT=y
+CONFIG_EMU_WDT_SP805=y
 
 #
 # Tool Options
