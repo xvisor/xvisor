@@ -210,13 +210,14 @@
 			compatible = "primecell,sp810";
 		};
 
-		wdog { /* No Watchdog Interface */
+		wdog {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x101E1000>;
 			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
+			device_type = "watchdog";
+			compatible = "primecell,sp805";
+			interrupts = <0>;
 		};
 
 		timer0_1 {

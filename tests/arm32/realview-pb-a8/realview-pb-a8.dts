@@ -171,13 +171,23 @@
 			compatible = "zero";
 		};
 
-		wdt { /* No Watch-Dog controller */
+		watchdog0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x1000F000>;
+			physical_size = <0x1000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		watchdog {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x10010000>;
 			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
+			device_type = "watchdog";
+			compatible = "primecell,sp805";
+			interrupts = <32>;
 		};
 
 		timer0_1 {

@@ -160,13 +160,14 @@
 			interrupts = <40>;
 		};
 
-		wdt { /* No Watch-Dog controller */
+		wdt {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x1000F000>;
 			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
+			device_type = "watchdog";
+			compatible = "primecell,sp805";
+			interrupts = <32>;
 		};
 
 		timer0_1_legacy {
@@ -261,16 +262,17 @@
 			physical_size = <0x1000>;
 			device_type = "timer";
 			compatible = "primecell,sp804";
-			interrupts = <35>;
+			interrupts = <80>;
 		};
 
-		watchdog { /* No watchdog */
+		watchdog {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x100E5000>;
 			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
+			device_type = "watchdog";
+			compatible = "primecell,sp805";
+			interrupts = <84>;
 		};
 
 		gpio { /* No GPIO */
