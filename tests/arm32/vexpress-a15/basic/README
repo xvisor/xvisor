@@ -67,8 +67,8 @@ Guest with Xvisor running on ARM Fast Model VExpress-A15 Host:
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on VExpress-A15 host
-   emulated by ARM Fast Models. For other types of ARM host some of
-   the above steps will need to be adapted for that specfic ARM host.
-   For more info on your desired ARM host refer docs/arm/)
-
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

@@ -40,7 +40,7 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [7. Launch QEMU 1.7.xx or higher]
+  [7. Launch QEMU]
   # qemu-system-arm -M realview-eb-mpcore -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/eb-mpcore/one_guest_ebmp.dtb -initrd build/disk.img
 
   [8. Kick Guest0 for starting Basic Firmware]
@@ -62,8 +62,8 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on Realview-EB-MPCore host 
-   emulated by QEMU 1.7.xx or higher. For other types of ARM host some of the 
-   above steps will need to be adapted for that specfic ARM host. For more info
-   on your desired ARM host refer docs/arm/)
-
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

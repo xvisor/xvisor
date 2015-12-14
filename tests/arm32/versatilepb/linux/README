@@ -69,7 +69,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [15. Launch QEMU 1.7.xx or higher]
+  [15. Launch QEMU]
   # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/versatile/pb/one_guest_versatile.dtb -initrd build/disk.img
 
   [16. Kick Guest0 for starting Basic Firmware]
@@ -92,9 +92,8 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on VersatilePB host
-   emulated by QEMU. For other types of ARM host some of the above
-   steps will need to be adapted for that specfic ARM host. For more
-   info on your desired ARM host refer docs/arm/)
-  (Note: you are free to change the ordering of above steps based on
-   your workspace)
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

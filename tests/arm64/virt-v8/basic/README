@@ -65,4 +65,8 @@ Guest with Xvisor running on Foundation v8 Model:
   [guest0/uart0] basic# 
 
   (Note: replace all <> brackets based on your workspace)
-
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

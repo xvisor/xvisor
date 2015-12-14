@@ -94,7 +94,7 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # cp -f <atomthreads_source_directory>/ports/arm32/build/timer7.bin ./build/disk/images/arm32/realview-pb-a8/timer7.bin
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [12. Launch QEMU 1.7.xx or higher]
+  [12. Launch QEMU]
   # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb -initrd build/disk.img
 
   [13. Kick Guest0 for starting Basic Firmware]
@@ -113,10 +113,9 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [guest0/uart0] 
 
   (Note: replace all <> brackets based on your workspace)
-  (Note: the above steps assumes Xvisor running on Realview-PB-A8 host
-   emulated by QEMU. For other types of ARM host some of the above 
-   steps will need to be adapted for that specfic ARM host. For more
-   info on your desired ARM host refer docs/arm/)
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
   (Note: step 15 copies kern1.bin test case to 0x100000 instead of this you 
    can use kern2.bin, ..., mutex1.bin, ..., etc. testcases. All testcases are
    loaded to NOR flash location 0x40100000 at 0x20000 offset. All testcases are
