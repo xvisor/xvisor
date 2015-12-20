@@ -15,16 +15,55 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Generic-v5 default settings]
+  [3. Configure Xvisor with Generic v6 default settings]
   # make ARCH=arm generic-v6-defconfig
 
-  [4. Build Xvisor and DTBs]
+  [4. Build Xvisor & DTBs]
   # make; make dtbs
 
   [5. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic
 
-  [6. Create disk image for Xvisor]
+  [6. Copy defconfig to Linux build directory]
+  # cp tests/arm32/realview-eb-mpcore/linux/linux-<linux_version>_realview_ebmp_defconfig <linux_build_directory>/.config
+
+  [7. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [8. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [9. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm Image
+
+  [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+
+  [11. Build Linux in build directory to reflect changes in kernel image]
+  # make O=<linux_build_directory> ARCH=arm Image
+
+  [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
+
+  [13. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [14. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
+  # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  [14. Create disk image for Xvisor with only Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -35,26 +74,36 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [7. Launch QEMU]
+  [15. Launch QEMU]
   # qemu-system-arm -M kzm -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/imx31/kzm/one_guest_ebmp.dtb -initrd build/disk.img
 
-  [8. Kick Guest0 for starting Basic Firmware]
+  [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [9. Bind to virtual UART]
+  [17. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [10. Say 'hi' to Basic Firmware]
+  [18. Try few commands of Basic firmware or goto next step]
   [guest0/uart0] basic# hi
-
-  [11. Say 'hello' to Basic Firmware]
   [guest0/uart0] basic# hello
-
-  [12. Check various commands of Basic Firmware]
   [guest0/uart0] basic# help
 
-  [13. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] basic# 
+  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm32/realview-eb-mpcore/linux/cmdlist
+   file which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
-
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

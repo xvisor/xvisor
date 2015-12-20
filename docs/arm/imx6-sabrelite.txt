@@ -2,8 +2,8 @@
 
 This section of readme explains how to build & run Xvisor on real hardware
 Sabre LITE using SD booting feature Boundary Devices preconfigured U-Boot.
-Ensure the SD is formatted with a Xvisor recognized filesystem (CPIO, Ext4, or
-FAT).
+Ensure the SD is formatted with a Xvisor recognized filesystem (CPIO, Ext4,
+or FAT).
 
 We need to add 2 images in boot partition of SD card that is shipped with
 Sabre LITE:
