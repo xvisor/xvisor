@@ -32,7 +32,7 @@ char *defconfig_file;
 
 static int indent = 1;
 static int valid_stdin = 1;
-static int sync_kconfig;
+static int sync_openconf;
 static int conf_cnt;
 static char line[128];
 static struct menu *rootEntry;
@@ -451,7 +451,7 @@ int main(int ac, char **av)
 			break;
 		case 's':
 			input_mode = ask_silent;
-			sync_kconfig = 1;
+			sync_openconf = 1;
 			break;
 		case 'd':
 			input_mode = set_default;
@@ -483,13 +483,13 @@ int main(int ac, char **av)
 		}
 	}
 	if (ac == optind) {
-		printf(_("%s: Kconfig file missing\n"), av[0]);
+		printf(_("%s: openconf file missing\n"), av[0]);
 		exit(1);
 	}
 	name = av[optind];
 	conf_parse(name);
 	//zconfdump(stdout);
-	if (sync_kconfig) {
+	if (sync_openconf) {
 		name = getenv(OPENCONF_CONFIG_ENVNAME);
 		if (stat(name, &tmpstat)) {
 			fprintf(stderr, "***\n"
@@ -544,7 +544,7 @@ int main(int ac, char **av)
 		break;
 	}
 
-	if (sync_kconfig) {
+	if (sync_openconf) {
 		if (conf_get_changed()) {
 			name = getenv(OPENCONF_NOSILENTUPDATE_ENVNAME);
 			if (name && *name) {
@@ -587,7 +587,7 @@ int main(int ac, char **av)
 		break;
 	}
 
-	if (sync_kconfig) {
+	if (sync_openconf) {
 		/* silentoldconfig is used during the build so we shall update autoconf.
 		 * All other commands are only used to generate a config.
 		 */

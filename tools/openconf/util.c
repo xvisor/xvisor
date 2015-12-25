@@ -41,7 +41,7 @@ int file_write_dep(const char *name)
 		strcpy(tmppath, OPENCONF_TMPDIR_DEFAULT);
 
 	if (!name)
-		name = ".kconfig.d";
+		name = ".openconf.d";
 	out = fopen("..config.tmp", "w");
 	if (!out)
 		return 1;

@@ -363,7 +363,7 @@ int conf_read(const char *name)
 		if (sym_has_value(sym) && !sym_is_choice_value(sym)) {
 			/* Reset values of generates values, so they'll appear
 			 * as new, if they should become visible, but that
-			 * doesn't quite work if the Kconfig and the saved
+			 * doesn't quite work if the openconf and the saved
 			 * configuration disagree.
 			 */
 			if (sym->visible == no && !conf_unsaved)

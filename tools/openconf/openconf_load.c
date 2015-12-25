@@ -8,14 +8,14 @@
 #include "openconf_proto.h"
 #undef P
 
-void kconfig_load(void)
+void openconf_load(void)
 {
 	void *handle;
 	char *error;
 
-	handle = dlopen("./libkconfig.so", RTLD_LAZY);
+	handle = dlopen("./libopenconf.so", RTLD_LAZY);
 	if (!handle) {
-		handle = dlopen("/usr/lib/libkconfig.so", RTLD_LAZY);
+		handle = dlopen("/usr/lib/libopenconf.so", RTLD_LAZY);
 		if (!handle) {
 			fprintf(stderr, "%s\n", dlerror());
 			exit(1);

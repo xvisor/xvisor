@@ -1726,7 +1726,7 @@ int main(int ac, char** av)
 	textdomain(PACKAGE);
 
 #ifndef LKC_DIRECT_LINK
-	kconfig_load();
+	openconf_load();
 #endif
 
 	progname = av[0];
@@ -1749,7 +1749,7 @@ int main(int ac, char** av)
 	//zconfdump(stdout);
 
 	configSettings = new ConfigSettings();
-	configSettings->beginGroup("/kconfig/qconf");
+	configSettings->beginGroup("/openconf/qconf");
 	v = new ConfigMainWindow();
 
 	//zconfdump(stdout);

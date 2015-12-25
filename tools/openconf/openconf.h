@@ -75,8 +75,8 @@ void sym_set_change_count(int count);
 void sym_add_change_count(int count);
 void conf_set_all_new_symbols(enum conf_def_mode mode);
 
-/* kconfig_load.c */
-void kconfig_load(void);
+/* openconf_load.c */
+void openconf_load(void);
 
 /* menu.c */
 void menu_init(void);

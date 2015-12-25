@@ -112,7 +112,7 @@ applicable everywhere (see syntax).
 	(no prompts anywhere) and for symbols with no dependencies.
 	That will limit the usefulness but on the other hand avoid
 	the illegal configurations all over.
-	kconfig should one day warn about such things.
+	openconf should one day warn about such things.
 
 - numerical ranges: "range" <symbol> <symbol> ["if" <expr>]
   This allows to limit the range of possible input values for int
@@ -143,7 +143,7 @@ applicable everywhere (see syntax).
     which enables the third modular state for all config symbols.
 
   - "env"=<value>
-    This imports the environment variable into Kconfig. It behaves like
+    This imports the environment variable into openconf. It behaves like
     a default, except that the value comes from the environment, this
     also means that the behaviour when mixing it with normal defaults is
     undefined at this point. The symbol is currently not exported back
@@ -235,7 +235,7 @@ hand is always visible when CONFIG_MODULES is visible (the (empty) dependency
 of CONFIG_MODULES is also part of the comment dependencies).
 
 
-Kconfig syntax
+openconf syntax
 --------------
 
 The configuration file describes a series of menu entries, where every
@@ -325,10 +325,10 @@ This sets the config program's title bar if the config program chooses
 to use it.
 
 
-Kconfig hints
+openconf hints
 -------------
-This is a collection of Kconfig tips, most of which aren't obvious at
-first glance and most of which have become idioms in several Kconfig
+This is a collection of openconf tips, most of which aren't obvious at
+first glance and most of which have become idioms in several openconf
 files.
 
 Adding common features and make the usage configurable
@@ -336,11 +336,11 @@ Adding common features and make the usage configurable
 It is a common idiom to implement a feature/functionality that are
 relevant for some architectures but not all.
 The recommended way to do so is to use a config variable named HAVE_*
-that is defined in a common Kconfig file and selected by the relevant
+that is defined in a common openconf file and selected by the relevant
 architectures.
 An example is the generic IOMAP functionality.
 
-We would in lib/Kconfig see:
+We would in lib/openconf see:
 
 # Generic IOMAP is used to ...
 config HAVE_GENERIC_IOMAP

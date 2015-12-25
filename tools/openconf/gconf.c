@@ -1560,7 +1560,7 @@ int main(int ac, char *av[])
 	gchar *glade_file;
 
 #ifndef LKC_DIRECT_LINK
-	kconfig_load();
+	openconf_load();
 #endif
 
 	bindtextdomain(PACKAGE, LOCALEDIR);
