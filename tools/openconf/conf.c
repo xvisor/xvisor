@@ -22,6 +22,7 @@ enum {
 	ask_all,
 	ask_new,
 	ask_silent,
+	ask_savedefconf,
 	set_default,
 	set_yes,
 	set_mod,
@@ -444,7 +445,7 @@ int main(int ac, char **av)
 	bindtextdomain(OPENCONF_PACKAGE, OPENCONF_LOCALEDIR);
 	textdomain(OPENCONF_PACKAGE);
 
-	while ((opt = getopt(ac, av, "osdD:nmyrh")) != -1) {
+	while ((opt = getopt(ac, av, "osS:dD:nmyrh")) != -1) {
 		switch (opt) {
 		case 'o':
 			input_mode = ask_silent;
@@ -452,6 +453,10 @@ int main(int ac, char **av)
 		case 's':
 			input_mode = ask_silent;
 			sync_openconf = 1;
+			break;
+		case 'S':
+			input_mode = ask_savedefconf;
+			defconfig_file = optarg;
 			break;
 		case 'd':
 			input_mode = set_default;
@@ -514,6 +519,7 @@ int main(int ac, char **av)
 			exit(1);
 		}
 		break;
+	case ask_savedefconf:
 	case ask_silent:
 	case ask_all:
 	case ask_new:
@@ -585,6 +591,8 @@ int main(int ac, char **av)
 			check_conf(&rootmenu);
 		} while (conf_cnt);
 		break;
+	case ask_savedefconf:
+		break;
 	}
 
 	if (sync_openconf) {
@@ -598,6 +606,15 @@ int main(int ac, char **av)
 		if (conf_write_autoconf()) {
 			fprintf(stderr, "\n*** Error during update of the configuration.\n\n");
 			return 1;
+		}
+	} else if (input_mode == ask_savedefconf) {
+		if (!defconfig_file) {
+			fprintf(stderr, "\n*** Error no output defconfig file specified.\n\n");
+			exit(1);
+		}
+		if (conf_write(defconfig_file)) {
+			fprintf(stderr, "\n*** Error during writing of the configuration.\n\n");
+			exit(1);
 		}
 	} else {
 		if (conf_write(NULL)) {

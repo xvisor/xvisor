@@ -45,6 +45,9 @@ allnoconfig: conf
 allmodconfig: conf
 #	$< -m $(OPENCONF_CONFIG)
 
+savedefconfig: conf
+#	$< -S defconfig $(OPENCONF_CONFIG)
+
 defconfig: conf
 #	$< -d $(OPENCONF_CONFIG)
 
