@@ -432,6 +432,13 @@ oldconfig:
 	$(V)$(MAKE) -C tools/openconf oldconfig
 	./tools/openconf/conf -o $(OPENCONF_INPUT)
 
+# Rule for "make savedefconfig"
+.PHONY: savedefconfig
+savedefconfig:
+	$(V)mkdir -p $(OPENCONF_TMPDIR)
+	$(V)$(MAKE) -C tools/openconf savedefconfig
+	./tools/openconf/conf -S $(OPENCONF_TMPDIR)/defconfig $(OPENCONF_INPUT)
+
 # Rule for "make xxx-defconfig"
 %-defconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
