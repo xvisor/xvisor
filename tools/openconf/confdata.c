@@ -389,6 +389,114 @@ int conf_read(const char *name)
 	return 0;
 }
 
+/*
+ * Write out a minimal config.
+ * All values that has default values are skipped as this is redundant.
+ */
+int conf_write_defconfig(const char *filename)
+{
+	FILE *out;
+	struct symbol *sym;
+	struct menu *menu;
+	int type, l;
+	const char *str;
+
+	out = fopen(filename, "w");
+	if (!out)
+		return 1;
+
+	sym_clear_all_valid();
+
+	menu = rootmenu.list;
+	while (menu) {
+		sym = menu->sym;
+		if (!sym) {
+			if (!menu_is_visible(menu))
+				goto next;
+		} else if (!(sym->flags & SYMBOL_CHOICE)) {
+			sym_calc_value(sym);
+			if (!(sym->flags & SYMBOL_WRITE))
+				goto next;
+			sym->flags &= ~SYMBOL_WRITE;
+			/* If we cannot change the symbol - skip */
+			if (!sym_is_changable(sym))
+				goto next;
+			/* If symbol equals to default value - skip */
+			if (strcmp(sym_get_string_value(sym), sym_get_string_default(sym)) == 0)
+				goto next;
+
+			type = sym->type;
+			if (type == S_TRISTATE) {
+				sym_calc_value(modules_sym);
+				if (modules_sym->curr.tri == no)
+					type = S_BOOLEAN;
+			}
+			switch (type) {
+			case S_BOOLEAN:
+			case S_TRISTATE:
+				switch (sym_get_tristate_value(sym)) {
+				case no:
+					fprintf(out, "# %s is not set\n", sym->name);
+					break;
+				case mod:
+					fprintf(out, "%s=m\n", sym->name);
+					break;
+				case yes:
+					fprintf(out, "%s=y\n", sym->name);
+					break;
+				}
+				break;
+			case S_STRING:
+				str = sym_get_string_value(sym);
+				fprintf(out, "%s=\"", sym->name);
+				while (1) {
+					l = strcspn(str, "\"\\");
+					if (l) {
+						fwrite(str, l, 1, out);
+						str += l;
+					}
+					if (!*str)
+						break;
+					fprintf(out, "\\%c", *str++);
+				}
+				fputs("\"\n", out);
+				break;
+			case S_HEX:
+				str = sym_get_string_value(sym);
+				if (str[0] != '0' || (str[1] != 'x' && str[1] != 'X')) {
+					fprintf(out, "%s=%s\n", sym->name, str);
+					break;
+				}
+			case S_INT:
+				str = sym_get_string_value(sym);
+				fprintf(out, "%s=%s\n", sym->name, str);
+				break;
+			}
+		}
+
+	next:
+		if (menu->list) {
+			menu = menu->list;
+			continue;
+		}
+		if (menu->next)
+			menu = menu->next;
+		else while ((menu = menu->parent)) {
+			if (menu->next) {
+				menu = menu->next;
+				break;
+			}
+		}
+	}
+	fclose(out);
+
+	printf(_("#\n"
+		 "# configuration written to %s\n"
+		 "#\n"), filename);
+
+	return 0;
+}
+
 int conf_write(const char *name)
 {
 	FILE *out;

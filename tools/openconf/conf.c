@@ -612,7 +612,7 @@ int main(int ac, char **av)
 			fprintf(stderr, "\n*** Error no output defconfig file specified.\n\n");
 			exit(1);
 		}
-		if (conf_write(defconfig_file)) {
+		if (conf_write_defconfig(defconfig_file)) {
 			fprintf(stderr, "\n*** Error during writing of the configuration.\n\n");
 			exit(1);
 		}
