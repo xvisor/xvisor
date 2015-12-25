@@ -9,7 +9,7 @@
 #include "expr.h"
 #include "openconf_const.h"
 
-#ifndef KBUILD_NO_NLS
+#ifndef OPENCONF_NO_NLS
 # include <libintl.h>
 #else
 static inline const char *gettext(const char *txt) { return txt; }

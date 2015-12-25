@@ -25,7 +25,7 @@ struct file *file_lookup(const char *name)
 	return file;
 }
 
-/* write a dependency file as used by kbuild to track dependencies */
+/* write a dependency file as used by build to track dependencies */
 int file_write_dep(const char *name)
 {
 	char *tname,path[PATH_MAX],tmppath[PATH_MAX];

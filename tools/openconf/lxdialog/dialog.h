@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#ifndef KBUILD_NO_NLS
+#ifndef OPENCONF_NO_NLS
 # include <libintl.h>
 #else
 # define gettext(Msgid) ((const char *) (Msgid))

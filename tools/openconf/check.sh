@@ -9,6 +9,6 @@ int main()
 }
 EOF
 if [ ! "$?" -eq "0"  ]; then
-	echo -DKBUILD_NO_NLS;
+	echo -DOPENCONF_NO_NLS;
 fi
 
