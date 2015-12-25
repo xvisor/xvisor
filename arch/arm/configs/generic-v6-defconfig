@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.7
-# Mon Dec  7 21:43:02 2015
+# Fri Dec 25 10:40:08 2015
 #
 CONFIG_ARCH_ARM=y
 # CONFIG_ARCH_x86 is not set
@@ -209,6 +209,7 @@ CONFIG_CMD_INPUT=y
 CONFIG_CMD_FB=y
 CONFIG_CMD_BLOCKDEV=y
 CONFIG_CMD_RBD=y
+CONFIG_CMD_I2C=y
 
 #
 # Networking Commands
@@ -474,7 +475,16 @@ CONFIG_REALVIEW_CONFIG=y
 #
 # I2C support
 #
-# CONFIG_I2C is not set
+CONFIG_I2C=y
+CONFIG_I2C_BOARDINFO=y
+
+#
+# I2C Hardware Bus support
+#
+
+#
+# I2C system bus drivers (mostly embedded / system-on-chip)
+#
 
 #
 # PWM Drivers
