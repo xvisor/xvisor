@@ -1513,10 +1513,7 @@ int i2c_register_driver(struct module *owner, struct i2c_driver *driver)
 			driver->driver.name);
 #endif /* 0 */
 
-#if 0
 	pr_debug("i2c-core: driver [%s] registered\n", driver->driver.name);
-#endif /* 0 */
-	vmm_printf("i2c-core: driver [%s] registered\n", driver->driver.name);
 
 	INIT_LIST_HEAD(&driver->clients);
 	/* Walk the adapters that are already present */
