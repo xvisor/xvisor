@@ -1,114 +1,17 @@
-#
-# Automatically generated make config: don't edit
-# Project: Xvisor (eXtensible Versatile hypervISOR)
-# Version: 0.2.6
-# Wed Oct  7 22:05:44 2015
-#
-# CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
-CONFIG_ARCH="x86"
-# CONFIG_SMP is not set
-CONFIG_CPU_COUNT=1
 CONFIG_VAPOOL_SIZE_MB=16
-CONFIG_VAPOOL_ALIGN_MB=2
-CONFIG_HOST_IRQ_COUNT=224
-CONFIG_CPU="x86_64"
-CONFIG_CPU_LE=y
-# CONFIG_CPU_BE is not set
-CONFIG_64BIT=y
-CONFIG_BOARD="x86_64_generic"
-CONFIG_X86=y
 CONFIG_CPU_X86_64=y
-CONFIG_VEXT=y
-
-#
-# x86 Machine Features
-#
-CONFIG_ACPI=y
-
-#
-# Processor Features
-#
-
-#
-# CPU Cache Configuration
-#
-
-#
-# L1 Cache
-#
-CONFIG_X86_L1_SHIFT=6
 CONFIG_LOCAL_APIC=y
-# CONFIG_8259A is not set
 CONFIG_VEXT_AMD_SVM=y
 CONFIG_VEXT_INTEL_VTX=y
-
-#
-# Board Configuration
-#
 CONFIG_BOARD_X86_64_GENERIC=y
-CONFIG_X86_64_GENERIC=y
 CONFIG_PCI_DIRECT=y
 CONFIG_X86_LEGACY_HOST=y
-
-#
-# Hypervisor Options
-#
-
-#
-# General Configuration
-#
-CONFIG_MODULES=y
-# CONFIG_VERBOSE_MODE is not set
-CONFIG_LOG_LEVEL=6
-CONFIG_IRQ_STACK_SIZE=4096
-CONFIG_THREAD_STACK_SIZE=8192
-CONFIG_MAX_RAM_BANK_COUNT=16
-CONFIG_MAX_VCPU_COUNT=64
-CONFIG_MAX_GUEST_COUNT=16
-CONFIG_MEMMAP_HASH_SIZE=256
-CONFIG_VGPA2REG_CACHE_SIZE=8
-CONFIG_WFI_TIMEOUT_SECS=10
-# CONFIG_PROFILE is not set
-
-#
-# Heap Configuration
-#
-CONFIG_HEAP_SIZE_MB=4
-CONFIG_DMA_HEAP_SIZE_KB=512
-
-#
-# Scheduler Configuration
-#
 CONFIG_SCHEDALGO_PRR=y
-# CONFIG_SCHEDALGO_PRM is not set
-# CONFIG_TSLICE_1MS is not set
 CONFIG_TSLICE_10MS=y
-# CONFIG_TSLICE_100MS is not set
-CONFIG_TSLICE_MS=10
-CONFIG_IDLE_TSLICE_SECS=1
-CONFIG_IDLE_PERIOD_SECS=2
-
-#
-# Load Balancer Configuration
-#
-CONFIG_LOADBAL_PERIOD_SECS=5
-
-#
-# Device Support
-#
-# CONFIG_IOMMU is not set
 CONFIG_BLOCK=y
-CONFIG_BLOCKPART=y
-CONFIG_BLOCKPART_DOS=y
-# CONFIG_NET is not set
-
-#
-# Virtual IO Support
-#
 CONFIG_VSERIAL=y
 CONFIG_VDISK=y
-# CONFIG_VDISPLAY is not set
 CONFIG_VINPUT=y
 # CONFIG_VINPUT_KEYMAP_AR is not set
 # CONFIG_VINPUT_KEYMAP_BEPO is not set
@@ -117,7 +20,6 @@ CONFIG_VINPUT=y
 # CONFIG_VINPUT_KEYMAP_DE_CH is not set
 # CONFIG_VINPUT_KEYMAP_DE is not set
 # CONFIG_VINPUT_KEYMAP_EN_GB is not set
-CONFIG_VINPUT_KEYMAP_EN_US=y
 # CONFIG_VINPUT_KEYMAP_ES is not set
 # CONFIG_VINPUT_KEYMAP_ET is not set
 # CONFIG_VINPUT_KEYMAP_FI is not set
@@ -145,416 +47,45 @@ CONFIG_VINPUT_KEYMAP_EN_US=y
 # CONFIG_VINPUT_KEYMAP_SV is not set
 # CONFIG_VINPUT_KEYMAP_TH is not set
 # CONFIG_VINPUT_KEYMAP_TR is not set
-
-#
-# Command Options
-#
-
-#
-# General Commands
-#
-CONFIG_CMD_VERSION=y
-CONFIG_CMD_SLEEP=y
-CONFIG_CMD_ECHO=y
-CONFIG_CMD_RESET=y
-CONFIG_CMD_SHUTDOWN=y
-CONFIG_CMD_HOST=y
-CONFIG_CMD_DEVTREE=y
-CONFIG_CMD_VCPU=y
-CONFIG_CMD_GUEST=y
-CONFIG_CMD_MEMORY=y
-CONFIG_CMD_THREAD=y
-CONFIG_CMD_CHARDEV=y
-CONFIG_CMD_STDIO=y
-CONFIG_CMD_HEAP=y
-CONFIG_CMD_WALLCLOCK=y
-CONFIG_CMD_MODULE=y
-
-#
-# Virtual I/O Commands
-#
-CONFIG_CMD_VSERIAL=y
-CONFIG_CMD_VDISK=y
-CONFIG_CMD_VINPUT=y
-
-#
-# Device Driver Commands
-#
-CONFIG_CMD_INPUT=y
-CONFIG_CMD_FB=y
-# CONFIG_CMD_FB_LOGO is not set
-# CONFIG_CMD_FB_IMAGE is not set
-CONFIG_CMD_BLOCKDEV=y
-CONFIG_CMD_RBD=y
-
-#
-# Networking Commands
-#
-
-#
-# Filesystem Commands
-#
-CONFIG_CMD_VFS=y
-
-#
-# Daemon Options
-#
-CONFIG_MTERM=y
-CONFIG_MTERM_CMD_WIDTH=256
-CONFIG_MTERM_HISTORY=y
-CONFIG_MTERM_HISTORY_SIZE=10
-
-#
-# Library Options
-#
-
-#
-# Virtual Terminal Emulator Options
-#
 CONFIG_VTEMU=y
-CONFIG_VTEMU_FONT_8x8=y
-CONFIG_VTEMU_FONT_8x16=y
-CONFIG_VTEMU_FONT_6x11=y
-CONFIG_VTEMU_FONT_7x14=y
-CONFIG_VTEMU_FONT_10x18=y
-CONFIG_VTEMU_FONT_SUN8x16=y
-CONFIG_VTEMU_FONT_SUN12x22=y
-CONFIG_VTEMU_FONT_ACORN_8x8=y
-CONFIG_VTEMU_FONT_PEARL_8x8=y
-CONFIG_VTEMU_FONT_MINI_8x8=y
-
-#
-# Virtual FileSystem Options
-#
 CONFIG_VFS=y
-# CONFIG_VFS_CPIO is not set
 CONFIG_VFS_EXT4=y
 CONFIG_VFS_FAT=y
-# CONFIG_VFS_ISO9660 is not set
-
-#
-# Cryptographic Options
-#
 CONFIG_CRYPTO=y
-CONFIG_CRYPTO_HASHES=y
-CONFIG_CRYPTO_HASH_MD5=y
-CONFIG_CRYPTO_HASH_SHA256=y
 CONFIG_LIBAUTH=y
-CONFIG_LIBAUTH_FILE="/system/passwd"
 CONFIG_LIBAUTH_USE_MD5_PASSWD=y
-# CONFIG_LIBAUTH_USE_SHA256_PASSWD is not set
 CONFIG_LIBAUTH_DEFAULT_USER=y
-CONFIG_LIBAUTH_DEFAULT_USERNAME="admin"
-CONFIG_LIBAUTH_DEFAULT_PASSWD="EQuiN0X"
-# CONFIG_GENALLOC is not set
-# CONFIG_IMAGE_LOADER is not set
-# CONFIG_SCSI is not set
-
-#
-# Device Drivers
-#
-
-#
-# Generic Configuration
-#
-CONFIG_OF=y
-CONFIG_GENERIC_IO=y
-CONFIG_HAS_IOPORT_MAP=y
-
-#
-# Interrupt Controller Drivers
-#
-# CONFIG_ARM_VIC is not set
-# CONFIG_ARM_GIC is not set
-# CONFIG_VERSATILE_FPGA_IRQ is not set
-# CONFIG_MXC_AVIC is not set
-# CONFIG_BCM2835_INTC is not set
-# CONFIG_BCM2836_LOCAL_INTC is not set
-# CONFIG_SUN4I_VIC is not set
-# CONFIG_OMAP_INTC is not set
-
-#
-# Clocksource Drivers
-#
-# CONFIG_ARM_TIMER_SP804 is not set
-# CONFIG_ARM_TWD is not set
-# CONFIG_MXC_EPIT is not set
-# CONFIG_MXC_GPT is not set
-# CONFIG_BCM2835_TIMER is not set
-# CONFIG_OMAP_S32K is not set
-# CONFIG_OMAP2_TIMER is not set
-# CONFIG_SUN4I_TIMER is not set
-
-#
-# Serial Port Drivers
-#
 CONFIG_SERIAL=y
 CONFIG_SERIAL_8250_UART=y
-# CONFIG_SERIAL_OMAP_UART is not set
-# CONFIG_SERIAL_PL01X is not set
-# CONFIG_SERIAL_SAMSUNG is not set
-# CONFIG_SERIAL_IMX is not set
-
-#
-# RTC Drivers
-#
-# CONFIG_RTC is not set
-
-#
-# Block Drivers
-#
 CONFIG_BLOCK_RBD=y
 CONFIG_BLOCK_INITRD=y
-
-#
-# MTD drivers
-#
-# CONFIG_MTD is not set
-
-#
-# MMC/SD/SDIO drivers
-#
-# CONFIG_MMC is not set
-
-#
-# USB drivers
-#
-# CONFIG_USB is not set
-
-#
-# USB Device Drivers
-#
-
-#
-# USB Host Controller Drivers
-#
-
-#
-# PCI Bus Support
-#
 CONFIG_PCI=y
-CONFIG_PCI_GENERIC_IO=y
-
-#
-# Input Device Support
-#
 CONFIG_INPUT=y
-
-#
-# Input Device Drivers
-#
 CONFIG_INPUT_KEYBOARD=y
 CONFIG_KEYBOARD_ATKBD=y
-# CONFIG_KEYBOARD_ATKBD_HP_KEYCODES is not set
-# CONFIG_INPUT_MOUSEDEV is not set
-
-#
-# Hardware I/O ports
-#
-CONFIG_SERIO=y
-# CONFIG_SERIO_AMBAKMI is not set
-CONFIG_SERIO_LIBPS2=y
 CONFIG_SERIO_I8042=y
-
-#
-# Graphics Drivers
-#
 CONFIG_FB=y
-CONFIG_FB_CFB_FILLRECT=y
-CONFIG_FB_CFB_COPYAREA=y
-CONFIG_FB_CFB_IMAGEBLIT=y
-# CONFIG_FB_CFB_REV_PIXELS_IN_BYTE is not set
-# CONFIG_FB_SYS_FILLRECT is not set
-# CONFIG_FB_SYS_COPYAREA is not set
-# CONFIG_FB_SYS_IMAGEBLIT is not set
-# CONFIG_FB_FOREIGN_ENDIAN is not set
-# CONFIG_FB_MODE_HELPERS is not set
-# CONFIG_FB_TILEBLITTING is not set
 CONFIG_FB_VESA=y
-# CONFIG_FB_BACKLIGHT is not set
-
-#
-# Network Device Support
-#
-
-#
-# Clock Drivers
-#
-# CONFIG_CLKDEV_LOOKUP is not set
-# CONFIG_COMMON_CLK is not set
-
-#
-# Power Supply Drivers
-#
-# CONFIG_POWER_SUPPLY is not set
-
-#
-# Power-off or Reset Drivers
-#
-
-#
-# Multifunction device drivers
-#
-# CONFIG_REALVIEW_CONFIG is not set
-# CONFIG_VEXPRESS_CONFIG is not set
-
-#
-# IDE Driver
-#
 CONFIG_IDE=y
-# CONFIG_ATAPI is not set
-
-#
-# IDE Host Controllers
-#
 CONFIG_PIIX3_IDE=y
-
-#
-# GPIO Device Support
-#
-# CONFIG_GPIOLIB is not set
-
-#
-# Pin Controller
-#
-# CONFIG_PINCTRL is not set
-
-#
-# SPI drivers
-#
-# CONFIG_SPI is not set
-
-#
-# I2C support
-#
-# CONFIG_I2C is not set
-
-#
-# PWM Drivers
-#
-# CONFIG_PWM is not set
-
-#
-# Reset drivers
-#
-# CONFIG_RESET_CONTROLLER is not set
-
-#
-# Miscellaneous Drivers
-#
-# CONFIG_SRAM is not set
-
-#
-# Device Emulators
-#
-
-#
-# VirtIO Support
-#
 CONFIG_EMU_VIRTIO=y
-# CONFIG_EMU_VIRTIO_MMIO is not set
 CONFIG_EMU_VIRTIO_PCI=y
-
-#
-# System Emulators
-#
-# CONFIG_EMU_SYS is not set
-
-#
-# PIC Emulators
-#
 CONFIG_EMU_PIC=y
-# CONFIG_EMU_PIC_GIC is not set
-# CONFIG_EMU_PIC_PL190 is not set
 CONFIG_EMU_PIC_I8259=y
 CONFIG_EMU_PIC_LAPIC=y
-
-#
-# Timer Emulators
-#
 CONFIG_EMU_TIMER=y
-# CONFIG_EMU_TIMER_SP804 is not set
-# CONFIG_EMU_TIMER_ARM_MPTIMER is not set
 CONFIG_EMU_TIMER_INTEL_8254=y
 CONFIG_EMU_TIMER_HPET=y
-
-#
-# Cache Controller Emulators
-#
-# CONFIG_EMU_CACHE_L2X0 is not set
-
-#
-# Miscellaneous Emulators
-#
 CONFIG_EMU_MISC_ZERO=y
 CONFIG_EMU_MISC_PSM=y
 CONFIG_EMU_MISC_FW_CFG=y
-
-#
-# Pass-through Emulators
-#
-# CONFIG_EMU_PT_SIMPLE is not set
-
-#
-# Network Interface Controller Emulators
-#
-# CONFIG_EMU_NET is not set
-
-#
-# Block Device Emulators
-#
 CONFIG_EMU_BLOCK=y
 CONFIG_EMU_BLOCK_VIRTIO=y
-
-#
-# Display Emulators
-#
-
-#
-# Input Device Emulators
-#
 CONFIG_EMU_INPUT=y
 CONFIG_EMU_INPUT_PS2=y
-# CONFIG_EMU_INPUT_PL050 is not set
 CONFIG_EMU_INPUT_I8042=y
-
-#
-# Serial Port Emulators
-#
 CONFIG_EMU_SERIAL=y
-# CONFIG_EMU_SERIAL_PL011 is not set
 CONFIG_EMU_SERIAL_NS16550=y
-
-#
-# Console Emulators
-#
-# CONFIG_EMU_CONSOLE is not set
-
-#
-# Real-Time Clock Emulators
-#
 CONFIG_EMU_RTC=y
-# CONFIG_EMU_RTC_PL031 is not set
 CONFIG_EMU_RTC_MC146818=y
-
-#
-# GPIO Emulators
-#
-# CONFIG_EMU_GPIO is not set
-
-#
-# PCI Bus Emulators
-#
 CONFIG_EMU_PCI=y
-
-#
-# PCI Host Controller Emulators
-#
-CONFIG_EMU_I440FX=y
-# CONFIG_EMU_GPEX is not set
-
-#
-# Tool Options
-#
-# CONFIG_CPATCH is not set
-# CONFIG_BBFLASH is not set
