@@ -345,6 +345,10 @@ static int cmd_i2c_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	int index = 0;
 
+	if (argc < 2) {
+		goto fail;
+	}
+
 	while (command[index].name) {
 		if (strcmp(argv[1], command[index].name) == 0) {
 			return command[index].function(cdev, argc, argv);
@@ -352,6 +356,7 @@ static int cmd_i2c_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		index++;
 	}
 
+fail:
 	cmd_i2c_usage(cdev);
 	return VMM_EFAIL;
 }
