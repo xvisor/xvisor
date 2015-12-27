@@ -419,6 +419,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 16>;
+			status = "disabled";
 			/* Only for Xvisor */
 			clock-frequency = <24000000>;
 		};
@@ -430,6 +431,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			clocks = <&apb1_gates 17>;
+			status = "disabled";
 			/* Only for Xvisor */
 			clock-frequency = <24000000>;
 		};
@@ -445,6 +447,7 @@
 			clock-names = "ahb", "mod";
 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
 			bus-width = <4>;
+			status = "disabled";
 		};
 	};
 };

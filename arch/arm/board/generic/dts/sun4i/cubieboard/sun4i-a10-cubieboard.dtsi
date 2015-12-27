@@ -39,5 +39,9 @@
 			pinctrl-0 = <&uart0_pins_a>;
 			status = "okay";
 		};
+
+		mmc0: mmc@01c0f000 {
+			status = "okay";
+		};
 	};
 };

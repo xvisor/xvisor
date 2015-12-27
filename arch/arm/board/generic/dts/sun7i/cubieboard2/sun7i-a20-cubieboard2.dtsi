@@ -9,3 +9,11 @@
                 bootargs = "earlyprintk console=ttyS0,115200";
         };
 };
+
+&uart0 {
+	status = "okay";
+};
+
+&mmc0 {
+	status = "okay";
+};

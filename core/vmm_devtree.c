@@ -1837,19 +1837,28 @@ int vmm_devtree_clock_frequency(struct vmm_devtree_node *node,
 			VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME, clock_freq);
 }
 
-u32 vmm_devtree_is_available(struct vmm_devtree_node *node)
+bool vmm_devtree_is_available(const struct vmm_devtree_node *node)
 {
-	const char *status = NULL;
-	u32 err;
+	const char *stat;
+	u32 statlen;
 
-	err = vmm_devtree_string_index(node, "status", 0, &status);
-	if (err < 0)
-		return 1;
-
-	if (!strncmp("okay", status, err) || !strncmp("ok", status, err)) {
-		return 1;
+	if (!node) {
+		return FALSE;
 	}
-	return 0;
+
+	stat = vmm_devtree_attrval(node, "status");
+	if (stat == NULL) {
+		return TRUE;
+	}
+	statlen = vmm_devtree_attrlen(node, "status");
+
+	if (statlen > 0) {
+		if (!strcmp(stat, "okay") || !strcmp(stat, "ok")) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }
 
 int vmm_devtree_alias_get_id(struct vmm_devtree_node *node,

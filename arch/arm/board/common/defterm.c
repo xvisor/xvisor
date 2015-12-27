@@ -437,6 +437,10 @@ int __init arch_defterm_init(void)
 		return VMM_ENODEV;
 	}
 
+	if (!vmm_devtree_is_available(node)) {
+		return VMM_ENODEV;
+	}
+
 	rc = vmm_devtree_read_string(node,
 				VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
 	vmm_devtree_dref_node(node);

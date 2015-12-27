@@ -663,10 +663,10 @@ unsigned int vmm_devtree_irq_parse_map(struct vmm_devtree_node *dev,
 /** vmm_devtree_is_available - check if a device is available for use
  *  @node: Node to check for availability
  *
- *  Returns 1 if the status property is absent or set to "okay" or "ok",
- *  0 otherwise
+ *  Returns TRUE if the status property is absent or set to "okay" or "ok",
+ *  FALSE otherwise
  */
-u32 vmm_devtree_is_available(struct vmm_devtree_node *node);
+bool vmm_devtree_is_available(const struct vmm_devtree_node *node);
 
 /** vmm_devtree_alias_get_id - Get alias id for the given device_node
  * @np:         Pointer to the given device_node

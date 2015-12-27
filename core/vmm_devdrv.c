@@ -141,6 +141,10 @@ static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 		return 0;
 	}
 
+	if (!vmm_devtree_is_available(dev->node)) {
+		return 0;
+	}
+
 	if (dev->parent && (dev->node == dev->parent->node)) {
 		return 0;
 	}
