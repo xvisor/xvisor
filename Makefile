@@ -42,6 +42,9 @@ ifdef O
 else
  build_dir=$(CURDIR)/build
 endif
+ifeq ($(build_dir),$(CURDIR))
+$(error Build directory is same as source directory.)
+endif
 
 # Check if verbosity is ON for build process
 VERBOSE_DEFAULT    := 0
@@ -64,7 +67,7 @@ endif
 # Name & Version
 export PROJECT_NAME = Xvisor (eXtensible Versatile hypervISOR)
 export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
-export CONFIG_DIR=$(build_dir)/tmpconf
+export CONFIG_DIR=$(build_dir)/openconf
 export CONFIG_FILE=$(CONFIG_DIR)/.config
 
 # Openconf settings
@@ -399,6 +402,7 @@ all-deps-2 = $(if $(findstring clean,$(MAKECMDGOALS)),,$(all-deps-1))
 .PHONY: clean
 clean:
 ifeq ($(build_dir),$(CURDIR)/build)
+	$(V)mkdir -p $(build_dir)
 	$(if $(V), @echo " (clean)     $(build_dir)")
 	$(V)find $(build_dir) -type d ! -name '$(shell basename $(CONFIG_DIR))' -a \
 	! -name '$(shell basename $(build_dir))' -exec rm -rf {} +
