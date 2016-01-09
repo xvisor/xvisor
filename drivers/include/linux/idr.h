@@ -15,6 +15,10 @@ static inline int idr_alloc(struct radix_tree_root *radix, void *ptr,
 	/* We do not support other allocation than "GFP_KERNEL" */
 	BUG_ON(GFP_KERNEL != gfp_mask);
 
+	/* sanity checks */
+	if (start < 0)
+		return VMM_EINVALID;
+
 	if (end <= 0) {
 		end = INT_MAX;
 	} else {
@@ -22,7 +26,7 @@ static inline int idr_alloc(struct radix_tree_root *radix, void *ptr,
 	}
 
 	id = radix_tree_next_hole(radix, start, end);
-	if ((id - start >= 1) || (id > INT_MAX)) {
+	if (id > (end - 1)) {
 		return VMM_ENOSPC;
 	}
 	if (0 != radix_tree_insert(radix, id, ptr)) {
