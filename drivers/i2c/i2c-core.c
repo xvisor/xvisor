@@ -1297,6 +1297,10 @@ int i2c_add_adapter(struct i2c_adapter *adapter)
 	mutex_lock(&core_lock);
 	id = idr_alloc(&i2c_adapter_idr, adapter,
 		       __i2c_first_dynamic_bus_num, 0, GFP_KERNEL);
+#if 1
+	if (id >= 0)
+		__i2c_first_dynamic_bus_num++;
+#endif
 	mutex_unlock(&core_lock);
 	if (id < 0)
 		return id;
@@ -1611,6 +1615,15 @@ EXPORT_SYMBOL(i2c_clients_command);
 static int __init i2c_init(void)
 {
 	int retval;
+
+#if 0
+	retval = of_alias_get_highest_id("i2c");
+
+	down_write(&__i2c_board_lock);
+	if (retval >= __i2c_first_dynamic_bus_num)
+		__i2c_first_dynamic_bus_num = retval + 1;
+	up_write(&__i2c_board_lock);
+#endif
 
 	retval = bus_register(&i2c_bus_type);
 	if (retval)
