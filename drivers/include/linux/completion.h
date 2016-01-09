@@ -17,6 +17,8 @@
 
 #define init_completion(cmpl)			INIT_COMPLETION(cmpl)
 
+#define reinit_completion(cmpl)			REINIT_COMPLETION(cmpl)
+
 static inline void complete(struct completion *x)
 {
 	vmm_completion_complete(x);
