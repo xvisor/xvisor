@@ -2,5 +2,21 @@
 /include/ "bcm2836.dtsi"
 
 / {
+	compatible = "raspberrypi2,model-b", "brcm,bcm2836";
 	model = "Raspberry Pi2 Model B";
+};
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <100000>;
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <100000>;
+};
+
+&sdhci {
+	status = "okay";
+	bus-width = <4>;
 };
