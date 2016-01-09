@@ -96,6 +96,9 @@ static inline int of_modalias_node(struct device_node *node,
 
 #define of_alias_get_id		vmm_devtree_alias_get_id
 
+/* TODO: Eventually we will have of_alias_get_highest_id() */
+#define of_alias_get_highest_id(str)	(-1)
+
 #define of_count_phandle_with_args \
 				vmm_devtree_count_phandle_with_args
 #define	of_parse_phandle \
