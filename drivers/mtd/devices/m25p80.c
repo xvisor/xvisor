@@ -1017,7 +1017,7 @@ static int m25p_probe(struct spi_device *spi)
 	struct mtd_part_parser_data	ppdata;
 
 	id = spi_get_device_id(spi);
-	compat = vmm_devtree_attrval(spi->dev.node,
+	compat = vmm_devtree_attrval(spi->dev.of_node,
 				     VMM_DEVTREE_COMPATIBLE_ATTR_NAME);
 
 	/* Platform data helps sort out which chip type we have, as
@@ -1128,12 +1128,12 @@ static int m25p_probe(struct spi_device *spi)
 	if (info->flags & M25P_NO_ERASE)
 		flash->mtd.flags |= MTD_NO_ERASE;
 
-	ppdata.of_node = spi->dev.node;
+	ppdata.of_node = spi->dev.of_node;
 	flash->mtd.dev.parent = &spi->dev;
 	flash->page_size = info->page_size;
 	flash->mtd.writebufsize = flash->page_size;
 
-	if (VMM_OK == vmm_devtree_read_u32_atindex(spi->dev.node,
+	if (VMM_OK == vmm_devtree_read_u32_atindex(spi->dev.of_node,
 						   "m25p,fast-read", &val, 0))
 		/* If we were instantiated by DT, use it */
 		flash->fast_read = val;

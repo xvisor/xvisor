@@ -56,9 +56,9 @@ static int cmd_fb_list_iter(struct fb_info *info, void *data)
 	char path[256];
 	struct vmm_chardev *cdev = data;
 
-	if (info->dev.parent && info->dev.parent->node) {
+	if (info->dev.parent && info->dev.parent->of_node) {
 		rc = vmm_devtree_getpath(path, sizeof(path),
-					 info->dev.parent->node);
+					 info->dev.parent->of_node);
 		if (rc) {
 			vmm_snprintf(path, sizeof(path),
 				     "----- (error %d)", rc);

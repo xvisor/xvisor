@@ -1503,11 +1503,7 @@ static struct gpio_desc *of_find_gpio(struct device *dev, const char *con_id,
 		else
 			snprintf(prop_name, 32, "%s", suffixes[i]);
 
-#if 0
 		desc = of_get_named_gpiod_flags(dev->of_node, prop_name, idx,
-#else
-		desc = of_get_named_gpiod_flags(dev->node, prop_name, idx,
-#endif
 						&of_flags);
 		if (!IS_ERR(desc) || (PTR_ERR(desc) == -EPROBE_DEFER))
 			break;
@@ -1678,11 +1674,7 @@ struct gpio_desc *__must_check __gpiod_get_index(struct device *dev,
 	dev_dbg(dev, "GPIO lookup for consumer %s\n", con_id);
 
 	/* Using device tree? */
-#if 0
 	if (IS_ENABLED(CONFIG_OF) && dev && dev->of_node) {
-#else
-	if (IS_ENABLED(CONFIG_OF) && dev && dev->node) {
-#endif
 		dev_dbg(dev, "using device tree for GPIO lookup\n");
 		desc = of_find_gpio(dev, con_id, idx, &lookupflags);
 	} else if (IS_ENABLED(CONFIG_ACPI) && dev && ACPI_HANDLE(dev)) {

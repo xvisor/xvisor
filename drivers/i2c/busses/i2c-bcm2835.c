@@ -232,7 +232,7 @@ static int bcm2835_i2c_probe(struct vmm_device *dev,
 	i2c_dev->dev = dev;
 	init_completion(&i2c_dev->completion);
 
-	ret = vmm_devtree_request_regmap(dev->node, &mem, 0,
+	ret = vmm_devtree_request_regmap(dev->of_node, &mem, 0,
 					"BCM2835 I2C");
 	if (ret) {
 		return ret;
@@ -242,12 +242,12 @@ static int bcm2835_i2c_probe(struct vmm_device *dev,
 	i2c_dev->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(i2c_dev->clk)) {
 		dev_err(dev, "Could not get clock\n");
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)i2c_dev->regs, 0);
 		return PTR_ERR(i2c_dev->clk);
 	}
 
-	ret = of_property_read_u32(dev->node, "clock-frequency",
+	ret = of_property_read_u32(dev->of_node, "clock-frequency",
 				   &bus_clk_rate);
 	if (ret < 0) {
 		dev_warn(dev,
@@ -265,10 +265,10 @@ static int bcm2835_i2c_probe(struct vmm_device *dev,
 		divider++;
 	bcm2835_i2c_writel(i2c_dev, BCM2835_I2C_DIV, divider);
 
-	i2c_dev->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	i2c_dev->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!i2c_dev->irq) {
 		dev_err(dev, "No IRQ resource\n");
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)i2c_dev->regs, 0);
 		return -ENODEV;
 	}
@@ -277,7 +277,7 @@ static int bcm2835_i2c_probe(struct vmm_device *dev,
 			  dev_name(dev), i2c_dev);
 	if (ret) {
 		dev_err(dev, "Could not request IRQ\n");
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)i2c_dev->regs, 0);
 		return -ENODEV;
 	}
@@ -289,14 +289,14 @@ static int bcm2835_i2c_probe(struct vmm_device *dev,
 	strlcpy(adap->name, "bcm2835 I2C adapter", sizeof(adap->name));
 	adap->algo = &bcm2835_i2c_algo;
 	adap->dev.parent = dev;
-	adap->dev.node = dev->node;
+	adap->dev.of_node = dev->of_node;
 
 	bcm2835_i2c_writel(i2c_dev, BCM2835_I2C_C, 0);
 
 	ret = i2c_add_adapter(adap);
 	if (ret) {
 		free_irq(i2c_dev->irq, i2c_dev);
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)i2c_dev->regs, 0);
 	}
 
@@ -308,7 +308,7 @@ static int bcm2835_i2c_remove(struct vmm_device *dev)
 	struct bcm2835_i2c_dev *i2c_dev = vmm_devdrv_get_data(dev);
 
 	free_irq(i2c_dev->irq, i2c_dev);
-	vmm_devtree_regunmap_release(dev->node,
+	vmm_devtree_regunmap_release(dev->of_node,
 				(virtual_addr_t)i2c_dev->regs, 0);
 	i2c_del_adapter(&i2c_dev->adapter);
 

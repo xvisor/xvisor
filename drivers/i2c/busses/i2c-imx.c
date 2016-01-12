@@ -650,18 +650,18 @@ static int i2c_imx_probe(struct vmm_device *dev,
 	unsigned int irq = 0;
 	int ret = VMM_OK;
 
-	if (!vmm_devtree_is_available(dev->node)) {
+	if (!vmm_devtree_is_available(dev->of_node)) {
 		dev_info(dev, "device is disabled\n");
 		return -ENODEV;
 	}
 
-	irq = irq_of_parse_and_map(dev->node, 0);
+	irq = irq_of_parse_and_map(dev->of_node, 0);
 	if (!irq) {
 		dev_err(dev, "can't get irq number\n");
 		return -ENODEV;
 	}
 
-	ret = vmm_devtree_request_regmap(dev->node, &base, 0, "i.MX I2C");
+	ret = vmm_devtree_request_regmap(dev->of_node, &base, 0, "i.MX I2C");
 	if (VMM_OK != ret) {
 		dev_err(dev, "can't get mapping\n");
 		return ret;
@@ -683,8 +683,8 @@ static int i2c_imx_probe(struct vmm_device *dev,
 	device_initialize(&i2c_imx->adapter.dev);
 	i2c_imx->adapter.algo		= &i2c_imx_algo;
 	i2c_imx->adapter.dev.parent	= dev;
-	i2c_imx->adapter.nr		= vmm_devtree_alias_get_id(dev->node, "i2c");
-	i2c_imx->adapter.dev.node	= dev->node;
+	i2c_imx->adapter.nr		= vmm_devtree_alias_get_id(dev->of_node, "i2c");
+	i2c_imx->adapter.dev.of_node	= dev->of_node;
 	i2c_imx->base			= (void __iomem *)base;
 
 	/* Get I2C clock */
@@ -714,7 +714,7 @@ static int i2c_imx_probe(struct vmm_device *dev,
 	i2c_set_adapdata(&i2c_imx->adapter, i2c_imx);
 
 	/* Set up clock divider */
-	ret = of_property_read_u32(dev->node,
+	ret = of_property_read_u32(dev->of_node,
 				   "clock-frequency", &i2c_imx->bitrate);
 	if (ret < 0) {
 		i2c_imx->bitrate = IMX_I2C_BIT_RATE;
@@ -755,7 +755,7 @@ err_clk_enable:
 err_pa:
 	devm_kfree(dev, i2c_imx);
 err_alloc:
-	vmm_devtree_regunmap(dev->node, base, 0);
+	vmm_devtree_regunmap(dev->of_node, base, 0);
 	return ret;
 }
 

@@ -186,7 +186,7 @@ of_pwm_simple_xlate(struct pwm_chip *pc, const struct of_phandle_args *args)
 
 static void of_pwmchip_add(struct pwm_chip *chip)
 {
-	if (!chip->dev || !chip->dev->node)
+	if (!chip->dev || !chip->dev->of_node)
 		return;
 
 	if (!chip->of_xlate) {
@@ -194,13 +194,13 @@ static void of_pwmchip_add(struct pwm_chip *chip)
 		chip->of_pwm_n_cells = 2;
 	}
 
-	of_node_get(chip->dev->node);
+	of_node_get(chip->dev->of_node);
 }
 
 static void of_pwmchip_remove(struct pwm_chip *chip)
 {
-	if (chip->dev && chip->dev->node)
-		of_node_put(chip->dev->node);
+	if (chip->dev && chip->dev->of_node)
+		of_node_put(chip->dev->of_node);
 }
 
 /**
@@ -493,7 +493,7 @@ static struct pwm_chip *of_node_to_pwmchip(struct device_node *np)
 	mutex_lock(&pwm_lock);
 
 	list_for_each_entry(chip, &pwm_chips, list)
-		if (chip->dev && chip->dev->node == np) {
+		if (chip->dev && chip->dev->of_node == np) {
 			mutex_unlock(&pwm_lock);
 			return chip;
 		}
@@ -618,8 +618,8 @@ struct pwm_device *pwm_get(struct device *dev, const char *con_id)
 	unsigned int match;
 
 	/* look up via DT first */
-	if (IS_ENABLED(CONFIG_OF) && dev && dev->node)
-		return of_pwm_get(dev->node, con_id);
+	if (IS_ENABLED(CONFIG_OF) && dev && dev->of_node)
+		return of_pwm_get(dev->of_node, con_id);
 
 	/*
 	 * We look up the provider in the static table typically provided by

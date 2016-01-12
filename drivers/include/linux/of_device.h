@@ -9,10 +9,10 @@ static inline int of_driver_match_device(struct device *dev,
 {
 	const struct vmm_devtree_nodeid *match;
 
-	if (!dev || !dev->node || !drv || !drv->match_table)
+	if (!dev || !dev->of_node || !drv || !drv->match_table)
 		return 0;
 
-	match = vmm_devtree_match_node(drv->match_table, dev->node);
+	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
 
 	return (match) ? 1 : 0;
 }

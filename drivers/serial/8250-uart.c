@@ -223,7 +223,7 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	if (vmm_devtree_read_string(dev->node,
+	if (vmm_devtree_read_string(dev->of_node,
 				    VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME,
 				    &aval)) {
 		aval = NULL;
@@ -235,35 +235,35 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 	}
 
 	if (port->use_ioport) {
-		rc = vmm_devtree_regaddr(dev->node, &ioport, 0);
+		rc = vmm_devtree_regaddr(dev->of_node, &ioport, 0);
 		if (rc) {
 			goto free_port;
 		}
 		port->base = ioport;
 	} else {
-		rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
+		rc = vmm_devtree_request_regmap(dev->of_node, &port->base, 0,
 						"UART 8250");
 		if (rc) {
 			goto free_port;
 		}
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg-shift",
+	if (vmm_devtree_read_u32(dev->of_node, "reg-shift",
 				 &port->reg_shift)) {
 		port->reg_shift = 0;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg-io-width",
+	if (vmm_devtree_read_u32(dev->of_node, "reg-io-width",
 				 &port->reg_width)) {
 		port->reg_width = 1;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "baudrate",
+	if (vmm_devtree_read_u32(dev->of_node, "baudrate",
 				 &port->baudrate)) {
 		port->baudrate = 115200;
 	}
 
-	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
+	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
 		goto free_reg;
 	}
@@ -275,7 +275,7 @@ static int uart_8250_driver_probe(struct vmm_device *dev,
 	uart_8250_lowlevel_init(port);
 
 	/* Setup interrupt handler */
-	port->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!port->irq) {
 		rc = VMM_ENODEV;
 		goto free_reg;
@@ -305,7 +305,7 @@ free_irq:
 	vmm_host_irq_unregister(port->irq, port);
 free_reg:
 	if (!port->use_ioport) {
-		vmm_devtree_regunmap_release(dev->node, port->base, 0);
+		vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
 	}
 free_port:
 	vmm_free(port);
@@ -329,7 +329,7 @@ static int uart_8250_driver_remove(struct vmm_device *dev)
 	serial_destroy(port->p);
 	vmm_host_irq_unregister(port->irq, port);
 	if (!port->use_ioport) {
-		vmm_devtree_regunmap_release(dev->node, port->base, 0);
+		vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
 	}
 	vmm_free(port);
 	dev->priv = NULL;

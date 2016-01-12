@@ -214,7 +214,7 @@ static int realview_sysreg_probe(struct vmm_device *dev,
 	virtual_addr_t base_va;
 
 	if (!realview_sysreg_base) {
-		err = vmm_devtree_request_regmap(dev->node, &base_va, 0,
+		err = vmm_devtree_request_regmap(dev->of_node, &base_va, 0,
 						 "Realview Sysreg");
 		if (err) {
 			return err;

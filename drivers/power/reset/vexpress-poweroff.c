@@ -76,7 +76,7 @@ static int __init vexpress_poweroff_driver_probe(struct vmm_device *dev,
 	func = (enum vexpress_reset_func)devid->data;
 	switch (func) {
 	case FUNC_SHUTDOWN:
-		shutdown_func = vexpress_config_func_get_by_node(dev->node);
+		shutdown_func = vexpress_config_func_get_by_node(dev->of_node);
 		if (!shutdown_func) {
 			return VMM_ENODEV;
 		}
@@ -84,7 +84,7 @@ static int __init vexpress_poweroff_driver_probe(struct vmm_device *dev,
 		break;
 	case FUNC_RESET:
 	case FUNC_REBOOT:
-		reboot_func = vexpress_config_func_get_by_node(dev->node);
+		reboot_func = vexpress_config_func_get_by_node(dev->of_node);
 		if (!reboot_func) {
 			return VMM_ENODEV;
 		}

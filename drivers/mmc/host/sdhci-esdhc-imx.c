@@ -916,7 +916,7 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 	u32 err = VMM_OK;
 	struct pltfm_imx_data *imx_data;
 
-	if (!vmm_devtree_is_available(dev->node)) {
+	if (!vmm_devtree_is_available(dev->of_node)) {
 		vmm_linfo("%s: device is disabled\n", dev->name);
 		return err;
 	}
@@ -929,13 +929,14 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 	}
 
 	imx_data = sdhci_priv(host);
-	err = vmm_devtree_regmap(dev->node, (virtual_addr_t *)&host->ioaddr, 0);
+	err = vmm_devtree_regmap(dev->of_node,
+				(virtual_addr_t *)&host->ioaddr, 0);
 	if (err) {
 		dev_err(dev, "fail to map registers from the device tree\n");
 		goto free_sdhci;
 	}
 
-	host->irq = irq_of_parse_and_map(dev->node, 0);
+	host->irq = irq_of_parse_and_map(dev->of_node, 0);
 	if (!host->irq) {
 		err = VMM_ENODEV;
 		dev_err(dev, "fail to get IRQ from the device tree\n");
@@ -1019,7 +1020,7 @@ static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
 	}
 
 	boarddata = &imx_data->boarddata;
-	if (sdhci_esdhc_imx_probe_dt(dev->node, boarddata) < 0) {
+	if (sdhci_esdhc_imx_probe_dt(dev->of_node, boarddata) < 0) {
 		err = -EINVAL;
 		goto disable_clk;
 	}
@@ -1107,7 +1108,7 @@ disable_clk:
 	clk_disable_unprepare(imx_data->clk_ipg);
 	clk_disable_unprepare(imx_data->clk_ahb);
 free_reg:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->ioaddr, 0);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->ioaddr, 0);
 free_sdhci:
 	sdhci_free_host(host);
 free_nothing:
@@ -1126,7 +1127,7 @@ static int sdhci_esdhc_imx_remove(struct vmm_device *dev)
 	clk_disable_unprepare(imx_data->clk_ipg);
 	clk_disable_unprepare(imx_data->clk_ahb);
 
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->ioaddr, 0);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->ioaddr, 0);
 	sdhci_free_host(host);
 
 	return 0;

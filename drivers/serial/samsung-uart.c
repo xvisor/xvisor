@@ -182,7 +182,7 @@ static int samsung_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
+	rc = vmm_devtree_request_regmap(dev->of_node, &port->base, 0,
 					"Samsung UART");
 	if (rc) {
 		goto free_port;
@@ -193,18 +193,18 @@ static int samsung_driver_probe(struct vmm_device *dev,
 	port->mask = ~port->mask;
 	vmm_out_le16((void *)(port->base + S3C64XX_UINTM), port->mask);
 
-	if (vmm_devtree_read_u32(dev->node, "baudrate",
+	if (vmm_devtree_read_u32(dev->of_node, "baudrate",
 				 &port->baudrate)) {
 		port->baudrate = 115200;
 	}
 
-	rc = vmm_devtree_clock_frequency(dev->node, &port->input_clock);
+	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
 		goto free_reg;
 	}
 
 	/* Setup interrupt handler */
-	port->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!port->irq) {
 		rc = VMM_ENODEV;
 		goto free_reg;
@@ -237,7 +237,7 @@ static int samsung_driver_probe(struct vmm_device *dev,
  free_irq:
 	vmm_host_irq_unregister(port->irq, port);
  free_reg:
-	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
  free_port:
 	vmm_free(port);
  free_nothing:
@@ -254,7 +254,7 @@ static int samsung_driver_remove(struct vmm_device *dev)
 
 	serial_destroy(port->p);
 	vmm_host_irq_unregister(port->irq, port);
-	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
 	vmm_free(port);
 	dev->priv = NULL;
 

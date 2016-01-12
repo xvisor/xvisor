@@ -73,7 +73,7 @@ static int __init sun4i_reboot_driver_probe(struct vmm_device *dev,
 	int rc;
 
 	/* Map timer registers */
-	rc = vmm_devtree_regmap(dev->node, &aw_base, 0);
+	rc = vmm_devtree_regmap(dev->of_node, &aw_base, 0);
 	if (rc) {
 		return rc;
 	}
@@ -89,7 +89,7 @@ static int __exit sun4i_reboot_driver_remove(struct vmm_device *dev)
 	int rc;
 
 	/* Unmap registers */
-	rc = vmm_devtree_regunmap(dev->node, aw_base, 0);
+	rc = vmm_devtree_regunmap(dev->of_node, aw_base, 0);
 	if (rc) {
 		return rc;
 	}

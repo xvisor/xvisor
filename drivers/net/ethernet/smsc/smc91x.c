@@ -2458,7 +2458,7 @@ module_exit(smc_cleanup);
 static int __devinit smc_drv_probe(struct vmm_device *pdev,
                                 const struct vmm_devtree_nodeid *devid)
 {
-	struct smc91x_platdata *pd = pdev->node->system_data;
+	struct smc91x_platdata *pd = pdev->of_node->system_data;
 	struct smc_local *lp;
 	struct net_device *ndev;
 	//struct resource *res, *ires;
@@ -2526,7 +2526,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 	}
 #endif
 
-	ndev->irq = irq_of_parse_and_map(pdev->node, 0);
+	ndev->irq = irq_of_parse_and_map(pdev->of_node, 0);
 	if (!ndev->irq) {
 		ret = -ENODEV;
 		goto out_release_io;
@@ -2555,7 +2555,7 @@ static int __devinit smc_drv_probe(struct vmm_device *pdev,
 		goto out_release_attrib;
 	}
 #endif
-	ret = vmm_devtree_request_regmap(pdev->node, &reg_addr, 0, "SMC91x");
+	ret = vmm_devtree_request_regmap(pdev->of_node, &reg_addr, 0, "SMC91x");
 	if (ret) {
 		vmm_printf("Failed to ioreamp\n");
 		goto out_release_attrib;

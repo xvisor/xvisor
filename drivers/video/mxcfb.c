@@ -2000,9 +2000,9 @@ static int mxcfb_option_setup(struct vmm_device *dev, struct fb_info *fbi)
 	const char *of_options;
 	uint32_t fb_pix_fmt = 0;
 
-	if (VMM_OK != vmm_devtree_read_string(dev->node, "options", &of_options)) {
+	if (VMM_OK != vmm_devtree_read_string(dev->of_node, "options", &of_options)) {
 		dev_err(dev, "Can't get fb option for %s!\n",
-			dev->node->name);
+			dev->of_node->name);
 		return VMM_ENODEV;
 	}
 
@@ -2310,7 +2310,7 @@ static void ipu_clear_usage(int ipu, int di)
 static int mxcfb_get_of_property(struct vmm_device *dev,
 				struct ipuv3_fb_platform_data *plat_data)
 {
-	struct vmm_devtree_node *np = dev->node;
+	struct vmm_devtree_node *np = dev->of_node;
 	const char *disp_dev;
 	const char *mode_str;
 	const char *pixfmt;
@@ -2407,7 +2407,7 @@ static int mxcfb_probe(struct vmm_device *dev,
 
 	dev_dbg(dev, "%s enter\n", __func__);
 #if 0
-	pdev->id = of_alias_get_id(dev->node, "mxcfb");
+	pdev->id = of_alias_get_id(dev->of_node, "mxcfb");
 	if (pdev->id < 0) {
 		dev_err(&pdev->dev, "can not get alias id\n");
 		return pdev->id;
@@ -2464,9 +2464,9 @@ static int mxcfb_probe(struct vmm_device *dev,
 		}
 	}
 
-	if (VMM_OK != vmm_devtree_regsize(dev->node, &size, 0))
+	if (VMM_OK != vmm_devtree_regsize(dev->of_node, &size, 0))
 		size = 0;
-	if (VMM_OK != vmm_devtree_regaddr(dev->node, &start, 0))
+	if (VMM_OK != vmm_devtree_regaddr(dev->of_node, &start, 0))
 		start = 0;
 	if (start && size) {
 		fbi->fix.smem_len = size;
@@ -2505,9 +2505,9 @@ static int mxcfb_probe(struct vmm_device *dev,
 					  true, 0x80);
 		ipu_disp_set_color_key(mxcfbi->ipu, mxcfbi->ipu_ch, false, 0);
 
-		if (VMM_OK != vmm_devtree_regsize(dev->node, &size, 1))
+		if (VMM_OK != vmm_devtree_regsize(dev->of_node, &size, 1))
 			size = 0;
-		if (VMM_OK != vmm_devtree_regaddr(dev->node, &start, 1))
+		if (VMM_OK != vmm_devtree_regaddr(dev->of_node, &start, 1))
 			start = 0;
 		ret = mxcfb_setup_overlay(dev, fbi, start, size);
 

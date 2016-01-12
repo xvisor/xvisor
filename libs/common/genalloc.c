@@ -605,7 +605,7 @@ struct gen_pool *of_get_named_gen_pool(struct vmm_devtree_node *np,
 	}
 
 	list_for_each_entry(dev, &platform_bus->device_list, bus_head) {
-		if (dev->node == np_pool) {
+		if (dev->of_node == np_pool) {
 			found = 1;
 			break;
 		}
@@ -618,3 +618,62 @@ struct gen_pool *of_get_named_gen_pool(struct vmm_devtree_node *np,
 
 	return dev_get_gen_pool(dev);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

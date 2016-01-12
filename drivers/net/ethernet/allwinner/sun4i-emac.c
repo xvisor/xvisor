@@ -835,7 +835,7 @@ static const struct net_device_ops emac_netdev_ops = {
 static int emac_probe(struct vmm_device *pdev,
 			const struct vmm_devtree_nodeid *devid)
 {
-	struct device_node *np = pdev->node;
+	struct device_node *np = pdev->of_node;
 	struct emac_board_info *db;
 	struct net_device *ndev;
 	int ret = 0;

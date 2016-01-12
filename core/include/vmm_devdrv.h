@@ -91,7 +91,7 @@ struct vmm_device {
 	bool autoprobe_disabled;
 	struct vmm_bus *bus;
 	struct vmm_device_type *type;
-	struct vmm_devtree_node *node;
+	struct vmm_devtree_node *of_node;
 	struct vmm_device *parent;
 	struct vmm_class *class;
 	struct vmm_driver *driver;

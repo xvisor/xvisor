@@ -558,7 +558,7 @@ EXPORT_SYMBOL(devm_backlight_device_unregister);
 
 static int of_parent_match(struct device *dev, void *data)
 {
-	return dev->parent && dev->parent->node == data;
+	return dev->parent && dev->parent->of_node == data;
 }
 
 /**

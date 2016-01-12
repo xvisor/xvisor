@@ -167,9 +167,9 @@ unsigned __vexpress_get_site(struct vmm_device *dev,
 {
 	u32 site = 0;
 
-	WARN_ON(dev && node && dev->node != node);
+	WARN_ON(dev && node && dev->of_node != node);
 	if (dev && !node)
-		node = dev->node;
+		node = dev->of_node;
 
 	if (node) {
 		vexpress_sysreg_find_prop(node, "arm,vexpress,site", &site);
@@ -204,7 +204,7 @@ static void *vexpress_sysreg_config_func_get(struct vmm_device *dev,
 	int err = VMM_EFAULT;
 
 	if (dev && !node)
-		node = dev->node;
+		node = dev->of_node;
 
 	if (node) {
 		vexpress_sysreg_find_prop(node, "arm,vexpress,site", &site);
@@ -491,13 +491,13 @@ static int vexpress_sysreg_probe(struct vmm_device *dev,
 	virtual_addr_t base_va;
 
 	if (!vexpress_sysreg_base) {
-		err = vmm_devtree_request_regmap(dev->node, &base_va, 0,
+		err = vmm_devtree_request_regmap(dev->of_node, &base_va, 0,
 						 "VExpress Sysreg");
 		if (err) {
 			return err;
 		}		
 		vexpress_sysreg_base = (void *)base_va;
-		vexpress_sysreg_setup(dev->node);
+		vexpress_sysreg_setup(dev->of_node);
 	}
 
 	if (!vexpress_sysreg_base) {

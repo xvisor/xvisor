@@ -50,7 +50,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 		for (i=0; i<PHY_MAX_ADDR; i++)
 			mdio->irq[i] = PHY_POLL;
 
-	mdio->dev.node = np;
+	mdio->dev.of_node = np;
 
 	/* Register the MDIO bus */
 	rc = mdiobus_register(mdio);
@@ -95,7 +95,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 		/* Associate the OF node with the device structure so it
 		 * can be looked up later */
 		of_node_get(child);
-		phy->dev.node = child;
+		phy->dev.of_node = child;
 
 		/* All data is now stored in the phy struct; register it */
 		rc = phy_device_register(phy);
@@ -145,7 +145,7 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
 			/* Associate the OF node with the device structure so it
 			 * can be looked up later */
 			of_node_get(child);
-			phy->dev.node = child;
+			phy->dev.of_node = child;
 
 			/* All data is now stored in the phy struct;
 			 * register it */
@@ -169,7 +169,7 @@ EXPORT_SYMBOL(of_mdiobus_register);
 /* Helper function for of_phy_find_device */
 static int of_phy_match(struct device *dev, void *phy_np)
 {
-	return dev->node == phy_np;
+	return dev->of_node == phy_np;
 }
 
 /**
@@ -232,7 +232,7 @@ struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
 	const __be32 *phy_id;
 	int sz;
 
-	net_np = dev->dev->node;
+	net_np = dev->dev->of_node;
 	if (!net_np)
 		return NULL;
 

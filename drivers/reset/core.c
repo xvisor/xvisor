@@ -216,11 +216,7 @@ struct reset_control *reset_control_get(struct device *dev, const char *id)
 	if (!dev)
 		return ERR_PTR(-EINVAL);
 
-#if 0
 	rstc = of_reset_control_get(dev->of_node, id);
-#else
-	rstc = of_reset_control_get(dev->node, id);
-#endif
 	if (!IS_ERR(rstc))
 		rstc->dev = dev;
 

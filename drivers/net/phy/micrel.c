@@ -157,21 +157,12 @@ static int kszphy_setup_led(struct phy_device *phydev,
 {
 
 	struct device *dev = &phydev->dev;
-#if 0
 	struct device_node *of_node = dev->of_node;
-#else
-	struct device_node *of_node = dev->node;
-#endif /* 0 */
 	int rc, temp;
 	u32 val;
 
-#if 0
 	if (!of_node && dev->parent->of_node)
 		of_node = dev->parent->of_node;
-#else
-	if (!of_node && dev->parent->node)
-		of_node = dev->parent->node;
-#endif /* 0 */
 
 	if (of_property_read_u32(of_node, "micrel,led-mode", &val))
 		return 0;
@@ -283,17 +274,10 @@ static int ksz9021_load_values_from_of(struct phy_device *phydev,
 static int ksz9021_config_init(struct phy_device *phydev)
 {
 	struct device *dev = &phydev->dev;
-#if 0
 	struct device_node *of_node = dev->of_node;
 
 	if (!of_node && dev->parent->of_node)
 		of_node = dev->parent->of_node;
-#else
-	struct device_node *of_node = dev->node;
-
-	if (!of_node && dev->parent->node)
-		of_node = dev->parent->node;
-#endif /* 0 */
 
 	if (of_node) {
 		ksz9021_load_values_from_of(phydev, of_node,
@@ -386,11 +370,7 @@ static int ksz9031_of_load_skew_values(struct phy_device *phydev,
 static int ksz9031_config_init(struct phy_device *phydev)
 {
 	struct device *dev = &phydev->dev;
-#if 0
 	struct device_node *of_node = dev->of_node;
-#else
-	struct device_node *of_node = dev->node;
-#endif /* 0 */
 	char *clk_skews[2] = {"rxc-skew-ps", "txc-skew-ps"};
 	char *rx_data_skews[4] = {
 		"rxd0-skew-ps", "rxd1-skew-ps",
@@ -402,13 +382,8 @@ static int ksz9031_config_init(struct phy_device *phydev)
 	};
 	char *control_skews[2] = {"txen-skew-ps", "rxdv-skew-ps"};
 
-#if 0
 	if (!of_node && dev->parent->of_node)
 		of_node = dev->parent->of_node;
-#else
-	if (!of_node && dev->parent->node)
-		of_node = dev->parent->node;
-#endif /* 0 */
 
 	if (of_node) {
 		ksz9031_of_load_skew_values(phydev, of_node,

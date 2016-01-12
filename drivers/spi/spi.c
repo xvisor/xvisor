@@ -881,10 +881,10 @@ static void of_register_spi_devices(struct spi_master *master)
 	int rc;
 	u32 value;
 
-	if (!master->dev.node)
+	if (!master->dev.of_node)
 		return;
 
-	for_each_available_child_of_node(master->dev.node, nc) {
+	for_each_available_child_of_node(master->dev.of_node, nc) {
 		/* Alloc an spi_device */
 		spi = spi_alloc_device(master);
 		if (!spi) {
@@ -988,7 +988,7 @@ static void of_register_spi_devices(struct spi_master *master)
 
 		/* Store a pointer to the node in the device structure */
 		of_node_get(nc);
-		spi->dev.node = nc;
+		spi->dev.of_node = nc;
 
 		/* Register the new device */
 #if 0 /* FIXME: */
@@ -1169,7 +1169,7 @@ EXPORT_SYMBOL_GPL(spi_alloc_master);
 static int of_spi_register_master(struct spi_master *master)
 {
 	int nb, i, *cs;
-	struct device_node *np = master->dev.node;
+	struct device_node *np = master->dev.of_node;
 
 	if (!np)
 		return 0;

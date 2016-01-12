@@ -2059,7 +2059,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	lp = netdev_priv(ndev);
 	lp->netdev = ndev;
 
-	rc = vmm_devtree_request_regmap(dev->node, &addr, 0, "SMC911x");
+	rc = vmm_devtree_request_regmap(dev->of_node, &addr, 0, "SMC911x");
 	if (rc) {
 		vmm_printf("Failed to ioreamp\n");
 		goto free_ndev;
@@ -2069,7 +2069,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 									addr);
 	lp->base = (void *) addr;
 
-	ndev->irq = irq_of_parse_and_map(dev->node, 0);
+	ndev->irq = irq_of_parse_and_map(dev->of_node, 0);
 	if (!ndev->irq) {
 		rc = VMM_EFAIL;
 		goto free_ioreamp_mem;
@@ -2077,7 +2077,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 
 	DBG(SMC_DEBUG_MISC, "%s IRQ  0x%02X\n", ndev->name, ndev->irq);
 
-	if(vmm_devtree_getattr(dev->node, "smsc,irq-active-high")) {
+	if(vmm_devtree_getattr(dev->of_node, "smsc,irq-active-high")) {
 		lp->cfg.irq_polarity = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH;
 		DBG(SMC_DEBUG_MISC, "%s IRQ polarity is high\n", ndev->name);
 	} else {
@@ -2094,7 +2094,7 @@ static int smc911x_driver_probe(struct vmm_device *dev,
 	return rc;
 
 free_ioreamp_mem:
-	vmm_devtree_regunmap_release(dev->node, addr, 0);
+	vmm_devtree_regunmap_release(dev->of_node, addr, 0);
 free_ndev:
 	if (ndev->priv)
 		vmm_free(ndev->priv);

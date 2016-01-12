@@ -165,7 +165,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	io->dev.parent	= dev;
 
 	kmi->io		= io;
-	ret = vmm_devtree_request_regmap(dev->node,
+	ret = vmm_devtree_request_regmap(dev->of_node,
 				(virtual_addr_t *)&kmi->base, 0, "AMBA KMI");
 	if (ret) {
 		ret = -ENOMEM;
@@ -178,7 +178,7 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 		goto unmap;
 	}
 
-	kmi->irq = irq_of_parse_and_map(dev->node, 0);
+	kmi->irq = irq_of_parse_and_map(dev->of_node, 0);
 	if (!kmi->irq) {
 		ret = -EFAIL;
 		goto unmap;
@@ -191,7 +191,8 @@ static int amba_kmi_driver_probe(struct vmm_device *dev,
 	return VMM_OK;
 
  unmap:
-	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)kmi->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node,
+				(virtual_addr_t)kmi->base, 0);
  out:
 	if (kmi) kfree(kmi);
 	if (io) kfree(io);
@@ -207,7 +208,8 @@ static int amba_kmi_driver_remove(struct vmm_device *dev)
 
 	serio_unregister_port(kmi->io);
 	clk_put(kmi->clk);
-	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)kmi->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node,
+				(virtual_addr_t)kmi->base, 0);
 	kfree(kmi);
 
 	return VMM_OK;

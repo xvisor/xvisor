@@ -344,23 +344,23 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 		goto free_nothing;
 	}
 
-	rc = vmm_devtree_request_regmap(dev->node, &port->base, 0,
+	rc = vmm_devtree_request_regmap(dev->of_node, &port->base, 0,
 					"omap-uart");
 	if (rc) {
 		goto free_port;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "reg-shift",
+	if (vmm_devtree_read_u32(dev->of_node, "reg-shift",
 				 &port->reg_shift)) {
 		port->reg_shift = 0;
 	}
 
-	if (vmm_devtree_read_u32(dev->node, "baudrate",
+	if (vmm_devtree_read_u32(dev->of_node, "baudrate",
 				 &port->baudrate)) {
 		port->baudrate = 115200;
 	}
 
-	rc = vmm_devtree_clock_frequency(dev->node,
+	rc = vmm_devtree_clock_frequency(dev->of_node,
 					 &port->input_clock);
 	if (rc) {
 		goto free_reg;
@@ -368,7 +368,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 
 	omap_uart_startup_configure(port);
 
-	port->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!port->irq) {
 		rc = VMM_ENODEV;
 		goto free_reg;
@@ -397,7 +397,7 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 free_irq:
 	vmm_host_irq_unregister(port->irq, port);
 free_reg:
-	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
 free_port:
 	vmm_free(port);
 free_nothing:
@@ -419,7 +419,7 @@ static int omap_uart_driver_remove(struct vmm_device *dev)
 	/* Free-up resources */
 	serial_destroy(port->p);
 	vmm_host_irq_unregister(port->irq, port);
-	vmm_devtree_regunmap_release(dev->node, port->base, 0);
+	vmm_devtree_regunmap_release(dev->of_node, port->base, 0);
 	vmm_free(port);
 	dev->priv = NULL;
 

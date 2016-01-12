@@ -1902,9 +1902,9 @@ static void fec_get_mac(struct net_device *ndev)
 	if (!is_valid_ether_addr(iap)) {
 #if 0
 		struct device_node *np = fep->pdev->dev.of_node;
-#else /* 0 */
-		struct device_node *np = fep->dev->node;
-#endif /* 0 */
+#else
+		struct device_node *np = fep->dev->of_node;
+#endif
 		if (np) {
 			const char *mac = of_get_mac_address(np);
 			if (mac)
@@ -2337,7 +2337,7 @@ static int fec_enet_mii_init(struct device *dev)
 #if 0
 	node = of_get_child_by_name(pdev->dev.of_node, "mdio");
 #else /* 0 */
-	node = of_get_child_by_name(dev->node, "mdio");
+	node = of_get_child_by_name(dev->of_node, "mdio");
 #endif /* 0 */
 	if (node) {
 		err = of_mdiobus_register(fep->mii_bus, node);
@@ -3464,7 +3464,7 @@ static void fec_reset_phy(struct device *dev)
 	struct device_node *np = pdev->dev.of_node;
 # else
 	u32 msec = 1;
-	struct device_node *np = dev->node;
+	struct device_node *np = dev->of_node;
 # endif /* 0 */
 
 	if (!np)
@@ -3514,7 +3514,7 @@ fec_enet_get_queue_num(struct vmm_device *dev, u32 *num_tx, u32 *num_rx)
 #if 0
 	struct device_node *np = pdev->dev.of_node;
 #else /* 0 */
-	struct device_node *np = dev->node;
+	struct device_node *np = dev->of_node;
 #endif /* 0 */
 	int err;
 
@@ -3763,7 +3763,7 @@ static int fec_probe(struct vmm_device *dev,
 	unsigned int irq;
 	int i, ret = 0;
 	static int dev_id;
-	struct device_node *np = dev->node, *phy_node;
+	struct device_node *np = dev->of_node, *phy_node;
 	u32 num_tx_qs;
 	u32 num_rx_qs;
 
@@ -3798,8 +3798,8 @@ static int fec_probe(struct vmm_device *dev,
 	/* Select default pin state */
 	pinctrl_pm_select_default_state(dev);
 
-	vmm_devtree_request_regmap(dev->node, (virtual_addr_t *)&fep->hwp, 0,
-				   dev->name);
+	vmm_devtree_request_regmap(dev->of_node, (virtual_addr_t *)&fep->hwp,
+				   0, dev->name);
 	if (IS_ERR(fep->hwp)) {
 		ret = PTR_ERR(fep->hwp);
 		goto failed_ioremap;
@@ -3826,7 +3826,7 @@ static int fec_probe(struct vmm_device *dev,
 #endif /* defined(CONFIG_FIXED_PHY) */
 	fep->phy_node = phy_node;
 
-	ret = of_get_phy_mode(dev->node);
+	ret = of_get_phy_mode(dev->of_node);
 	if (ret < 0) {
 		fep->phy_interface = PHY_INTERFACE_MODE_MII;
 	} else {
@@ -3896,7 +3896,7 @@ static int fec_probe(struct vmm_device *dev,
 		goto failed_init;
 
 	for (i = 0; i < FEC_IRQ_NUM; i++) {
-		irq = irq_of_parse_and_map(dev->node, i);
+		irq = irq_of_parse_and_map(dev->of_node, i);
 		if (!irq) {
 			if (i)
 				break;

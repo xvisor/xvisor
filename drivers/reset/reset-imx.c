@@ -150,7 +150,7 @@ static int imx_src_probe(struct vmm_device *dev,
 			 const struct vmm_devtree_nodeid *nodeid)
 {
 	int ret = VMM_OK;
-	struct vmm_devtree_node *np = dev->node;
+	struct vmm_devtree_node *np = dev->of_node;
 	u32 val;
 
 	ret = vmm_devtree_request_regmap(np, (virtual_addr_t *)&src_base, 0,
@@ -184,7 +184,8 @@ static int imx_src_remove(struct vmm_device *dev)
 	reset_controller_unregister(&imx_reset_controller);
 #endif /* CONFIG_RESET_CONTROLLER */
 
-	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)src_base, 0);
+	vmm_devtree_regunmap_release(dev->of_node,
+				(virtual_addr_t)src_base, 0);
 	src_base = NULL;
 
 	return 0;

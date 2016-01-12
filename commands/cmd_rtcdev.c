@@ -64,9 +64,9 @@ static int cmd_rtcdev_list_iter(struct rtc_device *rd, void *data)
 	char path[256];
 	struct vmm_chardev *cdev = data;
 
-	if (rd->dev.parent && rd->dev.parent->node) {
+	if (rd->dev.parent && rd->dev.parent->of_node) {
 		rc = vmm_devtree_getpath(path, sizeof(path),
-				    rd->dev.parent->node);
+				    rd->dev.parent->of_node);
 		if (rc) {
 			vmm_snprintf(path, sizeof(path),
 				     "----- (error %d)", rc);

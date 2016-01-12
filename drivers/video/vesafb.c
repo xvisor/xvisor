@@ -268,7 +268,7 @@ static int vesafb_probe(struct vmm_device *dev,
 	if (screen_info.orig_video_isVGA != VIDEO_TYPE_VLFB)
 		return -ENODEV;
 
-	vmm_devtree_read_string(dev->node, "options", &options);
+	vmm_devtree_read_string(dev->of_node, "options", &options);
 	if (!options) {
 		return -ENODEV;
 	}

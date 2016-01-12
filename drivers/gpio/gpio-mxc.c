@@ -422,7 +422,7 @@ static int __init mxc_gpio_init_gc(struct mxc_gpio_port *port,
 	gc->irq_unmask = irq_gc_mask_set_bit;
 	gc->irq_set_type = gpio_set_irq_type;
 
-	port->domain = vmm_host_irqdomain_add(dev->node, -1, sz,
+	port->domain = vmm_host_irqdomain_add(dev->of_node, -1, sz,
 					  &irqdomain_simple_ops, port);
 	if (!port->domain)
 		return VMM_ENOTAVAIL;
@@ -486,7 +486,7 @@ static int mxc_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 static int mxc_gpio_probe(struct vmm_device *dev,
 			  const struct vmm_devtree_nodeid *devid)
 {
-	struct device_node *np = dev->node;
+	struct device_node *np = dev->of_node;
 	struct mxc_gpio_port *port;
 	int err = VMM_OK;
 	int port_num = 0;
@@ -514,7 +514,7 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 	}
 
 	name = vmm_malloc(PORT_NAME_LEN);
-	port_num = vmm_devtree_alias_get_id(dev->node, "gpio");
+	port_num = vmm_devtree_alias_get_id(dev->of_node, "gpio");
 	snprintf(name, PORT_NAME_LEN, "gpio_mxc%d", port_num);
 
 	/* disable the interrupt and clear the status */

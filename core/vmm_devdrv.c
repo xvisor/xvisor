@@ -137,19 +137,19 @@ static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 {
 	const struct vmm_devtree_nodeid *match;
 
-	if (!dev || !dev->node || !drv || !drv->match_table) {
+	if (!dev || !dev->of_node || !drv || !drv->match_table) {
 		return 0;
 	}
 
-	if (!vmm_devtree_is_available(dev->node)) {
+	if (!vmm_devtree_is_available(dev->of_node)) {
 		return 0;
 	}
 
-	if (dev->parent && (dev->node == dev->parent->node)) {
+	if (dev->parent && (dev->of_node == dev->parent->of_node)) {
 		return 0;
 	}
 
-	match = vmm_devtree_match_node(drv->match_table, dev->node);
+	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
 	if (!match) {
 		return 0;
 	}
@@ -170,7 +170,7 @@ static int platform_bus_probe(struct vmm_device *dev)
 	struct vmm_driver *drv;
 	const struct vmm_devtree_nodeid *match;
 
-	if (!dev || !dev->node || !dev->driver) {
+	if (!dev || !dev->of_node || !dev->driver) {
 		return VMM_EFAIL;
 	}
 	drv = dev->driver;
@@ -184,7 +184,7 @@ static int platform_bus_probe(struct vmm_device *dev)
 		return rc;
 	}
 
-	match = vmm_devtree_match_node(drv->match_table, dev->node);
+	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
 	if (match) {
 		return drv->probe(dev, match);
 	}
@@ -196,7 +196,7 @@ static int platform_bus_remove(struct vmm_device *dev)
 {
 	struct vmm_driver *drv;
 
-	if (!dev || !dev->node || !dev->driver) {
+	if (!dev || !dev->of_node || !dev->driver) {
 		return VMM_EFAIL;
 	}
 	drv = dev->driver;
@@ -206,8 +206,8 @@ static int platform_bus_remove(struct vmm_device *dev)
 
 static void platform_device_release(struct vmm_device *dev)
 {
-	vmm_devtree_dref_node(dev->node);
-	dev->node = NULL;
+	vmm_devtree_dref_node(dev->of_node);
+	dev->of_node = NULL;
 	vmm_free(dev);
 }
 
@@ -513,7 +513,7 @@ static int devdrv_probe(struct vmm_devtree_node *node,
 		return VMM_EOVERFLOW;
 	}
 	vmm_devtree_ref_node(node);
-	dev->node = node;
+	dev->of_node = node;
 	dev->parent = parent;
 	dev->bus = &ddctrl.platform_bus;
 	dev->release = platform_device_release;

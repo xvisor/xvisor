@@ -298,12 +298,12 @@ static int rbd_driver_probe(struct vmm_device *dev,
 	physical_addr_t pa;
 	physical_size_t sz;
 
-	rc = vmm_devtree_regaddr(dev->node, &pa, 0);
+	rc = vmm_devtree_regaddr(dev->of_node, &pa, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_regsize(dev->node, &sz, 0);
+	rc = vmm_devtree_regsize(dev->of_node, &sz, 0);
 	if (rc) {
 		return rc;
 	}

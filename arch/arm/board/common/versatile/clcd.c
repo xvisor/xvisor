@@ -160,11 +160,11 @@ int versatile_clcd_setup_dma(struct clcd_fb *fb, unsigned long framesize)
 	unsigned long smem_len;
 	physical_addr_t smem_pa;
 
-	if (!fb->dev->node) {
+	if (!fb->dev->of_node) {
 		return VMM_EINVALID;
 	}
 
-	if (vmm_devtree_read_u32(fb->dev->node, "use_dma", &use_dma)) {
+	if (vmm_devtree_read_u32(fb->dev->of_node, "use_dma", &use_dma)) {
 		use_dma = 0;
 	}
 	
@@ -184,7 +184,7 @@ int versatile_clcd_setup_dma(struct clcd_fb *fb, unsigned long framesize)
 			return rc;
 		}
 	} else {
-		rc = vmm_devtree_read_u32_array(fb->dev->node,
+		rc = vmm_devtree_read_u32_array(fb->dev->of_node,
 						"framebuffer", val, 2);
 		if (rc) {
 			return rc;

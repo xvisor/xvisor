@@ -334,7 +334,7 @@ static int ipu_probe(struct vmm_device *dev,
 	if (!pltfm_data)
 		return VMM_ENOMEM;
 
-	ret = vmm_devtree_read_u32(dev->node, "bypass_reset", &bypass_reset);
+	ret = vmm_devtree_read_u32(dev->of_node, "bypass_reset", &bypass_reset);
 	if (ret < 0) {
 		dev_dbg(dev, "can not get bypass_reset\n");
 		return ret;
@@ -358,19 +358,19 @@ static int ipu_probe(struct vmm_device *dev,
 	spin_lock_init(&ipu->rdy_reg_spin_lock);
 	mutex_init(&ipu->mutex_lock);
 
-	ipu->irq_sync = vmm_devtree_irq_parse_map(dev->node, 0);
+	ipu->irq_sync = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!ipu->irq_sync) {
 		dev_err(ipu->dev, "request SYNC interrupt failed\n");
 		return VMM_ENODEV;
 	}
 
-	ipu->irq_err = vmm_devtree_irq_parse_map(dev->node, 1);
+	ipu->irq_err = vmm_devtree_irq_parse_map(dev->of_node, 1);
 	if (!ipu->irq_err) {
 		dev_err(ipu->dev, "request ERR interrupt failed\n");
 		return VMM_ENODEV;
 	}
 
-	ret = vmm_devtree_regaddr(dev->node, &ipu_base, 0);
+	ret = vmm_devtree_regaddr(dev->of_node, &ipu_base, 0);
 	if (ret) {
 		dev_err(dev, "can't get device resources\n");
 		return ret;

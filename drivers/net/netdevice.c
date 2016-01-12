@@ -72,8 +72,8 @@ static int netdev_register_port(struct net_device *ndev)
         vmm_netport_register(port);
 
 	if (dev) {
-		if (dev->node &&
-		    vmm_devtree_read_string(dev->node,
+		if (dev->of_node &&
+		    vmm_devtree_read_string(dev->of_node,
 					    "switch", &attr) == VMM_OK) {
 			nsw = vmm_netswitch_find(attr);
 			if (!nsw) {

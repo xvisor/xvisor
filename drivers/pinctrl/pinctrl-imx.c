@@ -492,7 +492,7 @@ static int imx_pinctrl_parse_functions(struct device_node *np,
 static int imx_pinctrl_probe_dt(struct vmm_device *dev,
 				struct imx_pinctrl_soc_info *info)
 {
-	struct device_node *np = dev->node;
+	struct device_node *np = dev->of_node;
 	struct device_node *child;
 	struct device_node *grandchild;
 	u32 nfuncs = 0;
@@ -555,7 +555,7 @@ int imx_pinctrl_probe(struct vmm_device *dev,
 	if (!info->pin_regs)
 		return -ENOMEM;
 
-	ret = vmm_devtree_request_regmap(dev->node,
+	ret = vmm_devtree_request_regmap(dev->of_node,
 				(virtual_addr_t *)&ipctl->base, 0,
 				"i.MX Pinctrl");
 	if (VMM_OK != ret) {
@@ -570,7 +570,7 @@ int imx_pinctrl_probe(struct vmm_device *dev,
 	ret = imx_pinctrl_probe_dt(dev, info);
 	if (ret) {
 		dev_err(dev, "fail to probe dt properties\n");
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 				(virtual_addr_t)ipctl->base, 0);
 		return ret;
 	}
@@ -581,7 +581,7 @@ int imx_pinctrl_probe(struct vmm_device *dev,
 	ipctl->pctl = pinctrl_register(&imx_pinctrl_desc, dev, ipctl);
 	if (!ipctl->pctl) {
 		dev_err(dev, "could not register IMX pinctrl driver\n");
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 				(virtual_addr_t)ipctl->base, 0);
 		return -EINVAL;
 	}
@@ -596,7 +596,7 @@ int imx_pinctrl_remove(struct vmm_device *dev)
 	struct imx_pinctrl *ipctl = platform_get_drvdata(dev);
 
 	pinctrl_unregister(ipctl->pctl);
-	vmm_devtree_regunmap_release(dev->node,
+	vmm_devtree_regunmap_release(dev->of_node,
 				(virtual_addr_t)ipctl->base, 0);
 
 	return 0;

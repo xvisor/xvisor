@@ -107,7 +107,7 @@ static int sun4i_mdio_reset(struct mii_bus *bus)
 static int sun4i_mdio_probe(struct vmm_device *pdev,
 			    const struct vmm_devtree_nodeid *devid)
 {
-	struct device_node *np = pdev->node;
+	struct device_node *np = pdev->of_node;
 	struct mii_bus *bus;
 	struct sun4i_mdio_data *data;
 	int ret, i;

@@ -57,13 +57,13 @@ static int sram_probe(struct vmm_device *dev,
 	virtual_size_t size = 0;
 	int ret = VMM_OK;
 
-	ret = vmm_devtree_regaddr(dev->node, &start, 0);
+	ret = vmm_devtree_regaddr(dev->of_node, &start, 0);
 	if (VMM_OK != ret) {
 		vmm_printf("%s: Failed to get device base\n", dev->name);
 		return ret;
 	}
 
-	ret = vmm_devtree_regsize(dev->node, &size, 0);
+	ret = vmm_devtree_regsize(dev->of_node, &size, 0);
 	if (VMM_OK != ret) {
 		vmm_printf("%s: Failed to get device size\n", dev->name);
 		goto err_out;

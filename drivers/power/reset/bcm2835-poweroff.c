@@ -114,7 +114,7 @@ static int __init bcm2835_poweroff_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Map registers */
-	rc = vmm_devtree_regmap(dev->node, &pm_base_va, 0);
+	rc = vmm_devtree_regmap(dev->of_node, &pm_base_va, 0);
 	if (rc) {
 		return rc;
 	}
@@ -131,7 +131,7 @@ static int __exit bcm2835_poweroff_driver_remove(struct vmm_device *dev)
 	int rc;
 
 	/* Unmap registers */
-	rc = vmm_devtree_regunmap(dev->node, pm_base_va, 0);
+	rc = vmm_devtree_regunmap(dev->of_node, pm_base_va, 0);
 	if (rc) {
 		return rc;
 	}

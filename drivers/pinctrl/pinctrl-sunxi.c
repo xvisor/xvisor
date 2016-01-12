@@ -892,7 +892,7 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 			       const struct vmm_devtree_nodeid *devid)
 #endif
 {
-	struct device_node *node = pdev->node;
+	struct device_node *node = pdev->of_node;
 #if 0
 	const struct of_device_id *device;
 #endif

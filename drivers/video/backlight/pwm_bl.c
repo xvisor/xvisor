@@ -153,7 +153,7 @@ static const struct backlight_ops pwm_backlight_ops = {
 static int pwm_backlight_parse_dt(struct device *dev,
 				  struct platform_pwm_backlight_data *data)
 {
-	struct device_node *node = dev->node;
+	struct device_node *node = dev->of_node;
 	struct property *prop;
 	int length;
 	u32 value;

@@ -49,9 +49,9 @@ static int cmd_chardev_list_iter(struct vmm_chardev *cd, void *data)
 	char path[256];
 	struct vmm_chardev *cdev = data;
 
-	if (cd->dev.parent && cd->dev.parent->node) {
+	if (cd->dev.parent && cd->dev.parent->of_node) {
 		rc = vmm_devtree_getpath(path, sizeof(path),
-					 cd->dev.parent->node);
+					 cd->dev.parent->of_node);
 		if (rc) {
 			vmm_snprintf(path, sizeof(path),
 				     "----- (error %d)", rc);

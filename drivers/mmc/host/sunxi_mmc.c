@@ -693,11 +693,12 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	host = mmc_priv(mmc);
 
 	/* Setup host type specific info */
-	if (vmm_devtree_read_u32(dev->node, "mmc_no", &host->mmc_no)) {
+	if (vmm_devtree_read_u32(dev->of_node, "mmc_no", &host->mmc_no)) {
 		host->mmc_no = 0;
 	}
 
-	if (vmm_devtree_is_compatible(dev->node, "allwinner,sun4i-a10-mmc")) {
+	if (vmm_devtree_is_compatible(dev->of_node,
+					"allwinner,sun4i-a10-mmc")) {
 		host->host_type = SUNXI_SUN4I_MMC;
 		host->des_num_shift = 13;
 		host->des_max_len = (1 << 13);
@@ -708,31 +709,31 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Acquire resources */
-	rc = vmm_devtree_request_regmap(dev->node, &base, 0, "Sunxi MMC");
+	rc = vmm_devtree_request_regmap(dev->of_node, &base, 0, "Sunxi MMC");
 	if (rc) {
 		goto free_host;
 	}
 	host->reg = (struct sunxi_mmc_reg *)base;
 
-	rc = vmm_devtree_regmap(dev->node, &base, 1);
+	rc = vmm_devtree_regmap(dev->of_node, &base, 1);
 	if (rc) {
 		goto free_reg;
 	}
 	host->mclkbase = (void *)base;
 
-	rc = vmm_devtree_regmap(dev->node, &base, 2);
+	rc = vmm_devtree_regmap(dev->of_node, &base, 2);
 	if (rc) {
 		goto free_mclkbase;
 	}
 	host->hclkbase = (void *)base;
 
-	rc = vmm_devtree_regmap(dev->node, &base, 3);
+	rc = vmm_devtree_regmap(dev->of_node, &base, 3);
 	if (rc) {
 		goto free_hclkbase;
 	}
 	host->pll5_cfg = (void *)base;
 
-	rc = vmm_devtree_regmap(dev->node, &base, 4);
+	rc = vmm_devtree_regmap(dev->of_node, &base, 4);
 	if (rc) {
 		goto free_pll5_cfg;
 	}
@@ -751,7 +752,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	host->pdes_cnt = VMM_PAGE_SIZE / sizeof(struct sunxi_mmc_des);
 
 	/* Setup interrupt handler */
-	host->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	host->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!host->irq) {
 		rc = VMM_ENODEV;
 		goto free_pdes;
@@ -791,7 +792,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 
 	dev->priv = mmc;
 
-	vmm_devtree_regaddr(dev->node, &basepa, 0);
+	vmm_devtree_regaddr(dev->of_node, &basepa, 0);
 	vmm_printf("%s: Sunxi MMC at 0x%08llx irq %d (%s)\n",
 		   dev->name, (unsigned long long)basepa, host->irq,
 #ifdef SUNXI_USE_DMA
@@ -807,15 +808,16 @@ free_irq:
 free_pdes:
 	vmm_host_free_pages((virtual_addr_t)host->pdes, 1);
 free_gpio:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->gpio, 4);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->gpio, 4);
 free_pll5_cfg:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->pll5_cfg, 3);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->pll5_cfg, 3);
 free_hclkbase:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->hclkbase, 2);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->hclkbase, 2);
 free_mclkbase:
-	vmm_devtree_regunmap(dev->node, (virtual_addr_t)host->mclkbase, 1);
+	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->mclkbase, 1);
 free_reg:
-	vmm_devtree_regunmap_release(dev->node, (virtual_addr_t)host->reg, 0);
+	vmm_devtree_regunmap_release(dev->of_node,
+					(virtual_addr_t)host->reg, 0);
 free_host:
 	mmc_free_host(mmc);
 free_nothing:
@@ -840,15 +842,15 @@ static int sunxi_mmc_driver_remove(struct vmm_device *dev)
 		base = (virtual_addr_t)host->pdes;
 		vmm_host_free_pages(base, 1);
 		base = (virtual_addr_t)host->gpio;
-		vmm_devtree_regunmap(dev->node, base, 4);
+		vmm_devtree_regunmap(dev->of_node, base, 4);
 		base = (virtual_addr_t)host->pll5_cfg;
-		vmm_devtree_regunmap(dev->node, base, 3);
+		vmm_devtree_regunmap(dev->of_node, base, 3);
 		base = (virtual_addr_t)host->hclkbase;
-		vmm_devtree_regunmap(dev->node, base, 2);
+		vmm_devtree_regunmap(dev->of_node, base, 2);
 		base = (virtual_addr_t)host->mclkbase;
-		vmm_devtree_regunmap(dev->node, base, 1);
+		vmm_devtree_regunmap(dev->of_node, base, 1);
 		base = (virtual_addr_t)host->reg;
-		vmm_devtree_regunmap_release(dev->node, base, 0);
+		vmm_devtree_regunmap_release(dev->of_node, base, 0);
 
 		/* Free MMC host */
 		mmc_free_host(mmc);

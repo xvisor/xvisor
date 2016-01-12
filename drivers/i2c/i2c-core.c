@@ -276,7 +276,7 @@ static int i2c_device_probe(struct device *dev)
 #endif /* 0 */
 	dev_dbg(dev, "probe\n");
 
-	status = of_clk_set_defaults(dev->node, false);
+	status = of_clk_set_defaults(dev->of_node, false);
 	if (status < 0)
 		return status;
 
@@ -728,7 +728,7 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	client->dev.parent = &client->adapter->dev;
 	client->dev.bus = &i2c_bus_type;
 	client->dev.type = &i2c_client_type;
-	client->dev.node = info->of_node;
+	client->dev.of_node = info->of_node;
 	ACPI_COMPANION_SET(&client->dev, info->acpi_node.companion);
 
 	i2c_dev_set_name(adap, client);
@@ -1027,12 +1027,12 @@ static void of_i2c_register_devices(struct i2c_adapter *adap)
 	struct device_node *node;
 
 	/* Only register child devices if the adapter has a node pointer set */
-	if (!adap->dev.node)
+	if (!adap->dev.of_node)
 		return;
 
 	dev_dbg(&adap->dev, "of_i2c: walking child nodes\n");
 
-	for_each_available_child_of_node(adap->dev.node, node) {
+	for_each_available_child_of_node(adap->dev.of_node, node) {
 		struct i2c_board_info info = {};
 #if 0
 		struct dev_archdata dev_ad = {};
@@ -1088,7 +1088,7 @@ static void of_i2c_register_devices(struct i2c_adapter *adap)
 
 static int of_dev_node_match(struct device *dev, void *data)
 {
-	return dev->node == data;
+	return dev->of_node == data;
 }
 
 /* must call put_device() when done with returned i2c_client device */
@@ -1286,8 +1286,8 @@ int i2c_add_adapter(struct i2c_adapter *adapter)
 	struct device *dev = &adapter->dev;
 	int id;
 
-	if (dev->node) {
-		id = of_alias_get_id(dev->node, "i2c");
+	if (dev->of_node) {
+		id = of_alias_get_id(dev->of_node, "i2c");
 		if (id >= 0) {
 			adapter->nr = id;
 			return __i2c_add_numbered_adapter(adapter);

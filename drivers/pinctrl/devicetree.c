@@ -61,7 +61,7 @@ void pinctrl_dt_free_maps(struct pinctrl *p)
 		kfree(dt_map);
 	}
 
-	of_node_put(p->dev->node);
+	of_node_put(p->dev->of_node);
 }
 
 static int dt_remember_or_free_map(struct pinctrl *p, const char *statename,
@@ -131,7 +131,7 @@ static int dt_to_map_one_config(struct pinctrl *p, const char *statename,
 		if (pctldev)
 			break;
 		/* Do not defer probing of hogs (circular loop) */
-		if (np_pctldev == p->dev->node) {
+		if (np_pctldev == p->dev->of_node) {
 			of_node_put(np_pctldev);
 			return -ENODEV;
 		}
@@ -174,7 +174,7 @@ static int dt_remember_dummy_state(struct pinctrl *p, const char *statename)
 
 int pinctrl_dt_to_map(struct pinctrl *p)
 {
-	struct device_node *np = p->dev->node;
+	struct device_node *np = p->dev->of_node;
 	int state, ret;
 	char *propname;
 	struct property *prop;

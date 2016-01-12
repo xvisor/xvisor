@@ -127,10 +127,10 @@ struct vexpress_config_func *__vexpress_config_func_get(struct vmm_device *dev,
 	struct vexpress_config_func *func;
 	int i;
 
-	if (WARN_ON(dev && node && dev->node != node))
+	if (WARN_ON(dev && node && dev->of_node != node))
 		return NULL;
 	if (dev && !node)
-		node = dev->node;
+		node = dev->of_node;
 
 	func = vmm_zalloc(sizeof(*func));
 	if (!func)

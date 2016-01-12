@@ -267,7 +267,7 @@ __setup("ldb=", ldb_setup);
 static int ldb_get_of_property(struct vmm_device *dev,
 			       struct fsl_mxc_ldb_platform_data *plat_data)
 {
-	struct vmm_devtree_node *np = dev->node;
+	struct vmm_devtree_node *np = dev->of_node;
 	int err;
 	u32 ipu_id, disp_id;
 	u32 sec_ipu_id, sec_disp_id;
@@ -565,7 +565,7 @@ static int ldb_disp_init(struct mxc_dispdrv_handle *disp,
 	}
 
 	if (!ldb->inited) {
-		ret = vmm_devtree_request_regmap(ldb->dev->node,
+		ret = vmm_devtree_request_regmap(ldb->dev->of_node,
 					(virtual_addr_t *)&ldb->reg, 0,
 					"MXC LDB");
 		if (VMM_OK != ret) {

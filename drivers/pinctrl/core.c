@@ -127,12 +127,7 @@ struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 	mutex_lock(&pinctrldev_list_mutex);
 
 	list_for_each_entry(pctldev, &pinctrldev_list, node)
-#if 0
 		if (pctldev->dev->of_node == np) {
-#else
-		if (pctldev->dev->node == np) {
-
-#endif
 			mutex_unlock(&pinctrldev_list_mutex);
 			return pctldev;
 		}

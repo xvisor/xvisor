@@ -427,13 +427,13 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	}
 	host = mmc_priv(mmc);
 
-	rc = vmm_devtree_request_regmap(dev->node, &base, 0, "PL180 MMCI");
+	rc = vmm_devtree_request_regmap(dev->of_node, &base, 0, "PL180 MMCI");
 	if (rc) {
 		goto free_host;
 	}
 	host->base = (struct sdi_registers *)base;
 
-	host->irq0 = vmm_devtree_irq_parse_map(dev->node, 0);
+	host->irq0 = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!host->irq0) {
 		rc = VMM_ENODEV;
 		goto free_reg;
@@ -443,7 +443,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	host->irq1 = vmm_devtree_irq_parse_map(dev->node, 1);
+	host->irq1 = vmm_devtree_irq_parse_map(dev->of_node, 1);
 	if (host->irq1) {
 		if ((rc = vmm_host_irq_register(host->irq1, dev->name, 
 						mmci_pio_irq_handler, mmc))) {
@@ -495,7 +495,7 @@ static int mmci_driver_probe(struct vmm_device *dev,
 
 	dev->priv = mmc;
 
-	vmm_devtree_regaddr(dev->node, &basepa, 0);
+	vmm_devtree_regaddr(dev->of_node, &basepa, 0);
 	vmm_printf("%s: PL%03x manf %x rev%u at 0x%08llx irq %d,%d (pio)\n",
 		   dev->name, amba_part(dev), amba_manf(dev),
 		   amba_rev(dev), (unsigned long long)basepa,
@@ -510,7 +510,7 @@ free_irq1:
 free_irq0:
 	vmm_host_irq_unregister(host->irq0, mmc);
 free_reg:
-	vmm_devtree_regunmap_release(dev->node,
+	vmm_devtree_regunmap_release(dev->of_node,
 				(virtual_addr_t)host->base, 0);
 free_host:
 	mmc_free_host(mmc);
@@ -535,7 +535,7 @@ static int mmci_driver_remove(struct vmm_device *dev)
 			vmm_host_irq_unregister(host->irq1, mmc);
 		}
 		vmm_host_irq_unregister(host->irq0, mmc);
-		vmm_devtree_regunmap_release(dev->node,
+		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)host->base, 0);
 		mmc_free_host(mmc);
 		dev->priv = NULL;

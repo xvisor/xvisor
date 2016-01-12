@@ -791,12 +791,12 @@ static int spi_imx_probe(struct vmm_device *dev,
 	int ret = VMM_OK;
 	u32 num_cs;
 
-	if (!vmm_devtree_is_available(dev->node)) {
+	if (!vmm_devtree_is_available(dev->of_node)) {
 		vmm_linfo("%s: device is disabled\n", dev->name);
 		return ret;
 	}
 
-	ret = vmm_devtree_read_u32(dev->node, "fsl,spi-num-chipselects",
+	ret = vmm_devtree_read_u32(dev->of_node, "fsl,spi-num-chipselects",
 				   &num_cs);
 	if (ret < 0) {
 		return ret;
@@ -818,7 +818,7 @@ static int spi_imx_probe(struct vmm_device *dev,
 	spi_imx->bitbang.master = master;
 
 	for (i = 0; i < master->num_chipselect; i++) {
-		int cs_gpio = of_get_named_gpio(dev->node, "cs-gpios", i);
+		int cs_gpio = of_get_named_gpio(dev->of_node, "cs-gpios", i);
 
 		spi_imx->chipselect[i] = cs_gpio;
 		if (!gpio_is_valid(cs_gpio))
@@ -844,19 +844,19 @@ static int spi_imx_probe(struct vmm_device *dev,
 
 	spi_imx->devtype_data = devid->data;
 
-	ret = vmm_devtree_request_regmap(dev->node, &vaddr, 0, "i.MX SPI");
+	ret = vmm_devtree_request_regmap(dev->of_node, &vaddr, 0, "i.MX SPI");
 	if (VMM_OK != ret) {
 		ret = PTR_ERR(spi_imx->base);
 		goto out_gpio_free;
 	}
 	spi_imx->base = (void __iomem *)vaddr;
-	master->bus_num = vmm_devtree_alias_get_id(dev->node, "spi");
+	master->bus_num = vmm_devtree_alias_get_id(dev->of_node, "spi");
 	if (0 > master->bus_num) {
 		ret = master->bus_num;
 		goto out_gpio_free;
 	}
 
-	spi_imx->irq = vmm_devtree_irq_parse_map(dev->node, 0);
+	spi_imx->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
 	if (!spi_imx->irq) {
 		ret = VMM_ENODEV;
 		goto out_gpio_free;
@@ -894,7 +894,7 @@ static int spi_imx_probe(struct vmm_device *dev,
 
 	spi_imx->devtype_data->intctrl(spi_imx, 0);
 
-	master->dev.node = dev->node;
+	master->dev.of_node = dev->of_node;
 	ret = spi_bitbang_start(&spi_imx->bitbang);
 	if (ret) {
 		dev_err(dev, "bitbang start failed with %d\n", ret);

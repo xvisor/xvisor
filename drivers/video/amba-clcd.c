@@ -484,19 +484,19 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 
 	fb->fb.dev.parent	= fb->dev;
 
-	ret = vmm_devtree_regaddr(fb->dev->node, &mmio_pa, 0);
+	ret = vmm_devtree_regaddr(fb->dev->of_node, &mmio_pa, 0);
 	if (ret) {
 		goto clk_unprep;
 	}
 	fb->fb.fix.mmio_start	= mmio_pa;
 
-	ret = vmm_devtree_regsize(fb->dev->node, &mmio_sz, 0);
+	ret = vmm_devtree_regsize(fb->dev->of_node, &mmio_sz, 0);
 	if (ret) {
 		goto clk_unprep;
 	}
 	fb->fb.fix.mmio_len	= mmio_sz;
 
-	ret = vmm_devtree_request_regmap(fb->dev->node,
+	ret = vmm_devtree_request_regmap(fb->dev->of_node,
 					 (virtual_addr_t *)&fb->regs, 0,
 					 "AMBA CLCD");
 	if (ret) {
@@ -580,7 +580,7 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 
 	fb_dealloc_cmap(&fb->fb.cmap);
  unmap:
-	vmm_devtree_regunmap_release(fb->dev->node,
+	vmm_devtree_regunmap_release(fb->dev->of_node,
 				     (virtual_addr_t)fb->regs, 0);
  clk_unprep:
 	clk_unprepare(fb->clk);
@@ -593,7 +593,7 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 static int clcdfb_probe(struct vmm_device *dev, 
 			const struct vmm_devtree_nodeid *id)
 {
-	struct clcd_board *board = dev->node->system_data;
+	struct clcd_board *board = dev->of_node->system_data;
 	struct clcd_fb *fb;
 	bool is_versatile;
 	int ret;
@@ -646,7 +646,7 @@ static int clcdfb_remove(struct vmm_device *dev)
 	unregister_framebuffer(&fb->fb);
 	if (fb->fb.cmap.len)
 		fb_dealloc_cmap(&fb->fb.cmap);
-	vmm_devtree_regunmap_release(fb->dev->node,
+	vmm_devtree_regunmap_release(fb->dev->of_node,
 				     (virtual_addr_t)fb->regs, 0);
 	clk_unprepare(fb->clk);
 	clk_put(fb->clk);
