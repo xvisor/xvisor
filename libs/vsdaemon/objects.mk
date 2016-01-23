@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Anup Patel.
+# Copyright (c) 2016 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,8 @@
 #
 # @file vstelnet.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of vstelnet objects to be build
+# @brief list of vsdaemon objects to be build
 # */
 
-libs-objs-$(CONFIG_VSTELNET)+= vstelnet/vstelnet.o
+libs-objs-$(CONFIG_VSDAEMON)+= vsdaemon/vsdaemon.o
 

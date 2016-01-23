@@ -1,0 +1,102 @@
+/**
+ * Copyright (c) 2016 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file vsdaemon.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief vserial daemon library interface
+ */
+
+#ifndef __VSDAEMON_H__
+#define __VSDAEMON_H__
+
+#include <vmm_limits.h>
+#include <vmm_types.h>
+#include <vmm_threads.h>
+#include <vio/vmm_vserial.h>
+#include <libs/list.h>
+#include <libs/netstack.h>
+
+#define VSDAEMON_IPRIORITY			(VMM_VSERIAL_IPRIORITY + \
+						 NETSTACK_IPRIORITY + 1)
+#define VSDAEMON_TXBUF_SIZE			4096
+#define VSDAEMON_RXTIMEOUT_MS			400
+
+struct vsdaemon_transport {
+	/* list head */
+	struct dlist head;
+
+	/* transport name */
+	char name[VMM_FIELD_NAME_SIZE];
+};
+
+struct vsdaemon {
+	/* list head */
+	struct dlist head;
+
+	/* daemon name */
+	char name[VMM_FIELD_NAME_SIZE];
+
+	/* transport pointer */
+	struct vsdaemon_transport *trans;
+
+	/* vserial port */
+	struct vmm_vserial *vser;
+
+	/* underlying thread */
+	struct vmm_thread *thread;
+
+	/* === Telnet specific === */
+	/* tcp port number */
+	u32 port;
+
+	/* socket pointers */
+	struct netstack_socket *sk;
+
+	/* active connection */
+	struct netstack_socket *active_sk;
+
+	/* tx buffer */
+	u8 tx_buf[VSDAEMON_TXBUF_SIZE];
+	u32 tx_buf_head;
+	u32 tx_buf_tail;
+	u32 tx_buf_count;
+	vmm_spinlock_t tx_buf_lock;
+};
+
+/** Get vsdaemon transport based on index */
+struct vsdaemon_transport *vsdaemon_transport_get(int index);
+
+/** Count vsdaemon transports */
+u32 vsdaemon_transport_count(void);
+
+/** Create vsdaemon instance */
+int vsdaemon_create(const char *transport_name,
+		    const char *vserial_name,
+		    const char *daemon_name,
+		    int argc, char **argv);
+
+/** Destroy vsdaemon instance */
+int vsdaemon_destroy(const char *daemon_name);
+
+/** Get vsdaemon based on index */
+struct vsdaemon *vsdaemon_get(int index);
+
+/** Count vsdaemon instances */
+u32 vsdaemon_count(void);
+
+#endif /* __VSDAEMON_H__ */

@@ -59,5 +59,5 @@ commands-objs-$(CONFIG_CMD_IPCONFIG)+= cmd_ipconfig.o
 commands-objs-$(CONFIG_CMD_PING)+= cmd_ping.o
 commands-objs-$(CONFIG_CMD_MII)+= cmd_mii.o
 
-commands-objs-$(CONFIG_CMD_VSTELNET)+= cmd_vstelnet.o
+commands-objs-$(CONFIG_CMD_VSDAEMON)+= cmd_vsdaemon.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
