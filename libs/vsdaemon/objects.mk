@@ -21,5 +21,5 @@
 # @brief list of vsdaemon objects to be build
 # */
 
-libs-objs-$(CONFIG_VSDAEMON)+= vsdaemon/vsdaemon.o
-
+libs-objs-$(CONFIG_VSDAEMON) += vsdaemon/vsdaemon.o
+libs-objs-$(CONFIG_VSDAEMON_TELNET) += vsdaemon/vsdaemon_telnet.o

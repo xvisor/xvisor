@@ -29,10 +29,8 @@
 #include <vmm_threads.h>
 #include <vio/vmm_vserial.h>
 #include <libs/list.h>
-#include <libs/netstack.h>
 
-#define VSDAEMON_IPRIORITY			(VMM_VSERIAL_IPRIORITY + \
-						 NETSTACK_IPRIORITY + 1)
+#define VSDAEMON_IPRIORITY			(VMM_VSERIAL_IPRIORITY + 1)
 
 struct vsdaemon;
 
