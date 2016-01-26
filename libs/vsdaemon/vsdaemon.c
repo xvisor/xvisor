@@ -44,7 +44,28 @@ struct vsdaemon_control {
 
 static struct vsdaemon_control vsdc;
 
+#define VSDAEMON_TXBUF_SIZE		4096
+#define VSDAEMON_RXTIMEOUT_MS		400
+
 #define VSDAEMON_MAX_FLUSH_SIZE		128
+
+struct vsdaemon_telnet {
+	/* tcp port number */
+	u32 port;
+
+	/* socket pointers */
+	struct netstack_socket *sk;
+
+	/* active connection */
+	struct netstack_socket *active_sk;
+
+	/* tx buffer */
+	u8 tx_buf[VSDAEMON_TXBUF_SIZE];
+	u32 tx_buf_head;
+	u32 tx_buf_tail;
+	u32 tx_buf_count;
+	vmm_spinlock_t tx_buf_lock;
+};
 
 static bool vsdaemon_valid_port(u32 port)
 {
@@ -61,7 +82,7 @@ static bool vsdaemon_valid_port(u32 port)
 	return TRUE;
 }
 
-static void vsdaemon_flush_tx_buffer(struct vsdaemon *vsd)
+static void vsdaemon_flush_tx_buffer(struct vsdaemon_telnet *tnet)
 {
 	int rc;
 	u32 tx_count;
@@ -70,27 +91,27 @@ static void vsdaemon_flush_tx_buffer(struct vsdaemon *vsd)
 
 	while (1) {
 		/* Lock connection state */
-		vmm_spin_lock_irqsave(&vsd->tx_buf_lock, flags);
+		vmm_spin_lock_irqsave(&tnet->tx_buf_lock, flags);
 
 		/* Get data from Tx buffer */
 		tx_count = 0;
-		while (vsd->tx_buf_count &&
+		while (tnet->tx_buf_count &&
 		       (tx_count < VSDAEMON_MAX_FLUSH_SIZE)) {
-			tx_buf[tx_count] = vsd->tx_buf[vsd->tx_buf_head];
-			vsd->tx_buf_head++;
-			if (vsd->tx_buf_head >= VSDAEMON_TXBUF_SIZE) {
-				vsd->tx_buf_head = 0;
+			tx_buf[tx_count] = tnet->tx_buf[tnet->tx_buf_head];
+			tnet->tx_buf_head++;
+			if (tnet->tx_buf_head >= VSDAEMON_TXBUF_SIZE) {
+				tnet->tx_buf_head = 0;
 			}
-			vsd->tx_buf_count--;
+			tnet->tx_buf_count--;
 			tx_count++;
 		}
 
 		/* Unlock connection state */
-		vmm_spin_unlock_irqrestore(&vsd->tx_buf_lock, flags);
+		vmm_spin_unlock_irqrestore(&tnet->tx_buf_lock, flags);
 
 		/* Transmit the pending Tx data */
-		if (tx_count && vsd->active_sk) {
-			rc = netstack_socket_write(vsd->active_sk, 
+		if (tx_count && tnet->active_sk) {
+			rc = netstack_socket_write(tnet->active_sk, 
 						   &tx_buf[0], tx_count);
 			if (rc) {
 				return;
@@ -101,49 +122,49 @@ static void vsdaemon_flush_tx_buffer(struct vsdaemon *vsd)
 	}
 }
 
-static void vsdaemon_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
+static void vsdaemon_telnet_receive_char(struct vsdaemon *vsd, u8 ch)
 {
 	irq_flags_t flags;
-	struct vsdaemon *vsd = priv;
+	struct vsdaemon_telnet *tnet = vsdaemon_transport_get_data(vsd);
 
-	vmm_spin_lock_irqsave(&vsd->tx_buf_lock, flags);
+	vmm_spin_lock_irqsave(&tnet->tx_buf_lock, flags);
 
-	if (VSDAEMON_TXBUF_SIZE == vsd->tx_buf_count) {
-		vsd->tx_buf_head++;
-		if (vsd->tx_buf_head >= VSDAEMON_TXBUF_SIZE) {
-			vsd->tx_buf_head = 0;
+	if (VSDAEMON_TXBUF_SIZE == tnet->tx_buf_count) {
+		tnet->tx_buf_head++;
+		if (tnet->tx_buf_head >= VSDAEMON_TXBUF_SIZE) {
+			tnet->tx_buf_head = 0;
 		}
-		vsd->tx_buf_count--;
+		tnet->tx_buf_count--;
 	}
 
-	vsd->tx_buf[vsd->tx_buf_tail] = ch;
+	tnet->tx_buf[tnet->tx_buf_tail] = ch;
 
-	vsd->tx_buf_tail++;
-	if (vsd->tx_buf_tail >= VSDAEMON_TXBUF_SIZE) {
-		vsd->tx_buf_tail = 0;
+	tnet->tx_buf_tail++;
+	if (tnet->tx_buf_tail >= VSDAEMON_TXBUF_SIZE) {
+		tnet->tx_buf_tail = 0;
 	}
 
-	vsd->tx_buf_count++;
+	tnet->tx_buf_count++;
 
-	vmm_spin_unlock_irqrestore(&vsd->tx_buf_lock, flags);
+	vmm_spin_unlock_irqrestore(&tnet->tx_buf_lock, flags);
 }
 
-static int vsdaemon_main(void *data)
+static int vsdaemon_telnet_main_loop(struct vsdaemon *vsd)
 {
 	int rc;
-	struct vsdaemon *vsd = data;
 	struct netstack_socket_buf buf;
+	struct vsdaemon_telnet *tnet = vsdaemon_transport_get_data(vsd);
 
 	while (1) {
-		rc = netstack_socket_accept(vsd->sk, &vsd->active_sk);
+		rc = netstack_socket_accept(tnet->sk, &tnet->active_sk);
 		if (rc) {
 			return rc;
 		}
 
 		while (1) {
-			vsdaemon_flush_tx_buffer(vsd);
+			vsdaemon_flush_tx_buffer(tnet);
 
-			rc = netstack_socket_recv(vsd->active_sk, &buf, 
+			rc = netstack_socket_recv(tnet->active_sk, &buf, 
 						  VSDAEMON_RXTIMEOUT_MS);
 			if (rc == VMM_ETIMEDOUT) {
 				continue;
@@ -159,16 +180,90 @@ static int vsdaemon_main(void *data)
 			netstack_socket_freebuf(&buf);
 		}
 
-		netstack_socket_close(vsd->active_sk);
-		netstack_socket_free(vsd->active_sk);
-		vsd->active_sk = NULL;
+		netstack_socket_close(tnet->active_sk);
+		netstack_socket_free(tnet->active_sk);
+		tnet->active_sk = NULL;
 	}
 
 	return VMM_OK;
 }
 
+static int vsdaemon_telnet_setup(struct vsdaemon *vsd, int argc, char **argv)
+{
+	int rc = VMM_OK;
+	u32 port;
+	struct vsdaemon_telnet *tnet;
+
+	port = strtoul(argv[0], NULL, 0);
+	if (!vsdaemon_valid_port(port)) {
+		return VMM_EINVALID;
+	}
+
+	tnet = vmm_zalloc(sizeof(*tnet));
+	if (!tnet) {
+		return VMM_ENOMEM;
+	}
+
+	tnet->port = port;
+
+	tnet->sk = netstack_socket_alloc(NETSTACK_SOCKET_TCP);
+	if (!tnet->sk) {
+		rc = VMM_ENOMEM;
+		goto fail1;
+	}
+
+	rc = netstack_socket_bind(tnet->sk, NULL, tnet->port); 
+	if (rc) {
+		goto fail2;
+	}
+
+	rc = netstack_socket_listen(tnet->sk);
+	if (rc) {
+		goto fail3;
+	}
+
+	tnet->active_sk = NULL;
+
+	tnet->tx_buf_head = tnet->tx_buf_tail = tnet->tx_buf_count = 0;
+	INIT_SPIN_LOCK(&tnet->tx_buf_lock);
+
+	vsdaemon_transport_set_data(vsd, tnet);
+
+	return VMM_OK;
+
+fail3:
+	netstack_socket_close(tnet->sk);
+fail2:
+	netstack_socket_free(tnet->sk);
+fail1:
+	vmm_free(tnet);
+	return rc;
+}
+
+static void vsdaemon_telnet_cleanup(struct vsdaemon *vsd)
+{
+	struct vsdaemon_telnet *tnet = vsdaemon_transport_get_data(vsd);
+
+	vsdaemon_transport_set_data(vsd, NULL);
+
+	if (tnet->active_sk) {
+		netstack_socket_close(tnet->active_sk);
+		netstack_socket_free(tnet->active_sk);
+	}
+	netstack_socket_disconnect(tnet->sk);
+
+	netstack_socket_close(tnet->sk);
+	netstack_socket_free(tnet->sk);
+
+	vmm_free(tnet);
+}
+
 static struct vsdaemon_transport telnet = {
 	.name = "telnet",
+	.setup = vsdaemon_telnet_setup,
+	.cleanup = vsdaemon_telnet_cleanup,
+	.main_loop = vsdaemon_telnet_main_loop,
+	.receive_char = vsdaemon_telnet_receive_char,
 };
 
 struct vsdaemon_transport *vsdaemon_transport_get(int index)
@@ -193,6 +288,20 @@ u32 vsdaemon_transport_count(void)
 }
 VMM_EXPORT_SYMBOL(vsdaemon_transport_count);
 
+static void vsdaemon_vserial_recv(struct vmm_vserial *vser, void *priv, u8 ch)
+{
+	struct vsdaemon *vsd = priv;
+
+	vsd->trans->receive_char(vsd, ch);
+}
+
+static int vsdaemon_main(void *data)
+{
+	struct vsdaemon *vsd = data;
+
+	return vsd->trans->main_loop(vsd);
+}
+
 int vsdaemon_create(const char *transport_name,
 		    const char *vserial_name,
 		    const char *daemon_name,
@@ -203,7 +312,6 @@ int vsdaemon_create(const char *transport_name,
 	struct vsdaemon *vsd;
 	struct vsdaemon_transport *trans;
 	struct vmm_vserial *vser;
-	u32 port;
 
 	if (!transport_name || !vserial_name || !daemon_name) {
 		return VMM_EINVALID;
@@ -219,10 +327,6 @@ int vsdaemon_create(const char *transport_name,
 	if (argc < 1) {
 		return VMM_EINVALID;
 	}
-	port = strtoul(argv[0], NULL, 0);
-	if (!vsdaemon_valid_port(port)) {
-		return VMM_EINVALID;
-	}
 
 	vser = vmm_vserial_find(vserial_name);
 	if (!vser) {
@@ -233,8 +337,7 @@ int vsdaemon_create(const char *transport_name,
 
 	found = FALSE;
 	list_for_each_entry(vsd, &vsdc.vsd_list, head) {
-		if (!strncmp(vsd->name, daemon_name, sizeof(vsd->name)) ||
-		    vsd->port == port) {
+		if (!strncmp(vsd->name, daemon_name, sizeof(vsd->name))) {
 			found = TRUE;
 			break;
 		}
@@ -254,32 +357,14 @@ int vsdaemon_create(const char *transport_name,
 	vsd->trans = trans;
 	vsd->vser = vser;
 
-	vsd->port = port;
-
-	vsd->sk = netstack_socket_alloc(NETSTACK_SOCKET_TCP);
-	if (!vsd->sk) {
-		rc = VMM_ENOMEM;
+	rc = vsd->trans->setup(vsd, argc, argv);
+	if (rc) {
 		goto fail1;
 	}
 
-	rc = netstack_socket_bind(vsd->sk, NULL, vsd->port); 
-	if (rc) {
-		goto fail2;
-	}
-
-	rc = netstack_socket_listen(vsd->sk);
-	if (rc) {
-		goto fail3;
-	}
-
-	vsd->active_sk = NULL;
-
-	vsd->tx_buf_head = vsd->tx_buf_tail = vsd->tx_buf_count = 0;
-	INIT_SPIN_LOCK(&vsd->tx_buf_lock);
-
 	rc = vmm_vserial_register_receiver(vser, &vsdaemon_vserial_recv, vsd);
 	if (rc) {
-		goto fail3;
+		goto fail2;
 	}
 
 	vsd->thread = vmm_threads_create(vsd->name, &vsdaemon_main, vsd, 
@@ -287,7 +372,7 @@ int vsdaemon_create(const char *transport_name,
 					 VMM_THREAD_DEF_TIME_SLICE);
 	if (!vsd->thread) {
 		rc = VMM_EFAIL;
-		goto fail4;
+		goto fail3;
 	}
 
 	list_add_tail(&vsd->head, &vsdc.vsd_list);
@@ -298,12 +383,10 @@ int vsdaemon_create(const char *transport_name,
 
 	return VMM_OK;
 
-fail4:
-	vmm_vserial_unregister_receiver(vser, &vsdaemon_vserial_recv, vsd);
 fail3:
-	netstack_socket_close(vsd->sk);
+	vmm_vserial_unregister_receiver(vser, &vsdaemon_vserial_recv, vsd);
 fail2:
-	netstack_socket_free(vsd->sk);
+	vsd->trans->cleanup(vsd);
 fail1:
 	vmm_free(vsd);
 fail:
@@ -319,21 +402,12 @@ static int __vsdaemon_destroy(struct vsdaemon *vsd)
 
 	list_del(&vsd->head);
 
+	vmm_threads_destroy(vsd->thread);
+
 	vmm_vserial_unregister_receiver(vsd->vser, 
 					&vsdaemon_vserial_recv, vsd);
 
-	vmm_threads_destroy(vsd->thread);
-
-	/* Telnet disconnect() */
-	if (vsd->active_sk) {
-		netstack_socket_close(vsd->active_sk);
-		netstack_socket_free(vsd->active_sk);
-	}
-	netstack_socket_disconnect(vsd->sk);
-
-	/* Telent cleanup() */
-	netstack_socket_close(vsd->sk);
-	netstack_socket_free(vsd->sk);
+	vsd->trans->cleanup(vsd);
 
 	vmm_free(vsd);
 

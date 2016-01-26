@@ -33,8 +33,8 @@
 
 #define VSDAEMON_IPRIORITY			(VMM_VSERIAL_IPRIORITY + \
 						 NETSTACK_IPRIORITY + 1)
-#define VSDAEMON_TXBUF_SIZE			4096
-#define VSDAEMON_RXTIMEOUT_MS			400
+
+struct vsdaemon;
 
 struct vsdaemon_transport {
 	/* list head */
@@ -42,6 +42,12 @@ struct vsdaemon_transport {
 
 	/* transport name */
 	char name[VMM_FIELD_NAME_SIZE];
+
+	/* operations */
+	int (*setup) (struct vsdaemon *vsd, int argc, char **argv);
+	void (*cleanup) (struct vsdaemon *vsd);
+	int (*main_loop) (struct vsdaemon *vsd);
+	void (*receive_char) (struct vsdaemon *vsd, u8 ch);
 };
 
 struct vsdaemon {
@@ -60,23 +66,23 @@ struct vsdaemon {
 	/* underlying thread */
 	struct vmm_thread *thread;
 
-	/* === Telnet specific === */
-	/* tcp port number */
-	u32 port;
-
-	/* socket pointers */
-	struct netstack_socket *sk;
-
-	/* active connection */
-	struct netstack_socket *active_sk;
-
-	/* tx buffer */
-	u8 tx_buf[VSDAEMON_TXBUF_SIZE];
-	u32 tx_buf_head;
-	u32 tx_buf_tail;
-	u32 tx_buf_count;
-	vmm_spinlock_t tx_buf_lock;
+	/* transport specific data */
+	void *trans_data;
 };
+
+/** Set vsdaemon transport data */
+static inline void vsdaemon_transport_set_data(struct vsdaemon *vsd, void *data)
+{
+	if (vsd) {
+		vsd->trans_data = data;
+	}
+}
+
+/** Get vsdaemon transport data */
+static inline void *vsdaemon_transport_get_data(struct vsdaemon *vsd)
+{
+	return (vsd) ? vsd->trans_data : NULL;
+}
 
 /** Get vsdaemon transport based on index */
 struct vsdaemon_transport *vsdaemon_transport_get(int index);
