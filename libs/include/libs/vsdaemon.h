@@ -40,6 +40,9 @@ struct vsdaemon_transport {
 	/* list head */
 	struct dlist head;
 
+	/* usage count */
+	u32 use_count;
+
 	/* transport name */
 	char name[VMM_FIELD_NAME_SIZE];
 
@@ -83,6 +86,12 @@ static inline void *vsdaemon_transport_get_data(struct vsdaemon *vsd)
 {
 	return (vsd) ? vsd->trans_data : NULL;
 }
+
+/** Register vsdaemon transport */
+int vsdaemon_transport_register(struct vsdaemon_transport *trans);
+
+/** Unregister vsdaemon transport */
+int vsdaemon_transport_unregister(struct vsdaemon_transport *trans);
 
 /** Get vsdaemon transport based on index */
 struct vsdaemon_transport *vsdaemon_transport_get(int index);
