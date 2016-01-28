@@ -7,8 +7,22 @@ By default, Xvisor for BCM2836 supports Vexpress-A15 guest so we will show
 how to run Basic Firmware on Vexpress-A15 guest. For more info refer,
 <xvisor_source>/tests/arm32/vexpress-a15/basic/README.
 
-As first step, we install u-boot-2015.07 on the pre-installed SD card that
-comes with Raspberry Pi2 board. To do this:
+The Raspberry Pi 2 usually comes with and SD card containig the GPU firmware
+necessary to boot the ARM processor.
+To create your own SD Card to boot the Raspberry Pi 2
+ 1) Format a blank SD card with FAT/FAT32 filesystem
+ 2) Download the following files from the Raspberry Official Repository
+ (https://github.com/raspberrypi/firmware/tree/master/boot) to the SD card:
+ (Note: the _cd files are used when gpu_mem=16)
+ - bootcode.bin
+ - fixup.dat
+ - fixup_cd.dat
+ - start.elf
+ - start_cd.elf
+
+As first step, we install u-boot-2015.07 on the SD card that comes with
+Raspberry Pi2 board or that has been formatted as instructed above.
+To do this:
  1) Download and build u-boot-2015.07
  # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2015.07.tar.bz2
  # tar -xvf u-boot-2015.07.tar.bz2
