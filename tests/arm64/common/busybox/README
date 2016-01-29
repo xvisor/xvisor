@@ -30,7 +30,7 @@ RootFS for ARM64 Linux guest:
   # sudo chown -R root:root ./_install
 
   [7. Create RootFS image]
-  # fakeroot /bin/bash -c "genext2fs -b 5120 -N 1024 -D <xvisor_source_directory>/tests/arm64/common/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs64.ext2"
+  # fakeroot /bin/bash -c "genext2fs -b 6500 -N 1024 -D <xvisor_source_directory>/tests/arm64/common/busybox/busybox_dev.txt -d ./_install <busybox_rootfs_directory>/rootfs64.ext2"
 
   [8. Create RootFS CPIO image]
   # mkdir -p <busybox_rootfs_directory>/tmp
