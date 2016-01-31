@@ -62,7 +62,7 @@ int vmm_threads_stop(struct vmm_thread *tinfo)
 		return VMM_EFAIL;
 	}
 
-	if ((rc = vmm_manager_vcpu_halt(tinfo->tvcpu))) {
+	if ((rc = vmm_manager_vcpu_reset(tinfo->tvcpu))) {
 		return rc;
 	}
 
