@@ -193,6 +193,7 @@ static int imx_src_remove(struct vmm_device *dev)
 
 static const struct vmm_devtree_nodeid imx_src_dt_ids[] = {
 	{ .compatible = "fsl,imx51-src"},
+	{ .compatible = "fsl,imx6-src"},
 	{ /* sentinel */ }
 };
 
