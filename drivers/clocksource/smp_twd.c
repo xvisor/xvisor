@@ -196,7 +196,6 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 			/* No TWD clock found hence caliberate */
 			rc = vmm_devtree_regmap(node, &ref_cnt_addr, 1);
 			if (rc) {
-				vmm_devtree_regunmap(node, ref_cnt_addr, 1);
 				goto fail_regunmap;
 			}
 			if (vmm_devtree_read_u32(node, "ref-counter-freq",
