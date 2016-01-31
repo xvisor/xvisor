@@ -459,6 +459,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	clk_register_clkdev(clk[IMX6QDL_CLK_ARM], NULL, "cpu0");
 	clk_register_clkdev(clk[IMX6QDL_CLK_PLL4_POST_DIV], "pll4_post_div", NULL);
 	clk_register_clkdev(clk[IMX6QDL_CLK_PLL4_AUDIO], "pll4_audio", NULL);
+	clk_register_clkdev(clk[IMX6QDL_CLK_TWD], NULL, "smp_twd");
 
 	if ((imx_get_soc_revision() != IMX_CHIP_REVISION_1_0) ||
 	    cpu_is_imx6dl()) {
