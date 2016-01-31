@@ -42,36 +42,28 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a9";
 			reg = <0>;
-			enable-method = "smp-scu";
-			cpu-clear-addr = <0x10000034>;
-			cpu-release-addr = <0x10000030>;
+			enable-method = "smp-imx";
 		};
 
 		cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a9";
 			reg = <1>;
-			enable-method = "smp-scu";
-			cpu-clear-addr = <0x10000034>;
-			cpu-release-addr = <0x10000030>;
+			enable-method = "smp-imx";
 		};
 
 		cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a9";
 			reg = <2>;
-			enable-method = "smp-scu";
-			cpu-clear-addr = <0x10000034>;
-			cpu-release-addr = <0x10000030>;
+			enable-method = "smp-imx";
 		};
 
 		cpu@3 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a9";
 			reg = <3>;
-			enable-method = "smp-scu";
-			cpu-clear-addr = <0x10000034>;
-			cpu-release-addr = <0x10000030>;
+			enable-method = "smp-imx";
 		};
 	};
 
