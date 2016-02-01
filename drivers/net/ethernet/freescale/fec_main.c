@@ -2025,9 +2025,7 @@ static void fec_enet_adjust_link(struct net_device *ndev)
 static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
 	struct fec_enet_private *fep = bus->priv;
-#if 0
 	unsigned long time_left;
-#endif /* 0 */
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -2038,8 +2036,6 @@ static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 		FEC_MMFR_TA, fep->hwp + FEC_MII_DATA);
 
 	/* wait for end of transfer */
-#if 0
-	/* FIXME: Correct */
 	time_left = wait_for_completion_timeout(&fep->mdio_done,
 			usecs_to_jiffies(FEC_MII_TIMEOUT));
 	if (time_left == 0) {
@@ -2047,9 +2043,6 @@ static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 		netdev_err(fep->netdev, "MDIO read timeout\n");
 		return -ETIMEDOUT;
 	}
-#else /* 0 */
-	wait_for_completion(&fep->mdio_done);
-#endif /* 0 */
 
 	/* return value */
 	return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
@@ -2059,9 +2052,7 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
 {
 	struct fec_enet_private *fep = bus->priv;
-#if 0
 	unsigned long time_left;
-#endif /* 0 */
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -2073,8 +2064,6 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 		fep->hwp + FEC_MII_DATA);
 
 	/* wait for end of transfer */
-#if 0
-	/* FIXME: Correct */
 	time_left = wait_for_completion_timeout(&fep->mdio_done,
 			usecs_to_jiffies(FEC_MII_TIMEOUT));
 	if (time_left == 0) {
@@ -2082,9 +2071,6 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 		netdev_err(fep->netdev, "MDIO write timeout\n");
 		return -ETIMEDOUT;
 	}
-#else /* 0 */
-	wait_for_completion(&fep->mdio_done);
-#endif /* 0 */
 
 	return 0;
 }
