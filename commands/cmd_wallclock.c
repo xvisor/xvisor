@@ -42,9 +42,9 @@ static void cmd_wallclock_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   wallclock help\n");
 	vmm_cprintf(cdev, "   wallclock get_time\n");
 	vmm_cprintf(cdev, "   wallclock set_time <hour>:<min>:<sec> "
-			      "<day> <month> <year> [+/-<tz_hour>:<tz_min]\n");
+			      "<day> <month> <year> [+/-<tz_hour>:<tz_min>]\n");
 	vmm_cprintf(cdev, "   wallclock get_timezone\n");
-	vmm_cprintf(cdev, "   wallclock set_timezone +/-<tz_hour>:<tz_min\n");
+	vmm_cprintf(cdev, "   wallclock set_timezone +/-<tz_hour>:<tz_min>\n");
 	vmm_cprintf(cdev, "Note:\n");
 	vmm_cprintf(cdev, "   <hour>    = any value between 0..23\n");
 	vmm_cprintf(cdev, "   <minute>  = any value between 0..59\n");
