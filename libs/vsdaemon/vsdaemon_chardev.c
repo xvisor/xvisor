@@ -67,6 +67,10 @@ static int vsdaemon_chardev_setup(struct vsdaemon *vsd, int argc, char **argv)
 {
 	struct vsdaemon_chardev *vcdev;
 
+	if (argc < 1) {
+		return VMM_EINVALID;
+	}
+
 	vcdev = vmm_zalloc(sizeof(*vcdev));
 	if (!vcdev) {
 		return VMM_ENOMEM;

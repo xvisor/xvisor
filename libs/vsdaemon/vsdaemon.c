@@ -217,7 +217,7 @@ int vsdaemon_create(const char *transport_name,
 
 	BUG_ON(!vmm_scheduler_orphan_context());
 
-	if (!transport_name || !vserial_name || !daemon_name || (argc < 1)) {
+	if (!transport_name || !vserial_name || !daemon_name) {
 		return VMM_EINVALID;
 	}
 

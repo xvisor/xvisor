@@ -188,6 +188,10 @@ static int vsdaemon_telnet_setup(struct vsdaemon *vsd, int argc, char **argv)
 	u32 port;
 	struct vsdaemon_telnet *tnet;
 
+	if (argc < 1) {
+		return VMM_EINVALID;
+	}
+
 	port = strtoul(argv[0], NULL, 0);
 	if (!vsdaemon_valid_port(port)) {
 		return VMM_EINVALID;
