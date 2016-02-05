@@ -23,4 +23,5 @@
 
 libs-objs-$(CONFIG_VSDAEMON) += vsdaemon/vsdaemon.o
 libs-objs-$(CONFIG_VSDAEMON_CHARDEV) += vsdaemon/vsdaemon_chardev.o
+libs-objs-$(CONFIG_VSDAEMON_MTERM) += vsdaemon/vsdaemon_mterm.o
 libs-objs-$(CONFIG_VSDAEMON_TELNET) += vsdaemon/vsdaemon_telnet.o
