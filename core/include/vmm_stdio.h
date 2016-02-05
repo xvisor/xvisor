@@ -81,6 +81,15 @@ struct vmm_history {
 		(h)->tail = 0;						\
 	}								
 
+/** Cleanup vmm_history pointer */
+#define CLEANUP_HISTORY(h)						\
+	{	int iter = 0;						\
+		for (iter = 0; iter < (h)->length ; iter++) {		\
+			vmm_free((h)->table[iter]);			\
+		}							\
+		vmm_free((h)->table);					\
+	}
+
 struct vmm_chardev;
 
 /** Check if a character is a control character */
