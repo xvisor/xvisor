@@ -74,7 +74,11 @@ extern u8 _start_secondary;
 static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 {
 	int rc;
+#ifdef CONFIG_ARM64
 	u32 val = 0;
+#else
+	u64 val = 0;
+#endif
 	physical_addr_t _start_secondary_pa;
 #ifndef CONFIG_ARM64
 	const struct vmm_cpumask *mask = get_cpu_mask(cpu);
@@ -92,7 +96,7 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 		arch_wmb();
 		val = ~0x0;
 		vmm_host_memory_write(clear_addr[cpu],
-				      &val, sizeof (u32), FALSE);
+				      &val, sizeof(val), FALSE);
 	}
 
 	/* Write to release address */
@@ -100,7 +104,7 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 		arch_wmb();
 		val = _start_secondary_pa;
 		vmm_host_memory_write(release_addr[cpu],
-				      &val, sizeof (u32), FALSE);
+				      &val, sizeof(val), FALSE);
 	}
 
 #ifdef CONFIG_ARM64
