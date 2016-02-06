@@ -43,6 +43,8 @@ static void cmd_vsdaemon_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vsdaemon list\n");
 	vmm_cprintf(cdev, "   vsdaemon create <transport_name>"
 			  " <vserial_name> <daemon_name> ...\n");
+	vmm_cprintf(cdev, "      vsdaemon create mterm"
+			  " <vserial_name> <daemon_name>\n");
 	vmm_cprintf(cdev, "      vsdaemon create chardev"
 			  " <vserial_name> <daemon_name> <chardev_name>\n");
 	vmm_cprintf(cdev, "      vsdaemon create telnet"
