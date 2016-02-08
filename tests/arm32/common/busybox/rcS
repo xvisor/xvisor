@@ -1,0 +1,5 @@
+#! /bin/sh
+
+/bin/mount -a
+
+cat /etc/motd
