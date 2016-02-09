@@ -75,9 +75,9 @@ static int __init smp_spin_table_cpu_prepare(unsigned int cpu)
 {
 	int rc;
 #ifdef CONFIG_ARM64
-	u32 val = 0;
-#else
 	u64 val = 0;
+#else
+	u32 val = 0;
 #endif
 	physical_addr_t _start_secondary_pa;
 #ifndef CONFIG_ARM64
