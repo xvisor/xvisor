@@ -495,6 +495,7 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 {
 	int rc;
 	u32 irq, irq_start = 0;
+	physical_size_t cpu_sz;
 	virtual_addr_t cpu_base;
 	virtual_addr_t cpu2_base;
 	virtual_addr_t dist_base;
@@ -511,7 +512,17 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 
 	rc = vmm_devtree_request_regmap(node, &cpu2_base, 4, "GIC CPU2");
 	if (rc) {
-		cpu2_base = cpu_base + 0x1000;
+		rc = vmm_devtree_regsize(node, &cpu_sz, 1);
+		if (rc) {
+			return rc;
+		}
+		if (cpu_sz >= 0x20000) {
+			cpu2_base = cpu_base + 0x10000;
+		} else if (cpu_sz >= 0x2000) {
+			cpu2_base = cpu_base + 0x1000;
+		} else {
+			cpu2_base = 0x0;
+		}
 	}
 
 	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
