@@ -1,9 +1,8 @@
-			       ARM64 Guest
+# Common Reference Across Architectures 
 
 This directory contains the following sub-directories:
 
-  1. common - Common code for all ARM64 guests
-  2. virt-v8 - Virt-v8 (ARMV8A) guest directory
+1. `busybox` - Busybox based Rootfs for Guest Linux
 
 Please follow the README under specific directory for detailed
 steps to configure, compile and run.

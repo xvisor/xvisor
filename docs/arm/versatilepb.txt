@@ -44,7 +44,7 @@ guest with Xvisor running on QEMU VersatilePB Host:
 
   [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
-  (Note: Please refer tests/arm32/common/busybox/README for creating rootfs.img using BusyBox)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
   [13. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

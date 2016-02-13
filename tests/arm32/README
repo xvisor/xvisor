@@ -1,6 +1,6 @@
 			       ARM32 Guest
 
-This directory contains directories:
+This directory contains the following sub-directories:
 
   1. common - Common code for all ARM32 guests
   2. realview-eb-mpcore - Realview-EB-MPCore (ARMV6,ARM11MP) guest directory

@@ -1,4 +1,4 @@
-# BusyBox RootFS for ARM Guest
+# BusyBox RootFS for ARM/ARM64 Guest
 
 ## Introduction
 [BusyBox](https://busybox.net) provides several stripped-down Unix tools in a
@@ -51,6 +51,12 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
 
 1. Setup the build environment for Xvisor based on the selected toolchain
 
+    - ARM64 GNU/Linux Toolchain
+
+        ```bash
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        ```
+
     - CodeSourcery Lite ARM GNU/Linux Toolchain
 
         ```bash
@@ -66,7 +72,7 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     - Linaro ARM GNU/Linux Hard-Float Toolchain
 
         ```bash
-        export CROSS_COMPILE=arm-none-linux-gnueabihf-
+        export CROSS_COMPILE=arm-linux-gnueabihf-
         ```
 
 2. Go to Xvisor source directory
@@ -78,7 +84,7 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
 3. Copy a `defconfig` file to the Busybox source directory
 
     ```bash
-    cp tests/arm32/busybox/busybox-<busybox_version>_defconfig <busybox_source_directory>/.config
+    cp tests/common/busybox/busybox-<busybox_version>_defconfig <busybox_source_directory>/.config
     ```
 
 4. Go to Busybox source directory
@@ -103,12 +109,12 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
 
     ```bash
     mkdir -p ./_install/etc/init.d
-    mkdir ./_install/dev
-    mkdir ./_install/proc
+    mkdir -p ./_install/dev
+    mkdir -p ./_install/proc
     mkdir -p ./_install/sys
-    cp <xvisor_source_directory>/tests/arm32/busybox/rcS ./_install/etc/init.d/rcS
-    cp <xvisor_source_directory>/tests/arm32/busybox/motd ./_install/etc/motd
-    cp <xvisor_source_directory>/tests/arm32/busybox/fstab ./_install/etc/fstab
+    cp <xvisor_source_directory>/tests/common/busybox/rcS ./_install/etc/init.d/rcS
+    cp <xvisor_source_directory>/tests/common/busybox/motd ./_install/etc/motd
+    cp <xvisor_source_directory>/tests/common/busybox/fstab ./_install/etc/fstab
     ```
 
 8. Create INITRD RootFS EXT2 image
@@ -126,4 +132,3 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     ```bash
     cd ./_install; sudo find ./ | cpio -o -H newc | gzip -9 > <busybox_rootfs_directory>/rootfs.img; cd -
     ```
-
