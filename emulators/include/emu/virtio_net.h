@@ -79,14 +79,29 @@
 #define VIRTIO_NET_F_CTRL_RX	18	/* Control channel RX mode support */
 #define VIRTIO_NET_F_CTRL_VLAN	19	/* Control channel VLAN filtering */
 #define VIRTIO_NET_F_CTRL_RX_EXTRA 20	/* Extra RX mode control support */
+#define VIRTIO_NET_F_GUEST_ANNOUNCE 21	/* Guest can announce device on the
+					 * network */
+#define VIRTIO_NET_F_MQ		22	/* Device supports Receive Flow
+					 * Steering */
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 23	/* Set MAC address */
+
+#ifndef VIRTIO_NET_NO_LEGACY
+#define VIRTIO_NET_F_GSO	6	/* Host handles pkts w/ any GSO type */
+#endif /* VIRTIO_NET_NO_LEGACY */
 
 #define VIRTIO_NET_S_LINK_UP	1	/* Link is up */
+#define VIRTIO_NET_S_ANNOUNCE   2       /* Announcement is needed */
 
 struct virtio_net_config {
 	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
 	u8 mac[6];
 	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
 	u16 status;
+	/* Maximum number of each of transmit and receive queues;
+	 * see VIRTIO_NET_F_MQ and VIRTIO_NET_CTRL_MQ.
+	 * Legal values are between 1 and 0x8000
+	 */
+	u16 max_virtqueue_pairs;
 } __attribute__((packed));
 
 /* This is the first element of the scatter-gather list.  If you don't
@@ -122,9 +137,7 @@ struct virtio_net_hdr_mrg_rxbuf {
  * command goes in between.
  */
 struct virtio_net_ctrl_hdr {
-#if 0
-	__u8 class;
-#endif
+	u8 class;
 	u8 cmd;
 } __attribute__((packed));
 
@@ -183,5 +196,36 @@ struct virtio_net_ctrl_mac {
 #define VIRTIO_NET_CTRL_VLAN			2
 #define VIRTIO_NET_CTRL_VLAN_ADD		0
 #define VIRTIO_NET_CTRL_VLAN_DEL		1
+
+/*
+ * Control link announce acknowledgement
+ *
+ * The command VIRTIO_NET_CTRL_ANNOUNCE_ACK is used to indicate that
+ * driver has recevied the notification; device would clear the
+ * VIRTIO_NET_S_ANNOUNCE bit in the status field after it receives
+ * this command.
+ */
+#define VIRTIO_NET_CTRL_ANNOUNCE       3
+#define VIRTIO_NET_CTRL_ANNOUNCE_ACK         0
+
+/*
+ * Control Receive Flow Steering
+ *
+ * The command VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET
+ * enables Receive Flow Steering, specifying the number of the transmit and
+ * receive queues that will be used. After the command is consumed and acked by
+ * the device, the device will not steer new packets on receive virtqueues
+ * other than specified nor read from transmit virtqueues other than specified.
+ * Accordingly, driver should not transmit new packets  on virtqueues other than
+ * specified.
+ */
+struct virtio_net_ctrl_mq {
+	u16 virtqueue_pairs;
+};
+
+#define VIRTIO_NET_CTRL_MQ   4
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
+#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 
 #endif /* __VIRTIO_NET_H_ */

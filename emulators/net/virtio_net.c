@@ -44,20 +44,32 @@
 #define MODULE_EXIT			virtio_net_exit
 
 #define VIRTIO_NET_QUEUE_SIZE		256
-#define VIRTIO_NET_NUM_QUEUES		2
-#define VIRTIO_NET_RX_QUEUE		0
-#define VIRTIO_NET_TX_QUEUE		1
+
+#define VIRTIO_NET_UNK_QUEUE		0
+#define VIRTIO_NET_RX_QUEUE		1
+#define VIRTIO_NET_TX_QUEUE		2
+#define VIRTIO_NET_CTRL_QUEUE		3
 
 #define VIRTIO_NET_MTU			1514
 
 #define VIRTIO_NET_TX_LAZY_BUDGET	(VIRTIO_NET_QUEUE_SIZE / 4)
 
+struct virtio_net_queue {
+	int num;
+	int valid;
+	int type;
+	struct virtio_queue vq;
+	struct virtio_iovec iov[VIRTIO_NET_QUEUE_SIZE];
+	struct virtio_net_dev *ndev;
+};
+
 struct virtio_net_dev {
 	struct virtio_device *vdev;
 
-	struct virtio_queue vqs[VIRTIO_NET_NUM_QUEUES];
-	struct virtio_iovec rx_iov[VIRTIO_NET_QUEUE_SIZE];
-	struct virtio_iovec tx_iov[VIRTIO_NET_QUEUE_SIZE];
+	struct virtio_net_queue *vqs;
+	u32 cq;		/* Configuration queue number */
+	u32 max_queues;
+	u32 can_receive;
 	struct virtio_net_config config;
 	u32 features;
 
@@ -82,6 +94,8 @@ static u32 virtio_net_get_host_features(struct virtio_device *dev)
 #if 0
 		| 1UL << VIRTIO_RING_F_INDIRECT_DESC
 #endif
+		| 1UL << VIRTIO_NET_F_MQ
+		| 1UL << VIRTIO_NET_F_CTRL_VQ
 		;
 }
 
@@ -99,15 +113,13 @@ static int virtio_net_init_vq(struct virtio_device *dev,
 	int rc;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	switch (vq) {
-	case VIRTIO_NET_TX_QUEUE:
-	case VIRTIO_NET_RX_QUEUE:
-		rc = virtio_queue_setup(&ndev->vqs[vq], dev->guest, 
+	rc = virtio_queue_setup(&ndev->vqs[vq].vq, dev->guest,
 				pfn, page_size, VIRTIO_NET_QUEUE_SIZE, align);
-		break;
-	default:
-		rc = VMM_EINVALID;
-		break;
+	if (rc == VMM_OK) {
+		ndev->vqs[vq].valid = 1;
+		if (!ndev->can_receive &&
+		    ndev->vqs[vq].type == VIRTIO_NET_RX_QUEUE)
+			ndev->can_receive = 1;
 	}
 
 	return rc;
@@ -118,14 +130,10 @@ static int virtio_net_get_pfn_vq(struct virtio_device *dev, u32 vq)
 	int rc;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	switch (vq) {
-	case VIRTIO_NET_TX_QUEUE:
-	case VIRTIO_NET_RX_QUEUE:
-		rc = virtio_queue_guest_pfn(&ndev->vqs[vq]);
-		break;
-	default:
-		rc = VMM_EINVALID;
-		break;
+	rc = virtio_queue_guest_pfn(&ndev->vqs[vq].vq);
+	if (rc == VMM_OK) {
+		ndev->vqs[vq].num = vq;
+		ndev->vqs[vq].valid = 1;
 	}
 
 	return rc;
@@ -133,19 +141,7 @@ static int virtio_net_get_pfn_vq(struct virtio_device *dev, u32 vq)
 
 static int virtio_net_get_size_vq(struct virtio_device *dev, u32 vq)
 {
-	int rc;
-
-	switch (vq) {
-	case VIRTIO_NET_TX_QUEUE:
-	case VIRTIO_NET_RX_QUEUE:
-		rc = VIRTIO_NET_QUEUE_SIZE;
-		break;
-	default:
-		rc = 0;
-		break;
-	}
-
-	return rc;
+	return VIRTIO_NET_QUEUE_SIZE;
 }
 
 static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
@@ -154,16 +150,17 @@ static int virtio_net_set_size_vq(struct virtio_device *dev, u32 vq, int size)
 	return size;
 }
 
-static void virtio_net_tx_poke(struct virtio_net_dev *ndev);
+static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq);
 
 static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 {
 	u16 head = 0;
 	u32 iov_cnt = 0, pkt_len = 0, total_len = 0;
-	struct virtio_net_dev *ndev = arg;
+	struct virtio_net_queue *q = arg;
+	struct virtio_queue *vq = &q->vq;
+	struct virtio_net_dev *ndev = q->ndev;
 	struct virtio_device *dev = ndev->vdev;
-	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
-	struct virtio_iovec *iov = ndev->tx_iov;
+	struct virtio_iovec *iov = q->iov;
 	struct vmm_mbuf *mb;
 
 	while ((budget > 0) && virtio_queue_available(vq)) {
@@ -188,19 +185,46 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 	}
 
 	if (virtio_queue_should_signal(vq)) {
-		dev->tra->notify(dev, VIRTIO_NET_TX_QUEUE);
+		dev->tra->notify(dev, q->num);
 	}
 
-	virtio_net_tx_poke(ndev);
+	virtio_net_tx_poke(ndev, q->num);
 }
 
-static void virtio_net_tx_poke(struct virtio_net_dev *ndev)
+static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq)
 {
-	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_TX_QUEUE];
+	struct virtio_net_queue *q = &ndev->vqs[vq];
+
+	if (virtio_queue_available(&q->vq)) {
+		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
+					  q, VIRTIO_NET_TX_LAZY_BUDGET);
+	}
+}
+
+static void virtio_net_handle_comp(struct virtio_net_dev *ndev, u32 qnum)
+{
+	struct virtio_net_queue *q = &ndev->vqs[qnum];
+	struct virtio_queue *vq = &q->vq;
+	struct virtio_iovec *iov = q->iov;
+	struct virtio_device *dev = ndev->vdev;
+	struct virtio_net_ctrl_hdr ctrl;
+	virtio_net_ctrl_ack status = VIRTIO_NET_ERR;
+	u16 head = 0;
+	u32 iov_cnt = 0, total_len = 0;
 
 	if (virtio_queue_available(vq)) {
-		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
-					  ndev, VIRTIO_NET_TX_LAZY_BUDGET);
+		head = virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
+
+		if (total_len < sizeof(status) || total_len < sizeof(ctrl)) {
+			vmm_printf("%s: virtio-net ctrl missing"
+					" headers", __func__);
+		}
+
+		virtio_iovec_to_buf_read(dev, &iov[0], 1, &ctrl, sizeof(ctrl));
+
+		vmm_printf("%s: IOV Class %d is not handled\n", __func__,
+				ctrl.class);
+		virtio_queue_set_used_elem(vq, head, total_len);
 	}
 }
 
@@ -209,11 +233,14 @@ static int virtio_net_notify_vq(struct virtio_device *dev, u32 vq)
 	int rc = VMM_OK;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	switch (vq) {
+	switch (ndev->vqs[vq].type) {
 	case VIRTIO_NET_TX_QUEUE:
-		virtio_net_tx_poke(ndev);
+		virtio_net_tx_poke(ndev, vq);
 		break;
 	case VIRTIO_NET_RX_QUEUE:
+		break;
+	case VIRTIO_NET_CTRL_QUEUE:
+		virtio_net_handle_comp(ndev, vq);
 		break;
 	default:
 		rc = VMM_EINVALID;
@@ -231,9 +258,8 @@ static void virtio_net_set_link(struct vmm_netport *p)
 static int virtio_net_can_receive(struct vmm_netport *p)
 {
 	struct virtio_net_dev *ndev = p->priv;
-	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_RX_QUEUE];
 
-	return virtio_queue_setup_done(vq) ? 1 : 0;
+	return ndev->can_receive;
 }
 
 static int virtio_net_switch2port_xfer(struct vmm_netport *p,
@@ -242,8 +268,10 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 	u16 head = 0;
 	u32 iov_cnt = 0, total_len = 0, pkt_len = 0;
 	struct virtio_net_dev *ndev = p->priv;
-	struct virtio_queue *vq = &ndev->vqs[VIRTIO_NET_RX_QUEUE];
-	struct virtio_iovec *iov = ndev->rx_iov;
+	/* FIXME: Select correct RX queue here  */
+	struct virtio_net_queue *q = &ndev->vqs[0];
+	struct virtio_queue *vq = &q->vq;
+	struct virtio_iovec *iov = q->iov;
 	struct virtio_device *dev = ndev->vdev;
 
 	pkt_len = min(VIRTIO_NET_MTU, mb->m_pktlen);
@@ -259,7 +287,8 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 		virtio_queue_set_used_elem(vq, head, iov[0].len + pkt_len);
 
 		if (virtio_queue_should_signal(vq)) {
-			dev->tra->notify(dev, VIRTIO_NET_RX_QUEUE);
+			/* FIXME: Select correct RX queue here  */
+			dev->tra->notify(dev, 0);
 		}
 	}
 
@@ -298,18 +327,19 @@ static int virtio_net_write_config(struct virtio_device *dev,
 
 static int virtio_net_reset(struct virtio_device *dev)
 {
-	int rc;
+	int rc, i;
 	struct virtio_net_dev *ndev = dev->emu_data;
 
-	rc = virtio_queue_cleanup(&ndev->vqs[VIRTIO_NET_RX_QUEUE]);
-	if (rc) {
-		return rc;
+	for (i = 0; i < ndev->max_queues; i++) {
+		if (ndev->vqs[i].valid) {
+			rc = virtio_queue_cleanup(&ndev->vqs[i].vq);
+			if (rc) {
+				return rc;
+			}
+		}
+		ndev->vqs[i].valid = 0;
 	}
-
-	rc = virtio_queue_cleanup(&ndev->vqs[VIRTIO_NET_TX_QUEUE]);
-	if (rc) {
-		return rc;
-	}
+	ndev->can_receive = 0;
 
 	return VMM_OK;
 }
@@ -331,17 +361,57 @@ static int virtio_net_connect(struct virtio_device *dev,
 	ndev->vdev = dev;
 	vmm_snprintf(ndev->name, VIRTIO_DEVICE_MAX_NAME_LEN, "%s", dev->name);
 	ndev->port = vmm_netport_alloc(ndev->name, VIRTIO_NET_QUEUE_SIZE);
+	if (!ndev->port) {
+		vmm_free(ndev);
+		return VMM_ENOMEM;
+	}
 	ndev->port->mtu = VIRTIO_NET_MTU;
 	ndev->port->link_changed = virtio_net_set_link;
 	ndev->port->can_receive = virtio_net_can_receive;
 	ndev->port->switch2port_xfer = virtio_net_switch2port_xfer;
 	ndev->port->priv = ndev;
 
+	ndev->config.max_virtqueue_pairs = dev->guest->vcpu_count;
+	/* Total queus: max_virtqueue_pairs * 2 + 1 this is nothing but
+	 *  (RX VQ + TX VQ) * 2 + CONFIG VQ.
+	 */
+	ndev->vqs = vmm_zalloc(sizeof(struct virtio_net_queue) *
+				((ndev->config.max_virtqueue_pairs * 2) + 1));
+	if (!ndev->vqs) {
+		vmm_netport_free(ndev->port);
+		vmm_free(ndev);
+		return VMM_ENOMEM;
+	}
+	ndev->config.status = VIRTIO_NET_S_LINK_UP;
+	ndev->cq = ndev->config.max_virtqueue_pairs * 2;
+	ndev->max_queues = ndev->config.max_virtqueue_pairs * 2 + 1;
+	dev->emu_data = ndev;
+
+	for (i = 0; i < ndev->max_queues; i++) {
+		ndev->vqs[i].num = i;
+		ndev->vqs[i].valid = 0;
+		ndev->vqs[i].ndev = ndev;
+		if (i == ndev->cq) {
+			ndev->vqs[i].type = VIRTIO_NET_CTRL_QUEUE;
+		} else {
+			if (i % 2) {
+				ndev->vqs[i].type = VIRTIO_NET_TX_QUEUE;
+			} else {
+				ndev->vqs[i].type = VIRTIO_NET_RX_QUEUE;
+			}
+		}
+	}
+
 	rc = vmm_netport_register(ndev->port);
 	if (rc) {
+		vmm_free(ndev->vqs);
 		vmm_netport_free(ndev->port);
 		vmm_free(ndev);
 		return rc;
+	}
+
+	for (i = 0; i < 6; i++) {
+		ndev->config.mac[i] = vmm_netport_mac(ndev->port)[i];
 	}
 
 	if (vmm_devtree_read_string(dev->edev->node,
@@ -355,13 +425,6 @@ static int virtio_net_connect(struct virtio_device *dev,
 		}
 	}
 
-	for (i = 0; i < 6; i++) {
-		ndev->config.mac[i] = vmm_netport_mac(ndev->port)[i];
-	}
-
-	ndev->config.status = VIRTIO_NET_S_LINK_UP;
-	dev->emu_data = ndev;
-
 	return VMM_OK;
 }
 
@@ -370,6 +433,7 @@ static void virtio_net_disconnect(struct virtio_device *dev)
 	struct virtio_net_dev *ndev = dev->emu_data;
 
 	vmm_netport_unregister(ndev->port);
+	vmm_free(ndev->vqs);
 	vmm_netport_free(ndev->port);
 	vmm_free(ndev);
 }
