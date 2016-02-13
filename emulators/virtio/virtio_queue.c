@@ -191,7 +191,6 @@ int virtio_queue_cleanup(struct virtio_queue *vq)
 
 	rc = vmm_host_memunmap((virtual_addr_t)vq->addr);
 
-done:
 	vq->last_avail_idx = 0;
 	vq->last_used_signalled = 0;
 
@@ -207,6 +206,7 @@ done:
 	vq->host_addr = 0;
 	vq->total_size = 0;
 
+done:
 	return rc;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_cleanup);
