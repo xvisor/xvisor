@@ -338,8 +338,7 @@ int vmm_scheduler_force_resched(u32 hcpu)
 	return VMM_OK;
 }
 
-int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state,
-			       vmm_spinlock_t *wq_lock)
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 {
 	u64 tstamp;
 	int rc = VMM_OK;
@@ -492,12 +491,12 @@ skip_state_change:
 			} else if (schedp->irq_context) {
 				vmm_scheduler_switch(schedp, schedp->irq_regs);
 			} else {
-				if (wq_lock) {
-					vmm_spin_unlock(wq_lock);
+				if (vcpu->wq_lock) {
+					vmm_spin_unlock(vcpu->wq_lock);
 				}
 				arch_vcpu_preempt_orphan();
-				if (wq_lock) {
-					vmm_spin_lock(wq_lock);
+				if (vcpu->wq_lock) {
+					vmm_spin_lock(vcpu->wq_lock);
 				}
 			}
 		} else {

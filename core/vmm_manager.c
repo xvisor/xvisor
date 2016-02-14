@@ -109,7 +109,7 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id)
 static void manager_vcpu_ipi_reset(void *vcpu_ptr,
 				   void *dummy1, void *dummy2)
 {
-	vmm_scheduler_state_change(vcpu_ptr, VMM_VCPU_STATE_RESET, NULL);
+	vmm_scheduler_state_change(vcpu_ptr, VMM_VCPU_STATE_RESET);
 }
 
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
@@ -270,7 +270,7 @@ int vmm_manager_vcpu_set_state(struct vmm_vcpu *vcpu, u32 new_state)
 					     vcpu, NULL, NULL);
 	}
 
-	return vmm_scheduler_state_change(vcpu, new_state, NULL);
+	return vmm_scheduler_state_change(vcpu, new_state);
 }
 
 int vmm_manager_vcpu_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu)

@@ -42,8 +42,7 @@ int vmm_scheduler_force_resched(u32 hcpu);
  *  (Do not call this function directly.)
  *  (Always prefer vmm_manager_vcpu_xxx() APIs for vcpu state change.)
  */
-int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state,
-			       vmm_spinlock_t *wq_lock);
+int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state);
 
 /** Retrive host CPU assigned to given VCPU */
 int vmm_scheduler_get_hcpu(struct vmm_vcpu *vcpu, u32 *hcpu);

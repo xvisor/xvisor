@@ -64,6 +64,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	wq->vcpu_count++;
 
 	/* Update VCPU waitqueue context */
+	vcpu->wq_lock = &wq->lock;
 	vcpu->wq_priv = wq;
 
 	/* If timeout is required then create timer event */
@@ -73,8 +74,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	}
 
 	/* Try to Pause VCPU */
-	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED,
-					&wq->lock);
+	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
 
 	/* Remove VCPU from waitqueue */
 	list_del(&vcpu->wq_head);
@@ -85,6 +85,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	}
 
 	/* Set VCPU waitqueue context to NULL */
+	vcpu->wq_lock = NULL;
 	vcpu->wq_priv = NULL;
 
 	if (rc) {
@@ -171,6 +172,7 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 	}
 
 	/* Set VCPU waitqueue context to NULL */
+	vcpu->wq_lock = NULL;
 	vcpu->wq_priv = NULL;
 
 	/* Unlock waitqueue */
@@ -182,7 +184,7 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 static int __vmm_waitqueue_wake(struct vmm_waitqueue *wq,
 				struct vmm_vcpu *vcpu)
 {
-	return vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY, NULL);
+	return vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY);
 }
 
 int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)

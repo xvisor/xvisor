@@ -224,6 +224,7 @@ struct vmm_vcpu {
 
 	/* Waitqueue parameters */
 	struct dlist wq_head;
+	vmm_spinlock_t *wq_lock;
 	void *wq_priv;
 };
 
