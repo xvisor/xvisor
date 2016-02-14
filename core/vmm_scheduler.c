@@ -205,6 +205,9 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 	if (next != current) {
 		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
 		arch_vcpu_switch(tcurrent, next, regs);
+		if (current->wq_lock) {
+			vmm_spin_unlock(current->wq_lock);
+		}
 	}
 
 	next->state_ready_nsecs += tstamp - next->state_tstamp;
@@ -225,6 +228,7 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
 				 arch_regs_t *regs)
 {
+	u32 preempt_min;
 	struct vmm_vcpu *next;
 	struct vmm_vcpu *current = schedp->current_vcpu;
 
@@ -234,7 +238,8 @@ static void vmm_scheduler_switch(struct vmm_scheduler_ctrl *schedp,
 	}
 
 	if (current) {
-		if (!current->preempt_count) {
+		preempt_min = (current->wq_lock) ? 1 : 0;
+		if (current->preempt_count == preempt_min) {
 			irq_flags_t cf;
 
 			vmm_write_lock_irqsave_lite(&current->sched_lock, cf);
@@ -491,9 +496,6 @@ skip_state_change:
 			} else if (schedp->irq_context) {
 				vmm_scheduler_switch(schedp, schedp->irq_regs);
 			} else {
-				if (vcpu->wq_lock) {
-					vmm_spin_unlock(vcpu->wq_lock);
-				}
 				arch_vcpu_preempt_orphan();
 				if (vcpu->wq_lock) {
 					vmm_spin_lock(vcpu->wq_lock);
