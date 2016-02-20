@@ -420,6 +420,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			 * resume event while VCPU is RUNNING.
 			 */
 			vcpu->resumed = TRUE;
+			preempt = TRUE;
 			goto skip_state_change;
 		} else if (current_state == VMM_VCPU_STATE_READY) {
 			/* READY->READY is a valid scenario... Do nothing. */
@@ -429,7 +430,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		}
 		break;
 	case VMM_VCPU_STATE_RUNNING:
-		/* Only scheduler can set RUNNING state.
+		/* Only context-switch can set RUNNING state.
 		 * Any request for setting RUNNING state is invalid.
 		 */
 		rc = VMM_EINVALID;
@@ -875,6 +876,7 @@ void vmm_scheduler_yield(void)
 {
 	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
 
 	arch_cpu_irq_save(flags);
 
@@ -882,24 +884,12 @@ void vmm_scheduler_yield(void)
 		vmm_panic("%s: Cannot yield in IRQ context\n", __func__);
 	}
 
-	if (!schedp->current_vcpu) {
+	if (!vcpu) {
 		vmm_panic("%s: NULL VCPU pointer\n", __func__);
 	}
 
-	if (schedp->current_vcpu->is_normal) {
-		/* For Normal VCPU
-		 * Just enable yield on exit and rest will be taken care
-		 * by vmm_scheduler_irq_exit()
-		 */
-		if (vmm_manager_vcpu_get_state(schedp->current_vcpu) ==
-						VMM_VCPU_STATE_RUNNING) {
-			schedp->yield_on_irq_exit = TRUE;
-		}
-	} else {
-		/* For Orphan VCPU
-		 * Forcefully expire yield
-		 */
-		arch_vcpu_preempt_orphan();
+	if (vmm_manager_vcpu_get_state(vcpu) == VMM_VCPU_STATE_RUNNING) {
+		vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY);
 	}
 
 	arch_cpu_irq_restore(flags);
