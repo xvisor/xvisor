@@ -61,3 +61,4 @@ commands-objs-$(CONFIG_CMD_MII)+= cmd_mii.o
 
 commands-objs-$(CONFIG_CMD_VSDAEMON)+= cmd_vsdaemon.o
 commands-objs-$(CONFIG_CMD_VFS)+= cmd_vfs.o
+commands-objs-$(CONFIG_CMD_WBOXTEST)+= cmd_wboxtest.o
