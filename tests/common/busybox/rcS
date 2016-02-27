@@ -2,4 +2,7 @@
 
 /bin/mount -a
 
+mkdir -p /dev
+/bin/mount -t devtmpfs devtmpfs /dev
+
 cat /etc/motd

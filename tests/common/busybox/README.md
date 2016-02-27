@@ -112,23 +112,29 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     mkdir -p ./_install/dev
     mkdir -p ./_install/proc
     mkdir -p ./_install/sys
-    cp <xvisor_source_directory>/tests/common/busybox/rcS ./_install/etc/init.d/rcS
-    cp <xvisor_source_directory>/tests/common/busybox/motd ./_install/etc/motd
-    cp <xvisor_source_directory>/tests/common/busybox/fstab ./_install/etc/fstab
+    ln -sf /sbin/init ./_install/init
+    cp -f <xvisor_source_directory>/tests/common/busybox/fstab ./_install/etc/fstab
+    cp -f <xvisor_source_directory>/tests/common/busybox/rcS ./_install/etc/init.d/rcS
+    cp -f <xvisor_source_directory>/tests/common/busybox/motd ./_install/etc/motd
     ```
 
-8. Create INITRD RootFS EXT2 image
+8. Create a RootFS image using one of the following options (INITRAMFS preferred)
 
-    ```bash
-    genext2fs -b 6500 -N 1024 -U -d ./_install <busybox_rootfs_directory>/rootfs.ext2
-    ```
+    - INITRAMFS cpio image
 
-9. Create INITRAMFS RootFS CPIO image
-    ```bash
-    cd ./_install; sudo find ./ | cpio -o -H newc > <busybox_rootfs_directory>/rootfs.img; cd -
-    ```
+        ```bash
+        cd ./_install; find ./ | cpio -o -H newc > ../rootfs.img; cd -
+        ```
 
-    OR, to generate a compressed image use instead
-    ```bash
-    cd ./_install; sudo find ./ | cpio -o -H newc | gzip -9 > <busybox_rootfs_directory>/rootfs.img; cd -
-    ```
+    - OR, INITRAMFS compressed cpio image
+
+        ```bash
+        cd ./_install; find ./ | cpio -o -H newc | gzip -9 > ../rootfs.img; cd -
+        ```
+
+    - OR, INITRD etx2 image (legacy)
+
+        ```bash
+        genext2fs -b 6500 -N 1024 -U -d ./_install ./rootfs.ext2
+        ```
+
