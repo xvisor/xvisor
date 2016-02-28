@@ -27,7 +27,7 @@ Vexpress-A15 Host:
   # make -C tests/arm32/vexpress-a15/basic
 
   [6. Copy defconfig to Linux build directory]
-  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_vexpress_a15_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>

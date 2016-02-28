@@ -31,7 +31,7 @@ Foundation v8 model:
   # make -C tests/arm64/virt-v8/basic
 
   [6. Copy Linux defconfig to Linux build directory]
-  # cp tests/arm64/virt-v8/linux/linux-<linux_version>_virt_v8_defconfig <linux_build_directory>/.config
+  # cp tests/arm64/virt-v8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>

@@ -25,7 +25,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # make -C tests/arm32/realview-eb-mpcore/basic
 
   [6. Copy defconfig to Linux build directory]
-  # cp tests/arm32/realview-eb-mpcore/linux/linux-<linux_version>_realview_ebmp_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/realview-eb-mpcore/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>

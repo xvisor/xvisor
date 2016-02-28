@@ -66,7 +66,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
   # make -C tests/arm32/vexpress-a15/basic
 
   [7. Copy defconfig to Linux build directory]
-  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_vexpress_a15_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [8. GoTo Linux source directory]
   # cd <linux_source_directory>

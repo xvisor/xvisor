@@ -33,7 +33,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # make -C tests/arm32/realview-pb-a8/basic
 
   [7. Copy defconfig to Linux build directory]
-  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_realview_pba8_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [8. GoTo Linux source directory]
   # cd <linux_source_directory>
@@ -193,7 +193,7 @@ follows:
   # make -C tests/arm32/realview-pb-a8/basic
 
   [8. Copy defconfig to Linux build directory]
-  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_realview_pba8_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [9. GoTo Linux source directory]
   # cd <linux_source_directory>

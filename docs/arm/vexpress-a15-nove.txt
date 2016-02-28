@@ -26,7 +26,7 @@ guest with Xvisor running on QEMU Vexpress-A15 Host:
   # make -C tests/arm32/realview-pb-a8/basic
 
   [6. Copy defconfig to Linux build directory]
-  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_realview_pba8_defconfig <linux_build_directory>/.config
+  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [7. GoTo Linux source directory]
   # cd <linux_source_directory>

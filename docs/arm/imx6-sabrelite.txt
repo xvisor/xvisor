@@ -56,7 +56,7 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [14. Configure, build and patch the kernel image]
   # cd <linux_source_directory>
-  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_sabrelite_a9_defconfig .config
+  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_defconfig .config
   # make O=<linux_build_directory> ARCH=arm oldconfig
   # make O=<linux_build_directory> ARCH=arm Image
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
