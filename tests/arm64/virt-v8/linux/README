@@ -46,8 +46,8 @@ Foundation v8 model:
   # <linux_build_directory>/scripts/dtc/dtc -I dts -O dtb -p 0x800 -o <linux_build_directory>/virt-v8.dtb <xvisor_source_directory>/tests/arm64/virt-v8/linux/virt-v8.dts
 
   [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
-  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs64.img)
-  (Note: Please refer tests/common/busybox/README.md for creating rootfs64.img using BusyBox)
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
   [12. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -64,7 +64,7 @@ Foundation v8 model:
   # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm64/virt-v8/Image
   # cp -f <linux_build_directory>/virt-v8.dtb ./build/disk/images/arm64/virt-v8/virt-v8.dtb
-  # cp -f <busybox_rootfs_directory>/rootfs64.img ./build/disk/images/arm64/rootfs64.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [14. Create foundation_v8_boot.axf for running it on Foundation v8 Model]

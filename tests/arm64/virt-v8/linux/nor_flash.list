@@ -2,4 +2,4 @@
 0x000FF000 /images/arm64/virt-v8/cmdlist
 0x00100000 /images/arm64/virt-v8/Image
 0x008F0000 /images/arm64/virt-v8/virt-v8.dtb
-0x00900000 /images/arm64/rootfs64.img
+0x00900000 /images/arm64/rootfs.img
