@@ -362,7 +362,7 @@ static void gpt_event(struct vmm_timer_event *event)
 
 static void lan9118_mac_changed(struct lan9118_state *s)
 {
-#if DEBUG_LAN9118
+#ifdef DEBUG_LAN9118
 	char tname[30];
 	DPRINTF("MAC of \"%s\" changed to [%s]\n", s->port->name,
 		ethaddr_to_str(tname, vmm_netport_mac(s->port)));
@@ -728,7 +728,6 @@ static void do_tx_packet(struct lan9118_state *s)
 	int n;
 	u32 status;
 #ifdef DEBUG_LAN9118
-	int i;
 	char tname[30];
 	struct vmm_mbuf *mbuf = txp_mbuf(s);
 
