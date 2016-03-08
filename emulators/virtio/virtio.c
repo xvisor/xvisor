@@ -124,19 +124,21 @@ static int __virtio_bind_emulator(struct virtio_device *dev,
 	return rc;
 }
 
-static void __virtio_find_emulator(struct virtio_device *dev)
+static int __virtio_find_emulator(struct virtio_device *dev)
 {
 	struct virtio_emulator *emu;
 
 	if (!dev || dev->emu) {
-		return;
+		return VMM_EINVALID;
 	}
 
 	list_for_each_entry(emu, &virtio_emu_list, node) {
 		if (!__virtio_bind_emulator(dev, emu)) {
-			break;
+			return VMM_OK;
 		}
 	}
+
+	return VMM_EFAIL;
 }
 
 static void __virtio_attach_emulator(struct virtio_emulator *emu)
@@ -180,6 +182,8 @@ VMM_EXPORT_SYMBOL(virtio_reset);
 
 int virtio_register_device(struct virtio_device *dev)
 {
+	int rc = VMM_OK;
+
 	if (!dev || !dev->tra) {
 		return VMM_EFAIL;
 	}
@@ -191,11 +195,11 @@ int virtio_register_device(struct virtio_device *dev)
 	vmm_mutex_lock(&virtio_mutex);
 
 	list_add_tail(&dev->node, &virtio_dev_list);
-	__virtio_find_emulator(dev);
+	rc = __virtio_find_emulator(dev);
 
 	vmm_mutex_unlock(&virtio_mutex);
 
-	return VMM_OK;
+	return rc;
 }
 VMM_EXPORT_SYMBOL(virtio_register_device);
 
