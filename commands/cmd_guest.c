@@ -29,6 +29,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
+#include <vmm_devemu.h>
 #include <libs/stringlib.h>
 
 #define MODULE_DESC			"Command guest"
@@ -52,6 +53,7 @@ static void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   guest halt    <guest_name>\n");
 	vmm_cprintf(cdev, "   guest dumpmem <guest_name> <gphys_addr> "
 			  "[mem_sz]\n");
+	vmm_cprintf(cdev, "   guest region  <guest_name> <gphys_addr>\n");
 	vmm_cprintf(cdev, "Note:\n");
 	vmm_cprintf(cdev, "   <guest_name> = node name under /guests "
 			  "device tree node\n");
@@ -279,8 +281,94 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	return VMM_EFAIL;
 }
 
+static int cmd_guest_region(struct vmm_chardev *cdev, const char *name,
+			    physical_addr_t gphys_addr)
+{
+	struct vmm_guest *guest = vmm_manager_guest_find(name);
+	struct vmm_region *reg = NULL;
+	struct vmm_emudev *emudev;
+
+	if (!guest) {
+		vmm_cprintf(cdev, "Failed to find guest\n");
+		return VMM_ENOTAVAIL;
+	}
+
+	reg = vmm_guest_find_region(guest, gphys_addr, VMM_REGION_MEMORY,
+				    TRUE);
+	if (!reg) {
+		reg = vmm_guest_find_region(guest, gphys_addr, VMM_REGION_IO,
+					    TRUE);
+	}
+	if (!reg) {
+		vmm_cprintf(cdev, "Memory region not found\n");
+		return VMM_EFAIL;
+	}
+
+	if (sizeof(u64) == sizeof(physical_addr_t)) {
+		vmm_cprintf(cdev, "Region guest physical address: 0x%016llx\n",
+			    (u64)reg->gphys_addr);
+	} else {
+		vmm_cprintf(cdev, "Region guest physical address: 0x%08x\n",
+			    reg->gphys_addr);
+	}
+
+	if (sizeof(u64) == sizeof(physical_addr_t)) {
+		vmm_cprintf(cdev, "Region host physical address : 0x%016llx\n",
+			    (u64)reg->hphys_addr);
+	} else {
+		vmm_cprintf(cdev, "Region host physical address : 0x%08x\n",
+			    reg->hphys_addr);
+	}
+
+	if (sizeof(u64) == sizeof(physical_size_t)) {
+		vmm_cprintf(cdev, "Region physical size         : 0x%016llx\n",
+			    (u64)reg->phys_size);
+	} else {
+		vmm_cprintf(cdev, "Region physical size         : 0x%08x\n",
+			    reg->phys_size);
+	}
+
+	vmm_cprintf(cdev, "Region flags                 : 0x%08x\n",
+		    reg->flags);
+
+	vmm_cprintf(cdev, "Region node name             : %s\n",
+		    reg->node->name);
+
+	if (!reg->devemu_priv) {
+		return VMM_OK;
+	}
+	emudev = reg->devemu_priv;
+	if (!emudev->emu) {
+		return VMM_OK;
+	}
+
+	vmm_cprintf(cdev, "Region emulator name         : %s\n",
+		    emudev->emu->name);
+
+	return VMM_OK;
+}
+
+static int cmd_guest_param(struct vmm_chardev *cdev, int argc, char **argv,
+			   physical_addr_t *src_addr, u32 *size)
+{
+	if (argc < 4) {
+		vmm_cprintf(cdev, "Error: Insufficient argument for "
+			    "command dumpmem.\n");
+		cmd_guest_usage(cdev);
+		return VMM_EFAIL;
+	}
+	*src_addr = (physical_addr_t)strtoull(argv[3], NULL, 0);
+	if (argc > 4) {
+		*size = (physical_size_t)strtoull(argv[4], NULL, 0);
+	} else {
+		*size = 64;
+	}
+	return VMM_OK;
+}
+
 static int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	int ret = VMM_OK;
 	u32 size;
 	physical_addr_t src_addr;
 	if (argc == 2) {
@@ -311,19 +399,17 @@ static int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (strcmp(argv[1], "halt") == 0) {
 		return cmd_guest_halt(cdev, argv[2]);
 	} else if (strcmp(argv[1], "dumpmem") == 0) {
-		if (argc < 4) {
-			vmm_cprintf(cdev, "Error: Insufficient argument for "
-					  "command dumpmem.\n");
-			cmd_guest_usage(cdev);
-			return VMM_EFAIL;
-		}
-		src_addr = (physical_addr_t)strtoull(argv[3], NULL, 0);
-		if (argc > 4) {
-			size = (physical_size_t)strtoull(argv[4], NULL, 0);
-		} else {
-			size = 64;
+		ret = cmd_guest_param(cdev, argc, argv, &src_addr, &size);
+		if (VMM_OK != ret) {
+			return ret;
 		}
 		return cmd_guest_dumpmem(cdev, argv[2], src_addr, size);
+	} else if (strcmp(argv[1], "region") == 0) {
+		ret = cmd_guest_param(cdev, argc, argv, &src_addr, &size);
+		if (VMM_OK != ret) {
+			return ret;
+		}
+		return cmd_guest_region(cdev, argv[2], src_addr);
 	} else {
 		cmd_guest_usage(cdev);
 		return VMM_EFAIL;
