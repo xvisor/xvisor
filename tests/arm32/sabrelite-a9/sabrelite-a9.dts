@@ -8,7 +8,7 @@
 
 	aliases {
 		mem0 = &MEM0;
-		net1 = &NET1;
+		net0 = &NET0;
 	};
 
 	vcpus {
@@ -232,7 +232,7 @@
 			physical_size = <0x1000>;
 			device_type = "display";
 			compatible = "primecell,pl111";
-			interrupts = <46>;
+			interrupts = <44>;
 		};
 
 		dmc { /* No DMC */
@@ -301,6 +301,18 @@
 			compatible = "corelink,l2c-310";
 		};
 
+		NET0: virtio-net0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <1>;
+			guest_physical_addr = <0x20100000>;
+			physical_size = <0x1000>;
+			switch = ""; /* Override this before guest creation */
+			interrupts = <42>;
+		};
+
 		virtio-con0 {
 			manifest_type = "virtual";
 			address_type = "memory";
@@ -337,17 +349,6 @@
 			physical_size = <0x00800000>;
 			device_type = "alloced_ram";
 			align_order = <21>; /* Align alloced memory to 2MB */
-		};
-
-		NET1: lan9118 { /* Ethernet Controller */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x4E000000>;
-			physical_size = <0x10000>;
-			device_type = "nic";
-			compatible = "smsc,lan9118";
-			switch = ""; /* Override this before guest creation */
-			interrupts = <47>;
 		};
 
 		isp1760 { /* No USB Controller */
