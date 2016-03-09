@@ -415,15 +415,15 @@ static void region_overlap_message(const char *func,
 				   struct vmm_region *reg,
 				   struct vmm_region *reg_overlap)
 {
-	const physical_size_t reg_size = reg->hphys_addr + reg->phys_size;
-	const physical_size_t overlap_reg_size = reg_overlap->hphys_addr +
+	const physical_size_t reg_size = reg->gphys_addr + reg->phys_size;
+	const physical_size_t overlap_reg_size = reg_overlap->gphys_addr +
 		reg_overlap->phys_size;
 
 	vmm_printf("%s: Region for %s/%s (0x%08X - 0x%08X) overlaps with "
 		   "region %s/%s (0x%08X - 0x%08X)\n", func, guest->name,
-		   reg->node->name, reg->hphys_addr, reg_size,
-		   reg_overlap->aspace->guest->name, reg_overlap->node->name,
-		   reg_overlap->hphys_addr, overlap_reg_size);
+		   reg->node->name, reg->gphys_addr, reg_size,
+		   guest->name, reg_overlap->node->name,
+		   reg_overlap->gphys_addr, overlap_reg_size);
 }
 
 static int region_add(struct vmm_guest *guest,
