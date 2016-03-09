@@ -8,6 +8,7 @@
 
 	aliases {
 		mem0 = &MEM0;
+		net1 = &NET1;
 	};
 
 	vcpus {
@@ -336,6 +337,26 @@
 			physical_size = <0x00800000>;
 			device_type = "alloced_ram";
 			align_order = <21>; /* Align alloced memory to 2MB */
+		};
+
+		NET1: lan9118 { /* Ethernet Controller */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x4E000000>;
+			physical_size = <0x10000>;
+			device_type = "nic";
+			compatible = "smsc,lan9118";
+			switch = ""; /* Override this before guest creation */
+			interrupts = <47>;
+		};
+
+		isp1760 { /* No USB Controller */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x4F000000>;
+			physical_size = <0x1000>;
+			device_type = "misc";
+			compatible = "zero";
 		};
 	};
 };
