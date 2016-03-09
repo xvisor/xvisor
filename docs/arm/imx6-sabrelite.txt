@@ -81,11 +81,18 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [16. Power-up or Reset Sabre LITE]
 
-  [17. Bind to virtual UART0 of Linux Guest]
+  [17. When U-Boot starts, stop its autoboot and set the board name]
+  U-Boot > setenv board sabrelite
+  [Or]
+  U-Boot > setenv board nitrogen6x
+
+  [18. Now, you can finally run the bootscript]
+  U-Boot > for disk in 0 1 ; do mmc dev ${disk} ; for fs in fat ext2 ; do if ${fs}load mmc ${disk}:1 10008000 /6x_bootscript; then source 10008000; fi ; done ; done
+
+  [19. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [18. Start linux booting from RAM]
+  [20. Start linux booting from RAM]
   [guest0/uart0] basic# autoexec
 
   (Note: replace all <> brackets based on your workspace)
-
