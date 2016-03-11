@@ -36,4 +36,24 @@ static inline void arm_writel(u32 data, void * addr)
 	*((u32 *)addr) = data;
 }
 
+static inline u16 arm_readw(void * addr)
+{
+	return *((u16 *)addr);
+}
+
+static inline void arm_writew(u16 data, void * addr)
+{
+	*((u16 *)addr) = data;
+}
+
+static inline u8 arm_readb(void * addr)
+{
+	return *((u8 *)addr);
+}
+
+static inline void arm_writeb(u8 data, void * addr)
+{
+	*((u8 *)addr) = data;
+}
+
 #endif /* __ARM_IO_H_ */
