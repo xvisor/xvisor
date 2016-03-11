@@ -22,4 +22,5 @@
 # */
 
 emulators-objs-$(CONFIG_EMU_SERIAL_PL011)+= serial/pl011.o
+emulators-objs-$(CONFIG_EMU_SERIAL_IMX)+= serial/imx.o
 emulators-objs-$(CONFIG_EMU_SERIAL_NS16550)+= serial/ns16550.o
