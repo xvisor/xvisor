@@ -15,148 +15,128 @@
 		vcpu0 {
 			device_type = "vcpu";
 			compatible = "armv7a,cortex-a9";
-			start_pc = <0x81000000>;
+			start_pc = <0xC1000000>;
 		};
 
 		vcpu1 {
 			device_type = "vcpu";
 			compatible = "armv7a,cortex-a9";
-			start_pc = <0x81000000>;
+			start_pc = <0xC1000000>;
 		};
 	};
 
 	aspace {
 		guest_irq_count = <2048>;
 
-		/* Assume the REMAP region is mapped to DDR */
-		mem1 {
-			manifest_type = "alias";
-			address_type = "memory";
-			guest_physical_addr = <0x00000000>;
-			alias_physical_addr = <0x80000000>;
-			physical_size = <0x06000000>;
-			device_type = "ram";
-		};
-
 		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
-			guest_physical_addr = <0x80000000>;
+			guest_physical_addr = <0xC0000000>;
 			physical_size = <0x00000000>; /* Override this before guest creation */
 			align_order = <21>; /* Align alloced memory to 2MB */
 			device_type = "alloced_ram";
 		};
 
-		sysctl {
+		gpu_p1 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10000000>;
-			physical_size = <0x1000>;
-			device_type = "sys";
-			compatible = "vexpress,a9";
-			mux_in_irq = <1200 1201>;
-			mux_out_irq = <1202>;
+			guest_physical_addr = <0x00130000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
 		};
 
-		sysctrl0 {
+		gpu_p2 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10001000>;
-			physical_size = <0x1000>;
-			device_type = "sys";
-			compatible = "primecell,sp810";
+			guest_physical_addr = <0x00134000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
 		};
 
-		pcie_i2c { /* No I2C */
+		gpu_p3 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10002000>;
-			physical_size = <0x1000>;
+			guest_physical_addr = <0x02204000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
+		};
+
+		ocram {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x00900000>;
+			physical_size = <0x40000>;
+			device_type = "alloced_ram";
+		};
+
+		ipu1 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02400000>;
+			physical_size = <0x00040000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
+		};
+
+		ipu2 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02800000>;
+			physical_size = <0x00040000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
+		};
+
+		iomux {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020e0000>;
+			physical_size = <0x4000>;
 			device_type = "misc";
 			compatible = "zero";
 		};
 
-
-		aaci { /* No Audio Controller */
+		gic {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10004000>;
-			physical_size = <0x1000>;
+			guest_physical_addr = <0x00a00000>;
+			physical_size = <0x2000>;
+			device_type = "pic";
+			compatible = "vexpress,gic";
+			parent_irq = <6>;
+			num_irq = <96>;
+		};
+
+		dma_apbh {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x01100000>;
+			physical_size = <0x00002000>;
 			device_type = "misc";
-			compatible = "zero";
+			compatible = "fsl,imx6q-gpu";
 		};
 
-		mmc0 { /* No Multimedia Card Interface */
+		priv0 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10005000>;
-			physical_size = <0x1000>;
+			guest_physical_addr = <0x00A00000>;
+			physical_size = <0x2000>;
 			device_type = "misc";
-			compatible = "zero";
+			compatible = "arm,a9mpcore";
+			timer_irq = <29 30>;
+			parent_irq = <6>;
 		};
 
-		kmi0 {
+		l2x0 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x10006000>;
+			guest_physical_addr = <0x00A02000>;
 			physical_size = <0x1000>;
-			device_type = "input";
-			compatible = "primecell,arm,pl050,keyboard";
-			interrupts = <44>;
-		};
-
-		kmi1 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10007000>;
-			physical_size = <0x1000>;
-			device_type = "input";
-			compatible = "primecell,arm,pl050,mouse";
-			interrupts = <45>;
-		};
-
-		uart0 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10009000>;
-			physical_size = <0x1000>;
-			device_type = "serial";
-			compatible = "primecell,arm,pl011";
-			fifo_size = <1024>;
-			interrupts = <37>;
-		};
-
-		uart1 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1000A000>;
-			physical_size = <0x1000>;
-			device_type = "serial";
-			compatible = "primecell,arm,pl011";
-			fifo_size = <1024>;
-			interrupts = <38>;
-		};
-
-		uart2 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1000B000>;
-			physical_size = <0x1000>;
-			device_type = "serial";
-			compatible = "primecell,arm,pl011";
-			fifo_size = <1024>;
-			interrupts = <39>;
-		};
-
-		uart3 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1000C000>;
-			physical_size = <0x1000>;
-			device_type = "serial";
-			compatible = "primecell,arm,pl011";
-			fifo_size = <1024>;
-			interrupts = <40>;
+			device_type = "cache";
+			compatible = "corelink,l2c-310";
 		};
 
 		wdt { /* No Watch-Dog controller */
@@ -166,6 +146,43 @@
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";
+		};
+
+		uart0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02020000>;
+			physical_size = <0x4000>;
+			device_type = "serial";
+			compatible = "fsl,imx6q-uart", "fsl,imx21-uart";
+			interrupts = <36>;
+		};
+
+		spba {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x0203c000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
+		};
+
+		vpu {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02040000>;
+			physical_size = <0x0003c000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
+		};
+
+		aipstz {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x0207c000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-gpu";
 		};
 
 		timer0_1_legacy {
@@ -197,57 +214,10 @@
 			compatible = "zero";
 		};
 
-		rtc0 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10017000>;
-			physical_size = <0x1000>;
-			device_type = "rtc";
-			compatible = "primecell,pl031";
-			interrupts = <36>;
-		};
-
 		cf { /* No PATA Controller */
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x1001A000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
-
-		legacy-clcd { /* No Legacy CLCD */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1001F000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
-
-		clcd {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10020000>;
-			physical_size = <0x1000>;
-			device_type = "display";
-			compatible = "primecell,pl111";
-			interrupts = <44>;
-		};
-
-		dmc { /* No DMC */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E0000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
-
-		smc { /* No SMC */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E1000>;
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";
@@ -270,35 +240,6 @@
 			physical_size = <0x1000>;
 			device_type = "misc";
 			compatible = "zero";
-		};
-
-		gpio { /* No GPIO */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E8000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
-
-		priv0 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1E000000>;
-			physical_size = <0x2000>;
-			device_type = "misc";
-			compatible = "arm,a9mpcore";
-			timer_irq = <29 30>;
-			parent_irq = <6>;
-		};
-
-		l2x0 {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1E00A000>;
-			physical_size = <0x1000>;
-			device_type = "cache";
-			compatible = "corelink,l2c-310";
 		};
 
 		NET0: virtio-net0 {

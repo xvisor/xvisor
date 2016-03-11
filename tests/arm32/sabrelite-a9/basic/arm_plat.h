@@ -83,6 +83,9 @@
 #define V2M_PA_CS3		0x4c000000
 #define V2M_PA_CS7		0x10000000
 
+#define IMX_PA_AIPS1		0x02000000
+#define IMX_PA_AIPS2		0x02100000
+
 /*
  * Physical addresses, offset from V2M_PA_CS0-3
  */
@@ -105,10 +108,10 @@
 #define V2M_KMI0		(V2M_PA_CS7 + 0x00006000)
 #define V2M_KMI1		(V2M_PA_CS7 + 0x00007000)
 
-#define V2M_UART0		(V2M_PA_CS7 + 0x00009000)
-#define V2M_UART1		(V2M_PA_CS7 + 0x0000a000)
-#define V2M_UART2		(V2M_PA_CS7 + 0x0000b000)
-#define V2M_UART3		(V2M_PA_CS7 + 0x0000c000)
+#define IMX_UART0		(IMX_PA_AIPS1 + 0x00020000)
+#define IMX_UART1		(IMX_PA_AIPS2 + 0x000e8000)
+#define IMX_UART2		(IMX_PA_AIPS2 + 0x000ec000)
+#define IMX_UART3		(IMX_PA_AIPS2 + 0x000f0000)
 
 #define V2M_WDT			(V2M_PA_CS7 + 0x0000f000)
 

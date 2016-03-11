@@ -29,7 +29,7 @@
 #include <arm_plat.h>
 #include <pic/gic.h>
 #include <timer/sp804.h>
-#include <serial/pl01x.h>
+#include <serial/imx.h>
 
 void arm_board_reset(void)
 {
@@ -45,7 +45,7 @@ void arm_board_init(void)
 
 char *arm_board_name(void)
 {
-	return "ARM VExpress-A9";
+	return "ARM SabreLite";
 }
 
 u32 arm_board_ram_start(void)
@@ -206,17 +206,13 @@ int arm_board_timer_init(u32 usecs)
 			  counter_mask, counter_mult, counter_shift);
 }
 
-#define	CA9X4_UART_BASE			V2M_UART0
-#define	CA9X4_UART_TYPE			PL01X_TYPE_1
-#define	CA9X4_UART_INCLK		24000000
-#define	CA9X4_UART_BAUD			115200
+#define	IMX_UART_BASE		IMX_UART0
+#define	IMX_UART_INCLK		80000000
+#define	IMX_UART_BAUD		115200
 
 int arm_board_serial_init(void)
 {
-	pl01x_init(CA9X4_UART_BASE, 
-			CA9X4_UART_TYPE, 
-			CA9X4_UART_BAUD, 
-			CA9X4_UART_INCLK);
+	imx_init(IMX_UART0, IMX_UART_BAUD, IMX_UART_INCLK);
 
 	return 0;
 }
@@ -224,14 +220,15 @@ int arm_board_serial_init(void)
 void arm_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
-		pl01x_putc(CA9X4_UART_BASE, CA9X4_UART_TYPE, '\r');
+		imx_putc(IMX_UART_BASE, '\r');
 	}
-	pl01x_putc(CA9X4_UART_BASE, CA9X4_UART_TYPE, ch);
+
+	imx_putc(IMX_UART_BASE, ch);
 }
 
 char arm_board_serial_getc(void)
 {
-	char ch = pl01x_getc(CA9X4_UART_BASE, CA9X4_UART_TYPE);
+	char ch = imx_getc(IMX_UART_BASE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
