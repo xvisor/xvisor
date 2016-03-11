@@ -1,0 +1,644 @@
+/*
+ * Copyright 2013 Boundary Devices
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+#include <dt-bindings/input/input.h>
+
+/ {
+	aliases {
+		mxcfb0 = &mxcfb1;
+		/* mxcfb1 = &mxcfb2; */
+		/* mxcfb2 = &mxcfb3; */
+		/* mxcfb3 = &mxcfb4; */
+	};
+
+	memory {
+		reg = <0x10000000 0x40000000>;
+	};
+
+	clocks {
+		clk24m: clk24m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_1p8v: 1p8v {
+			compatible = "regulator-fixed";
+			regulator-name = "1P8V";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+		};
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+		/* reg_usb_otg_vbus: usb_otg_vbus { */
+		/* 	compatible = "regulator-fixed"; */
+		/* 	regulator-name = "usb_otg_vbus"; */
+		/* 	regulator-min-microvolt = <5000000>; */
+		/* 	regulator-max-microvolt = <5000000>; */
+		/* 	gpio = <&gpio3 22 0>; */
+		/* 	enable-active-high; */
+		/* }; */
+	};
+
+	/* gpio-keys { */
+	/* 	compatible = "gpio-keys"; */
+	/* 	power { */
+	/* 		label = "Power Button"; */
+	/* 		gpios = <&gpio2 3 0>; */
+	/* 		linux,code = <KEY_POWER>;	/\* or KEY_SEARCH *\/ */
+	/* 		gpio-key,wakeup; */
+	/* 	}; */
+
+	/* 	menu { */
+	/* 		label = "Menu"; */
+	/* 		gpios = <&gpio2 1 0>; */
+	/* 		linux,code = <KEY_MENU>; */
+	/* 	}; */
+
+	/* 	home { */
+	/* 		label = "Home"; */
+	/* 		gpios = <&gpio2 4 0>; */
+	/* 		linux,code = <KEY_HOME>; */
+	/* 	}; */
+
+	/* 	back { */
+	/* 		label = "Back"; */
+	/* 		gpios = <&gpio2 2 0>; */
+	/* 		linux,code = <KEY_BACK>; */
+	/* 	}; */
+
+	/* 	volume-up { */
+	/* 		label = "Volume Up"; */
+	/* 		gpios = <&gpio7 13 0>; */
+	/* 		linux,code = <KEY_VOLUMEUP>; */
+	/* 	}; */
+
+	/* 	volume-down { */
+	/* 		label = "Volume Down"; */
+	/* 		gpios = <&gpio4 5 0>; */
+	/* 		linux,code = <KEY_VOLUMEDOWN>; */
+	/* 	}; */
+	/* }; */
+
+	/* sound { */
+	/* 	compatible = "fsl,imx6q-nitrogen6x-sgtl5000", */
+	/* 		     "fsl,imx-audio-sgtl5000"; */
+	/* 	model = "imx6q-nitrogen6x-sgtl5000"; */
+	/* 	ssi-controller = <&ssi1>; */
+	/* 	audio-codec = <&codec>; */
+	/* 	audio-routing = */
+	/* 		"MIC_IN", "Mic Jack", */
+	/* 		"Mic Jack", "Mic Bias", */
+	/* 		"Headphone Jack", "HP_OUT"; */
+	/* 	mux-int-port = <1>; */
+	/* 	mux-ext-port = <3>; */
+	/* }; */
+	/* sound-hdmi { */
+	/* 	compatible = "fsl,imx6q-audio-hdmi", */
+	/* 		     "fsl,imx-audio-hdmi"; */
+	/* 	model = "imx-audio-hdmi"; */
+	/* 	hdmi-controller = <&hdmi_audio>; */
+	/* }; */
+
+	mxcfb1: fb@0 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "ldb";
+		interface_pix_fmt = "RGB666";
+		mode_str ="LDB-XGA";
+		default_bpp = <16>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "disabled";
+	};
+
+	/* mxcfb2: fb@1 { */
+	/* 	compatible = "fsl,mxc_sdc_fb"; */
+	/* 	disp_dev = "hdmi"; */
+	/* 	interface_pix_fmt = "RGB24"; */
+	/* 	mode_str ="1920x1080M@60"; */
+	/* 	default_bpp = <24>; */
+	/* 	int_clk = <0>; */
+	/* 	late_init = <0>; */
+	/* 	status = "disabled"; */
+	/* }; */
+
+	/* mxcfb3: fb@2 { */
+	/* 	compatible = "fsl,mxc_sdc_fb"; */
+	/* 	disp_dev = "lcd"; */
+	/* 	interface_pix_fmt = "RGB565"; */
+	/* 	mode_str ="CLAA-WVGA"; */
+	/* 	default_bpp = <16>; */
+	/* 	int_clk = <0>; */
+	/* 	late_init = <0>; */
+	/* 	status = "disabled"; */
+	/* }; */
+
+	/* mxcfb4: fb@3 { */
+	/* 	compatible = "fsl,mxc_sdc_fb"; */
+	/* 	disp_dev = "ldb"; */
+	/* 	interface_pix_fmt = "RGB666"; */
+	/* 	mode_str ="LDB-XGA"; */
+	/* 	default_bpp = <16>; */
+	/* 	int_clk = <0>; */
+	/* 	late_init = <0>; */
+	/* 	status = "disabled"; */
+	/* }; */
+
+	/* lcd0: lcd@0 { */
+	/* 	compatible = "fsl,lcd"; */
+	/* 	ipu_id = <0>; */
+	/* 	disp_id = <0>; */
+	/* 	default_ifmt = "RGB565"; */
+	/* 	pinctrl-names = "default"; */
+	/* 	pinctrl-0 = <&pinctrl_ipu1_4>; */
+	/* 	status = "okay"; */
+	/* }; */
+
+	/* backlight_lcd: backlight_lcd { */
+	/* 	compatible = "pwm-backlight"; */
+	/* 	pwms = <&pwm1 0 5000000>; */
+	/* 	brightness-levels = <0 4 8 16 32 64 128 255>; */
+	/* 	default-brightness-level = <7>; */
+	/* }; */
+
+	backlight_lvds {
+		compatible = "pwm-backlight";
+		pwms = <&pwm4 0 5000000>;
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <7>;
+	};
+
+	/* v4l2_cap_0: v4l2_cap_0 { */
+	/* 	compatible = "fsl,imx6q-v4l2-capture"; */
+	/* 	ipu_id = <0>; */
+	/* 	csi_id = <0>; */
+	/* 	mclk_source = <0>; */
+	/* 	status = "okay"; */
+	/* }; */
+
+	/* v4l2_cap_1: v4l2_cap_1 { */
+	/* 	compatible = "fsl,imx6q-v4l2-capture"; */
+	/* 	ipu_id = <0>; */
+	/* 	csi_id = <1>; */
+	/* 	mipi_camera = <1>; */
+	/* 	mclk_source = <0>; */
+	/* 	status = "okay"; */
+	/* }; */
+
+	/* v4l2_cap_2: v4l2_cap_2 { */
+	/* 	compatible = "fsl,imx6q-v4l2-capture"; */
+	/* 	ipu_id = <0>; */
+	/* 	csi_id = <1>; */
+	/* 	mclk_source = <0>; */
+	/* 	status = "okay"; */
+	/* }; */
+
+	/* v4l2_cap_3: v4l2_cap_3 { */
+	/* 	compatible = "fsl,imx6q-v4l2-capture"; */
+	/* 	ipu_id = <0>; */
+	/* 	csi_id = <0>; */
+	/* 	mipi_camera = <1>; */
+	/* 	mclk_source = <0>; */
+	/* 	status = "okay"; */
+	/* }; */
+
+	v4l2_out {
+		compatible = "fsl,mxc_v4l2_output";
+		status = "okay";
+	};
+
+	/* wlan { */
+	/* 	compatible = "ti,wilink6"; */
+	/* 	interrupt-parent = <&gpio6>; */
+	/* 	interrupts = <14 IRQ_TYPE_LEVEL_HIGH>; */
+	/* 	clocks = <&refclock>; */
+	/* 	clock-names = "refclock"; */
+
+	/* 	refclock: refclock { */
+	/* 		compatible = "ti,wilink-clock"; */
+	/* 		#clock-cells = <0>; */
+	/* 		clock-frequency = <38400000>; */
+	/* 	}; */
+	/* }; */
+
+	/* wlan_bt_rfkill { */
+	/* 	compatible = "net,rfkill-gpio"; */
+	/* 	name = "wlan_bt_rfkill"; */
+	/* 	type = <2>;     /\* bluetooth *\/ */
+	/* 	gpios = <&gpio6 16 0>; */
+	/* }; */
+};
+
+/* &audmux { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_audmux_2>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &ecspi1 { */
+/* 	fsl,spi-num-chipselects = <1>; */
+/* 	cs-gpios = <&gpio3 19 0>; */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_ecspi1_1>; */
+/* 	status = "okay"; */
+
+/* 	flash: m25p80@0 { */
+/* 		compatible = "sst,sst25vf016b"; */
+/* 		spi-max-frequency = <20000000>; */
+/* 		reg = <0>; */
+/* 		#address-cells = <1>; */
+/* 		#size-cells = <1>; */
+/* 		partition@0 { */
+/* 			label = "U-Boot"; */
+/* 			reg = <0x0 0xC0000>; */
+/* 		}; */
+/* 		partition@C0000 { */
+/* 			label = "env"; */
+/* 			reg = <0xC0000 0x2000>; */
+/* 		}; */
+/* 		partition@C2000 { */
+/* 			label = "splash"; */
+/* 			reg = <0xC2000 0x13e000>; */
+/* 		}; */
+/* 	}; */
+/* }; */
+
+/* &fec { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_enet_4>; */
+/* 	phy-mode = "rgmii"; */
+/* #if 0 */
+/* 	phy-reset-gpios = <&gpio1 27 0>; */
+/* #endif */
+/* 	status = "okay"; */
+
+/* 	#address-cells = <0>; */
+/* 	#size-cells = <1>; */
+/* 	phy_int { */
+/* 		reg = <0x6>; */
+/* 		interrupt-parent = <&gpio1>; */
+/* 		interrupts = <28 IRQ_TYPE_LEVEL_LOW>; */
+/* 	}; */
+/* }; */
+
+/* &flexcan1 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_flexcan1_1>; */
+/* 	trx-stby-gpio = <&gpio1 2 GPIO_ACTIVE_LOW>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &hdmi_audio { */
+/* 	status = "okay"; */
+/* }; */
+
+/* &hdmi_cec { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_hdmi_cec_2>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &hdmi_core { */
+/* 	ipu_id = <0>; */
+/* 	disp_id = <0>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &hdmi_video { */
+/* 	fsl,phy_reg_vlev = <0x0294>; */
+/* 	fsl,phy_reg_cksymtx = <0x800d>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &i2c1 { */
+/* 	clock-frequency = <100000>; */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_i2c1_1>; */
+/* 	status = "okay"; */
+
+/* 	codec: sgtl5000@0a { */
+/* 		compatible = "fsl,sgtl5000"; */
+/* 		reg = <0x0a>; */
+/* 		clocks = <&clks 201>; */
+/* 		VDDA-supply = <&reg_2p5v>; */
+/* 		VDDIO-supply = <&reg_3p3v>; */
+/* 	}; */
+/* 	isl1208@6f { */
+/* 		compatible = "isl,isl1208"; */
+/* 		reg = <0x6f>; */
+/* 		interrupt-parent = <&gpio6>; */
+/* 		interrupts = <7 IRQ_TYPE_EDGE_FALLING>; */
+/* 	}; */
+/* }; */
+
+/* &i2c2 { */
+/* 	clock-frequency = <100000>; */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_i2c2_2>; */
+/* 	status = "okay"; */
+
+/* 	hdmi: edid@50 { */
+/* 		compatible = "fsl,imx6-hdmi-i2c"; */
+/* 		reg = <0x50>; */
+/* 	}; */
+
+/* 	ov5642: ov5642@3d { */
+/* 		compatible = "ovti,ov5642"; */
+/* 		reg = <0x3d>; */
+/* 		pinctrl-names = "default"; */
+/* 		pinctrl-0 = <&pinctrl_ipu1_2>; */
+/* 		clocks = <&clks 200>; */
+/* 		clock-names = "csi_mclk"; */
+/* 		DOVDD-supply = <&reg_1p8v>; */
+/* 		AVDD-supply = <&reg_2p5v>; */
+/* 		DVDD-supply = <&reg_1p8v>; */
+/* 		pwn-gpios = <&gpio1 6 1>; */
+/* 		rst-gpios = <&gpio1 8 0>; */
+/* 		ipu_id = <0>; */
+/* 		csi_id = <0>; */
+/* 		mclk = <24000000>; */
+/* 		mclk_source = <0>; */
+/* 	}; */
+
+/* 	ov5640_mipi: ov5640_mipi@3e { */
+/* 		compatible = "ovti,ov5640_mipi"; */
+/* 		reg = <0x3e>; */
+/* 		clocks = <&clks 147>; */
+/* 		clock-names = "csi_mclk"; */
+/* 		DOVDD-supply = <&reg_1p8v>; */
+/* 		AVDD-supply = <&reg_2p5v>; */
+/* 		DVDD-supply = <&reg_1p8v>; */
+/* 		pwn-gpios = <&gpio6 9 1>; */
+/* 		rst-gpios = <&gpio2 5 0>; */
+/* 		ipu_id = <0>; */
+/* 		csi_id = <1>; */
+/* 		mclk = <22000000>; */
+/* 		mclk_source = <0>; */
+/* 		pwms = <&pwm3 0 45>; */
+/* 	}; */
+/* }; */
+
+/* &i2c3 { */
+/*         clock-frequency = <100000>; */
+/*         pinctrl-names = "default"; */
+/*         pinctrl-0 = <&pinctrl_i2c3_3>; */
+/*         status = "okay"; */
+
+/*         egalax_ts@04 { */
+/*                 compatible = "eeti,egalax_ts"; */
+/*                 reg = <0x04>; */
+/*                 interrupt-parent = <&gpio1>; */
+/*                 interrupts = <9 2>; */
+/*                 wakeup-gpios = <&gpio1 9 0>; */
+/*         }; */
+
+/*         ft5x06_ts@38 { */
+/* 		compatible = "ft5x06-ts,ft5x06-ts"; */
+/* 		reg = <0x38>; */
+/* 		interrupt-parent = <&gpio1>; */
+/* 		interrupts = <9 2>; */
+/* 		wakeup-gpios = <&gpio1 9 0>; */
+/* 	}; */
+
+/*         ili210x@41 { */
+/* 		compatible = "ili210x"; */
+/* 		reg = <0x41>; */
+/* 		interrupt-parent = <&gpio1>; */
+/* 		interrupts = <9 2>; */
+/* 		wakeup-gpios = <&gpio1 9 0>; */
+/* 	}; */
+
+/* 	ov5640: ov5640@3c { */
+/* 		compatible = "ovti,ov5640"; */
+/* 		reg = <0x3c>; */
+/* 		pinctrl-names = "default"; */
+/* 		pinctrl-0 = <&pinctrl_ov5640 &pinctrl_ov5640_gpios>; */
+/* 		clocks = <&clk24m 0>; */
+/* 		clock-names = "csi_mclk"; */
+/* 		DOVDD-supply = <&reg_1p8v>; */
+/* 		AVDD-supply = <&reg_2p5v>; */
+/* 		DVDD-supply = <&reg_1p8v>; */
+/* 		pwn-gpios = <&gpio3 13 1>; */
+/* 		rst-gpios = <&gpio3 14 0>; */
+/* 		csi_id = <1>; */
+/* 		mclk = <24000000>; */
+/* 		mclk_source = <0>; */
+/* 	}; */
+
+/* 	tsc2004: tsc2004@48 { */
+/* 		compatible = "tsc2004,tsc2004"; */
+/* 		reg = <0x48>; */
+/* 		pinctrl-names = "default"; */
+/* 		pinctrl-0 = <&pinctrl_tsc2004>; */
+/* 		interrupt-parent = <&gpio4>; */
+/* 		interrupts = <20 2>; */
+/* 		wakeup-gpios = <&gpio4 20 0>; */
+/* 	}; */
+/* }; */
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog_1>;
+
+	imx6q-nitrogen6x {
+		pinctrl_hog_1: hoggrp-1 {
+			fsl,pins = <
+				/* Power Button */
+                                MX6QDL_PAD_NANDF_D3__GPIO2_IO03         0x1b0b0
+                                /* Menu Button */
+                                MX6QDL_PAD_NANDF_D1__GPIO2_IO01         0x1b0b0
+                                /* Home Button */
+                                MX6QDL_PAD_NANDF_D4__GPIO2_IO04         0x1b0b0
+                                /* Back Button */
+                                MX6QDL_PAD_NANDF_D2__GPIO2_IO02         0x1b0b0
+                                /* Volume Up Button */
+                                MX6QDL_PAD_GPIO_18__GPIO7_IO13          0x1b0b0
+                                /* Volume Down Button */
+                                MX6QDL_PAD_GPIO_19__GPIO4_IO05          0x1b0b0
+				MX6QDL_PAD_EIM_D19__GPIO3_IO19		0x80000000	/* spi-nor CS */
+				MX6QDL_PAD_EIM_D22__GPIO3_IO22		0x80000000	/* otg power en */
+				MX6QDL_PAD_ENET_RXD0__GPIO1_IO27	0x0f0b0		/* ethernet phy reset */
+				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x1b0b0		/* ethernet phy interrupt */
+				MX6QDL_PAD_SD3_DAT5__GPIO7_IO00		0x80000000	/* USDHC3 CD */
+				MX6QDL_PAD_SD3_DAT4__GPIO7_IO01		0x1f0b0		/* Spare */
+				MX6QDL_PAD_NANDF_D6__GPIO2_IO06		0x80000000	/* uSDHC4 CD */
+				MX6QDL_PAD_NANDF_D7__GPIO2_IO07		0x80000000	/* Spare */
+				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x000b0		/* SGTL5000 sys_mclk */
+				MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x80000000	/* CAN standby */
+				MX6QDL_PAD_GPIO_4__GPIO1_IO04		0x80000000	/* Spare */
+				MX6QDL_PAD_GPIO_9__GPIO1_IO09		0x80000000	/* I2C3 touch screen interrupt */
+				MX6QDL_PAD_NANDF_WP_B__GPIO6_IO09	0x0b0b0		/* ov5640 mipi powerdown */
+				MX6QDL_PAD_NANDF_D5__GPIO2_IO05		0x000b0		/* ov5640 mipi reset */
+				MX6QDL_PAD_GPIO_3__CCM_CLKO2		0x000b0		/* ov5642 mclk */
+				MX6QDL_PAD_GPIO_6__GPIO1_IO06		0x000b0		/* ov5642 Power Down */
+				MX6QDL_PAD_GPIO_8__GPIO1_IO08		0x000b0		/* ov5642 Reset */
+				MX6QDL_PAD_GPIO_17__GPIO7_IO12		0x0b0b0		/* USB Hub Reset */
+				MX6QDL_PAD_NANDF_CS1__GPIO6_IO14	0x100b0		/* wl12xx_wl_irq */
+				MX6QDL_PAD_NANDF_CS3__GPIO6_IO16	0x000b0		/* wl12xx_bt_en */
+				MX6QDL_PAD_SD1_CLK__OSC32K_32K_OUT	0x000b0		/* TiWi slow clock */
+				MX6QDL_PAD_NANDF_CLE__GPIO6_IO07	0x1b0b0		/* ISL1208 interrupt */
+			>;
+		};
+
+		pinctrl_ov5640: pinctrl_ov5640 {
+			/* parallel camera on CSI1, pins differ for iMX6Q/iMX6DL */
+		};
+
+		pinctrl_ov5640_gpios: pinctrl_ov5640_gpios {
+			fsl,pins = <
+				MX6QDL_PAD_EIM_DA13__GPIO3_IO13		0x0b0b0		/* Power */
+				MX6QDL_PAD_EIM_DA14__GPIO3_IO14		0x030b0		/* Reset */
+			>;
+		};
+
+		pinctrl_tsc2004: tsc2004grp {
+			fsl,pins = <
+				MX6QDL_PAD_DI0_PIN4__GPIO4_IO20		0x1b0b0		/* tsc2004 interrupt */
+			>;
+		};
+
+		pinctrl_usdhc2: usdhc2grp {
+			fsl,pins = <
+				MX6QDL_PAD_SD2_CMD__SD2_CMD		0x17071
+				MX6QDL_PAD_SD2_CLK__SD2_CLK		0x10071
+				MX6QDL_PAD_SD2_DAT0__SD2_DATA0		0x17071
+				MX6QDL_PAD_SD2_DAT1__SD2_DATA1		0x17071
+				MX6QDL_PAD_SD2_DAT2__SD2_DATA2		0x17071
+				MX6QDL_PAD_SD2_DAT3__SD2_DATA3		0x17071
+				MX6QDL_PAD_NANDF_CS2__GPIO6_IO15	0x000b0		/* wl12xx_wl_en */
+			>;
+		};
+	};
+};
+
+&ldb {
+	ipu_id = <0>;
+	disp_id = <1>;
+	ext_ref = <1>;
+	mode = "sin0";
+	sec_ipu_id = <1>;
+	sec_disp_id = <1>;
+	status = "okay";
+};
+
+/* &mipi_csi { */
+/* 	lanes = <2>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &pcie { */
+/* 	status = "okay"; */
+/* }; */
+
+/* &pwm1 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_pwm1_1>; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &pwm3 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_pwm3_2>; */
+/* 	status = "okay"; */
+/* }; */
+
+&pwm4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm4_2>;
+	status = "okay";
+};
+
+/* &ssi1 { */
+/* 	fsl,mode = "i2s-slave"; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &uart1 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_uart1_2>; */
+/* 	status = "okay"; */
+/* }; */
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2_1>;
+	status = "okay";
+};
+
+/* &uart3 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_uart3_2>; */
+/* 	fsl,uart-has-rtscts; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &usbh1 { */
+/* 	status = "okay"; */
+/* }; */
+
+/* &usbotg { */
+/* 	vbus-supply = <&reg_usb_otg_vbus>; */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_usbotg_1>; */
+/* 	disable-over-current; */
+/* 	status = "okay"; */
+/* }; */
+
+/* &usdhc2 {	/\* uSDHC2, TiWi wl1271 *\/ */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_usdhc2>; */
+/* 	bus-width = <4>; */
+/* 	non-removable; */
+/* 	vmmc-supply = <&reg_3p3v>; */
+/* 	vqmmc-1-8-v; */
+/* 	power-gpio = <&gpio6 15 0>; */
+/* 	ocr-limit = <0x80>;     /\* 1.65v - 1.95v *\/ */
+/* 	power-off-card; */
+/* 	keep-power-in-suspend; */
+/* 	status = "okay"; */
+/* }; */
+
+&usdhc3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc3_2>;
+	cd-gpios = <&gpio7 0 0>;
+	vmmc-supply = <&reg_3p3v>;
+	status = "okay";
+};
+
+/* &usdhc4 { */
+/* 	pinctrl-names = "default"; */
+/* 	pinctrl-0 = <&pinctrl_usdhc4_2>; */
+/* 	cd-gpios = <&gpio2 6 0>; */
+/* 	vmmc-supply = <&reg_3p3v>; */
+/* 	status = "okay"; */
+/* }; */
