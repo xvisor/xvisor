@@ -290,7 +290,7 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	struct a9mp_priv_state *s;
-	u32 parent_irq, timer_irq[2];
+	u32 parent_irq, num_irq, timer_irq[2];
 
 	s = vmm_zalloc(sizeof(struct a9mp_priv_state));
 	if (!s) {
@@ -318,10 +318,18 @@ static int a9mpcore_emulator_probe(struct vmm_guest *guest,
 		goto a9mp_probe_failed;
 	}
 
+
+	rc = vmm_devtree_read_u32(edev->node, "num_irq", &num_irq);
+	if (rc) {
+		num_irq = 96;
+		rc = VMM_OK;
+	}
+
 	/* Allocate and init GIC state */
 	if (!(s->gic = gic_state_alloc(edev->node->name, guest, 
 					GIC_TYPE_VEXPRESS, s->num_cpu, 
-					FALSE, 0, 96, parent_irq))) {
+					FALSE, 0, num_irq,
+					parent_irq))) {
 		rc = VMM_ENOMEM;
 		goto a9mp_gic_alloc_failed;
 	}
