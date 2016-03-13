@@ -73,7 +73,54 @@ struct vmm_emulator {
 	int (*write64) (struct vmm_emudev *edev,
 		        physical_addr_t offset,
 		        u64 src);
+	int (*read_simple) (struct vmm_emudev *edev,
+			    physical_addr_t offset,
+			    u32 *dst);
+	int (*write_simple) (struct vmm_emudev *edev,
+			     physical_addr_t offset,
+			     u32 regmask,
+			     u32 regval);
 };
+
+int vmm_devemu_simple_read8(struct vmm_emudev *edev,
+			    physical_addr_t offset,
+			    u8 *dst);
+int vmm_devemu_simple_read16(struct vmm_emudev *edev,
+			     physical_addr_t offset,
+			     u16 *dst);
+int vmm_devemu_simple_read32(struct vmm_emudev *edev,
+			     physical_addr_t offset,
+			     u32 *dst);
+int vmm_devemu_simple_write8(struct vmm_emudev *edev,
+			     physical_addr_t offset,
+			     u8 src);
+int vmm_devemu_simple_write16(struct vmm_emudev *edev,
+			      physical_addr_t offset,
+			      u16 src);
+int vmm_devemu_simple_write32(struct vmm_emudev *edev,
+			      physical_addr_t offset,
+			      u32 src);
+
+#define VMM_DECLARE_EMULATOR_SIMPLE(NAME, MATCH, ENDIAN, PROBE, REMOVE,	\
+				    RESET, READ, WRITE)			\
+	static struct vmm_emulator NAME ## _emulator = {		\
+		.name = #NAME,						\
+		.match_table = MATCH,					\
+		.endian = ENDIAN,					\
+		.probe = PROBE,						\
+		.reset = RESET,						\
+		.remove = REMOVE,					\
+		.read8 = vmm_devemu_simple_read8,			\
+		.write8 = vmm_devemu_simple_write8,			\
+		.read16 = vmm_devemu_simple_read16,			\
+		.write16 = vmm_devemu_simple_write16,			\
+		.read32 = vmm_devemu_simple_read32,			\
+		.write32 = vmm_devemu_simple_write32,			\
+		.read64 = NULL,						\
+		.write64 = NULL,					\
+		.read_simple = READ,					\
+		.write_simple = WRITE,					\
+	};
 
 struct vmm_emudev {
 	vmm_spinlock_t lock;
