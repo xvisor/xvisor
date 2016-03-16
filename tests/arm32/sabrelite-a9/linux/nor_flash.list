@@ -1,4 +1,4 @@
 0xC1000000 /firmware.bin.patched
 0xC0008000 /Image
 0xC0000000 /vexpress-v2p-ca9.dtb
-0x400FF000 /cmdlist
+0x080FF000 /cmdlist

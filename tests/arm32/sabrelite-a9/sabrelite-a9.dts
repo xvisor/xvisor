@@ -18,11 +18,11 @@
 			start_pc = <0xC1000000>;
 		};
 
-		vcpu1 {
-			device_type = "vcpu";
-			compatible = "armv7a,cortex-a9";
-			start_pc = <0xC1000000>;
-		};
+		/* vcpu1 { */
+		/* 	device_type = "vcpu"; */
+		/* 	compatible = "armv7a,cortex-a9"; */
+		/* 	start_pc = <0xC1000000>; */
+		/* }; */
 	};
 
 	aspace {
@@ -43,7 +43,7 @@
 			guest_physical_addr = <0x00130000>;
 			physical_size = <0x00004000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		gpu_p2 {
@@ -52,7 +52,7 @@
 			guest_physical_addr = <0x00134000>;
 			physical_size = <0x00004000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		gpu_p3 {
@@ -61,15 +61,43 @@
 			guest_physical_addr = <0x02204000>;
 			physical_size = <0x00004000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		ocram {
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x00900000>;
-			physical_size = <0x40000>;
+			physical_size = <0x00040000>;
+			align_order = <12>; /* Align alloced memory to 4K */
 			device_type = "alloced_ram";
+		};
+
+		ocram-alias1 {
+			manifest_type = "alias";
+			address_type = "memory";
+			guest_physical_addr = <0x00940000>;
+			alias_physical_addr = <0x00900000>;
+			physical_size = <0x00040000>;
+			device_type = "ram";
+		};
+
+		ocram-alias2 {
+			manifest_type = "alias";
+			address_type = "memory";
+			guest_physical_addr = <0x00980000>;
+			alias_physical_addr = <0x00900000>;
+			physical_size = <0x00040000>;
+			device_type = "ram";
+		};
+
+		ocram-alias3 {
+			manifest_type = "alias";
+			address_type = "memory";
+			guest_physical_addr = <0x009C0000>;
+			alias_physical_addr = <0x00900000>;
+			physical_size = <0x00040000>;
+			device_type = "ram";
 		};
 
 		ipu1 {
@@ -78,7 +106,7 @@
 			guest_physical_addr = <0x02400000>;
 			physical_size = <0x00040000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		ipu2 {
@@ -87,7 +115,7 @@
 			guest_physical_addr = <0x02800000>;
 			physical_size = <0x00040000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		iomux {
@@ -99,24 +127,13 @@
 			compatible = "zero";
 		};
 
-		gic {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x00a00000>;
-			physical_size = <0x2000>;
-			device_type = "pic";
-			compatible = "vexpress,gic";
-			parent_irq = <6>;
-			num_irq = <96>;
-		};
-
 		dma_apbh {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x01100000>;
 			physical_size = <0x00002000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		priv0 {
@@ -152,7 +169,7 @@
 		uart0 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x02020000>;
+			guest_physical_addr = <0x021e8000>;
 			physical_size = <0x4000>;
 			device_type = "serial";
 			compatible = "fsl,imx6q-uart", "fsl,imx21-uart";
@@ -165,7 +182,7 @@
 			guest_physical_addr = <0x0203c000>;
 			physical_size = <0x00004000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
+			compatible = "zero";
 		};
 
 		vpu {
@@ -174,74 +191,38 @@
 			guest_physical_addr = <0x02040000>;
 			physical_size = <0x0003c000>;
 			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
-		};
-
-		aipstz {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x0207c000>;
-			physical_size = <0x4000>;
-			device_type = "misc";
-			compatible = "fsl,imx6q-gpu";
-		};
-
-		timer0_1_legacy {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10011000>;
-			physical_size = <0x1000>;
-			device_type = "timer";
-			compatible = "primecell,sp804";
-			interrupts = <34>;
-		};
-
-		timer2_3_legacy {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10012000>;
-			physical_size = <0x1000>;
-			device_type = "timer";
-			compatible = "primecell,sp804";
-			interrupts = <35>;
-		};
-
-		ddc_i2c { /* No I2C */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x10016000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
 			compatible = "zero";
 		};
 
-		cf { /* No PATA Controller */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1001A000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
+		/* /\* Emulate EPIT with a SP804 for now*\/ */
+		/* timer0_1_legacy { */
+		/* 	manifest_type = "virtual"; */
+		/* 	address_type = "memory"; */
+		/* 	guest_physical_addr = <0x020D0000>; */
+		/* 	physical_size = <0x1000>; */
+		/* 	device_type = "timer"; */
+		/* 	compatible = "primecell,sp804"; */
+		/* 	interrupts = <34>; */
+		/* }; */
 
-		timer_daughter {
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E4000>;
-			physical_size = <0x1000>;
-			device_type = "timer";
-			compatible = "primecell,sp804";
-			interrupts = <35>;
-		};
+		/* epit1 { */
+		/* 	manifest_type = "virtual"; */
+		/* 	address_type = "memory"; */
+		/* 	guest_physical_addr = <0x020d0000>; */
+		/* 	physical_size = <0x1000>; */
+		/* 	device_type = "misc"; */
+		/* 	compatible = "zero"; */
+		/* }; */
 
-		watchdog { /* No watchdog */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x100E5000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
+		/* timer2_3_legacy { */
+		/* 	manifest_type = "virtual"; */
+		/* 	address_type = "memory"; */
+		/* 	guest_physical_addr = <0x10012000>; */
+		/* 	physical_size = <0x1000>; */
+		/* 	device_type = "timer"; */
+		/* 	compatible = "primecell,sp804"; */
+		/* 	interrupts = <35>; */
+		/* }; */
 
 		NET0: virtio-net0 {
 			manifest_type = "virtual";
@@ -269,37 +250,69 @@
 		nor_flash0 {
 			manifest_type = "real";
 			address_type = "memory";
-			guest_physical_addr = <0x40000000>;
+			guest_physical_addr = <0x08000000>;
 			physical_size = <0x01000000>;
 			device_type = "alloced_rom";
 			align_order = <21>; /* Align alloced memory to 2MB */
 		};
 
-		sram {
-			manifest_type = "real";
-			address_type = "memory";
-			guest_physical_addr = <0x48000000>;
-			physical_size = <0x02000000>;
-			device_type = "alloced_ram";
-			align_order = <21>; /* Align alloced memory to 2MB */
-		};
-
-		videoram {
-			manifest_type = "real";
-			address_type = "memory";
-			guest_physical_addr = <0x4C000000>;
-			physical_size = <0x00800000>;
-			device_type = "alloced_ram";
-			align_order = <21>; /* Align alloced memory to 2MB */
-		};
-
-		isp1760 { /* No USB Controller */
+		/* Use a reserved i.MX6 area to emulate VExpress-A9 sysctl */
+		sysctl {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x4F000000>;
+			guest_physical_addr = <0x020F0000>;
+			physical_size = <0x1000>;
+			device_type = "sys";
+			compatible = "vexpress,a9";
+			mux_in_irq = <1200 1201>;
+			mux_out_irq = <1202>;
+		};
+
+		ccm {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020c4000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "fsl,imx6q-ccm";
+		};
+
+		anatop {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020c8000>;
 			physical_size = <0x1000>;
 			device_type = "misc";
+			compatible = "fsl,imx6q-anatop";
+		};
+
+		src {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020d8000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
 			compatible = "zero";
+		};
+
+		gpc: gpc@020dc000 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020dc000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		gpt: gpt@02098000 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02098000>;
+			physical_size = <0x4000>;
+			device_type = "timer";
+			compatible = "fsl,imx6q-gpt";
+			clock-frequency = <32000>;
+			interrupts = <87>;
 		};
 	};
 };

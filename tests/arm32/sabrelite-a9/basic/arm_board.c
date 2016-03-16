@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -28,14 +28,12 @@
 #include <arm_board.h>
 #include <arm_plat.h>
 #include <pic/gic.h>
-#include <timer/sp804.h>
+#include <timer/imx_gpt.h>
 #include <serial/imx.h>
 
 void arm_board_reset(void)
 {
-	arm_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
-	arm_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
-	arm_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
+	/* Nothing to do */
 }
 
 void arm_board_init(void)
@@ -55,7 +53,7 @@ u32 arm_board_ram_start(void)
 
 u32 arm_board_ram_size(void)
 {
-	return 0x6000000;
+	return 0x10000000;
 }
 
 u32 arm_board_linux_machine_type(void)
@@ -70,16 +68,22 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 	arm_strcat(cmdline, " virtio_mmio.device=4K@0x20300000:86");
 	/* VirtIO Network Device */
 	arm_strcat(cmdline, " virtio_mmio.device=64K@0x20100000:42");
+	/* SabreLite/Nitrogen6X specific */
+	arm_strcat(cmdline, " enable_wait_mode=off "
+		   "video=mxcfb0:dev=ldb,LDB-XGA,if=RGB666 video=mxcfb1:off "
+		   "video=mxcfb2:off video=mxcfb3:off fbmem=10M "
+		   "console=ttymxc1,115200 vmalloc=400M consoleblank=0 "
+		   "mxc_hdmi.only_cea=1");
 }
 
 u32 arm_board_flash_addr(void)
 {
-	return (u32)(V2M_NOR0);
+	return (u32)(IMX_NOR);
 }
 
 u32 arm_board_iosection_count(void)
 {
-	return 6;
+	return 5;
 }
 
 physical_addr_t arm_board_iosection_addr(int num)
@@ -88,16 +92,19 @@ physical_addr_t arm_board_iosection_addr(int num)
 
 	switch (num) {
 	case 0:
-		ret = V2M_PA_CS7;
+		ret = IMX_IOMUX;
 		break;
 	case 1:
 		ret = CT_CA9X4_MPIC;
 		break;
 	case 2:
+		ret = IMX_NOR;
+		break;
 	case 3:
+		ret = IMX_UART1;
+		break;
 	case 4:
-	case 5:
-		ret = V2M_NOR0 + (num - 2) * 0x100000;
+		ret = IMX_TIMER0;
 		break;
 	default:
 		while (1);
@@ -158,61 +165,48 @@ int arm_board_pic_unmask(u32 irq)
 
 void arm_board_timer_enable(void)
 {
-	return sp804_enable();
+	return imx_gpt_enable();
 }
 
 void arm_board_timer_disable(void)
 {
-	return sp804_disable();
+	return imx_gpt_disable();
 }
 
 u64 arm_board_timer_irqcount(void)
 {
-	return sp804_irqcount();
+	return imx_gpt_irqcount();
 }
 
 u64 arm_board_timer_irqdelay(void)
 {
-	return sp804_irqdelay();
+	return imx_gpt_irqdelay();
 }
 
 u64 arm_board_timer_timestamp(void)
 {
-	return sp804_timestamp();
+	return imx_gpt_timestamp();
 }
 
 void arm_board_timer_change_period(u32 usecs)
 {
-	return sp804_change_period(usecs);
+	return imx_gpt_change_period(usecs);
 }
 
 int arm_board_timer_init(u32 usecs)
 {
-	u32 val, irq;
-	u64 counter_mult, counter_shift, counter_mask;
+	arm_board_pic_unmask(IRQ_IMX_TIMER0);
 
-	counter_mask = 0xFFFFFFFFULL;
-	counter_shift = 20;
-	counter_mult = ((u64)1000000) << counter_shift;
-	counter_mult += (((u64)1000) >> 1);
-	counter_mult = arm_udiv64(counter_mult, ((u64)1000));
-
-	irq = IRQ_V2M_TIMER0;
-
-	val = arm_readl((void *)V2M_SYSCTL) | SCCTRL_TIMEREN0SEL_TIMCLK;
-	arm_writel(val, (void *)V2M_SYSCTL);
-
-	return sp804_init(usecs, V2M_TIMER0, irq, 
-			  counter_mask, counter_mult, counter_shift);
+	return imx_gpt_init(usecs, IMX_TIMER0, IRQ_IMX_TIMER0, 0);
 }
 
-#define	IMX_UART_BASE		IMX_UART0
+#define	IMX_UART_BASE		IMX_UART1
 #define	IMX_UART_INCLK		80000000
 #define	IMX_UART_BAUD		115200
 
 int arm_board_serial_init(void)
 {
-	imx_init(IMX_UART0, IMX_UART_BAUD, IMX_UART_INCLK);
+	imx_init(IMX_UART_BASE, IMX_UART_BAUD, IMX_UART_INCLK);
 
 	return 0;
 }
@@ -235,5 +229,3 @@ char arm_board_serial_getc(void)
 	arm_board_serial_putc(ch);
 	return ch;
 }
-
-
