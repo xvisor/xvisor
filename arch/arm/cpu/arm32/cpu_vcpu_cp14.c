@@ -75,6 +75,17 @@ bool cpu_vcpu_cp14_read(struct vmm_vcpu *vcpu,
 		};
 		break;
 	case 0: /* Debug registers */
+		if ((1 == CRn) && (4 == opc2)) {
+			if (1 == CRm) {
+				/* DBGOSLSR: No debug support */
+				*data = 0;
+				break;
+			} else {
+				/* DBGPRSR, Device Powerdown and Reset Status Register */
+				*data = 0;
+				break;
+			}
+		}
 		vmm_printf("%s: Debug not supported yet!\n", __func__);
 		goto bad_reg;
 	case 1: /* Trace registers. */
@@ -132,6 +143,31 @@ bool cpu_vcpu_cp14_write(struct vmm_vcpu *vcpu,
 		};
 		break;
 	case 0: /* Debug registers */
+		if (0 == CRn) {
+			if ((0 == opc2) && (7 == CRm)) {
+				/* DBGVCR, Vector Catch Register */
+				break;
+			} else if (7 == opc2) {
+				/* DBGBCR, Watchpoint Control Registers */
+				/* CRm: C0-15 */
+				break;
+			} else if (6 == opc2) {
+				/* DBGBVR, Watchpoint Value Registers */
+				/* CRm: C0-15 */
+				break;
+			} else if (5 == opc2) {
+				/* DBGBCR, Breakpoint Control Registers */
+				/* CRm: C0-15 */
+				break;
+			} else if (4 == opc2) {
+				/* DBGBVR, Breakpoint Value Registers */
+				/* CRm: C0-15 */
+				break;
+			} else if ((2 == opc2) && (2 == CRm)) {
+				/* DBGDSCR, Debug Status and Control Register */
+				break;
+			}
+		}
 		vmm_printf("%s: Debug not supported yet!\n", __func__);
 		goto bad_reg;
 	case 1: /* Trace registers. */
