@@ -236,6 +236,33 @@
 			interrupts = <42>;
 		};
 
+		gpio1: gpio@0209c000 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x0209c000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		gpio3: gpio@020a4000 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020a4000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		gpio7: gpio@020b4000 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020b4000>;
+			physical_size = <0x00004000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
 		virtio-con0 {
 			manifest_type = "virtual";
 			address_type = "memory";
