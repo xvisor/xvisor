@@ -30,7 +30,7 @@
 			"vfs mount mmc0p0 / 2",
 
 			/* Load guest0 device tree from file */
-			"vfs fdt_load /guests guest0 /images/arm32/sabrelite-a9.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0",
+			"vfs fdt_load /guests guest0 /images/arm32/sabrelite-a9.dtb mem0,physical_size,physsize,0x10000000 net0,switch,string,br0",
 
 			/* Create guest0 */
 			"guest create guest0",
@@ -39,9 +39,6 @@
 			"vfs guest_load_list guest0 /images/arm32/sabrelite-a9/nor_flash.list",
 
 			/* Umount the SD/MMC card */
-			"vfs umount /",
-
-			/* Kick the guest */
-			"guest kick guest0";
+			"vfs umount /";
 	};
 };
