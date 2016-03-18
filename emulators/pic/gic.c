@@ -48,7 +48,7 @@
 #define	MODULE_EXIT			gic_emulator_exit
 
 #define GIC_MAX_NCPU			8
-#define GIC_MAX_NIRQ			128
+#define GIC_MAX_NIRQ			256
 
 struct memory_region {
 	u32 offset;
