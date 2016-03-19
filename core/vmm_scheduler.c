@@ -364,7 +364,9 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 		return VMM_EFAIL;
 	}
 
-	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
+	arch_cpu_irq_save(flags);
+
+	vmm_write_lock_lite(&vcpu->sched_lock);
 
 	vhcpu = vcpu->hcpu;
 	schedp = &per_cpu(sched, vhcpu);
@@ -495,7 +497,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 	}
 
 skip_state_change:
-	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
+	vmm_write_unlock_lite(&vcpu->sched_lock);
 
 	if (preempt && schedp->current_vcpu) {
 		if (chcpu == vhcpu) {
@@ -513,6 +515,8 @@ skip_state_change:
 			rc = vmm_scheduler_force_resched(vhcpu);
 		}
 	}
+
+	arch_cpu_irq_restore(flags);
 
 	if (rc) {
 		vmm_printf("vcpu=%s current_state=0x%x to new_state=0x%x "
@@ -874,11 +878,8 @@ struct vmm_guest *vmm_scheduler_current_guest(void)
 
 void vmm_scheduler_yield(void)
 {
-	irq_flags_t flags;
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
-
-	arch_cpu_irq_save(flags);
 
 	if (schedp->irq_context) {
 		vmm_panic("%s: Cannot yield in IRQ context\n", __func__);
@@ -891,8 +892,6 @@ void vmm_scheduler_yield(void)
 	if (vmm_manager_vcpu_get_state(vcpu) == VMM_VCPU_STATE_RUNNING) {
 		vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_READY);
 	}
-
-	arch_cpu_irq_restore(flags);
 }
 
 static void idle_orphan(void)
