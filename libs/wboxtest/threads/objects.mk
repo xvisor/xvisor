@@ -21,4 +21,5 @@
 # @brief list of threads test objects to be build
 # */
 
+libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/kern1.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/kern2.o
