@@ -413,10 +413,10 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		return NULL;
 	}
 	if (VMM_VCPU_MAX_PRIORITY < priority) {
-		priority = VMM_VCPU_MAX_PRIORITY;
+		return NULL;
 	}
 	if (priority < VMM_VCPU_MIN_PRIORITY) {
-		priority = VMM_VCPU_MIN_PRIORITY;
+		return NULL;
 	}
 
 	/* Acquire manager lock */
