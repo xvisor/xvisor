@@ -299,6 +299,11 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 	irq_flags_t flags;
 	struct vmm_thread *tinfo;
 
+	/* Sanity check */
+	if (!thread_name || !thread_fn) {
+		return NULL;
+	}
+
 	/* Create thread structure instance */
 	tinfo = vmm_malloc(sizeof(struct vmm_thread));
 	if (!tinfo) {
