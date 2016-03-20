@@ -110,11 +110,11 @@ static int cmd_guest_create(struct vmm_chardev *cdev, const char *name)
 	guest = vmm_manager_guest_create(node);
 	vmm_devtree_dref_node(node);
 	if (!guest) {
-		vmm_cprintf(cdev, "Error: failed to create %s\n", name);
+		vmm_cprintf(cdev, "%s: Failed to create\n", name);
 		return VMM_EFAIL;
 	}
 
-	vmm_cprintf(cdev, "Created %s successfully\n", name);
+	vmm_cprintf(cdev, "%s: Created\n", name);
 
 	return VMM_OK;
 }
