@@ -199,7 +199,7 @@ int vmm_vdisk_submit_request(struct vmm_vdisk *vdisk,
 	if (vdisk->blk) {
 		vreq->vdisk = vdisk;
 		vmm_vdisk_set_request_type(vreq, type);
-		vreq->r.lba = lba * vdisk->blk_factor;
+		vreq->r.lba = (lba + vdisk->blk->start_lba) * vdisk->blk_factor;
 		vreq->r.bcnt =
 			udiv32(data_len, vdisk->block_size) * vdisk->blk_factor;
 		vreq->r.data = data;
