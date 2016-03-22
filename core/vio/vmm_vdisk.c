@@ -198,17 +198,7 @@ int vmm_vdisk_submit_request(struct vmm_vdisk *vdisk,
 	vmm_spin_lock_irqsave_lite(&vdisk->blk_lock, flags);
 	if (vdisk->blk) {
 		vreq->vdisk = vdisk;
-		switch (type) {
-		case VMM_VDISK_REQUEST_READ:
-			vreq->r.type = VMM_REQUEST_READ;
-			break;
-		case VMM_VDISK_REQUEST_WRITE:
-			vreq->r.type = VMM_REQUEST_WRITE;
-			break;
-		default:
-			vreq->r.type = VMM_REQUEST_UNKNOWN;
-			break;
-		};
+		vmm_vdisk_set_request_type(vreq, type);
 		vreq->r.lba = lba * vdisk->blk_factor;
 		vreq->r.bcnt =
 			udiv32(data_len, vdisk->block_size) * vdisk->blk_factor;
