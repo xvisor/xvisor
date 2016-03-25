@@ -49,6 +49,13 @@ struct vmm_stdio_ctrl {
 static struct vmm_stdio_ctrl stdio_ctrl;
 static bool stdio_init_done = FALSE;
 
+
+static inline void _vmm_format_error(const char *fmt, char err)
+{
+	vmm_printf("\n*** vmm_stdio: invalid specifier within format "
+			"\"%%%s\": '%c' (0x%x)\n", fmt, err, err);
+}
+
 bool vmm_iscontrol(char c)
 {
 	return ((0 <= c) && (c < 32)) ? TRUE : FALSE;
@@ -326,11 +333,8 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						va_arg(args, ssize_t),
 						10, 1, width, flags, '0');
 					acnt += sizeof(ssize_t);
-				} else { /* No specifier. Treated as %zu, but non-standard... */
-					pc += printi(out, out_len, cdev,
-						va_arg(args, size_t),
-						10, 1, width, flags, '0');
-					acnt += sizeof(size_t);
+				} else { /* Unhandled cases */
+					_vmm_format_error("z", *(format + 1));
 				}
 				continue;
 			}
@@ -362,10 +366,12 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					format += 2;
 					pc += printi(out, out_len, cdev, tmp,
 						16, 0, width, flags, 'A');
-				} else {
+				} else if ((*(format + 2) == 'd') || (*(format + 2) == 'i')) {
 					format += 1;
 					pc += printi(out, out_len, cdev, tmp,
 						10, 1, width, flags, '0');
+				} else { /* Unhandled cases */
+					_vmm_format_error("ll", *(format + 2));
 				}
 				continue;
 			} else if (*format == 'l') {
@@ -387,11 +393,13 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						va_arg(args, unsigned long),
 						10, 0, width, flags, 'a');
 					acnt += sizeof(unsigned long);
-				} else {
+				} else if ((*(format + 1) == 'd') || (*(format + 1) == 'i')) {
 					pc += printi(out, out_len, cdev,
 						va_arg(args, long),
 						10, 1, width, flags, '0');
 					acnt += sizeof(long);
+				} else { /* Unhandled cases */
+					_vmm_format_error("l", *(format + 1));
 				}
 			}
 			if (*format == 'c') {
@@ -401,7 +409,10 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				pc += prints(out, out_len, cdev, scr, width, flags);
 				acnt += sizeof(int);
 				continue;
+			} else {
+				_vmm_format_error("", *format);
 			}
+
 		} else {
 out:
 			printc(out, out_len, cdev, *format);
