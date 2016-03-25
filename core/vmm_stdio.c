@@ -302,6 +302,38 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				acnt += sizeof(unsigned long);
 				continue;
 			}
+			if (*format == 'z') {
+				if (*(format + 1) == 'x') {
+					format += 1;
+					pc += printi(out, out_len, cdev,
+						va_arg(args, size_t),
+						16, 0, width, flags, 'a');
+					acnt += sizeof(size_t);
+				} else if (*(format + 1) == 'X') {
+					format += 1;
+					pc += printi(out, out_len, cdev,
+						va_arg(args, size_t),
+						16, 0, width, flags, 'A');
+					acnt += sizeof(size_t);
+				} else if (*(format + 1) == 'u') {
+					format += 1;
+					pc += printi(out, out_len, cdev,
+						va_arg(args, size_t),
+						10, 0, width, flags, 'a');
+					acnt += sizeof(size_t);
+				} else if ((*(format + 1) == 'd') || (*(format + 1) == 'i')) {
+					pc += printi(out, out_len, cdev,
+						va_arg(args, ssize_t),
+						10, 1, width, flags, '0');
+					acnt += sizeof(ssize_t);
+				} else { /* No specifier. Treated as %zu, but non-standard... */
+					pc += printi(out, out_len, cdev,
+						va_arg(args, size_t),
+						10, 1, width, flags, '0');
+					acnt += sizeof(size_t);
+				}
+				continue;
+			}
 			if (*format == 'l' && *(format + 1) == 'l') {
 				while (acnt & (sizeof(unsigned long long)-1)) {
 					va_arg(args, int);
