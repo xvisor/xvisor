@@ -247,14 +247,14 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 			width = flags = 0;
 			if (*format == '\0')
 				break;
-			if (*format == '%')
+			else if (*format == '%')
 				goto out;
 			/* Get flags */
-			if (*format == '-') {
+			else if (*format == '-') {
 				++format;
 				flags = PAD_RIGHT;
 			}
-			if (*format == '#') {
+			else if (*format == '#') {
 				++format;
 				flags |= PAD_ALTERNATE;
 			}
@@ -272,44 +272,32 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				acnt += sizeof(char *);
 				pc += prints(out, out_len, cdev,
 					     s ? s : "(null)", width, flags);
-				continue;
-			}
-			if (*format == 'd') {
+			} else if ((*format == 'd') || (*format == 'i')) {
 				pc += printi(out, out_len, cdev,
 					va_arg(args, int),
 					10, 1, width, flags, '0');
 				acnt += sizeof(int);
-				continue;
-			}
-			if (*format == 'x') {
+			} else if (*format == 'x') {
 				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned int),
 					16, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
-				continue;
-			}
-			if (*format == 'X') {
+			} else if (*format == 'X') {
 				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned int),
 					16, 0, width, flags, 'A');
 				acnt += sizeof(unsigned int);
-				continue;
-			}
-			if (*format == 'u') {
+			} else if (*format == 'u') {
 				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned int),
 					10, 0, width, flags, 'a');
 				acnt += sizeof(unsigned int);
-				continue;
-			}
-			if (*format == 'p') {
+			} else if (*format == 'p') {
 				pc += printi(out, out_len, cdev,
 					va_arg(args, unsigned long),
 					16, 0, width, flags, 'a');
 				acnt += sizeof(unsigned long);
-				continue;
-			}
-			if (*format == 'z') {
+			} else if (*format == 'z') {
 				if (*(format + 1) == 'x') {
 					format += 1;
 					pc += printi(out, out_len, cdev,
@@ -336,9 +324,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				} else { /* Unhandled cases */
 					_vmm_format_error("z", *(format + 1));
 				}
-				continue;
-			}
-			if (*format == 'l' && *(format + 1) == 'l') {
+			} else if (*format == 'l' && *(format + 1) == 'l') {
 				while (acnt & (sizeof(unsigned long long)-1)) {
 					va_arg(args, int);
 					acnt += sizeof(int);
@@ -373,7 +359,6 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				} else { /* Unhandled cases */
 					_vmm_format_error("ll", *(format + 2));
 				}
-				continue;
 			} else if (*format == 'l') {
 				if (*(format + 1) == 'x') {
 					format += 1;
@@ -401,18 +386,15 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 				} else { /* Unhandled cases */
 					_vmm_format_error("l", *(format + 1));
 				}
-			}
-			if (*format == 'c') {
+			} else if (*format == 'c') {
 				/* char are converted to int then pushed on the stack */
 				scr[0] = va_arg(args, int);
 				scr[1] = '\0';
 				pc += prints(out, out_len, cdev, scr, width, flags);
 				acnt += sizeof(int);
-				continue;
 			} else {
 				_vmm_format_error("", *format);
 			}
-
 		} else {
 out:
 			printc(out, out_len, cdev, *format);
