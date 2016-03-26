@@ -288,8 +288,8 @@ static int imx_driver_probe(struct vmm_device *dev,
 		}
 		old_rate = clk_get_rate(clk_uart);
 		if (clk_set_rate(clk_uart, port->input_clock)) {
-			vmm_printf("Could not set %s clock rate to %u Hz, "
-				   "actual rate: %u Hz\n", __clk_get_name(clk_uart),
+			vmm_printf("Could not set %s clock rate to %"PRId32" Hz, "
+				   "actual rate: %lu Hz\n", __clk_get_name(clk_uart),
 				   port->input_clock, clk_get_rate(clk_uart));
 			rc = VMM_ERANGE;
 			goto clk_disable_unprepare_uart;

@@ -175,13 +175,13 @@ int vmm_host_vapool_print_state(struct vmm_chardev *cdev)
 		} else {
 			vmm_cprintf(cdev, "  [BLOCK %4dM]: ", 1<<(idx-20));
 		}
-		vmm_cprintf(cdev, "%5d area(s), %5d free block(s)\n",
+		vmm_cprintf(cdev, "%5lu area(s), %5lu free block(s)\n",
 			    buddy_bins_area_count(&vpctrl.ba, idx),
 			    buddy_bins_block_count(&vpctrl.ba, idx));
 	}
 
 	vmm_cprintf(cdev, "VAPOOL House-Keeping State\n");
-	vmm_cprintf(cdev, "  Buddy Areas: %d free out of %d\n",
+	vmm_cprintf(cdev, "  Buddy Areas: %lu free out of %lu\n",
 		    buddy_hk_area_free(&vpctrl.ba),
 		    buddy_hk_area_total(&vpctrl.ba));
 

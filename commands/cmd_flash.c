@@ -252,7 +252,7 @@ static int flash_erase(struct vmm_chardev *cdev,
 		info.len = op->len;
 		info.priv = (u_long)cdev;
 		info.callback = flash_erase_cb;
-		vmm_printf("Sizeof %d, Addr 0x%08X, cb 0x%08X\n",
+		vmm_printf("Sizeof %zu, Addr 0x%p, cb 0x%p\n",
 			   sizeof (struct erase_info),
 			   &info, info.callback);
 		mtd_erase(op->mtd, &info);

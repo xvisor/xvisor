@@ -82,7 +82,7 @@ static int cmd_stdio_change_device(struct vmm_chardev *cdev,
 
 static int cmd_stdio_loglevel(struct vmm_chardev *cdev)
 {
-	vmm_cprintf(cdev, "Current Log Level : %d\n", vmm_stdio_loglevel());
+	vmm_cprintf(cdev, "Current Log Level : %ld\n", vmm_stdio_loglevel());
 
 	return VMM_OK;
 }

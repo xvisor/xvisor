@@ -303,7 +303,7 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 			type[9] = 'x';
 		}
 		vmm_cprintf(cdev, "%10s ", type);
-		vmm_cprintf(cdev, "%10ll ", st.st_size);
+		vmm_cprintf(cdev, "%10lld ", st.st_size);
 		vmm_wallclock_mkinfo(st.st_mtime, 0, &ti);
 		switch (ti.tm_mon) {
 		case 0:
@@ -345,7 +345,7 @@ static int cmd_vfs_ls(struct vmm_chardev *cdev, const char *path)
 		default:
 			break;
 		};
-		vmm_cprintf(cdev, "%02d %d %02d:%02d:%02d ",
+		vmm_cprintf(cdev, "%02d %ld %02d:%02d:%02d ",
 				  ti.tm_mday, ti.tm_year + 1900,
 				  ti.tm_hour, ti.tm_min, ti.tm_sec);
 		if (type[0] == 'd')
@@ -708,14 +708,14 @@ static int cmd_vfs_module_load(struct vmm_chardev *cdev, const char *path)
 	}
 
 	if (!len) {
-		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
+		vmm_cprintf(cdev, "File %s has zero bytes.\n", path);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}
 
 	if (len > VFS_MAX_MODULE_SZ) {
-		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
-			    path, (long)len, VFS_MAX_MODULE_SZ);
+		vmm_cprintf(cdev, "File %s has size %"PRId32" bytes (> %d bytes).\n",
+			    path, len, VFS_MAX_MODULE_SZ);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}
@@ -786,14 +786,14 @@ static int cmd_vfs_fdt_load(struct vmm_chardev *cdev,
 	}
 
 	if (!len) {
-		vmm_cprintf(cdev, "File %s has zero %d bytes.\n", path);
+		vmm_cprintf(cdev, "File %s has zero bytes.\n", path);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}
 
 	if (len > VFS_MAX_FDT_SZ) {
-		vmm_cprintf(cdev, "File %s has size %d bytes (> %d bytes).\n",
-			    path, (long)len, VFS_MAX_FDT_SZ);
+		vmm_cprintf(cdev, "File %s has size %"PRId32" bytes (> %d bytes).\n",
+			    path, len, VFS_MAX_FDT_SZ);
 		rc = VMM_EINVALID;
 		goto fail_closefd;
 	}

@@ -187,16 +187,16 @@ int __wboxtest_run_test(struct wboxtest *test,
 	if (test->cleanup)
 		test->cleanup(test, cdev);
 
-	vmm_cprintf(cdev, "wboxtest: test=%s vapool leakage %d pages\n",
+	vmm_cprintf(cdev, "wboxtest: test=%s vapool leakage %lu pages\n",
 		    test->name,
 		    (unsigned long)(vp - vmm_host_vapool_free_page_count()));
-	vmm_cprintf(cdev, "wboxtest: test=%s normal heap leakage %d bytes\n",
+	vmm_cprintf(cdev, "wboxtest: test=%s normal heap leakage %lu bytes\n",
 		    test->name,
 		    (unsigned long)(nh - vmm_normal_heap_free_size()));
-	vmm_cprintf(cdev, "wboxtest: test=%s dma heap leakage %d bytes\n",
+	vmm_cprintf(cdev, "wboxtest: test=%s dma heap leakage %lu bytes\n",
 		    test->name,
 		    (unsigned long)(dh - vmm_dma_heap_free_size()));
-	vmm_cprintf(cdev, "wboxtest: test=%s time taken %ll nanoseconds\n",
+	vmm_cprintf(cdev, "wboxtest: test=%s time taken %llu nanoseconds\n",
 		    test->name, vmm_timer_timestamp() - tstamp);
 	vmm_cprintf(cdev, "wboxtest: test=%s failures %d out of %d\n",
 		    test->name, fail_count, iterations);

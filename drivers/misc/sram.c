@@ -104,7 +104,7 @@ static int sram_probe(struct vmm_device *dev,
 
 	vmm_devdrv_set_data(dev, sram);
 
-	vmm_printf("%s: SRAM pool: %ld KiB @ 0x%p\n", dev->name, size / 1024,
+	vmm_printf("%s: SRAM pool: %"PRISIZE" KiB @ 0x%p\n", dev->name, size / 1024,
 		   virt_base);
 
 	return 0;

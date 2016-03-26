@@ -296,7 +296,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 				req->read_iov[i].len = vbdev->iov[i + 1].len;
 			}
 			DPRINTF("%s: VIRTIO_BLK_T_IN dev=%s "
-				"hdr.sector=%ll req->len=%d\n",
+				"hdr.sector=%"PRIu64" req->len=%d\n",
 				__func__, dev->name,
 				(u64)hdr.sector, req->len);
 			/* Note: We will get failed() or complete() callback
@@ -322,7 +322,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 							 req->len);
 			}
 			DPRINTF("%s: VIRTIO_BLK_T_OUT dev=%s "
-				"hdr.sector=%ll req->len=%d\n",
+				"hdr.sector=%"PRIu64" req->len=%d\n",
 				__func__, dev->name,
 				(u64)hdr.sector, req->len);
 			/* Note: We will get failed() or complete() callback

@@ -74,7 +74,7 @@ void vmm_host_irqext_debug_dump(struct vmm_chardev *cdev)
 		if (0 == (idx % 4)) {
 			vmm_cprintf(cdev, "\n    %d:", idx);
 		}
-		vmm_cprintf(cdev, " 0x%x", iectrl.bitmap[idx]);
+		vmm_cprintf(cdev, " 0x%lx", iectrl.bitmap[idx]);
 	}
 	vmm_cprintf(cdev, "\n");
 

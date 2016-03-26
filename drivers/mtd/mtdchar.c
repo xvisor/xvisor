@@ -75,7 +75,7 @@ u32 mtd_chardev_read(struct vmm_chardev *cdev,
 	unsigned int		retlen = 0;
 
 	if (mtd_read(mtd, *off, len, &retlen, dest)) {
-		dev_err(&cdev->dev, "Writing at 0x%08X failed\n", off);
+		dev_err(&cdev->dev, "Writing at 0x%p failed\n", off);
 		return VMM_EFAIL;
 	}
 	*off += retlen;
@@ -92,11 +92,11 @@ u32 mtd_chardev_write(struct vmm_chardev *cdev,
 
 	block = *off & ~mtd->erasesize_mask;
 	if (mtd_block_isbad(mtd, block)) {
-		dev_err(&cdev->dev, "Block at 0x%08X failed\n", block);
+		dev_err(&cdev->dev, "Block at %"PRIX32" failed\n", block);
 		return VMM_EFAIL;
 	}
 	if (mtd_write(mtd, *off, len, &retlen, src)) {
-		dev_err(&cdev->dev, "Writing at 0x%08X failed\n", off);
+		dev_err(&cdev->dev, "Writing at 0x%p failed\n", off);
 		return VMM_EFAIL;
 	}
 	*off += retlen;

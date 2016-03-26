@@ -220,7 +220,7 @@ static int cmd_i2c_detect(struct vmm_chardev *cdev,
 		} else if (!strcmp(argv[3], "quick")) {
 			mode = MODE_QUICK;
 		} else {
-			vmm_cprintf(cdev, "Unknown mode %s\n", mode);
+			vmm_cprintf(cdev, "Unknown mode 0x%x\n", mode);
 		}
 	}
 

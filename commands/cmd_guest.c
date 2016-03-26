@@ -249,13 +249,8 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	len = (len + (BYTES_PER_LINE - 1)) & ~(BYTES_PER_LINE - 1);
 
 	vmm_cprintf(cdev, "%s physical memory ", name);
-	if (sizeof(u64) == sizeof(physical_addr_t)) {
-		vmm_cprintf(cdev, "0x%016llx - 0x%016llx:\n",
-			    (u64)gphys_addr, (u64)(gphys_addr + len));
-	} else {
-		vmm_cprintf(cdev, "0x%08x - 0x%08x:\n",
-			    (u32)gphys_addr, (u32)(gphys_addr + len));
-	}
+	vmm_cprintf(cdev, "0x%"PRIPADDR" - 0x%"PRIPADDR":\n",
+			    gphys_addr, (gphys_addr + len));
 	while (total_loaded < len) {
 		loaded = vmm_guest_memory_read(guest, gphys_addr,
 					       buf, BYTES_PER_LINE, FALSE);
@@ -263,11 +258,7 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 			break;
 		}
 		mem = (u32 *)buf;
-		if (sizeof(u64) == sizeof(physical_addr_t)) {
-			vmm_cprintf(cdev, "%016llx:", (u64)gphys_addr);
-		} else {
-			vmm_cprintf(cdev, "%08x:", gphys_addr);
-		}
+		vmm_cprintf(cdev, "0x%"PRIPADDR":", gphys_addr);
 		vmm_cprintf(cdev, " %08x %08x %08x %08x\n",
 			    mem[0], mem[1], mem[2], mem[3]);
 		gphys_addr += BYTES_PER_LINE;
@@ -304,29 +295,14 @@ static int cmd_guest_region(struct vmm_chardev *cdev, const char *name,
 		return VMM_EFAIL;
 	}
 
-	if (sizeof(u64) == sizeof(physical_addr_t)) {
-		vmm_cprintf(cdev, "Region guest physical address: 0x%016llx\n",
-			    (u64)reg->gphys_addr);
-	} else {
-		vmm_cprintf(cdev, "Region guest physical address: 0x%08x\n",
-			    reg->gphys_addr);
-	}
+	vmm_cprintf(cdev, "Region guest physical address: 0x%"PRIPADDR"\n",
+		    reg->gphys_addr);
 
-	if (sizeof(u64) == sizeof(physical_addr_t)) {
-		vmm_cprintf(cdev, "Region host physical address : 0x%016llx\n",
-			    (u64)reg->hphys_addr);
-	} else {
-		vmm_cprintf(cdev, "Region host physical address : 0x%08x\n",
-			    reg->hphys_addr);
-	}
+	vmm_cprintf(cdev, "Region host physical address : 0x%"PRIPADDR"\n",
+		    reg->hphys_addr);
 
-	if (sizeof(u64) == sizeof(physical_size_t)) {
-		vmm_cprintf(cdev, "Region physical size         : 0x%016llx\n",
-			    (u64)reg->phys_size);
-	} else {
-		vmm_cprintf(cdev, "Region physical size         : 0x%08x\n",
-			    reg->phys_size);
-	}
+	vmm_cprintf(cdev, "Region physical size         : 0x%"PRIPSIZE"\n",
+		    reg->phys_size);
 
 	vmm_cprintf(cdev, "Region flags                 : 0x%08x\n",
 		    reg->flags);

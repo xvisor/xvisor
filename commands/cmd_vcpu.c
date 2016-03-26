@@ -226,29 +226,17 @@ static int cmd_vcpu_monitor(struct vmm_chardev *cdev,
 		vfree *= VMM_PAGE_SIZE;
 		vtotal = vmm_host_vapool_total_page_count();
 		vtotal *= VMM_PAGE_SIZE;
-		if (sizeof(virtual_size_t) == sizeof(u64)) {
-			vmm_cprintf(ocdev, "VAPOOL: free %llKiB  "
-				"used %llKiB  total %llKiB\n",
+		vmm_cprintf(ocdev, "VAPOOL: free %"PRISIZE"KiB  "
+				"used %"PRISIZE"KiB  total %"PRISIZE"KiB\n",
 				vfree/1024, (vtotal-vfree)/1024, vtotal/1024);
-		} else {
-			vmm_cprintf(ocdev, "VAPOOL: free %dKiB  "
-				"used %dKiB  total %dKiB\n",
-				vfree/1024, (vtotal-vfree)/1024, vtotal/1024);
-		}
 		/* Print RAM usage */
 		pfree = vmm_host_ram_total_free_frames();
 		pfree *= VMM_PAGE_SIZE;
 		ptotal = vmm_host_ram_total_frame_count();
 		ptotal *= VMM_PAGE_SIZE;
-		if (sizeof(physical_size_t) == sizeof(u64)) {
-			vmm_cprintf(ocdev, "RAM: free %llKiB  "
-				"used %llKiB  total %llKiB\n",
+		vmm_cprintf(ocdev, "RAM: free %"PRIPSIZE"KiB  "
+				"used %"PRIPSIZE"KiB  total %"PRIPSIZE"KiB\n",
 				pfree/1024, (ptotal-pfree)/1024, ptotal/1024);
-		} else {
-			vmm_cprintf(ocdev, "RAM: free %dKiB  "
-				"used %dKiB  total %dKiB\n",
-				pfree/1024, (ptotal-pfree)/1024, ptotal/1024);
-		}
 
 		/* Print VCPU list */
 		vcpu_list(ocdev, TRUE, TRUE);

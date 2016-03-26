@@ -55,9 +55,9 @@ static int cmd_blockdev_info(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, "Description: %s\n", bdev->desc);
 	vmm_cprintf(cdev, "Access     : %s\n",
 		(bdev->flags & VMM_BLOCKDEV_RW) ? "Read-Write" : "Read-Only");
-	vmm_cprintf(cdev, "Start LBA  : %ll\n", bdev->start_lba);
+	vmm_cprintf(cdev, "Start LBA  : %lld\n", bdev->start_lba);
 	vmm_cprintf(cdev, "Block Size : %d\n", bdev->block_size);
-	vmm_cprintf(cdev, "Block Count: %ll\n", bdev->num_blocks);
+	vmm_cprintf(cdev, "Block Count: %lld\n", bdev->num_blocks);
 
 	return VMM_OK;
 }
@@ -66,7 +66,7 @@ static int cmd_blockdev_list_iter(struct vmm_blockdev *bdev, void *data)
 {
 	struct vmm_chardev *cdev = data;
 
-	vmm_cprintf(cdev, " %-16s %-16s %-16ll %-11d %-16ll\n",
+	vmm_cprintf(cdev, " %-16s %-16s %-16lld %-11d %-16lld\n",
 		    bdev->name,  (bdev->parent) ? bdev->parent->name : "---",
 		    bdev->start_lba, bdev->block_size, bdev->num_blocks);
 
@@ -123,7 +123,7 @@ static int cmd_blockdev_dump8(struct vmm_chardev *cdev,
 
 		for (i = 0; i < rdsz; i++) {
 			if (pos % 8 == 0)
-				vmm_cprintf(cdev, "0x%08x:", i + off);
+				vmm_cprintf(cdev, "%"PRIx64":", i + off);
 			vmm_cprintf(cdev, " 0x%02x", data[i]);
 			if (pos % 8 == 7)
 				vmm_cprintf(cdev, "\n");

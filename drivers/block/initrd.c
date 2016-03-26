@@ -104,7 +104,7 @@ static int __init initrd_driver_init(void)
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (!node) {
-		vmm_printf("initrd: No chosen node\n", __func__);
+		vmm_printf("initrd: No chosen node\n");
 		return VMM_ENODEV;
 	}
 

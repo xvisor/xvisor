@@ -444,7 +444,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 
 	for (i = 0; i < ARRAY_SIZE(clk); i++)
 		if (IS_ERR(clk[i]))
-			pr_err("i.MX6q clk %d: register failed with %l\n",
+			pr_err("i.MX6q clk %d: register failed with %ld\n",
 				i, PTR_ERR(clk[i]));
 
 	clk_data.clks = clk;

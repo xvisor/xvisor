@@ -44,7 +44,7 @@ void print_stacktrace(struct stack_trace *trace)
 
 	for (i = 0; i < trace->nr_entries; i++) {
 		kallsyms_sprint_symbol(symname, trace->entries[i]);
-		vmm_printf("0x%08X %s\n", trace->entries[i], symname);
+		vmm_printf("0x%08lX %s\n", trace->entries[i], symname);
 	}
 }
 

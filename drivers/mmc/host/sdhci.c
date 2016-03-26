@@ -182,7 +182,7 @@ static int sdhci_transfer_dma(struct sdhci_host *host,
 
 	rc = vmm_completion_wait_timeout(&host->wait_dma, &timeout);
 	if (VMM_ETIMEDOUT == rc) {
-		vmm_printf("%s: Transfer data timeout (%d)\n", __func__,
+		vmm_printf("%s: Transfer data timeout (%"PRId64")\n", __func__,
 			   timeout);
 		return rc;
 	}

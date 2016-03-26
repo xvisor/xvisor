@@ -420,7 +420,7 @@ int add_mtd_device(struct mtd_info *mtd)
 	/* mtd->dev.type = &mtd_devtype; */
 	mtd->dev.class = &mtd_class;
 	/* mtd->dev.devt = MTD_DEVT(i); */
-	dev_set_name(&mtd->dev, "mtd%d", i);
+	dev_set_name(&mtd->dev, "mtd%lu", i);
 	dev_set_drvdata(&mtd->dev, mtd);
 	if (device_register(&mtd->dev) != 0)
 		goto fail_added;

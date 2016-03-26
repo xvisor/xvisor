@@ -149,13 +149,13 @@ static int heap_print_state(struct vmm_heap_control *heap,
 		} else {
 			vmm_cprintf(cdev, "  [BLOCK %4dM]: ", 1<<(idx-20));
 		}
-		vmm_cprintf(cdev, "%5d area(s), %5d free block(s)\n",
+		vmm_cprintf(cdev, "%5lu area(s), %5lu free block(s)\n",
 			    buddy_bins_area_count(&heap->ba, idx),
 			    buddy_bins_block_count(&heap->ba, idx));
 	}
 
 	vmm_cprintf(cdev, "%s Heap House-Keeping State\n", name);
-	vmm_cprintf(cdev, "  Buddy Areas: %d free out of %d\n",
+	vmm_cprintf(cdev, "  Buddy Areas: %lu free out of %lu\n",
 		    buddy_hk_area_free(&heap->ba),
 		    buddy_hk_area_total(&heap->ba));
 

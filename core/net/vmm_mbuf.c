@@ -438,18 +438,18 @@ void m_dump(struct vmm_mbuf *m)
 {
 	vmm_printf("MBuf header\n");
 	vmm_printf("  MBuf ref:      %d\n", m->m_ref);
-	vmm_printf("  MBuf data:     0x%08x\n", m->m_data);
-	vmm_printf("  MBuf free fct: 0x%08x\n", m->m_freefn);
-	vmm_printf("  MBuf len:      0x%08x\n", m->m_len);
-	vmm_printf("  MBuf flags:    0x%08x\n", m->m_flags);
+	vmm_printf("  MBuf data:     %p\n", m->m_data);
+	vmm_printf("  MBuf free fct: %p\n", m->m_freefn);
+	vmm_printf("  MBuf len:      %d\n", m->m_len);
+	vmm_printf("  MBuf flags:    0x%x\n", m->m_flags);
 	vmm_printf("MBuf packet\n");
 	vmm_printf("  MBuf len:      %d\n", m->m_pktlen);
 	vmm_printf("MBuf ext\n");
-	vmm_printf("  MBuf buf:      0x%08x\n", m->m_extbuf);
+	vmm_printf("  MBuf buf:      %p\n", m->m_extbuf);
 	vmm_printf("  MBuf len:      %d\n", m->m_extlen);
 	vmm_printf("  MBuf ref cnt:  %d\n", m->m_extref);
-	vmm_printf("  MBuf free:     0x%08x\n", m->m_extfree);
-	vmm_printf("  MBuf free arg: 0x%08x\n", m->m_extarg);
+	vmm_printf("  MBuf free:     %p\n", m->m_extfree);
+	vmm_printf("  MBuf free arg: %p\n", m->m_extarg);
 	vmm_printf("\nMBuf data dump (%d):\n", m->m_len);
 	mbuf_data_dump(m->m_data, m->m_len);
 }

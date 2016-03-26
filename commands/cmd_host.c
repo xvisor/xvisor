@@ -96,7 +96,7 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 		    vmm_num_online_cpus());
 	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total VAPOOL",
 		    CONFIG_VAPOOL_SIZE_MB);
-	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total RAM",
+	vmm_cprintf(cdev, "%-20s: %lu MB\n", "Total RAM",
 		    ((total *VMM_PAGE_SIZE) >> 20));
 
 	arch_board_print_info(cdev);
@@ -248,7 +248,7 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 	physical_addr_t start;
 	physical_size_t size;
 
-	vmm_cprintf(cdev, "Frame Size        : %d (0x%08x)\n",
+	vmm_cprintf(cdev, "Frame Size        : %lu (0x%08lx)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
 	vmm_cprintf(cdev, "Bank Count        : %d (0x%08x)\n",
 					bank_count, bank_count);
@@ -262,20 +262,10 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 		free = vmm_host_ram_bank_free_frames(bn);
 		count = vmm_host_ram_bank_frame_count(bn);
 		vmm_cprintf(cdev, "\n");
-		if (sizeof(u64) == sizeof(physical_addr_t)) {
-			vmm_cprintf(cdev, "Bank%02d Start      : 0x%016llx\n",
-					bn, start);
-		} else {
-			vmm_cprintf(cdev, "Bank%02d Start      : 0x%08x\n",
-					bn, start);
-		}
-		if (sizeof(u64) == sizeof(physical_size_t)) {
-			vmm_cprintf(cdev, "Bank%02d Size       : 0x%016llx\n",
-					bn, size);
-		} else {
-			vmm_cprintf(cdev, "Bank%02d Size       : 0x%08x\n",
-					bn, size);
-		}
+		vmm_cprintf(cdev, "Bank%02d Start      : 0x%"PRIPADDR"\n",
+				bn, start);
+		vmm_cprintf(cdev, "Bank%02d Size       : 0x%"PRIPADDR"\n",
+				bn, size);
 		vmm_cprintf(cdev, "Bank%02d Free Frames: %d (0x%08x)\n",
 					bn, free, free);
 		vmm_cprintf(cdev, "Bank%02d Frame Count: %d (0x%08x)\n",
@@ -299,13 +289,8 @@ static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 		vmm_cprintf(cdev, "1 : used");
 		for (ite = 0; ite < count; ite++) {
 			if (umod32(ite, colcnt) == 0) {
-				if (sizeof(u64) == sizeof(physical_addr_t)) {
-					vmm_cprintf(cdev, "\n0x%016llx: ",
-						    start + ite * VMM_PAGE_SIZE);
-				} else {
-					vmm_cprintf(cdev, "\n0x%08x: ",
-						    start + ite * VMM_PAGE_SIZE);
-				}
+				vmm_cprintf(cdev, "\n0x%"PRIPADDR": ",
+				(physical_addr_t)(start + ite * VMM_PAGE_SIZE));
 			}
 			if (vmm_host_ram_frame_isfree(start + ite * VMM_PAGE_SIZE)) {
 				vmm_cprintf(cdev, "0");
@@ -323,15 +308,11 @@ static void cmd_host_vapool_info(struct vmm_chardev *cdev)
 	u32 total = vmm_host_vapool_total_page_count();
 	virtual_addr_t base = vmm_host_vapool_base();
 
-	if (sizeof(u64) == sizeof(virtual_addr_t)) {
-		vmm_cprintf(cdev, "Base Address : 0x%016llx\n", base);
-	} else {
-		vmm_cprintf(cdev, "Base Address : 0x%08x\n", base);
-	}
-	vmm_cprintf(cdev, "Page Size    : %d (0x%08x)\n",
+	vmm_cprintf(cdev, "Base Address : 0x%"PRIADDR"\n", base);
+	vmm_cprintf(cdev, "Page Size    : %lu (0x%08lx)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
-	vmm_cprintf(cdev, "Free Pages   : %d (0x%08x)\n", free, free);
-	vmm_cprintf(cdev, "Total Pages  : %d (0x%08x)\n", total, total);
+	vmm_cprintf(cdev, "Free Pages   : %u (0x%08x)\n", free, free);
+	vmm_cprintf(cdev, "Total Pages  : %u (0x%08x)\n", total, total);
 }
 
 static int cmd_host_vapool_state(struct vmm_chardev *cdev)
@@ -348,13 +329,8 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "1 : used");
 	for (ite = 0; ite < total; ite++) {
 		if (umod32(ite, colcnt) == 0) {
-			if (sizeof(u64) == sizeof(virtual_addr_t)) {
-				vmm_cprintf(cdev, "\n0x%016llx: ",
-					    base + ite * VMM_PAGE_SIZE);
-			} else {
-				vmm_cprintf(cdev, "\n0x%08x: ",
-					    base + ite * VMM_PAGE_SIZE);
-			}
+			vmm_cprintf(cdev, "\n0x%"PRIADDR": ",
+				(virtual_addr_t)(base + ite * VMM_PAGE_SIZE));
 		}
 		if (vmm_host_vapool_page_isfree(base + ite * VMM_PAGE_SIZE)) {
 			vmm_cprintf(cdev, "0");
@@ -377,7 +353,7 @@ static int cmd_host_resources_print(const char *name,
 		level--;
 	}
 
-	vmm_cprintf(cdev, "[0x%016llx-0x%016llx] (0x%08lx) %s\n",
+	vmm_cprintf(cdev, "[0x%016"PRIX64"-0x%016"PRIX64"] (0x%08x) %s\n",
 		    start, end, (u32)flags, (name) ? name : "Unknown");
 
 	return VMM_OK;

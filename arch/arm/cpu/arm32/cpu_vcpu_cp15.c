@@ -2356,11 +2356,11 @@ void cpu_vcpu_cp15_regs_dump(struct vmm_chardev *cdev,
 		    "IFAR", cp15->c6_ifar,
 		    "DFAR", cp15->c6_dfar);
 	vmm_cprintf(cdev, "CP15 Address Translation Registers\n");
-	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%016llx\n",
+	vmm_cprintf(cdev, " %7s=%"PRIADDR" %7s=%"PRIADDR64"\n",
 		    "PAR", cp15->c7_par,
 		    "PAR64", cp15->c7_par64);
 	vmm_cprintf(cdev, "CP15 Cache Lockdown Registers\n");
-	vmm_cprintf(cdev, " %7s=0x%08x %7s=0x%08x\n",
+	vmm_cprintf(cdev, " %7s=%"PRIADDR" %7s=%"PRIADDR"\n",
 		    "CILOCK", cp15->c9_insn,  /* ??? */
 		    "CDLOCK", cp15->c9_data); /* ??? */
 	vmm_cprintf(cdev, "CP15 Performance Monitor Control Registers\n");

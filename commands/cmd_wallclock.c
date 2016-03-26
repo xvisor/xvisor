@@ -152,7 +152,7 @@ static int cmd_wallclock_get_time(struct vmm_chardev *cdev)
 						tz.tz_minuteswest % 60);
 	}
 
-	vmm_cprintf(cdev, "%d", ti.tm_year + 1900);
+	vmm_cprintf(cdev, "%ld", ti.tm_year + 1900);
 
 	vmm_cprintf(cdev, "\n");
 

@@ -103,7 +103,7 @@ static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 			vmm_cprintf(cdev, "0x%x", 
 				vmm_be32_to_cpu(((u32 *)attr->value)[i >> 2]));
 		}
-		vmm_cprintf(cdev, ">;\n", attr->name);
+		vmm_cprintf(cdev, ">;\n");
 	} else {
 		vmm_cprintf(cdev, "\t%s = [", attr->name);
 		for (i = 0; i < attr->len; i += sizeof(u8)) {
@@ -113,7 +113,7 @@ static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 			vmm_cprintf(cdev, "0x%x", 
 					((u8 *)attr->value)[i]);
 		}
-		vmm_cprintf(cdev, "];\n", attr->name);
+		vmm_cprintf(cdev, "];\n");
 	}
 }
 

@@ -68,39 +68,31 @@ static int heap_info(struct vmm_chardev *cdev,
 	}
 
 	vmm_cprintf(cdev, "Base Virtual Addr  : ");
-	if (sizeof(virtual_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "0x%016llx\n", heap_va);
-	} else {
-		vmm_cprintf(cdev, "0x%08x\n", heap_va);
-	}
+	vmm_cprintf(cdev, "0x%"PRIADDR"\n", heap_va);
 
 	vmm_cprintf(cdev, "Base Physical Addr : ");
-	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "0x%016llx\n", heap_pa);
-	} else {
-		vmm_cprintf(cdev, "0x%08x\n", heap_pa);
-	}
+	vmm_cprintf(cdev, "0x%"PRIPADDR"\n", heap_pa);
 
 	pre = 1000; /* Division correct upto 3 decimal points */
 
 	vmm_cprintf(cdev, "House-Keeping Size : ");
 	heap_hksz = (heap_hksz * pre) >> 10;
-	vmm_cprintf(cdev, "%ll.%03ll KB\n", 
+	vmm_cprintf(cdev, "%lld.%03lld KB\n",
 			udiv64(heap_hksz, pre), umod64(heap_hksz, pre));
 
 	vmm_cprintf(cdev, "Used Space Size    : ");
 	heap_usesz = (heap_usesz * pre) >> 10;
-	vmm_cprintf(cdev, "%ll.%03ll KB\n", 
+	vmm_cprintf(cdev, "%lld.%03lld KB\n",
 			udiv64(heap_usesz, pre), umod64(heap_usesz, pre));
 
 	vmm_cprintf(cdev, "Free Space Size    : ");
 	heap_freesz = (heap_freesz * pre) >> 10;
-	vmm_cprintf(cdev, "%ll.%03ll KB\n", 
+	vmm_cprintf(cdev, "%lld.%03lld KB\n",
 			udiv64(heap_freesz, pre), umod64(heap_freesz, pre));
 
 	vmm_cprintf(cdev, "Total Size         : ");
 	heap_sz = (heap_sz * pre) >> 10;
-	vmm_cprintf(cdev, "%ll.%03ll KB\n", 
+	vmm_cprintf(cdev, "%lld.%03lld KB\n",
 			udiv64(heap_sz, pre), umod64(heap_sz, pre));
 
 	return VMM_OK;

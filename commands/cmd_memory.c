@@ -102,7 +102,7 @@ static void cmd_memory_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   memory md5      <phys_addr> <count>\n");
 #endif
 #if CONFIG_CRYPTO_HASH_SHA256
-	vmm_cprintf(cdev, "   memory sha256      <phys_addr> <count>\n");
+	vmm_cprintf(cdev, "   memory sha256   <phys_addr> <count>\n");
 #endif
 	vmm_cprintf(cdev, "   memory modify8  <phys_addr> "
 						"<val0> <val1> ...\n");
@@ -124,15 +124,9 @@ static int cmd_memory_dump(struct vmm_chardev *cdev,
 	virtual_addr_t page_va, addr_offset;
 	physical_addr_t page_pa;
 	addr = addr - (addr & (wsz - 1));
-	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "Host physical memory "
-				  "0x%016llx - 0x%016llx:",
-				  (u64)addr, (u64)(addr + wsz*wcnt));
-	} else {
-		vmm_cprintf(cdev, "Host physical memory "
-				  "0x%08x - 0x%08x:",
-				  (u32)addr, (u32)(addr + wsz*wcnt));
-	}
+	vmm_cprintf(cdev, "Host physical memory "
+			  "0x%"PRIPADDR" - 0x%"PRIPADDR":",
+			  addr, (addr + wsz*wcnt));
 	w = 0;
 	page_pa = addr - (addr & VMM_PAGE_MASK);
 	page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
@@ -153,11 +147,7 @@ static int cmd_memory_dump(struct vmm_chardev *cdev,
 			page_mapped = TRUE;
 		}
 		if (!(w * wsz & 0x0000000F)) {
-			if (sizeof(physical_addr_t) == sizeof(u64)) {
-				vmm_cprintf(cdev, "\n%016llx:", addr);
-			} else {
-				vmm_cprintf(cdev, "\n%08x:", addr);
-			}
+			vmm_cprintf(cdev, "\n%"PRIPADDR":", addr);
 		}
 		addr_offset = (addr & VMM_PAGE_MASK);
 		switch (wsz) {
@@ -200,16 +190,11 @@ static int cmd_memory_crc32(struct vmm_chardev *cdev,
 	virtual_addr_t page_va, addr_offset;
 	physical_addr_t page_pa;
 
-	crc = crc ^ ~0U;
+	vmm_cprintf(cdev, "CRC32 for 0x%"PRIPADDR" - 0x%"PRIPADDR":\n",
+		    addr, (addr + wcnt));
 
-	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "CRC32 for 0x%016llx - 0x%016llx:\n",
-				  (u64)addr, (u64)(addr + wcnt));
-	} else {
-		vmm_cprintf(cdev, "CRC32 for 0x%08x - 0x%08x:\n",
-				  (u32)addr, (u32)(addr + wcnt));
-	}
 	w = 0;
+	crc = crc ^ ~0U;
 	page_pa = addr - (addr & VMM_PAGE_MASK);
 	page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
 	page_mapped = TRUE;
@@ -256,13 +241,8 @@ static int cmd_memory_md5(struct vmm_chardev *cdev,
 	virtual_addr_t page_va;
 	physical_addr_t page_pa;
 
-	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "MD5 digest for 0x%016llx - 0x%016llx:\n",
-			    (u64)addr, (u64)(addr + wcnt));
-	} else {
-		vmm_cprintf(cdev, "MD5 digest 0x%08x - 0x%08x:\n",
-			    (u32)addr, (u32)(addr + wcnt));
-	}
+	vmm_cprintf(cdev, "MD5 digest for 0x%"PRIPADDR" - 0x%"PRIPADDR":\n",
+		    addr, (addr + wcnt));
 
 	page_pa = addr - (addr & VMM_PAGE_MASK);
 	page_va = vmm_host_iomap(page_pa, wcnt);
@@ -300,13 +280,8 @@ static int cmd_memory_sha256(struct vmm_chardev *cdev,
 	virtual_addr_t page_va;
 	physical_addr_t page_pa;
 
-	if (sizeof(physical_addr_t) == sizeof(u64)) {
-		vmm_cprintf(cdev, "SHA-256 digest for 0x%016llx - 0x%016llx:\n",
-			    (u64)addr, (u64)(addr + wcnt));
-	} else {
-		vmm_cprintf(cdev, "SHA-256 digest 0x%08x - 0x%08x:\n",
-			    (u32)addr, (u32)(addr + wcnt));
-	}
+	vmm_cprintf(cdev, "SHA-256 digest for 0x%"PRIPADDR" - 0x%"PRIPADDR":\n",
+		    addr, (addr + wcnt));
 
 	page_pa = addr - (addr & VMM_PAGE_MASK);
 	page_va = vmm_host_iomap(page_pa, wcnt);

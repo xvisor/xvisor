@@ -1177,7 +1177,7 @@ static int m25p_probe(struct spi_device *spi)
 		 (long long)flash->mtd.size >> 10);
 
 	/* pr_debug */
-	dev_info(&spi->dev, "mtd\n  .name = %s,\n  .size = 0x%llx (%llMiB)\n"
+	dev_info(&spi->dev, "mtd\n  .name = %s,\n  .size = 0x%llx (%lldMiB)\n"
 		 "  .erasesize = 0x%08x (%uKiB)\n  .numeraseregions = %d\n",
 		 flash->mtd.name,
 		 (long long)flash->mtd.size,

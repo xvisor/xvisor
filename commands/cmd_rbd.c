@@ -60,20 +60,8 @@ static int cmd_rbd_list(struct vmm_chardev *cdev)
 	count = rbd_count();
 	for (num = 0; num < count; num++) {
 		d = rbd_get(num);
-		if (sizeof(physical_addr_t) == sizeof(u64)) {
-			vmm_snprintf(addr, sizeof(addr),
-				     "0x%016llx", (u64)d->addr);
-		} else {
-			vmm_snprintf(addr, sizeof(addr),
-				     "0x%08x", (u32)d->addr);
-		}
-		if (sizeof(physical_size_t) == sizeof(u64)) {
-			vmm_snprintf(size, sizeof(size),
-				     "0x%016llx", (u64)d->size);
-		} else {
-			vmm_snprintf(size, sizeof(size),
-				     "0x%08x", (u32)d->size);
-		}
+		vmm_snprintf(addr, sizeof(addr), "0x%"PRIPADDR, d->addr);
+		vmm_snprintf(size, sizeof(size), "0x%"PRIPADDR, d->size);
 		vmm_cprintf(cdev, " %-32s %-22s %-22s\n",
 			    d->bdev->name, addr, size);
 	}

@@ -123,7 +123,7 @@ void imx_set_cpu_jump(int cpu, void *jump_addr)
 #endif /* 0 */
 	if (VMM_OK != vmm_host_va2pa((virtual_addr_t)jump_addr,
 				     &paddr)) {
-		vmm_printf("Failed to get cpu jump physical address (0x%X)\n",
+		vmm_printf("Failed to get cpu jump physical address (0x%p)\n",
 			   jump_addr);
 	}
 	writel_relaxed(paddr,
@@ -156,7 +156,7 @@ static int imx_src_probe(struct vmm_device *dev,
 	ret = vmm_devtree_request_regmap(np, (virtual_addr_t *)&src_base, 0,
 					 "i.MX Reset Control");
 	if (VMM_OK != ret) {
-		vmm_printf("Failed to retrive %s register mapping\n");
+		vmm_printf("Failed to retrive %s register mapping\n", np->name);
 		return ret;
 	}
 

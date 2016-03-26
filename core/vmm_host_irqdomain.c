@@ -98,7 +98,7 @@ void vmm_host_irqdomain_debug_dump(struct vmm_chardev *cdev)
 				continue;
 			if (idx != irq->num)
 				vmm_cprintf(cdev, "WARNING: IRQ %d "
-					    "not correctly set\n");
+					    "not correctly set\n", irq->num);
 			vmm_cprintf(cdev, "    IRQ %d mapped, name: %s, "
 				    "chip: %s\n", idx, irq->name,
 				    irq->chip ? irq->chip->name : "None");

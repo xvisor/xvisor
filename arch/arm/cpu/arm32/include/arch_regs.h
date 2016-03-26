@@ -119,7 +119,7 @@ struct arm_priv_cp15 {
 	u32 c6_ifar; /* Fault address registers. */
 	u32 c6_dfar; /* Fault address registers. */
 	u32 c7_par; /* Translation result. */
-	u32 c7_par64; /* Translation result. (To be used in future) */
+	u64 c7_par64; /* Translation result. (To be used in future) */
 	u32 c9_insn; /* Cache lockdown registers. */
 	u32 c9_data;
 	u32 c9_pmcr; /* performance monitor control register */
