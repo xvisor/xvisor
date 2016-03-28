@@ -114,13 +114,13 @@ void vmm_cputs(struct vmm_chardev *cdev, char *str);
 void vmm_puts(char *str);
 
 /** Print formatted string to another string */
-int vmm_sprintf(char *out, const char *format, ...);
+int __printf(2, 3) vmm_sprintf(char *out, const char *format, ...);
 
 /** Print formatted string to another string */
-int vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
+int __printf(3, 4) vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
 
 /** Print formatted string to character device */
-int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
+int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 
 /** Print formatted string to default device */
 #define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__)
