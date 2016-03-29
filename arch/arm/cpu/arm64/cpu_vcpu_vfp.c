@@ -84,23 +84,23 @@ void cpu_vcpu_vfp_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	}
 
 	vmm_cprintf(cdev, "VFP Feature Registers\n");
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "MVFR0_EL1", vfp->mvfr0,
 		    "MVFR1_EL1", vfp->mvfr1);
-	vmm_cprintf(cdev, " %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"\n",
 		    "MVFR2_EL1", vfp->mvfr2);
 	vmm_cprintf(cdev, "VFP System Registers\n");
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "FPCR", vfp->fpcr,
 		    "FPSR", vfp->fpsr);
-	vmm_cprintf(cdev, " %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"\n",
 		    "FPEXC32_EL2", vfp->fpexc32);
 	vmm_cprintf(cdev, "VFP Data Registers");
 	for (i = 0; i < 64; i++) {
 		if (i % 2 == 0) {
 			vmm_cprintf(cdev, "\n");
 		}
-		vmm_cprintf(cdev, " %9s%02d=0x%016lx",
+		vmm_cprintf(cdev, " %9s%02d=0x%016"PRIx64,
 				  "D", (i), vfp->fpregs[i]);
 	}
 	vmm_cprintf(cdev, "\n");

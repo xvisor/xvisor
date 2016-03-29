@@ -243,7 +243,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	}
 	if (lr >= vgich.params.lr_cnt) {
 		vmm_printf("%s: LR overflow IRQ=%d SRC_ID=%d VCPU=%s\n",
-			   __func__, vs->vcpu->name, irq, src_id);
+			   __func__, irq, src_id, vs->vcpu->name);
 		return FALSE;
 	}
 

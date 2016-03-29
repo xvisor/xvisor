@@ -55,9 +55,9 @@ static int cmd_blockdev_info(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, "Description: %s\n", bdev->desc);
 	vmm_cprintf(cdev, "Access     : %s\n",
 		(bdev->flags & VMM_BLOCKDEV_RW) ? "Read-Write" : "Read-Only");
-	vmm_cprintf(cdev, "Start LBA  : %lld\n", bdev->start_lba);
+	vmm_cprintf(cdev, "Start LBA  : %"PRId64"\n", bdev->start_lba);
 	vmm_cprintf(cdev, "Block Size : %d\n", bdev->block_size);
-	vmm_cprintf(cdev, "Block Count: %lld\n", bdev->num_blocks);
+	vmm_cprintf(cdev, "Block Count: %"PRId64"\n", bdev->num_blocks);
 
 	return VMM_OK;
 }
@@ -66,7 +66,7 @@ static int cmd_blockdev_list_iter(struct vmm_blockdev *bdev, void *data)
 {
 	struct vmm_chardev *cdev = data;
 
-	vmm_cprintf(cdev, " %-16s %-16s %-16lld %-11d %-16lld\n",
+	vmm_cprintf(cdev, " %-16s %-16s %-16"PRId64" %-11d %-16"PRId64"\n",
 		    bdev->name,  (bdev->parent) ? bdev->parent->name : "---",
 		    bdev->start_lba, bdev->block_size, bdev->num_blocks);
 
@@ -117,7 +117,8 @@ static int cmd_blockdev_dump8(struct vmm_chardev *cdev,
 
 		rdsz = vmm_blockdev_rw(bdev, VMM_REQUEST_READ, data, off, sz);
 		if (rdsz != sz) {
-			vmm_cprintf(cdev, "Error, read %lld byte(s)\n", rdsz);
+			vmm_cprintf(cdev, "Error, read %"PRId64" byte(s)\n",
+				    rdsz);
 			break;
 		}
 

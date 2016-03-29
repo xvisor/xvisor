@@ -357,7 +357,7 @@ u32 cpu_vcpu_spsr_retrieve(struct vmm_vcpu *vcpu, u32 mode)
 	u32 hwreg;
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		vmm_panic("%d not called for current vcpu\n", __func__);
+		vmm_panic("%s not called for current vcpu\n", __func__);
 	}
 	/* Find out correct SPSR */
 	switch (mode) {
@@ -402,7 +402,7 @@ int cpu_vcpu_spsr_update(struct vmm_vcpu *vcpu,
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		vmm_panic("%d not called for current vcpu\n", __func__);
+		vmm_panic("%s not called for current vcpu\n", __func__);
 	}
 	/* Update appropriate SPSR */
 	switch (mode) {

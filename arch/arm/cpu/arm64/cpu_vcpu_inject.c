@@ -240,7 +240,7 @@ int cpu_vcpu_inject_undef(struct vmm_vcpu *vcpu,
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		vmm_panic("%d not called for current vcpu\n", __func__);
+		vmm_panic("%s not called for current vcpu\n", __func__);
 	}
 
 	if (arm_priv(vcpu)->hcr & HCR_RW_MASK) {
@@ -259,7 +259,7 @@ int cpu_vcpu_inject_pabt(struct vmm_vcpu *vcpu,
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		vmm_panic("%d not called for current vcpu\n", __func__);
+		vmm_panic("%s not called for current vcpu\n", __func__);
 	}
 
 	if (arm_priv(vcpu)->hcr & HCR_RW_MASK) {
@@ -279,7 +279,7 @@ int cpu_vcpu_inject_dabt(struct vmm_vcpu *vcpu,
 	}
 	if (vcpu != vmm_scheduler_current_vcpu()) {
 		/* This function should only be called for current VCPU */
-		vmm_panic("%d not called for current vcpu\n", __func__);
+		vmm_panic("%s not called for current vcpu\n", __func__);
 	}
 
 	if (arm_priv(vcpu)->hcr & HCR_RW_MASK) {

@@ -106,7 +106,7 @@ int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
 			    offset <= (s32)0xfe000000 ||
 			    offset >= (s32)0x02000000) {
 				vmm_printf("%s: section %u reloc %u sym '%s': "
-				  "relocation %u out of range (%#lx -> %#x)\n",
+				  "relocation %u out of range (%"PRIADDR" -> %#x)\n",
 					   mod->name, relindex, i, symname,
 					   ELF32_R_TYPE(rel->r_info), loc,
 					   sym->st_value);

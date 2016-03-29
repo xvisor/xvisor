@@ -228,8 +228,8 @@ void do_hyp_trap(arch_regs_t *regs)
 
 	if (rc) {
 		vmm_printf("\n%s: ec=0x%x, il=0x%x, iss=0x%x,"
-			   " fipa=0x%x, error=%d\n", __func__,
-			   ec, il, iss, fipa, rc);
+			   " fipa=0x%"PRIPADDR", error=%d\n",
+			   __func__, ec, il, iss, fipa, rc);
 		if (vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_HALTED) {
 			cpu_vcpu_halt(vcpu, regs);
 		}

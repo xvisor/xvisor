@@ -567,7 +567,7 @@ int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
 		  physical_addr_t paddr, size_t size, int prot)
 {
 	unsigned long orig_iova = iova;
-	unsigned int min_pagesz;
+	size_t min_pagesz;
 	size_t orig_size = size;
 	int ret = 0;
 
@@ -584,18 +584,20 @@ int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
 	 * size of the smallest page supported by the hardware
 	 */
 	if (!is_aligned(iova | paddr | size, min_pagesz)) {
-		pr_err("unaligned: iova 0x%lx pa %pa size 0x%zx "
-		       "min_pagesz 0x%x\n", iova, &paddr, size, min_pagesz);
+		pr_err("unaligned: iova 0x%lx pa 0x%"PRIPADDR" size 0x%lx "
+		       "min_pagesz 0x%lx\n", iova, paddr,
+		       (unsigned long)size, (unsigned long)min_pagesz);
 		return VMM_EINVALID;
 	}
 
-	pr_debug("map: iova 0x%lx pa %pa size 0x%zx\n", iova, &paddr, size);
+	pr_debug("map: iova 0x%lx pa 0x%"PRIPADDR" size 0x%zx\n",
+		 iova, paddr, size);
 
 	while (size) {
 		size_t pgsize = iommu_pgsize(domain, iova | paddr, size);
 
-		pr_debug("mapping: iova 0x%lx pa %pa pgsize 0x%zx\n",
-			 iova, &paddr, pgsize);
+		pr_debug("mapping: iova 0x%lx pa 0x%"PRIPADDR" size 0x%lx\n",
+			 iova, paddr, (unsigned long)pgsize);
 
 		ret = domain->ops->map(domain, iova, paddr, pgsize, prot);
 		if (ret)
@@ -617,8 +619,7 @@ VMM_EXPORT_SYMBOL(vmm_iommu_map);
 size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 			unsigned long iova, size_t size)
 {
-	size_t unmapped_page, unmapped = 0;
-	unsigned int min_pagesz;
+	size_t unmapped_page, min_pagesz, unmapped = 0;
 
 	if (unlikely(domain->ops->unmap == NULL ||
 		     domain->ops->pgsize_bitmap == 0UL))
@@ -633,12 +634,13 @@ size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 	 * by the hardware
 	 */
 	if (!is_aligned(iova | size, min_pagesz)) {
-		pr_err("unaligned: iova 0x%lx size 0x%zx min_pagesz 0x%x\n",
-		       iova, size, min_pagesz);
+		pr_err("unaligned: iova 0x%lx size 0x%lx min_pagesz 0x%lx\n",
+		       iova, (unsigned long)size, (unsigned long)min_pagesz);
 		return VMM_EINVALID;
 	}
 
-	pr_debug("unmap this: iova 0x%lx size 0x%zx\n", iova, size);
+	pr_debug("unmap this: iova 0x%lx size 0x%lx\n",
+		 iova, (unsigned long)size);
 
 	/*
 	 * Keep iterating until we either unmap 'size' bytes (or more)
@@ -651,8 +653,8 @@ size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 		if (!unmapped_page)
 			break;
 
-		pr_debug("unmapped: iova 0x%lx size 0x%zx\n",
-			 iova, unmapped_page);
+		pr_debug("unmapped: iova 0x%lx size 0x%lx\n",
+			 iova, (unsigned long)unmapped_page);
 
 		iova += unmapped_page;
 		unmapped += unmapped_page;

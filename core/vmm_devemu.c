@@ -196,9 +196,9 @@ static int devemu_doread(struct vmm_emudev *edev,
 	};
 
 	if (rc) {
-		vmm_printf("%s: edev=%s offset=0x%llx dst_len=%d "
+		vmm_printf("%s: edev=%s offset=0x%"PRIPADDR" dst_len=%d "
 			   "failed (error %d)\n", __func__,
-			   edev->node->name, (u64)offset, dst_len, rc);
+			   edev->node->name, offset, dst_len, rc);
 	}
 
 	return rc;
@@ -328,9 +328,9 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 	};
 
 	if (rc) {
-		vmm_printf("%s: edev=%s offset=0x%llx src_len=%d "
+		vmm_printf("%s: edev=%s offset=0x%"PRIPADDR" src_len=%d "
 			   "failed (error %d)\n", __func__,
-			   edev->node->name, (u64)offset, src_len, rc);
+			   edev->node->name, offset, src_len, rc);
 	}
 
 	return rc;
@@ -360,9 +360,9 @@ int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 			   dst, dst_len, dst_endian);
 skip:
 	if (rc) {
-		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
+		vmm_printf("%s: vcpu=%s gphys=0x%"PRIPADDR" dst_len=%d "
 			   "failed (error %d)\n", __func__,
-			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+			   vcpu->name, gphys_addr, dst_len, rc);
 		vmm_manager_vcpu_halt(vcpu);
 	}
 
@@ -393,9 +393,9 @@ int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			    src, src_len, src_endian);
 skip:
 	if (rc) {
-		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
+		vmm_printf("%s: vcpu=%s gphys=0x%"PRIPADDR" src_len=%d "
 			   "failed (error %d)\n", __func__,
-			   vcpu->name, (u64)gphys_addr, src_len, rc);
+			   vcpu->name, gphys_addr, src_len, rc);
 		vmm_manager_vcpu_halt(vcpu);
 	}
 
@@ -426,9 +426,9 @@ int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 			   dst, dst_len, dst_endian);
 skip:
 	if (rc) {
-		vmm_printf("%s: vcpu=%s gphys=0x%llx dst_len=%d "
+		vmm_printf("%s: vcpu=%s gphys=0x%"PRIPADDR" dst_len=%d "
 			   "failed (error %d)\n", __func__,
-			   vcpu->name, (u64)gphys_addr, dst_len, rc);
+			   vcpu->name, gphys_addr, dst_len, rc);
 		vmm_manager_vcpu_halt(vcpu);
 	}
 
@@ -459,9 +459,9 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 			    src, src_len, src_endian);
 skip:
 	if (rc) {
-		vmm_printf("%s: vcpu=%s gphys=0x%llx src_len=%d "
+		vmm_printf("%s: vcpu=%s gphys=0x%"PRIPADDR" src_len=%d "
 			   "failed (error %d)\n", __func__,
-			   vcpu->name, (u64)gphys_addr, src_len, rc);
+			   vcpu->name, gphys_addr, src_len, rc);
 		vmm_manager_vcpu_halt(vcpu);
 	}
 

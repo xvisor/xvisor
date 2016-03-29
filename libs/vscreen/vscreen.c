@@ -861,8 +861,8 @@ hard_bind_error:
 		   cntx->info->name, cntx->info->var.yres_virtual);
 	vmm_printf("vscreen: %s: bits_per_pixel=%d\n",
 		   cntx->info->name, cntx->info->var.bits_per_pixel);
-	vmm_printf("vscreen: %s: sem_start=0x%llx\n",
-		   cntx->info->name, (u64)cntx->smem_start);
+	vmm_printf("vscreen: %s: sem_start=0x%lx\n",
+		   cntx->info->name, cntx->smem_start);
 	vmm_printf("vscreen: %s: sem_len=0x%x\n",
 		   cntx->info->name, cntx->smem_len);
 	vmm_printf("vscreen: %s: rows=%d\n",
@@ -871,8 +871,8 @@ hard_bind_error:
 		   cntx->vdis->name, cols);
 	vmm_printf("vscreen: %s: bits_per_pixel=%d\n",
 		   cntx->vdis->name, pf.bits_per_pixel);
-	vmm_printf("vscreen: %s: sem_start=0x%llx\n",
-		   cntx->vdis->name, (u64)cntx->hard_smem_start);
+	vmm_printf("vscreen: %s: hard_sem_start=0x%"PRIPADDR"\n",
+		   cntx->vdis->name, cntx->hard_smem_start);
 	vmm_printf("vscreen: %s: sem_len=0x%x\n",
 		   cntx->vdis->name, cntx->hard_smem_len);
 	return rc;

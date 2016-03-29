@@ -148,7 +148,7 @@ static int __init initrd_driver_init(void)
 		goto error;
 	}
 
-	vmm_printf("initrd: RBD created at 0x%llx - 0x%llx\n",
+	vmm_printf("initrd: RBD created at 0x%"PRIx64" - 0x%"PRIx64"\n",
 		   initrd_start, initrd_end);
 
  error:

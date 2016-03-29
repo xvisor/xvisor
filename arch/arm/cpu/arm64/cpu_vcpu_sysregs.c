@@ -255,7 +255,8 @@ bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu,
 		*data = s->actlr_el1;
 		break;
 	default:
-		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
+		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%"PRIx64"\n",
+			   regs->pc);
 		goto bad_reg;
 	}
 
@@ -290,7 +291,8 @@ bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu,
 		asm volatile("dc csw, %0" : : "r" (data));
 		break;
 	default:
-		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%X\n", regs->pc);
+		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%"PRIx64"\n",
+			   regs->pc);
 		goto bad_reg;
 	}
 
@@ -326,50 +328,50 @@ void cpu_vcpu_sysregs_dump(struct vmm_chardev *cdev,
 	struct arm_priv_sysregs *s = &arm_priv(vcpu)->sysregs;
 
 	vmm_cprintf(cdev, "System 64bit EL1/EL0 Registers\n");
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "SP_EL0", s->sp_el0,
 		    "SP_EL1", s->sp_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "ELR_EL1", s->elr_el1,
 		    "SPSR_EL1", s->spsr_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "MIDR_EL1", s->midr_el1,
 		    "MPIDR_EL1", s->mpidr_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "SCTLR_EL1", s->sctlr_el1,
 		    "CPACR_EL1", s->cpacr_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "TTBR0_EL1", s->ttbr0_el1,
 		    "TTBR1_EL1", s->ttbr1_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "TCR_EL1", s->tcr_el1,
 		    "ESR_EL1", s->esr_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "FAR_EL1", s->far_el1,
 		    "PAR_EL1", s->par_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "MAIR_EL1", s->mair_el1,
 		    "VBAR_EL1", s->vbar_el1);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "CONTXID_EL1", s->contextidr_el1,
 		    "TPIDR_EL0", s->tpidr_el0);
-	vmm_cprintf(cdev, " %11s=0x%016lx %11s=0x%016lx\n",
+	vmm_cprintf(cdev, " %11s=0x%016"PRIx64" %11s=0x%016"PRIx64"\n",
 		    "TPIDRRO_EL0", s->tpidrro_el0,
 		    "TPIDR_EL1", s->tpidr_el1);
 	vmm_cprintf(cdev, "System 32bit Only Registers\n");
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "SPSR_ABT", s->spsr_abt,
 		    "SPSR_UND", s->spsr_und);
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "SPSR_IRQ", s->spsr_irq,
 		    "SPSR_FIQ", s->spsr_fiq);
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "DACR32_EL2", s->dacr32_el2,
 		    "IFSR32_EL2", s->ifsr32_el2);
 	if (!arm_feature(vcpu, ARM_FEATURE_THUMB2EE)) {
 		return;
 	}
-	vmm_cprintf(cdev, " %11s=0x%08lx         %11s=0x%08lx\n",
+	vmm_cprintf(cdev, " %11s=0x%08"PRIx32"         %11s=0x%08"PRIx32"\n",
 		    "TEECR32_EL1", s->teecr32_el1,
 		    "TEEHBR32_EL1", s->teehbr32_el1);
 }

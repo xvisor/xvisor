@@ -1034,7 +1034,7 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		if (buf_count < 1) {
 			vmm_cprintf(cdev, "Failed to read "
 					  "%d bytes @ 0x%llx from %s\n",
-					   buf_rd, (u64)rd_off, path);
+					   buf_rd, rd_off, path);
 			break;
 		}
 		rd_off += buf_count;
@@ -1047,8 +1047,8 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		}
 		if (buf_wr != buf_count) {
 			vmm_cprintf(cdev, "Failed to write "
-					  "%d bytes @ 0x%llx (%s)\n",
-					  buf_count, (u64)wr_pa,
+					  "%d bytes @ 0x%"PRIPADDR" (%s)\n",
+					  buf_count, wr_pa,
 					  (guest) ? (guest->name) : "host");
 			break;
 		}
@@ -1057,9 +1057,9 @@ static int cmd_vfs_load(struct vmm_chardev *cdev,
 		wr_pa += buf_wr;
 	}
 
-	vmm_cprintf(cdev, "%s: Loaded 0x%llx with %d bytes\n",
+	vmm_cprintf(cdev, "%s: Loaded 0x%"PRIPADDR" with %d bytes\n",
 			  (guest) ? (guest->name) : "host",
-			  (u64)pa, wr_count);
+			  pa, wr_count);
 
 	vmm_free(buf);
 	rc = vfs_close(fd);
@@ -1161,9 +1161,9 @@ static int cmd_vfs_load_list(struct vmm_chardev *cdev,
 		pa = (physical_addr_t)strtoull(token, NULL, 0);
 
 		token = cmd_vfs_next_token(&buf, &len);
-		vmm_cprintf(cdev, "%s: Loading 0x%llx with file %s\n",
+		vmm_cprintf(cdev, "%s: Loading 0x%"PRIPADDR" with file %s\n",
 			    (guest) ? (guest->name) : "host",
-			    (u64)pa, token);
+			    pa, token);
 
 		rc = cmd_vfs_load(cdev, guest, pa, token, 0, 0xFFFFFFFF);
 		if (rc) {

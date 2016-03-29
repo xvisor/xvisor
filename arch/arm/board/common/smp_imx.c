@@ -177,11 +177,10 @@ static void smp_imx_set_cpu_jump(int cpu, void *jump_addr)
 
 	if (VMM_OK != vmm_host_va2pa((virtual_addr_t)jump_addr,
 				     &paddr)) {
-		vmm_printf("Failed to get cpu jump physical address (0x%X)\n",
-			   jump_addr);
+		vmm_printf("Failed to get cpu jump physical address "
+			   "(0x%p)\n", jump_addr);
 	}
-	vmm_writel(paddr,
-		       (void *)src_base + SRC_GPR1 + cpu * 8);
+	vmm_writel(paddr, (void *)src_base + SRC_GPR1 + cpu * 8);
 }
 
 static void smp_imx_set_cpu_arg(int cpu, u32 arg)

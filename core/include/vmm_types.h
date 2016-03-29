@@ -34,8 +34,13 @@ typedef int s32;
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
+#ifndef CONFIG_64BIT
 typedef long long s64;
 typedef unsigned long long u64;
+#else
+typedef long s64;
+typedef unsigned long u64;
+#endif
 
 typedef unsigned int bool;
 typedef unsigned int size_t;
