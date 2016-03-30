@@ -317,6 +317,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						10, 0, width, flags, 'a');
 					acnt += sizeof(size_t);
 				} else if ((*(format + 1) == 'd') || (*(format + 1) == 'i')) {
+					format += 1;
 					pc += printi(out, out_len, cdev,
 						va_arg(args, ssize_t),
 						10, 1, width, flags, '0');
@@ -325,21 +326,17 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					_vmm_format_error("z", *(format + 1));
 				}
 			} else if (*format == 'l' && *(format + 1) == 'l') {
-				while (acnt & (sizeof(unsigned long long)-1)) {
-					va_arg(args, int);
-					acnt += sizeof(int);
-				}
-				if (sizeof(unsigned long long) ==
-						sizeof(unsigned long)) {
-					tmp = va_arg(args, unsigned long long);
-					acnt += sizeof(unsigned long long);
-				} else {
-					((unsigned long *)&tmp)[0] =
-						va_arg(args, unsigned long);
-					((unsigned long *)&tmp)[1] =
-						va_arg(args, unsigned long);
-					acnt += 2*sizeof(unsigned long);
-				}
+                               if (sizeof(unsigned long long) ==
+                                               sizeof(unsigned long)) {
+                                       tmp = va_arg(args, unsigned long long);
+                                       acnt += sizeof(unsigned long long);
+                               } else {
+                                       ((unsigned long *)&tmp)[0] =
+                                               va_arg(args, unsigned long);
+                                       ((unsigned long *)&tmp)[1] =
+                                               va_arg(args, unsigned long);
+                                       acnt += 2*sizeof(unsigned long);
+                               }
 				if (*(format + 2) == 'u') {
 					format += 2;
 					pc += printi(out, out_len, cdev, tmp,
@@ -353,7 +350,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					pc += printi(out, out_len, cdev, tmp,
 						16, 0, width, flags, 'A');
 				} else if ((*(format + 2) == 'd') || (*(format + 2) == 'i')) {
-					format += 1;
+					format += 2;
 					pc += printi(out, out_len, cdev, tmp,
 						10, 1, width, flags, '0');
 				} else { /* Unhandled cases */
@@ -379,6 +376,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 						10, 0, width, flags, 'a');
 					acnt += sizeof(unsigned long);
 				} else if ((*(format + 1) == 'd') || (*(format + 1) == 'i')) {
+					format += 1;
 					pc += printi(out, out_len, cdev,
 						va_arg(args, long),
 						10, 1, width, flags, '0');
