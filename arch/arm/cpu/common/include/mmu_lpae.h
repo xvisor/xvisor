@@ -123,8 +123,8 @@ int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
 #define TTBL_LEVEL1					1
 #define TTBL_LEVEL2					2
 #define TTBL_LEVEL3					3
-/* L1 index Bit[39:30] */
-#define TTBL_L1_INDEX_MASK				0x000000FFC0000000ULL
+/* L1 index Bit[38:30] */
+#define TTBL_L1_INDEX_MASK				0x0000007FC0000000ULL
 #define TTBL_L1_INDEX_SHIFT				30
 #define TTBL_L1_BLOCK_SIZE				0x0000000040000000ULL
 #define TTBL_L1_MAP_MASK				(~(TTBL_L1_BLOCK_SIZE - 1))
