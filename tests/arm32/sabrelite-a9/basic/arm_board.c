@@ -48,7 +48,7 @@ char *arm_board_name(void)
 
 u32 arm_board_ram_start(void)
 {
-	return 0x80000000;
+	return 0x10000000;
 }
 
 u32 arm_board_ram_size(void)

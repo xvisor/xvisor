@@ -15,7 +15,7 @@
 		vcpu0 {
 			device_type = "vcpu";
 			compatible = "armv7a,cortex-a9";
-			start_pc = <0xC1000000>;
+			start_pc = <0x11000000>;
 		};
 
 		/* vcpu1 { */
@@ -31,7 +31,7 @@
 		MEM0: mem0 {
 			manifest_type = "real";
 			address_type = "memory";
-			guest_physical_addr = <0xC0000000>;
+			guest_physical_addr = <0x10000000>;
 			physical_size = <0x00000000>; /* Override this before guest creation */
 			align_order = <21>; /* Align alloced memory to 2MB */
 			device_type = "alloced_ram";
@@ -157,14 +157,14 @@
 			compatible = "corelink,l2c-310";
 		};
 
-		wdt { /* No Watch-Dog controller */
-			manifest_type = "virtual";
-			address_type = "memory";
-			guest_physical_addr = <0x1000F000>;
-			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
-		};
+//		wdt { /* No Watch-Dog controller */
+//			manifest_type = "virtual";
+//			address_type = "memory";
+//			guest_physical_addr = <0x1000F000>;
+//			physical_size = <0x1000>;
+//			device_type = "misc";
+//			compatible = "zero";
+//		};
 
 		uart0 {
 			manifest_type = "virtual";
@@ -230,7 +230,7 @@
 			device_type = "virtio";
 			compatible = "virtio,mmio";
 			virtio_type = <1>;
-			guest_physical_addr = <0x20100000>;
+			guest_physical_addr = <0x0220c000>;
 			physical_size = <0x1000>;
 			switch = ""; /* Override this before guest creation */
 			interrupts = <42>;
@@ -269,7 +269,7 @@
 			device_type = "virtio";
 			compatible = "virtio,mmio";
 			virtio_type = <3>;
-			guest_physical_addr = <0x20300000>;
+			guest_physical_addr = <0x0220d000>;
 			physical_size = <0x1000>;
 			interrupts = <86>;
 		};

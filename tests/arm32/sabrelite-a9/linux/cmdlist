@@ -1,1 +1,1 @@
-start_linux_fdt 0xC0008000 0xC0000000
+start_linux_fdt 0x10008000 0x10000000
