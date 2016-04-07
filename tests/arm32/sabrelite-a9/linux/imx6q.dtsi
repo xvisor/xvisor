@@ -51,26 +51,26 @@
 			soc-supply = <&reg_soc>;
 		};
 
-		cpu@1 {
-			compatible = "arm,cortex-a9";
-			device_type = "cpu";
-			reg = <1>;
-			next-level-cache = <&L2>;
-		};
+		/* cpu@1 { */
+		/* 	compatible = "arm,cortex-a9"; */
+		/* 	device_type = "cpu"; */
+		/* 	reg = <1>; */
+		/* 	next-level-cache = <&L2>; */
+		/* }; */
 
-		cpu@2 {
-			compatible = "arm,cortex-a9";
-			device_type = "cpu";
-			reg = <2>;
-			next-level-cache = <&L2>;
-		};
+		/* cpu@2 { */
+		/* 	compatible = "arm,cortex-a9"; */
+		/* 	device_type = "cpu"; */
+		/* 	reg = <2>; */
+		/* 	next-level-cache = <&L2>; */
+		/* }; */
 
-		cpu@3 {
-			compatible = "arm,cortex-a9";
-			device_type = "cpu";
-			reg = <3>;
-			next-level-cache = <&L2>;
-		};
+		/* cpu@3 { */
+		/* 	compatible = "arm,cortex-a9"; */
+		/* 	device_type = "cpu"; */
+		/* 	reg = <3>; */
+		/* 	next-level-cache = <&L2>; */
+		/* }; */
 	};
 
 	soc {
