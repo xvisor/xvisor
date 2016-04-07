@@ -185,6 +185,15 @@
 			compatible = "zero";
 		};
 
+		sdma {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020ec000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
 		vpu {
 			manifest_type = "virtual";
 			address_type = "memory";
