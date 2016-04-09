@@ -70,7 +70,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 	arm_strcat(cmdline, " enable_wait_mode=off "
 		   "video=mxcfb0:dev=ldb,LDB-XGA,if=RGB666 video=mxcfb1:off "
 		   "video=mxcfb2:off video=mxcfb3:off fbmem=10M "
-		   "console=ttymxc1,115200 vmalloc=256M consoleblank=0 "
+		   "console=ttymxc1,115200 vmalloc=400M consoleblank=0 "
 		   "mxc_hdmi.only_cea=1 memblock=debug");
 }
 
