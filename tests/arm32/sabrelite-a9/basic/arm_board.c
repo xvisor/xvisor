@@ -71,7 +71,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 		   "video=mxcfb0:dev=ldb,LDB-XGA,if=RGB666 video=mxcfb1:off "
 		   "video=mxcfb2:off video=mxcfb3:off fbmem=10M "
 		   "console=ttymxc1,115200 vmalloc=400M consoleblank=0 "
-		   "mxc_hdmi.only_cea=1 memblock=debug");
+		   "mxc_hdmi.only_cea=1");
 }
 
 u32 arm_board_flash_addr(void)
