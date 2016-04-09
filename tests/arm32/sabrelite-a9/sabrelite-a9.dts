@@ -148,6 +148,42 @@
 			parent_irq = <6>;
 		};
 
+		pwm1 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02080000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		pwm2 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02084000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		pwm3 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x02088000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		pwm4 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x0208C000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
 		l2x0 {
 			manifest_type = "virtual";
 			address_type = "memory";
