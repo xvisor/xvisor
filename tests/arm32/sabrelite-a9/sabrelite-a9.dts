@@ -103,8 +103,8 @@
 		ipu1 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x02400000>;
-			physical_size = <0x00040000>;
+			guest_physical_addr = <0x02600000>;
+			physical_size = <0x00400000>;
 			device_type = "misc";
 			compatible = "zero";
 		};
@@ -112,8 +112,8 @@
 		ipu2 {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x02800000>;
-			physical_size = <0x00040000>;
+			guest_physical_addr = <0x02A00000>;
+			physical_size = <0x00400000>;
 			device_type = "misc";
 			compatible = "zero";
 		};
