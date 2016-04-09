@@ -173,7 +173,7 @@
 			physical_size = <0x4000>;
 			device_type = "serial";
 			compatible = "fsl,imx6q-uart", "fsl,imx21-uart";
-			interrupts = <36>;
+			interrupts = <59>;
 		};
 
 		spba {
