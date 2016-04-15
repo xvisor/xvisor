@@ -1,0 +1,215 @@
+This readme explains how to install, setup and run ARMv8 foundation model. 
+
+
+		ARMv8 Foundation Model Installation Guidelines
+
+The ARMv8 Foundation Model is a virtual platform incorporating an AArch64
+architecture simulation model along with essential peripherals for running
+a Linux operating system or Hypervisor. The Foundation model is configurable
+for multicore out-of-the-box, along with 4GB memory, persistent storage,
+networking and basic instruction trace. Debug is via a GDB connection to a
+server running on the platform. The host platform support is 64-bit Linux.
+
+Please follow the steps below to install & setup ARMv8 foundation model on
+your Linux system:
+
+  [1. Register with ARM Ltd. on www.arm.com if not already registered]
+
+  [2. Login on www.arm.com]
+
+  [3. Goto SUPPORT > Downloads > Development Tools > Fixed Virtual Platforms]
+
+  [4. Get your foundation model .tgz]
+
+  [5. Unpack foundation model .tgz to <your_unpacked_foundationmodel_tgz> directory]
+
+  [6. Your model is located at <your_unpacked_foundationmodel_tgz>/Foundation_Platformpkg/models/Linux64_GCC-<x.x>/Foundation_platform]
+
+  (Note: replace all <> brackets based on your workspace)
+
+
+		ARM64 Guest Linux on Xvisor using ARMv8 Foundation Model
+			(With Virtualization Extensions)
+
+This section of readme explains how to build & run Xvisor for Foundation-v8
+model and show how to run ARM64 Linux as Guest OS. 
+
+Please follow the steps below to build & run Xvisor on ARMv8 Foundation-v8
+Model and also boot ARM64 Linux as Guest OS:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=aarch64-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-V8 default settings]
+  # make ARCH=arm generic-v8-defconfig 
+
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
+
+  [5. Build Basic Firmware]
+  # make -C tests/arm64/virt-v8/basic
+
+  [6. Copy Linux defconfig to Linux build directory]
+  # cp tests/arm64/virt-v8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+
+  [7. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [8. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm64 oldconfig
+
+  [9. Build Linux in build directory to reflect changes in kernel image]
+  # make O=<linux_build_directory> ARCH=arm64 Image
+
+  [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [11. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [12. Create disk image for Xvisor]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8x2.dtb ./tests/arm64/virt-v8/virt-v8x2.dts
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm64/virt-v8/Image
+  # cp -f <linux_build_directory>/virt-v8.dtb ./build/disk/images/arm64/virt-v8/virt-v8.dtb
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+
+  [13. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
+
+  [14. Launch Foundation v8 Model]
+  # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
+
+  [15. Kick Guest0 to start Basic Firmware]
+  XVisor# guest kick guest0
+
+  [16. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist file
+   which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [18. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [19. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)
+
+
+		ARM32 Guest Linux on Xvisor using ARMv8 Foundation Model
+			(With Virtualization Extensions)
+
+This section of readme explains how to build & run Xvisor for Foundation-v8
+model and show how to run ARM32 Linux as Guest OS. 
+
+Please follow the steps below to build & run Xvisor on ARMv8 Foundation-v8
+Model and also boot ARM32 Linux as Guest OS:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=aarch64-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-V8 default settings]
+  # make ARCH=arm generic-v8-defconfig 
+
+  [4. Build Xvisor & DTBs]
+  # make; make dtbs
+
+  [5. Change build environment for Guest]
+  # export CROSS_COMPILE=arm-linux-gnueabi-
+
+  [6. Build Basic Firmware]
+  # make -C tests/arm32/vexpress-a15/basic
+
+  [7. Copy defconfig to Linux build directory]
+  # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+
+  [8. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [9. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [10. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm Image
+
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [12. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [13. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/vexpress-a15
+  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15x2.dtb ./tests/arm32/vexpress-a15/vexpress-a15x2.dts
+  # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
+  # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb ./tests/arm32/vexpress-a15/linux/vexpress-v2p-ca15-tc1.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+
+  [14. Change build environment for Foundation v8 boot-wrapper]
+  # CROSS_COMPILE=aarch64-linux-gnu-
+
+  [15. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_vexpress-a15.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
+
+  [16. Launch Foundation v8 Model]
+  # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --image ./build/foundation_v8_boot.axf --network=nat
+
+  [17. Kick Guest0 to start Basic Firmware]
+  XVisor# guest kick guest0
+
+  [18. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [19. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist file
+   which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [20. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [21. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

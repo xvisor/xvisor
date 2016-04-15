@@ -4,7 +4,7 @@ latest ARM fast models.
 
 		ARM Fast Models Evaluation Installation Guidelines
 
-The ARM tast models enable developers to generate Programmer's View virtual 
+The ARM fast models enable developers to generate Programmer's View virtual 
 platforms, which are functionally accurate, fast, and scalable. These virtual
 platforms enable the parallel development of software and hardware, and are 
 fast enough to be used to test applications at close to real-time speeds. 
@@ -16,7 +16,7 @@ Linux system:
 
   [2. Login on www.arm.com]
 
-  [3. Goto SUPPORT > Resources > Evaluation Products > Fast Models]
+  [3. Goto SUPPORT > Downloads > Development Tools > Fast Models]
 
   [4. Get your evaluation license.dat and fast model .tgz]
 
