@@ -665,7 +665,7 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 	struct radix_tree_node *slot = NULL;
 	struct radix_tree_node *to_free;
 	unsigned int height, shift;
-	int uninitialized_var(offset);
+	int offset;
 
 	height = root->height;
 	if (index > radix_tree_maxindex(height))
