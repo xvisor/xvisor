@@ -43,6 +43,9 @@
 			/* Load guest1 images */
 			"vfs guest_load_list guest1 /images/arm32/sabrelite-a9/nor_flash.list",
 
+			/* Print banner */
+			"vfs cat /system/banner.txt",
+
 			/* Umount the SD/MMC card */
 			"vfs umount /",
 
