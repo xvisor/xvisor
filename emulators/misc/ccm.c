@@ -37,7 +37,7 @@
 #define ANADIG_DIGPROG		0x260
 #define ANADIG_DIGPROG_IMX6SL	0x280
 
-const unsigned int	reg_reset[] = {
+static const unsigned int reg_reset[] = {
 	/* 0x00 */
 	0x040116FF,
 	0x00000000,
