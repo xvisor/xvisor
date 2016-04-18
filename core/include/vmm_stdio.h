@@ -123,7 +123,7 @@ int __printf(3, 4) vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
 int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
 
 /** Print formatted string to default device */
-#define vmm_printf(...)	vmm_cprintf(NULL, __VA_ARGS__)
+#define vmm_printf(args...)	vmm_cprintf(NULL, args)
 
 /** Predefined log levels */
 enum vmm_print_level {
