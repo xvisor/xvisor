@@ -385,14 +385,15 @@ static struct vmm_devtree_nodeid imx_gpt_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-VMM_DECLARE_EMULATOR_SIMPLE(imx_gpt,
-			    imx_gpt_emuid_table,
-			    VMM_DEVEMU_LITTLE_ENDIAN,
-			    imx_gpt_emulator_probe,
-			    imx_gpt_emulator_remove,
-			    imx_gpt_emulator_reset,
-			    imx_gpt_emulator_read,
-			    imx_gpt_emulator_write);
+VMM_DECLARE_EMULATOR_SIMPLE(imx_gpt_emulator,
+				"imx_gpt",
+				imx_gpt_emuid_table,
+				VMM_DEVEMU_LITTLE_ENDIAN,
+				imx_gpt_emulator_probe,
+				imx_gpt_emulator_remove,
+				imx_gpt_emulator_reset,
+				imx_gpt_emulator_read,
+				imx_gpt_emulator_write);
 
 static int __init imx_gpt_emulator_init(void)
 {

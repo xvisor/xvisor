@@ -275,7 +275,8 @@ static struct vmm_devtree_nodeid imx_anatop_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-VMM_DECLARE_EMULATOR_SIMPLE(imx_anatop,
+VMM_DECLARE_EMULATOR_SIMPLE(imx_anatop_emulator,
+                            "imx_anatop",
 			    imx_anatop_emuid_table,
 			    VMM_DEVEMU_LITTLE_ENDIAN,
 			    imx_anatop_emulator_probe,

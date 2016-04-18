@@ -101,10 +101,10 @@ int vmm_devemu_simple_write32(struct vmm_emudev *edev,
 			      physical_addr_t offset,
 			      u32 src);
 
-#define VMM_DECLARE_EMULATOR_SIMPLE(NAME, MATCH, ENDIAN, PROBE, REMOVE,	\
-				    RESET, READ, WRITE)			\
-	static struct vmm_emulator NAME ## _emulator = {		\
-		.name = #NAME,						\
+#define VMM_DECLARE_EMULATOR_SIMPLE(EMU, NAME, MATCH, ENDIAN, PROBE,	\
+				    REMOVE, RESET, READ, WRITE)		\
+	static struct vmm_emulator EMU = {				\
+		.name = NAME,						\
 		.match_table = MATCH,					\
 		.endian = ENDIAN,					\
 		.probe = PROBE,						\
@@ -120,7 +120,7 @@ int vmm_devemu_simple_write32(struct vmm_emudev *edev,
 		.write64 = NULL,					\
 		.read_simple = READ,					\
 		.write_simple = WRITE,					\
-	};
+	}
 
 struct vmm_emudev {
 	vmm_spinlock_t lock;

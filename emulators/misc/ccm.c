@@ -164,14 +164,15 @@ static struct vmm_devtree_nodeid imx_ccm_emuid_table[] = {
 	{ /* end of list */ },
 };
 
-VMM_DECLARE_EMULATOR_SIMPLE(imx_ccm,
-			    imx_ccm_emuid_table,
-			    VMM_DEVEMU_LITTLE_ENDIAN,
-			    imx_ccm_emulator_probe,
-			    imx_ccm_emulator_remove,
-			    imx_ccm_emulator_reset,
-			    imx_ccm_emulator_read,
-			    imx_ccm_emulator_write);
+VMM_DECLARE_EMULATOR_SIMPLE(imx_ccm_emulator,
+				"imx_ccm",
+				imx_ccm_emuid_table,
+				VMM_DEVEMU_LITTLE_ENDIAN,
+				imx_ccm_emulator_probe,
+				imx_ccm_emulator_remove,
+				imx_ccm_emulator_reset,
+				imx_ccm_emulator_read,
+				imx_ccm_emulator_write);
 
 static int __init imx_ccm_emulator_init(void)
 {
