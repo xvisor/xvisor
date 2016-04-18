@@ -493,10 +493,9 @@ static int virtio_blk_connect(struct virtio_device *dev,
 
 	/* Attach block device */
 	if (vmm_devtree_read_string(dev->edev->node,
-				    "blkdev", &attr) != VMM_OK) {
-		attr = NULL;
+				    "blkdev", &attr) == VMM_OK) {
+                vmm_vdisk_attach_block_device(vbdev->vdisk, attr);
 	}
-	vmm_vdisk_attach_block_device(vbdev->vdisk, attr);
 
 	dev->emu_data = vbdev;
 
