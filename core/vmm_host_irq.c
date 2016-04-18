@@ -715,6 +715,7 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num, u32 hwirq)
 		      VMM_IRQ_STATE_MASKED);
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		irq->count[cpu] = 0;
+		irq->in_progress[cpu]= FALSE;
 	}
 	irq->chip = NULL;
 	irq->chip_data = NULL;
