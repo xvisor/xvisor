@@ -264,7 +264,7 @@ int clk_dump(struct seq_file *s, void *data)
 
 	clk_prepare_unlock();
 
-	seq_printf(s, "\n}");
+	seq_printf(s, "\n}\n");
 	return 0;
 }
 EXPORT_SYMBOL_GPL(clk_dump);
