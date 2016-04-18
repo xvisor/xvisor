@@ -588,9 +588,9 @@ static void system_stop(void)
 	/* FIXME: Do other cleanup stuff. */
 }
 
-static int (*system_reset)() = NULL;
+static int (*system_reset)(void) = NULL;
 
-void vmm_register_system_reset(int (*callback)())
+void vmm_register_system_reset(int (*callback)(void))
 {
 	system_reset = callback;
 }
@@ -617,9 +617,9 @@ void vmm_reset(void)
 	vmm_hang();
 }
 
-static int (*system_shutdown)() = NULL;
+static int (*system_shutdown)(void) = NULL;
 
-void vmm_register_system_shutdown(int (*callback)())
+void vmm_register_system_shutdown(int (*callback)(void))
 {
 	system_shutdown = callback;
 }

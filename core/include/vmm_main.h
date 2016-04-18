@@ -36,13 +36,13 @@ bool vmm_init_done(void);
 void vmm_init(void);
 
 /** Register system reset callback function */
-void vmm_register_system_reset(int (*callback)());
+void vmm_register_system_reset(int (*callback)(void));
 
 /** Do system reset */
 void vmm_reset(void);
 
 /** Register system shutdown callback function */
-void vmm_register_system_shutdown(int (*callback)());
+void vmm_register_system_shutdown(int (*callback)(void));
 
 /** Do system shutdown */
 void vmm_shutdown(void);
