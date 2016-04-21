@@ -201,9 +201,14 @@ struct imx_uart_data {
 	enum imx_uart_type devtype;
 };
 
-static u16 _reg_read(struct imx_state *s, u32 reg)
+static inline unsigned int _reg_offset_get(u32 reg)
 {
-	u32 offset = (reg - UCR1) / 4;
+        return (reg - UCR1) / 4;
+}
+
+static u16 _reg_read(const struct imx_state *s, u32 reg)
+{
+	const unsigned int offset = _reg_offset_get(reg);
 
 	BUG_ON(offset >= ARRAY_SIZE(s->regs));
 	return s->regs[offset];
@@ -211,7 +216,7 @@ static u16 _reg_read(struct imx_state *s, u32 reg)
 
 static void _reg_write(struct imx_state *s, u32 reg, u16 val)
 {
-	u32 offset = (reg - UCR1) / 4;
+	const unsigned int offset = _reg_offset_get(reg);
 
 	BUG_ON(offset >= ARRAY_SIZE(s->regs));
 	s->regs[offset] = val;
@@ -219,7 +224,7 @@ static void _reg_write(struct imx_state *s, u32 reg, u16 val)
 
 static void _reg_set_mask(struct imx_state *s, u32 reg, u16 mask)
 {
-	u32 offset = (reg - UCR1) / 4;
+	const unsigned int offset = _reg_offset_get(reg);
 
 	BUG_ON(offset >= ARRAY_SIZE(s->regs));
 	s->regs[offset] |= mask;
@@ -227,7 +232,7 @@ static void _reg_set_mask(struct imx_state *s, u32 reg, u16 mask)
 
 static void _reg_clear_mask(struct imx_state *s, u32 reg, u16 mask)
 {
-	u32 offset = (reg - UCR1) / 4;
+	const unsigned int offset = _reg_offset_get(reg);
 
 	BUG_ON(offset >= ARRAY_SIZE(s->regs));
 	s->regs[offset] &= ~mask;
@@ -236,7 +241,7 @@ static void _reg_clear_mask(struct imx_state *s, u32 reg, u16 mask)
 static void _reg_ack(struct imx_state *s, u32 reg, u16 mask)
 {
 	u16 tmp = 0;
-	u32 offset = (reg - UCR1) / 4;
+	const unsigned int offset = _reg_offset_get(reg);
 
 	BUG_ON(offset >= ARRAY_SIZE(s->regs));
 	tmp = s->regs[offset] & mask;
@@ -291,7 +296,7 @@ static int _imx_reg_urxd0(struct imx_state *s, u32 *dst, int nb)
 static int imx_reg_read(struct imx_state *s, u32 offset, u32 *dst, int nb)
 {
 	int rc = VMM_OK;
-	u32 reg = (offset - UCR1) / 4;
+	const unsigned int reg = _reg_offset_get(offset);
 	int level = 0;
 	bool set_irq = FALSE;
 
@@ -332,7 +337,7 @@ static void imx_set_txirq(struct imx_state *s, int level)
 static int imx_reg_write(struct imx_state *s, u32 offset,
 			   u32 src_mask, u32 src)
 {
-	u32 reg = (offset - UCR1) / 4;
+	const unsigned int reg = _reg_offset_get(offset);
 	u16 ack = 0;
 	u16 usr1 = 0;
 	u16 usr2 = 0;
