@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Copyright (C) 2014-2016 Institut de Recherche Technologique SystemX and OpenWide.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  *
  * @file imx.c
  * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
+ * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
  * @brief Motorola/Freescale i.MX serial emulator.
  * @details This source file implements the i.MX serial emulator.
  *
@@ -222,6 +223,16 @@ static void _reg_write(struct imx_state *s, u32 reg, u16 val)
 	s->regs[offset] = val;
 }
 
+static bool _txfe_irq_enabled(const struct imx_state *s)
+{
+	/* NOTE: we should also check for USR2_TXFE to be 1.
+	 * If we want to emulate the hardware queues (which are not
+	 * handled at the moment), we should add the following test:
+	 *	_reg_read(s, USR2) & USR2_TXFE
+	 */
+	return (_reg_read(s, UCR1) & UCR1_TXMPTYEN);
+}
+
 static void _reg_set_mask(struct imx_state *s, u32 reg, u16 mask)
 {
 	const unsigned int offset = _reg_offset_get(reg);
@@ -346,10 +357,9 @@ static int imx_reg_write(struct imx_state *s, u32 offset,
 
 	vmm_spin_lock(&s->lock);
 
-	/* UCR1->vmm_devemu_emulate_irq(s->guest, s->irq, 0); */
-
 	usr1 = _reg_read(s, USR1);
 	usr2 = _reg_read(s, USR2);
+
 	if (URXD0 == offset) {
 		/* Do nothing */
 	} else if (URTX0 == offset) {
@@ -416,6 +426,10 @@ static int imx_reg_write(struct imx_state *s, u32 offset,
 		 * the TX ready interrupt.
 		 */
 		imx_set_txirq(s, 1);
+	} else if (_txfe_irq_enabled(s)) {
+		imx_set_txirq(s, 1);
+	} else if (_reg_read(s, UCR1) & UCR1_RTSDEN) {
+		imx_set_txirq(s, 0);
 	}
 
 	return VMM_OK;
