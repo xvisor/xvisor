@@ -454,7 +454,7 @@ static int imx_vserial_send(struct vmm_vserial *vser, u8 data)
 	}
 
 	_reg_set_mask(s, USR2, USR2_RDR);
-	if (rd_count >= _reg_read(s, UFCR)) {
+	if (rd_count >= (_reg_read(s, UFCR) & 0x003f)) {
 		_reg_set_mask(s, USR1, USR1_RRDY);
 		if (_reg_read(s, UCR1) & UCR1_RRDYEN) {
 			set_irq = TRUE;
