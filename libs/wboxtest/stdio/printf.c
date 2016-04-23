@@ -44,7 +44,7 @@ static int wb_printf_run(struct wboxtest *test, struct vmm_chardev *cdev)
         const physical_addr_t babe = 0xbabe;
         const virtual_size_t size = 42;
         const s64 var = 777;
-        const u64 feeddeadbabe = (u64)(0x0000feeddeadbabe);
+        const u64 feeddeadbabe = 0xfeeddeadbabeLL;
 
 #define _TEST(expect_, fmt_, ...) \
         do { \
@@ -72,7 +72,7 @@ static int wb_printf_run(struct wboxtest *test, struct vmm_chardev *cdev)
               "%"PRIu8" + %"PRIu16" + %"PRIu32" + %"PRIu64" = %u",
               (u8)1, (u16)1, (u32)1, var, 780);
         _TEST("0xfeeddeadbabe = 280297596631742",
-              "%"PRIx64" = %"PRIu64, feeddeadbabe, feeddeadbabe);
+              "0x%"PRIx64" = %"PRIu64, feeddeadbabe, feeddeadbabe);
         if (sizeof(void *) == sizeof(u32)) {
                 _TEST("0xDEADBEEF", "0x%"PRIADDR, deadbeef);
                 _TEST("0x0000BABE", "0x%"PRIADDR, babe);
