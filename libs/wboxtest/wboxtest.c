@@ -196,7 +196,7 @@ int __wboxtest_run_test(struct wboxtest *test,
 	vmm_cprintf(cdev, "wboxtest: test=%s dma heap leakage %lu bytes\n",
 		    test->name,
 		    (unsigned long)(dh - vmm_dma_heap_free_size()));
-	vmm_cprintf(cdev, "wboxtest: test=%s time taken %llu nanoseconds\n",
+	vmm_cprintf(cdev, "wboxtest: test=%s time taken %"PRIu64" nanoseconds\n",
 		    test->name, vmm_timer_timestamp() - tstamp);
 	vmm_cprintf(cdev, "wboxtest: test=%s failures %d out of %d\n",
 		    test->name, fail_count, iterations);
