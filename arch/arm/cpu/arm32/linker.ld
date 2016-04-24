@@ -37,10 +37,10 @@ SECTIONS
 
 	.text :
  	{
-		. = ALIGN(4);
 		PROVIDE(_text_start = .);
 		*(.entry)
 		*(.text)
+		. = ALIGN(8);
 		PROVIDE(_text_end = .);
 	}
 
@@ -50,8 +50,8 @@ SECTIONS
 	{
 		PROVIDE(_init_start = .);
 
-		. = ALIGN(4);
 		*(.init.text)
+		. = ALIGN(8);
 
 		PROVIDE(__setup_start = .);
 		*(.setup.init);
@@ -74,9 +74,9 @@ SECTIONS
 
 	.cpuinit :
 	{
-		. = ALIGN(4);
 		PROVIDE(_cpuinit_start = .);
 		*(.cpuinit.*)
+		. = ALIGN(8);
 		PROVIDE(_cpuinit_end = .);
 	}
 
@@ -84,9 +84,9 @@ SECTIONS
 
 	.spinlock :
 	{
-		. = ALIGN(4);
 		PROVIDE(_spinlock_start = .);
 		*(.spinlock.*)
+		. = ALIGN(8);
 		PROVIDE(_spinlock_end = .);
 	}
 
@@ -99,9 +99,9 @@ SECTIONS
 	.rodata :
 	{
 		PROVIDE(_rodata_start = .);
-		. = ALIGN(4);
 		*(.symtbl)
 		*(.rodata .rodata.*)
+		. = ALIGN(8);
 		PROVIDE(_rodata_end = .);
 	}
 
@@ -114,8 +114,8 @@ SECTIONS
 	.percpu :
 	{
 		PROVIDE(_percpu_start = .);
-		. = ALIGN(4);
 		*(.percpu)
+		. = ALIGN(8);
 		PROVIDE(_percpu_end = .);
 	}
 
@@ -129,13 +129,13 @@ SECTIONS
 		*(*.data)
 
 		PROVIDE(_modtbl_start = .);
-		. = ALIGN(4);
 		*(.modtbl)
+		. = ALIGN(8);
 		PROVIDE(_modtbl_end = .);
 
 		PROVIDE(_nidtbl_start = .);
-		. = ALIGN(4);
 		*(.nidtbl)
+		. = ALIGN(8);
 		PROVIDE(_nidtbl_end = .);
 
 		PROVIDE(_data_end = .);
@@ -148,6 +148,7 @@ SECTIONS
 		PROVIDE(_bss_start = .);
 		*(.bss)
 		*(COMMON)
+		. = ALIGN(8);
 		PROVIDE(_bss_end = .);
 	}
 
@@ -157,7 +158,7 @@ SECTIONS
 	{
 		PROVIDE(_svc_stack_start = .);
 		. = . + (CONFIG_IRQ_STACK_SIZE * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_svc_stack_end = .);
         }
 
@@ -165,7 +166,7 @@ SECTIONS
 	{
 		PROVIDE(_abt_stack_start = .);
 		. = . + (0x100 * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_abt_stack_end = .);
 	}
 
@@ -173,7 +174,7 @@ SECTIONS
 	{
 		PROVIDE(_und_stack_start = .);
 		. = . + (0x100 * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_und_stack_end = .);
 	}
 
@@ -181,7 +182,7 @@ SECTIONS
 	{
 		PROVIDE(_irq_stack_start = .);
 		. = . + (0x100 * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_irq_stack_end = .);
 	}
 
@@ -189,7 +190,7 @@ SECTIONS
 	{
 		PROVIDE(_fiq_stack_start = .);
 		. = . + (0x100 * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_fiq_stack_end = .);
 	}
 

@@ -215,6 +215,10 @@ _start_mmu_init:
 	sub	sp, sp, r6
 	add	sp, sp, r4
 
+	/* AAPCS: ensure strict 64-bits alignment for SP */
+	sub	sp, sp, #8
+	bic	sp, sp, #7
+
 	mov	r0, r4
 	mov	r1, r5
 	mov	r2, r6
@@ -549,6 +553,11 @@ _reset:
 	mul	r9, r9, r10
 	sub	sp, sp, r9
 #endif
+
+	/* AAPCS: ensure strict 64-bits alignment for SP */
+	sub	sp, sp, #8
+	bic	sp, sp, #7
+
 	/* Set to Supervisor Mode */
 	CMODE	r8, CPSR_MODE_SUPERVISOR
 	/* Call CPU init function */

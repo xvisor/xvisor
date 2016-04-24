@@ -40,7 +40,7 @@ SECTIONS
 		PROVIDE(_text_start = .);
 		*(.entry)
 		*(.text)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_text_end = .);
 	}
 
@@ -51,7 +51,7 @@ SECTIONS
 		PROVIDE(_init_start = .);
 
 		*(.init.text)
-		. = ALIGN(4);
+		. = ALIGN(8);
 
 		PROVIDE(__setup_start = .);
 		*(.setup.init);
@@ -67,7 +67,7 @@ SECTIONS
 
 		PROVIDE(_initdata_start = .);
 		*(.init.data)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_initdata_end = .);
 	}
 
@@ -77,7 +77,7 @@ SECTIONS
 	{
 		PROVIDE(_cpuinit_start = .);
 		*(.cpuinit.*)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_cpuinit_end = .);
 	}
 
@@ -87,7 +87,7 @@ SECTIONS
 	{
 		PROVIDE(_spinlock_start = .);
 		*(.spinlock.*)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_spinlock_end = .);
 	}
 
@@ -101,7 +101,7 @@ SECTIONS
 	{
 		PROVIDE(_rodata_start = .);
 		*(.rodata .rodata.*)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_rodata_end = .);
 	}
 
@@ -115,7 +115,7 @@ SECTIONS
 	{
 		PROVIDE(_percpu_start = .);
 		*(.percpu)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_percpu_end = .);
 	}
 
@@ -127,16 +127,16 @@ SECTIONS
 		*(.data)
 		*(.readmostly.data)
 		*(*.data)
-		. = ALIGN(4);
+		. = ALIGN(8);
 
 		PROVIDE(_modtbl_start = .);
 		*(.modtbl)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_modtbl_end = .);
 
 		PROVIDE(_nidtbl_start = .);
 		*(.nidtbl)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_nidtbl_end = .);
 
 		PROVIDE(_data_end = .);
@@ -148,7 +148,7 @@ SECTIONS
 	{
 		PROVIDE(_bss_start = .);
 		*(.bss)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_bss_end = .);
 	}
 
@@ -158,7 +158,7 @@ SECTIONS
 	{
 		PROVIDE(_hvc_stack_start = .);
 		. = . + (CONFIG_IRQ_STACK_SIZE * CONFIG_CPU_COUNT);
-		. = ALIGN(4);
+		. = ALIGN(8);
 		PROVIDE(_hvc_stack_end = .);
 	}
 

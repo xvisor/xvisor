@@ -362,6 +362,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	memset(arm_regs(vcpu), 0, sizeof(arch_regs_t));
 	arm_regs(vcpu)->pc = vcpu->start_pc;
 	arm_regs(vcpu)->sp = vcpu->stack_va + vcpu->stack_sz - 8;
+	arm_regs(vcpu)->sp = arm_regs(vcpu)->sp & ~0x7;
 	if (!vcpu->is_normal) {
 		arm_regs(vcpu)->pstate = PSR_MODE64_EL2h;
 		arm_regs(vcpu)->pstate |= PSR_ASYNC_ABORT_DISABLED;

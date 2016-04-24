@@ -203,6 +203,10 @@ _start_mmu_init:
 	ldr	sp, __hvc_stack_end
 	sub	sp, sp, r6
 	add	sp, sp, r4
+	/* AAPCS: ensure strict 64-bits alignment for SP */
+	sub	sp, sp, #8
+	bic	sp, sp, #7
+	/* Initialize parameters for TTBL setup function */
 	mov	r0, r4
 	mov	r1, r5
 	mov	r2, r6
@@ -495,6 +499,9 @@ _reset:
 	mul	r1, r1, r0
 	sub	sp, sp, r1
 #endif
+	/* AAPCS: ensure strict 64-bits alignment for SP */
+	sub	sp, sp, #8
+	bic	sp, sp, #7
 	/* Initial Hypervisor Configuration */
 	ldr	r1, __hcr_initial_set
 	ldr	r2, __hcr_initial_clear
