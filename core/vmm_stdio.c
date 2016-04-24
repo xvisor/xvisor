@@ -326,17 +326,7 @@ static int print(char **out, u32 *out_len, struct vmm_chardev *cdev,
 					_vmm_format_error("z", *(format + 1));
 				}
 			} else if (*format == 'l' && *(format + 1) == 'l') {
-                               if (sizeof(unsigned long long) ==
-                                               sizeof(unsigned long)) {
-                                       tmp = va_arg(args, unsigned long long);
-                                       acnt += sizeof(unsigned long long);
-                               } else {
-                                       ((unsigned long *)&tmp)[0] =
-                                               va_arg(args, unsigned long);
-                                       ((unsigned long *)&tmp)[1] =
-                                               va_arg(args, unsigned long);
-                                       acnt += 2*sizeof(unsigned long);
-                               }
+				tmp = va_arg(args, unsigned long long);
 				if (*(format + 2) == 'u') {
 					format += 2;
 					pc += printi(out, out_len, cdev, tmp,
