@@ -19,6 +19,11 @@
  * @file kern1.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief kern1 test implementation
+ *
+ * This source has been largely adapted from Atomthreads Sources:
+ * <atomthreads_source>/tests/kern1.c
+ *
+ * For more info visit: http://atomthreads.com
  */
 
 #include <vmm_error.h>
@@ -94,9 +99,9 @@ static void __exit kern1_exit(void)
 	wboxtest_unregister(&kern1);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
