@@ -48,7 +48,8 @@ static int dummy_thread_main(void *data)
 	return 0;
 }
 
-static int kern1_run(struct wboxtest *test, struct vmm_chardev *cdev)
+static int kern1_run(struct wboxtest *test, struct vmm_chardev *cdev,
+		     u32 test_hcpu)
 {
 	struct vmm_thread *ti;
 

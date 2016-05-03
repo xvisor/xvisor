@@ -57,8 +57,10 @@ struct wboxtest {
 	char name[VMM_FIELD_NAME_SIZE];
 
 	/* operations */
-	int (*setup) (struct wboxtest *test, struct vmm_chardev *cdev);
-	int (*run) (struct wboxtest *test, struct vmm_chardev *cdev);
+	int (*setup) (struct wboxtest *test, struct vmm_chardev *cdev,
+		      u32 test_hcpu);
+	int (*run) (struct wboxtest *test, struct vmm_chardev *cdev,
+		    u32 test_hcpu);
 	void (*cleanup) (struct wboxtest *test, struct vmm_chardev *cdev);
 };
 

@@ -294,7 +294,8 @@ static int kern2_do_test(struct vmm_chardev *cdev,
 	return (failures) ? VMM_EFAIL : VMM_OK;
 }
 
-static int kern2_run(struct wboxtest *test, struct vmm_chardev *cdev)
+static int kern2_run(struct wboxtest *test, struct vmm_chardev *cdev,
+		     u32 test_hcpu)
 {
 	int rc;
 

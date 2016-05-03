@@ -150,12 +150,12 @@ static int mutex2_monitor_thread_main(void *data)
 	return 0;
 }
 
-static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev)
+static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
+		      u32 test_hcpu)
 {
 	int i, ret = VMM_OK;
 	char wname[VMM_FIELD_NAME_SIZE];
-	const struct vmm_cpumask *cpu_mask =
-				vmm_cpumask_of(vmm_smp_processor_id());
+	const struct vmm_cpumask *cpu_mask = vmm_cpumask_of(test_hcpu);
 
 	/* Initialise global data */
 	monitor = NULL;

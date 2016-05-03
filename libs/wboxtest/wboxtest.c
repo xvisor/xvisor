@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
+#include <vmm_smp.h>
 #include <vmm_heap.h>
 #include <vmm_host_vapool.h>
 #include <vmm_mutex.h>
@@ -154,7 +155,7 @@ void __wboxtest_group_del_test(struct wboxtest *test)
 }
 
 /* Note: Must be called with wtc.lock held */
-int __wboxtest_run_test(struct wboxtest *test,
+int __wboxtest_run_test(struct wboxtest *test, u32 test_hcpu,
 			struct vmm_chardev *cdev, u32 iterations)
 {
 	int rc;
@@ -164,10 +165,11 @@ int __wboxtest_run_test(struct wboxtest *test,
 	virtual_size_t nh = vmm_normal_heap_free_size();
 	virtual_size_t dh = vmm_dma_heap_free_size();
 
-	vmm_cprintf(cdev, "wboxtest: test=%s start\n", test->name);
+	vmm_cprintf(cdev, "wboxtest: test=%s test_hcpu=%d start\n",
+		    test->name, test_hcpu);
 
 	if (test->setup) {
-		rc = test->setup(test, cdev);
+		rc = test->setup(test, cdev, test_hcpu);
 		if (rc) {
 			vmm_cprintf(cdev, "wboxtest: test=%s setup failed "
 				    "(error %d)\n", test->name, rc);
@@ -175,7 +177,7 @@ int __wboxtest_run_test(struct wboxtest *test,
 	}
 
 	for (iter = 0; iter < iterations; iter++) {
-		rc = test->run(test, cdev);
+		rc = test->run(test, cdev, test_hcpu);
 		if (rc) {
 			fail_count++;
 		}
@@ -246,6 +248,7 @@ VMM_EXPORT_SYMBOL(wboxtest_iterate);
 struct wboxtest_run_groups_args {
 	struct vmm_chardev *cdev;
 	u32 iterations;
+	u32 test_hcpu;
 	const char *group_name;
 };
 
@@ -258,13 +261,15 @@ static void wboxtest_run_groups_iter(struct wboxtest *test, void *data)
 	if (strncmp(group->name, args->group_name, sizeof(group->name)))
 		return;	
 
-	__wboxtest_run_test(test, args->cdev, args->iterations);
+	__wboxtest_run_test(test, args->test_hcpu,
+			    args->cdev, args->iterations);
 }
 
 void wboxtest_run_groups(struct vmm_chardev *cdev, u32 iterations,
 			 int group_count, char **group_names)
 {
 	int g;
+	u32 test_hcpu = vmm_smp_processor_id();
 	struct wboxtest_run_groups_args args;
 
 	if (!group_names || (group_count <= 0))
@@ -275,6 +280,7 @@ void wboxtest_run_groups(struct vmm_chardev *cdev, u32 iterations,
 			continue;
 		args.cdev = cdev;
 		args.iterations = iterations;
+		args.test_hcpu = test_hcpu;
 		args.group_name = group_names[g];
 		wboxtest_iterate(wboxtest_run_groups_iter, &args);
 	}
@@ -284,6 +290,7 @@ VMM_EXPORT_SYMBOL(wboxtest_run_groups);
 struct wboxtest_run_tests_args {
 	struct vmm_chardev *cdev;
 	u32 iterations;
+	u32 test_hcpu;
 	const char *test_name;
 };
 
@@ -295,13 +302,15 @@ static void wboxtest_run_tests_iter(struct wboxtest *test, void *data)
 	if (strncmp(test->name, args->test_name, sizeof(test->name)))
 		return;	
 
-	__wboxtest_run_test(test, args->cdev, args->iterations);
+	__wboxtest_run_test(test, args->test_hcpu,
+			    args->cdev, args->iterations);
 }
 
 void wboxtest_run_tests(struct vmm_chardev *cdev, u32 iterations,
 			int test_count, char **test_names)
 {
 	int t;
+	u32 test_hcpu = vmm_smp_processor_id();
 	struct wboxtest_run_tests_args args;
 
 	if (!test_names || (test_count <= 0))
@@ -312,6 +321,7 @@ void wboxtest_run_tests(struct vmm_chardev *cdev, u32 iterations,
 			continue;
 		args.cdev = cdev;
 		args.iterations = iterations;
+		args.test_hcpu = test_hcpu;
 		args.test_name = test_names[t];
 		wboxtest_iterate(wboxtest_run_tests_iter, &args);
 	}
@@ -321,13 +331,15 @@ VMM_EXPORT_SYMBOL(wboxtest_run_tests);
 struct wboxtest_run_all_args {
 	struct vmm_chardev *cdev;
 	u32 iterations;
+	u32 test_hcpu;
 };
 
 static void wboxtest_run_all_iter(struct wboxtest *test, void *data)
 {
 	struct wboxtest_run_all_args *args = data;
 
-	__wboxtest_run_test(test, args->cdev, args->iterations);
+	__wboxtest_run_test(test, args->test_hcpu,
+			    args->cdev, args->iterations);
 }
 
 void wboxtest_run_all(struct vmm_chardev *cdev, u32 iterations)
@@ -336,6 +348,7 @@ void wboxtest_run_all(struct vmm_chardev *cdev, u32 iterations)
 
 	args.cdev = cdev;
 	args.iterations = iterations;
+	args.test_hcpu = vmm_smp_processor_id();
 	wboxtest_iterate(wboxtest_run_all_iter, &args);
 }
 VMM_EXPORT_SYMBOL(wboxtest_run_all);

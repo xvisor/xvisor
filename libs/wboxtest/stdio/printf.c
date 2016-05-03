@@ -36,7 +36,8 @@
 #define	MODULE_INIT			wb_printf_init
 #define	MODULE_EXIT			wb_printf_exit
 
-static int wb_printf_run(struct wboxtest *test, struct vmm_chardev *cdev)
+static int wb_printf_run(struct wboxtest *test, struct vmm_chardev *cdev,
+			 u32 test_hcpu)
 {
         char buf[1024];
         int rc = VMM_OK;

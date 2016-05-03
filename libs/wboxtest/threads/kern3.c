@@ -31,6 +31,7 @@
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_manager.h>
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <libs/stringlib.h>
@@ -47,7 +48,7 @@
 #define NUM_THREADS			2
 
 /* Sleep delay in milliseconds */
-#define SLEEP_MSECS			1
+#define SLEEP_MSECS			(VMM_THREAD_DEF_TIME_SLICE/1000000ULL)
 
 /* Global data (one per thread) */
 static struct vmm_thread *monitor;
@@ -67,9 +68,12 @@ static int kern3_worker_thread_main(void *data)
 	while (1) {
 		/* If this thread is requested to sleep, sleep until told to stop */
 		if (sleep_request[thread_id]) {
+			/* Clear running flag for this thread */
+			running_flag[thread_id] = FALSE;
+			/* Sleep for some time */
 			vmm_msleep(SLEEP_MSECS);
 		} else {
-			/* Otherwise set running flag for this thread */
+			/* Set running flag for this thread */
 			running_flag[thread_id] = TRUE;
 		}
 	}
@@ -85,25 +89,16 @@ static int kern3_monitor_thread_main(void *data)
 	vmm_threads_start(workers[0]);
 	vmm_threads_start(workers[1]);
 
+	/* Give any running threads time to set their flag */
+	vmm_msleep(SLEEP_MSECS*10);
+
 	/* Repeat test a few times */
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 10; i++) {
 		/* Make the higher priority thread sleep */
 		sleep_request[0] = TRUE;
 
-		/*
-		 * Sleep a little to make sure the thread
-		 * sees the sleep request
-		 */
-		vmm_msleep(SLEEP_MSECS);
-
-		/* Reset the running flag for both threads */
-		running_flag[0] = running_flag[1] = FALSE;
-
-		/*
-		 * Sleep a little to give any running threads
-		 * time to set their flag
-		 */
-		vmm_msleep(SLEEP_MSECS);
+		/* Give any running threads time to set their flag */
+		vmm_msleep(SLEEP_MSECS*10);
 
 		/*
 		 * Check only the low priority thread has
@@ -126,18 +121,14 @@ static int kern3_monitor_thread_main(void *data)
 			/* Tell the higher priority thread to stop sleeping */
 			sleep_request[0] = FALSE;
 
-			/* Sleep a little to give any running threads time
-			 * to set their flag
-			 */
-			vmm_msleep(SLEEP_MSECS);
+			/* Give any running threads time to set their flag */
+			vmm_msleep(SLEEP_MSECS*10);
 
 			/* Reset the running flag for both threads */
 			running_flag[0] = running_flag[1] = FALSE;
 
-			/* Sleep a little to give any running threads time
-			 * to set their flag
-			 */
-			vmm_msleep(SLEEP_MSECS);
+			/* Give any running threads time to set their flag */
+			vmm_msleep(SLEEP_MSECS*10);
 
 			/*
 			 * Check only the high priority thread has run
@@ -170,12 +161,13 @@ static int kern3_monitor_thread_main(void *data)
 	return 0;
 }
 
-static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev)
+static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev,
+		     u32 test_hcpu)
 {
 	int i, ret = VMM_OK;
 	char wname[VMM_FIELD_NAME_SIZE];
-	const struct vmm_cpumask *cpu_mask =
-				vmm_cpumask_of(vmm_smp_processor_id());
+	const struct vmm_cpumask *old_mask;
+	const struct vmm_cpumask *cpu_mask = vmm_cpumask_of(test_hcpu);
 
 	/* Initialise global data */
 	monitor = NULL;
@@ -213,12 +205,20 @@ static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev)
 		vmm_threads_set_affinity(workers[i], cpu_mask);
 	}
 
+	/* Set current VCPU affinity same as monitor thead affinity */
+	old_mask = vmm_manager_vcpu_get_affinity(vmm_scheduler_current_vcpu());
+	vmm_manager_vcpu_set_affinity(vmm_scheduler_current_vcpu(), cpu_mask);
+
 	/* Start monitor thread */
 	vmm_threads_start(monitor);
 
 	/* Wait till monitor is done */
-	while (!monitor_done)
+	while (!monitor_done) {
 		vmm_msleep(SLEEP_MSECS);
+	}
+
+	/* Restore current VCPU affinity */
+	vmm_manager_vcpu_set_affinity(vmm_scheduler_current_vcpu(), old_mask);
 
 	/* Check for failures from monitor thread */
 	if (monitor_failures) {
