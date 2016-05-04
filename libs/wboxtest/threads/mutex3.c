@@ -146,7 +146,7 @@ static int mutex3_run(struct wboxtest *test, struct vmm_chardev *cdev,
 		workers[i] = vmm_threads_create(wname,
 						mutex3_worker_thread_main,
 						(void *)(unsigned long)i,
-						VMM_THREAD_DEF_PRIORITY - i,
+						current_priority - i,
 						VMM_THREAD_DEF_TIME_SLICE);
 		if (workers[i] == NULL) {
 			ret = VMM_EFAIL;

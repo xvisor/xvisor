@@ -145,6 +145,7 @@ static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 {
 	int i, ret = VMM_OK;
 	char wname[VMM_FIELD_NAME_SIZE];
+	u8 current_priority = vmm_scheduler_current_priority();
 	const struct vmm_cpumask *cpu_mask = vmm_cpumask_of(test_hcpu);
 
 	/* Initialise global data */
@@ -157,7 +158,7 @@ static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 		workers[i] = vmm_threads_create(wname,
 						mutex2_worker_thread_main,
 						(void *)(unsigned long)i,
-						VMM_THREAD_DEF_PRIORITY,
+						current_priority,
 						VMM_THREAD_DEF_TIME_SLICE);
 		if (workers[i] == NULL) {
 			ret = VMM_EFAIL;
