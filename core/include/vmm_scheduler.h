@@ -86,10 +86,13 @@ u64 vmm_scheduler_idle_time(u32 hcpu);
 /** Retrive idle vcpu for given host CPU */
 struct vmm_vcpu *vmm_scheduler_idle_vcpu(u32 hcpu);
 
-/** Retrive current vcpu number */
+/** Retrive current vcpu */
 struct vmm_vcpu *vmm_scheduler_current_vcpu(void);
 
-/** Retrive current guest number */
+/** Retrive current priority */
+u8 vmm_scheduler_current_priority(void);
+
+/** Retrive current guest */
 struct vmm_guest *vmm_scheduler_current_guest(void);
 
 /** Yield current vcpu (Should not be called in IRQ context) */

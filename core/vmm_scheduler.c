@@ -869,6 +869,13 @@ struct vmm_vcpu *vmm_scheduler_current_vcpu(void)
 	return this_cpu(sched).current_vcpu;
 }
 
+u8 vmm_scheduler_current_priority(void)
+{
+	struct vmm_vcpu *cvcpu = vmm_scheduler_current_vcpu();
+
+	return (cvcpu) ? cvcpu->priority : VMM_VCPU_MAX_PRIORITY;
+}
+
 struct vmm_guest *vmm_scheduler_current_guest(void)
 {
 	struct vmm_vcpu *vcpu = this_cpu(sched).current_vcpu;
