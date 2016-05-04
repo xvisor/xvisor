@@ -51,10 +51,6 @@
 #define SLEEP_MSECS			(VMM_THREAD_DEF_TIME_SLICE/1000000ULL)
 
 /* Global data (one per thread) */
-static struct vmm_thread *monitor;
-static struct vmm_chardev *monitor_cdev;
-static volatile int monitor_failures;
-static volatile bool monitor_done;
 static struct vmm_thread *workers[NUM_THREADS];
 static volatile bool running_flag[NUM_THREADS];
 static volatile bool sleep_request[NUM_THREADS];
@@ -81,9 +77,9 @@ static int kern3_worker_thread_main(void *data)
 	return 0;
 }
 
-static int kern3_monitor_thread_main(void *data)
+static int kern3_do_test(struct vmm_chardev *cdev)
 {
-	int i;
+	int i, failures = 0;
 
 	/* Start workers */
 	vmm_threads_start(workers[0]);
@@ -106,9 +102,9 @@ static int kern3_monitor_thread_main(void *data)
 		 */
 		if ((running_flag[1] != TRUE) ||
 		    (running_flag[0] != FALSE)) {
-			vmm_cprintf(monitor_cdev, "error: lo%d %d/%d\n",
+			vmm_cprintf(cdev, "error: lo%d %d/%d\n",
 				    i, running_flag[0], running_flag[1]);
-			monitor_failures++;
+			failures++;
 			break;
 		} else {
 			/*
@@ -136,9 +132,9 @@ static int kern3_monitor_thread_main(void *data)
 			 */
 			if ((running_flag[0] != TRUE) ||
 			    (running_flag[1] != FALSE)) {
-				vmm_cprintf(monitor_cdev, "error: hi%d %d/%d\n",
+				vmm_cprintf(cdev, "error: hi%d %d/%d\n",
 					    i, running_flag[0], running_flag[1]);
-				monitor_failures++;
+				failures++;
 				break;
 			} else {
 				/*
@@ -155,10 +151,7 @@ static int kern3_monitor_thread_main(void *data)
 	vmm_threads_stop(workers[0]);
 	vmm_threads_stop(workers[1]);
 
-	/* Set monitor done flag */
-	monitor_done = TRUE;
-
-	return 0;
+	return (failures) ? VMM_EFAIL: 0;
 }
 
 static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev,
@@ -166,29 +159,25 @@ static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev,
 {
 	int i, ret = VMM_OK;
 	char wname[VMM_FIELD_NAME_SIZE];
-	const struct vmm_cpumask *old_mask;
+	u8 current_priority = vmm_scheduler_current_priority();
+	const struct vmm_cpumask *old_mask =
+		vmm_manager_vcpu_get_affinity(vmm_scheduler_current_vcpu());
 	const struct vmm_cpumask *cpu_mask = vmm_cpumask_of(test_hcpu);
 
+	/* Ensure we have sufficiently higher priority */
+	if ((current_priority - VMM_THREAD_MIN_PRIORITY + 1) < NUM_THREADS) {
+		vmm_cprintf(cdev, "Current priority %d non-sufficient to "
+			    "create %d threads of lower priority\n",
+			    (unsigned int)current_priority, NUM_THREADS);
+		return VMM_EINVALID;
+	}
+
 	/* Initialise global data */
-	monitor = NULL;
-	monitor_cdev = cdev;
-	monitor_done = FALSE;
-	monitor_failures = 0;
 	memset(workers, 0, sizeof(workers));
 	for (i = 0; i < NUM_THREADS; i++) {
 		running_flag[i] = FALSE;
 		sleep_request[i] = FALSE;
 	}
-
-	/* Create monitor thread */
-	monitor = vmm_threads_create("kern3_monitor",
-				     kern3_monitor_thread_main, NULL,
-				     VMM_THREAD_MAX_PRIORITY,
-				     VMM_THREAD_DEF_TIME_SLICE);
-	if (monitor == NULL) {
-		return VMM_EFAIL;
-	}
-	vmm_threads_set_affinity(monitor, cpu_mask);
 
 	/* Create worker threads */
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -196,7 +185,7 @@ static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev,
 		workers[i] = vmm_threads_create(wname,
 						kern3_worker_thread_main,
 						(void *)(unsigned long)i,
-						VMM_THREAD_MAX_PRIORITY - i,
+						current_priority - i,
 						VMM_THREAD_DEF_TIME_SLICE);
 		if (workers[i] == NULL) {
 			ret = VMM_EFAIL;
@@ -205,25 +194,18 @@ static int kern3_run(struct wboxtest *test, struct vmm_chardev *cdev,
 		vmm_threads_set_affinity(workers[i], cpu_mask);
 	}
 
-	/* Set current VCPU affinity same as monitor thead affinity */
-	old_mask = vmm_manager_vcpu_get_affinity(vmm_scheduler_current_vcpu());
-	vmm_manager_vcpu_set_affinity(vmm_scheduler_current_vcpu(), cpu_mask);
-
-	/* Start monitor thread */
-	vmm_threads_start(monitor);
-
-	/* Wait till monitor is done */
-	while (!monitor_done) {
-		vmm_msleep(SLEEP_MSECS);
+	/* Set current VCPU affinity same as worker thead affinity */
+	ret = vmm_manager_vcpu_set_affinity(vmm_scheduler_current_vcpu(),
+					    cpu_mask);
+	if (ret) {
+		goto destroy_workers;
 	}
+
+	/* Do the test */
+	ret = kern3_do_test(cdev);
 
 	/* Restore current VCPU affinity */
 	vmm_manager_vcpu_set_affinity(vmm_scheduler_current_vcpu(), old_mask);
-
-	/* Check for failures from monitor thread */
-	if (monitor_failures) {
-		ret = VMM_EFAIL;
-	}
 
 	/* Destroy worker threads */
 destroy_workers:
@@ -233,11 +215,6 @@ destroy_workers:
 			workers[i] = NULL;
 		}
 	}
-
-	/* Destroy monitor thread */
-	vmm_threads_destroy(monitor);
-	monitor = NULL;
-	monitor_cdev = NULL;
 
 	return ret;
 }

@@ -51,10 +51,6 @@
 #define SLEEP_MSECS			10
 
 /* Global data */
-static struct vmm_thread *monitor;
-static struct vmm_chardev *monitor_cdev;
-static volatile int monitor_failures;
-static volatile bool monitor_done;
 static struct vmm_thread *workers[NUM_THREADS];
 static DEFINE_MUTEX(m1);
 static DEFINE_MUTEX(m2);
@@ -75,9 +71,9 @@ static int mutex2_worker_thread_main(void *data)
 	return 0;
 }
 
-static int mutex2_monitor_thread_main(void *data)
+static int mutex2_do_test(struct vmm_chardev *cdev)
 {
-	int i, rc;
+	int i, rc, failures = 0;
 	u64 timeout;
 
 	/* Start workers */
@@ -92,34 +88,32 @@ static int mutex2_monitor_thread_main(void *data)
 	timeout = SLEEP_MSECS * 1000000LL;
 	rc = vmm_mutex_lock_timeout(&m2, &timeout);
 	if (rc != VMM_ETIMEDOUT) {
-		vmm_cprintf(monitor_cdev,
-			    "error: did not get mutex lock timeout\n");
-		monitor_failures++;
+		vmm_cprintf(cdev, "error: did not get mutex lock timeout\n");
+		failures++;
 	}
 
 	/* Try to lock m2 using non-blocking API (This should fail) */
 	rc = vmm_mutex_trylock(&m2);
 	if (rc != 0) {
-		vmm_cprintf(monitor_cdev,
-			    "error: mutex trylock should fail\n");
-		monitor_failures++;
+		vmm_cprintf(cdev, "error: mutex trylock should fail\n");
+		failures++;
 	}
 
 	/* Try to unlock m2 (This should fail) */
 	rc = vmm_mutex_unlock(&m1);
 	if (rc == VMM_OK) {
-		vmm_cprintf(monitor_cdev,
+		vmm_cprintf(cdev,
 			    "error: mutex unlock on unowned mutex passed\n");
-		monitor_failures++;
+		failures++;
 	}
 
 	/* Lock m1 multiple times using blocking API (This should pass) */
 	for (i = 0; i < 10; i++) {
 		rc = vmm_mutex_lock(&m1);
 		if (rc != VMM_OK) {
-			vmm_cprintf(monitor_cdev,
+			vmm_cprintf(cdev,
 				    "error: mutex lock failed i=%d\n", i);
-			monitor_failures++;
+			failures++;
 		}
 	}
 
@@ -127,27 +121,23 @@ static int mutex2_monitor_thread_main(void *data)
 	for (i = 0; i < 10; i++) {
 		rc = vmm_mutex_unlock(&m1);
 		if (rc != VMM_OK) {
-			vmm_cprintf(monitor_cdev,
+			vmm_cprintf(cdev,
 				    "error: mutex unlock failed i=%d\n", i);
-			monitor_failures++;
+			failures++;
 		}
 	}
 
 	/* Unlock m1 one more time (This should fail) */
 	rc = vmm_mutex_unlock(&m1);
 	if (rc == VMM_OK) {
-		vmm_cprintf(monitor_cdev,
-			    "error: additional mutex unlock passed\n");
-		monitor_failures++;
+		vmm_cprintf(cdev, "error: additional mutex unlock passed\n");
+		failures++;
 	}
 
 	/* Stop workers */
 	vmm_threads_stop(workers[0]);
 
-	/* Set monitor done flag */
-	monitor_done = TRUE;
-
-	return 0;
+	return (failures) ? VMM_EFAIL : 0;
 }
 
 static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
@@ -158,21 +148,7 @@ static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 	const struct vmm_cpumask *cpu_mask = vmm_cpumask_of(test_hcpu);
 
 	/* Initialise global data */
-	monitor = NULL;
-	monitor_cdev = cdev;
-	monitor_done = FALSE;
-	monitor_failures = 0;
 	memset(workers, 0, sizeof(workers));
-
-	/* Create monitor thread */
-	monitor = vmm_threads_create("mutex2_monitor",
-				     mutex2_monitor_thread_main, NULL,
-				     VMM_THREAD_DEF_PRIORITY,
-				     VMM_THREAD_DEF_TIME_SLICE);
-	if (monitor == NULL) {
-		return VMM_EFAIL;
-	}
-	vmm_threads_set_affinity(monitor, cpu_mask);
 
 	/* Create worker threads */
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -190,17 +166,9 @@ static int mutex2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 		vmm_threads_set_affinity(workers[i], cpu_mask);
 	}
 
-	/* Start monitor thread */
-	vmm_threads_start(monitor);
 
-	/* Wait till monitor is done */
-	while (!monitor_done)
-		vmm_msleep(SLEEP_MSECS);
-
-	/* Check for failures from monitor thread */
-	if (monitor_failures) {
-		ret = VMM_EFAIL;
-	}
+	/* Do the test */
+	ret = mutex2_do_test(cdev);
 
 	/* Destroy worker threads */
 destroy_workers:
@@ -210,11 +178,6 @@ destroy_workers:
 			workers[i] = NULL;
 		}
 	}
-
-	/* Destroy monitor thread */
-	vmm_threads_destroy(monitor);
-	monitor = NULL;
-	monitor_cdev = NULL;
 
 	return ret;
 }
