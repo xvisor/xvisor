@@ -20,6 +20,12 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief kern1 test implementation
  *
+ * This tests the handling of bad parameters within the kernel APIs.
+ *
+ * Other than during initialization, the only API that takes parameters
+ * which require checking (and that application code might call) is the
+ * thread create API.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/kern1.c
  *

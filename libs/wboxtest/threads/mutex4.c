@@ -20,6 +20,10 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief mutex4 test implementation
  *
+ * Stress-tests mutex lock and unlock operations. Four threads are created
+ * which are continually lock and unlock the same mutex, with no time delays
+ * between each lock/unlock.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/mutex4.c
  *

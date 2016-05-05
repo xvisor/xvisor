@@ -20,6 +20,30 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief kern3 test implementation
  *
+ * This tests the scheduling of threads at different priorities, and
+ * preemption of lower priority threads by higher priority threads.
+ *
+ * Much of this functionality is already tested implicitly by the
+ * semaphore, mutex tests etc but we repeat it here within the kernel
+ * tests for completeness.
+ *
+ * Two threads are created at different priorities, with each thread
+ * setting a running flag whenever it runs. We check that when the
+ * higher priority thread is ready to run, only the higher priority
+ * thread's running flag is set (even though the lower priority
+ * thread should also be setting it at this time). This checks that
+ * the scheduler is correctly prioritising thread execution.
+ *
+ * The test also exercises preemption, by disabling setting of the
+ * running flag in the higher priority thread for a period. During
+ * this time the higher priority thread repeatedly sleeps for one
+ * system tick then wakes up to check the sleep-request flag again.
+ * Every time the higher priority thread wakes up, it has preempted
+ * the lower priority thread (which is always running). By ensuring
+ * that the higher priority thread is able to start running again
+ * after one of these periods (through checking the running flag)
+ * we prove that the preemption has worked.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/kern3.c
  *

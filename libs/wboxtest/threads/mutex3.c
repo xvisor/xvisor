@@ -20,6 +20,27 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief mutex3 test implementation
  *
+ * With multiple threads blocking on a single mutex, this test confirms
+ * that they are woken in order based on their priority  when the mutex
+ * is released. The correct order for waking is that the higher priority
+ * threads are woken first, followed by the lower priority threads.
+ *
+ * To test this we create four threads with different priority which all
+ * wait on a single mutex:
+ *
+ * Thread 0: x priority
+ * Thread 1: x-1 priority
+ * Thread 2: x-2 priority
+ * Thread 3: x-3 priority
+ *
+ * The threads are forced to start blocking on the same mutex.
+ *
+ * We expect to see them woken up in the following order:
+ *  0, 1, 2, 3
+ *
+ * This proves the multiple blocking thread ordering in terms of the
+ * priority-queueing.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/mutex3.c
  *

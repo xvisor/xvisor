@@ -20,6 +20,10 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief mutex2 test implementation
  *
+ * This test exercises various mutex APIs including forcing the various
+ * error indications which can be returned from the APIs to ensure that
+ * handling for these corner cases have been correctly implemented.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/mutex2.c
  *
@@ -48,7 +52,7 @@
 #define NUM_THREADS			1
 
 /* Sleep delay in milliseconds */
-#define SLEEP_MSECS			10
+#define SLEEP_MSECS			(VMM_THREAD_DEF_TIME_SLICE/1000000ULL)
 
 /* Global data */
 static struct vmm_thread *workers[NUM_THREADS];

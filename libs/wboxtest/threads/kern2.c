@@ -20,6 +20,17 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief kern2 test implementation
  *
+ * This is a basic test of the thread context-switch functionality. It
+ * creates fourty local variables and schedules the thread out for one
+ * second. If context-switch save/restore is not implemented correctly,
+ * you might expect one or more of these local variables to be corrupted
+ * by the time the thread is scheduled back in.
+ *
+ * Note that this is a fairly unsophisticated test, and a lot depends
+ * on how the compiler deals with the variables, as well as what code
+ * is executed while the thread is scheduled out. It should flag up any
+ * major problems with the context-switch, however.
+ *
  * This source has been largely adapted from Atomthreads Sources:
  * <atomthreads_source>/tests/kern2.c
  *
