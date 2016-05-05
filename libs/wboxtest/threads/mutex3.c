@@ -64,13 +64,13 @@ static int mutex3_worker_thread_main(void *data)
 	/* Acquire wake mutex */
 	vmm_mutex_lock(&wake_mutex);
 
-        /*
-         * Store our thread ID in the array using the current
-         * wake_count order. The threads are holding ownership
-         * of a mutex here, which provides protection for this
-         * global data.
-         */
-        wake_order[wake_count++] = thread_id;
+	/*
+	 * Store our thread ID in the array using the current
+	 * wake_count order. The threads are holding ownership
+	 * of a mutex here, which provides protection for this
+	 * global data.
+	 */
+	wake_order[wake_count++] = thread_id;
 
 	/* Release wake mutex */
 	vmm_mutex_unlock(&wake_mutex);
