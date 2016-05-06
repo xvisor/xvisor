@@ -27,3 +27,4 @@ libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/kern3.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex2.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex3.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex4.o
+libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex5.o
