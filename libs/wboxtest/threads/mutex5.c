@@ -23,10 +23,10 @@
  * This tests basic usage of a mutex. Whichever thread holds the
  * mutex can modify the global variable "shared_data".
  *
- * The main thread first takes the mutex, then creates a second
- * thread. The second thread should block on the mutex until the
+ * The main thread first takes the mutex, then creates a worker
+ * thread. The workder thread should block on the mutex until the
  * main thread releases it. The test checks that the global
- * "shared_data" is not modified by the second thread until the
+ * "shared_data" is not modified by the worker thread until the
  * main thread releases the mutex.
  *
  * This source has been largely adapted from Atomthreads Sources:
@@ -113,7 +113,7 @@ static int mutex5_do_test(struct vmm_chardev *cdev)
 		 * sets it to one.
 		 */
 		if (shared_data != 0) {
-			vmm_cprintf(cdev, "Shared data modified\n");
+			vmm_cprintf(cdev, "error: shared data modified\n");
 			failures++;
 		}
 	}
@@ -134,7 +134,7 @@ static int mutex5_do_test(struct vmm_chardev *cdev)
 		 * sets it to one.
 		 */
 		if (shared_data != 1) {
-			vmm_cprintf(cdev, "Expected shared data modify\n");
+			vmm_cprintf(cdev, "error: shared data unmodified\n");
 			failures++;
 		}
 
@@ -164,7 +164,8 @@ static int mutex5_do_test(struct vmm_chardev *cdev)
 			 * sets it to one.
 			 */
 			if (shared_data != 0) {
-				vmm_cprintf(cdev, "Worker still modifying\n");
+				vmm_cprintf(cdev,
+					    "error: worker modifying\n");
 				failures++;
 			}
 
