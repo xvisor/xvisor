@@ -176,6 +176,12 @@ enum vmm_vcpu_states {
 #define VMM_VCPU_DEF_DEADLINE		(VMM_VCPU_DEF_TIME_SLICE * 10)
 #define VMM_VCPU_DEF_PERIODICITY	(VMM_VCPU_DEF_DEADLINE * 10)
 
+struct vmm_vcpu_resource {
+	struct dlist head;
+	const char *name;
+	void (*cleanup)(struct vmm_vcpu *vcpu, struct vmm_vcpu_resource *res);
+};
+
 struct vmm_vcpu {
 	struct dlist head;
 
@@ -221,6 +227,10 @@ struct vmm_vcpu {
 
 	/* Virtual IRQ context */
 	struct vmm_vcpu_irqs irqs;
+
+	/* Resources acquired */
+	vmm_spinlock_t res_lock;
+	struct dlist res_head;
 
 	/* Waitqueue parameters */
 	struct dlist wq_head;
@@ -315,6 +325,14 @@ const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu);
 /** Update host CPU affinity of given VCPU */
 int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 				  const struct vmm_cpumask *cpu_mask);
+
+/** Add resource to VCPU resource list */
+int vmm_manager_vcpu_resource_add(struct vmm_vcpu *vcpu,
+				  struct vmm_vcpu_resource *res);
+
+/** Remove resource from VCPU resource list */
+int vmm_manager_vcpu_resource_remove(struct vmm_vcpu *vcpu,
+				     struct vmm_vcpu_resource *res);
 
 /** Create an orphan VCPU */
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,

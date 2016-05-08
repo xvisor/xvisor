@@ -397,6 +397,63 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 	return VMM_OK;
 }
 
+int vmm_manager_vcpu_resource_add(struct vmm_vcpu *vcpu,
+				  struct vmm_vcpu_resource *res)
+{
+	irq_flags_t flags;
+
+	if (!vcpu || !res || !res->name || !res->cleanup) {
+		return VMM_EINVALID;
+	}
+
+	INIT_LIST_HEAD(&res->head);
+	vmm_spin_lock_irqsave_lite(&vcpu->res_lock, flags);
+	list_add_tail(&res->head, &vcpu->res_head);
+	vmm_spin_unlock_irqrestore_lite(&vcpu->res_lock, flags);
+
+	return VMM_OK;
+}
+
+int vmm_manager_vcpu_resource_remove(struct vmm_vcpu *vcpu,
+				     struct vmm_vcpu_resource *res)
+{
+	irq_flags_t flags;
+
+	if (!vcpu || !res) {
+		return VMM_EINVALID;
+	}
+
+	vmm_spin_lock_irqsave_lite(&vcpu->res_lock, flags);
+	list_del(&res->head);
+	vmm_spin_unlock_irqrestore_lite(&vcpu->res_lock, flags);
+
+	return VMM_OK;
+}
+
+static void vmm_manager_vcpu_resource_flush(struct vmm_vcpu *vcpu)
+{
+	irq_flags_t flags;
+	struct vmm_vcpu_resource *res;
+
+	if (!vcpu) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave_lite(&vcpu->res_lock, flags);
+
+	while (!list_empty(&vcpu->res_head)) {
+		res = list_entry(list_pop_tail(&vcpu->res_head),
+				 struct vmm_vcpu_resource, head);
+
+		vmm_spin_unlock_irqrestore_lite(&vcpu->res_lock, flags);
+		if (res->cleanup)
+			res->cleanup(vcpu, res);
+		vmm_spin_lock_irqsave_lite(&vcpu->res_lock, flags);
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&vcpu->res_lock, flags);
+}
+
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    virtual_addr_t start_pc,
 					    virtual_size_t stack_sz,
@@ -506,6 +563,10 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		goto fail_free_stack;
 	}
 
+	/* Initialize resource list */
+	INIT_SPIN_LOCK(&vcpu->res_lock);
+	INIT_LIST_HEAD(&vcpu->res_head);
+
 	/* Initialize waitqueue context */
 	INIT_LIST_HEAD(&vcpu->wq_head);
 	vcpu->wq_priv = NULL;
@@ -557,6 +618,9 @@ int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu)
 					VMM_VCPU_STATE_RESET))) {
 		return rc;
 	}
+
+	/* Flush all resources acquired by this VCPU */
+	vmm_manager_vcpu_resource_flush(vcpu);
 
 	/* Set VCPU to unknown state (This will clean scheduling context) */
 	if ((rc = vmm_manager_vcpu_set_state(vcpu,
@@ -1308,6 +1372,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			goto fail_dref_vsnode;
 		}
 
+		/* Initialize resource list */
+		INIT_SPIN_LOCK(&vcpu->res_lock);
+		INIT_LIST_HEAD(&vcpu->res_head);
+
 		/* Initialize waitqueue context */
 		INIT_LIST_HEAD(&vcpu->wq_head);
 		vcpu->wq_priv = NULL;
@@ -1486,6 +1554,9 @@ int vmm_manager_guest_destroy(struct vmm_guest *guest)
 
 		/* Release Guest VCPU lock */
 		vmm_write_unlock_irqrestore_lite(&guest->vcpu_lock, flags);
+
+		/* Flush all resources acquired by this VCPU */
+		vmm_manager_vcpu_resource_flush(vcpu);
 
 		/* Set VCPU state to unknown
 		 * (This will clean scheduling context)
