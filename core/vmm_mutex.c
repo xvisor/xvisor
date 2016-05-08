@@ -27,6 +27,27 @@
 #include <vmm_mutex.h>
 #include <arch_cpu_irq.h>
 
+void __vmm_mutex_cleanup(struct vmm_vcpu *vcpu,
+			 struct vmm_vcpu_resource *vcpu_res)
+{
+	irq_flags_t flags;
+	struct vmm_mutex *mut = container_of(vcpu_res, struct vmm_mutex, res);
+
+	if (!vcpu || !vcpu_res) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave(&mut->wq.lock, flags);
+
+	if (mut->lock && mut->owner == vcpu) {
+		mut->lock = 0;
+		mut->owner = NULL;
+		__vmm_waitqueue_wakeall(&mut->wq);
+	}
+
+	vmm_spin_unlock_irqrestore(&mut->wq.lock, flags);
+}
+
 bool vmm_mutex_avail(struct vmm_mutex *mut)
 {
 	bool ret;
@@ -70,6 +91,8 @@ int vmm_mutex_unlock(struct vmm_mutex *mut)
 		mut->lock--;
 		if (!mut->lock) {
 			mut->owner = NULL;
+			vmm_manager_vcpu_resource_remove(current_vcpu,
+							 &mut->res);
 			rc = __vmm_waitqueue_wakeall(&mut->wq);
 			if (rc == VMM_ENOENT) {
 				rc = VMM_OK;
@@ -96,6 +119,7 @@ int vmm_mutex_trylock(struct vmm_mutex *mut)
 
 	if (!mut->lock) {
 		mut->lock++;
+		vmm_manager_vcpu_resource_add(current_vcpu, &mut->res);
 		mut->owner = current_vcpu;
 		ret = 1;
 	} else if (mut->owner == current_vcpu) {
@@ -138,8 +162,14 @@ static int mutex_lock_common(struct vmm_mutex *mut, u64 *timeout)
 		}
 	}
 	if (rc == VMM_OK) {
-		mut->lock++;
-		mut->owner = current_vcpu;
+		if (!mut->lock) {
+			mut->lock = 1;
+			vmm_manager_vcpu_resource_add(current_vcpu,
+						      &mut->res);
+			mut->owner = current_vcpu;
+		} else {
+			mut->lock++;
+		}
 	}
 
 	vmm_spin_unlock_irqrestore(&mut->wq.lock, flags);
