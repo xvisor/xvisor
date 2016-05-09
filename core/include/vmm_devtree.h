@@ -56,6 +56,8 @@
 #define VMM_DEVTREE_SIZE_CELLS_ATTR_NAME	"#size-cells"
 #define VMM_DEVTREE_PHANDLE_ATTR_NAME		"phandle"
 
+#define VMM_DEVTREE_DEBUG_ATTR_NAME		"debug"
+
 #define VMM_DEVTREE_CHOSEN_NODE_NAME		"chosen"
 #define VMM_DEVTREE_CONSOLE_ATTR_NAME		"console"
 #define VMM_DEVTREE_RTCDEV_ATTR_NAME		"rtcdev"

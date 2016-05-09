@@ -29,6 +29,7 @@
 #include <vmm_mutex.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
+#include <vmm_devemu_debug.h>
 #include <libs/stringlib.h>
 
 struct vmm_devemu_guest_irq {
@@ -49,6 +50,65 @@ struct vmm_devemu_ctrl {
 };
 
 static struct vmm_devemu_ctrl dectrl;
+
+static inline const char *get_guest_name(const struct vmm_emudev *edev)
+{
+	return edev->reg->aspace->guest->name;
+}
+
+/*
+ * Debug interface
+ */
+
+static inline void debug_probe(const struct vmm_emudev *edev)
+{
+	if (vmm_devemu_debug_probe(edev)) {
+		vmm_linfo("[%s/%s] Probing device emulator\n",
+			get_guest_name(edev), edev->node->name);
+	}
+}
+
+static inline void debug_reset(const struct vmm_emudev *edev)
+{
+	if (vmm_devemu_debug_reset(edev)) {
+		vmm_linfo("[%s/%s] Resetting device emulator\n",
+			get_guest_name(edev), edev->node->name);
+	}
+}
+
+static inline void debug_remove(const struct vmm_emudev *edev)
+{
+	if (vmm_devemu_debug_remove(edev)) {
+		vmm_linfo("[%s/%s] Removing device emulator\n",
+			get_guest_name(edev), edev->node->name);
+	}
+}
+
+static inline void debug_read(const struct vmm_emudev *edev,
+				physical_addr_t offset,
+				int bytes,
+				u64 val)
+{
+	if (vmm_devemu_debug_read(edev)) {
+		vmm_linfo("[%s/%s] Reading %i bytes at "
+			"0x%"PRIPADDR": 0x%"PRIx64"\n",
+			get_guest_name(edev), edev->node->name,
+			bytes, offset + edev->reg->gphys_addr, val);
+	}
+}
+
+static inline void debug_write(const struct vmm_emudev *edev,
+				physical_addr_t offset,
+				int bytes,
+				u64 val)
+{
+	if (vmm_devemu_debug_write(edev)) {
+		vmm_linfo("[%s/%s] Wrote %i bytes at "
+			"0x%"PRIPADDR": 0x%"PRIx64"\n",
+			get_guest_name(edev), edev->node->name,
+			bytes, offset + edev->reg->gphys_addr, val);
+	}
+}
 
 static int devemu_doread(struct vmm_emudev *edev,
 			 physical_addr_t offset,
@@ -71,6 +131,7 @@ static int devemu_doread(struct vmm_emudev *edev,
 	case 1:
 		if (edev->emu->read8) {
 			rc = edev->emu->read8(edev, offset, dst);
+			debug_read(edev, offset, sizeof(u8), *((u8 *)dst));
 		} else {
 			vmm_printf("%s: edev=%s does not have read8()\n",
 				   __func__, edev->node->name);
@@ -80,6 +141,7 @@ static int devemu_doread(struct vmm_emudev *edev,
 	case 2:
 		if (edev->emu->read16) {
 			rc = edev->emu->read16(edev, offset, &data16);
+			debug_read(edev, offset, sizeof(u16), data16);
 		} else {
 			vmm_printf("%s: edev=%s does not have read16()\n",
 				   __func__, edev->node->name);
@@ -117,6 +179,7 @@ static int devemu_doread(struct vmm_emudev *edev,
 	case 4:
 		if (edev->emu->read32) {
 			rc = edev->emu->read32(edev, offset, &data32);
+			debug_read(edev, offset, sizeof(u32), data32);
 		} else {
 			vmm_printf("%s: edev=%s does not have read32()\n",
 				   __func__, edev->node->name);
@@ -154,6 +217,7 @@ static int devemu_doread(struct vmm_emudev *edev,
 	case 8:
 		if (edev->emu->read64) {
 			rc = edev->emu->read64(edev, offset, &data64);
+			debug_read(edev, offset, sizeof(u64), data64);
 		} else {
 			vmm_printf("%s: edev=%s does not have read64()\n",
 				   __func__, edev->node->name);
@@ -224,6 +288,7 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 	case 1:		
 		if (edev->emu->write8) {
 			rc = edev->emu->write8(edev, offset, *((u8 *)src));
+			debug_write(edev, offset, sizeof(u8), *((u8 *)src));
 		} else {
 			vmm_printf("%s: edev=%s does not have write8()\n",
 				   __func__, edev->node->name);
@@ -254,6 +319,7 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		};
 		if (edev->emu->write16) {
 			rc = edev->emu->write16(edev, offset, data16);
+			debug_write(edev, offset, sizeof(u16), data16);
 		} else {
 			vmm_printf("%s: edev=%s does not have write16()\n",
 				   __func__, edev->node->name);
@@ -284,6 +350,7 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		};
 		if (edev->emu->write32) {
 			rc = edev->emu->write32(edev, offset, data32);
+			debug_write(edev, offset, sizeof(u32), data32);
 		} else {
 			vmm_printf("%s: edev=%s does not have write32()\n",
 				   __func__, edev->node->name);
@@ -314,6 +381,7 @@ static int devemu_dowrite(struct vmm_emudev *edev,
 		};
 		if (edev->emu->write64) {
 			rc = edev->emu->write64(edev, offset, data64);
+			debug_write(edev, offset, sizeof(u64), data64);
 		} else {
 			vmm_printf("%s: edev=%s does not have write64()\n",
 				   __func__, edev->node->name);
@@ -875,10 +943,32 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
 	if (edev && edev->emu->reset) {
+		debug_reset(edev);
 		return edev->emu->reset(edev);
 	}
 
 	return VMM_OK;
+}
+
+static int set_debug_info(struct vmm_emudev *edev)
+{
+	int rc = VMM_OK;
+#ifdef CONFIG_DEVEMU_DEBUG
+	char const *const attr = VMM_DEVTREE_DEBUG_ATTR_NAME;
+	u32 i;
+
+	i = vmm_devtree_attrlen(edev->node, attr) / sizeof(u32);
+	if (i > 0) {
+		rc = vmm_devtree_read_u32_atindex(edev->node,
+					attr, &edev->debug_info, 0);
+		if (VMM_OK != rc) {
+			edev->debug_info = VMM_DEVEMU_DEBUG_NONE;
+		}
+	} else {
+		edev->debug_info = VMM_DEVEMU_DEBUG_NONE;
+	}
+#endif
+	return rc;
 }
 
 int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
@@ -920,9 +1010,12 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		einst->emu = emu;
 		einst->priv = NULL;
 		reg->devemu_priv = einst;
+		set_debug_info(einst);
 #if defined(CONFIG_VERBOSE_MODE)
 		vmm_printf("Probe edevice %s/%s\n",
 			   guest->name, reg->node->name);
+#else
+		debug_probe(einst);
 #endif
 		vmm_mutex_unlock(&dectrl.emu_lock);
 		if ((rc = emu->probe(guest, einst, match))) {
@@ -934,6 +1027,7 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 			reg->devemu_priv = NULL;
 			return rc;
 		}
+		debug_reset(einst);
 		if ((rc = emu->reset(einst))) {
 			vmm_printf("%s: %s/%s reset error %d\n",
 			__func__, guest->name, reg->node->name, rc);
@@ -975,6 +1069,7 @@ int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
 	if (reg->devemu_priv) {
 		einst = reg->devemu_priv;
 
+		debug_remove(einst);
 		if ((rc = einst->emu->remove(einst))) {
 			return rc;
 		}
