@@ -464,6 +464,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 {
 	u32 vnum;
 	struct vmm_vcpu *vcpu = NULL;
+	bool locked;
 
 	/* Sanity checks */
 	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
@@ -482,7 +483,10 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	 * create boot-time orphan VCPUs.
 	 */
 	if (vmm_timer_started()) {
+		locked = TRUE;
 		vmm_manager_lock();
+	} else {
+		locked = FALSE;
 	}
 
 	/* Find the next available vcpu */
@@ -518,7 +522,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	mngr.vcpu_count++;
 
 	/* Release manager lock */
-	if (vmm_timer_started()) {
+	if (locked) {
 		vmm_manager_unlock();
 	}
 
@@ -586,13 +590,16 @@ fail_free_stack:
 fail_list_del:
 	if (vmm_timer_started()) {
 		vmm_manager_lock();
+		locked = TRUE;
+	} else {
+		locked = FALSE;
 	}
 	mngr.vcpu_count--;
 	list_del(&vcpu->head);
 fail_avail:
 	mngr.vcpu_avail_array[vcpu->id] = TRUE;
 fail:
-	if (vmm_timer_started()) {
+	if (locked) {
 		vmm_manager_unlock();
 	}
 	return NULL;
