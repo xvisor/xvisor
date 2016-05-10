@@ -143,7 +143,7 @@ static int imx_ccm_emulator_probe(struct vmm_guest *guest,
 
 	ccm = vmm_malloc(sizeof (ccm_t));
 	if (NULL == ccm) {
-		vmm_lerror("CCM: Failed to allocate structure memory\n");
+		vmm_lerror(NULL, "CCM: Failed to allocate memory\n");
 		return VMM_ENOMEM;
 	}
 	edev->priv = ccm;

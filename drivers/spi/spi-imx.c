@@ -792,7 +792,7 @@ static int spi_imx_probe(struct vmm_device *dev,
 	u32 num_cs;
 
 	if (!vmm_devtree_is_available(dev->of_node)) {
-		vmm_linfo("%s: device is disabled\n", dev->name);
+		dev_info(dev, "device is disabled\n");
 		return ret;
 	}
 

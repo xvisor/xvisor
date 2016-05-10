@@ -366,8 +366,7 @@ struct net_device *alloc_etherdev(int sizeof_priv);
 
 #define netdev_msg(level, ndev, msg...)					\
 	do {								\
-		vmm_lprintf(level, "%s: ", ndev->name);			\
-		vmm_lprintf(level, msg);				\
+		vmm_lprintf(level, ndev->name, msg);			\
 	} while (0);
 
 #define netdev_info(ndev, msg...)				\

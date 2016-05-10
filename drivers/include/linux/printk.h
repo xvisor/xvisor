@@ -18,44 +18,34 @@
 #if defined(DEV_DEBUG)
 #define dev_dbg(dev, args...)						\
 	do {								\
-		vmm_lnotice("%s: ", (dev)->name);			\
-		vmm_lnotice(args);					\
+		vmm_lnotice((dev)->name, args);				\
 	} while (0)
 #else
 #define dev_dbg(...)
 #endif
 
 #define dev_info(dev, args...)		do { \
-					vmm_linfo("%s: ", (dev)->name); \
-					vmm_linfo(args); \
+					vmm_linfo((dev)->name, args); \
 					} while (0)
 
 #define dev_warn(dev, args...)		do { \
-					vmm_lwarning("WARNING: %s: ", \
-						     (dev)->name);    \
-					vmm_lwarning(args);	      \
+					vmm_lwarning((dev)->name, args); \
 					} while (0)
 
 #define dev_err(dev, args...)		do { \
-					vmm_lerror("ERROR: %s: ", \
-						   (dev)->name);  \
-					vmm_lerror(args); \
+					vmm_lerror((dev)->name, args); \
 					} while (0)
 
 #define dev_crit(dev, args...)		do { \
-					vmm_lcritical("CRITCAL: %s: ", \
-						      (dev)->name);    \
-					vmm_lcritical(args); \
+					vmm_lcritical((dev)->name, args); \
 					} while (0)
 
 #define dev_notice(dev, args...)	do { \
-					vmm_lnotice("NOTICE: %s: ", \
-						    (dev)->name);   \
-					vmm_lnotice(args); \
+					vmm_lnotice((dev)->name, args); \
 					} while (0)
 
 #define dev_printk(level, dev, args...)	do { \
-					vmm_printf("%s: ", (dev)->name); \
+					vmm_printf("%s ", (dev)->name); \
 					vmm_printf(args); \
 					} while (0)
 
@@ -66,20 +56,20 @@
 #endif
 
 #define pr_emerg(fmt, ...) \
-	vmm_lemergency(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lemergency(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_alert(fmt, ...) \
-	vmm_lalert(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lalert(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_crit(fmt, ...) \
-	vmm_lcritical(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lcritical(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_err(fmt, ...) \
-	vmm_lerror(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lerror(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_warning(fmt, ...) \
-	vmm_lwarning(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lwarning(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_warn pr_warning
 #define pr_notice(fmt, ...) \
-	vmm_lnotice(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_lnotice(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_info(fmt, ...) \
-	vmm_linfo(pr_fmt(fmt), ##__VA_ARGS__)
+	vmm_linfo(NULL, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_cont(fmt, ...) \
 	vmm_printf(pr_fmt(fmt), ##__VA_ARGS__)
 
@@ -106,6 +96,6 @@
 #endif
 
 #define pr_err_once(msg...) \
-	vmm_lerror_once(msg)
+	vmm_lerror_once(NULL, msg)
 
 #endif

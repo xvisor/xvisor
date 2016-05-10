@@ -72,8 +72,8 @@ struct net_device *alloc_etherdev_mqs(int sizeof_priv, unsigned int txqs,
 	struct net_device *ndev = NULL;
 
 	if (1 != txqs && 1 != rxqs) {
-		vmm_lwarning("Warning: Multi-queue network is not supported "
-			     "yet.");
+		vmm_lwarning(NULL,
+			     "Multi-queue network is not supported yet.");
 	}
 	ndev = alloc_etherdev(sizeof_priv);
 	if (!ndev)

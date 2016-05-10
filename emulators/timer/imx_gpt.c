@@ -152,8 +152,8 @@ static int imx_gpt_emulator_read(struct vmm_emudev *edev,
 		*dst = imx_gpt_cnt(gpt);
 		break;
 	default:
-		vmm_lwarning("i.MX GPT read at unknown register 0x%08x\n",
-			     offset);
+		vmm_lwarning(NULL,
+			"i.MX GPT read at unknown register 0x%08x\n", offset);
 	}
 	vmm_read_unlock(&gpt->lock);
 

@@ -208,7 +208,7 @@ static u32 imx_anatop_digprog(void)
 
 	/* Is the native system not an i.MX6? */
 	if (FALSE == vmm_devtree_is_compatible(root, "freescale,imx6")) {
-		vmm_linfo("Anatop: Not native i.MX6 system, emulating"
+		vmm_linfo(NULL, "Anatop: Not native i.MX6 system, emulating"
 			  "digprog\n");
 		goto out;
 	}
@@ -216,12 +216,12 @@ static u32 imx_anatop_digprog(void)
 	/* Native i.MX6 system: Get the real value */
 	node = vmm_devtree_find_compatible(root, NULL, "fsl,imx6q-anatop");
 	if (NULL == node) {
-		vmm_lwarning("Anatop: Failed to find anatop node\n");
+		vmm_lwarning(NULL, "Anatop: Failed to find anatop node\n");
 		goto out;
 	}
 
 	if (VMM_OK != vmm_devtree_regmap(node, &anatop, 0)) {
-		vmm_lwarning("Anatop: Failed to find anatop node\n");
+		vmm_lwarning(NULL, "Anatop: Failed to find anatop node\n");
 	}
 
 	/* Native test, do not use priv->digprog_offset */
@@ -236,7 +236,7 @@ static u32 imx_anatop_digprog(void)
 
 out:
 	vmm_devtree_dref_node(root);
-	vmm_linfo("Anatop: Digprog 0x%08x\n", val);
+	vmm_linfo(NULL, "Anatop: Digprog 0x%08x\n", val);
 	return val;
 }
 

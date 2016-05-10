@@ -40,6 +40,60 @@
 /* the following should be enough for 32 bit int */
 #define PRINT_BUF_LEN	64
 
+#ifdef CONFIG_LOG_ANSI_COLORS
+# define VMM_LOG_COLOR_RESET		"\033[0m"
+# define VMM_LOG_COLOR_LIGHTRED		"\033[31;1m"
+# define VMM_LOG_COLOR_RED		"\033[31m"
+# define VMM_LOG_COLOR_LIGHTBLUE	"\033[34;1m"
+# define VMM_LOG_COLOR_BLUE		"\033[34m"
+# define VMM_LOG_COLOR_GREEN		"\033[32;1m"
+# define VMM_LOG_COLOR_YELLOW		"\033[33;1m"
+# define VMM_LOG_COLOR_ORANGE		"\033[0;33m"
+# define VMM_LOG_COLOR_WHITE		"\033[37;1m"
+# define VMM_LOG_COLOR_LIGHTCYAN	"\033[36;1m"
+# define VMM_LOG_COLOR_CYAN		"\033[36m"
+# define VMM_LOG_COLOR_REVERSE		"\033[7m"
+#else /* ! CONFIG_LOG_ANSI_COLORS */
+# define VMM_LOG_COLOR_RESET		""
+# define VMM_LOG_COLOR_LIGHTRED		""
+# define VMM_LOG_COLOR_RED		""
+# define VMM_LOG_COLOR_LIGHTBLUE	""
+# define VMM_LOG_COLOR_BLUE		""
+# define VMM_LOG_COLOR_GREEN		""
+# define VMM_LOG_COLOR_YELLOW		""
+# define VMM_LOG_COLOR_ORANGE		""
+# define VMM_LOG_COLOR_WHITE		""
+# define VMM_LOG_COLOR_LIGHTCYAN	""
+# define VMM_LOG_COLOR_CYAN		""
+# define VMM_LOG_COLOR_REVERSE		""
+#endif /* CONFIG_LOG_ANSI_COLORS */
+
+/* Strings used when prefixing a log level */
+#define VMM_LOG_INFO			\
+	VMM_LOG_COLOR_CYAN     VMM_LOG_COLOR_REVERSE "INFO:"
+#define VMM_LOG_NOTICE			\
+	VMM_LOG_COLOR_GREEN    VMM_LOG_COLOR_REVERSE "NOTE:"
+#define VMM_LOG_WARNING			\
+	VMM_LOG_COLOR_YELLOW   VMM_LOG_COLOR_REVERSE "WARNING:"
+#define VMM_LOG_ERROR			\
+	VMM_LOG_COLOR_ORANGE   VMM_LOG_COLOR_REVERSE "ERROR:"
+#define VMM_LOG_CRITICAL		\
+	VMM_LOG_COLOR_RED      VMM_LOG_COLOR_REVERSE "CRITICAL:"
+#define VMM_LOG_ALERT			\
+	VMM_LOG_COLOR_LIGHTRED VMM_LOG_COLOR_REVERSE "ALERT:"
+#define VMM_LOG_EMERGENCY		\
+	VMM_LOG_COLOR_LIGHTRED VMM_LOG_COLOR_REVERSE "FATAL:"
+
+static char const* const _log_prefixes[] = {
+	[VMM_LOGLEVEL_EMERGENCY] = VMM_LOG_EMERGENCY,
+	[VMM_LOGLEVEL_ALERT]     = VMM_LOG_ALERT,
+	[VMM_LOGLEVEL_CRITICAL]  = VMM_LOG_CRITICAL ,
+	[VMM_LOGLEVEL_ERROR]     = VMM_LOG_ERROR,
+	[VMM_LOGLEVEL_WARNING]   = VMM_LOG_WARNING,
+	[VMM_LOGLEVEL_NOTICE]    = VMM_LOG_NOTICE,
+	[VMM_LOGLEVEL_INFO]      = VMM_LOG_INFO,
+};
+
 struct vmm_stdio_ctrl {
 	atomic_t loglevel;
         vmm_spinlock_t lock;
@@ -414,12 +468,46 @@ int vmm_snprintf(char *out, u32 out_sz, const char *format, ...)
 	return retval;
 }
 
+static int vmm_cvprintf(struct vmm_chardev *cdev,
+			const char *format, va_list args)
+{
+	return print(NULL, NULL, (cdev) ? cdev : stdio_ctrl.dev, format, args);
+}
+
 int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 {
 	va_list args;
 	int retval;
 	va_start(args, format);
-	retval = print(NULL, NULL, (cdev) ? cdev : stdio_ctrl.dev, format, args);
+	retval = vmm_cvprintf(cdev, format, args);
+	va_end(args);
+	return retval;
+}
+
+static int vmm_lvprintf(enum vmm_print_level level,
+			const char *prefix, const char *format, va_list args)
+{
+	int retval = 0;
+	struct vmm_chardev *const cdev = stdio_ctrl.dev;
+
+	if (vmm_stdio_loglevel() >= level) {
+		retval = vmm_cprintf(cdev, "%s%s %s%s",
+				     _log_prefixes[level],
+				     VMM_LOG_COLOR_RESET,
+				     (prefix) ? prefix : "",
+				     (prefix) ? ": " : "");
+		retval += vmm_cvprintf(cdev, format, args);
+	}
+	return retval;
+}
+
+int vmm_lprintf(enum vmm_print_level level,
+		const char *prefix, const char *format, ...)
+{
+	int retval;
+	va_list args;
+	va_start(args, format);
+	retval = vmm_lvprintf(level, prefix, format, args);
 	va_end(args);
 	return retval;
 }
@@ -427,8 +515,9 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 void __noreturn __vmm_panic(const char *format, ...)
 {
 	va_list args;
+
 	va_start(args, format);
-	print(NULL, NULL, stdio_ctrl.dev, format, args);
+	vmm_lvprintf(VMM_LOGLEVEL_EMERGENCY, NULL, format, args);
 	va_end(args);
 	vmm_hang();
 }

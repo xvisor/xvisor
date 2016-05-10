@@ -60,8 +60,7 @@
 
 #define sp805_msg(LEVEL, SP805, FORMAT...)				\
 	do {								\
-		vmm_lprintf(LEVEL, "%s: ", EMU_NAME(sp805->edev));	\
-		vmm_lprintf(LEVEL, FORMAT);				\
+		vmm_lprintf(LEVEL, EMU_NAME(sp805->edev), FORMAT);	\
 	} while (0)
 
 #ifdef DEBUG

@@ -63,24 +63,24 @@ static inline const char *get_guest_name(const struct vmm_emudev *edev)
 static inline void debug_probe(const struct vmm_emudev *edev)
 {
 	if (vmm_devemu_debug_probe(edev)) {
-		vmm_linfo("[%s/%s] Probing device emulator\n",
-			get_guest_name(edev), edev->node->name);
+		vmm_linfo(NULL, "[%s/%s] Probing device emulator\n",
+			  get_guest_name(edev), edev->node->name);
 	}
 }
 
 static inline void debug_reset(const struct vmm_emudev *edev)
 {
 	if (vmm_devemu_debug_reset(edev)) {
-		vmm_linfo("[%s/%s] Resetting device emulator\n",
-			get_guest_name(edev), edev->node->name);
+		vmm_linfo(NULL, "[%s/%s] Resetting device emulator\n",
+			  get_guest_name(edev), edev->node->name);
 	}
 }
 
 static inline void debug_remove(const struct vmm_emudev *edev)
 {
 	if (vmm_devemu_debug_remove(edev)) {
-		vmm_linfo("[%s/%s] Removing device emulator\n",
-			get_guest_name(edev), edev->node->name);
+		vmm_linfo(NULL, "[%s/%s] Removing device emulator\n",
+			  get_guest_name(edev), edev->node->name);
 	}
 }
 
@@ -90,10 +90,10 @@ static inline void debug_read(const struct vmm_emudev *edev,
 				u64 val)
 {
 	if (vmm_devemu_debug_read(edev)) {
-		vmm_linfo("[%s/%s] Reading %i bytes at "
-			"0x%"PRIPADDR": 0x%"PRIx64"\n",
-			get_guest_name(edev), edev->node->name,
-			bytes, offset + edev->reg->gphys_addr, val);
+		vmm_linfo(NULL, "[%s/%s] Reading %i bytes at "
+			  "0x%"PRIPADDR": 0x%"PRIx64"\n",
+			  get_guest_name(edev), edev->node->name,
+			  bytes, offset + edev->reg->gphys_addr, val);
 	}
 }
 
@@ -103,10 +103,10 @@ static inline void debug_write(const struct vmm_emudev *edev,
 				u64 val)
 {
 	if (vmm_devemu_debug_write(edev)) {
-		vmm_linfo("[%s/%s] Wrote %i bytes at "
-			"0x%"PRIPADDR": 0x%"PRIx64"\n",
-			get_guest_name(edev), edev->node->name,
-			bytes, offset + edev->reg->gphys_addr, val);
+		vmm_linfo(NULL, "[%s/%s] Wrote %i bytes at "
+			  "0x%"PRIPADDR": 0x%"PRIx64"\n",
+			  get_guest_name(edev), edev->node->name,
+			  bytes, offset + edev->reg->gphys_addr, val);
 	}
 }
 

@@ -30,7 +30,7 @@
 #define BUG_ON(x)							\
 	do {								\
 		if (x) {						\
-			vmm_printf("Bug in %s() at %s:%d\n",		\
+			vmm_lemergency(NULL, "Bug in %s() at %s:%d\n",	\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
 			__vmm_panic("Please reset the system ...\n");	\
@@ -42,7 +42,7 @@
 #define WARN_ON(x)							\
 	({								\
 		if (x) {						\
-			vmm_printf("Warning in %s() at %s:%d\n",	\
+			vmm_lwarning(NULL, "%s() at %s:%d\n",		\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
 		}							\
@@ -52,8 +52,8 @@
 #define WARN(x, msg...)							\
 	({								\
 		if (x) {						\
-			vmm_printf("Warning: " msg);			\
-			vmm_printf("Warning in %s() at %s:%d\n",	\
+			vmm_lwarning(NULL, msg);			\
+			vmm_lwarning(NULL, "%s() at %s:%d\n",		\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
 		}							\
@@ -117,10 +117,12 @@ void vmm_puts(char *str);
 int __printf(2, 3) vmm_sprintf(char *out, const char *format, ...);
 
 /** Print formatted string to another string */
-int __printf(3, 4) vmm_snprintf(char *out, u32 out_sz, const char *format, ...);
+int __printf(3, 4) vmm_snprintf(char *out, u32 out_sz,
+				const char *format, ...);
 
 /** Print formatted string to character device */
-int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...);
+int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev,
+				const char *format, ...);
 
 /** Print formatted string to default device */
 #define vmm_printf(args...)	vmm_cprintf(NULL, args)
@@ -136,34 +138,40 @@ enum vmm_print_level {
 	VMM_LOGLEVEL_INFO=6,
 };
 
-/** Print formatted string to default device if current
- *  stdio log level is greater than or equal to specified level
- */
-#define vmm_lprintf(level, msg...) \
-	do {								\
-		if (vmm_stdio_loglevel() >= (level))			\
-			vmm_printf(msg);				\
-	} while (0)
+/** Print formatted string to character device */
+int __printf(3, 4) vmm_lprintf(enum vmm_print_level level,
+			       const char *prefix, const char *format, ...);
 
-#define vmm_lemergency(msg...)	vmm_lprintf(VMM_LOGLEVEL_EMERGENCY, msg)
-#define vmm_lalert(msg...)	vmm_lprintf(VMM_LOGLEVEL_ALERT, msg)
-#define vmm_lcritical(msg...)	vmm_lprintf(VMM_LOGLEVEL_CRITICAL, msg)
-#define vmm_lerror(msg...)	vmm_lprintf(VMM_LOGLEVEL_ERROR, msg)
-#define vmm_lwarning(msg...)	vmm_lprintf(VMM_LOGLEVEL_WARNING, msg)
-#define vmm_lnotice(msg...)	vmm_lprintf(VMM_LOGLEVEL_NOTICE, msg)
-#define vmm_linfo(msg...)	vmm_lprintf(VMM_LOGLEVEL_INFO, msg)
-
-#define vmm_lprintf_once(level, msg...)				\
+#define vmm_lprintf_once(level, prefix, msg...)			\
 	({							\
 		static bool __print_once __read_mostly;		\
                                                                 \
 		if (!__print_once) {				\
 			__print_once = TRUE;			\
-			vmm_lprintf(level, msg);		\
+			vmm_lprintf(level, prefix, msg);	\
 		}						\
 	})
 
-#define vmm_lerror_once(msg...)	vmm_lprintf_once(VMM_LOGLEVEL_ERROR, msg)
+/** Print formatted string to default device if current
+ *  stdio log level is greater than or equal to specified level
+ */
+
+#define vmm_lemergency(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_EMERGENCY, prefix, msg)
+#define vmm_lalert(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_ALERT, prefix, msg)
+#define vmm_lcritical(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_CRITICAL, prefix, msg)
+#define vmm_lerror(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_ERROR, prefix, msg)
+#define vmm_lwarning(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_WARNING, prefix, msg)
+#define vmm_lnotice(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_NOTICE, prefix, msg)
+#define vmm_linfo(prefix, msg...)		\
+	vmm_lprintf(VMM_LOGLEVEL_INFO, prefix, msg)
+#define vmm_lerror_once(prefix, msg...)		\
+	vmm_lprintf_once(VMM_LOGLEVEL_ERROR, prefix, msg)
 
 /** Panic & Print formatted message
  * Note: This function is less verbose so perfer vmm_panic().
@@ -172,7 +180,7 @@ void __noreturn __vmm_panic(const char *format, ...);
 
 #define vmm_panic(msg...)						\
 	do {								\
-		vmm_printf(msg);					\
+		vmm_lemergency(NULL, msg);				\
 		dump_stacktrace();					\
 		__vmm_panic("Please reset the system ...\n");		\
 	} while(0)
