@@ -48,7 +48,8 @@ struct anatop_priv_state {
 
 static int imx_anatop_emulator_read(struct vmm_emudev *edev,
 				    physical_addr_t offset,
-				    u32 *dst)
+				    u32 *dst,
+				    u32 size)
 {
 	struct anatop_priv_state *priv = edev->priv;
 	u32 val = 0;
@@ -176,7 +177,8 @@ static int imx_anatop_emulator_read(struct vmm_emudev *edev,
 static int imx_anatop_emulator_write(struct vmm_emudev *edev,
 				     physical_addr_t offset,
 				     u32 regmask,
-				     u32 regval)
+				     u32 regval,
+				     u32 size)
 {
 	/* struct anatop_priv_state *priv = arg; */
 

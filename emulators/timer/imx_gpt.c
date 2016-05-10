@@ -118,7 +118,8 @@ static void _imx_gpt_reset(struct gpt_t *gpt)
 
 static int imx_gpt_emulator_read(struct vmm_emudev *edev,
 				 physical_addr_t offset,
-				 u32 *dst)
+				 u32 *dst,
+				 u32 size)
 {
 	struct gpt_t *gpt = edev->priv;
 	u16 reg = offset & ~0x3;
@@ -239,7 +240,8 @@ static void _imx_gpt_cnt_update(struct gpt_t *gpt,
 static int imx_gpt_emulator_write(struct vmm_emudev *edev,
 				  physical_addr_t offset,
 				  u32 regmask,
-				  u32 regval)
+				  u32 regval,
+				  u32 size)
 {
 	struct gpt_t *gpt = edev->priv;
 	u32 idx = 0;

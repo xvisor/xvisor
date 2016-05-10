@@ -75,11 +75,13 @@ struct vmm_emulator {
 		        u64 src);
 	int (*read_simple) (struct vmm_emudev *edev,
 			    physical_addr_t offset,
-			    u32 *dst);
+			    u32 *dst,
+			    u32 size);
 	int (*write_simple) (struct vmm_emudev *edev,
 			     physical_addr_t offset,
 			     u32 regmask,
-			     u32 regval);
+			     u32 regval,
+			     u32 size);
 };
 
 int vmm_devemu_simple_read8(struct vmm_emudev *edev,

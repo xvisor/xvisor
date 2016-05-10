@@ -92,7 +92,8 @@ typedef struct		ccm_t {
 
 static int imx_ccm_emulator_read(struct vmm_emudev *edev,
 				 physical_addr_t offset,
-				 u32 *dst)
+				 u32 *dst,
+				 u32 size)
 {
 	ccm_t *ccm = edev->priv;
 	u16 reg = offset >> 2;
@@ -107,7 +108,8 @@ static int imx_ccm_emulator_read(struct vmm_emudev *edev,
 static int imx_ccm_emulator_write(struct vmm_emudev *edev,
 				  physical_addr_t offset,
 				  u32 regmask,
-				  u32 regval)
+				  u32 regval,
+				  u32 size)
 {
 	ccm_t *ccm = edev->priv;
 	u16 reg = offset >> 2;

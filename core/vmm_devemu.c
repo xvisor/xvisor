@@ -754,7 +754,7 @@ int vmm_devemu_simple_read8(struct vmm_emudev *edev,
 	int rc;
 	u32 regval = 0x0;
 
-	rc = edev->emu->read_simple(edev, offset, &regval);
+	rc = edev->emu->read_simple(edev, offset, &regval, sizeof(u8));
 	if (!rc) {
 		*dst = regval & 0xFF;
 	}
@@ -769,7 +769,7 @@ int vmm_devemu_simple_read16(struct vmm_emudev *edev,
 	int rc;
 	u32 regval = 0x0;
 
-	rc = edev->emu->read_simple(edev, offset, &regval);
+	rc = edev->emu->read_simple(edev, offset, &regval, sizeof(u16));
 	if (!rc) {
 		*dst = regval & 0xFFFF;
 	}
@@ -781,28 +781,28 @@ int vmm_devemu_simple_read32(struct vmm_emudev *edev,
 			     physical_addr_t offset,
 			     u32 *dst)
 {
-	return edev->emu->read_simple(edev, offset, dst);
+	return edev->emu->read_simple(edev, offset, dst, sizeof(u32));
 }
 
 int vmm_devemu_simple_write8(struct vmm_emudev *edev,
 			     physical_addr_t offset,
 			     u8 src)
 {
-	return edev->emu->write_simple(edev, offset, 0xFFFFFF00, src);
+	return edev->emu->write_simple(edev, offset, 0xFFFFFF00, src, sizeof(u8));
 }
 
 int vmm_devemu_simple_write16(struct vmm_emudev *edev,
 			      physical_addr_t offset,
 			      u16 src)
 {
-	return edev->emu->write_simple(edev, offset, 0xFFFF0000, src);
+	return edev->emu->write_simple(edev, offset, 0xFFFF0000, src, sizeof(u16));
 }
 
 int vmm_devemu_simple_write32(struct vmm_emudev *edev,
 			      physical_addr_t offset,
 			      u32 src)
 {
-	return edev->emu->write_simple(edev, offset, 0x00000000, src);
+	return edev->emu->write_simple(edev, offset, 0x00000000, src, sizeof(u32));
 }
 
 int vmm_devemu_unregister_emulator(struct vmm_emulator *emu)
