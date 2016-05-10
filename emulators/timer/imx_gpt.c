@@ -375,6 +375,10 @@ static int imx_gpt_emulator_probe(struct vmm_guest *guest,
 
 static int imx_gpt_emulator_remove(struct vmm_emudev *edev)
 {
+	struct gpt_t *gpt = edev->priv;
+	vmm_free(gpt);
+	edev->priv = NULL;
+
 	return VMM_OK;
 }
 
