@@ -41,6 +41,7 @@ static void cmd_vdisk_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vdisk help\n");
 	vmm_cprintf(cdev, "   vdisk list\n");
+	vmm_cprintf(cdev, "   vdisk info <vdisk_name>\n");
 	vmm_cprintf(cdev, "   vdisk detach <vdisk_name>\n");
 	vmm_cprintf(cdev, "   vdisk attach <vdisk_name> <block_device_name>\n");
 }
@@ -70,6 +71,28 @@ static void cmd_vdisk_list(struct vmm_chardev *cdev)
 	vmm_vdisk_iterate(NULL, cdev, cmd_vdisk_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "----------------------------------------\n");
+}
+
+static int cmd_vdisk_info(struct vmm_chardev *cdev,
+			  const char *vdisk_name)
+{
+	struct vmm_vdisk *vdisk = vmm_vdisk_find(vdisk_name);
+	if (!vdisk) {
+		vmm_cprintf(cdev, "Failed to find virtual disk\n");
+		return VMM_ENODEV;
+	}
+
+	vmm_cprintf(cdev,
+		"Name        : %s\n"
+		"Block Size  : %"PRIu32"\n"
+		"Block Factor: %"PRIu32"\n"
+		"Capacity    : %"PRIu64"\n"
+		"Block Device: %s\n",
+		vmm_vdisk_name(vdisk), vmm_vdisk_block_size(vdisk),
+		vdisk->blk_factor, vmm_vdisk_capacity(vdisk),
+		vdisk->blk ? vdisk->blk->name : "NONE");
+
+	return VMM_OK;
 }
 
 static int cmd_vdisk_detach(struct vmm_chardev *cdev,
@@ -116,6 +139,8 @@ static int cmd_vdisk_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if (argc == 3) {
 		if (strcmp(argv[1], "detach") == 0) {
 			return cmd_vdisk_detach(cdev, argv[2]);
+		} else if (strcmp(argv[1], "info") == 0) {
+			return cmd_vdisk_info(cdev, argv[2]);
 		}
 	} else if (argc == 4) {
 		if (strcmp(argv[1], "attach") == 0) {
