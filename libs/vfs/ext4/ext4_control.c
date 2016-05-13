@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_wallclock.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
@@ -449,11 +450,10 @@ int ext4fs_control_init(struct ext4fs_control *ctrl,
 		goto fail;
 	}
 
-	/* Directory indexing not supported */
+	/* Directory indexing not supported so throw warning */
 	if (__le32(ctrl->sblock.feature_compatibility) & 
 					EXT2_FEAT_COMPAT_DIR_INDEX) {
-		rc = VMM_ENOSYS;
-		goto fail;
+		vmm_lwarning("ext4", "directory indexing is not available\n");
 	}
 
 	/* Pre-compute frequently required values */
