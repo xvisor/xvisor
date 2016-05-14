@@ -48,9 +48,6 @@
 #define MODULE_INIT			mutex7_init
 #define MODULE_EXIT			mutex7_exit
 
-/* Number of times to lock the mutex during test */
-#define TEST_LOCK_CNT			250
-
 /* Number of threads */
 #define NUM_THREADS			1
 
@@ -86,7 +83,7 @@ static int mutex7_do_test(struct vmm_chardev *cdev)
 	/* Initialise the shared_data to zero */
 	shared_data = 0;
 
-        /* Attempt to release the mutex when not owned by any thread */
+	/* Attempt to release the mutex when not owned by any thread */
 	rc = vmm_mutex_unlock(&mutex1);
 	if (rc == VMM_OK) {
 		vmm_cprintf(cdev, "error: unlocking mutex worked\n");
@@ -96,14 +93,14 @@ static int mutex7_do_test(struct vmm_chardev *cdev)
 	/* Start worker */
 	vmm_threads_start(workers[0]);
 
-        /*
-         * The worker thread has now been started and should take ownership
-         * of the mutex. We wait a while and check that shared_data has been
-         * modified, which proves to us that the thread has taken the mutex.
-         */
+	/*
+	 * The worker thread has now been started and should take ownership
+	 * of the mutex. We wait a while and check that shared_data has been
+	 * modified, which proves to us that the thread has taken the mutex.
+	 */
 	vmm_msleep(SLEEP_MSECS*10);
 
-        /* Attempt to release the mutex when owned by worker thread */
+	/* Attempt to release the mutex when owned by worker thread */
 	rc = vmm_mutex_unlock(&mutex1);
 	if (rc == VMM_OK) {
 		vmm_cprintf(cdev, "error: unlocking mutex worked\n");
