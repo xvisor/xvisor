@@ -37,23 +37,24 @@ struct vmm_waitqueue {
 	void *priv;
 };
 
-#define INIT_WAITQUEUE(wqptr, p)	do { \
-				INIT_SPIN_LOCK(&((wqptr)->lock)); \
-				INIT_LIST_HEAD(&((wqptr)->vcpu_list)); \
-				(wqptr)->vcpu_count = 0; \
-				(wqptr)->priv = (p); \
-				} while (0);
+#define INIT_WAITQUEUE(__wq, __p)		\
+do { \
+	INIT_SPIN_LOCK(&((__wq)->lock)); \
+	INIT_LIST_HEAD(&((__wq)->vcpu_list)); \
+	(__wq)->vcpu_count = 0; \
+	(__wq)->priv = (__p); \
+} while (0);
 
-#define __WAITQUEUE_INITIALIZER(wq, p) \
-		{ \
-			.lock = __SPINLOCK_INITIALIZER((wq).lock), \
-			.vcpu_list = { &(wq).vcpu_list, &(wq).vcpu_list }, \
-			.vcpu_count = 0, \
-			.priv = (p), \
-		}
+#define __WAITQUEUE_INITIALIZER(__wq, __p)	\
+{ \
+	.lock = __SPINLOCK_INITIALIZER((__wq).lock), \
+	.vcpu_list = { &(__wq).vcpu_list, &(__wq).vcpu_list }, \
+	.vcpu_count = 0, \
+	.priv = (__p), \
+}
 
-#define DECLARE_WAITQUEUE(name, tsk)					\
-	struct vmm_waitqueue name = __WAITQUEUE_INITIALIZER(name, tsk)
+#define DECLARE_WAITQUEUE(__n, __p)	\
+struct vmm_waitqueue __n = __WAITQUEUE_INITIALIZER(__n, __p)
 
 /** Lowlevel waitqueue sleep.
  *  Note: This function should only be called with wq->lock held using
