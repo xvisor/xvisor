@@ -33,6 +33,11 @@ u32 vmm_waitqueue_count(struct vmm_waitqueue *wq)
 	return wq->vcpu_count;
 }
 
+struct vmm_waitqueue_priv {
+	struct vmm_waitqueue *wq;
+	struct vmm_timer_event *ev;
+};
+
 static void waitqueue_timeout(struct vmm_timer_event *event)
 {
 	struct vmm_vcpu *vcpu = event->priv;
@@ -45,6 +50,7 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	int rc = VMM_OK;
 	struct vmm_vcpu *vcpu;
 	struct vmm_timer_event wake_event;
+	struct vmm_waitqueue_priv p = { .wq = wq, .ev = NULL };
 
 	/* Sanity checks */
 	BUG_ON(!wq);
@@ -65,12 +71,13 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 
 	/* Update VCPU waitqueue context */
 	vcpu->wq_lock = &wq->lock;
-	vcpu->wq_priv = wq;
+	vcpu->wq_priv = &p;
 
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
 		INIT_TIMER_EVENT(&wake_event, &waitqueue_timeout, vcpu);
 		vmm_timer_event_start(&wake_event, *timeout_nsecs);
+		p.ev = &wake_event;
 	}
 
 	/* Try to Pause VCPU */
@@ -153,15 +160,24 @@ int vmm_waitqueue_sleep_timeout(struct vmm_waitqueue *wq, u64 *timeout_usecs)
 int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 {
 	irq_flags_t flags;
-	struct vmm_waitqueue *wq = vcpu->wq_priv;
+	struct vmm_waitqueue *wq;
+	struct vmm_timer_event *ev;
+	struct vmm_waitqueue_priv *p = vcpu->wq_priv;
 
 	/* Sanity check */
-	if (!wq) {
+	if (!p || !p->wq) {
 		return VMM_EFAIL;
 	}
+	wq = p->wq;
+	ev = p->ev;
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);
+
+	/* Stop timer event if started */
+	if (ev) {
+		vmm_timer_event_stop(ev);
+	}
 
 	/* Remove VCPU from waitqueue */
 	list_del(&vcpu->wq_head);
@@ -192,12 +208,13 @@ int vmm_waitqueue_wake(struct vmm_vcpu *vcpu)
 	int rc = VMM_OK;
 	irq_flags_t flags;
 	struct vmm_waitqueue *wq;
+	struct vmm_waitqueue_priv *p = vcpu->wq_priv;
 
 	/* Sanity checks */
-	if (!vcpu || vcpu->is_normal ||!vcpu->wq_priv) {
+	if (!vcpu || vcpu->is_normal || !p || !p->wq) {
 		return VMM_EFAIL;
 	}
-	wq = vcpu->wq_priv;
+	wq = p->wq;
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);
