@@ -71,7 +71,9 @@ static int mutex7_worker_thread_main(void *data)
 	shared_data = 1;
 
 	/* Wait indefinetly here. */
-	while (1) ;
+	while (1) {
+		vmm_msleep(SLEEP_MSECS);
+	}
 
 	return 0;
 }
