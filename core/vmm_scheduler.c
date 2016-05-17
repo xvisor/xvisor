@@ -196,6 +196,7 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 		tcurrent = current;
 	}
 
+dequeue_again:
 	rc = rq_dequeue(schedp, &next, &next_time_slice);
 	if (rc) {
 		/* This should never happen !!! */
@@ -204,6 +205,19 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 
 	if (next != current) {
 		vmm_write_lock_irqsave_lite(&next->sched_lock, nf);
+		/* On SMP host, the next VCPU dequeued from ready queue can
+		 * be RESET, PAUSED, or HALTED from another host CPU after
+		 * it is dequeued and before we acquire next->sched_lock.
+		 *
+		 * To tackle the above situation, we check whether the next
+		 * VCPU is in READY state or not before doing context switch.
+		 * If the next VCPU is not in READY state then we try to
+		 * dequeue another next VCPU.
+		 */
+		if (arch_atomic_read(&next->state) != VMM_VCPU_STATE_READY) {
+			vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
+			goto dequeue_again;
+		}
 		arch_vcpu_switch(tcurrent, next, regs);
 	}
 
