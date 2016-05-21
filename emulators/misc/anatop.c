@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * Copyright (C) 2014, 2016 Institut de Recherche Technologique SystemX and OpenWide.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  *
  * @file anatop.c
  * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
+ * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
  * @brief i.MX6 anatop emulator.
  */
 
@@ -118,7 +119,7 @@ static int imx_anatop_emulator_read(struct vmm_emudev *edev,
 		case 0xD4:
 		case 0xD8:
 		case 0xDC:
-			val = 0x00001000;
+			val = 0x00010000;
 			break;
 		case 0xE0:
 		case 0xE4:
@@ -148,13 +149,10 @@ static int imx_anatop_emulator_read(struct vmm_emudev *edev,
 			val = 0x00000F74;
 			break;
 		case 0x140:
-			val = 0x40002010;
+			val = 0x00402010;
 			break;
 		case 0x150:
-		case 0x154:
-		case 0x158:
-		case 0x15C:
-			val = 0x40000000;
+			val = 0x04000000;
 			break;
 		case 0x170:
 		case 0x174:
