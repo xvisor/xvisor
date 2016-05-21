@@ -130,7 +130,7 @@
 		dma_apbh {
 			manifest_type = "virtual";
 			address_type = "memory";
-			guest_physical_addr = <0x01100000>;
+			guest_physical_addr = <0x00110000>;
 			physical_size = <0x00002000>;
 			device_type = "misc";
 			compatible = "zero";
