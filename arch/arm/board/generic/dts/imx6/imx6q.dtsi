@@ -204,7 +204,7 @@
 			vdoa@021e4000 {
 				compatible = "fsl,imx6q-vdoa";
 				reg = <0x021e4000 0x4000>;
-				interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_VDOA>;
 				iram = <&ocram>;
 			};
