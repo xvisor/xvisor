@@ -188,8 +188,8 @@
 			clks: ccm@020c4000 {
 				compatible = "fsl,imx6q-ccm";
 				reg = <0x020c4000 0x4000>;
-				interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
 				#clock-cells = <1>;
 			};
 
