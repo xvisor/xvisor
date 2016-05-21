@@ -162,9 +162,9 @@
 			anatop: anatop@020c8000 {
 				compatible = "fsl,imx6q-anatop", "syscon", "simple-bus";
 				reg = <0x020c8000 0x1000>;
-				interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>,
-					     <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			gpc@020dc000 {
