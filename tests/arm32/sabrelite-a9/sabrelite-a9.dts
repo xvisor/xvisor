@@ -193,14 +193,23 @@
 			compatible = "corelink,l2c-310";
 		};
 
-//		wdt { /* No Watch-Dog controller */
-//			manifest_type = "virtual";
-//			address_type = "memory";
-//			guest_physical_addr = <0x1000F000>;
-//			physical_size = <0x1000>;
-//			device_type = "misc";
-//			compatible = "zero";
-//		};
+		wdog1 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020BC000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
+
+		wdog2 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x020C0000>;
+			physical_size = <0x4000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
 
 		uart0 {
 			manifest_type = "virtual";
