@@ -28,3 +28,4 @@ emulators-objs-$(CONFIG_EMU_MISC_PSM)+= misc/xpsm.o
 emulators-objs-$(CONFIG_EMU_MISC_FW_CFG)+= misc/fw_cfg.o
 emulators-objs-$(CONFIG_EMU_MISC_IMX6_ANATOP)+= misc/anatop.o
 emulators-objs-$(CONFIG_EMU_MISC_IMX6_CCM)+= misc/ccm.o
+emulators-objs-$(CONFIG_EMU_MISC_IMX6_APBH)+= misc/apbh.o
