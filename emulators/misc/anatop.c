@@ -161,8 +161,9 @@ static int imx_anatop_emulator_read(struct vmm_emudev *edev,
 			val = 0x00272727;
 			break;
 		default:
-			vmm_printf("i.MX Anatop read at unknown register 0x%08x"
-				   "\n", offset);
+			vmm_printf(
+			"i.MX Anatop read at unknown register 0x%"PRIPADDR
+			"\n", offset);
 
 		}
 	}

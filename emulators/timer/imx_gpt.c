@@ -153,7 +153,7 @@ static int imx_gpt_emulator_read(struct vmm_emudev *edev,
 		break;
 	default:
 		vmm_lwarning(NULL,
-			"i.MX GPT read at unknown register 0x%08x\n", offset);
+		"i.MX GPT read at unknown register 0x%"PRIPADDR"\n", offset);
 	}
 	vmm_read_unlock(&gpt->lock);
 
@@ -292,7 +292,7 @@ static int imx_gpt_emulator_write(struct vmm_emudev *edev,
 		break;
 
 	default:
-		vmm_printf("i.MX GPT write at unknown register 0x%08x"
+		vmm_printf("i.MX GPT write at unknown register 0x%"PRIPADDR
 			   "\n", offset);
 	}
 	vmm_write_unlock(&gpt->lock);
