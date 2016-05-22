@@ -34,15 +34,22 @@
 #define VIRTIO_DEVICE_MAX_NAME_LEN			64
 
 enum virtio_id {
-	VIRTIO_ID_NET = 1,
-	VIRTIO_ID_BLOCK,
-	VIRTIO_ID_CONSOLE,
-	VIRTIO_ID_ENTROPY,
-	VIRTIO_ID_BALLON,
-	VIRTIO_ID_IO_MEMORY,
-	VIRTIO_ID_RPMSG,
-	VIRTIO_ID_SCSI_HOST,
-	VIRTIO_ID_9P
+	VIRTIO_ID_NET		=  1, /* Network card */
+	VIRTIO_ID_BLOCK		=  2, /* Block device */
+	VIRTIO_ID_CONSOLE	=  3, /* Console */
+	VIRTIO_ID_RNG		=  4, /* Entropy source */
+	VIRTIO_ID_BALLOON	=  5, /* Memory ballooning (traditional) */
+	VIRTIO_ID_IO_MEMORY	=  6, /* ioMemory */
+	VIRTIO_ID_RPMSG		=  7, /* rpmsg (remote processor messaging) */
+	VIRTIO_ID_SCSI		=  8, /* SCSI host */
+	VIRTIO_ID_9P		=  9, /* 9P transport */
+	VIRTIO_ID_MAC_VLAN	= 10, /* mac 802.11 Vlan */
+	VIRTIO_ID_RPROC_SERIAL	= 11, /* rproc serial */
+	VIRTIO_ID_CAIF		= 12, /* virtio CAIF */
+	VIRTIO_ID_BALLOON_NEW	= 13, /* New memory ballooning */
+	VIRTIO_ID_GPU		= 16, /* GPU device */
+	VIRTIO_ID_TIMER		= 17, /* Timer/Clock device */
+	VIRTIO_ID_INPUT		= 18, /* Input device */
 };
 
 struct virtio_device_id {
