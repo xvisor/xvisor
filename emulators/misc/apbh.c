@@ -28,6 +28,7 @@
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
 #include <vmm_stdio.h>
+#include <libs/mathlib.h>
 
 #define MODULE_DESC			"APBH-Bridge-DMA Emulator"
 #define MODULE_AUTHOR			"Jean Guyomarc'h"
@@ -69,11 +70,13 @@ static int apbh_emulator_read(struct vmm_emudev *edev,
 		*dst = 0x03010000;
 	} else if (offset == 0x050) {
 		*dst = 0x00555555;
-	} else if ((offset >= 0x150) && ((offset - 0x150) % 0x70 == 0)) {
+	} else if ((offset >= 0x150) &&
+		   (umod64((offset - 0x150), 0x70) == 0)) {
 		*dst = 0x00A00000;
 	} else {
-		vmm_lwarning("APBH", "reading from an unhanded register: %"PRIPADDR"\n",
-				offset);
+		vmm_lwarning("APBH",
+			"reading from an unhanded register: %"PRIPADDR"\n",
+			offset);
 		*dst = 0x00000000;
 	}
 	_unlock(s);
@@ -94,8 +97,9 @@ static int apbh_emulator_write(struct vmm_emudev *edev,
 	if (offset <= 0x00C) {
 		s->ctrl[idx] = regval;
 	} else {
-		vmm_lwarning("APBH", "writing in unhandled register: %"PRIPADDR"\n",
-				offset);
+		vmm_lwarning("APBH",
+			"writing in unhandled register: %"PRIPADDR"\n",
+			offset);
 	}
 	_unlock(s);
 
