@@ -178,7 +178,7 @@ static int sdhci_transfer_dma(struct sdhci_host *host,
 			      struct mmc_data *data)
 {
 	int rc = VMM_OK;
-	u64 timeout = 100000000;
+	u64 timeout = 100000000LL;
 
 	rc = vmm_completion_wait_timeout(&host->wait_dma, &timeout);
 	if (VMM_ETIMEDOUT == rc) {

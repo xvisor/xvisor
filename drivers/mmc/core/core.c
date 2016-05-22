@@ -1470,7 +1470,7 @@ static int mmc_host_thread(void *tdata)
 
 	while (1) {
 		if (host->caps & MMC_CAP_NEEDS_POLL) {
-			tout = 1000000000; /* 1 seconds timeout */
+			tout = 1000000000LL; /* 1 seconds timeout */
 			vmm_completion_wait_timeout(&host->io_avail, &tout);
 			if (!tout) {
 				__mmc_detect_card_change(host);
