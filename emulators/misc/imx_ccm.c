@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file ccm.c
+ * @file imx_ccm.c
  * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
  * @brief i.MX6 CCM emulator.
  */

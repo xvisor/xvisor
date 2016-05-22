@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file imx.c
+ * @file imx_serial.c
  * @author Jimmy Durand Wesolowski (jimmy.durand-wesolowski@openwide.fr)
  * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
  * @brief Motorola/Freescale i.MX serial emulator.

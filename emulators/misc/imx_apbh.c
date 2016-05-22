@@ -18,7 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file apbh.c
+ * @file imx_apbh.c
  * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
  * @brief AHB-to-APBH bridge with DMA emulator
  */
