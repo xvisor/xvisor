@@ -1,7 +1,7 @@
 /**
-# Copyright (c) 2016 Open Wide
-#		2016 Institut de Recherche Technologique SystemX
-#
+ * Copyright (c) 2016 Open Wide
+ *               2016 Institut de Recherche Technologique SystemX
+ *
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file printf.c
- * @author Jean Guyomarc'h (jean.guyoamrch@openwide.fr)
+ * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
  * @brief printf display tests
  */
 

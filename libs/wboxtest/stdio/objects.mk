@@ -19,7 +19,7 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Jean Guyomarc'h (jean.guyoamrch@openwide.fr)
+# @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
 # @brief list of stdio test objects to be built
 #
 
