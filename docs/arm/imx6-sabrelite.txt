@@ -36,7 +36,7 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
   # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/sabrelite-bootscript build/6x_bootscript
 
   [8. Create the guest device tree configuration]
-  # ./build/tools/dtc/dtc -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
+  # ./build/tools/dtc/dtc -p 0x800 -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
 
   [9. Unplug SD card from Sabre LITE and plug it on your development machine]
 
