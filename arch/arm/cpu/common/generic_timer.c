@@ -534,9 +534,14 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 	if ((cntx->cntpctl & GENERIC_TIMER_CTRL_ENABLE) &&
 	    !(cntx->cntpctl & GENERIC_TIMER_CTRL_IT_MASK)) {
 		ev_nsecs = cntx->cntpcval - generic_timer_pcounter_read();
-		ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
-						generic_timer_mult,
-						generic_timer_shift);
+		/* check if timer is expired while saving the context */
+		if (((s64)ev_nsecs) < 0) {
+			ev_nsecs = 0;
+		} else {
+			ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
+							generic_timer_mult,
+							generic_timer_shift);
+		}
 		vmm_timer_event_start(&cntx->phys_ev, ev_nsecs);
 	}
 
@@ -544,9 +549,14 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 	    !(cntx->cntvctl & GENERIC_TIMER_CTRL_IT_MASK)) {
 		ev_nsecs = cntx->cntvcval + cntx->cntvoff -
 					generic_timer_pcounter_read();
-		ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
-						generic_timer_mult,
-						generic_timer_shift);
+		/* check if timer is expired while saving the context */
+		if (((s64)ev_nsecs) < 0) {
+			ev_nsecs = 0;
+		} else {
+			ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
+							generic_timer_mult,
+							generic_timer_shift);
+		}
 		vmm_timer_event_start(&cntx->virt_ev, ev_nsecs);
 	}
 }
