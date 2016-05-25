@@ -10,14 +10,16 @@ Sabre LITE:
  1) U-Boot compatible Xvisor binary (uvmm.bin).
  2) Boot script used by Boundary's U-Boot configuration (6x_bootscript)
 
-Following steps to create these images and then boot Xvisor on Sabre LITE:
+Follow the following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [1. Build environment]
   # CROSS_COMPILE=arm-linux-gnueabi-
   # export CROSS_COMPILE
   (NOTE: Also place your compiler in PATH.)
+  (NOTE: arm-linux-gnueabi- is here assumed as being the toolchain. It
+         is not necessarily the case.)
 
-  [2. GoTo Xvisor source directory]
+  [2. Go to Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Configure Xvisor with Sabre LITE (or Nitrogen6X) host default settings]
@@ -33,10 +35,10 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
   # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [7. Make the script to boot the card as preconfigured U-Boot expect]
-  # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/sabrelite-bootscript build/6x_bootscript
+  # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
 
   [8. Create the guest device tree configuration]
-  # ./build/tools/dtc/dtc -p 0x800 -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
+  # ./build/tools/dtc/dtc -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
 
   [9. Unplug SD card from Sabre LITE and plug it on your development machine]
 
@@ -45,14 +47,18 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
   [11. Copy uvmm.bin to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
+  [12. Create the tree structure in your SD card]
+  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/
+  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/system/
+
   [12. Copy and rename the host and guest device tree to boot partition of SD card]
   # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite-a9/one_guest_sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-sabrelite.dtb
-  # cp -f build/sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/
+  # cp -f build/sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/
 
   [13. Copy the basic firmware, the nor_flash.list and the cmdlist on the SD card boot partition]
-  # cp -f build/tests/arm32/sabrelite-a9/basic/firmware.bin.patched <path_to_mounted_boot_partition_of_sd_card>/
-  # cp -f tests/arm32/sabrelite-a9/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/
-  # cp -f tests/arm32/sabrelite-a9/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/
+  # cp -f build/tests/arm32/sabrelite-a9/basic/firmware.bin <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
+  # cp -f tests/arm32/sabrelite-a9/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
+  # cp -f tests/arm32/sabrelite-a9/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
 
   [14. Configure, build and patch the kernel image]
   # cd <linux_source_directory>
@@ -63,36 +69,56 @@ Following steps to create these images and then boot Xvisor on Sabre LITE:
   # make O=<linux_build_directory> ARCH=arm Image
   # cd <xvisor_source_directory>
 
-  [15. Build, if not already done, the Linux kernel device tree]
-  # ./build/tools/dtc/dtc -I dts -O dtb <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/vexpress-v2p-ca9.dts -o build/vexpress-v2p-ca9.dtb
+  [15. Then, make cpp process the Linux kernel device tree]
+  # sed -re 's|/include/|#include|' tests/arm32/sabrelite-a9/linux/imx6q-nitrogen6x.dts > build/tmp.dts
+  # ${CROSS_COMPILE}cpp \
+	-nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-with-cpp \
+	-Itests/arm32/sabrelite-a9/linux \
+	-I<linux_source_directory>/include \
+	-I<linux_source_directory>/arch/arm/boot/dts \
+	build/tmp.dts -o build/imx6q-nitrogen6x.dts
 
-  [16. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
-  # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/
-  # cp -f build/vexpress-v2p-ca9.dtb <path_to_mounted_boot_partition_of_sd_card>/
+  [16. Build the Linux kernel device tree]
+  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 build/imx6q-nitrogen6x.dts -o build/imx6q-nitrogen6x.dtb
 
-  [12. Copy the boot script to boot partition of SD card]
+  [17. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
+  # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/Image
+  # cp -f build/imx6q-nitrogen6x.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
+
+  [18. Copy the boot script to boot partition of SD card]
   # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>/
 
-  [13. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [19. Create the banner]
+  # cp -f docs/banner/roman.txt <path_to_mounted_boot_partition_of_sd_card>/system/banner.txt
 
-  [14. Unplug SD card from your development machine and plug it back on Sabre LITE]
+  [20. Generate the roofs]
+  You need to refer to tests/common/busybox/README.md to see how to generate rootfs.img
+  using BusyBox.
+  # cp -f <rootfs.img> <path_to_mounted_boot_partition_of_sd_card>/images/arm32/rootfs.imf
 
-  [15. Connect to serial port of Sabre LITE using Putty or Minicom]
+  [20. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [16. Power-up or Reset Sabre LITE]
+  [21. Unplug SD card from your development machine and plug it back on Sabre LITE]
 
-  [17. When U-Boot starts, stop its autoboot and set the board name]
+  [22. Connect to serial port of Sabre LITE using Putty or Minicom]
+
+  [23. Power-up or Reset Sabre LITE]
+
+  [24. When U-Boot starts, stop its autoboot and set the board name]
   U-Boot > setenv board sabrelite
   [Or]
   U-Boot > setenv board nitrogen6x
 
-  [18. Now, you can finally run the bootscript]
+  [25. Now, you can finally run the bootscript]
   U-Boot > for disk in 0 1 ; do mmc dev ${disk} ; for fs in fat ext2 ; do if ${fs}load mmc ${disk}:1 10008000 /6x_bootscript; then source 10008000; fi ; done ; done
 
-  [19. Bind to virtual UART0 of Linux Guest]
+  [26. Kick a guest]
+  XVisor# guest kick guest0
+
+  [27. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [20. Start linux booting from RAM]
+  [28. Start linux booting from RAM]
   [guest0/uart0] basic# autoexec
 
   (Note: replace all <> brackets based on your workspace)
