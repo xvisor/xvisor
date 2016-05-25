@@ -1,4 +1,5 @@
-0x11000000 /firmware.bin.patched
-0x10008000 /Image
-0x10000000 /vexpress-v2p-ca9.dtb
-0x080FF000 /cmdlist
+0x11000000 /images/arm32/sabrelite-a9/firmware.bin
+0x08100000 /images/arm32/sabrelite-a9/Image
+0x08BF0000 /images/arm32/sabrelite-a9/imx6q-nitrogen6x.dtb
+0x08C00000 /images/arm32/rootfs.img
+0x080FF000 /images/arm32/sabrelite-a9/cmdlist
