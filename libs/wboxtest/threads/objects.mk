@@ -34,6 +34,7 @@ libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex7.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex8.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/mutex9.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/semaphore1.o
+libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/semaphore2.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/waitqueue1.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/waitqueue2.o
 libs-objs-$(CONFIG_WBOXTEST_THREADS) += wboxtest/threads/waitqueue3.o
