@@ -31,28 +31,32 @@
 struct vmm_semaphore {
 	u32 limit;
 	u32 value;
+	struct dlist res_list;
 	struct vmm_waitqueue wq;
 };
 
 /** Initialize semaphore lock */
-#define INIT_SEMAPHORE(sem, lim, val)	do { \
-					(sem)->limit = (lim); \
-					(sem)->value = (val); \
-					INIT_WAITQUEUE(&(sem)->wq, (sem)); \
-					} while (0);
+#define INIT_SEMAPHORE(__sem, __lim, __val)	\
+do { \
+	(__sem)->limit = (__lim); \
+	(__sem)->value = (__val); \
+	INIT_LIST_HEAD(&((__sem)->res_list)); \
+	INIT_WAITQUEUE(&(__sem)->wq, (__sem)); \
+} while (0)
 
-#define __SEMAPHORE_INITIALIZER(sem, lim, val) \
-		{ \
-			.limit = (lim), \
-			.value = (val), \
-			.wq = __WAITQUEUE_INITIALIZER((sem).wq, &(sem)), \
-		}
+#define __SEMAPHORE_INITIALIZER(__sem, __lim, __val) \
+{ \
+	.limit = (__lim), \
+	.value = (__val), \
+	.res_list = { &(__sem).res_list, &(__sem).res_list }, \
+	.wq = __WAITQUEUE_INITIALIZER((__sem).wq, &(__sem)), \
+}
 
-#define DEFINE_SEMAPHORE(sem, lim, val) \
-	struct vmm_semaphore sem = __SEMAPHORE_INITIALIZER(sem, lim, val)
+#define DEFINE_SEMAPHORE(__sem, __lim, __val) \
+struct vmm_semaphore __sem = __SEMAPHORE_INITIALIZER(__sem, __lim, __val)
 
-/** Check if semaphore is available */
-bool vmm_semaphore_avail(struct vmm_semaphore *sem);
+/** Ger semaphore available count */
+u32 vmm_semaphore_avail(struct vmm_semaphore *sem);
 
 /** Get maximum value (or limit) of semaphore */
 u32 vmm_semaphore_limit(struct vmm_semaphore *sem);

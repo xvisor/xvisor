@@ -22,20 +22,89 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_semaphore.h>
 #include <arch_cpu_irq.h>
 
-bool vmm_semaphore_avail(struct vmm_semaphore *sem)
+struct vmm_semaphore_resource {
+	struct dlist head;
+	u32 count;
+	struct vmm_semaphore *sem;
+	struct vmm_vcpu *vcpu;
+	struct vmm_vcpu_resource res;
+};
+
+/* Note: This function must be called with semaphore waitqueue lock held */
+static struct vmm_semaphore_resource *__semaphore_find_resource(
+			struct vmm_semaphore *sem, struct vmm_vcpu *vcpu)
 {
-	bool ret;
+	bool found = FALSE;
+	struct vmm_semaphore_resource *sres;
+
+	list_for_each_entry(sres, &sem->res_list, head) {
+		if (sres->vcpu == vcpu) {
+			found = TRUE;
+			break;
+		}
+	}
+
+	return (found) ? sres : NULL;
+}
+
+/* Note: This function must be called with semaphore waitqueue lock held */
+static struct vmm_semaphore_resource *__semaphore_first_resource(
+						struct vmm_semaphore *sem)
+{
+	if (list_empty(&sem->res_list))
+		return NULL;
+	return list_first_entry(&sem->res_list,
+				struct vmm_semaphore_resource, head);
+}
+
+static void __vmm_semaphore_cleanup(struct vmm_vcpu *vcpu,
+				    struct vmm_vcpu_resource *vcpu_res)
+{
+	irq_flags_t flags;
+	bool wake_all = FALSE;
+	struct vmm_semaphore_resource *sres =
+		container_of(vcpu_res, struct vmm_semaphore_resource, res);
+	struct vmm_semaphore *sem = sres->sem;
+
+	if (!sres || !sem || (sres->vcpu != vcpu)) {
+		return;
+	}
+
+	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
+
+	if (sres->count) {
+		sem->value += sres->count;
+		if (sem->value > sem->limit)
+			sem->value = sem->limit;
+		sres->count = 0;
+		wake_all = TRUE;
+	}
+
+	list_del(&sres->head);
+	vmm_free(sres);
+
+	if (wake_all) {
+		__vmm_waitqueue_wakeall(&sem->wq);
+	}
+
+	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
+}
+
+u32 vmm_semaphore_avail(struct vmm_semaphore *sem)
+{
+	u32 ret;
 	irq_flags_t flags;
 
 	BUG_ON(!sem);
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
-	ret = (sem->value) ? TRUE : FALSE;
+	ret = sem->value;
 
 	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
 
@@ -62,13 +131,33 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
+	struct vmm_vcpu *current_vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_semaphore_resource *sres;
 
 	BUG_ON(!sem);
+	BUG_ON(!sem->limit);
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
 
 	if (sem->value < sem->limit) {
 		sem->value++;
+
+		sres = __semaphore_find_resource(sem, current_vcpu);
+		if (!sres) {
+			sres = __semaphore_first_resource(sem);
+		}
+		if (sres) {
+			if (sres->count) {
+				sres->count--;
+			}
+			if (!sres->count) {
+				vmm_manager_vcpu_resource_remove(sres->vcpu,
+								 &sres->res);
+				list_del(&sres->head);
+				vmm_free(sres);
+			}
+		}
+
 		rc = __vmm_waitqueue_wakeall(&sem->wq);
 	}
 
@@ -81,8 +170,11 @@ static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 {
 	int rc = VMM_OK;
 	irq_flags_t flags;
+	struct vmm_vcpu *current_vcpu = vmm_scheduler_current_vcpu();
+	struct vmm_semaphore_resource *sres;
 
 	BUG_ON(!sem);
+	BUG_ON(!sem->limit);
 	BUG_ON(!vmm_scheduler_orphan_context());
 
 	vmm_spin_lock_irqsave(&sem->wq.lock, flags);
@@ -95,6 +187,21 @@ static int semaphore_down_common(struct vmm_semaphore *sem, u64 *timeout)
 		}
 	}
 	if (rc == VMM_OK) {
+		sres = __semaphore_find_resource(sem, current_vcpu);
+		if (!sres) {
+			sres = vmm_zalloc(sizeof(*sres));
+			BUG_ON(!sres);
+			INIT_LIST_HEAD(&sres->head);
+			sres->count = 0;
+			sres->sem = sem;
+			sres->vcpu = current_vcpu;
+			sres->res.name = "vmm_semaphore";
+			sres->res.cleanup = __vmm_semaphore_cleanup;
+			list_add_tail(&sres->head, &sem->res_list);
+			vmm_manager_vcpu_resource_add(current_vcpu,
+						      &sres->res);
+		}
+		sres->count++;
 		sem->value--;
 	}
 
