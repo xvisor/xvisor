@@ -1011,7 +1011,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 		}
 		vmm_spin_unlock_irqrestore(&parent->children_lock, flags);
 		if (port < 0) {
-			vmm_printf("%s: cannot locate device's port.\n");
+			vmm_printf("%s: cannot locate device's port.\n", __func__);
 			dev->devnum = addr;
 			err = VMM_EFAIL;
 			goto done;
@@ -1050,8 +1050,8 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	err = usb_set_address(dev, addr); /* set address */
 	dev->devnum = addr; /* fail or success we restore back devnum */
 	if (err < 0) {
-		vmm_printf("%s: device not accepting new address %d "
-			   "(err=%d)\n", __func__, err);
+		vmm_printf("%s: device not accepting new address %"PRIu32" "
+			   "(err=%d)\n", __func__, addr, err);
 		goto done;
 	}
 
