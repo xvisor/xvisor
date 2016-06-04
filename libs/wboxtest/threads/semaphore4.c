@@ -16,14 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file semaphore2.c
+ * @file semaphore4.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief semaphore2 test implementation
+ * @brief semaphore4 test implementation
  *
- * This test exercises automatic release of semaphore. We do this by
- * creating three worker threads that will down s1 semaphore. The
- * main thread will destroy worker threads check if s1 semaphore is
- * automatically released.
+ * This test exercises the fact that semaphore acquired by one thread
+ * can be released by another thread because semaphore does not honour
+ * ownership like mutex does.
  */
 
 #include <vmm_error.h>
@@ -37,34 +36,37 @@
 #include <libs/stringlib.h>
 #include <libs/wboxtest.h>
 
-#define MODULE_DESC			"semaphore2 test"
+#define MODULE_DESC			"semaphore4 test"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		(WBOXTEST_IPRIORITY+1)
-#define MODULE_INIT			semaphore2_init
-#define MODULE_EXIT			semaphore2_exit
+#define MODULE_INIT			semaphore4_init
+#define MODULE_EXIT			semaphore4_exit
 
 /* Number of threads */
-#define NUM_THREADS			3
+#define NUM_THREADS			1
 
 /* Sleep delay in milliseconds */
 #define SLEEP_MSECS			(VMM_THREAD_DEF_TIME_SLICE/1000000ULL)
 
 /* Global data */
 static struct vmm_thread *workers[NUM_THREADS];
-static DEFINE_SEMAPHORE(s1, 6, 6);
+static DEFINE_SEMAPHORE(s1, 3, 3);
+static int shared_data[NUM_THREADS];
 
-static int semaphore2_worker_thread_main(void *data)
+static int semaphore4_worker_thread_main(void *data)
 {
 	int rc;
 	int i, thread_id = (int)(unsigned long)data;
 
-	for (i = 0; i <= thread_id; i++) {
+	for (i = 0; i < 3; i++) {
 		rc = vmm_semaphore_down(&s1);
 		if (rc) {
 			return rc;
 		}
 	}
+
+	shared_data[thread_id] = 1;
 
 	while (1) {
 		vmm_msleep(SLEEP_MSECS);
@@ -73,12 +75,17 @@ static int semaphore2_worker_thread_main(void *data)
 	return 0;
 }
 
-static int semaphore2_do_test(struct vmm_chardev *cdev)
+static int semaphore4_do_test(struct vmm_chardev *cdev)
 {
-	int failures = 0;
+	int i, rc, failures = 0;
+
+	/* Clear shared data */
+	for (i = 0; i < NUM_THREADS; i++) {
+		shared_data[i] = 0;
+	}
 
 	/* s1 semaphore should be available */
-	if (vmm_semaphore_avail(&s1) != 6) {
+	if (vmm_semaphore_avail(&s1) != 3) {
 		vmm_cprintf(cdev, "error: initial semaphore not available\n");
 		failures++;
 	}
@@ -89,79 +96,37 @@ static int semaphore2_do_test(struct vmm_chardev *cdev)
 	/* Wait for worker0 to acquire s1 semaphore */
 	vmm_msleep(SLEEP_MSECS * 10);
 
-	/* check s1 semaphore available count */
-	if (vmm_semaphore_avail(&s1) != 5) {
-		vmm_cprintf(cdev, "error: worker0 semaphore mismatch\n");
+	/* Check worker0 shared data */
+	if (shared_data[0] != 1) {
+		vmm_cprintf(cdev, "error: worker0 shared data not updated\n");
 		failures++;
 	}
 
-	/* Start worker1 */
-	vmm_threads_start(workers[1]);
-
-	/* Wait for worker1 to acquire s1 semaphore */
-	vmm_msleep(SLEEP_MSECS * 10);
-
-	/* check s1 semaphore available count */
-	if (vmm_semaphore_avail(&s1) != 3) {
-		vmm_cprintf(cdev, "error: worker1 semaphore mismatch\n");
-		failures++;
-	}
-
-	/* Start worker2 */
-	vmm_threads_start(workers[2]);
-
-	/* Wait for worker2 to acquire s1 semaphore */
-	vmm_msleep(SLEEP_MSECS * 10);
-
-	/* check s1 semaphore available count */
+	/* s1 semaphore should not be available */
 	if (vmm_semaphore_avail(&s1) != 0) {
-		vmm_cprintf(cdev, "error: worker2 semaphore mismatch\n");
+		vmm_cprintf(cdev, "error: semaphore available\n");
 		failures++;
 	}
 
-	/* Destroy worker1 */
-	vmm_threads_destroy(workers[1]);
-	workers[1] = NULL;
-
-	/* Wait for worker1 to be scheduled out */
-	vmm_msleep(SLEEP_MSECS * 10);
-
-	/* check s1 semaphore available count */
-	if (vmm_semaphore_avail(&s1) != 2) {
-		vmm_cprintf(cdev, "error: worker1 auto-release mismatch\n");
-		failures++;
+	/* Release s1 acquired by worker0 */
+	for (i = 0; i < 3; i++) {
+		rc = vmm_semaphore_up(&s1);
+		if (rc) {
+			vmm_cprintf(cdev, "error: semaphore not released\n");
+			failures++;
+		}
 	}
 
-	/* Destroy worker0 */
-	vmm_threads_destroy(workers[0]);
-	workers[0] = NULL;
-
-	/* Wait for worker0 to be scheduled out */
-	vmm_msleep(SLEEP_MSECS * 10);
-
-	/* check s1 semaphore available count */
+	/* s1 semaphore should be available */
 	if (vmm_semaphore_avail(&s1) != 3) {
-		vmm_cprintf(cdev, "error: worker0 auto-release mismatch\n");
-		failures++;
-	}
-
-	/* Destroy worker2 */
-	vmm_threads_destroy(workers[2]);
-	workers[2] = NULL;
-
-	/* Wait for worker2 to be scheduled out */
-	vmm_msleep(SLEEP_MSECS * 10);
-
-	/* check s1 semaphore available count */
-	if (vmm_semaphore_avail(&s1) != 6) {
-		vmm_cprintf(cdev, "error: worker2 auto-release mismatch\n");
+		vmm_cprintf(cdev, "error: semaphore not available\n");
 		failures++;
 	}
 
 	return (failures) ? VMM_EFAIL : 0;
 }
 
-static int semaphore2_run(struct wboxtest *test, struct vmm_chardev *cdev,
+static int semaphore4_run(struct wboxtest *test, struct vmm_chardev *cdev,
 			  u32 test_hcpu)
 {
 	int i, ret = VMM_OK;
@@ -175,9 +140,9 @@ static int semaphore2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 	/* Create worker threads */
 	for (i = 0; i < NUM_THREADS; i++) {
 		vmm_snprintf(wname, VMM_FIELD_NAME_SIZE,
-			     "semaphore2_worker%d", i);
+			     "semaphore4_worker%d", i);
 		workers[i] = vmm_threads_create(wname,
-						semaphore2_worker_thread_main,
+						semaphore4_worker_thread_main,
 						(void *)(unsigned long)i,
 						current_priority,
 						VMM_THREAD_DEF_TIME_SLICE);
@@ -189,7 +154,7 @@ static int semaphore2_run(struct wboxtest *test, struct vmm_chardev *cdev,
 	}
 
 	/* Do the test */
-	ret = semaphore2_do_test(cdev);
+	ret = semaphore4_do_test(cdev);
 
 	/* Destroy worker threads */
 destroy_workers:
@@ -203,19 +168,19 @@ destroy_workers:
 	return ret;
 }
 
-static struct wboxtest semaphore2 = {
-	.name = "semaphore2",
-	.run = semaphore2_run,
+static struct wboxtest semaphore4 = {
+	.name = "semaphore4",
+	.run = semaphore4_run,
 };
 
-static int __init semaphore2_init(void)
+static int __init semaphore4_init(void)
 {
-	return wboxtest_register("threads", &semaphore2);
+	return wboxtest_register("threads", &semaphore4);
 }
 
-static void __exit semaphore2_exit(void)
+static void __exit semaphore4_exit(void)
 {
-	wboxtest_unregister(&semaphore2);
+	wboxtest_unregister(&semaphore4);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

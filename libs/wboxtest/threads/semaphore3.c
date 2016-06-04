@@ -130,7 +130,7 @@ static int semaphore3_do_test(struct vmm_chardev *cdev)
 }
 
 static int semaphore3_run(struct wboxtest *test, struct vmm_chardev *cdev,
-		      u32 test_hcpu)
+			  u32 test_hcpu)
 {
 	int i, ret = VMM_OK;
 	char wname[VMM_FIELD_NAME_SIZE];
