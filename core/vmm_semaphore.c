@@ -159,6 +159,9 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 		}
 
 		rc = __vmm_waitqueue_wakeall(&sem->wq);
+		if (rc == VMM_ENOENT) {
+			rc = VMM_OK;
+		}
 	}
 
 	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
