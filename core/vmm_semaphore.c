@@ -162,6 +162,8 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 		if (rc == VMM_ENOENT) {
 			rc = VMM_OK;
 		}
+	} else {
+		rc = VMM_EINVALID;
 	}
 
 	vmm_spin_unlock_irqrestore(&sem->wq.lock, flags);
