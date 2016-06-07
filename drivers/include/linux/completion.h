@@ -47,8 +47,7 @@ static inline unsigned long wait_for_completion_timeout(struct completion *x,
 	u64 __r = timeout;
 	__r = __r * (1000000000 / HZ);
 	vmm_completion_wait_timeout(x, &__r);
-	__r = udiv64(__r, 1000000000);
-	__r = udiv64(__r, HZ);
+	__r = udiv64(__r, (1000000000 / HZ));
 	return (unsigned long)__r;
 }
 
