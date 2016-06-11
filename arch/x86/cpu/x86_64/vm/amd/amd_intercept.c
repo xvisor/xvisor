@@ -105,8 +105,8 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context,
 	struct vmm_guest *guest = context->assoc_vcpu->guest;
 
 	if (gva_to_gpa(context, context->vmcb->rip, &rip_phys)) {
-		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%x to guest "
-		       "physical.\n", context->vmcb->rip);
+		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%"PRIADDR
+		       " to guest physical.\n", context->vmcb->rip);
 		return VMM_EFAIL;
 	}
 
@@ -114,7 +114,7 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context,
 	if (vmm_guest_memory_read(guest, rip_phys, g_ins, sizeof(x86_inst),
 				  TRUE) < sizeof(x86_inst)) {
 		VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
-		       "instruction pointer. (%x)\n", rip_phys);
+		       "instruction pointer. (0x%"PRIPADDR")\n", rip_phys);
 		return VMM_EFAIL;
 	}
 
@@ -280,8 +280,8 @@ void emulate_guest_mmio_io(struct vcpu_hw_context *context,
 	if (gva_to_gpa(context,
 		       dinst->inst.gen_mov.src_addr,
 		       (physical_addr_t *)
-		       &dinst->inst.gen_mov.src_addr) != VMM_OK){
-		VM_LOG(LVL_ERR, "Failed to map guest va %x to pa\n",
+		       &dinst->inst.gen_mov.src_addr) != VMM_OK) {
+		VM_LOG(LVL_ERR, "Failed to map guest va 0x%"PRIADDR" to pa\n",
 		       dinst->inst.gen_mov.src_addr);
 		goto guest_bad_fault;
 	}
@@ -539,7 +539,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 	switch (context->vmcb->exitcode)
 	{
 	case VMEXIT_EXCEPTION_PF:
-		VM_LOG(LVL_DEBUG, "Guest fault: 0x%x (rIP: %x)\n",
+		VM_LOG(LVL_DEBUG, "Guest fault: 0x%"PRIx64" (rIP: %"PRIADDR")\n",
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
 		physical_addr_t fault_gphys = context->vmcb->exitinfo2;
@@ -572,7 +572,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_ERR, "Unhandled guest exception %s (rIP: %x)\n",
+		VM_LOG(LVL_ERR, "Unhandled exception %s (rIP: 0x%"PRIADDR")\n",
 		       exception_names[context->vmcb->exitcode - 0x40],
 		       context->vmcb->rip);
 		goto guest_bad_fault;
@@ -664,7 +664,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 
 			default:
 				VM_LOG(LVL_ERR,
-				       "Unknown CR %d read by guest\n",
+				       "Unknown CR 0x%"PRIx64" read by guest\n",
 				       dinst.inst.crn_mov.src_reg);
 				goto guest_bad_fault;
 			}
@@ -677,7 +677,8 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 			VM_LOG(LVL_VERBOSE, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n",
 			       context->g_cr0, context->vmcb->cr0);
 		} else {
-			VM_LOG(LVL_ERR, "Unknown fault inst: 0x%lx\n", ins64);
+			VM_LOG(LVL_ERR, "Unknown fault inst: 0x%p\n",
+			       ins64);
 			goto guest_bad_fault;
 		}
 	}
@@ -843,7 +844,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 			default:
 				VM_LOG(LVL_ERR,
 				       "Write to CR%d not supported.\n",
-				       dinst.inst.crn_mov.dst_reg - RM_REG_CR0);
+				       (int)(dinst.inst.crn_mov.dst_reg - RM_REG_CR0));
 				goto guest_bad_fault;
 			}
 		} else if (dinst.inst_type == INST_TYPE_CLR_CR) {
@@ -864,9 +865,11 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 		asm volatile("str %0\n"
 			     :"=r"(htr));
 		VM_LOG(LVL_DEBUG,
-		       "GW: CR0= 0x%8lx HCR0: 0x%8lx TR: 0x%8x HTR: 0x%x\n",
-		       context->g_cr0, context->vmcb->cr0,
-		       context->vmcb->tr, htr);
+		       "GW: CR0= 0x%"PRIx64" HCR0: 0x%"PRIx64"\n",
+		       context->g_cr0, context->vmcb->cr0);
+		VM_LOG(LVL_DEBUG,
+		       "TR: 0x%"PRIx64" HTR: 0x%"PRIx64"\n",
+		       *((u64 *)&context->vmcb->tr), htr);
 	}
 
 	return;
@@ -890,7 +893,7 @@ void __handle_ioio(struct vcpu_hw_context *context)
 	u32 guest_rd = 0;
 	u32 wval;
 
-	VM_LOG(LVL_VERBOSE, "RIP: %x exitinfo1: %x\n",
+	VM_LOG(LVL_VERBOSE, "RIP: 0x%"PRIx64" exitinfo1: 0x%"PRIx64"\n",
 	       context->vmcb->rip, context->vmcb->exitinfo1);
 	VM_LOG(LVL_VERBOSE,
 	       "IOPort: 0x%x is accssed for %sput. Size is %d. Segment: %d "
@@ -912,8 +915,8 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		context->vmcb->rax = guest_rd;
 	} else {
 		if (io_port == 0x80) {
-			VM_LOG(LVL_DEBUG, "(0x%x) CBDW: 0x%x\n",
-			       context->vmcb->rip, (u32)context->vmcb->rax);
+			VM_LOG(LVL_DEBUG, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
+			       context->vmcb->rip, context->vmcb->rax);
 		} else  {
 			wval = (u32)context->vmcb->rax;
 			if (vmm_devemu_emulate_iowrite(context->assoc_vcpu,
@@ -987,7 +990,8 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_ERR, "GCPUID/R: Func: %x\n", context->vmcb->rax);
+		VM_LOG(LVL_ERR, "GCPUID/R: Func: 0x%"PRIx64"\n",
+		       context->vmcb->rax);
 		goto _fail;
 	}
 

@@ -89,7 +89,7 @@ static int __init boot_module_initrd(physical_addr_t start, physical_addr_t end)
 
 	/* There should be a /chosen node */
 	if (!node) {
-		vmm_printf("initrd: No chosen node\n", __func__);
+		vmm_printf("%s: No chosen node\n", __func__);
 		rc = VMM_ENODEV;
 		goto _done;
 	}
@@ -140,7 +140,8 @@ static int __init boot_modules_init(void)
 
 		default:
 			rc = VMM_ENODEV;
-			vmm_printf("Unknown Mod Start: 0x%lx Mod End: 0x%lx\n",
+			vmm_printf("Unknown Mod Start: 0x%"PRIx32
+				   " Mod End: 0x%"PRIx32"\n",
 				   modlist->mod_start, modlist->mod_end);
 		}
 	}

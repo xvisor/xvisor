@@ -312,20 +312,25 @@ static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 
 	vmm_printf("\nGUEST %s dump state:\n\n", context->assoc_vcpu->name);
 
-	vmm_printf("RAX: 0x%08x RBX: 0x%08x RCX: 0x%08x RDX: 0x%08x\n",
+	vmm_printf("RAX: 0x%"PRIx64" RBX: 0x%"PRIx64
+		   " RCX: 0x%"PRIx64" RDX: 0x%"PRIx64"\n",
 		   context->vmcb->rax, context->g_regs[GUEST_REGS_RBX],
 		   context->g_regs[GUEST_REGS_RCX], context->g_regs[GUEST_REGS_RDX]);
-	vmm_printf("R08: 0x%08x R09: 0x%08x R10: 0x%08x R11: 0x%08x\n",
+	vmm_printf("R08: 0x%"PRIx64" R09: 0x%"PRIx64
+		   " R10: 0x%"PRIx64" R11: 0x%"PRIx64"\n",
 		   context->g_regs[GUEST_REGS_R8], context->g_regs[GUEST_REGS_R9],
 		   context->g_regs[GUEST_REGS_R10], context->g_regs[GUEST_REGS_R10]);
-	vmm_printf("R12: 0x%08x R13: 0x%08x R14: 0x%08x R15: 0x%08x\n",
+	vmm_printf("R12: 0x%"PRIx64" R13: 0x%"PRIx64
+		   " R14: 0x%"PRIx64" R15: 0x%"PRIx64"\n",
 		   context->g_regs[GUEST_REGS_R12], context->g_regs[GUEST_REGS_R13],
 		   context->g_regs[GUEST_REGS_R14], context->g_regs[GUEST_REGS_R15]);
-	vmm_printf("RSP: 0x%08x RBP: 0x%08x RDI: 0x%08x RSI: 0x%08x\n",
+	vmm_printf("RSP: 0x%"PRIx64" RBP: 0x%"PRIx64
+		   " RDI: 0x%"PRIx64" RSI: 0x%"PRIx64"\n",
 		   context->vmcb->rsp, context->g_regs[GUEST_REGS_RBP],
 		   context->g_regs[GUEST_REGS_RDI], context->g_regs[GUEST_REGS_RSI]);
-	vmm_printf("RIP: 0x%08x\n\n", context->vmcb->rip);
-	vmm_printf("CR0: 0x%08x CR2: 0x%08x CR3: 0x%08x CR4: 0x%08x\n",
+	vmm_printf("RIP: 0x%"PRIx64"\n\n", context->vmcb->rip);
+	vmm_printf("CR0: 0x%"PRIx64" CR2: 0x%"PRIx64
+		   " CR3: 0x%"PRIx64" CR4: 0x%"PRIx64"\n",
 		   context->vmcb->cr0, context->vmcb->cr2,
 		   context->vmcb->cr3, context->vmcb->cr4);
 
@@ -341,7 +346,7 @@ static void dump_guest_vcpu_state(struct vcpu_hw_context *context)
 	dump_seg_selector("TR ", &context->vmcb->tr);
 
 
-	vmm_printf("RFLAGS: 0x%08x    [ ", context->vmcb->rflags);
+	vmm_printf("RFLAGS: 0x%"PRIx64"    [ ", context->vmcb->rflags);
 	for (i = 0; i < 32; i++) {
 		val = context->vmcb->rflags & (0x1UL << i);
 		switch(val) {

@@ -131,7 +131,7 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 	}
 
 	context->vmcs = vmcs;
-	vmm_printf("VMCS location: %x\n", vmcs);
+	vmm_printf("VMCS location: 0x%p\n", vmcs);
 
 	if (vmm_host_va2pa((virtual_addr_t)context->vmcs,
 			   &context->vmcs_pa) != VMM_OK) {

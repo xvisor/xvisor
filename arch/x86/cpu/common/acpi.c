@@ -163,7 +163,7 @@ static virtual_addr_t __init find_root_system_descriptor(void)
 	}
 
 	if (likely(rsdp_base))
-		vmm_printf("RSDP Base: 0x%x\n", rsdp_base);
+		vmm_printf("RSDP Base: 0x%"PRIADDR"\n", rsdp_base);
 
 	return rsdp_base;
 }
@@ -337,7 +337,7 @@ int __init acpi_init(void)
 	prsdt = (struct acpi_rsdt *)vmm_host_iomap(root_desc->rsdt_addr, PAGE_SIZE);
 	if (unlikely(!prsdt)) {
 		vmm_printf("ACPI ERROR: Failed to map physical address 0x%x.\n",
-			__func__, root_desc->rsdt_addr);
+			   root_desc->rsdt_addr);
 		goto rsdt_fail;
 	}
 

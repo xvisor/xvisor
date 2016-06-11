@@ -747,7 +747,8 @@ static void vmx_dump_sel(char *name, u32 selector)
 	attr = vmr(selector + (GUEST_ES_AR_BYTES - GUEST_ES_SELECTOR));
 	limit = vmr(selector + (GUEST_ES_LIMIT - GUEST_ES_SELECTOR));
 	base = vmr(selector + (GUEST_ES_BASE - GUEST_ES_SELECTOR));
-	vmm_printf("%s: sel=0x%04x, attr=0x%05x, limit=0x%08x, base=0x%016x\n",
+	vmm_printf("%s: sel=0x%"PRIx32", attr=0x%"PRIx32
+		   ", limit=0x%"PRIx32", base=0x%"PRIx64"\n",
 		   name, sel, attr, limit, base);
 }
 
@@ -757,7 +758,8 @@ static void vmx_dump_sel2(char *name, u32 lim)
 	u64 base;
 	limit = vmr(lim);
 	base = vmr(lim + (GUEST_GDTR_BASE - GUEST_GDTR_LIMIT));
-	vmm_printf("%s:                           limit=0x%08x, base=0x%016x\n",
+	vmm_printf("%s:                           "
+		   "limit=0x%"PRIx32", base=0x%"PRIx64"\n",
 		   name, limit, base);
 }
 
