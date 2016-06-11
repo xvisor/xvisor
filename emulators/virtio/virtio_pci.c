@@ -132,7 +132,7 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 		break;
 
 	default:
-		vmm_printf("%s: unexpected address 0x%x value 0x%x",
+		vmm_printf("%s: unexpected address 0x%"PRIPADDR" value 0x%x",
 			   __func__, offset, val);
 		rc = VMM_EFAIL;
 		break;

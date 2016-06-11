@@ -151,22 +151,23 @@ static void pic_update_irq(i8259_state_t *s)
 
 	if (!s->master) {
 		level = SLAVE_IRQ_ENCODE(0, 0, 0, irq, 0);
-		I8259_LOG(VERBOSE, "[slave]: IRQ# %d Level# 0x%lx\n",
-			  __func__, s->parent_irq, level);
+		I8259_LOG(VERBOSE, "[slave]: IRQ# %d Level# 0x%x\n",
+			  s->parent_irq, level);
 		vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
 	} else {
 		if (s->parent_irq == 256) {
 			vec = pic_read_irq(s);
 			if (vec < 32) {
-				vmm_printf("vectors not set by guest (%d)\n", vec);
+				vmm_printf("vectors not set by guest (%d)\n",
+					   vec);
 				return;
 			}
 			vmm_vcpu_irq_assert(vcpu, vec, 0);
 			I8259_LOG(VERBOSE, "[master] i8259 assert IRQ# %d\n",
-				  __func__, irq);
-		} else {
-			I8259_LOG(VERBOSE, "[master] i8259 assert IRQ# %d on LAPIC\n",
 				  irq);
+		} else {
+			I8259_LOG(VERBOSE, "[master] i8259 assert IRQ# %d "
+				  "on LAPIC\n", irq);
 			/* we are slave to LAPIC. Send interrupt to it. */
 			level = SLAVE_IRQ_ENCODE(0, 0, 0, irq, 0);
 			vmm_devemu_emulate_irq(s->guest, s->parent_irq, level);
@@ -456,7 +457,7 @@ static u64 pic_ioport_read(i8259_state_t *s, physical_addr_t addr, u32* dst)
 		}
 	}
 
-	I8259_LOG(DEBUG, "read: addr=0x%02x val=0x%02x\n", addr, ret);
+	I8259_LOG(DEBUG, "read: addr=0x%"PRIPADDR" ret=0x%x\n", addr, ret);
 
 	*dst = ret;
 
