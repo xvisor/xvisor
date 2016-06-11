@@ -4,7 +4,7 @@
 #include <vmm_stdio.h>
 
 #define WARN_ON_ONCE(x)		WARN_ON(x)
-#define WARN_ONCE(msg...)	WARN(1, msg)
+#define WARN_ONCE(x, msg...)	WARN(x, msg)
 
 #define BUILD_BUG_ON(condition)	((void)sizeof(char[1 - 2*!!(condition)]))
 

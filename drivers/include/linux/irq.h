@@ -13,7 +13,7 @@ static inline unsigned int irq_find_mapping(struct irq_domain *host,
 /* FIXME: Need to fix this */
 static inline int can_request_irq(unsigned int irq, unsigned long irqflags)
 {
-	WARN_ONCE("FIXME!! FIXME!!");
+	WARN_ONCE(1, "FIXME!! FIXME!!");
 	return 1;
 }
 #endif
