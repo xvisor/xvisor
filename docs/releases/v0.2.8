@@ -1,0 +1,57 @@
+			Xvisor v0.2.8
+	(Last Commit: ------------------------------)
+		(Release Date: 24-Jun-2016)
+
+In this release, we have lot of fixes, improvements, drivers and emulators.
+
+New Features:
+ - Print banner from text file using boot command
+ - Display logo and images on framebuffer from file only
+ - Support for savedefconfig in top-level makefile
+ - Replaced vstelnet library with vsdaemon library which has support for
+pluggable transport module
+ - vsdaemon transport for character device
+ - vsdaemon transport for telnet connection
+ - vsdaemon transport for managment terminal
+ - Added lite version of vmm_spin_lock()/vmm_spin_unlock() and similar APIs
+ - White-box testing library with lots of test cases
+ - New interface/APIs for registering simple emulators
+ - Added vmm_manager APIs to manage per-VCPU resources
+ - Added emulator debugging support in device emulation framework
+ - Added ANSI colors for logging in vmm_stdio
+ - Initial support for multiqueue in VirtIO Network
+
+New Commands:
+ - vsdaemon command to replace old vstelnet command
+ - wboxtest command to invoke white-box testing library
+ - guest region sub-command to retrieve region info
+ - vdisk info sub-command to print vdisk details
+
+New Drivers:
+ - BCM2835 i2c driver ported from Linux
+
+New Emulators:
+ - SP805 watchdog emulator
+ - i.MX serial emulator
+ - Simplified i.MX6 Anatop emulator
+ - Simplified i.MX6 CCM emulator
+ - Simplified i.MX GPT emulator
+
+ARM Ports:
+ - Added emulated SP805 device for all ARM guest types
+ - Added i.MX6 SMP boot method
+ - Added common build script to automate Xvisor, guest Linux, and
+guest root filesystem compilation
+ - Emulate i.MX6 HW instead of VExpress-A9 for saberlite-a9 guest type
+
+ARM32 Port:
+ - CP14 instruction virtualization support
+
+ARM32ve Port:
+ - No change
+
+ARM64 Port:
+ - No change
+
+x86 Port:
+ - No change
