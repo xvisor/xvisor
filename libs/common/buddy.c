@@ -161,7 +161,7 @@ static struct buddy_area *__buddy_alloc_find(struct buddy_allocator *ba,
 		return NULL;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+	DPRINTF("%s: ba=%p addr=0x%lx\n", __func__, ba, addr);
 
 	n = ba->alloc.rb_node;
   	while (n) {
@@ -206,7 +206,7 @@ static struct buddy_area *buddy_alloc_find(struct buddy_allocator *ba,
 		return NULL;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+	DPRINTF("%s: ba=%p addr=0x%lx\n", __func__, ba, addr);
 
 	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
 	ret = __buddy_alloc_find(ba, addr,
@@ -228,7 +228,7 @@ static void __buddy_alloc_add(struct buddy_allocator *ba,
 		return;
 	}
 
-	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p map=0x%lx bin_num=%lu blk_count=%lu\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	depth = 0;
@@ -259,7 +259,7 @@ static void buddy_alloc_add(struct buddy_allocator *ba,
 		return;
 	}
 
-	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p map=0x%lx bin_num=%lu blk_count=%lu\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
@@ -275,7 +275,7 @@ static void __buddy_alloc_del(struct buddy_allocator *ba,
 		return;
 	}
 
-	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p map=0x%lx bin_num=%lu blk_count=%lu\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	rb_erase(&a->hk_rb, &ba->alloc);
@@ -297,7 +297,7 @@ static struct buddy_area *__buddy_bins_put(struct buddy_allocator *ba,
 		return NULL;
 	}
 
-	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p map=0x%lx bin_num=%lu blk_count=%lu\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	/* Save the bin number */
@@ -406,7 +406,7 @@ static void buddy_bins_put(struct buddy_allocator *ba,
 {
 	struct buddy_area *residue;
 
-	DPRINTF("%s: ba=%p map=0x%x bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p map=0x%lx bin_num=%lu blk_count=%lu\n",
 		__func__, ba, a->map, a->bin_num, a->blk_count);
 
 	residue = __buddy_bins_put(ba, a);
@@ -430,7 +430,7 @@ static struct buddy_area *buddy_bins_get(struct buddy_allocator *ba,
 		return NULL;
 	}
 
-	DPRINTF("%s: ba=%p bin_num=%d blk_count=%d\n",
+	DPRINTF("%s: ba=%p bin_num=%lu blk_count=%lu\n",
 		__func__, ba, bin_num, blk_count);
 
 	/* Lock desired bin */
@@ -522,7 +522,7 @@ static struct buddy_area *buddy_bins_reserve(struct buddy_allocator *ba,
 		return NULL;
 	}
 
-	DPRINTF("%s: ba=%p bin_num=%d addr=0x%x size=0x%x\n",
+	DPRINTF("%s: ba=%p bin_num=%lu addr=0x%lx size=%lu\n",
 		__func__, ba, bin_num, addr, size);
 
 	/* Align address to block boundary */
@@ -679,7 +679,7 @@ int buddy_mem_alloc(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p size=%d\n", __func__, ba, size);
+	DPRINTF("%s: ba=%p size=%lu\n", __func__, ba, size);
 
 	/* Estimated bin number and block count */
 	bin_num = buddy_estimate_bin(ba, size);
@@ -739,7 +739,7 @@ int buddy_mem_aligned_alloc(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p order=%d size=%d\n",
+	DPRINTF("%s: ba=%p order=%lu size=%lu\n",
 		__func__, ba, order, size);
 
 	/* Estimated bin number and block count */
@@ -831,7 +831,7 @@ int buddy_mem_reserve(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x size=0x%x\n",
+	DPRINTF("%s: ba=%p addr=0x%lx size=%lu\n",
 		__func__, ba, addr, size);
 
 	/* Try to reserve from smallest bin to biggest bin */
@@ -900,7 +900,7 @@ int buddy_mem_find(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+	DPRINTF("%s: ba=%p addr=0x%lx\n", __func__, ba, addr);
 
 	/* Find buddy area from alloc tree */
 	a = buddy_alloc_find(ba, addr, &a_addr, &a_bin, &a_blk_count);
@@ -933,7 +933,7 @@ int buddy_mem_free(struct buddy_allocator *ba, unsigned long addr)
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x\n", __func__, ba, addr);
+	DPRINTF("%s: ba=%p addr=0x%lx\n", __func__, ba, addr);
 
 	/* Acquire alloc lock */
 	vmm_spin_lock_irqsave_lite(&ba->alloc_lock, f);
@@ -970,7 +970,7 @@ int buddy_mem_partial_free(struct buddy_allocator *ba,
 		return VMM_EINVALID;
 	}
 
-	DPRINTF("%s: ba=%p addr=0x%x size=0x%x\n",
+	DPRINTF("%s: ba=%p addr=0x%lx size=%lu\n",
 		__func__, ba, addr, size);
 
 	/* Acquire alloc lock */
@@ -1079,7 +1079,7 @@ int buddy_allocator_init(struct buddy_allocator *ba,
 		RB_CLEAR_NODE(&a->hk_rb);
 		list_add_tail(&a->hk_head, &ba->hk_free_list);
 	}
-	DPRINTF("%s: ba=%p hk_total_count=%d\n",
+	DPRINTF("%s: ba=%p hk_total_count=%lu\n",
 		__func__, ba, ba->hk_total_count);
 
 	/* Save configuration */
