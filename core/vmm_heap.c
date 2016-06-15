@@ -61,7 +61,7 @@ static void *heap_malloc(struct vmm_heap_control *heap,
 
 	rc = buddy_mem_alloc(&heap->ba, size, &addr);
 	if (rc) {
-		vmm_printf("%s: Failed to alloc size=%zu (error %d)\n",
+		vmm_printf("%s: Failed to alloc size=%"PRISIZE" (error %d)\n",
 			   __func__, size, rc);
 		return NULL;
 	}
