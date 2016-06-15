@@ -200,16 +200,16 @@ static inline void _ipu_ch_param_dump(struct ipu_soc *ipu, int ch)
 	dev_dbg(ipu->dev, "ch %d word 1 - %08X %08X %08X %08X %08X\n", ch,
 		 p->word[1].data[0], p->word[1].data[1], p->word[1].data[2],
 		 p->word[1].data[3], p->word[1].data[4]);
-	dev_dbg(ipu->dev, "PFS 0x%x, ",
+	dev_dbg(ipu->dev, "PFS 0x%x\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 85, 4));
-	dev_dbg(ipu->dev, "BPP 0x%x, ",
+	dev_dbg(ipu->dev, "BPP 0x%x\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 0, 107, 3));
 	dev_dbg(ipu->dev, "NPB 0x%x\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 78, 7));
 
-	dev_dbg(ipu->dev, "FW %d, ",
+	dev_dbg(ipu->dev, "FW %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 0, 125, 13));
-	dev_dbg(ipu->dev, "FH %d, ",
+	dev_dbg(ipu->dev, "FH %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 0, 138, 12));
 	dev_dbg(ipu->dev, "EBA0 0x%x\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 0, 29) << 3);
@@ -226,19 +226,19 @@ static inline void _ipu_ch_param_dump(struct ipu_soc *ipu, int ch)
 	dev_dbg(ipu->dev, "v_offset 0x%x\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 0, 68, 22) << 3);
 
-	dev_dbg(ipu->dev, "Width0 %d+1, ",
+	dev_dbg(ipu->dev, "Width0 %d+1\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 116, 3));
-	dev_dbg(ipu->dev, "Width1 %d+1, ",
+	dev_dbg(ipu->dev, "Width1 %d+1\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 119, 3));
-	dev_dbg(ipu->dev, "Width2 %d+1, ",
+	dev_dbg(ipu->dev, "Width2 %d+1\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 122, 3));
-	dev_dbg(ipu->dev, "Width3 %d+1, ",
+	dev_dbg(ipu->dev, "Width3 %d+1\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 125, 3));
-	dev_dbg(ipu->dev, "Offset0 %d, ",
+	dev_dbg(ipu->dev, "Offset0 %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 128, 5));
-	dev_dbg(ipu->dev, "Offset1 %d, ",
+	dev_dbg(ipu->dev, "Offset1 %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 133, 5));
-	dev_dbg(ipu->dev, "Offset2 %d, ",
+	dev_dbg(ipu->dev, "Offset2 %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 138, 5));
 	dev_dbg(ipu->dev, "Offset3 %d\n",
 		 ipu_ch_param_read_field_io(ipu_ch_param_addr(ipu, ch), 1, 143, 5));
