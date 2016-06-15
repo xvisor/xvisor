@@ -1333,7 +1333,7 @@ int vscreen_bind(bool is_hard,
 
 	/* Ensure this framebuffer is not already binded */
 	if (NULL != vscreen_fb_info_find(info)) {
-			return VMM_EALREADY;
+		return VMM_EALREADY;
 	}
 
 	/* Alloc vscreen context */
@@ -1357,7 +1357,6 @@ int vscreen_bind(bool is_hard,
 	/* Setup and intialize vscreen */
 	rc = vscreen_setup(cntx);
 	if (rc) {
-		vmm_free(cntx);
 		goto err_cntx;
 	}
 
