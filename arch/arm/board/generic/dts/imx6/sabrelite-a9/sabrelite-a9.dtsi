@@ -78,7 +78,7 @@
 
 &mxcfb1 {
 	status = "okay";
-	interface_pix_fmt = "RGB565";
+	interface_pix_fmt = "RGB666";
 	default_bpp = <16>;
 	mode_str ="LDB-XGA";
 };
