@@ -43,8 +43,17 @@ typedef unsigned long u64;
 #endif
 
 typedef unsigned int bool;
+/*
+ * Most 32 bit architectures use "unsigned int" size_t,
+ * and all 64 bit architectures use "unsigned long" size_t.
+ */
+#ifndef CONFIG_64BIT
 typedef unsigned int size_t;
 typedef signed int ssize_t;
+#else
+typedef unsigned long size_t;
+typedef signed long ssize_t;
+#endif
 typedef unsigned long ulong;
 typedef signed int off_t;
 typedef signed long long loff_t;

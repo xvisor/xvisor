@@ -64,7 +64,7 @@ static int cmd_ping_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	}
 	str2ipaddr(ipaddr, argv[1]);
 
-	vmm_cprintf(cdev, "PING (%s) %d(%d) bytes of data.\n", 
+	vmm_cprintf(cdev, "PING (%s) %d(%zu) bytes of data.\n",
 			  argv[1], size, (size + IP4_HLEN + ICMP_HLEN));
 
 	netstack_prefetch_arp_mapping(ipaddr);

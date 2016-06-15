@@ -172,11 +172,11 @@ static int cmd_vserial_recv_putesc(struct cmd_vserial_recvcntx *v, u8 ch)
 				cmd_vserial_recv_flushesc(v);
 				vmm_cputs(v->cdev, str);
 			} else {
-				vmm_cprintf(v->cdev, "\e[%d;%df", 
+				vmm_cprintf(v->cdev, "\e[%d;%df",
 					    v->esc_attrib[0], 0);
 				vmm_cputs(v->cdev, str);
-				vmm_cprintf(v->cdev, "\e[%d;%df", 
-					    v->esc_attrib[0], 
+				vmm_cprintf(v->cdev, "\e[%d;%zuf",
+					    v->esc_attrib[0],
 					    v->esc_attrib[1] + strlen(str));
 			}
 			v->esc_cmd_active = FALSE;

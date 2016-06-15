@@ -83,10 +83,10 @@ static int wb_printf_run(struct wboxtest *test, struct vmm_chardev *cdev,
               "0x%"PRIx64" = %"PRIu64, feeddeadbabe, feeddeadbabe);
         if (sizeof(void *) == sizeof(u32)) {
                 _TEST("0xDEADBEEF", "0x%"PRIADDR, deadbeef);
-                _TEST("0x0000BABE", "0x%"PRIADDR, babe);
+                _TEST("0x0000BABE", "0x%"PRIPADDR, babe);
         } else if (sizeof(void *) == sizeof(u64)) {
                 _TEST("0x00000000DEADBEEF", "0x%"PRIADDR, deadbeef);
-                _TEST("0x000000000000BABE", "0x%"PRIADDR, babe);
+                _TEST("0x000000000000BABE", "0x%"PRIPADDR, babe);
         }
         _TEST("42 % 2 = 0", "%"PRISIZE" %% %u = %i", size, 2, 0);
         _TEST("Xvisor", "%c%c%c%c%c%c", 'X', 'v', 'i', 's', 'o', 'r');
