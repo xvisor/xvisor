@@ -10,15 +10,16 @@ how to run Basic Firmware on Vexpress-A15 guest. For more info refer,
 The Raspberry Pi 2 usually comes with and SD card containig the GPU firmware
 necessary to boot the ARM processor.
 To create your own SD Card to boot the Raspberry Pi 2
- 1) Format a blank SD card with FAT/FAT32 filesystem
- 2) Download the following files from the Raspberry Official Repository
- (https://github.com/raspberrypi/firmware/tree/master/boot) to the SD card:
- (Note: the _cd files are used when gpu_mem=16)
- - bootcode.bin
+ 1) Download and write prebuild image to SD card as described in
+ https://www.raspberrypi.org/documentation/installation/installing-images/
+ 2) Optionally download the following files from the Raspberry Official
+ Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
+ to the SD card if you are not able detect complete 1GB RAM:
  - fixup.dat
  - fixup_cd.dat
  - start.elf
  - start_cd.elf
+ (Note: the _cd files are used when gpu_mem=16)
 
 As first step, we install u-boot-2015.07 on the SD card that comes with
 Raspberry Pi2 board or that has been formatted as instructed above.
@@ -36,7 +37,9 @@ To do this:
  5) Add following lines to <raspi2_sd_card_boot_partition>/config.txt:
  kernel=u-boot.hyp
  kernel_old=1
- gpu_mem=128
+ gpu_mem=64
+ (Note: if <raspi2_sd_card_boot_partition>/config.txt does not exist then
+  create it)
  6) Unmount the boot partition of pre-installed SD card
 
 Once we have u-boot installed on SD card, we add 3 more images to the boot
@@ -115,14 +118,14 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
 
   [15. Unplug bootable SD card from the Raspberry Pi2 board and plug it on your development machine]
 
-  [16. Mount boot partition (or partition 0) of SD card on your development machine]
+  [16. Mount data partition (or partition 0) of SD card on your development machine]
 
-  [17. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/bcm2836/one_guest_vexpress-a15.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
+  [17. Copy uvmm.bin, DTB, and disk.img to data partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/bcm2836/one_guest_vexpress-a15.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
-  [18. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [18. Unmount data partition (or partition 0) of SD card from your development machine]
 
   [19. Unplug SD card from your development machine and plug it back on Raspberry Pi2 board]
 
@@ -134,13 +137,13 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
   U-Boot> mmc dev 0:0
 
   [23. Copy Xvisor from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x200000 uvmm.bin
+  U-Boot> ext4load mmc 0:2 0x200000 uvmm.bin
 
   [24. Copy the Xvisor DTB from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x800000 one_guest_vexpress-a15.dtb
+  U-Boot> ext4load mmc 0:2 0x800000 one_guest_vexpress-a15.dtb
 
   [25. Copy disk image from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x2000000 udisk.img
+  U-Boot> ext4load mmc 0:2 0x2000000 udisk.img
 
   [26. Jump into Xvisor after disabling MMU, interrupts, etc]
   U-Boot> bootm 0x200000 0x2000000 0x800000
