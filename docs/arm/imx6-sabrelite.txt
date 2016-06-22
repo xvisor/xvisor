@@ -51,8 +51,8 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/
   # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/system/
 
-  [12. Copy and rename the host and guest device tree to boot partition of SD card]
-  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite-a9/one_guest_sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-sabrelite.dtb
+  [12. Copy and rename the host and guest device tree to boot partition of SD card. <board_name> being sabrelite or nitrogen6x]
+  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite-a9/one_guest_sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-<board_name>.dtb
   # cp -f build/sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/
 
   [13. Copy the basic firmware, the nor_flash.list and the cmdlist on the SD card boot partition]
@@ -60,9 +60,9 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # cp -f tests/arm32/sabrelite-a9/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
   # cp -f tests/arm32/sabrelite-a9/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
 
-  [14. Configure, build and patch the kernel image]
+  [14. Configure, build and patch the kernel image (linux 4.5.0 is advised)]
   # cd <linux_source_directory>
-  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_defconfig .config
+  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_defconfig <linux_build_directory>/.config
   # make O=<linux_build_directory> ARCH=arm oldconfig
   # make O=<linux_build_directory> ARCH=arm Image
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
@@ -91,10 +91,10 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   [19. Create the banner]
   # cp -f docs/banner/roman.txt <path_to_mounted_boot_partition_of_sd_card>/system/banner.txt
 
-  [20. Generate the roofs]
+  [20. Generate the rootfs]
   You need to refer to tests/common/busybox/README.md to see how to generate rootfs.img
   using BusyBox.
-  # cp -f <rootfs.img> <path_to_mounted_boot_partition_of_sd_card>/images/arm32/rootfs.imf
+  # cp -f <busybox_rootfs_directory>/rootfs.img <path_to_mounted_boot_partition_of_sd_card>/images/arm32/rootfs.img
 
   [20. Unmount boot partition (or partition 0) of SD card from your development machine]
 
