@@ -27,8 +27,7 @@ void *memcpy(void *dest, const void *src, size_t count)
 {
 	int d0, d1, d2;
 
-	asm volatile("movl %3, %%ecx\n\t"
-		     "rep ; movsl\n\t"
+	asm volatile("rep ; movsl\n\t"
 		     "movl %4, %%ecx\n\t"
 		     "andl $3, %%ecx\n\t"
 		     "jz 1f\n\t"
