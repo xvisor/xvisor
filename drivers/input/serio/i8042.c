@@ -733,7 +733,7 @@ static int __init i8042_toggle_aux(bool on)
 		if (i8042_command(&param, I8042_CMD_CTL_RCTR))
 			return -1;
 
-		if (!(param & I8042_CTR_AUXDIS) == on)
+		if ((!(param & I8042_CTR_AUXDIS)) == on)
 			return 0;
 	}
 
