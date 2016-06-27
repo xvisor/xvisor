@@ -113,6 +113,8 @@ static inline void check_msg(struct check *c, const char *fmt, ...)
 		vfprintf(stderr, fmt, ap);
 		fprintf(stderr, "\n");
 	}
+
+	va_end(ap);
 }
 
 #define FAIL(c, ...) \
