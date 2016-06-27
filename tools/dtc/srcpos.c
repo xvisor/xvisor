@@ -252,12 +252,11 @@ void
 srcpos_dump(struct srcpos *pos)
 {
 	printf("file        : \"%s\"\n",
-	       pos->file ? (char *) pos->file : "<no file>");
+	       (pos->file && pos->file->name) ? pos->file->name : "<no file>");
 	printf("first_line  : %d\n", pos->first_line);
 	printf("first_column: %d\n", pos->first_column);
 	printf("last_line   : %d\n", pos->last_line);
 	printf("last_column : %d\n", pos->last_column);
-	printf("file        : %s\n", pos->file->name);
 }
 
 
@@ -268,7 +267,7 @@ srcpos_string(struct srcpos *pos)
 	char *pos_str;
 	int rc;
 
-	if (pos)
+	if (pos->file && pos->file->name)
 		fname = pos->file->name;
 
 
