@@ -403,31 +403,6 @@ char *strsep(char **s, const char *ct)
 	return sbegin;
 }
 
-#if !defined(ARCH_HAS_MEMCPY)
-void *memcpy(void *dest, const void *src, size_t count)
-{
-	u8 *dst8 = (u8 *) dest;
-	u8 *src8 = (u8 *) src;
-
-	if (count & 1) {
-		dst8[0] = src8[0];
-		dst8 += 1;
-		src8 += 1;
-	}
-
-	count /= 2;
-	while (count--) {
-		dst8[0] = src8[0];
-		dst8[1] = src8[1];
-
-		dst8 += 2;
-		src8 += 2;
-	}
-
-	return dest;
-}
-#endif
-
 void *memcpy_toio(void *dest, const void *src, size_t count)
 {
 	u8 *dst8 = (u8 *) dest;
