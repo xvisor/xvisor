@@ -42,16 +42,19 @@ struct vmm_host_irqdomain;
  * @xlate: Given a device tree node and interrupt specifier, decode
  *         the hardware irq number and linux irq type value.
  *
- * Functions below are provided by the driver and called whenever a new mapping
- * is created or an old mapping is disposed. The driver can then proceed to
- * whatever internal data structures management is required. It also needs
- * to setup the irq_desc when returning from map().
+ * Functions below are provided by the driver and called whenever a new
+ * mapping is created or an old mapping is disposed. The driver can then
+ * proceed to whatever internal data structures management is required.
+ * It also needs to setup the irq_desc when returning from map().
  */
 struct vmm_host_irqdomain_ops {
-	int (*match)(struct vmm_host_irqdomain *d, struct vmm_devtree_node *node);
-	int (*map)(struct vmm_host_irqdomain *d, unsigned int hirq, unsigned int hw);
+	int (*match)(struct vmm_host_irqdomain *d,
+		     struct vmm_devtree_node *node);
+	int (*map)(struct vmm_host_irqdomain *d,
+		   unsigned int hirq, unsigned int hwirq);
 	void (*unmap)(struct vmm_host_irqdomain *d, unsigned int hirq);
-	int (*xlate)(struct vmm_host_irqdomain *d, struct vmm_devtree_node *node,
+	int (*xlate)(struct vmm_host_irqdomain *d,
+		     struct vmm_devtree_node *node,
 		     const u32 *intspec, unsigned int intsize,
 		     unsigned long *out_hwirq, unsigned int *out_type);
 };
@@ -59,6 +62,7 @@ struct vmm_host_irqdomain_ops {
 /**
  * struct vmm_host_irqdomain - IRQ domain, kind of Linux IRQ domain
  * @head:	List head for registration
+ * @base:	Base
  * @count:	The number of IRQs contained.
  * @ops:	Pointer to vmm_host_irqdomain methods.
  * @irqs:	The extended IRQ array
@@ -74,9 +78,9 @@ struct vmm_host_irqdomain {
 	unsigned int				base;
 	unsigned int				count;
 	unsigned int				end;
-	void					*host_data;
-	struct vmm_devtree_node			*of_node;
 	const struct vmm_host_irqdomain_ops	*ops;
+	struct vmm_devtree_node			*of_node;
+	void					*host_data;
 };
 
 /** Convert host IRQ to HW IRQ */

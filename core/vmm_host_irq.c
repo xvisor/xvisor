@@ -175,7 +175,7 @@ u32 vmm_host_irq_count(void)
 	return CONFIG_HOST_IRQ_COUNT;
 }
 
-int vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq)
+int __vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq)
 {
 	struct vmm_host_irq *irq = NULL;
 

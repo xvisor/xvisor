@@ -189,8 +189,11 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 /** Get host irq count */
 u32 vmm_host_irq_count(void);
 
-/** Set hwirq associated with host irq instance */
-int vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq);
+/** Set hwirq associated with host irq instance
+ *  Note: This function is for internal use only.
+ *  Note: Do not call this function directly.
+ */
+int __vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq);
 
 /** Get hwirq associated with host irq instance */
 u32 vmm_host_irq_get_hwirq(u32 hirq);
