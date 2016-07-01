@@ -215,7 +215,7 @@ int vmm_host_irqext_create_mapping(u32 hirq, u32 hwirq)
 		goto done;
 	}
 
-	__vmm_host_irq_init_desc(irq, hirq, hwirq);
+	__vmm_host_irq_init_desc(irq, hirq, hwirq, VMM_IRQ_STATE_EXTENDED);
 
 	iectrl.irqs[hirq - CONFIG_HOST_IRQ_COUNT] = irq;
 

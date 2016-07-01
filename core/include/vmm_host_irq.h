@@ -54,12 +54,12 @@ enum vmm_irq_trigger_types {
 /**
  * enum vmm_irq_states
  * @VMM_IRQ_STATE_TRIGGER_MASK		- Mask for the trigger type bits
- * @VMM_IRQ_STATE_NO_BALANCING		- Balancing disabled for this IRQ
  * @VMM_IRQ_STATE_PER_CPU		- Interrupt is per cpu
  * @VMM_IRQ_STATE_AFFINITY_SET		- Interrupt affinity was set
  * @VMM_IRQ_STATE_LEVEL			- Interrupt is level triggered
  * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
+ * @VMM_IRQ_STATE_EXTENDED		- Interrupt is an extended interrupt
  * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  */
@@ -70,8 +70,9 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_LEVEL		= (1 << 13),
 	VMM_IRQ_STATE_ROUTED		= (1 << 14),
 	VMM_IRQ_STATE_IPI		= (1 << 15),
-	VMM_IRQ_STATE_DISABLED		= (1 << 16),
-	VMM_IRQ_STATE_MASKED		= (1 << 17),
+	VMM_IRQ_STATE_EXTENDED		= (1 << 16),
+	VMM_IRQ_STATE_DISABLED		= (1 << 17),
+	VMM_IRQ_STATE_MASKED		= (1 << 18),
 };
 
 /**
@@ -182,7 +183,8 @@ void vmm_host_irq_set_active_callback(u32 (*active)(u32));
  *  Note: This function is for internal use only.
  *  Note: Do not call this function directly.
  */
-void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num, u32 hwirq);
+void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
+			      u32 hirq, u32 hwirq, u32 state);
 
 /** Get host irq count */
 u32 vmm_host_irq_count(void);

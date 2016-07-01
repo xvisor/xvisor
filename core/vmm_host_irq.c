@@ -182,7 +182,9 @@ int vmm_host_irq_set_hwirq(u32 hirq, u32 hwirq)
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
 		return VMM_EFAIL;
 
-	irq->hwirq = hwirq;
+	if (!(irq->state & VMM_IRQ_STATE_EXTENDED))
+		irq->hwirq = hwirq;
+
 	return VMM_OK;
 }
 
@@ -700,19 +702,21 @@ static void __cpuinit host_irq_nidtbl_found(struct vmm_devtree_node *node,
  * Initialize a vmm_host_irq structure
  * Warning: The associated IRQ must be disabled!
  */
-void __vmm_host_irq_init_desc(struct vmm_host_irq *irq, u32 num, u32 hwirq)
+void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
+			      u32 hirq, u32 hwirq, u32 state)
 {
 	u32 cpu = 0;
 
 	if (!irq)
 		return;
 
-	irq->num = num;
+	irq->num = hirq;
 	irq->hwirq = hwirq;
 	irq->name = NULL;
-	irq->state = (VMM_IRQ_TYPE_NONE |
-		      VMM_IRQ_STATE_DISABLED |
-		      VMM_IRQ_STATE_MASKED);
+	irq->state = state;
+	irq->state |= VMM_IRQ_TYPE_NONE;
+	irq->state |= VMM_IRQ_STATE_DISABLED;
+	irq->state |= VMM_IRQ_STATE_MASKED;
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		irq->count[cpu] = 0;
 		irq->in_progress[cpu]= FALSE;
@@ -749,7 +753,8 @@ int __cpuinit vmm_host_irq_init(void)
 
 		/* Reset the handler array */
 		for (ite = 0; ite < CONFIG_HOST_IRQ_COUNT; ite++) {
-			__vmm_host_irq_init_desc(&hirqctrl.irq[ite], ite, ite);
+			__vmm_host_irq_init_desc(&hirqctrl.irq[ite],
+						 ite, ite, 0);
 		}
 
 		/* Determine clockchip matches from nodeid table */
