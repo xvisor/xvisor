@@ -42,6 +42,18 @@ struct vmm_host_irqext_ctrl {
 
 static struct vmm_host_irqext_ctrl iectrl;
 
+u32 vmm_host_irqext_count(void)
+{
+	irq_flags_t flags;
+	u32 count;
+
+	vmm_read_lock_irqsave_lite(&iectrl.lock, flags);
+	count = iectrl.count;
+	vmm_read_unlock_irqrestore_lite(&iectrl.lock, flags);
+
+	return count;
+}
+
 struct vmm_host_irq *__vmm_host_irqext_get(unsigned int hirq)
 {
 	irq_flags_t flags;

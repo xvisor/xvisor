@@ -42,4 +42,6 @@ void vmm_host_irqext_debug_dump(struct vmm_chardev *cdev);
 
 int vmm_host_irqext_init(void);
 
+u32 vmm_host_irqext_count(void);
+
 #endif /* _VMM_HOST_IRQEXT_H__ */
