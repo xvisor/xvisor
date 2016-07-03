@@ -172,12 +172,34 @@ static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
 			  "-------------------------\n");
 }
 
-static void cmd_host_irq_stats(struct vmm_chardev *cdev)
+static void irq_stats_print(struct vmm_chardev *cdev, u32 irqno)
 {
-	const char *irq_name;
-	u32 num, cpu, stats, count = vmm_host_irq_count();
 	struct vmm_host_irq *irq;
 	struct vmm_host_irq_chip *chip;
+	const char *irq_name;
+	u32 cpu, stats;
+
+	irq = vmm_host_irq_get(irqno);
+	irq_name = vmm_host_irq_get_name(irq);
+	if (vmm_host_irq_is_disabled(irq) || !irq_name) {
+		return;
+	}
+	chip = vmm_host_irq_get_chip(irq);
+	if (!chip || !chip->name) {
+		return;
+	}
+	vmm_cprintf(cdev, " %-5d %-20s %-13s",
+		    irqno, irq_name, chip->name);
+	for_each_online_cpu(cpu) {
+		stats = vmm_host_irq_get_count(irq, cpu);
+		vmm_cprintf(cdev, " %-10d", stats);
+	}
+	vmm_cprintf(cdev, "\n");
+}
+
+static void cmd_host_irq_stats(struct vmm_chardev *cdev)
+{
+	u32 num, cpu, irq_count, irqext_count;
 
 	vmm_cprintf(cdev, "----------------------------------------");
 	for_each_online_cpu(cpu) {
@@ -195,24 +217,16 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		vmm_cprintf(cdev, "------------");
 	}
 	vmm_cprintf(cdev, "\n");
-	for (num = 0; num < count; num++) {
-		irq = vmm_host_irq_get(num);
-		irq_name = vmm_host_irq_get_name(irq);
-		if (vmm_host_irq_is_disabled(irq) || !irq_name) {
-			continue;
-		}
-		chip = vmm_host_irq_get_chip(irq);
-		if (!chip || !chip->name) {
-			continue;
-		}
-		vmm_cprintf(cdev, " %-5d %-20s %-13s",
-				  num, irq_name, chip->name);
-		for_each_online_cpu(cpu) {
-			stats = vmm_host_irq_get_count(irq, cpu);
-			vmm_cprintf(cdev, " %-10d", stats);
-		}
-		vmm_cprintf(cdev, "\n");
+
+	irq_count = vmm_host_irq_count();
+	for (num = 0; num < irq_count; num++) {
+		irq_stats_print(cdev, num);
 	}
+	irqext_count = vmm_host_irqext_count();
+	for (num = irq_count; num < irq_count + irqext_count; num++) {
+		irq_stats_print(cdev, num);
+	}
+
 	vmm_cprintf(cdev, "----------------------------------------");
 	for_each_online_cpu(cpu) {
 		vmm_cprintf(cdev, "------------");
