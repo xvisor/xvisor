@@ -161,3 +161,51 @@
 		interrupts = <28 /* IRQ_TYPE_LEVEL_LOW */>;
 	};
 };
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog_1>;
+
+	imx6q-nitrogen6x {
+		pinctrl_hog_1: hoggrp-1 {
+			fsl,pins = <
+                                /* Power Button */
+                                MX6QDL_PAD_NANDF_D3__GPIO2_IO03         0x1b0b0
+                                /* Menu Button */
+                                MX6QDL_PAD_NANDF_D1__GPIO2_IO01         0x1b0b0
+                                /* Home Button */
+                                MX6QDL_PAD_NANDF_D4__GPIO2_IO04         0x1b0b0
+                                /* Back Button */
+                                MX6QDL_PAD_NANDF_D2__GPIO2_IO02         0x1b0b0
+                                /* Volume Up Button */
+                                MX6QDL_PAD_GPIO_18__GPIO7_IO13          0x1b0b0
+                                /* Volume Down Button */
+                                MX6QDL_PAD_GPIO_19__GPIO4_IO05          0x1b0b0
+                                MX6QDL_PAD_EIM_D19__GPIO3_IO19          0x80000000      /* spi-nor CS */
+                                MX6QDL_PAD_EIM_D22__GPIO3_IO22          0x80000000      /* otg power en */
+                                MX6QDL_PAD_ENET_RXD0__GPIO1_IO27        0x0f0b0         /* ethernet phy reset */
+                                MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28       0x1b0b0         /* ethernet phy interrupt */
+                                MX6QDL_PAD_SD3_DAT5__GPIO7_IO00         0x80000000      /* USDHC3 CD */
+                                MX6QDL_PAD_SD3_DAT4__GPIO7_IO01         0x1f0b0         /* Spare */
+                                MX6QDL_PAD_NANDF_D6__GPIO2_IO06         0x80000000      /* uSDHC4 CD */
+                                MX6QDL_PAD_NANDF_D7__GPIO2_IO07         0x80000000      /* Spare */
+                                MX6QDL_PAD_GPIO_0__CCM_CLKO1            0x000b0         /* SGTL5000 sys_mclk */
+                                MX6QDL_PAD_GPIO_2__GPIO1_IO02           0x80000000      /* CAN standby */
+                                MX6QDL_PAD_GPIO_4__GPIO1_IO04           0x80000000      /* Spare */
+                                MX6QDL_PAD_GPIO_9__GPIO1_IO09           0x80000000      /* I2C3 touch screen interrupt */
+                                MX6QDL_PAD_NANDF_WP_B__GPIO6_IO09       0x0b0b0         /* ov5640 mipi powerdown */
+                                MX6QDL_PAD_NANDF_D5__GPIO2_IO05         0x000b0         /* ov5640 mipi reset */
+                                MX6QDL_PAD_GPIO_3__CCM_CLKO2            0x000b0         /* ov5642 mclk */
+                                MX6QDL_PAD_GPIO_6__GPIO1_IO06           0x000b0         /* ov5642 Power Down */
+                                MX6QDL_PAD_GPIO_8__GPIO1_IO08           0x000b0         /* ov5642 Reset */
+                                MX6QDL_PAD_GPIO_17__GPIO7_IO12          0x0b0b0         /* USB Hub Reset */
+                                MX6QDL_PAD_NANDF_CS1__GPIO6_IO14        0x100b0         /* wl12xx_wl_irq */
+                                MX6QDL_PAD_NANDF_CS3__GPIO6_IO16        0x000b0         /* wl12xx_bt_en */
+                                /*MX6QDL_PAD_SD1_CLK__OSC32K_32K_OUT      0x000b0*/         /* TiWi slow clock */
+                                MX6QDL_PAD_NANDF_CLE__GPIO6_IO07        0x1b0b0         /* ISL1208 interrupt */
+
+			>;
+		};
+	};
+
+};
