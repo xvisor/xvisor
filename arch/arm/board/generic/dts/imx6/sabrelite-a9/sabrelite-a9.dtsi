@@ -76,11 +76,30 @@
 	status = "okay";
 };
 
+&hdmi_core {
+	status = "okay";
+	ipu_id = <1>;
+	disp_id = <0>;
+};
+
+&hdmi_video {
+	status = "okay";
+	fsl,phy_reg_vlev = <0x0294>;
+	fsl,phy_reg_cksymtx = <0x800d>;
+};
+
 &mxcfb1 {
 	status = "okay";
 	interface_pix_fmt = "RGB666";
 	default_bpp = <16>;
 	mode_str ="LDB-XGA";
+};
+
+&mxcfb2 {
+	status = "okay";
+	interface_pix_fmt = "RGB24";
+	default_bpp = <16>;
+	mode_str = "";
 };
 
 &i2c1 {
@@ -95,6 +114,10 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c2_2>;
+	hdmi: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
+	};
 };
 
 &i2c3 {

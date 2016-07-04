@@ -53,7 +53,7 @@
 #include <libs/stringlib.h>
 #include <drv/fb.h>
 
-#include "edid.h"
+#include <video/edid.h>
 
 /*
  * EDID parser

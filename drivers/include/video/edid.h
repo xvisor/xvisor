@@ -1,11 +1,14 @@
-/* 
+/*
+ * Modified by Jean Guyomarc'h for Xvisor
+ *
+ *
  * drivers/video/edid.h - EDID/DDC Header
  *
  * Based on:
  *   1. XFree86 4.3.0, edid.h
  *      Copyright 1998 by Egbert Eich <Egbert.Eich@Physik.TU-Darmstadt.DE>
- * 
- *   2. John Fremlin <vii@users.sourceforge.net> and 
+ *
+ *   2. John Fremlin <vii@users.sourceforge.net> and
  *      Ani Joshi <ajoshi@unixbox.com>
  *
  * DDC is a Trademark of VESA (Video Electronics Standard Association).
@@ -13,10 +16,22 @@
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file COPYING in the main directory of this archive
  * for more details.
+ *
+ * @file edid.h
+ * @author Jean Guyomarc'h (jean.guyomarch@openwide.fr)
 */
 
 #ifndef __EDID_H__
 #define __EDID_H__
+
+struct edid_info {
+	unsigned char dummy[128];
+};
+
+#ifdef CONFIG_X86
+extern struct edid_info edid_info;
+#endif
+
 
 #define EDID_LENGTH				0x80
 #define EDID_HEADER				0x00
