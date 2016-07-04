@@ -92,7 +92,7 @@
 	status = "okay";
 	interface_pix_fmt = "RGB666";
 	default_bpp = <16>;
-	mode_str ="LDB-XGA";
+	mode_str = "LDB-XGA";
 };
 
 &mxcfb2 {
