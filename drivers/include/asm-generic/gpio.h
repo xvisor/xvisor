@@ -187,6 +187,8 @@ gpiochip_remove_pin_ranges(struct gpio_chip *chip)
 
 #endif /* CONFIG_PINCTRL */
 
+int gpiolib_dump(struct seq_file *s);
+
 #else	/* !CONFIG_GPIOLIB */
 
 static inline bool gpio_is_valid(int number)

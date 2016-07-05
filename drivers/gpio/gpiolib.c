@@ -1770,7 +1770,6 @@ void gpiod_put(struct gpio_desc *desc)
 }
 EXPORT_SYMBOL_GPL(gpiod_put);
 
-#ifdef CONFIG_DEBUG_FS
 
 static void gpiolib_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 {
@@ -1787,17 +1786,21 @@ static void gpiolib_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 		gpiod_get_direction(gdesc);
 		is_out = test_bit(FLAG_IS_OUT, &gdesc->flags);
 		is_irq = test_bit(FLAG_USED_AS_IRQ, &gdesc->flags);
-		seq_printf(s, " gpio-%-3d (%-20.20s) %s %s %s",
+		seq_printf(s, " gpio-%-3d (%-20s) %s %s %s irq_no=%i, flags=0x%lx",
 			gpio, gdesc->label,
 			is_out ? "out" : "in ",
 			chip->get
-				? (chip->get(chip, i) ? "hi" : "lo")
+				? (chip->get(chip, i) ? "high" : "low")
 				: "?  ",
-			is_irq ? "IRQ" : "   ");
+			is_irq ? "IRQ" : "   ",
+			gpiod_to_irq(gdesc),
+			gdesc->flags
+			);
 		seq_printf(s, "\n");
 	}
 }
 
+#if 0
 static void *gpiolib_seq_start(struct seq_file *s, loff_t *pos)
 {
 	unsigned long flags;
@@ -1841,30 +1844,43 @@ static void gpiolib_seq_stop(struct seq_file *s, void *v)
 }
 
 static int gpiolib_seq_show(struct seq_file *s, void *v)
+#else
+int gpiolib_dump(struct seq_file *s)
+#endif
 {
-	struct gpio_chip *chip = v;
+	struct gpio_chip *chip;
 	struct device *dev;
+	char prefix[2] = { '\0', '\0' };
 
-	seq_printf(s, "%sGPIOs %d-%d", (char *)s->private,
-			chip->base, chip->base + chip->ngpio - 1);
-	dev = chip->dev;
-	if (dev)
-		seq_printf(s, ", %s/%s", dev->bus ? dev->bus->name : "no-bus",
-			dev_name(dev));
-	if (chip->label)
-		seq_printf(s, ", %s", chip->label);
-	if (chip->can_sleep)
-		seq_printf(s, ", can sleep");
-	seq_printf(s, ":\n");
+	list_for_each_entry(chip, &gpio_chips, list) {
+		seq_printf(s, "%sGPIOs %d-%d", prefix,
+			   chip->base, chip->base + chip->ngpio - 1);
+		dev = chip->dev;
+		if (dev) {
+			seq_printf(s, ", %s/%s", dev->bus ? dev->bus->name : "no-bus",
+				   dev_name(dev));
+		}
+		if (chip->label) {
+			seq_printf(s, ", %s", chip->label);
+		}
+		if (chip->can_sleep) {
+			seq_printf(s, ", can sleep");
+		}
+		seq_printf(s, ":\n");
 
-	if (chip->dbg_show)
-		chip->dbg_show(s, chip);
-	else
-		gpiolib_dbg_show(s, chip);
+		if (chip->dbg_show) {
+			chip->dbg_show(s, chip);
+		} else {
+			gpiolib_dbg_show(s, chip);
+		}
+		prefix[0] = '\n';
+	}
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gpiolib_dump);
 
+#ifdef CONFIG_DEBUG_FS
 static const struct seq_operations gpiolib_seq_ops = {
 	.start = gpiolib_seq_start,
 	.next = gpiolib_seq_next,
