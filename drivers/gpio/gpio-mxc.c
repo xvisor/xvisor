@@ -421,6 +421,7 @@ static int __init mxc_gpio_init_gc(struct mxc_gpio_port *port,
 	gc->irq_mask = irq_gc_mask_clr_bit;
 	gc->irq_unmask = irq_gc_mask_set_bit;
 	gc->irq_set_type = gpio_set_irq_type;
+	gc->name = name;
 
 	port->domain = vmm_host_irqdomain_add(dev->of_node, -1, sz,
 					  &irqdomain_simple_ops, port);
@@ -583,7 +584,6 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 
 	list_add_tail(&port->node, &mxc_gpio_ports);
 	dev_info(dev, "%s registered\n", name);
-	vmm_free(name);
 
 	return err;
 
