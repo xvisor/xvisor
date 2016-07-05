@@ -36,6 +36,7 @@ commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o
 commands-objs-$(CONFIG_CMD_HEAP)+= cmd_heap.o
 commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
+commands-objs-$(CONFIG_CMD_GPIO)+= cmd_gpio.o
 commands-objs-$(CONFIG_CMD_MODULE)+= cmd_module.o
 commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
 
