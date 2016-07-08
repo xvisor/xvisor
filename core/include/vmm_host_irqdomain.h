@@ -26,6 +26,7 @@
 #define _VMM_HOST_IRQDOMAIN_H__
 
 #include <vmm_types.h>
+#include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <libs/list.h>
 
@@ -71,8 +72,9 @@ struct vmm_host_irqdomain_ops {
  * @of_node:	The device node using this domain
  * @host_data:	The controller private data pointer. Not touched by extended
  *		IRQ core code.
+ * @bmap_lock:	The IRQ domain bitmap lock
+ * @bmap:	The IRQ domain bitmap
  */
-/* @map:	The IRQ domain mapping. */
 struct vmm_host_irqdomain {
 	struct dlist				head;
 	unsigned int				base;
@@ -81,11 +83,17 @@ struct vmm_host_irqdomain {
 	const struct vmm_host_irqdomain_ops	*ops;
 	struct vmm_devtree_node			*of_node;
 	void					*host_data;
+	vmm_spinlock_t				bmap_lock;
+	unsigned long				*bmap;
 };
 
 /** Convert host IRQ to HW IRQ */
 int vmm_host_irqdomain_to_hwirq(struct vmm_host_irqdomain *domain,
 				unsigned int hirq);
+
+/** Convert HW IRQ to host IRQ */
+int vmm_host_irqdomain_to_hirq(struct vmm_host_irqdomain *domain,
+				unsigned int hwirq);
 
 /** Find host IRQ for givne HW IRQ */
 int vmm_host_irqdomain_find_mapping(struct vmm_host_irqdomain *domain,
@@ -106,7 +114,15 @@ int vmm_host_irqdomain_create_mapping(struct vmm_host_irqdomain *domain,
 				      unsigned int hwirq);
 
 /** Dispose mapping in host IRQ domain associated with given host IRQ */
-int vmm_host_irqdomain_dispose_mapping(unsigned int hirq);
+void vmm_host_irqdomain_dispose_mapping(unsigned int hirq);
+
+/** Allocate and map host IRQs */
+int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
+			     unsigned int irq_count);
+
+/** Free and unmap host IRQs */
+void vmm_host_irqdomain_free(struct vmm_host_irqdomain *domain,
+			     unsigned int hirq, unsigned int irq_count);
 
 /** Translate device tree cells to HW IRQ for given host IRQ domain
  *  using xlate() callback provided in host IRQ domain ops.
