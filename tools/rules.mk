@@ -26,31 +26,31 @@
 # @brief Rules to build & use tools
 # */
 
-$(build_dir)/tools/dtc/dtc: $(CURDIR)/tools/dtc/Makefile
+$(build_dir)/tools/dtc/bin/dtc: $(CURDIR)/tools/dtc/Makefile
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (make)      $(subst $(build_dir)/,,$@)")
-	$(V)$(MAKE) -C $(CURDIR)/tools/dtc O=$(build_dir)/tools/dtc
+	$(V)$(MAKE) -C $(CURDIR)/tools/dtc LINK.c=gcc CC=gcc LD=gcc AR=ar PREFIX=$(build_dir)/tools/dtc install
 
 dtsflags = $(cppflags) -nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-with-cpp
 
-$(build_dir)/%.dep: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
+$(build_dir)/%.dep: $(src_dir)/%.dts $(build_dir)/tools/dtc/bin/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
-	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -d $@ -I dts -O dtb -i `dirname $<` -o /dev/null
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/bin/dtc -Wno-unit_address_vs_reg -d $@ -I dts -O dtb -i `dirname $<` -o /dev/null
 	$(V)sed -i "s|/dev/null|$(subst .dep,.dtb,$@)|g" $@
 	$(V)sed -i "s|<stdin>|$<|g" $@
 	$(V)$(cc) $(dtsflags) -MT $(subst .dep,.dtb,$@) -MM $< >> $@
 
-$(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
+$(build_dir)/%.dtb: $(src_dir)/%.dts $(build_dir)/tools/dtc/bin/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
-	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -p 0x100 -I dts -O dtb -i `dirname $<` -o $@
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/bin/dtc -Wno-unit_address_vs_reg -p 0x100 -I dts -O dtb -i `dirname $<` -o $@
 
-$(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/dtc
+$(build_dir)/%.S: $(src_dir)/%.dts $(build_dir)/tools/dtc/bin/dtc
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 	$(V)echo '.section ".devtree"' > $@
-	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/dtc -I dts -O asm -i `dirname $<` >> $@
+	$(V)$(cpp) $(dtsflags) $< | $(build_dir)/tools/dtc/bin/dtc -Wno-unit_address_vs_reg -I dts -O asm -i `dirname $<` >> $@
 
 $(build_dir)/%.dep: $(src_dir)/%.data
 	$(V)mkdir -p `dirname $@`

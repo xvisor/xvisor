@@ -27,6 +27,7 @@ flash
 #
 !.mambacfg
 !.gitignore
+!.gitmodules
 
 tags
 .*.swp
