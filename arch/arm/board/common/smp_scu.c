@@ -49,7 +49,6 @@
 #define SCU_INVALIDATE		0x0c
 #define SCU_FPGA_REVISION	0x10
 
-#ifdef CONFIG_SMP
 /*
  * Get the number of CPU cores from the SCU configuration
  */
@@ -101,34 +100,6 @@ static void scu_enable(void *scu_base)
 	 */
 	vmm_flush_cache_all();
 }
-#endif
-
-/*
- * Set the executing CPUs power mode as defined.  This will be in
- * preparation for it executing a WFI instruction.
- *
- * This function must be called with preemption disabled, and as it
- * has the side effect of disabling coherency, caches must have been
- * flushed.  Interrupts must also have been disabled.
- */
-int scu_power_mode(void *scu_base, u32 mode)
-{
-	u32 val, cpu;
-
-	cpu = vmm_smp_processor_id();
-
-	if (mode > SCU_PM_POWEROFF || mode == SCU_PM_EINVAL || cpu > 3) {
-		return VMM_EFAIL;
-	}
-
-	val = vmm_readb(scu_base + SCU_CPU_STATUS + cpu) & ~0x03;
-	val |= mode;
-	vmm_writeb(val, scu_base + SCU_CPU_STATUS + cpu);
-
-	return VMM_OK;
-}
-
-#if defined(CONFIG_ARM_SMP_OPS) && defined(CONFIG_ARM_GIC)
 
 static virtual_addr_t scu_base;
 static physical_addr_t clear_addr[CONFIG_CPU_COUNT];
@@ -250,5 +221,3 @@ static struct smp_operations smp_scu_ops = {
 };
 
 SMP_OPS_DECLARE(smp_scu, &smp_scu_ops);
-
-#endif

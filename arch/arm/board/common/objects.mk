@@ -27,6 +27,6 @@ board-common-objs-$(CONFIG_DEFTERM_EARLY_PRINT)+=defterm_early.o
 board-common-objs-$(CONFIG_ARM_SMP_OPS)+=smp_ops.o
 board-common-objs-$(CONFIG_ARM_SMP_IPI)+=smp_ipi.o
 board-common-objs-$(CONFIG_ARM_SMP_SPIN_TABLE)+=smp_spin_table.o
-board-common-objs-$(CONFIG_ARM_SCU)+=smp_scu.o
+board-common-objs-$(CONFIG_ARM_SMP_SCU)+=smp_scu.o
 board-common-objs-$(CONFIG_ARM_SMP_PSCI)+=smp_psci.o
 board-common-objs-$(CONFIG_ARM_SMP_IMX)+=smp_imx.o
