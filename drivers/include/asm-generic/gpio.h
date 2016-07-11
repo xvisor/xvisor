@@ -7,6 +7,7 @@
 #include <linux/of.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/device.h>
+#include <linux/seq_file.h>
 
 #ifdef CONFIG_GPIOLIB
 
