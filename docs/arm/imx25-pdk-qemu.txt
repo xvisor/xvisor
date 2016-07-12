@@ -57,7 +57,7 @@ guest with Xvisor running on QEMU i.MX25 PDK Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/versatilepb
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb.dtb ./tests/arm32/versatilepb/versatilepb.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb.dtb ./tests/arm32/versatilepb/versatilepb.dts
   # cp -f ./build/tests/arm32/versatilepb/basic/firmware.bin.patched ./build/disk/images/arm32/versatilepb/firmware.bin
   # cp -f ./tests/arm32/versatilepb/linux/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # cp -f ./tests/arm32/versatilepb/linux/cmdlist ./build/disk/images/arm32/versatilepb/cmdlist
@@ -71,7 +71,7 @@ guest with Xvisor running on QEMU i.MX25 PDK Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/versatilepb
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb.dtb ./tests/arm32/versatilepb/versatilepb.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb.dtb ./tests/arm32/versatilepb/versatilepb.dts
   # cp -f ./build/tests/arm32/versatilepb/basic/firmware.bin.patched ./build/disk/images/arm32/versatilepb/firmware.bin
   # cp -f ./tests/arm32/versatilepb/basic/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img

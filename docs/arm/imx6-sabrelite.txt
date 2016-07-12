@@ -38,7 +38,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
 
   [8. Create the guest device tree configuration]
-  # ./build/tools/dtc/dtc -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
 
   [9. Unplug SD card from Sabre LITE and plug it on your development machine]
 
@@ -79,7 +79,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
 	build/tmp.dts -o build/imx6q-nitrogen6x.dts
 
   [16. Build the Linux kernel device tree]
-  # ./build/tools/dtc/dtc -I dts -O dtb -p 0x800 build/imx6q-nitrogen6x.dts -o build/imx6q-nitrogen6x.dtb
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 build/imx6q-nitrogen6x.dts -o build/imx6q-nitrogen6x.dtb
 
   [17. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
   # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/Image

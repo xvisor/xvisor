@@ -55,7 +55,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
@@ -69,7 +69,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img

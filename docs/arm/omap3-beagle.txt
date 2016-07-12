@@ -63,7 +63,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
@@ -77,7 +77,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
@@ -223,7 +223,7 @@ follows:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
@@ -237,7 +237,7 @@ follows:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
