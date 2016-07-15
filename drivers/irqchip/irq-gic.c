@@ -580,4 +580,4 @@ static int __cpuinit gic_eoimode_init(struct vmm_devtree_node *node)
 VMM_HOST_IRQ_INIT_DECLARE(rvgic, "arm,realview-gic", gic_init);
 VMM_HOST_IRQ_INIT_DECLARE(ca9gic, "arm,cortex-a9-gic", gic_init);
 VMM_HOST_IRQ_INIT_DECLARE(ca15gic, "arm,cortex-a15-gic", gic_eoimode_init);
-
+VMM_HOST_IRQ_INIT_DECLARE(gic400, "arm,gic-400", gic_eoimode_init);
