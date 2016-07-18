@@ -80,7 +80,7 @@ void __init arch_defterm_early_putc(u8 ch)
 
 void __init arch_defterm_early_putc(u8 ch)
 {
-	/* Wait until FIFO is not full */
+	/* Wait until FIFO is full */
 	while (vmm_readl(early_base + IMX21_UTS) & UTS_TXFULL) ;
 
 	/* Send the character */
@@ -88,6 +88,26 @@ void __init arch_defterm_early_putc(u8 ch)
 
 	/* Wait until FIFO is empty */
 	while (!(vmm_readl(early_base + IMX21_UTS) & UTS_TXEMPTY)) ;
+}
+
+#elif defined(CONFIG_DEFTERM_EARLY_SCIF)
+
+#include <drv/scif.h>
+
+void __init arch_defterm_early_putc(u8 ch)
+{
+	u16 scfsr;
+
+	/* Wait until FIFO is not empty */
+	while (!(vmm_readw(early_base + SCIF_SCFSR) & SCFSR_TEND)) ;
+
+	/* Send the character */
+	vmm_writeb(ch, early_base + SCIF_SCFTDR);
+
+	/* Clear required TX flags */
+	scfsr = vmm_readw(early_base + SCIF_SCFSR);
+	scfsr &= ~(SCFSR_TEND | SCFSR_TDFE);
+	vmm_writew(scfsr, early_base + SCIF_SCFSR);
 }
 
 #else
