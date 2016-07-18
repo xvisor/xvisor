@@ -148,28 +148,29 @@ static vmm_irq_return_t scif_irq_handler(int irq_no, void *dev)
 	u8 ch;
 	u16 ctrl, status;
 	struct scif_port *port = (struct scif_port *)dev;
+	virtual_addr_t base = port->base;
 
-	ctrl = vmm_readw((void *)(port->base + SCIF_SCSCR));
-	status = vmm_readw((void *)(port->base + SCIF_SCFSR)) & ~SCFSR_TEND;
+	ctrl = vmm_readw((void *)(base + SCIF_SCSCR));
+	status = vmm_readw((void *)(base + SCIF_SCFSR)) & ~SCFSR_TEND;
 	/* Ignore next flag if TX Interrupt is disabled */
 	if (!(ctrl & SCSCR_TIE))
 		status &= ~SCFSR_TDFE;
 
 	while (status != 0) {
 		/* Pull-out bytes from RX FIFO */
-		while (scif_lowlevel_can_getc(port->base)) {
-			ch = scif_lowlevel_getc(port->base);
+		while (scif_lowlevel_can_getc(base)) {
+			ch = scif_lowlevel_getc(base);
 			serial_rx(port->p, &ch, 1);
 		}
 
 		/* Error Interrupt */
-		if (vmm_readw((void *)(port->base + SCIF_SCFSR)) & SCIF_ERRORS)
-			vmm_writew(~SCIF_ERRORS, (void *)(port->base + SCIF_SCFSR));
-		if (vmm_readw((void *)(port->base + SCIF_SCLSR)) & SCLSR_ORER)
-			vmm_writew(0, (void *)(port->base + SCIF_SCLSR));
+		if (vmm_readw((void *)(base + SCIF_SCFSR)) & SCIF_ERRORS)
+			vmm_writew(~SCIF_ERRORS, (void *)(base + SCIF_SCFSR));
+		if (vmm_readw((void *)(base + SCIF_SCLSR)) & SCLSR_ORER)
+			vmm_writew(0, (void *)(base + SCIF_SCLSR));
 
-		ctrl = vmm_readw((void *)(port->base + SCIF_SCSCR));
-		status = vmm_readw((void *)(port->base + SCIF_SCFSR)) & ~SCFSR_TEND;
+		ctrl = vmm_readw((void *)(base + SCIF_SCSCR));
+		status = vmm_readw((void *)(base + SCIF_SCFSR)) & ~SCFSR_TEND;
 		/* Ignore next flag if TX Interrupt is disabled */
 		if ( !(ctrl & SCSCR_TIE) )
 			status &= ~SCFSR_TDFE;
