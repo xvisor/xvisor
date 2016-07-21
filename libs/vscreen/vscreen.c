@@ -629,6 +629,7 @@ static int vscreen_event(struct input_handler *ihnd,
 			 unsigned int type, unsigned int code, int value)
 {
 	struct vscreen_context *cntx = ihnd->priv;
+	struct input_absinfo *const absinfo = idev->absinfo;
 
 	/* Do nothing if freezed */
 	if (cntx->freeze) {
@@ -666,6 +667,7 @@ static int vscreen_event(struct input_handler *ihnd,
 		break;
 	case EV_KEY:
 		switch (code) {
+		case BTN_TOUCH:
 		case BTN_LEFT:
 			cntx->mouse_event = TRUE;
 			if (value == 0) { /* button-release */
@@ -717,6 +719,28 @@ static int vscreen_event(struct input_handler *ihnd,
 			break;
 		};
 		break;
+
+	case EV_ABS:
+		switch (code) {
+		case ABS_MT_POSITION_X:
+			cntx->mouse_event = TRUE;
+			value = value * cntx->hard_var.xres;
+			value = sdiv32(value, absinfo[ABS_X].maximum);
+			value = value - vmm_vmouse_absolute_x(cntx->vmou);
+			cntx->mouse_dx = value;
+			break;
+		case ABS_MT_POSITION_Y:
+			cntx->mouse_event = TRUE;
+			value = value * cntx->hard_var.yres;
+			value = sdiv32(value, absinfo[ABS_Y].maximum);
+			value = value - cntx->vmou->abs_y;
+			cntx->mouse_dy = value;
+			break;
+		default:
+			break;
+		}
+		break;
+
 	default:
 		break;
 	};
@@ -1068,7 +1092,8 @@ static int vscreen_setup(struct vscreen_context *cntx)
 	cntx->hndl.name = cntx->name;
 	cntx->hndl.evbit[0] = BIT_MASK(EV_SYN) |
 				BIT_MASK(EV_KEY) |
-				BIT_MASK(EV_REL);
+				BIT_MASK(EV_REL) |
+				BIT_MASK(EV_ABS);
 	cntx->hndl.event = vscreen_event;
 	cntx->hndl.priv = cntx;
 	rc = input_register_handler(&cntx->hndl);
