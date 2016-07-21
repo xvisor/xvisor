@@ -436,6 +436,9 @@ struct vmm_vmouse *vmm_vmouse_create(const char *name,
 	vmou->graphics_width = 0;
 	vmou->graphics_height = 0;
 	vmou->graphics_rotation = 0;
+	vmou->abs_x = 0;
+	vmou->abs_y = 0;
+	vmou->abs_z = 0;
 	vmou->mouse_event = mouse_event;
 	vmou->priv = priv;
 
@@ -513,9 +516,15 @@ int vmm_vmouse_event(struct vmm_vmouse *vmou,
 	if (vmou->absolute) {
 		w = 0x7fff;
 		h = 0x7fff;
+		vmou->abs_x = dx;
+		vmou->abs_y = dy;
+		vmou->abs_z = dz;
 	} else {
 		w = (int)vmou->graphics_width - 1;
 		h = (int)vmou->graphics_height - 1;
+		vmou->abs_x += dx;
+		vmou->abs_y += dy;
+		vmou->abs_z += dz;
 	}
 
 	switch (vmou->graphics_rotation) {
@@ -536,6 +545,36 @@ int vmm_vmouse_event(struct vmm_vmouse *vmou,
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(vmm_vmouse_event);
+
+void vmm_vmouse_reset(struct vmm_vmouse *vmou)
+{
+	if (!vmou) {
+		return;
+	}
+
+	vmou->abs_x = 0;
+	vmou->abs_y = 0;
+	vmou->abs_z = 0;
+}
+VMM_EXPORT_SYMBOL(vmm_vmouse_reset);
+
+int vmm_vmouse_absolute_x(struct vmm_vmouse *vmou)
+{
+	return (vmou) ? vmou->abs_x : 0;
+}
+VMM_EXPORT_SYMBOL(vmm_vmouse_absolute_x);
+
+int vmm_vmouse_absolute_y(struct vmm_vmouse *vmou)
+{
+	return (vmou) ? vmou->abs_y : 0;
+}
+VMM_EXPORT_SYMBOL(vmm_vmouse_absolute_y);
+
+int vmm_vmouse_absolute_z(struct vmm_vmouse *vmou)
+{
+	return (vmou) ? vmou->abs_z : 0;
+}
+VMM_EXPORT_SYMBOL(vmm_vmouse_absolute_z);
 
 bool vmm_vmouse_is_absolute(struct vmm_vmouse *vmou)
 {

@@ -593,6 +593,7 @@ int ps2_emu_reset_mouse(struct ps2_emu_mouse *m)
 	vmm_spin_lock_irqsave(&m->lock, flags);
 
 	ps2_emu_common_reset(&m->state);
+	vmm_vmouse_reset(m->mouse);
 	m->mouse_status = 0;
 	m->mouse_resolution = 0;
 	m->mouse_sample_rate = 0;

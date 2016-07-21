@@ -134,6 +134,9 @@ struct vmm_vmouse {
 	u32 graphics_width;
 	u32 graphics_height;
 	u32 graphics_rotation;
+	int abs_x;
+	int abs_y;
+	int abs_z;
 	void (*mouse_event) (struct vmm_vmouse *vmou, 
 			   int dx, int dy, int dz, int buttons_state);
 	void *priv;
@@ -160,6 +163,18 @@ static inline void *vmm_vmouse_priv(struct vmm_vmouse *vmou)
 /** Trigger virtual mouse event */
 int vmm_vmouse_event(struct vmm_vmouse *vmou,
 		     int dx, int dy, int dz, int buttons_state);
+
+/** Reset virtual mouse */
+void vmm_vmouse_reset(struct vmm_vmouse *vmou);
+
+/** Get absolute X position of virtual mouse */
+int vmm_vmouse_absolute_x(struct vmm_vmouse *vmou);
+
+/** Get absolute Y position of virtual mouse */
+int vmm_vmouse_absolute_y(struct vmm_vmouse *vmou);
+
+/** Get absolute Z position of virtual mouse */
+int vmm_vmouse_absolute_z(struct vmm_vmouse *vmou);
 
 /** Check whether virtual mouse uses absolute positioning */
 bool vmm_vmouse_is_absolute(struct vmm_vmouse *vmou);
