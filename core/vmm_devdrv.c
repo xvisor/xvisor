@@ -1509,6 +1509,7 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 	INIT_SPIN_LOCK(&dev->devres_lock);
 	INIT_LIST_HEAD(&dev->devres_head);
 	INIT_LIST_HEAD(&dev->deferred_head);
+	INIT_LIST_HEAD(&dev->msi_list);
 }
 
 struct vmm_device *vmm_devdrv_ref_device(struct vmm_device *dev)

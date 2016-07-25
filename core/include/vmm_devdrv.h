@@ -86,6 +86,7 @@ struct vmm_device {
 	vmm_spinlock_t devres_lock;
 	struct dlist devres_head;
 	struct dlist deferred_head;
+	struct dlist msi_list;
 	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	bool autoprobe_disabled;

@@ -38,6 +38,7 @@ core-objs-y+= vmm_host_irqdomain.o
 core-objs-y+= vmm_host_ram.o
 core-objs-y+= vmm_host_vapool.o
 core-objs-y+= vmm_host_aspace.o
+core-objs-y+= vmm_msi.o
 core-objs-y+= vmm_percpu.o
 core-objs-$(CONFIG_SMP)+= vmm_smp.o
 core-objs-$(CONFIG_SMP)+= vmm_loadbal.o
