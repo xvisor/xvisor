@@ -29,7 +29,7 @@
 
 #include <vmm_error.h>
 #include <vmm_devtree.h>
-#include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <vmm_stdio.h>
 #include <arch_board.h>
 #include <libs/vtemu.h>
@@ -165,8 +165,8 @@ int __init arch_board_final_init(void)
 		return VMM_ENODEV;
 	}
 
-	/* Do probing using device driver framework */
-	rc = vmm_devdrv_probe(node);
+	/* Do platform device probing using device driver framework */
+	rc = vmm_platform_probe(node);
 	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;

@@ -24,11 +24,10 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
-#include <vmm_heap.h>
-#include <vmm_devtree.h>
 #include <vmm_devres.h>
 #include <vmm_mutex.h>
 #include <vmm_workqueue.h>
+#include <vmm_platform.h>
 #include <vmm_devdrv.h>
 #include <libs/stringlib.h>
 
@@ -41,8 +40,6 @@ struct vmm_devdrv_ctrl {
 	struct vmm_mutex deferred_probe_lock;
 	struct dlist deferred_probe_list;
 	struct vmm_work deferred_probe_work;
-
-	struct vmm_bus platform_bus;
 };
 
 static struct vmm_devdrv_ctrl ddctrl;
@@ -133,82 +130,11 @@ static void deferred_probe_del(struct vmm_device *dev)
 	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
 }
 
-static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
-{
-	const struct vmm_devtree_nodeid *match;
-
-	if (!dev || !dev->of_node || !drv || !drv->match_table) {
-		return 0;
-	}
-
-	if (!vmm_devtree_is_available(dev->of_node)) {
-		return 0;
-	}
-
-	if (dev->parent && (dev->of_node == dev->parent->of_node)) {
-		return 0;
-	}
-
-	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
-	if (!match) {
-		return 0;
-	}
-
-	return 1;
-}
-
 int __weak vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
 {
 	/* Nothing to do here. */
 	/* The pinctrl framework will provide actual implementation */
 	return VMM_OK;
-}
-
-static int platform_bus_probe(struct vmm_device *dev)
-{
-	int rc;
-	struct vmm_driver *drv;
-	const struct vmm_devtree_nodeid *match;
-
-	if (!dev || !dev->of_node || !dev->driver) {
-		return VMM_EFAIL;
-	}
-	drv = dev->driver;
-
-	if (!drv->match_table) {
-		return VMM_EFAIL;
-	}
-
-	rc = vmm_devdrv_pinctrl_bind(dev);
-	if (rc == VMM_EPROBE_DEFER) {
-		return rc;
-	}
-
-	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
-	if (match) {
-		return drv->probe(dev, match);
-	}
-
-	return VMM_OK;
-}
-
-static int platform_bus_remove(struct vmm_device *dev)
-{
-	struct vmm_driver *drv;
-
-	if (!dev || !dev->of_node || !dev->driver) {
-		return VMM_EFAIL;
-	}
-	drv = dev->driver;
-
-	return drv->remove(dev);
-}
-
-static void platform_device_release(struct vmm_device *dev)
-{
-	vmm_devtree_dref_node(dev->of_node);
-	dev->of_node = NULL;
-	vmm_free(dev);
 }
 
 /* Note: Must be called with bus->lock held */
@@ -426,7 +352,7 @@ static void __bus_remove_this_driver(struct vmm_bus *bus,
 }
 
 /* Note: Must be called with bus->lock held */
-void __bus_shutdown(struct vmm_bus *bus)
+static void __bus_shutdown(struct vmm_bus *bus)
 {
 	struct vmm_device *d;
 
@@ -461,7 +387,7 @@ void __bus_shutdown(struct vmm_bus *bus)
 }
 
 /* Note: Must be called with cls->lock held */
-void __class_release(struct vmm_class *cls)
+static void __class_release(struct vmm_class *cls)
 {
 	struct dlist *l;
 	struct vmm_device *d;
@@ -487,54 +413,6 @@ void __class_release(struct vmm_class *cls)
 		/* Decrement reference count of device */
 		vmm_devdrv_dref_device(d);
 	}
-}
-
-static int devdrv_probe(struct vmm_devtree_node *node,
-			struct vmm_device *parent)
-{
-	int rc;
-	struct vmm_device *dev;
-	struct vmm_devtree_node *child;
-
-	if (!node) {
-		return VMM_EFAIL;
-	}
-
-	dev = vmm_zalloc(sizeof(struct vmm_device));
-	if (!dev) {
-		return VMM_ENOMEM;
-	}
-
-	vmm_devdrv_initialize_device(dev);
-
-	if (strlcpy(dev->name, node->name, sizeof(dev->name)) >=
-	    sizeof(dev->name)) {
-		vmm_free(dev);
-		return VMM_EOVERFLOW;
-	}
-	vmm_devtree_ref_node(node);
-	dev->of_node = node;
-	dev->parent = parent;
-	dev->bus = &ddctrl.platform_bus;
-	dev->release = platform_device_release;
-	dev->priv = NULL;
-
-	rc = vmm_devdrv_register_device(dev);
-	if (rc) {
-		vmm_free(dev);
-		return rc;
-	}
-
-	vmm_devtree_for_each_child(child, node) {
-		devdrv_probe(child, dev);
-	}
-
-	return VMM_OK;
-}
-
-int vmm_devdrv_probe(struct vmm_devtree_node *node)
-{
-	return devdrv_probe(node, NULL);
 }
 
 int vmm_devdrv_register_class(struct vmm_class *cls)
@@ -1653,7 +1531,7 @@ int vmm_devdrv_register_driver(struct vmm_driver *drv)
 	}
 
 	if (!drv->bus) {
-		drv->bus = &ddctrl.platform_bus;
+		drv->bus = &platform_bus;
 	}
 
 	return vmm_devdrv_bus_register_driver(drv->bus, drv);
@@ -1719,10 +1597,5 @@ int __init vmm_devdrv_init(void)
 	INIT_LIST_HEAD(&ddctrl.deferred_probe_list);
 	INIT_WORK(&ddctrl.deferred_probe_work, deferred_probe_work_func);
 
-	strcpy(ddctrl.platform_bus.name, "platform");
-	ddctrl.platform_bus.match = platform_bus_match;
-	ddctrl.platform_bus.probe = platform_bus_probe;
-	ddctrl.platform_bus.remove = platform_bus_remove;
-
-	return vmm_devdrv_register_bus(&ddctrl.platform_bus);
+	return vmm_devdrv_register_bus(&platform_bus);
 }

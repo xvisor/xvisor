@@ -24,7 +24,7 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_modules.h>
-#include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <vmm_devtree.h>
 #include <vmm_stdio.h>
 #include <net/vmm_net.h>
@@ -79,7 +79,7 @@ static int __init vmm_net_init(void)
 		goto net_devtree_probe_failed;
 	}
 
-	rc = vmm_devdrv_probe(node);
+	rc = vmm_platform_probe(node);
 	vmm_devtree_dref_node(node);
 	if (rc) {
 		vmm_printf("%s: devtree node probe failed\n", __func__);

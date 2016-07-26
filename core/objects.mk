@@ -30,6 +30,7 @@ core-objs-y+= vmm_devtree_irq.o
 core-objs-y+= vmm_devtree_reg.o
 core-objs-y+= vmm_devres.o
 core-objs-y+= vmm_devdrv.o
+core-objs-y+= vmm_platform.o
 core-objs-y+= vmm_devemu.o
 core-objs-y+= vmm_resource.o
 core-objs-y+= vmm_host_irq.o

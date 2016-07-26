@@ -24,6 +24,7 @@
 #ifndef __VMM_DEVDRV_H_
 #define __VMM_DEVDRV_H_
 
+#include <vmm_error.h>
 #include <vmm_limits.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
@@ -31,7 +32,6 @@
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
 #include <libs/list.h>
-#include <vmm_error.h>
 
 #define VMM_DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 
@@ -175,9 +175,6 @@ static inline int vmm_dma_set_mask(struct vmm_device *dev, u64 mask)
  *  this function will do nothing.
  */
 int vmm_devdrv_pinctrl_bind(struct vmm_device *dev);
-
-/** Probe device instances under a given device tree node */
-int vmm_devdrv_probe(struct vmm_devtree_node *node);
 
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class *cls);
