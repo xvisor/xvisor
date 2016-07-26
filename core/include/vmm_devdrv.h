@@ -42,6 +42,7 @@ struct vmm_device;
 struct vmm_driver;
 struct vmm_iommu_ops;
 struct vmm_iommu_group;
+struct vmm_msi_domain;
 
 struct vmm_class {
 	/* Private fields (for device driver framework) */
@@ -87,6 +88,7 @@ struct vmm_device {
 	struct dlist devres_head;
 	struct dlist deferred_head;
 	struct dlist msi_list;
+	struct vmm_msi_domain *msi_domain;
 	/* Public fields */
 	char name[VMM_FIELD_NAME_SIZE];
 	bool autoprobe_disabled;
@@ -116,17 +118,33 @@ struct vmm_driver {
 	int (*remove) (struct vmm_device *);
 };
 
-/** Set driver data in device */
+/** Get driver data from device */
 static inline void *vmm_devdrv_get_data(const struct vmm_device *dev)
 {
 	return (dev) ? dev->priv : NULL;
 }
 
-/** Get driver data from device */
+/** Set driver data in device */
 static inline void vmm_devdrv_set_data(struct vmm_device *dev, void *data)
 {
 	if (dev) {
 		dev->priv = data;
+	}
+}
+
+/** Get MSI domain from device */
+static inline struct vmm_msi_domain *vmm_devdrv_get_msi_domain(
+						struct vmm_device *dev)
+{
+	return (dev) ? dev->msi_domain : NULL;
+}
+
+/** Set MSI domain in device */
+static inline void vmm_devdrv_set_msi_domain(struct vmm_device *dev,
+					     struct vmm_msi_domain *domain)
+{
+	if (dev) {
+		dev->msi_domain = domain;
 	}
 }
 
