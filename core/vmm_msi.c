@@ -170,6 +170,29 @@ void vmm_msi_destroy_domain(struct vmm_msi_domain *domain)
 	vmm_free(domain);
 }
 
+struct vmm_msi_domain *vmm_msi_find_domain(struct vmm_devtree_node *fwnode,
+					   enum vmm_msi_domain_types type)
+{
+	irq_flags_t f;
+	struct vmm_msi_domain *d, *domain = NULL;
+
+	if (!fwnode)
+		return NULL;
+
+	vmm_spin_lock_irqsave_lite(&msi_lock, f);
+
+	list_for_each_entry(d, &msi_domain_list, head) {
+		if (d->fwnode == fwnode && d->type == type) {
+			domain = d;
+			break;
+		}
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&msi_lock, f);
+
+	return domain;
+}
+
 int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev,
 			      int nvec)

@@ -25,7 +25,50 @@
 #include <vmm_heap.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_msi.h>
 #include <vmm_platform.h>
+
+static struct vmm_msi_domain *platform_get_msi_domain(struct vmm_device *dev,
+						struct vmm_devtree_node *np)
+{
+	int index = 0;
+	struct vmm_msi_domain *d = NULL;
+	struct vmm_devtree_node *msi_np;
+	struct vmm_devtree_phandle_args args;
+
+	if (!dev) {
+		return NULL;
+	}
+
+	/* Check for a single msi-parent property */
+	msi_np = vmm_devtree_parse_phandle(np, "msi-parent", 0);
+	if (msi_np) {
+		if (!vmm_devtree_getattr(msi_np, "#msi-cells")) {
+			d = vmm_msi_find_domain(msi_np,
+					VMM_MSI_DOMAIN_PLATFORM);
+		}
+		vmm_devtree_dref_node(msi_np);
+		return d;
+	}
+
+	/* Check for the complex msi-parent version */
+	while (!vmm_devtree_parse_phandle_with_args(np, "msi-parent",
+					"#msi-cells", index, &args)) {
+		d = vmm_msi_find_domain(args.np, VMM_MSI_DOMAIN_PLATFORM);
+		vmm_devtree_dref_node(args.np);
+		if (d)
+			return d;
+		index++;
+	}
+
+	return NULL;
+}
+
+static void platform_msi_configure(struct vmm_device *dev)
+{
+	vmm_devdrv_set_msi_domain(dev,
+			platform_get_msi_domain(dev, dev->of_node));
+}
 
 static int platform_bus_match(struct vmm_device *dev, struct vmm_driver *drv)
 {
@@ -127,6 +170,8 @@ static int platform_probe(struct vmm_devtree_node *node,
 	dev->bus = &platform_bus;
 	dev->release = platform_device_release;
 	dev->priv = NULL;
+
+	platform_msi_configure(dev);
 
 	rc = vmm_devdrv_register_device(dev);
 	if (rc) {

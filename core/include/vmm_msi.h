@@ -229,6 +229,9 @@ struct vmm_msi_domain *vmm_msi_create_domain(
 
 void vmm_msi_destroy_domain(struct vmm_msi_domain *domain);
 
+struct vmm_msi_domain *vmm_msi_find_domain(struct vmm_devtree_node *fwnode,
+					   enum vmm_msi_domain_types type);
+
 int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev,
 			      int nvec);
