@@ -244,14 +244,17 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 
 	/* If everything went fine then we write MSI messages */
 	for_each_msi_entry(desc, dev) {
-		hirq = desc->hirq;
-		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
-		for (i = 0; i < desc->nvec_used; i++) {
-			ret = ops->compose_msi_msg(domain,
+		if (ops->msi_compose_msg && ops->msi_write_msg) {
+			hirq = desc->hirq;
+			hwirq = vmm_host_irqdomain_to_hwirq(domain->parent,
+							    hirq);
+			for (i = 0; i < desc->nvec_used; i++) {
+				ret = ops->msi_compose_msg(domain,
 						hirq + i, hwirq + i, &msg);
-			BUG_ON(ret < 0);
-			ops->write_msi_msg(domain, hirq + i, hwirq + i,
-					   dev, &msg);
+				BUG_ON(ret < 0);
+				ops->msi_write_msg(domain, hirq + i,
+						hwirq + i, dev, &msg);
+			}
 		}
 	}
 
@@ -268,11 +271,16 @@ fail_handle_error:
 void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev)
 {
-	unsigned int i;
+	unsigned int i, hirq, hwirq;
+	struct vmm_msi_msg msg;
 	struct vmm_msi_desc *desc;
+	struct vmm_msi_domain_ops *ops;
 
 	if (!domain || !dev)
 		return;
+
+	ops = domain->ops;
+	memset(&msg, 0, sizeof(msg));
 
 	for_each_msi_entry(desc, dev) {
 		/*
@@ -280,17 +288,28 @@ void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 		 * that there is no host IRQ associated to this entry.
 		 * If that's the case, don't do anything.
 		 */
-		if (desc->hirq) {
-			if (domain->ops->msi_free) {
-				for (i = 0; i < desc->nvec_used; i++) {
-					domain->ops->msi_free(domain,
-							      desc->hirq + i);
-				}
-			}
-
-			vmm_host_irqdomain_free(domain->parent,
-						desc->hirq, desc->nvec_used);
-			desc->hirq = 0;
+		if (!desc->hirq) {
+			continue;
 		}
+
+		hirq = desc->hirq;
+		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
+
+		if (ops->msi_write_msg) {
+			for (i = 0; i < desc->nvec_used; i++) {
+				ops->msi_write_msg(domain, hirq + i,
+						hwirq + i, dev, &msg);
+			}
+		}
+
+		if (ops->msi_free) {
+			for (i = 0; i < desc->nvec_used; i++) {
+				ops->msi_free(domain, hirq + i);
+			}
+		}
+
+		vmm_host_irqdomain_free(domain->parent,
+					desc->hirq, desc->nvec_used);
+		desc->hirq = 0;
 	}
 }

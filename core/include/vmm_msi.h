@@ -42,8 +42,8 @@ struct vmm_msi_msg {
  * @msi_index:		The index of the MSI descriptor for multi MSI
  */
 struct vmm_platform_msi_desc {
-	struct platform_msi_priv_data	*msi_priv_data;
-	u16				msi_index;
+	struct vmm_platform_msi_priv_data	*msi_priv_data;
+	u16					msi_index;
 };
 
 /**
@@ -147,8 +147,8 @@ typedef void (*vmm_irq_write_msi_msg_t)(struct vmm_msi_desc *desc,
  * @msi_finish:		Optional callback to finalize the allocation
  * @set_desc:		Set the msi descriptor for an interrupt
  * @handle_error:	Optional error handler if the allocation fails
- * @compose_msi_msg	Domain specific callback to compose MSI mesage
- * @write_msi_msg	Domain specific callback to write MSI message
+ * @msi_compose_msg	Domain specific callback to compose MSI mesage
+ * @msi_write_msg	Domain specific callback to write MSI message
  *
  * All of the above callbacks are used by vmm_msi_domain_alloc_irqs()
  * vmm_msi_domain_free_irqs() and related interfaces.
@@ -169,10 +169,10 @@ struct vmm_msi_domain_ops {
 				    struct vmm_msi_desc *desc);
 	int		(*handle_error)(struct vmm_msi_domain *domain,
 					struct vmm_msi_desc *desc, int error);
-	int		(*compose_msi_msg)(struct vmm_msi_domain *domain,
+	int		(*msi_compose_msg)(struct vmm_msi_domain *domain,
 					   unsigned int hirq, unsigned int hwirq,
 					   struct vmm_msi_msg *msg);
-	void		(*write_msi_msg)(struct vmm_msi_domain *domain,
+	void		(*msi_write_msg)(struct vmm_msi_domain *domain,
 					 unsigned int hirq, unsigned int hwirq,
 					 struct vmm_device *dev,
 					 struct vmm_msi_msg *msg);
