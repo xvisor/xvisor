@@ -220,7 +220,6 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			goto fail_handle_error;
 		}
 		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
-		arg.hwirq = hwirq;
 		desc->hirq = hirq;
 
 		for (i = 0; i < desc->nvec_used; i++) {
@@ -249,11 +248,11 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			hwirq = vmm_host_irqdomain_to_hwirq(domain->parent,
 							    hirq);
 			for (i = 0; i < desc->nvec_used; i++) {
-				ret = ops->msi_compose_msg(domain,
+				ret = ops->msi_compose_msg(domain, desc,
 						hirq + i, hwirq + i, &msg);
 				BUG_ON(ret < 0);
-				ops->msi_write_msg(domain, hirq + i,
-						hwirq + i, dev, &msg);
+				ops->msi_write_msg(domain, desc,
+						hirq + i, hwirq + i, &msg);
 			}
 		}
 	}
@@ -297,8 +296,8 @@ void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 
 		if (ops->msi_write_msg) {
 			for (i = 0; i < desc->nvec_used; i++) {
-				ops->msi_write_msg(domain, hirq + i,
-						hwirq + i, dev, &msg);
+				ops->msi_write_msg(domain, desc,
+						hirq + i, hwirq + i, &msg);
 			}
 		}
 

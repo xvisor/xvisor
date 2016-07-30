@@ -170,11 +170,12 @@ struct vmm_msi_domain_ops {
 	int		(*handle_error)(struct vmm_msi_domain *domain,
 					struct vmm_msi_desc *desc, int error);
 	int		(*msi_compose_msg)(struct vmm_msi_domain *domain,
+					   struct vmm_msi_desc *desc,
 					   unsigned int hirq, unsigned int hwirq,
 					   struct vmm_msi_msg *msg);
 	void		(*msi_write_msg)(struct vmm_msi_domain *domain,
+					 struct vmm_msi_desc *desc,
 					 unsigned int hirq, unsigned int hwirq,
-					 struct vmm_device *dev,
 					 struct vmm_msi_msg *msg);
 };
 
@@ -229,6 +230,11 @@ struct vmm_msi_domain *vmm_msi_create_domain(
 
 void vmm_msi_destroy_domain(struct vmm_msi_domain *domain);
 
+static inline void *vmm_msi_domain_data(struct vmm_msi_domain *domain)
+{
+	return (domain) ? domain->data : NULL;
+}
+
 struct vmm_msi_domain *vmm_msi_find_domain(struct vmm_devtree_node *fwnode,
 					   enum vmm_msi_domain_types type);
 
@@ -238,5 +244,25 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 
 void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev);
+
+struct vmm_msi_domain *vmm_platform_msi_create_domain(
+					struct vmm_devtree_node *fwnode,
+					struct vmm_msi_domain_ops *ops,
+					struct vmm_host_irqdomain *parent,
+					unsigned long flags,
+					void *data);
+
+void vmm_platform_msi_destroy_domain(struct vmm_msi_domain *domain);
+
+static inline void *vmm_platform_msi_domain_data(struct vmm_msi_domain *domain)
+{
+	return vmm_msi_domain_data(domain);
+}
+
+int vmm_platform_msi_domain_alloc_irqs(struct vmm_device *dev,
+				       unsigned int nvec,
+				       vmm_irq_write_msi_msg_t write_msi_msg);
+
+void vmm_platform_msi_domain_free_irqs(struct vmm_device *dev);
 
 #endif /* __VMM_MSI_H__ */
