@@ -36,6 +36,7 @@ libs-objs-y+= common/fifo.o
 libs-objs-y+= common/lifo.o
 libs-objs-y+= common/rbtree.o
 libs-objs-y+= common/radix-tree.o
+libs-objs-y+= common/idr.o
 libs-objs-y+= common/buddy.o
 libs-objs-y+= common/mempool.o
 libs-objs-y+= common/libfdt.o
