@@ -21,6 +21,7 @@
  * @brief implementation of Linux-like IDR library.
  */
 
+#include <vmm_error.h>
 #include <vmm_limits.h>
 #include <libs/idr.h>
 
@@ -69,4 +70,25 @@ void idr_remove(struct idr *idr, int id)
 	}
 
 	radix_tree_delete(&idr->root, id);
+}
+
+int ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
+		   unsigned gfp_mask)
+{
+	if (!ida) {
+		return VMM_EINVALID;
+	}
+
+	/* Ignore gfp_mask becasue that's only for linux compatibility */
+
+	return idr_alloc(&ida->idr, NULL, start, end, gfp_mask);
+}
+
+void ida_simple_remove(struct ida *ida, unsigned int id)
+{
+	if (!ida) {
+		return;
+	}
+
+	idr_remove(&ida->idr, id);
 }

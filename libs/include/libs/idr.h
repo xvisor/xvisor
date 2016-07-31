@@ -30,8 +30,11 @@ struct idr {
 	struct radix_tree_root root;
 };
 
+#define IDR_INITIALIZER(__name)	\
+{ .root = RADIX_TREE_INIT(__name.root), }
+
 #define DEFINE_IDR(__name)	\
-struct idr __name = { .root = RADIX_TREE_INIT(__name.root), }
+struct idr __name = IDR_INITIALIZER(__name)
 
 #define DECLARE_IDR(__name)	\
 struct idr __name
@@ -50,5 +53,30 @@ void *idr_find(struct idr *idr, int id);
 
 /** Remove id to pointer mapping */
 void idr_remove(struct idr *idr, int id);
+
+struct ida {
+	struct idr idr;
+};
+
+#define IDA_INITIALIZER(__name)	\
+{ .idr = IDR_INITIALIZER(__name.idr), }
+
+#define DEFINE_IDA(__name)	\
+struct ida __name = IDA_INITIALIZER(__name)
+
+#define DECLARE_IDA(__name)	\
+struct ida __name
+
+#define INIT_IDA(__ida)	\
+do { \
+	INIT_IDR(&(__ida)->idr); \
+} while (0)
+
+/** Allocate new ID using ID allocator */
+int ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
+		   unsigned gfp_mask);
+
+/** Free-up a ID back to ID allocatore for reuse */
+void ida_simple_remove(struct ida *ida, unsigned int id);
 
 #endif /* __IDR_H__ */
