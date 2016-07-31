@@ -220,6 +220,10 @@ struct vmm_msi_domain {
 	void					*data;
 };
 
+struct vmm_msi_desc *vmm_alloc_msi_entry(struct vmm_device *dev);
+
+void vmm_free_msi_entry(struct vmm_msi_desc *entry);
+
 struct vmm_msi_domain *vmm_msi_create_domain(
 					enum vmm_msi_domain_types type,
 					struct vmm_devtree_node *fwnode,

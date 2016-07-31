@@ -83,6 +83,24 @@ static void vmm_msi_domain_update_dom_ops(struct vmm_msi_domain *domain)
 		ops->set_desc = msi_domain_ops_default.set_desc;
 }
 
+struct vmm_msi_desc *vmm_alloc_msi_entry(struct vmm_device *dev)
+{
+	struct vmm_msi_desc *desc = vmm_zalloc(sizeof(*desc));
+
+	if (!desc)
+		return NULL;
+
+	INIT_LIST_HEAD(&desc->list);
+	desc->dev = dev;
+
+	return desc;
+}
+
+void vmm_free_msi_entry(struct vmm_msi_desc *entry)
+{
+	vmm_free(entry);
+}
+
 struct vmm_msi_domain *vmm_msi_create_domain(
 					enum vmm_msi_domain_types type,
 					struct vmm_devtree_node *fwnode,
