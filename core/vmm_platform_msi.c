@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_msi.h>
+#include <libs/idr.h>
 #include <libs/stringlib.h>
 
 #define DEV_ID_SHIFT	21
@@ -40,6 +41,9 @@ struct vmm_platform_msi_priv_data {
 	vmm_irq_write_msi_msg_t	write_msg;
 	int			devid;
 };
+
+/* The devid allocator */
+static DEFINE_IDA(platform_msi_devid_ida);
 
 /*
  * Convert an msi_desc to a globaly unique identifier (per-device
@@ -97,15 +101,150 @@ void vmm_platform_msi_destroy_domain(struct vmm_msi_domain *domain)
 	vmm_msi_destroy_domain(domain);
 }
 
+static struct vmm_platform_msi_priv_data *
+platform_msi_alloc_priv_data(struct vmm_device *dev, unsigned int nvec,
+			     vmm_irq_write_msi_msg_t write_msi_msg)
+{
+	struct vmm_platform_msi_priv_data *datap;
+
+	/*
+	 * Limit the number of interrupts to 256 per device. Should we
+	 * need to bump this up, DEV_ID_SHIFT should be adjusted
+	 * accordingly (which would impact the max number of MSI
+	 * capable devices).
+	 */
+	if (!dev->msi_domain || !write_msi_msg || !nvec || nvec > MAX_DEV_MSIS)
+		return VMM_ERR_PTR(VMM_EINVALID);
+
+	if (dev->msi_domain->type != VMM_MSI_DOMAIN_PLATFORM) {
+		vmm_printf("%s: Incompatible msi_domain, giving up\n",
+			   dev->name);
+		return VMM_ERR_PTR(VMM_EINVALID);
+	}
+
+	/* Already had a helping of MSI? Greed... */
+	if (!list_empty(dev_to_msi_list(dev)))
+		return VMM_ERR_PTR(VMM_EBUSY);
+
+	datap = vmm_zalloc(sizeof(*datap));
+	if (!datap)
+		return VMM_ERR_PTR(VMM_ENOMEM);
+
+	datap->devid = ida_simple_get(&platform_msi_devid_ida,
+				      0, 1 << DEV_ID_SHIFT, 0x0);
+	if (datap->devid < 0) {
+		int err = datap->devid;
+		vmm_free(datap);
+		return VMM_ERR_PTR(err);
+	}
+
+	datap->write_msg = write_msi_msg;
+	datap->dev = dev;
+
+	return datap;
+}
+
+static void platform_msi_free_priv_data(struct vmm_platform_msi_priv_data *d)
+{
+	ida_simple_remove(&platform_msi_devid_ida, d->devid);
+	vmm_free(d);
+}
+
+static void platform_msi_free_descs(struct vmm_device *dev, int base, int nvec)
+{
+	struct vmm_msi_desc *desc, *tmp;
+
+	list_for_each_entry_safe(desc, tmp, dev_to_msi_list(dev), list) {
+		if (desc->platform.msi_index >= base &&
+		    desc->platform.msi_index < (base + nvec)) {
+			list_del(&desc->list);
+			vmm_free_msi_entry(desc);
+		}
+	}
+}
+
+static int platform_msi_alloc_descs_with_irq(struct vmm_device *dev,
+					     int hirq, int nvec,
+					     struct vmm_platform_msi_priv_data *data)
+
+{
+	struct vmm_msi_desc *desc;
+	int i, base = 0;
+
+	if (!list_empty(dev_to_msi_list(dev))) {
+		desc = list_last_entry(dev_to_msi_list(dev),
+				       struct vmm_msi_desc, list);
+		base = desc->platform.msi_index + 1;
+	}
+
+	for (i = 0; i < nvec; i++) {
+		desc = vmm_alloc_msi_entry(dev);
+		if (!desc)
+			break;
+
+		desc->platform.msi_priv_data = data;
+		desc->platform.msi_index = base + i;
+		desc->nvec_used = 1;
+		desc->hirq = hirq ? hirq + i : 0;
+
+		list_add_tail(&desc->list, dev_to_msi_list(dev));
+	}
+
+	if (i != nvec) {
+		/* Clean up the mess */
+		platform_msi_free_descs(dev, base, nvec);
+
+		return VMM_ENOMEM;
+	}
+
+	return 0;
+}
+
+static int platform_msi_alloc_descs(struct vmm_device *dev, int nvec,
+				    struct vmm_platform_msi_priv_data *data)
+
+{
+	return platform_msi_alloc_descs_with_irq(dev, 0, nvec, data);
+}
+
 int vmm_platform_msi_domain_alloc_irqs(struct vmm_device *dev,
 				       unsigned int nvec,
 				       vmm_irq_write_msi_msg_t write_msi_msg)
 {
-	/* TODO: */
-	return VMM_ENOTAVAIL;
+	struct vmm_platform_msi_priv_data *priv_data;
+	int err;
+
+	priv_data = platform_msi_alloc_priv_data(dev, nvec, write_msi_msg);
+	if (VMM_IS_ERR(priv_data))
+		return VMM_PTR_ERR(priv_data);
+
+	err = platform_msi_alloc_descs(dev, nvec, priv_data);
+	if (err)
+		goto out_free_priv_data;
+
+	err = vmm_msi_domain_alloc_irqs(dev->msi_domain, dev, nvec);
+	if (err)
+		goto out_free_desc;
+
+	return 0;
+
+out_free_desc:
+	platform_msi_free_descs(dev, 0, nvec);
+out_free_priv_data:
+	platform_msi_free_priv_data(priv_data);
+
+	return err;
 }
 
 void vmm_platform_msi_domain_free_irqs(struct vmm_device *dev)
 {
-	/* TODO: */
+	if (!list_empty(dev_to_msi_list(dev))) {
+		struct vmm_msi_desc *desc;
+
+		desc = first_msi_entry(dev);
+		platform_msi_free_priv_data(desc->platform.msi_priv_data);
+	}
+
+	vmm_msi_domain_free_irqs(dev->msi_domain, dev);
+	platform_msi_free_descs(dev, 0, MAX_DEV_MSIS);
 }
