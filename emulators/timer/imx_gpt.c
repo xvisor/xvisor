@@ -323,7 +323,7 @@ static void imx_gpt_event(struct vmm_timer_event *event)
 
 			/* Is the GPT enabled? */
 			if (!(gpt->control & 1)) {
-				return;
+				goto unlock;
 			}
 
 			_imx_gpt_cnt_update(gpt, i, &cnt);
@@ -337,6 +337,7 @@ static void imx_gpt_event(struct vmm_timer_event *event)
 			_imx_gpt_restart_timer(gpt, i, cnt);
 		}
 	}
+unlock:
 	vmm_write_unlock(&gpt->lock);
 }
 
