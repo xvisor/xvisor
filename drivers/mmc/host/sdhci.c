@@ -354,9 +354,10 @@ int sdhci_send_command(struct mmc_host *mmc,
 			sdhci_writel(host, (u32)dma_addr, SDHCI_DMA_ADDRESS);
 			mode |= SDHCI_TRNS_DMA;
 
-			vmm_flush_cache_range((u32)host->aligned_buffer,
-					      (u32)host->aligned_buffer +
-					      trans_bytes);
+			vmm_flush_cache_range(
+					(virtual_addr_t)host->aligned_buffer,
+					(virtual_addr_t)host->aligned_buffer +
+					trans_bytes);
 		}
 
 		sdhci_writew(host, SDHCI_MAKE_BLKSZ(SDHCI_DEFAULT_BOUNDARY_ARG,
@@ -421,9 +422,9 @@ int sdhci_send_command(struct mmc_host *mmc,
 		if (host->sdhci_caps & SDHCI_CAN_DO_SDMA) {
 			ret = sdhci_transfer_dma(host, data);
 		} else {
-			u32 start_addr = (u32)data->dest;
+			u32 start_addr = (virtual_addr_t)data->dest;
 			if (data->flags != MMC_DATA_READ) {
-				start_addr = (u32)data->src;
+				start_addr = (virtual_addr_t)data->src;
 			}
 			ret = sdhci_transfer_data(host, data, start_addr);
 		}
@@ -876,7 +877,7 @@ int sdhci_add_host(struct sdhci_host *host)
 			goto free_nothing;
 		}
 		if ((host->quirks & SDHCI_QUIRK_32BIT_DMA_ADDR) &&
-		    (((u32)host->aligned_buffer) & 0x7)) {
+		    (((virtual_addr_t)host->aligned_buffer) & 0x7)) {
 			vmm_printf("%s: host buffer not aligned to "
 				   "8-byte boundary!!!\n", __func__);
 			rc = VMM_EFAIL;
