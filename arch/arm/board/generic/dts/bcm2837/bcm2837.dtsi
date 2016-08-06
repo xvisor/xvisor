@@ -1,0 +1,168 @@
+
+/memreserve/ 0x00000000 0x00008000;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "brcm,bcm2836";
+	model = "BCM2837";
+	interrupt-parent = <&intc>;
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x000000d8>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <1>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x000000e0>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <2>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x000000e8>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <3>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x000000f0>;
+		};
+	};
+
+	memory { 
+		device_type = "memory"; 
+		reg = <0x0 0x00000000 0x0 0x40000000>; /* 1 GB */
+	};
+
+	gen-timer { /* Generic Timer */
+      		compatible = "arm,armv8-timer";
+		interrupts = <0>, // PHYS_SECURE_PPI
+			     <1>, // PHYS_NONSECURE_PPI
+			     <3>, // VIRT_PPI
+			     <2>; // HYP_PPI
+		interrupt-parent = <&local_intc>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+
+		timer {
+			compatible = "brcm,bcm2835-system-timer";
+			reg = <0x3f003000 0x1000>;
+			clock-frequency = <1000000>;
+			interrupts = <1 0>, <1 1>, <1 2>, <1 3>;
+		};
+
+		local_intc: local_intc {
+			compatible = "brcm,bcm2836-l1-intc";
+			reg = <0x40000000 0x100>;
+			irq_start = <96>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+		};
+
+		intc: intc {
+			compatible = "brcm,bcm2836-armctrl-ic";
+			reg = <0x3f00b200 0x200>;
+			irq_start = <0>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupts = <8>; /* GPU interrupt of local INTC */
+			interrupt-parent = <&local_intc>;
+		};
+
+		poweroff {
+			compatible = "brcm,bcm2835-poweroff";
+			reg = <0x3f100000 0x28>;
+		};
+
+		SERIAL0: uart0 {
+	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
+	      		reg = <0x3f201000 0x1000>;
+			clock-frequency = <3000000>;
+			interrupts = <2 25>;
+		};
+
+		i2c0: i2c@3f205000 {
+			compatible = "brcm,bcm2835-i2c";
+			reg = <0x3f205000 0x1000>;
+			interrupts = <2 21>;
+			clocks = <&clk_i2c>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		sdhci: sdhci@3f300000 {
+			compatible = "brcm,bcm2835-sdhci";
+			reg = <0x3f300000 0x1000>;
+			interrupts = <2 30>;
+			clocks = <&clk_mmc>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@3f804000 {
+			compatible = "brcm,bcm2835-i2c";
+			reg = <0x3f804000 0x1000>;
+			interrupts = <2 21>;
+			clocks = <&clk_i2c>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		usb: usb@3f980000 {
+			compatible = "brcm,bcm2835-usb";
+			reg = <0x3f980000 0x10000>;
+			interrupts = <2 9>;
+		};
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk_mmc: mmc {
+			compatible = "fixed-clock";
+			reg = <0>;
+			#clock-cells = <0>;
+			clock-frequency = <100000000>;
+		};
+
+		clk_i2c: i2c {
+			compatible = "fixed-clock";
+			reg = <1>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+
+		clk_spi: spi {
+			compatible = "fixed-clock";
+			reg = <2>;
+			#clock-cells = <0>;
+			clock-frequency = <250000000>;
+		};
+	};
+};
+
