@@ -4,15 +4,13 @@ This section of readme explains how to build & run Xvisor on actual BCM2836
 SOC boards (Raspberry Pi2 for example) using SD booting.
 
 By default, Xvisor for BCM2836 supports Vexpress-A15 guest so we will show
-how to run Basic Firmware on Vexpress-A15 guest. For more info refer,
-<xvisor_source>/tests/arm32/vexpress-a15/basic/README.
+how to run Linux using Basic Firmware on Vexpress-A15 guest.
 
-The Raspberry Pi 2 usually comes with and SD card containig the GPU firmware
+The Raspberry Pi2 usually comes with and SD card containig the GPU firmware
 necessary to boot the ARM processor.
-To create your own SD Card to boot the Raspberry Pi 2, do the following:
- 1) Download and write prebuild image (not older then 1st May 2016) to SD
- card as described in
- https://www.raspberrypi.org/documentatinon/installation/installing-images/
+To create your own SD Card to boot the Raspberry Pi2, do the following:
+ 1) Download and write prebuild raspbian image (not older then 1st May 2016)
+ to SD card as described in: https://www.raspberrypi.org/downloads/raspbian/
  2) Optionally download the following files from the Raspberry Official
  Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
  to the SD card if you are not able detect complete 1GB RAM:
@@ -22,7 +20,7 @@ To create your own SD Card to boot the Raspberry Pi 2, do the following:
  - start_cd.elf
  (Note: the _cd files are used when gpu_mem=16)
 
-As next step, we install u-boot-2016.07 on the Raspberry Pi 2 SD card
+As next step, we install u-boot-2016.07 on the Raspberry Pi2 SD card
 as follow:
  1) Download and build u-boot-2016.07
  # export ARCH=arm
@@ -116,7 +114,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
 
   [15. Unplug bootable SD card from the Raspberry Pi2 board and plug it on your development machine]
 
-  [16. Mount data partition (or partition 0) of SD card on your development machine]
+  [16. Mount data partition (or partition 2) of SD card on your development machine]
 
   [17. Copy uvmm.bin, DTB, and udisk.img to data partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
