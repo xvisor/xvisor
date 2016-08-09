@@ -11,25 +11,25 @@ necessary to boot the ARM processor.
 To create your own SD Card to boot the Raspberry Pi3, do the following:
  1) Download and write prebuild raspbian image (not older then 1st May 2016)
  to SD card as described in: https://www.raspberrypi.org/downloads/raspbian/
- 2) Optionally download the following files from the Raspberry Official
- Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
- to the SD card if you are not able detect complete 1GB RAM:
- - fixup.dat
- - fixup_cd.dat
- - start.elf
- - start_cd.elf
- (Note: the _cd files are used when gpu_mem=16)
+ 2) Download appropriate firmware from the Raspberry Official
+ Repository (https://github.com/raspberrypi/firmware.git)
+ to the SD card:
+ # git clone https://github.com/raspberrypi/firmware.git
+ # cd firmware/boot
+ # git checkout -b tmp 1205048f037098b1532bb947d1f4b823bcdebdf7
+ # cp -rf * <raspi3_sd_card_boot_partition>
+ # cd ../..
 
-As next step, we install u-boot-2016.07 on the Raspberry Pi3 SD card
+As next step, we install u-boot-2016.09-rc1 on the Raspberry Pi3 SD card
 as follow:
- 1) Download and build u-boot-2016.07
+ 1) Download and build u-boot-2016.09-rc1
  # export ARCH=arm64
  # export CROSS_COMPILE=aarch64-linux-gnu-
- # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2016.07.tar.bz2
- # tar -xvf u-boot-2016.07.tar.bz2
- # cd u-boot-2016.07
+ # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2016.09-rc1.tar.bz2
+ # cd u-boot-2016.09-rc1
  # make rpi_3_defconfig
  # make all
+ # cd ..
  2) Mount the boot partition of pre-installed SD card
  3) Copy u-boot.bin to <raspi3_sd_card_boot_partition>
  4) Create <raspi3_sd_card_boot_partition>/config.txt if it does not exist
@@ -37,8 +37,6 @@ as follow:
  enable_uart=1
  arm_control=0x200
  kernel=u-boot.bin
- disable_commandline_tags=1
- gpu_mem=64
  6) Unmount the boot partition of pre-installed SD card
 
 Once we have u-boot installed on SD card, we add 3 more images to the boot
