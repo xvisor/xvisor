@@ -465,6 +465,71 @@ static struct defterm_ops scif_ops = {
 
 #endif
 
+#if defined(CONFIG_SERIAL_BCM283X_MU)
+
+#include <drv/serial/bcm283x_mu.h>
+
+static virtual_addr_t bcm283x_mu_defterm_base;
+static u32 bcm283x_mu_defterm_inclk;
+static u32 bcm283x_mu_defterm_baud;
+
+static int bcm283x_mu_defterm_putc(u8 ch)
+{
+	if (!bcm283x_mu_lowlevel_can_putc(bcm283x_mu_defterm_base)) {
+		return VMM_EFAIL;
+	}
+	bcm283x_mu_lowlevel_putc(bcm283x_mu_defterm_base, ch);
+	return VMM_OK;
+}
+
+static int bcm283x_mu_defterm_getc(u8 *ch)
+{
+	if (!bcm283x_mu_lowlevel_can_getc(bcm283x_mu_defterm_base)) {
+		return VMM_EFAIL;
+	}
+	*ch = bcm283x_mu_lowlevel_getc(bcm283x_mu_defterm_base);
+	return VMM_OK;
+}
+
+static int __init bcm283x_mu_defterm_init(struct vmm_devtree_node *node)
+{
+	int rc;
+
+	rc = vmm_devtree_regmap(node, &bcm283x_mu_defterm_base, 0);
+	if (rc) {
+		return rc;
+	}
+
+	rc = vmm_devtree_clock_frequency(node,
+				&bcm283x_mu_defterm_inclk);
+	if (rc) {
+		return rc;
+	}
+
+	if (vmm_devtree_read_u32(node, "baudrate",
+				&bcm283x_mu_defterm_baud)) {
+		bcm283x_mu_defterm_baud = 115200;
+	}
+
+	bcm283x_mu_lowlevel_init(bcm283x_mu_defterm_base,
+				 bcm283x_mu_defterm_baud,
+				 bcm283x_mu_defterm_inclk);
+
+	return VMM_OK;
+}
+
+static struct defterm_ops bcm283x_mu_ops = {
+	.putc = bcm283x_mu_defterm_putc,
+	.getc = bcm283x_mu_defterm_getc,
+	.init = bcm283x_mu_defterm_init
+};
+
+#else
+
+#define bcm283x_mu_ops unknown_ops
+
+#endif
+
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "arm,pl011", .data = &pl011_ops },
 	{ .compatible = "ns8250", .data = &uart8250_ops },
@@ -482,6 +547,7 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "exynos4210-uart", .data = &samsung_ops },
 	{ .compatible = "samsung,exynos4210-uart", .data = &samsung_ops },
 	{ .compatible = "renesas,scif", .data = &scif_ops },
+	{ .compatible = "brcm,bcm283x-mu", .data = &bcm283x_mu_ops },
 	{ /* end of list */ },
 };
 
