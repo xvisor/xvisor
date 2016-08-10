@@ -110,6 +110,22 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writew(scfsr, early_base + SCIF_SCFSR);
 }
 
+#elif defined(CONFIG_DEFTERM_EARLY_BCM283X_MU)
+
+#include <drv/serial/bcm283x_mu.h>
+
+void __init arch_defterm_early_putc(u8 ch)
+{
+	void *io = early_base + BCM283X_MU_IO;
+	void *lsr = early_base + BCM283X_MU_LSR;
+
+	/* Wait until FIFO is not empty */
+	while (!(vmm_readw(lsr) & BCM283X_MU_LSR_TX_EMPTY)) ;
+
+	/* Send the character */
+	vmm_writeb(ch, io);
+}
+
 #else
 
 void __init arch_defterm_early_putc(u8 ch)
