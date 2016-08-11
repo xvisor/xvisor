@@ -95,7 +95,6 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
   # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm64/virt-v8/Image
-  # cp -f <linux_build_directory>/virt-v8.dtb ./build/disk/images/arm64/virt-v8/virt-v8.dtb
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
