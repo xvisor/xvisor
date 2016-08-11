@@ -14,7 +14,7 @@
 	};
 
 	chosen {
-		console = &SERIAL0;
+		console = &SERIAL_MU;
 		bootcmd = /* Mount initrd device */
 			  "vfs mount initrd /",
 
