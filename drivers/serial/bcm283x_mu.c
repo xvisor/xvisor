@@ -83,7 +83,6 @@ void bcm283x_mu_lowlevel_init(virtual_addr_t base,
 {
 	u32 val;
 	u32 divider = udiv32(input_clock, (baudrate * 8));
-	void *iir = (void *)(base + BCM283X_MU_IIR);
 	void *ier = (void *)(base + BCM283X_MU_IER);
 	void *lcr = (void *)(base + BCM283X_MU_LCR);
 	void *baud = (void *)(base + BCM283X_MU_BAUD);
@@ -97,9 +96,6 @@ void bcm283x_mu_lowlevel_init(virtual_addr_t base,
 
 	/* Disable interrupts */
 	vmm_writel(0x0, ier);
-
-	/* Flush port */
-	vmm_writel(BCM283X_MU_IIR_FLUSH, iir);
 
 	/* Setup 8bit data width and baudrate */
 	vmm_writel(BCM283X_MU_LCR_8BIT, lcr);
@@ -209,7 +205,6 @@ static int bcm283x_mu_driver_probe(struct vmm_device *dev,
 
 	/* Unmask Rx Interrupt */
 	port->mask |= BCM283X_MU_IER_RX_INTERRUPT;
-	port->mask |= BCM283X_MU_IER_ENABLE_INTERRUPT;
 	vmm_writel(port->mask, (void *)(port->base + BCM283X_MU_IER));
 
 	return VMM_OK;
@@ -234,7 +229,6 @@ static int bcm283x_mu_driver_remove(struct vmm_device *dev)
 
 	/* Mask RX interrupts */
 	port->mask &= ~BCM283X_MU_IER_RX_INTERRUPT;
-	port->mask &= BCM283X_MU_IER_ENABLE_INTERRUPT;
 	vmm_writel(port->mask, (void *)(port->base + BCM283X_MU_IER));
 
 	/* Free-up resources */
