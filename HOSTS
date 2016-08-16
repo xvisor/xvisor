@@ -10,7 +10,7 @@ If a field spans multiple lines then simply add field prefix to every line.
 
 ----------
 
-M:	BCM2835 SOC (Raspberry-Pi development board)
+M:	BCM2835 SOC (Raspberry Pi development board)
 A:	ARM 32-bit (ARMv6)
 C:	ARM11
 V:	Broadcom Corporation (http://www.broadcom.com/)
@@ -20,17 +20,29 @@ S:	Able to boot Realview-EB-MPCore linux guest on Raspberry Pi hardware
 	and Raspberry Pi emulated by QEMU
 D:	docs/arm/bcm2835-raspi.txt
 
-M:	BCM2836 SOC (Raspberry-Pi2 development board)
+M:	BCM2836 SOC (Raspberry Pi2 development board)
 A:	ARM 32-bit with virtualization extension (ARMv7a-ve)
 C:	Cortex-A7
 V:	Broadcom Corporation (http://www.broadcom.com/)
 E:	---
 G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v7 guests supported
-S:	Able to boot Realview-PB-A8 linux guest on Cubieboard2
-S:	Able to boot VExpress-A9 linux guest on Cubieboard2
-S:	Able to boot VExpress-A15 linux guest on Cubieboard2
-S:	Able to boot Virt-v7 linux guest on Cubieboard2
+S:	Able to boot Realview-PB-A8 linux guest on Raspberry Pi2
+S:	Able to boot VExpress-A9 linux guest on Raspberry Pi2
+S:	Able to boot VExpress-A15 linux guest on Raspberry Pi2
+S:	Able to boot Virt-v7 linux guest on Raspberry Pi2
 D:	docs/arm/bcm2836-raspi2.txt
+
+M:	BCM2837 SOC (Raspberry Pi3 development board)
+A:	ARM 64-bit (ARMv8a)
+C:	Cortex-A53
+V:	Broadcom Corporation (http://www.broadcom.com/)
+E:	---
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v8 guests supported
+S:	Able to boot Realview-PB-A8 linux guest on Raspberry Pi3
+S:	Able to boot VExpress-A9 linux guest on Raspberry Pi3
+S:	Able to boot VExpress-A15 linux guest on Raspberry Pi3
+S:	Able to boot Virt-v8 linux guest on Raspberry Pi3
+D:	docs/arm/bcm2837-raspi3.txt
 
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
 A:	ARM 32-bit (ARMv7a)
