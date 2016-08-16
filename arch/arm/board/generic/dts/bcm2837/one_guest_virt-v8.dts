@@ -19,7 +19,7 @@
 			  "vfs mount initrd /",
 
 			  /* Load guest0 device tree from file */
-			  "vfs fdt_load /guests guest0 /images/arm32/virt-v8x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0",
+			  "vfs fdt_load /guests guest0 /images/arm64/virt-v8x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0",
 
 			  /* Replace guest0 vGIC emulator with GIC emulator */
 			  "devtree attr set /guests/guest0/aspace/gic_dist compatible string virt,gic",
@@ -30,7 +30,7 @@
 			  "guest create guest0",
 
 			  /* Load guest0 images */
-			  "vfs guest_load_list guest0 /images/arm32/virt-v8/nor_flash.list",
+			  "vfs guest_load_list guest0 /images/arm64/virt-v8/nor_flash.list",
 
 			  /* Print banner */
 			  "vfs cat /system/banner.txt";
