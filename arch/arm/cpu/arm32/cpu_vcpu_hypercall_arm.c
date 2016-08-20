@@ -188,6 +188,7 @@ static int arm_hypercall_rfe(u32 inst,
 	case CPSR_MODE_IRQ:
 		vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
 		break;
+	case CPSR_MODE_SYSTEM: /* fall-through */
 	case CPSR_MODE_SUPERVISOR:
 		vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
 		break;
@@ -574,6 +575,7 @@ static int arm_hypercall_subs_rel(u32 id, u32 inst,
 	case CPSR_MODE_IRQ:
 		vmm_vcpu_irq_deassert(vcpu, CPU_EXTERNAL_IRQ);
 		break;
+	case CPSR_MODE_SYSTEM: /* fall-through */
 	case CPSR_MODE_SUPERVISOR:
 		vmm_vcpu_irq_deassert(vcpu, CPU_SOFT_IRQ);
 		break;
