@@ -309,7 +309,7 @@ def convert_rfe_inst(hxstr):
 	hx = int(hxstr, 16)
 	inst_id = 0
 	inst_subid = 4 
-	cond = 0xF
+	cond = 0xE
 	P = (hx >> 24) & 0x1
 	U = (hx >> 23) & 0x1
 	W = (hx >> 21) & 0x1
@@ -331,7 +331,7 @@ def convert_rfe_inst(hxstr):
 #		P = bits[24:24]
 #		U = bits[23:23]
 #		W = bits[21:21]
-#		mode = bits[5:0]
+#		mode = bits[4:0]
 #	Hypercall Fields:
 #		inst_cond[31:28] = cond
 #		inst_op[27:24] = 0xf
@@ -345,7 +345,7 @@ def convert_srs_inst(hxstr):
 	hx = int(hxstr, 16)
 	inst_id = 0
 	inst_subid = 5
-	cond = 0xF
+	cond = 0xE
 	P = (hx >> 24) & 0x1
 	U = (hx >> 23) & 0x1
 	W = (hx >> 21) & 0x1
