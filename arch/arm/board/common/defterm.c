@@ -59,7 +59,7 @@ static struct defterm_ops unknown_ops = {
 
 #if defined(CONFIG_SERIAL_PL01X)
 
-#include <drv/pl011.h>
+#include <drv/serial/pl011.h>
 
 static virtual_addr_t pl011_defterm_base;
 static u32 pl011_defterm_inclk;
@@ -124,7 +124,7 @@ static struct defterm_ops pl011_ops = {
 
 #if defined(CONFIG_SERIAL_8250_UART)
 
-#include <drv/8250-uart.h>
+#include <drv/serial/8250-uart.h>
 
 static struct uart_8250_port uart8250_port;
 
@@ -195,7 +195,7 @@ static struct defterm_ops uart8250_ops = {
 
 #if defined(CONFIG_SERIAL_OMAP_UART)
 
-#include <drv/omap-uart.h>
+#include <drv/serial/omap-uart.h>
 
 static virtual_addr_t omap_defterm_base;
 static u32 omap_defterm_inclk;
@@ -260,7 +260,7 @@ static struct defterm_ops omapuart_ops = {
 
 #if defined(CONFIG_SERIAL_IMX)
 
-#include <drv/imx-uart.h>
+#include <drv/serial/imx-uart.h>
 
 static virtual_addr_t imx_defterm_base;
 static u32 imx_defterm_inclk;
@@ -325,7 +325,7 @@ static struct defterm_ops imx_ops = {
 
 #if defined(CONFIG_SERIAL_SAMSUNG)
 
-#include <drv/samsung-uart.h>
+#include <drv/serial/samsung-uart.h>
 
 static virtual_addr_t samsung_defterm_base;
 static u32 samsung_defterm_inclk;
@@ -394,7 +394,7 @@ static struct defterm_ops samsung_ops = {
 
 #if defined(CONFIG_SERIAL_SCIF)
 
-#include <drv/scif.h>
+#include <drv/serial/scif.h>
 
 static virtual_addr_t scif_defterm_base;
 static u32 scif_defterm_inclk;

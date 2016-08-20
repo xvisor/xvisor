@@ -28,7 +28,7 @@
 #include <imx-common.h>
 #include <linux/clk-provider.h>
 #include <linux/clk-private.h>
-#include <drv/imx-uart.h>
+#include <drv/serial/imx-uart.h>
 #include <libs/mathlib.h>
 
 #include <imx-common.h>

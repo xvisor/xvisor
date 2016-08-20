@@ -48,9 +48,9 @@
 #include <vmm_devdrv.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
-#include <drv/serial.h>
 #include <drv/clk.h>
-#include <drv/imx-uart.h>
+#include <drv/serial.h>
+#include <drv/serial/imx-uart.h>
 
 #define MODULE_DESC                     "IMX Serial Driver"
 #define MODULE_AUTHOR                   "Jean-Christophe Dubois"

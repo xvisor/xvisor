@@ -31,7 +31,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/serial.h>
-#include <drv/omap-uart.h>
+#include <drv/serial/omap-uart.h>
 
 #define MODULE_DESC			"OMAP UART Driver"
 #define MODULE_AUTHOR			"Sukanto Ghosh"

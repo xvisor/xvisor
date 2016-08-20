@@ -31,7 +31,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/serial.h>
-#include <drv/pl011.h>
+#include <drv/serial/pl011.h>
 
 #define MODULE_DESC			"PL011 Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"

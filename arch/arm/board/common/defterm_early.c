@@ -32,7 +32,7 @@ static void *early_base = &defterm_early_base;
 
 #if defined(CONFIG_DEFTERM_EARLY_PL011)
 
-#include <drv/pl011.h>
+#include <drv/serial/pl011.h>
 
 /*
  * PL011 single character TX.
@@ -48,7 +48,7 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_UART8250_8BIT)
 
-#include <drv/8250-uart.h>
+#include <drv/serial/8250-uart.h>
 
 /*
  * 8250/16550 (8-bit aligned registers) single character TX.
@@ -62,7 +62,7 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_UART8250_32BIT)
 
-#include <drv/8250-uart.h>
+#include <drv/serial/8250-uart.h>
 
 /*
  * 8250/16550 (32-bit aligned registers) single character TX.
@@ -76,7 +76,7 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_IMX)
 
-#include <drv/imx-uart.h>
+#include <drv/serial/imx-uart.h>
 
 void __init arch_defterm_early_putc(u8 ch)
 {
@@ -92,7 +92,7 @@ void __init arch_defterm_early_putc(u8 ch)
 
 #elif defined(CONFIG_DEFTERM_EARLY_SCIF)
 
-#include <drv/scif.h>
+#include <drv/serial/scif.h>
 
 void __init arch_defterm_early_putc(u8 ch)
 {

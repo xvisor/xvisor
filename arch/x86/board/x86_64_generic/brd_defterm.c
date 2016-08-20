@@ -402,7 +402,7 @@ static struct defterm_ops stdio_ops = {
 
 #if defined(CONFIG_SERIAL_8250_UART)
 
-#include <drv/8250-uart.h>
+#include <drv/serial/8250-uart.h>
 
 static struct uart_8250_port uart8250_port;
 

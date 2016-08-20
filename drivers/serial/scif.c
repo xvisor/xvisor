@@ -31,7 +31,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/serial.h>
-#include <drv/scif.h>
+#include <drv/serial/scif.h>
 
 #define MODULE_DESC			"SuperH SCIF Serial Driver"
 #define MODULE_AUTHOR			"Anup Patel"

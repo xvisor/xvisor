@@ -31,7 +31,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/serial.h>
-#include <drv/samsung-uart.h>
+#include <drv/serial/samsung-uart.h>
 
 #define MODULE_DESC			"Samsung Serial Driver"
 #define MODULE_AUTHOR			"Jean-Christophe Dubois"

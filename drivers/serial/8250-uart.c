@@ -32,7 +32,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/serial.h>
-#include <drv/8250-uart.h>
+#include <drv/serial/8250-uart.h>
 
 #define MODULE_DESC			"8250 UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
