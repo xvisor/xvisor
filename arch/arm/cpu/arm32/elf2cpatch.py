@@ -340,7 +340,7 @@ def convert_rfe_inst(hxstr):
 #		inst_fields[16:16] = P
 #		inst_fields[15:15] = U
 #		inst_fields[14:14] = W
-#		inst_fields[13:10] = mode
+#		inst_fields[13:9] = mode
 def convert_srs_inst(hxstr):
 	hx = int(hxstr, 16)
 	inst_id = 0
@@ -349,7 +349,7 @@ def convert_srs_inst(hxstr):
 	P = (hx >> 24) & 0x1
 	U = (hx >> 23) & 0x1
 	W = (hx >> 21) & 0x1
-	mode = (hx >> 16) & 0xF
+	mode = hx & 0x1F
 	rethx = 0x0F000000
 	rethx = rethx | (cond << 28)
 	rethx = rethx | (inst_id << 20)
@@ -357,7 +357,7 @@ def convert_srs_inst(hxstr):
 	rethx = rethx | (P << 16)
 	rethx = rethx | (U << 15)
 	rethx = rethx | (W << 14)
-	rethx = rethx | (mode << 10)
+	rethx = rethx | (mode << 9)
 	return rethx
 
 # WFI
