@@ -23,4 +23,4 @@
 
 emulators-objs-$(CONFIG_EMU_SYS_ARM_SYSREGS)+= sys/arm_sysregs.o
 emulators-objs-$(CONFIG_EMU_SYS_SP810)+= sys/sp810.o
-
+emulators-objs-$(CONFIG_EMU_SYS_VMINFO)+= sys/vminfo.o
