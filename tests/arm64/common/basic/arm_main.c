@@ -54,6 +54,8 @@ void arm_init(void)
 
 	arm_board_timer_init(10000);
 
+	arm_board_init();
+
 	memory_size = arm_board_ram_size();
 
 	arm_board_timer_enable();
@@ -736,8 +738,6 @@ void arm_main(void)
 
 	arm_puts(arm_board_name());
 	arm_puts(" Basic Firmware\n\n");
-
-	arm_board_init();
 
 	while(1) {
 		arm_puts("basic# ");
