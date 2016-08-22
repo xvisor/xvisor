@@ -707,10 +707,11 @@ static int arm_hypercall_cps_and_co(u32 id, u32 inst,
 	return cps_and_co_funcs[subid] (inst, regs, vcpu);
 }
 
-static int arm_hypercall_id(u32 id, u32 inst,
+static int arm_hypercall_svc(u32 id, u32 inst,
 			    arch_regs_t *regs, struct vmm_vcpu *vcpu)
 {
-	return VMM_EFAIL;
+	vmm_vcpu_irq_assert(vcpu, CPU_SOFT_IRQ, 0x0);
+	return VMM_OK;
 }
 
 static int (* const hcall_funcs[]) (u32 id, u32 inst,
@@ -731,7 +732,7 @@ static int (* const hcall_funcs[]) (u32 id, u32 inst,
 	arm_hypercall_stm_u,		/* ARM_HYPERCALL_STM_U_ID3 */
 	arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID0 */
 	arm_hypercall_subs_rel,		/* ARM_HYPERCALL_SUBS_REL_ID1 */
-	arm_hypercall_id		/* not used yet */
+	arm_hypercall_svc,		/* ARM_HYPERCALL_SVC_ID */
 };
 
 int cpu_vcpu_hypercall_arm(struct vmm_vcpu *vcpu,

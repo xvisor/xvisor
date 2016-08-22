@@ -324,6 +324,28 @@ def convert_rfe_inst(hxstr):
 	rethx = rethx | (Rn << 10)
 	return rethx
 
+# SVC
+#	Syntax:
+# 		svc{cond} #imm
+#	Fields:
+#		cond = bits[31:28]
+#		imm = bits[23:0]
+#	Hypercall Fields:
+#		inst_cond[31:28] = cond
+#		inst_op[27:24] = 0xF
+#		inst_id[23:20] = 0xF
+#		inst_imm[19:0] = imm[19:0]
+def convert_svc_inst(hxstr):
+	hx = int(hxstr, 16)
+	inst_id = 15
+	cond = (hx >> 28) & 0xF
+	imm = hx & 0xFFFFF
+	rethx = 0x0F000000
+	rethx = rethx | (cond << 28)
+	rethx = rethx | (inst_id << 20)
+	rethx = rethx | imm
+	return rethx
+
 # SRS
 #	Syntax:
 # 		srs{amode}<c> sp{!}, #mode
@@ -618,6 +640,9 @@ for ln, l in enumerate(lines):
 			if (w[2]=="cps" or w[2]=="cpsie" or w[2]=="cpsid"):
 				print("\t#", w[2], w[3])
 				print("\twrite32,0x%x,0x%08x" % (addr, convert_cps_inst(w[1])))
+			elif (w[2].startswith("svc")):
+				print("\t#", w[2], w[3])
+				print("\twrite32,0x%x,0x%08x" % (addr, convert_svc_inst(w[1])))
 			elif (w[2]=="rfeda" or 
 				w[2]=="rfedb" or 
 				w[2]=="rfeia" or 
