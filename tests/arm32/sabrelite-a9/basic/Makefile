@@ -37,7 +37,8 @@ board_text_start = 0x11000000
 board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/timer/imx_gpt.o \
-                   $(obj_dir)/serial/imx.o
+                   $(obj_dir)/serial/imx.o \
+                   $(obj_dir)/sys/vminfo.o
 board_fdt_support = y
 board_smp	 = y
 

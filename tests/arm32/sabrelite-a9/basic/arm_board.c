@@ -30,6 +30,7 @@
 #include <pic/gic.h>
 #include <timer/imx_gpt.h>
 #include <serial/imx.h>
+#include <sys/vminfo.h>
 
 void arm_board_reset(void)
 {
@@ -48,12 +49,12 @@ char *arm_board_name(void)
 
 u32 arm_board_ram_start(void)
 {
-	return 0x10000000;
+	return (u32)vminfo_ram_base(0x0220b000, 0);
 }
 
 u32 arm_board_ram_size(void)
 {
-	return 0x30000000;
+	return (u32)vminfo_ram_size(0x0220b000, 0);
 }
 
 u32 arm_board_linux_machine_type(void)

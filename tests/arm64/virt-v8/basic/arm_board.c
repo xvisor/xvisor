@@ -29,6 +29,7 @@
 #include <pic/gic.h>
 #include <timer/generic_timer.h>
 #include <serial/pl01x.h>
+#include <sys/vminfo.h>
 
 void arm_board_reset(void)
 {
@@ -69,12 +70,12 @@ char *arm_board_name(void)
 
 physical_addr_t arm_board_ram_start(void)
 {
-	return VIRT_V8_RAM0;
+	return vminfo_ram_base(0x09001000, 0);
 }
 
 physical_size_t arm_board_ram_size(void)
 {
-	return VIRT_V8_RAM0_SIZE;
+	return vminfo_ram_size(0x09001000, 0);
 }
 
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)

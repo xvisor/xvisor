@@ -30,6 +30,7 @@
 #include <pic/pl190.h>
 #include <timer/sp804.h>
 #include <serial/pl01x.h>
+#include <sys/vminfo.h>
 
 void arm_board_reset(void)
 {
@@ -51,12 +52,12 @@ char *arm_board_name(void)
 
 u32 arm_board_ram_start(void)
 {
-	return 0x0;
+	return (u32)vminfo_ram_base(0x14000000, 0);
 }
 
 u32 arm_board_ram_size(void)
 {
-	return 0x6000000;
+	return (u32)vminfo_ram_size(0x14000000, 0);
 }
 
 u32 arm_board_linux_machine_type(void)
