@@ -17,6 +17,10 @@ VIC: 20
 SIC: 42-52 (nested) 
 SIC: 63 (nested)
 
+The memory map and irq of paravirt devices on VersatilePB guest is
+as follows:
+0x14000000–0x14000FFF (4K)          (Guest/VM Info Device)
+
 
 			VersatilePB Guest OSes
 

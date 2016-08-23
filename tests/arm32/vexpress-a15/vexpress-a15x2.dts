@@ -362,6 +362,16 @@
 			compatible = "zero";
 		};
 
+		vminfo {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "sys";
+			compatible = "vminfo-0.1";
+			guest_physical_addr = <0x40000000>;
+			physical_size = <0x1000>;
+			ram0_base = <0x80000000>;
+		};
+
 		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
