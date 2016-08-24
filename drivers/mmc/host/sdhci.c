@@ -606,7 +606,7 @@ static int sdhci_get_cd(struct mmc_host *mmc)
 		return VMM_ENOTSUPP;
 
 	/* Try slot gpio detect */
-	if (!gpio_cd >= 0)
+	if (!(gpio_cd >= 0))
 		return !!gpio_cd;
 
 	/* Host native card detect */
