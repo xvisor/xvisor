@@ -116,6 +116,8 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     cp -f <xvisor_source_directory>/tests/common/busybox/fstab ./_install/etc/fstab
     cp -f <xvisor_source_directory>/tests/common/busybox/rcS ./_install/etc/init.d/rcS
     cp -f <xvisor_source_directory>/tests/common/busybox/motd ./_install/etc/motd
+    cp -f <xvisor_source_directory>/tests/common/busybox/logo_linux_clut224.ppm ./_install/etc/logo_linux_clut224.ppm
+    cp -f <xvisor_source_directory>/tests/common/busybox/logo_linux_vga16.ppm ./_install/etc/logo_linux_vga16.ppm
     ```
 
 8. Create a RootFS image using one of the following options (INITRAMFS preferred)
