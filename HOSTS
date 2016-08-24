@@ -41,6 +41,7 @@ G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v8 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on Raspberry Pi3
 S:	Able to boot VExpress-A9 linux guest on Raspberry Pi3
 S:	Able to boot VExpress-A15 linux guest on Raspberry Pi3
+S:	Able to boot Virt-v7 linux guest on Raspberry Pi3
 S:	Able to boot Virt-v8 linux guest on Raspberry Pi3
 D:	docs/arm/bcm2837-raspi3.txt
 
@@ -90,6 +91,8 @@ S:	Able to boot Realview-PB-A8 linux guest on Foundation v8 Machine
 S:	Able to boot VExpress-A9 linux guest on Foundation v8 Machine emulated
 	by ARMv8 Foundation Model.
 S:	Able to boot VExpress-A15 linux guest on Foundation v8 Machine emulated
+	by ARMv8 Foundation Model.
+S:	Able to boot Virt-v7 linux guest on Foundation v8 Machine emulated
 	by ARMv8 Foundation Model.
 S:	Able to boot Virt-v8 linux guest on Foundation v8 Machine emulated
 	by ARMv8 Foundation Model.
