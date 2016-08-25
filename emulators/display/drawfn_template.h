@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file pl110_template.h
+ * @file drawfn_template.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief PrimeCell PL110/PL111 framebuffer format conversion routines.
+ * @brief Generic framebuffer format conversion template.
  *
  * The header has been largely adapted from QEMU sources:
  * hw/display/pl110_template.h
@@ -49,18 +49,18 @@
 
 #ifndef ORDER
 
-#if BITS == 8
+#if SURFACE_BITS == 8
 #define COPY_PIXEL(s, to, from) \
 	vmm_surface_write8(s, to, from); to++;
-#elif BITS == 15 || BITS == 16
+#elif SURFACE_BITS == 15 || SURFACE_BITS == 16
 #define COPY_PIXEL(s, to, from) \
 	vmm_surface_write16(s, (u16 *)to, from); to += 2;
-#elif BITS == 24
+#elif SURFACE_BITS == 24
 #define COPY_PIXEL(s, to, from) \
 	vmm_surface_write8(s, to, from); to++; \
 	vmm_surface_write8(s, to, (from) >> 8); to++; \
 	vmm_surface_write8(s, to, (from) >> 16); to++;
-#elif BITS == 32
+#elif SURFACE_BITS == 32
 #define COPY_PIXEL(s, to, from) \
 	vmm_surface_write32(s, (u32 *)to, from); to += 4;
 #else
@@ -70,99 +70,99 @@
 #undef RGB
 #define BORDER bgr
 #define ORDER 0
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #define ORDER 1
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #define ORDER 2
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #undef BORDER
 #define RGB
 #define BORDER rgb
 #define ORDER 0
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #define ORDER 1
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #define ORDER 2
-#include "pl110_template.h"
+#include "drawfn_template.h"
 #undef BORDER
 
 typedef void (*drawfn)(struct vmm_surface *,
 			void *, u8 *, const u8 *, int, int);
 
-static drawfn glue(pl110_draw_fn_,BITS)[48] = {
-	glue(pl110_draw_line1_lblp_bgr,BITS),
-	glue(pl110_draw_line2_lblp_bgr,BITS),
-	glue(pl110_draw_line4_lblp_bgr,BITS),
-	glue(pl110_draw_line8_lblp_bgr,BITS),
-	glue(pl110_draw_line16_555_lblp_bgr,BITS),
-	glue(pl110_draw_line32_lblp_bgr,BITS),
-	glue(pl110_draw_line16_lblp_bgr,BITS),
-	glue(pl110_draw_line12_lblp_bgr,BITS),
+drawfn glue(drawfn_surface_fntable_,SURFACE_BITS)[48] = {
+	glue(drawfn_line1_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line2_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line4_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line8_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_555_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line32_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_lblp_bgr,SURFACE_BITS),
+	glue(drawfn_line12_lblp_bgr,SURFACE_BITS),
 
-	glue(pl110_draw_line1_bbbp_bgr,BITS),
-	glue(pl110_draw_line2_bbbp_bgr,BITS),
-	glue(pl110_draw_line4_bbbp_bgr,BITS),
-	glue(pl110_draw_line8_bbbp_bgr,BITS),
-	glue(pl110_draw_line16_555_bbbp_bgr,BITS),
-	glue(pl110_draw_line32_bbbp_bgr,BITS),
-	glue(pl110_draw_line16_bbbp_bgr,BITS),
-	glue(pl110_draw_line12_bbbp_bgr,BITS),
+	glue(drawfn_line1_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line2_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line4_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line8_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_555_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line32_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_bbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line12_bbbp_bgr,SURFACE_BITS),
 
-	glue(pl110_draw_line1_lbbp_bgr,BITS),
-	glue(pl110_draw_line2_lbbp_bgr,BITS),
-	glue(pl110_draw_line4_lbbp_bgr,BITS),
-	glue(pl110_draw_line8_lbbp_bgr,BITS),
-	glue(pl110_draw_line16_555_lbbp_bgr,BITS),
-	glue(pl110_draw_line32_lbbp_bgr,BITS),
-	glue(pl110_draw_line16_lbbp_bgr,BITS),
-	glue(pl110_draw_line12_lbbp_bgr,BITS),
+	glue(drawfn_line1_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line2_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line4_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line8_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_555_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line32_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line16_lbbp_bgr,SURFACE_BITS),
+	glue(drawfn_line12_lbbp_bgr,SURFACE_BITS),
 
-	glue(pl110_draw_line1_lblp_rgb,BITS),
-	glue(pl110_draw_line2_lblp_rgb,BITS),
-	glue(pl110_draw_line4_lblp_rgb,BITS),
-	glue(pl110_draw_line8_lblp_rgb,BITS),
-	glue(pl110_draw_line16_555_lblp_rgb,BITS),
-	glue(pl110_draw_line32_lblp_rgb,BITS),
-	glue(pl110_draw_line16_lblp_rgb,BITS),
-	glue(pl110_draw_line12_lblp_rgb,BITS),
+	glue(drawfn_line1_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line2_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line4_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line8_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_555_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line32_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_lblp_rgb,SURFACE_BITS),
+	glue(drawfn_line12_lblp_rgb,SURFACE_BITS),
 
-	glue(pl110_draw_line1_bbbp_rgb,BITS),
-	glue(pl110_draw_line2_bbbp_rgb,BITS),
-	glue(pl110_draw_line4_bbbp_rgb,BITS),
-	glue(pl110_draw_line8_bbbp_rgb,BITS),
-	glue(pl110_draw_line16_555_bbbp_rgb,BITS),
-	glue(pl110_draw_line32_bbbp_rgb,BITS),
-	glue(pl110_draw_line16_bbbp_rgb,BITS),
-	glue(pl110_draw_line12_bbbp_rgb,BITS),
+	glue(drawfn_line1_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line2_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line4_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line8_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_555_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line32_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_bbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line12_bbbp_rgb,SURFACE_BITS),
 
-	glue(pl110_draw_line1_lbbp_rgb,BITS),
-	glue(pl110_draw_line2_lbbp_rgb,BITS),
-	glue(pl110_draw_line4_lbbp_rgb,BITS),
-	glue(pl110_draw_line8_lbbp_rgb,BITS),
-	glue(pl110_draw_line16_555_lbbp_rgb,BITS),
-	glue(pl110_draw_line32_lbbp_rgb,BITS),
-	glue(pl110_draw_line16_lbbp_rgb,BITS),
-	glue(pl110_draw_line12_lbbp_rgb,BITS),
+	glue(drawfn_line1_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line2_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line4_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line8_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_555_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line32_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line16_lbbp_rgb,SURFACE_BITS),
+	glue(drawfn_line12_lbbp_rgb,SURFACE_BITS),
 };
 
-#undef BITS
+#undef SURFACE_BITS
 #undef COPY_PIXEL
 
 #else
 
 #if ORDER == 0
-#define NAME glue(glue(lblp_, BORDER), BITS)
+#define NAME glue(glue(lblp_, BORDER), SURFACE_BITS)
 #ifdef CONFIG_CPU_BE
 #define SWAP_WORDS 1
 #endif
 #elif ORDER == 1
-#define NAME glue(glue(bbbp_, BORDER), BITS)
+#define NAME glue(glue(bbbp_, BORDER), SURFACE_BITS)
 #ifndef CONFIG_CPU_BE
 #define SWAP_WORDS 1
 #endif
 #else
 #define SWAP_PIXELS 1
-#define NAME glue(glue(lbbp_, BORDER), BITS)
+#define NAME glue(glue(lbbp_, BORDER), SURFACE_BITS)
 #ifdef CONFIG_CPU_BE
 #define SWAP_WORDS 1
 #endif
@@ -172,9 +172,9 @@ static drawfn glue(pl110_draw_fn_,BITS)[48] = {
 #define FN_4(x, y) FN_2(x, y) FN_2(x+2, y)
 #define FN_8(y) FN_4(0, y) FN_4(4, y)
 
-static void glue(pl110_draw_line1_,NAME)(struct vmm_surface *s,
-					 void *opaque, u8 *d, const u8 *src,
-					 int width, int deststep)
+static void glue(drawfn_line1_,NAME)(struct vmm_surface *s,
+				     void *opaque, u8 *d, const u8 *src,
+				     int width, int deststep)
 {
 	u32 *palette = opaque;
 	u32 data;
@@ -202,9 +202,9 @@ static void glue(pl110_draw_line1_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line2_,NAME)(struct vmm_surface *s,
-					 void *opaque, u8 *d, const u8 *src,
-					 int width, int deststep)
+static void glue(drawfn_line2_,NAME)(struct vmm_surface *s,
+				     void *opaque, u8 *d, const u8 *src,
+				     int width, int deststep)
 {
 	u32 *palette = opaque;
 	u32 data;
@@ -232,9 +232,9 @@ static void glue(pl110_draw_line2_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line4_,NAME)(struct vmm_surface *s,
-					 void *opaque, u8 *d, const u8 *src,
-					 int width, int deststep)
+static void glue(drawfn_line4_,NAME)(struct vmm_surface *s,
+				     void *opaque, u8 *d, const u8 *src,
+				     int width, int deststep)
 {
 	u32 *palette = opaque;
 	u32 data;
@@ -262,9 +262,9 @@ static void glue(pl110_draw_line4_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line8_,NAME)(struct vmm_surface *s,
-					 void *opaque, u8 *d, const u8 *src,
-					 int width, int deststep)
+static void glue(drawfn_line8_,NAME)(struct vmm_surface *s,
+				     void *opaque, u8 *d, const u8 *src,
+				     int width, int deststep)
 {
 	u32 *palette = opaque;
 	u32 data;
@@ -288,9 +288,9 @@ static void glue(pl110_draw_line8_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line16_,NAME)(struct vmm_surface *s,
-					  void *opaque, u8 *d, const u8 *src,
-					  int width, int deststep)
+static void glue(drawfn_line16_,NAME)(struct vmm_surface *s,
+				      void *opaque, u8 *d, const u8 *src,
+				      int width, int deststep)
 {
 	u32 data;
 	unsigned int r, g, b;
@@ -321,14 +321,14 @@ static void glue(pl110_draw_line16_,NAME)(struct vmm_surface *s,
 		MSB = (data & 0x1f) << 3;
 		data >>= 5;
 #endif
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 		LSB = (data & 0x1f) << 3;
 		data >>= 5;
 		g = (data & 0x3f) << 2;
 		data >>= 6;
 		MSB = (data & 0x1f) << 3;
 		data >>= 5;
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 #undef MSB
 #undef LSB
 		width -= 2;
@@ -336,9 +336,9 @@ static void glue(pl110_draw_line16_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line32_,NAME)(struct vmm_surface *s,
-					  void *opaque, u8 *d, const u8 *src,
-					  int width, int deststep)
+static void glue(drawfn_line32_,NAME)(struct vmm_surface *s,
+				      void *opaque, u8 *d, const u8 *src,
+				      int width, int deststep)
 {
 	u32 data;
 	unsigned int r, g, b;
@@ -360,7 +360,7 @@ static void glue(pl110_draw_line32_,NAME)(struct vmm_surface *s,
 		g = (data >> 16) & 0xff;
 		MSB = (data >> 8) & 0xff;
 #endif
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 #undef MSB
 #undef LSB
 		width--;
@@ -368,9 +368,9 @@ static void glue(pl110_draw_line32_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line16_555_,NAME)(struct vmm_surface *s,
-					    void *opaque, u8 *d, const u8 *src,
-					    int width, int deststep)
+static void glue(drawfn_line16_555_,NAME)(struct vmm_surface *s,
+					  void *opaque, u8 *d, const u8 *src,
+					  int width, int deststep)
 {
 	/* RGB 555 plus an intensity bit (which we ignore) */
 	u32 data;
@@ -393,14 +393,14 @@ static void glue(pl110_draw_line16_555_,NAME)(struct vmm_surface *s,
 		data >>= 5;
 		MSB = (data & 0x1f) << 3;
 		data >>= 5;
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 		LSB = (data & 0x1f) << 3;
 		data >>= 5;
 		g = (data & 0x1f) << 3;
 		data >>= 5;
 		MSB = (data & 0x1f) << 3;
 		data >>= 6;
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 #undef MSB
 #undef LSB
 		width -= 2;
@@ -408,9 +408,9 @@ static void glue(pl110_draw_line16_555_,NAME)(struct vmm_surface *s,
 	}
 }
 
-static void glue(pl110_draw_line12_,NAME)(struct vmm_surface *s,
-					  void *opaque, u8 *d, const u8 *src,
-					  int width, int deststep)
+static void glue(drawfn_line12_,NAME)(struct vmm_surface *s,
+				      void *opaque, u8 *d, const u8 *src,
+				      int width, int deststep)
 {
 	/* RGB 444 with 4 bits of zeroes at the top of each halfword */
 	u32 data;
@@ -433,14 +433,14 @@ static void glue(pl110_draw_line12_,NAME)(struct vmm_surface *s,
 		data >>= 4;
 		MSB = (data & 0xf) << 4;
 		data >>= 8;
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 		LSB = (data & 0xf) << 4;
 		data >>= 4;
 		g = (data & 0xf) << 4;
 		data >>= 4;
 		MSB = (data & 0xf) << 4;
 		data >>= 8;
-		COPY_PIXEL(s, d, glue(rgb_to_pixel,BITS)(r, g, b));
+		COPY_PIXEL(s, d, glue(rgb_to_pixel,SURFACE_BITS)(r, g, b));
 #undef MSB
 #undef LSB
 		width -= 2;

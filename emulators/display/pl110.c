@@ -40,6 +40,8 @@
 #include <vio/vmm_pixel_ops.h>
 #include <vio/vmm_vdisplay.h>
 
+#include "drawfn.h"
+
 #define MODULE_DESC			"PL110 CLCD Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -52,17 +54,6 @@
 #define PL110_CR_BEBO 0x200
 #define PL110_CR_BEPO 0x400
 #define PL110_CR_PWR  0x800
-
-enum pl110_bppmode {
-	BPP_1,
-	BPP_2,
-	BPP_4,
-	BPP_8,
-	BPP_16,
-	BPP_32,
-	BPP_16_565, /* PL111 only */
-	BPP_12      /* PL111 only */
-};
 
 /* The Versatile/PB uses a slightly modified PL110 controller. */
 enum pl110_version {
@@ -88,7 +79,7 @@ struct pl110_state {
 	u32 int_mask;
 	u32 cols;
 	u32 rows;
-	enum pl110_bppmode bpp;
+	enum drawfn_bppmode bpp;
 	u32 mux_ctrl;
 	u32 palette8[256];
 	u32 palette15[256];
@@ -96,17 +87,6 @@ struct pl110_state {
 	u32 palette32[256];
 	u32 raw_palette[128];
 };
-
-#define BITS 8
-#include "pl110_template.h"
-#define BITS 15
-#include "pl110_template.h"
-#define BITS 16
-#include "pl110_template.h"
-#define BITS 24
-#include "pl110_template.h"
-#define BITS 32
-#include "pl110_template.h"
 
 /* Note: This function must be called with state lock held */
 static int __pl110_enabled(struct pl110_state *s)
@@ -150,12 +130,12 @@ static int pl110_display_pixeldata(struct vmm_vdisplay *vdis,
 	}
 
 	switch (s->bpp) {
-	case BPP_16:
-	case BPP_16_565:
+	case DRAWFN_BPP_16:
+	case DRAWFN_BPP_16_565:
 		bits_per_pixel = 16;
 		bytes_per_pixel = 2;
 		break;
-	case BPP_32:
+	case DRAWFN_BPP_32:
 		bits_per_pixel = 32;
 		bytes_per_pixel = 4;
 		break;
@@ -203,27 +183,27 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 	case 0:
 		return;
 	case 8:
-		fntable = pl110_draw_fn_8;
+		fntable = drawfn_surface_fntable_8;
 		dest_width = 1;
 		palette = s->palette8;
 		break;
 	case 15:
-		fntable = pl110_draw_fn_15;
+		fntable = drawfn_surface_fntable_15;
 		dest_width = 2;
 		palette = s->palette15;
 		break;
 	case 16:
-		fntable = pl110_draw_fn_16;
+		fntable = drawfn_surface_fntable_16;
 		dest_width = 2;
 		palette = s->palette16;
 		break;
 	case 24:
-		fntable = pl110_draw_fn_24;
+		fntable = drawfn_surface_fntable_24;
 		dest_width = 3;
 		palette = s->palette32;
 		break;
 	case 32:
-		fntable = pl110_draw_fn_32;
+		fntable = drawfn_surface_fntable_32;
 		dest_width = 4;
 		palette = s->palette32;
 		break;
@@ -240,7 +220,7 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 		bpp_offset = 24;
 	}
 
-	if ((s->version != PL111) && (s->bpp == BPP_16)) {
+	if ((s->version != PL111) && (s->bpp == DRAWFN_BPP_16)) {
 		/* The PL110's native 16 bit mode is 5551; however
 		 * most boards with a PL110 implement an external
 		 * mux which allows bits to be reshuffled to give
@@ -255,7 +235,7 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 		 */
 		switch (s->mux_ctrl) {
 		case 3: /* 565 BGR */
-			bpp_offset = (BPP_16_565 - BPP_16);
+			bpp_offset += (DRAWFN_BPP_16_565 - DRAWFN_BPP_16);
 			break;
 		case 1: /* 5551 */
 			break;
@@ -263,7 +243,7 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 		case 2: /* 565 RGB */
 		default:
 			/* treat as 565 but honour BGR bit */
-			bpp_offset += (BPP_16_565 - BPP_16);
+			bpp_offset += (DRAWFN_BPP_16_565 - DRAWFN_BPP_16);
 			break;
 		};
 	}
@@ -278,23 +258,23 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 
 	src_width = s->cols;
 	switch (s->bpp) {
-	case BPP_1:
+	case DRAWFN_BPP_1:
 		src_width >>= 3;
 		break;
-	case BPP_2:
+	case DRAWFN_BPP_2:
 		src_width >>= 2;
 		break;
-	case BPP_4:
+	case DRAWFN_BPP_4:
 		src_width >>= 1;
 		break;
-	case BPP_8:
+	case DRAWFN_BPP_8:
 		break;
-	case BPP_16:
-	case BPP_16_565:
-	case BPP_12:
+	case DRAWFN_BPP_16:
+	case DRAWFN_BPP_16_565:
+	case DRAWFN_BPP_12:
 		src_width <<= 1;
 		break;
-	case BPP_32:
+	case DRAWFN_BPP_32:
 		src_width <<= 2;
 		break;
 	};
