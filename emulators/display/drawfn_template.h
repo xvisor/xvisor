@@ -89,7 +89,7 @@
 typedef void (*drawfn)(struct vmm_surface *,
 			void *, u8 *, const u8 *, int, int);
 
-drawfn glue(drawfn_surface_fntable_,SURFACE_BITS)[48] = {
+drawfn glue(drawfn_surface_fntable_,SURFACE_BITS)[DRAWFN_FNTABLE_SIZE] = {
 	glue(drawfn_line1_lblp_bgr,SURFACE_BITS),
 	glue(drawfn_line2_lblp_bgr,SURFACE_BITS),
 	glue(drawfn_line4_lblp_bgr,SURFACE_BITS),

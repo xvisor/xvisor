@@ -35,17 +35,48 @@ enum drawfn_bppmode {
 	DRAWFN_BPP_12
 };
 
+#define DRAWFN_BPPMODE_MAX	(DRAWFN_BPP_12 + 1)
+
+enum drawfn_order {
+	/* little-endian bytes and little-endian pixels */
+	DRAWFN_ORDER_LBLP,
+	/* big-endian bytes and big-endian pixels */
+	DRAWFN_ORDER_BBBP,
+	/* big-endian bytes and little-endian pixels */
+	DRAWFN_ORDER_BBLP
+};
+
+#define DRAWFN_ORDER_MAX	(DRAWFN_ORDER_BBLP + 1)
+
+enum drawfn_format {
+	/* blue-green-red color format */
+	DRAWFN_FORMAT_BGR,
+	/* red-green-blue color format */
+	DRAWFN_FORMAT_RGB
+};
+
+#define DRAWFN_FORMAT_MAX	(DRAWFN_FORMAT_RGB + 1)
+
 typedef void (*drawfn)(struct vmm_surface *,
 			void *, u8 *, const u8 *, int, int);
 
-drawfn drawfn_surface_fntable_8[48];
+#define DRAWFN_FNTABLE_INDEX(format, order, bppmode)	\
+((format) * (DRAWFN_ORDER_MAX * DRAWFN_BPPMODE_MAX) + \
+ (order) * DRAWFN_BPPMODE_MAX + \
+ (bppmode))
 
-drawfn drawfn_surface_fntable_15[48];
+#define DRAWFN_FNTABLE_SIZE	(DRAWFN_BPPMODE_MAX * \
+				 DRAWFN_ORDER_MAX * \
+				 DRAWFN_FORMAT_MAX)
 
-drawfn drawfn_surface_fntable_16[48];
+drawfn drawfn_surface_fntable_8[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_24[48];
+drawfn drawfn_surface_fntable_15[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_32[48];
+drawfn drawfn_surface_fntable_16[DRAWFN_FNTABLE_SIZE];
+
+drawfn drawfn_surface_fntable_24[DRAWFN_FNTABLE_SIZE];
+
+drawfn drawfn_surface_fntable_32[DRAWFN_FNTABLE_SIZE];
 
 #endif

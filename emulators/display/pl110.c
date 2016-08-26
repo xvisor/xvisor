@@ -167,12 +167,14 @@ static int pl110_display_pixeldata(struct vmm_vdisplay *vdis,
 static void pl110_display_update(struct vmm_vdisplay *vdis,
 				 struct vmm_surface *sf)
 {
-	drawfn fn;
-	drawfn *fntable;
 	u32 *palette;
+	drawfn *fntable;
 	physical_addr_t gphys;
+	enum drawfn_format fmt;
+	enum drawfn_order order;
+	enum drawfn_bppmode bppmode;
 	int cols, rows, first, last;
-	int dest_width, src_width, bpp_offset;
+	int dest_width, src_width;
 	struct pl110_state *s = vmm_vdisplay_priv(vdis);
 
 	if (!pl110_enabled(s)) {
@@ -215,12 +217,21 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 	vmm_spin_lock(&s->lock);
 
 	if (s->cr & PL110_CR_BGR) {
-		bpp_offset = 0;
+		fmt = DRAWFN_FORMAT_BGR;
 	} else {
-		bpp_offset = 24;
+		fmt = DRAWFN_FORMAT_RGB;
 	}
 
-	if ((s->version != PL111) && (s->bpp == DRAWFN_BPP_16)) {
+	if (s->cr & PL110_CR_BEBO) {
+		order = DRAWFN_ORDER_BBBP;
+	} else if (s->cr & PL110_CR_BEPO) {
+		order = DRAWFN_ORDER_BBLP;
+	} else {
+		order = DRAWFN_ORDER_LBLP;
+	}
+
+	bppmode = s->bpp;
+	if ((s->version != PL111) && (bppmode == DRAWFN_BPP_16)) {
 		/* The PL110's native 16 bit mode is 5551; however
 		 * most boards with a PL110 implement an external
 		 * mux which allows bits to be reshuffled to give
@@ -235,7 +246,7 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 		 */
 		switch (s->mux_ctrl) {
 		case 3: /* 565 BGR */
-			bpp_offset += (DRAWFN_BPP_16_565 - DRAWFN_BPP_16);
+			bppmode = DRAWFN_BPP_16_565;
 			break;
 		case 1: /* 5551 */
 			break;
@@ -243,17 +254,9 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 		case 2: /* 565 RGB */
 		default:
 			/* treat as 565 but honour BGR bit */
-			bpp_offset += (DRAWFN_BPP_16_565 - DRAWFN_BPP_16);
+			bppmode = DRAWFN_BPP_16_565;
 			break;
 		};
-	}
-
-	if (s->cr & PL110_CR_BEBO) {
-		fn = fntable[s->bpp + 8 + bpp_offset];
-	} else if (s->cr & PL110_CR_BEPO) {
-		fn = fntable[s->bpp + 16 + bpp_offset];
-	} else {
-		fn = fntable[s->bpp + bpp_offset];
 	}
 
 	src_width = s->cols;
@@ -289,8 +292,9 @@ static void pl110_display_update(struct vmm_vdisplay *vdis,
 
 	first = 0;
 	vmm_surface_update(sf, s->guest, gphys, cols, rows,
-			   src_width, dest_width, 0, fn, palette,
-			   &first, &last);
+			   src_width, dest_width, 0,
+			   fntable[DRAWFN_FNTABLE_INDEX(fmt, order, bppmode)],
+			   palette, &first, &last);
 	if (first >= 0) {
 		vmm_vdisplay_surface_gfx_update(vdis, 0, first, cols,
 						last - first + 1);
