@@ -165,7 +165,7 @@ static int heap_print_state(struct vmm_heap_control *heap,
 static int heap_init(struct vmm_heap_control *heap,
 		     bool is_normal, const u32 size_kb, u32 mem_flags)
 {
-	int rc;
+	int rc = VMM_OK;
 
 	memset(heap, 0, sizeof(*heap));
 
@@ -180,7 +180,7 @@ static int heap_init(struct vmm_heap_control *heap,
 	rc = vmm_host_va2pa((virtual_addr_t)heap->heap_start,
 			    &heap->heap_start_pa);
 	if (rc) {
-		return rc;
+		goto fail_free_pages;
 	}
 
 	/* 12.5 percent for house-keeping */
@@ -196,16 +196,27 @@ static int heap_init(struct vmm_heap_control *heap,
 	} else {
 		heap->hk_start = vmm_malloc(heap->hk_size);
 		if (!heap->hk_start) {
-			return VMM_ENOMEM;
+			rc = VMM_ENOMEM;
+			goto fail_free_pages;
 		}
 		heap->mem_start = heap->heap_start;
 		heap->mem_size = heap->heap_size;
 	}
 
-	return buddy_allocator_init(&heap->ba,
+	rc = buddy_allocator_init(&heap->ba,
 			  heap->hk_start, heap->hk_size,
 			  (unsigned long)heap->mem_start, heap->mem_size,
 			  HEAP_MIN_BIN, HEAP_MAX_BIN);
+	if (rc) {
+		goto fail_free_pages;
+	}
+
+	return VMM_OK;
+
+fail_free_pages:
+	vmm_host_free_pages((virtual_addr_t)heap->heap_start,
+			    VMM_SIZE_TO_PAGE(heap->heap_size));
+	return rc;
 }
 
 void *vmm_malloc(virtual_size_t size)
