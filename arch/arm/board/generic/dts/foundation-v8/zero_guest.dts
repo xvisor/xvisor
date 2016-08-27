@@ -15,5 +15,6 @@
 
 	chosen {
 		console = &SERIAL0;
+		rtcdev = &RTC0;
 	};
 };

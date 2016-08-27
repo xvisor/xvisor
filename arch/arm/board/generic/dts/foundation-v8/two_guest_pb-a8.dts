@@ -15,6 +15,7 @@
 
 	chosen {
 		console = &SERIAL0;
+		rtcdev = &RTC0;
 		bootcmd = /* Mount initrd device */
 			  "vfs mount initrd /",
 
