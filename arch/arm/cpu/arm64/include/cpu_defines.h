@@ -590,7 +590,7 @@
 #define TCR_TBI_SHIFT					20
 #define TCR_PS_MASK					0x00070000
 #define TCR_PS_SHIFT					16
-#define TCR_TG0_MASK					0x00004000
+#define TCR_TG0_MASK					0x0000c000
 #define TCR_TG0_SHIFT					14
 #define TCR_SH0_MASK					0x00003000
 #define TCR_SH0_SHIFT					12
@@ -620,7 +620,7 @@
 #define VTCR_INITVAL					0x80000000
 #define VTCR_PS_MASK					0x00070000
 #define VTCR_PS_SHIFT					16
-#define VTCR_TG0_MASK					0x00004000
+#define VTCR_TG0_MASK					0x0000c000
 #define VTCR_TG0_SHIFT					14
 #define VTCR_SH0_MASK					0x00003000
 #define VTCR_SH0_SHIFT					12

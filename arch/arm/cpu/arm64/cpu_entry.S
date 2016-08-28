@@ -346,6 +346,7 @@ __hmair_set:
 __htcr_set:
 	.dword (TCR_T0SZ_VAL(39) | \
 		TCR_PS_40BITS | \
+		(0x0 << TCR_TG0_SHIFT) | \
 		(0x3 << TCR_SH0_SHIFT) | \
 		(0x1 << TCR_ORGN0_SHIFT) | \
 		(0x1 << TCR_IRGN0_SHIFT))
@@ -353,6 +354,7 @@ __vtcr_set:
 	.dword (VTCR_SL0_L1 | \
 		VTCR_T0SZ_VAL(39) | \
 		VTCR_PS_40BITS | \
+		(0x0 << VTCR_TG0_SHIFT) | \
 		(0x3 << VTCR_SH0_SHIFT) | \
 		(0x1 << VTCR_ORGN0_SHIFT) | \
 		(0x1 << VTCR_IRGN0_SHIFT))
