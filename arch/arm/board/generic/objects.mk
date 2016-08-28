@@ -30,4 +30,4 @@ board-objs-$(CONFIG_GENERIC_OMAP3)+= omap3.o
 board-objs-$(CONFIG_GENERIC_SABRELITE)+= sabrelite.o
 board-objs-$(CONFIG_GENERIC_EXYNOS4)+= exynos4.o
 board-objs-$(CONFIG_GENERIC_BCM2836)+= bcm2836.o
-
+board-objs-$(CONFIG_GENERIC_FOUNDATION_V8)+= foundation-v8.o
