@@ -121,7 +121,7 @@ SECTIONS
  	.usr_stack :
         {
                 PROVIDE(_usr_stack_start = .);
-                . = . + 4096;
+                . = . + USR_STACK_SIZE ;
                 . = ALIGN(4);
                 PROVIDE(_usr_stack_end = .);
         }

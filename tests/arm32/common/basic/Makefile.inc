@@ -24,8 +24,10 @@
 # Include top-level configuration file if present
 -include $(build_dir)/openconf/.config
 
+board_usr_stack_size ?= 4096
+
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
-FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start)
+FW_CPPFLAGS=-I. -I$(common_dir) -DTEXT_START=$(board_text_start) -DUSR_STACK_SIZE=$(board_usr_stack_size)
 FW_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
 FW_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
 ifeq ($(board_arch),v5)
