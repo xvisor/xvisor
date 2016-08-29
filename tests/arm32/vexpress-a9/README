@@ -30,6 +30,7 @@ We have tested following guest OSes for this guest:
 
   1. basic - Basic firmware/bootloader
   2. linux - Linux Kernel 
+  3. freertos - FreeRTOS v9.0.0
 
 Please follow the README under specific guest OS directory for detailed steps 
 to configure, compile and run.

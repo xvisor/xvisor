@@ -1,0 +1,173 @@
+            _______________________________________________
+
+             FREERTOS V9.0.0 ON VERSATILE EXPRESS A9 GUEST
+
+                          Philipp Ittershagen
+                              pit@shgn.de
+            _______________________________________________
+
+
+From the [FreeRTOS website]:
+      FreeRTOS is a market leading RTOS from Real Time Engineers
+      Ltd. that supports 35 architectures and received >113000
+      downloads during 2014. It is professionally developed,
+      strictly quality controlled, robust, supported, and free to
+      embed in commercial products without any requirement to
+      expose your proprietary source code.
+
+This document describes the steps necessary to run FreeRTOS v9.0.0 as a
+guest OS in Xvisor versatile a9. The port is based on the available
+Cortex A9 Zynq ZC702 port, which is distributed in the archive under
+`Demo/CORTEX_A9_Zynq_ZC702'. Refer to the patches in `patches/' for more
+information.  The provided minimal FreeRTOS demo application will set up
+two tasks communicating through a shared message queue of size 1 to
+force preemption. The interrupt handling, timer ticks, and serial I/O
+have been successfully tested.
+
+
+[FreeRTOS website] http://www.freertos.org/
+
+
+1 Build Instructions
+====================
+
+  Please follow the steps below to build & run FreeRTOS v9.0.0 on a
+  Versatile Express-A9 Guest with Xvisor running on QEMU Versatile
+  Express-A9 host.
+
+
+1.1 Configure and build Xvisor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  1. Set the build environment for Xvisor:
+
+     ,----
+     | export CROSS_COMPILE=arm-none-gnueabi-
+     `----
+
+  2. Switch to the Xvisor source directory:
+
+     ,----
+     | export xvisor_src="<xvisor_source_directory>"
+     | cd $xvisor_src
+     `----
+
+  3. Configure Xvisor with Generic v7 default settings:
+
+     ,----
+     | make ARCH=arm generic-v7-defconfig
+     `----
+
+  4. Build Xvisor:
+
+     ,----
+     | make all dtbs
+     `----
+
+
+1.2 Download and build FreeRTOS v9.0.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  1. Download the FreeRTOS source zip from the [FreeRTOS download page]
+     and extract the archive (the location is henceforth denoted as
+     `$dl_dir').
+  2. Copy the extracted folder `FreeRTOSv9.0.0/FreeRTOS' into the xvisor
+     tree at `$xvisor_src/tests/arm32/vexpress-a9/freertos':
+
+     ,----
+     | cp -r $dl_dir/FreeRTOSv9.0.0/FreeRTOS \
+     |       tests/arm32/vexpress-a9/freertos
+     `----
+
+  3. Switch to the Xvisor freertos guest directory and copy the existing
+     Cortex A9 port files to apply the patches[1] for the vexpress-a9
+     board:
+
+     ,----
+     | cd tests/arm32/vexpress-a9/freertos
+     | mkdir -p port
+     | cp FreeRTOS/Source/portable/GCC/ARM_CA9/* port/
+     | patch -p0 < patches/ports.patch
+     `----
+
+  4. Copy the existing `FreeRTOSConfig.h' from the Zynq application and
+     apply the patch[2]:
+
+     ,----
+     | cp FreeRTOS/Demo/CORTEX_A9_Zynq_ZC702/RTOSDemo/src/FreeRTOSConfig.h .
+     | patch -p0 < patches/freertos-config.patch
+     `----
+
+  5. Build the FreeRTOS image (remember to set `$CROSS_COMPILE' if you
+     perform this step separately):
+
+     ,----
+     | export CROSS_COMPILE=arm-none-eabi-
+     | make
+     `----
+
+
+  [FreeRTOS download page] http://www.freertos.org/a00104.html
+
+
+1.3 Create the disk image and launch QEMU
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  1. Switch to `$xvisor_src' and create the disk image for Xvisor:
+
+     ,----
+     | cd $xvisor_src
+     | dtc=./build/tools/dtc/bin/dtc
+     | bindir=./build/disk/images/arm32/vexpress-a9
+     | system_dir=./build/disk/system
+     | img_dir=./build/disk/images/arm32
+     | srcdir=./tests/arm32/vexpress-a9
+     | 
+     | mkdir -p $system_dir
+     | mkdir -p $bindir
+     | 
+     | cp -f ./docs/banner/roman.txt $system_dir/banner.txt
+     | cp -f ./docs/logo/xvisor_logo_name.ppm $system_dir/logo.ppm
+     | $dtc -I dts -O dtb -o $img_dir/vexpress-a9x2.dtb $srcdir/vexpress-a9x2.dts
+     | cp -f ./build/$srcdir/freertos/freertos.patched.bin $bindir/freertos.bin
+     | cp -f $srcdir/freertos/nor_flash.list $bindir/nor_flash.list
+     | genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+     `----
+
+  2. Launch QEMU:
+
+     ,----
+     | qemu-system-arm -M vexpress-a9 -m 256M -display none -serial stdio \
+     |   -kernel build/vmm.bin \
+     |   -dtb    build/arch/arm/board/generic/dts/vexpress/a9/one_guest_vexpress-a9.dtb \
+     |   -initrd build/disk.img
+     `----
+
+  3. Kick Guest0 for starting FreeRTOS:
+
+     ,----
+     | XVisor# guest kick guest0
+     `----
+
+  4. Bind to virtual UART:
+
+     ,----
+     | XVisor# vserial bind guest0/uart0
+     `----
+
+  You should now see output from the send and receive tasks.
+
+
+
+Footnotes
+_________
+
+[1] The main difference in porting the existing FreeRTOS implementation
+is the lack of a hardware FPU which forces us to manually remove the
+unsupported assembly instructions. Refer to the patch files for more
+information.
+
+[2] The configuration is based on the provided demo application for the
+Zynq board. We disable some calls to the Xilinx board-support package
+and adjust the interrupt settings. Refer to the patch files for more
+information.
