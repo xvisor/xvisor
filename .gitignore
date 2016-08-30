@@ -19,7 +19,6 @@ tools/openconf/lex.zconf.c
 tools/openconf/conf
 tools/openconf/mconf
 tools/openconf/zconf.hash.c
-patches
 create-flash-image
 flash
 #
