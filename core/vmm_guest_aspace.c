@@ -71,9 +71,6 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 	if (!guest) {
 		return NULL;
 	}
-	if (!guest->aspace.initialized) {
-		return NULL;
-	}
 	aspace = &guest->aspace;
 
 	/* Determine flags we need to compare */
@@ -159,7 +156,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
-	if (!guest || !guest->aspace.initialized || !dst || !len) {
+	if (!guest || !dst || !len) {
 		return 0;
 	}
 
@@ -197,7 +194,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
-	if (!guest || !guest->aspace.initialized || !src || !len) {
+	if (!guest || !src || !len) {
 		return 0;
 	}
 
@@ -238,9 +235,6 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 
 	if (!guest || !hphys_addr) {
 		return VMM_EFAIL;
-	}
-	if (!guest->aspace.initialized) {
-		return VMM_ENOTAVAIL;
 	}
 
 	reg = vmm_guest_find_region(guest, gphys_addr, 
@@ -796,9 +790,6 @@ int vmm_guest_aspace_reset(struct vmm_guest *guest)
 	/* Sanity Check */
 	if (!guest) {
 		return VMM_EFAIL;
-	}
-	if (!guest->aspace.initialized) {
-		return VMM_ENOTAVAIL;
 	}
 	aspace = &guest->aspace;
 
