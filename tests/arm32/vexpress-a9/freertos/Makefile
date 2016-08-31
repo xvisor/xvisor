@@ -95,7 +95,7 @@ endif
 CFLAGS  = -mcpu=cortex-a9 -march=armv7-a -Wall -Werror  \
           -nostdlib -msoft-float -marm
 ASFLAGS = -D__ASSEMBLY__ $(CFLAGS)
-LDFLAGS = -Wl,-T$(LINK_SCRIPT_GEN) -nostdlib
+LDFLAGS = -Wl,-T$(LINK_SCRIPT_GEN) -nostdlib -Wl,--build-id=none
 LDLIBS  = -lgcc -Wl,-T$(LINK_SCRIPT_GEN)
 
 # --------- binary and elf targets
