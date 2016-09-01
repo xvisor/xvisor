@@ -23,4 +23,4 @@
 
 emulators-objs-$(CONFIG_EMU_DISPLAY)+= display/drawfn.o
 emulators-objs-$(CONFIG_EMU_DISPLAY_PL110)+= display/pl110.o
-
+emulators-objs-$(CONFIG_EMU_DISPLAY_SIMPLEFB)+= display/simplefb.o
