@@ -39,7 +39,9 @@
 #define VMINFO_VERSION_0_1		0x00000001
 
 struct vminfo_state {
+	struct vmm_emudev *edev;
 	struct vmm_guest *guest;
+	struct vmm_notifier_block nb;
 	vmm_spinlock_t lock;
 	u32 magic;
 	u32 vendor;
@@ -175,14 +177,83 @@ static int vminfo_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
+static int vminfo_guest_aspace_notification(struct vmm_notifier_block *nb,
+					    unsigned long evt, void *data)
+{
+	physical_addr_t paddr;
+	physical_size_t psize;
+	struct vmm_region *reg;
+	struct vmm_guest_aspace_event *edata = data;
+	struct vminfo_state *s = container_of(nb, struct vminfo_state, nb);
+
+	if (evt != VMM_GUEST_ASPACE_EVENT_INIT) {
+		/* We are only interested in unregister events so,
+		 * don't care about this event.
+		 */
+		return NOTIFY_DONE;
+	}
+
+	if (s->guest != edata->guest) {
+		/* We are only interested in events for our guest */
+		return NOTIFY_DONE;
+	}
+
+	if (!vmm_devtree_read_physaddr(s->edev->node, "ram0_base", &paddr)) {
+		reg = vmm_guest_find_region(s->guest, paddr,
+					    VMM_REGION_MEMORY, FALSE);
+		if (reg) {
+			psize = VMM_REGION_GPHYS_END(reg) - paddr;
+			s->ram0_base_ms = ((u64)paddr >> 32) & 0xffffffff;
+			s->ram0_base_ls = paddr & 0xffffffff;
+			s->ram0_size_ms = ((u64)psize >> 32) & 0xffffffff;
+			s->ram0_size_ls = psize & 0xffffffff;
+		}
+	}
+
+	if (!vmm_devtree_read_physaddr(s->edev->node, "ram1_base", &paddr)) {
+		reg = vmm_guest_find_region(s->guest, paddr,
+					    VMM_REGION_MEMORY, FALSE);
+		if (reg) {
+			psize = VMM_REGION_GPHYS_END(reg) - paddr;
+			s->ram1_base_ms = ((u64)paddr >> 32) & 0xffffffff;
+			s->ram1_base_ls = paddr & 0xffffffff;
+			s->ram1_size_ms = ((u64)psize >> 32) & 0xffffffff;
+			s->ram1_size_ls = psize & 0xffffffff;
+		}
+	}
+
+	if (!vmm_devtree_read_physaddr(s->edev->node, "ram2_base", &paddr)) {
+		reg = vmm_guest_find_region(s->guest, paddr,
+					    VMM_REGION_MEMORY, FALSE);
+		if (reg) {
+			psize = VMM_REGION_GPHYS_END(reg) - paddr;
+			s->ram2_base_ms = ((u64)paddr >> 32) & 0xffffffff;
+			s->ram2_base_ls = paddr & 0xffffffff;
+			s->ram2_size_ms = ((u64)psize >> 32) & 0xffffffff;
+			s->ram2_size_ls = psize & 0xffffffff;
+		}
+	}
+
+	if (!vmm_devtree_read_physaddr(s->edev->node, "ram3_base", &paddr)) {
+		reg = vmm_guest_find_region(s->guest, paddr,
+					    VMM_REGION_MEMORY, FALSE);
+		if (reg) {
+			psize = VMM_REGION_GPHYS_END(reg) - paddr;
+			s->ram3_base_ms = ((u64)paddr >> 32) & 0xffffffff;
+			s->ram3_base_ls = paddr & 0xffffffff;
+			s->ram3_size_ms = ((u64)psize >> 32) & 0xffffffff;
+			s->ram3_size_ls = psize & 0xffffffff;
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
 static int vminfo_emulator_probe(struct vmm_guest *guest,
 				 struct vmm_emudev *edev,
 				 const struct vmm_devtree_nodeid *eid)
 {
-	int rc = VMM_OK;
-	physical_addr_t paddr;
-	physical_size_t psize;
-	struct vmm_region *reg;
+	int rc;
 	struct vminfo_state *s;
 
 	s = vmm_zalloc(sizeof(struct vminfo_state));
@@ -190,6 +261,7 @@ static int vminfo_emulator_probe(struct vmm_guest *guest,
 		return VMM_ENOMEM;
 	}
 
+	s->edev = edev;
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
@@ -198,69 +270,17 @@ static int vminfo_emulator_probe(struct vmm_guest *guest,
 	s->version = (u32)((unsigned long)eid->data);
 	s->vcpu_count = guest->vcpu_count;
 
-	if (!vmm_devtree_read_physaddr(edev->node, "ram0_base", &paddr)) {
-		reg = vmm_guest_find_region(s->guest, paddr,
-					    VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto vminfo_emulator_probe_fail;
-		}
-		psize = VMM_REGION_GPHYS_END(reg) - paddr;
-		s->ram0_base_ms = ((u64)paddr >> 32) & 0xffffffff;
-		s->ram0_base_ls = paddr & 0xffffffff;
-		s->ram0_size_ms = ((u64)psize >> 32) & 0xffffffff;
-		s->ram0_size_ls = psize & 0xffffffff;
-	}
-
-	if (!vmm_devtree_read_physaddr(edev->node, "ram1_base", &paddr)) {
-		reg = vmm_guest_find_region(s->guest, paddr,
-					    VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto vminfo_emulator_probe_fail;
-		}
-		psize = VMM_REGION_GPHYS_END(reg) - paddr;
-		s->ram1_base_ms = ((u64)paddr >> 32) & 0xffffffff;
-		s->ram1_base_ls = paddr & 0xffffffff;
-		s->ram1_size_ms = ((u64)psize >> 32) & 0xffffffff;
-		s->ram1_size_ls = psize & 0xffffffff;
-	}
-
-	if (!vmm_devtree_read_physaddr(edev->node, "ram2_base", &paddr)) {
-		reg = vmm_guest_find_region(s->guest, paddr,
-					    VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto vminfo_emulator_probe_fail;
-		}
-		psize = VMM_REGION_GPHYS_END(reg) - paddr;
-		s->ram2_base_ms = ((u64)paddr >> 32) & 0xffffffff;
-		s->ram2_base_ls = paddr & 0xffffffff;
-		s->ram2_size_ms = ((u64)psize >> 32) & 0xffffffff;
-		s->ram2_size_ls = psize & 0xffffffff;
-	}
-
-	if (!vmm_devtree_read_physaddr(edev->node, "ram3_base", &paddr)) {
-		reg = vmm_guest_find_region(s->guest, paddr,
-					    VMM_REGION_MEMORY, FALSE);
-		if (!reg) {
-			rc = VMM_ENOTAVAIL;
-			goto vminfo_emulator_probe_fail;
-		}
-		psize = VMM_REGION_GPHYS_END(reg) - paddr;
-		s->ram3_base_ms = ((u64)paddr >> 32) & 0xffffffff;
-		s->ram3_base_ls = paddr & 0xffffffff;
-		s->ram3_size_ms = ((u64)psize >> 32) & 0xffffffff;
-		s->ram3_size_ls = psize & 0xffffffff;
+	s->nb.notifier_call = &vminfo_guest_aspace_notification;
+	s->nb.priority = 0;
+	rc = vmm_guest_aspace_register_client(&s->nb);
+	if (rc) {
+		vmm_free(s);
+		return rc;
 	}
 
 	edev->priv = s;
 
 	return VMM_OK;
-
-vminfo_emulator_probe_fail:
-	vmm_free(s);
-	return rc;
 }
 
 static int vminfo_emulator_remove(struct vmm_emudev *edev)
@@ -268,6 +288,7 @@ static int vminfo_emulator_remove(struct vmm_emudev *edev)
 	struct vminfo_state *s = edev->priv;
 
 	if (s) {
+		vmm_guest_aspace_unregister_client(&s->nb);
 		vmm_free(s);
 		edev->priv = NULL;
 	}
