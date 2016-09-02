@@ -45,8 +45,10 @@
 #define SIMPLEFB_VERSION_0_1		0x00000001
 
 struct simplefb_state {
+	struct vmm_emudev *edev;
 	struct vmm_guest *guest;
 	struct vmm_vdisplay *vdis;
+	struct vmm_notifier_block nb;
 	vmm_spinlock_t lock;
 	u32 magic;
 	u32 vendor;
@@ -61,6 +63,7 @@ struct simplefb_state {
 	u32 width;
 	u32 height;
 	u32 stride;
+	bool fb_base_avail;
 	physical_addr_t fb_base;
 	u32 fb_base_ms;
 	u32 fb_base_ls;
@@ -81,6 +84,10 @@ static int simplefb_display_pixeldata(struct vmm_vdisplay *vdis,
 	physical_addr_t gpa, hpa;
 	physical_size_t gsz, hsz;
 	struct simplefb_state *s = vmm_vdisplay_priv(vdis);
+
+	if (!s->fb_base_avail) {
+		return VMM_ENOTAVAIL;
+	}
 
 	gpa = s->fb_base;
 	gsz = (s->width * s->height) * s->stride;
@@ -245,6 +252,59 @@ static struct vmm_vdisplay_ops simplefb_ops = {
 	.gfx_update = simplefb_display_update,
 };
 
+static int simplefb_guest_aspace_notification(struct vmm_notifier_block *nb,
+					      unsigned long evt, void *data)
+{
+	int rc;
+	physical_addr_t paddr;
+	physical_size_t psize;
+	struct vmm_region *reg;
+	struct vmm_guest_aspace_event *edata = data;
+	struct simplefb_state *s = container_of(nb, struct simplefb_state, nb);
+
+	if (evt != VMM_GUEST_ASPACE_EVENT_INIT) {
+		/* We are only interested in unregister events so,
+		 * don't care about this event.
+		 */
+		return NOTIFY_DONE;
+	}
+
+	if (s->guest != edata->guest) {
+		/* We are only interested in events for our guest */
+		return NOTIFY_DONE;
+	}
+
+	rc = vmm_devtree_read_physaddr(s->edev->node, "base", &s->fb_base);
+	if (rc) {
+		vmm_printf("%s: guest=%s fb base not available\n",
+			   __func__, s->guest->name);
+		goto done;
+	}
+
+	reg = vmm_guest_find_region(s->guest, s->fb_base,
+				    VMM_REGION_MEMORY, FALSE);
+	if (!reg) {
+		vmm_printf("%s: guest=%s region not found for "
+			   "fb_base=0x%"PRIPADDR"\n",
+			   __func__, s->guest->name, s->fb_base);
+		goto done;
+	}
+
+	paddr = s->fb_base;
+	psize = VMM_REGION_GPHYS_END(reg) - s->fb_base;
+	if (psize < (s->height * s->stride)) {
+		vmm_printf("%s: guest=%s invalid fb region size\n",
+			   __func__, s->guest->name);
+		goto done;
+	}
+	s->fb_base_ms = ((u64)paddr >> 32) & 0xffffffff;
+	s->fb_base_ls = paddr & 0xffffffff;
+	s->fb_base_avail = TRUE;
+
+done:
+	return NOTIFY_OK;
+}
+
 static int simplefb_emulator_probe(struct vmm_guest *guest,
 				   struct vmm_emudev *edev,
 				   const struct vmm_devtree_nodeid *eid)
@@ -252,9 +312,6 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 	int rc = VMM_OK;
 	char name[64];
 	const char *str;
-	physical_addr_t paddr;
-	physical_size_t psize;
-	struct vmm_region *reg;
 	struct simplefb_state *s;
 
 	s = vmm_zalloc(sizeof(struct simplefb_state));
@@ -263,6 +320,7 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 		goto simplefb_emulator_probe_fail;
 	}
 
+	s->edev = edev;
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
@@ -357,26 +415,6 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 		}
 	}
 
-	rc = vmm_devtree_read_physaddr(edev->node, "base", &s->fb_base);
-	if (rc) {
-		goto simplefb_emulator_probe_freestate_fail;
-	}
-
-	reg = vmm_guest_find_region(s->guest, s->fb_base,
-				    VMM_REGION_MEMORY, FALSE);
-	if (!reg) {
-		rc = VMM_ENOTAVAIL;
-		goto simplefb_emulator_probe_freestate_fail;;
-	}
-	paddr = s->fb_base;
-	psize = VMM_REGION_GPHYS_END(reg) - s->fb_base;
-	if (psize < (s->height * s->stride)) {
-		rc = VMM_EINVALID;
-		goto simplefb_emulator_probe_freestate_fail;
-	}
-	s->fb_base_ms = ((u64)paddr >> 32) & 0xffffffff;
-	s->fb_base_ls = paddr & 0xffffffff;
-
 	strlcpy(name, guest->name, sizeof(name));
 	strlcat(name, "/", sizeof(name));
 	if (strlcat(name, edev->node->name, sizeof(name)) >= sizeof(name)) {
@@ -384,16 +422,25 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 		goto simplefb_emulator_probe_freestate_fail;
 	}
 
+	s->nb.notifier_call = &simplefb_guest_aspace_notification;
+	s->nb.priority = 0;
+	rc = vmm_guest_aspace_register_client(&s->nb);
+	if (rc) {
+		goto simplefb_emulator_probe_freestate_fail;
+	}
+
 	s->vdis = vmm_vdisplay_create(name, &simplefb_ops, s);
 	if (!s->vdis) {
 		rc = VMM_ENOMEM;
-		goto simplefb_emulator_probe_freestate_fail;
+		goto simplefb_emulator_probe_unreg_client_fail;
 	}
 
 	edev->priv = s;
 
 	return VMM_OK;
 
+simplefb_emulator_probe_unreg_client_fail:
+	vmm_guest_aspace_unregister_client(&s->nb);
 simplefb_emulator_probe_freestate_fail:
 	vmm_free(s);
 simplefb_emulator_probe_fail:
@@ -410,6 +457,7 @@ static int simplefb_emulator_remove(struct vmm_emudev *edev)
 	}
 
 	vmm_vdisplay_destroy(s->vdis);
+	vmm_guest_aspace_unregister_client(&s->nb);
 	vmm_free(s);
 
 	return rc;
