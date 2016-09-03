@@ -85,6 +85,19 @@
 			ram0_base = <0x40000000>;
 		};
 
+		simplefb {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "display";
+			compatible = "simplefb-0.1";
+			guest_physical_addr = <0x09002000>;
+			physical_size = <0x1000>;
+			width = <1024>; /* Override this if required */
+			height = <768>; /* Override this if required */
+			mode = "r5g6b5"; /* Override this if required */
+			base = <0x30000000>; /* Override this if required */
+		};
+
 		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
@@ -118,6 +131,15 @@
 			guest_physical_addr = <0x0A002000>;
 			physical_size = <0x1000>;
 			interrupts = <50>;
+		};
+
+		videomem {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x30000000>;
+			physical_size = <0x01000000>;
+			align_order = <21>; /* Align alloced memory to 2MB */
+			device_type = "alloced_ram";
 		};
 
 		MEM0: mem0 {

@@ -110,5 +110,14 @@
 			reg = <0x0 0x0A002000 0x0 0x1000>;
 			interrupts = <0 18 4>;
 		};
+
+		simplefb@30000000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x30000000 0x0 0x1000000>;
+			width = <1024>;
+			height = <768>;
+			stride = <2048>;
+			format = "r5g6b5";
+		};
 	};
 };
