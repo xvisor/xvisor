@@ -391,25 +391,25 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 	}
 
 	rc = vmm_devtree_read_string(edev->node, "order", &str);
-	if (rc) {
-		goto simplefb_emulator_probe_freestate_fail;
-	}
-
-	if (strcmp(str, "lblp") == 0) {
-		s->order = DRAWFN_ORDER_LBLP;
-	} else if (strcmp(str, "bbbp") == 0) {
-		s->order = DRAWFN_ORDER_BBBP;
-	} else if (strcmp(str, "bblp") == 0) {
-		s->order = DRAWFN_ORDER_BBLP;
+	if (!rc) {
+		if (strcmp(str, "lblp") == 0) {
+			s->order = DRAWFN_ORDER_LBLP;
+		} else if (strcmp(str, "bbbp") == 0) {
+			s->order = DRAWFN_ORDER_BBBP;
+		} else if (strcmp(str, "bblp") == 0) {
+			s->order = DRAWFN_ORDER_BBLP;
+		} else {
+			rc = VMM_EINVALID;
+			goto simplefb_emulator_probe_freestate_fail;
+		}
 	} else {
-		rc = VMM_EINVALID;
-		goto simplefb_emulator_probe_freestate_fail;
+		s->order = DRAWFN_ORDER_LBLP;
 	}
 
 	if (vmm_devtree_read_u32(edev->node, "stride", &s->height)) {
-		s->stride = (s->width * s->bits_per_pixel) / 8;
+		s->stride = s->width * s->bytes_per_pixel;
 	} else {
-		if (s->stride < ((s->width * s->bits_per_pixel) / 8)) {
+		if (s->stride < (s->width * s->bytes_per_pixel)) {
 			rc = VMM_EINVALID;
 			goto simplefb_emulator_probe_freestate_fail;
 		}
