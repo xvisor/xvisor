@@ -33,6 +33,7 @@ u32 arm_board_ram_size(void);
 u32 arm_board_flash_addr(void);
 u32 arm_board_linux_machine_type(void);
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz);
+void arm_board_fdt_fixup(void *fdt_addr);
 
 u32 arm_board_iosection_count(void);
 physical_addr_t arm_board_iosection_addr(int num);

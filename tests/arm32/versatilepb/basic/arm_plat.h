@@ -418,4 +418,9 @@
 #define VERSATILE_IB2_STAT		(VERSATILE_IB2_CTL_BASE + 4)
 #endif
 
+/*
+ * Defines required by basic firmware
+ */
+#define VERSATILE_VMINFO_BASE		0x14000000
+
 #endif /* VERSATILE_PLAT_H */

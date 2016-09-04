@@ -256,8 +256,9 @@
 /* #define SCCTRL_TIMEREN1SEL_TIMCLK	(1 << 17) */
 
 /*
- * Defines required by common code
+ * Defines required by basic firmware
  */
-#define ARM_PLAT_SPIN_ADDR	(V2M_SYS_FLAGS)
+#define IMX_VMINFO_BASE			0x0220b000
+#define ARM_PLAT_SPIN_ADDR		(V2M_SYS_FLAGS)
 
 #endif

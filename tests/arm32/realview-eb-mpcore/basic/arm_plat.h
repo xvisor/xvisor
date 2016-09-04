@@ -331,8 +331,9 @@
 #define REALVIEW_CSR_SIZE             0x10000000
 
 /*
- * Defines required by common code
+ * Defines required by basic firmware
  */
-#define ARM_PLAT_SPIN_ADDR	(REALVIEW_SYS_FLAGSSET)
+#define REALVIEW_VMINFO_BASE		0x20000000
+#define ARM_PLAT_SPIN_ADDR		(REALVIEW_SYS_FLAGSSET)
 
 #endif

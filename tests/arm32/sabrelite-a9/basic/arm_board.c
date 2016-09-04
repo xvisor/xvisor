@@ -49,12 +49,12 @@ char *arm_board_name(void)
 
 u32 arm_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(0x0220b000, 0);
+	return (u32)vminfo_ram_base(IMX_VMINFO_BASE, 0);
 }
 
 u32 arm_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(0x0220b000, 0);
+	return (u32)vminfo_ram_size(IMX_VMINFO_BASE, 0);
 }
 
 u32 arm_board_linux_machine_type(void)
@@ -75,6 +75,11 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 		   "mxc_hdmi.only_cea=1");
 }
 
+void arm_board_fdt_fixup(void *fdt_addr)
+{
+	/* For now nothing to do here. */
+}
+
 u32 arm_board_flash_addr(void)
 {
 	return (u32)(IMX_NOR);
@@ -82,7 +87,7 @@ u32 arm_board_flash_addr(void)
 
 u32 arm_board_iosection_count(void)
 {
-	return 5;
+	return 6;
 }
 
 physical_addr_t arm_board_iosection_addr(int num)
@@ -104,6 +109,9 @@ physical_addr_t arm_board_iosection_addr(int num)
 		break;
 	case 4:
 		ret = IMX_TIMER0;
+		break;
+	case 5:
+		ret = IMX_VMINFO_BASE;
 		break;
 	default:
 		while (1);

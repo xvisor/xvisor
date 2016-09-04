@@ -70,12 +70,12 @@ char *arm_board_name(void)
 
 physical_addr_t arm_board_ram_start(void)
 {
-	return vminfo_ram_base(0x09001000, 0);
+	return vminfo_ram_base(VIRT_V8_VMINFO, 0);
 }
 
 physical_size_t arm_board_ram_size(void)
 {
-	return vminfo_ram_size(0x09001000, 0);
+	return vminfo_ram_size(VIRT_V8_VMINFO, 0);
 }
 
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
@@ -85,6 +85,11 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 			    "console=ttyAMA0 swiotlb=4096");
 }
 
+void arm_board_fdt_fixup(void *fdt_addr)
+{
+	/* For now nothing to do here. */
+}
+
 physical_addr_t arm_board_flash_addr(void)
 {
 	return VIRT_V8_NOR_FLASH;
@@ -92,7 +97,7 @@ physical_addr_t arm_board_flash_addr(void)
 
 u32 arm_board_iosection_count(void)
 {
-	return 6;
+	return 8;
 }
 
 physical_addr_t arm_board_iosection_addr(int num)
@@ -113,14 +118,22 @@ physical_addr_t arm_board_iosection_addr(int num)
 		ret = VIRT_V8_UART0;
 		break;
 	case 3:
+		/* vminfo */
+		ret = VIRT_V8_VMINFO;
+		break;
+	case 4:
+		/* simplefb */
+		ret = VIRT_V8_SIMPLEFB;
+		break;
+	case 5:
 		/* virtio-net */
 		ret = VIRT_V8_VIRTIO_NET;
 		break;
-	case 4:
+	case 6:
 		/* virtio-blk */
 		ret = VIRT_V8_VIRTIO_BLK;
 		break;
-	case 5:
+	case 7:
 		/* virtio-con */
 		ret = VIRT_V8_VIRTIO_CON;
 		break;

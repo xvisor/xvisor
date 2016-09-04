@@ -461,6 +461,11 @@ void arm_cmd_start_linux(int argc, char **argv)
 	nuke_va = kernel_addr & ~(0x200000 - 1);
 	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x200000);
 
+	/* Disable interrupts, disable timer and cleanup MMU */
+	arm_board_timer_disable();
+	arm_irq_disable();
+	arm_mmu_cleanup();
+
 	meminfo[0] = arm_board_ram_start();
 	meminfo[1] = arm_board_ram_size();
 	/* Fillup/fixup the fdt blob with following:
@@ -490,10 +495,8 @@ void arm_cmd_start_linux(int argc, char **argv)
 		}
 	}
 
-	/* Disable interrupts and timer */
-	arm_board_timer_disable();
-	arm_irq_disable();
-	arm_mmu_cleanup();
+	/* Do board specific fdt fixup */
+	arm_board_fdt_fixup((void *)fdt_addr);
 
 	/* Jump to Linux Kernel
 	 * r0 -> dtb address

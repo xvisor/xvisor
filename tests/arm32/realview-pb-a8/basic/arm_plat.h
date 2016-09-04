@@ -322,4 +322,9 @@
 #define REALVIEW_CSR_BASE             0x10000000
 #define REALVIEW_CSR_SIZE             0x10000000
 
+/*
+ * Defines required by basic firmware
+ */
+#define REALVIEW_VMINFO_BASE		0x20000000
+
 #endif

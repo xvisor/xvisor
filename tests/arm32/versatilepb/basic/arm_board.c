@@ -52,12 +52,12 @@ char *arm_board_name(void)
 
 u32 arm_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(0x14000000, 0);
+	return (u32)vminfo_ram_base(VERSATILE_VMINFO_BASE, 0);
 }
 
 u32 arm_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(0x14000000, 0);
+	return (u32)vminfo_ram_size(VERSATILE_VMINFO_BASE, 0);
 }
 
 u32 arm_board_linux_machine_type(void)
@@ -70,6 +70,11 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
+void arm_board_fdt_fixup(void *fdt_addr)
+{
+	/* For now nothing to do here. */
+}
+
 u32 arm_board_flash_addr(void)
 {
 	return (u32)(VERSATILE_FLASH_BASE);
@@ -77,7 +82,7 @@ u32 arm_board_flash_addr(void)
 
 u32 arm_board_iosection_count(void)
 {
-	return 6;
+	return 19;
 }
 
 physical_addr_t arm_board_iosection_addr(int num)
@@ -92,10 +97,25 @@ physical_addr_t arm_board_iosection_addr(int num)
 		ret = VERSATILE_VIC_BASE;
 		break;
 	case 2:
+		ret = VERSATILE_VMINFO_BASE;
+		break;
 	case 3:
 	case 4:
 	case 5:
-		ret = VERSATILE_FLASH_BASE + (num - 2) * 0x100000;
+	case 6:
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+	case 17:
+	case 18:
+		ret = VERSATILE_FLASH_BASE + (num - 3) * 0x100000;
 		break;
 	default:
 		while (1);

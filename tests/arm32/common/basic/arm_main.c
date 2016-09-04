@@ -453,6 +453,11 @@ void arm_cmd_start_linux(int argc, char **argv)
 	nuke_va = kernel_addr & ~(0x100000 - 1);
 	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
+	/* Disable interrupts, disable timer, and cleanup MMU */
+	arm_timer_disable();
+	arm_irq_disable();
+	arm_mmu_cleanup();
+
 	/* Setup kernel args */
 	for (p = 0; p < 128; p++) {
 		kernel_args[p] = 0x0;
@@ -494,10 +499,6 @@ void arm_cmd_start_linux(int argc, char **argv)
 	/* ATAG_END */
 	kernel_args[p++] = 0;
 	kernel_args[p++] = 0;
-
-	/* Disable interrupts and timer */
-	arm_timer_disable();
-	arm_irq_disable();
 
 	/* Jump to Linux Kernel
 	 * r0 -> zero
@@ -558,6 +559,11 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	nuke_va = kernel_addr & ~(0x100000 - 1);
 	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
+	/* Disable interrupts, disable timer, and cleanup MMU */
+	arm_timer_disable();
+	arm_irq_disable();
+	arm_mmu_cleanup();
+
 	/* Pass memory size via kernel command line */
 	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
 	arm_strcat(cmdline, cfg_str);
@@ -572,10 +578,8 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 			   initrd_addr, initrd_addr + initrd_size, 1);
 	}
 
-	/* Disable interrupts and timer */
-	arm_timer_disable();
-	arm_irq_disable();
-	arm_mmu_cleanup();
+	/* Do board specific fdt fixup */
+	arm_board_fdt_fixup((void *)fdt_addr);
 
 	/* Jump to Linux Kernel
 	 * r0 -> dtb address
