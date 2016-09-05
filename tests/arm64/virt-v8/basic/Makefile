@@ -37,7 +37,8 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/timer/generic_timer.o \
                    $(obj_dir)/serial/pl01x.o \
-                   $(obj_dir)/sys/vminfo.o
+                   $(obj_dir)/sys/vminfo.o \
+                   $(obj_dir)/display/simplefb.o
 
 # Include common makefile for basic test
 include $(common_dir)/Makefile.inc

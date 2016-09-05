@@ -30,6 +30,7 @@
 #include <timer/generic_timer.h>
 #include <serial/pl01x.h>
 #include <sys/vminfo.h>
+#include <display/simplefb.h>
 
 void arm_board_reset(void)
 {
@@ -87,7 +88,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arm_board_fdt_fixup(void *fdt_addr)
 {
-	/* For now nothing to do here. */
+	simplefb_fdt_fixup(VIRT_V8_SIMPLEFB, fdt_addr);
 }
 
 physical_addr_t arm_board_flash_addr(void)
