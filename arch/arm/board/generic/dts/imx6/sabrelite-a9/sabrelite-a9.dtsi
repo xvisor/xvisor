@@ -34,6 +34,18 @@
 	};
 };
 
+&gpio1 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
 &ecspi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
