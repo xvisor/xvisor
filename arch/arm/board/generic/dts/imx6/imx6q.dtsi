@@ -773,6 +773,7 @@
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
 				interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			SERIAL2: uart2 {
@@ -783,6 +784,7 @@
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
 				interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			SERIAL3: uart3 {
@@ -793,6 +795,7 @@
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
 				interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			SERIAL4: uart4 {
@@ -803,6 +806,7 @@
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
 				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			SERIAL5: uart5 {
@@ -813,6 +817,7 @@
                                 clock-names = "ipg", "per";
 				clock-frequency = <80000000>;
 				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			epit1 {
