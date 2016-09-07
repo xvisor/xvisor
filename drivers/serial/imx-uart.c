@@ -266,7 +266,7 @@ static int imx_driver_probe(struct vmm_device *dev,
 	}
 
 	rc = vmm_devtree_request_regmap(dev->of_node, &port->base, 0,
-					"iMX UART");
+					"i.MX UART");
 	if (rc) {
 		goto free_port;
 	}
