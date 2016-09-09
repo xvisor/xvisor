@@ -30,7 +30,6 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_scheduler.h>
-#include <vmm_loadbal.h>
 #include <vmm_waitqueue.h>
 #include <vmm_workqueue.h>
 #include <vmm_manager.h>
@@ -128,7 +127,7 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 
 	/* Iterate over each used VCPU instance */
 	rc = VMM_OK;
-	for (v = 0; v < CONFIG_MAX_VCPU_COUNT; v++) {		
+	for (v = 0; v < CONFIG_MAX_VCPU_COUNT; v++) {
 		if (mngr.vcpu_avail_array[v]) {
 			continue;
 		}
@@ -144,6 +143,51 @@ int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 	vmm_manager_unlock();
 
 	return rc;
+}
+
+/* Note: Must be called with manager lock held */
+static u32 __vmm_manager_good_hcpu(u8 priority,
+				   const struct vmm_cpumask *affinity)
+{
+	struct vmm_vcpu *vcpu;
+	u32 count[CONFIG_CPU_COUNT];
+	u32 v, c, min, hcpu = vmm_cpumask_first(affinity);
+
+	if (!vmm_timer_started() ||
+	    (vmm_cpumask_weight(affinity) < 1)) {
+		return vmm_smp_processor_id();
+	}
+
+	for (c = 0; c < CONFIG_CPU_COUNT; c++) {
+		count[c] = 0;
+	}
+
+	for (v = 0; v < CONFIG_MAX_VCPU_COUNT; v++) {
+		if (mngr.vcpu_avail_array[v]) {
+			continue;
+		}
+		vcpu = &mngr.vcpu_array[v];
+
+		if ((vcpu->priority != priority) ||
+		    !vmm_cpumask_test_cpu(vcpu->hcpu, affinity)) {
+			continue;
+		}
+
+		count[vcpu->hcpu]++;
+	}
+
+	min = count[hcpu];
+	for (c = 0; c < CONFIG_CPU_COUNT; c++) {
+		if (!vmm_cpumask_test_cpu(c, affinity)) {
+			continue;
+		}
+		if (count[c] < min) {
+			min = count[c];
+			hcpu = c;
+		}
+	}
+
+	return hcpu;
 }
 
 int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
@@ -360,6 +404,8 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 				  const struct vmm_cpumask *cpu_mask)
 {
 	int rc;
+	bool locked;
+	u32 new_hcpu;
 	irq_flags_t flags;
 	struct vmm_cpumask and_mask;
 
@@ -380,11 +426,33 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 	/* Make sure current hcpu is set in both current and new affinity */
 	if (!vmm_cpumask_test_cpu(vcpu->hcpu, &and_mask)) {
 		vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-		rc = vmm_manager_vcpu_set_hcpu(vcpu,
-					vmm_cpumask_first(&and_mask));
+
+		/* Acquire manager lock */
+		/* NOTE: We only touch manager lock if timer subsystem
+		 * has started on current host CPU. This check helps
+		 * create boot-time orphan VCPUs.
+		 */
+		if (vmm_timer_started()) {
+			locked = TRUE;
+			vmm_manager_lock();
+		} else {
+			locked = FALSE;
+		}
+
+		/* Find good host CPU */
+		new_hcpu = __vmm_manager_good_hcpu(vcpu->priority, &and_mask);
+
+		/* Change host CPU */
+		rc = vmm_manager_vcpu_set_hcpu(vcpu, new_hcpu);
 		if (rc) {
 			return rc;
 		}
+
+		/* Release manager lock */
+		if (locked) {
+			vmm_manager_unlock();
+		}
+
 		vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
 	}
 
@@ -462,9 +530,10 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 					    u64 deadline,
 					    u64 periodicity)
 {
-	u32 vnum;
-	struct vmm_vcpu *vcpu = NULL;
 	bool locked;
+	u32 vnum, hcpu;
+	struct vmm_vcpu *vcpu = NULL;
+	const struct vmm_cpumask *affinity = cpu_online_mask;
 
 	/* Sanity checks */
 	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
@@ -489,13 +558,25 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		locked = FALSE;
 	}
 
+	/* Find good host CPU */
+	hcpu = __vmm_manager_good_hcpu(priority, affinity);
+
 	/* Find the next available vcpu */
 	for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
-		if (mngr.vcpu_avail_array[vnum]) {
-			vcpu = &mngr.vcpu_array[vnum];
-			mngr.vcpu_avail_array[vcpu->id] = FALSE;
-			break;
+		if (!mngr.vcpu_avail_array[vnum]) {
+			continue;
 		}
+		vcpu = &mngr.vcpu_array[vnum];
+
+		/* Update priority */
+		vcpu->priority = priority;
+
+		/* Update host CPU and affinity */
+		vcpu->hcpu = hcpu;
+		vcpu->cpu_affinity = affinity;
+
+		mngr.vcpu_avail_array[vcpu->id] = FALSE;
+		break;
 	}
 	if (!vcpu) {
 		goto fail;
@@ -536,8 +617,6 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 	/* Intialize dynamic scheduling context */
 	INIT_RW_LOCK(&vcpu->sched_lock);
-	vcpu->hcpu = vmm_loadbal_good_hcpu(priority);
-	vcpu->cpu_affinity = cpu_online_mask;
 	vcpu->state_tstamp = vmm_timer_timestamp();
 	vcpu->state_ready_nsecs = 0;
 	vcpu->state_running_nsecs = 0;
@@ -550,7 +629,6 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->sched_priv = NULL;
 
 	/* Intialize static scheduling context */
-	vcpu->priority = priority;
 	vcpu->time_slice = time_slice_nsecs;
 	vcpu->deadline = deadline;
 	if (vcpu->deadline < vcpu->time_slice) {
@@ -709,7 +787,7 @@ struct vmm_guest *vmm_manager_guest_find(const char *guest_name)
 
 	/* Iterate over each used VCPU instance */
 	ret = NULL;
-	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {		
+	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {
 		if (!mngr.guest_avail_array[g]) {
 			if (!strcmp(mngr.guest_array[g].name, guest_name)) {
 				ret = &mngr.guest_array[g];
@@ -721,7 +799,7 @@ struct vmm_guest *vmm_manager_guest_find(const char *guest_name)
 	/* Release manager lock */
 	vmm_manager_unlock();
 
-	return ret;	
+	return ret;
 }
 
 int vmm_manager_guest_iterate(int (*iter)(struct vmm_guest *, void *),
@@ -740,7 +818,7 @@ int vmm_manager_guest_iterate(int (*iter)(struct vmm_guest *, void *),
 
 	/* Iterate over each used VCPU instance */
 	rc = VMM_OK;
-	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {		
+	for (g = 0; g < CONFIG_MAX_GUEST_COUNT; g++) {
 		if (mngr.guest_avail_array[g]) {
 			continue;
 		}
@@ -1179,8 +1257,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	memset(&guest->aspace, 0, sizeof(guest->aspace));
 	guest->aspace.initialized = FALSE;
 	INIT_RW_LOCK(&guest->aspace.reg_iotree_lock);
+	INIT_LIST_HEAD(&guest->aspace.reg_ioprobe_list);
 	guest->aspace.reg_iotree = RB_ROOT;
 	INIT_RW_LOCK(&guest->aspace.reg_memtree_lock);
+	INIT_LIST_HEAD(&guest->aspace.reg_memprobe_list);
 	guest->aspace.reg_memtree = RB_ROOT;
 	guest->arch_priv = NULL;
 
@@ -1205,6 +1285,10 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 	}
 
 	vmm_devtree_for_each_child(vnode, vsnode) {
+		int index;
+		u32 cpu;
+		struct vmm_cpumask mask;
+
 		/* Sanity checks */
 		if (CONFIG_MAX_VCPU_COUNT <= mngr.vcpu_count) {
 			vmm_printf("%s: No more free VCPUs\n"
@@ -1229,17 +1313,81 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			goto fail_dref_vsnode;
 		}
 
+		/* Setup VCPU affinity mask */
+		if (vmm_devtree_getattr(vnode,
+				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME)) {
+			/* Start with empty affinity mask */
+			mask = VMM_CPU_MASK_NONE;
+
+			/* Set all assigned CPU in the mask */
+			index = 0;
+			while (vmm_devtree_read_u32_atindex(vnode,
+				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME,
+				&cpu, index) == VMM_OK) {
+				if ((cpu < CONFIG_CPU_COUNT) &&
+				    vmm_cpu_online(cpu)) {
+					vmm_cpumask_set_cpu(cpu, &mask);
+				} else {
+					vmm_printf(
+						"%s: CPU%d is out of bound"
+						" (%d <) or not online for"
+						" Guest %s VCPU %s\n",
+						__func__, cpu,
+						CONFIG_CPU_COUNT,
+						gnode->name, vnode->name);
+					vmm_devtree_dref_node(vnode);
+					goto fail_dref_vsnode;
+				}
+				index++;
+			}
+
+			/* If affinity mask turns-out to be empty then fail */
+			if (vmm_cpumask_weight(&mask) < 1) {
+				vmm_printf("%s: Empty affinity mask\n"
+					   "for Guest %s VCPU %s\n", __func__,
+					   gnode->name, vnode->name);
+				vmm_devtree_dref_node(vnode);
+				goto fail_dref_vsnode;
+			}
+		} else {
+			memcpy(&mask, cpu_online_mask, sizeof(mask));
+		}
+
 		/* Acquire manager lock */
 		vmm_manager_lock();
 
 		/* Find next available VCPU instance */
 		vcpu = NULL;
 		for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
-			if (mngr.vcpu_avail_array[vnum]) {
-				vcpu = &mngr.vcpu_array[vnum];
-				mngr.vcpu_avail_array[vcpu->id] = FALSE;
-				break;
+			if (!mngr.vcpu_avail_array[vnum]) {
+				continue;
 			}
+			vcpu = &mngr.vcpu_array[vnum];
+
+			/* Update priority */
+			if (vmm_devtree_read_u32(vnode,
+				VMM_DEVTREE_PRIORITY_ATTR_NAME, &val)) {
+				vcpu->priority = VMM_VCPU_DEF_PRIORITY;
+			} else {
+				vcpu->priority = val;
+			}
+			if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
+				vcpu->priority = VMM_VCPU_MAX_PRIORITY;
+			}
+			if (vcpu->priority < VMM_VCPU_MIN_PRIORITY) {
+				vcpu->priority = VMM_VCPU_MIN_PRIORITY;
+			}
+
+			/* Update host CPU and affinity */
+			memcpy(&mngr.vcpu_affinity_mask[vcpu->id],
+				&mask, sizeof(mask));
+			vcpu->hcpu =
+				__vmm_manager_good_hcpu(vcpu->priority, &mask);
+			vcpu->cpu_affinity =
+				&mngr.vcpu_affinity_mask[vcpu->id];
+
+			mngr.vcpu_avail_array[vcpu->id] = FALSE;
+			break;
 		}
 		if (!vcpu) {
 			vmm_printf("%s: No available VCPU instance found \n"
@@ -1308,23 +1456,9 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
 		vcpu->resumed = FALSE;
-		vcpu->hcpu = vmm_loadbal_good_hcpu(vcpu->priority);
-		vcpu->cpu_affinity = cpu_online_mask;
 		vcpu->sched_priv = NULL;
 
 		/* Initialize static scheduling context */
-		if (vmm_devtree_read_u32(vnode,
-			VMM_DEVTREE_PRIORITY_ATTR_NAME, &val)) {
-			vcpu->priority = VMM_VCPU_DEF_PRIORITY;
-		} else {
-			vcpu->priority = val;
-		}
-		if (VMM_VCPU_MAX_PRIORITY < vcpu->priority) {
-			vcpu->priority = VMM_VCPU_MAX_PRIORITY;
-		}
-		if (vcpu->priority < VMM_VCPU_MIN_PRIORITY) {
-			vcpu->priority = VMM_VCPU_MIN_PRIORITY;
-		}
 		if (vmm_devtree_read_u64(vnode,
 			VMM_DEVTREE_TIME_SLICE_ATTR_NAME, &vcpu->time_slice)) {
 			vcpu->time_slice = VMM_VCPU_DEF_TIME_SLICE;
@@ -1402,74 +1536,6 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 			vmm_manager_unlock();
 			vmm_devtree_dref_node(vnode);
 			goto fail_dref_vsnode;
-		}
-
-		/* Setup VCPU affinity mask */
-		if (vmm_devtree_getattr(vnode,
-				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME)) {
-			int index;
-			u32 cpu;
-			struct vmm_cpumask *affinity_mask =
-					&mngr.vcpu_affinity_mask[vcpu->id];
-
-			/* Start with empty affinity mask */
-			*affinity_mask = VMM_CPU_MASK_NONE;
-
-			/* Set all assigned CPU in the mask */
-			index = 0;
-			while (vmm_devtree_read_u32_atindex(vnode,
-				VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME,
-				&cpu, index) == VMM_OK) {
-				if ((cpu < CONFIG_CPU_COUNT) &&
-				    vmm_cpu_online(cpu)) {
-					vmm_cpumask_set_cpu(cpu,
-							    affinity_mask);
-				} else {
-					vmm_manager_vcpu_set_state(vcpu,
-						VMM_VCPU_STATE_UNKNOWN);
-					vmm_vcpu_irq_deinit(vcpu);
-					arch_vcpu_deinit(vcpu);
-					vmm_free((void *)vcpu->stack_va);
-					vmm_printf(
-						"%s: CPU%d is out of bound"
-						" (%d <) or not online for"
-						" %s\n", __func__, cpu,
-						CONFIG_CPU_COUNT, vcpu->name);
-					vmm_devtree_dref_node(vcpu->node);
-					vcpu->node = NULL;
-					vmm_manager_lock();
-					mngr.vcpu_count--;
-					mngr.vcpu_avail_array[vcpu->id] = TRUE;
-					vmm_manager_unlock();
-					vmm_devtree_dref_node(vnode);
-					goto fail_dref_vsnode;
-				}
-				index++;
-			}
-
-			/* Set hcpu as the first CPU in the mask */
-			vcpu->hcpu = vmm_cpumask_first(affinity_mask);
-			if (vcpu->hcpu > CONFIG_CPU_COUNT) {
-				vmm_manager_vcpu_set_state(vcpu,
-						VMM_VCPU_STATE_UNKNOWN);
-				vmm_vcpu_irq_deinit(vcpu);
-				arch_vcpu_deinit(vcpu);
-				vmm_free((void *)vcpu->stack_va);
-				vmm_printf(
-					"%s: Can't find a valid CPU for"
-					" vcpu %s\n", __func__, vcpu->name);
-				vmm_devtree_dref_node(vcpu->node);
-				vcpu->node = NULL;
-				vmm_manager_lock();
-				mngr.vcpu_count--;
-				mngr.vcpu_avail_array[vcpu->id] = TRUE;
-				vmm_manager_unlock();
-				vmm_devtree_dref_node(vnode);
-				goto fail_dref_vsnode;
-			}
-
-			/* Set the affinity mask */
-			vmm_manager_vcpu_set_affinity(vcpu, affinity_mask);
 		}
 
 		/* Get poweroff flag from device tree */
