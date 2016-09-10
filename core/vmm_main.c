@@ -205,12 +205,14 @@ static void system_init_work(struct vmm_work *work)
 		}
 	}
 
+#ifdef CONFIG_LOADBAL
 	/* Initialize hypervisor load balancer */
 	vmm_printf("init: hypervisor load balancer\n");
 	ret = vmm_loadbal_init();
 	if (ret) {
 		goto fail;
 	}
+#endif
 #endif
 
 	/* Initialize command manager */
