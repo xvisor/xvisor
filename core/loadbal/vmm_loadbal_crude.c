@@ -110,23 +110,6 @@ static void crude_analyze_idle(struct crude_control *crude)
 	}
 }
 
-static u32 crude_best_count_hcpu(struct crude_control *crude, u8 priority)
-{
-	u32 hcpu, best_hcpu, best_hcpu_count;
-
-	best_hcpu = vmm_smp_processor_id();
-	best_hcpu_count = crude->alive_count[best_hcpu][priority];
-
-	for_each_online_cpu(hcpu) {
-		if (crude->alive_count[hcpu][priority] < best_hcpu_count) {
-			best_hcpu = hcpu;
-			best_hcpu_count = crude->alive_count[hcpu][priority];
-		}
-	}
-
-	return best_hcpu;
-}
-
 /**
  * Find out best idle hcpu.
  *
@@ -247,26 +230,6 @@ static int crude_balance_hcpu_iter(struct vmm_vcpu *vcpu, void *priv)
 	return VMM_OK;
 }
 
-static u32 crude_good_hcpu(struct vmm_loadbal_algo *algo, u8 priority)
-{
-	u32 ret;
-	struct crude_control *crude = vmm_loadbal_get_algo_priv(algo);
-
-	if (!crude ||
-	    (VMM_VCPU_MAX_PRIORITY < priority)) {
-		return vmm_smp_processor_id();
-	}
-
-	crude_analyze_count(crude);
-
-	ret = crude_best_count_hcpu(crude, priority);
-
-	DPRINTF("%s: good_hcpu=%d priority=%d\n",
-		__func__, ret, priority);
-
-	return ret;
-}
-
 static void crude_balance(struct vmm_loadbal_algo *algo)
 {
 	u8 prio;
@@ -345,7 +308,6 @@ static void crude_stop(struct vmm_loadbal_algo *algo)
 static struct vmm_loadbal_algo crude = {
 	.name = "Crude Load Balancer",
 	.rating = 1,
-	.good_hcpu = crude_good_hcpu,
 	.balance = crude_balance,
 	.start = crude_start,
 	.stop = crude_stop,

@@ -47,31 +47,6 @@ struct vmm_loadbal_ctrl {
 static bool lbctrl_init_done = FALSE;
 static struct vmm_loadbal_ctrl lbctrl;
 
-u32 vmm_loadbal_good_hcpu(u8 priority)
-{
-	u32 ret;
-
-	if (!lbctrl_init_done ||
-	    !vmm_timer_started() ||
-	    (VMM_VCPU_MAX_PRIORITY < priority) ||
-	    (priority < VMM_VCPU_MIN_PRIORITY) ||
-	    (vmm_cpumask_weight(cpu_online_mask) < 2)) {
-		return vmm_smp_processor_id();
-	}
-
-	vmm_mutex_lock(&lbctrl.curr_algo_lock);
-
-	if (lbctrl.curr_algo && lbctrl.curr_algo->good_hcpu) {
-		ret = lbctrl.curr_algo->good_hcpu(lbctrl.curr_algo, priority);
-	} else {
-		ret = vmm_smp_processor_id();
-	}
-
-	vmm_mutex_unlock(&lbctrl.curr_algo_lock);
-
-	return ret;
-}
-
 static int loadbal_main(void *data)
 {
 	u64 tstamp;
