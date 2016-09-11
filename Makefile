@@ -434,7 +434,7 @@ menuconfig:
 oldconfig:
 	$(V)mkdir -p $(OPENCONF_TMPDIR)
 	$(V)$(MAKE) -C tools/openconf oldconfig
-	./tools/openconf/conf -o $(OPENCONF_INPUT)
+	./tools/openconf/conf -s $(OPENCONF_INPUT)
 
 # Rule for "make savedefconfig"
 .PHONY: savedefconfig
