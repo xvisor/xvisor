@@ -65,16 +65,6 @@ static void strip(char *str)
 		*p-- = 0;
 }
 
-static void check_stdin(void)
-{
-	if (!valid_stdin) {
-		printf("aborted!\n\n");
-		printf("Console input/output is redirected. ");
-		printf("Run 'make oldconfig' to update configuration.\n\n");
-		exit(1);
-	}
-}
-
 static int conf_askvalue(struct symbol *sym, const char *def)
 {
 	char *ret;
@@ -100,7 +90,6 @@ static int conf_askvalue(struct symbol *sym, const char *def)
 			printf("%s\n", def);
 			return 0;
 		}
-		check_stdin();
 	case ask_all:
 		fflush(stdout);
 		ret = fgets(line, 128, stdin);
@@ -306,7 +295,6 @@ static int conf_choice(struct menu *menu)
 				printf("%d\n", cnt);
 				break;
 			}
-			check_stdin();
 		case ask_all:
 			fflush(stdout);
 			ret = fgets(line, 128, stdin);
