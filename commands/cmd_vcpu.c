@@ -56,6 +56,7 @@ static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vcpu pause   <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu resume  <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu halt    <vcpu_id>\n");
+	vmm_cprintf(cdev, "   vcpu set_hcpu <vcpu_id> <hcpu>\n");
 	vmm_cprintf(cdev, "   vcpu dumpreg <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu dumpstat <vcpu_id>\n");
 }
@@ -145,7 +146,7 @@ static int vcpu_list(struct vmm_chardev *cdev, bool normal, bool orphan)
 #ifdef CONFIG_SMP
 	vmm_cprintf(cdev, " %-6s", "CPU ");
 #endif
-	vmm_cprintf(cdev, " %-7s %-10s %-17s %-34s\n", 
+	vmm_cprintf(cdev, " %-7s %-10s %-17s %-34s\n",
 		    "Prio", "State", "Name", "Affinity");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "---------------------------------------\n");
@@ -273,6 +274,7 @@ static int cmd_vcpu_reset(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -300,6 +302,7 @@ static int cmd_vcpu_kick(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -327,6 +330,7 @@ static int cmd_vcpu_pause(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -354,6 +358,7 @@ static int cmd_vcpu_resume(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -365,7 +370,7 @@ static int cmd_vcpu_resume(struct vmm_chardev *cdev,
 	}
 
 	if ((ret = vmm_manager_vcpu_resume(vcpu))) {
-		vmm_cprintf(cdev, "%s: Failed to resume\n", 
+		vmm_cprintf(cdev, "%s: Failed to resume\n",
 				  vcpu->name);
 	} else {
 		vmm_cprintf(cdev, "%s: Resumed\n", vcpu->name);
@@ -382,6 +387,7 @@ static int cmd_vcpu_halt(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -401,6 +407,37 @@ static int cmd_vcpu_halt(struct vmm_chardev *cdev,
 	return ret;
 }
 
+static int cmd_vcpu_set_hcpu(struct vmm_chardev *cdev,
+			     int argc, char **argv)
+{
+	int ret, id, hcpu;
+	struct vmm_vcpu *vcpu;
+
+	if (argc != 2) {
+		vmm_cprintf(cdev, "Must provide vcpu ID and host CPU\n");
+		cmd_vcpu_usage(cdev);
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+	hcpu = atoi(argv[1]);
+
+	vcpu = vmm_manager_vcpu(id);
+	if (!vcpu) {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
+	}
+
+	if ((ret = vmm_manager_vcpu_set_hcpu(vcpu, (u32)hcpu))) {
+		vmm_cprintf(cdev, "%s: Failed to set host CPU%d\n",
+			    vcpu->name, hcpu);
+	} else {
+		vmm_cprintf(cdev, "%s: Host CPU%d set\n",
+			    vcpu->name, hcpu);
+	}
+
+	return ret;
+}
+
 static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev,
 			    int argc, char **argv)
 {
@@ -409,6 +446,7 @@ static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -425,7 +463,7 @@ static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev,
 	return VMM_OK;
 }
 
-static void nsecs_to_hhmmsstt(u64 nsecs, 
+static void nsecs_to_hhmmsstt(u64 nsecs,
 			u32 *hours, u32 *mins, u32 *secs, u32 *msecs)
 {
 	nsecs = udiv64(nsecs, 1000000ULL);
@@ -456,6 +494,7 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 
 	if (!argc) {
 		vmm_cprintf(cdev, "Must provide vcpu ID\n");
+		cmd_vcpu_usage(cdev);
 		return VMM_EINVALID;
 	}
 	id = atoi(argv[0]);
@@ -472,7 +511,7 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 					&ready_nsecs, &running_nsecs,
 					&paused_nsecs, &halted_nsecs);
 	if (ret) {
-		vmm_cprintf(cdev, "%s: Failed to get stats\n", 
+		vmm_cprintf(cdev, "%s: Failed to get stats\n",
 				  vcpu->name);
 		return ret;
 	}
@@ -509,28 +548,28 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 #endif
 	vmm_cprintf(cdev, "\n");
 	nsecs_to_hhmmsstt(ready_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Ready Time       : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Ready Time       : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	nsecs_to_hhmmsstt(running_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Running Time     : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Running Time     : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	nsecs_to_hhmmsstt(paused_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Paused Time      : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Paused Time      : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	nsecs_to_hhmmsstt(halted_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Halted Time      : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Halted Time      : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	total_nsecs =  ready_nsecs;
 	total_nsecs += running_nsecs;
 	total_nsecs += paused_nsecs;
 	total_nsecs += halted_nsecs;
 	nsecs_to_hhmmsstt(total_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Total Time       : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Total Time       : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	vmm_cprintf(cdev, "\n");
 	vmm_cprintf(cdev, "Reset Count      : %d\n", reset_count);
 	nsecs_to_hhmmsstt(last_reset_nsecs, &h, &m, &s, &ms);
-	vmm_cprintf(cdev, "Last Reset Since : %d:%02d:%02d:%03d\n", 
+	vmm_cprintf(cdev, "Last Reset Since : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
 	vmm_cprintf(cdev, "\n");
 
@@ -543,20 +582,22 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 static const struct {
 	char *name;
 	int (*function) (struct vmm_chardev *, int, char **);
+	int argc;
 } const command[] = {
-	{"help", cmd_vcpu_help},
-	{"list", cmd_vcpu_list},
-	{"orphan_list", cmd_vcpu_orphan_list},
-	{"normal_list", cmd_vcpu_normal_list},
-	{"monitor", cmd_vcpu_monitor},
-	{"reset", cmd_vcpu_reset},
-	{"kick", cmd_vcpu_kick},
-	{"pause", cmd_vcpu_pause},
-	{"resume", cmd_vcpu_resume},
-	{"halt", cmd_vcpu_halt},
-	{"dumpreg", cmd_vcpu_dumpreg},
-	{"dumpstat", cmd_vcpu_dumpstat},
-	{NULL, NULL},
+	{"help", cmd_vcpu_help, 0},
+	{"list", cmd_vcpu_list, 0},
+	{"orphan_list", cmd_vcpu_orphan_list, 0},
+	{"normal_list", cmd_vcpu_normal_list, 0},
+	{"monitor", cmd_vcpu_monitor, 1},
+	{"reset", cmd_vcpu_reset, 1},
+	{"kick", cmd_vcpu_kick, 1},
+	{"pause", cmd_vcpu_pause, 1},
+	{"resume", cmd_vcpu_resume, 1},
+	{"halt", cmd_vcpu_halt, 1},
+	{"set_hcpu", cmd_vcpu_set_hcpu, 2},
+	{"dumpreg", cmd_vcpu_dumpreg, 1},
+	{"dumpstat", cmd_vcpu_dumpstat, 1},
+	{NULL, NULL, 0},
 };
 	
 static int cmd_vcpu_exec(struct vmm_chardev *cdev,
@@ -564,15 +605,16 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev,
 {
 	int index = 0;
 
-	if ((argc == 1) || (argc > 3)) {
+	if (argc <= 1) {
 		cmd_vcpu_usage(cdev);
 		return VMM_EFAIL;
 	}
 
 	while (command[index].name) {
-		if (strcmp(argv[1], command[index].name) == 0) {
+		if ((strcmp(argv[1], command[index].name) == 0) &&
+		    ((argc - 2) == command[index].argc)) {
 			return command[index].function(cdev,
-						argc-2, &argv[2]);
+						argc - 2, &argv[2]);
 		}
 		index++;
 	}
