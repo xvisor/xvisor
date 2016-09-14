@@ -57,6 +57,8 @@ static void cmd_vcpu_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vcpu resume  <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu halt    <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu set_hcpu <vcpu_id> <hcpu>\n");
+	vmm_cprintf(cdev, "   vcpu set_affinity <vcpu_id> "
+			  "<hcpu0> <hcpu1> <hcpu2> ...\n");
 	vmm_cprintf(cdev, "   vcpu dumpreg <vcpu_id>\n");
 	vmm_cprintf(cdev, "   vcpu dumpstat <vcpu_id>\n");
 }
@@ -438,6 +440,50 @@ static int cmd_vcpu_set_hcpu(struct vmm_chardev *cdev,
 	return ret;
 }
 
+static int cmd_vcpu_set_affinity(struct vmm_chardev *cdev,
+				 int argc, char **argv)
+{
+	int ret, i, id, hcpu;
+	struct vmm_cpumask mask;
+	struct vmm_vcpu *vcpu;
+
+	if (argc < 2) {
+		vmm_cprintf(cdev, "Must provide vcpu ID and host CPUs\n");
+		cmd_vcpu_usage(cdev);
+		return VMM_EINVALID;
+	}
+	id = atoi(argv[0]);
+
+	mask = VMM_CPU_MASK_NONE;
+	for (i = 1; i < argc; i++) {
+		hcpu = atoi(argv[i]);
+		if (CONFIG_CPU_COUNT <= hcpu) {
+			vmm_cprintf(cdev, "Invalid host CPU%d (>= %d)\n",
+				    hcpu, CONFIG_CPU_COUNT);
+			return VMM_EINVALID;
+		}
+		if (!vmm_cpu_online(hcpu)) {
+			vmm_cprintf(cdev, "Host CPU%d not online\n", hcpu);
+			return VMM_EINVALID;
+		}
+		vmm_cpumask_set_cpu(hcpu, &mask);
+	}
+
+	vcpu = vmm_manager_vcpu(id);
+	if (!vcpu) {
+		vmm_cprintf(cdev, "Failed to find vcpu\n");
+		return VMM_EFAIL;
+	}
+
+	if ((ret = vmm_manager_vcpu_set_affinity(vcpu, &mask))) {
+		vmm_cprintf(cdev, "%s: Failed to set affinity\n", vcpu->name);
+	} else {
+		vmm_cprintf(cdev, "%s: Set affinity done\n", vcpu->name);
+	}
+
+	return ret;
+}
+
 static int cmd_vcpu_dumpreg(struct vmm_chardev *cdev,
 			    int argc, char **argv)
 {
@@ -595,6 +641,7 @@ static const struct {
 	{"resume", cmd_vcpu_resume, 1},
 	{"halt", cmd_vcpu_halt, 1},
 	{"set_hcpu", cmd_vcpu_set_hcpu, 2},
+	{"set_affinity", cmd_vcpu_set_affinity, 2},
 	{"dumpreg", cmd_vcpu_dumpreg, 1},
 	{"dumpstat", cmd_vcpu_dumpstat, 1},
 	{NULL, NULL, 0},
@@ -612,7 +659,7 @@ static int cmd_vcpu_exec(struct vmm_chardev *cdev,
 
 	while (command[index].name) {
 		if ((strcmp(argv[1], command[index].name) == 0) &&
-		    ((argc - 2) == command[index].argc)) {
+		    ((argc - 2) >= command[index].argc)) {
 			return command[index].function(cdev,
 						argc - 2, &argv[2]);
 		}
@@ -641,9 +688,9 @@ static void __exit cmd_vcpu_exit(void)
 	vmm_cmdmgr_unregister_cmd(&cmd_vcpu);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
