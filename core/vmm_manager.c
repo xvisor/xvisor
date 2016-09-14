@@ -457,7 +457,9 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 	}
 
 	/* Update affinity */
-	vcpu->cpu_affinity = cpu_mask;
+	memcpy(&mngr.vcpu_affinity_mask[vcpu->id],
+		cpu_mask, sizeof(*cpu_mask));
+	vcpu->cpu_affinity = &mngr.vcpu_affinity_mask[vcpu->id];
 
 	/* Unlock load balancing */
 	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
@@ -573,7 +575,9 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 
 		/* Update host CPU and affinity */
 		vcpu->hcpu = hcpu;
-		vcpu->cpu_affinity = affinity;
+		memcpy(&mngr.vcpu_affinity_mask[vcpu->id],
+			affinity, sizeof(*affinity));
+		vcpu->cpu_affinity = &mngr.vcpu_affinity_mask[vcpu->id];
 
 		mngr.vcpu_avail_array[vcpu->id] = FALSE;
 		break;
