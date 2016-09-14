@@ -444,13 +444,15 @@ int vmm_manager_vcpu_set_affinity(struct vmm_vcpu *vcpu,
 
 		/* Change host CPU */
 		rc = vmm_manager_vcpu_set_hcpu(vcpu, new_hcpu);
-		if (rc) {
-			return rc;
-		}
 
 		/* Release manager lock */
 		if (locked) {
 			vmm_manager_unlock();
+		}
+
+		/* If set_hcpu failed then return failure */
+		if (rc) {
+			return rc;
 		}
 
 		vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
