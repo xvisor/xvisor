@@ -970,6 +970,12 @@ int __cpuinit vmm_scheduler_init(void)
 	schedp->sample_irq_ns = 0;
 	schedp->sample_irq_last_ns = 0;
 
+	/* Mark this CPU online
+	 * Note: must be done before creating IDLE VCPU and
+	 * setting affinity
+	 */
+	vmm_set_cpu_online(cpu, TRUE);
+
 	/* Create idle orphan vcpu with default time slice. (Per Host CPU) */
 	vmm_snprintf(vcpu_name, sizeof(vcpu_name), "idle/%d", cpu);
 	schedp->idle_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
@@ -982,9 +988,6 @@ int __cpuinit vmm_scheduler_init(void)
 	if (!schedp->idle_vcpu) {
 		return VMM_EFAIL;
 	}
-
-	/* Mark this CPU online (must be done before setting affinity) */
-	vmm_set_cpu_online(cpu, TRUE);
 
 	/* The idle vcpu need to stay on this cpu */
 	if ((rc = vmm_manager_vcpu_set_affinity(schedp->idle_vcpu,
