@@ -24,4 +24,5 @@
 drivers-objs-$(CONFIG_SPI_MASTER)+= spi/spi.o
 drivers-objs-$(CONFIG_SPI_BITBANG)+= spi/spi-bitbang.o
 drivers-objs-$(CONFIG_SPI_IMX)+= spi/spi-imx.o
+drivers-objs-$(CONFIG_SPI_BCM2835)+=spi/spi-bcm2835.o
 
