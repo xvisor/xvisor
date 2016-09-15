@@ -20,3 +20,18 @@
 	status = "okay";
 	bus-width = <4>;
 };
+
+&spi0 {
+	status = "okay";
+	spidev@0{
+		compatible = "spidev";
+		reg = <0>;      /* CE0 */
+		spi-max-frequency = <500000>;
+	};
+
+	spidev@1{
+		compatible = "spidev";
+		reg = <1>;      /* CE1 */
+		spi-max-frequency = <500000>;
+	};
+};

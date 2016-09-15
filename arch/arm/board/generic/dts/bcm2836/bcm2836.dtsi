@@ -105,6 +105,16 @@
 			interrupts = <2 25>;
 		};
 
+		spi0: spi@3f204000 {
+			compatible = "brcm,bcm2835-spi";
+			reg = <0x3f204000 0x1000>;
+			interrupts = <2 22>;
+			clocks = <&clk_spi>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
 		i2c0: i2c@3f205000 {
 			compatible = "brcm,bcm2835-i2c";
 			reg = <0x3f205000 0x1000>;
