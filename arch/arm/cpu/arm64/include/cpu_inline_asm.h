@@ -24,6 +24,7 @@
 #define __CPU_INLINE_ASM_H__
 
 #include <vmm_types.h>
+#include <vmm_compiler.h>
 #include <cpu_defines.h>
 
 #define rev16(val)		({ u16 rval; asm volatile(\
@@ -47,14 +48,52 @@
 
 #define clrex()			asm volatile("clrex\n\t")
 
-#define mrs(spr)		({ u64 rval; asm volatile(\
-				"mrs %0," #spr :"=r"(rval)); rval; })
+/* Sysreg access */
 
-#define msr(spr, val)		asm volatile("msr " #spr ", %0" ::"r"(val))
+asm(
+"	.irp	num,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30\n"
+"	.equ	.L__reg_num_x\\num, \\num\n"
+"	.endr\n"
+"	.equ	.L__reg_num_xzr, 31\n"
+"\n"
+"	.macro	mrs_s, rt, sreg\n"
+"	.inst	0xd5200000|(\\sreg)|(.L__reg_num_\\rt)\n"
+"	.endm\n"
+"\n"
+"	.macro	msr_s, sreg, rt\n"
+"	.inst	0xd5000000|(\\sreg)|(.L__reg_num_\\rt)\n"
+"	.endm\n"
+);
 
-#define msr_sync(spr, val)	asm volatile("msr " #spr ", %0\n\t" \
-					     "dsb sy\n\t" \
-					     "isb\n\t" ::"r"(val))
+#define read_sysreg(r) ({					\
+	u64 __val;						\
+	asm volatile("mrs %0, " stringify(r) : "=r" (__val));	\
+	__val;							\
+})
+
+#define write_sysreg(v, r)	do {				\
+	u64 __val = (u64)(v);					\
+	asm volatile("msr " stringify(r) ", %0"			\
+		     : : "r" (__val));				\
+} while (0)
+
+#define mrs(spr)		({				\
+	u64 __val;						\
+	asm volatile("mrs %0," stringify(spr) :"=r"(__val));	\
+	__val;							\
+})
+
+#define msr(spr, __val)		do {				\
+	asm volatile("msr " stringify(spr) ", %0"		\
+		     : : "r" (__val));				\
+} while (0)
+
+#define msr_sync(spr, __val)	do {				\
+	asm volatile("msr " stringify(spr) ", %0\n\t"		\
+		     "dsb sy\n\t"				\
+		     "isb\n\t"					\
+		     : : "r" (__val));				\
+} while (0)
 
 /* TLB maintainence */
 

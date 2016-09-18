@@ -23,12 +23,62 @@
 #ifndef __CPU_DEFINES_H__
 #define __CPU_DEFINES_H__
 
-/* Maximum allowed VTLB entries */
-#define CPU_VCPU_VTLB_LINE_MASK				0x00000000
-#define CPU_VCPU_VTLB_LINE_SHIFT			0
-#define CPU_VCPU_VTLB_LINE_COUNT			1
-#define CPU_VCPU_VTLB_LINE_ENTRY_COUNT			128
-#define CPU_VCPU_VTLB_ENTRY_COUNT			128
+/*
+ * ARMv8 ARM reserves the following encoding for system registers:
+ * (Ref: ARMv8 ARM, Section: "System instruction class encoding overview",
+ *  C5.2, version:ARM DDI 0487A.f)
+ *	[20-19] : Op0
+ *	[18-16] : Op1
+ *	[15-12] : CRn
+ *	[11-8]  : CRm
+ *	[7-5]   : Op2
+ */
+#define sys_reg(op0, op1, crn, crm, op2) \
+	((((op0)&3)<<19)|((op1)<<16)|((crn)<<12)|((crm)<<8)|((op2)<<5))
+
+#define SYS_MIDR_EL1			sys_reg(3, 0, 0, 0, 0)
+#define SYS_MPIDR_EL1			sys_reg(3, 0, 0, 0, 5)
+#define SYS_REVIDR_EL1			sys_reg(3, 0, 0, 0, 6)
+
+#define SYS_ID_PFR0_EL1			sys_reg(3, 0, 0, 1, 0)
+#define SYS_ID_PFR1_EL1			sys_reg(3, 0, 0, 1, 1)
+#define SYS_ID_DFR0_EL1			sys_reg(3, 0, 0, 1, 2)
+#define SYS_ID_MMFR0_EL1		sys_reg(3, 0, 0, 1, 4)
+#define SYS_ID_MMFR1_EL1		sys_reg(3, 0, 0, 1, 5)
+#define SYS_ID_MMFR2_EL1		sys_reg(3, 0, 0, 1, 6)
+#define SYS_ID_MMFR3_EL1		sys_reg(3, 0, 0, 1, 7)
+
+#define SYS_ID_ISAR0_EL1		sys_reg(3, 0, 0, 2, 0)
+#define SYS_ID_ISAR1_EL1		sys_reg(3, 0, 0, 2, 1)
+#define SYS_ID_ISAR2_EL1		sys_reg(3, 0, 0, 2, 2)
+#define SYS_ID_ISAR3_EL1		sys_reg(3, 0, 0, 2, 3)
+#define SYS_ID_ISAR4_EL1		sys_reg(3, 0, 0, 2, 4)
+#define SYS_ID_ISAR5_EL1		sys_reg(3, 0, 0, 2, 5)
+#define SYS_ID_MMFR4_EL1		sys_reg(3, 0, 0, 2, 6)
+
+#define SYS_MVFR0_EL1			sys_reg(3, 0, 0, 3, 0)
+#define SYS_MVFR1_EL1			sys_reg(3, 0, 0, 3, 1)
+#define SYS_MVFR2_EL1			sys_reg(3, 0, 0, 3, 2)
+
+#define SYS_ID_AA64PFR0_EL1		sys_reg(3, 0, 0, 4, 0)
+#define SYS_ID_AA64PFR1_EL1		sys_reg(3, 0, 0, 4, 1)
+
+#define SYS_ID_AA64DFR0_EL1		sys_reg(3, 0, 0, 5, 0)
+#define SYS_ID_AA64DFR1_EL1		sys_reg(3, 0, 0, 5, 1)
+
+#define SYS_ID_AA64ISAR0_EL1		sys_reg(3, 0, 0, 6, 0)
+#define SYS_ID_AA64ISAR1_EL1		sys_reg(3, 0, 0, 6, 1)
+
+#define SYS_ID_AA64MMFR0_EL1		sys_reg(3, 0, 0, 7, 0)
+#define SYS_ID_AA64MMFR1_EL1		sys_reg(3, 0, 0, 7, 1)
+#define SYS_ID_AA64MMFR2_EL1		sys_reg(3, 0, 0, 7, 2)
+
+#define SYS_CNTFRQ_EL0			sys_reg(3, 3, 14, 0, 0)
+#define SYS_CTR_EL0			sys_reg(3, 3, 0, 0, 1)
+#define SYS_DCZID_EL0			sys_reg(3, 3, 0, 0, 7)
+
+#define REG_PSTATE_PAN_IMM		sys_reg(0, 0, 4, 0, 4)
+#define REG_PSTATE_UAO_IMM		sys_reg(0, 0, 4, 0, 3)
 
 /* Coprocessor related macros & defines */
 #define CPU_COPROC_COUNT				16
