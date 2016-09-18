@@ -24,8 +24,8 @@
 #ifndef __VMM_COMPILER_H__
 #define __VMM_COMPILER_H__
 
-#define stringify(s)		tostring(s)
-#define tostring(s)		#s
+#define tostring(s...)		#s
+#define stringify(s...)		tostring(s)
 #define barrier() 		__asm__ __volatile__("": : :"memory")
 
 #define __noinline		__attribute__ ((noinline))
