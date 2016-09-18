@@ -57,29 +57,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
 #include <arch_barrier.h>
-
-#define GIC_CPU_CTRL			0x00
-#define GIC_CPU_PRIMASK			0x04
-#define GIC_CPU_BINPOINT		0x08
-#define GIC_CPU_INTACK			0x0c
-#define GIC_CPU_EOI			0x10
-#define GIC_CPU_RUNNINGPRI		0x14
-#define GIC_CPU_HIGHPRI			0x18
-
-#define GIC_CPU2_DIR			0x00
-
-#define GIC_DIST_CTRL			0x000
-#define GIC_DIST_CTR			0x004
-#define GIC_DIST_ENABLE_SET		0x100
-#define GIC_DIST_ENABLE_CLEAR		0x180
-#define GIC_DIST_PENDING_SET		0x200
-#define GIC_DIST_PENDING_CLEAR		0x280
-#define GIC_DIST_ACTIVE_SET		0x300
-#define GIC_DIST_ACTIVE_CLEAR		0x380
-#define GIC_DIST_PRI			0x400
-#define GIC_DIST_TARGET			0x800
-#define GIC_DIST_CONFIG			0xc00
-#define GIC_DIST_SOFTINT		0xf00
+#include <drv/irqchip/arm-gic.h>
 
 struct gic_chip_data {
 	bool eoimode;			/* EOImode state */
@@ -117,7 +95,7 @@ static int gic_peek_irq(struct gic_chip_data *gic,
 
 static u32 gic_active_irq(u32 cpu_irq_nr)
 {
-	u32 ret = gic_read(gic_data[0].cpu_base + GIC_CPU_INTACK) & 0x3FF;
+	u32 ret = gic_read(gic_data[0].cpu_base + GICC_INTACK) & 0x3FF;
 
 	if (ret < 1021) {
 		ret = vmm_host_irqdomain_find_mapping(gic_data[0].domain, ret);
@@ -130,21 +108,21 @@ static u32 gic_active_irq(u32 cpu_irq_nr)
 
 static void gic_mask_irq(struct vmm_host_irq *d)
 {
-	gic_poke_irq(vmm_host_irq_get_chip_data(d), d, GIC_DIST_ENABLE_CLEAR);
+	gic_poke_irq(vmm_host_irq_get_chip_data(d), d, GICD_ENABLE_CLEAR);
 }
 
 static void gic_unmask_irq(struct vmm_host_irq *d)
 {
-	gic_poke_irq(vmm_host_irq_get_chip_data(d), d, GIC_DIST_ENABLE_SET);
+	gic_poke_irq(vmm_host_irq_get_chip_data(d), d, GICD_ENABLE_SET);
 }
 
 static void gic_eoi_irq(struct vmm_host_irq *d)
 {
 	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(d);
 
-	gic_write(d->hwirq, gic->cpu_base + GIC_CPU_EOI);
+	gic_write(d->hwirq, gic->cpu_base + GICC_EOI);
 	if (gic->eoimode && !vmm_host_irq_is_routed(d)) {
-		gic_write(d->hwirq, gic->cpu2_base + GIC_CPU2_DIR);
+		gic_write(d->hwirq, gic->cpu2_base + GICC2_DIR);
 	}
 }
 
@@ -169,7 +147,7 @@ static int gic_set_type(struct vmm_host_irq *d, u32 type)
 		return VMM_EINVALID;
 	}
 
-	val = gic_read(base + GIC_DIST_CONFIG + confoff);
+	val = gic_read(base + GICD_CONFIG + confoff);
 	if (type == VMM_IRQ_TYPE_LEVEL_HIGH) {
 		val &= ~confmask;
 	} else if (type == VMM_IRQ_TYPE_EDGE_RISING) {
@@ -180,15 +158,15 @@ static int gic_set_type(struct vmm_host_irq *d, u32 type)
 	 * As recommended by the spec, disable the interrupt before changing
 	 * the configuration
 	 */
-	if (gic_read(base + GIC_DIST_ENABLE_SET + enableoff) & enablemask) {
-		gic_write(enablemask, base + GIC_DIST_ENABLE_CLEAR + enableoff);
+	if (gic_read(base + GICD_ENABLE_SET + enableoff) & enablemask) {
+		gic_write(enablemask, base + GICD_ENABLE_CLEAR + enableoff);
 		enabled = TRUE;
 	}
 
-	gic_write(val, base + GIC_DIST_CONFIG + confoff);
+	gic_write(val, base + GICD_CONFIG + confoff);
 
 	if (enabled) {
-		gic_write(enablemask, base + GIC_DIST_ENABLE_SET + enableoff);
+		gic_write(enablemask, base + GICD_ENABLE_SET + enableoff);
 	}
 
 	return 0;
@@ -208,7 +186,7 @@ static void gic_raise(struct vmm_host_irq *d,
 
 	/* This always happens on GIC0 */
 	gic_write(map << 16 | d->hwirq,
-		  gic_data[0].dist_base + GIC_DIST_SOFTINT);
+		  gic_data[0].dist_base + GICD_SOFTINT);
 }
 
 static int gic_set_affinity(struct vmm_host_irq *d,
@@ -224,7 +202,7 @@ static int gic_set_affinity(struct vmm_host_irq *d,
 	if (cpu >= 8)
 		return VMM_EINVALID;
 
-	reg = gic->dist_base + GIC_DIST_TARGET + (d->hwirq & ~3);
+	reg = gic->dist_base + GICD_TARGET + (d->hwirq & ~3);
 	mask = 0xff << shift;
 	bit = 1 << (cpu + shift);
 
@@ -241,13 +219,13 @@ static u32 gic_irq_get_routed_state(struct vmm_host_irq *d, u32 mask)
 	struct gic_chip_data *gic = vmm_host_irq_get_chip_data(d);
 
 	if ((mask & VMM_ROUTED_IRQ_STATE_PENDING) &&
-	    gic_peek_irq(gic, d, GIC_DIST_ENABLE_SET))
+	    gic_peek_irq(gic, d, GICD_ENABLE_SET))
 		val |= VMM_ROUTED_IRQ_STATE_PENDING;
 	if ((mask & VMM_ROUTED_IRQ_STATE_ACTIVE) &&
-	    gic_peek_irq(gic, d, GIC_DIST_ACTIVE_SET))
+	    gic_peek_irq(gic, d, GICD_ACTIVE_SET))
 		val |= VMM_ROUTED_IRQ_STATE_ACTIVE;
 	if ((mask & VMM_ROUTED_IRQ_STATE_MASKED) &&
-	    !gic_peek_irq(gic, d, GIC_DIST_ENABLE_SET))
+	    !gic_peek_irq(gic, d, GICD_ENABLE_SET))
 		val |= VMM_ROUTED_IRQ_STATE_MASKED;
 
 	return val;
@@ -260,13 +238,13 @@ static void gic_irq_set_routed_state(struct vmm_host_irq *d,
 
 	if (mask & VMM_ROUTED_IRQ_STATE_PENDING)
 		gic_poke_irq(gic, d, (val & VMM_ROUTED_IRQ_STATE_PENDING) ?
-				GIC_DIST_ENABLE_SET : GIC_DIST_ENABLE_CLEAR);
+				GICD_ENABLE_SET : GICD_ENABLE_CLEAR);
 	if (mask & VMM_ROUTED_IRQ_STATE_ACTIVE)
 		gic_poke_irq(gic, d, (val & VMM_ROUTED_IRQ_STATE_ACTIVE) ?
-				GIC_DIST_ACTIVE_SET : GIC_DIST_ACTIVE_CLEAR);
+				GICD_ACTIVE_SET : GICD_ACTIVE_CLEAR);
 	if (mask & VMM_ROUTED_IRQ_STATE_MASKED)
 		gic_poke_irq(gic, d, (val & VMM_ROUTED_IRQ_STATE_MASKED) ?
-				GIC_DIST_ENABLE_CLEAR : GIC_DIST_ENABLE_SET);
+				GICD_ENABLE_CLEAR : GICD_ENABLE_SET);
 }
 
 static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
@@ -274,7 +252,7 @@ static vmm_irq_return_t gic_handle_cascade_irq(int irq, void *dev)
 	struct gic_chip_data *gic = dev;
 	u32 cascade_irq, gic_irq;
 
-	gic_irq = gic_read(gic->cpu_base + GIC_CPU_INTACK) & 0x3FF;
+	gic_irq = gic_read(gic->cpu_base + GICC_INTACK) & 0x3FF;
 	if (gic_irq == 1023) {
 		return VMM_IRQ_NONE;
 	}
@@ -323,27 +301,27 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	cpumask |= cpumask << 16;
 
 	/* Disable IRQ distribution */
-	gic_write(0, base + GIC_DIST_CTRL);
+	gic_write(0, base + GICD_CTRL);
 
 	/*
 	 * Set all global interrupts to be level triggered, active low.
 	 */
 	for (i = 32; i < gic->max_irqs; i += 16) {
-		gic_write(0, base + GIC_DIST_CONFIG + i * 4 / 16);
+		gic_write(0, base + GICD_CONFIG + i * 4 / 16);
 	}
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
 	for (i = 32; i < gic->max_irqs; i += 4) {
-		gic_write(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
+		gic_write(cpumask, base + GICD_TARGET + i * 4 / 4);
 	}
 
 	/*
 	 * Set priority on all interrupts.
 	 */
 	for (i = 0; i < gic->max_irqs; i += 4) {
-		gic_write(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
+		gic_write(0xa0a0a0a0, base + GICD_PRI + i * 4 / 4);
 	}
 
 	/*
@@ -351,7 +329,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	 */
 	for (i = 0; i < gic->max_irqs; i += 32) {
 		gic_write(0xffffffff,
-			  base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
+			  base + GICD_ENABLE_CLEAR + i * 4 / 32);
 	}
 
 	/*
@@ -379,7 +357,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	}
 
 	/* Enable IRQ distribution */
-	gic_write(1, base + GIC_DIST_CTRL);
+	gic_write(1, base + GICD_CTRL);
 }
 
 static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
@@ -390,22 +368,22 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	 * Deal with the banked PPI and SGI interrupts - disable all
 	 * PPI interrupts, ensure all SGI interrupts are enabled.
 	 */
-	gic_write(0xffff0000, gic->dist_base + GIC_DIST_ENABLE_CLEAR);
-	gic_write(0x0000ffff, gic->dist_base + GIC_DIST_ENABLE_SET);
+	gic_write(0xffff0000, gic->dist_base + GICD_ENABLE_CLEAR);
+	gic_write(0x0000ffff, gic->dist_base + GICD_ENABLE_SET);
 
 	/*
 	 * Set priority on PPI and SGI interrupts
 	 */
 	for (i = 0; i < 32; i += 4) {
 		gic_write(0xa0a0a0a0, 
-			  gic->dist_base + GIC_DIST_PRI + i * 4 / 4);
+			  gic->dist_base + GICD_PRI + i * 4 / 4);
 	}
 
-	gic_write(0xf0, gic->cpu_base + GIC_CPU_PRIMASK);
+	gic_write(0xf0, gic->cpu_base + GICC_PRIMASK);
 	if (gic->eoimode) {
-		gic_write(1|(1<<9), gic->cpu_base + GIC_CPU_CTRL);
+		gic_write(1|(1<<9), gic->cpu_base + GICC_CTRL);
 	} else {
-		gic_write(1, gic->cpu_base + GIC_CPU_CTRL);
+		gic_write(1, gic->cpu_base + GICC_CTRL);
 	}
 }
 
@@ -463,7 +441,7 @@ static int __init gic_init_bases(struct vmm_devtree_node *node,
 	 * Find out how many interrupts are supported.
 	 * The GIC only supports up to 1020 interrupt sources.
 	 */
-	max_irqs = gic_read(gic->dist_base + GIC_DIST_CTR) & 0x1f;
+	max_irqs = gic_read(gic->dist_base + GICD_CTR) & 0x1f;
 	max_irqs = (max_irqs + 1) * 32;
 	if (max_irqs > 1020)
 		max_irqs = 1020;
