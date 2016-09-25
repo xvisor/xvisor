@@ -387,7 +387,7 @@ static int bcm2835_spi_probe(struct vmm_device *dev,
 	}
 #endif
 	err = request_irq(bs->irq, bcm2835_spi_interrupt, IRQF_SHARED,
-			dev_name(dev), bs);
+			dev_name(dev), master);
 	if (err) {
 		dev_err(dev, "Could not request IRQ\n");
 		vmm_devtree_regunmap_release(dev->of_node,
