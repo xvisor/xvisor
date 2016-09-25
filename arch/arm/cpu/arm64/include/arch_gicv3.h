@@ -167,6 +167,7 @@ static inline void arch_gic_write_sgi1r(u64 val)
 {
 	asm volatile("msr_s " stringify(ICC_SGI1R_EL1) ", %0"
 			: : "r" (val));
+	isb();
 }
 
 static inline u32 arch_gic_read_sre(void)
@@ -184,6 +185,11 @@ static inline void arch_gic_write_sre(u32 val)
 			: : "r" ((u64)val));
 	isb();
 }
+
+#ifdef CONFIG_ARM_SMP_OPS
+#include <smp_ops.h>
+#define arch_gic_cpu_logical_map(cpu)	smp_logical_map(cpu)
+#endif
 
 #define arch_gic_read_typer(c)		vmm_readq_relaxed(c)
 #define arch_gic_write_irouter(v, c)	vmm_writeq_relaxed(v, c)
