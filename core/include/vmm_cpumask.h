@@ -308,8 +308,27 @@ static inline unsigned int vmm_cpumask_next_zero(int n, const struct vmm_cpumask
 	return find_next_zero_bit(vmm_cpumask_bits(srcp), vmm_cpu_count, n+1);
 }
 
-int vmm_cpumask_next_and(int n, const struct vmm_cpumask *, const struct vmm_cpumask *);
-int vmm_cpumask_any_but(const struct vmm_cpumask *mask, unsigned int cpu);
+/**
+ * vmm_cpumask_next_and - get the next cpu in *src1p & *src2p
+ * @n: the cpu prior to the place to search (ie. return will be > @n)
+ * @src1p: the first cpumask pointer
+ * @src2p: the second cpumask pointer
+ *
+ * Returns >= vmm_cpu_count if no further cpus set in both.
+ */
+unsigned int vmm_cpumask_next_and(int n, const struct vmm_cpumask *,
+				  const struct vmm_cpumask *);
+
+/**
+ * vmm_cpumask_any_but - return a "random" in a cpumask, but not this one.
+ * @mask: the cpumask to search
+ * @cpu: the cpu to ignore.
+ *
+ * Often used to find any cpu but vmm_smp_processor_id() in a mask.
+ * Returns >= vmm_cpu_count if no cpus set.
+ */
+unsigned int vmm_cpumask_any_but(const struct vmm_cpumask *mask,
+				 unsigned int cpu);
 
 /**
  * for_each_cpu - iterate over every cpu in a mask

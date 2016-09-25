@@ -71,6 +71,31 @@ const struct vmm_cpumask *const cpu_present_mask = to_cpumask(cpu_present_bits);
 static DECLARE_BITMAP(cpu_active_bits, CONFIG_CPU_COUNT) __read_mostly;
 const struct vmm_cpumask *const cpu_active_mask = to_cpumask(cpu_active_bits);
 
+#if CONFIG_CPU_COUNT != 1
+
+unsigned int vmm_cpumask_next_and(int n, const struct vmm_cpumask *src1p,
+				  const struct vmm_cpumask *src2p)
+{
+	while ((n = vmm_cpumask_next(n, src1p)) < vmm_cpu_count)
+		if (vmm_cpumask_test_cpu(n, src2p))
+			break;
+	return n;
+}
+
+unsigned int vmm_cpumask_any_but(const struct vmm_cpumask *mask,
+				 unsigned int cpu)
+{
+	unsigned int i;
+
+	vmm_cpumask_check(cpu);
+	for_each_cpu(i, mask)
+		if (i != cpu)
+			break;
+	return i;
+}
+
+#endif
+
 void vmm_set_cpu_possible(unsigned int cpu, bool possible)
 {
 	if (possible)
