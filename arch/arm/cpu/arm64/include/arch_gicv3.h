@@ -174,14 +174,14 @@ static inline u32 arch_gic_read_sre(void)
 {
 	u64 val;
 
-	asm volatile("mrs_s %0, " stringify(ICC_SRE_EL1)
+	asm volatile("mrs_s %0, " stringify(ICC_SRE_EL2)
 			: "=r" (val));
 	return val;
 }
 
 static inline void arch_gic_write_sre(u32 val)
 {
-	asm volatile("msr_s " stringify(ICC_SRE_EL1) ", %0"
+	asm volatile("msr_s " stringify(ICC_SRE_EL2) ", %0"
 			: : "r" ((u64)val));
 	isb();
 }
