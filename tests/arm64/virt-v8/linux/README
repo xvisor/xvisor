@@ -65,29 +65,27 @@ Foundation v8 model:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [13. Create foundation_v8_boot.axf for running it on Foundation v8 Model]
-  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
-
-  [14. Launch Foundation v8 Model]
+  [13. Launch Foundation v8 Model]
+  # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/gicv2/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
   # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --arm-v8.1 --image ./build/foundation_v8_boot.axf --network=nat
 
-  [15. Kick Guest0 to start Basic Firmware]
+  [14. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
 
-  [16. Bind to virtual UART]
+  [15. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [16. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [18. Wait for Linux prompt to come-up and then try out some commands]
+  [17. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [19. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [18. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
