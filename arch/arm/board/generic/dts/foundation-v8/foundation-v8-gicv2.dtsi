@@ -1,0 +1,15 @@
+
+#include "foundation-v8.dtsi"
+
+/ {
+	gic: gic { /* Generic Interrupt Controller */
+		compatible = "arm,cortex-a15-gic";
+		reg = <0x0 0x2c001000 0x0 0x1000	/* GIC Dist */
+		       0x0 0x2c002000 0x0 0x2000	/* GIC CPU */
+		       0x0 0x2c004000 0x0 0x2000	/* GIC VCPU Control */
+		       0x0 0x2c006000 0x0 0x2000>;	/* GIC VCPU */
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_HIGH)>;
+	};
+};

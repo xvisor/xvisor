@@ -21,12 +21,12 @@
 # @brief list of Generic board dtbs.
 # */
 
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/zero_guest.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_vexpress-a15.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_virt-v7.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/one_guest_virt-v8.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/two_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/two_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/zero_guest.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/one_guest_virt-v7.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/one_guest_virt-v8.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/two_guest_vexpress-a15.dtb
 

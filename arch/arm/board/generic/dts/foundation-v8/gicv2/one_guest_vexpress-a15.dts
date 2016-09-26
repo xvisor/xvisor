@@ -1,7 +1,7 @@
 
 /dts-v1/;
 
-#include "foundation-v8.dtsi"
+#include "../foundation-v8-gicv2.dtsi"
 
 / {
 	vmm {
@@ -27,15 +27,6 @@
 
 			  /* Load guest0 images */
 			  "vfs guest_load_list guest0 /images/arm32/vexpress-a15/nor_flash.list",
-
-			  /* Load guest1 device tree from file */
-			  "vfs fdt_load /guests guest1 /images/arm32/vexpress-a15x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
-
-			  /* Create guest1 */
-			  "guest create guest1",
-
-			  /* Load guest1 images */
-			  "vfs guest_load_list guest1 /images/arm32/vexpress-a15/nor_flash.list",
 
 			  /* Print banner */
 			  "vfs cat /system/banner.txt";
