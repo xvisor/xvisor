@@ -56,6 +56,7 @@ struct rdists {
 };
 
 struct redist_region {
+	char name[16];
 	void *redist_base;
 	physical_addr_t phys_base;
 	bool single_redist;
@@ -144,7 +145,7 @@ static void gic_do_wait_for_rwp(void *base)
 	while (gic_readl(base + GICD_CTLR) & GICD_CTLR_RWP) {
 		count--;
 		if (!count) {
-			vmm_lerror("GICv3", "RWP timeout, gone fishing\n");
+			vmm_printf("GICv3: RWP timeout, gone fishing\n");
 			return;
 		}
 		gic_udelay(1);
@@ -211,8 +212,8 @@ static void gic_enable_redist(bool enable)
 		gic_udelay(1);
 	};
 	if (!count)
-		vmm_lerror("GICv3", "redistributor failed to %s...\n",
-				   enable ? "wakeup" : "sleep");
+		vmm_printf("GICv3: redistributor failed to %s...\n",
+			   enable ? "wakeup" : "sleep");
 }
 
 /*
@@ -364,9 +365,8 @@ static int gic_configure_irq(unsigned int irq, unsigned int type,
 		if (WARN_ON(irq >= 32))
 			ret = VMM_EINVALID;
 		else
-			vmm_lwarning("GICv3",
-				     "PPI%d is secure or misconfigured\n",
-				     irq - 16);
+			vmm_printf("GICv3: PPI%d is secure or "
+				   "misconfigured\n", irq - 16);
 	}
 
 	if (sync_access)
@@ -636,11 +636,13 @@ static void __init gic_dist_init(void)
 static int gic_populate_rdist(void)
 {
 	int i;
-	u32 aff;
+	u32 aff, cpu;
 	u64 typer;
 	unsigned long mpidr;
 
-	mpidr = arch_gic_cpu_logical_map(vmm_smp_processor_id());
+	cpu = vmm_smp_processor_id();
+	mpidr = (vmm_smp_is_bootcpu()) ?
+		arch_gic_current_mpidr() : arch_gic_cpu_logical_map(cpu);
 
 	/*
 	 * Convert affinity to a 32bit value that can be matched to
@@ -658,20 +660,23 @@ static int gic_populate_rdist(void)
 		reg = gic_readl(ptr + GICR_PIDR2) & GIC_PIDR2_ARCH_MASK;
 		if (reg != GIC_PIDR2_ARCH_GICv3 &&
 		    reg != GIC_PIDR2_ARCH_GICv4) { /* We're in trouble... */
-			vmm_lwarning("GICv3",
-				     "No redistributor present @%p\n", ptr);
+			vmm_printf("CPU%d: GICv3: No redistributor "
+				   "present @%p\n", cpu, ptr);
 			break;
 		}
 
 		do {
 			typer = arch_gic_read_typer(ptr + GICR_TYPER);
 			if ((typer >> 32) == aff) {
-				u64 offset = ptr - gic_data.redist_regions[i].redist_base;
+				u64 offset =
+				ptr - gic_data.redist_regions[i].redist_base;
 				gic_data_rdist_rd_base() = ptr;
-				gic_data_rdist()->phys_base = gic_data.redist_regions[i].phys_base + offset;
-				vmm_printf("CPU%d: found redistributor %lx region %d:%pa\n",
-					vmm_smp_processor_id(), mpidr, i,
-					&gic_data_rdist()->phys_base);
+				gic_data_rdist()->phys_base =
+				gic_data.redist_regions[i].phys_base + offset;
+				vmm_printf("CPU%d: GICv3: found redistributor"
+					   " %lx region %d:0x%" PRIPADDR "\n",
+					   cpu, mpidr, i,
+					   gic_data_rdist()->phys_base);
 				return 0;
 			}
 
@@ -681,16 +686,18 @@ static int gic_populate_rdist(void)
 			if (gic_data.redist_stride) {
 				ptr += gic_data.redist_stride;
 			} else {
-				ptr += 0x10000 * 2; /* Skip RD_base + SGI_base */
+				/* Skip RD_base + SGI_base */
+				ptr += 0x10000 * 2;
 				if (typer & GICR_TYPER_VLPIS)
-					ptr += 0x10000 * 2; /* Skip VLPI_base + reserved page */
+					/* Skip VLPI_base + reserved page */
+					ptr += 0x10000 * 2;
 			}
 		} while (!(typer & GICR_TYPER_LAST));
 	}
 
 	/* We couldn't even deal with ourselves... */
-	vmm_printf("CPU%d: mpidr %lx has no re-distributor!\n",
-		   vmm_smp_processor_id(), mpidr);
+	vmm_printf("CPU%d: GICv3: mpidr %lx has no re-distributor!\n",
+		   cpu, mpidr);
 
 	return VMM_ENODEV;
 }
@@ -705,8 +712,8 @@ static void gic_cpu_sys_reg_init(void)
 	 * Kindly inform the luser.
 	 */
 	if (!gic_enable_sre())
-		vmm_lerror("GICv3",
-			   "unable to set SRE (disabled at EL2), panic ahead\n");
+		vmm_printf("GICv3: unable to set SRE "
+			   "(disabled at EL2), panic ahead\n");
 
 	/* Set priority mask register */
 	arch_gic_write_pmr(DEFAULT_PMR_VALUE);
@@ -829,7 +836,7 @@ static int __init gic_init_bases(void *dist_base,
 	/* Hyp-mode always available */
 	supports_deactivate = TRUE;
 	if (supports_deactivate)
-		vmm_linfo("GICv3", "Using split EOI/Deactivate mode\n");
+		vmm_printf("GICv3: Using split EOI/Deactivate mode\n");
 
 	gic_data.node = node;
 	gic_data.dist_base = dist_base;
@@ -904,7 +911,7 @@ static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
 
 	err = vmm_devtree_request_regmap(node, &va, 0, "GICv3 Dist");
 	if (err) {
-		vmm_lerror("GICv3", "%s: unable to map gic dist regs\n",
+		vmm_printf("GICv3: %s: unable to map gic dist regs\n",
 			   node->name);
 		return err;
 	}
@@ -912,7 +919,7 @@ static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
 
 	err = gic_validate_dist_version(dist_base);
 	if (err) {
-		vmm_lerror("GICv3", "%s: no distributor detected\n",
+		vmm_printf("GICv3: %s: no distributor detected\n",
 			   node->name);
 		goto out_unmap_dist;
 	}
@@ -928,24 +935,23 @@ static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
 	}
 
 	for (i = 0; i < nr_redist_regions; i++) {
-		char str[16];
 		physical_addr_t pa;
 
-		vmm_snprintf(str, sizeof(str), "GICv3 Redist%d", i);
+		vmm_snprintf(rdist_regs[i].name, sizeof(rdist_regs[i].name),
+			     "GICv3 Redist%d", i);
 
 		err = vmm_devtree_regaddr(node, &pa, 1 + i);
 		if (err) {
-			vmm_lerror("GICv3",
-				   "%s: unable to get address of %s regs\n",
-				   node->name, str);
+			vmm_printf("GICv3: %s: unable to get address of %s "
+				   "regs\n", node->name, rdist_regs[i].name);
 			goto out_unmap_rdist;
 		}
 
-		err = vmm_devtree_request_regmap(node, &va, 1 + i, str);
+		err = vmm_devtree_request_regmap(node, &va, 1 + i,
+						 rdist_regs[i].name);
 		if (err) {
-			vmm_lerror("GICv3",
-				   "%s: unable to map %s regs\n",
-				   node->name, str);
+			vmm_printf("GICv3: %s: unable to map %s regs\n",
+				   node->name, rdist_regs[i].name);
 			goto out_unmap_rdist;
 		}
 
