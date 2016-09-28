@@ -44,7 +44,6 @@ struct vmm_loadbal_ctrl {
 	struct vmm_thread *loadbal_thread;
 };
 
-static bool lbctrl_init_done = FALSE;
 static struct vmm_loadbal_ctrl lbctrl;
 
 static int loadbal_main(void *data)
@@ -252,9 +251,6 @@ int __init vmm_loadbal_init(void)
 	if ((rc = vmm_threads_start(lbctrl.loadbal_thread))) {
 		return rc;
 	}
-
-	/* Mark loadbal initialization to be complete */
-	lbctrl_init_done = TRUE;
 
 	return VMM_OK;
 }
