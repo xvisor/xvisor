@@ -186,12 +186,29 @@ static inline void arch_gic_write_sre(u32 val)
 	isb();
 }
 
+static inline unsigned long arch_gic_current_mpidr(void)
+{
+	return mrs(mpidr_el1) & 0xFF00FFFFFF;
+}
+
 #ifdef CONFIG_ARM_SMP_OPS
 #include <smp_ops.h>
 #define arch_gic_cpu_logical_map(cpu)	smp_logical_map(cpu)
 #endif
 
-#define arch_gic_read_typer(c)		vmm_readq_relaxed(c)
-#define arch_gic_write_irouter(v, c)	vmm_writeq_relaxed(v, c)
+static inline void arch_gic_write_irouter(u64 val, volatile void *addr)
+{
+	vmm_writel_relaxed((u32)val, addr);
+	vmm_writel_relaxed((u32)(val >> 32), addr + 4);
+}
+
+static inline u64 arch_gic_read_typer(volatile void *addr)
+{
+	u64 val;
+
+	val = vmm_readl_relaxed(addr);
+	val |= (u64)vmm_readl_relaxed(addr + 4) << 32;
+	return val;
+}
 
 #endif /* __ARCH_GICV3_H__ */
