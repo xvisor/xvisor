@@ -1706,25 +1706,20 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	memset(&p, 0, sizeof(p));
 
 	/* Initialize the page struct */
-#if defined(CONFIG_ARMV5)
 	p.pa = page_pa;
 	p.va = page_va;
 	p.sz = VMM_PAGE_SIZE;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
+
+#if defined(CONFIG_ARMV5)
 	/* For ARMV5 we cannot prevent writing to priviledge mode */
 	if (mem_flags & (VMM_MEMORY_READABLE | VMM_MEMORY_WRITEABLE)) {
 		p.ap = TTBL_AP_SRW_U;
 	} else {
 		p.ap = TTBL_AP_S_U;
 	}
-	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
-	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;
 #else
-	p.pa = page_pa;
-	p.va = page_va;
-	p.sz = VMM_PAGE_SIZE;
 	p.imp = 0;
-	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 	if (mem_flags & VMM_MEMORY_WRITEABLE) {
 		p.ap = TTBL_AP_SRW_U;
 	} else if (mem_flags & VMM_MEMORY_READABLE) {
@@ -1734,8 +1729,6 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	}
 	p.xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.tex = 0;
-	p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
-	p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;
 	p.ng = 0;
 	p.s = 0;
 #endif
@@ -1746,6 +1739,9 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	if (mem_flags & VMM_MEMORY_DMACOHERENT) {
 		p.c = 0;
 		p.b = 0;
+	} else {
+		p.c = (mem_flags & VMM_MEMORY_CACHEABLE) ? 1 : 0;
+		p.b = (mem_flags & VMM_MEMORY_BUFFERABLE) ? 1 : 0;
 	}
 
 	return cpu_mmu_map_reserved_page(&p);
