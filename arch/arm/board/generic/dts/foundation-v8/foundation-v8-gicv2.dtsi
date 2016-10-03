@@ -1,8 +1,11 @@
+/*
+ * ARMv8 Foundation model DTS (GICv2 configuration)
+ */
 
 #include "foundation-v8.dtsi"
 
 / {
-	gic: gic { /* Generic Interrupt Controller */
+	gic: interrupt-controller@2c001000 {
 		compatible = "arm,cortex-a15-gic";
 		reg = <0x0 0x2c001000 0x0 0x1000	/* GIC Dist */
 		       0x0 0x2c002000 0x0 0x2000	/* GIC CPU */

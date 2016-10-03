@@ -1,3 +1,6 @@
+/*
+ * ARMv8 Foundation model DTS
+ */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
