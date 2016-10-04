@@ -24,6 +24,10 @@
 drivers-objs-$(CONFIG_MMC) += mmc/core/mmc_core.o
 
 mmc_core-y += core.o
+mmc_core-y += mmc.o
+mmc_core-y += sdio.o
+mmc_core-y += sdio_io.o
+mmc_core-y += sdio_bus.o
 mmc_core-y += slot-gpio.o
 
 %/mmc_core.o: $(foreach obj,$(mmc_core-y),%/$(obj))

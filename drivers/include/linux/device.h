@@ -18,7 +18,7 @@
 #define bus_type			vmm_bus
 #define device_type			vmm_device_type
 #define device				vmm_device
-#define device_driver			vmm_driver
+#define device_driver		vmm_driver
 
 #define class_register(cls)		vmm_devdrv_register_class(cls)
 #define class_unregister(cls)		vmm_devdrv_unregister_class(cls)

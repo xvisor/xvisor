@@ -193,7 +193,7 @@ static int sdhci_transfer_dma(struct sdhci_host *host,
 static void sdhci_transfer_pio(struct sdhci_host *host, struct mmc_data *data)
 {
 	int i;
-	char *offs;
+	u8 *offs;
 	for (i = 0; i < data->blocksize; i += 4) {
 		offs = data->dest + i;
 		if (data->flags == MMC_DATA_READ) {

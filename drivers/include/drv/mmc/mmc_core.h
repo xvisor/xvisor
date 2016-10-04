@@ -204,6 +204,70 @@
 #define PART_ACCESS_MASK		(0x7)
 #define PART_SUPPORT			(0x1)
 
+#define SDIO_MAX_FUNCS		7
+
+struct sdio_func_tuple;
+struct sdio_func;
+
+struct sd_switch_caps {
+	unsigned int		hs_max_dtr;
+	unsigned int		uhs_max_dtr;
+#define HIGH_SPEED_MAX_DTR	50000000
+#define UHS_SDR104_MAX_DTR	208000000
+#define UHS_SDR50_MAX_DTR	100000000
+#define UHS_DDR50_MAX_DTR	50000000
+#define UHS_SDR25_MAX_DTR	UHS_DDR50_MAX_DTR
+#define UHS_SDR12_MAX_DTR	25000000
+	unsigned int		sd3_bus_mode;
+#define UHS_SDR12_BUS_SPEED	0
+#define HIGH_SPEED_BUS_SPEED	1
+#define UHS_SDR25_BUS_SPEED	1
+#define UHS_SDR50_BUS_SPEED	2
+#define UHS_SDR104_BUS_SPEED	3
+#define UHS_DDR50_BUS_SPEED	4
+
+#define SD_MODE_HIGH_SPEED	(1 << HIGH_SPEED_BUS_SPEED)
+#define SD_MODE_UHS_SDR12	(1 << UHS_SDR12_BUS_SPEED)
+#define SD_MODE_UHS_SDR25	(1 << UHS_SDR25_BUS_SPEED)
+#define SD_MODE_UHS_SDR50	(1 << UHS_SDR50_BUS_SPEED)
+#define SD_MODE_UHS_SDR104	(1 << UHS_SDR104_BUS_SPEED)
+#define SD_MODE_UHS_DDR50	(1 << UHS_DDR50_BUS_SPEED)
+	unsigned int		sd3_drv_type;
+#define SD_DRIVER_TYPE_B	0x01
+#define SD_DRIVER_TYPE_A	0x02
+#define SD_DRIVER_TYPE_C	0x04
+#define SD_DRIVER_TYPE_D	0x08
+	unsigned int		sd3_curr_limit;
+#define SD_SET_CURRENT_LIMIT_200	0
+#define SD_SET_CURRENT_LIMIT_400	1
+#define SD_SET_CURRENT_LIMIT_600	2
+#define SD_SET_CURRENT_LIMIT_800	3
+#define SD_SET_CURRENT_NO_CHANGE	(-1)
+
+#define SD_MAX_CURRENT_200	(1 << SD_SET_CURRENT_LIMIT_200)
+#define SD_MAX_CURRENT_400	(1 << SD_SET_CURRENT_LIMIT_400)
+#define SD_MAX_CURRENT_600	(1 << SD_SET_CURRENT_LIMIT_600)
+#define SD_MAX_CURRENT_800	(1 << SD_SET_CURRENT_LIMIT_800)
+};
+
+struct sdio_cccr {
+	unsigned int		sdio_vsn;
+	unsigned int		sd_vsn;
+	unsigned int		multi_block:1,
+				low_speed:1,
+				wide_bus:1,
+				high_power:1,
+				high_speed:1,
+				disable_cd:1;
+};
+
+struct sdio_cis {
+	unsigned short		vendor;
+	unsigned short		device;
+	unsigned short		blksize;
+	unsigned int		max_dtr;
+};
+
 struct mmc_cid {
 	unsigned long psn;
 	unsigned short oid;
@@ -222,8 +286,8 @@ struct mmc_cmd {
 
 struct mmc_data {
 	union {
-		char *dest;
-		const char *src; /* src buffers don't get written to */
+		u8 *dest;
+		const u8 *src; /* src buffers don't get written to */
 	};
 	u32 flags;
 	u32 blocks;
@@ -246,8 +310,10 @@ struct mmc_ios {
 };
 
 struct mmc_card {
-	u32 version;
+	struct mmc_host		*host;		/* the host this device belongs to */
+	struct vmm_device	dev;		/* the device */
 
+	u32 version;
 #define SD_VERSION_SD			0x20000
 #define SD_VERSION_3			(SD_VERSION_SD | 0x300)
 #define SD_VERSION_2			(SD_VERSION_SD | 0x200)
@@ -273,12 +339,40 @@ struct mmc_card {
 	u32 ocr;
 
 	u32 scr[2];
-
 #define SD_DATA_4BIT			0x00040000
 
 	u32 csd[4];
 	u32 cid[4];
 	u16 rca;
+
+	unsigned int		type;		/* card type */
+#define MMC_TYPE_MMC		0		/* MMC card */
+#define MMC_TYPE_SD			1		/* SD card */
+#define MMC_TYPE_SDIO		2		/* SDIO card */
+#define MMC_TYPE_SD_COMBO	3		/* SD combo (IO+mem) card */
+
+	unsigned int		state;		/* (our) card state */
+#define MMC_STATE_PRESENT	(1<<0)		/* present in sysfs */
+#define MMC_STATE_READONLY	(1<<1)		/* card is read-only */
+#define MMC_STATE_BLOCKADDR	(1<<2)		/* card uses block-addressing */
+#define MMC_CARD_SDXC		(1<<3)		/* card is SDXC */
+#define MMC_CARD_REMOVED	(1<<4)		/* card has been removed */
+#define MMC_STATE_DOING_BKOPS	(1<<5)		/* card is doing BKOPS */
+#define MMC_STATE_SUSPENDED	(1<<6)		/* card is suspended */
+
+	unsigned int		quirks; 	/* card quirks */
+#define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
+#define MMC_QUIRK_BLKSZ_FOR_BYTE_MODE (1<<1)	/* use func->cur_blksize */
+						/* for byte mode */
+#define MMC_QUIRK_NONSTD_SDIO	(1<<2)		/* non-standard SDIO card attached */
+						/* (missing CIA registers) */
+#define MMC_QUIRK_NONSTD_FUNC_IF (1<<3)		/* SDIO card has nonstd function interfaces */
+#define MMC_QUIRK_DISABLE_CD	(1<<4)		/* disconnect CD/DAT[3] resistor */
+#define MMC_QUIRK_INAND_CMD38	(1<<5)		/* iNAND devices have broken CMD38 */
+#define MMC_QUIRK_BLK_NO_CMD23	(1<<6)		/* Avoid CMD23 for regular multiblock */
+#define MMC_QUIRK_BROKEN_BYTE_MODE_512 (1<<7)	/* Avoid sending 512 bytes in */
+						/* byte mode */
+#define MMC_QUIRK_LONG_READ_TIME (1<<8)		/* Data read time > CSD says */
 
 	u32 tran_speed;
 	int high_capacity;
@@ -293,6 +387,19 @@ struct mmc_card {
 	u64 capacity_rpmb;
 	u64 capacity_gp[4];
 
+	struct sd_switch_caps	sw_caps;	/* switch (CMD6) caps */
+
+	unsigned int		sdio_funcs;	/* number of SDIO functions */
+	struct sdio_cccr	cccr;		/* common card info */
+	struct sdio_cis		cis;		/* common tuple info */
+	struct sdio_func	*sdio_func[SDIO_MAX_FUNCS]; /* SDIO functions (devices) */
+	struct sdio_func	*sdio_single_irq; /* SDIO function when only one IRQ active */
+	unsigned char		sda_spec3;
+
+	unsigned int		sd_bus_speed;	/* Bus Speed Mode set for the card */
+	unsigned int		mmc_avail_type;	/* supported device type by both host and card */
+	unsigned int		drive_strength;	/* for UHS-I, HS200 or HS400 */
+
 	struct vmm_blockdev *bdev;
 };
 
@@ -300,9 +407,9 @@ struct mmc_host;
 
 struct mmc_host_ops {
 	int (*send_cmd)(struct mmc_host *mmc,
-			struct mmc_cmd *cmd, 
+			struct mmc_cmd *cmd,
 			struct mmc_data *data);
-	void (*set_ios)(struct mmc_host *mmc, 
+	void (*set_ios)(struct mmc_host *mmc,
 			struct mmc_ios *ios);
 	int (*init_card)(struct mmc_host *mmc, struct mmc_card *card);
 	int (*get_cd)(struct mmc_host *mmc); /* Returns
@@ -364,6 +471,7 @@ struct mmc_host {
 #define MMC_CAP_MODE_HC			0x00000800
 #define MMC_CAP_NEEDS_POLL		0x00001000
 #define MMC_CAP_NONREMOVABLE		0x00002000	/* Nonremovable e.g. eMMC */
+#define MMC_CAP_CMD23			0x00004000	/* CMD23 supported */
 
 	u32 caps2;
 
@@ -374,6 +482,7 @@ struct mmc_host {
 	u32 f_min;
 	u32 f_max;
 	u32 b_max;
+	u32 ocr_avail;
 
 	struct dlist io_list;
 	vmm_spinlock_t io_list_lock;
@@ -384,6 +493,10 @@ struct mmc_host {
 	struct vmm_mutex lock; /* Lock to proctect ops, ios, card, and priv */
 
 	struct mmc_host_ops ops;
+
+	unsigned int		max_req_size;	/* maximum bytes in one req */
+	unsigned int		max_blk_size;	/* maximum size of one mmc block */
+	unsigned int		max_blk_count;	/* maximum number of blocks in one req */
 
 	struct mmc_ios ios;
 
@@ -403,7 +516,7 @@ struct mmc_host {
  */
 int mmc_detect_card_change(struct mmc_host *host, unsigned long msecs);
 
-/** Allocate new mmc host instance 
+/** Allocate new mmc host instance
  *  Note: This function can be called from any context.
  */
 struct mmc_host *mmc_alloc_host(int extra, struct vmm_device *dev);
@@ -418,7 +531,7 @@ int mmc_add_host(struct mmc_host *host);
  */
 void mmc_remove_host(struct mmc_host *host);
 
-/** Free mmc host instance 
+/** Free mmc host instance
  *  Note: This function can be called from any context.
  */
 void mmc_free_host(struct mmc_host *host);
