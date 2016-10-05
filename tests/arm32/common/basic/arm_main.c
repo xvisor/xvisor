@@ -109,6 +109,9 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
 	arm_puts("            <initrd_size>  = initrd size (optional)\n");
 	arm_puts("\n");
+	arm_puts("fdt_override_u32 - Overrides an integer property in the device tree\n");
+	arm_puts("            Usage: fdt_override_u32 <fdt_addr> </path/to/property> <value>\n");
+	arm_puts("\n");
 #endif
 	arm_puts("linux_cmdline - Show/Update linux command line\n");
 	arm_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
@@ -592,6 +595,52 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 
 	return;
 }
+
+void arm_cmd_fdt_override_u32(int argc, char **argv)
+{
+	const char *path;
+	u32 val;
+	int err;
+	int nodeoffset;
+	char *prop;
+	void *fdt;
+	const struct fdt_property *p;
+
+	if (argc < 4) {
+		arm_puts("fdt_override_u32: must provide <fdt_addr> </path/to/property> and <value>\n");
+		return;
+	}
+
+	fdt = (void *)arm_hexstr2uint(argv[1]);
+	path = argv[2];
+	val = cpu_to_be32(arm_str2int(argv[3]));
+	prop = arm_strrchr(path, '/');
+	if (!prop) {
+		arm_puts("*** Failed to parse node\n");
+		return;
+	}
+	*(prop++) = '\0';
+
+	nodeoffset = fdt_path_offset(fdt, path);
+	if (nodeoffset < 0) {
+		printf("*** Path \"%s\" does not exist\n", path);
+		return;
+	}
+
+	p = fdt_get_property(fdt, nodeoffset, prop, NULL);
+	if (!p) {
+		printf("*** Failed to find property \"%s\" of node \"%s\"\n",
+		       prop, path);
+		return;
+	}
+
+	err = fdt_setprop(fdt, nodeoffset, prop, &val, sizeof(u32));
+	if (err) {
+		printf("*** Failed to set property \"%s\" of node \"%s\". "
+		       "Error: %i\n", prop, path, err);
+		return;
+	}
+}
 #endif
 
 void arm_cmd_linux_cmdline(int argc, char **argv)
@@ -795,6 +844,8 @@ void arm_exec(char *line)
 #ifdef BOARD_FDT_SUPPORT
 		} else if (arm_strcmp(argv[0], "start_linux_fdt") == 0) {
 			arm_cmd_start_linux_fdt(argc, argv);
+                } else if (arm_strcmp(argv[0], "fdt_override_u32") == 0) {
+			arm_cmd_fdt_override_u32(argc, argv);
 #endif
 		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
 			arm_cmd_linux_cmdline(argc, argv);
