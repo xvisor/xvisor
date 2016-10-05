@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -134,7 +134,7 @@ char *arm_memchr(const char *p, int ch, int count)
 			return((char *)p);
 		}
 		p++;
-	} 
+	}
 	return((char *)NULL);
 }
 
@@ -144,7 +144,7 @@ char *arm_strchr(const char *p, int ch)
 		if ((*p)==ch) {
 			return((char *)p);
 		}
-	} while((*p++)!='\0'); 
+	} while((*p++)!='\0');
 	return((char *)NULL);
 }
 
