@@ -68,7 +68,7 @@ int fdt_check_header(const void *fdt)
 		if (fdt_size_dt_struct(fdt) == 0)
 			return -FDT_ERR_BADSTATE;
 	} else {
-		printf("FDT: 0x%X    MAGIC: 0x%X\n", (u32)fdt, fdt_magic(fdt));
+		printf("Error: FDT: 0x%X    MAGIC: 0x%X\n", (u32)fdt, fdt_magic(fdt));
 		return -FDT_ERR_BADMAGIC;
 	}
 
