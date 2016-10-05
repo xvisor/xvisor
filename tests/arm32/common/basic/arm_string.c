@@ -332,3 +332,17 @@ void arm_ulonglong2hexstr(char *dst, unsigned long long src)
 	dst[pos] = '\0';
 }
 
+char *arm_strrchr(const char *src, int c)
+{
+	size_t len;
+	char *ptr = NULL;
+
+	len = arm_strlen(src);
+	while ((--len) != 0) {
+		if (src[len] == c) {
+			ptr = (char *)(&(src[len]));
+			break;
+		}
+	}
+	return ptr;
+}

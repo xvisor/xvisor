@@ -42,5 +42,6 @@ void arm_ulonglong2str(char * dst, unsigned long long src);
 unsigned int arm_hexstr2uint(char * src);
 void arm_uint2hexstr(char * dst, unsigned int src);
 void arm_ulonglong2hexstr(char * dst, unsigned long long src);
+char *arm_strrchr(const char *src, int c);
 
 #endif /* __ARM_STRING_H_ */
