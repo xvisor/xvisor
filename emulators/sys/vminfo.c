@@ -47,7 +47,8 @@ struct vminfo_state {
 	u32 vendor;
 	u32 version;
 	u32 vcpu_count;
-	u32 reserved[12];
+	u32 boot_delay;
+	u32 reserved[11];
 	u32 ram0_base_ms;
 	u32 ram0_base_ls;
 	u32 ram0_size_ms;
@@ -89,7 +90,9 @@ static int vminfo_emulator_read(struct vmm_emudev *edev,
 	case 0x0c: /* VCPU_COUNT */
 		*dst = s->vcpu_count;
 		break;
-	case 0x10: /* RESERVED */
+	case 0x10: /* BOOT_DELAY */
+		*dst = s->boot_delay;
+		break;
 	case 0x14: /* RESERVED */
 	case 0x18: /* RESERVED */
 	case 0x1c: /* RESERVED */
@@ -101,7 +104,7 @@ static int vminfo_emulator_read(struct vmm_emudev *edev,
 	case 0x34: /* RESERVED */
 	case 0x38: /* RESERVED */
 	case 0x3c: /* RESERVED */
-		*dst = s->reserved[(offset - 0x10) >> 2];
+		*dst = s->reserved[(offset - 0x14) >> 2];
 		break;
 	case 0x40: /* RAM0_BASE_MS */
 		*dst = s->ram0_base_ms;
@@ -269,6 +272,11 @@ static int vminfo_emulator_probe(struct vmm_guest *guest,
 	s->vendor = VMINFO_VENDOR;
 	s->version = (u32)((unsigned long)eid->data);
 	s->vcpu_count = guest->vcpu_count;
+
+	if (vmm_devtree_read_u32(s->edev->node, "boot_delay",
+				 &s->boot_delay)) {
+		s->boot_delay = 0xffffffff;
+	}
 
 	s->nb.notifier_call = &vminfo_guest_aspace_notification;
 	s->nb.priority = 0;
