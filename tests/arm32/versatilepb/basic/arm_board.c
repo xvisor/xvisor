@@ -80,6 +80,11 @@ u32 arm_board_flash_addr(void)
 	return (u32)(VERSATILE_FLASH_BASE);
 }
 
+u32 arm_board_boot_delay(void)
+{
+	return vminfo_boot_delay(VERSATILE_VMINFO_BASE);
+}
+
 u32 arm_board_iosection_count(void)
 {
 	return 19;

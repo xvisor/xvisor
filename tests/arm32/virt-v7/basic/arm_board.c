@@ -101,6 +101,11 @@ physical_addr_t arm_board_flash_addr(void)
 	return VIRT_V7_NOR_FLASH;
 }
 
+u32 arm_board_boot_delay(void)
+{
+	return vminfo_boot_delay(VIRT_V7_VMINFO);
+}
+
 u32 arm_board_iosection_count(void)
 {
 	return 8;

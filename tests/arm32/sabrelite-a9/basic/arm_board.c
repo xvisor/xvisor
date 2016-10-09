@@ -85,6 +85,11 @@ u32 arm_board_flash_addr(void)
 	return (u32)(IMX_NOR);
 }
 
+u32 arm_board_boot_delay(void)
+{
+	return vminfo_boot_delay(IMX_VMINFO_BASE);
+}
+
 u32 arm_board_iosection_count(void)
 {
 	return 6;

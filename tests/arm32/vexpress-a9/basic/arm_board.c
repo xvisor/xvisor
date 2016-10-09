@@ -79,6 +79,11 @@ u32 arm_board_flash_addr(void)
 	return (u32)(V2M_NOR0);
 }
 
+u32 arm_board_boot_delay(void)
+{
+	return vminfo_boot_delay(V2M_VMINFO_BASE);
+}
+
 u32 arm_board_iosection_count(void)
 {
 	return 19;
