@@ -29,6 +29,7 @@
 #define VMINFO_VENDOR_OFFSET		0x04
 #define VMINFO_VERSION_OFFSET		0x08
 #define VMINFO_VCPU_COUNT_OFFSET	0x0c
+#define VMINFO_BOOT_DELAY_OFFSET	0x10
 #define VMINFO_RAM0_OFFSET		0x40
 
 #define VMINFO_RAMx_BASE_MS_OFFSET	0x00
@@ -63,6 +64,11 @@ u32 vminfo_version(virtual_addr_t base)
 u32 vminfo_vcpu_count(virtual_addr_t base)
 {
 	return arm_readl((void *)(base + VMINFO_VCPU_COUNT_OFFSET));
+}
+
+u32 vminfo_boot_delay(virtual_addr_t base)
+{
+	return arm_readl((void *)(base + VMINFO_BOOT_DELAY_OFFSET));
 }
 
 physical_addr_t vminfo_ram_base(virtual_addr_t base, u32 bank)

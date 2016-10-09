@@ -29,6 +29,7 @@ u32 vminfo_magic(virtual_addr_t base);
 u32 vminfo_vendor(virtual_addr_t base);
 u32 vminfo_version(virtual_addr_t base);
 u32 vminfo_vcpu_count(virtual_addr_t base);
+u32 vminfo_boot_delay(virtual_addr_t base);
 physical_addr_t vminfo_ram_base(virtual_addr_t base, u32 bank);
 physical_size_t vminfo_ram_size(virtual_addr_t base, u32 bank);
 
