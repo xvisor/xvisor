@@ -47,6 +47,21 @@ bool arm_isprintable(char c)
 	return FALSE;
 }
 
+void arm_putc(char ch)
+{
+	arm_board_serial_putc(ch);
+}
+
+bool arm_can_getc(void)
+{
+	return arm_board_serial_can_getc();
+}
+
+char arm_getc(void)
+{
+	return arm_board_serial_getc();
+}
+
 void arm_puts(const char * str)
 {
 	while (*str) {

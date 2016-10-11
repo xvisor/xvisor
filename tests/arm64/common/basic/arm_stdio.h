@@ -30,6 +30,7 @@
 
 bool arm_isprintable(char ch);
 void arm_putc(char ch);
+bool arm_can_getc(void);
 char arm_getc(void);
 void arm_stdio_init(void);
 void arm_puts(const char * str);
