@@ -26,14 +26,16 @@
 
 #include <arm_types.h>
 
+#define __printf(a, b)		__attribute__((format(printf, a, b)))
+
 bool arm_isprintable(char ch);
 void arm_putc(char ch);
 char arm_getc(void);
 void arm_stdio_init(void);
 void arm_puts(const char * str);
 void arm_gets(char *s, int maxwidth, char endchar);
-int arm_sprintf(char *out, const char *format, ...);
-int arm_snprintf(char *out, u32 out_sz, const char *format, ...);
-int arm_printf(const char *format, ...);
+int __printf(2, 3) arm_sprintf(char *out, const char *format, ...);
+int __printf(3, 4) arm_snprintf(char *out, u32 out_sz, const char *format, ...);
+int __printf(1, 2) arm_printf(const char *format, ...);
 
 #endif /* __ARM_STDIO_H_ */

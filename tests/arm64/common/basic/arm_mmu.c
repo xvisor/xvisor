@@ -80,16 +80,21 @@ void arm_sync_abort(struct pt_regs *regs)
 			}
 			break;
 	}
-	arm_printf("Bad synchronous exception @ PC: 0x%X\n", regs->pc);
-	arm_printf("ESR: 0x%08X (EC:0x%X, ISS:0x%X)\n", esr, ec, iss);
-	arm_printf("LR: 0x%X, FAR: 0x%X, PSTATE: 0x%X\n", regs->lr, far, regs->pstate);
+	arm_printf("Bad synchronous exception @ PC: 0x%lX\n",
+		   (virtual_addr_t)regs->pc);
+	arm_printf("ESR: 0x%08X (EC:0x%X, ISS:0x%X)\n",
+		   (u32)esr, (u32)ec, (u32)iss);
+	arm_printf("LR: 0x%lX, FAR: 0x%lX, PSTATE: 0x%X\n",
+		   (virtual_addr_t)regs->lr, (virtual_addr_t)far,
+		   (u32)regs->pstate);
 	arm_printf("  General Purpose Registers");
 	{ 
 		int ite;
 		for (ite = 0; ite < 30; ite++) {
 			if (ite % 2 == 0)
 				arm_printf("\n");
-			arm_printf("    X%02d=0x%016x  ", ite, regs->gpr[ite]);
+			arm_printf("    X%02d=0x%016lx  ",
+				   ite, (unsigned long)regs->gpr[ite]);
 		}
 	}
 	arm_printf("\n");

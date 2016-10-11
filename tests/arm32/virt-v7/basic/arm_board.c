@@ -55,8 +55,8 @@ void arm_board_reset(void)
 	: "r0", "r1", "r2", "r3", "cc", "memory");
 
 	if (ret) {
-		arm_printf("%s: PSCI SYSTEM_RESET returned %d",
-			   __func__, ret);
+		arm_printf("%s: PSCI SYSTEM_RESET returned %d\n",
+			   __func__, (int)ret);
 	}
 }
 
