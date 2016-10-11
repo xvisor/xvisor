@@ -226,7 +226,7 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 					     s ? s : "(null)", width, flags);
 				continue;
 			}
-			if (*format == 'd') {
+			if ((*format == 'd') || (*format == 'i')) {
 				pc += printi(out, out_len, 
 					va_arg(args, int), 
 					10, 1, width, flags, '0');
