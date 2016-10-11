@@ -143,6 +143,7 @@
 #define UART_PL011_IMSC_CTSMIM          (1 << 1)
 #define UART_PL011_IMSC_RIMIM           (1 << 0)
 
+bool pl01x_can_getc(u64 base, u32 type);
 char pl01x_getc(u64 base, u32 type);
 void pl01x_putc(u64 base, u32 type, char ch);
 void pl01x_init(u64 base, u32 type, u32 baudrate, u32 input_clock);

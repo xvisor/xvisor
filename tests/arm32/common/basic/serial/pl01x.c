@@ -34,6 +34,12 @@ void pl01x_putc(u32 base, u32 type, char ch)
 	arm_writel(ch, (void*)(base + UART_PL01x_DR));
 }
 
+bool pl01x_can_getc(u32 base, u32 type)
+{
+	return (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE)
+		? FALSE : TRUE;
+}
+
 char pl01x_getc(u32 base, u32 type)
 {
 	char data;

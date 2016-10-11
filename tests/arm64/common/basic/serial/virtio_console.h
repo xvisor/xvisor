@@ -51,6 +51,7 @@ struct virtio_console_config {
 } __attribute__((packed));
 
 void virtio_console_printch(physical_addr_t base, char ch);
+bool virtio_console_can_getch(physical_addr_t base);
 char virtio_console_getch(physical_addr_t base);
 int virtio_console_init(physical_addr_t base);
 

@@ -38,6 +38,11 @@ void imx_putc(u32 base, char ch)
 	arm_writeb(ch, (void*)(base + URTX0));
 }
 
+bool imx_can_getc(u32 base)
+{
+	return (arm_readw((void*)(base + USR2)) & USR2_RDR) ? TRUE : FALSE;
+}
+
 char imx_getc(u32 base)
 {
 	u16 data;

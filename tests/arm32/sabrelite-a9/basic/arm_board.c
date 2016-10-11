@@ -232,6 +232,11 @@ void arm_board_serial_putc(char ch)
 	imx_putc(IMX_UART_BASE, ch);
 }
 
+bool arm_board_serial_can_getc(void)
+{
+	return imx_can_getc(IMX_UART_BASE);
+}
+
 char arm_board_serial_getc(void)
 {
 	char ch = imx_getc(IMX_UART_BASE);

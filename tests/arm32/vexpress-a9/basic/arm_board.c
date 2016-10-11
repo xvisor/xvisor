@@ -251,6 +251,11 @@ void arm_board_serial_putc(char ch)
 	pl01x_putc(CA9X4_UART_BASE, CA9X4_UART_TYPE, ch);
 }
 
+bool arm_board_serial_can_getc(void)
+{
+	return pl01x_can_getc(CA9X4_UART_BASE, CA9X4_UART_TYPE);
+}
+
 char arm_board_serial_getc(void)
 {
 	char ch = pl01x_getc(CA9X4_UART_BASE, CA9X4_UART_TYPE);
@@ -260,5 +265,3 @@ char arm_board_serial_getc(void)
 	arm_board_serial_putc(ch);
 	return ch;
 }
-
-

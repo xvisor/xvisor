@@ -250,6 +250,11 @@ void arm_board_serial_putc(char ch)
 	pl01x_putc(VIRT_V8_UART0, PL01X_TYPE_1, ch);
 }
 
+bool arm_board_serial_can_getc(void)
+{
+	return pl01x_getc(VIRT_V8_UART0, PL01X_TYPE_1);
+}
+
 char arm_board_serial_getc(void)
 {
 	char ch = pl01x_getc(VIRT_V8_UART0, PL01X_TYPE_1);

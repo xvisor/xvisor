@@ -57,6 +57,7 @@ int arm_board_timer_init(u32 usecs);
 
 int arm_board_serial_init(void);
 void arm_board_serial_putc(char ch);
+bool arm_board_serial_can_getc(void);
 char arm_board_serial_getc(void);
 
 #endif

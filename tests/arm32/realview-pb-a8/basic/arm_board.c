@@ -264,6 +264,11 @@ void arm_board_serial_putc(char ch)
 	pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, ch);
 }
 
+bool arm_board_serial_can_getc(void)
+{
+	return pl01x_can_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
+}
+
 char arm_board_serial_getc(void)
 {
 	char ch = pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
@@ -273,4 +278,3 @@ char arm_board_serial_getc(void)
 	arm_board_serial_putc(ch);
 	return ch;
 }
-
