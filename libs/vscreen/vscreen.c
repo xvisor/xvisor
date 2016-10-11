@@ -880,9 +880,9 @@ static int vscreen_hard_refresh(struct vscreen_context *cntx)
 
 hard_bind_error:
 	vmm_printf("vscreen: %s: rows=%d\n", 
-		   cntx->info->name, cntx->info->var.xres_virtual);
-	vmm_printf("vscreen: %s: cols=%d\n",
 		   cntx->info->name, cntx->info->var.yres_virtual);
+	vmm_printf("vscreen: %s: cols=%d\n",
+		   cntx->info->name, cntx->info->var.xres_virtual);
 	vmm_printf("vscreen: %s: bits_per_pixel=%d\n",
 		   cntx->info->name, cntx->info->var.bits_per_pixel);
 	vmm_printf("vscreen: %s: sem_start=0x%lx\n",
