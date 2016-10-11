@@ -712,6 +712,221 @@ static int mxcfb_set_par(struct fb_info *fbi)
 	return retval;
 }
 
+static int mxcfb_set_smem(struct fb_info *fbi,
+			   unsigned long start, u32 len)
+{
+	int retval = 0;
+	u32 alpha_mem_len;
+	ipu_di_signal_cfg_t sig_cfg;
+	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
+
+	int16_t ov_pos_x = 0, ov_pos_y = 0;
+	int ov_pos_ret = 0;
+	struct mxcfb_info *mxc_fbi_fg = NULL;
+	bool ovfbi_enable = false;
+
+
+	if (fbi->var.xres_virtual * fbi->var.bits_per_pixel / 8 *
+	    fbi->var.yres_virtual > len)
+		return -EINVAL;
+
+	//clcdfb_disable(fb);
+	if (mxc_fbi->ovfbi)
+		mxc_fbi_fg = (struct mxcfb_info *)mxc_fbi->ovfbi->par;
+
+	if (mxc_fbi->ovfbi && mxc_fbi_fg)
+		if (mxc_fbi_fg->next_blank == FB_BLANK_UNBLANK)
+			ovfbi_enable = true;
+
+	if (ovfbi_enable) {
+		ov_pos_ret = ipu_disp_get_window_pos(
+			mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch,
+			&ov_pos_x, &ov_pos_y);
+		if (ov_pos_ret < 0)
+			dev_err(&fbi->dev, "Get overlay pos failed, "
+				"dispdrv:%s.\n", mxc_fbi->dispdrv->drv->name);
+
+		ipu_clear_irq(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch_irq);
+		ipu_disable_irq(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch_irq);
+		ipu_clear_irq(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch_nf_irq);
+		ipu_disable_irq(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch_nf_irq);
+		ipu_disable_channel(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch, true);
+		ipu_uninit_channel(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch);
+	}
+
+	ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
+	ipu_disable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_irq);
+	ipu_clear_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
+	ipu_disable_irq(mxc_fbi->ipu, mxc_fbi->ipu_ch_nf_irq);
+	ipu_disable_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch, true);
+	ipu_uninit_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch);
+
+	/*
+	 * Disable IPU hsp clock if it is enabled for an
+	 * additional time in ipu common driver.
+	 */
+	if (mxc_fbi->first_set_par && mxc_fbi->late_init)
+		ipu_disable_hsp_clk(mxc_fbi->ipu);
+
+	fbi->fix.smem_start = start;
+	fbi->fix.smem_len = len;
+
+	//clcdfb_set_start(fb);
+
+	//clcdfb_enable(fb, fb->clcd_cntl);
+	if (mxc_fbi->alpha_chan_en) {
+		alpha_mem_len = fbi->var.xres * fbi->var.yres;
+		if ((!mxc_fbi->alpha_phy_addr0 && !mxc_fbi->alpha_phy_addr1) ||
+		    (alpha_mem_len > mxc_fbi->alpha_mem_len)) {
+			if (mxc_fbi->alpha_phy_addr0)
+				dma_free_coherent(&fbi->dev,
+						  mxc_fbi->alpha_mem_len,
+						  mxc_fbi->alpha_virt_addr0,
+						  mxc_fbi->alpha_phy_addr0);
+			if (mxc_fbi->alpha_phy_addr1)
+				dma_free_coherent(&fbi->dev,
+						  mxc_fbi->alpha_mem_len,
+						  mxc_fbi->alpha_virt_addr1,
+						  mxc_fbi->alpha_phy_addr1);
+
+			mxc_fbi->alpha_virt_addr0 =
+					dma_alloc_coherent(&fbi->dev,
+						  alpha_mem_len,
+						  &mxc_fbi->alpha_phy_addr0,
+						  GFP_DMA | GFP_KERNEL);
+
+			mxc_fbi->alpha_virt_addr1 =
+					dma_alloc_coherent(&fbi->dev,
+						  alpha_mem_len,
+						  &mxc_fbi->alpha_phy_addr1,
+						  GFP_DMA | GFP_KERNEL);
+			if (mxc_fbi->alpha_virt_addr0 == NULL ||
+			    mxc_fbi->alpha_virt_addr1 == NULL) {
+				dev_err(&fbi->dev, "mxcfb: dma alloc for"
+					" alpha buffer failed.\n");
+				if (mxc_fbi->alpha_virt_addr0)
+					dma_free_coherent(&fbi->dev,
+						  mxc_fbi->alpha_mem_len,
+						  mxc_fbi->alpha_virt_addr0,
+						  mxc_fbi->alpha_phy_addr0);
+				if (mxc_fbi->alpha_virt_addr1)
+					dma_free_coherent(&fbi->dev,
+						  mxc_fbi->alpha_mem_len,
+						  mxc_fbi->alpha_virt_addr1,
+						  mxc_fbi->alpha_phy_addr1);
+				return VMM_ENOMEM;
+			}
+			mxc_fbi->alpha_mem_len = alpha_mem_len;
+		}
+	}
+
+//	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK)
+//		return retval;
+
+	if (mxc_fbi->dispdrv && mxc_fbi->dispdrv->drv->setup) {
+		retval = mxc_fbi->dispdrv->drv->setup(mxc_fbi->dispdrv, fbi);
+		if (retval < 0) {
+			dev_err(&fbi->dev, "setup error, dispdrv:%s.\n",
+					mxc_fbi->dispdrv->drv->name);
+			return VMM_EINVALID;
+		}
+	}
+
+	_setup_disp_channel1(fbi);
+	if (ovfbi_enable)
+		_setup_disp_channel1(mxc_fbi->ovfbi);
+
+	if (!mxc_fbi->overlay) {
+		uint32_t out_pixel_fmt;
+
+		memset(&sig_cfg, 0, sizeof(sig_cfg));
+		if (fbi->var.vmode & FB_VMODE_INTERLACED)
+			sig_cfg.interlaced = true;
+		out_pixel_fmt = mxc_fbi->ipu_di_pix_fmt;
+		if (fbi->var.vmode & FB_VMODE_ODD_FLD_FIRST) /* PAL */
+			sig_cfg.odd_field_first = true;
+		if (mxc_fbi->ipu_int_clk)
+			sig_cfg.int_clk = true;
+		if (fbi->var.sync & FB_SYNC_HOR_HIGH_ACT)
+			sig_cfg.Hsync_pol = true;
+		if (fbi->var.sync & FB_SYNC_VERT_HIGH_ACT)
+			sig_cfg.Vsync_pol = true;
+		if (!(fbi->var.sync & FB_SYNC_CLK_LAT_FALL))
+			sig_cfg.clk_pol = true;
+		if (fbi->var.sync & FB_SYNC_DATA_INVERT)
+			sig_cfg.data_pol = true;
+		if (!(fbi->var.sync & FB_SYNC_OE_LOW_ACT))
+			sig_cfg.enable_pol = true;
+		if (fbi->var.sync & FB_SYNC_CLK_IDLE_EN)
+			sig_cfg.clkidle_en = true;
+
+		dev_dbg(&fbi->dev, "pixclock = %u Hz\n",
+			(u32) (PICOS2KHZ(fbi->var.pixclock) * 1000UL));
+
+		if (ipu_init_sync_panel(mxc_fbi->ipu, mxc_fbi->ipu_di,
+					(PICOS2KHZ(fbi->var.pixclock)) * 1000UL,
+					fbi->var.xres, fbi->var.yres,
+					out_pixel_fmt,
+					fbi->var.left_margin,
+					fbi->var.hsync_len,
+					fbi->var.right_margin,
+					fbi->var.upper_margin,
+					fbi->var.vsync_len,
+					fbi->var.lower_margin,
+					0, sig_cfg) != 0) {
+			dev_err(&fbi->dev,
+				"mxcfb: Error initializing panel.\n");
+			return VMM_EINVALID;
+		}
+
+		fbi->mode =
+		    (struct fb_videomode *)fb_match_mode(&fbi->var,
+							 &fbi->modelist);
+
+		ipu_disp_set_window_pos(mxc_fbi->ipu, mxc_fbi->ipu_ch, 0, 0);
+	}
+
+	retval = _setup_disp_channel2(fbi);
+	if (retval) {
+		ipu_uninit_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch);
+		return retval;
+	}
+
+	if (ovfbi_enable) {
+		if (ov_pos_ret >= 0)
+			ipu_disp_set_window_pos(
+					mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch,
+					ov_pos_x, ov_pos_y);
+		retval = _setup_disp_channel2(mxc_fbi->ovfbi);
+		if (retval) {
+			ipu_uninit_channel(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch);
+			ipu_uninit_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch);
+			return retval;
+		}
+	}
+
+	ipu_enable_channel(mxc_fbi->ipu, mxc_fbi->ipu_ch);
+	if (ovfbi_enable)
+		ipu_enable_channel(mxc_fbi_fg->ipu, mxc_fbi_fg->ipu_ch);
+
+	if (mxc_fbi->dispdrv && mxc_fbi->dispdrv->drv->enable) {
+		retval = mxc_fbi->dispdrv->drv->enable(mxc_fbi->dispdrv);
+		if (retval < 0) {
+			dev_err(&fbi->dev, "enable error, dispdrv:%s.\n",
+					mxc_fbi->dispdrv->drv->name);
+			return VMM_EINVALID;
+		}
+	}
+
+	mxc_fbi->cur_var = fbi->var;
+
+	return retval;
+
+	return 0;
+}
+
+
+
 static int _swap_channels(struct fb_info *fbi_from,
 			  struct fb_info *fbi_to, bool both_on)
 {
@@ -1666,6 +1881,7 @@ static int mxcfb_mmap(struct fb_info *fbi, struct vm_area_struct *vma)
  */
 static struct fb_ops mxcfb_ops = {
 	.fb_set_par = mxcfb_set_par,
+	.fb_set_smem = mxcfb_set_smem,
 	.fb_check_var = mxcfb_check_var,
 	.fb_setcolreg = mxcfb_setcolreg,
 	.fb_pan_display = mxcfb_pan_display,
