@@ -868,6 +868,8 @@ void arm_exec(char *line)
 /* Works in user mode */
 void arm_main(void)
 {
+	u64 tstamp;
+	u32 i, key_pressed, boot_delay;
 	char line[ARM_MAX_CMD_STR_SIZE];
 
 	/* Setup board specific linux default cmdline */
@@ -875,6 +877,38 @@ void arm_main(void)
 
 	arm_puts(arm_board_name());
 	arm_puts(" Basic Firmware\n\n");
+
+	boot_delay = arm_board_boot_delay();
+	if (boot_delay == 0xffffffff) {
+		arm_puts("autoboot: disabled\n\n");
+	} else {
+		arm_puts("autoboot: enabled\n");
+		while (boot_delay) {
+			arm_int2str(line, (int)boot_delay);
+			arm_puts("autoboot: waiting for ");
+			arm_puts(line);
+			arm_puts(" secs (press any key)\n");
+			key_pressed = 0;
+			tstamp = arm_timer_timestamp();
+			while ((arm_timer_timestamp() - tstamp)
+						< 1000000000) {
+				for (i = 0; i < 10000; i++) ;
+				if (arm_can_getc()) {
+					arm_getc();
+					key_pressed = 1;
+					break;
+				}
+			}
+			if (key_pressed)
+				break;
+			boot_delay--;
+		}
+		arm_puts("\n");
+		if (!boot_delay) {
+			arm_strcpy(line, "autoexec\n");
+			arm_exec(line);
+		}
+	}
 
 	while(1) {
 		arm_puts("basic# ");
