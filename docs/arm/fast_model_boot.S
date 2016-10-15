@@ -21,6 +21,17 @@
  * @brief light-weight boot-wrapper for ARM fast models
  */
 
+#define CPSR_MODE_MASK					0x0000001f
+#define CPSR_MODE_USER					0x00000010
+#define CPSR_MODE_FIQ					0x00000011
+#define CPSR_MODE_IRQ					0x00000012
+#define CPSR_MODE_SUPERVISOR				0x00000013
+#define CPSR_MODE_MONITOR				0x00000016
+#define CPSR_MODE_ABORT					0x00000017
+#define CPSR_MODE_HYPERVISOR				0x0000001a
+#define CPSR_MODE_UNDEFINED				0x0000001b
+#define CPSR_MODE_SYSTEM				0x0000001f
+
 	/* Boot-wrapper entry point */
 	.section .text, "ax", %progbits
 	.globl	start_boot
@@ -83,6 +94,13 @@ first_banner:
 	adr	r0, __banner_first
 	bl	uart_puts
 first_banner_done:
+
+	/* If already in Hyp-mode then skip timer, coproc, and GIC init */
+hyp_check:
+	mrs	r0, cpsr_all
+	and	r0, r0, #(CPSR_MODE_MASK)
+	cmp	r0, #(CPSR_MODE_HYPERVISOR)
+	beq	tohyp_skip
 
 	/* Setup generic timer cntfrq */
 gentimer_init:
@@ -180,6 +198,8 @@ tohyp_banner:
 	adr	r0, __banner_tohyp
 	bl	uart_puts
 tohyp_banner_done:
+
+tohyp_skip:
 
 #ifdef GICv2
 	/* GIC non-secured CPU interface init */
