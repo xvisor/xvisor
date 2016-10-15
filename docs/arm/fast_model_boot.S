@@ -21,6 +21,14 @@
  * @brief light-weight boot-wrapper for ARM fast models
  */
 
+#if defined(PRESERVE_BOOT_REGS) && defined(DTB)
+#error "Cannot specify DTB when boot registers are preserved"
+#endif
+
+#if defined(PRESERVE_BOOT_REGS) && defined(INITRD)
+#error "Cannot specify INITRD when boot registers are preserved"
+#endif
+
 #define CPSR_MODE_MASK					0x0000001f
 #define CPSR_MODE_USER					0x00000010
 #define CPSR_MODE_FIQ					0x00000011
@@ -36,6 +44,29 @@
 	.section .text, "ax", %progbits
 	.globl	start_boot
 start_boot:
+	/* Preserve boot registers r0, r1, and r2 */
+#if defined(PRESERVE_BOOT_REGS)
+preserve_boot_regs:
+	mrc	p15, 0, r4, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r4, r4, #0xFFFFFF		/* CPU affinity */
+	cmp	r4, #0				/* primary CPU? */
+	bne	preserve_boot_regs_done
+	adr	r4, __boot_reg0
+	str	r0, [r4]
+	adr	r4, __boot_reg1
+	str	r1, [r4]
+	adr	r4, __boot_reg2
+	str	r2, [r4]
+	b	preserve_boot_regs_done
+__boot_reg0:
+	.word 0x0
+__boot_reg1:
+	.word 0x0
+__boot_reg2:
+	.word 0x0
+preserve_boot_regs_done:
+#endif
+
 	/* Setup UART */
 uart_init:
 	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
@@ -250,6 +281,14 @@ last_banner_done:
 
 	/* Jump to input binary */
 boot_next:
+#if defined(PRESERVE_BOOT_REGS)
+	adr	r4, __boot_reg0
+	ldr	r0, [r4]
+	adr	r4, __boot_reg1
+	ldr	r1, [r4]
+	adr	r4, __boot_reg2
+	ldr	r2, [r4]
+#else
 	mov	r0, #0
 	mov	r1, #0
 #ifdef DTB
@@ -258,6 +297,7 @@ boot_next:
 #else
 	/* Deliberately put a non-4B aligned value to r2 skip dtb checking */
 	mov	r2, #1
+#endif
 #endif
 #ifdef IMAGE
 	/* Jump to input binary */
