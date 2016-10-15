@@ -30,20 +30,59 @@ uart_init:
 	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
 	and	r0, r0, #0xFFFFFF		/* CPU affinity */
 	cmp	r0, #0				/* primary CPU? */
-	bne	uart_skip
+	bne	uart_init_done
 #if defined(UART_PL011)
+	#define UART_PL011_DR			0x00	 /* Data read or written from the interface. */
+	#define UART_PL011_FR			0x18	 /* Flag register (Read only). */
+	#define UART_PL011_IBRD			0x24
+	#define UART_PL011_CR			0x30
+	#define UART_PL011_FR_TXFF		0x20
+	#define UART_PL011_CR_CTSEN		(1 << 15)
+	#define UART_PL011_CR_RTSEN		(1 << 14)
+	#define UART_PL011_CR_RXE		(1 << 9)
+	#define UART_PL011_CR_TXE		(1 << 8)
+	#define UART_PL011_CR_UARTEN		(1 << 0)
 	ldr	r1, __uart_addr
 	b	__uart_addr_next
 __uart_addr:
 	.word	UART_PL011_BASE
 __uart_addr_next:
-	mov	r0, #0x10			/* ibrd */
-	str	r0, [r1, #0x24]
+	mov	r0, #0x10			/* IBRD */
+	str	r0, [r1, #UART_PL011_IBRD]
 	mov	r0, #0xc300
-	orr	r0, #0x0001			/* cr */
-	str	r0, [r1, #0x30]
+	orr	r0, #0x0001			/* CR */
+	str	r0, [r1, #UART_PL011_CR]
+	b	uart_init_done
+uart_puts:
+	ldrb	r5, [r0], #1
+	cmp	r5, #0
+	beq	uart_puts_done
+	ldr	r4, __uart_addr
+uart_puts_check:
+	ldr	r6, [r4, #UART_PL011_FR]	/* FR */
+	and	r6, r6, #UART_PL011_FR_TXFF	/* FR.TXFF */
+	cmp	r6, #UART_PL011_FR_TXFF
+	beq	uart_puts_check
+	str	r5, [r4, #UART_PL011_DR]	/* DR */
+	b	uart_puts
+uart_puts_done:
+	mov	pc, lr
+#else
+	b	uart_init_done
+uart_puts:
+	mov	pc, lr
 #endif
-uart_skip:
+uart_init_done:
+
+	/* Print first banner */
+first_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	first_banner_done
+	adr	r0, __banner_first
+	bl	uart_puts
+first_banner_done:
 
 	/* Setup generic timer cntfrq */
 gentimer_init:
@@ -53,6 +92,16 @@ __gentimer_freq:
 __gentimer_freq_next:
 	ldr	r1, __gentimer_freq
 	mcr     p15, 0, r1, c14, c0, 0
+
+	/* Print timer banner */
+timer_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	timer_banner_done
+	adr	r0, __banner_timer
+	bl	uart_puts
+timer_banner_done:
 
 	/* Set NSACR to allow coprocessor access from non-secure */
 coproc_init:
@@ -64,6 +113,16 @@ __nsacr_val:
 __nsacr_val_next:
 	orr	r0, r0, r1
 	mcr	p15, 0, r0, c1, c1, 2
+
+	/* Print coproc banner */
+coproc_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	coproc_banner_done
+	adr	r0, __banner_coproc
+	bl	uart_puts
+coproc_banner_done:
 
 	/* GIC init */
 gic_init:
@@ -98,9 +157,29 @@ __cpu_gic_base_next:
 	str	r1, [r0, #0x4]			/* GIC CPU Priority Mask */
 #endif
 
+	/* Print gic banner */
+gic_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	gic_banner_done
+	adr	r0, __banner_gic
+	bl	uart_puts
+gic_banner_done:
+
 	/* Enter hypervisor mode */
 switch_to_hvc_mode:
 	bl	enter_hvc_mode
+
+	/* Print tohyp banner */
+tohyp_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	tohyp_banner_done
+	adr	r0, __banner_tohyp
+	bl	uart_puts
+tohyp_banner_done:
 
 #ifdef GICv2
 	/* GIC non-secured CPU interface init */
@@ -138,6 +217,16 @@ secondary_loop:
 	beq	secondary_loop
 	mov	pc, r1
 secondary_loop_skip:
+
+	/* Print last banner */
+last_banner:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	last_banner_done
+	adr	r0, __banner_last
+	bl	uart_puts
+last_banner_done:
 
 	/* Jump to input binary */
 boot_next:
@@ -215,6 +304,30 @@ enter_hvc_mode_start:
 	/* Hang! Not supposed to reach here */
 	b	.
 
+	.align 2
+__banner_first:
+	.ascii "\r\n\r\nboot-wrapper: starting.\r\n"
+	.word 0x0
+	.align 2
+__banner_timer:
+	.ascii "boot-wrapper: timer initialization done.\r\n"
+	.word 0x0
+	.align 2
+__banner_coproc:
+	.ascii "boot-wrapper: coproc initialization done.\r\n"
+	.word 0x0
+	.align 2
+__banner_gic:
+	.ascii "boot-wrapper: gic initialization done.\r\n"
+	.word 0x0
+	.align 2
+__banner_tohyp:
+	.ascii "boot-wrapper: switch to hyp-mode.\r\n"
+	.word 0x0
+	.align 2
+__banner_last:
+	.ascii "boot-wrapper: finished.\r\nboot-wrapper: jumping to input kernel...\r\n"
+	.word 0x0
 
 #define	str(s)		#s
 #define	stringify(s)	str(s)
