@@ -21,41 +21,60 @@
  * @brief light-weight boot-wrapper for ARM fast models
  */
 
-/** 
- * The code in fast_model_boot.S is an adapted version of boot.S from:
- * git://github.com/virtualopensystems/boot-wrapper.git
- * 
- * boot.S - simple register setup code for stand-alone Linux booting
- *
- * Copyright (C) 2011 ARM Limited. All rights reserved.
- *
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE.txt file.
- */
-
 	/* Boot-wrapper entry point */
 	.section .text, "ax", %progbits
 	.globl	start_boot
 start_boot:
+	/* Setup UART */
+uart_init:
+	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
+	and	r0, r0, #0xFFFFFF		/* CPU affinity */
+	cmp	r0, #0				/* primary CPU? */
+	bne	uart_skip
+#if defined(UART_PL011)
+	ldr	r1, __uart_addr
+	b	__uart_addr_next
+__uart_addr:
+	.word	UART_PL011_BASE
+__uart_addr_next:
+	mov	r0, #0x10			/* ibrd */
+	str	r0, [r1, #0x24]
+	mov	r0, #0xc300
+	orr	r0, #0x0001			/* cr */
+	str	r0, [r1, #0x30]
+#endif
+uart_skip:
+
 	/* Setup generic timer cntfrq */
+gentimer_init:
 	b	__gentimer_freq_next
 __gentimer_freq:
-	.word	100000000
+	.word	GENTIMER_FREQ
 __gentimer_freq_next:
 	ldr	r1, __gentimer_freq
 	mcr     p15, 0, r1, c14, c0, 0
 
-	/* GIC Distributor Interface Init */
+	/* Set NSACR to allow coprocessor access from non-secure */
+coproc_init:
+	mrc	p15, 0, r0, c1, c1, 2
+	ldr	r1, __nsacr_val
+	b	__nsacr_val_next
+__nsacr_val:
+	.word	0x43fff
+__nsacr_val_next:
+	orr	r0, r0, r1
+	mcr	p15, 0, r0, c1, c1, 2
+
+	/* GIC init */
+gic_init:
+#ifdef GICv2
+	/* GICv2 secured distributor interface init */
 	mrc	p15, 0, r4, c0, c0, 5		/* MPIDR (ARMv7 only) */
 	and	r4, r4, #0xFFFFFF		/* CPU affinity */
 	ldr	r0, __dist_gic_base		/* Dist GIC base */
 	b 	__dist_gic_base_next
 __dist_gic_base:
-#ifdef VEXPRESS_A15
-	.word	0x2c001000
-#else
-	.word	0x00000000
-#endif
+	.word	GIC_DIST_BASE
 __dist_gic_base_next:
 	ldr	r1, [r0, #0x04]			/* Type Register */
 	cmp	r4, #0
@@ -69,43 +88,35 @@ __dist_gic_base_next:
 	cmp	r1, #-1
 	bne	2b
 
-	/* Set NSACR to allow coprocessor access from non-secure */
-	mrc	p15, 0, r0, c1, c1, 2
-	ldr	r1, __nsacr_val
-	b	__nsacr_val_next
-__nsacr_val:
-	.word	0x43fff
-__nsacr_val_next:
-	orr	r0, r0, r1
-	mcr	p15, 0, r0, c1, c1, 2
-
-	/* GIC Secured CPU Interface Init */
+	/* GICv2 secured CPU interface init */
 	ldr	r0, __cpu_gic_base		/* GIC CPU base */
 	b 	__cpu_gic_base_next
 __cpu_gic_base:
-#ifdef VEXPRESS_A15
-	.word	0x2c002000
-#else
-	.word	0x00000000
-#endif
+	.word	GIC_CPU_BASE
 __cpu_gic_base_next:
 	mov	r1, #0x80
 	str	r1, [r0, #0x4]			/* GIC CPU Priority Mask */
+#endif
 
 	/* Enter hypervisor mode */
+switch_to_hvc_mode:
 	bl	enter_hvc_mode
 
-	/* GIC Non-Secured CPU Interface Init */
+#ifdef GICv2
+	/* GIC non-secured CPU interface init */
+gic_nonsec_cpu_init:
 	ldr	r0, __cpu_gic_base
 	mov	r1, #0x1
 	str	r1, [r0]			/* GIC CPU Control */
+#endif
 
+	/* Non-secured spin-loop */
+spin_loop_init:
 	/* Skip secondary loop for Primary core */
 	mrc	p15, 0, r0, c0, c0, 5		/* MPIDR (ARMv7 only) */
 	and	r0, r0, #0xFFFFFF		/* CPU affinity */
 	cmp	r0, #0				/* primary CPU? */
 	beq	secondary_loop_skip
-
 	/* Secondary CPUs (following the SMP booting protocol) */
 	ldr	r1, __spin_loop_addr
 	b 	__spin_loop_addr_next
@@ -115,15 +126,11 @@ __spin_loop_addr_next:
 	adr	r2, secondary_loop
 	ldmia	r2, {r3 - r7}			/* Move the code to a location */
 	stmia	r1, {r3 - r7}			/* less likely to be overridden */
-	ldr	r0, __sys_flags_addr
+	ldr	r0, __spin_location_addr
 	mov	pc, r1				/* Branch to the relocated code */
-__sys_flags_addr:
-#ifdef VEXPRESS_A15
-	.word	0x1c010030			/* VExpress SYS_FLAGS */
-#else
-	.word	0x00000000
-#endif
-__sys_flags_addr_next:
+__spin_location_addr:
+	.word	SPIN_LOCATION
+__spin_location_addr_next:
 secondary_loop:
 	wfi
 	ldr	r1, [r0]
@@ -132,33 +139,25 @@ secondary_loop:
 	mov	pc, r1
 secondary_loop_skip:
 
-	/* Setup UART */
-	ldr	r1, __uart_addr
-	b	__uart_addr_next
-__uart_addr:
-#ifdef VEXPRESS_A15
-	.word	0x1c090000
-#else
-	.word	0x00000000
-#endif
-__uart_addr_next:
-	mov	r0, #0x10			@ ibrd
-	str	r0, [r1, #0x24]
-	mov	r0, #0xc300
-	orr	r0, #0x0001			@ cr
-	str	r0, [r1, #0x30]
-
 	/* Jump to input binary */
+boot_next:
 	mov	r0, #0
 	mov	r1, #0
 #ifdef DTB
-	/* if dtb is provided, load the address where we placed it */
+	/* If dtb is provided, load the address where we placed it */
 	ldr	r2, __dtb_addr
 #else
-	/* deliberately put a non-4B aligned value to r2 skip dtb checking */
+	/* Deliberately put a non-4B aligned value to r2 skip dtb checking */
 	mov	r2, #1
 #endif
+#ifdef IMAGE
+	/* Jump to input binary */
 	b	input_bin
+#else
+	/* Just hang */
+	b	.
+#endif
+
 #ifdef DTB
 __dtb_addr:
 	.word	dtb
@@ -228,12 +227,14 @@ enter_hvc_mode_start:
 dtb:
 	.incbin	stringify(DTB)
 #endif
+#ifdef IMAGE
 	.globl	input_bin
-	.balign 0x10000
+	.balign 0x8000
 input_bin:
 	.incbin	stringify(IMAGE)
 	.globl	input_bin_end
 input_bin_end:
+#endif
 #ifdef INITRD
 	.globl	initrd
 	.balign 0x1000000
