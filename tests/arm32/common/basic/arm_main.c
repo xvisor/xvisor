@@ -686,8 +686,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 #define ARM_CMD_AUTOEXEC_BUF_SIZE	4096
 	static int lock = 0;
 	int len, pos = 0;
-	/* commands to execute are stored in NOR flash */
-	char *ptr = (char *)(arm_board_flash_addr() + 0xFF000);
+	char *ptr = (char *)(arm_board_autoexec_addr());
 	char buffer[ARM_CMD_AUTOEXEC_BUF_SIZE];
 
 	if (argc != 1) {

@@ -30,7 +30,7 @@ void arm_board_init(void);
 char *arm_board_name(void);
 physical_addr_t arm_board_ram_start(void);
 physical_size_t arm_board_ram_size(void);
-physical_addr_t arm_board_flash_addr(void);
+physical_addr_t arm_board_autoexec_addr(void);
 u32 arm_board_boot_delay(void);
 u32 arm_board_linux_machine_type(void);
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz);

@@ -80,9 +80,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	/* For now nothing to do here. */
 }
 
-u32 arm_board_flash_addr(void)
+u32 arm_board_autoexec_addr(void)
 {
-	return (u32)(IMX_NOR);
+	return (u32)(IMX_NOR + 0xFF000);
 }
 
 u32 arm_board_boot_delay(void)

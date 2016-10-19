@@ -91,9 +91,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	simplefb_fdt_fixup(VIRT_V8_SIMPLEFB, fdt_addr);
 }
 
-physical_addr_t arm_board_flash_addr(void)
+physical_addr_t arm_board_autoexec_addr(void)
 {
-	return VIRT_V8_NOR_FLASH;
+	return VIRT_V8_NOR_FLASH + 0xFF000;
 }
 
 u32 arm_board_boot_delay(void)
