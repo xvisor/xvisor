@@ -235,7 +235,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [15. Launch QEMU]
-  # qemu-system-arm -M raspi -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb -initrd build/disk.img
+  # qemu-system-arm -M raspi -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb -initrd build/disk.img
 
   [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

@@ -28,7 +28,7 @@ set arm_prompt "basic#"
 set atomthreads_test_case_list "kern1 kern2 kern3 kern4 mutex1 mutex2 mutex3 mutex4 mutex5 mutex6 mutex7 mutex8 mutex9 queue1 queue2 queue3 queue4 queue5 queue6 queue7 queue8 queue9 queue10 sem1 sem2 sem3 sem4 sem5 sem6 sem7 sem8 sem9 timer1 timer2 timer3 timer4 timer5 timer6 timer7"
 
 # start the test 
-spawn qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel $qemu_img
+spawn qemu-system-arm -M realview-pb-a8 -m 512M -display none -serial stdio -kernel $qemu_img
 
 expect $xvisor_prompt
 

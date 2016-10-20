@@ -95,7 +95,7 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [12. Launch QEMU]
-  # qemu-system-arm -M realview-pb-a8 -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb -initrd build/disk.img
+  # qemu-system-arm -M realview-pb-a8 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb -initrd build/disk.img
 
   [13. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

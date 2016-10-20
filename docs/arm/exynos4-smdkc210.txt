@@ -77,7 +77,7 @@ guest with Xvisor running on QEMU SMDKC210 Host:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [15. Launch QEMU]
-  # qemu-system-arm -M smdkc210 -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/exynos4/smdkc210/one_guest_vexpress-a9.dtb -initrd build/disk.img
+  # qemu-system-arm -M smdkc210 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/exynos4/smdkc210/one_guest_vexpress-a9.dtb -initrd build/disk.img
 
   [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
