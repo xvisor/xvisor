@@ -353,7 +353,7 @@ void arm_cmd_copy(int argc, char **argv)
 {
 	u64 tstamp;
 	char time[256];
-	u32 *dest, *src;
+	void *dst, *src;
 	virtual_addr_t dest_va;
 	u32 i, count;
 
@@ -362,17 +362,9 @@ void arm_cmd_copy(int argc, char **argv)
 		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
-	dest = (u32 *)arm_hexstr2uint(argv[1]);
-	if (((virtual_addr_t)dest) & 0x3) {
-		arm_puts ("copy: <dest> should be 4-byte aligned\n");
-		return;
-	}
-	dest_va = (virtual_addr_t)dest;
-	src = (u32 *)arm_hexstr2uint(argv[2]);
-	if (((virtual_addr_t)src) & 0x3) {
-		arm_puts ("copy: <src> should be 4-byte aligned\n");
-		return;
-	}
+	dst = (void *)arm_hexstr2uint(argv[1]);
+	dest_va = (virtual_addr_t)dst;
+	src = (void *)arm_hexstr2uint(argv[2]);
 	count = arm_hexstr2uint(argv[3]);
 
 	/* Disable timer and get start timestamp */
@@ -389,8 +381,28 @@ void arm_cmd_copy(int argc, char **argv)
 	arm_clean_invalidate_dcache_mva_range(dest_va, dest_va + count);
 
 	/* Copy contents */
-	for (i = 0; i < (count/sizeof(*dest)); i++) {
-		dest[i] = src[i];
+	if (!((virtual_addr_t)dst & 0x7) &&
+	    !((virtual_addr_t)src & 0x7) &&
+	    !(count & 0x7)) {
+		for (i = 0; i < (count/sizeof(u64)); i++) {
+			((u64 *)dst)[i] = ((u64 *)src)[i];
+		}
+	} else if (!((virtual_addr_t)dst & 0x3) &&
+		   !((virtual_addr_t)src & 0x3) &&
+		   !(count & 0x3)) {
+		for (i = 0; i < (count/sizeof(u32)); i++) {
+			((u32 *)dst)[i] = ((u32 *)src)[i];
+		}
+	} else if (!((virtual_addr_t)dst & 0x1) &&
+		   !((virtual_addr_t)src & 0x1) &&
+		   !(count & 0x1)) {
+		for (i = 0; i < (count/sizeof(u16)); i++) {
+			((u16 *)dst)[i] = ((u16 *)src)[i];
+		}
+	} else {
+		for (i = 0; i < (count/sizeof(u8)); i++) {
+			((u8 *)dst)[i] = ((u8 *)src)[i];
+		}
 	}
 
 	/* Enable timer and get end timestamp */
