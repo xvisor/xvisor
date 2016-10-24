@@ -22,5 +22,4 @@
 # */
 
 board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/pb/one_guest_versatile.dtb
-board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/pb/two_guest_versatile.dtb
 
