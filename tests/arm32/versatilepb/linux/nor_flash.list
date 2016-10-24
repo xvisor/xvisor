@@ -1,4 +1,4 @@
 0x34000000 /images/arm32/versatilepb/firmware.bin
 0x340FF000 /images/arm32/versatilepb/cmdlist
 0x34100000 /images/arm32/versatilepb/Image
-0x34900000 /images/arm32/rootfs.img
+0x35000000 /images/arm32/rootfs.img

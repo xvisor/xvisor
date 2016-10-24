@@ -32,7 +32,7 @@ endif
 obj_dir=$(build_dir)/tests/arm64/virt-v8/basic
 common_dir=$(top_dir)/tests/arm64/common/basic
 
-board_text_start = 0x41000000
+board_text_start = 0x44000000
 board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/timer/generic_timer.o \

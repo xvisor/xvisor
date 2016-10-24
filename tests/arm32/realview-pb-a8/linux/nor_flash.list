@@ -1,4 +1,4 @@
 0x40000000 /images/arm32/realview-pb-a8/firmware.bin
 0x400FF000 /images/arm32/realview-pb-a8/cmdlist
 0x40100000 /images/arm32/realview-pb-a8/Image
-0x40900000 /images/arm32/rootfs.img
+0x41000000 /images/arm32/rootfs.img

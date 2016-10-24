@@ -1,5 +1,5 @@
 0x40000000 /images/arm32/vexpress-a9/firmware.bin
 0x400FF000 /images/arm32/vexpress-a9/cmdlist
 0x40100000 /images/arm32/vexpress-a9/Image
-0x408F0000 /images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
-0x40900000 /images/arm32/rootfs.img
+0x40FF0000 /images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
+0x41000000 /images/arm32/rootfs.img
