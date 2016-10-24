@@ -21,6 +21,6 @@
 # @brief list of IMX25 DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV5)+=dts/imx25/3dstack/one_guest_versatile.dtb
-board-dtbs-$(CONFIG_ARMV5)+=dts/imx25/3dstack/two_guest_versatile.dtb
+board-dtbs-$(CONFIG_ARMV5)+=dts/imx25/imx25-pdk/one_guest_versatile.dtb
+board-dtbs-$(CONFIG_ARMV5)+=dts/imx25/imx25-pdk/two_guest_versatile.dtb
 

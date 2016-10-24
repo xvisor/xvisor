@@ -16,14 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file two_guest_versatile.dts
+ * @file one_guest_versatile.dts
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
- * @brief Two guests versatile DTS file for i.MX25 PDK platform
+ * @brief One guest versatile DTS file for i.MX25 PDK platform
  */
 
 /dts-v1/;
 
-#include "3dstack.dtsi"
+#include "imx25-pdk.dtsi"
 
 / {
 	vmm {
@@ -47,15 +47,6 @@
 
 			  /* Load guest0 images */
 			  "vfs guest_load_list guest0 /images/arm32/versatilepb/nor_flash.list",
-
-			  /* Load guest1 device tree from file */
-			  "vfs fdt_load /guests guest1 /images/arm32/versatilepb.dtb mem0,physical_size,physsize,0x02000000 net0,switch,string,br0",
-
-			  /* Create guest1 */
-			  "guest create guest1",
-
-			  /* Load guest1 images */
-			  "vfs guest_load_list guest1 /images/arm32/versatilepb/nor_flash.list",
 
 			  /* Print banner */
 			  "vfs cat /system/banner.txt";
