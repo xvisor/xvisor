@@ -29,7 +29,7 @@
 
 #define BUG_ON(x)							\
 	do {								\
-		if (x) {						\
+		if (unlikely(x)) {					\
 			vmm_lemergency(NULL, "Bug in %s() at %s:%d\n",	\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
@@ -41,7 +41,7 @@
 
 #define WARN_ON(x)							\
 	({								\
-		if (x) {						\
+		if (unlikely(x)) {					\
 			vmm_lwarning(NULL, "%s() at %s:%d\n",		\
 				   __func__, __FILE__, __LINE__);	\
 			dump_stacktrace();				\
@@ -51,7 +51,7 @@
 
 #define WARN(x, msg...)							\
 	({								\
-		if (x) {						\
+		if (unlikely(x)) {					\
 			vmm_lwarning(NULL, msg);			\
 			vmm_lwarning(NULL, "%s() at %s:%d\n",		\
 				   __func__, __FILE__, __LINE__);	\
