@@ -138,13 +138,13 @@ static inline int _ipu_is_sync_irq(uint32_t irq)
 #define tri_cur_buf_mask(ch)	(idma_mask(ch*2) * 3)
 #define tri_cur_buf_shift(ch)	(ffs(idma_mask(ch*2)) - 1)
 
-const char *pixel_clk_0[] = {"ipu1_pclk_0", "ipu2_pclk_0"};
-const char *pixel_clk_1[] = {"ipu1_pclk_1", "ipu2_pclk_1"};
-const char *pixel_clk_0_sel[] = {"ipu1_pclk0_sel", "ipu2_pclk0_sel"};
-const char *pixel_clk_1_sel[] = {"ipu1_pclk1_sel", "ipu2_pclk1_sel"};
-const char *pixel_clk_0_div[] = {"ipu1_pclk0_div", "ipu2_pclk0_div"};
-const char *pixel_clk_1_div[] = {"ipu1_pclk1_div", "ipu2_pclk1_div"};
-const char *ipu_pixel_clk_sel[2][3] = {{"ipu1", "ipu1_di0", "ipu1_di1"},
+static const char *const pixel_clk_0[] = {"ipu1_pclk_0", "ipu2_pclk_0"};
+static const char *const pixel_clk_1[] = {"ipu1_pclk_1", "ipu2_pclk_1"};
+static const char *const pixel_clk_0_sel[] = {"ipu1_pclk0_sel", "ipu2_pclk0_sel"};
+static const char *const pixel_clk_1_sel[] = {"ipu1_pclk1_sel", "ipu2_pclk1_sel"};
+static const char *const pixel_clk_0_div[] = {"ipu1_pclk0_div", "ipu2_pclk0_div"};
+static const char *const pixel_clk_1_div[] = {"ipu1_pclk1_div", "ipu2_pclk1_div"};
+static const char *const ipu_pixel_clk_sel[2][3] = {{"ipu1", "ipu1_di0", "ipu1_di1"},
 				       {"ipu2", "ipu2_di0", "ipu2_di1"}};
 
 static int ipu_clk_setup_enable(struct ipu_soc *ipu,
