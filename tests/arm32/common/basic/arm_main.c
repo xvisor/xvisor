@@ -724,11 +724,11 @@ void arm_cmd_autoexec(int argc, char **argv)
 	/* sanity check on command list */
 	if (!len) {
 		arm_puts("command list not found !!!\n");
-		return;
+		goto unlock;
 	}
 	if (len >= ARM_CMD_AUTOEXEC_BUF_SIZE) {
 		arm_printf("command list len=%d too big !!!\n", len);
-		return;
+		goto unlock;
 	}
 
 	/* copy commands from NOR flash */
@@ -756,6 +756,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 		arm_exec(ptr);
 	}
 
+unlock:
 	lock = 0;
 
 	return;
