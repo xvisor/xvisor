@@ -342,6 +342,10 @@ static int ipu_probe(struct vmm_device *dev,
 	pltfm_data->bypass_reset = (bool)bypass_reset;
 
 	/* Aliases are not yet implemented, use a dirty static int */
+	if (id >= MXC_IPU_MAX_NUM) {
+		dev_err(dev, "id overflow (%"PRIu32")\n", id);
+		return VMM_EOVERFLOW;
+	}
 	pltfm_data->id = id;
 	++id;
 
