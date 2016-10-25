@@ -309,8 +309,6 @@ struct clk *clk_register_gate_pix_clk(struct device *dev, const char *name,
 	gate->hw.init = &init;
 
 	clk = clk_register(dev, &gate->hw);
-	if (IS_ERR(clk))
-		kfree(clk);
 
 	return clk;
 }
