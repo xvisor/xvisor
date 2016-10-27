@@ -245,31 +245,20 @@ arch_smp_id:
 	mrc	p15, 0, r0, c13, c0, 4
 	bx 	lr
 
-	.align	2
-	.globl proc_smp_counter
-proc_smp_counter:
-	.word	0x0
-
 	/* 
 	 * Setup SMP ID of current processor
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	/* Determine next SMP ID in r0 */
-	adr	r1, proc_smp_counter
-	ldr	r0, [r1]
-	add	r2, r0, #1
-	str	r2, [r1]
-
 	/* Ensure that next SMP ID in r0
 	 * is less than CONFIG_CPU_COUNT
 	 */
 	ldr	r1, =CONFIG_CPU_COUNT
 	cmp	r0, r1
-	blt	setup_smp_id_done
+	blt	proc_setup_smp_id_done
 	b	.
 
-setup_smp_id_done:
+proc_setup_smp_id_done:
 	mcr	p15, 0, r0, c13, c0, 4
 	bx	lr
 #endif

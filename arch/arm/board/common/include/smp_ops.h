@@ -56,4 +56,7 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "smp_ops", "", "", "", ops)
 void smp_write_pen_release(unsigned long val);
 unsigned long smp_read_pen_release(void);
 
+void smp_write_logical_id(unsigned long val);
+unsigned long smp_read_logical_id(void);
+
 #endif

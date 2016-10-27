@@ -71,31 +71,20 @@ arch_smp_id:
 	mrs	x0, tpidr_el2
 	ret
 
-	.align	3
-	.globl proc_smp_counter
-proc_smp_counter:
-	.dword	0x0
-
 	/* 
 	 * Setup SMP ID of current processor
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	/* Determine next SMP ID in x0 */
-	adr	x1, proc_smp_counter
-	ldr	x0, [x1]
-	add	x2, x0, #1
-	str	x2, [x1]
-
 	/* Ensure that next SMP ID in x0
 	 * is less than CONFIG_CPU_COUNT
 	 */
 	ldr	x1, =CONFIG_CPU_COUNT
 	cmp	x0, x1
-	blt	setup_smp_id_done
+	blt	proc_setup_smp_id_done
 	b	.
 
-setup_smp_id_done:
+proc_setup_smp_id_done:
 	msr	tpidr_el2, x0
 	ret
 #endif

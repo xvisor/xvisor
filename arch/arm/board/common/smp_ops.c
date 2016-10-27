@@ -41,6 +41,7 @@
 #include <vmm_smp.h>
 #include <vmm_compiler.h>
 #include <vmm_cache.h>
+#include <vmm_delay.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
@@ -57,6 +58,7 @@
 #endif
 
 volatile unsigned long start_secondary_pen_release = MPIDR_INVALID;
+volatile unsigned long start_secondary_smp_id = 0x0;
 physical_addr_t __smp_logical_map[CONFIG_CPU_COUNT] =
 				{ [0 ... CONFIG_CPU_COUNT-1] = MPIDR_INVALID };
 
@@ -64,11 +66,12 @@ static LIST_HEAD(smp_ops_list);
 static const struct smp_operations *smp_cpu_ops[CONFIG_CPU_COUNT];
 
 /*
- * Write secondary_holding_pen_release in a way that is guaranteed to be
- * visible to all observers, irrespective of whether they're taking part
- * in coherency or not.  This is necessary for the hotplug code to work
- * reliably.
+ * Write start_secondary_pen_release and start_secondary_smp_id in a way
+ * that is guaranteed to be visible to all observers, irrespective of
+ * whether they're taking part in coherency or not.  This is necessary
+ * for the hotplug code to work reliably.
  */
+
 void smp_write_pen_release(unsigned long val)
 {
 	virtual_addr_t start = (virtual_addr_t)&start_secondary_pen_release;
@@ -81,6 +84,20 @@ void smp_write_pen_release(unsigned long val)
 unsigned long smp_read_pen_release(void)
 {
 	return start_secondary_pen_release;
+}
+
+void smp_write_logical_id(unsigned long val)
+{
+	virtual_addr_t start = (virtual_addr_t)&start_secondary_smp_id;
+	unsigned long size = sizeof(start_secondary_smp_id);
+
+	start_secondary_smp_id = val;
+	vmm_flush_dcache_range(start, start + size);
+}
+
+unsigned long smp_read_logical_id(void)
+{
+	return start_secondary_smp_id;
 }
 
 static const struct smp_operations * __init smp_get_ops(const char *name)
@@ -328,12 +345,25 @@ int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 
 int __init arch_smp_start_cpu(u32 cpu)
 {
+	int rc;
+
+	/* Update logical ID */
+	smp_write_logical_id(cpu);
+
 	/* Boot SMP callback */
 	if (smp_cpu_ops[cpu]->cpu_boot) {
-		return smp_cpu_ops[cpu]->cpu_boot(cpu);
+		rc = smp_cpu_ops[cpu]->cpu_boot(cpu);
+	} else {
+		rc = VMM_ENOSYS;
 	}
 
-	return VMM_ENOSYS;
+	/* Wait 10ms before setting logical ID invalid */
+	vmm_udelay(10000);
+
+	/* Set logical ID to invalid value */
+	smp_write_logical_id(CONFIG_CPU_COUNT);
+
+	return rc;
 }
 
 void __cpuinit arch_smp_postboot(void)

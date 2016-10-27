@@ -241,6 +241,9 @@ _start_mmu_init:
 
 #ifdef CONFIG_SMP
 	.align	3
+__start_secondary_smp_id:
+	.dword	start_secondary_smp_id
+	.align	3
 __start_secondary_pen_release:
 	.dword	.
 	.dword	start_secondary_pen_release
@@ -305,16 +308,18 @@ _start_secondary_nopen:
 	ldr	x0, __vbar_val
 	msr    	vbar_el2, x0
 
-#ifdef CONFIG_SMP
-	/* Setup SMP ID for current processor */
-	bl      proc_setup_smp_id
-#endif
-
 	/* Setup Hypervisor System Control Register */
 	bl	proc_setup
 	msr     sctlr_el2, x0
 	dsb	sy
 	isb
+
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	ldr	x1, __start_secondary_smp_id
+	ldr	x0, [x1]
+	bl      proc_setup_smp_id
+#endif
 
 	/* Set Hypervisor Stack */
 	ldr	x2,	__hvc_stack_end
