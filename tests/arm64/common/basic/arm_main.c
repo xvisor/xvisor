@@ -481,6 +481,9 @@ void arm_cmd_start_linux(int argc, char **argv)
 	arm_irq_disable();
 	arm_mmu_cleanup();
 
+	/* Increase fdt blob size by 8KB */
+	fdt_increase_size((void *)fdt_addr, 0x2000);
+
 	meminfo[0] = arm_board_ram_start();
 	meminfo[1] = arm_board_ram_size();
 	/* Fillup/fixup the fdt blob with following:

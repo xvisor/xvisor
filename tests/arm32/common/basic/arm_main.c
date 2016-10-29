@@ -583,6 +583,9 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
 	arm_strcat(cmdline, cfg_str);
 
+	/* Increase fdt blob size by 8KB */
+	fdt_increase_size((void *)fdt_addr, 0x2000);
+
 	/* Fillup/fixup the fdt blob with following:
 	 * 		- initrd start, end
 	 * 		- kernel cmd line
