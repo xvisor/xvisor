@@ -209,6 +209,10 @@ static int pl190_reg_read(struct pl190_emulator_state *s,
 	case 8:		/* PROTECTION */
 		*dst = s->protected;
 		break;
+	case 11:
+		/* Read as zero. */
+		*dst = 0;
+		break;
 	case 12:		/* VECTADDR */
 		/* Read vector address at the start of an ISR.  Increases the
 		   current priority level to that of the current interrupt.  */
@@ -284,6 +288,9 @@ static int pl190_reg_write(struct pl190_emulator_state *s,
 	case 8:		/* PROTECTION */
 		/* TODO: Protection (supervisor only access) is not implemented.  */
 		s->protected = src & 1;
+		break;
+	case 11:
+		/* Ignore. */
 		break;
 	case 12:		/* VECTADDR */
 		/* Restore the previous priority level.  The value written is
