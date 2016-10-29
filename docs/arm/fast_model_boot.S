@@ -256,6 +256,7 @@ __spin_loop_addr_next:
 	adr	r2, secondary_loop
 	ldmia	r2, {r3 - r7}			/* Move the code to a location */
 	stmia	r1, {r3 - r7}			/* less likely to be overridden */
+	dsb	sy				/* Make sure write finishes before jumping */
 	ldr	r0, __spin_location_addr
 	mov	pc, r1				/* Branch to the relocated code */
 __spin_location_addr:
