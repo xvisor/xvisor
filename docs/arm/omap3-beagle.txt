@@ -39,6 +39,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cd <linux_source_directory>
 
   [9. Configure Linux in build directory]
+  # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [10. Build Linux in build directory]
@@ -47,8 +48,8 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   [11. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
-  [12. Build Linux in build directory to reflect changes in kernel image]
-  # make O=<linux_build_directory> ARCH=arm Image
+  [12. Extract patched Linux kernel image]
+  # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
 
   [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
@@ -199,6 +200,7 @@ follows:
   # cd <linux_source_directory>
 
   [10. Configure Linux in build directory]
+  # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [11. Build Linux in build directory]
@@ -207,8 +209,8 @@ follows:
   [12. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
-  [13. Build Linux in build directory to reflect changes in kernel image]
-  # make O=<linux_build_directory> ARCH=arm Image
+  [13. Extract patched Linux kernel image]
+  # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
 
   [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)

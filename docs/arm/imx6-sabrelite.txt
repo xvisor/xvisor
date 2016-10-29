@@ -63,10 +63,11 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   [14. Configure, build and patch the kernel image (linux 4.5.0 is advised)]
   # cd <linux_source_directory>
   # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_defconfig <linux_build_directory>/.config
+  # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
   # make O=<linux_build_directory> ARCH=arm Image
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
-  # make O=<linux_build_directory> ARCH=arm Image
+  # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
   # cd <xvisor_source_directory>
 
   [15. Then, make cpp process the Linux kernel device tree]
