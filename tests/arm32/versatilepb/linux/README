@@ -67,6 +67,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cp -f ./tests/arm32/versatilepb/linux/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # cp -f ./tests/arm32/versatilepb/linux/cmdlist ./build/disk/images/arm32/versatilepb/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/versatilepb/Image
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/versatile-pb.dtb ./build/disk/images/arm32/versatilepb/versatile-pb.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
