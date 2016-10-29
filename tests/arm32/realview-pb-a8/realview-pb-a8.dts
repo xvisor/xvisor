@@ -259,6 +259,26 @@
 			interrupts = <42>;
 		};
 
+		timer4_5 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x10018000>;
+			physical_size = <0x1000>;
+			device_type = "timer";
+			compatible = "primecell,sp804";
+			interrupts = <73>;
+		};
+
+		timer6_7 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x10019000>;
+			physical_size = <0x1000>;
+			device_type = "timer";
+			compatible = "primecell,sp804";
+			interrupts = <74>;
+		};
+
 		sysctrl1 { /* No SP810 sysctrl */
 			manifest_type = "virtual";
 			address_type = "memory";
@@ -369,6 +389,15 @@
 			compatible = "smsc,lan9118";
 			switch = ""; /* Override this before guest creation */
 			interrupts = <60>;
+		};
+
+		usb { /* No USB */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x4F000000>;
+			physical_size = <0x20000>;
+			device_type = "misc";
+			compatible = "zero";
 		};
 	};
 };
