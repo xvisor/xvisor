@@ -380,5 +380,14 @@
 			switch = ""; /* Override this before guest creation */
 			interrupts = <41>;
 		};
+
+		usb { /* No USB */
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x4F000000>;
+			physical_size = <0x20000>;
+			device_type = "misc";
+			compatible = "zero";
+		};
 	};
 };
