@@ -1,4 +1,5 @@
 0x40000000 /images/arm32/realview-eb-mpcore/firmware.bin
 0x400FF000 /images/arm32/realview-eb-mpcore/cmdlist
 0x40100000 /images/arm32/realview-eb-mpcore/Image
+0x40FF0000 /images/arm32/realview-eb-mpcore/arm-realview-eb-11mp-ctrevb.dtb
 0x41000000 /images/arm32/rootfs.img
