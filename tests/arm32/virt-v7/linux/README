@@ -40,7 +40,7 @@ ARM Fast Models Host:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [9. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
 
   [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
