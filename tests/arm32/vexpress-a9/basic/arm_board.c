@@ -27,6 +27,8 @@
 #include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <libfdt/libfdt.h>
+#include <libfdt/fdt_support.h>
 #include <pic/gic.h>
 #include <timer/sp804.h>
 #include <serial/pl01x.h>
@@ -71,7 +73,168 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arm_board_fdt_fixup(void *fdt_addr)
 {
-	/* For now nothing to do here. */
+	u32 vals[5];
+	char str[64];
+	int rc, poff, noff;
+
+	poff = fdt_path_offset(fdt_addr, "/");
+	if (poff < 0) {
+		arm_printf("%s: failed to find nodeoffset of / node\n",
+			   __func__);
+		return;
+	}
+
+	poff = fdt_add_subnode(fdt_addr, poff, "virt");
+	if (poff < 0) {
+		arm_printf("%s: failed to add %s subnode in %s node\n",
+			   __func__, "virt", "/");
+		return;
+	}
+
+	arm_strcpy(str, "simple-bus");
+	rc = fdt_setprop(fdt_addr, poff, "compatible",
+			 str, arm_strlen(str)+1);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "compatible", "virt");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(1);
+	rc = fdt_setprop(fdt_addr, poff, "#address-cells",
+			 vals, sizeof(u32));
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "#address-cells", "virt");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(1);
+	rc = fdt_setprop(fdt_addr, poff, "#size-cells",
+			 vals, sizeof(u32));
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "#size-cells", "virt");
+		return;
+	}
+
+	rc = fdt_setprop(fdt_addr, poff, "ranges", NULL, 0);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "ranges", "virt");
+		return;
+	}
+
+	noff = fdt_add_subnode(fdt_addr, poff, "virtio_net");
+	if (poff < 0) {
+		arm_printf("%s: failed to add %s subnode in %s node\n",
+			   __func__, "virtio_net", "virt");
+		return;
+	}
+
+	arm_strcpy(str, "virtio,mmio");
+	rc = fdt_setprop(fdt_addr, noff, "compatible",
+			 str, arm_strlen(str)+1);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "compatible", "virtio_net");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0x20100000);
+	vals[1] = cpu_to_fdt32(0x1000);
+	rc = fdt_setprop(fdt_addr, noff, "reg",
+			 vals, sizeof(u32)*2);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "reg", "virtio_net");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0);
+	vals[1] = cpu_to_fdt32(50);
+	vals[2] = cpu_to_fdt32(4);
+	rc = fdt_setprop(fdt_addr, noff, "interrupts",
+			 vals, sizeof(u32)*3);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "interrupts", "virtio_net");
+		return;
+	}
+
+	noff = fdt_add_subnode(fdt_addr, poff, "virtio_block");
+	if (poff < 0) {
+		arm_printf("%s: failed to add %s subnode in %s node\n",
+			   __func__, "virtio_block", "virt");
+		return;
+	}
+
+	arm_strcpy(str, "virtio,mmio");
+	rc = fdt_setprop(fdt_addr, noff, "compatible",
+			 str, arm_strlen(str)+1);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "compatible", "virtio_block");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0x20200000);
+	vals[1] = cpu_to_fdt32(0x1000);
+	rc = fdt_setprop(fdt_addr, noff, "reg",
+			 vals, sizeof(u32)*2);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "reg", "virtio_block");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0);
+	vals[1] = cpu_to_fdt32(53);
+	vals[2] = cpu_to_fdt32(4);
+	rc = fdt_setprop(fdt_addr, noff, "interrupts",
+			 vals, sizeof(u32)*3);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "interrupts", "virtio_block");
+		return;
+	}
+
+	noff = fdt_add_subnode(fdt_addr, poff, "virtio_console");
+	if (poff < 0) {
+		arm_printf("%s: failed to add %s subnode in %s node\n",
+			   __func__, "virtio_console", "virt");
+		return;
+	}
+
+	arm_strcpy(str, "virtio,mmio");
+	rc = fdt_setprop(fdt_addr, noff, "compatible",
+			 str, arm_strlen(str)+1);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "compatible", "virtio_console");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0x20300000);
+	vals[1] = cpu_to_fdt32(0x1000);
+	rc = fdt_setprop(fdt_addr, noff, "reg",
+			 vals, sizeof(u32)*2);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "reg", "virtio_console");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0);
+	vals[1] = cpu_to_fdt32(54);
+	vals[2] = cpu_to_fdt32(4);
+	rc = fdt_setprop(fdt_addr, noff, "interrupts",
+			 vals, sizeof(u32)*3);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "interrupts", "virtio_console");
+		return;
+	}
 }
 
 u32 arm_board_autoexec_addr(void)
