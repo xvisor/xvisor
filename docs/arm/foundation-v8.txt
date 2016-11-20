@@ -62,7 +62,7 @@ Model and also boot ARM64 Linux as Guest OS:
   # make O=<linux_build_directory> ARCH=arm64 oldconfig
 
   [9. Build Linux in build directory to reflect changes in kernel image]
-  # make O=<linux_build_directory> ARCH=arm64 Image
+  # make O=<linux_build_directory> ARCH=arm64 Image dtbs
 
   [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
@@ -83,7 +83,7 @@ Model and also boot ARM64 Linux as Guest OS:
   # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm64/virt-v8/Image
   # cp -f <linux_build_directory>/virt-v8.dtb ./build/disk/images/arm64/virt-v8/virt-v8.dtb
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
@@ -154,7 +154,7 @@ Model and also boot ARM32 Linux as Guest OS:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [10. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
 
   [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
@@ -174,7 +174,7 @@ Model and also boot ARM32 Linux as Guest OS:
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb ./tests/arm32/vexpress-a15/linux/vexpress-v2p-ca15-tc1.dts
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca15-tc1.dtb ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 

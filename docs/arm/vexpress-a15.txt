@@ -36,7 +36,7 @@ Vexpress-A15 Host:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [9. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
 
   [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
@@ -56,7 +56,7 @@ Vexpress-A15 Host:
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 -o ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb ./tests/arm32/vexpress-a15/linux/vexpress-v2p-ca15-tc1.dts
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca15-tc1.dtb ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR

@@ -35,7 +35,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [9. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
 
   [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
@@ -61,6 +61,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-eb-11mp-ctrevb.dtb ./build/disk/images/arm32/realview-eb-mpcore/arm-realview-eb-11mp-ctrevb.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR

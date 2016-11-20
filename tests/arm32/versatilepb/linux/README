@@ -41,7 +41,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
   [9. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
 
   [10. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
