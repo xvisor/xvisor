@@ -95,7 +95,7 @@ enum vmm_iommu_attr {
 };
 
 /**
- * struct iommu_ops - iommu ops and capabilities
+ * IOMMU ops and capabilities
  * @domain_init: init iommu domain
  * @domain_destroy: destroy iommu domain
  * @attach_dev: attach device to an iommu domain
@@ -305,5 +305,8 @@ static inline int vmm_report_iommu_fault(struct vmm_iommu_domain *domain,
 
 	return ret;
 }
+
+/** Initialize IOMMU framework */
+int __init vmm_iommu_init(void);
 
 #endif

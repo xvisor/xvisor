@@ -45,6 +45,7 @@
 #include <vmm_cmdmgr.h>
 #include <vmm_wallclock.h>
 #include <vmm_chardev.h>
+#include <vmm_iommu.h>
 #include <vmm_modules.h>
 #include <vmm_extable.h>
 #include <arch_cpu.h>
@@ -267,6 +268,13 @@ static void system_init_work(struct vmm_work *work)
 		vmm_mdelay(1);
 	}
 #endif
+
+	/* Initialize IOMMU framework */
+	vmm_printf("init: iommu framework\n");
+	ret = vmm_iommu_init();
+	if (ret) {
+		goto fail;
+	}
 
 	/* Initialize hypervisor modules */
 	vmm_printf("init: hypervisor modules\n");

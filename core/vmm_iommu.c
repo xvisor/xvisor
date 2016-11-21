@@ -36,20 +36,12 @@
 #include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
-#include <vmm_modules.h>
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <vmm_iommu.h>
 #include <arch_atomic.h>
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
-
-#define MODULE_DESC			"IOMMU Framework"
-#define MODULE_AUTHOR			"Anup Patel"
-#define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		VMM_IOMMU_IPRIORITY
-#define	MODULE_INIT			vmm_iommu_init
-#define	MODULE_EXIT			vmm_iommu_exit
 
 #undef DEBUG
 
@@ -113,7 +105,6 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 
 	return group;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_alloc);
 
 struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id)
 {
@@ -132,13 +123,11 @@ struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id)
 
 	return group;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_get_by_id);
 
 void *vmm_iommu_group_get_iommudata(struct vmm_iommu_group *group)
 {
 	return group->iommu_data;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_get_iommudata);
 
 void vmm_iommu_group_set_iommudata(struct vmm_iommu_group *group,
 				   void *iommu_data,
@@ -147,7 +136,6 @@ void vmm_iommu_group_set_iommudata(struct vmm_iommu_group *group,
 	group->iommu_data = iommu_data;
 	group->iommu_data_release = release;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_set_iommudata);
 
 int vmm_iommu_group_set_name(struct vmm_iommu_group *group,
 			     const char *name)
@@ -167,7 +155,6 @@ int vmm_iommu_group_set_name(struct vmm_iommu_group *group,
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_set_name);
 
 int vmm_iommu_group_add_device(struct vmm_iommu_group *group,
 				struct vmm_device *dev)
@@ -202,7 +189,6 @@ int vmm_iommu_group_add_device(struct vmm_iommu_group *group,
 
 	return 0;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_add_device);
 
 void vmm_iommu_group_remove_device(struct vmm_device *dev)
 {
@@ -234,7 +220,6 @@ void vmm_iommu_group_remove_device(struct vmm_device *dev)
 
 	vmm_iommu_group_put(group);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_remove_device);
 
 int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 				 int (*fn)(struct vmm_device *, void *))
@@ -252,7 +237,6 @@ int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_for_each_dev);
 
 struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
 {
@@ -263,7 +247,6 @@ struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
 
 	return group;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_get);
 
 void vmm_iommu_group_free(struct vmm_iommu_group *group)
 {
@@ -283,27 +266,23 @@ void vmm_iommu_group_free(struct vmm_iommu_group *group)
 
 	vmm_free(group);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_free);
 
 int vmm_iommu_group_register_notifier(struct vmm_iommu_group *group,
 				      struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_register(&group->notifier, nb);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_register_notifier);
 
 int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 					struct vmm_notifier_block *nb)
 {
 	return vmm_blocking_notifier_unregister(&group->notifier, nb);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_unregister_notifier);
 
 int vmm_iommu_group_id(struct vmm_iommu_group *group)
 {
 	return group->id;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_group_id);
 
 static int add_iommu_group(struct vmm_device *dev, void *data)
 {
@@ -394,13 +373,11 @@ int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
 
 	return VMM_OK;
 }
-VMM_EXPORT_SYMBOL(vmm_bus_set_iommu);
 
 bool vmm_iommu_present(struct vmm_bus *bus)
 {
 	return bus->iommu_ops != NULL;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_present);
 
 void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
 				 vmm_iommu_fault_handler_t handler,
@@ -411,7 +388,6 @@ void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
 	domain->handler = handler;
 	domain->handler_token = token;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_set_fault_handler);
 
 struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus)
 {
@@ -438,7 +414,6 @@ out_free:
 
 	return NULL;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_alloc);
 
 void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 {
@@ -447,7 +422,6 @@ void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 
 	vmm_free(domain);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_free);
 
 int vmm_iommu_attach_device(struct vmm_iommu_domain *domain,
 			    struct vmm_device *dev)
@@ -457,7 +431,6 @@ int vmm_iommu_attach_device(struct vmm_iommu_domain *domain,
 
 	return domain->ops->attach_dev(domain, dev);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_attach_device);
 
 void vmm_iommu_detach_device(struct vmm_iommu_domain *domain,
 			     struct vmm_device *dev)
@@ -467,7 +440,6 @@ void vmm_iommu_detach_device(struct vmm_iommu_domain *domain,
 
 	domain->ops->detach_dev(domain, dev);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_detach_device);
 
 /*
  * IOMMU groups are really the natrual working unit of the IOMMU, but
@@ -492,7 +464,6 @@ int vmm_iommu_attach_group(struct vmm_iommu_domain *domain,
 	return vmm_iommu_group_for_each_dev(group, domain,
 					iommu_group_do_attach_device);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_attach_group);
 
 static int iommu_group_do_detach_device(struct vmm_device *dev, void *data)
 {
@@ -509,7 +480,6 @@ void vmm_iommu_detach_group(struct vmm_iommu_domain *domain,
 	vmm_iommu_group_for_each_dev(group, domain,
 					iommu_group_do_detach_device);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_detach_group);
 
 physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
 				       dma_addr_t iova)
@@ -519,7 +489,6 @@ physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
 
 	return domain->ops->iova_to_phys(domain, iova);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_iova_to_phys);
 
 int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
 			     unsigned long cap)
@@ -529,7 +498,6 @@ int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
 
 	return domain->ops->domain_has_cap(domain, cap);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_has_cap);
 
 static size_t iommu_pgsize(struct vmm_iommu_domain *domain,
 			   unsigned long addr_merge, size_t size)
@@ -614,7 +582,6 @@ int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_map);
 
 size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 			unsigned long iova, size_t size)
@@ -662,7 +629,6 @@ size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 
 	return unmapped;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_unmap);
 
 int vmm_iommu_domain_window_enable(struct vmm_iommu_domain *domain,
 				   u32 wnd_nr, physical_addr_t paddr,
@@ -674,7 +640,6 @@ int vmm_iommu_domain_window_enable(struct vmm_iommu_domain *domain,
 	return domain->ops->domain_window_enable(domain, wnd_nr,
 						 paddr, size, prot);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_window_enable);
 
 void vmm_iommu_domain_window_disable(struct vmm_iommu_domain *domain,
 				     u32 wnd_nr)
@@ -684,7 +649,6 @@ void vmm_iommu_domain_window_disable(struct vmm_iommu_domain *domain,
 
 	return domain->ops->domain_window_disable(domain, wnd_nr);
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_window_disable);
 
 int vmm_iommu_domain_get_attr(struct vmm_iommu_domain *domain,
 			      enum vmm_iommu_attr attr, void *data)
@@ -722,7 +686,6 @@ int vmm_iommu_domain_get_attr(struct vmm_iommu_domain *domain,
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_get_attr);
 
 int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
 			      enum vmm_iommu_attr attr, void *data)
@@ -749,9 +712,8 @@ int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
 
 	return ret;
 }
-VMM_EXPORT_SYMBOL(vmm_iommu_domain_set_attr);
 
-static int __init vmm_iommu_init(void)
+int __init vmm_iommu_init(void)
 {
 	memset(iommu_groups, 0, sizeof(iommu_groups));
 
@@ -759,15 +721,3 @@ static int __init vmm_iommu_init(void)
 
 	return VMM_OK;
 }
-
-static void __exit vmm_iommu_exit(void)
-{
-	/* For now nothing to do here. */
-}
-
-VMM_DECLARE_MODULE(MODULE_DESC,
-			MODULE_AUTHOR,
-			MODULE_LICENSE,
-			MODULE_IPRIORITY,
-			MODULE_INIT,
-			MODULE_EXIT);
