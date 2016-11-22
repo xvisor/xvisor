@@ -71,6 +71,7 @@ struct vmm_iommu_device {
 
 static vmm_rwlock_t iommu_groups_lock;
 static struct vmm_iommu_group *iommu_groups[CONFIG_IOMMU_MAX_GROUPS];
+static const struct vmm_devtree_nodeid *iommu_matches;
 
 struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 {
@@ -713,11 +714,44 @@ int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
 	return ret;
 }
 
+static void __init iommu_nidtbl_found(struct vmm_devtree_node *node,
+				      const struct vmm_devtree_nodeid *match,
+				      void *data)
+{
+	int err;
+	vmm_iommu_init_t init_fn = match->data;
+
+	if (!init_fn) {
+		return;
+	}
+
+	err = init_fn(node);
+#ifdef CONFIG_VERBOSE_MODE
+	if (err) {
+		vmm_printf("%s: Init %s node failed (error %d)\n",
+			   __func__, node->name, err);
+	}
+#else
+	(void)err;
+#endif
+}
+
 int __init vmm_iommu_init(void)
 {
 	memset(iommu_groups, 0, sizeof(iommu_groups));
 
 	INIT_RW_LOCK(&iommu_groups_lock);
+
+	/* Probe all device tree nodes matching
+	 * IOMMU nodeid table enteries.
+	 */
+	iommu_matches =  vmm_devtree_nidtbl_create_matches("iommu");
+	if (iommu_matches) {
+		vmm_devtree_iterate_matching(NULL,
+					     iommu_matches,
+					     iommu_nidtbl_found,
+					     NULL);
+	}
 
 	return VMM_OK;
 }

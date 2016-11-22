@@ -33,8 +33,14 @@
 
 #include <vmm_error.h>
 #include <vmm_types.h>
+#include <vmm_devtree.h>
 
-#define VMM_IOMMU_IPRIORITY	1
+/* nodeid table based IOMMU initialization callback */
+typedef int (*vmm_iommu_init_t)(struct vmm_devtree_node *);
+
+/* declare nodeid table based initialization for IOMMU */
+#define VMM_IOMMU_INIT_DECLARE(name, compat, fn)	\
+VMM_DEVTREE_NIDTBL_ENTRY(name, "iommu", "", "", compat, fn)
 
 #define VMM_IOMMU_READ		(1 << 0)
 #define VMM_IOMMU_WRITE		(1 << 1)
