@@ -21,4 +21,4 @@
 # @brief list of pass-through emulator objects
 # */
 
-emulators-objs-$(CONFIG_EMU_PT_SIMPLE)+= pt/simple.o
+emulators-objs-$(CONFIG_EMU_PT_PLATFORM)+= pt/platform.o

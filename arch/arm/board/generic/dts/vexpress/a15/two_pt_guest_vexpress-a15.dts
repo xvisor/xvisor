@@ -26,7 +26,7 @@
 			  "devtree attr set /guests/guest0/aspace/uart0 manifest_type string real",
 			  "devtree attr set /guests/guest0/aspace/uart0 host_physical_addr physaddr 0x1c0a0000",
 			  "devtree attr set /guests/guest0/aspace/uart0 device_type string pt",
-			  "devtree attr set /guests/guest0/aspace/uart0 compatible string simple",
+			  "devtree attr set /guests/guest0/aspace/uart0 compatible string platform",
 			  "devtree attr set /guests/guest0/aspace/uart0 host-interrupts uint32 38",
 			  "devtree attr set /guests/guest0/aspace/uart0 interrupts uint32 37",
 
@@ -43,7 +43,7 @@
 			  "devtree attr set /guests/guest1/aspace/uart0 manifest_type string real",
 			  "devtree attr set /guests/guest1/aspace/uart0 host_physical_addr physaddr 0x1c0b0000",
 			  "devtree attr set /guests/guest1/aspace/uart0 device_type string pt",
-			  "devtree attr set /guests/guest1/aspace/uart0 compatible string simple",
+			  "devtree attr set /guests/guest1/aspace/uart0 compatible string platform",
 			  "devtree attr set /guests/guest1/aspace/uart0 host-interrupts uint32 39",
 			  "devtree attr set /guests/guest1/aspace/uart0 interrupts uint32 37",
 
