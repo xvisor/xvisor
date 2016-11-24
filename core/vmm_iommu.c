@@ -45,7 +45,6 @@
 
 #undef DEBUG
 
-#define pr_err(msg...)			vmm_printf(msg)
 #ifdef DEBUG
 #define pr_debug(msg...)		vmm_printf(msg)
 #else
@@ -424,8 +423,8 @@ void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 	vmm_free(domain);
 }
 
-int vmm_iommu_attach_device(struct vmm_iommu_domain *domain,
-			    struct vmm_device *dev)
+static int iommu_attach_device(struct vmm_iommu_domain *domain,
+				struct vmm_device *dev)
 {
 	if (unlikely(domain->ops->attach_dev == NULL))
 		return VMM_ENODEV;
@@ -433,8 +432,8 @@ int vmm_iommu_attach_device(struct vmm_iommu_domain *domain,
 	return domain->ops->attach_dev(domain, dev);
 }
 
-void vmm_iommu_detach_device(struct vmm_iommu_domain *domain,
-			     struct vmm_device *dev)
+static void iommu_detach_device(struct vmm_iommu_domain *domain,
+				struct vmm_device *dev)
 {
 	if (unlikely(domain->ops->detach_dev == NULL))
 		return;
@@ -456,7 +455,7 @@ static int iommu_group_do_attach_device(struct vmm_device *dev, void *data)
 {
 	struct vmm_iommu_domain *domain = data;
 
-	return vmm_iommu_attach_device(domain, dev);
+	return iommu_attach_device(domain, dev);
 }
 
 int vmm_iommu_attach_group(struct vmm_iommu_domain *domain,
@@ -470,7 +469,7 @@ static int iommu_group_do_detach_device(struct vmm_device *dev, void *data)
 {
 	struct vmm_iommu_domain *domain = data;
 
-	vmm_iommu_detach_device(domain, dev);
+	iommu_detach_device(domain, dev);
 
 	return VMM_OK;
 }
@@ -483,7 +482,7 @@ void vmm_iommu_detach_group(struct vmm_iommu_domain *domain,
 }
 
 physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
-				       dma_addr_t iova)
+				       physical_addr_t iova)
 {
 	if (unlikely(domain->ops->iova_to_phys == NULL))
 		return 0;
@@ -532,7 +531,7 @@ static size_t iommu_pgsize(struct vmm_iommu_domain *domain,
 	return pgsize;
 }
 
-int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
+int vmm_iommu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
 		  physical_addr_t paddr, size_t size, int prot)
 {
 	unsigned long orig_iova = iova;
@@ -553,20 +552,23 @@ int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
 	 * size of the smallest page supported by the hardware
 	 */
 	if (!is_aligned(iova | paddr | size, min_pagesz)) {
-		pr_err("unaligned: iova 0x%lx pa 0x%"PRIPADDR" size 0x%lx "
-		       "min_pagesz 0x%lx\n", iova, paddr,
-		       (unsigned long)size, (unsigned long)min_pagesz);
+		vmm_lerror("IOMMU", "unaligned iova 0x%"PRIPADDR
+			   " pa 0x%"PRIPADDR" size 0x%zx "
+			   "min_pagesz 0x%zx\n", iova, paddr,
+			   size, min_pagesz);
 		return VMM_EINVALID;
 	}
 
-	pr_debug("map: iova 0x%lx pa 0x%"PRIPADDR" size 0x%zx\n",
+	pr_debug("IOMMU: map iova 0x%"PRIPADDR
+		 " pa 0x%"PRIPADDR" size 0x%zx\n",
 		 iova, paddr, size);
 
 	while (size) {
 		size_t pgsize = iommu_pgsize(domain, iova | paddr, size);
 
-		pr_debug("mapping: iova 0x%lx pa 0x%"PRIPADDR" size 0x%lx\n",
-			 iova, paddr, (unsigned long)pgsize);
+		pr_debug("IOMMU: mapping iova 0x%"PRIPADDR
+			 " pa 0x%"PRIPADDR" size 0x%zx\n",
+			 iova, paddr, pgsize);
 
 		ret = domain->ops->map(domain, iova, paddr, pgsize, prot);
 		if (ret)
@@ -585,7 +587,7 @@ int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
 }
 
 size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
-			unsigned long iova, size_t size)
+			physical_addr_t iova, size_t size)
 {
 	size_t unmapped_page, min_pagesz, unmapped = 0;
 
@@ -602,13 +604,14 @@ size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 	 * by the hardware
 	 */
 	if (!is_aligned(iova | size, min_pagesz)) {
-		pr_err("unaligned: iova 0x%lx size 0x%lx min_pagesz 0x%lx\n",
-		       iova, (unsigned long)size, (unsigned long)min_pagesz);
+		vmm_lerror("IOMMU", "unaligned iova 0x%"PRIPADDR
+			   " size 0x%zx min_pagesz 0x%zx\n", iova,
+			   size, min_pagesz);
 		return VMM_EINVALID;
 	}
 
-	pr_debug("unmap this: iova 0x%lx size 0x%lx\n",
-		 iova, (unsigned long)size);
+	pr_debug("IOMMU: unmap iova 0x%"PRIPADDR" size 0x%zx\n",
+		 iova, size);
 
 	/*
 	 * Keep iterating until we either unmap 'size' bytes (or more)
@@ -621,8 +624,8 @@ size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
 		if (!unmapped_page)
 			break;
 
-		pr_debug("unmapped: iova 0x%lx size 0x%lx\n",
-			 iova, (unsigned long)unmapped_page);
+		pr_debug("IOMMU: unmapped iova 0x%"PRIPADDR" size 0x%zx\n",
+			 iova, unmapped_page);
 
 		iova += unmapped_page;
 		unmapped += unmapped_page;

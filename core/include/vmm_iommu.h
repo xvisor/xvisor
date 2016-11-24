@@ -59,7 +59,7 @@ struct vmm_notifier_block;
 #define VMM_IOMMU_FAULT_WRITE	0x1
 
 typedef int (*vmm_iommu_fault_handler_t)(struct vmm_iommu_domain *,
-			struct vmm_device *, unsigned long, int, void *);
+			struct vmm_device *, physical_addr_t, int, void *);
 
 struct vmm_iommu_domain_geometry {
 	dma_addr_t aperture_start; /* First address that can be mapped    */
@@ -123,12 +123,12 @@ struct vmm_iommu_ops {
 			  struct vmm_device *dev);
 	void (*detach_dev)(struct vmm_iommu_domain *domain,
 			   struct vmm_device *dev);
-	int (*map)(struct vmm_iommu_domain *domain, unsigned long iova,
+	int (*map)(struct vmm_iommu_domain *domain, physical_addr_t iova,
 		   physical_addr_t paddr, size_t size, int prot);
-	size_t (*unmap)(struct vmm_iommu_domain *domain, unsigned long iova,
-			size_t size);
+	size_t (*unmap)(struct vmm_iommu_domain *domain,
+			physical_addr_t iova, size_t size);
 	physical_addr_t (*iova_to_phys)(struct vmm_iommu_domain *domain,
-					dma_addr_t iova);
+					physical_addr_t iova);
 	int (*domain_has_cap)(struct vmm_iommu_domain *domain,
 			      unsigned long cap);
 	int (*add_device)(struct vmm_device *dev);
@@ -173,25 +173,17 @@ struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id);
 /** Free existing IOMMU domain */
 void vmm_iommu_domain_free(struct vmm_iommu_domain *domain);
 
-/** Attach a device to IOMMU domain */
-int vmm_iommu_attach_device(struct vmm_iommu_domain *domain,
-			    struct vmm_device *dev);
-
-/** Detach a device from IOMMU domain */
-void vmm_iommu_detach_device(struct vmm_iommu_domain *domain,
-			     struct vmm_device *dev);
-
 /** Map IO virtual address to Physical address for given IOMMU domain */
-int vmm_iommu_map(struct vmm_iommu_domain *domain, unsigned long iova,
+int vmm_iommu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
 		  physical_addr_t paddr, size_t size, int prot);
 
 /** Unmap IO virtual address for given IOMMU domain */
-size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain, unsigned long iova,
-		       size_t size);
+size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
+			physical_addr_t iova, size_t size);
 
 /** Get IO virtual addres mapping for given IOMMU domain */
 physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
-				       dma_addr_t iova);
+				       physical_addr_t iova);
 
 /** Check whether IOMMU domain has given capability */
 int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
@@ -297,7 +289,7 @@ void vmm_iommu_domain_window_disable(struct vmm_iommu_domain *domain,
  * elicit the default behavior of the IOMMU drivers).
  */
 static inline int vmm_report_iommu_fault(struct vmm_iommu_domain *domain,
-		struct vmm_device *dev, unsigned long iova, int flags)
+		struct vmm_device *dev, physical_addr_t iova, int flags)
 {
 	int ret = VMM_ENOSYS;
 
