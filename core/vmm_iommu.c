@@ -39,7 +39,6 @@
 #include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <vmm_iommu.h>
-#include <arch_atomic.h>
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
 
@@ -53,8 +52,9 @@
 
 struct vmm_iommu_group {
 	atomic_t ref_count;
-	struct dlist devices;
 	struct vmm_mutex mutex;
+	struct vmm_iommu_domain *domain;
+	struct dlist devices;
 	struct vmm_blocking_notifier_chain notifier;
 	void *iommu_data;
 	void (*iommu_data_release)(void *iommu_data);
@@ -72,6 +72,8 @@ static vmm_rwlock_t iommu_groups_lock;
 static struct vmm_iommu_group *iommu_groups[CONFIG_IOMMU_MAX_GROUPS];
 static const struct vmm_devtree_nodeid *iommu_matches;
 
+/* =============== IOMMU Group APIs =============== */
+
 struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 {
 	int id;
@@ -86,6 +88,7 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 	arch_atomic_write(&group->ref_count, 1);
 	INIT_MUTEX(&group->mutex);
 	INIT_LIST_HEAD(&group->devices);
+	group->domain = NULL;
 	BLOCKING_INIT_NOTIFIER_CHAIN(&group->notifier);
 
 	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
@@ -104,6 +107,35 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 	}
 
 	return group;
+}
+
+struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
+{
+	struct vmm_iommu_group *group = dev->iommu_group;
+
+	if (group)
+		arch_atomic_inc(&group->ref_count);
+
+	return group;
+}
+
+void vmm_iommu_group_free(struct vmm_iommu_group *group)
+{
+	irq_flags_t flags;
+
+	if (!group) {
+		return;
+	}
+
+	if (arch_atomic_sub_return(&group->ref_count, 1)) {
+		return;
+	}
+
+	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
+	iommu_groups[group->id] = NULL;
+	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
+
+	vmm_free(group);
 }
 
 struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id)
@@ -195,6 +227,9 @@ void vmm_iommu_group_remove_device(struct vmm_device *dev)
 	struct vmm_iommu_group *group = dev->iommu_group;
 	struct vmm_iommu_device *tmp_device, *device = NULL;
 
+	if (!group)
+		return;
+
 	/* Pre-notify listeners that a device is being removed. */
 	vmm_blocking_notifier_call(&group->notifier,
 				VMM_IOMMU_GROUP_NOTIFY_DEL_DEVICE, dev);
@@ -228,43 +263,16 @@ int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 	int ret = 0;
 
 	vmm_mutex_lock(&group->mutex);
+
 	list_for_each_entry(device, &group->devices, list) {
 		ret = fn(device->dev, data);
 		if (ret)
 			break;
 	}
+
 	vmm_mutex_unlock(&group->mutex);
 
 	return ret;
-}
-
-struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
-{
-	struct vmm_iommu_group *group = dev->iommu_group;
-
-	if (group)
-		arch_atomic_inc(&group->ref_count);
-
-	return group;
-}
-
-void vmm_iommu_group_free(struct vmm_iommu_group *group)
-{
-	irq_flags_t flags;
-
-	if (!group) {
-		return;
-	}
-
-	if (arch_atomic_sub_return(&group->ref_count, 1)) {
-		return;
-	}
-
-	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
-	iommu_groups[group->id] = NULL;
-	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
-
-	vmm_free(group);
 }
 
 int vmm_iommu_group_register_notifier(struct vmm_iommu_group *group,
@@ -284,162 +292,7 @@ int vmm_iommu_group_id(struct vmm_iommu_group *group)
 	return group->id;
 }
 
-static int add_iommu_group(struct vmm_device *dev, void *data)
-{
-	struct vmm_iommu_ops *ops = data;
-
-	if (!ops->add_device)
-		return VMM_ENODEV;
-
-	WARN_ON(dev->iommu_group);
-
-	ops->add_device(dev);
-
-	return 0;
-}
-
-static int iommu_bus_notifier(struct vmm_notifier_block *nb,
-			      unsigned long action, void *data)
-{
-	struct vmm_device *dev = data;
-	struct vmm_iommu_ops *ops = dev->bus->iommu_ops;
-	struct vmm_iommu_group *group;
-	unsigned long group_action = 0;
-
-	/*
-	 * ADD/DEL call into iommu driver ops if provided, which may
-	 * result in ADD/DEL notifiers to group->notifier
-	 */
-	if (action == VMM_BUS_NOTIFY_ADD_DEVICE) {
-		if (ops->add_device)
-			return ops->add_device(dev);
-	} else if (action == VMM_BUS_NOTIFY_DEL_DEVICE) {
-		if (ops->remove_device && dev->iommu_group) {
-			ops->remove_device(dev);
-			return 0;
-		}
-	}
-
-	/*
-	 * Remaining BUS_NOTIFYs get filtered and republished to the
-	 * group, if anyone is listening
-	 */
-	group = vmm_iommu_group_get(dev);
-	if (!group)
-		return 0;
-
-	switch (action) {
-	case VMM_BUS_NOTIFY_BIND_DRIVER:
-		group_action = VMM_IOMMU_GROUP_NOTIFY_BIND_DRIVER;
-		break;
-	case VMM_BUS_NOTIFY_BOUND_DRIVER:
-		group_action = VMM_IOMMU_GROUP_NOTIFY_BOUND_DRIVER;
-		break;
-	case VMM_BUS_NOTIFY_UNBIND_DRIVER:
-		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBIND_DRIVER;
-		break;
-	case VMM_BUS_NOTIFY_UNBOUND_DRIVER:
-		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBOUND_DRIVER;
-		break;
-	}
-
-	if (group_action)
-		vmm_blocking_notifier_call(&group->notifier,
-					   group_action, dev);
-
-	vmm_iommu_group_put(group);
-	return 0;
-}
-
-static struct vmm_notifier_block iommu_bus_nb = {
-	.notifier_call = iommu_bus_notifier,
-};
-
-static void iommu_bus_init(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
-{
-	vmm_devdrv_bus_register_notifier(bus, &iommu_bus_nb);
-	vmm_devdrv_bus_device_iterate(bus, NULL, ops, add_iommu_group);
-}
-
-int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
-{
-	if (bus->iommu_ops != NULL)
-		return VMM_EBUSY;
-
-	bus->iommu_ops = ops;
-
-	/* Do IOMMU specific setup for this bus-type */
-	iommu_bus_init(bus, ops);
-
-	return VMM_OK;
-}
-
-bool vmm_iommu_present(struct vmm_bus *bus)
-{
-	return bus->iommu_ops != NULL;
-}
-
-void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
-				 vmm_iommu_fault_handler_t handler,
-				 void *token)
-{
-	BUG_ON(!domain);
-
-	domain->handler = handler;
-	domain->handler_token = token;
-}
-
-struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus)
-{
-	struct vmm_iommu_domain *domain;
-	int ret;
-
-	if (bus == NULL || bus->iommu_ops == NULL)
-		return NULL;
-
-	domain = vmm_zalloc(sizeof(*domain));
-	if (!domain)
-		return NULL;
-
-	domain->ops = bus->iommu_ops;
-
-	ret = domain->ops->domain_init(domain);
-	if (ret)
-		goto out_free;
-
-	return domain;
-
-out_free:
-	vmm_free(domain);
-
-	return NULL;
-}
-
-void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
-{
-	if (likely(domain->ops->domain_destroy != NULL))
-		domain->ops->domain_destroy(domain);
-
-	vmm_free(domain);
-}
-
-static int iommu_attach_device(struct vmm_iommu_domain *domain,
-				struct vmm_device *dev)
-{
-	if (unlikely(domain->ops->attach_dev == NULL))
-		return VMM_ENODEV;
-
-	return domain->ops->attach_dev(domain, dev);
-}
-
-static void iommu_detach_device(struct vmm_iommu_domain *domain,
-				struct vmm_device *dev)
-{
-	if (unlikely(domain->ops->detach_dev == NULL))
-		return;
-
-	domain->ops->detach_dev(domain, dev);
-}
+/* =============== IOMMU Domain APIs =============== */
 
 /*
  * IOMMU groups are really the natrual working unit of the IOMMU, but
@@ -455,30 +308,114 @@ static int iommu_group_do_attach_device(struct vmm_device *dev, void *data)
 {
 	struct vmm_iommu_domain *domain = data;
 
-	return iommu_attach_device(domain, dev);
-}
+	if (unlikely(domain->ops->attach_dev == NULL))
+		return VMM_ENODEV;
 
-int vmm_iommu_attach_group(struct vmm_iommu_domain *domain,
-			   struct vmm_iommu_group *group)
-{
-	return vmm_iommu_group_for_each_dev(group, domain,
-					iommu_group_do_attach_device);
+	return domain->ops->attach_dev(domain, dev);
 }
 
 static int iommu_group_do_detach_device(struct vmm_device *dev, void *data)
 {
 	struct vmm_iommu_domain *domain = data;
 
-	iommu_detach_device(domain, dev);
+	if (unlikely(domain->ops->detach_dev == NULL))
+		return VMM_ENODEV;
+
+	domain->ops->detach_dev(domain, dev);
 
 	return VMM_OK;
 }
 
-void vmm_iommu_detach_group(struct vmm_iommu_domain *domain,
-			    struct vmm_iommu_group *group)
+struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
+					struct vmm_iommu_group *group)
 {
+	struct vmm_iommu_domain *domain;
+	int ret;
+
+	if (bus == NULL || bus->iommu_ops == NULL || group == NULL)
+		return NULL;
+
+	vmm_mutex_lock(&group->mutex);
+
+	if (group->domain != NULL) {
+		domain = group->domain;
+		arch_atomic_inc(&domain->ref_count);
+		goto done_unlock;
+	}
+
+	domain = vmm_zalloc(sizeof(*domain));
+	if (!domain)
+		goto fail_unlock;
+
+	arch_atomic_write(&domain->ref_count, 1);
+	domain->bus = bus;
+	domain->group = group;
+	domain->ops = bus->iommu_ops;
+
+	ret = domain->ops->domain_init(domain);
+	if (ret)
+		goto fail_free;
+
+	ret = vmm_iommu_group_for_each_dev(group, domain,
+					iommu_group_do_attach_device);
+	if (ret)
+		goto fail_destroy_free;
+
+	if (group->domain != NULL)
+		goto fail_detach_free;
+	group->domain = domain;
+
+done_unlock:
+	vmm_mutex_unlock(&group->mutex);
+
+	return domain;
+
+fail_detach_free:
 	vmm_iommu_group_for_each_dev(group, domain,
-					iommu_group_do_detach_device);
+				     iommu_group_do_detach_device);
+fail_destroy_free:
+	if (likely(domain->ops->domain_destroy != NULL))
+		domain->ops->domain_destroy(domain);
+fail_free:
+	vmm_free(domain);
+fail_unlock:
+	vmm_mutex_unlock(&group->mutex);
+	return NULL;
+}
+
+void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
+{
+	struct vmm_iommu_group *group;
+
+	if (domain == NULL)
+		return;
+
+	if (arch_atomic_sub_return(&domain->ref_count, 1)) {
+		return;
+	}
+
+	group = domain->group;
+	vmm_mutex_lock(&group->mutex);
+	group->domain = NULL;
+	vmm_mutex_unlock(&group->mutex);
+
+	vmm_iommu_group_for_each_dev(group, domain,
+				     iommu_group_do_detach_device);
+
+	if (likely(domain->ops->domain_destroy != NULL))
+		domain->ops->domain_destroy(domain);
+
+	vmm_free(domain);
+}
+
+void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
+				 vmm_iommu_fault_handler_t handler,
+				 void *token)
+{
+	BUG_ON(!domain);
+
+	domain->handler = handler;
+	domain->handler_token = token;
 }
 
 physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
@@ -715,6 +652,103 @@ int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
 	}
 
 	return ret;
+}
+
+static int add_iommu_group(struct vmm_device *dev, void *data)
+{
+	struct vmm_iommu_ops *ops = data;
+
+	if (!ops->add_device)
+		return VMM_ENODEV;
+
+	WARN_ON(dev->iommu_group);
+
+	ops->add_device(dev);
+
+	return 0;
+}
+
+static int iommu_bus_notifier(struct vmm_notifier_block *nb,
+			      unsigned long action, void *data)
+{
+	struct vmm_device *dev = data;
+	struct vmm_iommu_ops *ops = dev->bus->iommu_ops;
+	struct vmm_iommu_group *group;
+	unsigned long group_action = 0;
+
+	/*
+	 * ADD/DEL call into iommu driver ops if provided, which may
+	 * result in ADD/DEL notifiers to group->notifier
+	 */
+	if (action == VMM_BUS_NOTIFY_ADD_DEVICE) {
+		if (ops->add_device)
+			return ops->add_device(dev);
+	} else if (action == VMM_BUS_NOTIFY_DEL_DEVICE) {
+		if (ops->remove_device && dev->iommu_group) {
+			ops->remove_device(dev);
+			return 0;
+		}
+	}
+
+	/*
+	 * Remaining BUS_NOTIFYs get filtered and republished to the
+	 * group, if anyone is listening
+	 */
+	group = vmm_iommu_group_get(dev);
+	if (!group)
+		return 0;
+
+	switch (action) {
+	case VMM_BUS_NOTIFY_BIND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_BIND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_BOUND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_BOUND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_UNBIND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBIND_DRIVER;
+		break;
+	case VMM_BUS_NOTIFY_UNBOUND_DRIVER:
+		group_action = VMM_IOMMU_GROUP_NOTIFY_UNBOUND_DRIVER;
+		break;
+	}
+
+	if (group_action)
+		vmm_blocking_notifier_call(&group->notifier,
+					   group_action, dev);
+
+	vmm_iommu_group_put(group);
+	return 0;
+}
+
+/* =============== IOMMU Misc APIs =============== */
+
+static struct vmm_notifier_block iommu_bus_nb = {
+	.notifier_call = iommu_bus_notifier,
+};
+
+static void iommu_bus_init(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
+{
+	vmm_devdrv_bus_register_notifier(bus, &iommu_bus_nb);
+	vmm_devdrv_bus_device_iterate(bus, NULL, ops, add_iommu_group);
+}
+
+int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
+{
+	if (bus->iommu_ops != NULL)
+		return VMM_EBUSY;
+
+	bus->iommu_ops = ops;
+
+	/* Do IOMMU specific setup for this bus-type */
+	iommu_bus_init(bus, ops);
+
+	return VMM_OK;
+}
+
+bool vmm_iommu_present(struct vmm_bus *bus)
+{
+	return bus->iommu_ops != NULL;
 }
 
 static void __init iommu_nidtbl_found(struct vmm_devtree_node *node,

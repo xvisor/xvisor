@@ -34,6 +34,14 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_devtree.h>
+#include <arch_atomic.h>
+
+struct vmm_iommu_ops;
+struct vmm_iommu_group;
+struct vmm_bus;
+struct vmm_device;
+struct vmm_iommu_domain;
+struct vmm_notifier_block;
 
 /* nodeid table based IOMMU initialization callback */
 typedef int (*vmm_iommu_init_t)(struct vmm_devtree_node *);
@@ -46,13 +54,6 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "iommu", "", "", compat, fn)
 #define VMM_IOMMU_WRITE		(1 << 1)
 #define VMM_IOMMU_CACHE		(1 << 2) /* DMA cache coherency */
 #define VMM_IOMMU_EXEC		(1 << 3)
-
-struct vmm_iommu_ops;
-struct vmm_iommu_group;
-struct vmm_bus;
-struct vmm_device;
-struct vmm_iommu_domain;
-struct vmm_notifier_block;
 
 /* iommu fault flags */
 #define VMM_IOMMU_FAULT_READ	0x0
@@ -68,6 +69,9 @@ struct vmm_iommu_domain_geometry {
 };
 
 struct vmm_iommu_domain {
+	atomic_t ref_count;
+	struct vmm_bus *bus;
+	struct vmm_iommu_group *group;
 	struct vmm_iommu_ops *ops;
 	void *priv;
 	vmm_iommu_fault_handler_t handler;
@@ -158,52 +162,20 @@ struct vmm_iommu_ops {
 #define VMM_IOMMU_GROUP_NOTIFY_UNBIND_DRIVER	5 /* Pre Driver unbind */
 #define VMM_IOMMU_GROUP_NOTIFY_UNBOUND_DRIVER	6 /* Post Driver unbind */
 
-/** Set IOMMU operations for given bus type */
-int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops);
-
-/** Check whethere IOMMU operations are available for given bus type */
-bool vmm_iommu_present(struct vmm_bus *bus);
-
-/** Alloc new IOMMU domain for given bus type */
-struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus);
-
-/** Get IOMMU group instance by ID */
-struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id);
-
-/** Free existing IOMMU domain */
-void vmm_iommu_domain_free(struct vmm_iommu_domain *domain);
-
-/** Map IO virtual address to Physical address for given IOMMU domain */
-int vmm_iommu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
-		  physical_addr_t paddr, size_t size, int prot);
-
-/** Unmap IO virtual address for given IOMMU domain */
-size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
-			physical_addr_t iova, size_t size);
-
-/** Get IO virtual addres mapping for given IOMMU domain */
-physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
-				       physical_addr_t iova);
-
-/** Check whether IOMMU domain has given capability */
-int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
-			     unsigned long cap);
-
-/** Set fault handler for given IOMMU domain */
-void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
-				 vmm_iommu_fault_handler_t handler,
-				 void *token);
-
-/** Attach IOMMU group to IOMMU domain */
-int vmm_iommu_attach_group(struct vmm_iommu_domain *domain,
-			   struct vmm_iommu_group *group);
-
-/** Detach IOMMU group from IOMMU domain */
-void vmm_iommu_detach_group(struct vmm_iommu_domain *domain,
-			    struct vmm_iommu_group *group);
+/* =============== IOMMU Group APIs =============== */
 
 /** Alloc new IOMMU group */
 struct vmm_iommu_group *vmm_iommu_group_alloc(void);
+
+/** Get IOMMU group of given device */
+struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev);
+
+/** Put IOMMU group */
+void vmm_iommu_group_free(struct vmm_iommu_group *group);
+#define vmm_iommu_group_put(group)	vmm_iommu_group_free(group)
+
+/** Get IOMMU group instance by ID */
+struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id);
 
 /** Get private data for given IOMMU group */
 void *vmm_iommu_group_get_iommudata(struct vmm_iommu_group *group);
@@ -217,52 +189,55 @@ void vmm_iommu_group_set_iommudata(struct vmm_iommu_group *group,
 int vmm_iommu_group_set_name(struct vmm_iommu_group *group,
 			     const char *name);
 
-/** Add device to IOMMU group */
+/** Add device to IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_group_add_device(struct vmm_iommu_group *group,
 			       struct vmm_device *dev);
 
-/** Remove device from IOMMU group */
+/** Remove device from IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 void vmm_iommu_group_remove_device(struct vmm_device *dev);
 
-/** Iterate over each device of given IOMMU group */
+/** Iterate over each device of given IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 				 int (*fn)(struct vmm_device *, void *));
 
-/** Get IOMMU group of given device */
-struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev);
-
-/** Put IOMMU group */
-void vmm_iommu_group_free(struct vmm_iommu_group *group);
-
-#define vmm_iommu_group_put(group)	vmm_iommu_group_free(group)
-
-/** Register notifier client for IOMMU group */
+/** Register notifier client for IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_group_register_notifier(struct vmm_iommu_group *group,
 				      struct vmm_notifier_block *nb);
 
-/** Unregister notifier client for IOMMU group */
+/** Unregister notifier client for IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 					struct vmm_notifier_block *nb);
 
 /** Get ID for given IOMMU group */
 int vmm_iommu_group_id(struct vmm_iommu_group *group);
 
-/** Get attributes of IOMMU domain */
-int vmm_iommu_domain_get_attr(struct vmm_iommu_domain *domain,
-			      enum vmm_iommu_attr, void *data);
+/* =============== IOMMU Domain APIs =============== */
 
-/** Set attributes for IOMMU domain */
-int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
-			      enum vmm_iommu_attr, void *data);
+/** Alloc new IOMMU domain for given bus type
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
+					struct vmm_iommu_group *group);
 
-/** Enable physical address window for IOMMU domain */
-int vmm_iommu_domain_window_enable(struct vmm_iommu_domain *domain,
-				   u32 wnd_nr, physical_addr_t offset,
-				   u64 size, int prot);
+/** Free existing IOMMU domain
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+void vmm_iommu_domain_free(struct vmm_iommu_domain *domain);
 
-/** Disable physical address window for IOMMU domain */
-void vmm_iommu_domain_window_disable(struct vmm_iommu_domain *domain,
-				     u32 wnd_nr);
+/** Set fault handler for given IOMMU domain */
+void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
+				 vmm_iommu_fault_handler_t handler,
+				 void *token);
 
 /**
  * Report about an IOMMU fault to the IOMMU framework
@@ -303,6 +278,47 @@ static inline int vmm_report_iommu_fault(struct vmm_iommu_domain *domain,
 
 	return ret;
 }
+
+/** Check whether IOMMU domain has given capability */
+int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
+			     unsigned long cap);
+
+/** Get IO virtual addres mapping for given IOMMU domain */
+physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
+				       physical_addr_t iova);
+
+/** Map IO virtual address to Physical address for given IOMMU domain */
+int vmm_iommu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
+		  physical_addr_t paddr, size_t size, int prot);
+
+/** Unmap IO virtual address for given IOMMU domain */
+size_t vmm_iommu_unmap(struct vmm_iommu_domain *domain,
+			physical_addr_t iova, size_t size);
+
+/** Enable physical address window for IOMMU domain */
+int vmm_iommu_domain_window_enable(struct vmm_iommu_domain *domain,
+				   u32 wnd_nr, physical_addr_t offset,
+				   u64 size, int prot);
+
+/** Disable physical address window for IOMMU domain */
+void vmm_iommu_domain_window_disable(struct vmm_iommu_domain *domain,
+				     u32 wnd_nr);
+
+/** Get attributes of IOMMU domain */
+int vmm_iommu_domain_get_attr(struct vmm_iommu_domain *domain,
+			      enum vmm_iommu_attr, void *data);
+
+/** Set attributes for IOMMU domain */
+int vmm_iommu_domain_set_attr(struct vmm_iommu_domain *domain,
+			      enum vmm_iommu_attr, void *data);
+
+/* =============== IOMMU Misc APIs =============== */
+
+/** Set IOMMU operations for given bus type */
+int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops);
+
+/** Check whethere IOMMU operations are available for given bus type */
+bool vmm_iommu_present(struct vmm_bus *bus);
 
 /** Initialize IOMMU framework */
 int __init vmm_iommu_init(void);
