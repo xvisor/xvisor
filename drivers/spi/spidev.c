@@ -110,7 +110,6 @@ static ssize_t spidev_sync(struct spidev *spidev, struct spi_message *msg)
 		status = spi_async(spidev->spi, msg);
 	}
 	vmm_spin_unlock_irqrestore(&spidev->spi_lock, flags);
-
 	if (status == 0) {
 		vmm_completion_wait(&done);
 		vmm_spin_lock_irqsave(&spidev->spi_lock, flags);
@@ -127,7 +126,11 @@ static ssize_t spidev_sync(struct spidev *spidev, struct spi_message *msg)
 int spidev_xfer(struct spidev *spidev, struct spidev_xfer_data *xdata)
 {
 	int mask, ret = 0;
-	struct spi_transfer t;
+	struct spi_transfer t = {
+		.tx_buf         = xdata->tx_buf,
+		.rx_buf         = xdata->rx_buf,
+		.len            = xdata->len,
+	};
 	struct spi_message m;
 
 	if (!spidev || !xdata)
@@ -166,15 +169,15 @@ int spidev_xfer(struct spidev *spidev, struct spidev_xfer_data *xdata)
 		return VMM_EINVALID;
 	}
 
-	t.tx_buf = xdata->tx_buf;
-	t.rx_buf = xdata->rx_buf;
-	t.len = xdata->len;
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 
 	ret = spidev_sync(spidev, &m);
 	if (ret < 0) {
 		vmm_lerror("SPIDEV", "Submitting data to SPI failed\n");
+		if (ret == VMM_EBUSY)
+			return ret;
+		spidev->busy = 0;	/* This is required since in case of a failure other then VMM_EBUSY, the busy bit is not set to 0 causing erronous conditions in subsequent operations */
 		return VMM_EIO;
 	}
 
