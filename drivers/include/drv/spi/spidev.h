@@ -96,6 +96,9 @@ int spidev_count(void);
 /** Get SPIDEV instance */
 struct spidev *spidev_get(int id);
 
+/** Get SPIDEV name */
+const char *spidev_name(struct spidev *spidev);
+
 /** Do Xfer on SPIDEV instances */
 int spidev_xfer(struct spidev *spidev, struct spidev_xfer_data *xdata);
 

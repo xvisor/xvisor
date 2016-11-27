@@ -85,6 +85,14 @@ struct spidev *spidev_get(int id)
 }
 VMM_EXPORT_SYMBOL(spidev_get);
 
+const char *spidev_name(struct spidev *spidev)
+{
+	if (!spidev)
+		return NULL;
+	return dev_name(&spidev->spi->dev);
+}
+VMM_EXPORT_SYMBOL(spidev_name);
+
 static void spidev_complete(void *arg)
 {
 	vmm_completion_complete(arg);
