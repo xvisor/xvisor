@@ -166,6 +166,7 @@ static void __vgic_clear_pending(struct vgic_guest_state *s, u32 irq, u32 cm)
 	(((s)->irq_state[irq].level & (cm)) ? TRUE : FALSE)
 #define VGIC_SET_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 1
 #define VGIC_CLEAR_TRIGGER(s, irq) (s)->irq_state[irq].trigger = 0
+#define VGIC_TEST_RAW_TRIGGER(s, irq) (s)->irq_state[irq].trigger
 #define VGIC_TEST_TRIGGER(s, irq) \
 	(((irq < 32) || ((s)->irq_state[irq].host_irq != UINT_MAX)) ? \
 	1 : (s)->irq_state[irq].trigger)
@@ -784,7 +785,7 @@ static int __vgic_dist_readb(struct vgic_guest_state *s, int cpu,
 			if (VGIC_TEST_MODEL(s, irq + i)) {
 				*dst |= (1 << (i * 2));
 			}
-			if (VGIC_TEST_TRIGGER(s, irq + i)) {
+			if (VGIC_TEST_RAW_TRIGGER(s, irq + i)) {
 				*dst |= (2 << (i * 2));
 			}
 		}
