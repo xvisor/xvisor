@@ -104,6 +104,7 @@
 			reg = <0x1c0a0000 0x1000>;
 			clock-frequency = <24000000>;
 			interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
 		};
 
 		SERIAL2: uart2 { /* PL011 serial port */
@@ -111,6 +112,7 @@
 			reg = <0x1c0b0000 0x1000>;
 			clock-frequency = <24000000>;
 			interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
 		};
 
 		SERIAL3: uart3 { /* PL011 serial port */
@@ -118,6 +120,7 @@
 			reg = <0x1c0c0000 0x1000>;
 			clock-frequency = <24000000>;
 			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
 		};
 
 		RTC0: rtc { /* PL031 real-time clock */
