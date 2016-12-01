@@ -55,6 +55,42 @@ int vmm_guest_aspace_unregister_client(struct vmm_notifier_block *nb)
 	return rc;
 }
 
+void vmm_guest_iterate_region(struct vmm_guest *guest, u32 reg_flags,
+		void (*func)(struct vmm_guest *, struct vmm_region *, void *),
+		void *priv)
+{
+	irq_flags_t flags;
+	vmm_rwlock_t *root_lock = NULL;
+	struct rb_root *root = NULL;
+	struct vmm_region *reg = NULL, *n = NULL;
+	struct vmm_guest_aspace *aspace;
+
+	if (!guest || !func) {
+		return;
+	}
+	aspace = &guest->aspace;
+
+	/* Find out region tree root */
+	if (reg_flags & VMM_REGION_IO) {
+		root = &aspace->reg_iotree;
+		root_lock = &aspace->reg_iotree_lock;
+	} else {
+		root = &aspace->reg_memtree;
+		root_lock = &aspace->reg_memtree_lock;
+	}
+
+	/* Post-order traversal for rbtree nodes */
+	vmm_read_lock_irqsave_lite(root_lock, flags);
+	rbtree_postorder_for_each_entry_safe(reg, n, root, head) {
+		if ((reg->flags & reg_flags) == reg_flags) {
+			vmm_read_unlock_irqrestore_lite(root_lock, flags);
+			func(guest, reg, priv);
+			vmm_read_lock_irqsave_lite(root_lock, flags);
+		}
+	}
+	vmm_read_unlock_irqrestore_lite(root_lock, flags);
+}
+
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
 					 u32 reg_flags, bool resolve_alias)
@@ -148,8 +184,8 @@ done:
 	return reg;
 }
 
-u32 vmm_guest_memory_read(struct vmm_guest *guest, 
-			  physical_addr_t gphys_addr, 
+u32 vmm_guest_memory_read(struct vmm_guest *guest,
+			  physical_addr_t gphys_addr,
 			  void *dst, u32 len, bool cacheable)
 {
 	u32 bytes_read = 0, to_read;
@@ -161,7 +197,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 	}
 
 	while (bytes_read < len) {
-		reg = vmm_guest_find_region(guest, gphys_addr, 
+		reg = vmm_guest_find_region(guest, gphys_addr,
 				VMM_REGION_REAL | VMM_REGION_MEMORY, TRUE);
 		if (!reg) {
 			break;
@@ -169,7 +205,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 
 		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		to_read = (reg->gphys_addr + reg->phys_size - gphys_addr);
-		to_read = ((len - bytes_read) < to_read) ? 
+		to_read = ((len - bytes_read) < to_read) ?
 			  (len - bytes_read) : to_read;
 
 		to_read = vmm_host_memory_read(hphys_addr,
@@ -186,8 +222,8 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 	return bytes_read;
 }
 
-u32 vmm_guest_memory_write(struct vmm_guest *guest, 
-			   physical_addr_t gphys_addr, 
+u32 vmm_guest_memory_write(struct vmm_guest *guest,
+			   physical_addr_t gphys_addr,
 			   void *src, u32 len, bool cacheable)
 {
 	u32 bytes_written = 0, to_write;
@@ -199,7 +235,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 	}
 
 	while (bytes_written < len) {
-		reg = vmm_guest_find_region(guest, gphys_addr, 
+		reg = vmm_guest_find_region(guest, gphys_addr,
 				VMM_REGION_REAL | VMM_REGION_MEMORY, TRUE);
 		if (!reg) {
 			break;
@@ -207,7 +243,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 
 		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
 		to_write = (reg->gphys_addr + reg->phys_size - gphys_addr);
-		to_write = ((len - bytes_written) < to_write) ? 
+		to_write = ((len - bytes_written) < to_write) ?
 			   (len - bytes_written) : to_write;
 
 		to_write = vmm_host_memory_write(hphys_addr,
@@ -237,14 +273,14 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		return VMM_EFAIL;
 	}
 
-	reg = vmm_guest_find_region(guest, gphys_addr, 
+	reg = vmm_guest_find_region(guest, gphys_addr,
 				    VMM_REGION_MEMORY, FALSE);
 	if (!reg) {
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
 		gphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
-		reg = vmm_guest_find_region(guest, gphys_addr, 
+		reg = vmm_guest_find_region(guest, gphys_addr,
 					    VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
 			return VMM_EFAIL;
@@ -287,12 +323,12 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	physical_addr_t addr;
 	physical_size_t size;
 
-	if (vmm_devtree_read_string(rnode, 
+	if (vmm_devtree_read_string(rnode,
 			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
 	if (strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL) != 0 &&
-	    strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 && 
+	    strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_VIRTUAL) != 0 &&
 	    strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_ALIAS) != 0) {
 		return FALSE;
 	}
@@ -312,7 +348,7 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		return FALSE;
 	}
 
-	if (vmm_devtree_read_string(rnode, 
+	if (vmm_devtree_read_string(rnode,
 			VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval)) {
 		return FALSE;
 	}
@@ -334,7 +370,7 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	}
 
 	if (is_alias) {
-		if (vmm_devtree_read_physaddr(rnode, 
+		if (vmm_devtree_read_physaddr(rnode,
 			VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME, &addr)) {
 			return FALSE;
 		}
@@ -1063,7 +1099,7 @@ int vmm_guest_aspace_init(struct vmm_guest *guest)
 	memset(aspace, 0, sizeof(struct vmm_guest_aspace));
 
 	/* Initialize address space of guest */
-	aspace->node = vmm_devtree_getchild(guest->node, 
+	aspace->node = vmm_devtree_getchild(guest->node,
 					VMM_DEVTREE_ADDRSPACE_NODE_NAME);
 	if (!aspace->node) {
 		vmm_printf("%s: %s/aspace node not found\n",

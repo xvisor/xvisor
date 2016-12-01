@@ -45,6 +45,13 @@ int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb);
 /** Unregister guest address space state change notifier */
 int vmm_guest_aspace_unregister_client(struct vmm_notifier_block *nb);
 
+/** Iterate over each region with matching flags
+ *  Note: reg_flags = 0x0 will match all regions
+ */
+void vmm_guest_iterate_region(struct vmm_guest *guest, u32 reg_flags,
+		void (*func)(struct vmm_guest *, struct vmm_region *, void *),
+		void *priv);
+
 /** Find region corresponding to a guest physical address and also
  *  resolve aliased regions to real or virtual regions if required.
  */
