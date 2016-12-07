@@ -50,10 +50,12 @@ typedef int (*vmm_iommu_init_t)(struct vmm_devtree_node *);
 #define VMM_IOMMU_INIT_DECLARE(name, compat, fn)	\
 VMM_DEVTREE_NIDTBL_ENTRY(name, "iommu", "", "", compat, fn)
 
+/* iommu mapping attributes */
 #define VMM_IOMMU_READ		(1 << 0)
 #define VMM_IOMMU_WRITE		(1 << 1)
 #define VMM_IOMMU_CACHE		(1 << 2) /* DMA cache coherency */
-#define VMM_IOMMU_EXEC		(1 << 3)
+#define VMM_IOMMU_NOEXEC	(1 << 3)
+#define VMM_IOMMU_MMIO		(1 << 4)
 
 /* iommu fault flags */
 #define VMM_IOMMU_FAULT_READ	0x0

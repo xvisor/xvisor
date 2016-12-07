@@ -137,7 +137,7 @@ static void platform_pt_iter(struct vmm_guest *guest,
 		      VMM_REGION_GPHYS_START(reg),
 		      VMM_REGION_HPHYS_START(reg),
 		      VMM_REGION_GPHYS_END(reg) - VMM_REGION_GPHYS_START(reg),
-		      VMM_IOMMU_READ|VMM_IOMMU_WRITE|VMM_IOMMU_EXEC);
+		      VMM_IOMMU_READ|VMM_IOMMU_WRITE);
 }
 
 static int platform_pt_guest_aspace_notification(
