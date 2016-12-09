@@ -22,3 +22,4 @@
 # */
 
 drivers-objs-$(CONFIG_IOMMU_IO_PGTABLE) += iommu/io-pgtable.o
+drivers-objs-$(CONFIG_IOMMU_IO_PGTABLE_LPAE) += iommu/io-pgtable-arm.o
