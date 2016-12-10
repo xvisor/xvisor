@@ -404,17 +404,27 @@ int vmm_host_memunmap(virtual_addr_t va)
 	return host_memunmap(alloc_va, alloc_sz);
 }
 
-virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
+virtual_addr_t vmm_host_alloc_aligned_pages(u32 page_count,
+					    u32 align_order, u32 mem_flags)
 {
 	physical_addr_t pa = 0x0;
 
+	if (align_order < VMM_PAGE_SHIFT)
+		align_order = VMM_PAGE_SHIFT;
+
 	if (!vmm_host_ram_alloc(&pa,
 				page_count * VMM_PAGE_SIZE,
-				VMM_PAGE_SHIFT)) {
+				align_order)) {
 		return 0x0;
 	}
 
 	return vmm_host_memmap(pa, page_count * VMM_PAGE_SIZE, mem_flags);
+}
+
+virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
+{
+	return vmm_host_alloc_aligned_pages(page_count,
+					    VMM_PAGE_SHIFT, mem_flags);
 }
 
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)

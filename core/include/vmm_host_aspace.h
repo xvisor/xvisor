@@ -127,7 +127,11 @@ static inline int vmm_host_iounmap(virtual_addr_t va)
 	return vmm_host_memunmap(va);
 }
 
-/** Allocate pages from host memory */
+/** Allocate pages from host memory with particular alignment */
+virtual_addr_t vmm_host_alloc_aligned_pages(u32 page_count,
+					    u32 align_order, u32 mem_flags);
+
+/** Allocate pages from host memory with default alignment */
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags);
 
 /** Free pages back to host memory */
