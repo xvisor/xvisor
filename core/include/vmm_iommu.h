@@ -57,6 +57,29 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "iommu", "", "", compat, fn)
 #define VMM_IOMMU_NOEXEC	(1 << 3)
 #define VMM_IOMMU_MMIO		(1 << 4)
 
+/* Domain feature flags */
+#define __VMM_IOMMU_DOMAIN_PAGING	(1U << 0)  /* Support for iommu_map/unmap */
+#define __VMM_IOMMU_DOMAIN_DMA_API	(1U << 1)  /* Domain for use in DMA-API
+						      implementation              */
+#define __VMM_IOMMU_DOMAIN_PT	(1U << 2)  /* Domain is identity mapped   */
+
+/*
+ * This are the possible domain-types
+ *
+ *	VMM_IOMMU_DOMAIN_BLOCKED	- All DMA is blocked, can be used to isolate
+ *					  devices
+ *	VMM_IOMMU_DOMAIN_IDENTITY	- DMA addresses are system physical addresses
+ *	VMM_IOMMU_DOMAIN_UNMANAGED	- DMA mappings managed by IOMMU-API user, used
+ *					  for VMs
+ *	VMM_IOMMU_DOMAIN_DMA		- Internally used for DMA-API implementations.
+ *					  This flag allows IOMMU drivers to implement
+ *					  certain optimizations for these domains
+ */
+#define VMM_IOMMU_DOMAIN_BLOCKED	(0U)
+#define VMM_IOMMU_DOMAIN_IDENTITY	(__VMM_IOMMU_DOMAIN_PT)
+#define VMM_IOMMU_DOMAIN_UNMANAGED	(__VMM_IOMMU_DOMAIN_PAGING)
+#define VMM_IOMMU_DOMAIN_DMA		(__VMM_IOMMU_DOMAIN_PAGING | \
+					 __VMM_IOMMU_DOMAIN_DMA_API)
 /* iommu fault flags */
 #define VMM_IOMMU_FAULT_READ	0x0
 #define VMM_IOMMU_FAULT_WRITE	0x1
@@ -71,6 +94,7 @@ struct vmm_iommu_domain_geometry {
 };
 
 struct vmm_iommu_domain {
+	unsigned int type;
 	atomic_t ref_count;
 	struct vmm_bus *bus;
 	struct vmm_iommu_group *group;
@@ -81,8 +105,12 @@ struct vmm_iommu_domain {
 	struct vmm_iommu_domain_geometry geometry;
 };
 
-#define VMM_IOMMU_CAP_CACHE_COHERENCY	0x1
-#define VMM_IOMMU_CAP_INTR_REMAP	0x2	/* isolates device intrs */
+enum vmm_iommu_cap {
+	VMM_IOMMU_CAP_CACHE_COHERENCY,	/* IOMMU can enforce cache coherent DMA
+					   transactions */
+	VMM_IOMMU_CAP_INTR_REMAP,	/* IOMMU supports interrupt isolation */
+	VMM_IOMMU_CAP_NOEXEC,		/* IOMMU_NOEXEC flag */
+};
 
 /*
  * Following constraints are specifc to FSL_PAMUV1:
@@ -108,23 +136,30 @@ enum vmm_iommu_attr {
 
 /**
  * IOMMU ops and capabilities
- * @domain_init: init iommu domain
- * @domain_destroy: destroy iommu domain
+ * @capable: check capability
+ * @domain_alloc: allocate iommu domain
+ * @domain_free: free iommu domain
  * @attach_dev: attach device to an iommu domain
  * @detach_dev: detach device from an iommu domain
  * @map: map a physically contiguous memory region to an iommu domain
  * @unmap: unmap a physically contiguous memory region from an iommu domain
  * @iova_to_phys: translate iova to physical address
- * @domain_has_cap: domain capabilities query
  * @add_device: add device to iommu grouping
  * @remove_device: remove device from iommu grouping
  * @domain_get_attr: Query domain attributes
  * @domain_set_attr: Change domain attributes
- * @pgsize_bitmap: bitmap of supported page sizes
+ * @domain_window_enable: Configure and enable a particular window for a domain
+ * @domain_window_disable: Disable a particular window for a domain
+ * @domain_set_windows: Set the number of windows for a domain
+ * @domain_get_windows: Return the number of windows for a domain
+ * @of_xlate: add OF master IDs to iommu grouping
+ * @pgsize_bitmap: bitmap of all possible supported page sizes
  */
 struct vmm_iommu_ops {
-	int (*domain_init)(struct vmm_iommu_domain *domain);
-	void (*domain_destroy)(struct vmm_iommu_domain *domain);
+	bool (*capable)(enum vmm_iommu_cap);
+
+	struct vmm_iommu_domain *(*domain_alloc)(unsigned int type);
+	void (*domain_free)(struct vmm_iommu_domain *domain);
 	int (*attach_dev)(struct vmm_iommu_domain *domain,
 			  struct vmm_device *dev);
 	void (*detach_dev)(struct vmm_iommu_domain *domain,
@@ -135,11 +170,9 @@ struct vmm_iommu_ops {
 			physical_addr_t iova, size_t size);
 	physical_addr_t (*iova_to_phys)(struct vmm_iommu_domain *domain,
 					physical_addr_t iova);
-	int (*domain_has_cap)(struct vmm_iommu_domain *domain,
-			      unsigned long cap);
 	int (*add_device)(struct vmm_device *dev);
 	void (*remove_device)(struct vmm_device *dev);
-	int (*device_group)(struct vmm_device *dev, unsigned int *groupid);
+
 	int (*domain_get_attr)(struct vmm_iommu_domain *domain,
 			       enum vmm_iommu_attr attr, void *data);
 	int (*domain_set_attr)(struct vmm_iommu_domain *domain,
@@ -153,6 +186,9 @@ struct vmm_iommu_ops {
 	int (*domain_set_windows)(struct vmm_iommu_domain *domain, u32 w_count);
 	/* Get the numer of window per domain */
 	u32 (*domain_get_windows)(struct vmm_iommu_domain *domain);
+
+	int (*of_xlate)(struct vmm_device *dev,
+			struct vmm_devtree_phandle_args *args);
 
 	unsigned long pgsize_bitmap;
 };
@@ -229,7 +265,8 @@ int vmm_iommu_group_id(struct vmm_iommu_group *group);
  *  Note: This function must be called in Orphan (or Thread) context
  */
 struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
-					struct vmm_iommu_group *group);
+					struct vmm_iommu_group *group,
+					unsigned int type);
 
 /** Free existing IOMMU domain
  *  Note: This function must be called in Orphan (or Thread) context
@@ -281,10 +318,6 @@ static inline int vmm_report_iommu_fault(struct vmm_iommu_domain *domain,
 	return ret;
 }
 
-/** Check whether IOMMU domain has given capability */
-int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
-			     unsigned long cap);
-
 /** Get IO virtual addres mapping for given IOMMU domain */
 physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
 				       physical_addr_t iova);
@@ -321,6 +354,9 @@ int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops);
 
 /** Check whethere IOMMU operations are available for given bus type */
 bool vmm_iommu_present(struct vmm_bus *bus);
+
+/**  Capability check on IOMMU for given bus type */
+bool vmm_iommu_capable(struct vmm_bus *bus, enum vmm_iommu_cap cap);
 
 /** Initialize IOMMU framework */
 int __init vmm_iommu_init(void);

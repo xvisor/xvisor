@@ -135,6 +135,9 @@ void vmm_iommu_group_free(struct vmm_iommu_group *group)
 	iommu_groups[group->id] = NULL;
 	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
 
+	if (group->iommu_data_release)
+		group->iommu_data_release(group->iommu_data);
+
 	vmm_free(group);
 }
 
@@ -327,7 +330,8 @@ static int iommu_group_do_detach_device(struct vmm_device *dev, void *data)
 }
 
 struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
-					struct vmm_iommu_group *group)
+					struct vmm_iommu_group *group,
+					unsigned int type)
 {
 	struct vmm_iommu_domain *domain;
 	int ret;
@@ -335,34 +339,40 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 	if (bus == NULL || bus->iommu_ops == NULL || group == NULL)
 		return NULL;
 
+	if ((type != VMM_IOMMU_DOMAIN_BLOCKED) ||
+	    (type != VMM_IOMMU_DOMAIN_IDENTITY) ||
+	    (type != VMM_IOMMU_DOMAIN_UNMANAGED) ||
+	    (type != VMM_IOMMU_DOMAIN_DMA))
+		return NULL;
+
 	vmm_mutex_lock(&group->mutex);
 
 	if (group->domain != NULL) {
 		domain = group->domain;
-		arch_atomic_inc(&domain->ref_count);
+		if (domain->type == type)
+			arch_atomic_inc(&domain->ref_count);
+		else
+			domain = NULL;
 		goto done_unlock;
 	}
 
-	domain = vmm_zalloc(sizeof(*domain));
+	domain = domain->ops->domain_alloc(type);
 	if (!domain)
 		goto fail_unlock;
 
+	domain->type = type;
 	arch_atomic_write(&domain->ref_count, 1);
 	domain->bus = bus;
 	domain->group = group;
 	domain->ops = bus->iommu_ops;
 
-	ret = domain->ops->domain_init(domain);
-	if (ret)
-		goto fail_free;
-
 	ret = vmm_iommu_group_for_each_dev(group, domain,
 					iommu_group_do_attach_device);
 	if (ret)
-		goto fail_destroy_free;
+		goto fail_free;
 
 	if (group->domain != NULL)
-		goto fail_detach_free;
+		goto fail_detach;
 	group->domain = domain;
 
 done_unlock:
@@ -370,14 +380,12 @@ done_unlock:
 
 	return domain;
 
-fail_detach_free:
+fail_detach:
 	vmm_iommu_group_for_each_dev(group, domain,
 				     iommu_group_do_detach_device);
-fail_destroy_free:
-	if (likely(domain->ops->domain_destroy != NULL))
-		domain->ops->domain_destroy(domain);
 fail_free:
-	vmm_free(domain);
+	if (likely(domain->ops->domain_free != NULL))
+		domain->ops->domain_free(domain);
 fail_unlock:
 	vmm_mutex_unlock(&group->mutex);
 	return NULL;
@@ -402,10 +410,8 @@ void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 	vmm_iommu_group_for_each_dev(group, domain,
 				     iommu_group_do_detach_device);
 
-	if (likely(domain->ops->domain_destroy != NULL))
-		domain->ops->domain_destroy(domain);
-
-	vmm_free(domain);
+	if (likely(domain->ops->domain_free != NULL))
+		domain->ops->domain_free(domain);
 }
 
 void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,
@@ -427,17 +433,8 @@ physical_addr_t vmm_iommu_iova_to_phys(struct vmm_iommu_domain *domain,
 	return domain->ops->iova_to_phys(domain, iova);
 }
 
-int vmm_iommu_domain_has_cap(struct vmm_iommu_domain *domain,
-			     unsigned long cap)
-{
-	if (unlikely(domain->ops->domain_has_cap == NULL))
-		return 0;
-
-	return domain->ops->domain_has_cap(domain, cap);
-}
-
 static size_t iommu_pgsize(struct vmm_iommu_domain *domain,
-			   unsigned long addr_merge, size_t size)
+			   physical_addr_t addr_merge, size_t size)
 {
 	unsigned int pgsize_idx;
 	size_t pgsize;
@@ -471,7 +468,7 @@ static size_t iommu_pgsize(struct vmm_iommu_domain *domain,
 int vmm_iommu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
 		  physical_addr_t paddr, size_t size, int prot)
 {
-	unsigned long orig_iova = iova;
+	physical_addr_t orig_iova = iova;
 	size_t min_pagesz;
 	size_t orig_size = size;
 	int ret = 0;
@@ -749,6 +746,14 @@ int vmm_bus_set_iommu(struct vmm_bus *bus, struct vmm_iommu_ops *ops)
 bool vmm_iommu_present(struct vmm_bus *bus)
 {
 	return bus->iommu_ops != NULL;
+}
+
+bool vmm_iommu_capable(struct vmm_bus *bus, enum vmm_iommu_cap cap)
+{
+	if (!bus->iommu_ops || !bus->iommu_ops->capable)
+		return FALSE;
+
+	return bus->iommu_ops->capable(cap);
 }
 
 static void __init iommu_nidtbl_found(struct vmm_devtree_node *node,

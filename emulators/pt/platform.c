@@ -270,7 +270,8 @@ static int platform_pt_probe(struct vmm_guest *guest,
 		vmm_devdrv_ref_device(s->dev);
 
 		s->dom = vmm_iommu_domain_alloc(&platform_bus,
-						s->dev->iommu_group);
+						s->dev->iommu_group,
+						VMM_IOMMU_DOMAIN_UNMANAGED);
 		if (!s->dom) {
 			rc = VMM_EFAIL;
 			goto platform_pt_probe_dref_dev_fail;

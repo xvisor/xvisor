@@ -99,6 +99,7 @@ struct vmm_device {
 	struct vmm_class *class;
 	struct vmm_driver *driver;
 	struct vmm_iommu_group *iommu_group;
+	void *iommu_priv;
 	u64 *dma_mask;
 	void *pins;
 	void (*release) (struct vmm_device *);
