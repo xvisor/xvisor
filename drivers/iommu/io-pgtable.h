@@ -31,7 +31,6 @@
 
 #include <vmm_types.h>
 #include <vmm_macros.h>
-#include <vmm_devdrv.h>
 #include <libs/bitops.h>
 
 /*
@@ -107,7 +106,6 @@ struct io_pgtable_cfg {
 	unsigned int			ias;
 	unsigned int			oas;
 	const struct iommu_gather_ops	*tlb;
-	struct vmm_device		*iommu_dev;
 
 	/* Low-level data specific to the table format */
 	union {
