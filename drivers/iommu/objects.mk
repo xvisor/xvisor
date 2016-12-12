@@ -24,3 +24,4 @@
 drivers-objs-$(CONFIG_IOMMU_IO_PGTABLE) += iommu/io-pgtable.o
 drivers-objs-$(CONFIG_IOMMU_IO_PGTABLE_LPAE) += iommu/io-pgtable-arm.o
 drivers-objs-$(CONFIG_IOMMU_IO_PGTABLE_ARMV7S) += iommu/io-pgtable-arm-v7s.o
+drivers-objs-$(CONFIG_IPMMU_VMSA) += iommu/ipmmu-vmsa.o
