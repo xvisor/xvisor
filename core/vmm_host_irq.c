@@ -426,44 +426,6 @@ int vmm_host_irq_unmark_ipi(u32 hirq)
 	return VMM_OK;
 }
 
-int vmm_host_irq_enable(u32 hirq)
-{
-	struct vmm_host_irq *irq;
-
-	if (NULL == (irq = vmm_host_irq_get(hirq)))
-		return VMM_ENOTAVAIL;
-
-	irq->state &= ~VMM_IRQ_STATE_DISABLED;
-	if (irq->chip) {
-		if (irq->chip->irq_enable) {
-			irq->chip->irq_enable(irq);
-		} else if (irq->chip->irq_unmask) {
-			irq->chip->irq_unmask(irq);
-		}
-		return VMM_OK;
-	}
-	return VMM_ENOTAVAIL;
-}
-
-int vmm_host_irq_disable(u32 hirq)
-{
-	struct vmm_host_irq *irq;
-
-	if (NULL == (irq = vmm_host_irq_get(hirq)))
-		return VMM_ENOTAVAIL;
-
-	irq->state |= VMM_IRQ_STATE_DISABLED;
-	if (irq->chip) {
-		if (irq->chip->irq_disable) {
-			irq->chip->irq_disable(irq);
-		} else if (irq->chip->irq_mask) {
-			irq->chip->irq_mask(irq);
-		}
-	}
-	irq->state |= VMM_IRQ_STATE_MASKED;
-	return VMM_OK;
-}
-
 int vmm_host_irq_unmask(u32 hirq)
 {
 	struct vmm_host_irq *irq;
@@ -471,10 +433,14 @@ int vmm_host_irq_unmask(u32 hirq)
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
 		return VMM_ENOTAVAIL;
 
-	if (irq->chip && irq->chip->irq_unmask) {
-		irq->chip->irq_unmask(irq);
+	if (irq->chip) {
+		if (irq->chip->irq_enable)
+			irq->chip->irq_enable(irq);
+		else if (irq->chip->irq_unmask)
+			irq->chip->irq_unmask(irq);
 		irq->state &= ~VMM_IRQ_STATE_MASKED;
 	}
+
 	return VMM_OK;
 }
 
@@ -485,10 +451,14 @@ int vmm_host_irq_mask(u32 hirq)
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
 		return VMM_ENOTAVAIL;
 
-	if (irq->chip && irq->chip->irq_mask) {
-		irq->chip->irq_mask(irq);
+	if (irq->chip) {
+		if (irq->chip->irq_disable)
+			irq->chip->irq_disable(irq);
+		else if (irq->chip->irq_mask)
+			irq->chip->irq_mask(irq);
 		irq->state |= VMM_IRQ_STATE_MASKED;
 	}
+
 	return VMM_OK;
 }
 
@@ -503,6 +473,7 @@ int vmm_host_irq_raise(u32 hirq,
 	if (irq->chip && irq->chip->irq_raise) {
 		irq->chip->irq_raise(irq, dest);
 	}
+
 	return VMM_OK;
 }
 
@@ -600,7 +571,7 @@ int vmm_host_irq_register(u32 hirq,
 			}
 		}
 	}
-	return vmm_host_irq_enable(hirq);
+	return vmm_host_irq_unmask(hirq);
 }
 
 static int host_irq_unregister(struct vmm_host_irq *irq, void *dev,
@@ -662,8 +633,9 @@ int vmm_host_irq_unregister(u32 hirq, void *dev)
 		}
 	}
 	if (disable) {
-		return vmm_host_irq_disable(hirq);
+		return vmm_host_irq_mask(hirq);
 	}
+
 	return VMM_OK;
 }
 
@@ -715,7 +687,6 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 	irq->name = NULL;
 	irq->state = state;
 	irq->state |= VMM_IRQ_TYPE_NONE;
-	irq->state |= VMM_IRQ_STATE_DISABLED;
 	irq->state |= VMM_IRQ_STATE_MASKED;
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		irq->count[cpu] = 0;

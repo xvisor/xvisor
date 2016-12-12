@@ -60,7 +60,6 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
  * @VMM_IRQ_STATE_EXTENDED		- Interrupt is an extended interrupt
- * @VMM_IRQ_STATE_DISABLED		- Disabled state of the interrupt
  * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  */
 enum vmm_irq_states {
@@ -71,8 +70,7 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_ROUTED		= (1 << 14),
 	VMM_IRQ_STATE_IPI		= (1 << 15),
 	VMM_IRQ_STATE_EXTENDED		= (1 << 16),
-	VMM_IRQ_STATE_DISABLED		= (1 << 17),
-	VMM_IRQ_STATE_MASKED		= (1 << 18),
+	VMM_IRQ_STATE_MASKED		= (1 << 17),
 };
 
 /**
@@ -305,16 +303,16 @@ static inline bool vmm_host_irq_is_ipi(struct vmm_host_irq *irq)
 	return (irq->state & VMM_IRQ_STATE_IPI) ? TRUE : FALSE;
 }
 
-/** Check if a host irq is disabled */
-static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
-{
-	return (irq->state & VMM_IRQ_STATE_DISABLED) ? TRUE : FALSE;
-}
-
 /** Check if a host irq is masked */
 static inline bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
 {
 	return (irq->state & VMM_IRQ_STATE_MASKED) ? TRUE : FALSE;
+}
+
+/** Check if a host irq is disabled */
+static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
+{
+	return vmm_host_irq_is_masked(irq);
 }
 
 /** Check if a host irq is in-progress */
@@ -367,17 +365,23 @@ int vmm_host_irq_mark_ipi(u32 hirq);
 /** UnMark host irq as inter-processor interrupt */
 int vmm_host_irq_unmark_ipi(u32 hirq);
 
-/** Enable a host irq (by default all irqs are disabled) */
-int vmm_host_irq_enable(u32 hirq);
-
-/** Disable a host irq */
-int vmm_host_irq_disable(u32 hirq);
-
 /** Unmask a host irq (by default all irqs are masked) */
 int vmm_host_irq_unmask(u32 hirq);
 
 /** Mask a host irq */
 int vmm_host_irq_mask(u32 hirq);
+
+/** Enable a host irq  */
+static inline int vmm_host_irq_enable(u32 hirq)
+{
+	return vmm_host_irq_unmask(hirq);
+}
+
+/** Disable a host irq */
+static inline int vmm_host_irq_disable(u32 hirq)
+{
+	return vmm_host_irq_mask(hirq);
+}
 
 /** Raise a host irq from software */
 int vmm_host_irq_raise(u32 hirq,
