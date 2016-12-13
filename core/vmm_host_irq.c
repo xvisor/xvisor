@@ -131,11 +131,11 @@ int vmm_host_generic_irq_exec(u32 hirq_no)
 
 	cpu = vmm_smp_processor_id();
 	irq->count[cpu]++;
-	irq->in_progress[cpu] = TRUE;
+	irq->percpu_state[cpu] |= VMM_PERCPU_IRQ_STATE_IN_PROG;
 	if (irq->handler) {
 		irq->handler(irq, cpu, irq->handler_data);
 	}
-	irq->in_progress[cpu] = FALSE;
+	irq->percpu_state[cpu] &= ~VMM_PERCPU_IRQ_STATE_IN_PROG;
 
 	return VMM_OK;
 }
@@ -426,8 +426,20 @@ int vmm_host_irq_unmark_ipi(u32 hirq)
 	return VMM_OK;
 }
 
+bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
+{
+	u32 percpu_state;
+
+	if (!irq)
+		return FALSE;
+
+	percpu_state = irq->percpu_state[vmm_smp_processor_id()];
+	return (percpu_state & VMM_PERCPU_IRQ_STATE_MASKED) ? TRUE : FALSE;
+}
+
 int vmm_host_irq_unmask(u32 hirq)
 {
+	u32 cpu;
 	struct vmm_host_irq *irq;
 
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
@@ -438,7 +450,15 @@ int vmm_host_irq_unmask(u32 hirq)
 			irq->chip->irq_enable(irq);
 		else if (irq->chip->irq_unmask)
 			irq->chip->irq_unmask(irq);
-		irq->state &= ~VMM_IRQ_STATE_MASKED;
+		if (vmm_host_irq_is_per_cpu(irq)) {
+			irq->percpu_state[vmm_smp_processor_id()] &=
+						~VMM_PERCPU_IRQ_STATE_MASKED;
+		} else {
+			for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+				irq->percpu_state[cpu] &=
+						~VMM_PERCPU_IRQ_STATE_MASKED;
+			}
+		}
 	}
 
 	return VMM_OK;
@@ -446,6 +466,7 @@ int vmm_host_irq_unmask(u32 hirq)
 
 int vmm_host_irq_mask(u32 hirq)
 {
+	u32 cpu;
 	struct vmm_host_irq *irq;
 
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
@@ -456,7 +477,15 @@ int vmm_host_irq_mask(u32 hirq)
 			irq->chip->irq_disable(irq);
 		else if (irq->chip->irq_mask)
 			irq->chip->irq_mask(irq);
-		irq->state |= VMM_IRQ_STATE_MASKED;
+		if (vmm_host_irq_is_per_cpu(irq)) {
+			irq->percpu_state[vmm_smp_processor_id()] |=
+						VMM_PERCPU_IRQ_STATE_MASKED;
+		} else {
+			for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+				irq->percpu_state[cpu] |=
+						VMM_PERCPU_IRQ_STATE_MASKED;
+			}
+		}
 	}
 
 	return VMM_OK;
@@ -687,10 +716,9 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 	irq->name = NULL;
 	irq->state = state;
 	irq->state |= VMM_IRQ_TYPE_NONE;
-	irq->state |= VMM_IRQ_STATE_MASKED;
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+		irq->percpu_state[cpu]= VMM_PERCPU_IRQ_STATE_MASKED;
 		irq->count[cpu] = 0;
-		irq->in_progress[cpu]= FALSE;
 	}
 	irq->chip = NULL;
 	irq->chip_data = NULL;

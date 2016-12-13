@@ -70,7 +70,14 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_ROUTED		= (1 << 14),
 	VMM_IRQ_STATE_IPI		= (1 << 15),
 	VMM_IRQ_STATE_EXTENDED		= (1 << 16),
-	VMM_IRQ_STATE_MASKED		= (1 << 17),
+};
+
+/**
+ * enum vmm_percpu_irq_states
+ */
+enum vmm_percpu_irq_states {
+	VMM_PERCPU_IRQ_STATE_IN_PROG	= (1 << 0),
+	VMM_PERCPU_IRQ_STATE_MASKED	= (1 << 1),
 };
 
 /**
@@ -146,8 +153,8 @@ struct vmm_host_irq {
 	u32 hwirq;
 	const char *name;
 	u32 state;
+	u32 percpu_state[CONFIG_CPU_COUNT];
 	u32 count[CONFIG_CPU_COUNT];
-	bool in_progress[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
 	vmm_host_irq_handler_t handler;
@@ -304,10 +311,7 @@ static inline bool vmm_host_irq_is_ipi(struct vmm_host_irq *irq)
 }
 
 /** Check if a host irq is masked */
-static inline bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
-{
-	return (irq->state & VMM_IRQ_STATE_MASKED) ? TRUE : FALSE;
-}
+bool vmm_host_irq_is_masked(struct vmm_host_irq *irq);
 
 /** Check if a host irq is disabled */
 static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
@@ -318,8 +322,9 @@ static inline bool vmm_host_irq_is_disabled(struct vmm_host_irq *irq)
 /** Check if a host irq is in-progress */
 static inline bool vmm_host_irq_is_inprogress(struct vmm_host_irq *irq, u32 cpu)
 {
-	if (cpu < CONFIG_CPU_COUNT) {
-		return (irq) ? irq->in_progress[cpu] : FALSE;
+	if (irq && (cpu < CONFIG_CPU_COUNT)) {
+		return (irq->percpu_state[cpu] & VMM_PERCPU_IRQ_STATE_IN_PROG)
+			? TRUE : FALSE;
 	}
 	return FALSE;
 }
