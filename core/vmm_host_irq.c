@@ -107,8 +107,11 @@ void vmm_handle_level_irq(struct vmm_host_irq *irq, u32 cpu, void *data)
 	}
 	vmm_read_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
 
-	if (irq->chip && irq->chip->irq_unmask) {
-		irq->chip->irq_unmask(irq);
+	if (irq->chip) {
+		if (!(irq->percpu_state[cpu] & VMM_PERCPU_IRQ_STATE_MASKED)
+		    && irq->chip->irq_unmask) {
+			irq->chip->irq_unmask(irq);
+		}
 	}
 }
 
