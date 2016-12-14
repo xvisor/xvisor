@@ -60,7 +60,6 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
  * @VMM_IRQ_STATE_EXTENDED		- Interrupt is an extended interrupt
- * @VMM_IRQ_STATE_MASKED		- Masked state of the interrupt
  */
 enum vmm_irq_states {
 	VMM_IRQ_STATE_TRIGGER_MASK	= 0xf,
@@ -74,6 +73,8 @@ enum vmm_irq_states {
 
 /**
  * enum vmm_percpu_irq_states
+ * @VMM_PERCPU_IRQ_STATE_IN_PROG	- Interrupt in-progress
+ * @VMM_PERCPU_IRQ_STATE_MASKED		- Interrupt masked
  */
 enum vmm_percpu_irq_states {
 	VMM_PERCPU_IRQ_STATE_IN_PROG	= (1 << 0),
