@@ -140,16 +140,10 @@ static inline int of_modalias_node(struct device_node *node,
 #define	of_prop_next_string		vmm_devtree_next_string
 
 #define of_property_for_each_u32(np, propname, prop, p, u)	\
-	for (prop = of_find_property(np, propname, NULL),	\
-		p = of_prop_next_u32(prop, NULL, &u);		\
-		p;						\
-		p = of_prop_next_u32(prop, p, &u))
+	vmm_devtree_for_each_u32(np, propname, prop, p, u)
 
 #define of_property_for_each_string(np, propname, prop, s)      \
-        for (prop = of_find_property(np, propname, NULL),       \
-                s = of_prop_next_string(prop, NULL);            \
-                s;                                              \
-                s = of_prop_next_string(prop, s))
+	vmm_devtree_for_each_string(np, propname, prop, s)
 
 #define of_property_match_string	vmm_devtree_match_string
 #define	of_property_read_string_index	vmm_devtree_string_index

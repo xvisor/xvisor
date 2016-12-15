@@ -413,6 +413,18 @@ const u32 *vmm_devtree_next_u32(struct vmm_devtree_attr *attr,
 const char *vmm_devtree_next_string(struct vmm_devtree_attr *attr,
 				    const char *cur);
 
+#define vmm_devtree_for_each_u32(np, attrname, attr, p, u)	\
+	for (attr = vmm_devtree_getattr(np, attrname),		\
+		p = vmm_devtree_next_u32(attr, NULL, &u);	\
+		p;						\
+		p = vmm_devtree_next_u32(attr, p, &u))
+
+#define vmm_devtree_for_each_string(np, attrname, attr, s)      \
+        for (attr = vmm_devtree_getattr(np, attrname),		\
+                s = vmm_devtree_next_string(attr, NULL);	\
+                s;						\
+                s = vmm_devtree_next_string(attr, s))
+
 /** Create a path string for a given node */
 int vmm_devtree_getpath(char *out, size_t out_len,
 			const struct vmm_devtree_node *node);
