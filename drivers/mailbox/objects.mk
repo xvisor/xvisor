@@ -22,3 +22,4 @@
 # */
 
 drivers-objs-$(CONFIG_MAILBOX) += mailbox/mailbox.o
+drivers-objs-$(CONFIG_BCM2835_MBOX) += mailbox/bcm2835-mailbox.o
