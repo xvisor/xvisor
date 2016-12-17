@@ -1123,6 +1123,19 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 					  devdrv_name_match);
 }
 
+static int devdrv_node_match(struct vmm_device *dev, void *data)
+{
+	return (dev->of_node == data) ? 1 : 0;
+}
+
+struct vmm_device *vmm_devdrv_bus_find_device_by_node(struct vmm_bus *bus,
+						struct vmm_device *start,
+						struct vmm_devtree_node *np)
+{
+	return vmm_devdrv_bus_find_device(bus, start, (void *)np,
+					  devdrv_node_match);
+}
+
 int vmm_devdrv_bus_device_iterate(struct vmm_bus *bus,
 			struct vmm_device *start, void *data,
 			int (*fn)(struct vmm_device *dev, void *data))

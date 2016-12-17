@@ -238,6 +238,11 @@ struct vmm_device *vmm_devdrv_bus_find_device_by_name(struct vmm_bus *bus,
 						struct vmm_device *start,
 						const char *dname);
 
+/** Find device on a bus by node */
+struct vmm_device *vmm_devdrv_bus_find_device_by_node(struct vmm_bus *bus,
+						struct vmm_device *start,
+						struct vmm_devtree_node *np);
+
 /** Iterate over each device of a bus with bus->lock held */
 int vmm_devdrv_bus_device_iterate(struct vmm_bus *bus,
 			struct vmm_device *start, void *data,
