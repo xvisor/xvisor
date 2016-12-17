@@ -193,6 +193,12 @@ struct vmm_bus platform_bus = {
 	.remove = platform_bus_remove,
 };
 
+struct vmm_device *vmm_platform_find_device_by_node(
+					struct vmm_devtree_node *np)
+{
+	return vmm_devdrv_bus_find_device_by_node(&platform_bus, NULL, np);
+}
+
 int vmm_platform_probe(struct vmm_devtree_node *node)
 {
 	return platform_probe(node, NULL);

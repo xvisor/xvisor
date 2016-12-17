@@ -31,6 +31,11 @@
 /** Forward declaration of platform bus */
 extern struct vmm_bus platform_bus;
 
+/** Find platform device by node */
+struct vmm_device *vmm_platform_find_device_by_node(
+					struct vmm_devtree_node *np);
+
+
 /** Probe device instances under a given device tree node */
 int vmm_platform_probe(struct vmm_devtree_node *node);
 
