@@ -192,6 +192,7 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 		}
 #endif
 		dev->driver = NULL;
+		vmm_devres_release_all(dev);
 	} else {
 		/* Notify bus event listeners */
 		vmm_blocking_notifier_call(&bus->event_listeners,
