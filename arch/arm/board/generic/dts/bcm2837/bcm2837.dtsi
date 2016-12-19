@@ -92,6 +92,13 @@
 			interrupt-parent = <&local_intc>;
 		};
 
+		mailbox: mailbox@3f00b800 {
+			compatible = "brcm,bcm2835-mbox";
+			reg = <0x3f00b880 0x40>;
+			interrupts = <0 1>;
+			#mbox-cells = <0>;
+		};
+
 		poweroff {
 			compatible = "brcm,bcm2835-poweroff";
 			reg = <0x3f100000 0x28>;
