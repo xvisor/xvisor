@@ -29,7 +29,7 @@ else
  build_dir=$(top_dir)/build
 endif
 
-obj_dir=$(build_dir)/tests/arm32/sabrelite-a9/basic
+obj_dir=$(build_dir)/tests/arm32/sabrelite/basic
 common_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7

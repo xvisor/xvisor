@@ -29,7 +29,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # make; make dtbs
 
   [5. Build Basic Firmware]
-  # make -C tests/arm32/sabrelite-a9/basic
+  # make -C tests/arm32/sabrelite/basic
 
   [6. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n Xvisor -d build/vmm.bin build/uvmm.bin
@@ -38,7 +38,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
 
   [8. Create the guest device tree configuration]
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb ./tests/arm32/sabrelite-a9/sabrelite-a9.dts -o build/sabrelite-a9.dtb
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb ./tests/arm32/sabrelite/sabrelite.dts -o build/sabrelite.dtb
 
   [9. Unplug SD card from Sabre LITE and plug it on your development machine]
 
@@ -48,21 +48,21 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
 
   [12. Create the tree structure in your SD card]
-  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/
+  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite/
   # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/system/
 
   [12. Copy and rename the host and guest device tree to boot partition of SD card. <board_name> being sabrelite or nitrogen6x]
-  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite-a9/one_guest_sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-<board_name>.dtb
-  # cp -f build/sabrelite-a9.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/
+  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite/one_guest_sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-<board_name>.dtb
+  # cp -f build/sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/
 
   [13. Copy the basic firmware, the nor_flash.list and the cmdlist on the SD card boot partition]
-  # cp -f build/tests/arm32/sabrelite-a9/basic/firmware.bin <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
-  # cp -f tests/arm32/sabrelite-a9/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
-  # cp -f tests/arm32/sabrelite-a9/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
+  # cp -f build/tests/arm32/sabrelite/basic/firmware.bin <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
+  # cp -f tests/arm32/sabrelite/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
+  # cp -f tests/arm32/sabrelite/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
 
   [14. Configure, build and patch the kernel image (linux 4.5.0 is advised)]
   # cd <linux_source_directory>
-  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite-a9/linux/linux-<kernel_version>_defconfig <linux_build_directory>/.config
+  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite/linux/linux-<kernel_version>_defconfig <linux_build_directory>/.config
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
   # make O=<linux_build_directory> ARCH=arm Image dtbs
@@ -71,10 +71,10 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # cd <xvisor_source_directory>
 
   [15. Then, make cpp process the Linux kernel device tree]
-  # sed -re 's|/include/|#include|' tests/arm32/sabrelite-a9/linux/imx6q-nitrogen6x.dts > build/tmp.dts
+  # sed -re 's|/include/|#include|' tests/arm32/sabrelite/linux/imx6q-nitrogen6x.dts > build/tmp.dts
   # ${CROSS_COMPILE}cpp \
 	-nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-with-cpp \
-	-Itests/arm32/sabrelite-a9/linux \
+	-Itests/arm32/sabrelite/linux \
 	-I<linux_source_directory>/include \
 	-I<linux_source_directory>/arch/arm/boot/dts \
 	build/tmp.dts -o build/imx6q-nitrogen6x.dts
@@ -83,8 +83,8 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 build/imx6q-nitrogen6x.dts -o build/imx6q-nitrogen6x.dtb
 
   [17. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
-  # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9/Image
-  # cp -f build/imx6q-nitrogen6x.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite-a9
+  # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite/Image
+  # cp -f build/imx6q-nitrogen6x.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
 
   [18. Copy the boot script to boot partition of SD card]
   # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>/

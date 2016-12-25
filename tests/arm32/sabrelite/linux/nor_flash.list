@@ -1,0 +1,5 @@
+0x08000000 /images/arm32/sabrelite/firmware.bin
+0x080FF000 /images/arm32/sabrelite/cmdlist
+0x08100000 /images/arm32/sabrelite/Image
+0x08FF0000 /images/arm32/sabrelite/imx6q-nitrogen6x.dtb
+0x09000000 /images/arm32/rootfs.img
