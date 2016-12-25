@@ -21,5 +21,9 @@
 # @brief list of i.MX6 DTBs.
 # */
 
+board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/zero_guest.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/one_guest_vexpress-a9.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/one_guest_sabrelite-a9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/two_guest_vexpress-a9.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/imx6/sabrelite-a9/two_guest_sabrelite-a9.dtb

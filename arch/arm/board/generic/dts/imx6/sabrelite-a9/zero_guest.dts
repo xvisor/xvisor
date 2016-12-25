@@ -1,0 +1,19 @@
+
+/dts-v1/;
+
+#include "sabrelite-a9.dtsi"
+
+/ {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &SERIAL2;
+	};
+};

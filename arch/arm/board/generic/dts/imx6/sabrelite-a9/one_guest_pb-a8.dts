@@ -1,0 +1,33 @@
+
+/dts-v1/;
+
+#include "sabrelite-a9.dtsi"
+
+/ {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &SERIAL2;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Load guest0 device tree from file */
+			  "vfs fdt_load /guests guest0 /images/arm32/realview-pb-a8.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0",
+
+			  /* Create guest0 */
+			  "guest create guest0",
+
+			  /* Load guest0 images */
+			  "vfs guest_load_list guest0 /images/arm32/realview-pb-a8/nor_flash.list",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+};
