@@ -5,7 +5,7 @@ emulated by QEMU.
 
 By default, Xvisor for Vexpress-A9 supports Vexpress-A9 guest so we will
 show how to run Basic Firmware on Vexpress-A9 guest. For more info refer,
-<xvisor_source>/tests/arm32/realview-pb-a8/basic/README.
+<xvisor_source>/tests/arm32/vexpress-a9/basic/README.
 
 Please follow the steps below to build & run Basic Firmware on Vexpress-A9 
 guest with Xvisor running on QEMU Vexpress-A9 Host:
