@@ -98,15 +98,14 @@ static int cmd_spidev_xfer(struct vmm_chardev *cdev,
 	struct spidev *spidev;
 
 	xfer.mode = -1;
-	if (argc < 3) {
+	if (argc < 4) {
 		ret = VMM_EINVALID;
 		goto fail;
-	} else if (argc > 3 && argc != 7) {
+	} else if (argc > 4 && argc != 7) {
 		ret = VMM_EINVALID;
 		goto fail;
 	}
-
-	if (argc >= 7) {
+	if (argc > 4) {
 		index = 5;
 		xfer.mode = atoi(argv[2]);
 		if (xfer.mode < 0 || xfer.mode > 3) {
