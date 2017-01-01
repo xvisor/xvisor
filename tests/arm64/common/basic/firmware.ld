@@ -53,6 +53,8 @@ SECTIONS
 		_erodata = .;
 	}
 
+	. = ALIGN(8);
+
 	PROVIDE(_reloc_region_end = .);
 
 	PROVIDE(_zero_region_start = .);
@@ -74,6 +76,8 @@ SECTIONS
                 . = . + 4096;
 		PROVIDE(_heap_end = .);
 	}
+
+	. = ALIGN(8);
 
 	PROVIDE(_zero_region_end = .);
 

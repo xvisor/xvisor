@@ -54,6 +54,8 @@ SECTIONS
 		_erodata = .;
 	}
 
+	. = ALIGN(16);
+
 	PROVIDE(_reloc_region_end = .);
 
 	PROVIDE(_zero_region_start = .);
@@ -75,6 +77,8 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE(_heap_end = .);
 	}
+
+	. = ALIGN(16);
 
 	PROVIDE(_zero_region_end = .);
 
