@@ -23,7 +23,6 @@
 #ifndef _CPU_MMU_LPAE_H__
 #define _CPU_MMU_LPAE_H__
 
-#include <cpu_cache.h>
 #include <cpu_inline_asm.h>
 #include <arch_barrier.h>
 
@@ -48,9 +47,8 @@
 
 static inline void cpu_mmu_sync_tte(u64 *tte)
 {
-	clean_dcache_mva((virtual_addr_t)tte);
-	isb();
 	dsb();
+	isb();
 }
 
 #endif /* _CPU_MMU_LPAE_H */
