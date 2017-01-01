@@ -54,9 +54,7 @@ void __attribute__ ((section(".entry")))
 	pa_start &= TTBL_L3_MAP_MASK;
 
 	page_addr = map_start;
-
 	while (page_addr < map_end) {
-
 		/* Setup level1 table */
 		ttbl = (u64 *) lpae_entry->ttbl_base;
 		index = (page_addr & TTBL_L1_INDEX_MASK) >> TTBL_L1_INDEX_SHIFT;
@@ -71,6 +69,8 @@ void __attribute__ ((section(".entry")))
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+				cpu_mmu_clean_invalidate(
+						&lpae_entry->next_ttbl[i]);
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -98,6 +98,8 @@ void __attribute__ ((section(".entry")))
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+				cpu_mmu_clean_invalidate(
+						&lpae_entry->next_ttbl[i]);
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -196,6 +198,7 @@ void __attribute__ ((section(".entry")))
 		(int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
 
 	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
+		cpu_mmu_clean_invalidate(&lpae_entry.ttbl_tree[i]);
 		lpae_entry.ttbl_tree[i] = -1;
 	}
 
@@ -204,6 +207,7 @@ void __attribute__ ((section(".entry")))
 
 	/* Init first ttbl */
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+		cpu_mmu_clean_invalidate(&lpae_entry.next_ttbl[i]);
 		lpae_entry.next_ttbl[i] = 0x0ULL;
 	}
 

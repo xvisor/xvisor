@@ -51,4 +51,12 @@ static inline void cpu_mmu_sync_tte(u64 *tte)
 	isb();
 }
 
+static inline void cpu_mmu_clean_invalidate(void *va)
+{
+	asm volatile("dc civac, %0\t\n"
+		     "dsb sy\t\n"
+		     "isb\t\n"
+		     : : "r" ((unsigned long)va));
+}
+
 #endif /* _CPU_MMU_LPAE_H */
