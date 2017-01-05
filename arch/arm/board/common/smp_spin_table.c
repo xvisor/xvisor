@@ -42,6 +42,11 @@
 static physical_addr_t clear_addr[CONFIG_CPU_COUNT];
 static physical_addr_t release_addr[CONFIG_CPU_COUNT];
 
+static void __init smp_spin_table_ops_init(void)
+{
+	/* For now nothing to do here. */
+}
+
 static int __init smp_spin_table_cpu_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
@@ -145,11 +150,10 @@ static void __cpuinit smp_spin_table_cpu_postboot(void)
 
 static struct smp_operations smp_spin_table_ops = {
 	.name = "spin-table",
+	.ops_init = smp_spin_table_ops_init,
 	.cpu_init = smp_spin_table_cpu_init,
 	.cpu_prepare = smp_spin_table_cpu_prepare,
 	.cpu_boot = smp_spin_table_cpu_boot,
 	.cpu_postboot = smp_spin_table_cpu_postboot,
 };
-
 SMP_OPS_DECLARE(smp_spin_table, &smp_spin_table_ops);
-

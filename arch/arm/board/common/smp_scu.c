@@ -34,6 +34,7 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
+#include <vmm_stdio.h>
 #include <arch_barrier.h>
 
 #include <smp_ops.h>
@@ -111,25 +112,34 @@ static struct vmm_devtree_nodeid scu_matches[] = {
 	{ /* end of list */ },
 };
 
+static void __init scu_ops_init(void)
+{
+	int rc;
+	struct vmm_devtree_node *scu_node;
+
+	scu_node = vmm_devtree_find_matching(NULL, scu_matches);
+	if (!scu_node) {
+		return;
+	}
+
+	rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
+	vmm_devtree_dref_node(scu_node);
+	if (rc) {
+		vmm_printf("%s: failed to map SCU registers\n", __func__);
+		return;
+	}
+}
+
 static int __init scu_cpu_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
 {
 	int rc;
 	u32 ncores;
 	physical_addr_t pa;
-	struct vmm_devtree_node *scu_node;
 
-	/* Map SCU base */
+	/* Check SCU base */
 	if (!scu_base) {
-		scu_node = vmm_devtree_find_matching(NULL, scu_matches);
-		if (!scu_node) {
-			return VMM_ENODEV;
-		}
-		rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
-		vmm_devtree_dref_node(scu_node);
-		if (rc) {
-			return rc;
-		}
+		return VMM_ENODEV;
 	}
 
 	/* Map clear address */
@@ -215,9 +225,9 @@ static int __init scu_cpu_boot(unsigned int cpu)
 
 static struct smp_operations smp_scu_ops = {
 	.name = "smp-scu",
+	.ops_init = scu_ops_init,
 	.cpu_init = scu_cpu_init,
 	.cpu_prepare = scu_cpu_prepare,
 	.cpu_boot = scu_cpu_boot,
 };
-
 SMP_OPS_DECLARE(smp_scu, &smp_scu_ops);

@@ -123,38 +123,45 @@ static const struct vmm_devtree_nodeid src_matches[] = {
 	{ /* sentinel */ }
 };
 
-static int __init smp_imx_init(struct vmm_devtree_node *node,
-				unsigned int cpu)
+static void __init smp_imx_ops_init(void)
 {
 	int rc;
-	u32 ncores;
 	struct vmm_devtree_node *scu_node;
 	struct vmm_devtree_node *src_node;
 
-	/* Map SCU base */
-	if (!scu_base) {
-		scu_node = vmm_devtree_find_matching(NULL, scu_matches);
-		if (!scu_node) {
-			return VMM_ENODEV;
-		}
-		rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
-		vmm_devtree_dref_node(scu_node);
-		if (rc) {
-			return rc;
-		}
+	scu_node = vmm_devtree_find_matching(NULL, scu_matches);
+	if (!scu_node) {
+		return;
 	}
 
-	/* Map SRC base */
-	if (!src_base) {
-		src_node = vmm_devtree_find_matching(NULL, src_matches);
-		if (!src_node) {
-			return VMM_ENODEV;
-		}
-		rc = vmm_devtree_regmap(src_node, &src_base, 0);
-		vmm_devtree_dref_node(src_node);
-		if (rc) {
-			return rc;
-		}
+	rc = vmm_devtree_regmap(scu_node, &scu_base, 0);
+	vmm_devtree_dref_node(scu_node);
+	if (rc) {
+		vmm_printf("%s: failed to map SCU registers\n", __func__);
+		return;
+	}
+
+	src_node = vmm_devtree_find_matching(NULL, src_matches);
+	if (!src_node) {
+		return;
+	}
+
+	rc = vmm_devtree_regmap(src_node, &src_base, 0);
+	vmm_devtree_dref_node(src_node);
+	if (rc) {
+		vmm_printf("%s: failed to map SRC registers\n", __func__);
+		return;
+	}
+}
+
+static int __init smp_imx_cpu_init(struct vmm_devtree_node *node,
+				   unsigned int cpu)
+{
+	u32 ncores;
+
+	/* Check SCU base and SRC base */
+	if (!scu_base || !src_base) {
+		return VMM_ENODEV;
 	}
 
 	/* Check core count from SCU */
@@ -190,7 +197,7 @@ static void smp_imx_set_cpu_arg(int cpu, u32 arg)
 
 extern u8 _start_secondary_nopen;
 
-static int __init smp_imx_prepare(unsigned int cpu)
+static int __init smp_imx_cpu_prepare(unsigned int cpu)
 {
 	/* Enable snooping through SCU */
 	if (scu_base) {
@@ -215,7 +222,7 @@ static void smp_imx_enable_cpu(int cpu, bool enable)
 	vmm_writel(val, (void *)src_base + SRC_SCR);
 }
 
-static int __init smp_imx_boot(unsigned int cpu)
+static int __init smp_imx_cpu_boot(unsigned int cpu)
 {
 	/* Wake up the core through the SRC device */
 	smp_imx_enable_cpu(cpu, true);
@@ -225,9 +232,10 @@ static int __init smp_imx_boot(unsigned int cpu)
 
 static struct smp_operations smp_imx_ops = {
 	.name = "smp-imx",
-	.cpu_init = smp_imx_init,
-	.cpu_prepare = smp_imx_prepare,
-	.cpu_boot = smp_imx_boot,
+	.ops_init = smp_imx_ops_init,
+	.cpu_init = smp_imx_cpu_init,
+	.cpu_prepare = smp_imx_cpu_prepare,
+	.cpu_boot = smp_imx_cpu_boot,
 };
 
 SMP_OPS_DECLARE(smp_imx, &smp_imx_ops);

@@ -126,22 +126,17 @@ static struct vmm_devtree_nodeid psci_matches[] = {
 	{ /* end of list */ },
 };
 
-static int __init psci_smp_init(struct vmm_devtree_node *node,
-				unsigned int cpu)
+static void __init psci_ops_init(void)
 {
-	int rc = VMM_OK;
+	int rc;
 	const char *method;
-	static struct vmm_devtree_node *psci = NULL;
+	struct vmm_devtree_node *psci;
 
-	if (psci) {
-		return VMM_OK;
-	}
-
-	/* look for node with PSCI compatible string */
+	/* Look for node with PSCI compatible string */
 	psci = vmm_devtree_find_matching(NULL, psci_matches);
 	if (!psci) {
-		vmm_printf("%s: Failed to find psci node\n", __func__);
-		return VMM_ENOTAVAIL;
+		/* Skip if no PSCI node available */
+		return;
 	}
 
 	/* it should have a "method" attibute equal to "smc" */
@@ -151,13 +146,13 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 			   __func__);
 		goto done;
 	}
+
 #if 0
 	/* For some reason, this does not work for now. */
 	/* To be investigated. */
 	if (strcmp(method, "smc")) {
 		vmm_printf("%s: 'method' is not 'smc'\n",
 			   __func__);
-		rc = VMM_EINVALID;
 		goto done;
 	}
 #endif
@@ -200,7 +195,13 @@ static int __init psci_smp_init(struct vmm_devtree_node *node,
 
 done:
 	vmm_devtree_dref_node(psci);
-	return rc;
+}
+
+static int __init psci_smp_init(struct vmm_devtree_node *node,
+				unsigned int cpu)
+{
+	/* Nothing to do here. */
+	return VMM_OK;
 }
 
 static int __init psci_smp_prepare(unsigned int cpu)
@@ -230,9 +231,9 @@ static int __init psci_smp_boot(unsigned int cpu)
 
 static struct smp_operations psci_smp_ops = {
 	.name = "psci",
+	.ops_init = psci_ops_init,
 	.cpu_init = psci_smp_init,
 	.cpu_prepare = psci_smp_prepare,
 	.cpu_boot = psci_smp_boot,
 };
-
 SMP_OPS_DECLARE(psci_smp, &psci_smp_ops);

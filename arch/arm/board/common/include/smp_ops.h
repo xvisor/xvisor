@@ -33,6 +33,7 @@ extern physical_addr_t __smp_logical_map[];
  *
  * @name:	Name of the property as appears in a devicetree cpu node's
  *		enable-method property.
+ * @ops_init:	Initialization for SMP OPS.
  * @cpu_init:	Reads any data necessary for a specific enable-method from the
  *		devicetree, for a given cpu node and proposed logical id.
  * @cpu_prepare: Early one-time preparation step for a cpu. If there is a
@@ -44,6 +45,7 @@ extern physical_addr_t __smp_logical_map[];
  */
 struct smp_operations {
 	const char	*name;
+	void		(*ops_init)(void);
 	int		(*cpu_init)(struct vmm_devtree_node *, unsigned int);
 	int		(*cpu_prepare)(unsigned int);
 	int		(*cpu_boot)(unsigned int);

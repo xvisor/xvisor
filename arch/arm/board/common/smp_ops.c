@@ -154,12 +154,32 @@ static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 	return 0;
 }
 
+/* Initialize all available SMP OPS */
+static void __init smp_init_ops(void)
+{
+	u32 i, count;
+	const struct smp_operations *ops;
+	struct vmm_devtree_nidtbl_entry *nide;
+
+	count = vmm_devtree_nidtbl_count();
+	for (i = 0; i < count; i++) {
+		nide = vmm_devtree_nidtbl_get(i);
+		if (strcmp(nide->subsys, "smp_ops")) {
+			continue;
+		}
+		ops = nide->nodeid.data;
+		ops->ops_init();
+	}
+}
+
 int __init arch_smp_init_cpus(void)
 {
 	int rc;
 	unsigned int i, cpu = 1;
 	bool bootcpu_valid = false;
 	struct vmm_devtree_node *dn, *cpus;
+
+	smp_init_ops();
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
 	if (!cpus) {
