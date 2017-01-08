@@ -85,12 +85,6 @@ int ethtool_op_set_ufo(struct net_device *dev, u32 data)
 	return 0;
 }
 
-/* the following list of flags are the same as their associated
- * NETIF_F_xxx values in include/linux/netdevice.h
- */
-static const u32 flags_dup_features =
-	ETH_FLAG_LRO;
-
 u32 ethtool_op_get_flags(struct net_device *dev)
 {
 	return 0;
