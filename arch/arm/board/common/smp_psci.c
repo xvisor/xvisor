@@ -31,6 +31,7 @@
 #include <vmm_compiler.h>
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
+#include <vmm_main.h>
 #include <libs/stringlib.h>
 
 #include <psci.h>
@@ -145,6 +146,16 @@ int psci_migrate(unsigned long cpuid)
 				  cpuid, 0, 0);
 }
 
+static int psci_sys_reset(void)
+{
+	return invoke_psci_fn_smc(PSCI_0_2_FN_SYSTEM_RESET, 0, 0, 0);
+}
+
+static int psci_sys_poweroff(void)
+{
+	return invoke_psci_fn_smc(PSCI_0_2_FN_SYSTEM_OFF, 0, 0, 0);
+}
+
 static u32 psci_get_version(void)
 {
 	return invoke_psci_fn_smc_raw(PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0);
@@ -173,6 +184,9 @@ int psci_0_2_init(struct vmm_devtree_node *psci)
 	}
 
 	psci_0_2_set_functions();
+
+	vmm_register_system_reset(psci_sys_reset);
+	vmm_register_system_shutdown(psci_sys_poweroff);
 
 	return VMM_OK;
 }
