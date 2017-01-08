@@ -29,3 +29,4 @@ drivers-objs-$(CONFIG_SERIAL_SAMSUNG)+= serial/samsung-uart.o
 drivers-objs-$(CONFIG_SERIAL_IMX)+= serial/imx-uart.o
 drivers-objs-$(CONFIG_SERIAL_SCIF)+= serial/scif.o
 drivers-objs-$(CONFIG_SERIAL_BCM283X_MU)+= serial/bcm283x_mu.o
+drivers-objs-$(CONFIG_SERIAL_ZYNQ_UART)+= serial/zynq-uart.o
