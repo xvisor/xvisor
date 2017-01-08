@@ -126,6 +126,21 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, io);
 }
 
+#elif defined(CONFIG_DEFTERM_EARLY_ZYNQ_UART)
+
+#include <drv/serial/zynq-uart.h>
+
+void __init arch_defterm_early_putc(u8 ch)
+{
+	struct uart_zynq *reg = (struct uart_zynq *)early_base;
+
+	/* Wait until FIFO is not empty */
+	while (!(vmm_readw(&reg->channel_sts) & ZYNQ_UART_SR_TXEMPTY)) ;
+
+	/* Send the character */
+	vmm_writeb(ch, (void *)&reg->tx_rx_fifo);
+}
+
 #else
 
 void __init arch_defterm_early_putc(u8 ch)
