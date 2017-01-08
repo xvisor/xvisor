@@ -225,21 +225,18 @@ static const char *media_list(struct vmm_chardev *cdev, unsigned mask,
 
 	if (mask & BMCR_SPEED1000) {
 		if (mask2 & ADVERTISE_1000HALF) {
-			vmm_cprintf(cdev, " ");
-			vmm_cprintf(cdev, "1000baseT-HD");
+			vmm_cprintf(cdev, " 1000baseT-HD");
 			if (best) goto out;
 		}
 		if (mask2 & ADVERTISE_1000FULL) {
-			vmm_cprintf(cdev, " ");
-			vmm_cprintf(cdev, "1000baseT-FD");
+			vmm_cprintf(cdev, " 1000baseT-FD");
 			if (best) goto out;
 		}
 	}
 	mask >>= 5;
 	for (i = 4; i >= 0; i--) {
 		if (mask & (1<<i)) {
-			vmm_cprintf(cdev, " ");
-			vmm_cprintf(cdev, media[i].name);
+			vmm_cprintf(cdev, " %s", media[i].name);
 			if (best) break;
 		}
 	}
