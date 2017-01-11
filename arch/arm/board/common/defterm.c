@@ -586,7 +586,7 @@ static struct defterm_ops zynq_uart_ops = {
 };
 #else
 
-#define CONFIG_SERIAL_ZYNQ_UART unknown_ops
+#define zynq_uart_ops unknown_ops
 
 #endif
 
