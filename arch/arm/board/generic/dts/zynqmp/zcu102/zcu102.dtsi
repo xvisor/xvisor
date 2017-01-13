@@ -1,0 +1,11 @@
+
+#include "../zynqmp.dtsi"
+
+/ {
+	model = "Xilinx zynqmp zcu102 board";
+	compatible = "xlnx,zynqmp-zcu102";
+};
+
+&uart0 {
+	status = "okay";
+};
