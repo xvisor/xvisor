@@ -84,7 +84,8 @@ void pl011_lowlevel_putc(virtual_addr_t base, u8 ch)
 	vmm_out_8((void *)(base + UART_PL011_DR), ch);
 }
 
-void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
+void pl011_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+			 u32 baudrate, u32 input_clock)
 {
 	unsigned int divider;
 	unsigned int temp;
@@ -94,21 +95,28 @@ void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/* First, disable everything */
 	vmm_out_le16((void *)(base + UART_PL011_CR), 0);
 
-	/*
-	 * Set baud rate
-	 *
-	 * IBRD = UART_CLK / (16 * BAUD_RATE)
-	 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE)))
-	 *        / (16 * BAUD_RATE))
+	/* If skip_baudrate_config is set then
+	 * assume bootloader has configured
+	 * IBRD & FBRD correctly else configure
+	 * IBRD & FBRD based on UART_CLK.
 	 */
-	temp = 16 * baudrate;
-	divider = udiv32(input_clock, temp);
-	remainder = umod32(input_clock, temp);
-	temp = udiv32((8 * remainder), baudrate);
-	fraction = (temp >> 1) + (temp & 1);
+	if (!skip_baudrate_config) {
+		/*
+		 * Set baud rate
+		 *
+		 * IBRD = UART_CLK / (16 * BAUD_RATE)
+		 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE)))
+		 *        / (16 * BAUD_RATE))
+		 */
+		temp = 16 * baudrate;
+		divider = udiv32(input_clock, temp);
+		remainder = umod32(input_clock, temp);
+		temp = udiv32((8 * remainder), baudrate);
+		fraction = (temp >> 1) + (temp & 1);
 
-	vmm_out_le16((void *)(base + UART_PL011_IBRD), (u16) divider);
-	vmm_out_8((void *)(base + UART_PL011_FBRD), (u8) fraction);
+		vmm_out_le16((void *)(base + UART_PL011_IBRD), (u16) divider);
+		vmm_out_8((void *)(base + UART_PL011_FBRD), (u8) fraction);
+	}
 
 	/* Set the UART to be 8 bits, 1 stop bit,
 	 * no parity, fifo enabled
@@ -181,6 +189,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 			      const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
+	bool skip_baudrate_config = FALSE;
 	struct pl011_port *port;
 
 	port = vmm_zalloc(sizeof(struct pl011_port));
@@ -215,8 +224,12 @@ static int pl011_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
+	if (vmm_devtree_getattr(dev->of_node, "skip-baudrate-config"))
+		skip_baudrate_config = TRUE;
+
 	/* Call low-level init function */
-	pl011_lowlevel_init(port->base, port->baudrate, port->input_clock);
+	pl011_lowlevel_init(port->base, skip_baudrate_config,
+			    port->baudrate, port->input_clock);
 
 	/* Create Serial Port */
 	port->p = serial_create(dev, 256, pl011_tx, port);

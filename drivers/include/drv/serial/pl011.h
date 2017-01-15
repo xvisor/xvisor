@@ -126,6 +126,7 @@ bool pl011_lowlevel_can_getc(virtual_addr_t base);
 u8 pl011_lowlevel_getc(virtual_addr_t base);
 bool pl011_lowlevel_can_putc(virtual_addr_t base);
 void pl011_lowlevel_putc(virtual_addr_t base, u8 ch);
-void pl011_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock);
+void pl011_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+			 u32 baudrate, u32 input_clock);
 
 #endif /* __PL01X_H_ */

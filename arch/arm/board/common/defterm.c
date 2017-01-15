@@ -62,6 +62,7 @@ static struct defterm_ops unknown_ops = {
 #include <drv/serial/pl011.h>
 
 static virtual_addr_t pl011_defterm_base;
+static bool pl011_defterm_skip_baud_config;
 static u32 pl011_defterm_inclk;
 static u32 pl011_defterm_baud;
 
@@ -92,6 +93,11 @@ static int __init pl011_defterm_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
+	if (vmm_devtree_getattr(node, "skip-baudrate-config"))
+		pl011_defterm_skip_baud_config = TRUE;
+	else
+		pl011_defterm_skip_baud_config = FALSE;
+
 	rc = vmm_devtree_clock_frequency(node,
 				&pl011_defterm_inclk);
 	if (rc) {
@@ -104,7 +110,8 @@ static int __init pl011_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	pl011_lowlevel_init(pl011_defterm_base,
-			    pl011_defterm_baud, 
+			    pl011_defterm_skip_baud_config,
+			    pl011_defterm_baud,
 			    pl011_defterm_inclk);
 
 	return VMM_OK;
@@ -305,7 +312,7 @@ static int __init imx_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	imx_lowlevel_init(imx_defterm_base,
-			  imx_defterm_baud, 
+			  imx_defterm_baud,
 			  imx_defterm_inclk);
 
 	return VMM_OK;
@@ -649,7 +656,7 @@ int __init arch_defterm_init(void)
 	if (rc) {
 		return rc;
 	}
-   
+
 	node = vmm_devtree_getnode(attr);
 	if (!node) {
 		return VMM_ENODEV;
