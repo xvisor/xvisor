@@ -25,6 +25,8 @@
 #ifndef _MMU_LPAE_H__
 #define _MMU_LPAE_H__
 
+#ifndef __ASSEMBLY__
+
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
 #include <libs/list.h>
@@ -111,6 +113,8 @@ u8 mmu_lpae_stage2_curvmid(void);
 
 /** Change translation table for stage2 */
 int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
+
+#endif /* !__ASSEMBLY__ */
 
 /* TTBL Generic */
 #define TTBL_INITIAL_TABLE_COUNT			8
@@ -211,5 +215,11 @@ int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
 #define TTBL_STAGE2_LOWER_HAP_SHIFT			6
 #define TTBL_STAGE2_LOWER_MEMATTR_MASK			0x000000000000003CULL
 #define TTBL_STAGE2_LOWER_MEMATTR_SHIFT			2
+
+/* Attribute Indices */
+#define AINDEX_SO					0
+#define AINDEX_NORMAL_WT				1
+#define AINDEX_NORMAL_WB				2
+#define AINDEX_NORMAL_UC				3
 
 #endif

@@ -695,11 +695,7 @@
 #define VTCR_T0SZ_VAL(in_bits)				((64 - (in_bits)) & VTCR_T0SZ_MASK)
 
 /* MAIR_EL2 encodings */
-#define AINDEX_SO					0
-#define AINDEX_NORMAL_WT				1
-#define AINDEX_NORMAL_WB				2
-#define AINDEX_NORMAL_UC				3
-#define MAIR_INITVAL					0x0000000044FFBB00
+#define MAIR(val, idx)					((val) << ((idx) * 8))
 
 /* VPIDR */
 #define VPIDR_INITVAL					0x00000000

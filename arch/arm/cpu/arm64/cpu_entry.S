@@ -22,6 +22,7 @@
  */
 
 #include <cpu_defines.h>
+#include <mmu_lpae.h>
 
 	/* 
 	 * _start: Primary CPU startup code
@@ -228,8 +229,8 @@ _start_mmu_init:
 	mov	x6, x23
 	mov	x7, x24
 
-	/* Update the httbr value */
-	ldr	x1, __httbr_set_addr
+	/* Update the ttbr value */
+	ldr	x1, __ttbr_set_addr
 	sub	x1, x1, x6
 	add	x1, x1, x4
 	ldr	x0, [x1]
@@ -285,15 +286,15 @@ _start_secondary_nopen:
 	bne	_start_hang
 
 	/* Setup Hypervisor MAIR0 & MAIR1 */
-	ldr	x0, __hmair_set
+	ldr	x0, __mair_set
 	msr	mair_el2, x0
 
 	/* Setup Hypervisor Translation Control Register */
-	ldr	x0, __htcr_set
+	ldr	x0, __tcr_set
 	msr     tcr_el2, x0
 
 	/* Setup Hypervisor Translation Base Register */
-	ldr	x0, __httbr_set
+	ldr	x0, __ttbr_set
 	msr	ttbr0_el2, x0
 
 	/* Setup Hypervisor Stage2 Translation Control Register */
@@ -346,9 +347,12 @@ __builtin_dtb:
 	.dword dt_blob_start
 __max_dtb_size:
 	.dword CONFIG_ARM_MAX_DTB_SIZE
-__hmair_set:
-	.dword (MAIR_INITVAL)
-__htcr_set:
+__mair_set:
+	.dword (MAIR(0x00, AINDEX_SO) | \
+		MAIR(0xbb, AINDEX_NORMAL_WT) | \
+		MAIR(0xff, AINDEX_NORMAL_WB) | \
+		MAIR(0x44, AINDEX_NORMAL_UC))
+__tcr_set:
 	.dword (TCR_T0SZ_VAL(39) | \
 		TCR_PS_40BITS | \
 		(0x0 << TCR_TG0_SHIFT) | \
@@ -383,9 +387,9 @@ __copy_start:
 	.dword _copy
 __copy_end:
 	.dword _copy_end
-__httbr_set_addr:
-	.dword __httbr_set
-__httbr_set:
+__ttbr_set_addr:
+	.dword __ttbr_set
+__ttbr_set:
 	.dword def_ttbl
 __cpu_init:
 	.dword cpu_init

@@ -23,7 +23,6 @@
  */
 
 #include <vmm_types.h>
-#include <cpu_defines.h>
 #include <cpu_mmu_lpae.h>
 #include <mmu_lpae.h>
 
