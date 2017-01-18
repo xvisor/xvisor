@@ -348,10 +348,10 @@ __builtin_dtb:
 __max_dtb_size:
 	.dword CONFIG_ARM_MAX_DTB_SIZE
 __mair_set:
-	.dword (MAIR(0x00, AINDEX_SO) | \
+	.dword (MAIR(0x00, AINDEX_DEVICE_nGnRnE) | \
 		MAIR(0xbb, AINDEX_NORMAL_WT) | \
 		MAIR(0xff, AINDEX_NORMAL_WB) | \
-		MAIR(0x44, AINDEX_NORMAL_UC))
+		MAIR(0x44, AINDEX_NORMAL_NC))
 __tcr_set:
 	.dword (TCR_T0SZ_VAL(39) | \
 		TCR_PS_40BITS | \

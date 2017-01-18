@@ -217,9 +217,9 @@ int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
 #define TTBL_STAGE2_LOWER_MEMATTR_SHIFT			2
 
 /* Attribute Indices */
-#define AINDEX_SO					0
+#define AINDEX_DEVICE_nGnRnE				0
 #define AINDEX_NORMAL_WT				1
 #define AINDEX_NORMAL_WB				2
-#define AINDEX_NORMAL_UC				3
+#define AINDEX_NORMAL_NC				3
 
 #endif
