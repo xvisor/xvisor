@@ -512,7 +512,8 @@
 #define VTCR_S_VAL(ipa_bits)				((VTCR_T0SZ_VAL(ipa_bits) << 1) & VTCR_S_MASK)
 
 /* HMAIR encodings */
-#define HMAIR(val, idx)					((val) << ((idx) * 8))
+#define HMAIR0(val, idx)				((val) << ((idx) * 8))
+#define HMAIR1(val, idx)				((val) << ((idx - 4) * 8))
 
 /* VPIDR */
 #define VPIDR_INITVAL					0x00000000

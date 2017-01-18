@@ -218,8 +218,11 @@ int mmu_lpae_stage2_chttbl(u8 vmid, struct cpu_ttbl *ttbl);
 
 /* Attribute Indices */
 #define AINDEX_DEVICE_nGnRnE				0
-#define AINDEX_NORMAL_WT				1
-#define AINDEX_NORMAL_WB				2
-#define AINDEX_NORMAL_NC				3
+#define AINDEX_DEVICE_nGnRE				1
+#define AINDEX_DEVICE_nGRE				2
+#define AINDEX_DEVICE_GRE				3
+#define AINDEX_NORMAL_WT				4
+#define AINDEX_NORMAL_WB				5
+#define AINDEX_NORMAL_NC				6
 
 #endif

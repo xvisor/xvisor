@@ -312,12 +312,14 @@ __builtin_dtb:
 __max_dtb_size:
 	.word CONFIG_ARM_MAX_DTB_SIZE
 __hmair0_set:
-	.word (HMAIR(0x00, AINDEX_DEVICE_nGnRnE) | \
-	       HMAIR(0xbb, AINDEX_NORMAL_WT) | \
-	       HMAIR(0xff, AINDEX_NORMAL_WB) | \
-	       HMAIR(0x44, AINDEX_NORMAL_NC))
+	.word (HMAIR0(0x00, AINDEX_DEVICE_nGnRnE) | \
+	       HMAIR0(0x00, AINDEX_DEVICE_nGnRE) | \
+	       HMAIR0(0x00, AINDEX_DEVICE_nGRE) | \
+	       HMAIR0(0x00, AINDEX_DEVICE_GRE))
 __hmair1_set:
-	.word (0x0)
+	.word (HMAIR1(0xbb, AINDEX_NORMAL_WT) | \
+	       HMAIR1(0xff, AINDEX_NORMAL_WB) | \
+	       HMAIR1(0x44, AINDEX_NORMAL_NC))
 __htcr_clear:
 	.word ~(HTCR_T0SZ_MASK | \
 		HTCR_ORGN0_MASK | \
