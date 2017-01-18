@@ -48,8 +48,6 @@ void __lock arch_spin_lock(arch_spinlock_t *lock)
 	: "=&r" (tmp), "+Q" (lock->lock)
 	: "r" (cpu), "r" (__ARCH_SPIN_UNLOCKED)
 	: "cc", "memory");
-
-	arch_smp_mb();
 }
 
 int arch_spin_trylock(arch_spinlock_t *lock)
@@ -70,7 +68,6 @@ int arch_spin_trylock(arch_spinlock_t *lock)
 	: "cc", "memory");
 
 	if (tmp == 0) {
-		arch_smp_mb();	/* do mb if we succeeded */
 		return 1;
 	} else {
 		return 0;
@@ -79,8 +76,6 @@ int arch_spin_trylock(arch_spinlock_t *lock)
 
 void __lock arch_spin_unlock(arch_spinlock_t *lock)
 {
-	arch_smp_mb();
-
 	__asm__ __volatile__(
 "	stlr	%w1, %0\n"
 	: "=Q" (lock->lock) : "r" (__ARCH_SPIN_UNLOCKED)
@@ -109,8 +104,6 @@ void __lock arch_write_lock(arch_rwlock_t *lock)
 	: "=&r" (tmp)
 	: "r" (&lock->lock), "r" (__ARCH_RW_LOCKED)
 	: "memory");
-
-	arch_smp_mb();
 }
 
 int __lock arch_write_trylock(arch_rwlock_t *lock)
@@ -127,7 +120,6 @@ int __lock arch_write_trylock(arch_rwlock_t *lock)
 	: "memory");
 
 	if (tmp == 0) {
-		 arch_smp_mb();
 		 return 1;
 	} else {
 		 return 0;
@@ -178,7 +170,6 @@ int __lock arch_read_trylock(arch_rwlock_t *lock)
 	: "memory");
 
 	if (tmp2 == 0) {
-		arch_smp_mb();	/* do mb if we succeeded */
 		return 1;
 	} else {
 		return 0;
@@ -188,8 +179,6 @@ int __lock arch_read_trylock(arch_rwlock_t *lock)
 void __lock arch_read_unlock(arch_rwlock_t *lock)
 {
 	unsigned int tmp, tmp2;
-
-	arch_smp_mb();
 
 	asm volatile(
 	"1:	ldxr	%w0, [%2]\n"
