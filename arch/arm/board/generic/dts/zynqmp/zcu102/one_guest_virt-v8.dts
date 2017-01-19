@@ -1,0 +1,34 @@
+
+/dts-v1/;
+
+#include "zcu102.dtsi"
+
+/ {
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &uart0;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Load guest0 device tree from file */
+			  "vfs fdt_load /guests guest0 /images/arm64/virt-v8x2.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0",
+
+			  /* Create guest0 */
+			  "guest create guest0",
+
+			  /* Load guest0 images */
+			  "vfs guest_load_list guest0 /images/arm64/virt-v8/nor_flash.list",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+};
+

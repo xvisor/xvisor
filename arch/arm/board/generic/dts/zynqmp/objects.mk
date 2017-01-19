@@ -22,3 +22,9 @@
 # */
 
 board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/zero_guest.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/one_guest_virt-v8.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/two_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zcu102/two_guest_pb-a8.dtb
