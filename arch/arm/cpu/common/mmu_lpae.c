@@ -879,6 +879,8 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 		p.aindex = AINDEX_NORMAL_WT;
 	} else if (mem_flags & VMM_MEMORY_BUFFERABLE) {
 		p.aindex = AINDEX_NORMAL_WB;
+	} else if (mem_flags == VMM_MEMORY_FLAGS_IO) {
+		p.aindex = AINDEX_DEVICE_nGnRE;
 	} else {
 		p.aindex = AINDEX_DEVICE_nGnRnE;
 	}
