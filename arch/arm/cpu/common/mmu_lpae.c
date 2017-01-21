@@ -879,16 +879,13 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 		p.aindex = AINDEX_NORMAL_WT;
 	} else if (mem_flags & VMM_MEMORY_BUFFERABLE) {
 		p.aindex = AINDEX_NORMAL_WB;
-	} else if (mem_flags == VMM_MEMORY_FLAGS_IO) {
+	} else if (mem_flags & VMM_MEMORY_IO_DEVICE) {
 		p.aindex = AINDEX_DEVICE_nGnRE;
+	} else if (mem_flags & VMM_MEMORY_DMA_COHERENT) {
+		p.aindex = AINDEX_NORMAL_WB;
+	} else if (mem_flags & VMM_MEMORY_DMA_NONCOHERENT) {
+		p.aindex = AINDEX_NORMAL_NC;
 	} else {
-		p.aindex = AINDEX_DEVICE_nGnRnE;
-	}
-
-	/* Force strongly-ordered non-cacheable device
-	 * memory when dma-coherent memory is required.
-	 */
-	if (mem_flags & VMM_MEMORY_DMACOHERENT) {
 		p.aindex = AINDEX_DEVICE_nGnRnE;
 	}
 

@@ -435,7 +435,7 @@ int __init vmm_heap_init(void)
 	/* Create DMA heap */
 	rc= heap_init(&dma_heap, FALSE,
 			CONFIG_DMA_HEAP_SIZE_KB,
-			VMM_MEMORY_FLAGS_DMA);
+			VMM_MEMORY_FLAGS_DMA_NONCOHERENT);
 	if (rc) {
 		return rc;
 	}
