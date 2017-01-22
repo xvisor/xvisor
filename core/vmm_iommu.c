@@ -178,9 +178,10 @@ int vmm_iommu_group_set_name(struct vmm_iommu_group *group,
 	if (group->name) {
 		vmm_free(group->name);
 		group->name = NULL;
-		if (!name)
-			return VMM_OK;
 	}
+
+	if (!name)
+		return VMM_OK;
 
 	group->name = vmm_zalloc(strlen(name) + 1);
 	if (!group->name)
@@ -334,7 +335,6 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 					unsigned int type)
 {
 	struct vmm_iommu_domain *domain;
-	int ret;
 
 	if (bus == NULL || bus->iommu_ops == NULL || group == NULL)
 		return NULL;
@@ -356,7 +356,7 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 		goto done_unlock;
 	}
 
-	domain = domain->ops->domain_alloc(type);
+	domain = bus->iommu_ops->domain_alloc(type);
 	if (!domain)
 		goto fail_unlock;
 
@@ -366,13 +366,10 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 	domain->group = group;
 	domain->ops = bus->iommu_ops;
 
-	ret = vmm_iommu_group_for_each_dev(group, domain,
-					iommu_group_do_attach_device);
-	if (ret)
+	if (vmm_iommu_group_for_each_dev(group, domain,
+					 iommu_group_do_attach_device))
 		goto fail_free;
 
-	if (group->domain != NULL)
-		goto fail_detach;
 	group->domain = domain;
 
 done_unlock:
@@ -380,9 +377,6 @@ done_unlock:
 
 	return domain;
 
-fail_detach:
-	vmm_iommu_group_for_each_dev(group, domain,
-				     iommu_group_do_detach_device);
 fail_free:
 	if (likely(domain->ops->domain_free != NULL))
 		domain->ops->domain_free(domain);
