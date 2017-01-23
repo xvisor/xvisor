@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+# This script will build all targets for all processor families.
+#
+
+AARCH64_CROSS_COMPILE_LIST="aarch64-linux-gnu-"
+AARCH64_CROSS_COMPILE_LIST+=" aarch64-elf-"
+AARCH64_CROSS_COMPILE_LIST+=" aarch64-none-elf-"
+
+ARM32_CROSS_COMPILE_LIST="arm-none-eabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-none-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-unknown-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
+
+X86_64_CROSS_COMPILE_LIST="x86_64-linux-x86_64-linux-"
+X86_64_CROSS_COMPILE_LIST+=" x86_64-linux-gnu-"
+X86_64_CROSS_COMPILE_LIST+=" "
+
+get_cross_compiler() {
+	FOUND=0
+
+	set +e
+
+	case $1 in
+	"arm")
+		if [ "$2" = "generic-v8-defconfig" ]
+		then
+			CROSS_COMPILE_LIST=$AARCH64_CROSS_COMPILE_LIST
+		else
+			CROSS_COMPILE_LIST=$ARM32_CROSS_COMPILE_LIST
+		fi
+
+		# Try to find a reasonable CROSS_COMPILE for arm
+		for i in $CROSS_COMPILE_LIST
+		do
+			${i}gcc -dumpmachine > /dev/null 2>&1
+			if test $? -eq 0
+			then
+				${i}ld -v > /dev/null 2>&1
+				if test $? -eq 0
+				then
+					FOUND=1
+					echo $i
+					break
+				fi
+			fi
+		done
+		;;
+	"x86")
+		CROSS_COMPILE_LIST=$X86_64_CROSS_COMPILE_LIST
+		for i in $CROSS_COMPILE_LIST
+		do
+			${i}gcc -dumpmachine > /dev/null 2>&1
+			if test $? -eq 0
+			then
+				${i}ld -v > /dev/null 2>&1
+				if test $? -eq 0
+				then
+					FOUND=1
+					echo $i
+					break
+				fi
+			fi
+		done
+		# if not found we try the native gcc
+		if test $FOUND -eq 0
+		then
+			if test `gcc-4.9 -dumpmachine` = "x86_64-linux-gnu"
+			then
+				FOUND=1
+				echo
+			fi
+		fi
+		;;
+	*)
+		;;
+	esac
+
+	if test $FOUND -eq 0
+	then
+		exit 1
+	fi
+
+	set -e
+}
+
+# Stop on any error
+set -e
+
+# Build for all architecture
+for ARCH in x86 arm
+do
+	# Build for all supported targets
+	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
+	do
+		# print error message on failure
+		trap 'echo build failed for $ARCH:$DEFCONFIG' EXIT
+
+		CROSS_COMPILE=`get_cross_compiler $ARCH $DEFCONFIG`
+
+		rm -rf build
+		make ARCH=$ARCH $DEFCONFIG
+		make CROSS_COMPILE=$CROSS_COMPILE -j
+
+		# cancel trap
+		trap - EXIT
+	done
+done
+
+echo "build is done for all arch and all config files"
