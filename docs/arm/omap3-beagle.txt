@@ -20,167 +20,10 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor for Beagleboard (or OMAP3)]
-  # make ARCH=arm generic-v7-defconfig
-
-  [4. Build Xvisor and DTBs, this creates vmm.bin]
-  # make; make dtbs
-
-  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
-  # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
-
-  [6. Build Basic Firmware]
-  # make -C tests/arm32/realview-pb-a8/basic
-
-  [7. Copy defconfig to Linux build directory]
-  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
-
-  [8. GoTo Linux source directory]
-  # cd <linux_source_directory>
-
-  [9. Configure Linux in build directory]
-  # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
-  # make O=<linux_build_directory> ARCH=arm oldconfig
-
-  [10. Build Linux in build directory]
-  # make O=<linux_build_directory> ARCH=arm Image dtbs
-
-  [11. Patch Linux kernel to replace sensitive non-priviledged instructions]
-  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
-
-  [12. Extract patched Linux kernel image]
-  # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
-
-  [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
-  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
-  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
-
-  [14. GoTo Xvisor source directory]
-  # cd <xvisor_source_directory>
-
-  [15. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
-  # mkdir -p ./build/disk/tmp
-  # mkdir -p ./build/disk/system
-  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
-  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
-  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
-  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
-  # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
-  # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
-  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
-  # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-pba8.dtb ./build/disk/images/arm32/realview-pb-a8/arm-realview-pba8.dtb
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
-  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
-  OR
-  [15. Create disk image for Xvisor with only Guest Basic Firmware]
-  # mkdir -p ./build/disk/tmp
-  # mkdir -p ./build/disk/system
-  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
-  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
-  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
-  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
-  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
-  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
-
-  [16. Make U-boot compatible initrd for use with bootm command]
-  # mkimage -A arm -O linux -T ramdisk -a 0x89000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
-
-  [17. Unplug SD card from BeagleBoard-xM and plug it on your development machine]
-
-  [18. Mount boot partition (or partition 0) of SD card on your development machine]
-
-  [19. Copy uvmm.bin, DTB, and disk image to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/omap3/beagleboard-xm/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
-
-  [20. Unmount boot partition (or partition 0) of SD card from your development machine]
-
-  [21. Unplug SD card from your development machine and plug it back on BeagleBoard-xM]
-
-  [22. Connect to serial port of BeagleBoard-xM using Putty or Minicom]
-
-  [23. Power-up or Reset BeagleBoard-xM and press any key when U-Boot shows auto-boot count down]
-
-  [24. Enabled MMC interface from U-Boot command line interface]
-  OMAP3 beagleboard.org # mmc dev 0:0
-
-  [25. Copy Xvisor from SD card to SDRAM]
-  OMAP3 beagleboard.org # fatload mmc 0 0x80200000 uvmm.bin
-
-  [26. Copy disk image from SD card to SDRAM]
-  OMAP3 beagleboard.org # fatload mmc 0 0x8B000000 udisk.img
-
-  [27. Copy DTB from SD card to SDRAM]
-  OMAP3 beagleboard.org # fatload mmc 0 0x8A000000 one_guest_pb-a8.dtb
-
-  [28. Jump into Xvisor after disabling MMU, interrupts, etc]
-  OMAP3 beagleboard.org # bootm 0x80200000 0x8B000000 0x8A000000
-
-  [29. Kick Guest0 for starting Basic Firmware]
-  XVisor# guest kick guest0
-
-  [30. Bind to virtual UART]
-  XVisor# vserial bind guest0/uart0
-
-  [31. Try few commands of Basic firmware or goto next step]
-  [guest0/uart0] basic# hi
-  [guest0/uart0] basic# hello
-  [guest0/uart0] basic# help
-
-  [32. Copy linux from NOR flash to RAM and start linux booting from RAM]
-  [guest0/uart0] basic# autoexec
-  (Note: "autoexec" is a short-cut command)
-  (Note: The <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist
-   file which we have added to guest NOR flash contains set of commands for booting
-   linux from NOR flash)
-
-  [33. Wait for Linux prompt to come-up and then try out some commands]
-  [guest0/uart0] / # ls
-
-  [34. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] / #
-
-  (Note: replace all <> brackets based on your workspace)
-  (Note: some of the above steps will need to be adapted for other
-   types of ARM host)
-  (Note: for more info on your desired ARM host refer docs/arm/)
-  (Note: you are free to change the ordering of above steps based
-   on your workspace)
-
-
-	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
-
-This section of readme explains how to build & run Xvisor from nand-flash on
-BeagleBoard emulated by QEMU Linaro. 
-
-By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
-show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
-
-We need to have 4 images to create the nand-flash image:
- 1) X-loader for OMAP3 (2nd stage bootloader for OMAP3).
- 2) U-Boot-2011.03 binary for OMAP3 (3rd stage bootloader).
- 3) U-Boot compatible Xvisor binary and DTBs (uvmm.bin).
- 4) Disk image containing guest binaries (disk.img).
-
-The steps to create these images and boot Xvisor on Beagleboard QEMU are as
-follows:
-
-  [1. Build environment]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
-
-  [2. Download and build U-Boot-2011.03 from source - this creates u-boot.bin]
-  # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2011.03.tar.bz2
-  # tar -xvf u-boot-2011.03.tar.bz2
-  # cd u-boot-2011.03
-  # make omap3_beagle_config
-  # make
-  # cd ..
-
-  [3. GoTo Xvisor source directory]
-  # cd <xvisor_source_directory>
+  [3. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
 
   [4. Configure Xvisor for Beagleboard (or OMAP3)]
   # make ARCH=arm generic-v7-defconfig
@@ -188,8 +31,8 @@ follows:
   [5. Build Xvisor and DTBs, this creates vmm.bin]
   # make; make dtbs
 
-  [6. Add uboot header to vmm.bin for use with bootm command]
-  # mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+  [6. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [7. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
@@ -247,51 +90,218 @@ follows:
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
   [17. Make U-boot compatible initrd for use with bootm command]
-  # mkimage -A arm -O linux -T ramdisk -a 0x81000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
+  # mkimage -A arm -O linux -T ramdisk -a 0x89000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
-  [18. Create a flat binary with all our binaries appended]
-  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/omap3/beagleboard/one_guest_pb-a8.dtb@0x680000 build/udisk.img@0x700000
+  [18. Unplug SD card from BeagleBoard-xM and plug it on your development machine]
 
-  [19. Build the beagleboard nand-flash image from the flat binary created]
-  # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
+  [19. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [20. Launch QEMU Linaro]
-  # qemu-system-arm -M beagle -m 512M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
+  [20. Copy uvmm.bin, DTB, and disk image to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/omap3/beagleboard-xm/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [21. Copy Xvisor from nand-flash to SDRAM]
-  OMAP3 beagleboard.org # nand read 0x80200000 0x280000 0x200000
+  [21. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [22. Copy disk image from nand-flash to SDRAM]
-  OMAP3 beagleboard.org # nand read 0x84000000 0x700000 0x1000040
+  [22. Unplug SD card from your development machine and plug it back on BeagleBoard-xM]
 
-  [23. Copy Xvisor DTB from nand-flash to SDRAM]
-  OMAP3 beagleboard.org # nand read 0x80800000 0x680000 0x10000
+  [23. Connect to serial port of BeagleBoard-xM using Putty or Minicom]
 
-  [24. Jump into Xvisor after disabling MMU, interrupts, etc]
-  OMAP3 beagleboard.org # bootm 0x80200000 0x84000000 0x80800000
+  [24. Power-up or Reset BeagleBoard-xM and press any key when U-Boot shows auto-boot count down]
 
-  [25. Kick Guest0 for starting Basic Firmware]
+  [25. Enabled MMC interface from U-Boot command line interface]
+  OMAP3 beagleboard.org # mmc dev 0:0
+
+  [26. Copy Xvisor from SD card to SDRAM]
+  OMAP3 beagleboard.org # fatload mmc 0 0x80200000 uvmm.bin
+
+  [27. Copy disk image from SD card to SDRAM]
+  OMAP3 beagleboard.org # fatload mmc 0 0x8B000000 udisk.img
+
+  [28. Copy DTB from SD card to SDRAM]
+  OMAP3 beagleboard.org # fatload mmc 0 0x8A000000 one_guest_pb-a8.dtb
+
+  [29. Jump into Xvisor after disabling MMU, interrupts, etc]
+  OMAP3 beagleboard.org # bootm 0x80200000 0x8B000000 0x8A000000
+
+  [30. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [26. Bind to virtual UART]
+  [31. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [27. Try few commands of Basic firmware or goto next step]
+  [32. Try few commands of Basic firmware or goto next step]
   [guest0/uart0] basic# hi
   [guest0/uart0] basic# hello
   [guest0/uart0] basic# help
 
-  [28. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [33. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist
    file which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [29. Wait for Linux prompt to come-up and then try out some commands]
+  [34. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [30. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [35. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: some of the above steps will need to be adapted for other
+   types of ARM host)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)
+
+
+	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
+
+This section of readme explains how to build & run Xvisor from nand-flash on
+BeagleBoard emulated by QEMU Linaro. 
+
+By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
+show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
+
+We need to have 4 images to create the nand-flash image:
+ 1) X-loader for OMAP3 (2nd stage bootloader for OMAP3).
+ 2) U-Boot-2011.03 binary for OMAP3 (3rd stage bootloader).
+ 3) U-Boot compatible Xvisor binary and DTBs (uvmm.bin).
+ 4) Disk image containing guest binaries (disk.img).
+
+The steps to create these images and boot Xvisor on Beagleboard QEMU are as
+follows:
+
+  [1. Build environment]
+  # export CROSS_COMPILE=arm-linux-gnueabi-
+
+  [2. Download and build U-Boot-2011.03 from source - this creates u-boot.bin]
+  # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2011.03.tar.bz2
+  # tar -xvf u-boot-2011.03.tar.bz2
+  # cd u-boot-2011.03
+  # make omap3_beagle_config
+  # make
+  # cd ..
+
+  [3. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [4. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
+
+  [5. Configure Xvisor for Beagleboard (or OMAP3)]
+  # make ARCH=arm generic-v7-defconfig
+
+  [6. Build Xvisor and DTBs, this creates vmm.bin]
+  # make; make dtbs
+
+  [7. Add uboot header to vmm.bin for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [8. Build Basic Firmware]
+  # make -C tests/arm32/realview-pb-a8/basic
+
+  [9. Copy defconfig to Linux build directory]
+  # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+
+  [10. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [11. Configure Linux in build directory]
+  # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
+  # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [12. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm Image dtbs
+
+  [13. Patch Linux kernel to replace sensitive non-priviledged instructions]
+  # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+
+  [14. Extract patched Linux kernel image]
+  # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
+
+  [15. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [16. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [17. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-pba8.dtb ./build/disk/images/arm32/realview-pb-a8/arm-realview-pba8.dtb
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  OR
+  [17. Create disk image for Xvisor with only Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/realview-pb-a8
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
+  # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
+  # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+
+  [18. Make U-boot compatible initrd for use with bootm command]
+  # mkimage -A arm -O linux -T ramdisk -a 0x81000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
+
+  [19. Create a flat binary with all our binaries appended]
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/omap3/beagleboard/one_guest_pb-a8.dtb@0x680000 build/udisk.img@0x700000
+
+  [20. Build the beagleboard nand-flash image from the flat binary created]
+  # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
+
+  [21. Launch QEMU Linaro]
+  # qemu-system-arm -M beagle -m 512M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
+
+  [22. Copy Xvisor from nand-flash to SDRAM]
+  OMAP3 beagleboard.org # nand read 0x80200000 0x280000 0x200000
+
+  [23. Copy disk image from nand-flash to SDRAM]
+  OMAP3 beagleboard.org # nand read 0x84000000 0x700000 0x1000040
+
+  [24. Copy Xvisor DTB from nand-flash to SDRAM]
+  OMAP3 beagleboard.org # nand read 0x80800000 0x680000 0x10000
+
+  [25. Jump into Xvisor after disabling MMU, interrupts, etc]
+  OMAP3 beagleboard.org # bootm 0x80200000 0x84000000 0x80800000
+
+  [26. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
+
+  [27. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [28. Try few commands of Basic firmware or goto next step]
+  [guest0/uart0] basic# hi
+  [guest0/uart0] basic# hello
+  [guest0/uart0] basic# help
+
+  [29. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist
+   file which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [30. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [31. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)

@@ -13,18 +13,24 @@ B. Steps to build a bootable image of Xvisor
    1. Clone xvisor-x86_64 repo
       # git clone git://github.com/hschauhan/xvisor-x86_64.git
 
-   2. Build Xvisor with following command:
+   2. Initialize Xvisor submodules
+      # git submodule init
+      # git submodule update
+      (Note: This is required to be done only once in freshly cloned xvisor source)
+
+   3. Build Xvisor with following command:
       # make ARCH=x86 x86_64_generic-defconfig
       # make
-   3. Create a directory xvisor-iso _somewhere_.
+
+   4. Create a directory xvisor-iso _somewhere_.
       # mkdir -p xvisor-iso/boot/grub
 
-   4. Copy the xvisor image in the ISO directory:
+   5. Copy the xvisor image in the ISO directory:
       # cp XVISOR_BASE/build/vmm.bin xvisor-iso/boot/
       (NOTE: Here XVISOR_BASE is base directory where you pulled
        the xvisor tree.)
 
-   5. Create a grub configuration file under ISO directory
+   6. Create a grub configuration file under ISO directory
       # <your editor> xvisor-iso/boot/grub/grub.cfg
          CUT AND PASTE FOLLOWING IN IT
          -------8<----CUT-START--8<---------------
@@ -39,10 +45,10 @@ B. Steps to build a bootable image of Xvisor
          Please copy paste above. A slight mistake won't
          boot your system.
 
-   6. Create a ISO to boot
+   7. Create a ISO to boot
       # grub-mkrescue -o bootable.iso xvisor-iso/
 
-   7. Boot the image
+   8. Boot the image
       # qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-x86.disk -m 1024M -boot d -s -serial stdio
 
 C. Preparing to Boot Guest:

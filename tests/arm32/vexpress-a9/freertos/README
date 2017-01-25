@@ -52,13 +52,20 @@ have been successfully tested.
      | cd $xvisor_src
      `----
 
-  3. Configure Xvisor with Generic v7 default settings:
+  3. Initialize Xvisor submodules
+
+     ,----
+     | git submodule init
+     | git submodule update
+     `----
+
+  4. Configure Xvisor with Generic v7 default settings:
 
      ,----
      | make ARCH=arm generic-v7-defconfig
      `----
 
-  4. Build Xvisor:
+  5. Build Xvisor:
 
      ,----
      | make all dtbs

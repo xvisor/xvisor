@@ -26,45 +26,50 @@ A10:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Generic-v7 default settings]
+  [3. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
+
+  [4. Configure Xvisor with Generic-v7 default settings]
   # make ARCH=arm generic-v7-defconfig
 
-  [4. Build Xvisor and DTBs]
+  [5. Build Xvisor and DTBs]
   # make; make dtbs
 
-  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
+  [6. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x40008000 -e 0x40008000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
-  [6. Build Basic Firmware]
+  [7. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic
 
-  [7. Copy defconfig to Linux build directory]
+  [8. Copy defconfig to Linux build directory]
   # cp tests/arm32/realview-pb-a8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
-  [8. GoTo Linux source directory]
+  [9. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [9. Configure Linux in build directory]
+  [10. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
-  [10. Build Linux in build directory]
+  [11. Build Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm Image dtbs
 
-  [11. Patch Linux kernel to replace sensitive non-priviledged instructions]
+  [12. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
 
-  [12. Extract patched Linux kernel image]
+  [13. Extract patched Linux kernel image]
   # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
 
-  [13. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
-  [14. GoTo Xvisor source directory]
+  [15. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [15. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  [16. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -79,7 +84,7 @@ A10:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR
-  [15. Create disk image for Xvisor with only Guest Basic Firmware]
+  [16. Create disk image for Xvisor with only Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -90,63 +95,63 @@ A10:
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [16. Make U-boot compatible initrd for use with bootm command]
+  [17. Make U-boot compatible initrd for use with bootm command]
   # mkimage -A arm -O linux -T ramdisk -a 0x41000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
-  [17. Unplug bootable SD card from the A10 board and plug it on your development machine]
+  [18. Unplug bootable SD card from the A10 board and plug it on your development machine]
 
-  [18. Mount boot partition (or partition 0) of SD card on your development machine]
+  [19. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [19. Copy uvmm.bin to boot partition of SD card]
+  [20. Copy uvmm.bin to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/arch/arm/board/generic/dts/sun4i/hackberry/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
-  [20. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [21. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [21. Unplug SD card from your development machine and plug it back on A10 board]
+  [22. Unplug SD card from your development machine and plug it back on A10 board]
 
-  [22. Connect to serial port of A10 board using Putty or Minicom]
+  [23. Connect to serial port of A10 board using Putty or Minicom]
 
-  [23. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
+  [24. Power-up or Reset A10 board and press any key when U-Boot shows auto-boot count down]
 
-  [24. Enable MMC interface from U-Boot command line]
+  [25. Enable MMC interface from U-Boot command line]
   sun4i# mmc dev 0:0
 
-  [25. Copy Xvisor from SD card to SDRAM]
+  [26. Copy Xvisor from SD card to SDRAM]
   sun4i# fatload mmc 0 0x40200000 uvmm.bin
 
-  [26. Copy Xvisor DTB from SD card to SDRAM]
+  [27. Copy Xvisor DTB from SD card to SDRAM]
   sun4i# fatload mmc 0 0x40800000 one_guest_pb-a8.dtb
 
-  [27. Copy disk image from SD card to SDRAM]
+  [28. Copy disk image from SD card to SDRAM]
   sun4i# fatload mmc 0 0x42000000 udisk.img
 
-  [28. Jump into Xvisor after disabling MMU, interrupts, etc]
+  [29. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000 0x42000000 0x40800000
 
-  [29. Kick Guest0 for starting Basic Firmware]
+  [30. Kick Guest0 for starting Basic Firmware]
   Xsor# guest kick guest0
 
-  [30. Bind to virtual UART]
+  [31. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [31. Try few commands of Basic firmware or goto next step]
+  [32. Try few commands of Basic firmware or goto next step]
   [guest0/uart0] basic# hi
   [guest0/uart0] basic# hello
   [guest0/uart0] basic# help
 
-  [32. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [33. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/cmdlist
    file which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [33. Wait for Linux prompt to come-up and then try out some commands]
+  [34. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [34. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [35. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)

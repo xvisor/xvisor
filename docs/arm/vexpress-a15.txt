@@ -17,35 +17,40 @@ Vexpress-A15 Host:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Generic-v7-ve default settings]
+  [3. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
+
+  [4. Configure Xvisor with Generic-v7-ve default settings]
   # make ARCH=arm generic-v7-ve-defconfig
 
-  [4. Build Xvisor and DTBs]
+  [5. Build Xvisor and DTBs]
   # make; make dtbs
 
-  [5. Build Basic Firmware]
+  [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a15/basic
 
-  [6. Copy defconfig to Linux build directory]
+  [7. Copy defconfig to Linux build directory]
   # cp tests/arm32/vexpress-a15/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
-  [7. GoTo Linux source directory]
+  [8. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [8. Configure Linux in build directory]
+  [9. Configure Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm oldconfig
 
-  [9. Build Linux in build directory]
+  [10. Build Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm Image dtbs
 
-  [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
-  [11. GoTo Xvisor source directory]
+  [12. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [12. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  [13. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -60,7 +65,7 @@ Vexpress-A15 Host:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
   OR
-  [12. Create disk image for Xvisor with only Guest Basic Firmware]
+  [13. Create disk image for Xvisor with only Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -71,31 +76,31 @@ Vexpress-A15 Host:
   # cp -f ./tests/arm32/vexpress-a15/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [13. Create fast_model_boot.axf for running it on ARM Fast Models]
+  [14. Create fast_model_boot.axf for running it on ARM Fast Models]
   # ${CROSS_COMPILE}gcc -nostdlib -march=armv7ve -mcpu=cortex-a15 -e start_boot -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DSPIN_LOCATION=0x1c010030 -DSPIN_LOOP_ADDR=0x14000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGENTIMER_FREQ=100000000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DIMAGE=build/vmm.bin -DDTB=build/arch/arm/board/generic/dts/vexpress/a15/one_guest_vexpress-a15.dtb -DINITRD=build/disk.img ./docs/arm/fast_model_boot.S -o build/fast_model_boot.axf
 
-  [14. Launch ARM fast models 8.0 or higher]
+  [15. Launch ARM fast models 8.0 or higher]
   # model_shell <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux-Debug-GCC-<yyyy>/cadi_system_Linux-Debug-GCC-<yyyy>.so build/fast_model_boot.axf
   OR
   # model_shell64 <your_fastmodel_dir>/FastModelsPortfolio_<xxxx>/examples/FVP_VE/Build_Cortex-A15x1/Linux64-Debug-GCC-<yyyy>/cadi_system_Linux64-Debug-GCC-<yyyy>.so build/fast_model_boot.axf
 
-  [15. Kick Guest0 for starting Basic Firmware]
+  [16. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
 
-  [16. Bind to virtual UART]
+  [17. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [18. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [18. Wait for Linux prompt to come-up and then try out some commands]
+  [19. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [19. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [20. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)

@@ -21,35 +21,40 @@ Foundation v8 model:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Configure Xvisor with Generic-V8 default settings]
+  [3. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
+
+  [4. Configure Xvisor with Generic-V8 default settings]
   # make ARCH=arm generic-v8-defconfig 
 
-  [4. Build Xvisor & DTBs]
+  [5. Build Xvisor & DTBs]
   # make; make dtbs
 
-  [5. Build Basic Firmware]
+  [6. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
 
-  [6. Copy Linux defconfig to Linux build directory]
+  [7. Copy Linux defconfig to Linux build directory]
   # cp tests/arm64/virt-v8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
-  [7. GoTo Linux source directory]
+  [8. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [8. Configure Linux in build directory]
+  [9. Configure Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm64 oldconfig
 
-  [9. Build Linux in build directory to reflect changes in kernel image]
+  [10. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=arm64 Image dtbs
 
-  [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
-  [11. GoTo Xvisor source directory]
+  [12. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [12. Create disk image for Xvisor]
+  [13. Create disk image for Xvisor]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -65,27 +70,27 @@ Foundation v8 model:
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
   # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
 
-  [13. Launch Foundation v8 Model]
+  [14. Launch Foundation v8 Model]
   # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/gicv2/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
   # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --arm-v8.1 --image ./build/foundation_v8_boot.axf --network=nat
 
-  [14. Kick Guest0 to start Basic Firmware]
+  [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
 
-  [15. Bind to virtual UART]
+  [16. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [16. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [17. Wait for Linux prompt to come-up and then try out some commands]
+  [18. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [18. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [19. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
