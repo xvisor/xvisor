@@ -81,17 +81,18 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	u32 intc_phandle;
 	int rc, poff, noff;
 
-	poff = fdt_path_offset(fdt_addr, "/interrupt-controller@1e000000");
+	poff = fdt_path_offset(fdt_addr,
+			       "/soc/interrupt-controller@1f000100");
 	if (poff < 0) {
 		arm_printf("%s: failed to find nodeoffset of %s node\n",
-			   __func__, "/interrupt-controller@1e000000");
+			   __func__, "/soc/interrupt-controller@1f000100");
 		return;
 	}
 
 	intc_phandle = fdt_get_phandle(fdt_addr, poff);
 	if (!intc_phandle) {
 		arm_printf("%s: failed to find phandle for %s node\n",
-			   __func__, "/interrupt-controller@1e000000");
+			   __func__, "/soc/interrupt-controller@1f000100");
 		return;
 	}
 
