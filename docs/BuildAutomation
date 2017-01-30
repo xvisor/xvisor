@@ -1,0 +1,84 @@
+
+                Xvisor build automation.
+
+About verifying you didn't break the Xvisor build.
+==================================================
+
+When you add some changes to Xvisor you need to verify that the proposed
+change, that you may have intended for a single platform, does not break
+the build for one or several of the Xvisor supported platform/defconfig.
+
+To help you with this there is a shell script in tools/scripts/makeall that
+will build Xvisor for all supported defconfig file and all supported arch.
+As Xvisor build requires some cross-compilers for most supported archs, the
+script will automatically try to find some available cross-compilers in
+your build environment. Depending on the availability of such cross-compilers
+in your environment the script will tell you if it managed to build Xvisor
+for all supported defconfigs.
+
+Now it might feel tedious to run the "makeall" shell script by hand just to
+verify you didn't break anything and you might not have all the required
+cross-compiler installed on your build system. Luckily, this step can be
+automated by using the freely available "travis CI" service. With "travis CI"
+you will be able to automatically build Xvisor on top of a standardized
+environment for all supported arch and defconfig.
+
+Once you have setup your "travis CI" account with your Xvisor github
+repository, any "git push" you make on one of the branch of your github
+repository will trigger a build in "travis CI". The failure or success of
+the build will be notified to you through email.
+
+How to setup your "travis CI" automated build.
+==============================================
+
+First you need to sign in into "travis CI". 
+
+	https://travis-ci.org/
+
+You could create a specific account but it is recommended to sign in with
+your gitbub account. This way all you github repositories will be available
+inside "travis CI"
+
+Then you need to add a repository to your "travis CI" dashboard. So add a
+repository and select your github xvisor repository.
+
+Once your Xvisor repository is added you can cutomize its "settings". In
+particular you can can activate the 2 following options:
+	- Build only if .travis.yml is present
+	- Build pushes
+
+The next step is to add a .travis.yml file to your Xvisor repository. You
+can add this file to your master branch but if you want to stay in sync with
+the upstream Xvisor repository this might not be the best choice.
+
+So this .travis.yml file is to be added into your working branches. You need
+to commit a .travis.yml file into the base directory of your Xvisor
+repository inside your working branch. The typical content of the .travis.yml
+file is as follow:
+
+-----------------------------------------------------------------------------
+dist: trusty
+
+language: c
+
+compiler:
+  - gcc
+
+script: tools/scripts/makeall
+
+before_install:
+  - sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa -y
+  - sudo apt-get -q update
+  - sudo apt-get install -y gcc-arm-embedded
+  - sudo apt-get install -y gcc-aarch64-linux-gnu
+
+notifications:
+  email:
+    on_success: always
+    on_failure: always
+-----------------------------------------------------------------------------
+
+Once you push the commit with this file to your working branch, "travis CI"
+will build Xvisor for all arch and defconfigs and will notify you of
+success/failure through email. Any subsequent "git push" on this branch will
+also trigger a build on "travis CI".
