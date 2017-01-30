@@ -1,0 +1,64 @@
+			Xvisor v0.2.9
+	(Last Commit: -----------------------------)
+		(Release Date: 05-Feb-2017)
+
+In this release, we primarily have new drivers, emulators and
+board supports.
+
+New Features:
+ - Make DTC as GIT submodule
+ - Generic host MSI framework (EXPERIMENTAL)
+ - Load-balancer is totally optional
+ - SDIO interface support in MMC driver framework (EXPERIMENTAL)
+ - Linux-like generic page table allocator for IOMMUs
+ - Mailbox framework ported from Linux
+
+New Commands:
+ - gpio command
+ - spidev command
+ - set_hcpu sub-command to vcpu command
+ - set_affinity sub-command to vcpu command
+
+New Drivers:
+ - i.MX6 HDMI driver
+ - Renesas SCIF serial port driver (Experimental)
+ - BCM283x miniuart driver
+ - BCM283x SPI controller driver
+ - GICv3 interrupt-controller driver
+ - ARM LPAE io-pgtable driver
+ - ARMv7 small descriptor io-pgtable driver
+ - Renesas VMSA-compatible IPMMU driver
+ - BCM2835 mailbox driver
+ - RaspberryPi firmware driver
+ - Zynq uart driver
+
+New Emulators:
+ - Guest/VM Info emulator
+ - Simple framebuffer emulator
+
+New Boards:
+ - Added Raspi3 (BCM2837) board support
+ - Added Xilinx ZynqMP ZCU102 board support
+
+ARM Ports:
+ - Added Guest/VM Info device in all ARM guest types
+ - FreeRTOS guest OS on VExpress-A9 Guest
+ - Added simplefb device for virt-v7 and virt-v8 guest types
+ - Added autoboot support in basic firmware for all ARM guest types
+ - Made Guest NOR flash 32MB for all guest types
+ - Specify SMP logical ID for secondary CPUs based on smp_logical_map()
+ - Added CLCD support for Foundation v8 Model
+ - Added support for psci-0.2
+ - Added support for psci system restart and psci system shutdown
+
+ARM32 Port:
+ - No change
+
+ARM32ve Port:
+ - Added architecture specific GICv3 interface
+
+ARM64 Port:
+ - Added architecture specific GICv3 interface
+
+x86 Port:
+ - No change
