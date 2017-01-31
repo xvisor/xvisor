@@ -484,7 +484,7 @@ int main(int ac, char **av)
 	//zconfdump(stdout);
 	if (sync_openconf) {
 		name = getenv(OPENCONF_CONFIG_ENVNAME);
-		if (stat(name, &tmpstat)) {
+		if (!name || stat(name, &tmpstat)) {
 			fprintf(stderr, "***\n"
 				"*** You have not yet configured!\n"
 				"*** (missing " OPENCONF_CONFIG_DEFAULT " file)\n"
