@@ -39,8 +39,8 @@ BUILD_XVISOR_ONLY="no"
 BUILD_XVISOR_OUTPUT_PATH=`pwd`/build
 BUILD_TARBALL_PATH=`pwd`/build-targz
 BUILD_GUEST_OUTPUT_PATH=`pwd`/build-guest
-BUILD_LINUX_VERSION="4.1"
-BUILD_BUSYBOX_VERSION="1.21.1"
+BUILD_LINUX_VERSION="4.9"
+BUILD_BUSYBOX_VERSION="1.25.1"
 BUILD_PRINT_CONFIG_ONLY="no"
 
 # Derived options
@@ -167,7 +167,7 @@ v8)
 	if [ "${BUILD_GUEST_TYPE}" != "virt-v8" ]; then
 		BUILD_LINUX_ARCH="arm"
 		BUILD_LINUX_CROSS_COMPILE=arm-linux-gnueabi-
-		BUILD_BUSYBOX_CROSS_COMPILE=arm-none-linux-gnueabi-
+		BUILD_BUSYBOX_CROSS_COMPILE=arm-linux-gnueabihf-
 	fi
 	;;
 *)
@@ -189,6 +189,7 @@ realview-eb-mpcore)
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-eb-mpcore
+	BUILD_LINUX_DTB_NAME=arm-realview-eb-11mp-ctrevb.dtb
 	;;
 realview-pb-a8)
 	if [ "${BUILD_ARM_FAMILY}" == "v5" ]; then
@@ -201,6 +202,7 @@ realview-pb-a8)
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-pb-a8
+	BUILD_LINUX_DTB_NAME=arm-realview-pba8.dtb
 	;;
 versatilepb)
 	if [ "${BUILD_ARM_FAMILY}" != "v5" ]; then
@@ -209,6 +211,7 @@ versatilepb)
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=versatilepb
+	BUILD_LINUX_DTB_NAME=versatile-pb.dtb
 	;;
 vexpress-a9)
 	if [ "${BUILD_ARM_FAMILY}" == "v5" ]; then
@@ -222,7 +225,6 @@ vexpress-a9)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a9x2
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca9.dtb
-	BUILD_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/vexpress-a9/linux/vexpress-v2p-ca9.dts
 	;;
 vexpress-a15)
 	if [ "${BUILD_ARM_FAMILY}" == "v5" ]; then
@@ -240,7 +242,6 @@ vexpress-a15)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a15x2
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca15-tc1.dtb
-	BUILD_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/vexpress-a15/linux/vexpress-v2p-ca15-tc1.dts
 	;;
 virt-v7)
 	if [ "${BUILD_ARM_FAMILY}" == "v5" ]; then
@@ -306,7 +307,7 @@ if [ -z "${BUILD_BUSYBOX_VERSION}" ]; then
 	usage
 fi
 
-if [ -z "${BUILD_LINUX_DTB_NAME}" ]; then
+if [ ! -z "${BUILD_LINUX_DTS_PATH}" ]; then
 	if [ ! -f ${BUILD_LINUX_DTS_PATH} ]; then
 		echo "Linux DTS file not found"
 		usage
@@ -317,7 +318,7 @@ BUILD_XVISOR_DEFCONFIG="generic-${BUILD_ARM_FAMILY}-defconfig"
 BUILD_XVISOR_BASIC_FIRMWARE_SOURCE_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/basic
 BUILD_XVISOR_DISK_PATH=${BUILD_XVISOR_OUTPUT_PATH}/disk-${BUILD_GUEST_TYPE}
 BUILD_XVISOR_DISK_EXT2_PATH=${BUILD_XVISOR_OUTPUT_PATH}/disk-${BUILD_GUEST_TYPE}.ext2
-BUILD_LINUX_TARBALL="linux-${BUILD_LINUX_VERSION}.tar.gz"
+BUILD_LINUX_TARBALL="linux-${BUILD_LINUX_VERSION}.tar.xz"
 BUILD_LINUX_TARBALL_PATH=${BUILD_TARBALL_PATH}/${BUILD_LINUX_TARBALL}
 BUILD_LINUX_TARBALL_URL="https://www.kernel.org/pub/linux/kernel/v4.x/${BUILD_LINUX_TARBALL}"
 BUILD_LINUX_SOURCE_PATH=${BUILD_GUEST_OUTPUT_PATH}/linux-${BUILD_LINUX_VERSION}
@@ -419,14 +420,15 @@ export CROSS_COMPILE=${BUILD_LINUX_CROSS_COMPILE}
 mkdir -p ${BUILD_LINUX_OUTPUT_PATH}
 if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/.config ]; then
 	cp -f ${BUILD_LINUX_OLDCONFIG_PATH} ${BUILD_LINUX_OUTPUT_PATH}/.config
+	sed -i 's/0xff800000UL/0xff000000UL/' ${BUILD_LINUX_SOURCE_PATH}/arch/arm/include/asm/pgtable.h
 	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} oldconfig
 fi
 if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/vmlinux ]; then
-	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} -j ${BUILD_NUM_THREADS} Image
+	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} -j ${BUILD_NUM_THREADS} Image dtbs
 	cp -f ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/Image ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/Image.orig
 	if [ "${BUILD_LINUX_CPATCH}" == "yes" ]; then
 		${BUILD_XVISOR_SOURCE_PATH}/arch/arm/cpu/arm32/elf2cpatch.py -f ${BUILD_LINUX_OUTPUT_PATH}/vmlinux | ${BUILD_XVISOR_OUTPUT_PATH}/tools/cpatch/cpatch32 ${BUILD_LINUX_OUTPUT_PATH}/vmlinux 0
-		make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} Image
+		${CROSS_COMPILE}objcopy -O binary ${BUILD_LINUX_OUTPUT_PATH}/vmlinux ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/Image
 	fi
 fi
 
@@ -475,8 +477,10 @@ if [ ! -d ${BUILD_XVISOR_DISK_PATH} ]; then
 	cp -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/linux/nor_flash.list ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/nor_flash.list
 	cp -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/linux/cmdlist ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/cmdlist
 	cp -f ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/Image ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/Image
-	if [ ! -z "${BUILD_LINUX_DTB_NAME}" ]; then
-		${BUILD_XVISOR_OUTPUT_PATH}/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 -o ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/${BUILD_LINUX_DTB_NAME} ${BUILD_LINUX_DTS_PATH}
+	if [ ! -z "${BUILD_LINUX_DTS_PATH}" ]; then
+		${BUILD_XVISOR_OUTPUT_PATH}/tools/dtc/bin/dtc -I dts -O dtb -o ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/${BUILD_LINUX_DTB_NAME} ${BUILD_LINUX_DTS_PATH}
+	else
+		cp -f ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/dts/${BUILD_LINUX_DTB_NAME} ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/${BUILD_LINUX_DTB_NAME}
 	fi
 	cp -f ${BUILD_BUSYBOX_ROOTFS_CPIO_PATH} ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/rootfs.img
 fi
