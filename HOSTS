@@ -37,7 +37,8 @@ A:	ARM 64-bit (ARMv8a)
 C:	Cortex-A53
 V:	Broadcom Corporation (http://www.broadcom.com/)
 E:	---
-G:	Realview-PB-A8, VExpress-A9, VExpress-A15, and Virt-v8 guests supported
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, Virt-v7 and Virt-v8 guests
+	supported
 S:	Able to boot Realview-PB-A8 linux guest on Raspberry Pi3
 S:	Able to boot VExpress-A9 linux guest on Raspberry Pi3
 S:	Able to boot VExpress-A15 linux guest on Raspberry Pi3
@@ -201,3 +202,16 @@ G:	Work-In-Progress.
 S:	Work-In-Progress.
 D:	docs/x86/x86_64_generic.txt
 
+M:	ZynqMP SOC (ZynqMP ZCU102 board)
+A:	ARM 64-bit (ARMv8a)
+C:	Cortex-A53
+V:	Xilinx Inc (https://www.xilinx.com)
+E:	---
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, Virt-v7 and Virt-v8 guests
+	supported
+S:	Able to boot Realview-PB-A8 linux guest on ZynqMP ZCU102 board
+S:	Able to boot VExpress-A9 linux guest on ZynqMP ZCU102 board
+S:	Able to boot VExpress-A15 linux guest on ZynqMP ZCU102 board
+S:	Able to boot Virt-v7 linux guest on ZynqMP ZCU102 board
+S:	Able to boot Virt-v8 linux guest on ZynqMP ZCU102 board
+D:	docs/arm/zynqmp-zcu102.txt
