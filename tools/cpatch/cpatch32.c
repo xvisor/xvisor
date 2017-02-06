@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "libelf32.h"
 
 #define CPATCH32_SEPARATOR		','
@@ -11,79 +12,75 @@
 
 void strtrim(char *str) 
 {
-	int i, len = strlen(str);
-	if(len==0) return;
-	while(str[0]==' ' || str[0]=='\t') {
-		for(i=0;i<len;i++) {
-			str[i] = str[i+1];
-		}
-		len--;
+	size_t   len;
+	char     *frontp;
+	char     *endp;
+
+	/* Sanity check */
+	if (str == NULL) {
+		return;
 	}
-	if(len==0) return;
-	while(str[len-1]==' ' || str[0]=='\t' || str[len-1]=='\n') {
-		str[len-1] = '\0';
-		len--;
-		if(len==0) break;
+
+	/* handle empty string special case */
+	if (str[0] == '\0') {
+		return;
 	}
+
+	len  = strlen(str);
+	frontp = str - 1;
+	endp = str + len;
+
+	/*
+	 * Move the front and back pointers to address the first
+         * non-whitespace characters from each end.
+	 */
+	while (isspace(*(++frontp)));
+	while ((endp > frontp) && isspace(*(--endp)));
+
+	if (frontp != str) {
+		/* Move the string to the original ptr */
+		memmove(str, frontp, endp - frontp + 1);
+	}
+
+	/* end the string */
+	*(str + (endp - frontp + 1)) = '\0';
 }
 
-int strsplit(char *str, char sep, char **tok, int maxtok) 
+unsigned int strsplit(char *str, char sep, char *tok[], unsigned int maxtok,
+		      unsigned int maxtoksz)
 {
-	int cnt=0, pos=0, chpos=0;
-	tok[pos][chpos] = '\0';
-	while(*str && pos<maxtok) {
-		if(*str==sep) {
-			tok[pos][chpos] = '\0';
-			cnt++;
-			pos++;
-			chpos = 0;
-			tok[pos][chpos] = '\0';
-		} else {
-			tok[pos][chpos] = *str;
-			chpos++;
-		}
-		str++;
+	char delim[2] = {sep, '\0'};
+	char *token;
+	unsigned int cnt = 0;
+
+	while ((cnt < maxtok) && (token = strtok(str, delim))) {
+		str = NULL;
+		strncpy(tok[cnt], token, maxtoksz);
+		tok[cnt][maxtoksz - 1] = '\0';
+		cnt++;
 	}
-	tok[pos][chpos] = '\0';
-	cnt++;
-	if(tok[cnt-1][0]=='\0') cnt--;
+
 	return cnt;
 }
 
 unsigned int xtoi(char *str)
 {
-	unsigned int ret = 0;
-	if(*str=='0' && *(str+1)=='x') {
-		str++;
-		str++;
-	}
-	while(*str) {
-		if('0'<=*str && *str<='9') {
-			ret = ret*16 + (*str - '0');
-		} else if('a'<=*str && *str<='f') {
-			ret = ret*16 + (10 + *str - 'a');
-		} else if('A'<=*str && *str<='F') {
-			ret = ret*16 + (10 + *str - 'A');
-		}
-		str++;
-	}
-	return ret;
+	return (unsigned int)strtol(str, NULL, 16);
 }
 
 int main (int argc, char **argv)
 {
 	Elf32_File *elf;
-	Elf32_Shdr *cursh;
-	Elf32_Addr addr;
-	Elf32_Word old_word, new_word;
-	Elf32_Half old_half, new_half;
+	Elf32_Shdr *cursh = NULL;
 	char line[CPATCH32_MAX_LINE_SIZE];
 	char *toks[CPATCH32_MAX_TOKEN_COUNT];
 	FILE *script;
-	int ret=0, tok, tokcnt;
+	int ret=0;
+	unsigned int tok, tokcnt;
 
 	if ( argc < 3) {
-		printf (" Usage: %s <elf_file> <elf_is_be> [<elf_patch_script>]\n", argv[0]);
+		printf (" Usage: %s <elf_file> <elf_is_be> "
+			"[<elf_patch_script>]\n", argv[0]);
 		ret = -1;
 		goto err_return;
 	}
@@ -99,7 +96,7 @@ int main (int argc, char **argv)
 		goto err_noelf;
 	}
 
-	if(argv[3]!=NULL) {
+	if(argc >= 4) {
 		script = fopen(argv[3],"r");
 	} else {
 		script = stdin;
@@ -110,22 +107,28 @@ int main (int argc, char **argv)
 		goto err_noscript;
 	}
 
-	cursh = NULL;
 	while(fgets(line, sizeof(line), script) != NULL)  { /* read a line */
+
 		strtrim(line);
+
 		/* If line is a comment then skip to next line */
 		if(line[0]=='#') {
 			continue;
 		}
+
 		/* Split the line based on seperator */
-		tokcnt = strsplit(line, CPATCH32_SEPARATOR, toks, CPATCH32_MAX_TOKEN_COUNT);
+		tokcnt = strsplit(line, CPATCH32_SEPARATOR, toks,
+				  CPATCH32_MAX_TOKEN_COUNT,
+				  CPATCH32_MAX_TOKEN_SIZE);
 		if(tokcnt==0) {
 			continue;
 		}
+
 		/* Trim the tokens of a line */
 		for(tok=0;tok<tokcnt;tok++) {
 			strtrim(toks[tok]);
 		}
+
 		if(strcmp(toks[0], "section")==0 && 1<tokcnt) {
 			cursh = Elf32_Shdr_Find(elf, toks[1]);
 			if(cursh) {
@@ -135,32 +138,43 @@ int main (int argc, char **argv)
 				printf("Size: 0x%x)\n", cursh->sh_size);
 			}
 		} else if(cursh && strcmp(toks[0], "write32")==0 && 2<tokcnt) {
-			addr = xtoi(toks[1]);
+			Elf32_Word old_word, new_word;
+			Elf32_Addr addr = xtoi(toks[1]);
+
 			if(Elf32_Shdr_Read32(elf, cursh, addr, &old_word)) {
 				printf("    0x%08x: Failed to read\n", addr);
 				continue;
 			}
+
 			new_word = xtoi(toks[2]);
+
 			if(Elf32_Shdr_Write32(elf, cursh, addr, new_word)) {
 				printf("    0x%08x: Failed to write\n", addr);
 				continue;
 			}
-			printf("    0x%08x: 0x%08x -> 0x%08x\n", addr, old_word, new_word);
+
+			printf("    0x%08x: 0x%08x -> 0x%08x\n", addr,
+			       old_word, new_word);
 		} else if(cursh && strcmp(toks[0], "write16")==0 && 2<tokcnt) {
-			addr = xtoi(toks[1]);
+			Elf32_Half old_half, new_half;
+			Elf32_Addr addr = xtoi(toks[1]);
+
 			if(Elf32_Shdr_Read16(elf, cursh, addr, &old_half)) {
 				printf("    0x%08x: Failed to read\n", addr);
 				continue;
 			}
+
 			new_half = xtoi(toks[2]);
+
 			if(Elf32_Shdr_Write16(elf, cursh, addr, new_half)) {
 				printf("    0x%08x: Failed to write\n", addr);
 				continue;
 			}
-			printf("    0x%08x: 0x%04x -> 0x%04x\n", addr, old_half, new_half);
+
+			printf("    0x%08x: 0x%04x -> 0x%04x\n", addr,
+			       old_half, new_half);
 		}
 	}
-
 
 	fclose(script);
 err_noscript:
