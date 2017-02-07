@@ -20,7 +20,7 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief PrimeCell PL061 GPIO Controller Emulator.
  *
- * The source has been largely adapted from QEMU 0.14.xx hw/pl061.c
+ * The source has been largely adapted from QEMU hw/pl061.c
  *
  * Arm PrimeCell PL061 General Purpose IO with additional
  * Luminary Micro Stellaris bits.
@@ -32,9 +32,18 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
+
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
 
 #define MODULE_DESC			"PL061 GPIO Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -50,7 +59,8 @@ struct pl061_state {
 	u8 id[12];
 	u32 locked;
 	u32 data;
-	u32 old_data;
+	u32 old_out_data;
+	u32 old_in_data;
 	u32 dir;
 	u32 isense;
 	u32 ibe;
@@ -79,27 +89,62 @@ struct pl061_state {
 /* Call update function with lock held */
 static void pl061_update(struct pl061_state *s)
 {
-	int line;
+	int i;
 	u8 changed, mask, out;
+
+	DPRINTF("dir = %d, data = %d\n", s->dir, s->data);
 
 	/* Outputs float high.  */
 	/* FIXME: This is board dependent.  */
 	out = (s->data & s->dir) | ~s->dir;
-	changed = s->old_data ^ out;
-	if (!changed)
-		return;
-
-	s->old_data = out;
-	for (line = 0; line < 8; line++) {
-		mask = 1 << line;
-		if (changed & mask) {
-			vmm_devemu_emulate_irq(s->guest,
-					       s->out_irq[line],
-					       (out & mask) != 0);
+	changed = s->old_out_data ^ out;
+	if (changed) {
+		s->old_out_data = out;
+		for (i = 0; i < 8; i++) {
+			mask = 1 << i;
+			if (changed & mask) {
+				DPRINTF("Set output %d = %d\n",
+					i, (out & mask) != 0);
+				vmm_devemu_emulate_irq(s->guest,
+						       s->out_irq[i],
+						       (out & mask) != 0);
+			}
 		}
 	}
 
-	/* FIXME: Implement input interrupts.  */
+	/* Inputs */
+	changed = (s->old_in_data ^ s->data) & ~s->dir;
+	if (changed) {
+		s->old_in_data = s->data;
+		for (i = 0; i < 8; i++) {
+			mask = 1 << i;
+			if (changed & mask) {
+				DPRINTF("Changed input %d = %d\n",
+					i, (s->data & mask) != 0);
+
+				if (!(s->isense & mask)) {
+					/* Edge interrupt */
+					if (s->ibe & mask) {
+						/* Any edge triggers
+						 * the interrupt
+						 */
+						s->istate |= mask;
+					} else {
+						/* Edge is selected by IEV */
+						s->istate |=
+						~(s->data ^ s->iev) & mask;
+					}
+				}
+			}
+		}
+	}
+
+	/* Level interrupt */
+	s->istate |= ~(s->data ^ s->iev) & s->isense;
+
+	DPRINTF("istate = %02X\n", s->istate);
+
+	vmm_devemu_emulate_irq(s->guest, s->irq, (s->istate & s->im) != 0);
 }
 
 static int pl061_reg_read(struct pl061_state *s,
@@ -346,8 +391,27 @@ static int pl061_emulator_reset(struct vmm_emudev *edev)
 
 	vmm_spin_lock(&s->lock);
 
+	s->data = 0;
+	s->old_out_data = 0;
+	s->old_in_data = 0;
+	s->dir = 0;
+	s->isense = 0;
+	s->ibe = 0;
+	s->iev = 0;
+	s->im = 0;
+	s->istate = 0;
+	s->afsel = 0;
+	s->dr2r = 0xff;
+	s->dr4r = 0;
+	s->dr8r = 0;
+	s->odr = 0;
+	s->pur = 0;
+	s->pdr = 0;
+	s->slr = 0;
+	s->den = 0;
 	s->locked = 1;
 	s->cr = 0xff;
+	s->amsel = 0;
 
 	vmm_spin_unlock(&s->lock);
 
@@ -497,7 +561,7 @@ static int pl061_emulator_remove(struct vmm_emudev *edev)
 }
 
 static u8 pl061_id[12] =
-  { 0x00, 0x00, 0x00, 0x00, 0x61, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
+{ 0x00, 0x00, 0x00, 0x00, 0x61, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
 
 static struct vmm_devtree_nodeid pl061_emuid_table[] = {
 	{ .type = "gpio",
