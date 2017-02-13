@@ -415,7 +415,7 @@ static int pl061_emulator_reset(struct vmm_emudev *edev)
 
 	vmm_spin_unlock(&s->lock);
 
-	return VMM_OK;
+	return vmm_devemu_reset_children(s->guest, edev);
 }
 
 /* Process IRQ asserted in device emulation framework */
@@ -509,6 +509,11 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
+	rc = vmm_devemu_probe_children(guest, edev);
+	if (rc) {
+		goto pl061_emulator_probe_freestate_failed;
+	}
+
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
@@ -554,6 +559,7 @@ static int pl061_emulator_remove(struct vmm_emudev *edev)
 				      &pl061_irqchip, s);
 	vmm_devemu_unregister_irqchip(s->guest, s->in_irq[7],
 				      &pl061_irqchip, s);
+	vmm_devemu_remove_children(s->guest, edev);
 	vmm_free(s);
 	edev->priv = NULL;
 
