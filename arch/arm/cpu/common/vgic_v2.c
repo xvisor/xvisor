@@ -197,7 +197,8 @@ static void vgic_v2_clear_lr(u32 lr)
 }
 
 static const struct vmm_devtree_nodeid vgic_host_match[] = {
-	{ .compatible	= "arm,cortex-a15-gic",	},
+	{ .compatible = "arm,cortex-a15-gic", },
+	{ .compatible = "arm,gic-400", },
 	{},
 };
 
