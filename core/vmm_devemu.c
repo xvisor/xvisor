@@ -928,11 +928,34 @@ int vmm_devemu_reset_context(struct vmm_guest *guest)
 	return VMM_OK;
 }
 
-int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
+static int devemu_reset_edev(struct vmm_guest *guest,
+			     struct vmm_emudev *edev)
+{
+	int rc;
+
+	debug_reset(edev);
+	if ((rc = edev->emu->reset(edev))) {
+		if (edev->parent) {
+			vmm_printf("%s: %s/%s/%s reset error %d\n",
+				   __func__, guest->name,
+				   edev->parent->node->name,
+				   edev->node->name, rc);
+		} else {
+			vmm_printf("%s: %s/%s reset error %d\n",
+				   __func__, guest->name,
+				   edev->node->name, rc);
+		}
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_reset_region(struct vmm_guest *guest,
+			    struct vmm_region *reg)
 {
 	struct vmm_emudev *edev;
 
-	if (!guest || !reg) {
+	if (!reg || !reg->devemu_priv) {
 		return VMM_EFAIL;
 	}
 
@@ -942,10 +965,118 @@ int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg)
 	}
 
 	edev = (struct vmm_emudev *)reg->devemu_priv;
-	if (edev && edev->emu->reset) {
-		debug_reset(edev);
-		return edev->emu->reset(edev);
+
+	return devemu_reset_edev(guest, edev);
+}
+
+int vmm_devemu_reset_children(struct vmm_guest *guest,
+			      struct vmm_emudev *parent)
+{
+	irq_flags_t f;
+	struct vmm_emudev *edev, *edevn;
+
+	if (!parent) {
+		return VMM_EFAIL;
 	}
+
+	vmm_read_lock_irqsave_lite(&parent->child_list_lock, f);
+
+	list_for_each_entry_safe(edev, edevn, &parent->child_list, head) {
+		edev = list_first_entry(&parent->child_list,
+					struct vmm_emudev, head);
+
+		vmm_read_unlock_irqrestore_lite(&parent->child_list_lock, f);
+		devemu_reset_edev(guest, edev);
+		vmm_read_lock_irqsave_lite(&parent->child_list_lock, f);
+	}
+
+	vmm_read_unlock_irqrestore_lite(&parent->child_list_lock, f);
+
+	return VMM_OK;
+}
+
+static int devemu_remove_edev(struct vmm_guest *guest,
+			      struct vmm_emudev *edev)
+{
+	int rc;
+
+	debug_remove(edev);
+	if ((rc = edev->emu->remove(edev))) {
+		if (edev->parent) {
+			vmm_printf("%s: %s/%s/%s remove error %d\n",
+				   __func__, guest->name,
+				   edev->parent->node->name,
+				   edev->node->name, rc);
+		} else {
+			vmm_printf("%s: %s/%s remove error %d\n",
+				   __func__, guest->name,
+				   edev->node->name, rc);
+		}
+		return rc;
+	}
+
+	vmm_devtree_dref_node(edev->node);
+	edev->node = NULL;
+
+	return VMM_OK;
+}
+
+int vmm_devemu_remove_region(struct vmm_guest *guest,
+			     struct vmm_region *reg)
+{
+	int rc;
+	struct vmm_emudev *edev;
+
+	if (!reg) {
+		return VMM_EFAIL;
+	}
+
+	if (!(reg->flags & VMM_REGION_ISDEVICE) ||
+	    (reg->flags & VMM_REGION_ALIAS)) {
+		return VMM_EINVALID;
+	}
+
+	if (reg->devemu_priv) {
+		edev = reg->devemu_priv;
+
+		rc = devemu_remove_edev(guest, edev);
+		if (rc) {
+			return rc;
+		}
+
+		vmm_free(edev);
+		reg->devemu_priv = NULL;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_remove_children(struct vmm_guest *guest,
+			       struct vmm_emudev *parent)
+{
+	irq_flags_t f;
+	struct vmm_emudev *edev;
+
+	if (!parent) {
+		return VMM_EFAIL;
+	}
+
+	vmm_write_lock_irqsave_lite(&parent->child_list_lock, f);
+
+	while (!list_empty(&parent->child_list)) {
+		edev = list_first_entry(&parent->child_list,
+					struct vmm_emudev, head);
+
+		list_del(&edev->head);
+
+		vmm_write_unlock_irqrestore_lite(&parent->child_list_lock, f);
+		devemu_remove_edev(guest, edev);
+		vmm_write_lock_irqsave_lite(&parent->child_list_lock, f);
+
+		vmm_free(edev);
+	}
+
+	vmm_write_unlock_irqrestore_lite(&parent->child_list_lock, f);
 
 	return VMM_OK;
 }
@@ -971,15 +1102,75 @@ static int set_debug_info(struct vmm_emudev *edev)
 	return rc;
 }
 
-int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
+static int devemu_probe_edev(struct vmm_guest *guest,
+			     struct vmm_emudev *edev,
+			     struct vmm_devtree_node *node,
+			     struct vmm_region *reg,
+			     struct vmm_emulator *emu,
+			     struct vmm_emudev *parent,
+			     const struct vmm_devtree_nodeid *match)
+{
+	int rc;
+
+	INIT_SPIN_LOCK(&edev->lock);
+	vmm_devtree_ref_node(node);
+	edev->node = node;
+	edev->reg = reg;
+	edev->emu = emu;
+	edev->parent = parent;
+	INIT_LIST_HEAD(&edev->head);
+	INIT_RW_LOCK(&edev->child_list_lock);
+	INIT_LIST_HEAD(&edev->child_list);
+	edev->priv = NULL;
+	set_debug_info(edev);
+
+	debug_probe(edev);
+	if ((rc = emu->probe(guest, edev, match))) {
+		if (parent) {
+			vmm_printf("%s: %s/%s/%s probe error %d\n",
+				   __func__, guest->name,
+				   parent->node->name,
+				   edev->node->name, rc);
+		} else {
+			vmm_printf("%s: %s/%s probe error %d\n",
+				   __func__, guest->name,
+				   edev->node->name, rc);
+		}
+		vmm_devtree_dref_node(edev->node);
+		edev->node = NULL;
+		return rc;
+	}
+
+	debug_reset(edev);
+	if ((rc = emu->reset(edev))) {
+		if (parent) {
+			vmm_printf("%s: %s/%s/%s reset error %d\n",
+				   __func__, guest->name,
+				   parent->node->name,
+				   edev->node->name, rc);
+		} else {
+			vmm_printf("%s: %s/%s reset error %d\n",
+				   __func__, guest->name,
+				   edev->node->name, rc);
+		}
+		vmm_devtree_dref_node(edev->node);
+		edev->node = NULL;
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_probe_region(struct vmm_guest *guest,
+			    struct vmm_region *reg)
 {
 	int rc;
 	bool found;
-	struct vmm_emudev *einst;
+	struct vmm_emudev *edev;
 	struct vmm_emulator *emu;
 	const struct vmm_devtree_nodeid *match;
 
-	if (!guest || !reg) {
+	if (!guest || !reg || reg->devemu_priv) {
 		return VMM_EFAIL;
 	}
 
@@ -998,87 +1189,106 @@ int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg)
 		}
 
 		found = TRUE;
-		einst = vmm_zalloc(sizeof(struct vmm_emudev));
-		if (einst == NULL) {
+		edev = vmm_zalloc(sizeof(struct vmm_emudev));
+		if (edev == NULL) {
 			vmm_mutex_unlock(&dectrl.emu_lock);
 			return VMM_ENOMEM;
 		}
-		INIT_SPIN_LOCK(&einst->lock);
-		vmm_devtree_ref_node(reg->node);
-		einst->node = reg->node;
-		einst->reg = reg;
-		einst->emu = emu;
-		einst->priv = NULL;
-		reg->devemu_priv = einst;
-		set_debug_info(einst);
-#if defined(CONFIG_VERBOSE_MODE)
-		vmm_printf("Probe edevice %s/%s\n",
-			   guest->name, reg->node->name);
-#else
-		debug_probe(einst);
-#endif
+
 		vmm_mutex_unlock(&dectrl.emu_lock);
-		if ((rc = emu->probe(guest, einst, match))) {
-			vmm_printf("%s: %s/%s probe error %d\n",
-			__func__, guest->name, reg->node->name, rc);
-			vmm_devtree_dref_node(einst->node);
-			einst->node = NULL;
-			vmm_free(einst);
+
+		rc = devemu_probe_edev(guest, edev, reg->node, reg,
+				       emu, NULL, match);
+		if (rc) {
+			vmm_free(edev);
 			reg->devemu_priv = NULL;
 			return rc;
 		}
-		debug_reset(einst);
-		if ((rc = emu->reset(einst))) {
-			vmm_printf("%s: %s/%s reset error %d\n",
-			__func__, guest->name, reg->node->name, rc);
-			vmm_devtree_dref_node(einst->node);
-			einst->node = NULL;
-			vmm_free(einst);
-			reg->devemu_priv = NULL;
-			return rc;
-		}
+		reg->devemu_priv = edev;
+
 		vmm_mutex_lock(&dectrl.emu_lock);
+
 		break;
 	}
 
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	if (!found) {
-		vmm_printf("%s: No compatible emulator found for %s/%s\n",
-		__func__, guest->name, reg->node->name);
+		vmm_printf("%s: No emulator found for %s/%s\n",
+			   __func__, guest->name, reg->node->name);
 		return VMM_ENOTAVAIL;
 	}
 
 	return VMM_OK;
 }
 
-int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg)
+int vmm_devemu_probe_children(struct vmm_guest *guest,
+			      struct vmm_emudev *parent)
 {
 	int rc;
-	struct vmm_emudev *einst;
+	bool found;
+	irq_flags_t flags;
+	struct vmm_emudev *edev;
+	struct vmm_emulator *emu;
+	struct vmm_devtree_node *child;
+	const struct vmm_devtree_nodeid *match;
 
-	if (!guest || !reg) {
+	if (!guest || !parent) {
 		return VMM_EFAIL;
 	}
 
-	if (!(reg->flags & VMM_REGION_ISDEVICE) ||
-	    (reg->flags & VMM_REGION_ALIAS)) {
-		return VMM_EINVALID;
-	}
+	vmm_devtree_for_each_child(child, parent->node) {
+		vmm_mutex_lock(&dectrl.emu_lock);
 
-	if (reg->devemu_priv) {
-		einst = reg->devemu_priv;
+		found = FALSE;
+		list_for_each_entry(emu, &dectrl.emu_list, head) {
+			match = vmm_devtree_match_node(
+						emu->match_table, child);
+			if (!match) {
+				continue;
+			}
 
-		debug_remove(einst);
-		if ((rc = einst->emu->remove(einst))) {
-			return rc;
+			found = TRUE;
+			edev = vmm_zalloc(sizeof(struct vmm_emudev));
+			if (edev == NULL) {
+				vmm_mutex_unlock(&dectrl.emu_lock);
+				vmm_devtree_dref_node(child);
+				vmm_devemu_remove_children(guest, parent);
+				return VMM_ENOMEM;
+			}
+
+			vmm_mutex_unlock(&dectrl.emu_lock);
+
+			rc = devemu_probe_edev(guest, edev, child, NULL,
+					       emu, parent, match);
+			if (rc) {
+				vmm_free(edev);
+				vmm_devtree_dref_node(child);
+				vmm_devemu_remove_children(guest, parent);
+				return rc;
+			}
+
+			vmm_write_lock_irqsave_lite(
+					&parent->child_list_lock, flags);
+			list_add_tail(&edev->head, &parent->child_list);
+			vmm_write_unlock_irqrestore_lite(
+					&parent->child_list_lock, flags);
+
+			vmm_mutex_lock(&dectrl.emu_lock);
+
+			break;
 		}
 
-		vmm_devtree_dref_node(einst->node);
-		einst->node = NULL;
+		vmm_mutex_unlock(&dectrl.emu_lock);
 
-		vmm_free(reg->devemu_priv);
-		reg->devemu_priv = NULL;
+		if (!found) {
+			vmm_printf("%s: No emulator found for %s/%s/%s\n",
+				   __func__, guest->name,
+				   parent->node->name, child->name);
+			vmm_devtree_dref_node(child);
+			vmm_devemu_remove_children(guest, parent);
+			return VMM_ENOTAVAIL;
+		}
 	}
 
 	return VMM_OK;
@@ -1108,7 +1318,8 @@ int vmm_devemu_init_context(struct vmm_guest *guest)
 	eg->g_irq = NULL;
 	eg->g_irq_count = 0;
 	rc = vmm_devtree_read_u32(guest->aspace.node,
-			VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME, &eg->g_irq_count);
+				  VMM_DEVTREE_GUESTIRQCNT_ATTR_NAME,
+				  &eg->g_irq_count);
 	if (rc) {
 		goto devemu_init_context_free;
 	}
@@ -1129,7 +1340,6 @@ devemu_init_context_free:
 	vmm_free(eg);
 devemu_init_context_done:
 	return rc;
-
 }
 
 int vmm_devemu_deinit_context(struct vmm_guest *guest)

@@ -129,6 +129,10 @@ struct vmm_emudev {
 	struct vmm_devtree_node *node;
 	struct vmm_region *reg;
 	struct vmm_emulator *emu;
+	struct vmm_emudev *parent;
+	struct dlist head;
+	vmm_rwlock_t child_list_lock;
+	struct dlist child_list;
 	void *priv;
 #ifdef CONFIG_DEVEMU_DEBUG
 	u32 debug_info;
@@ -225,13 +229,28 @@ u32 vmm_devemu_emulator_count(void);
 int vmm_devemu_reset_context(struct vmm_guest *guest);
 
 /** Reset emulators for given region */
-int vmm_devemu_reset_region(struct vmm_guest *guest, struct vmm_region *reg);
+int vmm_devemu_reset_region(struct vmm_guest *guest,
+			    struct vmm_region *reg);
 
-/** Probe emulators for given region */
-int vmm_devemu_probe_region(struct vmm_guest *guest, struct vmm_region *reg);
+/** Reset emulators for children of given emulated device */
+int vmm_devemu_reset_children(struct vmm_guest *guest,
+			      struct vmm_emudev *parent);
 
 /** Remove emulator for given region */
-int vmm_devemu_remove_region(struct vmm_guest *guest, struct vmm_region *reg);
+int vmm_devemu_remove_region(struct vmm_guest *guest,
+			     struct vmm_region *reg);
+
+/** Remove emulator for children of given emulated device */
+int vmm_devemu_remove_children(struct vmm_guest *guest,
+			       struct vmm_emudev *parent);
+
+/** Probe emulators for given region */
+int vmm_devemu_probe_region(struct vmm_guest *guest,
+			    struct vmm_region *reg);
+
+/** Probe emulators for children of given emulated device */
+int vmm_devemu_probe_children(struct vmm_guest *guest,
+			      struct vmm_emudev *parent);
 
 /** Initialize context for given guest */
 int vmm_devemu_init_context(struct vmm_guest *guest);
