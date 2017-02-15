@@ -232,17 +232,9 @@ int vmm_devemu_reset_context(struct vmm_guest *guest);
 int vmm_devemu_reset_region(struct vmm_guest *guest,
 			    struct vmm_region *reg);
 
-/** Reset emulators for children of given emulated device */
-int vmm_devemu_reset_children(struct vmm_guest *guest,
-			      struct vmm_emudev *parent);
-
 /** Remove emulator for given region */
 int vmm_devemu_remove_region(struct vmm_guest *guest,
 			     struct vmm_region *reg);
-
-/** Remove emulator for children of given emulated device */
-int vmm_devemu_remove_children(struct vmm_guest *guest,
-			       struct vmm_emudev *parent);
 
 /** Probe emulators for given region */
 int vmm_devemu_probe_region(struct vmm_guest *guest,

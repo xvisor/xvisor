@@ -108,6 +108,7 @@
 #define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
 #define VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME	"affinity"
 #define VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME	"poweroff"
+#define VMM_DEVTREE_NO_CHILD_PROBE_ATTR_NAME	"no-child-probe"
 
 enum vmm_devtree_attrypes {
 	VMM_DEVTREE_ATTRTYPE_UINT32	= 0,

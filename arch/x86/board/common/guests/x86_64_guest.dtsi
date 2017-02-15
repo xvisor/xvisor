@@ -105,6 +105,7 @@
 					physical_size = <8>;
 					nr_buses = <1>;
 					bus_start_id = <0>;
+					no-child-probe;
 
 					pci_bus0 {
 						devices {
