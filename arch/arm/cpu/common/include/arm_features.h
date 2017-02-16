@@ -51,7 +51,8 @@
 #define ARM_CPUID_CORTEXA9    0x410fc090
 #define ARM_CPUID_CORTEXA15   0x412fc0f1
 #define ARM_CPUID_CORTEXM3    0x410fc231
-#define ARM_CPUID_ARMV8	      0x000f0000
+#define ARM_CPUID_ARMV7	      0x000f0000
+#define ARM_CPUID_ARMV8	      0x000f0001
 #define ARM_CPUID_ANY         0xffffffff
 
 /* VCPU Feature related enumeration */

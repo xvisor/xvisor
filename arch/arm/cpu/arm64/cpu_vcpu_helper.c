@@ -402,6 +402,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	} else if (strcmp(attr, "armv7a,cortex-a7") == 0) {
 		cpuid = ARM_CPUID_CORTEXA7;
 		arm_regs(vcpu)->pstate = PSR_MODE32;
+	} else if (strcmp(attr, "armv7a,generic") == 0) {
+		cpuid = ARM_CPUID_ARMV7;
+		arm_regs(vcpu)->pstate = PSR_MODE32;
 	} else if (strcmp(attr, "armv8,generic") == 0) {
 		cpuid = ARM_CPUID_ARMV8;
 	} else {
@@ -483,9 +486,24 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
 			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
 			break;
+		case ARM_CPUID_ARMV7:
+			arm_set_feature(vcpu, ARM_FEATURE_V7);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
+			arm_set_feature(vcpu, ARM_FEATURE_THUMB2EE);
+			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
+			arm_set_feature(vcpu, ARM_FEATURE_V7MP);
+			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);
+			arm_set_feature(vcpu, ARM_FEATURE_DUMMY_C15_REGS);
+			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
+			arm_set_feature(vcpu, ARM_FEATURE_TRUSTZONE);
+			break;
 		case ARM_CPUID_ARMV8:
 			arm_set_feature(vcpu, ARM_FEATURE_V8);
 			arm_set_feature(vcpu, ARM_FEATURE_VFP4);
+			arm_set_feature(vcpu, ARM_FEATURE_VFP_FP16);
+			arm_set_feature(vcpu, ARM_FEATURE_NEON);
 			arm_set_feature(vcpu, ARM_FEATURE_ARM_DIV);
 			arm_set_feature(vcpu, ARM_FEATURE_LPAE);
 			arm_set_feature(vcpu, ARM_FEATURE_GENERIC_TIMER);

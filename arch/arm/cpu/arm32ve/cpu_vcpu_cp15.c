@@ -570,6 +570,11 @@ int cpu_vcpu_cp15_init(struct vmm_vcpu *vcpu, u32 cpuid)
 		cp15->c0_ccsid[2] = 0x711fe07a; /* 4096K L2 unified cache */
 		cp15->c1_sctlr = 0x00c50078;
 		break;
+	case ARM_CPUID_ARMV7:
+		cp15->c0_midr = read_midr();
+		cp15->c0_mpidr = vcpu->subid;
+		cp15->c1_sctlr = 0x00c50078;
+		break;
 	default:
 		cp15->c0_midr = cpuid;
 		cp15->c0_mpidr = vcpu->subid;
