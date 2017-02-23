@@ -50,8 +50,11 @@
 #define VMM_DEVTREE_CLOCK_NAMES_ATTR_NAME	"clock-names"
 #define VMM_DEVTREE_CLOCK_OUT_NAMES_ATTR_NAME	"clock-output-names"
 #define VMM_DEVTREE_REG_ATTR_NAME		"reg"
+#define VMM_DEVTREE_REG_NAMES_ATTR_NAME		"reg-names"
 #define VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME	"virtual-reg"
 #define VMM_DEVTREE_RANGES_ATTR_NAME		"ranges"
+#define VMM_DEVTREE_BIG_ENDIAN_ATTR_NAME	"big-endian"
+#define VMM_DEVTREE_NATIVE_ENDIAN_ATTR_NAME	"native-endian"
 #define VMM_DEVTREE_ADDR_CELLS_ATTR_NAME	"#address-cells"
 #define VMM_DEVTREE_SIZE_CELLS_ATTR_NAME	"#size-cells"
 #define VMM_DEVTREE_PHANDLE_ATTR_NAME		"phandle"
@@ -721,6 +724,26 @@ int vmm_devtree_regmap(struct vmm_devtree_node *node,
 int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 			 virtual_addr_t addr, int regset);
 
+/** Convert regname to regset index
+ *  NOTE: This is based on 'reg-names' attribute of device tree node
+ */
+int vmm_devtree_regname_to_regset(struct vmm_devtree_node *node,
+				  const char *regname);
+
+/** Map device registers to virtual address
+ *  NOTE: This is based on 'reg' and 'reg-names' attributes
+ *  of device tree node
+ */
+int vmm_devtree_regmap_byname(struct vmm_devtree_node *node,
+			      virtual_addr_t *addr, const char *regname);
+
+/** Unmap device registers from virtual address
+ *  NOTE: This is based on 'reg' and 'reg-names' attributes
+ *  of device tree node
+ */
+int vmm_devtree_regunmap_byname(struct vmm_devtree_node *node,
+				virtual_addr_t addr, const char *regname);
+
 /** Request hostmem resource region for device registers physical
  *  address and Map device registers to a virtual address
  *  NOTE: This is based on 'reg' attribute of device tree node
@@ -735,6 +758,9 @@ int vmm_devtree_request_regmap(struct vmm_devtree_node *node,
  */
 int vmm_devtree_regunmap_release(struct vmm_devtree_node *node,
 				 virtual_addr_t addr, int regset);
+
+/** Check whether device registers are big endian */
+bool vmm_devtree_is_reg_big_endian(struct vmm_devtree_node *node);
 
 /** Count number of enteries in nodeid table */
 u32 vmm_devtree_nidtbl_count(void);

@@ -26,6 +26,7 @@
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
+#include <libs/stringlib.h>
 
 int vmm_devtree_regsize(struct vmm_devtree_node *node,
 		        physical_size_t *size, int regset)
@@ -213,6 +214,64 @@ int vmm_devtree_regunmap(struct vmm_devtree_node *node,
 	}
 
 	return vmm_host_iounmap(addr);
+}
+
+int vmm_devtree_regname_to_regset(struct vmm_devtree_node *node,
+				  const char *regname)
+{
+	if (!node || !regname) {
+		return VMM_EFAIL;
+	}
+
+	return vmm_devtree_match_string(node,
+			VMM_DEVTREE_REG_NAMES_ATTR_NAME, regname);
+}
+
+int vmm_devtree_regmap_byname(struct vmm_devtree_node *node,
+			      virtual_addr_t *addr, const char *regname)
+{
+	int regset;
+
+	if (!node || !addr || !regname) {
+		return VMM_EFAIL;
+	}
+
+	regset = vmm_devtree_regname_to_regset(node, regname);
+	if (regset < 0)
+		return regset;
+
+	return vmm_devtree_regmap(node, addr, regset);
+}
+
+int vmm_devtree_regunmap_byname(struct vmm_devtree_node *node,
+				virtual_addr_t addr, const char *regname)
+{
+	int regset;
+
+	if (!node || !regname) {
+		return VMM_EFAIL;
+	}
+
+	regset = vmm_devtree_regname_to_regset(node, regname);
+	if (regset < 0)
+		return regset;
+
+	return vmm_devtree_regunmap(node, addr, regset);
+}
+
+bool vmm_devtree_is_reg_big_endian(struct vmm_devtree_node *node)
+{
+	if (!node) {
+		return FALSE;
+	}
+
+	if (vmm_devtree_getattr(node, VMM_DEVTREE_BIG_ENDIAN_ATTR_NAME))
+		return TRUE;
+	if (IS_ENABLED(CONFIG_CPU_BE) &&
+	    vmm_devtree_getattr(node, VMM_DEVTREE_NATIVE_ENDIAN_ATTR_NAME))
+		return TRUE;
+
+	return FALSE;
 }
 
 int vmm_devtree_request_regmap(struct vmm_devtree_node *node,
