@@ -1,19 +1,31 @@
 #ifndef __LINUX_GPIO_DRIVER_H
 #define __LINUX_GPIO_DRIVER_H
 
+#include <linux/device.h>
 #include <linux/types.h>
-#include <linux/module.h>
 #include <linux/irq.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 
-struct device;
 struct gpio_desc;
 struct of_phandle_args;
 struct device_node;
 struct seq_file;
+struct module;
 
 #ifdef CONFIG_GPIOLIB
+
+/**
+ * enum single_ended_mode - mode for single ended operation
+ * @LINE_MODE_PUSH_PULL: normal mode for a GPIO line, drive actively high/low
+ * @LINE_MODE_OPEN_DRAIN: set line to be open drain
+ * @LINE_MODE_OPEN_SOURCE: set line to be open source
+ */
+enum single_ended_mode {
+	LINE_MODE_PUSH_PULL,
+	LINE_MODE_OPEN_DRAIN,
+	LINE_MODE_OPEN_SOURCE,
+};
 
 /**
  * struct gpio_chip - abstract a GPIO controller
@@ -71,7 +83,7 @@ struct seq_file;
  */
 struct gpio_chip {
 	const char		*label;
-	struct device		*dev;
+	struct device		*parent;
 	struct module		*owner;
 	struct list_head        list;
 
@@ -89,9 +101,15 @@ struct gpio_chip {
 						unsigned offset);
 	void			(*set)(struct gpio_chip *chip,
 						unsigned offset, int value);
+	void			(*set_multiple)(struct gpio_chip *chip,
+						unsigned long *mask,
+						unsigned long *bits);
 	int			(*set_debounce)(struct gpio_chip *chip,
 						unsigned offset,
 						unsigned debounce);
+	int			(*set_single_ended)(struct gpio_chip *chip,
+						unsigned offset,
+						enum single_ended_mode mode);
 
 	int			(*to_irq)(struct gpio_chip *chip,
 						unsigned offset);
@@ -105,6 +123,20 @@ struct gpio_chip {
 	bool			can_sleep;
 	bool			irq_not_threaded;
 	bool			exported;
+
+#if IS_ENABLED(CONFIG_GPIO_GENERIC)
+	unsigned long (*read_reg)(void __iomem *reg);
+	void (*write_reg)(void __iomem *reg, unsigned long data);
+	unsigned long (*pin2mask)(struct gpio_chip *gc, unsigned int pin);
+	void __iomem *reg_dat;
+	void __iomem *reg_set;
+	void __iomem *reg_clr;
+	void __iomem *reg_dir;
+	int bgpio_bits;
+	spinlock_t bgpio_lock;
+	unsigned long bgpio_data;
+	unsigned long bgpio_dir;
+#endif
 
 #ifdef CONFIG_GPIOLIB_IRQCHIP
 	/*
@@ -153,6 +185,28 @@ int gpio_lock_as_irq(struct gpio_chip *chip, unsigned int offset);
 void gpio_unlock_as_irq(struct gpio_chip *chip, unsigned int offset);
 
 struct gpio_chip *gpiod_to_chip(const struct gpio_desc *desc);
+
+struct bgpio_pdata {
+	const char *label;
+	int base;
+	int ngpio;
+};
+
+#if IS_ENABLED(CONFIG_GPIO_GENERIC)
+
+int bgpio_init(struct gpio_chip *gc, struct device *dev,
+	       unsigned long sz, void __iomem *dat, void __iomem *set,
+	       void __iomem *clr, void __iomem *dirout, void __iomem *dirin,
+	       unsigned long flags);
+
+#define BGPIOF_BIG_ENDIAN		BIT(0)
+#define BGPIOF_UNREADABLE_REG_SET	BIT(1) /* reg_set is unreadable */
+#define BGPIOF_UNREADABLE_REG_DIR	BIT(2) /* reg_dir is unreadable */
+#define BGPIOF_BIG_ENDIAN_BYTE_ORDER	BIT(3)
+#define BGPIOF_READ_OUTPUT_REG_SET	BIT(4) /* reg_set stores output value */
+#define BGPIOF_NO_OUTPUT		BIT(5) /* only input */
+
+#endif
 
 #ifdef CONFIG_GPIOLIB_IRQCHIP
 

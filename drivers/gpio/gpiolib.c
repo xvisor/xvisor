@@ -192,7 +192,7 @@ static int gpiochip_add_to_list(struct gpio_chip *chip)
 	if (pos != &gpio_chips && pos->prev != &gpio_chips) {
 		_chip = list_entry(pos->prev, struct gpio_chip, list);
 		if (_chip->base + _chip->ngpio > chip->base) {
-			dev_err(chip->dev,
+			dev_err(chip->parent,
 			       "GPIO integer space overlap, cannot add chip\n");
 			err = -EBUSY;
 		}
@@ -214,7 +214,7 @@ static int gpiochip_add_to_list(struct gpio_chip *chip)
  * different chip.  Otherwise it returns zero as a success code.
  *
  * When gpiochip_add() is called very early during boot, so that GPIOs
- * can be freely used, the chip->dev device must be registered before
+ * can be freely used, the chip->parent device must be registered before
  * the gpio framework's arch_initcall().  Otherwise sysfs initialization
  * for GPIOs will fail rudely.
  *
@@ -324,7 +324,7 @@ void gpiochip_remove(struct gpio_chip *chip)
 
 	for (id = 0; id < chip->ngpio; id++) {
 		if (test_bit(FLAG_REQUESTED, &chip->desc[id].flags))
-			dev_crit(chip->dev, "REMOVING GPIOCHIP WITH GPIOS STILL REQUESTED\n");
+			dev_crit(chip->parent, "REMOVING GPIOCHIP WITH GPIOS STILL REQUESTED\n");
 	}
 	for (id = 0; id < chip->ngpio; id++)
 		chip->desc[id].chip = NULL;
@@ -581,15 +581,15 @@ int gpiochip_irqchip_add(struct gpio_chip *gpiochip,
 	if (!gpiochip || !irqchip)
 		return -EINVAL;
 
-	if (!gpiochip->dev) {
+	if (!gpiochip->parent) {
 		pr_err("missing gpiochip .dev parent pointer\n");
 		return -EINVAL;
 	}
-	of_node = gpiochip->dev->of_node;
+	of_node = gpiochip->parent->of_node;
 #ifdef CONFIG_OF_GPIO
 	/*
 	 * If the gpiochip has an assigned OF node this takes precendence
-	 * FIXME: get rid of this and use gpiochip->dev->of_node everywhere
+	 * FIXME: get rid of this and use gpiochip->parent->of_node everywhere
 	 */
 	if (gpiochip->of_node)
 		of_node = gpiochip->of_node;
@@ -1855,9 +1855,10 @@ int gpiolib_dump(struct seq_file *s)
 	list_for_each_entry(chip, &gpio_chips, list) {
 		seq_printf(s, "%sGPIOs %d-%d", prefix,
 			   chip->base, chip->base + chip->ngpio - 1);
-		dev = chip->dev;
+		dev = chip->parent;
 		if (dev) {
-			seq_printf(s, ", %s/%s", dev->bus ? dev->bus->name : "no-bus",
+			seq_printf(s, ", %s/%s",
+				   dev->bus ? dev->bus->name : "no-bus",
 				   dev_name(dev));
 		}
 		if (chip->label) {

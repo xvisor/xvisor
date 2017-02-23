@@ -470,7 +470,7 @@ static int sunxi_pinctrl_gpio_direction_input(struct gpio_chip *chip,
 
 static int sunxi_pinctrl_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
-	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->dev);
+	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->parent);
 
 	u32 reg = sunxi_data_reg(offset);
 	u8 index = sunxi_data_offset(offset);
@@ -488,7 +488,7 @@ static int sunxi_pinctrl_gpio_direction_output(struct gpio_chip *chip,
 static void sunxi_pinctrl_gpio_set(struct gpio_chip *chip,
 				unsigned offset, int value)
 {
-	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->dev);
+	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->parent);
 	u32 reg = sunxi_data_reg(offset);
 	u8 index = sunxi_data_offset(offset);
 	unsigned long flags;
@@ -528,7 +528,7 @@ static int sunxi_pinctrl_gpio_of_xlate(struct gpio_chip *gc,
 
 static int sunxi_pinctrl_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
-	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->dev);
+	struct sunxi_pinctrl *pctl = dev_get_drvdata(chip->parent);
 	struct sunxi_desc_function *desc;
 
 	if (offset >= chip->ngpio)
@@ -540,7 +540,7 @@ static int sunxi_pinctrl_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 
 	pctl->irq_array[desc->irqnum] = offset;
 
-	dev_dbg(chip->dev, "%s: request IRQ for GPIO %d, return %d\n",
+	dev_dbg(chip->parent, "%s: request IRQ for GPIO %d, return %d\n",
 		chip->label, offset + chip->base, desc->irqnum);
 
 #if 0
@@ -959,7 +959,7 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 	pctl->chip = &sunxi_pinctrl_gpio_chip;
 	pctl->chip->ngpio = round_up(last_pin, PINS_PER_BANK);
 	pctl->chip->label = dev_name(pdev);
-	pctl->chip->dev = pdev;
+	pctl->chip->parent = pdev;
 	pctl->chip->base = 0;
 
 	ret = gpiochip_add(pctl->chip);

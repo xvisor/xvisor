@@ -36,7 +36,6 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/basic_mmio_gpio.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/module.h>
@@ -71,7 +70,7 @@ struct mxc_gpio_port {
 	u32 irq;
 	u32 irq_high;
 	struct vmm_host_irqdomain *domain;
-	struct bgpio_chip bgc;
+	struct gpio_chip gc;
 	u32 both_edges;
 };
 
@@ -178,7 +177,7 @@ static int gpio_set_irq_type(struct vmm_host_irq *d, u32 type)
 	struct mxc_gpio_port *port = vmm_host_irq_get_chip_data(d);
 	u32 bit, val;
 	u32 gpio_idx = vmm_host_irqdomain_to_hwirq(port->domain, d->num);
-	u32 gpio = port->bgc.gc.base + gpio_idx;
+	u32 gpio = port->gc.base + gpio_idx;
 	int edge;
 	void __iomem *reg = port->base;
 
@@ -475,9 +474,8 @@ static void mxc_gpio_get_hw(const struct vmm_devtree_nodeid *dev)
 
 static int mxc_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 {
-	struct bgpio_chip *bgc = to_bgpio_chip(gc);
 	struct mxc_gpio_port *port =
-		container_of(bgc, struct mxc_gpio_port, bgc);
+			container_of(gc, struct mxc_gpio_port, gc);
 
 	return vmm_host_irqdomain_find_mapping(port->domain, offset);
 }
@@ -563,19 +561,19 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 		}
 	}
 
-	err = bgpio_init(&port->bgc, dev, 4,
+	err = bgpio_init(&port->gc, dev, 4,
 			 port->base + GPIO_PSR,
 			 port->base + GPIO_DR, NULL,
 			 port->base + GPIO_GDIR, NULL, 0);
 	if (err)
-		goto out_bgio;
+		goto out_bgpio;
 
-	port->bgc.gc.to_irq = mxc_gpio_to_irq;
-	port->bgc.gc.base = (port_num - 1) * 32;
+	port->gc.to_irq = mxc_gpio_to_irq;
+	port->gc.base = (port_num - 1) * 32;
 
-	err = gpiochip_add(&port->bgc.gc);
+	err = gpiochip_add(&port->gc);
 	if (err)
-		goto out_bgpio_remove;
+		goto out_bgpio;
 
 	/* gpio-mxc can be a generic irq chip */
 	err = mxc_gpio_init_gc(port, name, 32, dev);
@@ -592,10 +590,8 @@ out_irqdesc_free:
 	irq_free_descs(irq_base, 32);
 #endif
 out_gpiochip_remove:
-	gpiochip_remove(&port->bgc.gc);
-out_bgpio_remove:
-	bgpio_remove(&port->bgc);
-out_bgio:
+	gpiochip_remove(&port->gc);
+out_bgpio:
 	if (port->irq_high > 0)
 		vmm_host_irq_unregister(port->irq_high, dev);
 out_irq_reg_high:

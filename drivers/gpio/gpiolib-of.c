@@ -333,8 +333,8 @@ static void of_gpiochip_add_pin_range(struct gpio_chip *chip) {}
 
 void of_gpiochip_add(struct gpio_chip *chip)
 {
-	if ((!chip->of_node) && (chip->dev))
-		chip->of_node = chip->dev->of_node;
+	if ((!chip->of_node) && (chip->parent))
+		chip->of_node = chip->parent->of_node;
 
 	if (!chip->of_node)
 		return;
