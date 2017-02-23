@@ -87,9 +87,10 @@
 			switch = "br0";
 		};
 
-		sysreg { /* System registers */
-			compatible = "arm,vexpress-sysreg";
-			reg = <0x1c010000 0x1000>;
+		gpio-leds { /* LEDs */
+			compatible = "bgpio,generic";
+			reg-names = "dat";
+			reg = <0x1c010008 0x4>;
 		};
 
 		SERIAL0: uart0 { /* PL011 serial port */
