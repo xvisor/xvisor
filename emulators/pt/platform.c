@@ -197,15 +197,10 @@ static int platform_pt_probe(struct vmm_guest *guest,
 	}
 
 	s->guest = guest;
-	s->irq_count = vmm_devtree_irq_count(edev->node);
+	s->irq_count = vmm_devtree_attrlen(edev->node, "host-interrupts");
+	s->irq_count = s->irq_count / sizeof(u32);
 	s->guest_irqs = NULL;
 	s->host_irqs = NULL;
-
-	i = vmm_devtree_attrlen(edev->node, "host-interrupts") / sizeof(u32);
-	if (s->irq_count != i) {
-		rc = VMM_EINVALID;
-		goto platform_pt_probe_freestate_fail;
-	}
 
 	if (s->irq_count) {
 		s->host_irqs = vmm_zalloc(sizeof(u32) * s->irq_count);

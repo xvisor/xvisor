@@ -33,6 +33,7 @@
 #include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
+#include <libs/mathlib.h>
 
 #define pr_warn(msg...)			vmm_printf(msg)
 #ifdef DEBUG
@@ -69,15 +70,22 @@ int vmm_devtree_irq_get(struct vmm_devtree_node *node,
 
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
 {
-	u32 alen;
+        u32 alen, tmp, rc;
+        struct vmm_devtree_node *parent = vmm_devtree_irq_find_parent(node);
 
-	if (!node) {
+        if (!node || !parent) {
+                return 0;
+        }
+
+        rc = vmm_devtree_read_u32(parent, "#interrupt-cells", &tmp);
+        vmm_devtree_dref_node(parent);
+        if (rc) {
 		return 0;
 	}
 
-	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
+        alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
 
-	return alen / sizeof(u32);
+        return udiv32(alen, (sizeof(u32) * tmp));
 }
 
 struct vmm_devtree_node *vmm_devtree_irq_find_parent(
