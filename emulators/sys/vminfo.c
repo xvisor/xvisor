@@ -319,6 +319,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(vminfo_emulator,
 			    vminfo_emulator_probe,
 			    vminfo_emulator_remove,
 			    vminfo_emulator_reset,
+			    NULL,
 			    vminfo_emulator_read,
 			    vminfo_emulator_write);
 

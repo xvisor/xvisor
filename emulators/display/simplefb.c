@@ -478,6 +478,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(simplefb_emulator,
 			    simplefb_emulator_probe,
 			    simplefb_emulator_remove,
 			    simplefb_emulator_reset,
+			    NULL,
 			    simplefb_emulator_read,
 			    simplefb_emulator_write);
 

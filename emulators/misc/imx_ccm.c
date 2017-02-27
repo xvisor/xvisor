@@ -173,6 +173,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(imx_ccm_emulator,
 				imx_ccm_emulator_probe,
 				imx_ccm_emulator_remove,
 				imx_ccm_emulator_reset,
+				NULL,
 				imx_ccm_emulator_read,
 				imx_ccm_emulator_write);
 

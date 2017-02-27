@@ -170,6 +170,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(apbh_emulator,
 				apbh_emulator_probe,
 				apbh_emulator_remove,
 				apbh_emulator_reset,
+				NULL,
 				apbh_emulator_read,
 				apbh_emulator_write);
 

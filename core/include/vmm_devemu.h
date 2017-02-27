@@ -49,6 +49,8 @@ struct vmm_emulator {
 		      const struct vmm_devtree_nodeid *nodeid);
 	int (*remove) (struct vmm_emudev *edev);
 	int (*reset) (struct vmm_emudev *edev);
+	int (*sync) (struct vmm_emudev *edev,
+		     unsigned long val, void *v);
 	int (*read8) (struct vmm_emudev *edev,
 		      physical_addr_t offset,
 		      u8 *dst);
@@ -104,13 +106,14 @@ int vmm_devemu_simple_write32(struct vmm_emudev *edev,
 			      u32 src);
 
 #define VMM_DECLARE_EMULATOR_SIMPLE(EMU, NAME, MATCH, ENDIAN, PROBE,	\
-				    REMOVE, RESET, READ, WRITE)		\
+				    REMOVE, RESET, SYNC, READ, WRITE)	\
 	static struct vmm_emulator EMU = {				\
 		.name = NAME,						\
 		.match_table = MATCH,					\
 		.endian = ENDIAN,					\
 		.probe = PROBE,						\
 		.reset = RESET,						\
+		.sync = SYNC,						\
 		.remove = REMOVE,					\
 		.read8 = vmm_devemu_simple_read8,			\
 		.write8 = vmm_devemu_simple_write8,			\
@@ -147,44 +150,44 @@ struct vmm_devemu_irqchip {
 };
 
 /** Emulate memory read to virtual device for given VCPU */
-int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_read(struct vmm_vcpu *vcpu,
 			    physical_addr_t gphys_addr,
 			    void *dst, u32 dst_len,
 			    enum vmm_devemu_endianness dst_endian);
 
 /** Emulate memory write to virtual device for given VCPU */
-int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_write(struct vmm_vcpu *vcpu,
 			     physical_addr_t gphys_addr,
 			     void *src, u32 src_len,
 			     enum vmm_devemu_endianness src_endian);
 
 /** Emulate IO read to virtual device for given VCPU */
-int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_ioread(struct vmm_vcpu *vcpu,
 			      physical_addr_t gphys_addr,
 			      void *dst, u32 dst_len,
 			      enum vmm_devemu_endianness dst_endian);
 
 /** Emulate IO write to virtual device for given VCPU */
-int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu, 
+int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 			       physical_addr_t gphys_addr,
 			       void *src, u32 src_len,
 			       enum vmm_devemu_endianness src_endian);
 
 /** Internal function to emulate irq (should not be called directly) */
-extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest, 
+extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 				    u32 irq, int cpu, int level);
 
 /** Emulate shared irq for guest
  *  Note: This will only work after guest is created.
  */
 #define vmm_devemu_emulate_irq(guest, irq, level)	\
-		__vmm_devemu_emulate_irq(guest, irq, -1, level) 
+		__vmm_devemu_emulate_irq(guest, irq, -1, level)
 
 /** Emulate percpu irq for guest
  *  Note: This will only work after guest is created.
  */
 #define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
-		__vmm_devemu_emulate_irq(guest, irq, cpu, level) 
+		__vmm_devemu_emulate_irq(guest, irq, cpu, level)
 
 /** Map host irq to guest irq for guest
  *  Note: This will only work after guest is created.
@@ -225,6 +228,16 @@ struct vmm_emulator *vmm_devemu_emulator(int index);
 /** Count available emulators */
 u32 vmm_devemu_emulator_count(void);
 
+/** Sync children of given emulated device */
+int vmm_devemu_sync_children(struct vmm_guest *guest,
+			     struct vmm_emudev *edev,
+			     unsigned long val, void *v);
+
+/** Sync parent of given emulated device */
+int vmm_devemu_sync_parent(struct vmm_guest *guest,
+			   struct vmm_emudev *edev,
+			   unsigned long val, void *v);
+
 /** Reset context for given guest */
 int vmm_devemu_reset_context(struct vmm_guest *guest);
 
@@ -239,10 +252,6 @@ int vmm_devemu_remove_region(struct vmm_guest *guest,
 /** Probe emulators for given region */
 int vmm_devemu_probe_region(struct vmm_guest *guest,
 			    struct vmm_region *reg);
-
-/** Probe emulators for children of given emulated device */
-int vmm_devemu_probe_children(struct vmm_guest *guest,
-			      struct vmm_emudev *parent);
 
 /** Initialize context for given guest */
 int vmm_devemu_init_context(struct vmm_guest *guest);

@@ -400,6 +400,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(imx_gpt_emulator,
 				imx_gpt_emulator_probe,
 				imx_gpt_emulator_remove,
 				imx_gpt_emulator_reset,
+				NULL,
 				imx_gpt_emulator_read,
 				imx_gpt_emulator_write);
 

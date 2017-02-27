@@ -283,6 +283,7 @@ VMM_DECLARE_EMULATOR_SIMPLE(imx_anatop_emulator,
 			    imx_anatop_emulator_probe,
 			    imx_anatop_emulator_remove,
 			    imx_anatop_emulator_reset,
+			    NULL,
 			    imx_anatop_emulator_read,
 			    imx_anatop_emulator_write);
 

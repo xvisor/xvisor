@@ -76,6 +76,14 @@ static inline void debug_reset(const struct vmm_emudev *edev)
 	}
 }
 
+static inline void debug_sync(const struct vmm_emudev *edev)
+{
+	if (vmm_devemu_debug_sync(edev)) {
+		vmm_linfo(NULL, "[%s/%s] Syncing device emulator\n",
+			  get_guest_name(edev), edev->node->name);
+	}
+}
+
 static inline void debug_remove(const struct vmm_emudev *edev)
 {
 	if (vmm_devemu_debug_remove(edev)) {
@@ -915,6 +923,60 @@ u32 vmm_devemu_emulator_count(void)
 	vmm_mutex_unlock(&dectrl.emu_lock);
 
 	return retval;
+}
+
+static int devemu_sync(struct vmm_guest *guest,
+		       struct vmm_emudev *edev,
+		       unsigned long val, void *v)
+{
+	debug_sync(edev);
+	if (edev->emu->sync) {
+		return edev->emu->sync(edev, val, v);
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_sync_children(struct vmm_guest *guest,
+			     struct vmm_emudev *edev,
+			     unsigned long val, void *v)
+{
+	int rc;
+	irq_flags_t f;
+	struct vmm_emudev *e, *en;
+
+	if (!guest || !edev) {
+		return VMM_EFAIL;
+	}
+
+	vmm_read_lock_irqsave_lite(&edev->child_list_lock, f);
+
+	list_for_each_entry_safe(e, en, &edev->child_list, head) {
+		vmm_read_unlock_irqrestore_lite(&edev->child_list_lock, f);
+		rc = devemu_sync(guest, e, val, v);
+		if (rc) {
+			return rc;
+		}
+		vmm_read_lock_irqsave_lite(&edev->child_list_lock, f);
+	}
+
+	vmm_read_unlock_irqrestore_lite(&edev->child_list_lock, f);
+
+	return VMM_OK;
+}
+
+int vmm_devemu_sync_parent(struct vmm_guest *guest,
+			   struct vmm_emudev *edev,
+			   unsigned long val, void *v)
+{
+	if (!guest || !edev) {
+		return VMM_EFAIL;
+	}
+	if (!edev->parent) {
+		return VMM_EINVALID;
+	}
+
+	return devemu_sync(guest, edev->parent, val, v);
 }
 
 int vmm_devemu_reset_context(struct vmm_guest *guest)

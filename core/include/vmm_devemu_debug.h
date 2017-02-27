@@ -51,11 +51,11 @@ enum vmm_devemu_debug {
 	VMM_DEVEMU_DEBUG_NONE	= 0,        /**< No debug */
 	VMM_DEVEMU_DEBUG_PROBE	= (1 << 0), /**< Debug when probed */
 	VMM_DEVEMU_DEBUG_RESET	= (1 << 1), /**< Debug when reset */
-	VMM_DEVEMU_DEBUG_REMOVE	= (1 << 2), /**< Debug when removed */
-	VMM_DEVEMU_DEBUG_READ	= (1 << 3), /**< Debug when read */
-	VMM_DEVEMU_DEBUG_WRITE	= (1 << 4), /**< Debug when wrote to */
-	VMM_DEVEMU_DEBUG_IRQ	= (1 << 5), /**< Debug when an IRQ is emulated */
-	VMM_DEVEMU_DEBUG_PARSE  = (1 << 6), /**< Debug parameters manually parsed */
+	VMM_DEVEMU_DEBUG_SYNC	= (1 << 2), /**< Debug when sync */
+	VMM_DEVEMU_DEBUG_REMOVE	= (1 << 3), /**< Debug when removed */
+	VMM_DEVEMU_DEBUG_READ	= (1 << 4), /**< Debug when read */
+	VMM_DEVEMU_DEBUG_WRITE	= (1 << 5), /**< Debug when wrote to */
+	VMM_DEVEMU_DEBUG_IRQ	= (1 << 6), /**< Debug when an IRQ is emulated */
 	/* (1 << 7)  is available */
 	/* (1 << 8)  is available */
 	/* (1 << 9)  is available */
@@ -67,8 +67,6 @@ enum vmm_devemu_debug {
 	/* (1 << 15) is available */
 	/* No more debug bits available for Xvisor core */
 };
-
-
 
 /*
  * When CONFIG_DEVEMU_DEBUG is enabled, a field in the vmm_emudev structure
@@ -118,6 +116,12 @@ static inline bool vmm_devemu_debug_reset(const struct vmm_emudev *edev)
 	return (vmm_devemu_get_debug_info(edev) & VMM_DEVEMU_DEBUG_RESET);
 }
 
+/** @return TRUE if debug is enabled on reset, FALSE otherwise */
+static inline bool vmm_devemu_debug_sync(const struct vmm_emudev *edev)
+{
+	return (vmm_devemu_get_debug_info(edev) & VMM_DEVEMU_DEBUG_SYNC);
+}
+
 /** @return TRUE if debug is enabled on removal, FALSE otherwise */
 static inline bool vmm_devemu_debug_remove(const struct vmm_emudev *edev)
 {
@@ -144,17 +148,6 @@ static inline bool vmm_devemu_debug_write(const struct vmm_emudev *edev)
 static inline bool vmm_devemu_debug_irq(const struct vmm_emudev *edev)
 {
 	return (vmm_devemu_get_debug_info(edev) & VMM_DEVEMU_DEBUG_IRQ);
-}
-
-/**
- * @return TRUE if debug is enabled when a device tree parameter has been
- * parsed manually, FALSE otherwise.
- * @note This function must be explicitely used in emulators implementation
- * to provide debug information.
- */
-static inline bool vmm_devemu_debug_parsed_params(const struct vmm_emudev *edev)
-{
-	return (vmm_devemu_get_debug_info(edev) & VMM_DEVEMU_DEBUG_PARSE);
 }
 
 #endif /* ! _VMM_DEVEMU_DEBUG_H__ */
