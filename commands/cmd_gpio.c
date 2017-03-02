@@ -95,6 +95,8 @@ static int cmd_gpio_set(struct vmm_chardev *cdev, int argc, char **argv)
 			vmm_cprintf(cdev, "*** Error: %i\n", rc);
 			return VMM_EFAIL;
 		}
+		rc = __gpio_get_value(gpio);
+		vmm_cprintf(cdev, "value = %d\n", rc);
 	} else if (argc == 4) {
 		if (dir != GPIO_OUT) {
 			goto fail;
