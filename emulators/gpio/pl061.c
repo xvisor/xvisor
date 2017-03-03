@@ -53,6 +53,7 @@
 #define	MODULE_EXIT			pl061_emulator_exit
 
 struct pl061_state {
+	struct vmm_emudev *edev;
 	struct vmm_guest *guest;
 	vmm_spinlock_t lock;
 
@@ -152,6 +153,9 @@ static int pl061_reg_read(struct pl061_state *s,
 {
 	int rc = VMM_OK;
 
+	/* Syncup child GPIO slaves so that input lines are updated */
+	vmm_devemu_sync_children(s->guest, s->edev, 0, NULL);
+
 	vmm_spin_lock(&s->lock);
 
 	if (offset >= 0xfd0 && offset < 0x1000) {
@@ -233,6 +237,9 @@ static int pl061_reg_write(struct pl061_state *s,
 {
 	u8 mask;
 	int rc = VMM_OK;
+
+	/* Syncup child GPIO slaves so that input lines are updated */
+	vmm_devemu_sync_children(s->guest, s->edev, 0, NULL);
 
 	vmm_spin_lock(&s->lock);
 
@@ -509,6 +516,7 @@ static int pl061_emulator_probe(struct vmm_guest *guest,
 		goto pl061_emulator_probe_freestate_failed;
 	}
 
+	s->edev = edev;
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
