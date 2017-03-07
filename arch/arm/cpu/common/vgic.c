@@ -335,6 +335,7 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 				      struct vgic_vcpu_state *vs)
 {
 	bool overflow = FALSE;
+	u32 cm = (1 << vs->vcpu->subid);
 	u32 i, irq, irq_pending;
 
 	if (!s->enabled) {
@@ -343,27 +344,48 @@ static void __vgic_flush_vcpu_hwstate(struct vgic_guest_state *s,
 
 	DPRINTF("%s: vcpu=%s\n", __func__, vs->vcpu->name);
 
-	for (i = 0; i < VGIC_MAX_NIRQ / 32; i++) {
+	irq_pending = s->irq_pending[vs->vcpu->subid][0];
+	if (irq_pending) {
+		for (irq = 0; irq < 16; irq++) {
+			if (!(irq_pending & (0x1 << irq)) ||
+			    !VGIC_TEST_ENABLED(s, irq, cm)) {
+				continue;
+			}
+
+			if (!__vgic_queue_sgi(s, vs, irq)) {
+				overflow = TRUE;
+				goto done;
+			}
+		}
+
+		for (irq = 16; irq < 32; irq++) {
+			if (!(irq_pending & (0x1 << irq)) ||
+			    !VGIC_TEST_ENABLED(s, irq, cm)) {
+				continue;
+			}
+
+			if (!__vgic_queue_hwirq(s, vs, irq)) {
+				overflow = TRUE;
+				goto done;
+			}
+		}
+	}
+
+	for (i = 1; i < VGIC_MAX_NIRQ / 32; i++) {
 		irq_pending = s->irq_pending[vs->vcpu->subid][i];
 		if (!irq_pending) {
 			continue;
 		}
 
 		for (irq = 0; irq < 32; irq++) {
-			if (!(irq_pending & (0x1 << irq))) {
+			if (!(irq_pending & (0x1 << irq)) ||
+			    !VGIC_TEST_ENABLED(s, i*32 + irq, cm)) {
 				continue;
 			}
 
-			if (i == 0 && irq < 16) {
-				if (!__vgic_queue_sgi(s, vs, i*32 + irq)) {
-					overflow = TRUE;
-					goto done;
-				}
-			} else {
-				if (!__vgic_queue_hwirq(s, vs, i*32 + irq)) {
-					overflow = TRUE;
-					goto done;
-				}
+			if (!__vgic_queue_hwirq(s, vs, i*32 + irq)) {
+				overflow = TRUE;
+				goto done;
 			}
 		}
 	}
@@ -429,8 +451,7 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 			VGIC_CLEAR_ACTIVE(s, irq, cm);
 
 			/* Update pending bit */
-			if (VGIC_TEST_ENABLED(s, irq, cm) &&
-			    VGIC_TEST_LEVEL(s, irq, cm) &&
+			if (VGIC_TEST_LEVEL(s, irq, cm) &&
 			    (VGIC_TARGET(s, irq) & cm) != 0) {
 				VGIC_SET_PENDING(s, irq, cm);
 			} else {
@@ -515,8 +536,8 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	/* Update IRQ state */
 	if (level) {
 		VGIC_SET_LEVEL(s, irq, cm);
+		VGIC_SET_PENDING(s, irq, target);
 		if (VGIC_TEST_ENABLED(s, irq, cm)) {
-			VGIC_SET_PENDING(s, irq, target);
 			irq_pending = TRUE;
 		}
 	} else {
