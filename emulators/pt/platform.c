@@ -48,6 +48,7 @@ struct platform_pt_state {
 	struct vmm_guest *guest;
 	u32 irq_count;
 	u32 *host_irqs;
+	u32 *host_type_irqs;
 	u32 *guest_irqs;
 	struct vmm_device *dev;
 	struct vmm_iommu_domain *dom;
@@ -198,9 +199,10 @@ static int platform_pt_probe(struct vmm_guest *guest,
 
 	s->guest = guest;
 	s->irq_count = vmm_devtree_attrlen(edev->node, "host-interrupts");
-	s->irq_count = s->irq_count / sizeof(u32);
+	s->irq_count = s->irq_count / (sizeof(u32) * 2);
 	s->guest_irqs = NULL;
 	s->host_irqs = NULL;
+	s->host_type_irqs = NULL;
 
 	if (s->irq_count) {
 		s->host_irqs = vmm_zalloc(sizeof(u32) * s->irq_count);
@@ -209,22 +211,41 @@ static int platform_pt_probe(struct vmm_guest *guest,
 			goto platform_pt_probe_freestate_fail;
 		}
 
+		s->host_type_irqs = vmm_zalloc(sizeof(u32) * s->irq_count);
+		if (!s->host_type_irqs) {
+			rc = VMM_ENOMEM;
+			goto platform_pt_probe_freehirqs_fail;
+		}
+
 		s->guest_irqs = vmm_zalloc(sizeof(u32) * s->irq_count);
 		if (!s->guest_irqs) {
 			rc = VMM_ENOMEM;
-			goto platform_pt_probe_freehirqs_fail;
+			goto platform_pt_probe_freehtirqs_fail;
 		}
 	}
 
 	for (i = 0; i < s->irq_count; i++) {
 		rc = vmm_devtree_read_u32_atindex(edev->node,
 						  "host-interrupts",
-						  &s->host_irqs[i], i);
+						  &s->host_irqs[i], i*2);
+		if (rc) {
+			goto platform_pt_probe_cleanupirqs_fail;
+		}
+
+		rc = vmm_devtree_read_u32_atindex(edev->node,
+					"host-interrupts",
+					&s->host_type_irqs[i], i*2 + 1);
 		if (rc) {
 			goto platform_pt_probe_cleanupirqs_fail;
 		}
 
 		rc = vmm_devtree_irq_get(edev->node, &s->guest_irqs[i], i);
+		if (rc) {
+			goto platform_pt_probe_cleanupirqs_fail;
+		}
+
+		rc = vmm_host_irq_set_type(s->host_irqs[i],
+					   s->host_type_irqs[i]);
 		if (rc) {
 			goto platform_pt_probe_cleanupirqs_fail;
 		}
@@ -302,6 +323,10 @@ platform_pt_probe_cleanupirqs_fail:
 	if (s->guest_irqs) {
 		vmm_free(s->guest_irqs);
 	}
+platform_pt_probe_freehtirqs_fail:
+	if (s->host_type_irqs) {
+		vmm_free(s->host_type_irqs);
+	}
 platform_pt_probe_freehirqs_fail:
 	if (s->host_irqs) {
 		vmm_free(s->host_irqs);
@@ -334,6 +359,9 @@ static int platform_pt_remove(struct vmm_emudev *edev)
 	}
 	if (s->guest_irqs) {
 		vmm_free(s->guest_irqs);
+	}
+	if (s->host_type_irqs) {
+		vmm_free(s->host_type_irqs);
 	}
 	if (s->host_irqs) {
 		vmm_free(s->host_irqs);
