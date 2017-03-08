@@ -109,6 +109,38 @@ uart_puts_check:
 	b	uart_puts
 uart_puts_done:
 	mov	pc, lr
+#elif defined(UART_SH_SCIFA)
+#define SCIF_SCFTDR    (0x20)    /* Transmit FIFO data register    */
+#define SCIF_SCFSR     (0x14)    /* Serial status register         */
+#define SCFSR_TEND    (1 << 6)    /* Transmission End */
+#define SCFSR_TDFE    (1 << 5)    /* Transmit FIFO Data Empty */
+	/* Assume bootloader initiazed the port */
+	b       uart_init_done
+__uart_addr:
+	.word   UART_SH_SCIFA_BASE
+uart_puts:
+	ldrb    r5, [r0], #1
+	cmp     r5, #0
+	beq     uart_puts_done
+	ldr     r4, __uart_addr
+uart_puts_check:
+	ldrh    r6, [r4, #SCIF_SCFSR]   /* Get SCFSR */
+	uxth    r6, r6
+	dsb     sy
+	tst     r6, #SCFSR_TEND
+	beq     uart_puts_check
+	dsb     sy
+	strb    r5, [r4, #SCIF_SCFTDR]  /* Transmit Character */
+	ldrh    r6, [r4, #SCIF_SCFSR]   /* Get SCFSR */
+	uxth    r6, r6
+	dsb     sy
+	bic     r6, r6, #(SCFSR_TEND | SCFSR_TDFE)
+	uxth    r6, r6
+	strh    r6, [r4, #SCIF_SCFSR]
+	dsb     sy
+	b       uart_puts
+uart_puts_done:
+	mov     pc, lr
 #else
 	b	uart_init_done
 uart_puts:
