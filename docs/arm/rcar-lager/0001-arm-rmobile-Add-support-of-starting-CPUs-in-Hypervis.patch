@@ -1,0 +1,308 @@
+From fa987a1965c319953dd52f3a0aad9e9aac24c959 Mon Sep 17 00:00:00 2001
+From: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Date: Fri, 22 Jul 2016 21:45:14 +0530
+Subject: [PATCH 1/2] arm: rmobile: Add support of starting CPUs in Hypervisor
+ mode for Lager board
+
+To start Xvisor hypervisor, CPUs must be swithced to hypervisor mode in u-boot.
+For this purpose lager_xvisor_defconfig is provided.
+In this configuration, virtual extension support is swithced on.
+Also some changes, that are needed for successful Xvisor start, are provided.
+
+Signed-off-by: Iurii Konovalenko <iurii.konovalenko@globallogic.com>
+Signed-off-by: Anup Patel <anup@brainfault.org>
+---
+ arch/arm/lib/bootm-fdt.c       |   5 +-
+ board/renesas/lager/Kconfig    |   3 +
+ board/renesas/lager/lager.c    | 156 +++++++++++++++++++++++++++++++++++++++++
+ common/fdt_support.c           |   2 +
+ configs/lager_xvisor_defconfig |   4 ++
+ include/configs/lager.h        |  15 ++++
+ 6 files changed, 183 insertions(+), 2 deletions(-)
+ create mode 100644 configs/lager_xvisor_defconfig
+
+diff --git a/arch/arm/lib/bootm-fdt.c b/arch/arm/lib/bootm-fdt.c
+index d4f1578..e57bed9 100644
+--- a/arch/arm/lib/bootm-fdt.c
++++ b/arch/arm/lib/bootm-fdt.c
+@@ -24,7 +24,7 @@ DECLARE_GLOBAL_DATA_PTR;
+ int arch_fixup_fdt(void *blob)
+ {
+ 	bd_t *bd = gd->bd;
+-	int bank, ret;
++	int bank, ret = 0;
+ 	u64 start[CONFIG_NR_DRAM_BANKS];
+ 	u64 size[CONFIG_NR_DRAM_BANKS];
+ 
+@@ -32,8 +32,9 @@ int arch_fixup_fdt(void *blob)
+ 		start[bank] = bd->bi_dram[bank].start;
+ 		size[bank] = bd->bi_dram[bank].size;
+ 	}
+-
++#ifndef CONFIG_ARMV7_VIRT
+ 	ret = fdt_fixup_memory_banks(blob, start, size, CONFIG_NR_DRAM_BANKS);
++#endif
+ #if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+ 	if (ret)
+ 		return ret;
+diff --git a/board/renesas/lager/Kconfig b/board/renesas/lager/Kconfig
+index e990c20..6009ebd 100644
+--- a/board/renesas/lager/Kconfig
++++ b/board/renesas/lager/Kconfig
+@@ -9,4 +9,7 @@ config SYS_VENDOR
+ config SYS_CONFIG_NAME
+ 	default "lager"
+ 
++config ARMV7_VIRT
++	bool "Virtualization support"
++
+ endif
+diff --git a/board/renesas/lager/lager.c b/board/renesas/lager/lager.c
+index 5302839..672f691 100644
+--- a/board/renesas/lager/lager.c
++++ b/board/renesas/lager/lager.c
+@@ -24,6 +24,11 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#ifdef CONFIG_ARMV7_VIRT
++extern void shmobile_boot_vector(void);
++extern unsigned long shmobile_boot_size;
++#endif
++
+ #define CLK2MHZ(clk)	(clk / 1000 / 1000)
+ void s_init(void)
+ {
+@@ -191,3 +196,154 @@ void reset_cpu(ulong addr)
+ 	val |= 0x02;
+ 	i2c_write(CONFIG_SYS_I2C_POWERIC_ADDR, 0x13, 1, &val, 1);
+ }
++
++#ifdef CONFIG_ARMV7_VIRT
++#define r8a7790_clst_id(cpu) ((cpu & 4) > 0 ? 1 : 0)
++#define r8a7790_cpu_id(cpu) ((cpu) & 0x3)
++#define LAGER_APMU_BASE                        0xE6150000
++#define LAGER_APMU_CA15WUPCR_OFFSET            0x2010
++#define LAGER_APMU_CA15CPUCMCR_OFFSET          0x2184
++#define LAGER_APMU_CA7WUPCR_OFFSET             0x1010
++#define LAGER_APMU_CA7CPUCMCR_OFFSET           0x1184
++#define LAGER_RST_BASE                         0xE6160000
++#define LAGER_RST_CA15BAR_OFFSET               0x20
++#define LAGER_RST_CA7BAR_OFFSET                0x30
++#define LAGER_RST_CA15BAR_BAREN                (1 << 4)
++#define LAGER_RST_CA7BAR_BAREN                 (1 << 4)
++#define LAGER_RST_CA15RESCNT_OFFSET            0x40
++#define LAGER_RST_CA7RESCNT_OFFSET             0x44
++#define		BIT(x)	(1 << (x))
++#define LAGER_INIT_SECONDARY_START             0xE63C0FFC
++#define LAGER_RST_BASE                         0xE6160000
++#define LAGER_RST_CA15BAR                      0xE6160020
++#define LAGER_RST_CA7BAR                       0xE6160030
++#define LAGER_LAGER_RAM                        0xE63C0000
++#define LAGER_MAX_CPUS                         4
++
++
++enum { R8A7790_CLST_CA15, R8A7790_CLST_CA7, R8A7790_CLST_NR };
++static struct {
++	unsigned int wupcr;
++	unsigned int bar;
++	unsigned int rescnt;
++	unsigned int rescnt_magic;
++} r8a7790_clst[R8A7790_CLST_NR] = {
++	[R8A7790_CLST_CA15] = {
++		.wupcr = LAGER_APMU_CA15WUPCR_OFFSET,
++		.bar = LAGER_RST_CA15BAR_OFFSET,
++		.rescnt = LAGER_RST_CA15RESCNT_OFFSET,
++		.rescnt_magic = 0xa5a50000,
++	},
++	[R8A7790_CLST_CA7] = {
++		.wupcr = LAGER_APMU_CA7WUPCR_OFFSET,
++		.bar = LAGER_RST_CA7BAR_OFFSET,
++		.rescnt = LAGER_RST_CA7RESCNT_OFFSET,
++		.rescnt_magic = 0x5a5a0000,
++	},
++};
++
++static void assert_reset(unsigned int cpu)
++{
++	void *rescnt;
++	u32 mask, magic;
++	unsigned int clst_id = r8a7790_clst_id(cpu);
++
++	/* disable per-core clocks */
++	mask = BIT(3 - r8a7790_cpu_id(cpu));
++	magic = r8a7790_clst[clst_id].rescnt_magic;
++	rescnt = (void *) (LAGER_RST_BASE + r8a7790_clst[clst_id].rescnt);
++	writel((readl(rescnt) | mask) | magic, rescnt);
++}
++
++static void deassert_reset(unsigned int cpu)
++{
++	void *rescnt;
++	u32 mask, magic;
++	unsigned int clst_id = r8a7790_clst_id(cpu);
++
++	/* enable per-core clocks */
++	mask = BIT(3 - r8a7790_cpu_id(cpu));
++	magic = r8a7790_clst[clst_id].rescnt_magic;
++	rescnt = (void *) (LAGER_RST_BASE + r8a7790_clst[clst_id].rescnt);
++	writel((readl(rescnt) & ~mask) | magic, rescnt);
++}
++
++static void power_on(unsigned int cpu)
++{
++	void *cawupcr;
++	unsigned int clst_id = r8a7790_clst_id(cpu);
++
++	cawupcr = (void *) (LAGER_APMU_BASE + r8a7790_clst[clst_id].wupcr);
++	writel(BIT(r8a7790_cpu_id(cpu)), cawupcr);
++
++	/* wait for APMU to finish */
++	while (readl(cawupcr) != 0);
++}
++
++void smp_kick_all_cpus(void)
++{
++	int i;
++	for (i = 1; i < LAGER_MAX_CPUS; i++)
++	{
++		assert_reset(i);
++		power_on(i);
++		deassert_reset(i);
++	}
++}
++
++void smp_set_core_boot_addr(unsigned long addr, int corenr)
++{
++
++	void __iomem *p;
++	unsigned long *f;
++	unsigned long bar;
++
++	p = (void __iomem*) LAGER_LAGER_RAM;
++	memcpy_toio(p, shmobile_boot_vector, shmobile_boot_size);
++	f = (void __iomem *)((long unsigned)p + shmobile_boot_size - 4);
++	*((unsigned long *) f) = addr;
++
++	bar = (LAGER_LAGER_RAM >> 8) & 0xfffffc00;
++
++	writel(bar, LAGER_RST_CA15BAR);
++	writel(bar | 0x10, LAGER_RST_CA15BAR);
++	writel(bar, LAGER_RST_CA7BAR);
++	writel(bar | 0x10, LAGER_RST_CA7BAR);
++
++	f = (unsigned long *)(LAGER_INIT_SECONDARY_START);
++	*f = 0;
++
++	/* make sure this write is really executed */
++	__asm__ volatile ("dsb\n");
++}
++
++
++asm(".arm \n"
++	".align 2 \n"
++	".global smp_waitloop \n"
++	"smp_waitloop: \n"
++	"1: 	wfe \n"
++	"ldr 	r0, =0xE63C0FFC \n"
++	"ldr	r0, [r0] \n"
++	"teq	r0, #0x0 \n"
++	"beq 	1b \n"
++
++	"b		_do_nonsec_entry \n"
++	".type smp_waitloop, %function \n"
++	".size smp_waitloop, .-smp_waitloop \n");
++
++asm(
++	".arm \n"
++	".globl shmobile_boot_vector \n"
++	".align 2 \n"
++	"shmobile_boot_vector: \n"
++	"ldr    pc, 1f \n"
++	".type shmobile_boot_vector, %function \n"
++	".size shmobile_boot_vector, .-shmobile_boot_vector \n"
++    ".align	2 \n"
++		"func:\n"
++"1:	.space	4 \n"
++	".globl	shmobile_boot_size \n"
++"shmobile_boot_size: \n"
++	".long	.-shmobile_boot_vector \n");
++#endif
+diff --git a/common/fdt_support.c b/common/fdt_support.c
+index 3f64156..5b1e61f 100644
+--- a/common/fdt_support.c
++++ b/common/fdt_support.c
+@@ -289,8 +289,10 @@ int fdt_chosen(void *fdt)
+ 
+ 	str = getenv("bootargs");
+ 	if (str) {
++#ifndef CONFIG_ARMV7_VIRT
+ 		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
+ 				  strlen(str) + 1);
++#endif
+ 		if (err < 0) {
+ 			printf("WARNING: could not set bootargs %s.\n",
+ 			       fdt_strerror(err));
+diff --git a/configs/lager_xvisor_defconfig b/configs/lager_xvisor_defconfig
+new file mode 100644
+index 0000000..b4b15e6
+--- /dev/null
++++ b/configs/lager_xvisor_defconfig
+@@ -0,0 +1,4 @@
++CONFIG_ARM=y
+++S:CONFIG_RMOBILE=y
++CONFIG_TARGET_LAGER=y
++CONFIG_ARMV7_VIRT=y
+diff --git a/include/configs/lager.h b/include/configs/lager.h
+index 699135f..6d2bef8 100644
+--- a/include/configs/lager.h
++++ b/include/configs/lager.h
+@@ -16,6 +16,10 @@
+ #define CONFIG_RMOBILE_BOARD_STRING "Lager"
+ #define CONFIG_SH_GPIO_PFC
+ 
++#ifdef CONFIG_ARMV7_VIRT
++#define CONFIG_ARM_GIC_BASE_ADDRESS	0xf1000000
++#endif
++
+ #include <asm/arch/rmobile.h>
+ 
+ #define	CONFIG_CMD_EDITENV
+@@ -40,7 +44,9 @@
+ #define CONFIG_EXT4_WRITE
+ 
+ #define CONFIG_SYS_TEXT_BASE	0xE8080000
++#ifndef CONFIG_ARMV7_VIRT
+ #define CONFIG_SYS_THUMB_BUILD
++#endif
+ #define CONFIG_SYS_GENERIC_BOARD
+ 
+ /* Support File sytems */
+@@ -78,7 +84,12 @@
+ /* MEMORY */
+ #define LAGER_SDRAM_BASE	0x40000000
+ #define LAGER_SDRAM_SIZE	(2048u * 1024 * 1024)
++#ifndef CONFIG_ARMV7_VIRT
+ #define LAGER_UBOOT_SDRAM_SIZE	(512 * 1024 * 1024)
++#else
++#define LAGER_UBOOT_SDRAM_SIZE	(1024u * 1024 * 1024)
++#endif
++
+ 
+ #define CONFIG_SYS_LONGHELP
+ #define CONFIG_SYS_CBSIZE		256
+@@ -161,7 +172,11 @@
+ #define CONFIG_SYS_I2C_POWERIC_ADDR 0x58 /* da9063 */
+ 
+ /* Board Clock */
++#ifndef CONFIG_ARMV7_VIRT
+ #define RMOBILE_XTAL_CLK	20000000u
++#else
++#define RMOBILE_XTAL_CLK	10000000
++#endif
+ #define CONFIG_SYS_CLK_FREQ	RMOBILE_XTAL_CLK
+ #define CONFIG_SH_TMU_CLK_FREQ	(CONFIG_SYS_CLK_FREQ / 2) /* EXT / 2 */
+ #define CONFIG_PLL1_CLK_FREQ	(CONFIG_SYS_CLK_FREQ * 156 / 2)
+-- 
+1.9.1
+
