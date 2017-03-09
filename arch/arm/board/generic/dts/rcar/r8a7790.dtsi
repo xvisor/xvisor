@@ -124,6 +124,16 @@
 			/* Only for Xvisor */
 			clock-frequency = <14745600>;
 		};
+
+		scifa1: serial@e6c50000 { /* FIXME: */
+			compatible = "renesas,scifa-r8a7790", "renesas,rcar-gen2-scifa",
+				     "renesas,scifa";
+			reg = <0 0xe6c50000 0 64>;
+			interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+			/* Only for Xvisor */
+			clock-frequency = <14745600>;
+		};
 	};
 };
 
