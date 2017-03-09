@@ -406,23 +406,24 @@ static struct defterm_ops samsung_ops = {
 static virtual_addr_t scif_defterm_base;
 static u32 scif_defterm_inclk;
 static u32 scif_defterm_baud;
+static unsigned long scif_regtype = SCIx_SH4_SCIF_BRG_REGTYPE;
 static bool scif_defterm_use_intclk;
 
 static int scif_defterm_putc(u8 ch)
 {
-	if (!scif_lowlevel_can_putc(scif_defterm_base)) {
+	if (!scif_lowlevel_can_putc(scif_defterm_base, scif_regtype)) {
 		return VMM_EFAIL;
 	}
-	scif_lowlevel_putc(scif_defterm_base, ch);
+	scif_lowlevel_putc(scif_defterm_base, scif_regtype, ch);
 	return VMM_OK;
 }
 
 static int scif_defterm_getc(u8 *ch)
 {
-	if (!scif_lowlevel_can_getc(scif_defterm_base)) {
+	if (!scif_lowlevel_can_getc(scif_defterm_base, scif_regtype)) {
 		return VMM_EFAIL;
 	}
-	*ch = scif_lowlevel_getc(scif_defterm_base);
+	*ch = scif_lowlevel_getc(scif_defterm_base, scif_regtype);
 	return VMM_OK;
 }
 
@@ -453,9 +454,17 @@ static int __init scif_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	scif_lowlevel_init(scif_defterm_base,
+			   scif_regtype,
 			   scif_defterm_baud,
 			   scif_defterm_inclk,
 			   scif_defterm_use_intclk);
+
+	return VMM_OK;
+}
+
+static int __init scifa_defterm_init(struct vmm_devtree_node *node) {
+	scif_regtype = SCIx_SCIFA_REGTYPE;
+	scif_defterm_init(node);
 
 	return VMM_OK;
 }
@@ -466,9 +475,16 @@ static struct defterm_ops scif_ops = {
 	.init = scif_defterm_init
 };
 
+static struct defterm_ops scifa_ops = {
+	.putc = scif_defterm_putc,
+	.getc = scif_defterm_getc,
+	.init = scifa_defterm_init
+};
+
 #else
 
 #define scif_ops unknown_ops
+#define scifa_ops unknown_ops
 
 #endif
 
@@ -614,6 +630,7 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "exynos4210-uart", .data = &samsung_ops },
 	{ .compatible = "samsung,exynos4210-uart", .data = &samsung_ops },
 	{ .compatible = "renesas,scif", .data = &scif_ops },
+	{ .compatible = "renesas,scifa", .data = &scifa_ops },
 	{ .compatible = "brcm,bcm283x-mu", .data = &bcm283x_mu_ops },
 	{ .compatible = "cdns,uart-r1p12", .data = &zynq_uart_ops },
 	{ .compatible = "xlnx,xuartps", .data = &zynq_uart_ops },

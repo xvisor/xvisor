@@ -26,21 +26,52 @@
 
 #include <vmm_types.h>
 
-#define SCIF_FIFO_MAX_SIZE    16
+enum {
+	SCIx_PROBE_REGTYPE,
 
-/* Register offsets */
-#define SCIF_SCSMR     (0x00)    /* Serial mode register           */
-#define SCIF_SCBRR     (0x04)    /* Bit rate register              */
-#define SCIF_SCSCR     (0x08)    /* Serial control register        */
-#define SCIF_SCFTDR    (0x0C)    /* Transmit FIFO data register    */
-#define SCIF_SCFSR     (0x10)    /* Serial status register         */
-#define SCIF_SCFRDR    (0x14)    /* Receive FIFO data register     */
-#define SCIF_SCFCR     (0x18)    /* FIFO control register          */
-#define SCIF_SCFDR     (0x1C)    /* FIFO data count register       */
-#define SCIF_SCSPTR    (0x20)    /* Serial port register           */
-#define SCIF_SCLSR     (0x24)    /* Line status register           */
-#define SCIF_DL        (0x30)    /* Frequency division register    */
-#define SCIF_CKS       (0x34)    /* Clock Select register          */
+	SCIx_SCI_REGTYPE,
+	SCIx_IRDA_REGTYPE,
+	SCIx_SCIFA_REGTYPE,
+	SCIx_SCIFB_REGTYPE,
+	SCIx_SH2_SCIF_FIFODATA_REGTYPE,
+	SCIx_SH3_SCIF_REGTYPE,
+	SCIx_SH4_SCIF_REGTYPE,
+	SCIx_SH4_SCIF_BRG_REGTYPE,
+	SCIx_SH4_SCIF_NO_SCSPTR_REGTYPE,
+	SCIx_SH4_SCIF_FIFODATA_REGTYPE,
+	SCIx_SH7705_SCIF_REGTYPE,
+	SCIx_HSCIF_REGTYPE,
+
+	SCIx_NR_REGTYPES,
+};
+
+/*
+ * SCI register subset common for all port types.
+ * Not all registers will exist on all parts.
+ */
+enum {
+	SCSMR,                          /* Serial Mode Register */
+	SCBRR,                          /* Bit Rate Register */
+	SCSCR,                          /* Serial Control Register */
+	SCxSR,                          /* Serial Status Register */
+	SCFCR,                          /* FIFO Control Register */
+	SCFDR,                          /* FIFO Data Count Register */
+	SCxTDR,                         /* Transmit (FIFO) Data Register */
+	SCxRDR,                         /* Receive (FIFO) Data Register */
+	SCLSR,                          /* Line Status Register */
+	SCTFDR,                         /* Transmit FIFO Data Count Register */
+	SCRFDR,                         /* Receive FIFO Data Count Register */
+	SCSPTR,                         /* Serial Port Register */
+	HSSRR,                          /* Sampling Rate Register */
+	SCPCR,                          /* Serial Port Control Register */
+	SCPDR,                          /* Serial Port Data Register */
+	SCDL,                           /* BRG Frequency Division Register */
+	SCCKS,                          /* BRG Clock Select Register */
+
+	SCIx_NR_REGS,
+};
+
+#define SCIF_FIFO_MAX_SIZE    16
 
 /* Serial Control Register (SCSCR) */
 #define SCSCR_TIE     (1 << 7)    /* Transmit Interrupt Enable */
@@ -99,11 +130,11 @@
 #define SCFCR_TTRG10    (SCFCR_TTRG1)
 #define SCFCR_TTRG11    (SCFCR_TTRG1 | SCFCR_TTRG0)
 
-bool scif_lowlevel_can_getc(virtual_addr_t base);
-u8 scif_lowlevel_getc(virtual_addr_t base);
-bool scif_lowlevel_can_putc(virtual_addr_t base);
-void scif_lowlevel_putc(virtual_addr_t base, u8 ch);
-void scif_lowlevel_init(virtual_addr_t base, u32 baudrate,
-			u32 input_clock, bool use_internal_clock);
+bool scif_lowlevel_can_getc(virtual_addr_t base, unsigned long regtype);
+u8 scif_lowlevel_getc(virtual_addr_t base, unsigned long regtype);
+bool scif_lowlevel_can_putc(virtual_addr_t base, unsigned long regtype);
+void scif_lowlevel_putc(virtual_addr_t base, unsigned long regtype, u8 ch);
+void scif_lowlevel_init(virtual_addr_t base, unsigned long regtype,
+			u32 baudrate, u32 input_clock, bool use_internal_clock);
 
 #endif /* __SCIF_H_ */
