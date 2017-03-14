@@ -71,6 +71,14 @@ enum {
 	SCIx_NR_REGS,
 };
 
+enum SCI_CLKS {
+        SCI_FCK,                /* Functional Clock */
+        SCI_SCK,                /* Optional External Clock */
+        SCI_BRG_INT,            /* Optional BRG Internal Clock Source */
+        SCI_SCIF_CLK,           /* Optional BRG External Clock Source */
+        SCI_NUM_CLKS
+};
+
 #define SCIF_FIFO_MAX_SIZE    16
 
 /* Serial Control Register (SCSCR) */

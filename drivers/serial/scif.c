@@ -30,6 +30,7 @@
 #include <vmm_devdrv.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <drv/clk.h>
 #include <drv/serial.h>
 #include <drv/serial/scif.h>
 
@@ -473,6 +474,8 @@ struct scif_port {
 	unsigned long regtype;
 	u32 baudrate;
 	u32 input_clock;
+	/* Clocks */
+	struct clk *clks[SCI_NUM_CLKS];
 	bool use_internal_clock;
 	u32 irq;
 	u16 mask;
@@ -531,8 +534,68 @@ static u32 scif_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
+static int sci_init_clocks(struct scif_port *sci_port, struct vmm_device *dev)
+{
+	const char *clk_names[] = {
+		[SCI_FCK] = "fck",
+		[SCI_SCK] = "sck",
+		[SCI_BRG_INT] = "brg_int",
+		[SCI_SCIF_CLK] = "scif_clk",
+	};
+	struct clk *clk;
+	unsigned int i;
+
+	if (sci_port->regtype == SCIx_HSCIF_REGTYPE)
+		clk_names[SCI_SCK] = "hsck";
+
+	for (i = 0; i < SCI_NUM_CLKS; i++) {
+		clk = devm_clk_get(dev, clk_names[i]);
+		if (VMM_PTR_ERR(clk) == VMM_EPROBE_DEFER)
+			return VMM_EPROBE_DEFER;
+
+		if (VMM_IS_ERR(clk) && i == SCI_FCK) {
+			/*
+			 * "fck" used to be called "sci_ick", and we need to
+			 * maintain DT backward compatibility.
+			 */
+			clk = devm_clk_get(dev, "sci_ick");
+			if (VMM_PTR_ERR(clk) == VMM_EPROBE_DEFER)
+				return VMM_EPROBE_DEFER;
+
+			if (!VMM_IS_ERR(clk))
+				goto found;
+
+			/*
+			 * Not all SH platforms declare a clock lookup entry
+			 * for SCI devices, in which case we need to get the
+			 * global "peripheral_clk" clock.
+			 */
+			clk = devm_clk_get(dev, "peripheral_clk");
+			if (!VMM_IS_ERR(clk))
+				goto found;
+
+			vmm_lerror("scif", "failed to get %s (%ld)\n",
+				  clk_names[i], VMM_PTR_ERR(clk));
+			return VMM_PTR_ERR(clk);
+		}
+
+found:
+		if (VMM_IS_ERR(clk))
+			vmm_lerror("scif", "failed to get %s (%ld)\n",
+				   clk_names[i], VMM_PTR_ERR(clk));
+		sci_port->clks[i] = VMM_IS_ERR(clk) ? NULL : clk;
+	}
+
+	for (i = 0; i < SCI_NUM_CLKS; i++) {
+		clk_prepare_enable(sci_port->clks[i]);
+	}
+
+	return 0;
+}
+
+
 static int scif_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+			     const struct vmm_devtree_nodeid *devid)
 {
 	int rc;
 	struct scif_port *port;
@@ -576,6 +639,9 @@ static int scif_driver_probe(struct vmm_device *dev,
 	}
 
 	port->regtype = SCI_OF_REGTYPE(devid->data);
+
+	/* initialize clocks */
+	sci_init_clocks(port, dev);
 
 	/* Call low-level init function */
 	scif_lowlevel_init(port->base, port->regtype, port->baudrate,
@@ -631,13 +697,13 @@ static int scif_driver_remove(struct vmm_device *dev)
 }
 
 static struct vmm_devtree_nodeid scif_devid_table[] = {
-        /* Generic types */
-        {
-                .compatible = "renesas,scif",
-                .data = SCI_OF_DATA(SCIx_SH4_SCIF_BRG_REGTYPE),
-        }, {
-                .compatible = "renesas,scifa",
-                .data = SCI_OF_DATA(SCIx_SCIFA_REGTYPE),
+	/* Generic types */
+	{
+		.compatible = "renesas,scif",
+		.data = SCI_OF_DATA(SCIx_SH4_SCIF_BRG_REGTYPE),
+	}, {
+		.compatible = "renesas,scifa",
+		.data = SCI_OF_DATA(SCIx_SCIFA_REGTYPE),
 	},
 	{ /* end of list */ },
 };
