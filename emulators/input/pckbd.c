@@ -514,14 +514,18 @@ static int i8042_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_ENOMEM;
 		goto i8042_emulator_probe_fail;
 	}
-
 	s->guest = guest;
-	rc = vmm_devtree_irq_get(edev->node, &s->irq_kbd, 0);
+
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq_kbd, 0);
 	if (rc) {
 		goto i8042_emulator_probe_freestate_fail;
 	}
 
-	rc = vmm_devtree_irq_get(edev->node, &s->irq_mouse, 1);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq_mouse, 1);
 	if (rc) {
 		goto i8042_emulator_probe_freestate_fail;
 	}

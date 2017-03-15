@@ -787,7 +787,9 @@ static int mc146818_emulator_probe(struct vmm_guest *guest, struct vmm_emudev *e
 
 	INIT_SPIN_LOCK(&s->lock);
 
-	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq, 0);
 	if (rc) {
 		CMOS_LOG(LVL_ERR, "Failed to get IRQ entry in guest DTS.\n");
 		goto _error;

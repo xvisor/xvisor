@@ -520,7 +520,9 @@ static int i8254_emulator_probe(struct vmm_guest *guest,
 		goto i8254_emulator_probe_done;
 	}
 
-	rc = vmm_devtree_irq_get(edev->node, &s->channels[0].irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->channels[0].irq, 0);
 	if (rc) {
 		goto i8254_emulator_probe_freestate_fail;
 	}
@@ -529,9 +531,12 @@ static int i8254_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&s->channels[1].channel_lock);
 	INIT_SPIN_LOCK(&s->channels[2].channel_lock);
 
-	INIT_TIMER_EVENT(&s->channels[0].irq_timer, pit_irq_timer, &s->channels[0]);
-    INIT_TIMER_EVENT(&s->channels[1].irq_timer, pit_irq_timer, &s->channels[1]);
-    INIT_TIMER_EVENT(&s->channels[2].irq_timer, pit_irq_timer, &s->channels[2]);
+	INIT_TIMER_EVENT(&s->channels[0].irq_timer,
+			 pit_irq_timer, &s->channels[0]);
+	INIT_TIMER_EVENT(&s->channels[1].irq_timer,
+			 pit_irq_timer, &s->channels[1]);
+	INIT_TIMER_EVENT(&s->channels[2].irq_timer,
+			 pit_irq_timer, &s->channels[2]);
 
 	s->channels[0].guest = guest;
 	s->channels[1].guest = guest;

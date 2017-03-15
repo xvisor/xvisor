@@ -813,7 +813,9 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 	s->guest = guest;
 	INIT_SPIN_LOCK(&s->lock);
 
-	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq, 0);
 	if (rc) {
 		SERIAL_LOG(LVL_ERR, "Failed to get serial IRQ entry in guest DTS.\n");
 		goto uart16550a_emulator_probe_freestate_fail;

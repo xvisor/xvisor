@@ -239,7 +239,9 @@ static int platform_pt_probe(struct vmm_guest *guest,
 			goto platform_pt_probe_cleanupirqs_fail;
 		}
 
-		rc = vmm_devtree_irq_get(edev->node, &s->guest_irqs[i], i);
+		rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->guest_irqs[i], i);
 		if (rc) {
 			goto platform_pt_probe_cleanupirqs_fail;
 		}

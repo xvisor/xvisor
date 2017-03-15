@@ -582,12 +582,16 @@ static int imx_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&s->lock);
 	s->data = eid->data;
 
-	rc = vmm_devtree_irq_get(edev->node, &s->rdirq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->rdirq, 0);
 	if (rc) {
 		goto imx_emulator_probe_freestate_fail;
 	}
 
-	rc = vmm_devtree_irq_get(edev->node, &s->txirq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->txirq, 1);
 	if (rc) {
 		s->txirq = 0;
 	}

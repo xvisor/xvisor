@@ -636,12 +636,6 @@ int vmm_devtree_delnode(struct vmm_devtree_node *node);
 int vmm_devtree_clock_frequency(struct vmm_devtree_node *node,
 				u32 *clock_freq);
 
-/** Get device irq number
- *  NOTE: This is based on 'irq' attribute of device tree node
- */
-int vmm_devtree_irq_get(struct vmm_devtree_node *node,
-		        u32 *irq, int index);
-
 /** Get count of device irqs
  *  NOTE: This is based on 'irq' attribute of device tree node
  */

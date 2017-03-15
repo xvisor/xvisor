@@ -269,7 +269,9 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 
 	m->dev.id.type = m->config.device_id;
 
-	rc = vmm_devtree_irq_get(edev->node, &m->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &m->irq, 0);
 	if (rc) {
 		goto virtio_mmio_probe_freestate_fail;
 	}

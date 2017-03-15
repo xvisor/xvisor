@@ -345,7 +345,7 @@ static int imx_gpt_emulator_probe(struct vmm_guest *guest,
 				  struct vmm_emudev *edev,
 				  const struct vmm_devtree_nodeid *eid)
 {
-	int i = 0;
+	int i, rc;
 	u32 freq = 0;
 	struct gpt_t *gpt = NULL;
 
@@ -355,13 +355,16 @@ static int imx_gpt_emulator_probe(struct vmm_guest *guest,
 	}
 	gpt->guest = guest;
 
-	if (VMM_OK != vmm_devtree_irq_get(edev->node, &gpt->irq, 0)) {
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &gpt->irq, 0);
+	if (rc) {
 		vmm_free(gpt);
-		return VMM_ENODEV;
+		return rc;
 	}
 
-	if (VMM_OK == vmm_devtree_read_u32(edev->node, "clock-frequency",
-					   &freq)) {
+	rc = vmm_devtree_read_u32(edev->node, "clock-frequency", &freq);
+	if (VMM_OK == rc) {
 		gpt->freq = udiv32(1000000000UL, freq);
 	} else {
 		gpt->freq = 1000000000UL / 32000;

@@ -42,32 +42,6 @@
 #define pr_debug(msg...)
 #endif
 
-int vmm_devtree_irq_get(struct vmm_devtree_node *node,
-		        u32 *irq, int index)
-{
-	u32 alen;
-	const char *aval;
-
-	if (!node || !irq || index < 0) {
-		return VMM_EFAIL;
-	}
-
-	aval = vmm_devtree_attrval(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
-	if (!aval) {
-		return VMM_ENOTAVAIL;
-	}
-
-	alen = vmm_devtree_attrlen(node, VMM_DEVTREE_INTERRUPTS_ATTR_NAME);
-	if (alen <= (index * sizeof(u32))) {
-		return VMM_ENOTAVAIL;
-	}
-
-	aval += index * sizeof(u32);
-	*irq  = vmm_be32_to_cpu(*((u32 *)aval));
-
-	return VMM_OK;
-}
-
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
 {
         u32 alen, tmp, rc;
@@ -144,10 +118,12 @@ int vmm_devtree_irq_parse_one(struct vmm_devtree_node *device, int index,
 	/* Look for the interrupt parent. */
 	p = vmm_devtree_irq_find_parent(device);
 	if (NULL == p) {
-		/* If no interrupt-parent fount then try
-		 * the original vmm_devtree_irq_get() API
+		/* If no interrupt-parent fount then
+		 * read interrupts attribute directly
 		 */
-		res = vmm_devtree_irq_get(device, &intsize, index);
+		res = vmm_devtree_read_u32_atindex(device,
+					VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					&intsize, index);
 		if (res != VMM_OK) {
 			return res;
 		}

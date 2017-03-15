@@ -460,7 +460,9 @@ static int sp805_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&sp805->lock);
 	INIT_TIMER_EVENT(&sp805->event, sp805_emulator_event, sp805);
 
-	rc = vmm_devtree_irq_get(edev->node, &sp805->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &sp805->irq, 0);
 	if (rc) {
 		vmm_free(sp805);
 		return rc;

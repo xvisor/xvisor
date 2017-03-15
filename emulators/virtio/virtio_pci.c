@@ -299,7 +299,9 @@ static int virtio_pci_bar_probe(struct vmm_guest *guest,
 		goto virtio_pci_probe_freestate_fail;
 	}
 
-	rc = vmm_devtree_irq_get(edev->node, &vdev->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &vdev->irq, 0);
 	if (rc) {
 		goto virtio_pci_probe_freestate_fail;
 	}

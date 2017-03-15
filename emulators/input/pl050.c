@@ -292,10 +292,14 @@ static int pl050_emulator_probe(struct vmm_guest *guest,
 	s->id[5] = 0xf0;
 	s->id[6] = 0x05;
 	s->id[7] = 0xb1;
-	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq, 0);
 	if (rc) {
 		goto pl050_emulator_probe_freestate_fail;
 	}
+
 	INIT_SPIN_LOCK(&s->lock);
 
 	strlcpy(name, guest->name, sizeof(name));

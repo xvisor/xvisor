@@ -1410,7 +1410,9 @@ static int lan9118_emulator_probe(struct vmm_guest *guest,
 		goto lan9118_emulator_probe_done;
 	}
 
-	rc = vmm_devtree_irq_get(edev->node, &s->irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq, 0);
 	if (rc) {
 		vmm_printf("%s: no interrupts found\n", __func__);
 		goto lan9118_emulator_probe_freestate_failed;

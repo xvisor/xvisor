@@ -584,7 +584,9 @@ static int sp804_emulator_probe(struct vmm_guest *guest,
 	mrate = (vmm_devtree_getattr(edev->node,
 				     "maintain_irq_rate")) ? TRUE : FALSE;
 
-	rc = vmm_devtree_irq_get(edev->node, &irq, 0);
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &irq, 0);
 	if (rc) {
 		goto sp804_emulator_probe_freestate_fail;
 	}
