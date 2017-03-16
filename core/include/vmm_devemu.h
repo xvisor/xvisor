@@ -147,6 +147,8 @@ struct vmm_devemu_irqchip {
 	void (*handle) (u32 irq, int cpu, int level, void *opaque);
 	void (*map_host2guest) (u32 irq, u32 host_irq, void *opaque);
 	void (*unmap_host2guest) (u32 irq, void *opaque);
+	void (*notify_enabled) (u32 irq, int cpu, void *opaque);
+	void (*notify_disabled) (u32 irq, int cpu, void *opaque);
 };
 
 /** Emulate memory read to virtual device for given VCPU */
@@ -199,6 +201,16 @@ int vmm_devemu_map_host2guest_irq(struct vmm_guest *guest, u32 irq,
  *  Note: This will only work after guest is created.
  */
 int vmm_devemu_unmap_host2guest_irq(struct vmm_guest *guest, u32 irq);
+
+/** Notify guest irq is enabled for guest
+ *  Note: This will only work after guest is created.
+ */
+int vmm_devemu_notify_irq_enabled(struct vmm_guest *guest, u32 irq, int cpu);
+
+/** Notify guest irq is disabled for guest
+ *  Note: This will only work after guest is created.
+ */
+int vmm_devemu_notify_irq_disabled(struct vmm_guest *guest, u32 irq, int cpu);
 
 /** Register guest irqchip */
 int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,

@@ -560,6 +560,9 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 	}
 
 	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (!gi->chip->handle) {
+			continue;
+		}
 		gi->chip->handle(irq, cpu, level, gi->opaque);
 	}
 
@@ -615,6 +618,54 @@ int vmm_devemu_unmap_host2guest_irq(struct vmm_guest *guest, u32 irq)
 	return VMM_OK;
 }
 
+int vmm_devemu_notify_irq_enabled(struct vmm_guest *guest, u32 irq, int cpu)
+{
+	struct vmm_devemu_guest_irq *gi;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
+
+	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (!gi->chip->notify_enabled) {
+			continue;
+		}
+		gi->chip->notify_enabled(irq, cpu, gi->opaque);
+	}
+
+	return VMM_OK;
+}
+
+int vmm_devemu_notify_irq_disabled(struct vmm_guest *guest, u32 irq, int cpu)
+{
+	struct vmm_devemu_guest_irq *gi;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
+
+	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (!gi->chip->notify_disabled) {
+			continue;
+		}
+		gi->chip->notify_disabled(irq, cpu, gi->opaque);
+	}
+
+	return VMM_OK;
+}
+
 int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,
 				struct vmm_devemu_irqchip *chip,
 				void *opaque)
@@ -626,9 +677,6 @@ int vmm_devemu_register_irqchip(struct vmm_guest *guest, u32 irq,
 	/* Sanity checks */
 	if (!guest || !chip) {
 		return VMM_EFAIL;
-	}
-	if (!chip->handle) {
-		return VMM_EINVALID;
 	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
@@ -680,11 +728,13 @@ int vmm_devemu_unregister_irqchip(struct vmm_guest *guest, u32 irq,
 	if (!guest || !chip) {
 		return VMM_EFAIL;
 	}
-	if (!chip->handle) {
-		return VMM_EINVALID;
-	}
 
 	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+
+	/* Sanity checks */
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
 
 	/* Check if irqchip is not already unregistered */
 	gi = NULL;
