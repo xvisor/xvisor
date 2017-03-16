@@ -97,11 +97,46 @@ done:
 	return VMM_IRQ_HANDLED;
 }
 
-static int platform_pt_reset(struct vmm_emudev *edev)
+static void platform_pt_notify(struct platform_pt_state *s,
+				u32 guest_irq, int cpu, bool enabled)
 {
-	/* For now nothing to do here. */
-	return VMM_OK;
+	bool found = FALSE;
+	u32 i, host_irq = 0;
+
+	/* Find host irq */
+	for (i = 0; i < s->irq_count; i++) {
+		if (s->guest_irqs[i] == guest_irq) {
+			host_irq = s->host_irqs[i];
+			found = TRUE;
+			break;
+		}
+	}
+	if (!found) {
+		return;
+	}
+
+	if (enabled) {
+		vmm_host_irq_unmask(host_irq);
+	} else {
+		vmm_host_irq_mask(host_irq);
+	}
 }
+
+static void platform_pt_notify_enabled(u32 irq, int cpu, void *opaque)
+{
+	platform_pt_notify(opaque, irq, cpu, TRUE);
+}
+
+static void platform_pt_notify_disabled(u32 irq, int cpu, void *opaque)
+{
+	platform_pt_notify(opaque, irq, cpu, FALSE);
+}
+
+static struct vmm_devemu_irqchip platform_pt_irqchip = {
+	.name = "PLATFORM_PT",
+	.notify_enabled = platform_pt_notify_enabled,
+	.notify_disabled = platform_pt_notify_disabled,
+};
 
 static int platform_pt_fault(struct vmm_iommu_domain *dom,
 			     struct vmm_device *dev,
@@ -172,6 +207,19 @@ static int platform_pt_guest_aspace_notification(
 	}
 
 	return NOTIFY_OK;
+}
+
+static int platform_pt_reset(struct vmm_emudev *edev)
+{
+	u32 i;
+	struct platform_pt_state *s = edev->priv;
+
+	/* Mask all host IRQs */
+	for (i = 0; i < s->irq_count; i++) {
+		vmm_host_irq_mask(s->host_irqs[i]);
+	}
+
+	return VMM_OK;
 }
 
 static int platform_pt_probe(struct vmm_guest *guest,
@@ -263,6 +311,15 @@ static int platform_pt_probe(struct vmm_guest *guest,
 			vmm_host_irq_unmark_routed(s->host_irqs[i]);
 			goto platform_pt_probe_cleanupirqs_fail;
 		}
+		vmm_host_irq_mask(s->host_irqs[i]);
+
+		rc = vmm_devemu_register_irqchip(s->guest, s->guest_irqs[i],
+						 &platform_pt_irqchip, s);
+		if (rc) {
+			vmm_host_irq_unregister(s->host_irqs[i], s);
+			vmm_host_irq_unmark_routed(s->host_irqs[i]);
+			goto platform_pt_probe_cleanupirqs_fail;
+		}
 
 		irq_reg_count++;
 	}
@@ -319,6 +376,8 @@ platform_pt_probe_dref_dev_fail:
 	}
 platform_pt_probe_cleanupirqs_fail:
 	for (i = 0; i < irq_reg_count; i++) {
+		vmm_devemu_unregister_irqchip(s->guest, s->guest_irqs[i],
+					      &platform_pt_irqchip, s);
 		vmm_host_irq_unregister(s->host_irqs[i], s);
 		vmm_host_irq_unmark_routed(s->host_irqs[i]);
 	}
@@ -356,6 +415,8 @@ static int platform_pt_remove(struct vmm_emudev *edev)
 		vmm_devdrv_dref_device(s->dev);
 	}
 	for (i = 0; i < s->irq_count; i++) {
+		vmm_devemu_unregister_irqchip(s->guest, s->guest_irqs[i],
+					      &platform_pt_irqchip, s);
 		vmm_host_irq_unregister(s->host_irqs[i], s);
 		vmm_host_irq_unmark_routed(s->host_irqs[i]);
 	}
