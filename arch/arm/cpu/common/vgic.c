@@ -926,6 +926,13 @@ static int __vgic_dist_writeb(struct vgic_guest_state *s, int cpu,
 				cm = ((irq + i) < 32) ?
 					(1 << cpu) : VGIC_ALL_CPU_MASK(s);
 				VGIC_SET_ENABLED(s, irq + i, cm);
+				if (cm == VGIC_ALL_CPU_MASK(s)) {
+					vmm_devemu_notify_irq_enabled(
+						s->guest, irq + i, -1);
+				} else {
+					vmm_devemu_notify_irq_enabled(
+						s->guest, irq + i, cpu);
+				}
 				/* If a raised level triggered IRQ enabled
 				 * then mark is as pending.
 				 */
@@ -945,6 +952,13 @@ static int __vgic_dist_writeb(struct vgic_guest_state *s, int cpu,
 				cm = ((irq + i) < 32) ?
 					(1 << cpu) : VGIC_ALL_CPU_MASK(s);
 				VGIC_CLEAR_ENABLED(s, irq + i, cm);
+				if (cm == VGIC_ALL_CPU_MASK(s)) {
+					vmm_devemu_notify_irq_disabled(
+						s->guest, irq + i, -1);
+				} else {
+					vmm_devemu_notify_irq_disabled(
+						s->guest, irq + i, cpu);
+				}
 			}
 		}
 		break;
@@ -1272,6 +1286,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	 */
 	for (i = 0; i < VGIC_NUM_IRQ(s); i++) {
 		VGIC_CLEAR_ENABLED(s, i, VGIC_ALL_CPU_MASK(s));
+		vmm_devemu_notify_irq_disabled(s->guest, i, -1);
 		VGIC_CLEAR_PENDING(s, i, VGIC_ALL_CPU_MASK(s));
 		VGIC_CLEAR_ACTIVE(s, i, VGIC_ALL_CPU_MASK(s));
 		VGIC_CLEAR_MODEL(s, i);
@@ -1281,6 +1296,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	/* Reset software generated interrupts */
 	for (i = 0; i < 16; i++) {
 		VGIC_SET_ENABLED(s, i, VGIC_ALL_CPU_MASK(s));
+		vmm_devemu_notify_irq_enabled(s->guest, i, -1);
 		VGIC_SET_TRIGGER(s, i);
 	}
 
