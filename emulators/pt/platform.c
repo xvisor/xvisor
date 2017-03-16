@@ -99,15 +99,7 @@ done:
 
 static int platform_pt_reset(struct vmm_emudev *edev)
 {
-	u32 i;
-	struct platform_pt_state *s = edev->priv;
-
-	for (i = 0; i < s->irq_count; i++) {
-		vmm_devemu_map_host2guest_irq(s->guest,
-					      s->guest_irqs[i],
-					      s->host_irqs[i]);
-	}
-
+	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
@@ -145,24 +137,32 @@ static int platform_pt_guest_aspace_notification(
 					struct vmm_notifier_block *nb,
 					unsigned long evt, void *data)
 {
+	u32 i;
 	struct vmm_guest_aspace_event *edata = data;
 	struct platform_pt_state *s =
 			container_of(nb, struct platform_pt_state, nb);
 
+	/* We are only interested in guest aspace init events so,
+	 * ignore other events.
+	 */
 	if (evt != VMM_GUEST_ASPACE_EVENT_INIT) {
-		/* We are only interested in unregister events so,
-		 * don't care about this event.
-		 */
 		return NOTIFY_DONE;
 	}
 
+	/* We are only interested in events for our guest */
 	if (s->guest != edata->guest) {
-		/* We are only interested in events for our guest */
 		return NOTIFY_DONE;
 	}
 
+	/* Map host IRQs to Guest IRQs */
+	for (i = 0; i < s->irq_count; i++) {
+		vmm_devemu_map_host2guest_irq(s->guest,
+					      s->guest_irqs[i],
+					      s->host_irqs[i]);
+	}
+
+	/* Iterate over each real ram regions of guest */
 	if (s->dom) {
-		/* Iterate over each real ram regions of guest */
 		vmm_guest_iterate_region(s->guest,
 					 VMM_REGION_REAL |
 					 VMM_REGION_MEMORY |
