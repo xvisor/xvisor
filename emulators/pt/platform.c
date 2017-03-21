@@ -75,22 +75,15 @@ static vmm_irq_return_t platform_pt_routed_irq(int irq, void *dev)
 		goto done;
 	}
 
-	/* Lower the interrupt level.
-	 * This will clear previous interrupt state.
+	/* First lower the interrupt level to clear previous
+	 * interrupt state. Next elevate the interrupt level
+	 * to force interrupt triggering.
 	 */
-	rc = vmm_devemu_emulate_irq(s->guest, guest_irq, 0);
+	rc = vmm_devemu_emulate_irq2(s->guest, guest_irq, 0, 1);
 	if (rc) {
-		vmm_printf("%s: Emulate Guest=%s irq=%d level=0 failed\n",
-			   __func__, s->guest->name, guest_irq);
-	}
-
-	/* Elevate the interrupt level.
-	 * This will force interrupt triggering.
-	 */
-	rc = vmm_devemu_emulate_irq(s->guest, guest_irq, 1);
-	if (rc) {
-		vmm_printf("%s: Emulate Guest=%s irq=%d level=1 failed\n",
-			   __func__, s->guest->name, guest_irq);
+		vmm_printf("%s: Emulate Guest=%s irq=%d "
+			   "level0=0 level1=1 failed (error %d)\n",
+			   __func__, s->guest->name, guest_irq, rc);
 	}
 
 done:
