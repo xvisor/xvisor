@@ -180,16 +180,12 @@ static void generic_phys_irq_inject(struct vmm_vcpu *vcpu,
 		return;
 	}
 
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 0);
+	rc = vmm_devemu_emulate_percpu_irq2(vcpu->guest, pirq,
+					    vcpu->subid, 0, 1);
 	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
-			   __func__, vcpu->name, pirq);
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, pirq, vcpu->subid, 1);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
-			   __func__, vcpu->name, pirq);
+		vmm_printf("%s: Emulate VCPU=%s irq=%d "
+			   "level0=0 level1=1 failed (error %d)\n",
+			   __func__, vcpu->name, pirq, rc);
 	}
 }
 
@@ -247,16 +243,12 @@ static void generic_virt_irq_inject(struct vmm_vcpu *vcpu,
 		return;
 	}
 
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 0);
+	rc = vmm_devemu_emulate_percpu_irq2(vcpu->guest, virq,
+					    vcpu->subid, 0, 1);
 	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=0 failed\n",
-			   __func__, vcpu->name, virq);
-	}
-
-	rc = vmm_devemu_emulate_percpu_irq(vcpu->guest, virq, vcpu->subid, 1);
-	if (rc) {
-		vmm_printf("%s: Emulate VCPU=%s irq=%d level=1 failed\n",
-			   __func__, vcpu->name, virq);
+		vmm_printf("%s: Emulate VCPU=%s irq=%d "
+			   "level0=0 level1=1 failed (error %d)\n",
+			   __func__, vcpu->name, virq, rc);
 	}
 }
 
