@@ -538,13 +538,13 @@ static void __vgic_sync_and_flush_vcpu(struct vgic_guest_state *s,
 }
 
 /* Process IRQ asserted by device emulation framework */
-static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
+static void __vgic_irq_handle(struct vgic_guest_state *s, u32 irq, int cpu,
+			      bool two_levels, int level0, int level1)
 {
-	int cm, target;
-	bool irq_pending = FALSE;
 	irq_flags_t flags;
+	int i, cm, target, level;
+	bool irq_pending = FALSE;
 	struct vgic_vcpu_state *vs;
-	struct vgic_guest_state *s = opaque;
 
 	/* Lock VGIC distributor state */
 	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
@@ -576,23 +576,29 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 	BUG_ON(cpu < 0);
 	vs = &s->vstate[cpu];
 
-	/* If level not changed then skip */
-	if (level == VGIC_TEST_LEVEL(s, irq, cm)) {
-		goto done;
-	}
+	/* Check level changes */
+	for (i = 0; i < ((two_levels) ? 2 : 1); i++) {
+		level = (i == 0) ? level0 : level1;
 
-	/* Debug print */
-	DPRINTF("%s: irq=%d cpu=%d level=%d\n", __func__, irq, cpu, level);
-
-	/* Update IRQ state */
-	if (level) {
-		VGIC_SET_LEVEL(s, irq, cm);
-		VGIC_SET_PENDING(s, irq, target);
-		if (VGIC_TEST_ENABLED(s, irq, target)) {
-			irq_pending = TRUE;
+		/* If level not changed then skip */
+		if (level == VGIC_TEST_LEVEL(s, irq, cm)) {
+			continue;
 		}
-	} else {
-		VGIC_CLEAR_LEVEL(s, irq, cm);
+
+		/* Debug print */
+		DPRINTF("%s: irq=%d cpu=%d level=%d\n",
+			__func__, irq, cpu, level);
+
+		/* Update IRQ state */
+		if (level) {
+			VGIC_SET_LEVEL(s, irq, cm);
+			VGIC_SET_PENDING(s, irq, target);
+			if (VGIC_TEST_ENABLED(s, irq, target)) {
+				irq_pending = TRUE;
+			}
+		} else {
+			VGIC_CLEAR_LEVEL(s, irq, cm);
+		}
 	}
 
 	/* Directly updating VGIC HW for current VCPU */
@@ -608,7 +614,6 @@ static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		}
 	}
 
-done:
 	/* Unlock VGIC distributor state */
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
@@ -616,6 +621,19 @@ done:
 	if (irq_pending) {
 		vmm_vcpu_irq_wait_resume(vs->vcpu, TRUE);
 	}
+}
+
+/* Process single IRQ level change */
+static void vgic_irq_handle(u32 irq, int cpu, int level, void *opaque)
+{
+	__vgic_irq_handle(opaque, irq, cpu, FALSE, level, 0);
+}
+
+/* Process two IRQ level changes */
+static void vgic_irq_handle2(u32 irq, int cpu, int level0,
+			     int level1, void *opaque)
+{
+	__vgic_irq_handle(opaque, irq, cpu, TRUE, level0, level1);
 }
 
 /* Process map_host2guest request from device emulation framework */
@@ -1311,6 +1329,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 static struct vmm_devemu_irqchip vgic_irqchip = {
 	.name = "VGIC",
 	.handle = vgic_irq_handle,
+	.handle2 = vgic_irq_handle2,
 	.map_host2guest = vgic_irq_map_host2guest,
 	.unmap_host2guest = vgic_irq_unmap_host2guest,
 };
