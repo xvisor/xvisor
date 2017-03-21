@@ -145,6 +145,8 @@ struct vmm_emudev {
 struct vmm_devemu_irqchip {
 	const char *name;
 	void (*handle) (u32 irq, int cpu, int level, void *opaque);
+	void (*handle2) (u32 irq, int cpu, int level0,
+			 int level1, void *opaque);
 	void (*map_host2guest) (u32 irq, u32 host_irq, void *opaque);
 	void (*unmap_host2guest) (u32 irq, void *opaque);
 	void (*notify_enabled) (u32 irq, int cpu, void *opaque);
@@ -179,17 +181,33 @@ int vmm_devemu_emulate_iowrite(struct vmm_vcpu *vcpu,
 extern int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 				    u32 irq, int cpu, int level);
 
-/** Emulate shared irq for guest
+/** Internal function to emulate irq (should not be called directly) */
+extern int __vmm_devemu_emulate_irq2(struct vmm_guest *guest, u32 irq,
+				     int cpu, int level0, int level1);
+
+/** Emulate single level change in shared irq for guest
  *  Note: This will only work after guest is created.
  */
 #define vmm_devemu_emulate_irq(guest, irq, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, -1, level)
 
-/** Emulate percpu irq for guest
+/** Emulate single level change in percpu irq for guest
  *  Note: This will only work after guest is created.
  */
 #define vmm_devemu_emulate_percpu_irq(guest, irq, cpu, level)	\
 		__vmm_devemu_emulate_irq(guest, irq, cpu, level)
+
+/** Emulate two level changes in shared irq for guest
+ *  Note: This will only work after guest is created.
+ */
+#define vmm_devemu_emulate_irq2(guest, irq, level0, level1)	\
+		__vmm_devemu_emulate_irq2(guest, irq, -1, level0, level1)
+
+/** Emulate two level changes in percpu irq for guest
+ *  Note: This will only work after guest is created.
+ */
+#define vmm_devemu_emulate_percpu_irq2(guest, irq, cpu, level0, level1)	\
+		__vmm_devemu_emulate_irq2(guest, irq, cpu, level0, level1)
 
 /** Map host irq to guest irq for guest
  *  Note: This will only work after guest is created.

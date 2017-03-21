@@ -569,6 +569,34 @@ int __vmm_devemu_emulate_irq(struct vmm_guest *guest,
 	return VMM_OK;
 }
 
+int __vmm_devemu_emulate_irq2(struct vmm_guest *guest,
+			      u32 irq, int cpu, int level0, int level1)
+{
+	struct vmm_devemu_guest_irq *gi;
+	struct vmm_devemu_guest_context *eg;
+
+	if (!guest) {
+		return VMM_EFAIL;
+	}
+
+	eg = (struct vmm_devemu_guest_context *)guest->aspace.devemu_priv;
+	if (eg->g_irq_count <= irq) {
+		return VMM_EINVALID;
+	}
+
+	list_for_each_entry(gi, &eg->g_irq[irq], head) {
+		if (gi->chip->handle2) {
+			gi->chip->handle2(irq, cpu, level0,
+					  level1, gi->opaque);
+		} else if (gi->chip->handle) {
+			gi->chip->handle(irq, cpu, level0, gi->opaque);
+			gi->chip->handle(irq, cpu, level1, gi->opaque);
+		}
+	}
+
+	return VMM_OK;
+}
+
 int vmm_devemu_map_host2guest_irq(struct vmm_guest *guest, u32 irq,
 				  u32 host_irq)
 {
