@@ -470,7 +470,7 @@ static int sdhci_set_clock(struct mmc_host *mmc, u32 clock)
 
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
-	if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >= SDHCI_SPEC_300) {
+	if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 		/* Version 3.00 divisors must be a multiple of 2. */
 		if (mmc->f_max <= clock)
 			div = 1;
@@ -566,13 +566,11 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
 	if (ios->bus_width == 8) {
 		ctrl &= ~SDHCI_CTRL_4BITBUS;
-		if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >=
-							SDHCI_SPEC_300) {
+		if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 			ctrl |= SDHCI_CTRL_8BITBUS;
 		}
 	} else {
-		if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >=
-							SDHCI_SPEC_300) {
+		if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 			ctrl &= ~SDHCI_CTRL_8BITBUS;
 		}
 		if (ios->bus_width == 4) {
@@ -803,7 +801,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (host->max_clk) {
 		mmc->f_max = host->max_clk;
 	} else {
-		if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >= SDHCI_SPEC_300) {
+		if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 			mmc->f_max = (host->sdhci_caps & SDHCI_CLOCK_V3_BASE_MASK)
 					>> SDHCI_CLOCK_BASE_SHIFT;
 		} else {
@@ -820,7 +818,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (host->min_clk) {
 		mmc->f_min = host->min_clk;
 	} else {
-		if ((host->sdhci_version & SDHCI_SPEC_VER_MASK) >= SDHCI_SPEC_300) {
+		if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 			mmc->f_min = mmc->f_max / SDHCI_MAX_DIV_SPEC_300;
 		} else {
 			mmc->f_min = mmc->f_max / SDHCI_MAX_DIV_SPEC_200;
@@ -845,9 +843,14 @@ int sdhci_add_host(struct sdhci_host *host)
 	mmc->caps = MMC_CAP_MODE_HS |
 		    MMC_CAP_MODE_HS_52MHz |
 		    MMC_CAP_MODE_4BIT;
-	if (host->sdhci_caps & SDHCI_CAN_DO_8BIT) {
-		mmc->caps |= MMC_CAP_MODE_8BIT;
+	if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
+		if (host->sdhci_caps & SDHCI_CAN_DO_8BIT) {
+			mmc->caps |= MMC_CAP_MODE_8BIT;
+		}
 	}
+
+	if (host->quirks & SDHCI_QUIRK_NO_HISPD_BIT)
+		mmc->caps &= ~(MMC_CAP_MODE_HS | MMC_CAP_MODE_HS_52MHz);
 
 	if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) {
 		mmc->caps |= MMC_CAP_NEEDS_POLL;
@@ -901,7 +904,7 @@ int sdhci_add_host(struct sdhci_host *host)
 		goto free_host_irq;
 	}
 
-	switch (host->sdhci_version & SDHCI_SPEC_VER_MASK) {
+	switch (SDHCI_GET_VERSION(host)) {
 	case SDHCI_SPEC_100:
 		ver = "v1";
 		break;

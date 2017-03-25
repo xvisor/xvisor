@@ -264,6 +264,12 @@
 #define   SDHCI_SPEC_200		1
 #define   SDHCI_SPEC_300		2
 
+#define SDHCI_GET_VENDOR(host)		\
+		(((host)->sdhci_version & SDHCI_VENDOR_VER_MASK) >> \
+		 SDHCI_VENDOR_VER_SHIFT)
+#define SDHCI_GET_VERSION(host)		\
+		((host)->sdhci_version & SDHCI_SPEC_VER_MASK)
+
 /*
  * End of controller registers.
  */
