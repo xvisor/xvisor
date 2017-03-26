@@ -357,7 +357,7 @@ void vmm_dma_sync_for_device(virtual_addr_t start, virtual_addr_t end,
 void vmm_dma_sync_for_cpu(virtual_addr_t start, virtual_addr_t end,
 			  enum vmm_dma_direction dir)
 {
-	if (dir == DMA_FROM_DEVICE) {
+	if (dir == DMA_FROM_DEVICE || dir == DMA_BIDIRECTIONAL) {
 		/* Cache prefetching */
 		vmm_inv_dcache_range(start, end);
 		vmm_inv_outer_cache_range(start, end);
