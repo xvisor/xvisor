@@ -20,7 +20,7 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief Designware USB2.0 host controller driver.
  *
- * This source is largely adapted from Raspberry Pi u-boot sources:
+ * This source is largely adapted from u-boot sources:
  * <u-boot>/drivers/usb/host/dwc2.c
  *
  * Copyright (C) 2012 Oleksandr Tymoshenko <gonzo@freebsd.org>
@@ -224,6 +224,7 @@ struct dwc2_core_params {
 	int phy_utmi_width;
 	int phy_ulpi_ddr;
 	int phy_ulpi_ext_vbus;
+	bool oc_disable;
 	int i2c_enable;
 	int ulpi_fs_ls;
 	int host_support_fs_ls_low_power;
@@ -321,6 +322,9 @@ static void dwc2_flush_tx_fifo(struct dwc2_control *dwc2, const int num)
 	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_TXFFLSH, 0);
 	if (ret)
 		vmm_printf("%s: Timeout!\n", __func__);
+
+	/* Wait for 3 PHY Clocks */
+	vmm_usleep(10);
 }
 
 /*
@@ -336,6 +340,9 @@ static void dwc2_flush_rx_fifo(struct dwc2_control *dwc2)
 	ret = wait_for_bit(&dwc2->regs->grstctl, DWC2_GRSTCTL_RXFFLSH, 0);
 	if (ret)
 		vmm_printf("%s: Timeout!\n", __func__);
+
+	/* Wait for 3 PHY Clocks */
+	vmm_usleep(10);
 }
 
 /*
@@ -411,7 +418,7 @@ static void dwc2_core_host_init(struct dwc2_control *dwc2)
 		vmm_writel(nptxfifosize, &dwc2->regs->gnptxfsiz);
 
 		/* Periodic Tx FIFO */
-		ptxfifosize |= dwc2->params->host_nperio_tx_fifo_size <<
+		ptxfifosize |= dwc2->params->host_perio_tx_fifo_size <<
 				DWC2_FIFOSIZE_DEPTH_OFFSET;
 		ptxfifosize |= (dwc2->params->host_rx_fifo_size +
 				dwc2->params->host_nperio_tx_fifo_size) <<
@@ -477,6 +484,11 @@ static void dwc2_core_init(struct dwc2_control *dwc2)
 	/* Program the ULPI External VBUS bit if needed */
 	if (dwc2->params->phy_ulpi_ext_vbus) {
 		usbcfg |= DWC2_GUSBCFG_ULPI_EXT_VBUS_DRV;
+
+		if (!dwc2->params->oc_disable) {
+			usbcfg |= DWC2_GUSBCFG_ULPI_INT_VBUS_INDICATOR |
+				  DWC2_GUSBCFG_INDICATOR_PASSTHROUGH;
+		}
 	} else {
 		usbcfg &= ~DWC2_GUSBCFG_ULPI_EXT_VBUS_DRV;
 	}
@@ -996,7 +1008,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 
 	if (len > DWC2_DATA_BUF_SIZE) {
 		vmm_printf("%s: %d is more then available buffer size(%d)\n",
-		       __func__, len, DWC2_DATA_BUF_SIZE);
+			   __func__, len, DWC2_DATA_BUF_SIZE);
 		rc = VMM_EINVALID;
 		goto out;
 	}
@@ -1008,9 +1020,9 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 
 	/* SETUP stage  */
 	vmm_writel((8 << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
-	       (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-	       (DWC2_HC_PID_SETUP << DWC2_HCTSIZ_PID_OFFSET),
-	       &hc_regs->hctsiz);
+		   (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+		   (DWC2_HC_PID_SETUP << DWC2_HCTSIZ_PID_OFFSET),
+		   &hc_regs->hctsiz);
 
 	rc = vmm_host_va2pa((virtual_addr_t)u->setup_packet, &pa);
 	if (rc) {
@@ -1417,10 +1429,19 @@ static int dwc2_start(struct usb_hcd *hcd)
 	/* Control & Bulk endpoint status flags */
 	for (i = 0; i < DWC2_MAX_DEVICE; i++) {
 		for (j = 0; j < DWC2_MAX_ENDPOINT; j++) {
-			dwc2->control_data_toggle[i][j] = DWC2_HC_PID_DATA1;
+			dwc2->control_data_toggle[i][j] = DWC2_HC_PID_DATA0;
 			dwc2->bulk_data_toggle[i][j] = DWC2_HC_PID_DATA0;
 		}
 	}
+
+	/*
+	 * Add a 1 second delay here. This gives the host controller
+	 * a bit time before the comminucation with the USB devices
+	 * is started (the bus is scanned) and fixes the USB detection
+	 * problems with some problematic USB keys.
+	 */
+	if (vmm_readl(&dwc2->regs->gintsts) & DWC2_GINTSTS_CURMODE_HOST)
+		vmm_msleep(1000);
 
 	return VMM_OK;
 }
@@ -1600,7 +1621,7 @@ static const struct dwc2_core_params params_bcm2835 = {
 	.speed				= 0,	/* High Speed */
 	.enable_dynamic_fifo		= 1,
 	.en_multiple_tx_fifo		= 1,
-	.host_rx_fifo_size		= 774,	/* 774 DWORDs */
+	.host_rx_fifo_size		= 532,	/* 532 DWORDs */
 	.host_nperio_tx_fifo_size	= 256,	/* 256 DWORDs */
 	.host_perio_tx_fifo_size	= 512,	/* 512 DWORDs */
 	.max_transfer_size		= 65535,
@@ -1609,7 +1630,8 @@ static const struct dwc2_core_params params_bcm2835 = {
 	.phy_type			= 1,	/* UTMI */
 	.phy_utmi_width			= 8,	/* 8 bits */
 	.phy_ulpi_ddr			= 0,	/* Single */
-	.phy_ulpi_ext_vbus		= 0,
+	.phy_ulpi_ext_vbus		= 1,
+	.oc_disable			= FALSE,
 	.i2c_enable			= 0,
 	.ulpi_fs_ls			= 0,
 	.host_support_fs_ls_low_power	= 0,
