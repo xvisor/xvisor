@@ -986,7 +986,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 	int ep = usb_pipeendpoint(u->pipe);
 	u32 hctsiz = 0, tmp, hcint;
 	unsigned int timeout = 1000000;
-	physical_addr_t pa;
+	physical_addr_t setup_pa, buffer_pa, status_pa;
 	u8 __cacheline_aligned status_buffer[DWC2_STATUS_BUF_SIZE];
 
 	/* Process root hub control messages differently */
@@ -1024,12 +1024,10 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 		   (DWC2_HC_PID_SETUP << DWC2_HCTSIZ_PID_OFFSET),
 		   &hc_regs->hctsiz);
 
-	rc = vmm_host_va2pa((virtual_addr_t)u->setup_packet, &pa);
-	if (rc) {
-		vmm_printf("%s: VA2PA error!\n", __func__);
-		goto out;
-	}
-	vmm_writel((u32)pa, &hc_regs->hcdma);
+	setup_pa = vmm_dma_map((virtual_addr_t)u->setup_packet,
+				sizeof(struct usb_ctrlrequest),
+				DMA_TO_DEVICE);
+	vmm_writel((u32)setup_pa, &hc_regs->hcdma);
 
 	/* Set host channel enable after all other setup is complete. */
 	vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
@@ -1048,6 +1046,9 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 		rc = VMM_EINVALID;
 		goto out;
 	}
+
+	vmm_dma_unmap(setup_pa, sizeof(struct usb_ctrlrequest),
+		      DMA_TO_DEVICE);
 
 	/* Clear interrupts */
 	vmm_writel(0, &hc_regs->hcintmsk);
@@ -1068,12 +1069,9 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 				DWC2_HCTSIZ_PID_OFFSET),
 			   &hc_regs->hctsiz);
 
-		rc = vmm_host_va2pa((virtual_addr_t)buffer, &pa);
-		if (rc) {
-			vmm_printf("%s: VA2PA error!\n", __func__);
-			goto out;
-		}
-		vmm_writel((u32)pa, &hc_regs->hcdma);
+		buffer_pa = vmm_dma_map((virtual_addr_t)buffer, len,
+					DMA_BIDIRECTIONAL);
+		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
 
 		/* Set host channel enable after all other setup is complete */
 		vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
@@ -1123,6 +1121,8 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 
 			break;
 		}
+
+		vmm_dma_unmap(buffer_pa, len, DMA_BIDIRECTIONAL);
 	} /* End of DATA stage */
 
 	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
@@ -1134,12 +1134,9 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 	       (DWC2_HC_PID_DATA1 << DWC2_HCTSIZ_PID_OFFSET),
 	       &hc_regs->hctsiz);
 
-	rc = vmm_host_va2pa((virtual_addr_t)status_buffer, &pa);
-	if (rc) {
-		vmm_printf("%s: VA2PA error!\n", __func__);
-		goto out;
-	}
-	vmm_writel((u32)pa, &hc_regs->hcdma);
+	status_pa = vmm_dma_map((virtual_addr_t)status_buffer,
+				sizeof(status_buffer), DMA_FROM_DEVICE);
+	vmm_writel((u32)status_pa, &hc_regs->hcdma);
 
 	/* Set host channel enable after all other setup is complete. */
 	vmm_clrsetbits_le32(&hc_regs->hcchar,
@@ -1154,10 +1151,16 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 			break;
 	}
 
+	vmm_dma_unmap(status_pa, sizeof(status_buffer), DMA_FROM_DEVICE);
+
 	if (!(hcint & DWC2_HCINT_COMP_HLT)) {
 		vmm_printf("%s: Error (HCINT=%08x)\n", __func__, hcint);
 		rc = VMM_EIO;
 	}
+
+	/* Clear interrupts */
+	vmm_writel(0, &hc_regs->hcintmsk);
+	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
 
 out:
 	u->actual_length = done;
@@ -1176,7 +1179,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 	int done = 0, rc = VMM_OK, stop_transfer = 0;
 	u32 hctsiz, hcint, tmp, xfer_len, num_packets;
 	struct dwc2_hc_regs *hc_regs;
-	physical_addr_t pa;
+	physical_addr_t buffer_pa;
 	unsigned int timeout = 1000000;
 
 	/* Reject root hub bulk messages differently */
@@ -1233,12 +1236,9 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 					DWC2_HCTSIZ_PID_OFFSET),
 			   &hc_regs->hctsiz);
 
-		rc = vmm_host_va2pa((virtual_addr_t)buffer, &pa);
-		if (rc) {
-			vmm_printf("%s: VA2PA error!\n", __func__);
-			goto out;
-		}
-		vmm_writel((u32)pa, &hc_regs->hcdma);
+		buffer_pa = vmm_dma_map((virtual_addr_t)(buffer + done),
+					xfer_len, DMA_BIDIRECTIONAL);
+		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
 
 		/* Set host channel enable after all other setup is complete. */
 		vmm_clrsetbits_le32(&hc_regs->hcchar,
@@ -1292,6 +1292,8 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 				break;
 			}
 		}
+
+		vmm_dma_unmap(buffer_pa, xfer_len, DMA_BIDIRECTIONAL);
 	}
 
 	vmm_writel(0, &hc_regs->hcintmsk);
