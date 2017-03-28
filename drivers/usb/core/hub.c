@@ -760,7 +760,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 static int usb_hub_configure(struct usb_device *dev,
 			     struct usb_interface *intf)
 {
-	int i, err = VMM_OK;
+	int i, length, err = VMM_OK;
 	u8 *bitmap, *buffer;
 	u16 hubCharacteristics;
 	struct usb_hub_device *hub;
@@ -794,16 +794,10 @@ static int usb_hub_configure(struct usb_device *dev,
 	}
 	descriptor = (struct usb_hub_descriptor *)buffer;
 
-	/* Silence compiler warning if USB_BUFSIZ is > 256 [= sizeof(char)] */
-	if (descriptor->bLength > USB_BUFSIZ) {
-		DPRINTF("%s: failed to hub descriptor too long: %d\n",
-			__func__, descriptor->bLength);
-		usb_hub_free(hub);
-		err = VMM_EINVALID;
-		goto done;
-	}
+	length = min_t(int, descriptor->bLength,
+			sizeof(struct usb_hub_descriptor));
 
-	if (usb_hub_get_descriptor(dev, buffer, descriptor->bLength) < 0) {
+	if (usb_hub_get_descriptor(dev, buffer, length) < 0) {
 		DPRINTF("%s: failed to hub descriptor 2nd giving up 0x%lx\n",
 			__func__, dev->status);
 		usb_hub_free(hub);
@@ -937,7 +931,6 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	u8 *tmpbuf;
 	u16 portstatus;
 	int err, port = -1;
-	struct usb_device_descriptor *desc;
 	enum usb_device_state state;
 
 	usb_ref_device(dev);
@@ -968,31 +961,52 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	 * thread_id=5729457&forum_id=5398
 	 */
 
-	/* Send 64-byte GET-DEVICE-DESCRIPTOR request.  Since the descriptor is
+	/*
+	 * send 64-byte GET-DEVICE-DESCRIPTOR request.  Since the descriptor is
 	 * only 18 bytes long, this will terminate with a short packet.  But if
 	 * the maxpacket size is 8 or 16 the device may be waiting to transmit
-	 * some more, or keeps on retransmitting the 8 byte header. */
+	 * some more, or keeps on retransmitting the 8 byte header.
+	 */
 
-	desc = (struct usb_device_descriptor *)tmpbuf;
-	dev->descriptor.bMaxPacketSize0 = 64;	    /* Start off at 64 bytes  */
-	/* Default to 64 byte max packet size */
-	dev->maxpacketsize = PACKET_SIZE_64;
-	dev->epmaxpacketin[0] = 64;
-	dev->epmaxpacketout[0] = 64;
+	if (dev->speed == USB_SPEED_LOW) {
+		dev->descriptor.bMaxPacketSize0 = 8;
+		dev->maxpacketsize = PACKET_SIZE_8;
+	} else {
+		dev->descriptor.bMaxPacketSize0 = 64;
+		dev->maxpacketsize = PACKET_SIZE_64;
+	}
+	dev->epmaxpacketin[0] = dev->descriptor.bMaxPacketSize0;
+	dev->epmaxpacketout[0] = dev->descriptor.bMaxPacketSize0;
 
-	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, desc, 64);
+	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, tmpbuf, 64);
 	if (err) {
 		vmm_printf("%s: usb_get_descriptor() failed\n", __func__);
 		dev->devnum = addr;
 		goto done;
 	}
+	memcpy(&dev->descriptor, tmpbuf, sizeof(dev->descriptor));
 
-	dev->descriptor.bMaxPacketSize0 = desc->bMaxPacketSize0;
-	/*
-	 * Fetch the device class, driver can use this info
-	 * to differentiate between HUB and DEVICE.
-	 */
-	dev->descriptor.bDeviceClass = desc->bDeviceClass;
+	dev->epmaxpacketin[0] = dev->descriptor.bMaxPacketSize0;
+	dev->epmaxpacketout[0] = dev->descriptor.bMaxPacketSize0;
+	switch (dev->descriptor.bMaxPacketSize0) {
+	case 8:
+		dev->maxpacketsize  = PACKET_SIZE_8;
+		break;
+	case 16:
+		dev->maxpacketsize = PACKET_SIZE_16;
+		break;
+	case 32:
+		dev->maxpacketsize = PACKET_SIZE_32;
+		break;
+	case 64:
+		dev->maxpacketsize = PACKET_SIZE_64;
+		break;
+	default:
+		vmm_printf("%s: invalid max packet size\n", __func__);
+		err = VMM_EIO;
+		dev->devnum = addr;
+		goto done;
+	}
 
 	/* Mark device as attached */
 	usb_set_device_state(dev, USB_STATE_ATTACHED);
@@ -1025,23 +1039,6 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 			dev->devnum = addr;
 			goto done;
 		}
-	}
-
-	dev->epmaxpacketin[0] = dev->descriptor.bMaxPacketSize0;
-	dev->epmaxpacketout[0] = dev->descriptor.bMaxPacketSize0;
-	switch (dev->descriptor.bMaxPacketSize0) {
-	case 8:
-		dev->maxpacketsize  = PACKET_SIZE_8;
-		break;
-	case 16:
-		dev->maxpacketsize = PACKET_SIZE_16;
-		break;
-	case 32:
-		dev->maxpacketsize = PACKET_SIZE_32;
-		break;
-	case 64:
-		dev->maxpacketsize = PACKET_SIZE_64;
-		break;
 	}
 
 	/* Mark device as powered */
