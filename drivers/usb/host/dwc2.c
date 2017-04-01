@@ -987,6 +987,8 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 	u32 hctsiz = 0, tmp, hcint;
 	unsigned int timeout = 1000000;
 	physical_addr_t setup_pa, buffer_pa, status_pa;
+	enum vmm_dma_direction dir =
+		usb_pipein(u->pipe) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
 	u8 __cacheline_aligned status_buffer[DWC2_STATUS_BUF_SIZE];
 
 	/* Process root hub control messages differently */
@@ -1069,8 +1071,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 				DWC2_HCTSIZ_PID_OFFSET),
 			   &hc_regs->hctsiz);
 
-		buffer_pa = vmm_dma_map((virtual_addr_t)buffer, len,
-					DMA_BIDIRECTIONAL);
+		buffer_pa = vmm_dma_map((virtual_addr_t)buffer, len, dir);
 		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
 
 		/* Set host channel enable after all other setup is complete */
@@ -1122,7 +1123,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 			break;
 		}
 
-		vmm_dma_unmap(buffer_pa, len, DMA_BIDIRECTIONAL);
+		vmm_dma_unmap(buffer_pa, len, dir);
 	} /* End of DATA stage */
 
 	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
@@ -1181,6 +1182,8 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 	struct dwc2_hc_regs *hc_regs;
 	physical_addr_t buffer_pa;
 	unsigned int timeout = 1000000;
+	enum vmm_dma_direction dir =
+		usb_pipein(u->pipe) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
 
 	/* Reject root hub bulk messages differently */
 	if (u->dev->devnum == dwc2->rh_devnum) {
@@ -1237,7 +1240,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 			   &hc_regs->hctsiz);
 
 		buffer_pa = vmm_dma_map((virtual_addr_t)(buffer + done),
-					xfer_len, DMA_BIDIRECTIONAL);
+					xfer_len, dir);
 		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
 
 		/* Set host channel enable after all other setup is complete. */
@@ -1293,7 +1296,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 			}
 		}
 
-		vmm_dma_unmap(buffer_pa, xfer_len, DMA_BIDIRECTIONAL);
+		vmm_dma_unmap(buffer_pa, xfer_len, dir);
 	}
 
 	vmm_writel(0, &hc_regs->hcintmsk);
