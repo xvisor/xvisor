@@ -698,15 +698,13 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	}
 	usb_ref_device(dev);
 
-	/* Enable power to the ports:
-	 * Here we Power-cycle the ports: aka,
-	 * turning them off and turning on again.
-	 */
-	DPRINTF("%s: enabling power on all ports\n", __func__);
+	/* Disable power to the ports */
+	DPRINTF("%s: disabling power on all ports\n", __func__);
 	for (i = 0; i < dev->maxchild; i++) {
-		usb_hub_clear_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
-		DPRINTF("%s: port %d returns 0x%lx\n",
-			__func__, i + 1, dev->status);
+		ret = usb_hub_clear_port_feature(dev, i + 1,
+						 USB_PORT_FEAT_POWER);
+		DPRINTF("%s: port %d returns %d\n",
+			__func__, i + 1, ret);
 	}
 
 	/* Wait at least 2*bPwrOn2PwrGood for PP to change */
@@ -740,10 +738,13 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 		}
 	}
 
+	/* Enable power to the ports */
+	DPRINTF("%s: enabling power on all ports\n", __func__);
 	for (i = 0; i < dev->maxchild; i++) {
-		usb_hub_set_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
-		DPRINTF("%s: port %d returns 0x%lx\n",
-			__func__, i + 1, dev->status);
+		ret = usb_hub_set_port_feature(dev, i + 1,
+					       USB_PORT_FEAT_POWER);
+		DPRINTF("%s: port %d returns %d\n",
+			__func__, i + 1, ret);
 	}
 
 	/* Wait for power to become stable */
@@ -785,11 +786,11 @@ static int usb_hub_configure(struct usb_device *dev,
 	hub->intf = intf;
 
 	/* Get Hub descriptor */
-	if (usb_hub_get_descriptor(dev, buffer, 4) < 0) {
-		DPRINTF("%s: failed to get hub descriptor, giving up 0x%lx\n",
-			__func__, dev->status);
+	err = usb_hub_get_descriptor(dev, buffer, 4);
+	if (err < 0) {
+		DPRINTF("%s: failed to get hub descriptor error %d\n",
+			__func__, err);
 		usb_hub_free(hub);
-		err = VMM_EFAIL;
 		goto done;
 	}
 	descriptor = (struct usb_hub_descriptor *)buffer;
@@ -797,11 +798,11 @@ static int usb_hub_configure(struct usb_device *dev,
 	length = min_t(int, descriptor->bLength,
 			sizeof(struct usb_hub_descriptor));
 
-	if (usb_hub_get_descriptor(dev, buffer, length) < 0) {
-		DPRINTF("%s: failed to hub descriptor 2nd giving up 0x%lx\n",
-			__func__, dev->status);
+	err = usb_hub_get_descriptor(dev, buffer, length);
+	if (err < 0) {
+		DPRINTF("%s: failed to get hub descriptor error %d\n",
+			__func__, err);
 		usb_hub_free(hub);
-		err = VMM_EFAIL;
 		goto done;
 	}
 	memcpy(&hub->desc, buffer, descriptor->bLength);
@@ -849,7 +850,7 @@ static int usb_hub_configure(struct usb_device *dev,
 	if (hubCharacteristics & HUB_CHAR_COMPOUND) {
 		DPRINTF("%s: part of a compound device\n", __func__);
 	} else {
-		DPRINTF("%: standalone hub\n", __func__);
+		DPRINTF("%s: standalone hub\n", __func__);
 	}
 
 	switch (hubCharacteristics & HUB_CHAR_OCPM) {
@@ -873,7 +874,7 @@ static int usb_hub_configure(struct usb_device *dev,
 
 	for (i = 0; i < dev->maxchild; i++) {
 		DPRINTF("%s: port %d is%s removable\n", __func__, i + 1,
-			hub->desc.DeviceRemovable[(i + 1) / 8] & \
+			hub->desc.u.hs.DeviceRemovable[(i + 1) / 8] & \
 			(1 << ((i + 1) % 8)) ? " not" : "");
 	}
 
@@ -885,11 +886,11 @@ static int usb_hub_configure(struct usb_device *dev,
 		goto done;
 	}
 
-	if (usb_hub_get_status(dev, buffer) < 0) {
-		DPRINTF("%s: failed to get Status 0x%lx\n",
-			__func__, dev->status);
+	err = usb_hub_get_status(dev, buffer);
+	if (err < 0) {
+		DPRINTF("%s: failed to get status error %d\n",
+			__func__, err);
 		usb_hub_free(hub);
-		err = VMM_EFAIL;
 		goto done;
 	}
 
@@ -1289,7 +1290,7 @@ static int usb_hub_poll_status(struct usb_hub_device *hub)
 		err = usb_hub_get_port_status(dev, i + 1, &portsts);
 		if (err < 0) {
 			DPRINTF("%s: dev %s port %d get_port_status failed\n",
-				__func__, i + 1, dev->dev.name);
+				__func__, dev->dev.name, i + 1);
 			continue;
 		}
 		portstatus = vmm_le16_to_cpu(portsts.wPortStatus);
