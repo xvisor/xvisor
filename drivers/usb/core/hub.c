@@ -336,7 +336,7 @@ static void usb_hub_free(struct usb_hub_device *hub)
 
 static void show_string(struct usb_device *udev, char *id, char *string)
 {
-	if (!string)
+	if (!string || string[0] == '\0')
 		return;
 	vmm_printf("%s: %s = %s\n", udev->dev.name, id, string);
 }
