@@ -54,6 +54,14 @@
 
 #include "dwc2.h"
 
+#undef DEBUG
+
+#if defined(DEBUG)
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 #define MODULE_DESC			"Designware USB2.0 HCD Driver"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -234,6 +242,7 @@ struct dwc2_core_params {
 	int ahbcfg;
 	int uframe_sched;
 	int ic_usb_cap;
+	u32 dma_offset;
 };
 
 struct dwc2_control {
@@ -641,9 +650,6 @@ static void dwc2_hc_init(struct dwc2_control *dwc2, u8 hc_num,
 				(ep_type << DWC2_HCCHAR_EPTYPE_OFFSET) |
 				(max_packet << DWC2_HCCHAR_MPS_OFFSET);
 
-	/* Clear old interrupt conditions for this host channel. */
-	vmm_writel(0x3fff, &hc_regs->hcint);
-
 	/*
 	 * Program the HCCHARn register with the endpoint characteristics
 	 * for the current transfer.
@@ -969,26 +975,240 @@ static vmm_irq_return_t	dwc2_irq(struct usb_hcd *hcd)
 	return VMM_IRQ_NONE;
 }
 
-#define DWC2_HCINT_COMP_HLT		(DWC2_HCINT_XFERCOMP | \
-					 DWC2_HCINT_CHHLTD)
-#define DWC2_HCINT_COMP_HLT_ACK		(DWC2_HCINT_XFERCOMP | \
-					 DWC2_HCINT_CHHLTD | \
-					 DWC2_HCINT_ACK)
+static int dwc2_eptype[] = {
+	DWC2_HCCHAR_EPTYPE_ISOC,
+	DWC2_HCCHAR_EPTYPE_INTR,
+	DWC2_HCCHAR_EPTYPE_CONTROL,
+	DWC2_HCCHAR_EPTYPE_BULK,
+};
 
-static int dwc2_control_msg(struct dwc2_control *dwc2,
-			    struct urb *u)
+static int wait_for_chhltd(struct dwc2_hc_regs *hc_regs,
+			   u32 *sub, u8 *toggle)
 {
-	void *buffer = u->transfer_buffer;
-	int len = u->transfer_buffer_length;
-	struct dwc2_hc_regs *hc_regs;
-	int done = 0, rc = VMM_OK;
+	int ret;
+	u32 hcint, hctsiz;
+	u8 pid = *toggle;
+
+	ret = wait_for_bit(&hc_regs->hcint, DWC2_HCINT_CHHLTD, 1);
+	if (ret)
+		return ret;
+
+	hcint = vmm_readl(&hc_regs->hcint);
+	hctsiz = vmm_readl(&hc_regs->hctsiz);
+	*sub = (hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK) >>
+			DWC2_HCTSIZ_XFERSIZE_OFFSET;
+	*toggle = (hctsiz & DWC2_HCTSIZ_PID_MASK) >> DWC2_HCTSIZ_PID_OFFSET;
+
+	DPRINTF("%s: HCINT=%08x sub=%u toggle=%d\n",
+		__func__, hcint, *sub, *toggle);
+
+	if (hcint & DWC2_HCINT_XFERCOMP)
+		return VMM_OK;
+
+	/*
+	 * The USB function can respond to a Setup packet with ACK or, in
+	 * case it's busy, it can ignore the Setup packet. The USB function
+	 * usually gets busy if we hammer it with Control EP transfers too
+	 * much (ie. sending multiple Get Descriptor requests in a single
+	 * microframe tends to trigger it on certain USB sticks). The DWC2
+	 * controller will interpret not receiving an ACK after Setup packet
+	 * as XACTERR. Check for this condition and if it happens, retry
+	 * sending the Setup packet.
+	 */
+
+	if (hcint & DWC2_HCINT_XACTERR && (pid == DWC2_HC_PID_SETUP))
+		return VMM_EAGAIN;
+
+	if (hcint & (DWC2_HCINT_NAK | DWC2_HCINT_FRMOVRUN))
+		return VMM_EAGAIN;
+
+	DPRINTF("%s: Error (HCINT=%08x)\n", __func__, hcint);
+	return VMM_EINVALID;
+}
+
+static int transfer_chunk(struct dwc2_control *dwc2,
+		u8 *pid, int in, void *buffer, int num_packets,
+		int xfer_len, int *actual_len, int odd_frame)
+{
+	int ret = 0;
+	struct dwc2_hc_regs *hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
+	u32 sub;
+	physical_addr_t pa;
+
+	DPRINTF("%s: chunk: pid %d xfer_len %u pkts %u\n",
+		__func__, *pid, xfer_len, num_packets);
+
+	vmm_writel((xfer_len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
+		   (num_packets << DWC2_HCTSIZ_PKTCNT_OFFSET) |
+		   (*pid << DWC2_HCTSIZ_PID_OFFSET),
+		   &hc_regs->hctsiz);
+
+	pa = vmm_dma_map((virtual_addr_t)buffer, xfer_len,
+			 in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+
+	vmm_writel((u32)pa + dwc2->params->dma_offset, &hc_regs->hcdma);
+
+	/* Clear old interrupt conditions for this host channel. */
+	vmm_writel(0x3fff, &hc_regs->hcint);
+
+	/* Set host channel enable after all other setup is complete. */
+	vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
+					DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS |
+					DWC2_HCCHAR_ODDFRM,
+					(1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
+					(odd_frame << DWC2_HCCHAR_ODDFRM_OFFSET) |
+					DWC2_HCCHAR_CHEN);
+
+	/* Wait for channel to halt */
+	ret = wait_for_chhltd(hc_regs, &sub, pid);
+	if (ret < 0) {
+		vmm_dma_unmap(pa, xfer_len,
+			      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+		return ret;
+	}
+
+	*actual_len = xfer_len;
+	vmm_dma_unmap(pa, xfer_len,
+		      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+
+	return ret;
+}
+
+static int chunk_msg(struct dwc2_control *dwc2, struct urb *u,
+		     u8 *pid, int in, void *buffer, int len)
+{
+	int ret = 0;
+	struct dwc2_hc_regs *hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
+	struct dwc2_host_regs *host_regs = &dwc2->regs->host_regs;
 	int devnum = usb_pipedevice(u->pipe);
 	int ep = usb_pipeendpoint(u->pipe);
-	u32 hctsiz = 0, tmp, hcint;
-	unsigned int timeout = 1000000;
-	physical_addr_t setup_pa, buffer_pa, status_pa;
-	enum vmm_dma_direction dir =
-		usb_pipein(u->pipe) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+	int max = usb_maxpacket(u->dev, u->pipe);
+	int eptype = dwc2_eptype[usb_pipetype(u->pipe)];
+	int done = 0;
+	int do_split = 0;
+	int complete_split = 0;
+	u32 xfer_len;
+	u32 num_packets;
+	int stop_transfer = 0;
+	u32 max_xfer_len;
+	int ssplit_frame_num = 0;
+
+	DPRINTF("%s: msg: pipe %x pid %d in %d len %d\n",
+		__func__, u->pipe, *pid, in, len);
+
+	max_xfer_len = CONFIG_DWC2_MAX_PACKET_COUNT * max;
+	if (max_xfer_len > CONFIG_DWC2_MAX_TRANSFER_SIZE)
+			max_xfer_len = CONFIG_DWC2_MAX_TRANSFER_SIZE;
+	if (max_xfer_len > DWC2_DATA_BUF_SIZE)
+			max_xfer_len = DWC2_DATA_BUF_SIZE;
+
+	/* Make sure that max_xfer_len is a multiple of max packet size. */
+	num_packets = udiv32(max_xfer_len, max);
+	max_xfer_len = num_packets * max;
+
+	/* Initialize channel */
+	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep, in,
+					eptype, max);
+
+#if 0
+	/* TODO Check if the target is a FS/LS device behind a HS hub */
+
+	if (u->dev->speed != USB_SPEED_HIGH) {
+		u8 hub_addr;
+		u8 hub_port;
+		u32 hprt0 = vmm_readl(&dwc2->regs->hprt0);
+		if ((hprt0 & DWC2_HPRT0_PRTSPD_MASK) ==
+					DWC2_HPRT0_PRTSPD_HIGH) {
+			//usb_find_usb2_hub_address_port(dev, &hub_addr,
+			//        &hub_port);
+			//dwc_otg_hc_init_split(hc_regs, hub_addr, hub_port);
+
+		do_split = 1;
+		num_packets = 1;
+		max_xfer_len = max;
+		}
+	}
+#endif
+
+	do {
+		int actual_len = 0;
+		u32 hcint;
+		int odd_frame = 0;
+		xfer_len = len - done;
+
+		if (xfer_len > max_xfer_len)
+			xfer_len = max_xfer_len;
+		else if (xfer_len > max)
+			num_packets = udiv32((xfer_len + max - 1), max);
+		else
+			num_packets = 1;
+
+		if (complete_split)
+			vmm_setbits_le32(&hc_regs->hcsplt, DWC2_HCSPLT_COMPSPLT);
+		else if (do_split)
+			vmm_clrbits_le32(&hc_regs->hcsplt, DWC2_HCSPLT_COMPSPLT);
+
+		if (eptype == DWC2_HCCHAR_EPTYPE_INTR) {
+			int uframe_num = vmm_readl(&host_regs->hfnum);
+			if (!(uframe_num & 0x1))
+				odd_frame = 1;
+		}
+
+		ret = transfer_chunk(dwc2, pid, in,
+				     (char *)buffer + done, num_packets,
+				     xfer_len, &actual_len, odd_frame);
+
+		hcint = vmm_readl(&hc_regs->hcint);
+		if (complete_split) {
+			stop_transfer = 0;
+			if (hcint & DWC2_HCINT_NYET) {
+				ret = 0;
+				int frame_num = DWC2_HFNUM_MAX_FRNUM &
+						vmm_readl(&host_regs->hfnum);
+				if (((frame_num - ssplit_frame_num) &
+						DWC2_HFNUM_MAX_FRNUM) > 4)
+					ret = VMM_EAGAIN;
+			} else
+				complete_split = 0;
+		} else if (do_split) {
+			if (hcint & DWC2_HCINT_ACK) {
+				ssplit_frame_num = DWC2_HFNUM_MAX_FRNUM &
+						vmm_readl(&host_regs->hfnum);
+				ret = 0;
+				complete_split = 1;
+			}
+		}
+
+		if (ret)
+			break;
+
+		if (actual_len < xfer_len)
+			stop_transfer = 1;
+
+		done += actual_len;
+
+		/* Transactions are done when when either all data is
+		 * transferred or there is a short transfer. In case of
+		 * a SPLIT make sure the CSPLIT is executed.
+		 */
+	} while (((done < len) && !stop_transfer) || complete_split);
+
+	vmm_writel(0, &hc_regs->hcintmsk);
+	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
+
+	u->status = 0;
+	u->actual_length = done;
+
+	return ret;
+}
+
+static int dwc2_control_msg(struct dwc2_control *dwc2, struct urb *u)
+{
+	int ret, act_len;
+	u8 pid;
+	int status_direction;
+	void *buffer = u->transfer_buffer;
+	int len = u->transfer_buffer_length;
 	u8 __cacheline_aligned status_buffer[DWC2_STATUS_BUF_SIZE];
 
 	/* Process root hub control messages differently */
@@ -996,197 +1216,57 @@ static int dwc2_control_msg(struct dwc2_control *dwc2,
 		return dwc2_control_rh_msg(dwc2, u);
 	}
 
-	/* Ensure that transfer buffer is cache aligned */
-	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
-		WARN_ON(1);
-		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
-			   __func__, u->dev->dev.name);
-		rc = VMM_EIO;
-		goto out;
-	}
+	/* SETUP stage */
+	pid = DWC2_HC_PID_SETUP;
+	do {
+		ret = chunk_msg(dwc2, u, &pid, 0, u->setup_packet, 8);
+	} while (ret == VMM_EAGAIN);
+	if (ret)
+		return ret;
 
-	/* Determine host channel registers */
-	hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
-
-	if (len > DWC2_DATA_BUF_SIZE) {
-		vmm_printf("%s: %d is more then available buffer size(%d)\n",
-			   __func__, len, DWC2_DATA_BUF_SIZE);
-		rc = VMM_EINVALID;
-		goto out;
-	}
-
-	/* Initialize channel, OUT for setup buffer */
-	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep, 0,
-		     DWC2_HCCHAR_EPTYPE_CONTROL,
-		     usb_maxpacket(u->dev, u->pipe));
-
-	/* SETUP stage  */
-	vmm_writel((8 << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
-		   (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-		   (DWC2_HC_PID_SETUP << DWC2_HCTSIZ_PID_OFFSET),
-		   &hc_regs->hctsiz);
-
-	setup_pa = vmm_dma_map((virtual_addr_t)u->setup_packet,
-				sizeof(struct usb_ctrlrequest),
-				DMA_TO_DEVICE);
-	vmm_writel((u32)setup_pa, &hc_regs->hcdma);
-
-	/* Set host channel enable after all other setup is complete. */
-	vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
-			DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
-			(1 << DWC2_HCCHAR_MULTICNT_OFFSET) | DWC2_HCCHAR_CHEN);
-
-	rc = wait_for_bit(&hc_regs->hcint, DWC2_HCINT_CHHLTD, 1);
-	if (rc) {
-		vmm_printf("%s: Timeout!\n", __func__);
-		goto out;
-	}
-
-	hcint = vmm_readl(&hc_regs->hcint);
-	if (!(hcint & DWC2_HCINT_COMP_HLT)) {
-		vmm_printf("%s: Error (HCINT=%08x)\n", __func__, hcint);
-		rc = VMM_EINVALID;
-		goto out;
-	}
-
-	vmm_dma_unmap(setup_pa, sizeof(struct usb_ctrlrequest),
-		      DMA_TO_DEVICE);
-
-	/* Clear interrupts */
-	vmm_writel(0, &hc_regs->hcintmsk);
-	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
-
+	/* DATA stage */
+	act_len = 0;
 	if (buffer) {
-		/* DATA stage */
-		dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
-			     usb_pipein(u->pipe),
-			     DWC2_HCCHAR_EPTYPE_CONTROL,
-			     usb_maxpacket(u->dev, u->pipe));
-
-		/* TODO: check if len < 64 */
-		dwc2->control_data_toggle[devnum][ep] = DWC2_HC_PID_DATA1;
-		vmm_writel((len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
-			   (1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-			   (dwc2->control_data_toggle[devnum][ep] <<
-				DWC2_HCTSIZ_PID_OFFSET),
-			   &hc_regs->hctsiz);
-
-		buffer_pa = vmm_dma_map((virtual_addr_t)buffer, len, dir);
-		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
-
-		/* Set host channel enable after all other setup is complete */
-		vmm_clrsetbits_le32(&hc_regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
-				DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
-				(1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
-				DWC2_HCCHAR_CHEN);
-
-		while (1) {
-			hcint = vmm_readl(&hc_regs->hcint);
-			if (!(hcint & DWC2_HCINT_CHHLTD))
-				continue;
-
-			if (hcint & DWC2_HCINT_XFERCOMP) {
-				hctsiz = vmm_readl(&hc_regs->hctsiz);
-				done = len;
-
-				tmp = hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK;
-				tmp >>= DWC2_HCTSIZ_XFERSIZE_OFFSET;
-
-				if (usb_pipein(u->pipe))
-					done -= tmp;
-			}
-
-			if (hcint & DWC2_HCINT_ACK) {
-				tmp = hctsiz & DWC2_HCTSIZ_PID_MASK;
-				tmp >>= DWC2_HCTSIZ_PID_OFFSET;
-				if (tmp == DWC2_HC_PID_DATA0) {
-					dwc2->control_data_toggle[devnum][ep] =
-						DWC2_HC_PID_DATA0;
-				} else {
-					dwc2->control_data_toggle[devnum][ep] =
-						DWC2_HC_PID_DATA1;
-				}
-			}
-
-			if (hcint & DWC2_HCINT_STALL) {
-				vmm_printf("%s: Channel stalled\n", __func__);
-				rc = VMM_EIO;
-				goto out;
-			}
-
-			if (!--timeout) {
-				vmm_printf("%s: Timeout!\n", __func__);
-				rc = VMM_ETIMEDOUT;
-				goto out;
-			}
-
-			break;
-		}
-
-		vmm_dma_unmap(buffer_pa, len, dir);
-	} /* End of DATA stage */
-
-	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
-		     ((len == 0) || usb_pipeout(u->pipe)) ? 1 : 0,
-		     DWC2_HCCHAR_EPTYPE_CONTROL,
-		     usb_maxpacket(u->dev, u->pipe));
-
-	vmm_writel((1 << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-	       (DWC2_HC_PID_DATA1 << DWC2_HCTSIZ_PID_OFFSET),
-	       &hc_regs->hctsiz);
-
-	status_pa = vmm_dma_map((virtual_addr_t)status_buffer,
-				sizeof(status_buffer), DMA_FROM_DEVICE);
-	vmm_writel((u32)status_pa, &hc_regs->hcdma);
-
-	/* Set host channel enable after all other setup is complete. */
-	vmm_clrsetbits_le32(&hc_regs->hcchar,
-			    DWC2_HCCHAR_MULTICNT_MASK |
-			    DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
-			    (1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
-			    DWC2_HCCHAR_CHEN);
-
-	while (1) {
-		hcint = vmm_readl(&hc_regs->hcint);
-		if (hcint & DWC2_HCINT_CHHLTD)
-			break;
+		pid = DWC2_HC_PID_DATA1;
+		do {
+			ret = chunk_msg(dwc2, u, &pid,
+					usb_pipein(u->pipe), buffer, len);
+			act_len += u->actual_length;
+			buffer += u->actual_length;
+			len -= u->actual_length;
+		} while (ret == VMM_EAGAIN);
+		if (ret)
+			return ret;
+		status_direction = usb_pipeout(u->pipe);
+	} else {
+		/* No-data CONTROL always ends with an IN transaction */
+		status_direction = 1;
 	}
 
-	vmm_dma_unmap(status_pa, sizeof(status_buffer), DMA_FROM_DEVICE);
+	/* STATUS stage */
+	pid = DWC2_HC_PID_DATA1;
+	do {
+		ret = chunk_msg(dwc2, u, &pid, status_direction,
+				status_buffer, 0);
+	} while (ret == VMM_EAGAIN);
+	if (ret)
+		return ret;
 
-	if (!(hcint & DWC2_HCINT_COMP_HLT)) {
-		vmm_printf("%s: Error (HCINT=%08x)\n", __func__, hcint);
-		rc = VMM_EIO;
-	}
+	u->actual_length = act_len;
 
-	/* Clear interrupts */
-	vmm_writel(0, &hc_regs->hcintmsk);
-	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
-
-out:
-	u->actual_length = done;
-
-	return rc;
+	return VMM_OK;
 }
 
-static int dwc2_bulk_msg(struct dwc2_control *dwc2,
-			 struct urb *u)
+static int dwc2_bulk_msg(struct dwc2_control *dwc2, struct urb *u)
 {
+	int devnum = u->dev->devnum;
+	int ep = usb_pipeendpoint(u->pipe);
 	void *buffer = u->transfer_buffer;
 	int len = u->transfer_buffer_length;
-	int devnum = usb_pipedevice(u->pipe);
-	int ep = usb_pipeendpoint(u->pipe);
-	int max = usb_maxpacket(u->dev, u->pipe);
-	int done = 0, rc = VMM_OK, stop_transfer = 0;
-	u32 hctsiz, hcint, tmp, xfer_len, num_packets;
-	struct dwc2_hc_regs *hc_regs;
-	physical_addr_t buffer_pa;
-	unsigned int timeout = 1000000;
-	enum vmm_dma_direction dir =
-		usb_pipein(u->pipe) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+	u8 pid;
 
-	/* Reject root hub bulk messages differently */
-	if (u->dev->devnum == dwc2->rh_devnum) {
+	if ((devnum >= DWC2_MAX_DEVICE) || (devnum == dwc2->rh_devnum)) {
+		u->status = 0;
 		return VMM_EINVALID;
 	}
 
@@ -1195,126 +1275,32 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2,
 		WARN_ON(1);
 		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
 			   __func__, u->dev->dev.name);
-		rc = VMM_EIO;
-		goto out;
+		return VMM_EIO;
 	}
 
-	/* Determine host channel registers */
-	hc_regs = &dwc2->regs->hc_regs[DWC2_HC_CHANNEL];
+	pid = dwc2->bulk_data_toggle[devnum][ep];
 
-	if (len > DWC2_DATA_BUF_SIZE) {
-		vmm_printf("%s: %d is more then available buffer size (%d)\n",
-		       __func__, len, DWC2_DATA_BUF_SIZE);
-		rc = VMM_EINVALID;
-		goto out;
-	}
-
-	while ((done < len) && !stop_transfer) {
-		/* Initialize channel */
-		dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep,
-			     usb_pipein(u->pipe),
-			     DWC2_HCCHAR_EPTYPE_BULK, max);
-
-		xfer_len = len - done;
-		/* Make sure that xfer_len is a multiple of max packet size. */
-		if (xfer_len > dwc2->params->max_transfer_size)
-			xfer_len = dwc2->params->max_transfer_size - max + 1;
-
-		if (xfer_len > 0) {
-			num_packets = udiv32((xfer_len + max - 1), max);
-			if (num_packets > dwc2->params->max_packet_count) {
-				num_packets = dwc2->params->max_packet_count;
-				xfer_len = num_packets * max;
-			}
-		} else {
-			num_packets = 1;
-		}
-
-		if (usb_pipein(u->pipe))
-			xfer_len = num_packets * max;
-
-		vmm_writel((xfer_len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
-			   (num_packets << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-			   (dwc2->bulk_data_toggle[devnum][ep] <<
-					DWC2_HCTSIZ_PID_OFFSET),
-			   &hc_regs->hctsiz);
-
-		buffer_pa = vmm_dma_map((virtual_addr_t)(buffer + done),
-					xfer_len, dir);
-		vmm_writel((u32)buffer_pa, &hc_regs->hcdma);
-
-		/* Set host channel enable after all other setup is complete. */
-		vmm_clrsetbits_le32(&hc_regs->hcchar,
-				    DWC2_HCCHAR_MULTICNT_MASK |
-				    DWC2_HCCHAR_CHEN | DWC2_HCCHAR_CHDIS,
-				    (1 << DWC2_HCCHAR_MULTICNT_OFFSET) |
-				    DWC2_HCCHAR_CHEN);
-
-		while (1) {
-			hcint = vmm_readl(&hc_regs->hcint);
-
-			if (!(hcint & DWC2_HCINT_CHHLTD))
-				continue;
-
-			if (hcint & DWC2_HCINT_XFERCOMP) {
-				hctsiz = vmm_readl(&hc_regs->hctsiz);
-				done += xfer_len;
-
-				tmp = hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK;
-				tmp >>= DWC2_HCTSIZ_XFERSIZE_OFFSET;
-
-				if (usb_pipein(u->pipe)) {
-					done -= tmp;
-					if (hctsiz & DWC2_HCTSIZ_XFERSIZE_MASK)
-						stop_transfer = 1;
-				}
-
-				tmp = hctsiz & DWC2_HCTSIZ_PID_MASK;
-				tmp >>= DWC2_HCTSIZ_PID_OFFSET;
-				if (tmp == DWC2_HC_PID_DATA1) {
-					dwc2->bulk_data_toggle[devnum][ep] =
-						DWC2_HC_PID_DATA1;
-				} else {
-					dwc2->bulk_data_toggle[devnum][ep] =
-						DWC2_HC_PID_DATA0;
-				}
-				break;
-			}
-
-			if (hcint & DWC2_HCINT_STALL) {
-				vmm_printf("%s: Channel stalled\n", __func__);
-				dwc2->bulk_data_toggle[devnum][ep] =
-							DWC2_HC_PID_DATA0;
-
-				stop_transfer = 1;
-				break;
-			}
-
-			if (!--timeout) {
-				vmm_printf("%s: Timeout!\n", __func__);
-				break;
-			}
-		}
-
-		vmm_dma_unmap(buffer_pa, xfer_len, dir);
-	}
-
-	vmm_writel(0, &hc_regs->hcintmsk);
-	vmm_writel(0xFFFFFFFF, &hc_regs->hcint);
-
-out:
-	u->actual_length = done;
-
-	return rc;
+	return chunk_msg(dwc2, u, &pid, usb_pipein(u->pipe), buffer, len);
 }
 
 static int dwc2_int_msg(struct dwc2_control *dwc2,
 			struct urb *u)
 {
-	vmm_printf("%s: dev=%s pipe=0x%x buf=%p len=%d interval=%d\n",
-		   __func__, u->dev->dev.name, u->pipe, u->transfer_buffer,
-		   u->transfer_buffer_length, u->interval);
-	return VMM_ENOTAVAIL;
+	unsigned long timeout;
+	int ret;
+
+	timeout = 1000000000 + vmm_timer_timestamp();
+	for (;;) {
+		if (vmm_timer_timestamp() > timeout) {
+			vmm_printf("Timeout poll on interrupt endpoint\n");
+			return VMM_ETIMEDOUT;
+		}
+		ret = dwc2_bulk_msg(dwc2, u);
+		if (ret != VMM_EAGAIN)
+			return ret;
+	}
+
+	return VMM_OK;
 }
 
 static void dwc2_urb_process(struct usb_hcd *hcd,
@@ -1435,7 +1421,7 @@ static int dwc2_start(struct usb_hcd *hcd)
 	for (i = 0; i < DWC2_MAX_DEVICE; i++) {
 		for (j = 0; j < DWC2_MAX_ENDPOINT; j++) {
 			dwc2->control_data_toggle[i][j] = DWC2_HC_PID_DATA0;
-			dwc2->bulk_data_toggle[i][j] = DWC2_HC_PID_DATA0;
+			dwc2->bulk_data_toggle[i][j] = DWC2_HC_PID_DATA1;
 		}
 	}
 
@@ -1646,10 +1632,44 @@ static const struct dwc2_core_params params_bcm2835 = {
 	.ahbcfg				= 0x10,
 	.uframe_sched			= 0,
 	.ic_usb_cap			= 0,
+	.dma_offset			= 0x40000000,
+};
+
+static const struct dwc2_core_params params_bcm2836 = {
+	.otg_cap			= 0,	/* HNP/SRP capable */
+	.otg_ver			= 0,	/* 1.3 */
+	.dma_enable			= 1,
+	.dma_desc_enable		= 0,
+	.dma_burst_size			= 32,
+	.speed				= 0,	/* High Speed */
+	.enable_dynamic_fifo		= 1,
+	.en_multiple_tx_fifo		= 1,
+	.host_rx_fifo_size		= 532,	/* 532 DWORDs */
+	.host_nperio_tx_fifo_size	= 256,	/* 256 DWORDs */
+	.host_perio_tx_fifo_size	= 512,	/* 512 DWORDs */
+	.max_transfer_size		= 65535,
+	.max_packet_count		= 511,
+	.host_channels			= 8,
+	.phy_type			= 1,	/* UTMI */
+	.phy_utmi_width			= 8,	/* 8 bits */
+	.phy_ulpi_ddr			= 0,	/* Single */
+	.phy_ulpi_ext_vbus		= 1,
+	.oc_disable			= FALSE,
+	.i2c_enable			= 0,
+	.ulpi_fs_ls			= 0,
+	.host_support_fs_ls_low_power	= 0,
+	.host_ls_low_power_phy_clk	= 0,	/* 48 MHz */
+	.ts_dline			= 0,
+	.reload_ctl			= 0,
+	.ahbcfg				= 0x10,
+	.uframe_sched			= 0,
+	.ic_usb_cap			= 0,
+	.dma_offset			= 0xc0000000,
 };
 
 static struct vmm_devtree_nodeid dwc2_devid_table[] = {
 	{ .compatible = "brcm,bcm2835-usb", .data = &params_bcm2835 },
+	{ .compatible = "brcm,bcm2836-usb", .data = &params_bcm2836 },
 	{ /* end of list */ },
 };
 
