@@ -58,15 +58,17 @@ int usb_control_msg(struct usb_device *dev, u32 pipe,
 	struct vmm_completion uc;
 	struct usb_ctrlrequest __cacheline_aligned setup;
 
+	DPRINTF("%s: pipe=0x%X request=0x%X requesttype=0x%X value=0x%X "
+		"index=0x%X data=0x%p size=0x%X timeout=0x%x\n",
+		__func__, pipe, request, requesttype, value,
+		index, data, size, timeout);
+
 	/* Initialize setup packet */
 	setup.bRequestType = requesttype;
 	setup.bRequest = request;
 	setup.wValue = vmm_cpu_to_le16(value);
 	setup.wIndex = vmm_cpu_to_le16(index);
 	setup.wLength = vmm_cpu_to_le16(size);
-	DPRINTF("%s: request: 0x%X, requesttype: 0x%X, " \
-		"value 0x%X index 0x%X length 0x%X\n", 
-		__func__, request, requesttype, value, index, size);
 
 	/* Initialize URB */
 	usb_init_urb(&u);
@@ -75,7 +77,7 @@ int usb_control_msg(struct usb_device *dev, u32 pipe,
 	INIT_COMPLETION(&uc);
 
 	/* Fill URB */
-	usb_fill_control_urb(&u, dev, pipe, 
+	usb_fill_control_urb(&u, dev, pipe,
 			     (u8 *)&setup, data, size,
 			     urb_request_complete, &uc);
 
@@ -118,6 +120,9 @@ int usb_interrupt_msg(struct usb_device *dev, u32 pipe,
 	struct urb u;
 	struct vmm_completion uc;
 
+	DPRINTF("%s: pipe=0x%X data=0x%p len=0x%X interval=0x%X\n",
+		__func__, pipe, data, len, interval);
+
 	/* Initialize URB */
 	usb_init_urb(&u);
 
@@ -154,6 +159,9 @@ int usb_bulk_msg(struct usb_device *dev, u32 pipe,
 	u64 tout;
 	struct urb u;
 	struct vmm_completion uc;
+
+	DPRINTF("%s: pipe=0x%X data=0x%p len=0x%X timeout=0x%X\n",
+		__func__, pipe, data, len, timeout);
 
 	/* Initialize URB */
 	usb_init_urb(&u);
