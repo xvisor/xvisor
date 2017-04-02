@@ -152,7 +152,7 @@
 		};
 
 		usb: usb@3f980000 {
-			compatible = "brcm,bcm2835-usb";
+			compatible = "brcm,bcm2836-usb";
 			reg = <0x3f980000 0x10000>;
 			interrupts = <2 9>;
 			status = "disabled";
