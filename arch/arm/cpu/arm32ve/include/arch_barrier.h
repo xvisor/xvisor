@@ -23,9 +23,9 @@
 #ifndef __ARCH_BARRIER_H__
 #define __ARCH_BARRIER_H__
 
-#define isb() 			asm volatile ("isb" : : : "memory")
-#define dsb() 			asm volatile ("dsb" : : : "memory")
-#define dmb() 			asm volatile ("dmb" : : : "memory")
+#define isb(opt) 		asm volatile("isb " #opt : : : "memory")
+#define dmb(opt)		asm volatile("dmb " #opt : : : "memory")
+#define dsb(opt)		asm volatile("dsb " #opt : : : "memory")
 
 #define wfi() 			asm volatile ("wfi" : : : "memory")
 #define wfe() 			asm volatile ("wfe" : : : "memory")
@@ -38,16 +38,16 @@
 #define arch_rmb()			dsb()
 
 /* Write Memory barrier */
-#define arch_wmb()			dsb()
+#define arch_wmb()			dsb(st)
 
 /* SMP Read & Write Memory barrier */
-#define arch_smp_mb()			dmb()
+#define arch_smp_mb()			dmb(ish)
 
 /* SMP Read Memory barrier */
-#define arch_smp_rmb()			dmb()
+#define arch_smp_rmb()			arch_smp_mb()
 
 /* SMP Write Memory barrier */
-#define arch_smp_wmb()			dmb()
+#define arch_smp_wmb()			dmb(ishst)
 
 /* CPU relax for busy loop */
 #define arch_cpu_relax()		asm volatile ("" : : : "memory")
