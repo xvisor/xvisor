@@ -770,7 +770,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			 */
 			inv_tlb_guest_allis();
 			/* Ensure changes are visible */
-			dsb();
+			dsb(sy);
 			isb();
 		}
 	}

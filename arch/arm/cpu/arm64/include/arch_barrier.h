@@ -18,32 +18,32 @@
  *
  * @file arch_barrier.h
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief  architecure specific memory barriers
+ * @brief architecure specific memory barriers
  */
 #ifndef __ARCH_BARRIER_H__
 #define __ARCH_BARRIER_H__
 
-#define isb() 			asm volatile ("isb" : : : "memory")
-#define dsb() 			asm volatile ("dsb sy" : : : "memory")
-#define dmb() 			asm volatile ("dmb sy" : : : "memory")
+#define isb(opt)		asm volatile("isb " #opt : : : "memory")
+#define dmb(opt)		asm volatile("dmb " #opt : : : "memory")
+#define dsb(opt)		asm volatile("dsb " #opt : : : "memory")
 
 /* Read & Write Memory barrier */
-#define arch_mb()			dmb()
+#define arch_mb()			dsb(sy)
 
 /* Read Memory barrier */
-#define arch_rmb()			asm volatile ("dmb ld" : : : "memory")
+#define arch_rmb()			dsb(ld)
 
 /* Write Memory barrier */
-#define arch_wmb()			asm volatile ("dmb st" : : : "memory")
+#define arch_wmb()			dsb(st)
 
 /* SMP Read & Write Memory barrier */
-#define arch_smp_mb()			asm volatile ("dmb ish" : : : "memory")
+#define arch_smp_mb()			dmb(ish)
 
 /* SMP Read Memory barrier */
-#define arch_smp_rmb()			asm volatile ("dmb ishld" : : : "memory")
+#define arch_smp_rmb()			dmb(ishld)
 
 /* SMP Write Memory barrier */
-#define arch_smp_wmb()			asm volatile ("dmb ishst" : : : "memory")
+#define arch_smp_wmb()			dmb(ishst)
 
 /* CPU relax for busy loop */
 #define arch_cpu_relax()		asm volatile ("" : : : "memory")

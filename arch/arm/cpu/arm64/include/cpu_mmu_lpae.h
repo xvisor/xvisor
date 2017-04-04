@@ -47,7 +47,7 @@
 
 static inline void cpu_mmu_sync_tte(u64 *tte)
 {
-	dsb();
+	dsb(sy);
 	isb();
 }
 

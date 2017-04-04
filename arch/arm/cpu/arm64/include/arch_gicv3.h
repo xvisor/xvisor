@@ -117,7 +117,7 @@ static inline u64 arch_gic_read_iar(void)
 
 	asm volatile("mrs_s %0, " stringify(ICC_IAR1_EL1)
 			: "=r" (irqstat));
-	dsb();
+	dsb(sy);
 	return irqstat;
 }
 
@@ -138,7 +138,7 @@ static inline u64 arch_gic_read_iar_cavium_thunderx(void)
 		"mrs_s %0, " stringify(ICC_IAR1_EL1) "\n\t"
 		"nop;nop;nop;nop"
 		: "=r" (irqstat));
-	dmb();
+	dmb(sy);
 
 	return irqstat;
 }
