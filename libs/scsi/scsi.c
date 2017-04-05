@@ -69,7 +69,7 @@ int scsi_inquiry(struct scsi_request *srb,
 	int retry, rc = VMM_OK;
 	unsigned long datalen;
 
-	if (!srb || !srb->data || (srb->datalen < 64) ||
+	if (!srb || !srb->data || (srb->datalen < 36) ||
 	    !tr || !tr->transport) {
 		return VMM_EINVALID;
 	}
@@ -80,8 +80,8 @@ int scsi_inquiry(struct scsi_request *srb,
 		memset(&srb->cmd, 0, sizeof(srb->cmd));
 		srb->cmd[0] = SCSI_INQUIRY;
 		srb->cmd[1] = srb->lun << 5;
-		srb->cmd[4] = 64;
-		srb->datalen = 64;
+		srb->cmd[4] = 36;
+		srb->datalen = 36;
 		srb->cmdlen = 12;
 		rc = tr->transport(srb, tr, priv);
 		DPRINTF("%s: inquiry returns %d\n", __func__, rc);
@@ -192,7 +192,7 @@ int scsi_read_capacity(struct scsi_request *srb,
 	int rc = VMM_EFAIL, retry = 3;
 	unsigned long datalen;
 
-	if (!srb || !srb->data || (srb->datalen < 64) ||
+	if (!srb || !srb->data || (srb->datalen < 8) ||
 	    !tr || !tr->transport) {
 		return VMM_EINVALID;
 	}
@@ -202,7 +202,7 @@ int scsi_read_capacity(struct scsi_request *srb,
 		memset(&srb->cmd, 0, sizeof(srb->cmd));
 		srb->cmd[0] = SCSI_RD_CAPAC;
 		srb->cmd[1] = srb->lun << 5;
-		srb->datalen = 64;
+		srb->datalen = 8;
 		srb->cmdlen = 12;
 		rc = tr->transport(srb, tr, priv);
 		if (rc == VMM_OK) {

@@ -46,7 +46,7 @@ struct scsi_request {
 	unsigned char	*data;		/* Pointer to data */
 	unsigned long	datalen;	/* Total data length */
 	/* request sense */
-	unsigned char	sense_buf[64];	/* Sense data */
+	unsigned char	sense_buf[18];	/* Sense data */
 	/* status */
 	unsigned char	status;		/* SCSI Status */
 };
