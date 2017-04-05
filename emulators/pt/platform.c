@@ -150,18 +150,29 @@ static int platform_pt_fault(struct vmm_iommu_domain *dom,
 	return 0;
 }
 
-static void platform_pt_iter(struct vmm_guest *guest,
-			     struct vmm_region *reg,
-			     void *priv)
+static void platform_pt_mapping_iter(struct vmm_guest *guest,
+				     struct vmm_region *reg,
+				     physical_addr_t guest_phys,
+				     physical_addr_t host_phys,
+				     physical_size_t size,
+				     void *priv)
 {
 	struct platform_pt_state *s = priv;
 
-	/* Map entire guest region */
-	vmm_iommu_map(s->dom,
-		      VMM_REGION_GPHYS_START(reg),
-		      VMM_REGION_HPHYS_START(reg),
-		      VMM_REGION_GPHYS_END(reg) - VMM_REGION_GPHYS_START(reg),
+	/* Create IOMMU mapping for given guest region mapping */
+	vmm_iommu_map(s->dom, guest_phys, host_phys, size,
 		      VMM_IOMMU_READ|VMM_IOMMU_WRITE);
+}
+
+static void platform_pt_region_iter(struct vmm_guest *guest,
+				    struct vmm_region *reg,
+				    void *priv)
+{
+	struct platform_pt_state *s = priv;
+
+	/* Iterate over each mapping of guest region */
+	vmm_guest_iterate_mapping(guest, reg,
+				  platform_pt_mapping_iter, s);
 }
 
 static int platform_pt_guest_aspace_notification(
@@ -199,7 +210,7 @@ static int platform_pt_guest_aspace_notification(
 					 VMM_REGION_MEMORY |
 					 VMM_REGION_ISRAM |
 					 VMM_REGION_ISHOSTRAM,
-					 platform_pt_iter, s);
+					 platform_pt_region_iter, s);
 	}
 
 	return NOTIFY_OK;

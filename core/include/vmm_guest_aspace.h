@@ -52,6 +52,17 @@ void vmm_guest_iterate_region(struct vmm_guest *guest, u32 reg_flags,
 		void (*func)(struct vmm_guest *, struct vmm_region *, void *),
 		void *priv);
 
+/** Iterate over each mapping of a guest region */
+void vmm_guest_iterate_mapping(struct vmm_guest *guest,
+				struct vmm_region *reg,
+				void (*func)(struct vmm_guest *guest,
+					     struct vmm_region *reg,
+					     physical_addr_t guest_phys,
+					     physical_addr_t host_phys,
+					     physical_addr_t size,
+					     void *priv),
+				void *priv);
+
 /** Find region corresponding to a guest physical address and also
  *  resolve aliased regions to real or virtual regions if required.
  */

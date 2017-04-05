@@ -78,12 +78,7 @@ struct vmm_region {
 
 #define VMM_REGION_GPHYS_START(reg)	((reg)->gphys_addr)
 #define VMM_REGION_GPHYS_END(reg)	((reg)->gphys_addr + (reg)->phys_size)
-#define VMM_REGION_HPHYS_START(reg)	((reg)->hphys_addr)
-#define VMM_REGION_HPHYS_END(reg)	((reg)->hphys_addr + (reg)->phys_size)
-#define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
-			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
-#define VMM_REGION_HPHYS_TO_GPHYS(reg, hphys)	\
-			((reg)->gphys_addr + ((hphys) - (reg)->hphys_addr))
+#define VMM_REGION_PHYS_SIZE(reg)	((reg)->phys_size)
 
 struct vmm_guest_aspace {
 	struct vmm_devtree_node *node;

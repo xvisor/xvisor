@@ -37,6 +37,9 @@
 #include <arch_guest.h>
 #include <libs/stringlib.h>
 
+#define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
+			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
+
 static BLOCKING_NOTIFIER_CHAIN(guest_aspace_notifier_chain);
 
 int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb)
@@ -89,6 +92,27 @@ void vmm_guest_iterate_region(struct vmm_guest *guest, u32 reg_flags,
 		}
 	}
 	vmm_read_unlock_irqrestore_lite(root_lock, flags);
+}
+
+void vmm_guest_iterate_mapping(struct vmm_guest *guest,
+				struct vmm_region *reg,
+				void (*func)(struct vmm_guest *guest,
+					     struct vmm_region *reg,
+					     physical_addr_t guest_phys,
+					     physical_addr_t host_phys,
+					     physical_addr_t size,
+					     void *priv),
+				void *priv)
+{
+	if (!guest || !reg || !func) {
+		return;
+	}
+
+	func(guest, reg,
+	     reg->gphys_addr,
+	     reg->hphys_addr,
+	     reg->phys_size,
+	     priv);
 }
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
