@@ -108,9 +108,10 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 const char *compatible,
 			 u32 compatible_len,
 			 physical_addr_t gphys_addr,
-			 physical_addr_t hphys_addr,
+			 physical_addr_t aphys_addr,
 			 physical_size_t phys_size,
 			 u32 align_order,
+			 physical_addr_t hphys_addr,
 			 void *rpriv);
 
 /** Get private pointer of guest region */

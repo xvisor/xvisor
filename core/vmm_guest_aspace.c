@@ -37,6 +37,8 @@
 #include <arch_guest.h>
 #include <libs/stringlib.h>
 
+#define VMM_REGION_GPHYS_TO_APHYS(reg, gphys)	\
+			((reg)->aphys_addr + ((gphys) - (reg)->gphys_addr))
 #define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
 			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
 
@@ -175,7 +177,7 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 
 	/* Resolve aliased regions */
 	while (reg->flags & VMM_REGION_ALIAS) {
-		gphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
+		gphys_addr = VMM_REGION_GPHYS_TO_APHYS(reg, gphys_addr);
 		reg = NULL;
 		found = FALSE;
 		vmm_read_lock_irqsave_lite(root_lock, flags);
@@ -303,7 +305,7 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		return VMM_EFAIL;
 	}
 	while (reg->flags & VMM_REGION_ALIAS) {
-		gphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
+		gphys_addr = VMM_REGION_GPHYS_TO_APHYS(reg, gphys_addr);
 		reg = vmm_guest_find_region(guest, gphys_addr,
 					    VMM_REGION_MEMORY, FALSE);
 		if (!reg) {
@@ -586,23 +588,15 @@ static int region_add(struct vmm_guest *guest,
 		goto region_free_fail;
 	}
 
-	if ((reg->flags & VMM_REGION_REAL) &&
-	    !(reg->flags & VMM_REGION_ISALLOCED)) {
-		rc = vmm_devtree_read_physaddr(reg->node,
-				VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-				&reg->hphys_addr);
-		if (rc) {
-			goto region_free_fail;
-		}
-	} else if (reg->flags & VMM_REGION_ALIAS) {
+	if (reg->flags & VMM_REGION_ALIAS) {
 		rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
-				&reg->hphys_addr);
+				&reg->aphys_addr);
 		if (rc) {
 			goto region_free_fail;
 		}
 	} else {
-		reg->hphys_addr = reg->gphys_addr;
+		reg->aphys_addr = reg->gphys_addr;
 	}
 
 	rc = vmm_devtree_read_physsize(reg->node,
@@ -617,6 +611,18 @@ static int region_add(struct vmm_guest *guest,
 			&reg->align_order);
 	if (rc) {
 		reg->align_order = 0;
+	}
+
+	if ((reg->flags & VMM_REGION_REAL) &&
+	    !(reg->flags & VMM_REGION_ISALLOCED)) {
+		rc = vmm_devtree_read_physaddr(reg->node,
+					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					&reg->hphys_addr);
+		if (rc) {
+			goto region_free_fail;
+		}
+	} else {
+		reg->hphys_addr = reg->gphys_addr;
 	}
 
 	reg->devemu_priv = NULL;
@@ -931,9 +937,10 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 			 const char *compatible,
 			 u32 compatible_len,
 			 physical_addr_t gphys_addr,
-			 physical_addr_t hphys_addr,
+			 physical_addr_t aphys_addr,
 			 physical_size_t phys_size,
 			 u32 align_order,
+			 physical_addr_t hphys_addr,
 			 void *rpriv)
 {
 	int rc;
@@ -1025,9 +1032,9 @@ int vmm_guest_add_region(struct vmm_guest *guest,
 		/* Set alias physical address */
 		rc = vmm_devtree_setattr(rnode,
 					 VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
-					 &hphys_addr,
+					 &aphys_addr,
 					 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-					 sizeof(hphys_addr), FALSE);
+					 sizeof(aphys_addr), FALSE);
 		if (rc) {
 			goto failed_delnode;
 		}

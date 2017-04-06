@@ -67,11 +67,12 @@ struct vmm_region {
 	struct dlist phead;
 	struct vmm_devtree_node *node;
 	struct vmm_guest_aspace *aspace;
+	u32 flags;
 	physical_addr_t gphys_addr;
-	physical_addr_t hphys_addr;
+	physical_addr_t aphys_addr;
 	physical_size_t phys_size;
 	u32 align_order;
-	u32 flags;
+	physical_addr_t hphys_addr;
 	void *devemu_priv;
 	void *priv;
 };
