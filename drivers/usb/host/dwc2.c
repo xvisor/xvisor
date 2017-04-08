@@ -47,10 +47,9 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
-#include <drv/usb.h>
+#include <drv/usb/hcd.h>
 #include <drv/usb/ch11.h>
 #include <drv/usb/roothubdesc.h>
-#include <drv/usb/hcd.h>
 
 #include "dwc2.h"
 
@@ -251,8 +250,8 @@ struct dwc2_control {
 	u32 irq;
 	u32 rh_devnum;
 
-	int bulk_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
-	int control_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
+	u8 in_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
+	u8 out_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
 
 	struct vmm_mutex urb_process_mutex;
 
@@ -658,6 +657,19 @@ static void dwc2_hc_init(struct dwc2_control *dwc2, u8 hc_num,
 
 	/* Program the HCSPLIT register for SPLITs */
 	vmm_writel(0, &hc_regs->hcsplt);
+}
+
+static void dwc2_hc_init_split(struct dwc2_hc_regs *hc_regs,
+			       u8 hub_devnum, u8 hub_port)
+{
+	u32 hcsplt = 0;
+
+	hcsplt = DWC2_HCSPLT_SPLTENA;
+	hcsplt |= hub_devnum << DWC2_HCSPLT_HUBADDR_OFFSET;
+	hcsplt |= hub_port << DWC2_HCSPLT_PRTADDR_OFFSET;
+
+	/* Program the HCSPLIT register for SPLITs */
+	vmm_writel(hcsplt, &hc_regs->hcsplt);
 }
 
 /*
@@ -1098,9 +1110,9 @@ static int chunk_msg(struct dwc2_control *dwc2, struct urb *u,
 
 	max_xfer_len = CONFIG_DWC2_MAX_PACKET_COUNT * max;
 	if (max_xfer_len > CONFIG_DWC2_MAX_TRANSFER_SIZE)
-			max_xfer_len = CONFIG_DWC2_MAX_TRANSFER_SIZE;
+		max_xfer_len = CONFIG_DWC2_MAX_TRANSFER_SIZE;
 	if (max_xfer_len > DWC2_DATA_BUF_SIZE)
-			max_xfer_len = DWC2_DATA_BUF_SIZE;
+		max_xfer_len = DWC2_DATA_BUF_SIZE;
 
 	/* Make sure that max_xfer_len is a multiple of max packet size. */
 	num_packets = udiv32(max_xfer_len, max);
@@ -1110,25 +1122,21 @@ static int chunk_msg(struct dwc2_control *dwc2, struct urb *u,
 	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep, in,
 					eptype, max);
 
-#if 0
-	/* TODO Check if the target is a FS/LS device behind a HS hub */
-
+	/* Check if the target is a FS/LS device behind a HS hub */
 	if (u->dev->speed != USB_SPEED_HIGH) {
-		u8 hub_addr;
-		u8 hub_port;
+		u8 hub_addr = 0;
+		u8 hub_port = 0;
 		u32 hprt0 = vmm_readl(&dwc2->regs->hprt0);
 		if ((hprt0 & DWC2_HPRT0_PRTSPD_MASK) ==
 					DWC2_HPRT0_PRTSPD_HIGH) {
-			//usb_find_usb2_hub_address_port(dev, &hub_addr,
-			//        &hub_port);
-			//dwc_otg_hc_init_split(hc_regs, hub_addr, hub_port);
-
-		do_split = 1;
-		num_packets = 1;
-		max_xfer_len = max;
+			usb_get_usb2_hub_address_port(u->dev,
+						      &hub_addr, &hub_port);
+			dwc2_hc_init_split(hc_regs, hub_addr, hub_port);
+			do_split = 1;
+			num_packets = 1;
+			max_xfer_len = max;
 		}
 	}
-#endif
 
 	do {
 		int actual_len = 0;
@@ -1206,6 +1214,7 @@ static int dwc2_control_msg(struct dwc2_control *dwc2, struct urb *u)
 {
 	int ret, act_len;
 	u8 pid;
+	/* For CONTROL endpoint pid should start with DATA1 */
 	int status_direction;
 	void *buffer = u->transfer_buffer;
 	int len = u->transfer_buffer_length;
@@ -1263,7 +1272,7 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2, struct urb *u)
 	int ep = usb_pipeendpoint(u->pipe);
 	void *buffer = u->transfer_buffer;
 	int len = u->transfer_buffer_length;
-	u8 pid;
+	u8 *pid;
 
 	if ((devnum >= DWC2_MAX_DEVICE) || (devnum == dwc2->rh_devnum)) {
 		u->status = 0;
@@ -1278,18 +1287,22 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2, struct urb *u)
 		return VMM_EIO;
 	}
 
-	pid = dwc2->bulk_data_toggle[devnum][ep];
+	if (usb_pipein(u->pipe))
+		pid = &dwc2->in_data_toggle[devnum][ep];
+	else
+		pid = &dwc2->out_data_toggle[devnum][ep];
 
-	return chunk_msg(dwc2, u, &pid, usb_pipein(u->pipe), buffer, len);
+	return chunk_msg(dwc2, u, pid, usb_pipein(u->pipe), buffer, len);
 }
 
 static int dwc2_int_msg(struct dwc2_control *dwc2,
 			struct urb *u)
 {
-	unsigned long timeout;
+	u64 timeout;
 	int ret;
 
-	timeout = 1000000000 + vmm_timer_timestamp();
+	timeout = USB_TIMEOUT_MS(u->pipe) * (u64)1000000;
+	timeout = timeout + vmm_timer_timestamp();
 	for (;;) {
 		if (vmm_timer_timestamp() > timeout) {
 			vmm_printf("Timeout poll on interrupt endpoint\n");
@@ -1420,8 +1433,8 @@ static int dwc2_start(struct usb_hcd *hcd)
 	/* Control & Bulk endpoint status flags */
 	for (i = 0; i < DWC2_MAX_DEVICE; i++) {
 		for (j = 0; j < DWC2_MAX_ENDPOINT; j++) {
-			dwc2->control_data_toggle[i][j] = DWC2_HC_PID_DATA0;
-			dwc2->bulk_data_toggle[i][j] = DWC2_HC_PID_DATA1;
+			dwc2->in_data_toggle[i][j] = DWC2_HC_PID_DATA0;
+			dwc2->out_data_toggle[i][j] = DWC2_HC_PID_DATA0;
 		}
 	}
 
