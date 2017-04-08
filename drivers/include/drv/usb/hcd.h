@@ -30,6 +30,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_devdrv.h>
 #include <libs/list.h>
+#include <drv/usb.h>
 
 struct usb_hcd {
 	/*
@@ -46,7 +47,7 @@ struct usb_hcd {
 	const char		*bus_name;
 
 	vmm_spinlock_t		devicemap_lock;
-	unsigned long devicemap[128 / (8*sizeof(unsigned long))];
+	unsigned long devicemap[USB_MAX_DEVICE / (8*sizeof(unsigned long))];
 
 	/*
 	 * root hub device

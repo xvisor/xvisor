@@ -343,8 +343,27 @@ static void show_string(struct usb_device *udev, char *id, char *string)
 
 static void usb_announce_device(struct usb_device *udev)
 {
-	vmm_printf("%s: New USB device found, idVendor=%04x, idProduct=%04x\n",
-		   udev->dev.name, vmm_le16_to_cpu(udev->descriptor.idVendor),
+	const char *speed_str = NULL;
+
+	switch (udev->speed) {
+	case USB_SPEED_SUPER:
+		speed_str = "super-speed";
+		break;
+	case USB_SPEED_HIGH:
+		speed_str = "high-speed";
+		break;
+	case USB_SPEED_LOW:
+		speed_str = "low-speed";
+		break;
+	default:
+		speed_str = "full-speed";
+		break;
+	};
+
+	vmm_printf("%s: New USB %s device found, "
+		   "idVendor=%04x, idProduct=%04x\n",
+		   udev->dev.name, speed_str,
+		   vmm_le16_to_cpu(udev->descriptor.idVendor),
 		   vmm_le16_to_cpu(udev->descriptor.idProduct));
 	show_string(udev, "Product", udev->product);
 	show_string(udev, "Manufacturer", udev->manufacturer);
@@ -928,8 +947,8 @@ done:
 static int usb_hub_detect_new_device(struct usb_device *parent,
 				     struct usb_device *dev)
 {
-	u32 i, addr;
-	u8 *tmpbuf;
+	u32 i;
+	u8 *tmpbuf, addr;
 	u16 portstatus;
 	int err, port = -1;
 	enum usb_device_state state;

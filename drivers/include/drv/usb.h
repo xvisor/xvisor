@@ -53,7 +53,7 @@ extern struct vmm_device_type usb_interface_type;
 #define USB_ALTSETTINGALLOC		4
 #define USB_MAXALTSETTING		128	/* Hard limit */
 
-#define USB_MAX_DEVICE			32
+#define USB_MAX_DEVICE			127
 #define USB_MAXCONFIG			8
 #define USB_MAXINTERFACES		8
 #define USB_MAXENDPOINTS		16
@@ -118,6 +118,7 @@ enum {
  *-------------------------------------------------------------------*/
 
 struct usb_device {
+	struct usb_device *parent;
 	struct vmm_device dev;
 
 	char	devpath[VMM_FIELD_NAME_SIZE];
@@ -135,7 +136,7 @@ struct usb_device {
 	vmm_spinlock_t children_lock;
 	struct usb_device *children[USB_MAXCHILDREN];
 
-	u32	devnum;		/* Device number on USB bus */
+	u8	devnum;		/* Device number on USB bus */
 	u16	bus_mA;
 	enum usb_device_state	state;
 	enum usb_device_speed	speed;
@@ -245,6 +246,17 @@ void usb_dref_device(struct usb_device *dev);
  * Note: This can be called from any context.
  */
 struct usb_device *usb_find_child(struct usb_device *hdev, int port1);
+
+/**
+ * Get USB2 HUB address and port of given usb device (usbcore, hcds)
+ * @dev: USB device whose parent address and port is needed
+ * @hub_addr: address of hub
+ * @hub_port: port of hub
+ *
+ * Note: This can be called from any context.
+ */
+int usb_get_usb2_hub_address_port(struct usb_device *dev,
+				  u8 *hub_addr, u8 *hub_port);
 
 /**
  * usb_hub_for_each_child - iterate over all child devices

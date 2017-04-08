@@ -169,6 +169,9 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 		return NULL;
 	}
 
+	/* Set parent usb device pointer */
+	dev->parent = parent;
+
 	/* Initialize devdrv context */
 	vmm_devdrv_initialize_device(&dev->dev);
 	dev->dev.autoprobe_disabled = TRUE;
@@ -241,7 +244,7 @@ struct usb_device *usb_alloc_device(struct usb_device *parent,
 	 */
 	vmm_spin_lock_irqsave(&hcd->devicemap_lock, flags);
 	dev->devnum = 0;
-	for (i = 0; i < USB_MAXCHILDREN; i++) {
+	for (i = 0; i < USB_MAX_DEVICE; i++) {
 		if (!test_bit(i, hcd->devicemap)) {
 			__set_bit(i, hcd->devicemap);
 			dev->devnum = i + 1;
@@ -281,7 +284,7 @@ struct usb_device *usb_find_child(struct usb_device *hdev, int port1)
 	irq_flags_t flags;
 	struct usb_device *ret;
 
-	if (port1 < 1 || port1 > hdev->maxchild)
+	if (!hdev || port1 < 1 || port1 > hdev->maxchild)
 		return NULL;
 
 	vmm_spin_lock_irqsave(&hdev->children_lock, flags);
@@ -292,3 +295,29 @@ struct usb_device *usb_find_child(struct usb_device *hdev, int port1)
 }
 VMM_EXPORT_SYMBOL(usb_find_child);
 
+int usb_get_usb2_hub_address_port(struct usb_device *dev,
+				  u8 *hub_addr, u8 *hub_port)
+{
+	u8 haddr = 0, hport = 0;
+
+	if (!dev || !hub_addr || !hub_port)
+		return VMM_EINVALID;
+
+	while (dev->parent != NULL) {
+		if (dev->parent->speed != USB_SPEED_HIGH) {
+			dev = dev->parent;
+		} else {
+			haddr = dev->parent->devnum;
+			hport = dev->portnum;
+			break;
+		}
+	}
+
+	if (hub_addr)
+		*hub_addr = haddr;
+	if (hub_port)
+		*hub_port = hport;
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(usb_get_parent_address_port);
