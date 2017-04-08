@@ -640,7 +640,7 @@ static void dwc2_core_init(struct dwc2_control *dwc2)
  */
 static void dwc2_hc_init(struct dwc2_control *dwc2, u8 hc_num,
 			 u8 dev_addr, u8 ep_num, u8 ep_is_in,
-			 u8 ep_type, u8 max_packet)
+			 u8 ep_type, u16 max_packet)
 {
 	struct dwc2_hc_regs *hc_regs = &dwc2->regs->hc_regs[hc_num];
 	const u32 hcchar = (dev_addr << DWC2_HCCHAR_DEVADDR_OFFSET) |
@@ -1119,8 +1119,8 @@ static int chunk_msg(struct dwc2_control *dwc2, struct urb *u,
 	max_xfer_len = num_packets * max;
 
 	/* Initialize channel */
-	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum, ep, in,
-					eptype, max);
+	dwc2_hc_init(dwc2, DWC2_HC_CHANNEL, devnum,
+		     ep, in, eptype, max);
 
 	/* Check if the target is a FS/LS device behind a HS hub */
 	if (u->dev->speed != USB_SPEED_HIGH) {
