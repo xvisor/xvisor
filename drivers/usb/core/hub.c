@@ -370,9 +370,9 @@ static void usb_announce_device(struct usb_device *udev)
 	show_string(udev, "SerialNumber", udev->serial);
 }
 
-static int usb_set_address(struct usb_device *dev, u32 addr)
+static int usb_set_address(struct usb_device *dev, u8 addr)
 {
-	DPRINTF("%s: set address %d\n", __func__, dev->devnum);
+	DPRINTF("%s: set address %d\n", __func__, addr);
 	return usb_control_msg(dev, usb_snddefctrl(dev),
 				USB_REQ_SET_ADDRESS, 0,
 				addr, 0, NULL, 0, NULL, USB_CNTL_TIMEOUT);
