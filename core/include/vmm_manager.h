@@ -77,9 +77,13 @@ struct vmm_region {
 	void *priv;
 };
 
+#define VMM_REGION_NAME(reg)		((reg)->node->name)
 #define VMM_REGION_GPHYS_START(reg)	((reg)->gphys_addr)
 #define VMM_REGION_GPHYS_END(reg)	((reg)->gphys_addr + (reg)->phys_size)
 #define VMM_REGION_PHYS_SIZE(reg)	((reg)->phys_size)
+#define VMM_REGION_GPHYS_TO_APHYS(reg, gphys)	\
+			((reg)->aphys_addr + ((gphys) - (reg)->gphys_addr))
+#define VMM_REGION_FLAGS(reg)		((reg)->flags)
 
 struct vmm_guest_aspace {
 	struct vmm_devtree_node *node;

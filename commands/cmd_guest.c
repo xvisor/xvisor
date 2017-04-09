@@ -296,19 +296,19 @@ static int cmd_guest_region(struct vmm_chardev *cdev, const char *name,
 	}
 
 	vmm_cprintf(cdev, "Region guest physical address: 0x%"PRIPADDR"\n",
-		    reg->gphys_addr);
+		    VMM_REGION_GPHYS_START(reg));
 
-	vmm_cprintf(cdev, "Region host physical address : 0x%"PRIPADDR"\n",
-		    reg->hphys_addr);
+	vmm_cprintf(cdev, "Region alias physical address : 0x%"PRIPADDR"\n",
+		VMM_REGION_GPHYS_TO_APHYS(reg, VMM_REGION_GPHYS_START(reg)));
 
 	vmm_cprintf(cdev, "Region physical size         : 0x%"PRIPSIZE"\n",
-		    reg->phys_size);
+		    VMM_REGION_PHYS_SIZE(reg));
 
 	vmm_cprintf(cdev, "Region flags                 : 0x%08x\n",
-		    reg->flags);
+		    VMM_REGION_FLAGS(reg));
 
 	vmm_cprintf(cdev, "Region node name             : %s\n",
-		    reg->node->name);
+		    VMM_REGION_NAME(reg));
 
 	if (!reg->devemu_priv) {
 		return VMM_OK;

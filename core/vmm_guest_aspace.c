@@ -37,8 +37,6 @@
 #include <arch_guest.h>
 #include <libs/stringlib.h>
 
-#define VMM_REGION_GPHYS_TO_APHYS(reg, gphys)	\
-			((reg)->aphys_addr + ((gphys) - (reg)->gphys_addr))
 #define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
 			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
 
@@ -94,27 +92,6 @@ void vmm_guest_iterate_region(struct vmm_guest *guest, u32 reg_flags,
 		}
 	}
 	vmm_read_unlock_irqrestore_lite(root_lock, flags);
-}
-
-void vmm_guest_iterate_mapping(struct vmm_guest *guest,
-				struct vmm_region *reg,
-				void (*func)(struct vmm_guest *guest,
-					     struct vmm_region *reg,
-					     physical_addr_t guest_phys,
-					     physical_addr_t host_phys,
-					     physical_addr_t size,
-					     void *priv),
-				void *priv)
-{
-	if (!guest || !reg || !func) {
-		return;
-	}
-
-	func(guest, reg,
-	     reg->gphys_addr,
-	     reg->hphys_addr,
-	     reg->phys_size,
-	     priv);
 }
 
 struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
@@ -208,6 +185,60 @@ done:
 	}
 
 	return reg;
+}
+
+void vmm_guest_iterate_mapping(struct vmm_guest *guest,
+				struct vmm_region *reg,
+				void (*func)(struct vmm_guest *guest,
+					     struct vmm_region *reg,
+					     physical_addr_t gphys_addr,
+					     physical_addr_t hphys_addr,
+					     physical_addr_t phys_size,
+					     void *priv),
+				void *priv)
+{
+	if (!guest || !reg || !func) {
+		return;
+	}
+
+	func(guest, reg,
+	     reg->gphys_addr,
+	     reg->hphys_addr,
+	     reg->phys_size,
+	     priv);
+}
+
+int vmm_guest_overwrite_real_device_mapping(struct vmm_guest *guest,
+					    struct vmm_region *reg,
+					    physical_addr_t gphys_addr,
+					    physical_addr_t hphys_addr)
+{
+	int rc;
+
+	if (!guest || !reg) {
+		return VMM_EINVALID;
+	}
+	if (!(reg->flags & VMM_REGION_REAL) ||
+	    !(reg->flags & VMM_REGION_ISDEVICE)) {
+		return VMM_EINVALID;
+	}
+	if ((gphys_addr < VMM_REGION_GPHYS_START(reg)) ||
+	    (VMM_REGION_GPHYS_END(reg) <= gphys_addr)) {
+		return VMM_EINVALID;
+	}
+
+	rc = vmm_devtree_setattr(reg->node,
+				 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+				 &hphys_addr,
+				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
+				 sizeof(hphys_addr), FALSE);
+	if (rc) {
+		return rc;
+	}
+
+	reg->hphys_addr = hphys_addr;
+
+	return VMM_OK;
 }
 
 u32 vmm_guest_memory_read(struct vmm_guest *guest,
