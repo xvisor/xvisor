@@ -232,46 +232,30 @@ void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 }
 
 static inline
-void handle_guest_realmode_page_fault(struct vcpu_hw_context *context)
+void handle_guest_realmode_page_fault(struct vcpu_hw_context *context,
+				      physical_addr_t fault_gphys,
+				      physical_size_t hphys_addr)
 {
-	physical_addr_t fault_gphys = context->vmcb->exitinfo2;
-	u64 fault_offset;
-	struct vmm_region *g_reg;
-	struct vmm_guest *guest = context->assoc_vcpu->guest;
-
-	g_reg = vmm_guest_find_region(guest, fault_gphys,
-				      VMM_REGION_MEMORY, FALSE);
-	if (!g_reg) {
-		VM_LOG(LVL_ERR, "ERROR: No region mapped to "
-		       "guest physical: 0x%lx\n", fault_gphys);
-		goto guest_bad_fault;
-	}
-
-	fault_offset = fault_gphys - g_reg->gphys_addr;
-
-	if (create_guest_shadow_map(context, fault_gphys,
-				    (g_reg->hphys_addr + fault_offset),
+	if (create_guest_shadow_map(context, fault_gphys, hphys_addr,
 				    PAGE_SIZE, 0x3, 0x3) != VMM_OK) {
 		VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
 		       "guest's shadow page table.\n"
-		       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
-		       "Gphys: 0x%lx Host Phys: %lx\n",
-		       g_reg->gphys_addr, fault_offset,
-		       fault_gphys, g_reg->hphys_addr);
+		       "Fault Gphys: 0x%lx "
+		       "Host Phys: %lx\n",
+		       fault_gphys, hphys_addr);
 		goto guest_bad_fault;
 	}
 
 	return;
 
- guest_bad_fault:
+guest_bad_fault:
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 static inline
 void emulate_guest_mmio_io(struct vcpu_hw_context *context,
-			   x86_decoded_inst_t *dinst,
-			   struct vmm_region *g_reg)
+			   x86_decoded_inst_t *dinst)
 {
 	u64 guestrd;
 	u64 index;
@@ -286,72 +270,61 @@ void emulate_guest_mmio_io(struct vcpu_hw_context *context,
 		goto guest_bad_fault;
 	}
 
-	if ((dinst->inst.gen_mov.src_addr >= g_reg->gphys_addr)
-	    && (dinst->inst.gen_mov.src_addr
-		< (g_reg->gphys_addr + g_reg->phys_size))) {
-		if (vmm_devemu_emulate_read(context->assoc_vcpu,
-					    fault_gphys,
-					    &guestrd,
-					    dinst->inst.gen_mov.op_size,
-					    VMM_DEVEMU_NATIVE_ENDIAN)
-		    != VMM_OK) {
-			vmm_printf("ERROR: Failed to emulate IO instruction in "
-				   "guest.\n");
-			goto guest_bad_fault;
-		}
-
-		/* update the guest register */
-		if (dinst->inst.gen_mov.dst_addr >= RM_REG_AX &&
-		    dinst->inst.gen_mov.dst_addr < RM_REG_MAX) {
-			context->g_regs[dinst->inst.gen_mov.dst_addr] = guestrd;
-			if (dinst->inst.gen_mov.dst_addr == RM_REG_AX)
-				context->vmcb->rax = guestrd;
-		} else {
-			VM_LOG(LVL_ERR, "Memory to memory move instruction not "
-			       "supported.\n");
-			goto guest_bad_fault;
-		}
+	if (vmm_devemu_emulate_read(context->assoc_vcpu,
+				    fault_gphys,
+				    &guestrd,
+				    dinst->inst.gen_mov.op_size,
+				    VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+		vmm_printf("ERROR: Failed to emulate IO instruction in "
+			   "guest.\n");
+		goto guest_bad_fault;
 	}
 
-	if ((dinst->inst.gen_mov.dst_addr >= g_reg->gphys_addr) &&
-	    (dinst->inst.gen_mov.dst_addr
-	     < (g_reg->gphys_addr + g_reg->phys_size))) {
-		index = dinst->inst.gen_mov.src_addr;
-		if (dinst->inst.gen_mov.src_type == OP_TYPE_IMM) {
-			guestrd = dinst->inst.gen_mov.src_addr;
-		} else if (dinst->inst.gen_mov.src_addr >= RM_REG_AX &&
-			   dinst->inst.gen_mov.src_addr < RM_REG_MAX) {
-			if (dinst->inst.gen_mov.dst_addr == RM_REG_AX)
-				guestrd = context->vmcb->rax;
-			else
-				guestrd = context->g_regs[index];
-		} else {
-			VM_LOG(LVL_ERR, "Memory to memory move instruction not "
-			       "supported.\n");
-			goto guest_bad_fault;
-		}
+	/* update the guest register */
+	if (dinst->inst.gen_mov.dst_addr >= RM_REG_AX &&
+	    dinst->inst.gen_mov.dst_addr < RM_REG_MAX) {
+		context->g_regs[dinst->inst.gen_mov.dst_addr] = guestrd;
+		if (dinst->inst.gen_mov.dst_addr == RM_REG_AX)
+			context->vmcb->rax = guestrd;
+	} else {
+		VM_LOG(LVL_ERR, "Memory to memory move instruction not "
+		       "supported.\n");
+		goto guest_bad_fault;
+	}
 
-		if (vmm_devemu_emulate_write(context->assoc_vcpu, fault_gphys,
-					     &guestrd,
-					     dinst->inst.gen_mov.op_size,
-					     VMM_DEVEMU_NATIVE_ENDIAN)
-		    != VMM_OK) {
-			vmm_printf("ERROR: Failed to emulate IO instruction in "
-				   "guest.\n");
-			goto guest_bad_fault;
-		}
+	index = dinst->inst.gen_mov.src_addr;
+	if (dinst->inst.gen_mov.src_type == OP_TYPE_IMM) {
+		guestrd = dinst->inst.gen_mov.src_addr;
+	} else if (dinst->inst.gen_mov.src_addr >= RM_REG_AX &&
+		dinst->inst.gen_mov.src_addr < RM_REG_MAX) {
+		if (dinst->inst.gen_mov.dst_addr == RM_REG_AX)
+			guestrd = context->vmcb->rax;
+		else
+			guestrd = context->g_regs[index];
+	} else {
+		VM_LOG(LVL_ERR, "Memory to memory move instruction not "
+		       "supported.\n");
+		goto guest_bad_fault;
+	}
+
+	if (vmm_devemu_emulate_write(context->assoc_vcpu, fault_gphys,
+				     &guestrd,
+				     dinst->inst.gen_mov.op_size,
+				     VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
+		vmm_printf("ERROR: Failed to emulate IO instruction in "
+			   "guest.\n");
+		goto guest_bad_fault;
 	}
 
 	return;
 
- guest_bad_fault:
+guest_bad_fault:
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 static inline
-void handle_guest_mmio_fault(struct vcpu_hw_context *context,
-			     struct vmm_region *fault_reg)
+void handle_guest_mmio_fault(struct vcpu_hw_context *context)
 {
 	x86_inst ins;
 	x86_decoded_inst_t dinst;
@@ -376,7 +349,7 @@ void handle_guest_mmio_fault(struct vcpu_hw_context *context,
 	case INST_TYPE_MOV:
 		switch (dinst.inst.gen_mov.src_type) {
 		case OP_TYPE_MEM:
-			emulate_guest_mmio_io(context, &dinst, fault_reg);
+			emulate_guest_mmio_io(context, &dinst);
 		}
 		break;
 	default:
@@ -395,13 +368,14 @@ void handle_guest_mmio_fault(struct vcpu_hw_context *context,
 static inline
 void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 {
+	int rc;
 	struct vmm_guest *guest = context->assoc_vcpu->guest;
 	physical_addr_t fault_gphys = context->vmcb->exitinfo2;
-	u64 fault_offset;
+	physical_addr_t hphys_addr;
+	physical_size_t availsz;
 	physical_addr_t lookedup_gphys;
-	struct vmm_region *g_reg;
 	union page32 pte, pde;
-	u32 prot, pdprot;
+	u32 flags, prot, pdprot;
 
 	if (context->vmcb->exitinfo1 & 0x1) {
 		handle_guest_resident_page_fault(context);
@@ -443,59 +417,35 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 		}
 	}
 
-	/*
-	 * Find the region which is marked as virtual.
-	 * Its probably a device read/write fault.
-	 */
-	g_reg = vmm_guest_find_region(guest,
-				      (u32)lookedup_gphys,
-				      GUEST_DEV_MMIO_REGION,
-				      FALSE);
-	if (unlikely(!g_reg)) {
-		VM_LOG(LVL_DEBUG, "ERROR: No dev region mapped"
-		       " to looked up guest physical: 0x%x "
-		       "(Guest Virtual: 0x%lx)\n",
-		       (u32)lookedup_gphys, fault_gphys);
-
-		/* Find the region for guest physical */
-		g_reg = vmm_guest_find_region(guest,(u32)lookedup_gphys,
-					      VMM_REGION_MEMORY,
-					      FALSE);
-		if (!g_reg) {
-			VM_LOG(LVL_ERR, "ERROR: No region mapped to "
-			       "looked up guest physical: 0x%x "
-			       "(Guest Virtual: 0x%lx)\n",
-			       (u32)lookedup_gphys, fault_gphys);
-			goto guest_bad_fault;
-		}
-	}
-
-	fault_offset = lookedup_gphys - g_reg->gphys_addr;
+	/* Find-out region mapping. */
+	rc = vmm_guest_physical_map(guest, lookedup_gphys, PAGE_SIZE,
+				    &hphys_addr, &availsz, &flags);
+	if (rc)
+		goto guest_bad_fault;
+	if (availsz < PAGE_SIZE)
+		goto guest_bad_fault;
 
 	/*
 	 * If fault is on a RAM backed address, map and return.
 	 * Otherwise do emulate.
 	 */
-	if (g_reg->flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
-		if (create_guest_shadow_map(context, fault_gphys,
-					    (g_reg->hphys_addr + fault_offset),
-					    PAGE_SIZE, pdprot,
+	if (flags & VMM_REGION_REAL) {
+		if (create_guest_shadow_map(context, lookedup_gphys,
+					    hphys_addr, PAGE_SIZE, pdprot,
 					    prot) != VMM_OK) {
 			VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
 			       "guest's shadow page table.\n"
-			       "Gphys: 0x%lx Fault offs: 0x%lx Fault "
-			       "Gphys: 0x%lx Host Phys: %lx\n",
-			       g_reg->gphys_addr, fault_offset,
-			       fault_gphys, g_reg->hphys_addr);
+			       "Fault Gphys: 0x%lx "
+			       "Lookup Gphys: 0x%lx "
+			       "Host Phys: %lx\n",
+			       fault_gphys, lookedup_gphys, hphys_addr);
 			goto guest_bad_fault;
 		}
 	} else {
-		handle_guest_mmio_fault(context, g_reg);
+		handle_guest_mmio_fault(context);
 	}
 
-	return;
-
- guest_bad_fault:
+guest_bad_fault:
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
@@ -542,8 +492,11 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		VM_LOG(LVL_DEBUG, "Guest fault: 0x%"PRIx64" (rIP: %"PRIADDR")\n",
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
+		int rc;
+		u32 flags;
 		physical_addr_t fault_gphys = context->vmcb->exitinfo2;
-		struct vmm_region *g_reg;
+		physical_addr_t hphys_addr;
+		physical_size_t availsz;
 
 		if (!(context->g_cr0 & X86_CR0_PG)) {
 			/* Guest is in real mode so faulting guest virtual is
@@ -551,21 +504,24 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 			 * address as offset to host physical address to get
 			 * the destination physical address.
 			 */
-			g_reg = vmm_guest_find_region(guest, fault_gphys,
-						      VMM_REGION_MEMORY, FALSE);
-			if (!g_reg) {
+			rc = vmm_guest_physical_map(guest, fault_gphys, PAGE_SIZE,
+						&hphys_addr, &availsz, &flags);
+			if (rc) {
 				VM_LOG(LVL_ERR, "ERROR: No region mapped to "
 				       "guest physical: 0x%lx\n", fault_gphys);
 				goto guest_bad_fault;
 			}
+			if (availsz < PAGE_SIZE) {
+				goto guest_bad_fault;
+			}
 
-			if (g_reg->flags
-			    & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
-				handle_guest_realmode_page_fault(context);
+			if (flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
+				handle_guest_realmode_page_fault(context,
+						fault_gphys, hphys_addr);
 				return;
 			}
 
-			handle_guest_mmio_fault(context, g_reg);
+			handle_guest_mmio_fault(context);
 		} else {
 			handle_guest_protected_mem_rw(context);
 		}
