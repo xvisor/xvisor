@@ -212,6 +212,7 @@ static int bcm2835_mbox_probe(struct vmm_device *dev,
 		vmm_host_irq_unregister(mbox->irq, mbox);
 		return ret;
 	}
+	mbox->regs = (void *)base;
 
 	mbox->controller.txdone_poll = TRUE;
 	mbox->controller.txpoll_period = 5;
