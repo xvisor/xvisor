@@ -102,6 +102,7 @@ enum rpi_firmware_property_tag {
 	RPI_FIRMWARE_SET_VOLTAGE =                            0x00038003,
 	RPI_FIRMWARE_SET_TURBO =                              0x00038009,
 	RPI_FIRMWARE_SET_DOMAIN_STATE =                       0x00038030,
+	RPI_FIRMWARE_SET_SDHOST_CLOCK =                       0x00038042,
 
 	/* Dispmanx TAGS */
 	RPI_FIRMWARE_FRAMEBUFFER_ALLOCATE =                   0x00040001,
