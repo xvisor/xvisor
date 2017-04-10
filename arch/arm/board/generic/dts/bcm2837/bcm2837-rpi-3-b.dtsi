@@ -6,6 +6,13 @@
 	model = "Raspberry Pi 3 Model B";
 };
 
+&soc {
+	firmware: firmware {
+		compatible = "raspberrypi,bcm2835-firmware";
+		mboxes = <&mailbox>;
+	};
+};
+
 &i2c0 {
 	status = "okay";
 	clock-frequency = <100000>;
