@@ -37,9 +37,6 @@
 #include <arch_guest.h>
 #include <libs/stringlib.h>
 
-#define VMM_REGION_GPHYS_TO_HPHYS(reg, gphys)	\
-			((reg)->hphys_addr + ((gphys) - (reg)->gphys_addr))
-
 static BLOCKING_NOTIFIER_CHAIN(guest_aspace_notifier_chain);
 
 int vmm_guest_aspace_register_client(struct vmm_notifier_block *nb)
@@ -187,6 +184,35 @@ done:
 	return reg;
 }
 
+void vmm_guest_find_mapping(struct vmm_guest *guest,
+			    struct vmm_region *reg,
+			    physical_addr_t gphys_addr,
+			    physical_addr_t *hphys_addr,
+			    physical_size_t *avail_size)
+{
+	physical_addr_t hphys = 0;
+	physical_size_t size = 0;
+
+	if (!guest || !reg) {
+		goto done;
+	}
+	if ((gphys_addr < VMM_REGION_GPHYS_START(reg)) ||
+	    (VMM_REGION_GPHYS_END(reg) <= gphys_addr)) {
+		goto done;
+	}
+
+	hphys = reg->hphys_addr + (gphys_addr - VMM_REGION_GPHYS_START(reg));
+	size = reg->hphys_addr + VMM_REGION_PHYS_SIZE(reg) - hphys;
+
+done:
+	if (hphys_addr) {
+		*hphys_addr = hphys;
+	}
+	if (avail_size) {
+		*avail_size = size;
+	}
+}
+
 void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 				struct vmm_region *reg,
 				void (*func)(struct vmm_guest *guest,
@@ -246,6 +272,7 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 			  void *dst, u32 len, bool cacheable)
 {
 	u32 bytes_read = 0, to_read;
+	physical_size_t avail_size;
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
@@ -260,8 +287,9 @@ u32 vmm_guest_memory_read(struct vmm_guest *guest,
 			break;
 		}
 
-		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
-		to_read = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		vmm_guest_find_mapping(guest, reg, gphys_addr,
+				       &hphys_addr, &avail_size);
+		to_read = (avail_size < U32_MAX) ? avail_size : U32_MAX;
 		to_read = ((len - bytes_read) < to_read) ?
 			  (len - bytes_read) : to_read;
 
@@ -284,6 +312,7 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 			   void *src, u32 len, bool cacheable)
 {
 	u32 bytes_written = 0, to_write;
+	physical_size_t avail_size;
 	physical_addr_t hphys_addr;
 	struct vmm_region *reg = NULL;
 
@@ -298,8 +327,9 @@ u32 vmm_guest_memory_write(struct vmm_guest *guest,
 			break;
 		}
 
-		hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
-		to_write = (reg->gphys_addr + reg->phys_size - gphys_addr);
+		vmm_guest_find_mapping(guest, reg, gphys_addr,
+				       &hphys_addr, &avail_size);
+		to_write = (avail_size < U32_MAX) ? avail_size : U32_MAX;
 		to_write = ((len - bytes_written) < to_write) ?
 			   (len - bytes_written) : to_write;
 
@@ -321,9 +351,11 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 			   physical_addr_t gphys_addr,
 			   physical_size_t gphys_size,
 			   physical_addr_t *hphys_addr,
-			   physical_size_t *hphys_size,
+			   physical_size_t *phys_size,
 			   u32 *reg_flags)
 {
+	physical_addr_t hphys;
+	physical_size_t size;
 	struct vmm_region *reg = NULL;
 
 	if (!guest || !hphys_addr) {
@@ -344,13 +376,18 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 		}
 	}
 
-	*hphys_addr = VMM_REGION_GPHYS_TO_HPHYS(reg, gphys_addr);
+	vmm_guest_find_mapping(guest, reg, gphys_addr, &hphys, &size);
 
-	if (hphys_size) {
-		*hphys_size = reg->gphys_addr + reg->phys_size - gphys_addr;
-		if (gphys_size < *hphys_size) {
-			*hphys_size = gphys_size;
-		}
+	if (gphys_size < size) {
+		size = gphys_size;
+	}
+
+	if (hphys_addr) {
+		*hphys_addr = hphys;
+	}
+
+	if (phys_size) {
+		*phys_size = size;
 	}
 
 	if (reg_flags) {
@@ -362,10 +399,10 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 
 int vmm_guest_physical_unmap(struct vmm_guest *guest,
 			     physical_addr_t gphys_addr,
-			     physical_size_t gphys_size)
+			     physical_size_t phys_size)
 {
-	/* We don't have dynamic host RAM allocation so
-	 * Nothing to do here.
+	/* We don't have dynamic mappings for guest regions
+	 * so nothing to do here.
 	 */
 	return VMM_OK;
 }

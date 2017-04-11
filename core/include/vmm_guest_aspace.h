@@ -59,6 +59,13 @@ struct vmm_region *vmm_guest_find_region(struct vmm_guest *guest,
 					 physical_addr_t gphys_addr,
 					 u32 reg_flags, bool resolve_alias);
 
+/** Find mapping for given guest physical address and guest region */
+void vmm_guest_find_mapping(struct vmm_guest *guest,
+			    struct vmm_region *reg,
+			    physical_addr_t gphys_addr,
+			    physical_addr_t *hphys_addr,
+			    physical_size_t *avail_size);
+
 /** Iterate over each mapping of a guest region */
 void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 				struct vmm_region *reg,
@@ -91,13 +98,13 @@ int vmm_guest_physical_map(struct vmm_guest *guest,
 			   physical_addr_t gphys_addr,
 			   physical_size_t gphys_size,
 			   physical_addr_t *hphys_addr,
-			   physical_size_t *hphys_size,
+			   physical_size_t *phys_size,
 			   u32 *reg_flags);
 
 /** Unmap guest physical address */
 int vmm_guest_physical_unmap(struct vmm_guest *guest,
 			     physical_addr_t gphys_addr,
-			     physical_size_t gphys_size);
+			     physical_size_t phys_size);
 
 /** Add a new region from a given node in DTS */
 int vmm_guest_add_region_from_node(struct vmm_guest *guest,
