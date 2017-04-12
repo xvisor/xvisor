@@ -208,8 +208,7 @@ static int platform_pt_guest_aspace_notification(
 		vmm_guest_iterate_region(s->guest,
 					 VMM_REGION_REAL |
 					 VMM_REGION_MEMORY |
-					 VMM_REGION_ISRAM |
-					 VMM_REGION_ISHOSTRAM,
+					 VMM_REGION_ISRAM,
 					 platform_pt_region_iter, s);
 	}
 

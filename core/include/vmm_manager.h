@@ -43,24 +43,35 @@ enum vmm_region_flags {
 	VMM_REGION_CACHEABLE=0x00000020,
 	VMM_REGION_BUFFERABLE=0x00000040,
 	VMM_REGION_READONLY=0x00000080,
-	VMM_REGION_ISHOSTRAM=0x00000100,
-	VMM_REGION_ISRAM=0x00000200,
-	VMM_REGION_ISROM=0x00000400,
-	VMM_REGION_ISDEVICE=0x00000800,
-	VMM_REGION_ISRESERVED=0x00001000,
-	VMM_REGION_ISALLOCED=0x00002000,
-	VMM_REGION_ISDYNAMIC=0x00004000,
+	VMM_REGION_ISRAM=0x00000100,
+	VMM_REGION_ISROM=0x00000200,
+	VMM_REGION_ISDEVICE=0x00000400,
+	VMM_REGION_ISRESERVED=0x00000800,
+	VMM_REGION_ISALLOCED=0x00001000,
+	VMM_REGION_ISDYNAMIC=0x00002000,
 };
 
 #define VMM_REGION_MANIFEST_MASK	(VMM_REGION_REAL | \
 					 VMM_REGION_VIRTUAL | \
 					 VMM_REGION_ALIAS)
 
+enum vmm_region_mapping_flags {
+	VMM_REGION_MAPPING_ISHOSTRAM=0x00000001,
+};
+
 struct vmm_region;
+struct vmm_region_mapping;
 struct vmm_guest_aspace;
 struct vmm_vcpu_irqs;
 struct vmm_vcpu;
 struct vmm_guest;
+
+struct vmm_region_mapping {
+	physical_addr_t gphys_addr;
+	physical_addr_t hphys_addr;
+	physical_size_t phys_size;
+	u32 flags;
+};
 
 struct vmm_region {
 	struct rb_node head;
@@ -72,7 +83,8 @@ struct vmm_region {
 	physical_addr_t aphys_addr;
 	physical_size_t phys_size;
 	u32 align_order;
-	physical_addr_t hphys_addr;
+	u32 maps_count;
+	struct vmm_region_mapping *maps;
 	void *devemu_priv;
 	void *priv;
 };

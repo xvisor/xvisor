@@ -184,6 +184,25 @@ done:
 	return reg;
 }
 
+static struct vmm_region_mapping *mapping_find(struct vmm_guest *guest,
+					       struct vmm_region *reg,
+					       physical_addr_t gphys_addr)
+{
+	u32 i;
+	struct vmm_region_mapping *map;
+
+	/* TODO: Do binary search on mappings of a guest region */
+	for (i = 0; i < reg->maps_count; i++) {
+		map = &reg->maps[i];
+		if ((map->gphys_addr <= gphys_addr) &&
+		    (gphys_addr < (map->gphys_addr + map->phys_size))) {
+			return map;
+		}
+	}
+
+	return NULL;
+}
+
 void vmm_guest_find_mapping(struct vmm_guest *guest,
 			    struct vmm_region *reg,
 			    physical_addr_t gphys_addr,
@@ -192,17 +211,19 @@ void vmm_guest_find_mapping(struct vmm_guest *guest,
 {
 	physical_addr_t hphys = 0;
 	physical_size_t size = 0;
+	struct vmm_region_mapping *map;
 
 	if (!guest || !reg) {
 		goto done;
 	}
-	if ((gphys_addr < VMM_REGION_GPHYS_START(reg)) ||
-	    (VMM_REGION_GPHYS_END(reg) <= gphys_addr)) {
+
+	map = mapping_find(guest, reg, gphys_addr);
+	if (!map) {
 		goto done;
 	}
 
-	hphys = reg->hphys_addr + (gphys_addr - VMM_REGION_GPHYS_START(reg));
-	size = reg->hphys_addr + VMM_REGION_PHYS_SIZE(reg) - hphys;
+	hphys = map->hphys_addr + (gphys_addr - map->gphys_addr);
+	size = map->hphys_addr + map->phys_size - hphys;
 
 done:
 	if (hphys_addr) {
@@ -223,15 +244,19 @@ void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 					     void *priv),
 				void *priv)
 {
+	u32 i;
+
 	if (!guest || !reg || !func) {
 		return;
 	}
 
-	func(guest, reg,
-	     reg->gphys_addr,
-	     reg->hphys_addr,
-	     reg->phys_size,
-	     priv);
+	for (i = 0; i < reg->maps_count; i++) {
+		func(guest, reg,
+		     reg->maps[i].gphys_addr,
+		     reg->maps[i].hphys_addr,
+		     reg->maps[i].phys_size,
+		     priv);
+	}
 }
 
 int vmm_guest_overwrite_real_device_mapping(struct vmm_guest *guest,
@@ -239,7 +264,7 @@ int vmm_guest_overwrite_real_device_mapping(struct vmm_guest *guest,
 					    physical_addr_t gphys_addr,
 					    physical_addr_t hphys_addr)
 {
-	int rc;
+	struct vmm_region_mapping *map;
 
 	if (!guest || !reg) {
 		return VMM_EINVALID;
@@ -248,21 +273,13 @@ int vmm_guest_overwrite_real_device_mapping(struct vmm_guest *guest,
 	    !(reg->flags & VMM_REGION_ISDEVICE)) {
 		return VMM_EINVALID;
 	}
-	if ((gphys_addr < VMM_REGION_GPHYS_START(reg)) ||
-	    (VMM_REGION_GPHYS_END(reg) <= gphys_addr)) {
+
+	map = mapping_find(guest, reg, gphys_addr);
+	if (!map) {
 		return VMM_EINVALID;
 	}
 
-	rc = vmm_devtree_setattr(reg->node,
-				 VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-				 &hphys_addr,
-				 VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-				 sizeof(hphys_addr), FALSE);
-	if (rc) {
-		return rc;
-	}
-
-	reg->hphys_addr = hphys_addr;
+	map->hphys_addr = hphys_addr;
 
 	return VMM_OK;
 }
@@ -558,6 +575,7 @@ static int region_add(struct vmm_guest *guest,
 		      void *rpriv,
 		      bool add_probe_list)
 {
+	u32 i;
 	int rc;
 	const char *aval;
 	irq_flags_t flags;
@@ -681,16 +699,35 @@ static int region_add(struct vmm_guest *guest,
 		reg->align_order = 0;
 	}
 
+	/* For now only one mapping for guest region */
+	reg->maps_count = 1;
+
+	/* Allocate mappings for guest region */
+	reg->maps = vmm_zalloc(sizeof(*reg->maps) * reg->maps_count);
+	if (!reg->maps) {
+		rc = VMM_ENOMEM;
+		goto region_free_fail;
+	}
+	reg->maps[0].gphys_addr = reg->gphys_addr;
+	reg->maps[0].hphys_addr = reg->gphys_addr;
+	reg->maps[0].phys_size = reg->phys_size;
+	reg->maps[0].flags = 0;
+	for (i = 1; i < reg->maps_count; i++) {
+		reg->maps[i].gphys_addr = reg->gphys_addr;
+		reg->maps[i].hphys_addr = reg->gphys_addr;
+		reg->maps[i].phys_size = 0;
+		reg->maps[i].flags = 0;
+	}
+
+	/* Mapping0 from device tree for non-alloced real guest region */
 	if ((reg->flags & VMM_REGION_REAL) &&
 	    !(reg->flags & VMM_REGION_ISALLOCED)) {
 		rc = vmm_devtree_read_physaddr(reg->node,
 					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-					&reg->hphys_addr);
+					&reg->maps[0].hphys_addr);
 		if (rc) {
-			goto region_free_fail;
+			goto region_free_maps_fail;
 		}
-	} else {
-		reg->hphys_addr = reg->gphys_addr;
 	}
 
 	reg->devemu_priv = NULL;
@@ -700,23 +737,25 @@ static int region_add(struct vmm_guest *guest,
 	if (is_region_overlapping(guest, reg, &reg_overlap)) {
 		region_overlap_message(__func__, guest, reg, reg_overlap);
 		rc = VMM_EINVALID;
-		goto region_free_fail;
+		goto region_free_maps_fail;
 	}
 
 	/* Reserve host RAM for reserved RAM/ROM regions */
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
 	    (reg->flags & VMM_REGION_ISRESERVED)) {
-		rc = vmm_host_ram_reserve(reg->hphys_addr,
-					  reg->phys_size);
-		if (rc) {
-			vmm_printf("%s: Failed to reserve "
-				   "host RAM for %s/%s\n",
-				   __func__, guest->name,
-				   reg->node->name);
-			goto region_free_fail;
-		} else {
-			reg->flags |= VMM_REGION_ISHOSTRAM;
+		for (i = 0; i < reg->maps_count; i++) {
+			rc = vmm_host_ram_reserve(reg->maps[i].hphys_addr,
+						  reg->maps[i].phys_size);
+			if (rc) {
+				vmm_printf("%s: Failed to reserve "
+					   "host RAM for %s/%s\n",
+					   __func__, guest->name,
+					   reg->node->name);
+				goto region_ram_free_fail;
+			} else {
+				reg->maps[i].flags |= VMM_REGION_MAPPING_ISHOSTRAM;
+			}
 		}
 	}
 
@@ -724,32 +763,22 @@ static int region_add(struct vmm_guest *guest,
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
 	    (reg->flags & VMM_REGION_ISALLOCED)) {
-		if (!vmm_host_ram_alloc(&reg->hphys_addr,
-					reg->phys_size,
-					reg->align_order)) {
-			vmm_printf("%s: Failed to alloc "
-				   "host RAM for %s/%s\n",
-				   __func__, guest->name,
-				   reg->node->name);
-			rc = VMM_ENOMEM;
-			goto region_free_fail;
-		} else {
-			reg->flags |= VMM_REGION_ISHOSTRAM;
-			rc = vmm_devtree_setattr(reg->node,
-					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-					&reg->hphys_addr,
-					VMM_DEVTREE_ATTRTYPE_PHYSADDR,
-					sizeof(reg->hphys_addr), FALSE);
-			if (rc) {
-				vmm_printf("%s: Failed to set %s attribute "
-					   " for %s/%s\n", __func__,
-					   VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-					   guest->name, reg->node->name);
-				goto region_free_fail;
-			}
-			if (reg->flags & VMM_REGION_ISROM) {
-				vmm_host_memory_set(reg->hphys_addr, 0,
-						    reg->phys_size, FALSE);
+		for (i = 0; i < reg->maps_count; i++) {
+			if (!vmm_host_ram_alloc(&reg->maps[i].hphys_addr,
+						reg->maps[i].phys_size,
+						reg->align_order)) {
+				vmm_printf("%s: Failed to alloc "
+					   "host RAM for %s/%s\n",
+					   __func__, guest->name,
+					   reg->node->name);
+				rc = VMM_ENOMEM;
+				goto region_ram_free_fail;
+			} else {
+				reg->maps[0].flags |= VMM_REGION_MAPPING_ISHOSTRAM;
+				if (reg->flags & VMM_REGION_ISROM) {
+					vmm_host_memory_set(reg->maps[i].hphys_addr, 0,
+							    reg->maps[i].phys_size, FALSE);
+				}
 			}
 		}
 	}
@@ -817,15 +846,17 @@ region_unprobe_fail:
 	}
 region_ram_free_fail:
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
-	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
-	    (reg->flags & VMM_REGION_ISHOSTRAM)) {
-		if (reg->flags & VMM_REGION_ISALLOCED) {
-			vmm_devtree_delattr(reg->node,
-					    VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
+		for (i = 0; i < reg->maps_count; i++) {
+			if (!(reg->maps[i].flags & VMM_REGION_MAPPING_ISHOSTRAM))
+				continue;
+			vmm_host_ram_free(reg->maps[i].hphys_addr,
+					  reg->maps[i].phys_size);
+			reg->maps[i].flags &= ~VMM_REGION_MAPPING_ISHOSTRAM;
 		}
-		vmm_host_ram_free(reg->hphys_addr,
-				  reg->phys_size);
 	}
+region_free_maps_fail:
+	vmm_free(reg->maps);
 region_free_fail:
 	vmm_free(reg);
 region_fail:
@@ -838,6 +869,7 @@ static int region_del(struct vmm_guest *guest,
 		      bool del_reg_tree,
 		      bool del_probe_list)
 {
+	u32 i;
 	int rc = VMM_OK;
 	irq_flags_t flags;
 	vmm_rwlock_t *root_lock;
@@ -887,21 +919,24 @@ static int region_del(struct vmm_guest *guest,
 
 	/* Free host RAM if region has alloced/reserved host RAM */
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
-	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
-	    (reg->flags & VMM_REGION_ISHOSTRAM)) {
-		if (reg->flags & VMM_REGION_ISALLOCED) {
-			vmm_devtree_delattr(reg->node,
-					    VMM_DEVTREE_HOST_PHYS_ATTR_NAME);
-		}
-		rc = vmm_host_ram_free(reg->hphys_addr,
-					reg->phys_size);
-		if (rc) {
-			vmm_printf("%s: Failed to free host RAM "
-				   "for %s/%s (error %d)\n",
-				   __func__, guest->name,
-				   reg->node->name, rc);
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
+		for (i = 0; i < reg->maps_count; i++) {
+			if (!(reg->maps[i].flags & VMM_REGION_MAPPING_ISHOSTRAM))
+				continue;
+			rc = vmm_host_ram_free(reg->maps[i].hphys_addr,
+					       reg->maps[i].phys_size);
+			if (rc) {
+				vmm_printf("%s: Failed to free host RAM "
+					   "for %s/%s (error %d)\n",
+					   __func__, guest->name,
+					   reg->node->name, rc);
+			}
+			reg->maps[i].flags &= ~VMM_REGION_MAPPING_ISHOSTRAM;
 		}
 	}
+
+	/* Free region mappings */
+	vmm_free(reg->maps);
 
 	/* Free the region */
 	vmm_free(reg);
