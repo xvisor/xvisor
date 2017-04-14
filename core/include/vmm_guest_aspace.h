@@ -73,7 +73,7 @@ void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 					     struct vmm_region *reg,
 					     physical_addr_t gphys_addr,
 					     physical_addr_t hphys_addr,
-					     physical_addr_t phys_size,
+					     physical_size_t phys_size,
 					     void *priv),
 				void *priv);
 

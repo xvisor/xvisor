@@ -184,23 +184,50 @@ done:
 	return reg;
 }
 
+static physical_addr_t mapping_gphys_offset(struct vmm_region *reg,
+					    u32 map_index)
+{
+	if (reg->maps_count <= map_index) {
+		return reg->phys_size;
+	}
+
+	return ((physical_addr_t)map_index) << reg->map_order;
+}
+
+static physical_size_t mapping_phys_size(struct vmm_region *reg,
+					 u32 map_index)
+{
+	physical_size_t map_size;
+	physical_size_t size;
+
+	if (reg->maps_count <= map_index) {
+		return 0;
+	}
+	map_size = ((physical_size_t)1) << reg->map_order;
+
+	size = reg->phys_size - mapping_gphys_offset(reg, map_index);
+
+	return (size < map_size) ? size : map_size;
+}
+
 static struct vmm_region_mapping *mapping_find(struct vmm_guest *guest,
 					       struct vmm_region *reg,
+					       u32 *map_index,
 					       physical_addr_t gphys_addr)
 {
 	u32 i;
-	struct vmm_region_mapping *map;
 
-	/* TODO: Do binary search on mappings of a guest region */
-	for (i = 0; i < reg->maps_count; i++) {
-		map = &reg->maps[i];
-		if ((map->gphys_addr <= gphys_addr) &&
-		    (gphys_addr < (map->gphys_addr + map->phys_size))) {
-			return map;
-		}
+	if ((gphys_addr < VMM_REGION_GPHYS_START(reg)) ||
+	    (VMM_REGION_GPHYS_END(reg) <= gphys_addr)) {
+		return NULL;
 	}
 
-	return NULL;
+	i = (gphys_addr - VMM_REGION_GPHYS_START(reg)) >> reg->map_order;
+	if (map_index) {
+		*map_index = i;
+	}
+
+	return &reg->maps[i];
 }
 
 void vmm_guest_find_mapping(struct vmm_guest *guest,
@@ -209,6 +236,8 @@ void vmm_guest_find_mapping(struct vmm_guest *guest,
 			    physical_addr_t *hphys_addr,
 			    physical_size_t *avail_size)
 {
+	u32 i;
+	physical_addr_t map_gphys_addr;
 	physical_addr_t hphys = 0;
 	physical_size_t size = 0;
 	struct vmm_region_mapping *map;
@@ -217,13 +246,14 @@ void vmm_guest_find_mapping(struct vmm_guest *guest,
 		goto done;
 	}
 
-	map = mapping_find(guest, reg, gphys_addr);
+	map = mapping_find(guest, reg, &i, gphys_addr);
 	if (!map) {
 		goto done;
 	}
+	map_gphys_addr = reg->gphys_addr + mapping_gphys_offset(reg, i);
 
-	hphys = map->hphys_addr + (gphys_addr - map->gphys_addr);
-	size = map->hphys_addr + map->phys_size - hphys;
+	hphys = map->hphys_addr + (gphys_addr - map_gphys_addr);
+	size = map->hphys_addr + mapping_phys_size(reg, i) - hphys;
 
 done:
 	if (hphys_addr) {
@@ -240,7 +270,7 @@ void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 					     struct vmm_region *reg,
 					     physical_addr_t gphys_addr,
 					     physical_addr_t hphys_addr,
-					     physical_addr_t phys_size,
+					     physical_size_t phys_size,
 					     void *priv),
 				void *priv)
 {
@@ -252,9 +282,9 @@ void vmm_guest_iterate_mapping(struct vmm_guest *guest,
 
 	for (i = 0; i < reg->maps_count; i++) {
 		func(guest, reg,
-		     reg->maps[i].gphys_addr,
+		     reg->gphys_addr + mapping_gphys_offset(reg, i),
 		     reg->maps[i].hphys_addr,
-		     reg->maps[i].phys_size,
+		     mapping_phys_size(reg, i),
 		     priv);
 	}
 }
@@ -274,7 +304,7 @@ int vmm_guest_overwrite_real_device_mapping(struct vmm_guest *guest,
 		return VMM_EINVALID;
 	}
 
-	map = mapping_find(guest, reg, gphys_addr);
+	map = mapping_find(guest, reg, NULL, gphys_addr);
 	if (!map) {
 		return VMM_EINVALID;
 	}
@@ -699,8 +729,24 @@ static int region_add(struct vmm_guest *guest,
 		reg->align_order = 0;
 	}
 
-	/* For now only one mapping for guest region */
-	reg->maps_count = 1;
+	/* TODO: Compute default order of each mapping */
+	for (i = 0; i < 64; i++) {
+		if (reg->phys_size <= ((u64)1 << i)) {
+			reg->map_order = i;
+			break;
+		}
+	}
+	if (i == 64) {
+		rc = VMM_EINVALID;
+		goto region_free_fail;
+	}
+
+	/* Compute number of mappings for guest region */
+	reg->maps_count = reg->phys_size >> reg->map_order;
+	if ((((physical_size_t)reg->maps_count) << reg->map_order)
+							< reg->phys_size) {
+		reg->maps_count++;
+	}
 
 	/* Allocate mappings for guest region */
 	reg->maps = vmm_zalloc(sizeof(*reg->maps) * reg->maps_count);
@@ -708,14 +754,12 @@ static int region_add(struct vmm_guest *guest,
 		rc = VMM_ENOMEM;
 		goto region_free_fail;
 	}
-	reg->maps[0].gphys_addr = reg->gphys_addr;
-	reg->maps[0].hphys_addr = reg->gphys_addr;
-	reg->maps[0].phys_size = reg->phys_size;
+	reg->maps[0].hphys_addr = reg->gphys_addr +
+				  mapping_gphys_offset(reg, 0);
 	reg->maps[0].flags = 0;
 	for (i = 1; i < reg->maps_count; i++) {
-		reg->maps[i].gphys_addr = reg->gphys_addr;
-		reg->maps[i].hphys_addr = reg->gphys_addr;
-		reg->maps[i].phys_size = 0;
+		reg->maps[i].hphys_addr = reg->gphys_addr +
+					  mapping_gphys_offset(reg, i);
 		reg->maps[i].flags = 0;
 	}
 
@@ -746,7 +790,7 @@ static int region_add(struct vmm_guest *guest,
 	    (reg->flags & VMM_REGION_ISRESERVED)) {
 		for (i = 0; i < reg->maps_count; i++) {
 			rc = vmm_host_ram_reserve(reg->maps[i].hphys_addr,
-						  reg->maps[i].phys_size);
+						  mapping_phys_size(reg, i));
 			if (rc) {
 				vmm_printf("%s: Failed to reserve "
 					   "host RAM for %s/%s\n",
@@ -754,7 +798,8 @@ static int region_add(struct vmm_guest *guest,
 					   reg->node->name);
 				goto region_ram_free_fail;
 			} else {
-				reg->maps[i].flags |= VMM_REGION_MAPPING_ISHOSTRAM;
+				reg->maps[i].flags |=
+					VMM_REGION_MAPPING_ISHOSTRAM;
 			}
 		}
 	}
@@ -765,7 +810,7 @@ static int region_add(struct vmm_guest *guest,
 	    (reg->flags & VMM_REGION_ISALLOCED)) {
 		for (i = 0; i < reg->maps_count; i++) {
 			if (!vmm_host_ram_alloc(&reg->maps[i].hphys_addr,
-						reg->maps[i].phys_size,
+						mapping_phys_size(reg, i),
 						reg->align_order)) {
 				vmm_printf("%s: Failed to alloc "
 					   "host RAM for %s/%s\n",
@@ -774,10 +819,13 @@ static int region_add(struct vmm_guest *guest,
 				rc = VMM_ENOMEM;
 				goto region_ram_free_fail;
 			} else {
-				reg->maps[0].flags |= VMM_REGION_MAPPING_ISHOSTRAM;
+				reg->maps[0].flags |=
+					VMM_REGION_MAPPING_ISHOSTRAM;
 				if (reg->flags & VMM_REGION_ISROM) {
-					vmm_host_memory_set(reg->maps[i].hphys_addr, 0,
-							    reg->maps[i].phys_size, FALSE);
+					vmm_host_memory_set(
+						reg->maps[i].hphys_addr, 0,
+						mapping_phys_size(reg, i),
+						FALSE);
 				}
 			}
 		}
@@ -848,11 +896,13 @@ region_ram_free_fail:
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
 		for (i = 0; i < reg->maps_count; i++) {
-			if (!(reg->maps[i].flags & VMM_REGION_MAPPING_ISHOSTRAM))
+			if (!(reg->maps[i].flags &
+			      VMM_REGION_MAPPING_ISHOSTRAM))
 				continue;
 			vmm_host_ram_free(reg->maps[i].hphys_addr,
-					  reg->maps[i].phys_size);
-			reg->maps[i].flags &= ~VMM_REGION_MAPPING_ISHOSTRAM;
+					  mapping_phys_size(reg, i));
+			reg->maps[i].flags &=
+				~VMM_REGION_MAPPING_ISHOSTRAM;
 		}
 	}
 region_free_maps_fail:
@@ -921,10 +971,11 @@ static int region_del(struct vmm_guest *guest,
 	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
 	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
 		for (i = 0; i < reg->maps_count; i++) {
-			if (!(reg->maps[i].flags & VMM_REGION_MAPPING_ISHOSTRAM))
+			if (!(reg->maps[i].flags &
+			      VMM_REGION_MAPPING_ISHOSTRAM))
 				continue;
 			rc = vmm_host_ram_free(reg->maps[i].hphys_addr,
-					       reg->maps[i].phys_size);
+					       mapping_phys_size(reg, i));
 			if (rc) {
 				vmm_printf("%s: Failed to free host RAM "
 					   "for %s/%s (error %d)\n",

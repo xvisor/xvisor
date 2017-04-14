@@ -67,9 +67,7 @@ struct vmm_vcpu;
 struct vmm_guest;
 
 struct vmm_region_mapping {
-	physical_addr_t gphys_addr;
 	physical_addr_t hphys_addr;
-	physical_size_t phys_size;
 	u32 flags;
 };
 
@@ -83,6 +81,7 @@ struct vmm_region {
 	physical_addr_t aphys_addr;
 	physical_size_t phys_size;
 	u32 align_order;
+	u32 map_order;
 	u32 maps_count;
 	struct vmm_region_mapping *maps;
 	void *devemu_priv;
@@ -96,6 +95,9 @@ struct vmm_region {
 #define VMM_REGION_GPHYS_TO_APHYS(reg, gphys)	\
 			((reg)->aphys_addr + ((gphys) - (reg)->gphys_addr))
 #define VMM_REGION_FLAGS(reg)		((reg)->flags)
+#define VMM_REGION_ALIGN_ORDER(reg)	((reg)->align_order)
+#define VMM_REGION_MAP_ORDER(reg)	((reg)->map_order)
+#define VMM_REGION_MAPS_COUNT(reg)	((reg)->maps_count)
 
 struct vmm_guest_aspace {
 	struct vmm_devtree_node *node;
