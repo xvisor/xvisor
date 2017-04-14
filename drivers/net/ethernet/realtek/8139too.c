@@ -1082,7 +1082,7 @@ static int __devinit rtl8139_init_one (struct pci_dev *pdev,
 
 	pci_set_drvdata (pdev, dev);
 
-	printk (KERN_INFO "%s: %s at 0x%"PRIPSIZE", "
+	printk (KERN_INFO "%s: %s at 0x%"PRIPADDR", "
 		"%2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x, "
 		"IRQ %d\n",
 		dev->name,
