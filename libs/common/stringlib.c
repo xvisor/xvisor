@@ -22,10 +22,12 @@
  * @brief implementation of string library
  */
 
+#include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_host_io.h>
 #include <vmm_limits.h>
 #include <vmm_compiler.h>
+#include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <libs/ctype.h>
 #include <libs/stringlib.h>
@@ -633,6 +635,62 @@ char* strtok_r(char *str, const char *delim, char **context)
 	*context = str;
 
 	return ret;
+}
+
+int u64_to_size_str(u64 val, char *out, size_t out_len)
+{
+	const char *suffix = "";
+
+	if (!out || (out_len < 16))
+		return VMM_EINVALID;
+
+	if (val < SZ_1K) {
+		suffix = "B";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "KB";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "MB";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "GB";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "TB";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "PB";
+		goto found;
+	}
+	val = val >> 10;
+
+	if (val < SZ_1K) {
+		suffix = "EB";
+		goto found;
+	}
+
+	suffix = "ZB";
+
+found:
+	vmm_snprintf(out, out_len, "%"PRIu64" %s", val, suffix);
+
+	return VMM_OK;
 }
 
 /**
