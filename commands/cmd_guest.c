@@ -53,6 +53,7 @@ static void cmd_guest_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   guest halt    <guest_name>\n");
 	vmm_cprintf(cdev, "   guest dumpmem <guest_name> <gphys_addr> "
 			  "[mem_sz]\n");
+	vmm_cprintf(cdev, "   guest region_list <guest_name>\n");
 	vmm_cprintf(cdev, "   guest region  <guest_name> <gphys_addr>\n");
 	vmm_cprintf(cdev, "Note:\n");
 	vmm_cprintf(cdev, "   <guest_name> = node name under /guests "
@@ -272,12 +273,88 @@ static int cmd_guest_dumpmem(struct vmm_chardev *cdev, const char *name,
 	return VMM_EFAIL;
 }
 
+static void cmd_guest_print_region_mapping(struct vmm_guest *guest,
+					   struct vmm_region *reg,
+					   physical_addr_t gphys_addr,
+					   physical_addr_t hphys_addr,
+					   physical_size_t phys_size,
+					   void *priv)
+{
+	char str[16];
+	struct vmm_chardev *cdev = priv;
+
+	str[0] = '\0';
+	u64_to_size_str(phys_size, str, sizeof(str));
+	vmm_cprintf(cdev, "\t0x%"PRIPADDR" => 0x%"PRIPADDR" (%s)\n",
+		    gphys_addr, hphys_addr, str);
+}
+
+static void cmd_guest_print_region(struct vmm_guest *guest,
+				   struct vmm_region *reg,
+				   void *priv)
+{
+	char str[16];
+	struct vmm_emudev *emudev;
+	struct vmm_chardev *cdev = priv;
+
+	vmm_cprintf(cdev, "Region node name             : %s\n",
+		    VMM_REGION_NAME(reg));
+
+	emudev = reg->devemu_priv;
+	if (emudev && emudev->emu) {
+		vmm_cprintf(cdev, "Region emulator name         : %s\n",
+			    emudev->emu->name);
+	}
+
+	vmm_cprintf(cdev, "Region guest physical address: 0x%"PRIPADDR"\n",
+		    VMM_REGION_GPHYS_START(reg));
+
+	vmm_cprintf(cdev, "Region alias physical address: 0x%"PRIPADDR"\n",
+		VMM_REGION_GPHYS_TO_APHYS(reg, VMM_REGION_GPHYS_START(reg)));
+
+	str[0] = '\0';
+	u64_to_size_str(VMM_REGION_PHYS_SIZE(reg), str, sizeof(str));
+	vmm_cprintf(cdev, "Region physical size         : %s\n", str);
+
+	vmm_cprintf(cdev, "Region flags                 : 0x%08x\n",
+		    VMM_REGION_FLAGS(reg));
+
+	vmm_cprintf(cdev, "Region align order           : %u\n",
+		    VMM_REGION_ALIGN_ORDER(reg));
+
+	vmm_cprintf(cdev, "Region map order             : %u\n",
+		    VMM_REGION_MAP_ORDER(reg));
+
+	vmm_cprintf(cdev, "Region maps count            : %u\n",
+		    VMM_REGION_MAPS_COUNT(reg));
+
+	vmm_cprintf(cdev, "Region mappings              :\n");
+
+	vmm_guest_iterate_mapping(guest, reg,
+				  cmd_guest_print_region_mapping, cdev);
+
+	vmm_cprintf(cdev, "\n");
+}
+
+static int cmd_guest_region_list(struct vmm_chardev *cdev, const char *name)
+{
+	struct vmm_guest *guest = vmm_manager_guest_find(name);
+
+	if (!guest) {
+		vmm_cprintf(cdev, "Failed to find guest\n");
+		return VMM_ENOTAVAIL;
+	}
+
+	vmm_guest_iterate_region(guest, 0x0, cmd_guest_print_region, cdev);
+
+	return VMM_OK;
+}
+
 static int cmd_guest_region(struct vmm_chardev *cdev, const char *name,
 			    physical_addr_t gphys_addr)
 {
 	struct vmm_guest *guest = vmm_manager_guest_find(name);
 	struct vmm_region *reg = NULL;
-	struct vmm_emudev *emudev;
 
 	if (!guest) {
 		vmm_cprintf(cdev, "Failed to find guest\n");
@@ -285,41 +362,17 @@ static int cmd_guest_region(struct vmm_chardev *cdev, const char *name,
 	}
 
 	reg = vmm_guest_find_region(guest, gphys_addr, VMM_REGION_MEMORY,
-				    TRUE);
+				    FALSE);
 	if (!reg) {
 		reg = vmm_guest_find_region(guest, gphys_addr, VMM_REGION_IO,
-					    TRUE);
+					    FALSE);
 	}
 	if (!reg) {
 		vmm_cprintf(cdev, "Memory region not found\n");
 		return VMM_EFAIL;
 	}
 
-	vmm_cprintf(cdev, "Region guest physical address: 0x%"PRIPADDR"\n",
-		    VMM_REGION_GPHYS_START(reg));
-
-	vmm_cprintf(cdev, "Region alias physical address : 0x%"PRIPADDR"\n",
-		VMM_REGION_GPHYS_TO_APHYS(reg, VMM_REGION_GPHYS_START(reg)));
-
-	vmm_cprintf(cdev, "Region physical size         : 0x%"PRIPSIZE"\n",
-		    VMM_REGION_PHYS_SIZE(reg));
-
-	vmm_cprintf(cdev, "Region flags                 : 0x%08x\n",
-		    VMM_REGION_FLAGS(reg));
-
-	vmm_cprintf(cdev, "Region node name             : %s\n",
-		    VMM_REGION_NAME(reg));
-
-	if (!reg->devemu_priv) {
-		return VMM_OK;
-	}
-	emudev = reg->devemu_priv;
-	if (!emudev->emu) {
-		return VMM_OK;
-	}
-
-	vmm_cprintf(cdev, "Region emulator name         : %s\n",
-		    emudev->emu->name);
+	cmd_guest_print_region(guest, reg, cdev);
 
 	return VMM_OK;
 }
@@ -380,6 +433,8 @@ static int cmd_guest_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			return ret;
 		}
 		return cmd_guest_dumpmem(cdev, argv[2], src_addr, size);
+	} else if (strcmp(argv[1], "region_list") == 0) {
+		return cmd_guest_region_list(cdev, argv[2]);
 	} else if (strcmp(argv[1], "region") == 0) {
 		ret = cmd_guest_param(cdev, argc, argv, &src_addr, &size);
 		if (VMM_OK != ret) {
