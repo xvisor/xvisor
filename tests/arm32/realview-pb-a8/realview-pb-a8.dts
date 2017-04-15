@@ -153,13 +153,14 @@
 			interrupts = <47>;
 		};
 
-		ssp0 { /* No Synchronous Serial Port */
+		ssp0 {
 			manifest_type = "virtual";
 			address_type = "memory";
 			guest_physical_addr = <0x1000D000>;
 			physical_size = <0x1000>;
-			device_type = "misc";
-			compatible = "zero";
+			device_type = "spi-host";
+			compatible = "primecell,arm,pl022";
+			interrupts = <43>;
 		};
 
 		sci0 { /* No Smart card controller */
