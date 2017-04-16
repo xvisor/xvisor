@@ -32,6 +32,7 @@
 #define _VIRTIO_RING_H__
 
 #include <vmm_types.h>
+#include <vmm_macros.h>
 
 /* This marks a buffer as continuing via the next field. */
 #define VRING_DESC_F_NEXT	1
@@ -95,11 +96,11 @@ struct vring_used {
 struct vring {
 	unsigned int num;
 
-	struct vring_desc *desc;
+	physical_addr_t desc_pa;
 
-	struct vring_avail *avail;
+	physical_addr_t avail_pa;
 
-	struct vring_used *used;
+	physical_addr_t used_pa;
 };
 
 struct virtio_iovec {
@@ -111,16 +112,10 @@ struct virtio_iovec {
 	u16 flags;
 };
 
-/* We publish the used event index at the end of the available ring, and vice
- * versa. They are at the end for backwards compatibility. */
-#define vring_used_event(vr) ((vr)->avail->ring[(vr)->num])
-#define vring_avail_event(vr) (*(u16 *)&(vr)->used->ring[(vr)->num])
-
 /* The standard layout for the ring is a continuous chunk of memory which looks
  * like this.  We assume num is a power of 2.
  *
- * struct vring
- * {
+ * struct vring {
  *	// The actual descriptors (16 bytes each)
  *	struct vring_desc desc[num];
  *
@@ -138,21 +133,20 @@ struct virtio_iovec {
  *	struct vring_used_elem used[num];
  * };
  */
-static inline void vring_init(struct vring *vr, unsigned int num, void *p,
-			      unsigned long align)
+static inline void vring_init(struct vring *vr, unsigned int num,
+			      physical_addr_t base_pa, unsigned long align)
 {
 	vr->num = num;
-	vr->desc = p;
-	vr->avail = p + num*sizeof(struct vring_desc);
-	vr->used = (void *)(((unsigned long)&vr->avail->ring[num] + align-1)
-			    & ~(align - 1));
-
+	vr->desc_pa = base_pa;
+	vr->avail_pa = base_pa + num * sizeof(struct vring_desc);
+	vr->used_pa = vr->avail_pa + offsetof(struct vring_avail, ring[num]);
+	vr->used_pa = (vr->used_pa + align - 1) & ~(align - 1);
 }
 
 static inline unsigned vring_size(unsigned int num, unsigned long align)
 {
-	return ((sizeof(struct vring_desc) * num + sizeof(u16) * (2 + num)
-		 + align - 1) & ~(align - 1))
+	return ((sizeof(struct vring_desc) * num +
+		 sizeof(u16) * (2 + num) + align - 1) & ~(align - 1))
 		+ sizeof(u16) * 2 + sizeof(struct vring_used_elem) * num;
 }
 

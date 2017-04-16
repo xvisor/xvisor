@@ -44,7 +44,6 @@ struct virtio_queue {
 
 	struct vring		vring;
 
-	void			*addr;
 	struct vmm_guest	*guest;
 	u32			desc_count;
 	u32			align;
@@ -54,11 +53,6 @@ struct virtio_queue {
 	physical_addr_t		host_addr;
 	physical_size_t		total_size;
 };
-
-/** Get mapped base address of queue
- *  Note: only available after queue setup is done
- */
-void *virtio_queue_base(struct virtio_queue *vq);
 
 /** Get guest to which the queue belongs
  *  Note: only available after queue setup is done
@@ -100,15 +94,21 @@ physical_addr_t virtio_queue_host_addr(struct virtio_queue *vq);
  */
 physical_size_t virtio_queue_total_size(struct virtio_queue *vq);
 
-/** Pop the index of next available descriptor
+/** Retrive maximum number of vring descriptors
  *  Note: works only after queue setup is done
  */
-u16 virtio_queue_pop(struct virtio_queue *vq);
+u32 virtio_queue_max_desc(struct virtio_queue *vq);
 
 /** Retrive vring descriptor at given index
  *  Note: works only after queue setup is done
  */
-struct vring_desc *virtio_queue_get_desc(struct virtio_queue *vq, u16 indx);
+int virtio_queue_get_desc(struct virtio_queue *vq, u16 indx,
+			  struct vring_desc *desc);
+
+/** Pop the index of next available descriptor
+ *  Note: works only after queue setup is done
+ */
+u16 virtio_queue_pop(struct virtio_queue *vq);
 
 /** Check whether any descriptor is available or not
  *  Note: works only after queue setup is done
@@ -123,8 +123,8 @@ bool virtio_queue_should_signal(struct virtio_queue *vq);
 /** Update used element in vring
  *  Note: works only after queue setup is done
  */
-struct vring_used_elem *virtio_queue_set_used_elem(struct virtio_queue *vq,
-						   u32 head, u32 len);
+void virtio_queue_set_used_elem(struct virtio_queue *vq,
+				u32 head, u32 len);
 
 /** Check whether queue setup is done by guest or not */
 bool virtio_queue_setup_done(struct virtio_queue *vq);
