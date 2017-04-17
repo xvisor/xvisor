@@ -56,6 +56,7 @@ struct mmu_lpae_ctrl {
 	/* Initialized by memory read/write init */
 	struct cpu_ttbl *mem_rw_ttbl[CONFIG_CPU_COUNT];
 	u64 *mem_rw_tte[CONFIG_CPU_COUNT];
+	physical_addr_t mem_rw_outaddr_mask[CONFIG_CPU_COUNT];
 };
 
 static struct mmu_lpae_ctrl mmuctrl;
@@ -683,8 +684,9 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 				void *dst, u32 len, bool cacheable)
 {
 	u64 old_tte_val;
-	u64 *tte = mmuctrl.mem_rw_tte[vmm_smp_processor_id()];
-	struct cpu_ttbl *ttbl = mmuctrl.mem_rw_ttbl[vmm_smp_processor_id()];
+	u32 cpu = vmm_smp_processor_id();
+	u64 *tte = mmuctrl.mem_rw_tte[cpu];
+	physical_addr_t outaddr_mask = mmuctrl.mem_rw_outaddr_mask[cpu];
 	virtual_addr_t offset = (src & VMM_PAGE_MASK);
 
 	old_tte_val = *tte;
@@ -694,8 +696,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	} else {
 		*tte = PHYS_RW_TTE_NOCACHE;
 	}
-	*tte |= src &
-		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
+	*tte |= src & outaddr_mask;
 
 	cpu_mmu_sync_tte(tte);
 	cpu_invalid_va_hypervisor_tlb(tmp_va);
@@ -729,8 +730,9 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 				 void *src, u32 len, bool cacheable)
 {
 	u64 old_tte_val;
-	u64 *tte = mmuctrl.mem_rw_tte[vmm_smp_processor_id()];
-	struct cpu_ttbl *ttbl = mmuctrl.mem_rw_ttbl[vmm_smp_processor_id()];
+	u32 cpu = vmm_smp_processor_id();
+	u64 *tte = mmuctrl.mem_rw_tte[cpu];
+	physical_addr_t outaddr_mask = mmuctrl.mem_rw_outaddr_mask[cpu];
 	virtual_addr_t offset = (dst & VMM_PAGE_MASK);
 
 	old_tte_val = *tte;
@@ -740,8 +742,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	} else {
 		*tte = PHYS_RW_TTE_NOCACHE;
 	}
-	*tte |= dst &
-		(mmu_lpae_level_map_mask(ttbl->level) & TTBL_OUTADDR_MASK);
+	*tte |= dst & outaddr_mask;
 
 	cpu_mmu_sync_tte(tte);
 	cpu_invalid_va_hypervisor_tlb(tmp_va);
@@ -846,6 +847,9 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 	if (rc) {
 		return rc;
 	}
+	mmuctrl.mem_rw_outaddr_mask[cpu] =
+		(mmu_lpae_level_map_mask(mmuctrl.mem_rw_ttbl[cpu]->level) &
+		 TTBL_OUTADDR_MASK);
 
 	return VMM_OK;
 }
