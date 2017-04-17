@@ -120,6 +120,11 @@ bool virtio_queue_available(struct virtio_queue *vq);
  */
 bool virtio_queue_should_signal(struct virtio_queue *vq);
 
+/** Update avail_event in vring
+ *  Note: works only after queue setup is done
+ */
+void virtio_queue_set_avail_event(struct virtio_queue *vq);
+
 /** Update used element in vring
  *  Note: works only after queue setup is done
  */

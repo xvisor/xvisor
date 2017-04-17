@@ -142,20 +142,9 @@ bool virtio_queue_available(struct virtio_queue *vq)
 {
 	u16 val;
 	u32 ret;
-	physical_addr_t used_pa, avail_pa;
+	physical_addr_t avail_pa;
 
 	if (!vq || !vq->guest) {
-		return FALSE;
-	}
-
-	val = vq->last_avail_idx;
-	used_pa = vq->vring.used_pa +
-		  offsetof(struct vring_used, ring[vq->vring.num]);
-	ret = vmm_guest_memory_write(vq->guest, used_pa,
-				     &val, sizeof(val), TRUE);
-	if (ret != sizeof(val)) {
-		vmm_printf("%s: write failed at used_pa=0x%"PRIPADDR"\n",
-			   __func__, used_pa);
 		return FALSE;
 	}
 
@@ -213,6 +202,29 @@ bool virtio_queue_should_signal(struct virtio_queue *vq)
 	return FALSE;
 }
 VMM_EXPORT_SYMBOL(virtio_queue_should_signal);
+
+void virtio_queue_set_avail_event(struct virtio_queue *vq)
+{
+	u16 val;
+	u32 ret;
+	physical_addr_t avail_evt_pa;
+
+	if (!vq || !vq->guest) {
+		return;
+	}
+
+	val = vq->last_avail_idx;
+	avail_evt_pa = vq->vring.used_pa +
+		  offsetof(struct vring_used, ring[vq->vring.num]);
+	ret = vmm_guest_memory_write(vq->guest, avail_evt_pa,
+				     &val, sizeof(val), TRUE);
+	if (ret != sizeof(val)) {
+		vmm_printf("%s: write failed at avail_evt_pa=0x%"PRIPADDR"\n",
+			   __func__, avail_evt_pa);
+	}
+
+}
+VMM_EXPORT_SYMBOL(virtio_queue_set_avail_event);
 
 void virtio_queue_set_used_elem(struct virtio_queue *vq,
 				u32 head, u32 len)
@@ -431,6 +443,8 @@ u16 virtio_queue_get_head_iovec(struct virtio_queue *vq,
 	if (ret_iov_cnt) {
 		*ret_iov_cnt = i;
 	}
+
+	virtio_queue_set_avail_event(vq);
 
 	return head;
 
