@@ -29,9 +29,26 @@
 #define TTBL_FIRST_LEVEL		1
 #define TTBL_LAST_LEVEL			3
 
-#define cpu_invalid_ipa_guest_tlb(ipa)		inv_tlb_guest_allis()
-#define cpu_invalid_va_hypervisor_tlb(va)	inv_tlb_hyp_mvais((va))
-#define cpu_invalid_all_tlbs()			inv_utlb_all()
+#define cpu_invalid_ipa_guest_tlb(ipa)			\
+	do {						\
+		inv_tlb_guest_allis();			\
+		dsb(ish);				\
+		isb();					\
+	} while (0)
+
+#define cpu_invalid_va_hypervisor_tlb(va)		\
+	do {						\
+		inv_tlb_hyp_mvais((va));		\
+		dsb(ish);				\
+		isb();					\
+	} while (0)
+
+#define cpu_invalid_all_tlbs()				\
+	do {						\
+		inv_utlb_all();				\
+		dsb(ish);				\
+		isb();					\
+	} while (0)
 
 #define cpu_stage2_ttbl_pa()				\
 		(read_vttbr() & VTTBR_BADDR_MASK)
@@ -47,8 +64,7 @@
 
 static inline void cpu_mmu_sync_tte(u64 *tte)
 {
-	dsb();
-	isb();
+	dsb(ishst);
 }
 
 static inline void cpu_mmu_clean_invalidate(void *va)

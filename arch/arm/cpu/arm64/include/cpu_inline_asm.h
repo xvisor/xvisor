@@ -98,32 +98,32 @@ asm(
 /* TLB maintainence */
 
 #define inv_tlb_hyp_all()	asm volatile("tlbi alle2is\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::: "memory", "cc")
 
 #define inv_tlb_guest_allis()	asm volatile("tlbi alle1is\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::: "memory", "cc")
 
 #define inv_tlb_guest_cur()	asm volatile("tlbi vmalls12e1is\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::: "memory", "cc")
 
 #define inv_tlb_hyp_vais(va)	asm volatile("tlbi vae2is, %0\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::"r"((va)>>12): "memory", "cc")
 
 #define inv_tlb_guest_ipa(va)	asm volatile("tlbi ipas2e1is, %0\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::"r"((va)>>12): "memory", "cc")
 
 #define inv_tlb_guest_va(va)	asm volatile("tlbi vaae1is, %0\n\t" \
-					     "dsb sy\n\t" \
+					     "dsb ish\n\t" \
 					     "isb\n\t" \
 					     ::"r"((va)>>12): "memory", "cc")
 
