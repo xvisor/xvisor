@@ -107,6 +107,7 @@
 #define VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME	"alias_physical_addr"
 #define VMM_DEVTREE_PHYS_SIZE_ATTR_NAME		"physical_size"
 #define VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME	"align_order"
+#define VMM_DEVTREE_MAP_ORDER_ATTR_NAME		"map_order"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 #define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
 #define VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME	"affinity"

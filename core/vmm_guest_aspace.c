@@ -729,8 +729,9 @@ static int region_add(struct vmm_guest *guest,
 		reg->align_order = 0;
 	}
 
-	/* TODO: Compute default order of each mapping */
-	for (i = 0; i < 64; i++) {
+	/* Compute mapping order for guest region */
+	reg->map_order = VMM_PAGE_SHIFT;
+	for (i = VMM_PAGE_SHIFT; i < 64; i++) {
 		if (reg->phys_size <= ((u64)1 << i)) {
 			reg->map_order = i;
 			break;
@@ -739,6 +740,26 @@ static int region_add(struct vmm_guest *guest,
 	if (i == 64) {
 		rc = VMM_EINVALID;
 		goto region_free_fail;
+	}
+
+	/*
+	 * Overwrite mapping order for alloced RAM/ROM regions
+	 * based on align_order or map_order DT attribute
+	 */
+	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+	    (reg->flags & VMM_REGION_ISALLOCED)) {
+		if ((VMM_PAGE_SHIFT <= reg->align_order) &&
+		    (reg->align_order < reg->map_order)) {
+			reg->map_order = reg->align_order;
+		}
+
+		i = 0;
+		rc = vmm_devtree_read_u32(reg->node,
+				VMM_DEVTREE_MAP_ORDER_ATTR_NAME, &i);
+		if (!rc && (VMM_PAGE_SHIFT <= i)) {
+			reg->map_order = i;
+		}
 	}
 
 	/* Compute number of mappings for guest region */
@@ -819,7 +840,7 @@ static int region_add(struct vmm_guest *guest,
 				rc = VMM_ENOMEM;
 				goto region_ram_free_fail;
 			} else {
-				reg->maps[0].flags |=
+				reg->maps[i].flags |=
 					VMM_REGION_MAPPING_ISHOSTRAM;
 				if (reg->flags & VMM_REGION_ISROM) {
 					vmm_host_memory_set(
