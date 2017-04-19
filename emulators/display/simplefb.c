@@ -102,6 +102,10 @@ static int simplefb_display_pixeldata(struct vmm_vdisplay *vdis,
 		return VMM_EINVALID;
 	}
 
+	if (hsz < gsz) {
+		return VMM_EINVALID;
+	}
+
 	vmm_pixelformat_init_default(pf, s->bits_per_pixel);
 	*rows = s->height;
 	*cols = s->width;
