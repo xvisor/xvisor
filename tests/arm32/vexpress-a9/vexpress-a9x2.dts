@@ -383,6 +383,7 @@
 			physical_size = <0x00800000>;
 			device_type = "alloced_ram";
 			align_order = <21>; /* Align alloced memory to 2MB */
+			map_order = <23>; /* Allocate memory in-terms of 8MB mappings */
 		};
 
 		NET1: lan9118 { /* Ethernet Controller */

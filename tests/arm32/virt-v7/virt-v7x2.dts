@@ -139,6 +139,7 @@
 			guest_physical_addr = <0x30000000>;
 			physical_size = <0x01000000>;
 			align_order = <21>; /* Align alloced memory to 2MB */
+			map_order = <24>; /* Allocate memory in-terms of 16MB mappings */
 			device_type = "alloced_ram";
 		};
 
