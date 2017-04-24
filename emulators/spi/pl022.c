@@ -36,11 +36,12 @@
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
 #include <vmm_modules.h>
+#include <vio/vmm_vspi.h>
 
 #define MODULE_DESC		"PL022 Serial Emulator"
 #define MODULE_AUTHOR		"Chaitanya Dhere"
 #define MODULE_LICENSE		"GPL"
-#define MODULE_IPRIORITY	2
+#define MODULE_IPRIORITY	(VMM_VSPI_IPRIORITY + 1)
 #define MODULE_INIT		pl022_emulator_init
 #define MODULE_EXIT		pl022_emulator_exit
 
@@ -61,6 +62,9 @@
 #define PL022_INT_TX		0x08
 
 struct pl022_state {
+	struct vmm_guest *guest;
+	vmm_spinlock_t lock;
+
 	u32 cr0;
 	u32 cr1;
 	u32 bitmask;
@@ -76,18 +80,18 @@ struct pl022_state {
 	u16 tx_fifo[8];
 	u16 rx_fifo[8];
 	u32 irq;
-	struct vmm_guest *guest;
-	struct vmm_vspi *vser;
 	int int_level;
 	int int_enabled;
 	u8 id[8];
-	vmm_spinlock_t lock;
+
+	struct vmm_vspihost *vsh;
 };
 
 static u32 pl022_id[8] =
 	{ 0x22, 0x10, 0x04, 0x00, 0x0d, 0xf0, 0x05, 0xb1 };
 
-static void pl022_set_irq(struct pl022_state *s, u32 level, u32 enabled)
+/* Note: Must be called with s->lock held */
+static void __pl022_set_irq(struct pl022_state *s, u32 level, u32 enabled)
 {
 	if (level & enabled) {
 		vmm_devemu_emulate_irq(s->guest, s->irq, 1);
@@ -96,7 +100,8 @@ static void pl022_set_irq(struct pl022_state *s, u32 level, u32 enabled)
 	}
 }
 
-static void pl022_update(struct pl022_state *s)
+/* Note: Must be called with s->lock held */
+static void __pl022_update(struct pl022_state *s)
 {
 	bool set_irq = FALSE;
 	u32 level = 0, enabled = 0;
@@ -133,17 +138,22 @@ static void pl022_update(struct pl022_state *s)
 		enabled = s->int_enabled;
 	}
 	if (set_irq) {
-		pl022_set_irq(s, level, enabled);
+		__pl022_set_irq(s, level, enabled);
 	}
 }
 
-static void pl022_xfer(struct pl022_state *s)
+static void pl022_xfer(struct vmm_vspihost *vsh, void *priv)
 {
-	int i;
-	int o;
+	u32 val;
+	int i, o;
+	irq_flags_t flags;
+	struct pl022_state *s = priv;
+
+	vmm_spin_lock_irqsave(&s->lock, flags);
 
 	if ((s->cr1 & PL022_CR1_SSE) == 0) {
-		pl022_update(s);
+		__pl022_update(s);
+		vmm_spin_unlock_irqrestore(&s->lock, flags);
 		return;
 	}
 
@@ -162,24 +172,32 @@ static void pl022_xfer(struct pl022_state *s)
 	falls into (a) because it flushes the RX FIFO to determine when
 	the transfer has completed. */
 	while (s->tx_fifo_len && s->rx_fifo_len < 8) {
+		val = s->tx_fifo[i];
 		if (s->cr1 & PL022_CR1_LBM) {
 			/* Loopback mode. */
-			s->rx_fifo[o] = s->tx_fifo[i];
 		} else {
-			s->rx_fifo[o] = 0;
+			vmm_spin_unlock_irqrestore(&s->lock, flags);
+			val = vmm_vspihost_xfer_data(s->vsh, 0, val);
+			vmm_spin_lock_irqsave(&s->lock, flags);
 		}
+		s->rx_fifo[o] = val & s->bitmask;
 		i = (i + 1) & 7;
 		o = (o + 1) & 7;
 		s->tx_fifo_len--;
 		s->rx_fifo_len++;
 	}
 	s->rx_fifo_head = o;
-	pl022_update(s);
+
+	__pl022_update(s);
+
+	vmm_spin_unlock_irqrestore(&s->lock, flags);
 }
 
 static u64 pl022_read(struct pl022_state *s, u32 offset, u32 *dst)
 {
 	int val, rc = VMM_OK;
+
+	vmm_spin_lock(&s->lock);
 
 	switch (offset) {
 	case 0x00: /* CR0 */
@@ -192,7 +210,7 @@ static u64 pl022_read(struct pl022_state *s, u32 offset, u32 *dst)
 		if (s->rx_fifo_len) {
 			val = s->rx_fifo[(s->rx_fifo_head - s->rx_fifo_len) & 7];
 			s->rx_fifo_len--;
-			pl022_xfer(s);
+			vmm_vspihost_schedule_xfer(s->vsh);
 		} else {
 			val = 0;
 		}
@@ -225,12 +243,16 @@ static u64 pl022_read(struct pl022_state *s, u32 offset, u32 *dst)
 		break;
 	}
 
+	vmm_spin_unlock(&s->lock);
+
 	return rc;
 }
 
 static int pl022_write(struct pl022_state *s, u32 offset, u32 value, u32 src)
 {
 	int rc = VMM_OK;
+
+	vmm_spin_lock(&s->lock);
 
 	switch (offset) {
 	case 0x00: /* CR0 */
@@ -248,14 +270,14 @@ static int pl022_write(struct pl022_state *s, u32 offset, u32 value, u32 src)
 			/* SPI Slave not implemented */
 		}
 		s->int_level |= PL022_INT_TX;
-		pl022_xfer(s);
+		vmm_vspihost_schedule_xfer(s->vsh);
 		break;
 	case 0x08: /* DR */
 		if (s->tx_fifo_len < 8) {
 			s->tx_fifo[s->tx_fifo_head] = src & s->bitmask;
 			s->tx_fifo_head = (s->tx_fifo_head + 1) & 7;
 			s->tx_fifo_len++;
-			pl022_xfer(s);
+			vmm_vspihost_schedule_xfer(s->vsh);
 		}
 		break;
 	case 0x10: /* CPSR */
@@ -266,7 +288,7 @@ static int pl022_write(struct pl022_state *s, u32 offset, u32 value, u32 src)
 		s->im = src;
 		s->int_enabled = (s->int_enabled & src) |
 			(value & ~src);
-		pl022_update(s);
+		__pl022_update(s);
 		break;
 	case 0x20: /* DMACR */
 		if (src) {
@@ -277,6 +299,8 @@ static int pl022_write(struct pl022_state *s, u32 offset, u32 value, u32 src)
 		rc = VMM_OK;
 		break;
 	}
+
+	vmm_spin_unlock(&s->lock);
 
 	return rc;
 }
@@ -294,70 +318,6 @@ static int pl022_emulator_reset(struct vmm_emudev *edev)
 	s->sr = PL022_SR_TFE | PL022_SR_TNF;
 
 	vmm_spin_unlock(&s->lock);
-
-	return VMM_OK;
-}
-
-static int pl022_emulator_probe(struct vmm_guest *guest,
-				struct vmm_emudev *edev,
-				const struct vmm_devtree_nodeid *eid)
-{
-	int rc = VMM_OK;
-	char name[64];
-	struct pl022_state *s;
-
-	s = vmm_zalloc(sizeof(struct pl022_state));
-	if (!s) {
-		rc = VMM_EFAIL;
-		goto pl022_emulator_probe_done;
-	}
-
-	s->guest = guest;
-	INIT_SPIN_LOCK(&s->lock);
-
-	if (eid->data) {
-		s->id[0] = ((u32 *)eid->data)[0];
-		s->id[1] = ((u32 *)eid->data)[1];
-		s->id[2] = ((u32 *)eid->data)[2];
-		s->id[3] = ((u32 *)eid->data)[3];
-		s->id[4] = ((u32 *)eid->data)[4];
-		s->id[5] = ((u32 *)eid->data)[5];
-		s->id[6] = ((u32 *)eid->data)[6];
-		s->id[7] = ((u32 *)eid->data)[7];
-	}
-
-	rc = vmm_devtree_read_u32_atindex(edev->node,
-					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
-					  &s->irq, 0);
-	if (rc) {
-		goto pl022_emulator_probe_freestate_fail;
-	}
-
-	strlcpy(name, guest->name, sizeof(name));
-	strlcat(name, "/", sizeof(name));
-	if (strlcat(name, edev->node->name, sizeof(name)) >= sizeof(name)) {
-		rc = VMM_EOVERFLOW;
-		goto pl022_emulator_probe_freerbuf_fail;
-	}
-
-	edev->priv = s;
-	goto pl022_emulator_probe_done;
-
-pl022_emulator_probe_freerbuf_fail:
-pl022_emulator_probe_freestate_fail:
-	vmm_free(s);
-pl022_emulator_probe_done:
-	return rc;
-}
-
-static int pl022_emulator_remove(struct vmm_emudev *edev)
-{
-	struct pl022_state *s = edev->priv;
-
-	if (s) {
-		vmm_free(s);
-		edev->priv = NULL;
-	}
 
 	return VMM_OK;
 }
@@ -420,6 +380,69 @@ static int pl022_emulator_write32(struct vmm_emudev *edev,
 	return pl022_write(edev->priv, offset, 0x00000000, src);
 }
 
+static int pl022_emulator_probe(struct vmm_guest *guest,
+				struct vmm_emudev *edev,
+				const struct vmm_devtree_nodeid *eid)
+{
+	int rc = VMM_OK;
+	struct pl022_state *s;
+
+	s = vmm_zalloc(sizeof(struct pl022_state));
+	if (!s) {
+		rc = VMM_EFAIL;
+		goto pl022_emulator_probe_done;
+	}
+
+	s->guest = guest;
+	INIT_SPIN_LOCK(&s->lock);
+
+	if (eid->data) {
+		s->id[0] = ((u32 *)eid->data)[0];
+		s->id[1] = ((u32 *)eid->data)[1];
+		s->id[2] = ((u32 *)eid->data)[2];
+		s->id[3] = ((u32 *)eid->data)[3];
+		s->id[4] = ((u32 *)eid->data)[4];
+		s->id[5] = ((u32 *)eid->data)[5];
+		s->id[6] = ((u32 *)eid->data)[6];
+		s->id[7] = ((u32 *)eid->data)[7];
+	}
+
+	rc = vmm_devtree_read_u32_atindex(edev->node,
+					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
+					  &s->irq, 0);
+	if (rc) {
+		goto pl022_emulator_probe_freestate_fail;
+	}
+
+	s->vsh = vmm_vspihost_create(guest->name, edev,
+				     pl022_xfer, 1, s);
+	if (!s->vsh) {
+		rc = VMM_EFAIL;
+		goto pl022_emulator_probe_freestate_fail;
+	}
+
+	edev->priv = s;
+
+	goto pl022_emulator_probe_done;
+
+pl022_emulator_probe_freestate_fail:
+	vmm_free(s);
+pl022_emulator_probe_done:
+	return rc;
+}
+
+static int pl022_emulator_remove(struct vmm_emudev *edev)
+{
+	struct pl022_state *s = edev->priv;
+
+	if (s) {
+		vmm_vspihost_destroy(s->vsh);
+		vmm_free(s);
+		edev->priv = NULL;
+	}
+
+	return VMM_OK;
+}
 
 static struct vmm_devtree_nodeid pl022_emuid_table[] = {
 	{
