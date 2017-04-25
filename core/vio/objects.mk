@@ -21,6 +21,8 @@
 # @brief list of core objects to be build
 # */
 
+core-objs-$(CONFIG_EMU_VIRTIO)+= vio/vmm_virtio.o
+
 core-objs-$(CONFIG_VSERIAL)+= vio/vmm_vserial.o
 
 core-objs-$(CONFIG_VSPI)+= vio/vmm_vspi.o

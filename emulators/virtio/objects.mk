@@ -21,7 +21,5 @@
 # @brief list of virtio emulator objects
 # */
 
-emulators-objs-$(CONFIG_EMU_VIRTIO)+= virtio/virtio.o
-emulators-objs-$(CONFIG_EMU_VIRTIO)+= virtio/virtio_queue.o
 emulators-objs-$(CONFIG_EMU_VIRTIO_MMIO)+= virtio/virtio_mmio.o
 emulators-objs-$(CONFIG_EMU_VIRTIO_PCI)+= virtio/virtio_pci.o

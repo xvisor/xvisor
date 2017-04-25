@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file virtio_console.h
+ * @file vmm_virtio_console.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief VirtIO Console Device Interface.
  *
@@ -58,19 +58,19 @@
  * Copyright (C) Amit Shah <amit.shah@redhat.com>, 2009, 2010, 2011
  */
 
-#ifndef __VIRTIO_CONSOLE_H_
-#define __VIRTIO_CONSOLE_H_
+#ifndef __VMM_VIRTIO_CONSOLE_H__
+#define __VMM_VIRTIO_CONSOLE_H__
 
 #include <vmm_types.h>
 
 /* Feature bits */
-#define VIRTIO_CONSOLE_F_SIZE	0	/* Does host provide console size? */
-#define VIRTIO_CONSOLE_F_MULTIPORT 1	/* Does host provide multiple ports? */
-#define VIRTIO_CONSOLE_F_EMERG_WRITE 2 /* Does host support emergency write? */
+#define VMM_VIRTIO_CONSOLE_F_SIZE		0 /* Does host provide console size? */
+#define VMM_VIRTIO_CONSOLE_F_MULTIPORT		1 /* Does host provide multiple ports? */
+#define VMM_VIRTIO_CONSOLE_F_EMERG_WRITE	2 /* Does host support emergency write? */
 
-#define VIRTIO_CONSOLE_BAD_ID		(~(u32)0)
+#define VMM_VIRTIO_CONSOLE_BAD_ID		(~(u32)0)
 
-struct virtio_console_config {
+struct vmm_virtio_console_config {
 	/* colums of the screens */
 	u16 cols;
 	/* rows of the screens */
@@ -85,20 +85,20 @@ struct virtio_console_config {
  * A message that's passed between the Host and the Guest for a
  * particular port.
  */
-struct virtio_console_control {
+struct vmm_virtio_console_control {
 	u32 id;		/* Port number */
 	u16 event;		/* The kind of control event (see below) */
 	u16 value;		/* Extra information for the key */
 };
 
 /* Some events for control messages */
-#define VIRTIO_CONSOLE_DEVICE_READY	0
-#define VIRTIO_CONSOLE_PORT_ADD		1
-#define VIRTIO_CONSOLE_PORT_REMOVE	2
-#define VIRTIO_CONSOLE_PORT_READY	3
-#define VIRTIO_CONSOLE_CONSOLE_PORT	4
-#define VIRTIO_CONSOLE_RESIZE		5
-#define VIRTIO_CONSOLE_PORT_OPEN	6
-#define VIRTIO_CONSOLE_PORT_NAME	7
+#define VMM_VIRTIO_CONSOLE_DEVICE_READY		0
+#define VMM_VIRTIO_CONSOLE_PORT_ADD		1
+#define VMM_VIRTIO_CONSOLE_PORT_REMOVE		2
+#define VMM_VIRTIO_CONSOLE_PORT_READY		3
+#define VMM_VIRTIO_CONSOLE_CONSOLE_PORT		4
+#define VMM_VIRTIO_CONSOLE_RESIZE		5
+#define VMM_VIRTIO_CONSOLE_PORT_OPEN		6
+#define VMM_VIRTIO_CONSOLE_PORT_NAME		7
 
-#endif /* __VIRTIO_CONSOLE_H_ */
+#endif /* __VMM_VIRTIO_CONSOLE_H__ */

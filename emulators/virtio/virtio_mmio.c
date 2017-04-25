@@ -26,22 +26,28 @@
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
-#include <emu/virtio.h>
-#include <emu/virtio_queue.h>
-#include <emu/virtio_mmio.h>
+#include <vio/vmm_virtio.h>
+#include <vio/vmm_virtio_mmio.h>
 
 #define MODULE_DESC			"VirtIO MMIO Transport"
 #define MODULE_AUTHOR			"Pranav Sawargaonkar"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VIRTIO_IPRIORITY + 1)
+#define MODULE_IPRIORITY		(VMM_VIRTIO_IPRIORITY + 1)
 #define	MODULE_INIT			virtio_mmio_init
 #define	MODULE_EXIT			virtio_mmio_exit
 
-static int virtio_mmio_notify(struct virtio_device *dev, u32 vq)
+struct virtio_mmio_dev {
+	struct vmm_guest *guest;
+	struct vmm_virtio_device dev;
+	struct vmm_virtio_mmio_config config;
+	u32 irq;
+};
+
+static int virtio_mmio_notify(struct vmm_virtio_device *dev, u32 vq)
 {
 	struct virtio_mmio_dev *m = dev->tra_data;
 
-	m->config.interrupt_state |= VIRTIO_MMIO_INT_VRING;
+	m->config.interrupt_state |= VMM_VIRTIO_MMIO_INT_VRING;
 
 	vmm_devemu_emulate_irq(m->guest, m->irq, 1);
 
@@ -55,22 +61,22 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 	int rc = VMM_OK;
 
 	switch (offset) {
-	case VIRTIO_MMIO_MAGIC_VALUE:
-	case VIRTIO_MMIO_VERSION:
-	case VIRTIO_MMIO_DEVICE_ID:
-	case VIRTIO_MMIO_VENDOR_ID:
-	case VIRTIO_MMIO_STATUS:
-	case VIRTIO_MMIO_INTERRUPT_STATUS:
+	case VMM_VIRTIO_MMIO_MAGIC_VALUE:
+	case VMM_VIRTIO_MMIO_VERSION:
+	case VMM_VIRTIO_MMIO_DEVICE_ID:
+	case VMM_VIRTIO_MMIO_VENDOR_ID:
+	case VMM_VIRTIO_MMIO_STATUS:
+	case VMM_VIRTIO_MMIO_INTERRUPT_STATUS:
 		*(u32 *)dst = (*(u32 *)(((void *)&m->config) + offset));
 		break;
-	case VIRTIO_MMIO_HOST_FEATURES:
+	case VMM_VIRTIO_MMIO_HOST_FEATURES:
 		*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
 		break;
-	case VIRTIO_MMIO_QUEUE_PFN:
+	case VMM_VIRTIO_MMIO_QUEUE_PFN:
 		*(u32 *)dst = m->dev.emu->get_pfn_vq(&m->dev,
 					     m->config.queue_sel);
 		break;
-	case VIRTIO_MMIO_QUEUE_NUM_MAX:
+	case VMM_VIRTIO_MMIO_QUEUE_NUM_MAX:
 		*(u32 *)dst = m->dev.emu->get_size_vq(&m->dev,
 					      m->config.queue_sel);
 		break;
@@ -85,9 +91,9 @@ static int virtio_mmio_read(struct virtio_mmio_dev *m,
 			    u32 offset, u32 *dst)
 {
 	/* Device specific config write */
-	if (offset >= VIRTIO_MMIO_CONFIG) {
-		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_read(&m->dev, offset, dst, 4);
+	if (offset >= VMM_VIRTIO_MMIO_CONFIG) {
+		offset -= VMM_VIRTIO_MMIO_CONFIG;
+		return vmm_virtio_config_read(&m->dev, offset, dst, 4);
 	}
 
 	return virtio_mmio_config_read(m, offset, dst, 4);
@@ -101,40 +107,40 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 	u32 val = *(u32 *)(src);
 
 	switch (offset) {
-	case VIRTIO_MMIO_HOST_FEATURES_SEL:
-	case VIRTIO_MMIO_GUEST_FEATURES_SEL:
-	case VIRTIO_MMIO_QUEUE_SEL:
-	case VIRTIO_MMIO_STATUS:
+	case VMM_VIRTIO_MMIO_HOST_FEATURES_SEL:
+	case VMM_VIRTIO_MMIO_GUEST_FEATURES_SEL:
+	case VMM_VIRTIO_MMIO_QUEUE_SEL:
+	case VMM_VIRTIO_MMIO_STATUS:
 		*(u32 *)(((void *)&m->config) + offset) = val;
 		break;
-	case VIRTIO_MMIO_GUEST_FEATURES:
+	case VMM_VIRTIO_MMIO_GUEST_FEATURES:
 		if (m->config.guest_features_sel == 0)  {
 			m->dev.emu->set_guest_features(&m->dev, val);
 		}
 		break;
-	case VIRTIO_MMIO_GUEST_PAGE_SIZE:
+	case VMM_VIRTIO_MMIO_GUEST_PAGE_SIZE:
 		m->config.guest_page_size = val;
 		break;
-	case VIRTIO_MMIO_QUEUE_NUM:
+	case VMM_VIRTIO_MMIO_QUEUE_NUM:
 		m->config.queue_num = val;
 		m->dev.emu->set_size_vq(&m->dev, 
 					m->config.queue_sel,
 					m->config.queue_num);
 		break;
-	case VIRTIO_MMIO_QUEUE_ALIGN:
+	case VMM_VIRTIO_MMIO_QUEUE_ALIGN:
 		m->config.queue_align = val;
 		break;
-	case VIRTIO_MMIO_QUEUE_PFN:
+	case VMM_VIRTIO_MMIO_QUEUE_PFN:
 		m->dev.emu->init_vq(&m->dev, 
 				    m->config.queue_sel,
 				    m->config.guest_page_size,
 				    m->config.queue_align,
 				    val);
 		break;
-	case VIRTIO_MMIO_QUEUE_NOTIFY:
+	case VMM_VIRTIO_MMIO_QUEUE_NOTIFY:
 		m->dev.emu->notify_vq(&m->dev, val);
 		break;
-	case VIRTIO_MMIO_INTERRUPT_ACK:
+	case VMM_VIRTIO_MMIO_INTERRUPT_ACK:
 		m->config.interrupt_state &= ~val;
 		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
@@ -151,9 +157,9 @@ static int virtio_mmio_write(struct virtio_mmio_dev *m,
 	src = src & ~src_mask;
 
 	/* Device specific config write */
-	if (offset >= VIRTIO_MMIO_CONFIG) {
-		offset -= VIRTIO_MMIO_CONFIG;
-		return virtio_config_write(&m->dev, (u32)offset, &src, 4);
+	if (offset >= VMM_VIRTIO_MMIO_CONFIG) {
+		offset -= VMM_VIRTIO_MMIO_CONFIG;
+		return vmm_virtio_config_write(&m->dev, (u32)offset, &src, 4);
 	}
 
 	return virtio_mmio_config_write(m, (u32)offset, &src, 4);
@@ -224,10 +230,10 @@ static int virtio_mmio_reset(struct vmm_emudev *edev)
 	m->config.interrupt_state = 0x0;
 	vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 
-	return virtio_reset(&m->dev);
+	return vmm_virtio_reset(&m->dev);
 }
 
-static struct virtio_transport mmio_tra = {
+static struct vmm_virtio_transport mmio_tra = {
 	.name = "virtio_mmio",
 	.notify = virtio_mmio_notify,
 };
@@ -247,14 +253,14 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 
 	m->guest = guest;
 
-	vmm_snprintf(m->dev.name, VIRTIO_DEVICE_MAX_NAME_LEN, 
+	vmm_snprintf(m->dev.name, VMM_VIRTIO_DEVICE_MAX_NAME_LEN, 
 		     "%s/%s", guest->name, edev->node->name); 
 	m->dev.edev = edev;
 	m->dev.tra = &mmio_tra;
 	m->dev.tra_data = m;
 	m->dev.guest = guest;
 
-	m->config = (struct virtio_mmio_config) {
+	m->config = (struct vmm_virtio_mmio_config) {
 		     .magic          = {'v', 'i', 'r', 't'},
 		     .version        = 1,
 		     .vendor_id      = 0x52535658, /* XVSR */
@@ -276,7 +282,7 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
-	if ((rc = virtio_register_device(&m->dev))) {
+	if ((rc = vmm_virtio_register_device(&m->dev))) {
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
@@ -295,7 +301,7 @@ static int virtio_mmio_remove(struct vmm_emudev *edev)
 	struct virtio_mmio_dev *m = edev->priv;
 
 	if (m) {
-		virtio_unregister_device((struct virtio_device *)&m->dev);
+		vmm_virtio_unregister_device(&m->dev);
 		vmm_free(m);
 		edev->priv = NULL;
 	}

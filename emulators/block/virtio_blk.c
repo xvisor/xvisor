@@ -28,11 +28,10 @@
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
 #include <vio/vmm_vdisk.h>
+#include <vio/vmm_virtio.h>
+#include <vio/vmm_virtio_blk.h>
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
-
-#include <emu/virtio.h>
-#include <emu/virtio_blk.h>
 
 #undef DEBUG
 
@@ -45,7 +44,7 @@
 #define MODULE_DESC			"VirtIO Block Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		(VIRTIO_IPRIORITY + 1)
+#define MODULE_IPRIORITY		(VMM_VIRTIO_IPRIORITY + 1)
 #define MODULE_INIT			virtio_blk_init
 #define MODULE_EXIT			virtio_blk_exit
 
@@ -56,40 +55,40 @@
 #define VIRTIO_BLK_DISK_SEG_MAX		(VIRTIO_BLK_QUEUE_SIZE - 2)
 
 struct virtio_blk_dev_req {
-	struct virtio_queue		*vq;
+	struct vmm_virtio_queue		*vq;
 	u16				head;
-	struct virtio_iovec		*read_iov;
+	struct vmm_virtio_iovec		*read_iov;
 	u32				read_iov_cnt;
 	u32				len;
-	struct virtio_iovec		status_iov;
+	struct vmm_virtio_iovec		status_iov;
 	void				*data;
 	struct vmm_vdisk_request	r;
 };
 
 struct virtio_blk_dev {
-	struct virtio_device 		*vdev;
+	struct vmm_virtio_device 	*vdev;
 
-	struct virtio_queue 		vqs[VIRTIO_BLK_NUM_QUEUES];
-	struct virtio_iovec		iov[VIRTIO_BLK_QUEUE_SIZE];
+	struct vmm_virtio_queue 	vqs[VIRTIO_BLK_NUM_QUEUES];
+	struct vmm_virtio_iovec		iov[VIRTIO_BLK_QUEUE_SIZE];
 	struct virtio_blk_dev_req	reqs[VIRTIO_BLK_QUEUE_SIZE];
-	struct virtio_blk_config 	config;
 	u32 				features;
 
+	struct vmm_virtio_blk_config 	config;
 	struct vmm_vdisk		*vdisk;
 };
 
-static u32 virtio_blk_get_host_features(struct virtio_device *dev)
+static u32 virtio_blk_get_host_features(struct vmm_virtio_device *dev)
 {
-	return	1UL << VIRTIO_BLK_F_SEG_MAX
-		| 1UL << VIRTIO_BLK_F_BLK_SIZE
-		| 1UL << VIRTIO_BLK_F_FLUSH
-		| 1UL << VIRTIO_RING_F_EVENT_IDX;
+	return	1UL << VMM_VIRTIO_BLK_F_SEG_MAX
+		| 1UL << VMM_VIRTIO_BLK_F_BLK_SIZE
+		| 1UL << VMM_VIRTIO_BLK_F_FLUSH
+		| 1UL << VMM_VIRTIO_RING_F_EVENT_IDX;
 #if 0
-		| 1UL << VIRTIO_RING_F_INDIRECT_DESC;
+		| 1UL << VMM_VIRTIO_RING_F_INDIRECT_DESC;
 #endif
 }
 
-static void virtio_blk_set_guest_features(struct virtio_device *dev,
+static void virtio_blk_set_guest_features(struct vmm_virtio_device *dev,
 					  u32 features)
 {
 	struct virtio_blk_dev *vbdev = dev->emu_data;
@@ -97,7 +96,7 @@ static void virtio_blk_set_guest_features(struct virtio_device *dev,
 	vbdev->features = features;
 }
 
-static int virtio_blk_init_vq(struct virtio_device *dev,
+static int virtio_blk_init_vq(struct vmm_virtio_device *dev,
 			      u32 vq, u32 page_size, u32 align,
 			      u32 pfn)
 {
@@ -106,7 +105,7 @@ static int virtio_blk_init_vq(struct virtio_device *dev,
 
 	switch (vq) {
 	case VIRTIO_BLK_IO_QUEUE:
-		rc = virtio_queue_setup(&vbdev->vqs[vq], dev->guest,
+		rc = vmm_virtio_queue_setup(&vbdev->vqs[vq], dev->guest,
 				pfn, page_size, VIRTIO_BLK_QUEUE_SIZE, align);
 		break;
 	default:
@@ -117,14 +116,14 @@ static int virtio_blk_init_vq(struct virtio_device *dev,
 	return rc;
 }
 
-static int virtio_blk_get_pfn_vq(struct virtio_device *dev, u32 vq)
+static int virtio_blk_get_pfn_vq(struct vmm_virtio_device *dev, u32 vq)
 {
 	int rc;
 	struct virtio_blk_dev *vbdev = dev->emu_data;
 
 	switch (vq) {
 	case VIRTIO_BLK_IO_QUEUE:
-		rc = virtio_queue_guest_pfn(&vbdev->vqs[vq]);
+		rc = vmm_virtio_queue_guest_pfn(&vbdev->vqs[vq]);
 		break;
 	default:
 		rc = VMM_EINVALID;
@@ -134,7 +133,7 @@ static int virtio_blk_get_pfn_vq(struct virtio_device *dev, u32 vq)
 	return rc;
 }
 
-static int virtio_blk_get_size_vq(struct virtio_device *dev, u32 vq)
+static int virtio_blk_get_size_vq(struct vmm_virtio_device *dev, u32 vq)
 {
 	int rc;
 
@@ -150,7 +149,8 @@ static int virtio_blk_get_size_vq(struct virtio_device *dev, u32 vq)
 	return rc;
 }
 
-static int virtio_blk_set_size_vq(struct virtio_device *dev, u32 vq, int size)
+static int virtio_blk_set_size_vq(struct vmm_virtio_device *dev,
+				  u32 vq, int size)
 {
 	/* FIXME: dynamic */
 	return size;
@@ -159,13 +159,13 @@ static int virtio_blk_set_size_vq(struct virtio_device *dev, u32 vq, int size)
 static void virtio_blk_req_done(struct virtio_blk_dev *vbdev,
 				struct virtio_blk_dev_req *req, u8 status)
 {
-	struct virtio_device *dev = vbdev->vdev;
+	struct vmm_virtio_device *dev = vbdev->vdev;
 	int queueid = req->vq - vbdev->vqs;
 
 	if (req->read_iov && req->len && req->data &&
-	    (status == VIRTIO_BLK_S_OK) &&
+	    (status == VMM_VIRTIO_BLK_S_OK) &&
 	    (vmm_vdisk_get_request_type(&req->r) == VMM_VDISK_REQUEST_READ)) {
-		virtio_buf_to_iovec_write(dev,
+		vmm_virtio_buf_to_iovec_write(dev,
 					  req->read_iov,
 					  req->read_iov_cnt,
 					  req->data,
@@ -184,11 +184,11 @@ static void virtio_blk_req_done(struct virtio_blk_dev *vbdev,
 		req->data = NULL;
 	}
 
-	virtio_buf_to_iovec_write(dev, &req->status_iov, 1, &status, 1);
+	vmm_virtio_buf_to_iovec_write(dev, &req->status_iov, 1, &status, 1);
 
-	virtio_queue_set_used_elem(req->vq, req->head, req->len);
+	vmm_virtio_queue_set_used_elem(req->vq, req->head, req->len);
 
-	if (virtio_queue_should_signal(req->vq)) {
+	if (vmm_virtio_queue_should_signal(req->vq)) {
 		dev->tra->notify(dev, queueid);
 	}
 }
@@ -225,7 +225,7 @@ static void virtio_blk_req_completed(struct vmm_vdisk *vdisk,
 
 	virtio_blk_req_done(vmm_vdisk_priv(vdisk),
 			    container_of(vreq, struct virtio_blk_dev_req, r),
-			    VIRTIO_BLK_S_OK);
+			    VMM_VIRTIO_BLK_S_OK);
 }
 
 static void virtio_blk_req_failed(struct vmm_vdisk *vdisk,
@@ -236,23 +236,23 @@ static void virtio_blk_req_failed(struct vmm_vdisk *vdisk,
 
 	virtio_blk_req_done(vmm_vdisk_priv(vdisk),
 			    container_of(vreq, struct virtio_blk_dev_req, r),
-			    VIRTIO_BLK_S_IOERR);
+			    VMM_VIRTIO_BLK_S_IOERR);
 }
 
-static void virtio_blk_do_io(struct virtio_device *dev,
+static void virtio_blk_do_io(struct vmm_virtio_device *dev,
 			     struct virtio_blk_dev *vbdev)
 {
 	u16 head;
 	u32 i, iov_cnt, len;
-	struct virtio_queue *vq = &vbdev->vqs[VIRTIO_BLK_IO_QUEUE];
 	struct virtio_blk_dev_req *req;
-	struct virtio_blk_outhdr hdr;
+	struct vmm_virtio_queue *vq = &vbdev->vqs[VIRTIO_BLK_IO_QUEUE];
+	struct vmm_virtio_blk_outhdr hdr;
 
-	while (virtio_queue_available(vq)) {
-		head = virtio_queue_pop(vq);
+	while (vmm_virtio_queue_available(vq)) {
+		head = vmm_virtio_queue_pop(vq);
 		req = &vbdev->reqs[head];
-		head = virtio_queue_get_head_iovec(vq, head, vbdev->iov,
-						   &iov_cnt, &len);
+		head = vmm_virtio_queue_get_head_iovec(vq, head, vbdev->iov,
+						       &iov_cnt, &len);
 
 		req->vq = vq;
 		req->head = head;
@@ -266,28 +266,28 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 		req->status_iov.len = vbdev->iov[iov_cnt - 1].len;
 		vmm_vdisk_set_request_type(&req->r, VMM_VDISK_REQUEST_UNKNOWN);
 
-		len = virtio_iovec_to_buf_read(dev, &vbdev->iov[0], 1,
-						&hdr, sizeof(hdr));
+		len = vmm_virtio_iovec_to_buf_read(dev, &vbdev->iov[0], 1,
+						   &hdr, sizeof(hdr));
 		if (len < sizeof(hdr)) {
-			virtio_queue_set_used_elem(req->vq, req->head, 0);
+			vmm_virtio_queue_set_used_elem(req->vq, req->head, 0);
 			continue;
 		}
 
 		switch (hdr.type) {
-		case VIRTIO_BLK_T_IN:
+		case VMM_VIRTIO_BLK_T_IN:
 			vmm_vdisk_set_request_type(&req->r,
 						   VMM_VDISK_REQUEST_READ);
 			req->data = vmm_malloc(req->len);
 			if (!req->data) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 				continue;
 			}
-			len = sizeof(struct virtio_iovec) * (iov_cnt - 2);
+			len = sizeof(struct vmm_virtio_iovec) * (iov_cnt - 2);
 			req->read_iov = vmm_malloc(len);
 			if (!req->read_iov) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 				continue;
 			}
 			req->read_iov_cnt = iov_cnt - 2;
@@ -306,16 +306,16 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 						 VMM_VDISK_REQUEST_READ,
 						 hdr.sector, req->data, req->len);
 			break;
-		case VIRTIO_BLK_T_OUT:
+		case VMM_VIRTIO_BLK_T_OUT:
 			vmm_vdisk_set_request_type(&req->r,
 						   VMM_VDISK_REQUEST_WRITE);
 			req->data = vmm_malloc(req->len);
 			if (!req->data) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 				continue;
 			} else {
-				virtio_iovec_to_buf_read(dev,
+				vmm_virtio_iovec_to_buf_read(dev,
 							 &vbdev->iov[1],
 							 iov_cnt - 2,
 							 req->data,
@@ -332,33 +332,34 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 						 VMM_VDISK_REQUEST_WRITE,
 						 hdr.sector, req->data, req->len);
 			break;
-		case VIRTIO_BLK_T_FLUSH:
+		case VMM_VIRTIO_BLK_T_FLUSH:
 			vmm_vdisk_set_request_type(&req->r,
 						   VMM_VDISK_REQUEST_WRITE);
 			DPRINTF("%s: VIRTIO_BLK_T_FLUSH dev=%s\n",
 				__func__, dev->name);
 			if (vmm_vdisk_flush_cache(vbdev->vdisk)) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 			} else {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_OK);
+						    VMM_VIRTIO_BLK_S_OK);
 			}
 			break;
-		case VIRTIO_BLK_T_GET_ID:
+		case VMM_VIRTIO_BLK_T_GET_ID:
 			vmm_vdisk_set_request_type(&req->r,
 						   VMM_VDISK_REQUEST_READ);
-			req->len = VIRTIO_BLK_ID_BYTES;
+			req->len = VMM_VIRTIO_BLK_ID_BYTES;
 			req->data = vmm_zalloc(req->len);
 			if (!req->data) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 				continue;
 			}
-			req->read_iov = vmm_malloc(sizeof(struct virtio_iovec));
+			req->read_iov =
+				vmm_malloc(sizeof(struct vmm_virtio_iovec));
 			if (!req->read_iov) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 				continue;
 			}
 			req->read_iov_cnt = 1;
@@ -369,10 +370,10 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 			if (vmm_vdisk_current_block_device(vbdev->vdisk,
 							req->data, req->len)) {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_IOERR);
+						    VMM_VIRTIO_BLK_S_IOERR);
 			} else {
 				virtio_blk_req_done(vbdev, req,
-						    VIRTIO_BLK_S_OK);
+						    VMM_VIRTIO_BLK_S_OK);
 			}
 			break;
 		default:
@@ -381,7 +382,7 @@ static void virtio_blk_do_io(struct virtio_device *dev,
 	}
 }
 
-static int virtio_blk_notify_vq(struct virtio_device *dev, u32 vq)
+static int virtio_blk_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 {
 	int rc = VMM_OK;
 	struct virtio_blk_dev *vbdev = dev->emu_data;
@@ -400,7 +401,7 @@ static int virtio_blk_notify_vq(struct virtio_device *dev, u32 vq)
 	return rc;
 }
 
-static int virtio_blk_read_config(struct virtio_device *dev,
+static int virtio_blk_read_config(struct vmm_virtio_device *dev,
 				  u32 offset, void *dst, u32 dst_len)
 {
 	u32 i;
@@ -417,7 +418,7 @@ static int virtio_blk_read_config(struct virtio_device *dev,
 	return VMM_OK;
 }
 
-static int virtio_blk_write_config(struct virtio_device *dev,
+static int virtio_blk_write_config(struct vmm_virtio_device *dev,
 				   u32 offset, void *src, u32 src_len)
 {
 	u32 i;
@@ -434,7 +435,7 @@ static int virtio_blk_write_config(struct virtio_device *dev,
 	return VMM_OK;
 }
 
-static int virtio_blk_reset(struct virtio_device *dev)
+static int virtio_blk_reset(struct vmm_virtio_device *dev)
 {
 	int i, rc;
 	struct virtio_blk_dev_req *req;
@@ -453,7 +454,7 @@ static int virtio_blk_reset(struct virtio_device *dev)
 					   VMM_VDISK_REQUEST_UNKNOWN);
 	}
 
-	rc = virtio_queue_cleanup(&vbdev->vqs[VIRTIO_BLK_IO_QUEUE]);
+	rc = vmm_virtio_queue_cleanup(&vbdev->vqs[VIRTIO_BLK_IO_QUEUE]);
 	if (rc) {
 		return rc;
 	}
@@ -461,8 +462,8 @@ static int virtio_blk_reset(struct virtio_device *dev)
 	return VMM_OK;
 }
 
-static int virtio_blk_connect(struct virtio_device *dev,
-			      struct virtio_emulator *emu)
+static int virtio_blk_connect(struct vmm_virtio_device *dev,
+			      struct vmm_virtio_emulator *emu)
 {
 	const char *attr;
 	struct virtio_blk_dev *vbdev;
@@ -502,7 +503,7 @@ static int virtio_blk_connect(struct virtio_device *dev,
 	return VMM_OK;
 }
 
-static void virtio_blk_disconnect(struct virtio_device *dev)
+static void virtio_blk_disconnect(struct vmm_virtio_device *dev)
 {
 	struct virtio_blk_dev *vbdev = dev->emu_data;
 
@@ -512,12 +513,12 @@ static void virtio_blk_disconnect(struct virtio_device *dev)
 	vmm_free(vbdev);
 }
 
-struct virtio_device_id virtio_blk_emu_id[] = {
-	{.type = VIRTIO_ID_BLOCK},
+struct vmm_virtio_device_id virtio_blk_emu_id[] = {
+	{ .type = VMM_VIRTIO_ID_BLOCK },
 	{ },
 };
 
-struct virtio_emulator virtio_blk = {
+struct vmm_virtio_emulator virtio_blk = {
 	.name = "virtio_blk",
 	.id_table = virtio_blk_emu_id,
 
@@ -540,12 +541,12 @@ struct virtio_emulator virtio_blk = {
 
 static int __init virtio_blk_init(void)
 {
-	return virtio_register_emulator(&virtio_blk);
+	return vmm_virtio_register_emulator(&virtio_blk);
 }
 
 static void __exit virtio_blk_exit(void)
 {
-	virtio_unregister_emulator(&virtio_blk);
+	vmm_virtio_unregister_emulator(&virtio_blk);
 }
 
 VMM_DECLARE_MODULE(MODULE_DESC,

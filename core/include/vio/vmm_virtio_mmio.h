@@ -16,91 +16,91 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file virtio_mmio.h
+ * @file vmm_virtio_mmio.h
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief VirtIO MMIO Framework Interface
+ * @brief VirtIO MMIO Transport Interface
  */
 
-#ifndef _VIRTIO_MMIO_H__
-#define _VIRTIO_MMIO_H__
+#ifndef __VMM_VIRTIO_MMIO_H__
+#define __VMM_VIRTIO_MMIO_H__
 
 /*
  * Control registers --> Copied from linux's virtio_mmio.h
  */
 
 /* Magic value ("virt" string) - Read Only */
-#define VIRTIO_MMIO_MAGIC_VALUE		0x000
+#define VMM_VIRTIO_MMIO_MAGIC_VALUE		0x000
 
 /* Virtio device version - Read Only */
-#define VIRTIO_MMIO_VERSION		0x004
+#define VMM_VIRTIO_MMIO_VERSION			0x004
 
 /* Virtio device ID - Read Only */
-#define VIRTIO_MMIO_DEVICE_ID		0x008
+#define VMM_VIRTIO_MMIO_DEVICE_ID		0x008
 
 /* Virtio vendor ID - Read Only */
-#define VIRTIO_MMIO_VENDOR_ID		0x00c
+#define VMM_VIRTIO_MMIO_VENDOR_ID		0x00c
 
 /* Bitmask of the features supported by the host
  * (32 bits per set) - Read Only */
-#define VIRTIO_MMIO_HOST_FEATURES	0x010
+#define VMM_VIRTIO_MMIO_HOST_FEATURES		0x010
 
 /* Host features set selector - Write Only */
-#define VIRTIO_MMIO_HOST_FEATURES_SEL	0x014
+#define VMM_VIRTIO_MMIO_HOST_FEATURES_SEL	0x014
 
 /* Bitmask of features activated by the guest
  * (32 bits per set) - Write Only */
-#define VIRTIO_MMIO_GUEST_FEATURES	0x020
+#define VMM_VIRTIO_MMIO_GUEST_FEATURES		0x020
 
 /* Activated features set selector - Write Only */
-#define VIRTIO_MMIO_GUEST_FEATURES_SEL	0x024
+#define VMM_VIRTIO_MMIO_GUEST_FEATURES_SEL	0x024
 
 /* Guest's memory page size in bytes - Write Only */
-#define VIRTIO_MMIO_GUEST_PAGE_SIZE	0x028
+#define VMM_VIRTIO_MMIO_GUEST_PAGE_SIZE		0x028
 
 /* Queue selector - Write Only */
-#define VIRTIO_MMIO_QUEUE_SEL		0x030
+#define VMM_VIRTIO_MMIO_QUEUE_SEL		0x030
 
 /* Maximum size of the currently selected queue - Read Only */
-#define VIRTIO_MMIO_QUEUE_NUM_MAX	0x034
+#define VMM_VIRTIO_MMIO_QUEUE_NUM_MAX		0x034
 
 /* Queue size for the currently selected queue - Write Only */
-#define VIRTIO_MMIO_QUEUE_NUM		0x038
+#define VMM_VIRTIO_MMIO_QUEUE_NUM		0x038
 
 /* Used Ring alignment for the currently selected queue - Write Only */
-#define VIRTIO_MMIO_QUEUE_ALIGN		0x03c
+#define VMM_VIRTIO_MMIO_QUEUE_ALIGN		0x03c
 
 /* Guest's PFN for the currently selected queue - Read Write */
-#define VIRTIO_MMIO_QUEUE_PFN		0x040
+#define VMM_VIRTIO_MMIO_QUEUE_PFN		0x040
 
 /* Queue notifier - Write Only */
-#define VIRTIO_MMIO_QUEUE_NOTIFY	0x050
+#define VMM_VIRTIO_MMIO_QUEUE_NOTIFY		0x050
 
 /* Interrupt status - Read Only */
-#define VIRTIO_MMIO_INTERRUPT_STATUS	0x060
+#define VMM_VIRTIO_MMIO_INTERRUPT_STATUS	0x060
 
 /* Interrupt acknowledge - Write Only */
-#define VIRTIO_MMIO_INTERRUPT_ACK	0x064
+#define VMM_VIRTIO_MMIO_INTERRUPT_ACK		0x064
 
 /* Device status register - Read Write */
-#define VIRTIO_MMIO_STATUS		0x070
+#define VMM_VIRTIO_MMIO_STATUS			0x070
 
 /* The config space is defined by each driver as
  * the per-driver configuration space - Read Write */
-#define VIRTIO_MMIO_CONFIG		0x100
+#define VMM_VIRTIO_MMIO_CONFIG			0x100
 
 
 /*
  * Interrupt flags (re: interrupt status & acknowledge registers)
  */
 
-#define VIRTIO_MMIO_INT_VRING		(1 << 0)
-#define VIRTIO_MMIO_INT_CONFIG		(1 << 1)
+#define VMM_VIRTIO_MMIO_INT_VRING		(1 << 0)
+#define VMM_VIRTIO_MMIO_INT_CONFIG		(1 << 1)
 
-#define VIRTIO_MMIO_MAX_VQ      3
-#define VIRTIO_MMIO_MAX_CONFIG  1
-#define VIRTIO_MMIO_IO_SIZE     0x200
+#define VMM_VIRTIO_MMIO_MAX_VQ			3
+#define VMM_VIRTIO_MMIO_MAX_CONFIG		1
+#define VMM_VIRTIO_MMIO_IO_SIZE			0x200
 
-struct virtio_mmio_config {
+struct vmm_virtio_mmio_config {
 	char    magic[4];
 	u32     version;
 	u32     device_id;
@@ -126,12 +126,4 @@ struct virtio_mmio_config {
 	u32     status;
 } __attribute__((packed));
 
-struct virtio_mmio_dev {
-	struct vmm_guest *guest;
-	struct virtio_device dev;
-	struct virtio_mmio_config config;
-	u32 irq;
-	u32 addr;
-};
-
-#endif
+#endif /* __VMM_VIRTIO_MMIO_H__ */

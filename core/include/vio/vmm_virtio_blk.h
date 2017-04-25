@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file virtio_blk.h
+ * @file vmm_virtio_blk.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief VirtIO Block Device Interface.
  *
@@ -53,29 +53,29 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __VIRTIO_BLK_H_
-#define __VIRTIO_BLK_H_
+#ifndef __VMM_VIRTIO_BLK_H__
+#define __VMM_VIRTIO_BLK_H__
 
 #include <vmm_types.h>
 
 /* Feature bits */
-#define VIRTIO_BLK_F_BARRIER	0	/* Does host support barriers? */
-#define VIRTIO_BLK_F_SIZE_MAX	1	/* Indicates maximum segment size */
-#define VIRTIO_BLK_F_SEG_MAX	2	/* Indicates maximum # of segments */
-#define VIRTIO_BLK_F_GEOMETRY	4	/* Legacy geometry available  */
-#define VIRTIO_BLK_F_RO		5	/* Disk is read-only */
-#define VIRTIO_BLK_F_BLK_SIZE	6	/* Block size of disk is available*/
-#define VIRTIO_BLK_F_SCSI	7	/* Supports scsi command passthru */
-#define VIRTIO_BLK_F_WCE	9	/* Writeback mode enabled after reset */
-#define VIRTIO_BLK_F_TOPOLOGY	10	/* Topology information is available */
-#define VIRTIO_BLK_F_CONFIG_WCE	11	/* Writeback mode available in config */
+#define VMM_VIRTIO_BLK_F_BARRIER	0	/* Does host support barriers? */
+#define VMM_VIRTIO_BLK_F_SIZE_MAX	1	/* Indicates maximum segment size */
+#define VMM_VIRTIO_BLK_F_SEG_MAX	2	/* Indicates maximum # of segments */
+#define VMM_VIRTIO_BLK_F_GEOMETRY	4	/* Legacy geometry available  */
+#define VMM_VIRTIO_BLK_F_RO		5	/* Disk is read-only */
+#define VMM_VIRTIO_BLK_F_BLK_SIZE	6	/* Block size of disk is available*/
+#define VMM_VIRTIO_BLK_F_SCSI		7	/* Supports scsi command passthru */
+#define VMM_VIRTIO_BLK_F_WCE		9	/* Writeback mode enabled after reset */
+#define VMM_VIRTIO_BLK_F_TOPOLOGY	10	/* Topology information is available */
+#define VMM_VIRTIO_BLK_F_CONFIG_WCE	11	/* Writeback mode available in config */
 
 /* Old (deprecated) name for VIRTIO_BLK_F_WCE. */
-#define VIRTIO_BLK_F_FLUSH VIRTIO_BLK_F_WCE
+#define VMM_VIRTIO_BLK_F_FLUSH		VMM_VIRTIO_BLK_F_WCE
 
-#define VIRTIO_BLK_ID_BYTES	20	/* ID string length */
+#define VMM_VIRTIO_BLK_ID_BYTES		20	/* ID string length */
 
-struct virtio_blk_config {
+struct vmm_virtio_blk_config {
 	/* The capacity (in 512-byte sectors). */
 	u64 capacity;
 	/* The maximum segment size (if VIRTIO_BLK_F_SIZE_MAX) */
@@ -83,7 +83,7 @@ struct virtio_blk_config {
 	/* The maximum number of segments (if VIRTIO_BLK_F_SEG_MAX) */
 	u32 seg_max;
 	/* geometry the device (if VIRTIO_BLK_F_GEOMETRY) */
-	struct virtio_blk_geometry {
+	struct vmm_virtio_blk_geometry {
 		u16 cylinders;
 		u8 heads;
 		u8 sectors;
@@ -118,23 +118,23 @@ struct virtio_blk_config {
  */
 
 /* These two define direction. */
-#define VIRTIO_BLK_T_IN		0
-#define VIRTIO_BLK_T_OUT	1
+#define VMM_VIRTIO_BLK_T_IN		0
+#define VMM_VIRTIO_BLK_T_OUT		1
 
 /* This bit says it's a scsi command, not an actual read or write. */
-#define VIRTIO_BLK_T_SCSI_CMD	2
+#define VMM_VIRTIO_BLK_T_SCSI_CMD	2
 
 /* Cache flush command */
-#define VIRTIO_BLK_T_FLUSH	4
+#define VMM_VIRTIO_BLK_T_FLUSH		4
 
 /* Get device ID command */
-#define VIRTIO_BLK_T_GET_ID    8
+#define VMM_VIRTIO_BLK_T_GET_ID		8
 
 /* Barrier before this op. */
-#define VIRTIO_BLK_T_BARRIER	0x80000000
+#define VMM_VIRTIO_BLK_T_BARRIER	0x80000000
 
 /* This is the first element of the read scatter-gather list. */
-struct virtio_blk_outhdr {
+struct vmm_virtio_blk_outhdr {
 	/* VIRTIO_BLK_T* */
 	u32 type;
 	/* io priority. */
@@ -143,7 +143,7 @@ struct virtio_blk_outhdr {
 	u64 sector;
 };
 
-struct virtio_scsi_inhdr {
+struct vmm_virtio_scsi_inhdr {
 	u32 errors;
 	u32 data_len;
 	u32 sense_len;
@@ -151,8 +151,8 @@ struct virtio_scsi_inhdr {
 };
 
 /* And this is the final byte of the write scatter-gather list. */
-#define VIRTIO_BLK_S_OK		0
-#define VIRTIO_BLK_S_IOERR	1
-#define VIRTIO_BLK_S_UNSUPP	2
+#define VMM_VIRTIO_BLK_S_OK		0
+#define VMM_VIRTIO_BLK_S_IOERR		1
+#define VMM_VIRTIO_BLK_S_UNSUPP		2
 
-#endif /* __VIRTIO_BLK_H_ */
+#endif /* __VMM_VIRTIO_BLK_H__ */
