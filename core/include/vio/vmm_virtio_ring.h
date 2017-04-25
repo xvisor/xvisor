@@ -96,10 +96,13 @@ struct vmm_vring_used {
 struct vmm_vring {
 	unsigned int num;
 
+	struct vmm_vring_desc *desc;
 	physical_addr_t desc_pa;
 
+	struct vmm_vring_avail *avail;
 	physical_addr_t avail_pa;
 
+	struct vmm_vring_used *used;
 	physical_addr_t used_pa;
 };
 
@@ -126,12 +129,21 @@ struct vmm_vring {
  */
 static inline void vmm_vring_init(struct vmm_vring *vr,
 				  unsigned int num,
+				  void *base,
 				  physical_addr_t base_pa,
 				  unsigned long align)
 {
 	vr->num = num;
+
+	vr->desc = base;
 	vr->desc_pa = base_pa;
+
+	vr->avail = base + num * sizeof(struct vmm_vring_desc);
 	vr->avail_pa = base_pa + num * sizeof(struct vmm_vring_desc);
+
+	vr->used = (void *)&vr->avail->ring[num];
+	vr->used =
+	(void *)(((unsigned long)vr->used + align - 1) & ~(align - 1));
 	vr->used_pa = vr->avail_pa +
 		      offsetof(struct vmm_vring_avail, ring[num]);
 	vr->used_pa = (vr->used_pa + align - 1) & ~(align - 1);

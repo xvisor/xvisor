@@ -357,7 +357,7 @@ int vmm_virtio_queue_setup(struct vmm_virtio_queue *vq,
 		return VMM_EINVALID;
 	}
 
-	vmm_vring_init(&vq->vring, desc_count, gphys_addr, align);
+	vmm_vring_init(&vq->vring, desc_count, NULL, gphys_addr, align);
 
 	vq->guest = guest;
 	vq->desc_count = desc_count;
