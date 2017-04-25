@@ -18,7 +18,7 @@
  *
  * @file vmm_virtio.c
  * @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
- * @brief VirtIO Core Framework Implementation
+ * @brief VirtIO Para-virtualization Framework Implementation
  */
 
 #include <vmm_error.h>
@@ -33,12 +33,12 @@
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
 
-#define MODULE_DESC			"VirtIO Core"
-#define MODULE_AUTHOR			"Pranav Sawargaonkar"
-#define MODULE_LICENSE			"GPL"
-#define MODULE_IPRIORITY		VMM_VIRTIO_IPRIORITY
-#define	MODULE_INIT			vmm_virtio_core_init
-#define	MODULE_EXIT			vmm_virtio_core_exit
+#define MODULE_DESC		"VirtIO Para-virtualization Framework"
+#define MODULE_AUTHOR		"Pranav Sawargaonkar"
+#define MODULE_LICENSE		"GPL"
+#define MODULE_IPRIORITY	VMM_VIRTIO_IPRIORITY
+#define	MODULE_INIT		vmm_virtio_core_init
+#define	MODULE_EXIT		vmm_virtio_core_exit
 
 /*
  * virtio_mutex protects entire virtio subsystem and is taken every time
