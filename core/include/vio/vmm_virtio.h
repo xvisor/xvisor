@@ -24,6 +24,7 @@
 #define __VMM_VIRTIO_H__
 
 #include <vmm_types.h>
+#include <vio/vmm_virtio_ids.h>
 #include <vio/vmm_virtio_ring.h>
 #include <libs/list.h>
 
@@ -31,25 +32,6 @@
 #define VMM_VIRTIO_IPRIORITY				1
 
 #define VMM_VIRTIO_DEVICE_MAX_NAME_LEN			64
-
-enum vmm_virtio_id {
-	VMM_VIRTIO_ID_NET		=  1, /* Network card */
-	VMM_VIRTIO_ID_BLOCK		=  2, /* Block device */
-	VMM_VIRTIO_ID_CONSOLE		=  3, /* Console */
-	VMM_VIRTIO_ID_RNG		=  4, /* Entropy source */
-	VMM_VIRTIO_ID_BALLOON		=  5, /* Memory ballooning (traditional) */
-	VMM_VIRTIO_ID_IO_MEMORY		=  6, /* ioMemory */
-	VMM_VIRTIO_ID_RPMSG		=  7, /* rpmsg (remote processor messaging) */
-	VMM_VIRTIO_ID_SCSI		=  8, /* SCSI host */
-	VMM_VIRTIO_ID_9P		=  9, /* 9P transport */
-	VMM_VIRTIO_ID_MAC_VLAN		= 10, /* mac 802.11 Vlan */
-	VMM_VIRTIO_ID_RPROC_SERIAL	= 11, /* rproc serial */
-	VMM_VIRTIO_ID_CAIF		= 12, /* virtio CAIF */
-	VMM_VIRTIO_ID_BALLOON_NEW	= 13, /* New memory ballooning */
-	VMM_VIRTIO_ID_GPU		= 16, /* GPU device */
-	VMM_VIRTIO_ID_TIMER		= 17, /* Timer/Clock device */
-	VMM_VIRTIO_ID_INPUT		= 18, /* Input device */
-};
 
 #define VMM_VIRTIO_IRQ_LOW		0
 #define VMM_VIRTIO_IRQ_HIGH		1
