@@ -24,6 +24,7 @@
 #define __VMM_VIRTIO_IDS_H__
 
 enum vmm_virtio_id {
+	VMM_VIRTIO_ID_UNKNOWN		=  0, /* Unknown */
 	VMM_VIRTIO_ID_NET		=  1, /* Network card */
 	VMM_VIRTIO_ID_BLOCK		=  2, /* Block device */
 	VMM_VIRTIO_ID_CONSOLE		=  3, /* Console */
@@ -41,5 +42,7 @@ enum vmm_virtio_id {
 	VMM_VIRTIO_ID_TIMER		= 17, /* Timer/Clock device */
 	VMM_VIRTIO_ID_INPUT		= 18, /* Input device */
 };
+
+#define VMM_VIRTIO_ID_ANY		0xffffffff
 
 #endif /* __VMM_VIRTIO_IDS_H__ */

@@ -24,17 +24,18 @@
 #define __VMM_VIRTIO_H__
 
 #include <vmm_types.h>
+#include <vio/vmm_virtio_config.h>
 #include <vio/vmm_virtio_ids.h>
 #include <vio/vmm_virtio_ring.h>
 #include <libs/list.h>
 
 /** VirtIO module intialization priority */
-#define VMM_VIRTIO_IPRIORITY				1
+#define VMM_VIRTIO_IPRIORITY			1
 
-#define VMM_VIRTIO_DEVICE_MAX_NAME_LEN			64
+#define VMM_VIRTIO_DEVICE_MAX_NAME_LEN		64
 
-#define VMM_VIRTIO_IRQ_LOW		0
-#define VMM_VIRTIO_IRQ_HIGH		1
+#define VMM_VIRTIO_IRQ_LOW			0
+#define VMM_VIRTIO_IRQ_HIGH			1
 
 struct vmm_guest;
 struct vmm_virtio_device;
