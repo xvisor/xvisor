@@ -176,7 +176,9 @@ void vmm_smp_ipi_exec(void)
 	}
 
 	/* Signal IPI available event */
-	vmm_completion_complete(&ictlp->ipi_avail);
+	if (!fifo_isempty(ictlp->async_fifo)) {
+		vmm_completion_complete(&ictlp->ipi_avail);
+	}
 }
 
 void vmm_smp_ipi_async_call(const struct vmm_cpumask *dest,
