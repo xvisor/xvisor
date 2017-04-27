@@ -559,7 +559,7 @@ static void __vgic_irq_handle(struct vgic_guest_state *s, u32 irq, int cpu,
 		/* In case of PPIs and SGIs */
 		cm = target = (1 << cpu);
 	} else {
-		/* In case of SGIs */
+		/* In case of SPIs */
 		cm = VGIC_ALL_CPU_MASK(s);
 		target = VGIC_TARGET(s, irq);
 		for (cpu = 0; cpu < VGIC_NUM_CPU(s); cpu++) {
