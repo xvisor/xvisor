@@ -45,6 +45,12 @@
 #define BIT_WORD(bit)			((bit) / BITS_PER_LONG)
 #define BIT_WORD_OFFSET(bit)		((bit) & (BITS_PER_LONG - 1))
 
+#define BITS_PER_LONG_LONG		(ARCH_BITS_PER_LONG_LONG)
+
+#define BIT_ULL(nr)			(1ULL << (nr))
+#define BIT_ULL_MASK(nr)		(1ULL << ((nr) % BITS_PER_LONG_LONG))
+#define BIT_ULL_WORD(nr)		((nr) / BITS_PER_LONG_LONG)
+
 /**
  * ffs - Find first bit set
  * @x: the word to search

@@ -86,5 +86,6 @@ typedef struct {
 	{ .lock = __ARCH_RW_UNLOCKED, }
 
 #define ARCH_BITS_PER_LONG		64
+#define ARCH_BITS_PER_LONG_LONG		64
 
 #endif /* _ARCH_TYPES_H__ */
