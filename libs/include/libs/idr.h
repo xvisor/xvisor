@@ -41,7 +41,7 @@ struct idr __name
 
 #define INIT_IDR(__idr)		\
 do { \
-	INIT_RADIX_TREE(&(__idr)->root)); \
+	INIT_RADIX_TREE(&(__idr)->root, 0); \
 } while (0)
 
 /** Allocate id for given pointer */
