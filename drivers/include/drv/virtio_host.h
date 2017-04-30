@@ -24,6 +24,7 @@
  * include/linux/virtio.h
  * include/linux/virtio_config.h
  * include/linux/virtio_byteorder.h
+ * include/linux/virtio_ring.h
  *
  * The original code is licensed under the GPL.
  */
@@ -35,6 +36,7 @@
 #include <vmm_macros.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
+#include <vmm_host_irq.h>
 #include <vmm_devdrv.h>
 #include <vio/vmm_virtio_config.h>
 #include <vio/vmm_virtio_ids.h>
@@ -48,19 +50,231 @@ struct virtio_host_queue;
 struct virtio_host_device_id;
 struct virtio_host_device;
 
+typedef bool (*virtio_host_queue_notify_t)(struct virtio_host_queue *);
 typedef void (*virtio_host_queue_callback_t)(struct virtio_host_queue *);
 
-struct virtio_host_queue {
-	struct dlist head;
-	const char *name;
-	virtio_host_queue_callback_t callback;
-	struct virtio_host_device *vdev;
-	unsigned int index;
-	struct vmm_vring vring;
+/** VirtIO host IO vector */
+struct virtio_host_iovec {
+	void *buf;
+	unsigned int buf_len;
 };
 
-/* TODO: VirtIO host queue APIs */
+/** Initialize VirtIO host IO vector */
+#define VIRTIO_HOST_INIT_IOVEC(__iovec, __buf, __buf_len) \
+do { \
+	(__iovec)->buf = (__buf); \
+	(__iovec)->buf_len = (__buf_len); \
+while (0)
 
+/** VirtIO host descriptor state */
+struct virtio_host_desc_state {
+	void *data;
+};
+
+/** VirtIO host queue */
+struct virtio_host_queue {
+	unsigned int index;
+	struct dlist head;
+	const char *name;
+
+	/* Parent VirtIO host device */
+	struct virtio_host_device *vdev;
+
+	/* Can we use weak barriers? */
+	bool weak_barriers;
+
+	/* Host publishes indirect descriptor support */
+	bool indirect;
+
+	/* Host publishes avail event idx */
+	bool event;
+
+	/* Host is broken */
+	bool broken;
+
+	/* Head of free buffer list. */
+	unsigned int free_head;
+
+	/* Number of free descriptors */
+	unsigned int num_free;
+
+	/* Number we've added since last sync. */
+	unsigned int num_added;
+
+	/* Last used index we've seen. */
+	u16 last_used_idx;
+
+	/* Last written value to avail->flags */
+	u16 avail_flags_shadow;
+
+	/* Last written value to avail->idx in guest byte order */
+	u16 avail_idx_shadow;
+
+	/* VirtIO host transport notify */
+	virtio_host_queue_notify_t notify;
+
+	/* VirtIO host driver callback */
+	virtio_host_queue_callback_t callback;
+
+	/* Location and size of VirtIO ring */
+	size_t vring_size;
+	physical_addr_t vring_dma_base;
+
+	/* Underlying VirtIO ring */
+	struct vmm_vring vring;
+
+	/* VirtIO host descriptor state */
+	struct virtio_host_desc_state desc_state[];
+};
+
+/**
+ * Expose buffers to other end
+ *
+ * @vq: the struct virtio_host_queue we're talking about.
+ * @ivs: virtio IO vectors (must be well-formed and terminated!)
+ * @out_num: the number of virtio IO vectors readable by other side
+ * @in_num: the number of virtio IO vectors which are writable
+ * (after readable ones)
+ * @data: the token identifying the buffer.
+ *
+ * Caller must ensure we don't call this with other virtio_host_queue
+ * operations at the same time (except where noted).
+ *
+ * Returns zero or a negative error.
+ */
+int virtio_host_queue_add_iovecs(struct virtio_host_queue *vq,
+				 struct virtio_host_iovec *ivs[],
+				 unsigned int out_ivs,
+				 unsigned int in_ivs,
+				 void *data);
+
+/**
+ * Expose output buffers to other end
+ *
+ * @vq: the struct virtio_host_queue we're talking about.
+ * @iv: virtio IO vectors (must be well-formed and terminated!)
+ * @num: the number of entries in @iv readable by other side
+ * @data: the token identifying the buffer.
+ *
+ * Caller must ensure we don't call this with other virtio_host_queue
+ * operations at the same time (except where noted).
+ *
+ * Returns zero or a negative error.
+ */
+int virtio_host_queue_add_outbuf(struct virtio_host_queue *vq,
+				 struct virtio_host_iovec *iv,
+				 unsigned int num,
+				 void *data);
+
+/**
+ * Expose input buffers to other end
+ *
+ * @vq: the struct virtqueue we're talking about.
+ * @iv: virtio IO vectors (must be well-formed and terminated!)
+ * @num: the number of entries in @iv writable by other side
+ * @data: the token identifying the buffer.
+ *
+ * Caller must ensure we don't call this with other virtio_host_queue
+ * operations at the same time (except where noted).
+ *
+ * Returns zero or a negative error.
+ */
+int virtio_host_queue_add_inbuf(struct virtio_host_queue *vq,
+				struct virtio_host_iovec *iv,
+				unsigned int num,
+				void *data);
+
+/**
+ * First half of split virtio_host_queue_kick call.
+ *
+ * @vq: the struct virtqueue
+ *
+ * Instead of virtio_host_queue_kick(), you can do:
+ *	if (virtio_host_queue_kick_prepare(vq))
+ *		virtio_host_queue_notify(vq);
+ *
+ * This is sometimes useful because the virtio_host_queue_kick_prepare()
+ * needs to be serialized, but the actual virtio_host_queue_notify()
+ * call does not.
+ */
+bool virtio_host_queue_kick_prepare(struct virtio_host_queue *vq);
+
+/**
+ * Second half of split virtio_host_queue_kick call.
+ *
+ * @vq: the struct virtio_host_queue
+ *
+ * This does not need to be serialized.
+ *
+ * Returns FALSE if host notify failed or queue is broken, otherwise TRUE.
+ */
+bool virtio_host_queue_notify(struct virtio_host_queue *vq);
+
+/**
+ * Update after add_buf
+ *
+ * @vq: the struct virtio_host_queue
+ *
+ * After one or more virtio_host_queue_add_* calls, invoke this
+ * to kick the other side.
+ *
+ * Caller must ensure we don't call this with other virtio_host_queue
+ * operations at the same time (except where noted).
+ *
+ * Returns FALSE if kick failed, otherwise TRUE.
+ */
+bool virtio_host_queue_kick(struct virtio_host_queue *vq);
+
+/**
+ * Get the next used buffer
+ *
+ * @vq: the struct virtio_host_queue we're talking about.
+ * @len: the length written into the buffer
+ *
+ * If the driver wrote data into the buffer, @len will be set to the
+ * amount written.  This means you don't need to clear the buffer
+ * beforehand to ensure there's no data leakage in the case of short
+ * writes.
+ *
+ * Caller must ensure we don't call this with other virtio_host_queue
+ * operations at the same time (except where noted).
+ *
+ * Returns NULL if there are no used buffers, or the "data" token
+ * handed to virtio_host_queue_add_*().
+ */
+void *virtio_host_queue_get_buf(struct virtio_host_queue *vq,
+				unsigned int *len);
+
+/**
+ * Query pending used buffers
+ *
+ * @vq: the struct virtio_host_queue we're talking about.
+ * @last_used_idx: virtio_host_queue state.
+ *
+ * Returns "TRUE" if there are pending used buffers in the queue.
+ *
+ * This does not need to be serialized.
+ */
+bool virtio_host_queue_poll(struct virtio_host_queue *vq,
+			    unsigned last_used_idx);
+
+/** Handle VirtIO host queue interrupt (called by transport drivers) */
+vmm_irq_return_t virtio_host_queue_interrupt(int irq, void *_vq);
+
+/** Creates a VirtIO host queue and allocates the descriptor ring. */
+struct virtio_host_queue *virtio_host_create_queue(unsigned int index,
+					unsigned int num,
+					unsigned int vring_align,
+					struct virtio_host_device *vdev,
+					bool weak_barriers,
+					virtio_host_queue_notify_t notify,
+					virtio_host_queue_callback_t callback,
+					const char *name);
+
+/** Destroys a VirtIO host queue */
+void virtio_host_destroy_queue(struct virtio_host_queue *vq);
+
+/** VirtIO host device ID */
 struct virtio_host_device_id {
 	u32 device;
 	u32 vendor;
@@ -68,7 +282,7 @@ struct virtio_host_device_id {
 };
 
 /**
- * Operations for configuring a virtio device
+ * Operations for configuring a virtio host device
  *
  * @get: read the value of a configuration field
  *	vdev: the virtio_device
@@ -233,6 +447,21 @@ static inline bool virtio_host_has_feature(
 				unsigned int fbit)
 {
 	return __virtio_host_test_bit(vdev, fbit);
+}
+
+/**
+ * Determine whether this device has the iommu quirk
+ *
+ * @vdev: the device
+ */
+static inline bool virtio_host_has_iommu_quirk(
+				const struct virtio_host_device *vdev)
+{
+	/*
+	 * Note the reverse polarity of the quirk feature (compared to most
+	 * other features), this is for compatibility with legacy systems.
+	 */
+	return !virtio_host_has_feature(vdev, VMM_VIRTIO_F_IOMMU_PLATFORM);
 }
 
 /**
@@ -529,15 +758,23 @@ static inline void virtio_host_del_vqs(struct virtio_host_device *vdev)
 	vdev->config->del_vqs(vdev);
 }
 
+/** Filter out transport-specific feature bits. */
+void virtio_host_transport_features(struct virtio_host_device *vdev);
+
+/** Notify VirtIO host driver about change in config */
 void virtio_host_config_changed(struct virtio_host_device *vdev);
 
+/** Add a new VirtIO host device */
 int virtio_host_add_device(struct virtio_host_device *vdev,
 			   struct vmm_device *parent);
 
+/** Remove a VirtIO host device */
 void virtio_host_remove_device(struct virtio_host_device *vdev);
 
+/** Register VirtIO host driver */
 int virtio_host_register_driver(struct virtio_host_driver *vdrv);
 
+/** Unregister VirtIO host driver */
 void virtio_host_unregister_driver(struct virtio_host_driver *vdrv);
 
 #endif /* __VIRTIO_HOST_H_ */

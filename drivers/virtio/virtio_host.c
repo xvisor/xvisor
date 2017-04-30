@@ -22,14 +22,34 @@
  *
  * The source has been largely adapted from Linux
  * drivers/virtio/virtio.c
+ * drivers/virtio/virtio_ring.c
  *
  * The original code is licensed under the GPL.
  */
 
-#include <vmm_modules.h>
+#include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_mutex.h>
-#include <drv/virtio_host.h>
+#include <vmm_host_aspace.h>
+#include <vmm_modules.h>
 #include <libs/idr.h>
+#include <libs/stringlib.h>
+#include <drv/virtio_host.h>
+
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(...)			vmm_printf(__VA_ARGS__)
+#else
+#define DPRINTF(...)
+#endif
+
+#define BAD_RING(vq, fmt, args...)				\
+	do {							\
+		vmm_lerror(vq->vdev->dev.name, "%s: "fmt,	\
+			   (vq)->name, ##args);			\
+		(vq)->broken = TRUE;				\
+	} while (0)
 
 #define MODULE_DESC			"VirtIO Host Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -42,7 +62,571 @@ static DEFINE_IDA(virtio_index_ida);
 
 /* ========== VirtIO host queue APIs ========== */
 
-/* TODO: */
+/*
+ * Barriers in virtio are tricky.  Non-SMP virtio guests can't assume
+ * they're not on an SMP host system, so they need to assume real
+ * barriers.  Non-SMP virtio hosts could skip the barriers, but does
+ * anyone care?
+ *
+ * For virtio_pci on SMP, we don't need to order with respect to MMIO
+ * accesses through relaxed memory I/O windows, so virt_mb() et al are
+ * sufficient.
+ *
+ * For using virtio to talk to real devices (eg. other heterogeneous
+ * CPUs) we do need real barriers.  In theory, we could be using both
+ * kinds of virtio, so it's a runtime decision, and the branch is
+ * actually quite cheap.
+ */
+
+static inline void virtio_mb(bool weak_barriers)
+{
+	arch_mb();
+}
+
+static inline void virtio_rmb(bool weak_barriers)
+{
+	arch_rmb();
+}
+
+static inline void virtio_wmb(bool weak_barriers)
+{
+	arch_wmb();
+}
+
+static inline void virtio_store_mb(bool weak_barriers,
+				   u16 *p, u16 v)
+{
+	*p = v;
+	arch_mb();
+}
+
+/*
+ * Modern virtio devices have feature bits to specify whether they need a
+ * quirk and bypass the IOMMU. If not there, just use the DMA API.
+ *
+ * If there, the interaction between virtio and DMA API is messy.
+ *
+ * On most systems with virtio, physical addresses match bus addresses,
+ * and it doesn't particularly matter whether we use the DMA API.
+ *
+ * On some systems, including Xen and any system with a physical device
+ * that speaks virtio behind a physical IOMMU, we must use the DMA API
+ * for virtio DMA to work at all.
+ *
+ * On other systems, including SPARC and PPC64, virtio-pci devices are
+ * enumerated as though they are behind an IOMMU, but the virtio host
+ * ignores the IOMMU, so we must either pretend that the IOMMU isn't
+ * there or somehow map everything as the identity.
+ *
+ * For the time being, we preserve historic behavior and bypass the DMA
+ * API.
+ *
+ * TODO: install a per-device DMA ops structure that does the right thing
+ * taking into account all the above quirks, and use the DMA API
+ * unconditionally on data path.
+ */
+
+static bool virtio_use_dma_api(struct virtio_host_device *vdev)
+{
+	if (!virtio_host_has_iommu_quirk(vdev))
+		return TRUE;
+
+	/* Otherwise, we are left to guess. */
+
+	return FALSE;
+}
+
+static physical_addr_t virtio_map_one(const struct virtio_host_queue *vq,
+				      struct virtio_host_iovec *iv,
+				      enum vmm_dma_direction direction)
+{
+	int rc;
+	physical_addr_t pa;
+
+	if (!virtio_use_dma_api(vq->vdev)) {
+		rc = vmm_host_va2pa((virtual_addr_t)iv->buf, &pa);
+		BUG_ON(rc);
+		return pa;
+	}
+
+	/*
+	 * We can't use dma_map_sg, because we don't use scatterlists in
+	 * the way it expects (we don't guarantee that the scatterlist
+	 * will exist for the lifetime of the mapping).
+	 */
+	return vmm_dma_map((virtual_addr_t)iv->buf,
+			   (virtual_size_t)iv->buf_len,
+			   direction);
+}
+
+static void virtio_unmap_one(const struct virtio_host_queue *vq,
+			     struct vmm_vring_desc *desc)
+{
+	u16 flags;
+
+	if (!virtio_use_dma_api(vq->vdev))
+		return;
+
+	flags = virtio16_to_cpu(vq->vdev, desc->flags);
+
+	vmm_dma_unmap(virtio64_to_cpu(vq->vdev, desc->addr),
+		      virtio32_to_cpu(vq->vdev, desc->len),
+		      (flags & VMM_VRING_DESC_F_WRITE) ?
+		      DMA_FROM_DEVICE : DMA_TO_DEVICE);
+}
+
+static int virtio_host_queue_add(struct virtio_host_queue *vq,
+				 struct virtio_host_iovec *ivs[],
+				 unsigned int total_ivs,
+				 unsigned int out_ivs,
+				 unsigned int in_ivs,
+				 void *data)
+{
+	struct virtio_host_iovec *iv;
+	struct vmm_vring_desc *desc;
+	unsigned int i, n, avail, descs_used, prev = 0;
+	int head;
+	physical_addr_t addr;
+
+	BUG_ON(data == NULL);
+
+	if (unlikely(vq->broken)) {
+		return VMM_EIO;
+	}
+
+	BUG_ON(total_ivs > vq->vring.num);
+	BUG_ON(total_ivs == 0);
+
+	head = vq->free_head;
+
+	/* TODO: If the host supports indirect descriptor tables,
+	 * and we have multiple buffers, then go indirect.
+	 * TODO: tune the threshold of using indirect descriptor tables
+	 */
+	desc = vq->vring.desc;
+	i = head;
+	descs_used = total_ivs;
+
+	if (vq->num_free < descs_used) {
+		DPRINTF("Can't add buf len %i - avail = %i\n",
+			descs_used, vq->num_free);
+		/* FIXME: for historical reasons, we force a notify here if
+		 * there are outgoing parts to the buffer.  Presumably the
+		 * host should service the ring ASAP. */
+		if (out_ivs)
+			vq->notify(vq);
+		return VMM_ENOSPC;
+	}
+
+	/* Add output buffers to descriptors */
+	for (n = 0; n < out_ivs; n++) {
+		iv = ivs[n];
+		addr = virtio_map_one(vq, iv, DMA_TO_DEVICE);
+		desc[i].flags = cpu_to_virtio16(vq->vdev,
+						VMM_VRING_DESC_F_NEXT);
+		desc[i].addr = cpu_to_virtio64(vq->vdev, addr);
+		desc[i].len = cpu_to_virtio32(vq->vdev, iv->buf_len);
+		prev = i;
+		i = virtio16_to_cpu(vq->vdev, desc[i].next);
+	}
+
+	/* Add input buffers to descriptors */
+	for (; n < (out_ivs + in_ivs); n++) {
+		iv = ivs[n];
+		addr = virtio_map_one(vq, iv, DMA_FROM_DEVICE);
+		desc[i].flags = cpu_to_virtio16(vq->vdev,
+						VMM_VRING_DESC_F_NEXT |
+						VMM_VRING_DESC_F_WRITE);
+		desc[i].addr = cpu_to_virtio64(vq->vdev, addr);
+		desc[i].len = cpu_to_virtio32(vq->vdev, iv->buf_len);
+		prev = i;
+		i = virtio16_to_cpu(vq->vdev, desc[i].next);
+	}
+
+	/* Last one doesn't continue. */
+	desc[prev].flags &= cpu_to_virtio16(vq->vdev, ~VMM_VRING_DESC_F_NEXT);
+
+	/* We're using some buffers from the free list. */
+	vq->num_free -= descs_used;
+
+	/* Update free pointer */
+	vq->free_head = i;
+
+	/* Store token and indirect buffer state. */
+	vq->desc_state[head].data = data;
+
+	/* Put entry in available array (but don't update avail->idx until they
+	 * do sync). */
+	avail = vq->avail_idx_shadow & (vq->vring.num - 1);
+	vq->vring.avail->ring[avail] = cpu_to_virtio16(vq->vdev, head);
+
+	/* Descriptors and available array need to be set before we expose the
+	 * new available array entries. */
+	virtio_wmb(vq->weak_barriers);
+	vq->avail_idx_shadow++;
+	vq->vring.avail->idx = cpu_to_virtio16(vq->vdev, vq->avail_idx_shadow);
+	vq->num_added++;
+
+	DPRINTF("Added buffer head %i to %p\n", head, vq);
+
+	/* This is very unlikely, but theoretically possible.  Kick
+	 * just in case. */
+	if (unlikely(vq->num_added == (1 << 16) - 1))
+		virtio_host_queue_kick(vq);
+
+	return 0;
+}
+
+int virtio_host_queue_add_iovecs(struct virtio_host_queue *vq,
+				 struct virtio_host_iovec *ivs[],
+				 unsigned int out_ivs,
+				 unsigned int in_ivs,
+				 void *data)
+{
+	return virtio_host_queue_add(vq, ivs, out_ivs + in_ivs,
+				     out_ivs, in_ivs, data);
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_add_iovecs);
+
+int virtio_host_queue_add_outbuf(struct virtio_host_queue *vq,
+				 struct virtio_host_iovec *iv,
+				 unsigned int num,
+				 void *data)
+{
+	return virtio_host_queue_add(vq, &iv, num, 1, 0, data);
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_add_outbuf);
+
+int virtio_host_queue_add_inbuf(struct virtio_host_queue *vq,
+				struct virtio_host_iovec *iv,
+				unsigned int num,
+				void *data)
+{
+	return virtio_host_queue_add(vq, &iv, num, 0, 1, data);
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_add_inbuf);
+
+#define virtio_avail_event(vr) (*(u16 *)&(vr)->used->ring[(vr)->num])
+
+bool virtio_host_queue_kick_prepare(struct virtio_host_queue *vq)
+{
+	u16 new, old;
+	bool needs_kick;
+
+	/* We need to expose available array entries before checking avail
+	 * event. */
+	virtio_mb(vq->weak_barriers);
+
+	old = vq->avail_idx_shadow - vq->num_added;
+	new = vq->avail_idx_shadow;
+	vq->num_added = 0;
+
+	if (vq->event) {
+		needs_kick = vmm_vring_need_event(
+			virtio16_to_cpu(vq->vdev, virtio_avail_event(&vq->vring)),
+			new, old);
+	} else {
+		needs_kick = !(vq->vring.used->flags &
+			cpu_to_virtio16(vq->vdev, VMM_VRING_USED_F_NO_NOTIFY));
+	}
+
+	return needs_kick;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_kick_prepare);
+
+bool virtio_host_queue_notify(struct virtio_host_queue *vq)
+{
+	if (unlikely(vq->broken))
+		return FALSE;
+
+	/* Prod other side to tell it about changes. */
+	if (!vq->notify(vq)) {
+		vq->broken = TRUE;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_notify);
+
+bool virtio_host_queue_kick(struct virtio_host_queue *vq)
+{
+	if (virtio_host_queue_kick_prepare(vq))
+		return virtio_host_queue_notify(vq);
+	return TRUE;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_kick);
+
+static void detach_buf(struct virtio_host_queue *vq, unsigned int head)
+{
+	unsigned int i;
+	u16 nextflag = cpu_to_virtio16(vq->vdev, VMM_VRING_DESC_F_NEXT);
+
+	/* Clear data ptr. */
+	vq->desc_state[head].data = NULL;
+
+	/* Put back on free list: unmap first-level descriptors and find end */
+	i = head;
+
+	while (vq->vring.desc[i].flags & nextflag) {
+		virtio_unmap_one(vq, &vq->vring.desc[i]);
+		i = virtio16_to_cpu(vq->vdev, vq->vring.desc[i].next);
+		vq->num_free++;
+	}
+
+	virtio_unmap_one(vq, &vq->vring.desc[i]);
+	vq->vring.desc[i].next = cpu_to_virtio16(vq->vdev, vq->free_head);
+	vq->free_head = head;
+
+	/* Plus final descriptor */
+	vq->num_free++;
+
+	/* TODO: Free the indirect table, if any, now that it's unmapped. */
+}
+
+static inline bool more_used(const struct virtio_host_queue *vq)
+{
+	return vq->last_used_idx != virtio16_to_cpu(vq->vdev, vq->vring.used->idx);
+}
+
+#define virtio_used_event(vr) ((vr)->avail->ring[(vr)->num])
+
+void *virtio_host_queue_get_buf(struct virtio_host_queue *vq,
+				unsigned int *len)
+{
+	void *ret;
+	unsigned int i;
+	u16 last_used;
+
+	if (unlikely(vq->broken)) {
+		return NULL;
+	}
+
+	if (!more_used(vq)) {
+		DPRINTF("No more buffers in queue\n");
+		return NULL;
+	}
+
+	/* Only get used array entries after they have been exposed by host. */
+	virtio_rmb(vq->weak_barriers);
+
+	last_used = (vq->last_used_idx & (vq->vring.num - 1));
+	i = virtio32_to_cpu(vq->vdev, vq->vring.used->ring[last_used].id);
+	*len = virtio32_to_cpu(vq->vdev, vq->vring.used->ring[last_used].len);
+
+	if (unlikely(i >= vq->vring.num)) {
+		BAD_RING(vq, "id %u out of range\n", i);
+		return NULL;
+	}
+	if (unlikely(!vq->desc_state[i].data)) {
+		BAD_RING(vq, "id %u is not a head!\n", i);
+		return NULL;
+	}
+
+	/* detach_buf clears data, so grab it now. */
+	ret = vq->desc_state[i].data;
+	detach_buf(vq, i);
+	vq->last_used_idx++;
+
+	/* If we expect an interrupt for the next entry, tell host
+	 * by writing event index and flush out the write before
+	 * the read in the next get_buf call. */
+	if (!(vq->avail_flags_shadow & VMM_VRING_AVAIL_F_NO_INTERRUPT))
+		virtio_store_mb(vq->weak_barriers,
+				&virtio_used_event(&vq->vring),
+				cpu_to_virtio16(vq->vdev, vq->last_used_idx));
+
+	return ret;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_get_buf);
+
+bool virtio_host_queue_poll(struct virtio_host_queue *vq,
+			    unsigned last_used_idx)
+{
+	virtio_mb(vq->weak_barriers);
+	return (u16)last_used_idx !=
+		virtio16_to_cpu(vq->vdev, vq->vring.used->idx);
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_poll);
+
+vmm_irq_return_t virtio_host_queue_interrupt(int irq, void *_vq)
+{
+	struct virtio_host_queue *vq = _vq;
+
+	if (!more_used(vq)) {
+		DPRINTF("virtio_host_queue interrupt with no work for %p\n",
+			vq);
+		return VMM_IRQ_NONE;
+	}
+
+	if (unlikely(vq->broken))
+		return VMM_IRQ_HANDLED;
+
+	DPRINTF("virtio_host_queue callback for %p (%p)\n",
+		vq, vq->callback);
+	if (vq->callback)
+		vq->callback(vq);
+
+	return VMM_IRQ_HANDLED;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_interrupt);
+
+static struct virtio_host_queue *__virtio_host_new_queue(
+					unsigned int index,
+					struct vmm_vring vring,
+					struct virtio_host_device *vdev,
+					bool weak_barriers,
+					virtio_host_queue_notify_t notify,
+					virtio_host_queue_callback_t callback,
+					const char *name)
+{
+	unsigned int i;
+	struct virtio_host_queue *vq;
+
+	vq = vmm_zalloc(sizeof(*vq) +
+			vring.num * sizeof(struct virtio_host_desc_state));
+	if (!vq)
+		return NULL;
+
+	vq->index = index;
+	INIT_LIST_HEAD(&vq->head);
+	vq->name = name;
+	vq->vdev = vdev;
+	vq->weak_barriers = weak_barriers;
+	vq->indirect =
+		virtio_host_has_feature(vdev, VMM_VIRTIO_RING_F_INDIRECT_DESC);
+	vq->event =
+		virtio_host_has_feature(vdev, VMM_VIRTIO_RING_F_EVENT_IDX);
+	vq->broken = FALSE;
+	vq->free_head = 0;
+	vq->num_free = vring.num;
+	vq->num_added = 0;
+	vq->last_used_idx = 0;
+	vq->avail_flags_shadow = 0;
+	vq->avail_idx_shadow = 0;
+	vq->notify = notify;
+	vq->callback = callback;
+	vq->vring_size = 0;
+	vq->vring_dma_base = 0;
+	vq->vring = vring;
+
+	list_add_tail(&vq->head, &vdev->vqs);
+
+	/* No callback?  Tell other side not to bother us. */
+	if (!callback) {
+		vq->avail_flags_shadow |= VMM_VRING_AVAIL_F_NO_INTERRUPT;
+		if (!vq->event) {
+			vq->vring.avail->flags =
+				cpu_to_virtio16(vdev, vq->avail_flags_shadow);
+		}
+	}
+
+	/* Put everything in free lists. */
+	vq->free_head = 0;
+	for (i = 0; i < vring.num-1; i++)
+		vq->vring.desc[i].next = cpu_to_virtio16(vdev, i + 1);
+	memset(vq->desc_state, 0,
+		vring.num * sizeof(struct virtio_host_desc_state));
+
+	return vq;
+}
+
+static void *virtio_host_alloc_queue(struct virtio_host_device *vdev,
+				     size_t size,
+				     physical_addr_t *dma_handle)
+{
+	if (virtio_use_dma_api(vdev)) {
+		return vmm_dma_zalloc_phy(size, dma_handle);
+	} else {
+		virtual_addr_t queue;
+
+		queue = vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(size),
+					     VMM_MEMORY_FLAGS_NORMAL);
+		if (queue) {
+			int rc;
+			physical_addr_t queue_phys_addr;
+
+			rc = vmm_host_va2pa(queue, &queue_phys_addr);
+			if (rc) {
+				vmm_host_free_pages((virtual_addr_t)queue,
+						    VMM_SIZE_TO_PAGE(size));
+				return NULL;
+			}
+
+			*dma_handle = queue_phys_addr;
+		}
+
+		return (void *)queue;
+	}
+}
+
+static void virtio_host_free_queue(struct virtio_host_device *vdev,
+				   size_t size, void *queue,
+				   physical_addr_t dma_handle)
+{
+	if (virtio_use_dma_api(vdev)) {
+		vmm_dma_free(queue);
+	} else {
+		vmm_host_free_pages((virtual_addr_t)queue,
+				    VMM_SIZE_TO_PAGE(size));
+	}
+}
+
+struct virtio_host_queue *virtio_host_create_queue(unsigned int index,
+					unsigned int num,
+					unsigned int vring_align,
+					struct virtio_host_device *vdev,
+					bool weak_barriers,
+					virtio_host_queue_notify_t notify,
+					virtio_host_queue_callback_t callback,
+					const char *name)
+{
+	struct virtio_host_queue *vq;
+	void *queue = NULL;
+	physical_addr_t dma_addr;
+	size_t queue_size_in_bytes;
+	struct vmm_vring vring;
+
+	/* We assume num is a power of 2. */
+	if (num & (num - 1)) {
+		vmm_lerror(vdev->dev.name,
+			   "Bad virtio host queue length %u\n", num);
+		return NULL;
+	}
+
+	/* Try to get a single page. You are my only hope! */
+	queue = virtio_host_alloc_queue(vdev,
+					vmm_vring_size(num, vring_align),
+					&dma_addr);
+	if (!queue)
+		return NULL;
+
+	queue_size_in_bytes = vmm_vring_size(num, vring_align);
+	vmm_vring_init(&vring, num, queue, dma_addr, vring_align);
+
+	vq = __virtio_host_new_queue(index, vring, vdev, weak_barriers,
+				     notify, callback, name);
+	if (!vq) {
+		virtio_host_free_queue(vdev, queue_size_in_bytes,
+					queue, dma_addr);
+		return NULL;
+	}
+
+	vq->vring_size = queue_size_in_bytes;
+	vq->vring_dma_base = dma_addr;
+
+	return vq;
+}
+VMM_EXPORT_SYMBOL(virtio_host_create_queue);
+
+void virtio_host_destroy_queue(struct virtio_host_queue *vq)
+{
+	virtio_host_free_queue(vq->vdev, vq->vring_size,
+			       vq->vring.desc, vq->vring_dma_base);
+	list_del(&vq->head);
+	vmm_free(vq);
+}
+VMM_EXPORT_SYMBOL(virtio_host_destroy_queue);
 
 /* ========== VirtIO host device driver APIs ========== */
 
@@ -50,6 +634,29 @@ static void add_status(struct virtio_host_device *vdev, unsigned s)
 {
 	vdev->config->set_status(vdev, vdev->config->get_status(vdev) | s);
 }
+
+/* Manipulates transport-specific feature bits. */
+void virtio_host_transport_features(struct virtio_host_device *vdev)
+{
+	unsigned int i;
+
+	for (i = VMM_VIRTIO_TRANSPORT_F_START; i < VMM_VIRTIO_TRANSPORT_F_END; i++) {
+		switch (i) {
+		case VMM_VIRTIO_RING_F_INDIRECT_DESC:
+			break;
+		case VMM_VIRTIO_RING_F_EVENT_IDX:
+			break;
+		case VMM_VIRTIO_F_VERSION_1:
+			break;
+		case VMM_VIRTIO_F_IOMMU_PLATFORM:
+			break;
+		default:
+			/* We don't understand this bit. */
+			__virtio_host_clear_bit(vdev, i);
+		}
+	}
+}
+VMM_EXPORT_SYMBOL(virtio_host_transport_features);
 
 static void __virtio_host_config_changed(struct virtio_host_device *vdev)
 {
