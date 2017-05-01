@@ -124,6 +124,12 @@
 			status = "disabled";
 		};
 
+		virtio_block {
+			compatible = "virtio,mmio";
+			reg = <0x1c130000 0x200>;
+			interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		RTC0: rtc { /* PL031 real-time clock */
 			compatible = "arm,pl031";
 			reg = <0x1c170000 0x1000>;
