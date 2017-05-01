@@ -40,19 +40,27 @@
 /* Virtio vendor ID - Read Only */
 #define VMM_VIRTIO_MMIO_VENDOR_ID		0x00c
 
-/* Bitmask of the features supported by the host
+/* Bitmask of the features supported by the host (device)
  * (32 bits per set) - Read Only */
 #define VMM_VIRTIO_MMIO_HOST_FEATURES		0x010
+#define VMM_VIRTIO_MMIO_DEVICE_FEATURES		\
+				VMM_VIRTIO_MMIO_HOST_FEATURES
 
-/* Host features set selector - Write Only */
+/* Host (device) features set selector - Write Only */
 #define VMM_VIRTIO_MMIO_HOST_FEATURES_SEL	0x014
+#define VMM_VIRTIO_MMIO_DEVICE_FEATURES_SEL	\
+				VMM_VIRTIO_MMIO_HOST_FEATURES_SEL
 
-/* Bitmask of features activated by the guest
+/* Bitmask of features activated by the guest (driver)
  * (32 bits per set) - Write Only */
 #define VMM_VIRTIO_MMIO_GUEST_FEATURES		0x020
+#define VMM_VIRTIO_MMIO_DRIVER_FEATURES		\
+				VMM_VIRTIO_MMIO_GUEST_FEATURES
 
-/* Activated features set selector - Write Only */
+/* Activated features set selector by the guest (driver) - Write Only */
 #define VMM_VIRTIO_MMIO_GUEST_FEATURES_SEL	0x024
+#define VMM_VIRTIO_MMIO_DRIVER_FEATURES_SEL	\
+				VMM_VIRTIO_MMIO_GUEST_FEATURES_SEL
 
 /* Guest's memory page size in bytes - Write Only */
 #define VMM_VIRTIO_MMIO_GUEST_PAGE_SIZE		0x028
@@ -69,8 +77,11 @@
 /* Used Ring alignment for the currently selected queue - Write Only */
 #define VMM_VIRTIO_MMIO_QUEUE_ALIGN		0x03c
 
-/* Guest's PFN for the currently selected queue - Read Write */
+/* PFN for the currently selected queue - Read Write */
 #define VMM_VIRTIO_MMIO_QUEUE_PFN		0x040
+
+/* Ready bit for the currently selected queue - Read Write */
+#define VMM_VIRTIO_MMIO_QUEUE_READY		0x044
 
 /* Queue notifier - Write Only */
 #define VMM_VIRTIO_MMIO_QUEUE_NOTIFY		0x050
@@ -83,6 +94,21 @@
 
 /* Device status register - Read Write */
 #define VMM_VIRTIO_MMIO_STATUS			0x070
+
+/* Selected queue's Descriptor Table address, 64 bits in two halves */
+#define VMM_VIRTIO_MMIO_QUEUE_DESC_LOW		0x080
+#define VMM_VIRTIO_MMIO_QUEUE_DESC_HIGH		0x084
+
+/* Selected queue's Available Ring address, 64 bits in two halves */
+#define VMM_VIRTIO_MMIO_QUEUE_AVAIL_LOW		0x090
+#define VMM_VIRTIO_MMIO_QUEUE_AVAIL_HIGH	0x094
+
+/* Selected queue's Used Ring address, 64 bits in two halves */
+#define VMM_VIRTIO_MMIO_QUEUE_USED_LOW		0x0a0
+#define VMM_VIRTIO_MMIO_QUEUE_USED_HIGH		0x0a4
+
+/* Configuration atomicity value */
+#define VMM_VIRTIO_MMIO_CONFIG_GENERATION	0x0fc
 
 /* The config space is defined by each driver as
  * the per-driver configuration space - Read Write */
