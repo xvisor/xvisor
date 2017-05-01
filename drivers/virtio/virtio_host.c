@@ -929,7 +929,7 @@ int virtio_host_register_driver(struct virtio_host_driver *vdrv)
 	}
 
 	vdrv->drv.bus = &virtio_host_bus;
-	if (strlcpy(vdrv->drv.name, vdrv->name, 
+	if (strlcpy(vdrv->drv.name, vdrv->name,
 		sizeof(vdrv->drv.name)) >= sizeof(vdrv->drv.name)) {
 		return VMM_EOVERFLOW;
 	}

@@ -293,7 +293,6 @@ void virtio_host_destroy_queue(struct virtio_host_queue *vq);
 struct virtio_host_device_id {
 	u32 device;
 	u32 vendor;
-	void *data;
 };
 
 /**
