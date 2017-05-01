@@ -77,6 +77,9 @@ struct virtio_host_queue {
 	struct dlist head;
 	const char *name;
 
+	/* Opaque pointer saved by transport driver */
+	void *priv;
+
 	/* Parent VirtIO host device */
 	struct virtio_host_device *vdev;
 
@@ -261,6 +264,18 @@ bool virtio_host_queue_poll(struct virtio_host_queue *vq,
 /** Handle VirtIO host queue interrupt (called by transport drivers) */
 vmm_irq_return_t virtio_host_queue_interrupt(int irq, void *_vq);
 
+/** Physical address of descriptor table */
+u64 virtio_host_queue_get_desc_addr(struct virtio_host_queue *vq);
+
+/** Physical address of used ring */
+u64 virtio_host_queue_get_used_addr(struct virtio_host_queue *vq);
+
+/** Physical address of avail ring */
+u64 virtio_host_queue_get_avail_addr(struct virtio_host_queue *vq);
+
+/** Number of descriptors in the VirtIO host queue */
+u32 virtio_host_queue_get_vring_size(struct virtio_host_queue *vq);
+
 /** Creates a VirtIO host queue and allocates the descriptor ring. */
 struct virtio_host_queue *virtio_host_create_queue(unsigned int index,
 					unsigned int num,
@@ -343,7 +358,7 @@ struct virtio_host_config_ops {
 	void (*reset)(struct virtio_host_device *vdev);
 	int (*find_vqs)(struct virtio_host_device *vdev, unsigned nvqs,
 			struct virtio_host_queue *vqs[],
-			virtio_host_queue_callback_t *callbacks[],
+			virtio_host_queue_callback_t callbacks[],
 			const char * const names[]);
 	void (*del_vqs)(struct virtio_host_device *vdev);
 	u64 (*get_features)(struct virtio_host_device *vdev);
@@ -747,7 +762,7 @@ static inline void virtio_cwrite64(struct virtio_host_device *vdev,
 static inline int virtio_host_find_vqs(struct virtio_host_device *vdev,
 				       unsigned nvqs,
 				       struct virtio_host_queue *vqs[],
-				       virtio_host_queue_callback_t *cbs[],
+				       virtio_host_queue_callback_t cbs[],
 				       const char * const names[])
 {
 	return vdev->config->find_vqs(vdev, nvqs, vqs, cbs, names);
@@ -766,6 +781,7 @@ void virtio_host_config_changed(struct virtio_host_device *vdev);
 
 /** Add a new VirtIO host device */
 int virtio_host_add_device(struct virtio_host_device *vdev,
+			   const struct virtio_host_config_ops *config,
 			   struct vmm_device *parent);
 
 /** Remove a VirtIO host device */

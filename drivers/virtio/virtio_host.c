@@ -572,6 +572,30 @@ static void virtio_host_free_queue(struct virtio_host_device *vdev,
 	}
 }
 
+u64 virtio_host_queue_get_desc_addr(struct virtio_host_queue *vq)
+{
+	return vq->vring.desc_pa;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_get_desc_addr);
+
+u64 virtio_host_queue_get_used_addr(struct virtio_host_queue *vq)
+{
+	return vq->vring.used_pa;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_get_used_addr);
+
+u64 virtio_host_queue_get_avail_addr(struct virtio_host_queue *vq)
+{
+	return vq->vring.avail_pa;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_get_avail_addr);
+
+u32 virtio_host_queue_get_vring_size(struct virtio_host_queue *vq)
+{
+	return vq->vring.num;
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_get_vring_size);
+
 struct virtio_host_queue *virtio_host_create_queue(unsigned int index,
 					unsigned int num,
 					unsigned int vring_align,
@@ -841,11 +865,12 @@ static struct vmm_bus virtio_host_bus = {
 };
 
 int virtio_host_add_device(struct virtio_host_device *vdev,
+			   const struct virtio_host_config_ops *config,
 			   struct vmm_device *parent)
 {
 	int err;
 
-	if (!vdev) {
+	if (!vdev || !config) {
 		return VMM_EINVALID;
 	}
 
@@ -857,6 +882,7 @@ int virtio_host_add_device(struct virtio_host_device *vdev,
 	vdev->index = err;
 
 	vmm_devdrv_initialize_device(&vdev->dev);
+	vdev->dev.bus = &virtio_host_bus;
 	vdev->dev.parent = parent;
 	vmm_snprintf(vdev->dev.name, sizeof(vdev->dev.name),
 		     "virtio%u", vdev->index);
@@ -864,6 +890,7 @@ int virtio_host_add_device(struct virtio_host_device *vdev,
 	INIT_SPIN_LOCK(&vdev->config_lock);
 	vdev->config_enabled = FALSE;
 	vdev->config_change_pending = FALSE;
+	vdev->config = config;
 
 	/* We always start by resetting the device, in case a previous
 	 * driver messed it up.  This also tests that code path a little. */
