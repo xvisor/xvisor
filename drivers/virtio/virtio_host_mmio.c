@@ -554,6 +554,9 @@ static int virtio_host_mmio_probe(struct vmm_device *dev,
 
 	vmm_devdrv_set_data(dev, vm_dev);
 
+	vmm_linfo(dev->name, "VirtIO host MMIO device v%ld\n",
+		  vm_dev->version);
+
 	ret = virtio_host_add_device(&vm_dev->vdev,
 				     &virtio_host_mmio_config_ops, dev);
 	if (ret) {
@@ -561,9 +564,6 @@ static int virtio_host_mmio_probe(struct vmm_device *dev,
 			   "Failed to register VirtIO host device!\n");
 		goto fail_unreg_base;
 	}
-
-	vmm_linfo(dev->name, "VirtIO host MMIO device v%ld\n",
-		  vm_dev->version);
 
 	return VMM_OK;
 
