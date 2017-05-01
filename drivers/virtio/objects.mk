@@ -22,3 +22,4 @@
 # */
 
 drivers-objs-$(CONFIG_VIRTIO_HOST)+= virtio/virtio_host.o
+drivers-objs-$(CONFIG_VIRTIO_HOST_MMIO)+= virtio/virtio_host_mmio.o
