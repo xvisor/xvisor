@@ -53,6 +53,8 @@ struct vmm_blockrq_nop {
 
 	struct vmm_request_queue rq;
 };
+#define vmm_rq_to_blockrq_nop(__rq)	\
+	container_of(__rq, struct vmm_blockrq_nop, rq)
 
 /** Get NOP strategy based request queue from request queue pointer */
 static inline struct vmm_blockrq_nop *vmm_blockrq_nop_from_rq(
