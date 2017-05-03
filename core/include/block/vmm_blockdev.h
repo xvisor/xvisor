@@ -43,6 +43,8 @@ enum vmm_request_type {
 
 /** Representation of a block IO request */
 struct vmm_request {
+	struct dlist head;
+
 	struct vmm_blockdev *bdev; /* No need to set this field. 
 				    * submit_request() will set this field.
 				    */
@@ -61,6 +63,18 @@ struct vmm_request {
 struct vmm_request_queue {
 	/* Lock to protect the request queue operations */
 	vmm_spinlock_t lock;
+
+	/* Max pending requests */
+	u32 max_pending;
+
+	/* Pending (or in-flight) request count */
+	u32 pending_count;
+
+	/* Backlog request count */
+	u32 backlog_count;
+
+	/* Backlog request list */
+	struct dlist backlog_list;
 
 	/* Note: make_request must ensure that it calls
 	 *
@@ -87,14 +101,19 @@ struct vmm_request_queue {
 	void *priv;
 };
 
-#define INIT_REQUEST_QUEUE(rq) \
-		do { \
-			INIT_SPIN_LOCK(&(rq)->lock); \
-			(rq)->make_request = NULL; \
-			(rq)->abort_request = NULL; \
-			(rq)->flush_cache = NULL; \
-			(rq)->priv = NULL; \
-		} while (0)
+#define INIT_REQUEST_QUEUE(__rq, __max_pending, __make_request, \
+			   __abort_request, __flush_request, __priv) \
+	do { \
+		INIT_SPIN_LOCK(&(__rq)->lock); \
+		(__rq)->max_pending = (__max_pending); \
+		(__rq)->pending_count = 0; \
+		(__rq)->backlog_count = 0; \
+		INIT_LIST_HEAD(&(__rq)->backlog_list); \
+		(__rq)->make_request = (__make_request); \
+		(__rq)->abort_request = (__abort_request); \
+		(__rq)->flush_cache = (__flush_request); \
+		(__rq)->priv = (__priv); \
+	} while (0)
 
 /* Block device flags */
 #define VMM_BLOCKDEV_RDONLY				0x00000001

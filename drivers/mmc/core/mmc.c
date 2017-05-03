@@ -32,6 +32,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_heap.h>
 #include <vmm_delay.h>
 #include <vmm_timer.h>
@@ -1227,10 +1228,11 @@ int mmc_sd_attach(struct mmc_host *host)
 		rc = VMM_ENOMEM;
 		goto detect_freebdev_fail;
 	}
-	INIT_REQUEST_QUEUE(bdev->rq);
-	bdev->rq->make_request = mmc_make_request;
-	bdev->rq->abort_request = mmc_abort_request;
-	bdev->rq->priv = host;
+	INIT_REQUEST_QUEUE(bdev->rq,
+			   U32_MAX,
+			   mmc_make_request,
+			   mmc_abort_request,
+			   NULL, host);
 
 	rc = vmm_blockdev_register(card->bdev);
 	if (rc) {

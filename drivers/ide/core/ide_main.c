@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_limits.h>
 #include <vmm_heap.h>
 #include <vmm_delay.h>
 #include <vmm_timer.h>
@@ -105,10 +106,11 @@ static int __init_ide_drive(struct ide_drive *drive)
 	if (!bdev->rq) {
 		goto detect_freebdev_fail;
 	}
-	INIT_REQUEST_QUEUE(bdev->rq);
-	bdev->rq->make_request = ide_make_request;
-	bdev->rq->abort_request = ide_abort_request;
-	bdev->rq->priv = drive;
+	INIT_REQUEST_QUEUE(bdev->rq,
+			   U32_MAX,
+			   ide_make_request,
+			   ide_abort_request,
+			   NULL, drive);
 
 	rc = vmm_blockdev_register(drive->bdev);
 	if (rc) {

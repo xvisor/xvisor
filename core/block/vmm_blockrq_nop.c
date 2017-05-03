@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
+#include <vmm_limits.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
@@ -207,7 +208,7 @@ struct vmm_blockrq_nop *vmm_blockrq_nop_create(
 	struct vmm_blockrq_nop *rqnop;
 	struct blockrq_nop_work *nopwork;
 
-	if (!name || (max_pending==0)) {
+	if (!name || (max_pending < 2)) {
 		goto fail;
 	}
 
@@ -250,11 +251,18 @@ struct vmm_blockrq_nop *vmm_blockrq_nop_create(
 		goto fail_free_pages;
 	}
 
-	INIT_REQUEST_QUEUE(&rqnop->rq);
-	rqnop->rq.make_request = blockrq_nop_make_request;
-	rqnop->rq.abort_request = blockrq_nop_abort_request;
-	rqnop->rq.flush_cache = blockrq_nop_flush_cache;
-	rqnop->rq.priv = rqnop;
+	/*
+	 * Note: we set max_pending for underlying vmm_request_queue to be
+	 * one less than vmm_blockrq_nop so that we always have atleast one
+	 * blockrq_nop_work when clearing backlog via
+	 * vmm_blockdev_complete_request() or vmm_blockdev_fail_request()
+	 */
+	INIT_REQUEST_QUEUE(&rqnop->rq,
+			   max_pending - 1,
+			   blockrq_nop_make_request,
+			   blockrq_nop_abort_request,
+			   blockrq_nop_flush_cache,
+			   rqnop);
 
 	return rqnop;
 
