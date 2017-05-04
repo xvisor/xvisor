@@ -111,7 +111,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	d->bdev->block_size = RBD_BLOCK_SIZE;
 
 	/* Setup request queue for block device instance */
-	rqnop = vmm_blockrq_nop_create(name, 8,
+	rqnop = vmm_blockrq_nop_create(name, 8, FALSE,
 					rbd_read_request,
 					rbd_write_request,
 					NULL, d);

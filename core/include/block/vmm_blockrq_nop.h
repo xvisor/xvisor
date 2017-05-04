@@ -35,6 +35,7 @@
 struct vmm_blockrq_nop {
 	char name[VMM_FIELD_NAME_SIZE];
 	u32 max_pending;
+	bool async_rw;
 
 	int (*read)(struct vmm_blockrq_nop *rqnop,
 		    struct vmm_request *r, void *priv);
@@ -70,6 +71,10 @@ static inline struct vmm_request_queue *vmm_blockrq_nop_to_rq(
 	return &rqnop->rq;
 }
 
+/** Mark async request done */
+void vmm_blockrq_nop_async_done(struct vmm_blockrq_nop *rqnop,
+				struct vmm_request *r, int error);
+
 /** Destroy NOP strategy based request queue
  *  Note: This function should be called from Orphan (or Thread) context.
  */
@@ -79,7 +84,7 @@ int vmm_blockrq_nop_destroy(struct vmm_blockrq_nop *rqnop);
  *  Note: This function should be called from Orphan (or Thread) context.
  */
 struct vmm_blockrq_nop *vmm_blockrq_nop_create(
-	const char *name, u32 max_pending,
+	const char *name, u32 max_pending, bool async_rw,
 	int (*read)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
 	int (*write)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
 	void (*flush)(struct vmm_blockrq_nop *,void *),

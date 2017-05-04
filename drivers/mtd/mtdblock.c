@@ -125,8 +125,10 @@ void mtdblock_add(struct mtd_info *mtd)
 	bdev->block_size = mtd->erasesize;
 
 	/* Setup request queue for block device instance */
-	rqnop = vmm_blockrq_nop_create(mtd->name, 256, mtd_blockdev_read,
-				       mtd_blockdev_write, mtd_blockdev_flush,
+	rqnop = vmm_blockrq_nop_create(mtd->name, 256, FALSE,
+				       mtd_blockdev_read,
+				       mtd_blockdev_write,
+				       mtd_blockdev_flush,
 				       mtd);
 	if (!rqnop) {
 		vmm_blockdev_free(bdev);

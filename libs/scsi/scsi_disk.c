@@ -213,7 +213,7 @@ struct scsi_disk *scsi_create_disk(const char *name,
 	disk->bdev->block_size = disk->info.blksz;
 
 	/* Setup request queue for block device instance */
-	disk->rqnop = vmm_blockrq_nop_create(name, max_pending,
+	disk->rqnop = vmm_blockrq_nop_create(name, max_pending, FALSE,
 					     scsi_disk_rq_read,
 					     scsi_disk_rq_write,
 					     scsi_disk_rq_flush, disk);

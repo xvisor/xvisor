@@ -35,6 +35,7 @@ struct blockrq_nop_work {
 	struct dlist head;
 	struct vmm_work work;
 	struct vmm_request *r;
+	void *r_priv;
 	bool is_free;
 };
 
@@ -56,6 +57,12 @@ static int blockrq_nop_queue_work(struct vmm_blockrq_nop *rqnop,
 				   struct blockrq_nop_work, head);
 	list_del(&nopwork->head);
 	nopwork->r = r;
+	if (r) {
+		nopwork->r_priv = r->priv;
+		r->priv = nopwork;
+	} else {
+		nopwork->r_priv = NULL;
+	}
 	nopwork->is_free = FALSE;
 	list_add_tail(&nopwork->head, &rqnop->wq_pending_list);
 
@@ -76,6 +83,11 @@ static void blockrq_nop_dequeue_work(struct blockrq_nop_work *nopwork)
 
 	list_del(&nopwork->head);
 	nopwork->is_free = TRUE;
+	if (nopwork->r) {
+		nopwork->r->priv = nopwork->r_priv;
+		nopwork->r = NULL;
+		nopwork->r_priv = NULL;
+	}
 	list_add_tail(&nopwork->head, &rqnop->wq_free_list);
 
 	vmm_spin_unlock_irqrestore(&rqnop->wq_lock, flags);
@@ -85,24 +97,12 @@ static int blockrq_nop_abort_work(struct vmm_blockrq_nop *rqnop,
 				  struct vmm_request *r)
 {
 	int rc;
-	bool found = FALSE;
-	irq_flags_t flags;
 	struct blockrq_nop_work *nopwork;
 
-	vmm_spin_lock_irqsave(&rqnop->wq_lock, flags);
-
-	list_for_each_entry(nopwork, &rqnop->wq_pending_list, head) {
-		if (nopwork->r == r) {
-			found = TRUE;
-			break;
-		}
+	if (!r || !r->priv) {
+		return VMM_EINVALID;
 	}
-
-	vmm_spin_unlock_irqrestore(&rqnop->wq_lock, flags);
-
-	if (!found) {
-		return VMM_ENOTAVAIL;
-	}
+	nopwork = r->priv;
 
 	rc = vmm_workqueue_stop_work(&nopwork->work);
 	if (rc) {
@@ -114,6 +114,23 @@ static int blockrq_nop_abort_work(struct vmm_blockrq_nop *rqnop,
 	}
 
 	return VMM_OK;
+}
+
+void blockrq_nop_rw_done(struct blockrq_nop_work *nopwork, int error)
+{
+	struct vmm_request *r;
+
+	if (!nopwork || !nopwork->r || !nopwork->r->priv) {
+		return;
+	}
+	r = nopwork->r;
+
+	blockrq_nop_dequeue_work(nopwork);
+	if (error) {
+		vmm_blockdev_fail_request(r);
+	} else {
+		vmm_blockdev_complete_request(r);
+	}
 }
 
 static void blockrq_nop_work_func(struct vmm_work *work)
@@ -145,18 +162,15 @@ static void blockrq_nop_work_func(struct vmm_work *work)
 			rc = VMM_EINVALID;
 			break;
 		};
-		if (rc) {
-			vmm_blockdev_fail_request(nopwork->r);
-		} else {
-			vmm_blockdev_complete_request(nopwork->r);
+		if (!rqnop->async_rw) {
+			blockrq_nop_rw_done(nopwork, rc);
 		}
 	} else {
+		blockrq_nop_dequeue_work(nopwork);
 		if (rqnop->flush) {
 			rqnop->flush(rqnop, rqnop->priv);
 		}
 	}
-
-	blockrq_nop_dequeue_work(nopwork);
 }
 
 static int blockrq_nop_make_request(struct vmm_request_queue *rq, 
@@ -175,6 +189,20 @@ static int blockrq_nop_flush_cache(struct vmm_request_queue *rq)
 {
 	return blockrq_nop_queue_work(vmm_blockrq_nop_from_rq(rq), NULL);
 }
+
+void vmm_blockrq_nop_async_done(struct vmm_blockrq_nop *rqnop,
+				struct vmm_request *r, int error)
+{
+	struct blockrq_nop_work *nopwork;
+
+	if (!rqnop || !rqnop->async_rw || !r || !r->priv) {
+		return;
+	}
+	nopwork = r->priv;
+
+	blockrq_nop_rw_done(nopwork, error);
+}
+VMM_EXPORT_SYMBOL(vmm_blockrq_nop_async_done);
 
 int vmm_blockrq_nop_destroy(struct vmm_blockrq_nop *rqnop)
 {
@@ -198,7 +226,7 @@ int vmm_blockrq_nop_destroy(struct vmm_blockrq_nop *rqnop)
 VMM_EXPORT_SYMBOL(vmm_blockrq_nop_destroy);
 
 struct vmm_blockrq_nop *vmm_blockrq_nop_create(
-	const char *name, u32 max_pending,
+	const char *name, u32 max_pending, bool async_rw,
 	int (*read)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
 	int (*write)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
 	void (*flush)(struct vmm_blockrq_nop *,void *),
@@ -208,7 +236,7 @@ struct vmm_blockrq_nop *vmm_blockrq_nop_create(
 	struct vmm_blockrq_nop *rqnop;
 	struct blockrq_nop_work *nopwork;
 
-	if (!name || (max_pending < 2)) {
+	if (!name || !max_pending) {
 		goto fail;
 	}
 
@@ -222,6 +250,7 @@ struct vmm_blockrq_nop *vmm_blockrq_nop_create(
 		goto fail_free_rqnop;
 	}
 	rqnop->max_pending = max_pending;
+	rqnop->async_rw = async_rw;
 	rqnop->read = read;
 	rqnop->write = write;
 	rqnop->flush = flush;
@@ -258,7 +287,7 @@ struct vmm_blockrq_nop *vmm_blockrq_nop_create(
 	 * vmm_blockdev_complete_request() or vmm_blockdev_fail_request()
 	 */
 	INIT_REQUEST_QUEUE(&rqnop->rq,
-			   max_pending - 1,
+			   max_pending,
 			   blockrq_nop_make_request,
 			   blockrq_nop_abort_request,
 			   blockrq_nop_flush_cache,
