@@ -381,6 +381,37 @@ static bool __vgic_queue_hwirq(struct vgic_guest_state *s,
 	return FALSE;
 }
 
+/* Check for interrupt pending to the VCPU
+ * Note: Must be called with VGIC distributor lock held
+ */
+static bool __vgic_vcpu_irq_pending(struct vgic_guest_state *s,
+				      struct vgic_vcpu_state *vs)
+{
+	u32 i, mask;
+
+	if (!s->enabled) {
+		return false;
+	}
+
+	DPRINTF("%s: vcpu=%s\n", __func__, vs->vcpu->name);
+
+	mask = s->irq_pending[vs->vcpu->subid][0];
+	mask &= s->irq_enabled[vs->vcpu->subid][0];
+	if (mask) {
+		return true;
+	}
+
+	for (i = 1; i < VGIC_MAX_NIRQ / 32; i++) {
+		mask = s->irq_pending[vs->vcpu->subid][i];
+		mask &= s->irq_enabled[vs->vcpu->subid][i];
+		if (mask) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /* Flush VGIC state to VGIC HW for given VCPU
  * Note: Must be called only when given VCPU is current VCPU
  * Note: Must be called with VGIC distributor lock held
@@ -715,6 +746,31 @@ static vmm_irq_return_t vgic_maint_irq(int irq_no, void *dev)
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	return VMM_IRQ_HANDLED;
+}
+
+/* Check whether intruupt for the VCPU is pending or not */
+static bool vgic_irq_pending(void *vcpu_ptr)
+{
+	irq_flags_t flags;
+	struct vgic_guest_state *s;
+	struct vgic_vcpu_state *vs;
+	struct vmm_vcpu *vcpu = vcpu_ptr;
+	bool intr_pending = FALSE;
+
+	BUG_ON(!vcpu);
+
+	s = arm_vgic_priv(vcpu);
+	vs = &s->vstate[vcpu->subid];
+
+	/* Lock VGIC distributor state */
+	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
+
+	intr_pending = __vgic_vcpu_irq_pending(s, vs);
+
+	/* Unlock VGIC distributor state */
+	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
+
+	return intr_pending;
 }
 
 /* Save VCPU context for current VCPU */
@@ -1384,7 +1440,8 @@ static struct vgic_guest_state *vgic_state_alloc(const char *name,
 	list_for_each_entry(vcpu, &guest->vcpu_list, head) {
 		arm_vgic_setup(vcpu,
 			vgic_save_vcpu_context,
-			vgic_restore_vcpu_context, s);
+			vgic_restore_vcpu_context,
+			vgic_irq_pending, s);
 	}
 
 	return s;

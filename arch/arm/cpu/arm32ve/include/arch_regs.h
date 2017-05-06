@@ -221,6 +221,7 @@ struct arm_priv {
 	bool vgic_avail;
 	void (*vgic_save)(void *vcpu_ptr);
 	void (*vgic_restore)(void *vcpu_ptr);
+	bool (*vgic_irq_pending)(void *vcpu_ptr);
 	void *vgic_priv;
 };
 
@@ -260,26 +261,40 @@ struct arm_guest_priv {
 /**
  *  VGIC support macros
  */
-#define arm_vgic_setup(vcpu, __save_func, __restore_func, __priv) \
-			do { \
-				arm_priv(vcpu)->vgic_avail = TRUE; \
-				arm_priv(vcpu)->vgic_save = __save_func; \
-				arm_priv(vcpu)->vgic_restore = __restore_func;\
-				arm_priv(vcpu)->vgic_priv = __priv; \
-			} while (0)
-#define arm_vgic_cleanup(vcpu)	do { \
-					arm_priv(vcpu)->vgic_avail = FALSE; \
-					arm_priv(vcpu)->vgic_save = NULL; \
-					arm_priv(vcpu)->vgic_restore = NULL; \
-					arm_priv(vcpu)->vgic_priv = NULL; \
-				} while (0)
+#define arm_vgic_setup(vcpu, __save_func, __restore_func, \
+		       __irq_pending_func, __priv) \
+	do { \
+		arm_priv(vcpu)->vgic_avail = TRUE; \
+		arm_priv(vcpu)->vgic_save = __save_func; \
+		arm_priv(vcpu)->vgic_restore = __restore_func; \
+		arm_priv(vcpu)->vgic_irq_pending = __irq_pending_func; \
+		arm_priv(vcpu)->vgic_priv = __priv; \
+	} while (0)
+#define arm_vgic_cleanup(vcpu)	\
+	do { \
+		arm_priv(vcpu)->vgic_avail = FALSE; \
+		arm_priv(vcpu)->vgic_save = NULL; \
+		arm_priv(vcpu)->vgic_restore = NULL; \
+		arm_priv(vcpu)->vgic_irq_pending = NULL;\
+		arm_priv(vcpu)->vgic_priv = NULL; \
+	} while (0)
 #define arm_vgic_avail(vcpu)	(arm_priv(vcpu)->vgic_avail)
-#define arm_vgic_save(vcpu)	if (arm_vgic_avail(vcpu)) { \
-					arm_priv(vcpu)->vgic_save(vcpu); \
-				}
-#define arm_vgic_restore(vcpu)	if (arm_vgic_avail(vcpu)) { \
-					arm_priv(vcpu)->vgic_restore(vcpu); \
-				}
+#define arm_vgic_save(vcpu)	\
+	if (arm_vgic_avail(vcpu)) { \
+		arm_priv(vcpu)->vgic_save(vcpu); \
+	}
+#define arm_vgic_restore(vcpu)	\
+	if (arm_vgic_avail(vcpu)) { \
+		arm_priv(vcpu)->vgic_restore(vcpu); \
+	}
+#define arm_vgic_irq_pending(vcpu)	\
+	({ \
+		bool __r = FALSE; \
+		if (arm_vgic_avail(vcpu)) { \
+			__r = arm_priv(vcpu)->vgic_irq_pending(vcpu); \
+		} \
+		__r; \
+	})
 #define arm_vgic_priv(vcpu)	(arm_priv(vcpu)->vgic_priv)
 
 #endif
