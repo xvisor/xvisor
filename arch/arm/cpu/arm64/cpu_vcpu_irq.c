@@ -199,3 +199,7 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	return VMM_OK;
 }
 
+bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu)
+{
+	return arm_vgic_irq_pending(vcpu);
+}

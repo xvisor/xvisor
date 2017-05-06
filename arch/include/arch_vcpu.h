@@ -110,4 +110,10 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
  */
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 
+/** VCPU IRQ pending status
+ *  NOTE: This function is called asynchronusly in any context.
+ *  NOTE: This function is usually useful to architectures having
+ *  hardware virtualization support.
+ */
+bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu);
 #endif
