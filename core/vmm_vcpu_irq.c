@@ -257,7 +257,8 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
 	if (!vcpu->irqs.wfi.state &&
-	    !arch_atomic_read(&vcpu->irqs.execute_pending)) {
+	    !(arch_atomic_read(&vcpu->irqs.execute_pending) ||
+		arch_vcpu_irq_pending(vcpu))) {
 		try_vcpu_pause = TRUE;
 
 		/* Set wait for irq state */
