@@ -47,7 +47,8 @@ struct vmm_blockrq_nop {
 	u32 wq_page_count;
 	virtual_addr_t wq_page_va;
 	vmm_spinlock_t wq_lock;
-	struct dlist wq_free_list;
+	struct dlist wq_rw_free_list;
+	struct dlist wq_w_free_list;
 	struct dlist wq_pending_list;
 
 	struct vmm_workqueue *wq;
@@ -74,6 +75,11 @@ static inline struct vmm_request_queue *vmm_blockrq_nop_to_rq(
 /** Mark async request done */
 void vmm_blockrq_nop_async_done(struct vmm_blockrq_nop *rqnop,
 				struct vmm_request *r, int error);
+
+/** Queue custom work on request queue */
+int vmm_blockrq_nop_queue_work(struct vmm_blockrq_nop *rqnop,
+			void (*w_func)(struct vmm_blockrq_nop *, void *),
+			void *w_priv);
 
 /** Destroy NOP strategy based request queue
  *  Note: This function should be called from Orphan (or Thread) context.
