@@ -83,11 +83,6 @@ static const int multipliers[] = {
 	80,
 };
 
-static int mmc_make_request(struct vmm_request_queue *rq,
-			    struct vmm_request *r);
-static int mmc_abort_request(struct vmm_request_queue *rq,
-			     struct vmm_request *r);
-
 static int __mmc_set_blocklen(struct mmc_host *host, int len)
 {
 	struct mmc_cmd cmd;
@@ -152,8 +147,8 @@ static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
 	return blkcnt;
 }
 
-static u32 __mmc_bwrite(struct mmc_host *host, struct mmc_card *card,
-			u64 start, u32 blkcnt, const void *src)
+u32 __mmc_sd_bwrite(struct mmc_host *host, struct mmc_card *card,
+		    u64 start, u32 blkcnt, const void *src)
 {
 	u32 cur, blocks_todo = blkcnt;
 
@@ -217,8 +212,8 @@ static u32 __mmc_read_blocks(struct mmc_host *host, struct mmc_card *card,
 	return blkcnt;
 }
 
-static u32 __mmc_bread(struct mmc_host *host, struct mmc_card *card,
-		       u64 start, u32 blkcnt, void *dst)
+u32 __mmc_sd_bread(struct mmc_host *host, struct mmc_card *card,
+		   u64 start, u32 blkcnt, void *dst)
 {
 	u32 cur, blocks_todo = blkcnt;
 
@@ -241,119 +236,6 @@ static u32 __mmc_bread(struct mmc_host *host, struct mmc_card *card,
 	} while (blocks_todo > 0);
 
 	return blkcnt;
-}
-
-int mmc_blockdev_request(struct mmc_host *host,
-			 struct vmm_request_queue *rq,
-			 struct vmm_request *r)
-{
-	int rc;
-	u32 cnt;
-
-	if (!r) {
-		return VMM_EFAIL;
-	}
-
-	if (!host || !host->card || !rq) {
-		vmm_blockdev_fail_request(r);
-		return VMM_EFAIL;
-	}
-
-	switch (r->type) {
-	case VMM_REQUEST_READ:
-		cnt = __mmc_bread(host, host->card, r->lba, r->bcnt, r->data);
-		if (cnt == r->bcnt) {
-			vmm_blockdev_complete_request(r);
-			rc = VMM_OK;
-		} else {
-			vmm_blockdev_fail_request(r);
-			rc = VMM_EIO;
-		}
-		break;
-	case VMM_REQUEST_WRITE:
-		cnt = __mmc_bwrite(host, host->card, r->lba, r->bcnt, r->data);
-		if (cnt == r->bcnt) {
-			vmm_blockdev_complete_request(r);
-			rc = VMM_OK;
-		} else {
-			vmm_blockdev_fail_request(r);
-			rc = VMM_EIO;
-		}
-		break;
-	default:
-		vmm_blockdev_fail_request(r);
-		rc = VMM_EFAIL;
-		break;
-	};
-
-	return rc;
-}
-
-static int mmc_make_request(struct vmm_request_queue *rq,
-			    struct vmm_request *r)
-{
-	irq_flags_t flags;
-	struct mmc_host_io *io;
-	struct mmc_host *host;
-
-	if (!r || !rq || !rq->priv) {
-		return VMM_EFAIL;
-	}
-
-	host = rq->priv;
-
-	io = vmm_zalloc(sizeof(struct mmc_host_io));
-	if (!io) {
-		return VMM_ENOMEM;
-	}
-
-	INIT_LIST_HEAD(&io->head);
-	io->type = MMC_HOST_IO_BLOCKDEV_REQUEST;
-	io->rq = rq;
-	io->r = r;
-
-	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
-	list_add_tail(&io->head, &host->io_list);
-	vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-
-	vmm_completion_complete(&host->io_avail);
-
-	return VMM_OK;
-}
-
-static int mmc_abort_request(struct vmm_request_queue *rq,
-			     struct vmm_request *r)
-{
-	bool found;
-	irq_flags_t flags;
-	struct dlist *l;
-	struct mmc_host_io *io;
-	struct mmc_host *host;
-
-	if (!r || !rq || !rq->priv) {
-		return VMM_EFAIL;
-	}
-
-	host = rq->priv;
-
-	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
-
-	found = FALSE;
-	list_for_each(l, &host->io_list) {
-		io = list_entry(l, struct mmc_host_io, head);
-		if (io->r == r && io->rq == rq) {
-			found = TRUE;
-			break;
-		}
-	}
-	if (found) {
-		list_del(&io->head);
-		vmm_free(io);
-	}
-
-	vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-	
-	return VMM_OK;
 }
 
 static int __sd_switch(struct mmc_host *host,
@@ -1121,7 +1003,7 @@ int mmc_send_if_cond(struct mmc_host *host, struct mmc_card *card)
 	return VMM_OK;
 }
 
-int mmc_sd_attach(struct mmc_host *host)
+int __mmc_sd_attach(struct mmc_host *host)
 {
 	int rc = VMM_OK;
 	struct mmc_card *card;
@@ -1223,27 +1105,17 @@ int mmc_sd_attach(struct mmc_host *host)
 	bdev->num_blocks = udiv64(card->capacity, bdev->block_size);
 
 	/* Setup request queue for block device instance */
-	bdev->rq = vmm_zalloc(sizeof(struct vmm_request_queue));
-	if (!bdev->rq) {
-		rc = VMM_ENOMEM;
-		goto detect_freebdev_fail;
-	}
-	INIT_REQUEST_QUEUE(bdev->rq,
-			   U32_MAX,
-			   mmc_make_request,
-			   mmc_abort_request,
-			   NULL, host);
+	bdev->rq = vmm_blockrq_to_rq(host->brq);
 
+	/* Register block device instance */
 	rc = vmm_blockdev_register(card->bdev);
 	if (rc) {
-		goto detect_freerq_fail;
+		goto detect_freebdev_fail;
 	}
 
 	rc = VMM_OK;
 	goto detect_done;
 
-detect_freerq_fail:
-	vmm_free(host->card->bdev->rq);
 detect_freebdev_fail:
 	vmm_blockdev_free(host->card->bdev);
 detect_freecard_fail:

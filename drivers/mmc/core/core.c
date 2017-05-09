@@ -316,10 +316,10 @@ unplug_done:
 static int __mmc_detect_card_inserted(struct mmc_host *host)
 {
 	/* SDIO probe followed by SD and MMC probe */
-	if (!sdio_attach(host)) {
+	if (!__sdio_attach(host)) {
 		return 0;
 	}
-	if (!mmc_sd_attach(host)) {
+	if (!__mmc_sd_attach(host)) {
 		return 0;
 	}
 
@@ -350,90 +350,85 @@ static void __mmc_detect_card_change(struct mmc_host *host)
 	}
 }
 
-static int mmc_host_thread(void *tdata)
+static void mmc_host_poll(struct vmm_blockrq *brq, void *priv)
 {
-	u64 tout;
-	irq_flags_t flags;
-	struct dlist *l;
-	struct mmc_host_io *io;
-	struct mmc_host *host = tdata;
+	struct mmc_host *host = priv;
 
-	while (1) {
-		if (host->caps & MMC_CAP_NEEDS_POLL) {
-			tout = 1000000000LL; /* 1 seconds timeout */
-			vmm_completion_wait_timeout(&host->io_avail, &tout);
-			if (!tout) {
-				__mmc_detect_card_change(host);
-			}
-		} else {
-			vmm_completion_wait(&host->io_avail);
-		}
+	vmm_mutex_lock(&host->lock);
+	__mmc_detect_card_change(host);
+	vmm_mutex_unlock(&host->lock);
 
-		vmm_spin_lock_irqsave(&host->io_list_lock, flags);
-		if (list_empty(&host->io_list)) {
-			vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-			continue;
-		}
-		l = list_pop(&host->io_list);
-		vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-
-		io = list_entry(l, struct mmc_host_io, head);
-
-		vmm_mutex_lock(&host->lock);
-
-		switch (io->type) {
-		case MMC_HOST_IO_DETECT_CARD_CHANGE:
-			tout = vmm_timer_timestamp();
-			if (tout < io->card_change_tstamp) {
-				tout = io->card_change_tstamp - tout;
-				tout = udiv64(tout, 1000);
-				if (tout) {
-					vmm_udelay(tout);
-				}
-			}
-			__mmc_detect_card_change(host);
-			break;
-		case MMC_HOST_IO_BLOCKDEV_REQUEST:
-			mmc_blockdev_request(host, io->rq, io->r);
-			break;
-		default:
-			break;
-		};
-
-		vmm_mutex_unlock(&host->lock);
-
-		vmm_free(io);
+	if (host->caps & MMC_CAP_NEEDS_POLL) {
+		/* Poll again after 1 seconds */
+		vmm_timer_event_start(&host->poll_ev, 1000000000LL);
 	}
+}
 
+static void mmc_host_poll_event_handler(struct vmm_timer_event *ev)
+{
+	struct mmc_host *host = container_of(ev, struct mmc_host, poll_ev);
+
+	vmm_blockrq_queue_work(host->brq, mmc_host_poll, host);
+}
+
+static int mmc_blockrq_read(struct vmm_blockrq *brq,
+			    struct vmm_request *r, void *priv)
+{
+	u32 cnt;
+	int rc = VMM_OK;
+	struct mmc_host *host = priv;
+
+	vmm_mutex_lock(&host->lock);
+	cnt = __mmc_sd_bread(host, host->card, r->lba, r->bcnt, r->data);
+	if (cnt == r->bcnt) {
+		rc = VMM_OK;
+	} else {
+		rc = VMM_EIO;
+	}
+	vmm_mutex_unlock(&host->lock);
+
+	return rc;
+}
+
+static int mmc_blockrq_write(struct vmm_blockrq *brq,
+			     struct vmm_request *r, void *priv)
+{
+	u32 cnt;
+	int rc = VMM_OK;
+	struct mmc_host *host = priv;
+
+	vmm_mutex_lock(&host->lock);
+	cnt = __mmc_sd_bwrite(host, host->card, r->lba, r->bcnt, r->data);
+	if (cnt == r->bcnt) {
+		rc = VMM_OK;
+	} else {
+		rc = VMM_EIO;
+	}
+	vmm_mutex_unlock(&host->lock);
+
+	return rc;
+}
+
+static int mmc_blockrq_abort(struct vmm_blockrq *brq,
+			     struct vmm_request *r, void *priv)
+{
+	/* Nothing to do here. */
 	return VMM_OK;
+}
+
+static void mmc_blockrq_flush(struct vmm_blockrq *brq, void *priv)
+{
+	/* Nothing to do here. */
 }
 
 int mmc_detect_card_change(struct mmc_host *host, unsigned long msecs)
 {
-	irq_flags_t flags;
-	struct mmc_host_io *io;
-
 	if (!host) {
 		return VMM_EFAIL;
 	}
 
-	io = vmm_zalloc(sizeof(struct mmc_host_io));
-	if (!io) {
-		return VMM_ENOMEM;
-	}
-
-	INIT_LIST_HEAD(&io->head);
-	io->type = MMC_HOST_IO_DETECT_CARD_CHANGE;
-	io->card_change_tstamp = vmm_timer_timestamp() + 
-					((u64)msecs * 1000000ULL);
-
-	vmm_spin_lock_irqsave(&host->io_list_lock, flags);
-	list_add_tail(&io->head, &host->io_list);
-	vmm_spin_unlock_irqrestore(&host->io_list_lock, flags);
-
-	vmm_completion_complete(&host->io_avail);
-
-	return VMM_OK;
+	return vmm_timer_event_start(&host->poll_ev,
+				     (u64)msecs * 1000000ULL);
 }
 VMM_EXPORT_SYMBOL(mmc_detect_card_change);
 
@@ -449,14 +444,11 @@ struct mmc_host *mmc_alloc_host(int extra, struct vmm_device *dev)
 	INIT_LIST_HEAD(&host->link);
 	host->dev = dev;
 
-	INIT_LIST_HEAD(&host->io_list);
-	INIT_SPIN_LOCK(&host->io_list_lock);
-
 	INIT_MUTEX(&host->slot.lock);
 	host->slot.cd_irq = VMM_EINVALID;
 
-	INIT_COMPLETION(&host->io_avail);
-	host->io_thread = NULL;
+	host->brq = NULL;
+	INIT_TIMER_EVENT(&host->poll_ev, mmc_host_poll_event_handler, host);
 
 	INIT_MUTEX(&host->lock);
 
@@ -468,7 +460,7 @@ int mmc_add_host(struct mmc_host *host)
 {
 	char name[32];
 
-	if (!host || host->io_thread) {
+	if (!host || host->brq) {
 		return VMM_EFAIL;
 	}
 
@@ -478,12 +470,14 @@ int mmc_add_host(struct mmc_host *host)
 
 	vmm_mutex_lock(&mmc_host_list_mutex);
 
-	INIT_COMPLETION(&host->io_avail);
 	vmm_snprintf(name, 32, "mmc%d", mmc_host_count);
-	host->io_thread = vmm_threads_create(name, mmc_host_thread, host, 
-					     VMM_THREAD_DEF_PRIORITY,
-					     VMM_THREAD_DEF_TIME_SLICE);
-	if (!host->io_thread) {
+	host->brq = vmm_blockrq_create(name, 128, FALSE,
+				       mmc_blockrq_read,
+				       mmc_blockrq_write,
+				       mmc_blockrq_abort,
+				       mmc_blockrq_flush,
+				       host);
+	if (!host->brq) {
 		vmm_mutex_unlock(&mmc_host_list_mutex);
 		return VMM_EFAIL;
 	}
@@ -502,15 +496,22 @@ int mmc_add_host(struct mmc_host *host)
 	__mmc_detect_card_inserted(host);
 	vmm_mutex_unlock(&host->lock);
 
-	return vmm_threads_start(host->io_thread);
+	/* Start polling timer event if required */
+	if (host->caps & MMC_CAP_NEEDS_POLL) {
+		vmm_timer_event_start(&host->poll_ev, 1000000000LL);
+	}
+
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(mmc_add_host);
 
 void mmc_remove_host(struct mmc_host *host)
 {
-	if (!host || !host->io_thread) {
+	if (!host || !host->brq) {
 		return;
 	}
+
+	vmm_timer_event_stop(&host->poll_ev);
 
 	vmm_mutex_lock(&host->lock);
 	__mmc_detect_card_removed(host);
@@ -521,9 +522,8 @@ void mmc_remove_host(struct mmc_host *host)
 	list_del(&host->link);
 	mmc_host_count--;
 
-	vmm_threads_stop(host->io_thread);
-	vmm_threads_destroy(host->io_thread);
-	host->io_thread = NULL;
+	vmm_blockrq_destroy(host->brq);
+	host->brq = NULL;
 
 	vmm_mutex_unlock(&mmc_host_list_mutex);
 }

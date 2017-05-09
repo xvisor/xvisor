@@ -691,7 +691,7 @@ fail:
 	return ret;
 }
 
-int sdio_attach(struct mmc_host *host)
+int __sdio_attach(struct mmc_host *host)
 {
 	int rc = VMM_OK;
 	struct mmc_card *card;

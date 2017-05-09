@@ -36,28 +36,6 @@
 #include <drv/mmc/sdio.h>
 
 /*
- * IO types for mmc hosts.
- */
-enum mmc_host_io_type {
-	MMC_HOST_IO_DETECT_CARD_CHANGE=1,
-	MMC_HOST_IO_BLOCKDEV_REQUEST=2
-};
-
-/*
- * IO instance for mmc hosts.
- */
-struct mmc_host_io {
-	/* Generic data */
-	struct dlist head;
-	enum mmc_host_io_type type;
-	/* Data for MMC_HOST_IO_DETECT_CARD_CHANGE */
-	u64 card_change_tstamp;
-	/* Data for MMC_HOST_IO_BLOCKDEV_REQUEST */
-	struct vmm_request *r;
-	struct vmm_request_queue *rq;
-};
-
-/*
  * Core internal functions.
  */
 int mmc_send_cmd(struct mmc_host *host,
@@ -79,18 +57,21 @@ int mmc_go_idle(struct mmc_host *host);
 
 /*
  * SDIO internal functions.
+ * Note: Must be called with host->lock held.
  */
 extern struct vmm_bus sdio_bus_type;
 struct vmm_device_type sdio_func_type;
 
-int sdio_attach(struct mmc_host *host);
+int __sdio_attach(struct mmc_host *host);
 
 /*
  * MMC/SD internal functions.
+ * Note: Must be called with host->lock held.
  */
-int mmc_blockdev_request(struct mmc_host *host,
-			 struct vmm_request_queue *rq,
-			 struct vmm_request *r);
-int mmc_sd_attach(struct mmc_host *host);
+u32 __mmc_sd_bwrite(struct mmc_host *host, struct mmc_card *card,
+		    u64 start, u32 blkcnt, const void *src);
+u32 __mmc_sd_bread(struct mmc_host *host, struct mmc_card *card,
+		   u64 start, u32 blkcnt, void *dst);
+int __mmc_sd_attach(struct mmc_host *host);
 
 #endif

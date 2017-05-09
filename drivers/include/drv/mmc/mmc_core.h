@@ -37,8 +37,9 @@
 #include <vmm_compiler.h>
 #include <vmm_types.h>
 #include <vmm_mutex.h>
+#include <vmm_timer.h>
 #include <vmm_completion.h>
-#include <vmm_threads.h>
+#include <block/vmm_blockrq.h>
 #include <block/vmm_blockdev.h>
 #include <libs/list.h>
 
@@ -484,11 +485,8 @@ struct mmc_host {
 	u32 b_max;
 	u32 ocr_avail;
 
-	struct dlist io_list;
-	vmm_spinlock_t io_list_lock;
-	
-	struct vmm_thread *io_thread;
-	struct vmm_completion io_avail;
+	struct vmm_blockrq *brq;
+	struct vmm_timer_event poll_ev;
 
 	struct vmm_mutex lock; /* Lock to proctect ops, ios, card, and priv */
 
