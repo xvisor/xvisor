@@ -25,9 +25,9 @@
 #define __SCSI_DISK_H__
 
 #include <vmm_types.h>
-#include <libs/scsi.h>
 #include <block/vmm_blockdev.h>
-#include <block/vmm_blockrq_nop.h>
+#include <block/vmm_blockrq.h>
+#include <libs/scsi.h>
 
 #define SCSI_DISK_IPRIORITY		(SCSI_IPRIORITY + \
 					 VMM_BLOCKDEV_CLASS_IPRIORITY + 1)
@@ -41,7 +41,7 @@ struct scsi_disk {
 	struct scsi_info info;
 
 	struct vmm_blockdev *bdev;
-	struct vmm_blockrq_nop *rqnop;
+	struct vmm_blockrq *brq;
 };
 
 struct scsi_disk *scsi_create_disk(const char *name,
@@ -53,4 +53,4 @@ struct scsi_disk *scsi_create_disk(const char *name,
 
 int scsi_destroy_disk(struct scsi_disk *disk);
 
-#endif /* __SCSI_H__ */
+#endif /* __SCSI_DISK_H__ */

@@ -44,7 +44,7 @@
 #define DPRINTF(msg...)
 #endif
 
-static int scsi_disk_rq_read(struct vmm_blockrq_nop *rqnop,
+static int scsi_disk_rq_read(struct vmm_blockrq *brq,
 			     struct vmm_request *r, void *priv)
 {
 	void *data;
@@ -98,7 +98,7 @@ static int scsi_disk_rq_read(struct vmm_blockrq_nop *rqnop,
 	return VMM_OK;
 }
 
-static int scsi_disk_rq_write(struct vmm_blockrq_nop *rqnop,
+static int scsi_disk_rq_write(struct vmm_blockrq *brq,
 			      struct vmm_request *r, void *priv)
 {
 	void *data;
@@ -152,7 +152,7 @@ static int scsi_disk_rq_write(struct vmm_blockrq_nop *rqnop,
 	return VMM_OK;
 }
 
-static void scsi_disk_rq_flush(struct vmm_blockrq_nop *rqnop, void *priv)
+static void scsi_disk_rq_flush(struct vmm_blockrq *brq, void *priv)
 {
 	/* Nothing to do here. */
 }
@@ -213,20 +213,20 @@ struct scsi_disk *scsi_create_disk(const char *name,
 	disk->bdev->block_size = disk->info.blksz;
 
 	/* Setup request queue for block device instance */
-	disk->rqnop = vmm_blockrq_nop_create(name, max_pending, FALSE,
-					     scsi_disk_rq_read,
-					     scsi_disk_rq_write,
-					     scsi_disk_rq_flush, disk);
-	if (!disk->rqnop) {
+	disk->brq = vmm_blockrq_create(name, max_pending, FALSE,
+				       scsi_disk_rq_read,
+				       scsi_disk_rq_write, NULL,
+				       scsi_disk_rq_flush, disk);
+	if (!disk->brq) {
 		vmm_blockdev_free(disk->bdev);
 		vmm_free(disk);
 		return VMM_ERR_PTR(VMM_ENOMEM);
 	}
-	disk->bdev->rq = vmm_blockrq_nop_to_rq(disk->rqnop);
+	disk->bdev->rq = vmm_blockrq_to_rq(disk->brq);
 
 	/* Register block device instance */
 	if ((err = vmm_blockdev_register(disk->bdev))) {
-		vmm_blockrq_nop_destroy(disk->rqnop);
+		vmm_blockrq_destroy(disk->brq);
 		vmm_blockdev_free(disk->bdev);
 		vmm_free(disk);
 		return VMM_ERR_PTR(err);
@@ -243,7 +243,7 @@ int scsi_destroy_disk(struct scsi_disk *disk)
 	}
 
 	vmm_blockdev_unregister(disk->bdev);
-	vmm_blockrq_nop_destroy(disk->rqnop);
+	vmm_blockrq_destroy(disk->brq);
 	vmm_blockdev_free(disk->bdev);
 	vmm_free(disk);
 

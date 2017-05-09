@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file vmm_blockrq_nop.h
+ * @file vmm_blockrq.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief header file for NOP strategy based request queue
+ * @brief header file for generic blockdev request queue
  */
 
-#ifndef __VMM_BLOCKRQ_NOP_H_
-#define __VMM_BLOCKRQ_NOP_H_
+#ifndef __VMM_BLOCKRQ_H__
+#define __VMM_BLOCKRQ_H__
 
 #include <vmm_types.h>
 #include <vmm_limits.h>
@@ -31,17 +31,19 @@
 #include <block/vmm_blockdev.h>
 #include <libs/list.h>
 
-/** Representation of NOP strategy based request queue */
-struct vmm_blockrq_nop {
+/** Representation of generic request queue */
+struct vmm_blockrq {
 	char name[VMM_FIELD_NAME_SIZE];
 	u32 max_pending;
 	bool async_rw;
 
-	int (*read)(struct vmm_blockrq_nop *rqnop,
+	int (*read)(struct vmm_blockrq *brq,
 		    struct vmm_request *r, void *priv);
-	int (*write)(struct vmm_blockrq_nop *rqnop,
+	int (*write)(struct vmm_blockrq *brq,
 		     struct vmm_request *r, void *priv);
-	void (*flush)(struct vmm_blockrq_nop *rqnop, void *priv);
+	int (*abort)(struct vmm_blockrq *brq,
+		     struct vmm_request *r, void *priv);
+	void (*flush)(struct vmm_blockrq *brq, void *priv);
 	void *priv;
 
 	u32 wq_page_count;
@@ -55,45 +57,46 @@ struct vmm_blockrq_nop {
 
 	struct vmm_request_queue rq;
 };
-#define vmm_rq_to_blockrq_nop(__rq)	\
-	container_of(__rq, struct vmm_blockrq_nop, rq)
+#define vmm_rq_to_blockrq(__rq)	\
+	container_of(__rq, struct vmm_blockrq, rq)
 
-/** Get NOP strategy based request queue from request queue pointer */
-static inline struct vmm_blockrq_nop *vmm_blockrq_nop_from_rq(
+/** Get generic blockdev request queue from request queue pointer */
+static inline struct vmm_blockrq *vmm_blockrq_from_rq(
 					struct vmm_request_queue *rq)
 {
-	return (struct vmm_blockrq_nop *)rq->priv;
+	return (struct vmm_blockrq *)rq->priv;
 }
 
-/** Get request queue pointer from NOP strategy based request queue */
-static inline struct vmm_request_queue *vmm_blockrq_nop_to_rq(
-					struct vmm_blockrq_nop *rqnop)
+/** Get request queue pointer from generic blockdev request queue */
+static inline struct vmm_request_queue *vmm_blockrq_to_rq(
+					struct vmm_blockrq *brq)
 {
-	return &rqnop->rq;
+	return &brq->rq;
 }
 
 /** Mark async request done */
-void vmm_blockrq_nop_async_done(struct vmm_blockrq_nop *rqnop,
-				struct vmm_request *r, int error);
+void vmm_blockrq_async_done(struct vmm_blockrq *brq,
+			    struct vmm_request *r, int error);
 
 /** Queue custom work on request queue */
-int vmm_blockrq_nop_queue_work(struct vmm_blockrq_nop *rqnop,
-			void (*w_func)(struct vmm_blockrq_nop *, void *),
+int vmm_blockrq_queue_work(struct vmm_blockrq *brq,
+			void (*w_func)(struct vmm_blockrq *, void *),
 			void *w_priv);
 
-/** Destroy NOP strategy based request queue
+/** Destroy generic blockdev request queue
  *  Note: This function should be called from Orphan (or Thread) context.
  */
-int vmm_blockrq_nop_destroy(struct vmm_blockrq_nop *rqnop);
+int vmm_blockrq_destroy(struct vmm_blockrq *brq);
 
-/** Create NOP strategy based request queue
+/** Create generic blockdev request queue
  *  Note: This function should be called from Orphan (or Thread) context.
  */
-struct vmm_blockrq_nop *vmm_blockrq_nop_create(
+struct vmm_blockrq *vmm_blockrq_create(
 	const char *name, u32 max_pending, bool async_rw,
-	int (*read)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
-	int (*write)(struct vmm_blockrq_nop *,struct vmm_request *, void *),
-	void (*flush)(struct vmm_blockrq_nop *,void *),
+	int (*read)(struct vmm_blockrq *,struct vmm_request *, void *),
+	int (*write)(struct vmm_blockrq *,struct vmm_request *, void *),
+	int (*abort)(struct vmm_blockrq *,struct vmm_request *, void *),
+	void (*flush)(struct vmm_blockrq *,void *),
 	void *priv);
 
 #endif

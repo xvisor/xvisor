@@ -24,7 +24,7 @@
 core-objs-$(CONFIG_BLOCK)+= block/vmm_blockdev_mod.o
 
 vmm_blockdev_mod-y += vmm_blockdev.o
-vmm_blockdev_mod-y += vmm_blockrq_nop.o
+vmm_blockdev_mod-y += vmm_blockrq.o
 
 %/vmm_blockdev_mod.o: $(foreach obj,$(vmm_blockdev_mod-y),%/$(obj))
 	$(call merge_objs,$@,$^)

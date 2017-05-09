@@ -24,7 +24,7 @@
 
 #include <vmm_stdio.h>
 #include <block/vmm_blockdev.h>
-#include <block/vmm_blockrq_nop.h>
+#include <block/vmm_blockrq.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include "mtdcore.h"
@@ -65,7 +65,7 @@ static int mtd_blockdev_erase_write(struct vmm_request *r,
 	return VMM_OK;
 }
 
-int mtd_blockdev_read(struct vmm_blockrq_nop *rqnop,
+int mtd_blockdev_read(struct vmm_blockrq *brq,
 	      struct vmm_request *r, void *priv)
 {
 	struct mtd_info *mtd = priv;
@@ -82,7 +82,7 @@ int mtd_blockdev_read(struct vmm_blockrq_nop *rqnop,
 	return VMM_OK;
 }
 
-int mtd_blockdev_write(struct vmm_blockrq_nop *rqnop,
+int mtd_blockdev_write(struct vmm_blockrq *brq,
 		       struct vmm_request *r, void *priv)
 {
 	struct mtd_info *mtd = priv;
@@ -98,7 +98,7 @@ int mtd_blockdev_write(struct vmm_blockrq_nop *rqnop,
 	return mtd_blockdev_erase_write(r, off, len, mtd);
 }
 
-void mtd_blockdev_flush(struct vmm_blockrq_nop *rqnop, void *priv)
+void mtd_blockdev_flush(struct vmm_blockrq *brq, void *priv)
 {
 	/* Nothing to do here. */
 }
@@ -107,7 +107,7 @@ void mtdblock_add(struct mtd_info *mtd)
 {
 	int			err = 0;
 	struct vmm_blockdev	*bdev = NULL;
-	struct vmm_blockrq_nop	*rqnop = NULL;
+	struct vmm_blockrq	*brq = NULL;
 
 	if (NULL == (bdev = vmm_blockdev_alloc())) {
 		dev_err(&mtd->dev, "Failed to allocate MTD block device\n");
@@ -125,20 +125,21 @@ void mtdblock_add(struct mtd_info *mtd)
 	bdev->block_size = mtd->erasesize;
 
 	/* Setup request queue for block device instance */
-	rqnop = vmm_blockrq_nop_create(mtd->name, 256, FALSE,
-				       mtd_blockdev_read,
-				       mtd_blockdev_write,
-				       mtd_blockdev_flush,
-				       mtd);
-	if (!rqnop) {
+	brq = vmm_blockrq_create(mtd->name, 128, FALSE,
+				 mtd_blockdev_read,
+				 mtd_blockdev_write,
+				 NULL,
+				 mtd_blockdev_flush,
+				 mtd);
+	if (!brq) {
 		vmm_blockdev_free(bdev);
 		return;
 	}
-	bdev->rq = vmm_blockrq_nop_to_rq(rqnop);
+	bdev->rq = vmm_blockrq_to_rq(brq);
 
 	/* Register block device instance */
 	if (VMM_OK != (err = vmm_blockdev_register(bdev))) {
-		vmm_blockrq_nop_destroy(rqnop);
+		vmm_blockrq_destroy(brq);
 		vmm_blockdev_free(bdev);
 		dev_err(&mtd->dev, "Failed to register MTD block device\n");
 	}
@@ -147,15 +148,15 @@ void mtdblock_add(struct mtd_info *mtd)
 void mtdblock_remove(struct mtd_info *mtd)
 {
 	struct vmm_blockdev	*bdev = NULL;
-	struct vmm_blockrq_nop	*rqnop = NULL;
+	struct vmm_blockrq	*brq = NULL;
 
 	if (NULL == (bdev = vmm_blockdev_find(mtd->name)))
 		return;
-	rqnop = vmm_blockrq_nop_from_rq(bdev->rq);
+	brq = vmm_blockrq_from_rq(bdev->rq);
 
 	vmm_blockdev_unregister(bdev);
-	if (rqnop)
-		vmm_blockrq_nop_destroy(rqnop);
+	if (brq)
+		vmm_blockrq_destroy(brq);
 	vmm_blockdev_free(bdev);
 }
 

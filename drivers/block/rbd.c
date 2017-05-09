@@ -28,7 +28,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
-#include <block/vmm_blockrq_nop.h>
+#include <block/vmm_blockrq.h>
 #include <libs/mathlib.h>
 #include <libs/stringlib.h>
 #include <drv/rbd.h>
@@ -43,7 +43,7 @@
 static LIST_HEAD(rbd_list);
 static DEFINE_SPINLOCK(rbd_list_lock);
 
-static int rbd_read_request(struct vmm_blockrq_nop *rqnop,
+static int rbd_read_request(struct vmm_blockrq *brq,
 			    struct vmm_request *r, void *priv)
 {
 	struct rbd *d = priv;
@@ -58,7 +58,7 @@ static int rbd_read_request(struct vmm_blockrq_nop *rqnop,
 	return VMM_OK;
 }
 
-static int rbd_write_request(struct vmm_blockrq_nop *rqnop,
+static int rbd_write_request(struct vmm_blockrq *brq,
 			     struct vmm_request *r, void *priv)
 {
 	struct rbd *d = priv;
@@ -81,7 +81,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 {
 	struct rbd *d;
 	irq_flags_t flags;
-	struct vmm_blockrq_nop *rqnop;
+	struct vmm_blockrq *brq;
 
 	if (!name) {
 		return NULL;
@@ -111,14 +111,14 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	d->bdev->block_size = RBD_BLOCK_SIZE;
 
 	/* Setup request queue for block device instance */
-	rqnop = vmm_blockrq_nop_create(name, 8, FALSE,
-					rbd_read_request,
-					rbd_write_request,
-					NULL, d);
-	if (!rqnop) {
+	brq = vmm_blockrq_create(name, 8, FALSE,
+				 rbd_read_request,
+				 rbd_write_request,
+				 NULL, NULL, d);
+	if (!brq) {
 		goto free_bdev;
 	}
-	d->bdev->rq = vmm_blockrq_nop_to_rq(rqnop);
+	d->bdev->rq = vmm_blockrq_to_rq(brq);
 
 	/* Register block device instance */
 	if (vmm_blockdev_register(d->bdev)) {
@@ -153,7 +153,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 unreg_bdev:
 	vmm_blockdev_unregister(d->bdev);
 free_bdev_rq:
-	vmm_blockrq_nop_destroy(vmm_rq_to_blockrq_nop(d->bdev->rq));
+	vmm_blockrq_destroy(vmm_rq_to_blockrq(d->bdev->rq));
 free_bdev:
 	vmm_blockdev_free(d->bdev);
 free_rbd:
@@ -192,7 +192,7 @@ void rbd_destroy(struct rbd *d)
 	vmm_blockdev_unregister(d->bdev);
 
 	/* Free block device request queue */
-	vmm_blockrq_nop_destroy(vmm_rq_to_blockrq_nop(d->bdev->rq));
+	vmm_blockrq_destroy(vmm_rq_to_blockrq(d->bdev->rq));
 
 	/* Free block device */
 	vmm_blockdev_free(d->bdev);
