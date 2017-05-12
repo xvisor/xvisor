@@ -23,4 +23,5 @@
 
 drivers-objs-$(CONFIG_BLOCK_RBD)+= block/rbd.o
 drivers-objs-$(CONFIG_BLOCK_INITRD)+= block/initrd.o
+drivers-objs-$(CONFIG_BLOCK_VIRTIO_HOST)+= block/virtio_host_blk.o
 
