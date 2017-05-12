@@ -440,9 +440,9 @@ error_available:
 }
 
 static int vm_find_vqs(struct virtio_host_device *vdev, unsigned nvqs,
-		       struct virtio_host_queue *vqs[],
-		       virtio_host_queue_callback_t callbacks[],
-		       const char * const names[])
+		       struct virtio_host_queue **vqs,
+		       virtio_host_queue_callback_t *callbacks,
+		       char **names)
 {
 	int i;
 

@@ -34,6 +34,7 @@
 
 #include <vmm_error.h>
 #include <vmm_macros.h>
+#include <vmm_limits.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
@@ -75,7 +76,7 @@ struct virtio_host_desc_state {
 struct virtio_host_queue {
 	unsigned int index;
 	struct dlist head;
-	const char *name;
+	char name[VMM_FIELD_NAME_SIZE];
 
 	/* Opaque pointer saved by transport driver */
 	void *priv;
@@ -129,6 +130,9 @@ struct virtio_host_queue {
 	/* VirtIO host descriptor state */
 	struct virtio_host_desc_state desc_state[];
 };
+
+/** Print contents of virtio_host_queue vring */
+void virtio_host_queue_dump_vring(struct virtio_host_queue *vq);
 
 /**
  * Expose buffers to other end
@@ -356,9 +360,9 @@ struct virtio_host_config_ops {
 	void (*set_status)(struct virtio_host_device *vdev, u8 status);
 	void (*reset)(struct virtio_host_device *vdev);
 	int (*find_vqs)(struct virtio_host_device *vdev, unsigned nvqs,
-			struct virtio_host_queue *vqs[],
-			virtio_host_queue_callback_t callbacks[],
-			const char * const names[]);
+			struct virtio_host_queue **vqs,
+			virtio_host_queue_callback_t *callbacks,
+			char **names);
 	void (*del_vqs)(struct virtio_host_device *vdev);
 	u64 (*get_features)(struct virtio_host_device *vdev);
 	int (*finalize_features)(struct virtio_host_device *vdev);
@@ -386,7 +390,7 @@ struct virtio_host_device {
 
 struct virtio_host_driver {
 	struct vmm_driver drv;
-	const char *name;
+	char name[VMM_FIELD_NAME_SIZE];
 	const struct virtio_host_device_id *id_table;
 	const unsigned int *feature_table;
 	unsigned int feature_table_size;
@@ -483,7 +487,7 @@ static inline bool virtio_host_has_iommu_quirk(
  *
  * @vdev: the device
  *
- * Driver must call this to use vqs in the probe function.
+ * Driver must call this to enable vqs in the probe function.
  *
  * Note: vqs are enabled automatically after probe returns.
  */
@@ -495,6 +499,19 @@ void virtio_host_device_ready(struct virtio_host_device *vdev)
 	BUG_ON(status & VMM_VIRTIO_CONFIG_S_DRIVER_OK);
 
 	vdev->config->set_status(vdev, status | VMM_VIRTIO_CONFIG_S_DRIVER_OK);
+}
+
+/**
+ * Reset the device
+ *
+ * @vdev: the device
+ *
+ * Driver must call this to disable vqs.
+ */
+static inline
+void virtio_host_device_reset(struct virtio_host_device *vdev)
+{
+	vdev->config->reset(vdev);
 }
 
 static inline
@@ -642,6 +659,17 @@ do {									\
 	}								\
 } while(0)
 
+/* Conditional config space accessors. */
+#define virtio_cread_feature(vdev, fbit, structname, member, ptr)	\
+	({								\
+		int _r = VMM_OK;					\
+		if (!virtio_host_has_feature(vdev, fbit))		\
+			_r = VMM_ENOENT;				\
+		else							\
+			virtio_cread((vdev), structname, member, ptr);	\
+		_r;							\
+	})
+
 /* Config space accessors. */
 #define virtio_cwrite(vdev, structname, member, ptr)			\
 do {									\
@@ -760,9 +788,9 @@ static inline void virtio_cwrite64(struct virtio_host_device *vdev,
 
 static inline int virtio_host_find_vqs(struct virtio_host_device *vdev,
 				       unsigned nvqs,
-				       struct virtio_host_queue *vqs[],
-				       virtio_host_queue_callback_t cbs[],
-				       const char * const names[])
+				       struct virtio_host_queue **vqs,
+				       virtio_host_queue_callback_t *cbs,
+				       char **names)
 {
 	return vdev->config->find_vqs(vdev, nvqs, vqs, cbs, names);
 }

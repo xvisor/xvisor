@@ -149,11 +149,6 @@ static physical_addr_t virtio_map_one(const struct virtio_host_queue *vq,
 		return pa;
 	}
 
-	/*
-	 * We can't use dma_map_sg, because we don't use scatterlists in
-	 * the way it expects (we don't guarantee that the scatterlist
-	 * will exist for the lifetime of the mapping).
-	 */
 	return vmm_dma_map((virtual_addr_t)iv->buf,
 			   (virtual_size_t)iv->buf_len,
 			   direction);
@@ -174,6 +169,29 @@ static void virtio_unmap_one(const struct virtio_host_queue *vq,
 		      (flags & VMM_VRING_DESC_F_WRITE) ?
 		      DMA_FROM_DEVICE : DMA_TO_DEVICE);
 }
+
+void virtio_host_queue_dump_vring(struct virtio_host_queue *vq)
+{
+	u16 *last_idx;
+	struct vmm_device *dev = &vq->vdev->dev;
+
+	vmm_linfo(dev->name, "desc=0x%"PRIPADDR"\n", vq->vring.desc_pa);
+	last_idx = (u16 *)&vq->vring.avail->ring[vq->vring.num];
+	vmm_linfo(dev->name, "avail=0x%"PRIPADDR" flags=0x%x "
+		  "idx=0x%x last_idx=0x%x\n",
+		  vq->vring.avail_pa,
+		  virtio16_to_cpu(vq->vdev, vq->vring.avail->flags),
+		  virtio16_to_cpu(vq->vdev, vq->vring.avail->idx),
+		  virtio16_to_cpu(vq->vdev, *last_idx));
+	last_idx = (u16 *)&vq->vring.used->ring[vq->vring.num];
+	vmm_linfo(dev->name, "used=0x%"PRIPADDR" flags=0x%x "
+		  "idx=0x%x last_idx=0x%x\n",
+		  vq->vring.used_pa,
+		  virtio16_to_cpu(vq->vdev, vq->vring.used->flags),
+		  virtio16_to_cpu(vq->vdev, vq->vring.used->idx),
+		  virtio16_to_cpu(vq->vdev, *last_idx));
+}
+VMM_EXPORT_SYMBOL(virtio_host_queue_dump_vring);
 
 static int virtio_host_queue_add(struct virtio_host_queue *vq,
 				 struct virtio_host_iovec *ivs[],
@@ -490,7 +508,7 @@ static struct virtio_host_queue *__virtio_host_new_queue(
 
 	vq->index = index;
 	INIT_LIST_HEAD(&vq->head);
-	vq->name = name;
+	strncpy(vq->name, name, sizeof(vq->name));
 	vq->vdev = vdev;
 	vq->weak_barriers = weak_barriers;
 	vq->indirect =
@@ -545,6 +563,8 @@ static void *virtio_host_alloc_queue(struct virtio_host_device *vdev,
 		if (queue) {
 			int rc;
 			physical_addr_t queue_phys_addr;
+
+			memset((void *)queue, 0, size);
 
 			rc = vmm_host_va2pa(queue, &queue_phys_addr);
 			if (rc) {
