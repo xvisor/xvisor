@@ -59,40 +59,44 @@
 #include <vmm_types.h>
 
 /* Feature bits */
-#define VMM_VIRTIO_BLK_F_BARRIER	0	/* Does host support barriers? */
 #define VMM_VIRTIO_BLK_F_SIZE_MAX	1	/* Indicates maximum segment size */
 #define VMM_VIRTIO_BLK_F_SEG_MAX	2	/* Indicates maximum # of segments */
 #define VMM_VIRTIO_BLK_F_GEOMETRY	4	/* Legacy geometry available  */
 #define VMM_VIRTIO_BLK_F_RO		5	/* Disk is read-only */
 #define VMM_VIRTIO_BLK_F_BLK_SIZE	6	/* Block size of disk is available*/
-#define VMM_VIRTIO_BLK_F_SCSI		7	/* Supports scsi command passthru */
-#define VMM_VIRTIO_BLK_F_WCE		9	/* Writeback mode enabled after reset */
 #define VMM_VIRTIO_BLK_F_TOPOLOGY	10	/* Topology information is available */
-#define VMM_VIRTIO_BLK_F_CONFIG_WCE	11	/* Writeback mode available in config */
+#define VMM_VIRTIO_BLK_F_MQ		12	/* support more than one vq */
 
-/* Old (deprecated) name for VIRTIO_BLK_F_WCE. */
-#define VMM_VIRTIO_BLK_F_FLUSH		VMM_VIRTIO_BLK_F_WCE
+/* Legacy feature bits */
+#ifndef VMM_VIRTIO_BLK_NO_LEGACY
+#define VMM_VIRTIO_BLK_F_BARRIER	0	/* Does host support barriers? */
+#define VMM_VIRTIO_BLK_F_SCSI		7	/* Supports scsi command passthru */
+#define VMM_VIRTIO_BLK_F_FLUSH		9	/* Flush command supported */
+#define VMM_VIRTIO_BLK_F_CONFIG_WCE	11	/* Writeback mode available in config */
+/* Old (deprecated) name for VIRTIO_BLK_F_FLUSH. */
+#define VMM_VIRTIO_BLK_F_WCE		VMM_VIRTIO_BLK_F_FLUSH
+#endif /* !VMM_VIRTIO_BLK_NO_LEGACY */
 
 #define VMM_VIRTIO_BLK_ID_BYTES		20	/* ID string length */
 
 struct vmm_virtio_blk_config {
 	/* The capacity (in 512-byte sectors). */
 	u64 capacity;
-	/* The maximum segment size (if VIRTIO_BLK_F_SIZE_MAX) */
+	/* The maximum segment size (if VMM_VIRTIO_BLK_F_SIZE_MAX) */
 	u32 size_max;
-	/* The maximum number of segments (if VIRTIO_BLK_F_SEG_MAX) */
+	/* The maximum number of segments (if VMM_VIRTIO_BLK_F_SEG_MAX) */
 	u32 seg_max;
-	/* geometry the device (if VIRTIO_BLK_F_GEOMETRY) */
+	/* geometry the device (if VMM_VIRTIO_BLK_F_GEOMETRY) */
 	struct vmm_virtio_blk_geometry {
 		u16 cylinders;
 		u8 heads;
 		u8 sectors;
 	} geometry;
 
-	/* block size of device (if VIRTIO_BLK_F_BLK_SIZE) */
+	/* block size of device (if VMM_VIRTIO_BLK_F_BLK_SIZE) */
 	u32 blk_size;
 
-	/* the next 4 entries are guarded by VIRTIO_BLK_F_TOPOLOGY  */
+	/* the next 4 entries are guarded by VMM_VIRTIO_BLK_F_TOPOLOGY  */
 	/* exponent for physical block per logical block. */
 	u8 physical_block_exp;
 	/* alignment offset in logical blocks. */
@@ -102,8 +106,12 @@ struct vmm_virtio_blk_config {
 	/* optimal sustained I/O size in logical blocks. */
 	u32 opt_io_size;
 
-	/* writeback mode (if VIRTIO_BLK_F_CONFIG_WCE) */
+	/* writeback mode (if VMM_VIRTIO_BLK_F_CONFIG_WCE) */
 	u8 wce;
+	u8 unused;
+
+	/* number of vqs, only available when VMM_VIRTIO_BLK_F_MQ is set */
+	u16 num_queues;
 } __attribute__((packed));
 
 /*
@@ -112,8 +120,8 @@ struct vmm_virtio_blk_config {
  * Usage is a bit tricky as some bits are used as flags and some are not.
  *
  * Rules:
- *   VIRTIO_BLK_T_OUT may be combined with VIRTIO_BLK_T_SCSI_CMD or
- *   VIRTIO_BLK_T_BARRIER.  VIRTIO_BLK_T_FLUSH is a command of its own
+ *   VMM_VIRTIO_BLK_T_OUT may be combined with VMM_VIRTIO_BLK_T_SCSI_CMD or
+ *   VMM_VIRTIO_BLK_T_BARRIER. VMM_VIRTIO_BLK_T_FLUSH is a command of its own
  *   and may not be combined with any of the other flags.
  */
 
@@ -135,7 +143,7 @@ struct vmm_virtio_blk_config {
 
 /* This is the first element of the read scatter-gather list. */
 struct vmm_virtio_blk_outhdr {
-	/* VIRTIO_BLK_T* */
+	/* VMM_VIRTIO_BLK_T */
 	u32 type;
 	/* io priority. */
 	u32 ioprio;
