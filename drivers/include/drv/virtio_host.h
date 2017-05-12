@@ -256,14 +256,12 @@ void *virtio_host_queue_get_buf(struct virtio_host_queue *vq,
  * Query pending used buffers
  *
  * @vq: the struct virtio_host_queue we're talking about.
- * @last_used_idx: virtio_host_queue state.
  *
  * Returns "TRUE" if there are pending used buffers in the queue.
  *
  * This does not need to be serialized.
  */
-bool virtio_host_queue_poll(struct virtio_host_queue *vq,
-			    unsigned last_used_idx);
+bool virtio_host_queue_have_buf(struct virtio_host_queue *vq);
 
 /** Handle VirtIO host queue interrupt (called by transport drivers) */
 vmm_irq_return_t virtio_host_queue_interrupt(int irq, void *_vq);

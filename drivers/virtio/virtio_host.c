@@ -458,14 +458,13 @@ void *virtio_host_queue_get_buf(struct virtio_host_queue *vq,
 }
 VMM_EXPORT_SYMBOL(virtio_host_queue_get_buf);
 
-bool virtio_host_queue_poll(struct virtio_host_queue *vq,
-			    unsigned last_used_idx)
+bool virtio_host_queue_have_buf(struct virtio_host_queue *vq)
 {
 	virtio_mb(vq->weak_barriers);
-	return (u16)last_used_idx !=
+	return vq->last_used_idx !=
 		virtio16_to_cpu(vq->vdev, vq->vring.used->idx);
 }
-VMM_EXPORT_SYMBOL(virtio_host_queue_poll);
+VMM_EXPORT_SYMBOL(virtio_host_queue_have_buf);
 
 vmm_irq_return_t virtio_host_queue_interrupt(int irq, void *_vq)
 {
