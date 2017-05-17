@@ -204,7 +204,7 @@ static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 			vmm_completion_complete(req->cmpl);
 		} else {
 			DPRINTF(vblk, "%s: req=0x%p len=%d\n",
-				__func__, req, req->cmpl, len);
+				__func__, req, len);
 		}
 
 		req->r = NULL;
