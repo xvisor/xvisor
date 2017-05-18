@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2014 Pranav Sawargaonkar.
+# Copyright (c) 2017 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,14 +17,10 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Pranav Sawargaonkar (pranav.sawargaonkar@gmail.com)
-# @brief list of driver objects
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of Freescale pinctrl driver objects
 # */
 
-drivers-objs-$(CONFIG_PINCTRL)		+= pinctrl/core.o
-drivers-objs-$(CONFIG_PINCTRL)		+= pinctrl/pinctrl-utils.o
-drivers-objs-$(CONFIG_PINCTRL)		+= pinctrl/devicetree.o
-drivers-objs-$(CONFIG_PINMUX)		+= pinctrl/pinmux.o
-drivers-objs-$(CONFIG_PINCONF)		+= pinctrl/pinconf.o
-drivers-objs-$(CONFIG_GENERIC_PINCONF)	+= pinctrl/pinconf-generic.o
-drivers-objs-$(CONFIG_PINCTRL_SUNXI)	+= pinctrl/pinctrl-sunxi.o
+drivers-objs-$(CONFIG_PINCTRL_IMX)	+= pinctrl/freescale/pinctrl-imx.o
+drivers-objs-$(CONFIG_PINCTRL_IMX6Q)	+= pinctrl/freescale/pinctrl-imx6q.o
+drivers-objs-$(CONFIG_PINCTRL_IMX25)	+= pinctrl/freescale/pinctrl-imx25.o
