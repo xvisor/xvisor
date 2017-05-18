@@ -219,8 +219,8 @@ static void pinctrl_free_pindescs(struct pinctrl_dev *pctldev,
 					  pins[i].number);
 			if (pindesc->dynamic_name)
 				kfree((void *)pindesc->name);
+			kfree(pindesc);
 		}
-		kfree(pindesc);
 	}
 }
 
