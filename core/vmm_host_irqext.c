@@ -29,9 +29,7 @@
 #include <vmm_host_irqext.h>
 #include <libs/list.h>
 
-#define HOST_IRQEXT_CHUNK		32
-#define BITMAP_SIZE(X)							\
-	(((X) + (BITS_PER_BYTE) - 1)  / (BITS_PER_BYTE))
+#define HOST_IRQEXT_CHUNK		BITS_PER_LONG
 
 struct vmm_host_irqext_ctrl {
 	vmm_rwlock_t lock;
@@ -121,16 +119,16 @@ static int _irqext_expand(void)
 	unsigned long *bitmap = NULL;
 
 	irqs = realloc(iectrl.irqs,
-		       old_size * sizeof (struct vmm_host_irq *),
-		       new_size * sizeof (struct vmm_host_irq *));
+		       old_size * sizeof(struct vmm_host_irq *),
+		       new_size * sizeof(struct vmm_host_irq *));
 	if (!irqs) {
 		vmm_printf("%s: Failed to reallocate extended IRQ array from "
 			   "%d to %d bytes\n", __func__, old_size, new_size);
 		return VMM_ENOMEM;
 	}
 
-	old_size = BITMAP_SIZE(old_size);
-	new_size = BITMAP_SIZE(new_size);
+	old_size = BITS_TO_LONGS(old_size) * sizeof(unsigned long);
+	new_size = BITS_TO_LONGS(new_size) * sizeof(unsigned long);
 
 	bitmap = realloc(iectrl.bitmap, old_size, new_size);
 	if (!bitmap) {
@@ -147,12 +145,10 @@ static int _irqext_expand(void)
 	return VMM_OK;
 }
 
-int vmm_host_irqext_alloc_region(unsigned int size)
+int vmm_host_irqext_alloc_region(u32 size)
 {
-	int tries=3, pos = -1;
-	int size_log = 0;
-	int idx = 0;
 	irq_flags_t flags;
+	int tries=4, size_log = 0, pos = -1;
 
 	while ((1 << size_log) < size) {
 		++size_log;
@@ -164,16 +160,7 @@ int vmm_host_irqext_alloc_region(unsigned int size)
 	vmm_write_lock_irqsave_lite(&iectrl.lock, flags);
 
 try_again:
-	for (idx = 0; idx < BITS_TO_LONGS(iectrl.count); ++idx) {
-		pos = bitmap_find_free_region(&iectrl.bitmap[idx],
-					      BITS_PER_LONG, size_log);
-		if (pos >= 0) {
-			bitmap_set(&iectrl.bitmap[idx], pos, size_log);
-			pos += idx * (BITS_PER_LONG);
-			break;
-		}
-	}
-
+	pos = bitmap_find_free_region(iectrl.bitmap, iectrl.count, size_log);
 	if (pos < 0) {
 		/*
 		 * Give a second try, reallocate some memory for extended
@@ -196,6 +183,36 @@ try_again:
 	}
 
 	return pos + CONFIG_HOST_IRQ_COUNT;
+}
+
+int vmm_host_irqext_free_region(u32 hirq, u32 size)
+{
+	irq_flags_t flags;
+	int rc = VMM_OK, size_log = 0, pos = 0;
+
+	if (hirq < CONFIG_HOST_IRQ_COUNT) {
+		return VMM_EINVALID;
+	}
+
+	vmm_write_lock_irqsave_lite(&iectrl.lock, flags);
+
+	if ((CONFIG_HOST_IRQ_COUNT + iectrl.count) <= hirq) {
+		rc = VMM_EINVALID;
+		goto done;
+	}
+
+	pos = hirq - CONFIG_HOST_IRQ_COUNT;
+
+	while ((1 << size_log) < size) {
+		++size_log;
+	}
+
+	bitmap_release_region(iectrl.bitmap, pos, size_log);
+
+done:
+	vmm_write_unlock_irqrestore_lite(&iectrl.lock, flags);
+
+	return rc;
 }
 
 int vmm_host_irqext_create_mapping(u32 hirq, u32 hwirq)

@@ -403,6 +403,7 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 
 	vmm_devtree_ref_node(of_node);
 	INIT_LIST_HEAD(&newdomain->head);
+	newdomain->uses_irqext = (base < 0) ? TRUE : FALSE;
 	newdomain->base = pos;
 	newdomain->count = size;
 	newdomain->end = newdomain->base + size;
@@ -433,6 +434,10 @@ void vmm_host_irqdomain_remove(struct vmm_host_irqdomain *domain)
 
 	for (pos = domain->base; pos < domain->end; ++pos) {
 		vmm_host_irqext_dispose_mapping(pos);
+	}
+
+	if (domain->uses_irqext) {
+		vmm_host_irqext_free_region(domain->base, domain->count);
 	}
 
 	vmm_devtree_dref_node(domain->of_node);

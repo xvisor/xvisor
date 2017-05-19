@@ -34,6 +34,8 @@ struct vmm_host_irq *__vmm_host_irqext_get(u32 hirq);
 
 int vmm_host_irqext_alloc_region(u32 size);
 
+int vmm_host_irqext_free_region(u32 hirq, u32 size);
+
 int vmm_host_irqext_create_mapping(u32 hirq, u32 hwirq);
 
 int vmm_host_irqext_dispose_mapping(u32 hirq);

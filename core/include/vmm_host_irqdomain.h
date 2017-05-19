@@ -77,6 +77,7 @@ struct vmm_host_irqdomain_ops {
  */
 struct vmm_host_irqdomain {
 	struct dlist				head;
+	bool					uses_irqext;
 	unsigned int				base;
 	unsigned int				count;
 	unsigned int				end;
