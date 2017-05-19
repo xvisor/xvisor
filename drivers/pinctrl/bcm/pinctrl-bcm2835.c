@@ -1253,16 +1253,6 @@ static int bcm2835_pinctrl_probe(struct vmm_device *dev,
 	DPRINTF("Adding gpio_range (&gpio_range=%p, pctl_dev=%p)\n", &pc->gpio_range, pc->pctl_dev);
 	pinctrl_add_gpio_range(pc->pctl_dev, &pc->gpio_range);
 
-	/* Request the gpio so FLAG_REQUESTED is set and the label is not null */
-	for (i = 0; i < BCM2835_NUM_GPIOS; i++) {
-		// TODO : Make sure there is no leak
-		struct gpio_desc *desc = gpiochip_request_own_desc(&pc->gpio_chip, i, MODULE_NAME);
-		if (IS_ERR(desc)) {
-			DPRINTF("gpio_request for gpio %d returned an error\n", i);
-			return PTR_ERR(desc);
-		}
-		pc->gpio_desc[i] = desc;
-	}
 	DPRINTF("Everything went well !\n");
 	return VMM_OK;
 out_regmap:
