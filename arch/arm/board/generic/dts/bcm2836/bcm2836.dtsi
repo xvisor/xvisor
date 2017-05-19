@@ -58,7 +58,7 @@
 	};
 
 	gen-timer { /* Generic Timer */
-      		compatible = "arm,armv7-timer";
+		compatible = "arm,armv7-timer";
 		interrupts = <0>, <1>, <3>, <2>;
 		interrupt-parent = <&local_intc>;
 	};
@@ -105,9 +105,22 @@
 			reg = <0x3f100000 0x28>;
 		};
 
+		gpio: gpio@3f200000 {
+			compatible = "brcm,bcm2835-gpio";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0x3f200000 0xb4>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupts = <2 17>,
+				     <2 18>,
+				     <2 19>,
+				     <2 20>;
+		};
+
 		SERIAL0: uart0 {
-	      		compatible = "brcm,bcm2835-pl011", "arm,pl011";
-	      		reg = <0x3f201000 0x1000>;
+			compatible = "brcm,bcm2835-pl011", "arm,pl011";
+			reg = <0x3f201000 0x1000>;
 			clock-frequency = <3000000>;
 			interrupts = <2 25>;
 			skip-baudrate-config;
