@@ -16,20 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for USB device drivers.
+# @brief list of driver objects
 # */
 
-#
-# USB Device Drivers
-#
-comment "USB Device Drivers"
-
-config CONFIG_USB_STORAGE
-	tristate "USB mass storage support"
-	depends on CONFIG_USB && CONFIG_SCSI_DISK
-	default n
-	help
-		USB mass storage device driver.
+drivers-objs-$(CONFIG_USB_STORAGE)+= usb/storage/usb_storage.o
 
