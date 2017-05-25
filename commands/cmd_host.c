@@ -61,6 +61,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host extirq stats\n");
 	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
+	vmm_cprintf(cdev, "   host ram reserve <physaddr> <size>\n");
 	vmm_cprintf(cdev, "   host vapool info\n");
 	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
@@ -287,6 +288,11 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 	}
 }
 
+static int cmd_host_ram_reserve(struct vmm_chardev *cdev, physical_addr_t paddr, int size)
+{
+	return vmm_host_ram_reserve(paddr, size);
+}
+
 static void cmd_host_ram_bitmap(struct vmm_chardev *cdev, int colcnt)
 {
 	u32 ite, count, bn, bank_count = vmm_host_ram_bank_count();
@@ -511,7 +517,9 @@ static int cmd_host_class_device_list(struct vmm_chardev *cdev,
 
 static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
-	int hirq, hcpu, colcnt;
+	int hirq, hcpu, colcnt, size;
+
+	physical_addr_t physaddr;
 
 	if (argc <= 1) {
 		goto fail;
@@ -557,6 +565,10 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			}
 			cmd_host_ram_bitmap(cdev, colcnt);
 			return VMM_OK;
+		} else if (strcmp(argv[2], "reserve") == 0 && 4 < argc) {
+			physaddr = strtoul(argv[3], NULL, 16);
+			size = strtoul(argv[4], NULL, 16);
+			return cmd_host_ram_reserve(cdev, physaddr, size);
 		}
 	} else if ((strcmp(argv[1], "vapool") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "info") == 0) {
