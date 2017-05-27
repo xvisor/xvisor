@@ -38,7 +38,9 @@
 #define ZYNQ_UART_CR_TXRST	0x00000002 /* TX logic reset */
 #define ZYNQ_UART_CR_RXRST	0x00000001 /* RX logic reset */
 #define ZYNQ_UART_ISR_RX	0x00000001 /* Rx ISR Triggred */
+#define ZYNQ_UART_ISR_RX_TOUT	0x00000100 /* Rx Timeout ISR Triggred */
 #define ZYNQ_UART_RX_ISR_EN	0x00000001 /* Enable RX interrupt */
+#define ZYNQ_UART_RX_ISR_TO_EN	0x00000100 /* Enable RX Timeout interrupt */
 
 #define ZYNQ_UART_MR_PARITY_NONE	0x00000020  /* No parity mode */
 
@@ -50,7 +52,9 @@ struct uart_zynq {
 	u32 im;	 /* Interrupt Mask register */
 	u32 isr; /* Interrupt Status register */
 	u32 baud_rate_gen; /* 0x18 - Baud Rate Generator [15:0] */
-	u32 reserved2[4];
+	u32 rx_tout; /* 0x1C - Rx fifo timeout delay */
+	u32 rxtrig; /* 0x20 - Rx fifo trigger level */
+	u32 reserved2[2];
 	u32 channel_sts; /* 0x2c - Channel Status [11:0] */
 	u32 tx_rx_fifo; /* 0x30 - FIFO [15:0] or [7:0] */
 	u32 baud_rate_divider; /* 0x34 - Baud Rate Divider [7:0] */

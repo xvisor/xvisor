@@ -44,6 +44,9 @@
 #define MODULE_INIT			zynq_uart_driver_init
 #define MODULE_EXIT			zynq_uart_driver_exit
 
+#define ZYNQ_UART_FIFO_TRIGGER 56
+#define ZYNQ_UART_FIFO_TOUT    10
+
 bool zynq_uart_lowlevel_can_getc(struct uart_zynq *regs)
 {
 	if ((vmm_readl((void*)&regs->channel_sts) & ZYNQ_UART_SR_RXEMPTY))
@@ -163,7 +166,7 @@ static vmm_irq_return_t zynq_uart_irq_handler(int irq_no, void *pdev)
 	status = vmm_readl((void *)&regs->isr);
 
 	/* Handle RX interrupt */
-	if (status & ZYNQ_UART_ISR_RX) {
+	if (status & (ZYNQ_UART_ISR_RX_TOUT | ZYNQ_UART_ISR_RX)) {
 		/* Pull-out bytes from RX FIFO */
 		while (zynq_uart_lowlevel_can_getc(port->regs)) {
 			ch = zynq_uart_lowlevel_getc(port->regs);
@@ -226,11 +229,20 @@ static int zynq_uart_driver_probe(struct vmm_device *dev,
 		goto free_irq;
 	}
 
+	/* set rx fifo trigger */
+	vmm_writel(ZYNQ_UART_FIFO_TRIGGER, &port->regs->rxtrig);
+
+	/* configure rx fifo timeout */
+	vmm_writel(ZYNQ_UART_FIFO_TOUT, &port->regs->rx_tout);
+
 	/* Save port pointer */
 	dev->priv = port;
 
-	/* Enable Rx Interrupt */
-	port->mask |= ZYNQ_UART_RX_ISR_EN;
+	/* clear all interrupts */
+	vmm_writel(vmm_readl((void *)&port->regs->isr), &port->regs->isr);
+
+	/* Unmask Rx and timeout Interrupt */
+	port->mask |= ZYNQ_UART_RX_ISR_EN | ZYNQ_UART_RX_ISR_TO_EN;
 	vmm_writel(port->mask, (void *)&port->regs->ie);
 
 	return VMM_OK;
