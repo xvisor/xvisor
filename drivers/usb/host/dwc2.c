@@ -243,19 +243,16 @@ struct dwc2_core_params {
 };
 
 struct dwc2_hc {
-	struct dlist head;
 	int index;
 	struct dwc2_control *dwc2;
 	struct dwc2_hc_regs *regs;
 	u8 *status_buffer;
 
-	/* URB context */
-	struct urb *urb;
-	u8 control_pid;
-	u8 *pid;
+	struct vmm_thread *hc_thread;
 };
 
 struct dwc2_control {
+	struct usb_hcd *hcd;
 	const struct dwc2_core_params *params;
 	struct dwc2_core_regs *regs;
 	u32 irq;
@@ -265,17 +262,13 @@ struct dwc2_control {
 	u8 out_data_toggle[DWC2_MAX_DEVICE][DWC2_MAX_ENDPOINT];
 
 	u32 hc_count;
+	vmm_spinlock_t hc_urb_lock;
+	u32 hc_next;
+	struct urb *hc_urb_int[16];
+	struct vmm_completion hc_urb_pending[16];
+	struct dlist hc_urb_pending_list[16];
+
 	struct dwc2_hc hcs[16];
-
-	vmm_spinlock_t hc_lock;
-	struct dlist hc_free_list;
-
-	struct vmm_mutex urb_process_mutex;
-
-	vmm_spinlock_t urb_lock;
-	struct dlist urb_pending_list;
-	struct vmm_completion urb_pending;
-	struct vmm_thread *urb_thread;
 };
 
 /*
@@ -686,37 +679,6 @@ static void dwc2_hc_init_split(struct dwc2_hc_regs *hc_regs,
 }
 
 /*
- * DWC2 Host Channel managment
- */
-
-static struct dwc2_hc *dwc2_hc_alloc(struct dwc2_control *dwc2)
-{
-	irq_flags_t flags;
-	struct dwc2_hc *hc = NULL;
-
-	vmm_spin_lock_irqsave(&dwc2->hc_lock, flags);
-	if (!list_empty(&dwc2->hc_free_list)) {
-		hc = list_first_entry(&dwc2->hc_free_list,
-				     struct dwc2_hc, head);
-		list_del(&hc->head);
-		hc->urb = NULL;
-	}
-	vmm_spin_unlock_irqrestore(&dwc2->hc_lock, flags);
-
-	return hc;
-}
-
-static void dwc2_hc_free(struct dwc2_control *dwc2, struct dwc2_hc *hc)
-{
-	irq_flags_t flags;
-
-	vmm_spin_lock_irqsave(&dwc2->hc_lock, flags);
-	hc->urb = NULL;
-	list_add_tail(&hc->head, &dwc2->hc_free_list);
-	vmm_spin_unlock_irqrestore(&dwc2->hc_lock, flags);
-}
-
-/*
  * DWC2 to USB API interface
  */
 
@@ -1084,7 +1046,7 @@ static int wait_for_chhltd(struct dwc2_hc *hc,
 }
 
 static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
-			  int in, void *buffer, int num_packets,
+			  u8 *pid, int in, void *buffer, int num_packets,
 			  int xfer_len, int *actual_len, int odd_frame)
 {
 	int ret = 0;
@@ -1092,11 +1054,11 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	physical_addr_t pa;
 
 	DPRINTF("%s: chunk: pid %d xfer_len %u pkts %u\n",
-		__func__, *hc->pid, xfer_len, num_packets);
+		__func__, *pid, xfer_len, num_packets);
 
 	vmm_writel((xfer_len << DWC2_HCTSIZ_XFERSIZE_OFFSET) |
 		   (num_packets << DWC2_HCTSIZ_PKTCNT_OFFSET) |
-		   (*hc->pid << DWC2_HCTSIZ_PID_OFFSET),
+		   (*pid << DWC2_HCTSIZ_PID_OFFSET),
 		   &hc->regs->hctsiz);
 
 	pa = vmm_dma_map((virtual_addr_t)buffer, xfer_len,
@@ -1116,7 +1078,7 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 					DWC2_HCCHAR_CHEN);
 
 	/* Wait for channel to halt */
-	ret = wait_for_chhltd(hc, &sub, hc->pid);
+	ret = wait_for_chhltd(hc, &sub, pid);
 	if (ret < 0) {
 		vmm_dma_unmap(pa, xfer_len,
 			      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
@@ -1131,14 +1093,14 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 }
 
 static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
-		     int in, void *buffer, int len)
+		     struct urb *u, u8 *pid, int in, void *buffer, int len)
 {
 	int ret = 0;
 	struct dwc2_host_regs *host_regs = &dwc2->regs->host_regs;
-	int devnum = usb_pipedevice(hc->urb->pipe);
-	int ep = usb_pipeendpoint(hc->urb->pipe);
-	int max = usb_maxpacket(hc->urb->dev, hc->urb->pipe);
-	int eptype = dwc2_eptype[usb_pipetype(hc->urb->pipe)];
+	int devnum = usb_pipedevice(u->pipe);
+	int ep = usb_pipeendpoint(u->pipe);
+	int max = usb_maxpacket(u->dev, u->pipe);
+	int eptype = dwc2_eptype[usb_pipetype(u->pipe)];
 	int done = 0;
 	int do_split = 0;
 	int complete_split = 0;
@@ -1149,7 +1111,7 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	int ssplit_frame_num = 0;
 
 	DPRINTF("%s: msg: pipe %x pid %d in %d len %d\n",
-		__func__, hc->urb->pipe, *hc->pid, in, len);
+		__func__, u->pipe, *pid, in, len);
 
 	max_xfer_len = CONFIG_DWC2_MAX_PACKET_COUNT * max;
 	if (max_xfer_len > CONFIG_DWC2_MAX_TRANSFER_SIZE)
@@ -1165,13 +1127,13 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	dwc2_hc_init(hc->regs, devnum, ep, in, eptype, max);
 
 	/* Check if the target is a FS/LS device behind a HS hub */
-	if (hc->urb->dev->speed != USB_SPEED_HIGH) {
+	if (u->dev->speed != USB_SPEED_HIGH) {
 		u8 hub_addr = 0;
 		u8 hub_port = 0;
 		u32 hprt0 = vmm_readl(&dwc2->regs->hprt0);
 		if ((hprt0 & DWC2_HPRT0_PRTSPD_MASK) ==
 					DWC2_HPRT0_PRTSPD_HIGH) {
-			usb_get_usb2_hub_address_port(hc->urb->dev,
+			usb_get_usb2_hub_address_port(u->dev,
 						      &hub_addr, &hub_port);
 			dwc2_hc_init_split(hc->regs, hub_addr, hub_port);
 			do_split = 1;
@@ -1204,7 +1166,7 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 				odd_frame = 1;
 		}
 
-		ret = transfer_chunk(dwc2, hc, in,
+		ret = transfer_chunk(dwc2, hc, pid, in,
 				     (char *)buffer + done, num_packets,
 				     xfer_len, &actual_len, odd_frame);
 
@@ -1246,31 +1208,30 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	vmm_writel(0, &hc->regs->hcintmsk);
 	vmm_writel(0xFFFFFFFF, &hc->regs->hcint);
 
-	hc->urb->status = 0;
-	hc->urb->actual_length = done;
+	u->status = 0;
+	u->actual_length = done;
 
 	return ret;
 }
 
-static int dwc2_control_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
+static int dwc2_control_msg(struct dwc2_control *dwc2,
+			    struct dwc2_hc *hc, struct urb *u)
 {
 	int ret, act_len;
 	int status_direction;
-	void *buffer = hc->urb->transfer_buffer;
-	int len = hc->urb->transfer_buffer_length;
+	void *buffer = u->transfer_buffer;
+	int len = u->transfer_buffer_length;
+	u8 pid;
 
 	/* Process root hub control messages differently */
-	if (hc->urb->dev->devnum == dwc2->rh_devnum) {
-		return dwc2_control_rh_msg(dwc2, hc->urb);
+	if (u->dev->devnum == dwc2->rh_devnum) {
+		return dwc2_control_rh_msg(dwc2, u);
 	}
 
-	/* For CONTROL endpoint pid should start with DATA1 */
-	hc->pid = &hc->control_pid;
-
 	/* SETUP stage */
-	*hc->pid = DWC2_HC_PID_SETUP;
+	pid = DWC2_HC_PID_SETUP;
 	do {
-		ret = chunk_msg(dwc2, hc, 0, hc->urb->setup_packet, 8);
+		ret = chunk_msg(dwc2, hc, u, &pid, 0, u->setup_packet, 8);
 	} while (ret == VMM_EAGAIN);
 	if (ret)
 		return ret;
@@ -1278,46 +1239,48 @@ static int dwc2_control_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
 	/* DATA stage */
 	act_len = 0;
 	if (buffer) {
-		*hc->pid = DWC2_HC_PID_DATA1;
+		pid = DWC2_HC_PID_DATA1;
 		do {
-			ret = chunk_msg(dwc2, hc,
-					usb_pipein(hc->urb->pipe),
+			ret = chunk_msg(dwc2, hc, u,
+					&pid, usb_pipein(u->pipe),
 					buffer, len);
-			act_len += hc->urb->actual_length;
-			buffer += hc->urb->actual_length;
-			len -= hc->urb->actual_length;
+			act_len += u->actual_length;
+			buffer += u->actual_length;
+			len -= u->actual_length;
 		} while (ret == VMM_EAGAIN);
 		if (ret)
 			return ret;
-		status_direction = usb_pipeout(hc->urb->pipe);
+		status_direction = usb_pipeout(u->pipe);
 	} else {
 		/* No-data CONTROL always ends with an IN transaction */
 		status_direction = 1;
 	}
 
 	/* STATUS stage */
-	*hc->pid = DWC2_HC_PID_DATA1;
+	pid = DWC2_HC_PID_DATA1;
 	do {
-		ret = chunk_msg(dwc2, hc, status_direction,
+		ret = chunk_msg(dwc2, hc, u, &pid, status_direction,
 				hc->status_buffer, 0);
 	} while (ret == VMM_EAGAIN);
 	if (ret)
 		return ret;
 
-	hc->urb->actual_length = act_len;
+	u->actual_length = act_len;
 
 	return VMM_OK;
 }
 
-static int dwc2_bulk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
+static int dwc2_bulk_msg(struct dwc2_control *dwc2,
+			 struct dwc2_hc *hc, struct urb *u)
 {
-	int devnum = hc->urb->dev->devnum;
-	int ep = usb_pipeendpoint(hc->urb->pipe);
-	void *buffer = hc->urb->transfer_buffer;
-	int len = hc->urb->transfer_buffer_length;
+	int devnum = u->dev->devnum;
+	int ep = usb_pipeendpoint(u->pipe);
+	void *buffer = u->transfer_buffer;
+	int len = u->transfer_buffer_length;
+	u8 *pid;
 
 	if ((devnum >= DWC2_MAX_DEVICE) || (devnum == dwc2->rh_devnum)) {
-		hc->urb->status = 0;
+		u->status = 0;
 		return VMM_EINVALID;
 	}
 
@@ -1325,31 +1288,32 @@ static int dwc2_bulk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
 	if ((unsigned long)buffer & (VMM_CACHE_LINE_SIZE - 1)) {
 		WARN_ON(1);
 		vmm_printf("%s: dev=%s transfer buffer not cache aligned\n",
-			   __func__, hc->urb->dev->dev.name);
+			   __func__, u->dev->dev.name);
 		return VMM_EIO;
 	}
 
-	if (usb_pipein(hc->urb->pipe))
-		hc->pid = &dwc2->in_data_toggle[devnum][ep];
+	if (usb_pipein(u->pipe))
+		pid = &dwc2->in_data_toggle[devnum][ep];
 	else
-		hc->pid = &dwc2->out_data_toggle[devnum][ep];
+		pid = &dwc2->out_data_toggle[devnum][ep];
 
-	return chunk_msg(dwc2, hc, usb_pipein(hc->urb->pipe), buffer, len);
+	return chunk_msg(dwc2, hc, u, pid, usb_pipein(u->pipe), buffer, len);
 }
 
-static int dwc2_int_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
+static int dwc2_int_msg_start(struct dwc2_control *dwc2,
+			      struct dwc2_hc *hc, struct urb *u)
 {
 	u64 timeout;
 	int ret;
 
-	timeout = USB_TIMEOUT_MS(hc->urb->pipe) * (u64)1000000;
+	timeout = USB_TIMEOUT_MS(u->pipe) * (u64)1000000;
 	timeout = timeout + vmm_timer_timestamp();
 	for (;;) {
 		if (vmm_timer_timestamp() > timeout) {
 			vmm_printf("Timeout poll on interrupt endpoint\n");
 			return VMM_ETIMEDOUT;
 		}
-		ret = dwc2_bulk_msg(dwc2, hc);
+		ret = dwc2_bulk_msg(dwc2, hc, u);
 		if (ret != VMM_EAGAIN)
 			return ret;
 	}
@@ -1357,67 +1321,62 @@ static int dwc2_int_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc)
 	return VMM_OK;
 }
 
-static void dwc2_urb_process(struct usb_hcd *hcd,
-			     struct dwc2_control *dwc2,
-			     struct dwc2_hc *hc)
+static void dwc2_int_msg_stop(struct dwc2_control *dwc2,
+			      struct dwc2_hc *hc,
+			      struct urb *u, bool urb_int_active)
 {
-	int rc;
+	if (urb_int_active) {
+		/* TODO: Forcefully stop the host channel interrupt message */
+	}
 
-	vmm_mutex_lock(&dwc2->urb_process_mutex);
-
-	switch (usb_pipetype(hc->urb->pipe)) {
-	case USB_PIPE_CONTROL:
-		rc = dwc2_control_msg(dwc2, hc);
-		break;
-	case USB_PIPE_BULK:
-		rc = dwc2_bulk_msg(dwc2, hc);
-		break;
-	case USB_PIPE_INTERRUPT:
-		rc = dwc2_int_msg(dwc2, hc);
-		break;
-	default:
-		rc = VMM_EINVALID;
-		break;
-	};
-
-	vmm_mutex_unlock(&dwc2->urb_process_mutex);
-
-	usb_hcd_giveback_urb(hcd, hc->urb, rc);
+	/* Free the URB because we had got URB with incremented ref count */
+	usb_free_urb(u);
 }
 
-static int dwc2_worker(void *data)
+static int dwc2_hc_worker(void *data)
 {
-	irq_flags_t flags;
+	int rc;
 	struct urb *u;
-	struct usb_hcd *hcd = data;
-	struct dwc2_hc *hc;
-	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
+	irq_flags_t flags;
+	struct dwc2_hc *hc = data;
+	struct dwc2_control *dwc2 = hc->dwc2;
+	struct usb_hcd *hcd = dwc2->hcd;
 
 	while (1) {
-		vmm_completion_wait(&dwc2->urb_pending);
-
-		hc = dwc2_hc_alloc(dwc2);
-		if (!hc) {
-			vmm_completion_complete(&dwc2->urb_pending);
-			continue;
-		}
+		vmm_completion_wait(&dwc2->hc_urb_pending[hc->index]);
 
 		u = NULL;
-		vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
-		if (!list_empty(&dwc2->urb_pending_list)) {
-			u = list_first_entry(&dwc2->urb_pending_list,
-					     struct urb, urb_list);
+		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock, flags);
+		if (!list_empty(&dwc2->hc_urb_pending_list[hc->index])) {
+			u = list_first_entry(
+				&dwc2->hc_urb_pending_list[hc->index],
+				struct urb, urb_list);
 			list_del(&u->urb_list);
 		}
-		vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
+		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
 		if (!u) {
 			continue;
 		}
 
-		hc->urb = u;
-		dwc2_urb_process(hcd, dwc2, hc);
+		rc = VMM_OK;
+		switch (usb_pipetype(u->pipe)) {
+		case USB_PIPE_CONTROL:
+			rc = dwc2_control_msg(dwc2, hc, u);
+			break;
+		case USB_PIPE_BULK:
+			rc = dwc2_bulk_msg(dwc2, hc, u);
+			break;
+		case USB_PIPE_INTERRUPT:
+			rc = dwc2_int_msg_start(dwc2, hc, u);
+			break;
+		default:
+			rc = VMM_EINVALID;
+			break;
+		};
 
-		dwc2_hc_free(dwc2, hc);
+		if (usb_pipetype(u->pipe) != USB_PIPE_INTERRUPT) {
+			usb_hcd_giveback_urb(hcd, u, rc);
+		}
 	}
 
 	return VMM_OK;
@@ -1425,21 +1384,24 @@ static int dwc2_worker(void *data)
 
 static void dwc2_flush_work(struct usb_hcd *hcd)
 {
+	u32 i;
 	struct urb *u;
 	irq_flags_t flags;
 	struct dwc2_control *dwc2 =
 			(struct dwc2_control *)usb_hcd_priv(hcd);
 
-	vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
+	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock, flags);
 
-	while (!list_empty(&dwc2->urb_pending_list)) {
-		u = list_first_entry(&dwc2->urb_pending_list,
-				     struct urb, urb_list);
-		list_del(&u->urb_list);
-		usb_hcd_giveback_urb(hcd, u, VMM_EFAIL);
+	for (i = 0; i < dwc2->hc_count; i++) {
+		while (!list_empty(&dwc2->hc_urb_pending_list[i])) {
+			u = list_first_entry(&dwc2->hc_urb_pending_list[i],
+					     struct urb, urb_list);
+			list_del(&u->urb_list);
+			usb_hcd_giveback_urb(hcd, u, VMM_EFAIL);
+		}
 	}
 
-	vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
+	vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
 }
 
 static int dwc2_reset(struct usb_hcd *hcd)
@@ -1519,38 +1481,94 @@ static void dwc2_stop(struct usb_hcd *hcd)
 
 static int dwc2_urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
 {
+	u32 count;
 	irq_flags_t flags;
 	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	if (vmm_scheduler_orphan_context()) {
-		hc = dwc2_hc_alloc(dwc2);
-		if (hc) {
-			hc->urb = urb;
-			dwc2_urb_process(hcd, dwc2, hc);
-			dwc2_hc_free(dwc2, hc);
-			return VMM_OK;
+	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock, flags);
+
+	count = 0;
+	while (dwc2->hc_urb_int[dwc2->hc_next] &&
+	       (count < dwc2->hc_count)) {
+		count++;
+		dwc2->hc_next++;
+		if (dwc2->hc_next == dwc2->hc_count) {
+			dwc2->hc_next = 0;
 		}
 	}
+	if (count == dwc2->hc_count) {
+		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
+		return VMM_ENOSPC;
+	}
 
-	vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
-	list_add_tail(&urb->urb_list, &dwc2->urb_pending_list);
-	vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
+	hc = &dwc2->hcs[dwc2->hc_next];
 
-	vmm_completion_complete(&dwc2->urb_pending);
+	dwc2->hc_next++;
+	if (dwc2->hc_next == dwc2->hc_count) {
+		dwc2->hc_next = 0;
+	}
+
+	if (usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) {
+		dwc2->hc_urb_int[hc->index] = urb;
+	}
+
+	list_add_tail(&urb->urb_list, &dwc2->hc_urb_pending_list[hc->index]);
+	vmm_completion_complete(&dwc2->hc_urb_pending[hc->index]);
+
+	vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
 
 	return VMM_OK;
 }
 
 static int dwc2_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 {
+	u32 i;
 	irq_flags_t flags;
+	struct urb *u;
+	bool urb_int_active = FALSE;
+	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	vmm_spin_lock_irqsave(&dwc2->urb_lock, flags);
-	list_del(&urb->urb_list);
+	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock, flags);
+
+	hc = NULL;
+	for (i = 0; i < dwc2->hc_count; i++) {
+		list_for_each_entry(u,
+			&dwc2->hc_urb_pending_list[i], urb_list) {
+			if (u == urb) {
+				hc = &dwc2->hcs[i];
+				break;
+			}
+		}
+		if (hc) {
+			break;
+		}
+	}
+	if (!hc) {
+		for (i = 0; i < dwc2->hc_count; i++) {
+			if (dwc2->hc_urb_int[i] == urb) {
+				hc = &dwc2->hcs[i];
+				urb_int_active = TRUE;
+				break;
+			}
+		}
+		if (!hc) {
+			vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
+			return VMM_ENOTAVAIL;
+		}
+	} else {
+		list_del(&urb->urb_list);
+	}
+
+	if (dwc2->hc_urb_int[hc->index] == urb) {
+		dwc2_int_msg_stop(dwc2, hc, urb, urb_int_active);
+		dwc2->hc_urb_int[hc->index] = NULL;
+	}
+
 	usb_hcd_giveback_urb(hcd, urb, status);
-	vmm_spin_unlock_irqrestore(&dwc2->urb_lock, flags);
+
+	vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock, flags);
 
 	return VMM_OK;
 }
@@ -1577,6 +1595,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	struct usb_hcd *hcd;
 	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2;
+	char name[VMM_FIELD_NAME_SIZE];
 	const struct dwc2_core_params *params = devid->data;
 
 	hcd = usb_create_hcd(&dwc2_hc, dev, "dwc2");
@@ -1585,7 +1604,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 		goto fail;
 	}
 	dwc2 = (struct dwc2_control *)usb_hcd_priv(hcd);
-
+	dwc2->hcd = hcd;
 	dwc2->params = params;
 
 	rc = vmm_devtree_regaddr(dev->of_node, &hcd->rsrc_start, 0);
@@ -1623,33 +1642,33 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 
 	dwc2->hc_count = dwc2_hc_count(dwc2);
 
-	INIT_SPIN_LOCK(&dwc2->hc_lock);
-	INIT_LIST_HEAD(&dwc2->hc_free_list);
+	INIT_SPIN_LOCK(&dwc2->hc_urb_lock);
+	dwc2->hc_next = 0;
+	for (i = 0; i < dwc2->hc_count; i++) {
+		dwc2->hc_urb_int[i] = NULL;
+		INIT_COMPLETION(&dwc2->hc_urb_pending[i]);
+		INIT_LIST_HEAD(&dwc2->hc_urb_pending_list[i]);
+	}
+
 	for (i = 0; i < dwc2->hc_count; i++) {
 		hc = &dwc2->hcs[i];
-		INIT_LIST_HEAD(&hc->head);
 		hc->index = i;
 		hc->dwc2 = dwc2;
 		hc->regs = &dwc2->regs->hc_regs[i];
 		hc->status_buffer = vmm_dma_zalloc(DWC2_STATUS_BUF_SIZE);
 		if (!hc->status_buffer) {
 			rc = VMM_ENOMEM;
-			goto fail_cleanup_hc_status_buffer;
+			goto fail_cleanup_hcs;
 		}
-		hc->urb = NULL;
-		list_add_tail(&hc->head, &dwc2->hc_free_list);
-	}
-
-	INIT_MUTEX(&dwc2->urb_process_mutex);
-	INIT_SPIN_LOCK(&dwc2->urb_lock);
-	INIT_LIST_HEAD(&dwc2->urb_pending_list);
-	INIT_COMPLETION(&dwc2->urb_pending);
-	dwc2->urb_thread = vmm_threads_create(dev->name, dwc2_worker, hcd,
-					      VMM_THREAD_DEF_PRIORITY,
-					      VMM_THREAD_DEF_TIME_SLICE);
-	if (!dwc2->urb_thread) {
-		rc = VMM_ENOSPC;
-		goto fail_unmap_regs;
+		vmm_snprintf(name, sizeof(name), "%s/hc%d", dev->name, i);
+		hc->hc_thread = vmm_threads_create(name, dwc2_hc_worker, hc,
+						   VMM_THREAD_DEF_PRIORITY,
+						   VMM_THREAD_DEF_TIME_SLICE);
+		if (!hc->hc_thread) {
+			rc = VMM_ENOSPC;
+			goto fail_cleanup_hcs;
+		}
+		vmm_threads_start(hc->hc_thread);
 	}
 
 	vmm_linfo(dev->name, "Core Release %x.%03x with %d Channels\n",
@@ -1657,20 +1676,21 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 
 	rc = usb_add_hcd(hcd, dwc2->irq, 0);
 	if (rc) {
-		goto fail_destroy_thread;
+		goto fail_cleanup_hcs;
 	}
 
 	dev->priv = hcd;
 
-	vmm_threads_start(dwc2->urb_thread);
-
 	return VMM_OK;
 
-fail_destroy_thread:
-	vmm_threads_destroy(dwc2->urb_thread);
-fail_cleanup_hc_status_buffer:
+fail_cleanup_hcs:
 	for (i = 0; i < dwc2->hc_count; i++) {
 		hc = &dwc2->hcs[i];
+		if (hc->hc_thread) {
+			vmm_threads_stop(hc->hc_thread);
+			vmm_threads_destroy(hc->hc_thread);
+			hc->hc_thread = NULL;
+		}
 		if (hc->status_buffer) {
 			vmm_dma_free(hc->status_buffer);
 			hc->status_buffer = NULL;
@@ -1678,7 +1698,7 @@ fail_cleanup_hc_status_buffer:
 	}
 fail_unmap_regs:
 	vmm_devtree_regunmap_release(dev->of_node,
-					(virtual_addr_t)dwc2->regs, 0);
+				     (virtual_addr_t)dwc2->regs, 0);
 fail_destroy_hcd:
 	usb_dref_hcd(hcd);
 fail:
@@ -1692,14 +1712,15 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 	struct usb_hcd *hcd = dev->priv;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	vmm_threads_stop(dwc2->urb_thread);
-
 	usb_remove_hcd(hcd);
-
-	vmm_threads_destroy(dwc2->urb_thread);
 
 	for (i = 0; i < dwc2->hc_count; i++) {
 		hc = &dwc2->hcs[i];
+		if (hc->hc_thread) {
+			vmm_threads_stop(hc->hc_thread);
+			vmm_threads_destroy(hc->hc_thread);
+			hc->hc_thread = NULL;
+		}
 		if (hc->status_buffer) {
 			vmm_dma_free(hc->status_buffer);
 			hc->status_buffer = NULL;
@@ -1707,7 +1728,7 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 	}
 
 	vmm_devtree_regunmap_release(dev->of_node,
-					(virtual_addr_t)dwc2->regs, 0);
+				     (virtual_addr_t)dwc2->regs, 0);
 
 	usb_dref_hcd(hcd);
 
