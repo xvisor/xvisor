@@ -207,7 +207,7 @@ struct scsi_disk *scsi_create_disk(const char *name,
 		     disk->info.product, disk->info.revision);
 	disk->bdev->dev.parent = dev;
 	disk->bdev->flags = (disk->info.readonly) ?
-				VMM_BLOCKDEV_RW : VMM_BLOCKDEV_RDONLY;
+				VMM_BLOCKDEV_RDONLY : VMM_BLOCKDEV_RW;
 	disk->bdev->start_lba = 0;
 	disk->bdev->num_blocks = disk->info.capacity;
 	disk->bdev->block_size = disk->info.blksz;
