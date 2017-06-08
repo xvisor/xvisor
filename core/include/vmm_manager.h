@@ -350,12 +350,13 @@ int vmm_manager_vcpu_resource_remove(struct vmm_vcpu *vcpu,
 
 /** Create an orphan VCPU */
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
-					    virtual_addr_t start_pc,
-					    virtual_size_t stack_sz,
-					    u8 priority,
-					    u64 time_slice_nsecs,
-					    u64 deadline,
-					    u64 periodicity);
+					virtual_addr_t start_pc,
+					virtual_size_t stack_sz,
+					u8 priority,
+					u64 time_slice_nsecs,
+					u64 deadline,
+					u64 periodicity,
+					const struct vmm_cpumask *affinity);
 
 /** Destroy an orphan VCPU */
 int vmm_manager_vcpu_orphan_destroy(struct vmm_vcpu *vcpu);

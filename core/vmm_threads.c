@@ -326,9 +326,12 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 
 	/* Create an orphan vcpu for this thread */
 	tinfo->tvcpu = vmm_manager_vcpu_orphan_create(thread_name,
-			(virtual_addr_t)&vmm_threads_entry,
-			CONFIG_THREAD_STACK_SIZE, thread_priority,
-			thread_nsecs, thread_deadline, thread_periodicity);
+					(virtual_addr_t)&vmm_threads_entry,
+					CONFIG_THREAD_STACK_SIZE,
+					thread_priority,
+					thread_nsecs,
+					thread_deadline,
+					thread_periodicity, NULL);
 	if (!tinfo->tvcpu) {
 		vmm_free(tinfo);
 		return NULL;

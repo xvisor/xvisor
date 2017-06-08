@@ -307,16 +307,11 @@ int __cpuinit vmm_smp_ipi_init(void)
 						IPI_VCPU_PRIORITY, 
 						IPI_VCPU_TIMESLICE,
 						IPI_VCPU_DEADLINE,
-						IPI_VCPU_PERIODICITY);
+						IPI_VCPU_PERIODICITY,
+						vmm_cpumask_of(cpu));
 	if (!ictlp->ipi_vcpu) {
 		rc = VMM_EFAIL;
 		goto fail_free_async;
-	}
-
-	/* The IPI orphan VCPU need to stay on this cpu */
-	if ((rc = vmm_manager_vcpu_set_affinity(ictlp->ipi_vcpu,
-						vmm_cpumask_of(cpu)))) {
-		goto fail_free_vcpu;
 	}
 
 	/* Kick IPI orphan VCPU */

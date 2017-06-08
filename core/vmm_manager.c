@@ -527,17 +527,19 @@ static void vmm_manager_vcpu_resource_flush(struct vmm_vcpu *vcpu)
 }
 
 struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
-					    virtual_addr_t start_pc,
-					    virtual_size_t stack_sz,
-					    u8 priority,
-					    u64 time_slice_nsecs,
-					    u64 deadline,
-					    u64 periodicity)
+					virtual_addr_t start_pc,
+					virtual_size_t stack_sz,
+					u8 priority,
+					u64 time_slice_nsecs,
+					u64 deadline,
+					u64 periodicity,
+					const struct vmm_cpumask *affinity)
 {
 	bool locked;
 	u32 vnum, hcpu;
 	struct vmm_vcpu *vcpu = NULL;
-	const struct vmm_cpumask *affinity = cpu_online_mask;
+	const struct vmm_cpumask *aff =
+			(affinity) ? affinity : cpu_online_mask;
 
 	/* Sanity checks */
 	if (name == NULL || start_pc == 0 || time_slice_nsecs == 0) {
@@ -563,7 +565,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	}
 
 	/* Find good host CPU */
-	hcpu = __vmm_manager_good_hcpu(priority, affinity);
+	hcpu = __vmm_manager_good_hcpu(priority, aff);
 
 	/* Find the next available vcpu */
 	for (vnum = 0; vnum < CONFIG_MAX_VCPU_COUNT; vnum++) {
@@ -578,7 +580,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 		/* Update host CPU and affinity */
 		vcpu->hcpu = hcpu;
 		memcpy(&mngr.vcpu_affinity_mask[vcpu->id],
-			affinity, sizeof(*affinity));
+			aff, sizeof(*aff));
 		vcpu->cpu_affinity = &mngr.vcpu_affinity_mask[vcpu->id];
 
 		mngr.vcpu_avail_array[vcpu->id] = FALSE;

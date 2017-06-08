@@ -984,15 +984,10 @@ int __cpuinit vmm_scheduler_init(void)
 						IDLE_VCPU_PRIORITY,
 						IDLE_VCPU_TIMESLICE,
 						IDLE_VCPU_TIMESLICE,
-						IDLE_VCPU_TIMESLICE);
+						IDLE_VCPU_TIMESLICE,
+						vmm_cpumask_of(cpu));
 	if (!schedp->idle_vcpu) {
 		return VMM_EFAIL;
-	}
-
-	/* The idle vcpu need to stay on this cpu */
-	if ((rc = vmm_manager_vcpu_set_affinity(schedp->idle_vcpu,
-						vmm_cpumask_of(cpu)))) {
-		return rc;
 	}
 
 	/* Kick idle orphan vcpu */
