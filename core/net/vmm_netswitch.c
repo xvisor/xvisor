@@ -660,7 +660,7 @@ u32 vmm_netswitch_count(void)
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_count);
 
-static void __init vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
+static void vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
 {
 	char name[VMM_FIELD_NAME_SIZE];
 	u32 cpu = vmm_smp_processor_id();
