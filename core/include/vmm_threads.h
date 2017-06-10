@@ -108,7 +108,7 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 					 int (*thread_fn) (void *udata),
 					 void *thread_data,
 					 u8 thread_priority,
-				         u64 thread_nsecs,
+					 u64 thread_nsecs,
 					 u64 thread_deadline,
 					 u64 thread_periodicity);
 

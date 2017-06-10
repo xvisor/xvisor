@@ -26,15 +26,17 @@
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
 #include <vmm_spinlocks.h>
+#include <vmm_devtree.h>
 #include <vmm_scheduler.h>
 #include <vmm_threads.h>
 #include <vmm_main.h>
 #include <libs/stringlib.h>
 
 struct vmm_threads_ctrl {
-        vmm_spinlock_t lock;
-        u32 thread_count;
-        struct dlist thread_list;
+	struct vmm_cpumask default_affinity;
+	vmm_spinlock_t lock;
+	u32 thread_count;
+	struct dlist thread_list;
 };
 
 static struct vmm_threads_ctrl thctrl;
@@ -134,7 +136,7 @@ int vmm_threads_get_state(struct vmm_thread *tinfo)
 	u32 state;
 
 	if (!tinfo) {
-		rc =  -1;
+		rc = -1;
 	} else {
 		state = vmm_manager_vcpu_get_state(tinfo->tvcpu);
 		if (state & VMM_VCPU_STATE_RESET) {
@@ -184,10 +186,26 @@ const struct vmm_cpumask *vmm_threads_get_affinity(struct vmm_thread *tinfo)
 int vmm_threads_set_affinity(struct vmm_thread *tinfo,
 			     const struct vmm_cpumask *cpu_mask)
 {
+	int rc;
+	struct vmm_cpumask mask;
+
 	if (!tinfo || !cpu_mask) {
 		return VMM_EFAIL;
 	}
 
+	/* Check affinity mask */
+	vmm_cpumask_and(&mask, cpu_mask, cpu_online_mask);
+	if (!vmm_cpumask_weight(&mask)) {
+		return VMM_EINVALID;
+	}
+
+	/* Forcefully set online mask */
+	rc = vmm_manager_vcpu_set_affinity(tinfo->tvcpu, cpu_online_mask);
+	if (rc) {
+		return rc;
+	}
+
+	/* Set final mask */
 	return vmm_manager_vcpu_set_affinity(tinfo->tvcpu, cpu_mask);
 }
 
@@ -284,7 +302,7 @@ static void vmm_threads_entry(void)
 	/* Nothing else to do for this thread.
 	 * Let us hope someone else will destroy it.
 	 * For now just hang. :( :(
-         */
+	 */
 	vmm_hang();
 }
 
@@ -292,16 +310,23 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 					 int (*thread_fn) (void *udata),
 					 void *thread_data,
 					 u8 thread_priority,
-				         u64 thread_nsecs,
+					 u64 thread_nsecs,
 					 u64 thread_deadline,
 					 u64 thread_periodicity)
 {
 	irq_flags_t flags;
 	struct vmm_thread *tinfo;
+	struct vmm_cpumask mask;
 
 	/* Sanity check */
 	if (!thread_name || !thread_fn) {
 		return NULL;
+	}
+
+	/* Prepare affinity mask */
+	vmm_cpumask_and(&mask, &thctrl.default_affinity, cpu_online_mask);
+	if (!vmm_cpumask_weight(&mask)) {
+		memcpy(&mask, cpu_online_mask, sizeof(mask));
 	}
 
 	/* Create thread structure instance */
@@ -331,7 +356,7 @@ struct vmm_thread *vmm_threads_create_rt(const char *thread_name,
 					thread_priority,
 					thread_nsecs,
 					thread_deadline,
-					thread_periodicity, NULL);
+					thread_periodicity, &mask);
 	if (!tinfo->tvcpu) {
 		vmm_free(tinfo);
 		return NULL;
@@ -381,7 +406,29 @@ int vmm_threads_destroy(struct vmm_thread *tinfo)
 
 int __init vmm_threads_init(void)
 {
+	u32 cpu;
+	int index;
+	struct vmm_devtree_node *node;
+
 	memset(&thctrl, 0, sizeof(thctrl));
+
+	thctrl.default_affinity = VMM_CPU_MASK_NONE;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (node) {
+		index = 0;
+		while (vmm_devtree_read_u32_atindex(node,
+				VMM_DEVTREE_THREADS_AFFINITY_ATTR_NAME,
+				&cpu, index) == VMM_OK) {
+			if (cpu < CONFIG_CPU_COUNT) {
+				vmm_cpumask_set_cpu(cpu,
+						&thctrl.default_affinity);
+			}
+			index++;
+		}
+		vmm_devtree_dref_node(node);
+	}
 
 	INIT_SPIN_LOCK(&thctrl.lock);
 	INIT_LIST_HEAD(&thctrl.thread_list);
