@@ -126,12 +126,7 @@ static u32 default_num_colors(void *priv)
 	return U32_MAX;
 }
 
-static physical_size_t default_color_size(void *priv)
-{
-	return SZ_64K;
-}
-
-static u32 default_color_align_order(void *priv)
+static u32 default_color_order(void *priv)
 {
 	return 16;
 }
@@ -145,8 +140,7 @@ static bool default_color_match(physical_addr_t pa, physical_size_t sz,
 static struct vmm_host_ram_color_ops default_ops = {
 	.name = "default",
 	.num_colors = default_num_colors,
-	.color_size = default_color_size,
-	.color_align_order = default_color_align_order,
+	.color_order = default_color_order,
 	.color_match = default_color_match,
 };
 
@@ -154,6 +148,16 @@ void vmm_host_ram_set_color_ops(struct vmm_host_ram_color_ops *ops,
 				void *priv)
 {
 	if (ops) {
+		if (!ops->num_colors ||
+		    !ops->color_order ||
+		    !ops->color_match) {
+			return;
+		}
+		if (!ops->num_colors(priv) ||
+		    (ops->color_order(priv) < VMM_PAGE_SHIFT) ||
+		    (BITS_PER_LONG <= ops->color_order(priv))) {
+			return;
+		}
 		rctrl.ops = ops;
 		rctrl.ops_priv = priv;
 	} else {
@@ -167,25 +171,19 @@ u32 vmm_host_ram_color_count(void)
 	return rctrl.ops->num_colors(rctrl.ops_priv);
 }
 
-physical_size_t vmm_host_ram_color_size(void)
+u32 vmm_host_ram_color_order(void)
 {
-	return rctrl.ops->color_size(rctrl.ops_priv);
-}
-
-u32 vmm_host_ram_color_align_order(void)
-{
-	return rctrl.ops->color_align_order(rctrl.ops_priv);
+	return rctrl.ops->color_order(rctrl.ops_priv);
 }
 
 physical_size_t vmm_host_ram_color_alloc(physical_addr_t *pa, u32 color)
 {
-	physical_size_t sz = rctrl.ops->color_size(rctrl.ops_priv);
-	u32 align_order = rctrl.ops->color_align_order(rctrl.ops_priv);
+	u32 order = rctrl.ops->color_order(rctrl.ops_priv);
 
 	if (rctrl.ops->num_colors(rctrl.ops_priv) <= color)
 		return 0;
 
-	return __host_ram_alloc(pa, sz, align_order,
+	return __host_ram_alloc(pa, (physical_size_t)1 << order, order,
 				color, rctrl.ops, rctrl.ops_priv);
 }
 
