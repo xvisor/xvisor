@@ -36,6 +36,7 @@
 #include <vmm_notifier.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
+#include <libs/mathlib.h>
 
 static BLOCKING_NOTIFIER_CHAIN(guest_aspace_notifier_chain);
 
@@ -456,13 +457,14 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 
 bool is_region_node_valid(struct vmm_devtree_node *rnode)
 {
-	u32 order;
 	const char *aval;
 	bool is_real = FALSE;
 	bool is_alias = FALSE;
 	bool is_alloced = FALSE;
-	physical_addr_t addr;
-	physical_size_t size;
+	bool is_colored = FALSE;
+	physical_size_t size = 0;
+	u32 first_color = 0, num_colors = 0, align_order = 0;
+	physical_addr_t gphys_addr = 0, aphys_addr = 0, hphys_addr = 0;
 
 	if (vmm_devtree_read_string(rnode,
 			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval)) {
@@ -497,22 +499,26 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
 		is_alloced = TRUE;
 	}
+	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
+		is_colored = TRUE;
+	}
 
 	if (vmm_devtree_read_physaddr(rnode,
-			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &addr)) {
+			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &gphys_addr)) {
 		return FALSE;
 	}
 
-	if (is_real && !is_alloced) {
+	if (is_real && !is_alloced && !is_colored) {
 		if (vmm_devtree_read_physaddr(rnode,
-			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &addr)) {
+			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &hphys_addr)) {
 			return FALSE;
 		}
 	}
 
 	if (is_alias) {
 		if (vmm_devtree_read_physaddr(rnode,
-			VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME, &addr)) {
+			VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME, &aphys_addr)) {
 			return FALSE;
 		}
 	}
@@ -522,15 +528,51 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		return FALSE;
 	}
 
+
 	if (vmm_devtree_read_u32(rnode,
-			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &order)) {
-		order = 0;
+			VMM_DEVTREE_FIRST_COLOR_ATTR_NAME, &first_color)) {
+		first_color = 0;
 	}
 
-	if (BITS_PER_LONG <= order) {
+	if (vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_NUM_COLORS_ATTR_NAME, &num_colors)) {
+		num_colors = 0;
+	}
+
+	if (is_colored) {
+		if (!num_colors) {
+			return FALSE;
+		}
+		if (vmm_host_ram_color_count() <= first_color) {
+			return FALSE;
+		}
+		if (vmm_host_ram_color_count() < (first_color + num_colors)) {
+			return FALSE;
+		}
+	}
+
+	if (is_colored) {
+		align_order = vmm_host_ram_color_order();
+	} else {
+		if (vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &align_order)) {
+			align_order = 0;
+		}
+	}
+
+	if (BITS_PER_LONG <= align_order) {
 		return FALSE;
 	}
-	if (size & order_mask(order)) {
+	if (size & order_mask(align_order)) {
+		return FALSE;
+	}
+	if (gphys_addr & order_mask(align_order)) {
+		return FALSE;
+	}
+	if (hphys_addr & order_mask(align_order)) {
+		return FALSE;
+	}
+	if (aphys_addr & order_mask(align_order)) {
 		return FALSE;
 	}
 
@@ -636,12 +678,14 @@ static int region_add(struct vmm_guest *guest,
 	reg->aspace = aspace;
 	reg->flags = 0x0;
 
+	/* Determine manifest_type */
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_MANIFEST_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		goto region_free_fail;
 	}
 
+	/* Update region flags based on manifest_type */
 	if (!strcmp(aval, VMM_DEVTREE_MANIFEST_TYPE_VAL_REAL)) {
 		reg->flags |= VMM_REGION_REAL;
 	} else if (!strcmp(aval,
@@ -651,45 +695,52 @@ static int region_add(struct vmm_guest *guest,
 		reg->flags |= VMM_REGION_VIRTUAL;
 	}
 
+	/* Determine address_type */
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_ADDRESS_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		goto region_free_fail;
 	}
 
+	/* Update region flags based on address_type */
 	if (!strcmp(aval, VMM_DEVTREE_ADDRESS_TYPE_VAL_IO)) {
 		reg->flags |= VMM_REGION_IO;
 	} else {
 		reg->flags |= VMM_REGION_MEMORY;
 	}
 
+	/* Determine device_type */
 	rc = vmm_devtree_read_string(reg->node,
 			VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &aval);
 	if (rc) {
 		goto region_free_fail;
 	}
 
+	/* Update region flags based on device_type */
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
-	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM)) {
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM)) {
 		reg->flags |= VMM_REGION_ISRAM;
 	} else if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) ||
-	      !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
+		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM) ||
+		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
 		reg->flags |= VMM_REGION_READONLY;
 		reg->flags |= VMM_REGION_ISROM;
 	} else {
 		reg->flags |= VMM_REGION_ISDEVICE;
 	}
-
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM)) {
 		reg->flags |= VMM_REGION_ISRESERVED;
 	}
-
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM) ||
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM)) {
 		reg->flags |= VMM_REGION_ISALLOCED;
 	}
-
+	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
+		reg->flags |= VMM_REGION_ISCOLORED;
+	}
 	if ((reg->flags & VMM_REGION_REAL) &&
 	    (reg->flags & VMM_REGION_MEMORY) &&
 	    (reg->flags & VMM_REGION_ISRAM)) {
@@ -697,6 +748,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->flags |= VMM_REGION_BUFFERABLE;
 	}
 
+	/* Determine region guest physical address */
 	rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_GUEST_PHYS_ATTR_NAME,
 				&reg->gphys_addr);
@@ -704,6 +756,7 @@ static int region_add(struct vmm_guest *guest,
 		goto region_free_fail;
 	}
 
+	/* Determine region alias physical address */
 	if (reg->flags & VMM_REGION_ALIAS) {
 		rc = vmm_devtree_read_physaddr(reg->node,
 				VMM_DEVTREE_ALIAS_PHYS_ATTR_NAME,
@@ -715,6 +768,7 @@ static int region_add(struct vmm_guest *guest,
 		reg->aphys_addr = reg->gphys_addr;
 	}
 
+	/* Determine region size */
 	rc = vmm_devtree_read_physsize(reg->node,
 			VMM_DEVTREE_PHYS_SIZE_ATTR_NAME,
 			&reg->phys_size);
@@ -722,14 +776,43 @@ static int region_add(struct vmm_guest *guest,
 		goto region_free_fail;
 	}
 
-	rc = vmm_devtree_read_u32(reg->node,
-			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
-			&reg->align_order);
-	if (rc) {
-		reg->align_order = 0;
+	/* Determine region first_color */
+	if (reg->flags & VMM_REGION_ISCOLORED) {
+		rc = vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_FIRST_COLOR_ATTR_NAME,
+			&reg->first_color);
+		if (rc) {
+			goto region_free_fail;
+		}
+	} else {
+		reg->first_color = 0;
 	}
 
-	/* Compute mapping order for guest region */
+	/* Determine region num_colors */
+	if (reg->flags & VMM_REGION_ISCOLORED) {
+		rc = vmm_devtree_read_u32(rnode,
+			VMM_DEVTREE_NUM_COLORS_ATTR_NAME,
+			&reg->num_colors);
+		if (rc) {
+			goto region_free_fail;
+		}
+	} else {
+		reg->num_colors = 0;
+	}
+
+	/* Determine region align_order */
+	if (reg->flags & VMM_REGION_ISCOLORED) {
+		reg->align_order = vmm_host_ram_color_order();
+	} else {
+		rc = vmm_devtree_read_u32(reg->node,
+				VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
+				&reg->align_order);
+		if (rc) {
+			reg->align_order = 0;
+		}
+	}
+
+	/* Compute default mapping order for guest region */
 	reg->map_order = VMM_PAGE_SHIFT;
 	for (i = VMM_PAGE_SHIFT; i < 64; i++) {
 		if (reg->phys_size <= ((u64)1 << i)) {
@@ -762,6 +845,13 @@ static int region_add(struct vmm_guest *guest,
 		}
 	}
 
+	/* Overwrite mapping order for colored RAM/ROM regions */
+	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+	    (reg->flags & VMM_REGION_ISCOLORED)) {
+		reg->map_order = reg->align_order;
+	}
+
 	/* Compute number of mappings for guest region */
 	reg->maps_count = reg->phys_size >> reg->map_order;
 	if ((((physical_size_t)reg->maps_count) << reg->map_order)
@@ -784,9 +874,13 @@ static int region_add(struct vmm_guest *guest,
 		reg->maps[i].flags = 0;
 	}
 
-	/* Mapping0 from device tree for non-alloced real guest region */
+	/*
+	 * Mapping0 from device tree for
+	 * non-alloced non-colored real guest region
+	 */
 	if ((reg->flags & VMM_REGION_REAL) &&
-	    !(reg->flags & VMM_REGION_ISALLOCED)) {
+	    !(reg->flags & VMM_REGION_ISALLOCED) &&
+	    !(reg->flags & VMM_REGION_ISCOLORED)) {
 		rc = vmm_devtree_read_physaddr(reg->node,
 					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
 					&reg->maps[0].hphys_addr);
@@ -833,6 +927,32 @@ static int region_add(struct vmm_guest *guest,
 			if (!vmm_host_ram_alloc(&reg->maps[i].hphys_addr,
 						mapping_phys_size(reg, i),
 						reg->align_order)) {
+				vmm_printf("%s: Failed to alloc "
+					   "host RAM for %s/%s\n",
+					   __func__, guest->name,
+					   reg->node->name);
+				rc = VMM_ENOMEM;
+				goto region_ram_free_fail;
+			} else {
+				reg->maps[i].flags |=
+					VMM_REGION_MAPPING_ISHOSTRAM;
+				if (reg->flags & VMM_REGION_ISROM) {
+					vmm_host_memory_set(
+						reg->maps[i].hphys_addr, 0,
+						mapping_phys_size(reg, i),
+						FALSE);
+				}
+			}
+		}
+	}
+
+	/* Allocate host RAM for colored RAM/ROM regions */
+	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+	    (reg->flags & VMM_REGION_ISCOLORED)) {
+		for (i = 0; i < reg->maps_count; i++) {
+			if (!vmm_host_ram_color_alloc(&reg->maps[i].hphys_addr,
+			    reg->first_color + umod32(i, reg->num_colors))) {
 				vmm_printf("%s: Failed to alloc "
 					   "host RAM for %s/%s\n",
 					   __func__, guest->name,

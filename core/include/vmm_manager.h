@@ -48,7 +48,8 @@ enum vmm_region_flags {
 	VMM_REGION_ISDEVICE=0x00000400,
 	VMM_REGION_ISRESERVED=0x00000800,
 	VMM_REGION_ISALLOCED=0x00001000,
-	VMM_REGION_ISDYNAMIC=0x00002000,
+	VMM_REGION_ISCOLORED=0x00002000,
+	VMM_REGION_ISDYNAMIC=0x00004000,
 };
 
 #define VMM_REGION_MANIFEST_MASK	(VMM_REGION_REAL | \
@@ -80,6 +81,8 @@ struct vmm_region {
 	physical_addr_t gphys_addr;
 	physical_addr_t aphys_addr;
 	physical_size_t phys_size;
+	u32 first_color;
+	u32 num_colors;
 	u32 align_order;
 	u32 map_order;
 	u32 maps_count;
