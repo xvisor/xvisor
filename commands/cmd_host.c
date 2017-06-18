@@ -265,6 +265,12 @@ static void cmd_host_ram_info(struct vmm_chardev *cdev)
 
 	vmm_cprintf(cdev, "Frame Size        : %lu (0x%08lx)\n",
 					VMM_PAGE_SIZE, VMM_PAGE_SIZE);
+	vmm_cprintf(cdev, "Color Operations  : %s\n",
+					vmm_host_ram_color_ops_name());
+	vmm_cprintf(cdev, "Color Order       : %u (0x%08x)\n",
+		vmm_host_ram_color_order(), vmm_host_ram_color_order());
+	vmm_cprintf(cdev, "Color Count       : %u (0x%08x)\n",
+		vmm_host_ram_color_count(), vmm_host_ram_color_count());
 	vmm_cprintf(cdev, "Bank Count        : %d (0x%08x)\n",
 					bank_count, bank_count);
 	vmm_cprintf(cdev, "Total Free Frames : %d (0x%08x)\n",
