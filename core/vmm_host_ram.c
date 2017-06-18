@@ -166,6 +166,11 @@ void vmm_host_ram_set_color_ops(struct vmm_host_ram_color_ops *ops,
 	}
 }
 
+const char *vmm_host_ram_color_ops_name(void)
+{
+	return rctrl.ops->name;
+}
+
 u32 vmm_host_ram_color_count(void)
 {
 	return rctrl.ops->num_colors(rctrl.ops_priv);

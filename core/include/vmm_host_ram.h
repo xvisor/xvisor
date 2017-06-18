@@ -40,6 +40,9 @@ struct vmm_host_ram_color_ops {
 void vmm_host_ram_set_color_ops(struct vmm_host_ram_color_ops *ops,
 				void *priv);
 
+/** Get host RAM cache color operations name */
+const char *vmm_host_ram_color_ops_name(void);
+
 /** Get host RAM cache color count */
 u32 vmm_host_ram_color_count(void);
 
