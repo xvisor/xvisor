@@ -153,6 +153,19 @@ int strcasecmp(const char *s1, const char *s2)
 	return c1 - c2;
 }
 
+int strncasecmp(const char *a, const char *b, size_t n)
+{
+	if (n > 0) {
+		/* search first diff or end of string */
+		for (n--;
+		     n != 0 && tolower(*a) == tolower(*b) && *a != '\0';
+		     a++, b++, n--);
+		return tolower(*a) - tolower(*b);
+	}
+
+	return 0;
+}
+
 char *strchr(const char *s, int c)
 {
 	/* search for the c char starting left */

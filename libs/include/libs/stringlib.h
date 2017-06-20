@@ -61,6 +61,8 @@ int strncmp(const char *a, const char *b, size_t n);
 
 int strcasecmp(const char *s1, const char *s2);
 
+int strncasecmp(const char *a, const char *b, size_t n);
+
 char *strchr(const char *s, int c);
 
 char *strrchr(const char *s, int c);
