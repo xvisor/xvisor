@@ -43,7 +43,7 @@ static int fatfs_node_find_lookup_dirent(struct fatfs_node *dnode,
 
 	idx = -1;
 	for (i = 0; i < FAT_NODE_LOOKUP_SIZE; i++) {
-		if (!strcmp(dnode->lookup_name[i], name)) {
+		if (!strncasecmp(dnode->lookup_name[i], name, VFS_MAX_NAME)) {
 			memcpy(dent, &dnode->lookup_dent[i], sizeof(*dent));
 			*off = dnode->lookup_off[i];
 			*len = dnode->lookup_len[i];
@@ -68,7 +68,8 @@ static void fatfs_node_add_lookup_dirent(struct fatfs_node *dnode,
 	}
 
 	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
-		if (!strcmp(dnode->lookup_name[idx], name)) {
+		if (!strncasecmp(dnode->lookup_name[idx], name,
+				 VFS_MAX_NAME)) {
 			found = TRUE;
 			break;
 		}
@@ -101,7 +102,8 @@ static void fatfs_node_del_lookup_dirent(struct fatfs_node *dnode,
 	}
 
 	for (idx = 0; idx < FAT_NODE_LOOKUP_SIZE; idx++) {
-		if (!strcmp(dnode->lookup_name[idx], name)) {
+		if (!strncasecmp(dnode->lookup_name[idx], name,
+				 VFS_MAX_NAME)) {
 			dnode->lookup_name[idx][0] = '\0';
 			dnode->lookup_off[idx] = 0;
 			dnode->lookup_len[idx] = 0;
@@ -624,16 +626,21 @@ int fatfs_node_read_dirent(struct fatfs_node *dnode,
 				dent.dos_extension[i-1] = '\0';
 				i--;
 			}
-			memcpy(lname, dent.dos_file_name, 8);
+
+			for(i = 0; i < 8 && dent.dos_file_name[i]; i++) {
+				lname[i] = tolower(dent.dos_file_name[i]);
+			}
 			lname[8] = '\0';
+
 			if (dent.dos_extension[0] != '\0') {
 				len = strlen(lname);
 				lname[len] = '.';
-				lname[len + 1] = dent.dos_extension[0];
-				lname[len + 2] = dent.dos_extension[1];
-				lname[len + 3] = dent.dos_extension[2];
-				lname[len + 4] = '\0';
+				lname[len+1] = tolower(dent.dos_extension[0]);
+				lname[len+2] = tolower(dent.dos_extension[1]);
+				lname[len+3] = tolower(dent.dos_extension[2]);
+				lname[len+4] = '\0';
 			}
+
 			lcsum = dcsum;
 		}
 
@@ -752,15 +759,19 @@ int fatfs_node_find_dirent(struct fatfs_node *dnode,
 				dent->dos_extension[i-1] = '\0';
 				i--;
 			}
-			memcpy(lname, dent->dos_file_name, 8);
+
+			for(i = 0; i < 8 && dent->dos_file_name[i]; i++) {
+				lname[i] = tolower(dent->dos_file_name[i]);
+			}
 			lname[8] = '\0';
+
 			if (dent->dos_extension[0] != '\0') {
 				len = strlen(lname);
-				lname[len + 0] = '.';
-				lname[len + 1] = dent->dos_extension[0];
-				lname[len + 2] = dent->dos_extension[1];
-				lname[len + 3] = dent->dos_extension[2];
-				lname[len + 4] = '\0';
+				lname[len+0] = '.';
+				lname[len+1] = tolower(dent->dos_extension[0]);
+				lname[len+2] = tolower(dent->dos_extension[1]);
+				lname[len+3] = tolower(dent->dos_extension[2]);
+				lname[len+4] = '\0';
 			}
 			lcsum = dcsum;
 		}
