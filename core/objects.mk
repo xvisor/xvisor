@@ -22,6 +22,7 @@
 # */
 
 core-objs-y+= vmm_main.o
+core-objs-y+= vmm_initfn.o
 core-objs-y+= vmm_heap.o
 core-objs-y+= vmm_stdio.o
 core-objs-y+= vmm_cpumask.o

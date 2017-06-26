@@ -26,6 +26,7 @@
 #include <vmm_devtree.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
+#include <vmm_initfn.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_smp.h>
@@ -247,8 +248,8 @@ static void system_init_work(struct vmm_work *work)
 #if defined(CONFIG_SMP)
 	/* Poll for all present CPUs to become online */
 	/* Note: There is a timeout of 1 second */
-	/* Note: The modules might use SMP IPIs or might have per-cpu context 
-	 * so, we do this before vmm_modules_init() in-order to make sure that 
+	/* Note: The modules might use SMP IPIs or might have per-cpu context
+	 * so, we do this before vmm_modules_init() in-order to make sure that
 	 * correct number of online CPUs are visible to all modules.
 	 */
 	ret = 1000;
@@ -297,6 +298,13 @@ static void system_init_work(struct vmm_work *work)
 		goto fail;
 	}
 
+	/* Call final init functions */
+	vmm_printf("init: final functions\n");
+	ret = vmm_initfn_final();
+	if (ret) {
+		goto fail;
+	}
+
 	/* Schedule system post-init work */
 	INIT_WORK(&sys_postinit, &system_postinit_work);
 	vmm_workqueue_schedule_work(NULL, &sys_postinit);
@@ -323,7 +331,7 @@ static void __init init_bootcpu(void)
 
 	/* Print version string */
 	vmm_printf("\n");
-	vmm_printf("%s v%d.%d.%d (%s %s)\n", VMM_NAME, 
+	vmm_printf("%s v%d.%d.%d (%s %s)\n", VMM_NAME,
 		   VMM_VERSION_MAJOR, VMM_VERSION_MINOR, VMM_VERSION_RELEASE,
 		   __DATE__, __TIME__);
 	vmm_printf("\n");
@@ -396,6 +404,13 @@ static void __init init_bootcpu(void)
 	/* Initialize Board early */
 	vmm_printf("init: board early\n");
 	ret = arch_board_early_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Call early init functions */
+	vmm_printf("init: early funtions\n");
+	ret = vmm_initfn_early();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
