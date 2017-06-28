@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Himanshu Chauhan.
+# Copyright (c) 2017 Ashutosh Sharma.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,28 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
-# @brief config file for serial console drivers supported by xvisor.
+# @file objects.mk
+# @author Ashutosh Sharma (ashutosh.sharma.0204@gmail.com)
+# @brief list of network USB driver objects
 # */
 
-menu "Network Device Support"
-
-config CONFIG_NET_DEVICES
-        bool "Enable Network Device Support"
-	default n
-	depends on CONFIG_NET
-	help
-		Select networking drivers TCP, Bluetooth etc.
-
-config CONFIG_NET_NAPI
-	bool
-	default y
-	depends on CONFIG_NET
-
-source "drivers/net/ethernet/openconf.cfg"
-source "drivers/net/usb/openconf.cfg"
-source "drivers/net/phy/openconf.cfg"
-
-endmenu
+drivers-objs-$(CONFIG_USB_SMSC95xx)+= net/usb/smsc95xx.o
 
