@@ -252,6 +252,8 @@ int vgic_v2_probe(struct vgic_ops *ops, struct vgic_params *params)
 	vmm_devtree_dref_node(node);
 
 	params->type = VGIC_V2;
+	params->can_emulate_gic_v2 = TRUE;
+	params->can_emulate_gic_v3 = FALSE;
 	params->vcpu_pa = vgicp.vcpu_pa;
 	params->maint_irq = vgicp.maint_irq;
 	params->lr_cnt = vgicp.lr_cnt;

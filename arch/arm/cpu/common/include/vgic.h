@@ -28,7 +28,12 @@
 
 #define VGIC_V2_MAX_LRS		(1 << 6)
 #define VGIC_V3_MAX_LRS		16
-#define VGIC_MAX_LRS		(1 << 6)
+
+#define VGIC_MAX_LRS		VGIC_V2_MAX_LRS
+
+#define VGIC_V3_MAX_CPUS	255
+#define VGIC_V2_MAX_CPUS	8
+
 #define VGIC_MAX_IRQS		1024
 
 enum vgic_type {
@@ -57,14 +62,27 @@ struct vgic_v2_hw_state {
 	u32 lr[VGIC_V2_MAX_LRS];
 };
 
+struct vgic_v3_hw_state {
+	u32 hcr;
+	u32 vmcr;
+	u32 sre; /* Restored only, change ignored */
+	u32 ap0r[4];
+	u32 ap1r[4];
+	u64 lr[VGIC_V3_MAX_LRS];
+};
+
 struct vgic_hw_state {
 	union {
 		struct vgic_v2_hw_state v2;
+		struct vgic_v3_hw_state v3;
 	};
 };
 
 struct vgic_params {
 	enum vgic_type type;
+
+	bool can_emulate_gic_v2;
+	bool can_emulate_gic_v3;
 
 	physical_addr_t vcpu_pa;
 

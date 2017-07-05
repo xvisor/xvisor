@@ -1338,7 +1338,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
 		vgich.ops.reset_state(&s->vstate[i].hw);
 		s->vstate[i].lr_used_count = 0x0;
-		for (j = 0; j < (VGIC_MAX_LRS / 32); j++) {
+		for (j = 0; j < (vgich.params.lr_cnt / 32); j++) {
 			s->vstate[i].lr_used[j] = 0x0;
 		}
 		for (j = 0; j < VGIC_NUM_IRQ(s); j++) {
@@ -1483,6 +1483,9 @@ static int vgic_dist_emulator_probe(struct vmm_guest *guest,
 	if (!vgich.avail) {
 		return VMM_ENODEV;
 	}
+	if (!vgich.params.can_emulate_gic_v2) {
+		return VMM_ENODEV;
+	}
 	if (guest->vcpu_count > VGIC_MAX_NCPU) {
 		return VMM_ENODEV;
 	}
@@ -1556,6 +1559,9 @@ static int vgic_cpu_emulator_probe(struct vmm_guest *guest,
 				   const struct vmm_devtree_nodeid *eid)
 {
 	if (!vgich.avail) {
+		return VMM_ENODEV;
+	}
+	if (!vgich.params.can_emulate_gic_v2) {
 		return VMM_ENODEV;
 	}
 	if (guest->vcpu_count > VGIC_MAX_NCPU) {
