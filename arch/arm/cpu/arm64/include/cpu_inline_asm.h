@@ -65,34 +65,33 @@ asm(
 "	.endm\n"
 );
 
-#define read_sysreg(r) ({					\
-	u64 __val;						\
-	asm volatile("mrs %0, " stringify(r) : "=r" (__val));	\
-	__val;							\
+#define read_sysreg(__r) ({					\
+	u64 __v;						\
+	asm volatile("mrs_s %0, " stringify(__r) : "=r" (__v));	\
+	__v;							\
 })
 
-#define write_sysreg(v, r)	do {				\
-	u64 __val = (u64)(v);					\
-	asm volatile("msr " stringify(r) ", %0"			\
-		     : : "r" (__val));				\
+#define write_sysreg(__v, __r)	do {				\
+	asm volatile("msr_s " stringify(__r) ", %0"		\
+		     : : "r" ((u64)(__v)));			\
 } while (0)
 
-#define mrs(spr)		({				\
-	u64 __val;						\
-	asm volatile("mrs %0," stringify(spr) :"=r"(__val));	\
-	__val;							\
+#define mrs(__spr)		({				\
+	u64 __v;						\
+	asm volatile("mrs %0," stringify(__spr) :"=r"(__v));	\
+	__v;							\
 })
 
-#define msr(spr, __val)		do {				\
-	asm volatile("msr " stringify(spr) ", %0"		\
-		     : : "r" (__val));				\
+#define msr(__spr, __v)		do {				\
+	asm volatile("msr " stringify(__spr) ", %0"		\
+		     : : "r" (__v));				\
 } while (0)
 
-#define msr_sync(spr, __val)	do {				\
-	asm volatile("msr " stringify(spr) ", %0\n\t"		\
+#define msr_sync(__spr, __v)	do {				\
+	asm volatile("msr " stringify(__spr) ", %0\n\t"		\
 		     "dsb sy\n\t"				\
 		     "isb\n\t"					\
-		     : : "r" (__val));				\
+		     : : "r" (__v));				\
 } while (0)
 
 /* TLB maintainence */
