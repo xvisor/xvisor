@@ -27,9 +27,6 @@
 #include <vmm_host_aspace.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
-#include <arch_regs.h>
-#include <arch_atomic.h>
-#include <libs/bitmap.h>
 #include <drv/irqchip/arm-gic.h>
 
 #include <vgic.h>
@@ -54,7 +51,8 @@ struct vgic_v2_priv {
 
 static struct vgic_v2_priv vgicp;
 
-static void vgic_v2_reset_state(struct vgic_hw_state *hw)
+static void vgic_v2_reset_state(struct vgic_hw_state *hw,
+				enum vgic_model_type model)
 {
 	u32 i;
 
@@ -66,7 +64,8 @@ static void vgic_v2_reset_state(struct vgic_hw_state *hw)
 	}
 }
 
-static void vgic_v2_save_state(struct vgic_hw_state *hw)
+static void vgic_v2_save_state(struct vgic_hw_state *hw,
+			       enum vgic_model_type model)
 {
 	u32 i;
 
@@ -80,7 +79,8 @@ static void vgic_v2_save_state(struct vgic_hw_state *hw)
 	}
 }
 
-static void vgic_v2_restore_state(struct vgic_hw_state *hw)
+static void vgic_v2_restore_state(struct vgic_hw_state *hw,
+				  enum vgic_model_type model)
 {
 	u32 i;
 
@@ -127,7 +127,8 @@ static void vgic_v2_read_elrsr(u32 *elrsr0, u32 *elrsr1)
 	}
 }
 
-static void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv)
+static void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv,
+			   enum vgic_model_type model)
 {
 	u32 lrval = lrv->virtid & GICH_LR_VIRTUALID;
 
@@ -156,7 +157,8 @@ static void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv)
 	vmm_writel_relaxed(lrval, (void *)vgicp.hctrl_va + GICH_LR0 + 4*lr);
 }
 
-static void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv)
+static void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv,
+			   enum vgic_model_type model)
 {
 	u32 lrval;
 

@@ -279,12 +279,12 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 	lr = VGIC_GET_LR_MAP(vs, irq, src_id);
 	if ((lr < vgich.params.lr_cnt) &&
 	    VGIC_TEST_LR_USED(vs, lr)) {
-		vgich.ops.get_lr(lr, &lrv);
+		vgich.ops.get_lr(lr, &lrv, VGIC_MODEL_V2);
 		if (lrv.virtid == irq) {
 			if ((lrv.flags & VGIC_LR_HW) ||
 			    (lrv.cpuid == src_id)) {
 				lrv.flags |= VGIC_LR_STATE_PENDING;
-				vgich.ops.set_lr(lr, &lrv);
+				vgich.ops.set_lr(lr, &lrv, VGIC_MODEL_V2);
 				return TRUE;
 			}
 		}
@@ -320,7 +320,7 @@ static bool __vgic_queue_irq(struct vgic_guest_state *s,
 		lrv.cpuid = src_id;
 	}
 
-	vgich.ops.set_lr(lr, &lrv);
+	vgich.ops.set_lr(lr, &lrv, VGIC_MODEL_V2);
 
 	return TRUE;
 }
@@ -516,7 +516,7 @@ static void __vgic_sync_vcpu_hwstate(struct vgic_guest_state *s,
 		}
 
 		/* Read and clear the LR register */
-		vgich.ops.get_lr(lr, &lrv);
+		vgich.ops.get_lr(lr, &lrv, VGIC_MODEL_V2);
 		vgich.ops.clear_lr(lr);
 
 		/* Determine irq number & src_id */
@@ -798,7 +798,7 @@ static void vgic_save_vcpu_context(void *vcpu_ptr)
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
 	/* Save VGIC HW registers for VCPU */
-	vgich.ops.save_state(&vs->hw);
+	vgich.ops.save_state(&vs->hw, VGIC_MODEL_V2);
 }
 
 /* Restore VCPU context for current VCPU */
@@ -815,7 +815,7 @@ static void vgic_restore_vcpu_context(void *vcpu_ptr)
 	vs = &s->vstate[vcpu->subid];
 
 	/* Restore VGIC HW registers for VCPU */
-	vgich.ops.restore_state(&vs->hw);
+	vgich.ops.restore_state(&vs->hw, VGIC_MODEL_V2);
 
 	/* Lock VGIC distributor state */
 	vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
@@ -1336,7 +1336,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	 * 2. Deactivate host/HW interrupts for pending LRs.
 	 */
 	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
-		vgich.ops.reset_state(&s->vstate[i].hw);
+		vgich.ops.reset_state(&s->vstate[i].hw, VGIC_MODEL_V2);
 		s->vstate[i].lr_used_count = 0x0;
 		for (j = 0; j < (vgich.params.lr_cnt / 32); j++) {
 			s->vstate[i].lr_used[j] = 0x0;
@@ -1619,11 +1619,17 @@ static int __init vgic_emulator_init(void)
 
 	rc = vgic_v2_probe(&vgich.ops, &vgich.params);
 	if (rc == VMM_ENODEV) {
-		vmm_printf("vgic: GIC node not found\n");
-		rc = VMM_OK;
-		goto fail;
-	}
-	if (rc != VMM_OK) {
+		rc = vgic_v3_probe(&vgich.ops, &vgich.params);
+		if (rc == VMM_ENODEV) {
+			vmm_printf("vgic: GIC node not found\n");
+			rc = VMM_OK;
+			goto fail;
+		} else if (rc != VMM_OK) {
+			vmm_printf("vgic: vgic_v3_probe() return error %d\n",
+				   rc);
+			goto fail;
+		}
+	} else if (rc != VMM_OK) {
 		vmm_printf("vgic: vgic_v2_probe() return error %d\n", rc);
 		goto fail;
 	}
