@@ -31,7 +31,6 @@
 #ifndef __ARCH_GICV3_H__
 #define __ARCH_GICV3_H__
 
-#include <vmm_compiler.h>
 #include <vmm_host_io.h>
 #include <arch_barrier.h>
 #include <cpu_inline_asm.h>
@@ -96,6 +95,9 @@
  * These system registers are 32 bits, but we make sure that the compiler
  * sets the GP register's most significant bits to 0 with an explicit cast.
  */
+
+#define arch_gic_read_sysreg(__sysreg)		read_sysreg(__sysreg)
+#define arch_gic_write_sysreg(__val, __sysreg)	write_sysreg(__val, __sysreg)
 
 static inline void arch_gic_write_eoir(u32 irq)
 {
