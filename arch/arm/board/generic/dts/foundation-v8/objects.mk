@@ -32,4 +32,9 @@ board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/two_guest_vexpress-a15.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv2/two_pt_guest_vexpress-a15.dtb
 
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/zero_guest.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/one_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/one_guest_vexpress-a9.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/one_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/one_guest_virt-v7.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/two_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/foundation-v8/gicv3/two_guest_vexpress-a15.dtb
