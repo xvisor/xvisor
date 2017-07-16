@@ -34,9 +34,9 @@
 
 #include <arm_features.h>
 
-bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu, 
+bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			u32 opc1, u32 opc2, u32 CRn, u32 CRm, 
+			u32 opc1, u32 opc2, u32 CRn, u32 CRm,
 			u32 *data)
 {
 	struct arm_priv_cp15 *cp15 = &arm_priv(vcpu)->cp15;

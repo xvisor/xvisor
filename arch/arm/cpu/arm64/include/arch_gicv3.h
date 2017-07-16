@@ -46,6 +46,8 @@
 
 #define ICC_SRE_EL2			sys_reg(3, 4, 12, 9, 5)
 
+#define ISS_SRE_EL1			ISS_SYSREG_ENC(3, 5, 0, 12, 12)
+
 /*
  * System register definitions
  */

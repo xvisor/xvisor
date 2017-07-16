@@ -84,6 +84,23 @@ static bool cpu_vcpu_cpx_data_process_nop(struct vmm_vcpu *vcpu,
 	return TRUE;
 }
 
+static bool cpu_vcpu_cpx_read_zero(struct vmm_vcpu *vcpu,
+				   arch_regs_t *regs,
+				   u32 opc1, u32 opc2, u32 CRn, u32 CRm,
+				   u32 *data)
+{
+	*data = 0x0;
+	return TRUE;
+}
+
+static bool cpu_vcpu_cpx_ignore_write(struct vmm_vcpu *vcpu,
+				      arch_regs_t *regs,
+				      u32 opc1, u32 opc2, u32 CRn, u32 CRm,
+				      u32 data)
+{
+	return TRUE;
+}
+
 static struct cpu_vcpu_coproc cp_array[CPU_COPROC_COUNT] =
 {
 	{
@@ -231,16 +248,30 @@ static struct cpu_vcpu_coproc cp_array[CPU_COPROC_COUNT] =
 		.read = NULL,
 	},
 	{
+		/*
+		 * Coprocessor 12 is GICv3 sysregs.
+		 *
+		 * GICv3 sysregs are not supposed to be emulated.
+		 *
+		 * Despite this, some Guest OSes (such as Linux) may
+		 * try to force enable GICv3 sysregs via ICC_SRE_EL1.SRE
+		 * bit whenever they see GICv3 capability in processor
+		 * feature registers. This can be problematic for Guest
+		 * with GICv2 running on host with GICv3.
+		 *
+		 * To handle such Guest OSes, we emulate all GICv3
+		 * sysregs as RAZ/WI.
+		 */
 		.cpnum = 12,
-		.ldcstc_accept = NULL,
-		.ldcstc_done = NULL,
-		.ldcstc_read = NULL,
-		.ldcstc_write = NULL,
-		.write2 = NULL,
-		.read2 = NULL,
-		.data_process = NULL,
-		.write = NULL,
-		.read = NULL,
+		.ldcstc_accept = cpu_vcpu_cpx_ldcstc_accept_nop,
+		.ldcstc_done = cpu_vcpu_cpx_ldcstc_done_nop,
+		.ldcstc_read = cpu_vcpu_cpx_ldcstc_read_zero,
+		.ldcstc_write = cpu_vcpu_cpx_ldcstc_ignore_write,
+		.write2 = cpu_vcpu_cpx_ignore_write2,
+		.read2 = cpu_vcpu_cpx_read2_zero,
+		.data_process = cpu_vcpu_cpx_data_process_nop,
+		.write = cpu_vcpu_cpx_ignore_write,
+		.read = cpu_vcpu_cpx_read_zero,
 	},
 	{
 		.cpnum = 13,

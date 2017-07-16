@@ -26,6 +26,7 @@
 #include <vmm_cache.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
+#include <arch_gicv3.h>
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_sysregs.h>
@@ -254,6 +255,21 @@ bool cpu_vcpu_sysregs_read(struct vmm_vcpu *vcpu,
 	case ISS_ACTLR_EL1:
 		*data = s->actlr_el1;
 		break;
+	case ISS_SRE_EL1:
+		/*
+		 * GICv3 sysregs are not supposed to be emulated.
+		 *
+		 * Despite this, some Guest OSes (such as Linux) may
+		 * try to force enable GICv3 sysregs via ICC_SRE_EL1.SRE
+		 * bit whenever they see GICv3 capability in processor
+		 * feature registers. This can be problematic for Guest
+		 * with GICv2 running on host with GICv3.
+		 *
+		 * To handle such Guest OSes, we emulate ICC_SRE_EL1
+		 * as RAZ/WI.
+		 */
+		*data = 0x0;
+		break;
 	default:
 		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%"PRIx64"\n",
 			   regs->pc);
@@ -289,6 +305,20 @@ bool cpu_vcpu_sysregs_write(struct vmm_vcpu *vcpu,
 		vmm_cpumask_clear_cpu(vmm_smp_processor_id(),
 				&arm_priv(vcpu)->dflush_needed);
 		asm volatile("dc csw, %0" : : "r" (data));
+		break;
+	case ISS_SRE_EL1:
+		/*
+		 * GICv3 sysregs are not supposed to be emulated.
+		 *
+		 * Despite this, some Guest OSes (such as Linux) may
+		 * try to force enable GICv3 sysregs via ICC_SRE_EL1.SRE
+		 * bit whenever they see GICv3 capability in processor
+		 * feature registers. This can be problematic for Guest
+		 * with GICv2 running on host with GICv3.
+		 *
+		 * To handle such Guest OSes, we emulate ICC_SRE_EL1
+		 * as RAZ/WI.
+		 */
 		break;
 	default:
 		vmm_printf("Guest MSR/MRS Emulation @ PC:0x%"PRIx64"\n",
