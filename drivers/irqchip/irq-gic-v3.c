@@ -110,7 +110,7 @@ static inline bool gic_enable_sre(void)
 		return TRUE;
 
 	val |= ICC_SRE_EL2_SRE;
-	val |= ICC_SRE_EL2_ENABLE;
+	val &= ~ICC_SRE_EL2_ENABLE;
 	arch_gic_write_sre(val);
 	val = arch_gic_read_sre();
 
