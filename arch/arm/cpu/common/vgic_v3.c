@@ -216,12 +216,16 @@ static void vgic_v3_save_state(struct vgic_hw_state *hw,
 	for (i = 0; i < vgicp.lr_cnt; i++) {
 		hw->v3.lr[i] = vgic_v3_read_lr(i);
 	}
+
+	arch_gic_write_sre(arch_gic_read_sre() & ~ICC_SRE_EL2_ENABLE);
 }
 
 static void vgic_v3_restore_state(struct vgic_hw_state *hw,
 				  enum vgic_model_type model)
 {
 	u32 i;
+
+	arch_gic_write_sre(arch_gic_read_sre() | ICC_SRE_EL2_ENABLE);
 
 	/*
 	 * VFIQEn is RES1 if ICC_SRE_EL1.SRE is 1. This causes a
@@ -233,6 +237,7 @@ static void vgic_v3_restore_state(struct vgic_hw_state *hw,
 	 */
 	if (model == VGIC_MODEL_V2) {
 		arch_gic_write_sysreg(0, ICC_SRE_EL1);
+		arch_gic_write_sre(arch_gic_read_sre() & ~ICC_SRE_EL2_ENABLE);
 	} else {
 		arch_gic_write_sysreg(1, ICC_SRE_EL1);
 	}
