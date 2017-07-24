@@ -48,6 +48,7 @@ core-objs-y+= vmm_clocksource.o
 core-objs-y+= vmm_clockchip.o
 core-objs-y+= vmm_timer.o
 core-objs-y+= vmm_delay.o
+core-objs-y+= vmm_shmem.o
 core-objs-y+= vmm_vcpu_irq.o
 core-objs-y+= vmm_guest_aspace.o
 core-objs-y+= vmm_manager.o

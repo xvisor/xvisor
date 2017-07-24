@@ -35,6 +35,7 @@
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
 #include <vmm_delay.h>
+#include <vmm_shmem.h>
 #include <vmm_manager.h>
 #include <vmm_scheduler.h>
 #include <vmm_loadbal.h>
@@ -443,9 +444,16 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
-	/* Initialize soft delay */
-	vmm_printf("init: soft delay\n");
+	/* Initialize hypervisor soft delay */
+	vmm_printf("init: hypervisor soft delay\n");
 	ret = vmm_delay_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Initialize hypervisor shared memory */
+	vmm_printf("init: hypervisor shared memory\n");
+	ret = vmm_shmem_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
