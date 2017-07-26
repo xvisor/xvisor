@@ -97,6 +97,18 @@ static inline physical_size_t vmm_shmem_get_size(struct vmm_shmem *shm)
 	return (shm) ? shm->size : 0x0;
 }
 
+/** Get align order of shared memory */
+static inline u32 vmm_shmem_get_align_order(struct vmm_shmem *shm)
+{
+	return (shm) ? shm->align_order : 0;
+}
+
+/** Get reference count of shared memory */
+static inline u32 vmm_shmem_get_ref_count(struct vmm_shmem *shm)
+{
+	return (shm) ? arch_atomic_read(&shm->ref_count) : 0;
+}
+
 /** Get private pointer of shared memory instance */
 static inline void *vmm_shmem_get_priv(struct vmm_shmem *shm)
 {
