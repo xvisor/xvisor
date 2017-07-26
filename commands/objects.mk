@@ -31,12 +31,12 @@ commands-objs-$(CONFIG_CMD_DEVTREE)+= cmd_devtree.o
 commands-objs-$(CONFIG_CMD_VCPU)+= cmd_vcpu.o
 commands-objs-$(CONFIG_CMD_GUEST)+= cmd_guest.o
 commands-objs-$(CONFIG_CMD_MEMORY)+= cmd_memory.o
+commands-objs-$(CONFIG_CMD_SHMEM)+= cmd_shmem.o
 commands-objs-$(CONFIG_CMD_THREAD)+= cmd_thread.o
 commands-objs-$(CONFIG_CMD_CHARDEV)+= cmd_chardev.o
 commands-objs-$(CONFIG_CMD_STDIO)+= cmd_stdio.o
 commands-objs-$(CONFIG_CMD_HEAP)+= cmd_heap.o
 commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
-commands-objs-$(CONFIG_CMD_GPIO)+= cmd_gpio.o
 commands-objs-$(CONFIG_CMD_MODULE)+= cmd_module.o
 commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
 
@@ -48,6 +48,7 @@ commands-objs-$(CONFIG_CMD_VSCREEN)+= cmd_vscreen.o
 
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
+commands-objs-$(CONFIG_CMD_GPIO)+= cmd_gpio.o
 commands-objs-$(CONFIG_CMD_FB)+= cmd_fb.o
 commands-objs-$(CONFIG_CMD_FB_BACKLIGHT)+= cmd_backlight.o
 commands-objs-$(CONFIG_CMD_BLOCKDEV)+= cmd_blockdev.o
