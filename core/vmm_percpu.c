@@ -44,7 +44,7 @@ int __init vmm_percpu_init(void)
 
 	__percpu_vaddr[0] = base;
 	__percpu_offset[0] = 0;
-	for(cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
+	for_each_possible_cpu(cpu){
 		if (cpu == 0) {
 			continue;
 		}
