@@ -31,6 +31,7 @@
 #include <vmm_spinlocks.h>
 #include <vmm_devtree.h>
 #include <vmm_cpumask.h>
+#include <vmm_shmem.h>
 #include <libs/list.h>
 #include <libs/rbtree.h>
 
@@ -49,7 +50,8 @@ enum vmm_region_flags {
 	VMM_REGION_ISRESERVED=0x00000800,
 	VMM_REGION_ISALLOCED=0x00001000,
 	VMM_REGION_ISCOLORED=0x00002000,
-	VMM_REGION_ISDYNAMIC=0x00004000,
+	VMM_REGION_ISSHARED=0x00004000,
+	VMM_REGION_ISDYNAMIC=0x00008000,
 };
 
 #define VMM_REGION_MANIFEST_MASK	(VMM_REGION_REAL | \
@@ -83,6 +85,7 @@ struct vmm_region {
 	physical_size_t phys_size;
 	u32 first_color;
 	u32 num_colors;
+	struct vmm_shmem *shm;
 	u32 align_order;
 	u32 map_order;
 	u32 maps_count;

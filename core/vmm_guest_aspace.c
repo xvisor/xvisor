@@ -458,11 +458,16 @@ int vmm_guest_physical_unmap(struct vmm_guest *guest,
 bool is_region_node_valid(struct vmm_devtree_node *rnode)
 {
 	const char *aval;
+	struct vmm_shmem *shm;
 	bool is_real = FALSE;
 	bool is_alias = FALSE;
 	bool is_alloced = FALSE;
 	bool is_colored = FALSE;
+	bool is_shared = FALSE;
 	physical_size_t size = 0;
+	bool shm_available = FALSE;
+	physical_size_t shm_size = 0;
+	u32 shm_align_order = 0;
 	u32 first_color = 0, num_colors = 0, align_order = 0;
 	physical_addr_t gphys_addr = 0, aphys_addr = 0, hphys_addr = 0;
 
@@ -503,13 +508,17 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
 		is_colored = TRUE;
 	}
+	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_ROM)) {
+		is_shared = TRUE;
+	}
 
 	if (vmm_devtree_read_physaddr(rnode,
 			VMM_DEVTREE_GUEST_PHYS_ATTR_NAME, &gphys_addr)) {
 		return FALSE;
 	}
 
-	if (is_real && !is_alloced && !is_colored) {
+	if (is_real && !is_alloced && !is_colored && !is_shared) {
 		if (vmm_devtree_read_physaddr(rnode,
 			VMM_DEVTREE_HOST_PHYS_ATTR_NAME, &hphys_addr)) {
 			return FALSE;
@@ -539,6 +548,17 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		num_colors = 0;
 	}
 
+	if (!vmm_devtree_read_string(rnode,
+			VMM_DEVTREE_SHARED_MEM_ATTR_NAME, &aval)) {
+		shm = vmm_shmem_find_byname(aval);
+		if (shm) {
+			shm_available = TRUE;
+			shm_size = vmm_shmem_get_size(shm);
+			shm_align_order = vmm_shmem_get_align_order(shm);
+			vmm_shmem_dref(shm);
+		}
+	}
+
 	if (is_colored) {
 		if (!num_colors) {
 			return FALSE;
@@ -551,8 +571,23 @@ bool is_region_node_valid(struct vmm_devtree_node *rnode)
 		}
 	}
 
-	if (is_colored) {
-		align_order = vmm_host_ram_color_order();
+	if (is_shared) {
+		if (!shm_available) {
+			return FALSE;
+		}
+		if (shm_size < size) {
+			return FALSE;
+		}
+	}
+
+	if (is_colored || is_shared) {
+		if (is_colored) {
+			align_order = vmm_host_ram_color_order();
+		} else if (is_shared && shm_available) {
+			align_order = shm_align_order;
+		} else {
+			return FALSE;
+		}
 	} else {
 		if (vmm_devtree_read_u32(rnode,
 			VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME, &align_order)) {
@@ -719,11 +754,13 @@ static int region_add(struct vmm_guest *guest,
 	/* Update region flags based on device_type */
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_RAM) ||
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_RAM) ||
-	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM)) {
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_RAM)) {
 		reg->flags |= VMM_REGION_ISRAM;
 	} else if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ROM) ||
 		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_ALLOCED_ROM) ||
-		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
+		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM) ||
+		   !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_ROM)) {
 		reg->flags |= VMM_REGION_READONLY;
 		reg->flags |= VMM_REGION_ISROM;
 	} else {
@@ -740,6 +777,10 @@ static int region_add(struct vmm_guest *guest,
 	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_RAM) ||
 	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM)) {
 		reg->flags |= VMM_REGION_ISCOLORED;
+	}
+	if (!strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_RAM) ||
+	    !strcmp(aval, VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_ROM)) {
+		reg->flags |= VMM_REGION_ISSHARED;
 	}
 	if ((reg->flags & VMM_REGION_REAL) &&
 	    (reg->flags & VMM_REGION_MEMORY) &&
@@ -800,9 +841,37 @@ static int region_add(struct vmm_guest *guest,
 		reg->num_colors = 0;
 	}
 
+	/* Determine region shared memory */
+	if (reg->flags & VMM_REGION_ISSHARED) {
+		rc = vmm_devtree_read_string(reg->node,
+			VMM_DEVTREE_SHARED_MEM_ATTR_NAME, &aval);
+		if (rc) {
+			goto region_free_fail;
+		}
+		reg->shm = vmm_shmem_find_byname(aval);
+		if (!reg->shm) {
+			rc = VMM_EINVALID;
+			goto region_free_fail;
+		}
+		if (vmm_shmem_get_size(reg->shm) < reg->phys_size) {
+			rc = VMM_EINVALID;
+			goto region_dref_shm_fail;
+		}
+	} else {
+		reg->shm = NULL;
+	}
+
 	/* Determine region align_order */
-	if (reg->flags & VMM_REGION_ISCOLORED) {
-		reg->align_order = vmm_host_ram_color_order();
+	if (reg->flags & (VMM_REGION_ISCOLORED | VMM_REGION_ISSHARED)) {
+		if (reg->flags & VMM_REGION_ISCOLORED) {
+			reg->align_order = vmm_host_ram_color_order();
+		} else if (reg->flags & VMM_REGION_ISSHARED) {
+			reg->align_order =
+				vmm_shmem_get_align_order(reg->shm);
+		} else {
+			rc = VMM_EINVALID;
+			goto region_dref_shm_fail;
+		}
 	} else {
 		rc = vmm_devtree_read_u32(reg->node,
 				VMM_DEVTREE_ALIGN_ORDER_ATTR_NAME,
@@ -822,7 +891,7 @@ static int region_add(struct vmm_guest *guest,
 	}
 	if (i == 64) {
 		rc = VMM_EINVALID;
-		goto region_free_fail;
+		goto region_dref_shm_fail;
 	}
 
 	/*
@@ -863,7 +932,7 @@ static int region_add(struct vmm_guest *guest,
 	reg->maps = vmm_zalloc(sizeof(*reg->maps) * reg->maps_count);
 	if (!reg->maps) {
 		rc = VMM_ENOMEM;
-		goto region_free_fail;
+		goto region_dref_shm_fail;
 	}
 	reg->maps[0].hphys_addr = reg->gphys_addr +
 				  mapping_gphys_offset(reg, 0);
@@ -874,21 +943,6 @@ static int region_add(struct vmm_guest *guest,
 		reg->maps[i].flags = 0;
 	}
 
-	/*
-	 * Mapping0 from device tree for
-	 * non-alloced non-colored real guest region
-	 */
-	if ((reg->flags & VMM_REGION_REAL) &&
-	    !(reg->flags & VMM_REGION_ISALLOCED) &&
-	    !(reg->flags & VMM_REGION_ISCOLORED)) {
-		rc = vmm_devtree_read_physaddr(reg->node,
-					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
-					&reg->maps[0].hphys_addr);
-		if (rc) {
-			goto region_free_maps_fail;
-		}
-	}
-
 	reg->devemu_priv = NULL;
 	reg->priv = rpriv;
 
@@ -897,6 +951,32 @@ static int region_add(struct vmm_guest *guest,
 		region_overlap_message(__func__, guest, reg, reg_overlap);
 		rc = VMM_EINVALID;
 		goto region_free_maps_fail;
+	}
+
+	/*
+	 * Mapping0 from device tree for
+	 * non-alloced non-colored non-shared real guest region
+	 */
+	if ((reg->flags & VMM_REGION_REAL) &&
+	    !(reg->flags & VMM_REGION_ISALLOCED) &&
+	    !(reg->flags & VMM_REGION_ISCOLORED) &&
+	    !(reg->flags & VMM_REGION_ISSHARED)) {
+		rc = vmm_devtree_read_physaddr(reg->node,
+					VMM_DEVTREE_HOST_PHYS_ATTR_NAME,
+					&reg->maps[0].hphys_addr);
+		if (rc) {
+			goto region_free_maps_fail;
+		}
+	}
+
+	/*
+	 * Mapping0 from shared memory instance for
+	 * shared RAM/ROM regions
+	 */
+	if (!(reg->flags & (VMM_REGION_ALIAS | VMM_REGION_VIRTUAL)) &&
+	    (reg->flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+	    (reg->flags & VMM_REGION_ISSHARED)) {
+		reg->maps[0].hphys_addr = vmm_shmem_get_addr(reg->shm);
 	}
 
 	/* Reserve host RAM for reserved RAM/ROM regions */
@@ -1048,6 +1128,11 @@ region_ram_free_fail:
 	}
 region_free_maps_fail:
 	vmm_free(reg->maps);
+region_dref_shm_fail:
+	if (reg->shm) {
+		vmm_shmem_dref(reg->shm);
+		reg->shm = NULL;
+	}
 region_free_fail:
 	vmm_free(reg);
 region_fail:
@@ -1129,6 +1214,12 @@ static int region_del(struct vmm_guest *guest,
 
 	/* Free region mappings */
 	vmm_free(reg->maps);
+
+	/* De-reference shared memory */
+	if (reg->shm) {
+		vmm_shmem_dref(reg->shm);
+		reg->shm = NULL;
+	}
 
 	/* Free the region */
 	vmm_free(reg);
