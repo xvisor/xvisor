@@ -183,20 +183,8 @@ static void system_init_work(struct vmm_work *work)
 	}
 
 #if defined(CONFIG_SMP)
-	/* Initialize secondary CPUs */
-	vmm_printf("init: secondary CPUs\n");
-	ret = arch_smp_init_cpus();
-	if (ret) {
-		goto fail;
-	}
-
-	/* Prepare secondary CPUs */
-	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
-	if (ret) {
-		goto fail;
-	}
-
 	/* Start each present secondary CPUs */
+	vmm_printf("init: start secondary CPUs\n");
 	for_each_present_cpu(c) {
 		if (c == vmm_smp_bootcpu_id()) {
 			continue;
@@ -358,16 +346,31 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
-	/* Initialize per-cpu area */
-	vmm_printf("init: per-CPU areas\n");
-	ret = vmm_percpu_init();
+	/* Initialize device tree */
+	vmm_printf("init: device tree\n");
+	ret = vmm_devtree_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
 
-	/* Initialize device tree */
-	vmm_printf("init: device tree\n");
-	ret = vmm_devtree_init();
+#if defined(CONFIG_SMP)
+	/* Initialize secondary CPUs */
+	vmm_printf("init: discover secondary CPUs\n");
+	ret = arch_smp_init_cpus();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Prepare secondary CPUs */
+	ret = arch_smp_prepare_cpus(vmm_num_possible_cpus());
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+#endif
+
+	/* Initialize per-cpu area */
+	vmm_printf("init: per-CPU areas\n");
+	ret = vmm_percpu_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
