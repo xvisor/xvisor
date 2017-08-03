@@ -13,7 +13,7 @@ following url: http://www.kernel.org
 
 Please follow the steps below to build & run Linux kernel with Busybox
 RootFS on Virt-v8 (paravirtualized ARMv8) Guest with Xvisor running on
-Foundation v8 model:
+Foundation v8 model (v11.xx or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=aarch64-linux-gnu-
@@ -72,7 +72,7 @@ Foundation v8 model:
 
   [14. Launch Foundation v8 Model]
   # ${CROSS_COMPILE}gcc -nostdlib -nostdinc -e _start -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DGENTIMER_FREQ=100000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 -DSPIN_LOOP_ADDR=0x8000fff8 -DIMAGE=./build/vmm.bin -DDTB=./build/arch/arm/board/generic/dts/foundation-v8/gicv2/one_guest_virt-v8.dtb -DINITRD=./build/disk.img ./docs/arm/foundation_v8_boot.S -o ./build/foundation_v8_boot.axf
-  # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_v8 --arm-v8.1 --image ./build/foundation_v8_boot.axf --network=nat
+  # <foundation_v8_install_directory>/models/Linux64_GCC-<xxxx>/Foundation_Platform --no-gicv3 --arm-v8.1 --image ./build/foundation_v8_boot.axf --network=nat
 
   [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
