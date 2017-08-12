@@ -28,6 +28,8 @@
 #include <vmm_devemu.h>
 
 #include <linux/gpio.h>
+#include <linux/gpio/driver.h>
+#include <linux/gpio/consumer.h>
 
 #undef DEBUG
 
@@ -51,10 +53,10 @@ struct gpio_forward_state {
 	u32 out_count;
 
 	u32 *in_irq;
-	u32 *out_gpio;
+	struct gpio_desc **out_gpio;
 
 	u32 *out_irq;
-	u32 *in_gpio;
+	struct gpio_desc **in_gpio;
 };
 
 static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
@@ -63,11 +65,11 @@ static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
 	struct gpio_forward_state *s = edev->priv;
 
 	for (i = 0; i < s->in_count; i++) {
-		gpio_direction_output(s->out_gpio[i], 0);
+		gpio_direction_output(desc_to_gpio(s->out_gpio[i]), 0);
 	}
 
 	for (i = 0; i < s->out_count; i++) {
-		gpio_direction_input(s->in_gpio[i]);
+		gpio_direction_input(desc_to_gpio(s->in_gpio[i]));
 	}
 
 	return VMM_OK;
@@ -80,7 +82,7 @@ static int gpio_forward_emulator_sync(struct vmm_emudev *edev,
 	struct gpio_forward_state *s = edev->priv;
 
 	for (i = 0; i < s->out_count; i++) {
-		level = __gpio_get_value(s->in_gpio[i]);
+		level = __gpio_get_value(desc_to_gpio(s->in_gpio[i]));
 		vmm_devemu_emulate_irq(s->guest, s->out_irq[i], level);
 	}
 
@@ -106,7 +108,7 @@ static void gpio_forward_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		return;
 	}
 
-	__gpio_set_value(s->out_gpio[line], (level) ? 1 : 0);
+	__gpio_set_value(desc_to_gpio(s->out_gpio[line]), (level) ? 1 : 0);
 }
 
 static struct vmm_devemu_irqchip gpio_forward_irqchip = {
@@ -118,8 +120,8 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 				     struct vmm_emudev *edev,
 				     const struct vmm_devtree_nodeid *eid)
 {
-	u32 i;
 	int rc = VMM_OK;
+	u32 i, out_gpio, in_gpio;
 	struct gpio_forward_state *s;
 
 	s = vmm_zalloc(sizeof(struct gpio_forward_state));
@@ -140,25 +142,34 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 		s->in_irq = vmm_zalloc(s->in_count * sizeof(*s->in_irq));
 		if (!s->in_irq) {
 			rc = VMM_ENOMEM;
-			goto gpio_forward_emulator_probe_freestate_failed;
+			goto gpio_forward_emulator_probe_freestate;
 		}
 
 		s->out_gpio = vmm_zalloc(s->in_count * sizeof(*s->out_gpio));
 		if (!s->out_gpio) {
 			rc = VMM_ENOMEM;
-			goto gpio_forward_emulator_probe_freeinirq_failed;
+			goto gpio_forward_emulator_probe_freeinirq;
 		}
 
 		rc = vmm_devtree_read_u32_array(edev->node, "in_irq",
 						s->in_irq, s->in_count);
 		if (rc) {
-			goto gpio_forward_emulator_probe_freeoutgpio_failed;
+			goto gpio_forward_emulator_probe_freeoutgpio;
 		}
 
-		rc = vmm_devtree_read_u32_array(edev->node, "out_gpio",
-						s->out_gpio, s->in_count);
-		if (rc) {
-			goto gpio_forward_emulator_probe_freeoutgpio_failed;
+		for (i = 0; i < s->in_count; i++) {
+			rc = vmm_devtree_read_u32_atindex(edev->node,
+							  "out_gpio",
+							  &out_gpio, i);
+			if (rc) {
+				goto gpio_forward_emulator_probe_reloutgpio;
+			}
+
+			rc = gpio_request(out_gpio, guest->name);
+			if (rc) {
+				goto gpio_forward_emulator_probe_reloutgpio;
+			}
+			s->out_gpio[i] = gpio_to_desc(out_gpio);
 		}
 	}
 
@@ -166,25 +177,34 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 		s->out_irq = vmm_zalloc(s->out_count * sizeof(*s->out_irq));
 		if (!s->out_irq) {
 			rc = VMM_ENOMEM;
-			goto gpio_forward_emulator_probe_freeoutgpio_failed;
+			goto gpio_forward_emulator_probe_freeoutgpio;
 		}
 
 		s->in_gpio = vmm_zalloc(s->out_count * sizeof(*s->in_gpio));
 		if (!s->in_gpio) {
 			rc = VMM_ENOMEM;
-			goto gpio_forward_emulator_probe_freeoutirq_failed;
+			goto gpio_forward_emulator_probe_freeoutirq;
 		}
 
 		rc = vmm_devtree_read_u32_array(edev->node, "out_irq",
 						s->out_irq, s->out_count);
 		if (rc) {
-			goto gpio_forward_emulator_probe_freeingpio_failed;
+			goto gpio_forward_emulator_probe_freeingpio;
 		}
 
-		rc = vmm_devtree_read_u32_array(edev->node, "in_gpio",
-						s->in_gpio, s->out_count);
-		if (rc) {
-			goto gpio_forward_emulator_probe_freeingpio_failed;
+		for (i = 0; i < s->out_count; i++) {
+			rc = vmm_devtree_read_u32_atindex(edev->node,
+							  "in_gpio",
+							  &in_gpio, i);
+			if (rc) {
+				goto gpio_forward_emulator_probe_relingpio;
+			}
+
+			rc = gpio_request(in_gpio, guest->name);
+			if (rc) {
+				goto gpio_forward_emulator_probe_relingpio;
+			}
+			s->in_gpio[i] = gpio_to_desc(in_gpio);
 		}
 	}
 
@@ -197,23 +217,37 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 
 	goto gpio_forward_emulator_probe_done;
 
-gpio_forward_emulator_probe_freeingpio_failed:
+gpio_forward_emulator_probe_relingpio:
+	for (i = 0; i < s->out_count; i++) {
+		if (s->in_gpio[i]) {
+			gpio_free(desc_to_gpio(s->in_gpio[i]));
+			s->in_gpio[i] = NULL;
+		}
+	}
+gpio_forward_emulator_probe_freeingpio:
 	if (s->in_gpio) {
 		vmm_free(s->in_gpio);
 	}
-gpio_forward_emulator_probe_freeoutirq_failed:
+gpio_forward_emulator_probe_freeoutirq:
 	if (s->out_irq) {
 		vmm_free(s->out_irq);
 	}
-gpio_forward_emulator_probe_freeoutgpio_failed:
+gpio_forward_emulator_probe_reloutgpio:
+	for (i = 0; i < s->in_count; i++) {
+		if (s->out_gpio[i]) {
+			gpio_free(desc_to_gpio(s->out_gpio[i]));
+			s->out_gpio[i] = NULL;
+		}
+	}
+gpio_forward_emulator_probe_freeoutgpio:
 	if (s->out_gpio) {
 		vmm_free(s->out_gpio);
 	}
-gpio_forward_emulator_probe_freeinirq_failed:
+gpio_forward_emulator_probe_freeinirq:
 	if (s->in_irq) {
 		vmm_free(s->in_irq);
 	}
-gpio_forward_emulator_probe_freestate_failed:
+gpio_forward_emulator_probe_freestate:
 	vmm_free(s);
 gpio_forward_emulator_probe_done:
 	return rc;
@@ -232,11 +266,23 @@ static int gpio_forward_emulator_remove(struct vmm_emudev *edev)
 		vmm_devemu_unregister_irqchip(s->guest, s->in_irq[i],
 					      &gpio_forward_irqchip, s);
 	}
+	for (i = 0; i < s->out_count; i++) {
+		if (s->in_gpio[i]) {
+			gpio_free(desc_to_gpio(s->in_gpio[i]));
+			s->in_gpio[i] = NULL;
+		}
+	}
 	if (s->in_gpio) {
 		vmm_free(s->in_gpio);
 	}
 	if (s->out_irq) {
 		vmm_free(s->out_irq);
+	}
+	for (i = 0; i < s->in_count; i++) {
+		if (s->out_gpio[i]) {
+			gpio_free(desc_to_gpio(s->out_gpio[i]));
+			s->out_gpio[i] = NULL;
+		}
 	}
 	if (s->out_gpio) {
 		vmm_free(s->out_gpio);
