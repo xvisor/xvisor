@@ -36,6 +36,7 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
+#include <emu/gpio_sync.h>
 
 #undef DEBUG
 
@@ -151,10 +152,17 @@ static void pl061_update(struct pl061_state *s)
 static int pl061_reg_read(struct pl061_state *s,
 			  u32 offset, u32 *dst)
 {
-	int rc = VMM_OK;
+	int i, rc = VMM_OK;
+	struct gpio_emu_sync sync;
 
 	/* Syncup child GPIO slaves so that input lines are updated */
-	vmm_devemu_sync_children(s->guest, s->edev, 0, NULL);
+	for (i = 0; i < 8; i++) {
+		sync.irq = s->in_irq[i];
+		vmm_devemu_sync_children(s->guest,
+					 s->edev,
+					 GPIO_EMU_SYNC_VALUE,
+					 &sync);
+	}
 
 	vmm_spin_lock(&s->lock);
 
@@ -236,10 +244,9 @@ static int pl061_reg_write(struct pl061_state *s,
 			   u32 offset, u32 regmask, u32 regval)
 {
 	u8 mask;
-	int rc = VMM_OK;
-
-	/* Syncup child GPIO slaves so that input lines are updated */
-	vmm_devemu_sync_children(s->guest, s->edev, 0, NULL);
+	u32 dir;
+	int i, rc = VMM_OK;
+	struct gpio_emu_sync sync;
 
 	vmm_spin_lock(&s->lock);
 
@@ -251,6 +258,24 @@ static int pl061_reg_write(struct pl061_state *s,
 		case 0x400: /* Direction */
 			s->dir &= regmask;
 			s->dir |= (regval & 0xFF);
+			dir = s->dir;
+			vmm_spin_unlock(&s->lock);
+			for (i = 0; i < 8; i++) {
+				if (dir & (1 << i)) {
+					sync.irq = s->out_irq[i];
+					vmm_devemu_sync_children(s->guest,
+						s->edev,
+						GPIO_EMU_SYNC_DIRECTION_OUT,
+						&sync);
+				} else {
+					sync.irq = s->in_irq[i];
+					vmm_devemu_sync_children(s->guest,
+						s->edev,
+						GPIO_EMU_SYNC_DIRECTION_IN,
+						&sync);
+				}
+			}
+			vmm_spin_lock(&s->lock);
 			break;
 		case 0x404: /* Interrupt sense */
 			s->isense &= regmask;
