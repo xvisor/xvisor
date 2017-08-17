@@ -43,8 +43,8 @@ board_fdt_support = y
 board_smp	 = y
 
 board_cppflags   =
-board_cflags     = -mcpu=cortex-a9
-board_asflags    = -mcpu=cortex-a9
+board_cflags     = -mtune=cortex-a9
+board_asflags    = -mtune=cortex-a9
 board_ldflags    =
 
 # Include common makefile for basic firmware

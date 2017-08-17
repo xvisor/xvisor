@@ -42,8 +42,8 @@ board_objs       = $(obj_dir)/arm_board.o \
 board_fdt_support = y
 
 board_cppflags   =
-board_cflags     = -mcpu=cortex-a8
-board_asflags    = -mcpu=cortex-a8
+board_cflags     = -mtune=cortex-a8
+board_asflags    = -mtune=cortex-a8
 board_ldflags    =
 
 # Include common makefile for basic firmware
