@@ -50,13 +50,13 @@ struct gpio_forward_state {
 	struct vmm_guest *guest;
 
 	u32 in_count;
-	u32 out_count;
-
 	u32 *in_irq;
 	struct gpio_desc **out_gpio;
 
+	u32 out_count;
 	u32 *out_irq;
 	struct gpio_desc **in_gpio;
+	bool *in_gpio_bidir;
 };
 
 static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
@@ -69,7 +69,9 @@ static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
 	}
 
 	for (i = 0; i < s->out_count; i++) {
-		gpiod_direction_input(s->in_gpio[i]);
+		if (!s->in_gpio_bidir[i]) {
+			gpiod_direction_input(s->in_gpio[i]);
+		}
 	}
 
 	return VMM_OK;
@@ -121,7 +123,7 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 				     const struct vmm_devtree_nodeid *eid)
 {
 	int rc = VMM_OK;
-	u32 i, out_gpio, in_gpio;
+	u32 i, j, out_gpio, in_gpio;
 	struct gpio_forward_state *s;
 
 	s = vmm_zalloc(sizeof(struct gpio_forward_state));
@@ -186,10 +188,17 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 			goto gpio_forward_emulator_probe_freeoutirq;
 		}
 
+		s->in_gpio_bidir = vmm_zalloc(s->out_count *
+					      sizeof(*s->in_gpio_bidir));
+		if (!s->in_gpio_bidir) {
+			rc = VMM_ENOMEM;
+			goto gpio_forward_emulator_probe_freeingpio;
+		}
+
 		rc = vmm_devtree_read_u32_array(edev->node, "out_irq",
 						s->out_irq, s->out_count);
 		if (rc) {
-			goto gpio_forward_emulator_probe_freeingpio;
+			goto gpio_forward_emulator_probe_freeingpiob;
 		}
 
 		for (i = 0; i < s->out_count; i++) {
@@ -199,6 +208,18 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 			if (rc) {
 				goto gpio_forward_emulator_probe_relingpio;
 			}
+
+			s->in_gpio[i] = NULL;
+			s->in_gpio_bidir[i] = FALSE;
+			for (j = 0; j < s->in_count; j++) {
+				if (in_gpio == desc_to_gpio(s->out_gpio[j])) {
+					s->in_gpio[i] = s->out_gpio[j];
+					s->in_gpio_bidir[i] = TRUE;
+					break;
+				}
+			}
+			if (s->in_gpio[i])
+				continue;
 
 			rc = gpio_request(in_gpio, guest->name);
 			if (rc) {
@@ -219,10 +240,15 @@ static int gpio_forward_emulator_probe(struct vmm_guest *guest,
 
 gpio_forward_emulator_probe_relingpio:
 	for (i = 0; i < s->out_count; i++) {
-		if (s->in_gpio[i]) {
+		if (s->in_gpio[i] && !s->in_gpio_bidir[i]) {
 			gpio_free(desc_to_gpio(s->in_gpio[i]));
 			s->in_gpio[i] = NULL;
+			s->in_gpio_bidir[i] = FALSE;
 		}
+	}
+gpio_forward_emulator_probe_freeingpiob:
+	if (s->in_gpio_bidir) {
+		vmm_free(s->in_gpio_bidir);
 	}
 gpio_forward_emulator_probe_freeingpio:
 	if (s->in_gpio) {
@@ -267,10 +293,14 @@ static int gpio_forward_emulator_remove(struct vmm_emudev *edev)
 					      &gpio_forward_irqchip, s);
 	}
 	for (i = 0; i < s->out_count; i++) {
-		if (s->in_gpio[i]) {
+		if (s->in_gpio[i] && !s->in_gpio_bidir[i]) {
 			gpio_free(desc_to_gpio(s->in_gpio[i]));
 			s->in_gpio[i] = NULL;
+			s->in_gpio_bidir[i] = FALSE;
 		}
+	}
+	if (s->in_gpio_bidir) {
+		vmm_free(s->in_gpio_bidir);
 	}
 	if (s->in_gpio) {
 		vmm_free(s->in_gpio);
