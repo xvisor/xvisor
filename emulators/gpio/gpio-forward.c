@@ -65,11 +65,11 @@ static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
 	struct gpio_forward_state *s = edev->priv;
 
 	for (i = 0; i < s->in_count; i++) {
-		gpio_direction_output(desc_to_gpio(s->out_gpio[i]), 0);
+		gpiod_direction_output(s->out_gpio[i], 0);
 	}
 
 	for (i = 0; i < s->out_count; i++) {
-		gpio_direction_input(desc_to_gpio(s->in_gpio[i]));
+		gpiod_direction_input(s->in_gpio[i]);
 	}
 
 	return VMM_OK;
