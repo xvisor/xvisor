@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_modules.h>
 #include <vmm_devemu.h>
+#include <emu/gpio_sync.h>
 
 #include <linux/gpio.h>
 #include <linux/gpio/driver.h>
@@ -80,15 +81,83 @@ static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
 static int gpio_forward_emulator_sync(struct vmm_emudev *edev,
 				      unsigned long val, void *v)
 {
-	int i, level;
+	bool bidir;
+	struct gpio_desc *gpio;
+	int i, j, level, rc = VMM_OK;
 	struct gpio_forward_state *s = edev->priv;
+	struct gpio_emu_sync *sync = v;
 
-	for (i = 0; i < s->out_count; i++) {
-		level = __gpio_get_value(desc_to_gpio(s->in_gpio[i]));
-		vmm_devemu_emulate_irq(s->guest, s->out_irq[i], level);
+	if (!sync) {
+		return VMM_EINVALID;
 	}
 
-	return VMM_OK;
+	DPRINTF("%s: type=%d irq=%d\n", __func__, (int)val, (int)sync->irq);
+
+	switch (val) {
+	case GPIO_EMU_SYNC_DIRECTION_IN:
+		gpio = NULL;
+		bidir = FALSE;
+		for (i = 0; i < s->out_count; i++) {
+			if (s->out_irq[i] == sync->irq) {
+				gpio = s->in_gpio[i];
+				bidir = s->in_gpio_bidir[i];
+				break;
+			}
+		}
+		if (gpio && bidir) {
+			DPRINTF("%s: bi-direction gpio=%d\n",
+				__func__, desc_to_gpio(gpio));
+			if (gpiod_get_direction(gpio) != GPIOF_DIR_IN) {
+				DPRINTF("%s: make gpio=%d as input\n",
+					__func__, desc_to_gpio(gpio));
+				gpiod_direction_input(gpio);
+			}
+		}
+		break;
+	case GPIO_EMU_SYNC_DIRECTION_OUT:
+		gpio = NULL;
+		bidir = FALSE;
+		for (i = 0; i < s->in_count; i++) {
+			if (s->in_irq[i] == sync->irq) {
+				gpio = s->out_gpio[i];
+				for (j = 0; j < s->out_count; j++) {
+					if (s->in_gpio[j] == gpio) {
+						bidir = s->in_gpio_bidir[j];
+						break;
+					}
+				}
+				break;
+			}
+		}
+		if (gpio && bidir) {
+			DPRINTF("%s: bi-direction gpio=%d\n",
+				__func__, desc_to_gpio(gpio));
+			if (gpiod_get_direction(gpio) != GPIOF_DIR_OUT) {
+				DPRINTF("%s: make gpio=%d as output\n",
+					__func__, desc_to_gpio(gpio));
+				gpiod_direction_output(gpio, 0);
+			}
+		}
+		break;
+	case GPIO_EMU_SYNC_VALUE:
+		gpio = NULL;
+		for (i = 0; i < s->out_count; i++) {
+			if (s->out_irq[i] == sync->irq) {
+				gpio = s->in_gpio[i];
+				break;
+			}
+		}
+		if (gpio) {
+			level = __gpio_get_value(desc_to_gpio(gpio));
+			vmm_devemu_emulate_irq(s->guest, sync->irq, level);
+		}
+		break;
+	default:
+		rc = VMM_EINVALID;
+		break;
+	};
+
+	return rc;
 }
 
 /* Process IRQ asserted in device emulation framework */
