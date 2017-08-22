@@ -78,6 +78,28 @@ static int gpio_forward_emulator_reset(struct vmm_emudev *edev)
 	return VMM_OK;
 }
 
+static void gpio_forward_do_direction_input(struct vmm_guest *g, void *p)
+{
+	struct gpio_desc *gpio = p;
+
+	if (gpiod_get_direction(gpio) != GPIOF_DIR_IN) {
+		DPRINTF("%s: make gpio=%d as input\n",
+			__func__, desc_to_gpio(gpio));
+		gpiod_direction_input(gpio);
+	}
+}
+
+static void gpio_forward_do_direction_output(struct vmm_guest *g, void *p)
+{
+	struct gpio_desc *gpio = p;
+
+	if (gpiod_get_direction(gpio) != GPIOF_DIR_OUT) {
+		DPRINTF("%s: make gpio=%d as output\n",
+			__func__, desc_to_gpio(gpio));
+		gpiod_direction_output(gpio, 0);
+	}
+}
+
 static int gpio_forward_emulator_sync(struct vmm_emudev *edev,
 				      unsigned long val, void *v)
 {
@@ -107,11 +129,8 @@ static int gpio_forward_emulator_sync(struct vmm_emudev *edev,
 		if (gpio && bidir) {
 			DPRINTF("%s: bi-direction gpio=%d\n",
 				__func__, desc_to_gpio(gpio));
-			if (gpiod_get_direction(gpio) != GPIOF_DIR_IN) {
-				DPRINTF("%s: make gpio=%d as input\n",
-					__func__, desc_to_gpio(gpio));
-				gpiod_direction_input(gpio);
-			}
+			vmm_manager_guest_request(s->guest,
+				gpio_forward_do_direction_input, gpio);
 		}
 		break;
 	case GPIO_EMU_SYNC_DIRECTION_OUT:
@@ -132,11 +151,8 @@ static int gpio_forward_emulator_sync(struct vmm_emudev *edev,
 		if (gpio && bidir) {
 			DPRINTF("%s: bi-direction gpio=%d\n",
 				__func__, desc_to_gpio(gpio));
-			if (gpiod_get_direction(gpio) != GPIOF_DIR_OUT) {
-				DPRINTF("%s: make gpio=%d as output\n",
-					__func__, desc_to_gpio(gpio));
-				gpiod_direction_output(gpio, 0);
-			}
+			vmm_manager_guest_request(s->guest,
+				gpio_forward_do_direction_output, gpio);
 		}
 		break;
 	case GPIO_EMU_SYNC_VALUE:
