@@ -263,8 +263,8 @@ struct dwc2_control {
 
 	u32 hc_count;
 
-	vmm_spinlock_t hc_next_lock;
-	u32 hc_next;
+	vmm_spinlock_t hc_int_bmap_lock;
+	DECLARE_BITMAP(hc_int_bmap, 16);
 
 	vmm_spinlock_t hc_urb_lock[16];
 	struct urb *hc_urb_int[16];
@@ -1486,39 +1486,30 @@ static void dwc2_stop(struct usb_hcd *hcd)
 
 static int dwc2_urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
 {
-	u32 count;
+	int i;
 	irq_flags_t f;
 	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	vmm_spin_lock_irqsave(&dwc2->hc_next_lock, f);
-
-	count = 0;
-	while (dwc2->hc_urb_int[dwc2->hc_next] &&
-	       (count < dwc2->hc_count)) {
-		count++;
-		dwc2->hc_next++;
-		if (dwc2->hc_next == dwc2->hc_count) {
-			dwc2->hc_next = 0;
+	if (usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) {
+		vmm_spin_lock_irqsave(&dwc2->hc_int_bmap_lock, f);
+		i = bitmap_find_free_region(dwc2->hc_int_bmap,
+					    dwc2->hc_count / 2, 0);
+		vmm_spin_unlock_irqrestore(&dwc2->hc_int_bmap_lock, f);
+		if (i < 0) {
+			return i;
 		}
+		i += dwc2->hc_count / 2;
+	} else {
+		i = umod32(usb_pipe_endpdev(urb->pipe),
+			   dwc2->hc_count / 2);
 	}
-	if (count == dwc2->hc_count) {
-		vmm_spin_unlock_irqrestore(&dwc2->hc_next_lock, f);
-		return VMM_ENOSPC;
-	}
-
-	hc = &dwc2->hcs[dwc2->hc_next];
-
-	dwc2->hc_next++;
-	if (dwc2->hc_next == dwc2->hc_count) {
-		dwc2->hc_next = 0;
-	}
-
-	vmm_spin_unlock_irqrestore(&dwc2->hc_next_lock, f);
+	hc = &dwc2->hcs[i];
 
 	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[hc->index], f);
 
-	if (usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) {
+	if ((usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) &&
+	    (dwc2->hc_urb_int[hc->index] == NULL)) {
 		dwc2->hc_urb_int[hc->index] = urb;
 	}
 
@@ -1537,53 +1528,55 @@ static int dwc2_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	irq_flags_t f;
 	struct urb *u;
 	bool urb_int_active = FALSE;
-	struct dwc2_hc *hc;
+	struct dwc2_hc *hc = NULL;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
 
-	hc = NULL;
-	for (i = 0; i < dwc2->hc_count; i++) {
-		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
-		list_for_each_entry(u,
-			&dwc2->hc_urb_pending_list[i], urb_list) {
-			if (u == urb) {
-				hc = &dwc2->hcs[i];
-				break;
-			}
-		}
-		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
-		if (hc) {
-			break;
-		}
-	}
-	if (!hc) {
-		for (i = 0; i < dwc2->hc_count; i++) {
+	if (usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) {
+		for (i = dwc2->hc_count / 2; i < dwc2->hc_count; i++) {
 			vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
-			if (dwc2->hc_urb_int[i] == urb) {
-				hc = &dwc2->hcs[i];
-				urb_int_active = TRUE;
+			list_for_each_entry(u,
+				&dwc2->hc_urb_pending_list[i], urb_list) {
+				if (u == urb) {
+					list_del(&urb->urb_list);
+					if (dwc2->hc_urb_int[i] == urb) {
+						urb_int_active = TRUE;
+						dwc2->hc_urb_int[i] = NULL;
+					}
+					hc = &dwc2->hcs[i];
+					break;
+				}
 			}
 			vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
 			if (hc) {
 				break;
 			}
 		}
-		if (!hc) {
-			return VMM_ENOTAVAIL;
+		if (hc) {
+			vmm_spin_lock_irqsave(&dwc2->hc_int_bmap_lock, f);
+			bitmap_release_region(dwc2->hc_int_bmap,
+					      hc->index - dwc2->hc_count / 2,
+					      0);
+			vmm_spin_unlock_irqrestore(&dwc2->hc_int_bmap_lock, f);
+
+			dwc2_int_msg_stop(dwc2, hc, urb, urb_int_active);
 		}
 	} else {
-		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[hc->index], f);
-		list_del(&urb->urb_list);
-		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[hc->index], f);
+		i = umod32(usb_pipe_endpdev(urb->pipe), dwc2->hc_count / 2);
+
+		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
+		list_for_each_entry(u,
+			&dwc2->hc_urb_pending_list[i], urb_list) {
+			if (u == urb) {
+				list_del(&urb->urb_list);
+				hc = &dwc2->hcs[i];
+				break;
+			}
+		}
+		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
 	}
-
-	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[hc->index], f);
-
-	if (dwc2->hc_urb_int[hc->index] == urb) {
-		dwc2_int_msg_stop(dwc2, hc, urb, urb_int_active);
-		dwc2->hc_urb_int[hc->index] = NULL;
+	if (!hc) {
+		return VMM_ENOTAVAIL;
 	}
-
-	vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[hc->index], f);
 
 	usb_hcd_giveback_urb(hcd, urb, status);
 
@@ -1659,8 +1652,8 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 
 	dwc2->hc_count = dwc2_hc_count(dwc2);
 
-	dwc2->hc_next = 0;
-	INIT_SPIN_LOCK(&dwc2->hc_next_lock);
+	INIT_SPIN_LOCK(&dwc2->hc_int_bmap_lock);
+	bitmap_zero(dwc2->hc_int_bmap, 16);
 
 	for (i = 0; i < dwc2->hc_count; i++) {
 		INIT_SPIN_LOCK(&dwc2->hc_urb_lock[i]);
