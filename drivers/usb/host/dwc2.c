@@ -246,8 +246,11 @@ struct dwc2_hc {
 	int index;
 	struct dwc2_control *dwc2;
 	struct dwc2_hc_regs *regs;
+	vmm_spinlock_t urb_lock;
+	struct urb *urb_int;
+	struct vmm_completion urb_pending;
+	struct dlist urb_pending_list;
 	u8 *status_buffer;
-
 	struct vmm_thread *hc_thread;
 };
 
@@ -265,11 +268,6 @@ struct dwc2_control {
 
 	vmm_spinlock_t hc_int_bmap_lock;
 	DECLARE_BITMAP(hc_int_bmap, 16);
-
-	vmm_spinlock_t hc_urb_lock[16];
-	struct urb *hc_urb_int[16];
-	struct vmm_completion hc_urb_pending[16];
-	struct dlist hc_urb_pending_list[16];
 
 	struct dwc2_hc hcs[16];
 };
@@ -1346,17 +1344,16 @@ static int dwc2_hc_worker(void *data)
 	struct usb_hcd *hcd = dwc2->hcd;
 
 	while (1) {
-		vmm_completion_wait(&dwc2->hc_urb_pending[hc->index]);
+		vmm_completion_wait(&hc->urb_pending);
 
 		u = NULL;
-		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[hc->index], f);
-		if (!list_empty(&dwc2->hc_urb_pending_list[hc->index])) {
-			u = list_first_entry(
-				&dwc2->hc_urb_pending_list[hc->index],
-				struct urb, urb_list);
+		vmm_spin_lock_irqsave(&hc->urb_lock, f);
+		if (!list_empty(&hc->urb_pending_list)) {
+			u = list_first_entry(&hc->urb_pending_list,
+					     struct urb, urb_list);
 			list_del(&u->urb_list);
 		}
-		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[hc->index], f);
+		vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 		if (!u) {
 			continue;
 		}
@@ -1390,22 +1387,25 @@ static void dwc2_flush_work(struct usb_hcd *hcd)
 	u32 i;
 	struct urb *u;
 	irq_flags_t f;
+	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2 =
 			(struct dwc2_control *)usb_hcd_priv(hcd);
 
 	for (i = 0; i < dwc2->hc_count; i++) {
-		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
+		hc = &dwc2->hcs[i];
 
-		while (!list_empty(&dwc2->hc_urb_pending_list[i])) {
-			u = list_first_entry(&dwc2->hc_urb_pending_list[i],
+		vmm_spin_lock_irqsave(&hc->urb_lock, f);
+
+		while (!list_empty(&hc->urb_pending_list)) {
+			u = list_first_entry(&hc->urb_pending_list,
 					     struct urb, urb_list);
 			list_del(&u->urb_list);
-			vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
+			vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 			usb_hcd_giveback_urb(hcd, u, VMM_EFAIL);
-			vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
+			vmm_spin_lock_irqsave(&hc->urb_lock, f);
 		}
 
-		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
+		vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 	}
 }
 
@@ -1501,23 +1501,23 @@ static int dwc2_urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
 		}
 		i += dwc2->hc_count / 2;
 	} else {
-		i = umod32(usb_pipe_endpdev(urb->pipe),
+		i = umod32(usb_pipedevice(urb->pipe),
 			   dwc2->hc_count / 2);
 	}
 	hc = &dwc2->hcs[i];
 
-	vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[hc->index], f);
+	vmm_spin_lock_irqsave(&hc->urb_lock, f);
 
 	if ((usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) &&
-	    (dwc2->hc_urb_int[hc->index] == NULL)) {
-		dwc2->hc_urb_int[hc->index] = urb;
+	    (hc->urb_int == NULL)) {
+		hc->urb_int = urb;
 	}
 
-	list_add_tail(&urb->urb_list, &dwc2->hc_urb_pending_list[hc->index]);
+	list_add_tail(&urb->urb_list, &hc->urb_pending_list);
 
-	vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[hc->index], f);
+	vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 
-	vmm_completion_complete(&dwc2->hc_urb_pending[hc->index]);
+	vmm_completion_complete(&hc->urb_pending);
 
 	return VMM_OK;
 }
@@ -1533,20 +1533,20 @@ static int dwc2_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 
 	if (usb_pipetype(urb->pipe) == USB_PIPE_INTERRUPT) {
 		for (i = dwc2->hc_count / 2; i < dwc2->hc_count; i++) {
-			vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
+			vmm_spin_lock_irqsave(&hc->urb_lock, f);
 			list_for_each_entry(u,
-				&dwc2->hc_urb_pending_list[i], urb_list) {
+				&hc->urb_pending_list, urb_list) {
 				if (u == urb) {
 					list_del(&urb->urb_list);
-					if (dwc2->hc_urb_int[i] == urb) {
+					if (hc->urb_int == urb) {
 						urb_int_active = TRUE;
-						dwc2->hc_urb_int[i] = NULL;
+						hc->urb_int = NULL;
 					}
 					hc = &dwc2->hcs[i];
 					break;
 				}
 			}
-			vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
+			vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 			if (hc) {
 				break;
 			}
@@ -1560,25 +1560,24 @@ static int dwc2_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 
 			dwc2_int_msg_stop(dwc2, hc, urb, urb_int_active);
 		}
-	} else {
-		i = umod32(usb_pipe_endpdev(urb->pipe), dwc2->hc_count / 2);
 
-		vmm_spin_lock_irqsave(&dwc2->hc_urb_lock[i], f);
-		list_for_each_entry(u,
-			&dwc2->hc_urb_pending_list[i], urb_list) {
+		usb_hcd_giveback_urb(hcd, urb, status);
+	} else {
+		i = umod32(usb_pipedevice(urb->pipe), dwc2->hc_count / 2);
+
+		vmm_spin_lock_irqsave(&hc->urb_lock, f);
+		list_for_each_entry(u, &hc->urb_pending_list, urb_list) {
 			if (u == urb) {
 				list_del(&urb->urb_list);
 				hc = &dwc2->hcs[i];
 				break;
 			}
 		}
-		vmm_spin_unlock_irqrestore(&dwc2->hc_urb_lock[i], f);
+		vmm_spin_unlock_irqrestore(&hc->urb_lock, f);
 	}
 	if (!hc) {
 		return VMM_ENOTAVAIL;
 	}
-
-	usb_hcd_giveback_urb(hcd, urb, status);
 
 	return VMM_OK;
 }
@@ -1656,17 +1655,14 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	bitmap_zero(dwc2->hc_int_bmap, 16);
 
 	for (i = 0; i < dwc2->hc_count; i++) {
-		INIT_SPIN_LOCK(&dwc2->hc_urb_lock[i]);
-		dwc2->hc_urb_int[i] = NULL;
-		INIT_COMPLETION(&dwc2->hc_urb_pending[i]);
-		INIT_LIST_HEAD(&dwc2->hc_urb_pending_list[i]);
-	}
-
-	for (i = 0; i < dwc2->hc_count; i++) {
 		hc = &dwc2->hcs[i];
 		hc->index = i;
 		hc->dwc2 = dwc2;
 		hc->regs = &dwc2->regs->hc_regs[i];
+		INIT_SPIN_LOCK(&hc->urb_lock);
+		hc->urb_int = NULL;
+		INIT_COMPLETION(&hc->urb_pending);
+		INIT_LIST_HEAD(&hc->urb_pending_list);
 		hc->status_buffer = vmm_dma_zalloc(DWC2_STATUS_BUF_SIZE);
 		if (!hc->status_buffer) {
 			rc = VMM_ENOMEM;
