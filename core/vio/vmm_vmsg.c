@@ -180,7 +180,8 @@ static void vmsg_node_peer_down_func(struct vmsg_work *work)
 	vmm_mutex_lock(&domain->node_lock);
 
 	list_for_each_entry(node, &domain->node_list, domain_head) {
-		if (node->addr == addr)
+		if ((node->addr == addr) ||
+		    !arch_atomic_read(&node->is_ready))
 			continue;
 
 		if (node->ops->peer_down)
@@ -216,7 +217,8 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 	vmm_mutex_lock(&domain->node_lock);
 
 	list_for_each_entry(node, &domain->node_list, domain_head) {
-		if (node->addr == addr)
+		if ((node->addr == addr) ||
+		    !arch_atomic_read(&node->is_ready))
 			continue;
 
 		if (node->ops->peer_up)
@@ -252,7 +254,8 @@ static void vmsg_node_send_func(struct vmsg_work *work)
 	vmm_mutex_lock(&domain->node_lock);
 
 	list_for_each_entry(node, &domain->node_list, domain_head) {
-		if (node->addr == msg->src)
+		if ((node->addr == msg->src) ||
+		    !arch_atomic_read(&node->is_ready))
 			continue;
 
 		if ((node->addr == msg->dst) ||
