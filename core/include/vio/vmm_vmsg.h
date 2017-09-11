@@ -21,6 +21,24 @@
  * @brief header file for virtual messaging subsystem
  */
 
+/*
+ * This framework will be used for implementing inter-guest messaging
+ * emulators (such as VirtIO RPMSG device).
+ *
+ * It has three important entities:
+ * 1. vmm_vmsg: The acutal message
+ * 2. vmm_vmsg_node: A participant in message based communication
+ * 3. vmm_vmsg_domain: A group of participants doing message based
+ *    communication
+ *
+ * Each vmm_vmsg_node will have unique address (1024 <). Any vmm_vmsg_node
+ * can broadcast message to all nodes of vmm_vmsg_domain by sending
+ * message to 0xffffffff.
+ *
+ * In addition, the vmm_vmsg_node get notifications about ready state
+ * of it's peers in same vmm_vmsg_domain.
+ */
+
 #ifndef __VMM_VMSG_H__
 #define __VMM_VMSG_H__
 
