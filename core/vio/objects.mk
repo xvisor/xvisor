@@ -23,6 +23,8 @@
 
 core-objs-$(CONFIG_VIRTIO)+= vio/vmm_virtio.o
 
+core-objs-$(CONFIG_VMSG)+= vio/vmm_vmsg.o
+
 core-objs-$(CONFIG_VSERIAL)+= vio/vmm_vserial.o
 
 core-objs-$(CONFIG_VSPI)+= vio/vmm_vspi.o
@@ -78,5 +80,3 @@ vmm_vinput_core-$(CONFIG_VINPUT_KEYMAP_TR)+= keymaps/tr.o
 
 %/vmm_vinput_core.dep: $(foreach dep,$(vmm_vinput_core-y:.o=.dep),%/$(dep))
 	$(call merge_deps,$@,$^)
-
-
