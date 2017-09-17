@@ -40,6 +40,7 @@ commands-objs-$(CONFIG_CMD_WALLCLOCK)+= cmd_wallclock.o
 commands-objs-$(CONFIG_CMD_MODULE)+= cmd_module.o
 commands-objs-$(CONFIG_CMD_PROFILE)+= cmd_profile.o
 
+commands-objs-$(CONFIG_CMD_VMSG)+= cmd_vmsg.o
 commands-objs-$(CONFIG_CMD_VSERIAL)+= cmd_vserial.o
 commands-objs-$(CONFIG_CMD_VDISK)+= cmd_vdisk.o
 commands-objs-$(CONFIG_CMD_VDISPLAY)+= cmd_vdisplay.o
