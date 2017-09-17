@@ -212,6 +212,9 @@ bool vmm_vmsg_node_is_ready(struct vmm_vmsg_node *node);
 /** Get name of virtual messaging node */
 const char *vmm_vmsg_node_get_name(struct vmm_vmsg_node *node);
 
+/** Get address of virtual messaging node */
+u32 vmm_vmsg_node_get_addr(struct vmm_vmsg_node *node);
+
 /** Get domain of virtual messaging node */
 struct vmm_vmsg_domain *vmm_vmsg_node_get_domain(struct vmm_vmsg_node *node);
 

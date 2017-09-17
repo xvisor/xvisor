@@ -331,7 +331,7 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 		return NULL;
 	}
 
-	list_add_tail(&new_vmd->head, &vmctrl.node_list);
+	list_add_tail(&new_vmd->head, &vmctrl.domain_list);
 
 	vmm_mutex_unlock(&vmctrl.lock);
 
@@ -360,6 +360,14 @@ int vmm_vmsg_domain_destroy(struct vmm_vmsg_domain *domain)
 				   &event);
 
 	vmm_mutex_lock(&vmctrl.lock);
+
+	vmm_mutex_lock(&domain->node_lock);
+	if (!list_empty(&domain->node_list)) {
+		vmm_mutex_unlock(&domain->node_lock);
+		vmm_mutex_unlock(&vmctrl.lock);
+		return VMM_EBUSY;
+	}
+	vmm_mutex_unlock(&domain->node_lock);
 
 	found = FALSE;
 	list_for_each_entry(vmd, &vmctrl.domain_list, head) {
@@ -750,6 +758,12 @@ const char *vmm_vmsg_node_get_name(struct vmm_vmsg_node *node)
 	return (node) ? node->name : NULL;
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_get_name);
+
+u32 vmm_vmsg_node_get_addr(struct vmm_vmsg_node *node)
+{
+	return (node) ? node->addr : VMM_VMSG_NODE_ADDR_ANY;
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_node_get_addr);
 
 struct vmm_vmsg_domain *vmm_vmsg_node_get_domain(struct vmm_vmsg_node *node)
 {
