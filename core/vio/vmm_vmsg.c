@@ -106,12 +106,15 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_alloc);
 struct vmsg_work {
 	struct dlist head;
 	struct vmm_vmsg_domain *domain;
-	void *data;
+	struct vmm_vmsg *msg;
+	char name[VMM_FIELD_NAME_SIZE];
+	u32 addr;
 	void (*func) (struct vmsg_work *work);
 };
 
 static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
-				    void *data,
+				    struct vmm_vmsg *msg,
+				    const char *name, u32 addr,
 				    void (*func) (struct vmsg_work *))
 {
 	irq_flags_t flags;
@@ -128,7 +131,9 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 
 	INIT_LIST_HEAD(&work->head);
 	work->domain = domain;
-	work->data = data;
+	work->msg = msg;
+	strncpy(work->name, name, sizeof(work->name));
+	work->addr = addr;
 	work->func = func;
 
 	vmm_spin_lock_irqsave(&domain->work_lock, flags);
@@ -175,7 +180,8 @@ static void vmsg_node_peer_down_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node;
 	struct vmm_vmsg_domain *domain = work->domain;
-	u32 addr = (u32)((unsigned long)work->data);
+	const char *name = work->name;
+	u32 addr = work->addr;
 
 	vmm_mutex_lock(&domain->node_lock);
 
@@ -185,7 +191,7 @@ static void vmsg_node_peer_down_func(struct vmsg_work *work)
 			continue;
 
 		if (node->ops->peer_down)
-			node->ops->peer_down(node, addr);
+			node->ops->peer_down(node, name, addr);
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
@@ -197,9 +203,9 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 	struct vmm_vmsg_domain *domain = node->domain;
 
 	if (arch_atomic_cmpxchg(&node->is_ready, 1, 0)) {
-		err = vmsg_domain_enqueue_work(domain,
-				       (void *)((unsigned long)node->addr),
-				       vmsg_node_peer_down_func);
+		err = vmsg_domain_enqueue_work(domain, NULL,
+					       node->name, node->addr,
+					       vmsg_node_peer_down_func);
 		if (err) {
 			return err;
 		}
@@ -212,7 +218,8 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node;
 	struct vmm_vmsg_domain *domain = work->domain;
-	u32 addr = (u32)((unsigned long)work->data);
+	const char *name = work->name;
+	u32 addr = work->addr;
 
 	vmm_mutex_lock(&domain->node_lock);
 
@@ -222,7 +229,7 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 			continue;
 
 		if (node->ops->peer_up)
-			node->ops->peer_up(node, addr);
+			node->ops->peer_up(node, name, addr);
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
@@ -234,9 +241,9 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	struct vmm_vmsg_domain *domain = node->domain;
 
 	if (!arch_atomic_cmpxchg(&node->is_ready, 0, 1)) {
-		err = vmsg_domain_enqueue_work(domain,
-				       (void *)((unsigned long)node->addr),
-				       vmsg_node_peer_up_func);
+		err = vmsg_domain_enqueue_work(domain, NULL,
+					       node->name, node->addr,
+					       vmsg_node_peer_up_func);
 		if (err) {
 			return err;
 		}
@@ -248,7 +255,7 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 static void vmsg_node_send_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node;
-	struct vmm_vmsg *msg = work->data;
+	struct vmm_vmsg *msg = work->msg;
 	struct vmm_vmsg_domain *domain = work->domain;
 
 	vmm_mutex_lock(&domain->node_lock);
@@ -277,6 +284,7 @@ static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 	}
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
+					node->name, node->addr,
 					vmsg_node_send_func);
 }
 

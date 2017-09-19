@@ -116,8 +116,10 @@ struct vmm_vmsg_node;
 
 /** Representation of a virtual messaging node operations */
 struct vmm_vmsg_node_ops {
-	void (*peer_up) (struct vmm_vmsg_node *node, u32 peer_addr);
-	void (*peer_down) (struct vmm_vmsg_node *node, u32 peer_addr);
+	void (*peer_up) (struct vmm_vmsg_node *node,
+			 const char *peer_name, u32 peer_addr);
+	void (*peer_down) (struct vmm_vmsg_node *node,
+			   const char *peer_name, u32 peer_addr);
 	void (*recv_msg) (struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
 };
 
