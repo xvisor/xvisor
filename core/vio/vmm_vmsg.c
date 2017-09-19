@@ -180,18 +180,18 @@ static void vmsg_node_peer_down_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node;
 	struct vmm_vmsg_domain *domain = work->domain;
-	const char *name = work->name;
-	u32 addr = work->addr;
+	const char *peer_name = work->name;
+	u32 peer_addr = work->addr;
 
 	vmm_mutex_lock(&domain->node_lock);
 
 	list_for_each_entry(node, &domain->node_list, domain_head) {
-		if ((node->addr == addr) ||
+		if ((node->addr == peer_addr) ||
 		    !arch_atomic_read(&node->is_ready))
 			continue;
 
 		if (node->ops->peer_down)
-			node->ops->peer_down(node, name, addr);
+			node->ops->peer_down(node, peer_name, peer_addr);
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
@@ -216,22 +216,37 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 
 static void vmsg_node_peer_up_func(struct vmsg_work *work)
 {
-	struct vmm_vmsg_node *node;
+	struct vmm_vmsg_node *node, *peer_node;
 	struct vmm_vmsg_domain *domain = work->domain;
-	const char *name = work->name;
-	u32 addr = work->addr;
+	const char *peer_name = work->name;
+	u32 peer_addr = work->addr;
 
 	vmm_mutex_lock(&domain->node_lock);
 
+	peer_node = NULL;
 	list_for_each_entry(node, &domain->node_list, domain_head) {
-		if ((node->addr == addr) ||
+		if (node->addr == peer_addr) {
+			peer_node = node;
+			break;
+		}
+	}
+	if (!peer_node) {
+		goto done;
+	}
+
+	list_for_each_entry(node, &domain->node_list, domain_head) {
+		if ((node->addr == peer_addr) ||
 		    !arch_atomic_read(&node->is_ready))
 			continue;
 
 		if (node->ops->peer_up)
-			node->ops->peer_up(node, name, addr);
+			node->ops->peer_up(node, peer_name, peer_addr);
+		if (peer_node->ops->peer_up)
+			peer_node->ops->peer_up(peer_node,
+						node->name, node->addr);
 	}
 
+done:
 	vmm_mutex_unlock(&domain->node_lock);
 }
 
