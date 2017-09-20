@@ -251,6 +251,7 @@ struct dwc2_hc {
 	struct vmm_completion urb_pending;
 	struct dlist urb_pending_list;
 	u8 *status_buffer;
+	struct vmm_completion hc_irq_wait;
 	struct vmm_thread *hc_thread;
 };
 
@@ -268,6 +269,8 @@ struct dwc2_control {
 
 	vmm_spinlock_t hc_int_bmap_lock;
 	DECLARE_BITMAP(hc_int_bmap, 16);
+
+	vmm_spinlock_t dwc2_irq_lock;
 
 	struct dwc2_hc hcs[16];
 };
@@ -991,8 +994,29 @@ static int dwc2_control_rh_msg(struct dwc2_control *dwc2,
 
 static vmm_irq_return_t	dwc2_irq(struct usb_hcd *hcd)
 {
-	/* For now nothing to do here. */
-	return VMM_IRQ_NONE;
+	irq_flags_t flags;
+	u32 i, chnmsk, haintmsk;
+	struct dwc2_hc *hc;
+	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
+
+	chnmsk = vmm_readl(&dwc2->regs->host_regs.haint);
+
+	vmm_spin_lock_irqsave(&dwc2->dwc2_irq_lock, flags);
+
+	/* detect HC channel and release waiting thread */
+	for (i = 0; i < dwc2->hc_count; i++) {
+		hc = &dwc2->hcs[i];
+		if ((1 << i) & chnmsk) {
+			haintmsk = vmm_readl(&dwc2->regs->host_regs.haintmsk);
+			haintmsk &= ~(1 << i);
+			vmm_writel(haintmsk, &dwc2->regs->host_regs.haintmsk);
+			vmm_completion_complete(&hc->hc_irq_wait);
+		}
+	}
+
+	vmm_spin_unlock_irqrestore(&dwc2->dwc2_irq_lock, flags);
+
+	return VMM_IRQ_HANDLED;
 }
 
 static int dwc2_eptype[] = {
@@ -1051,8 +1075,9 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 			  int xfer_len, int *actual_len, int odd_frame)
 {
 	int ret = 0;
-	u32 sub;
+	u32 sub, haintmsk;
 	physical_addr_t pa;
+	u64 timeout;
 
 	DPRINTF("%s: chunk: pid %d xfer_len %u pkts %u\n",
 		__func__, *pid, xfer_len, num_packets);
@@ -1069,6 +1094,11 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 
 	/* Clear old interrupt conditions for this host channel. */
 	vmm_writel(0x3fff, &hc->regs->hcint);
+	vmm_writel(0x3fff, &hc->regs->hcintmsk);
+
+	haintmsk = vmm_readl(&dwc2->regs->host_regs.haintmsk);
+	haintmsk |= (1 << hc->index);
+	vmm_writel(haintmsk, &dwc2->regs->host_regs.haintmsk);
 
 	/* Set host channel enable after all other setup is complete. */
 	vmm_clrsetbits_le32(&hc->regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
@@ -1079,14 +1109,18 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 					DWC2_HCCHAR_CHEN);
 
 	/* Wait for channel to halt */
+	timeout = 3000000000; /* 3 seconds */
+	vmm_completion_wait_timeout(&hc->hc_irq_wait, &timeout);
 	ret = wait_for_chhltd(hc, &sub, pid);
 	if (ret < 0) {
-		vmm_dma_unmap(pa, xfer_len,
-			      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
-		return ret;
+		goto done;
 	}
 
 	*actual_len = xfer_len;
+
+done:
+	vmm_writel(0x0, &hc->regs->hcint);
+	vmm_writel(0x0, &hc->regs->hcintmsk);
 	vmm_dma_unmap(pa, xfer_len,
 		      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 
@@ -1206,8 +1240,6 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 		 */
 	} while (((done < len) && !stop_transfer) || complete_split);
 
-	vmm_writel(0, &hc->regs->hcintmsk);
-	vmm_writel(0xFFFFFFFF, &hc->regs->hcint);
 
 	u->status = 0;
 	u->actual_length = done;
@@ -1595,6 +1627,19 @@ static const struct hc_driver dwc2_hc = {
 	.urb_dequeue = dwc2_urb_dequeue,
 };
 
+static void dwc2_interrupts_enable(struct dwc2_control *dwc2) {
+        u32 ahbcfg = vmm_readl(&dwc2->regs->gahbcfg);
+        ahbcfg |= DWC2_GAHBCFG_GLBLINTRMSK;
+        vmm_writel(ahbcfg, &dwc2->regs->gahbcfg);
+}
+
+static void dwc2_interrupts_disable(struct dwc2_control *dwc2) {
+        u32 ahbcfg = vmm_readl(&dwc2->regs->gahbcfg);
+        ahbcfg &= ~(DWC2_GAHBCFG_GLBLINTRMSK);
+        vmm_writel(ahbcfg, &dwc2->regs->gahbcfg);
+}
+
+
 static int dwc2_driver_probe(struct vmm_device *dev,
 			     const struct vmm_devtree_nodeid *devid)
 {
@@ -1654,6 +1699,8 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	INIT_SPIN_LOCK(&dwc2->hc_int_bmap_lock);
 	bitmap_zero(dwc2->hc_int_bmap, 16);
 
+	INIT_SPIN_LOCK(&dwc2->dwc2_irq_lock);
+
 	for (i = 0; i < dwc2->hc_count; i++) {
 		hc = &dwc2->hcs[i];
 		hc->index = i;
@@ -1669,6 +1716,7 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 			goto fail_cleanup_hcs;
 		}
 		vmm_snprintf(name, sizeof(name), "%s/hc%d", dev->name, i);
+                INIT_COMPLETION(&hc->hc_irq_wait);
 		hc->hc_thread = vmm_threads_create(name, dwc2_hc_worker, hc,
 						   VMM_THREAD_DEF_PRIORITY,
 						   VMM_THREAD_DEF_TIME_SLICE);
@@ -1688,6 +1736,11 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	}
 
 	dev->priv = hcd;
+
+	vmm_writel(0x0000, &dwc2->regs->gintsts);
+	vmm_writel((1 << 25), &dwc2->regs->gintmsk);
+
+	dwc2_interrupts_enable(dwc2);
 
 	return VMM_OK;
 
@@ -1719,6 +1772,8 @@ static int dwc2_driver_remove(struct vmm_device *dev)
 	struct dwc2_hc *hc;
 	struct usb_hcd *hcd = dev->priv;
 	struct dwc2_control *dwc2 = usb_hcd_priv(hcd);
+
+	dwc2_interrupts_disable(dwc2);
 
 	usb_remove_hcd(hcd);
 
