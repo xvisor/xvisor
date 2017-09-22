@@ -305,6 +305,7 @@ static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 
 struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 {
+	int ret;
 	bool found;
 	struct vmm_vmsg_event event;
 	struct vmm_vmsg_domain *vmd, *new_vmd;
@@ -349,6 +350,14 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 					     VMM_THREAD_DEF_PRIORITY,
 					     VMM_THREAD_DEF_TIME_SLICE);
 	if (!new_vmd->worker) {
+		vmm_free(new_vmd);
+		vmm_mutex_unlock(&vmctrl.lock);
+		return NULL;
+	}
+
+	ret = vmm_threads_start(new_vmd->worker);
+	if (ret) {
+		vmm_threads_destroy(new_vmd->worker);
 		vmm_free(new_vmd);
 		vmm_mutex_unlock(&vmctrl.lock);
 		return NULL;
