@@ -55,19 +55,25 @@ static int virtio_mmio_notify(struct vmm_virtio_device *dev, u32 vq)
 }
 
 int virtio_mmio_config_read(struct virtio_mmio_dev *m,
-			    u32 offset, void *dst,
-			    u32 dst_len)
+			    u32 offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 
 	switch (offset) {
 	case VMM_VIRTIO_MMIO_MAGIC_VALUE:
+		*(u32 *)dst = *((u32 *)((void *)&m->config.magic[0]));
+		break;
 	case VMM_VIRTIO_MMIO_VERSION:
+		*(u32 *)dst = *((u32 *)((void *)&m->config.version));
+		break;
 	case VMM_VIRTIO_MMIO_DEVICE_ID:
+		*(u32 *)dst = *((u32 *)((void *)&m->config.device_id));
+		break;
 	case VMM_VIRTIO_MMIO_VENDOR_ID:
-	case VMM_VIRTIO_MMIO_STATUS:
+		*(u32 *)dst = *((u32 *)((void *)&m->config.vendor_id));
+		break;
 	case VMM_VIRTIO_MMIO_INTERRUPT_STATUS:
-		*(u32 *)dst = (*(u32 *)(((void *)&m->config) + offset));
+		*(u32 *)dst = *((u32 *)((void *)&m->config.interrupt_state));
 		break;
 	case VMM_VIRTIO_MMIO_HOST_FEATURES:
 		*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
@@ -80,7 +86,13 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 		*(u32 *)dst = m->dev.emu->get_size_vq(&m->dev,
 					      m->config.queue_sel);
 		break;
+	case VMM_VIRTIO_MMIO_STATUS:
+		*(u32 *)dst = *((u32 *)((void *)&m->config.status));
+		break;
 	default:
+		vmm_printf("%s: guest=%s offset=0x%x\n",
+			   __func__, m->guest->name, offset);
+		rc = VMM_EINVALID;
 		break;
 	}
 
@@ -100,18 +112,17 @@ static int virtio_mmio_read(struct virtio_mmio_dev *m,
 }
 
 static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
-				    physical_addr_t offset,
-				    void *src, u32 src_len)
+				    u32 offset, void *src, u32 src_len)
 {
 	int rc = VMM_OK;
 	u32 val = *(u32 *)(src);
 
 	switch (offset) {
 	case VMM_VIRTIO_MMIO_HOST_FEATURES_SEL:
+		m->config.host_features_sel = val;
+		break;
 	case VMM_VIRTIO_MMIO_GUEST_FEATURES_SEL:
-	case VMM_VIRTIO_MMIO_QUEUE_SEL:
-	case VMM_VIRTIO_MMIO_STATUS:
-		*(u32 *)(((void *)&m->config) + offset) = val;
+		m->config.guest_features_sel = val;
 		break;
 	case VMM_VIRTIO_MMIO_GUEST_FEATURES:
 		if (m->config.guest_features_sel == 0)  {
@@ -120,6 +131,9 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		break;
 	case VMM_VIRTIO_MMIO_GUEST_PAGE_SIZE:
 		m->config.guest_page_size = val;
+		break;
+	case VMM_VIRTIO_MMIO_QUEUE_SEL:
+		m->config.queue_sel = val;
 		break;
 	case VMM_VIRTIO_MMIO_QUEUE_NUM:
 		m->config.queue_num = val;
@@ -144,7 +158,13 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		m->config.interrupt_state &= ~val;
 		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
+	case VMM_VIRTIO_MMIO_STATUS:
+		m->config.status = val;
+		break;
 	default:
+		vmm_printf("%s: guest=%s offset=0x%x\n",
+			   __func__, m->guest->name, offset);
+		rc = VMM_EINVALID;
 		break;
 	};
 
@@ -159,10 +179,10 @@ static int virtio_mmio_write(struct virtio_mmio_dev *m,
 	/* Device specific config write */
 	if (offset >= VMM_VIRTIO_MMIO_CONFIG) {
 		offset -= VMM_VIRTIO_MMIO_CONFIG;
-		return vmm_virtio_config_write(&m->dev, (u32)offset, &src, 4);
+		return vmm_virtio_config_write(&m->dev, offset, &src, 4);
 	}
 
-	return virtio_mmio_config_write(m, (u32)offset, &src, 4);
+	return virtio_mmio_config_write(m, offset, &src, 4);
 }
 
 static int virtio_mmio_read8(struct vmm_emudev *edev,
@@ -227,7 +247,11 @@ static int virtio_mmio_reset(struct vmm_emudev *edev)
 {
 	struct virtio_mmio_dev *m = edev->priv;
 
+	m->config.host_features_sel = 0x0;
+	m->config.guest_features_sel = 0x0;
+	m->config.queue_sel = 0x0;
 	m->config.interrupt_state = 0x0;
+	m->config.status = 0x0;
 	vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 
 	return vmm_virtio_reset(&m->dev);

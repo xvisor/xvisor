@@ -60,8 +60,7 @@ static int virtio_pci_notify(struct vmm_virtio_device *dev, u32 vq)
 }
 
 int virtio_pci_config_read(struct virtio_pci_dev *m,
-			   u32 offset, void *dst,
-			   u32 dst_len)
+			   u32 offset, void *dst, u32 dst_len)
 {
 	int rc = VMM_OK;
 
@@ -78,7 +77,7 @@ int virtio_pci_config_read(struct virtio_pci_dev *m,
 					      m->config.queue_sel);
 		break;
 	case VMM_VIRTIO_PCI_STATUS:
-		*(u32 *)dst = (*(u32 *)(((void *)&m->config) + offset));
+		*(u32 *)dst = m->config.status;
 		break;
 	case VMM_VIRTIO_PCI_ISR:
 		/* reading from the ISR also clears it. */
@@ -87,7 +86,9 @@ int virtio_pci_config_read(struct virtio_pci_dev *m,
 		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
 	default:
-		rc = VMM_EFAIL;
+		vmm_printf("%s: guest=%s offset=0x%x\n",
+			   __func__, m->guest->name, offset);
+		rc = VMM_EINVALID;
 		break;
 	}
 
@@ -107,8 +108,7 @@ static int virtio_pci_read(struct virtio_pci_dev *m,
 }
 
 static int virtio_pci_config_write(struct virtio_pci_dev *m,
-				   physical_addr_t offset,
-				   void *src, u32 src_len)
+				   u32 offset, void *src, u32 src_len)
 {
 	int rc = VMM_OK;
 	u32 val = *(u32 *)(src);
@@ -125,8 +125,9 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 				    val);
 		break;
 	case VMM_VIRTIO_PCI_QUEUE_SEL:
-		if (val < VMM_VIRTIO_PCI_QUEUE_MAX)
-			*(u32 *)(((void *)&m->config) + offset) = val;
+		if (val < VMM_VIRTIO_PCI_QUEUE_MAX) {
+			m->config.queue_sel = (u16)val;
+		}
 		break;
 	case VMM_VIRTIO_PCI_QUEUE_NOTIFY:
 		if (val < VMM_VIRTIO_PCI_QUEUE_MAX) {
@@ -134,13 +135,13 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 		}
 		break;
 	case VMM_VIRTIO_PCI_STATUS:
-		*(u32 *)(((void *)&m->config) + offset) = val;
+		m->config.status = (u8)val;
 		break;
 
 	default:
-		vmm_printf("%s: unexpected address 0x%"PRIPADDR" value 0x%x",
-			   __func__, offset, val);
-		rc = VMM_EFAIL;
+		vmm_printf("%s: guest=%s offset=0x%x\n",
+			   __func__, m->guest->name, offset);
+		rc = VMM_EINVALID;
 		break;
 	}
 
@@ -155,10 +156,10 @@ static int virtio_pci_write(struct virtio_pci_dev *m,
 	/* Device specific config write */
 	if (offset >= VMM_VIRTIO_PCI_CONFIG) {
 		offset -= VMM_VIRTIO_PCI_CONFIG;
-		return vmm_virtio_config_write(&m->dev, (u32)offset, &src, 4);
+		return vmm_virtio_config_write(&m->dev, offset, &src, 4);
 	}
 
-	return virtio_pci_config_write(m, (u32)offset, &src, 4);
+	return virtio_pci_config_write(m, offset, &src, 4);
 }
 
 static struct vmm_virtio_transport pci_tra = {
@@ -254,7 +255,9 @@ static int virtio_pci_bar_reset(struct vmm_emudev *edev)
 {
 	struct virtio_pci_dev *m = edev->priv;
 
+	m->config.queue_sel = 0x0;
 	m->config.interrupt_state = 0x0;
+	m->config.status = 0x0;
 	vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 
 	return vmm_virtio_reset(&m->dev);
