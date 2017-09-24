@@ -106,7 +106,9 @@ struct vmm_virtio_emulator {
 	int (*get_pfn_vq) (struct vmm_virtio_device *dev, u32 vq);
 	int (*get_size_vq) (struct vmm_virtio_device *dev, u32 vq);
 	int (*set_size_vq) (struct vmm_virtio_device *dev, u32 vq, int size);
-	int (*notify_vq) (struct vmm_virtio_device *dev , u32 vq);
+	int (*notify_vq) (struct vmm_virtio_device *dev, u32 vq);
+	void (*status_changed) (struct vmm_virtio_device *dev,
+				u32 new_status);
 
 	/* Emulator operations */
 	int (*read_config)(struct vmm_virtio_device *dev,

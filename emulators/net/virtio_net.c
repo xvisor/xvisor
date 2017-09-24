@@ -252,6 +252,12 @@ static int virtio_net_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 	return rc;
 }
 
+static void virtio_net_status_changed(struct vmm_virtio_device *dev,
+				      u32 new_status)
+{
+	/* Nothing to do here. */
+}
+
 static void virtio_net_set_link(struct vmm_netport *p)
 {
 	/* FIXME: */
@@ -459,6 +465,7 @@ struct vmm_virtio_emulator virtio_net = {
 	.get_size_vq            = virtio_net_get_size_vq,
 	.set_size_vq            = virtio_net_set_size_vq,
 	.notify_vq              = virtio_net_notify_vq,
+	.status_changed         = virtio_net_status_changed,
 
 	/* Emulator operations */
 	.read_config = virtio_net_read_config,

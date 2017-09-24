@@ -401,6 +401,12 @@ static int virtio_blk_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 	return rc;
 }
 
+static void virtio_blk_status_changed(struct vmm_virtio_device *dev,
+				      u32 new_status)
+{
+	/* Nothing to do here. */
+}
+
 static int virtio_blk_read_config(struct vmm_virtio_device *dev,
 				  u32 offset, void *dst, u32 dst_len)
 {
@@ -530,6 +536,7 @@ struct vmm_virtio_emulator virtio_blk = {
 	.get_size_vq            = virtio_blk_get_size_vq,
 	.set_size_vq            = virtio_blk_set_size_vq,
 	.notify_vq              = virtio_blk_notify_vq,
+	.status_changed         = virtio_blk_status_changed,
 
 	/* Emulator operations */
 	.read_config = virtio_blk_read_config,

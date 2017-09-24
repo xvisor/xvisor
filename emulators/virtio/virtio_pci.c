@@ -135,6 +135,9 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 		}
 		break;
 	case VMM_VIRTIO_PCI_STATUS:
+		if ((u8)val != m->config.status) {
+			m->dev.emu->status_changed(&m->dev, val);
+		}
 		m->config.status = (u8)val;
 		break;
 

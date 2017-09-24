@@ -185,6 +185,12 @@ static int virtio_console_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 	return rc;
 }
 
+static void virtio_console_status_changed(struct vmm_virtio_device *dev,
+					  u32 new_status)
+{
+	/* Nothing to do here. */
+}
+
 static bool virtio_console_vserial_can_send(struct vmm_vserial *vser)
 {
 	/* We always return TRUE because we always queue
@@ -375,6 +381,7 @@ struct vmm_virtio_emulator virtio_console = {
 	.get_size_vq            = virtio_console_get_size_vq,
 	.set_size_vq            = virtio_console_set_size_vq,
 	.notify_vq              = virtio_console_notify_vq,
+	.status_changed         = virtio_console_status_changed,
 
 	/* Emulator operations */
 	.read_config = virtio_console_read_config,

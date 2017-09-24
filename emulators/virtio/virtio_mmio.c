@@ -159,6 +159,9 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
 	case VMM_VIRTIO_MMIO_STATUS:
+		if (val != m->config.status) {
+			m->dev.emu->status_changed(&m->dev, val);
+		}
 		m->config.status = val;
 		break;
 	default:
