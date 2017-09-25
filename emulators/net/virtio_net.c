@@ -116,9 +116,6 @@ static int virtio_net_init_vq(struct vmm_virtio_device *dev,
 				pfn, page_size, VIRTIO_NET_QUEUE_SIZE, align);
 	if (rc == VMM_OK) {
 		ndev->vqs[vq].valid = 1;
-		if (!ndev->can_receive &&
-		    ndev->vqs[vq].type == VIRTIO_NET_RX_QUEUE)
-			ndev->can_receive = 1;
 	}
 
 	return rc;
@@ -255,12 +252,27 @@ static int virtio_net_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 static void virtio_net_status_changed(struct vmm_virtio_device *dev,
 				      u32 new_status)
 {
-	/* Nothing to do here. */
+	u32 i, have_rx_queue = 0;
+	struct virtio_net_dev *ndev = dev->emu_data;
+
+	for (i = 0; i < ndev->max_queues; i++) {
+		if (ndev->vqs[i].valid &&
+		    (ndev->vqs[i].type == VIRTIO_NET_RX_QUEUE)) {
+			have_rx_queue++;
+		}
+	}
+
+	if (have_rx_queue &&
+	    (new_status & VMM_VIRTIO_CONFIG_S_DRIVER_OK)) {
+		ndev->can_receive = 1;
+	} else {
+		ndev->can_receive = 0;
+	}
 }
 
-static void virtio_net_set_link(struct vmm_netport *p)
+static void virtio_net_link_changed(struct vmm_netport *p)
 {
-	/* FIXME: */
+	/* Nothing to do here because we have dummy link. */
 }
 
 static int virtio_net_can_receive(struct vmm_netport *p)
@@ -376,7 +388,7 @@ static int virtio_net_connect(struct vmm_virtio_device *dev,
 		return VMM_ENOMEM;
 	}
 	ndev->port->mtu = VIRTIO_NET_MTU;
-	ndev->port->link_changed = virtio_net_set_link;
+	ndev->port->link_changed = virtio_net_link_changed;
 	ndev->port->can_receive = virtio_net_can_receive;
 	ndev->port->switch2port_xfer = virtio_net_switch2port_xfer;
 	ndev->port->priv = ndev;
