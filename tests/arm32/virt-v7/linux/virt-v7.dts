@@ -72,7 +72,14 @@
 		migrate = <0x84000005>;
 	};
 
-	UARTCLK: apb-pclk {
+	clk32khz: clk32khz {
+		compatible = "fixed-clock";
+		#clock-cells = <0x0>;
+		clock-frequency = <32000>;
+		clock-output-names = "clk32khz";
+	};
+
+	clk24mhz: clk24mhz {
 		compatible = "fixed-clock";
 		#clock-cells = <0x0>;
 		clock-frequency = <24000000>;
@@ -89,8 +96,24 @@
 			compatible = "arm,pl011", "arm,primecell";
 			reg = <0x0 0x09000000 0x0 0x1000>;
 			interrupts = <0 1 4>;
-			clocks = <&UARTCLK>, <&UARTCLK>;
+			clocks = <&clk24mhz>, <&clk24mhz>;
 			clock-names = "uartclk", "apb_pclk";
+		};
+
+		rtc@09003000 {
+			compatible = "arm,pl031", "arm,primecell";
+			reg = <0x0 0x09003000 0x0 0x1000>;
+			interrupts = <0 2 4>;
+			clocks = <&clk24mhz>;
+			clock-names = "apb_pclk";
+		};
+
+		wdt@09004000 {
+			compatible = "arm,sp805", "arm,primecell";
+			reg = <0x0 0x09004000 0x0 0x1000>;
+			interrupts = <0 3 4>;
+			clocks = <&clk32khz>, <&clk24mhz>;
+			clock-names = "wdogclk", "apb_pclk";
 		};
 
 		virtio_net@0A000000 {
