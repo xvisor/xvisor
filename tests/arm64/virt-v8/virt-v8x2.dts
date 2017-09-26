@@ -98,6 +98,26 @@
 			base = <0x30000000>; /* Override this if required */
 		};
 
+		rtc {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x09003000>;
+			physical_size = <0x1000>;
+			device_type = "rtc";
+			compatible = "primecell,pl031";
+			interrupts = <34>;
+		};
+
+		watchdog {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x09004000>;
+			physical_size = <0x1000>;
+			device_type = "watchdog";
+			compatible = "primecell,sp805";
+			interrupts = <35>;
+		};
+
 		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
