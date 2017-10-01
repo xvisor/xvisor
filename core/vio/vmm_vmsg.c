@@ -136,6 +136,10 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 	work->addr = addr;
 	work->func = func;
 
+	if (work->msg) {
+		vmm_vmsg_ref(work->msg);
+	}
+
 	vmm_spin_lock_irqsave(&domain->work_lock, flags);
 	list_add_tail(&work->head, &domain->work_list);
 	vmm_spin_unlock_irqrestore(&domain->work_lock, flags);
@@ -168,6 +172,11 @@ static int vmsg_domain_worker_main(void *data)
 
 		if (work->func) {
 			work->func(work);
+		}
+
+		if (work->msg) {
+			vmm_vmsg_dref(work->msg);
+			work->msg = NULL;
 		}
 
 		vmm_free(work);
