@@ -230,9 +230,6 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 			break;
 		}
 	}
-	if (!peer_node) {
-		goto done;
-	}
 
 	list_for_each_entry(node, &domain->node_list, domain_head) {
 		if ((node->addr == peer_addr) ||
@@ -241,12 +238,11 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 
 		if (node->ops->peer_up)
 			node->ops->peer_up(node, peer_name, peer_addr);
-		if (peer_node->ops->peer_up)
+		if (peer_node && peer_node->ops->peer_up)
 			peer_node->ops->peer_up(peer_node,
 						node->name, node->addr);
 	}
 
-done:
 	vmm_mutex_unlock(&domain->node_lock);
 }
 
