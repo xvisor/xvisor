@@ -85,15 +85,27 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_dref);
 
 static void vmsg_release(struct vmm_vmsg *msg)
 {
+	vmm_free(msg->data);
 	vmm_free(msg);
 }
 
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, void *data, size_t len)
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, size_t len)
 {
+	void *data;
 	struct vmm_vmsg *msg;
+
+	if (!len) {
+		return NULL;
+	}
+
+	data = vmm_malloc(len);
+	if (!data) {
+		return NULL;
+	}
 
 	msg = vmm_zalloc(sizeof(*msg));
 	if (!msg) {
+		vmm_free(data);
 		return NULL;
 	}
 

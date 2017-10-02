@@ -142,7 +142,7 @@ void vmm_vmsg_ref(struct vmm_vmsg *msg);
 void vmm_vmsg_dref(struct vmm_vmsg *msg);
 
 /** Allocate new virtual message */
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, void *data, size_t len);
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, size_t len);
 
 /** Free a virtual message */
 static inline void vmm_vmsg_free(struct vmm_vmsg *msg)
