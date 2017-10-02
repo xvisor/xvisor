@@ -31,7 +31,11 @@
 
 #include <vmm_types.h>
 
-#define VMM_RPMSG_NAME_SIZE	32
+/* Size of advertised remote service name */
+#define VMM_VIRTIO_RPMSG_NS_NAME_SIZE	32
+
+/* Address 53 is reserved for advertising remote services */
+#define VMM_VIRTIO_RPMSG_NS_ADDR	(53)
 
 /* The feature bitmap for virtio rpmsg */
 #define VMM_VIRTIO_RPMSG_F_NS	0 /* RP supports name service notifications */
@@ -66,7 +70,7 @@ struct vmm_rpmsg_hdr {
  * about its removal.
  */
 struct vmm_rpmsg_ns_msg {
-	char name[VMM_RPMSG_NAME_SIZE];
+	char name[VMM_VIRTIO_RPMSG_NS_NAME_SIZE];
 	u32 addr;
 	u32 flags;
 } __attribute__((packed));
@@ -74,12 +78,12 @@ struct vmm_rpmsg_ns_msg {
 /**
  * Dynamic name service announcement flags
  *
- * @VMM_RPMSG_NS_CREATE: a new remote service was just created
- * @VMM_RPMSG_NS_DESTROY: a known remote service was just destroyed
+ * @VMM_VIRTIO_RPMSG_NS_CREATE: a new remote service was just created
+ * @VMM_VIRTIO_RPMSG_NS_DESTROY: a known remote service was just destroyed
  */
 enum vmm_rpmsg_ns_flags {
-	VMM_RPMSG_NS_CREATE	= 0,
-	VMM_RPMSG_NS_DESTROY	= 1,
+	VMM_VIRTIO_RPMSG_NS_CREATE	= 0,
+	VMM_VIRTIO_RPMSG_NS_DESTROY	= 1,
 };
 
 #endif /* __VMM_VIRTIO_RPMSG_H__ */
