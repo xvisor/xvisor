@@ -298,10 +298,13 @@ static void vmsg_node_send_func(struct vmsg_work *work)
 static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
 	if (!node || !msg || !msg->data || !msg->len ||
-	    (msg->src != node->addr) ||
-	    (msg->dst == msg->src)) {
+	    (msg->dst == node->addr) ||
+	    (msg->dst == msg->src) ||
+	    (msg->dst < VMM_VMSG_NODE_ADDR_MIN)) {
 		return VMM_EINVALID;
 	}
+
+	msg->src = node->addr;
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
 					node->name, node->addr,
@@ -752,11 +755,9 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_node_count);
 
 int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
-	if (!node || !msg || !msg->data || (msg->dst == node->addr)) {
+	if (!node || !msg || !msg->data || !msg->len) {
 		return VMM_EINVALID;
 	}
-
-	msg->src = node->addr;
 
 	return vmsg_node_send(node, msg);
 }
