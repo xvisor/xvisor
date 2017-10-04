@@ -121,12 +121,15 @@ struct vmsg_work {
 	struct vmm_vmsg *msg;
 	char name[VMM_FIELD_NAME_SIZE];
 	u32 addr;
+	void *data;
+	void *data1;
 	void (*func) (struct vmsg_work *work);
 };
 
 static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 				    struct vmm_vmsg *msg,
 				    const char *name, u32 addr,
+				    void *data, void *data1,
 				    void (*func) (struct vmsg_work *))
 {
 	irq_flags_t flags;
@@ -146,6 +149,8 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 	work->msg = msg;
 	strncpy(work->name, name, sizeof(work->name));
 	work->addr = addr;
+	work->data = data;
+	work->data1 = data1;
 	work->func = func;
 
 	if (work->msg) {
@@ -226,6 +231,7 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 	if (arch_atomic_cmpxchg(&node->is_ready, 1, 0)) {
 		err = vmsg_domain_enqueue_work(domain, NULL,
 					       node->name, node->addr,
+					       NULL, NULL,
 					       vmsg_node_peer_down_func);
 		if (err) {
 			return err;
@@ -275,6 +281,7 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	if (!arch_atomic_cmpxchg(&node->is_ready, 0, 1)) {
 		err = vmsg_domain_enqueue_work(domain, NULL,
 					       node->name, node->addr,
+					       NULL, NULL,
 					       vmsg_node_peer_up_func);
 		if (err) {
 			return err;
@@ -320,7 +327,56 @@ static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
 					node->name, node->addr,
+					NULL, NULL,
 					vmsg_node_send_func);
+}
+
+static void vmsg_node_start_work_func(struct vmsg_work *work)
+{
+	void (*fn) (void *) = work->data1;
+
+	fn(work->data);
+}
+
+static int vmsg_node_start_work(struct vmm_vmsg_node *node,
+				void *data, void (*fn) (void *))
+{
+	if (!node || !fn) {
+		return VMM_EINVALID;
+	}
+
+	return vmsg_domain_enqueue_work(node->domain, NULL,
+					node->name, node->addr,
+					data, fn,
+					vmsg_node_start_work_func);
+}
+
+static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
+			       void *data, void (*fn) (void *))
+{
+	irq_flags_t flags;
+	struct vmsg_work *work, *work1;
+	struct vmm_vmsg_domain *domain;
+
+	if (!node || !fn) {
+		return VMM_EINVALID;
+	}
+	domain = node->domain;
+
+	vmm_spin_lock_irqsave(&domain->work_lock, flags);
+
+	list_for_each_entry_safe(work, work1, &domain->work_list, head) {
+		if ((work->data == data) &&
+		    (work->data1 == fn) &&
+		    (work->msg == NULL)) {
+			list_del(&work->head);
+			vmm_free(work);
+		}
+	}
+
+	vmm_spin_unlock_irqrestore(&domain->work_lock, flags);
+
+	return VMM_OK;
 }
 
 struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
@@ -774,6 +830,28 @@ int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 	return vmsg_node_send(node, msg);
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_send);
+
+int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
+			     void *data, void (*fn) (void *))
+{
+	if (!node || !fn) {
+		return VMM_EINVALID;
+	}
+
+	return vmsg_node_start_work(node, data, fn);
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_node_start_work);
+
+int vmm_vmsg_node_stop_work(struct vmm_vmsg_node *node,
+			    void *data, void (*fn) (void *))
+{
+	if (!node || !fn) {
+		return VMM_EINVALID;
+	}
+
+	return vmsg_node_stop_work(node, data, fn);
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_node_stop_work);
 
 void vmm_vmsg_node_ready(struct vmm_vmsg_node *node)
 {

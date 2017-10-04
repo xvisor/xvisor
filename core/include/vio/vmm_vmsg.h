@@ -202,6 +202,16 @@ u32 vmm_vmsg_node_count(void);
 /** Send message from virtual messaging node */
 int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
 
+/** Schedule work for virtual messaging node */
+int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
+			     void *data, void (*fn) (void *));
+
+/** Stop all scheduled work for virtual messaging node with
+ *  particular work function
+ */
+int vmm_vmsg_node_stop_work(struct vmm_vmsg_node *node,
+			    void *data, void (*fn) (void *));
+
 /** Mark virtual messaging node as ready */
 void vmm_vmsg_node_ready(struct vmm_vmsg_node *node);
 
