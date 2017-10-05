@@ -314,7 +314,7 @@ static void virtio_rpmsg_peer_up(struct vmm_vmsg_node *node,
 		return;
 	}
 
-	vmm_snprintf(nsmsg.name, sizeof(nsmsg.name), "node%d", peer_addr);
+	strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_CREATE;
 
@@ -342,7 +342,7 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 		return;
 	}
 
-	vmm_snprintf(nsmsg.name, sizeof(nsmsg.name), "node%d", peer_addr);
+	strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_DESTROY;
 
