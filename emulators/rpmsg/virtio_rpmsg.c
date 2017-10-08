@@ -431,6 +431,7 @@ static struct vmm_vmsg_node_ops virtio_rpmsg_ops = {
 static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 				struct vmm_virtio_emulator *emu)
 {
+	u32 addr;
 	const char *dom_name = NULL;
 	struct vmm_vmsg_domain *dom;
 	struct virtio_rpmsg_dev *rdev;
@@ -455,8 +456,13 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		dom = NULL;
 	}
 
-	rdev->node = vmm_vmsg_node_create(dev->name,
-					  VMM_VMSG_NODE_ADDR_ANY,
+	if (vmm_devtree_read_u32(dev->edev->node,
+				 VMM_DEVTREE_NODE_ADDR_ATTR_NAME,
+				 &addr)) {
+		addr = VMM_VMSG_NODE_ADDR_ANY;
+	}
+
+	rdev->node = vmm_vmsg_node_create(dev->name, addr,
 					  &virtio_rpmsg_ops,
 					  dom, rdev);
 	if (!rdev->node) {

@@ -117,6 +117,7 @@
 #define VMM_DEVTREE_MAP_ORDER_ATTR_NAME		"map_order"
 #define VMM_DEVTREE_SWITCH_ATTR_NAME		"switch"
 #define VMM_DEVTREE_DOMAIN_ATTR_NAME		"domain"
+#define VMM_DEVTREE_NODE_ADDR_ATTR_NAME		"node_addr"
 #define VMM_DEVTREE_BLKDEV_ATTR_NAME		"blkdev"
 #define VMM_DEVTREE_VCPU_AFFINITY_ATTR_NAME	"affinity"
 #define VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME	"poweroff"
