@@ -625,13 +625,13 @@ const char *vmm_vmsg_domain_get_name(struct vmm_vmsg_domain *domain)
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_domain_get_name);
 
-struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name,
+struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name, u32 addr,
 				struct vmm_vmsg_node_ops *ops,
 				struct vmm_vmsg_domain *domain,
 				void *priv)
 {
-	int addr;
 	bool found;
+	int id_min, id_max, a;
 	struct vmm_vmsg_event event;
 	struct vmm_vmsg_node *vmn, *new_vmn;
 
@@ -662,15 +662,26 @@ struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name,
 		return NULL;
 	}
 
-	addr = ida_simple_get(&vmctrl.node_ida,
-			      VMM_VMSG_NODE_ADDR_MIN, 0, 0);
-	if (addr < 0) {
+	if (addr == VMM_VMSG_NODE_ADDR_ANY) {
+		id_min = VMM_VMSG_NODE_ADDR_MIN;
+		id_max = 0;
+	} else if (addr > VMM_VMSG_NODE_ADDR_MIN) {
+		id_min = addr;
+		id_max = addr + 1;
+	} else {
 		vmm_free(new_vmn);
 		vmm_mutex_unlock(&vmctrl.lock);
 		return NULL;
 	}
 
-	new_vmn->addr = addr;
+	a = ida_simple_get(&vmctrl.node_ida, id_min, id_max, 0);
+	if (a < 0) {
+		vmm_free(new_vmn);
+		vmm_mutex_unlock(&vmctrl.lock);
+		return NULL;
+	}
+
+	new_vmn->addr = a;
 	INIT_LIST_HEAD(&new_vmn->head);
 	INIT_LIST_HEAD(&new_vmn->domain_head);
 	strncpy(new_vmn->name, name, sizeof(new_vmn->name));

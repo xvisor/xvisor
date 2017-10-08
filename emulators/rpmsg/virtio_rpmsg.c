@@ -455,7 +455,9 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		dom = NULL;
 	}
 
-	rdev->node = vmm_vmsg_node_create(dev->name, &virtio_rpmsg_ops,
+	rdev->node = vmm_vmsg_node_create(dev->name,
+					  VMM_VMSG_NODE_ADDR_ANY,
+					  &virtio_rpmsg_ops,
 					  dom, rdev);
 	if (!rdev->node) {
 		vmm_free(rdev);

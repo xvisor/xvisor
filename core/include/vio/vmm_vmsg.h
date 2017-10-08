@@ -174,8 +174,13 @@ int vmm_vmsg_domain_node_iterate(struct vmm_vmsg_domain *domain,
 /** Get name of virtual messaging domain */
 const char *vmm_vmsg_domain_get_name(struct vmm_vmsg_domain *domain);
 
-/** Create a virtual messaging node */
-struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name,
+/**
+ * Create a virtual messaging node
+ *
+ * Note: If 'addr' is VMM_VMSG_NODE_ADDR_ANY then a free
+ * node address is allocated using host wide ID allocator.
+ */
+struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name, u32 addr,
 				struct vmm_vmsg_node_ops *ops,
 				struct vmm_vmsg_domain *domain,
 				void *priv);
