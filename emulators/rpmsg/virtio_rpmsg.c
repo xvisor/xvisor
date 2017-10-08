@@ -55,6 +55,8 @@ struct virtio_rpmsg_dev {
 	u32 features;
 
 	char name[VMM_VIRTIO_DEVICE_MAX_NAME_LEN];
+	bool node_ns_name_avail;
+	char node_ns_name[VMM_VIRTIO_RPMSG_NS_NAME_SIZE];
 	struct vmm_vmsg_node *node;
 	struct radix_tree_root global_to_local;
 };
@@ -314,7 +316,11 @@ static void virtio_rpmsg_peer_up(struct vmm_vmsg_node *node,
 		return;
 	}
 
-	strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
+	if (rdev->node_ns_name_avail) {
+		strncpy(nsmsg.name, rdev->node_ns_name, sizeof(nsmsg.name));
+	} else {
+		strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
+	}
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_CREATE;
 
@@ -342,7 +348,11 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 		return;
 	}
 
-	strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
+	if (rdev->node_ns_name_avail) {
+		strncpy(nsmsg.name, rdev->node_ns_name, sizeof(nsmsg.name));
+	} else {
+		strncpy(nsmsg.name, peer_name, sizeof(nsmsg.name));
+	}
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_DESTROY;
 
@@ -433,6 +443,7 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 {
 	u32 addr;
 	const char *dom_name = NULL;
+	const char *ns_name = NULL;
 	struct vmm_vmsg_domain *dom;
 	struct virtio_rpmsg_dev *rdev;
 
@@ -454,6 +465,16 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		dom = vmm_vmsg_domain_find(dom_name);
 	} else {
 		dom = NULL;
+	}
+
+	if (vmm_devtree_read_string(dev->edev->node,
+				    VMM_DEVTREE_NODE_NS_NAME_ATTR_NAME,
+				    &ns_name)) {
+		rdev->node_ns_name_avail = FALSE;
+	} else {
+		strncpy(rdev->node_ns_name, ns_name,
+			sizeof(rdev->node_ns_name));
+		rdev->node_ns_name_avail = TRUE;
 	}
 
 	if (vmm_devtree_read_u32(dev->edev->node,
