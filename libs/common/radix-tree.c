@@ -54,7 +54,6 @@ struct radix_tree_node {
 	union {
 		struct radix_tree_node *parent;	/* Used when ascending tree */
 	};
-	vmm_rwlock_t	lock;
 	void	*slots[RADIX_TREE_MAP_SIZE];
 };
 
@@ -113,12 +112,7 @@ static inline void *indirect_to_ptr(void *ptr)
 static struct radix_tree_node *
 radix_tree_node_alloc(struct radix_tree_root *root)
 {
-	struct radix_tree_node *ret = NULL;
-
-	ret = vmm_zalloc(sizeof(struct radix_tree_node));
-	INIT_RW_LOCK(&ret->lock);
-
-	return ret;
+	return vmm_zalloc(sizeof(struct radix_tree_node));
 }
 
 static inline void
@@ -146,10 +140,10 @@ static inline unsigned long radix_tree_maxindex(unsigned int height)
  */
 static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 {
+	int rc = 0;
 	struct radix_tree_node *node;
 	struct radix_tree_node *slot;
 	unsigned int height;
-	unsigned long flags;
 
 	/* Figure out what the height should be.  */
 	height = root->height + 1;
@@ -163,11 +157,13 @@ static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 
 	do {
 		unsigned int newheight;
-		if (!(node = radix_tree_node_alloc(root)))
-			return VMM_ENOMEM;
+		if (!(node = radix_tree_node_alloc(root))) {
+			rc = VMM_ENOMEM;
+			goto out;
+		}
 
 		/* Increase the height.  */
-		newheight = root->height+1;
+		newheight = root->height + 1;
 		node->height = newheight;
 		node->count = 1;
 		node->parent = NULL;
@@ -178,13 +174,13 @@ static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 		}
 		node->slots[0] = slot;
 		node = ptr_to_indirect(node);
-		vmm_write_lock_irqsave_lite(&root->lock, flags);
+
 		root->rnode = node;
 		root->height = newheight;
-		vmm_write_unlock_irqrestore_lite(&root->lock, flags);
 	} while (height > root->height);
+
 out:
-	return 0;
+	return rc;
 }
 
 /**
@@ -200,42 +196,41 @@ int radix_tree_insert(struct radix_tree_root *root,
 {
 	struct radix_tree_node *node = NULL, *slot;
 	unsigned int height, shift;
-	int offset;
-	int error;
+	int rc = 0, offset;
 	unsigned long flags;
 
 	if (radix_tree_is_indirect_ptr(item))
 		return VMM_EINVALID;
 
+	vmm_write_lock_irqsave_lite(&root->lock, flags);
+
 	/* Make sure the tree is high enough.  */
 	if (index > radix_tree_maxindex(root->height)) {
-		error = radix_tree_extend(root, index);
-		if (error)
-			return error;
+		rc = radix_tree_extend(root, index);
+		if (rc)
+			goto out;
 	}
 
 	slot = indirect_to_ptr(root->rnode);
 
 	height = root->height;
-	shift = (height-1) * RADIX_TREE_MAP_SHIFT;
+	shift = (height - 1) * RADIX_TREE_MAP_SHIFT;
 
 	offset = 0;			/* uninitialised var warning */
 	while (height > 0) {
 		if (slot == NULL) {
 			/* Have to add a child node.  */
-			if (!(slot = radix_tree_node_alloc(root)))
-				return VMM_ENOMEM;
+			if (!(slot = radix_tree_node_alloc(root))) {
+				rc = VMM_ENOMEM;
+				goto out;
+			}
 			slot->height = height;
 			slot->parent = node;
 			if (node) {
-				vmm_write_lock_irqsave_lite(&node->lock, flags);
 				node->slots[offset] = slot;
 				node->count++;
-				vmm_write_unlock_irqrestore_lite(&node->lock, flags);
 			} else {
-				vmm_write_lock_irqsave_lite(&root->lock, flags);
 				root->rnode = ptr_to_indirect(slot);
-				vmm_write_unlock_irqrestore_lite(&root->lock, flags);
 			}
 		}
 
@@ -247,21 +242,21 @@ int radix_tree_insert(struct radix_tree_root *root,
 		height--;
 	}
 
-	if (slot != NULL)
-		return VMM_EEXIST;
-
-	if (node) {
-		vmm_write_lock_irqsave_lite(&node->lock, flags);
-		node->count++;
-		node->slots[offset] = item;
-		vmm_write_unlock_irqrestore_lite(&node->lock, flags);
-	} else {
-		vmm_write_lock_irqsave_lite(&root->lock, flags);
-		root->rnode = item;
-		vmm_write_unlock_irqrestore_lite(&root->lock, flags);
+	if (slot != NULL) {
+		rc = VMM_EEXIST;
+		goto out;
 	}
 
-	return 0;
+	if (node) {
+		node->count++;
+		node->slots[offset] = item;
+	} else {
+		root->rnode = item;
+	}
+
+out:
+	vmm_write_unlock_irqrestore_lite(&root->lock, flags);
+	return rc;
 }
 
 /*
@@ -271,44 +266,53 @@ int radix_tree_insert(struct radix_tree_root *root,
 static void *radix_tree_lookup_element(struct radix_tree_root *root,
 				unsigned long index, int is_slot)
 {
+	void *ret;
 	unsigned int height, shift;
 	struct radix_tree_node *node, **slot;
 	unsigned long flags;
 
 	vmm_read_lock_irqsave_lite(&root->lock, flags);
-	node = root->rnode;
-	vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 
-	if (node == NULL)
+	node = root->rnode;
+	if (node == NULL) {
+		vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 		return NULL;
+	}
 
 	if (!radix_tree_is_indirect_ptr(node)) {
-		if (index > 0)
-			return NULL;
-		return is_slot ? (void *)&root->rnode : node;
+		if (index > 0) {
+			ret = NULL;
+		} else {
+			ret = is_slot ? (void *)&root->rnode : node;
+		}
+		vmm_read_unlock_irqrestore_lite(&root->lock, flags);
+		return ret;
 	}
 	node = indirect_to_ptr(node);
 
 	height = node->height;
-	if (index > radix_tree_maxindex(height))
+	if (index > radix_tree_maxindex(height)) {
+		vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 		return NULL;
+	}
 
 	shift = (height-1) * RADIX_TREE_MAP_SHIFT;
 
 	do {
 		slot = (struct radix_tree_node **)
-			(node->slots + ((index>>shift) & RADIX_TREE_MAP_MASK));
+		(node->slots + ((index >> shift) & RADIX_TREE_MAP_MASK));
 
-		vmm_read_lock_irqsave_lite(&root->lock, flags);
 		node = *slot;
-		vmm_read_unlock_irqrestore_lite(&root->lock, flags);
-
-		if (node == NULL)
+		if (node == NULL) {
+			vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 			return NULL;
+		}
 
 		shift -= RADIX_TREE_MAP_SHIFT;
 		height--;
 	} while (height > 0);
+
+	vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 
 	return is_slot ? (void *)slot : indirect_to_ptr(node);
 }
@@ -359,6 +363,7 @@ void *radix_tree_lookup(struct radix_tree_root *root, unsigned long index)
 void **radix_tree_next_chunk(struct radix_tree_root *root,
 			     struct radix_tree_iter *iter, unsigned flags)
 {
+	void **ret;
 	unsigned shift;
 	struct radix_tree_node *rnode, *node;
 	unsigned long index, offset;
@@ -379,8 +384,8 @@ void **radix_tree_next_chunk(struct radix_tree_root *root,
 
 
 	vmm_read_lock_irqsave_lite(&root->lock, irq_flags);	
+
 	rnode = root->rnode;
-	vmm_read_unlock_irqrestore_lite(&root->lock, irq_flags);
 
 	if (radix_tree_is_indirect_ptr(rnode)) {
 		rnode = indirect_to_ptr(rnode);
@@ -389,17 +394,23 @@ void **radix_tree_next_chunk(struct radix_tree_root *root,
 		iter->index = 0;
 		iter->next_index = 1;
 		iter->tags = 1;
-		return (void **)&root->rnode;
-	} else
+		ret = (void **)&root->rnode;
+		vmm_read_unlock_irqrestore_lite(&root->lock, irq_flags);
+		return ret;
+	} else {
+		vmm_read_unlock_irqrestore_lite(&root->lock, irq_flags);
 		return NULL;
+	}
 
 restart:
 	shift = (rnode->height - 1) * RADIX_TREE_MAP_SHIFT;
 	offset = index >> shift;
 
 	/* Index outside of the tree */
-	if (offset >= RADIX_TREE_MAP_SIZE)
+	if (offset >= RADIX_TREE_MAP_SIZE) {
+		vmm_read_unlock_irqrestore_lite(&root->lock, irq_flags);
 		return NULL;
+	}
 
 	node = rnode;
 	while (1) {
@@ -407,15 +418,14 @@ restart:
 		if (!shift)
 			break;
 
-		vmm_read_lock_irqsave_lite(&node->lock, irq_flags);
 		node = node->slots[offset];
-		vmm_read_unlock_irqrestore_lite(&node->lock, irq_flags);
-
 		if (node == NULL)
 			goto restart;
 		shift -= RADIX_TREE_MAP_SHIFT;
 		offset = (index >> shift) & RADIX_TREE_MAP_MASK;
 	}
+
+	vmm_read_unlock_irqrestore_lite(&root->lock, irq_flags);
 
 	/* Update the iterator state */
 	iter->index = index;
@@ -522,15 +532,12 @@ radix_tree_gang_lookup(struct radix_tree_root *root, void **results,
 	struct radix_tree_iter iter;
 	void **slot;
 	unsigned int ret = 0;
-	unsigned long flags;
 
 	if (unlikely(!max_items))
 		return 0;
 
 	radix_tree_for_each_slot(slot, root, &iter, first_index) {
-		vmm_read_lock_irqsave_lite(&root->lock, flags);
 		results[ret] = indirect_to_ptr((*slot));
-		vmm_read_unlock_irqrestore_lite(&root->lock, flags);
 
 		if (!results[ret])
 			continue;
@@ -593,7 +600,7 @@ static inline void radix_tree_shrink(struct radix_tree_root *root)
 		struct radix_tree_node *to_free = root->rnode;
 		struct radix_tree_node *slot;
 
-		if(!radix_tree_is_indirect_ptr(to_free)) {
+		if (!radix_tree_is_indirect_ptr(to_free)) {
 			vmm_printf("%s Unexpected Indirect pointer\n", __func__);
 			return;
 		}
@@ -666,6 +673,9 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 	struct radix_tree_node *to_free;
 	unsigned int height, shift;
 	int offset;
+	unsigned long irq_flags;
+
+	vmm_write_lock_irqsave_lite(&root->lock, irq_flags);	
 
 	height = root->height;
 	if (index > radix_tree_maxindex(height))
@@ -676,6 +686,7 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 		root->rnode = NULL;
 		goto out;
 	}
+
 	slot = indirect_to_ptr(slot);
 	shift = height * RADIX_TREE_MAP_SHIFT;
 
@@ -724,5 +735,6 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 		radix_tree_node_free(to_free);
 
 out:
+	vmm_write_unlock_irqrestore_lite(&root->lock, irq_flags);
 	return slot;
 }
