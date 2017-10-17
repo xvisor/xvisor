@@ -22,6 +22,7 @@ follows:
 0x20100000–0x20100FFF (4K) (IRQ=82) (VirtIO Network Device)
 0x20200000–0x20200FFF (4K) (IRQ=85) (VirtIO Block Device)
 0x20300000–0x20300FFF (4K) (IRQ=86) (VirtIO Console Device)
+0x20400000–0x20400FFF (4K) (IRQ=87) (VirtIO RPMSG Device)
 
 
 			VExpress-A9 Guest OSes
