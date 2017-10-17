@@ -46,7 +46,7 @@
 		reg = <0x00000000 0x40000000 0 0x06000000>;
 	};
 
-	gic: intc {
+	gic: interrupt-controller@08000000 {
 		compatible = "arm,cortex-a15-gic";
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
@@ -132,6 +132,12 @@
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A002000 0x0 0x1000>;
 			interrupts = <0 18 4>;
+		};
+
+		virtio_rpmsg@0A003000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x0A003000 0x0 0x1000>;
+			interrupts = <0 19 4>;
 		};
 
 		simplefb@30000000 {
