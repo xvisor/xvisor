@@ -235,6 +235,43 @@ void arm_board_fdt_fixup(void *fdt_addr)
 			   __func__, "interrupts", "virtio_console");
 		return;
 	}
+
+	noff = fdt_add_subnode(fdt_addr, poff, "virtio_rpmsg");
+	if (poff < 0) {
+		arm_printf("%s: failed to add %s subnode in %s node\n",
+			   __func__, "virtio_rpmsg", "virt");
+		return;
+	}
+
+	arm_strcpy(str, "virtio,mmio");
+	rc = fdt_setprop(fdt_addr, noff, "compatible",
+			 str, arm_strlen(str)+1);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "compatible", "virtio_rpmsg");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0x40400000);
+	vals[1] = cpu_to_fdt32(0x1000);
+	rc = fdt_setprop(fdt_addr, noff, "reg",
+			 vals, sizeof(u32)*2);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "reg", "virtio_rpmsg");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(0);
+	vals[1] = cpu_to_fdt32(21);
+	vals[2] = cpu_to_fdt32(4);
+	rc = fdt_setprop(fdt_addr, noff, "interrupts",
+			 vals, sizeof(u32)*3);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "interrupts", "virtio_rpmsg");
+		return;
+	}
 }
 
 u32 arm_board_autoexec_addr(void)
