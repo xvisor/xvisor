@@ -315,23 +315,6 @@ _start_secondary_nopen:
 	dsb	sy
 	isb
 
-#ifdef CONFIG_SMP
-	/* Setup SMP ID for current processor */
-	ldr	x1, __start_secondary_smp_id
-	ldr	x0, [x1]
-	bl      proc_setup_smp_id
-#endif
-
-	/* Set Hypervisor Stack */
-	ldr	x2,	__hvc_stack_end
-#ifdef CONFIG_SMP
-	mov	x1, #CONFIG_IRQ_STACK_SIZE
-	bl	arch_smp_id
-	mul	x1, x1, x0
-	sub	x2, x2, x1
-#endif
-	mov	sp, x2
-
 	ldr	x0, __cpu_init
 	blr	x0
 
@@ -395,7 +378,7 @@ __ttbr_set_addr:
 __ttbr_set:
 	.dword def_ttbl
 __cpu_init:
-	.dword cpu_init
+	.dword _cpu_init
 __vbar_val:
 	.dword vectors
 __boot_reg0:
@@ -466,8 +449,27 @@ _copy:
 	ret
 _copy_end:
 
+	.align 3
+	.globl _cpu_init
+_cpu_init:
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	ldr	x1, __start_secondary_smp_id
+	ldr	x0, [x1]
+	bl      proc_setup_smp_id
+#endif
 
+	/* Set Hypervisor Stack */
+	ldr	x2, __hvc_stack_end
+#ifdef CONFIG_SMP
+	mov	x1, #CONFIG_IRQ_STACK_SIZE
+	bl	arch_smp_id
+	mul	x1, x1, x0
+	sub	x2, x2, x1
+#endif
+	mov	sp, x2
 
+	bl	cpu_init
 
 /* Stack pushing/popping (register pairs only). 
    Equivalent to store decrement before, load increment after */

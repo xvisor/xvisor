@@ -308,13 +308,6 @@ _start_secondary_nopen:
 	bl	proc_setup
 	mcr	p15, 0, r0, c1, c0, 0
 
-#ifdef CONFIG_SMP
-	/* Setup SMP ID for current processor */
-	ldr	r1, __start_secondary_smp_id
-	ldr	r0, [r1]
-	bl	proc_setup_smp_id
-#endif
-
 	/* Jump to reset code */
 	ldr	pc, __reset
 
@@ -502,6 +495,12 @@ __fiq_stack_end:
 	 */
 	.globl _reset
 _reset:
+#ifdef CONFIG_SMP
+	/* Setup SMP ID for current processor */
+	ldr	r1, __start_secondary_smp_id
+	ldr	r0, [r1]
+	bl	proc_setup_smp_id
+#endif
 	/* Clear a register for temporary usage */
 	mov	r8, #0
 	/* Disable IRQ & FIQ */
