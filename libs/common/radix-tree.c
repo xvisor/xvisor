@@ -199,7 +199,7 @@ int radix_tree_insert(struct radix_tree_root *root,
 	int rc = 0, offset;
 	unsigned long flags;
 
-	if (radix_tree_is_indirect_ptr(item))
+	if (!item || radix_tree_is_indirect_ptr(item))
 		return VMM_EINVALID;
 
 	vmm_write_lock_irqsave_lite(&root->lock, flags);
