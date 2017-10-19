@@ -56,7 +56,7 @@ static int cmd_vmsg_node_list_iter(struct vmm_vmsg_node *node, void *data)
 {
 	struct cmd_vmsg_list_priv *p = data;
 
-	vmm_cprintf(p->cdev, " %-5d %-21s %-21s %-10s 0x%08x\n",
+	vmm_cprintf(p->cdev, " %-5d %-24s %-16s %-10s 0x%08x\n",
 		    p->num1,
 		    vmm_vmsg_node_get_name(node),
 		    vmm_vmsg_domain_get_name(vmm_vmsg_node_get_domain(node)),
@@ -73,7 +73,7 @@ static int cmd_vmsg_node_list(struct vmm_chardev *cdev)
 
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "------------------------------\n");
-	vmm_cprintf(cdev, " %-5s %-21s %-21s %-10s %-8s\n",
+	vmm_cprintf(cdev, " %-5s %-24s %-16s %-10s %-10s\n",
 		    "Num#", "Node", "Domain", "State", "Address");
 	vmm_cprintf(cdev, "----------------------------------------"
 			  "------------------------------\n");
