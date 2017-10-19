@@ -42,7 +42,7 @@ inside "travis CI"
 Then you need to add a repository to your "travis CI" dashboard. So add a
 repository and select your github xvisor repository.
 
-Once your Xvisor repository is added you can cutomize its "settings". In
+Once your Xvisor repository is added you can customize its "settings". In
 particular you can can activate the 2 following options:
 	- Build only if .travis.yml is present
 	- Build pushes
