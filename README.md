@@ -1,4 +1,4 @@
-# Xvisor version 0.2.xx
+# Xvisor
 
 http://xvisor.org
 
