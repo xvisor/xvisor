@@ -1,0 +1,53 @@
+			Xvisor v0.2.10
+	(Last Commit: -------------------------------)
+		(Release Date: 11-Nov-2017)
+
+In this release, we primarily have new features, drivers, and
+emulators.
+
+New Features:
+ - Multiple mappings for a guest region
+ - SPI virtualization framework
+ - VirtIO host driver framework
+ - Backlog in block device request queue
+ - Customizable default affinity for hypervisor threads
+ - Colored RAM/ROM regions for guest
+ - Shared memory framework
+ - Shared RAM/ROM regions for guest
+ - Virtual messaging framework (EXPERIMENTAL)
+
+New Commands:
+ - guest region_list sub-command
+ - shmem command
+ - vmsg command
+
+New Drivers:
+ - VirtIO host MMIO transport driver
+ - ARM SMMUv2 driver (EXPERIMENTAL)
+ - VirtIO host block driver (EXPERIMENTAL)
+ - Generic DT-based cache color driver
+ - SMSC95xx usb network driver (EXPERIMENTAL)
+
+New Emulators:
+ - GPIO based power emulator
+ - GPIO forward slave emulator
+ - PL022 SPI host controller emulator
+ - VirtIO RPMSG emulator
+
+New Boards:
+ - Added Renesas R-Car H2 Lager board support
+
+ARM Ports:
+ - GICv3 support in VGIC emulator
+
+ARM32 Port:
+ - No change
+
+ARM32ve Port:
+ - No change
+
+ARM64 Port:
+ - No change
+
+x86 Port:
+ - No change
