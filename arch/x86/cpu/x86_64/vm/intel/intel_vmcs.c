@@ -228,6 +228,27 @@ void *alloc_vmx_on_region(void)
 	return vmcs;
 }
 
+struct vmcs *current_vmcs(void)
+{
+        u64 vmcs_phys = 0;
+        virtual_addr_t vmcs_virt = 0;
+
+        vmcs_phys = __vmptrst();
+
+        /* There is not current VMCS */
+        if (vmcs_phys == 0xFFFFFFFFFFFFFFFFULL) {
+                vmm_printf("%s: There is not active(current) VMCS on this logical processor.\n", __func__);
+                return NULL;
+        }
+
+        if (vmm_host_pa2va(vmcs_phys, &vmcs_virt) != VMM_OK) {
+                vmm_printf("%s: Could not find virtual address for current VMCS\n", __func__);
+                return NULL;
+        }
+
+        return (struct vmcs *)(vmcs_virt);
+}
+
 struct vmcs* create_vmcs(void)
 {
 	/* verify settings */

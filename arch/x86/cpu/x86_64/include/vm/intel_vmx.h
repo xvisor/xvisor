@@ -193,12 +193,16 @@ static inline void __vmptrld(u64 addr)
 		       : "memory");
 }
 
-static inline void __vmptrst(u64 addr)
+static inline u64 __vmptrst(void)
 {
+        u64 addr;
+
 	asm volatile ("vmptrst (%0)\n"
 		       :
 		       : "a" (&addr)
 		       : "memory");
+
+        return addr;
 }
 
 static inline void __vmpclear(u64 addr)
