@@ -56,8 +56,9 @@ struct virtio_host_blk_req {
 	struct vmm_completion *cmpl;
 	struct virtio_host_blk *vblk;
 	struct vmm_virtio_blk_outhdr hdr;
-	struct virtio_host_iovec iovec[2];
-	struct virtio_host_iovec *ivs[2];
+	u8 status;
+	struct virtio_host_iovec iovec[3];
+	struct virtio_host_iovec *ivs[3];
 };
 
 struct virtio_host_blk {
@@ -109,7 +110,7 @@ static int virtio_host_blk_read(struct vmm_blockrq *brq,
 	DPRINTF(vblk, "%s: req=0x%p lba=%"PRIu64" bcnt=%d data=0x%p\n",
 		__func__, req, req->r->lba, req->r->bcnt, req->r->data);
 
-	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 1, req);
+	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 2, req);
 	if (rc) {
 		vmm_lerror(vblk->vdev->dev.name,
 			   "Failed to add iovecs to VirtIO host queue\n");
@@ -148,7 +149,7 @@ static int virtio_host_blk_write(struct vmm_blockrq *brq,
 	DPRINTF(vblk, "%s: req=0x%p lba=%"PRIu64" bcnt=%d data=0x%p\n",
 		__func__, req, req->r->lba, req->r->bcnt, req->r->data);
 
-	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 1, req);
+	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 2, req);
 	if (rc) {
 		vmm_lerror(vblk->vdev->dev.name,
 			   "Failed to add iovecs to VirtIO host queue\n");
@@ -191,6 +192,7 @@ static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 
 			exp = sizeof(req->hdr);
 			exp += req->r->bcnt * vblk->block_size;
+			exp += sizeof(req->status);
 
 			DPRINTF(vblk, "%s: req=0x%p exp=%d len=%d\n",
 				__func__, req, exp, len);
@@ -251,7 +253,7 @@ static void virtio_host_blk_read_serial(struct virtio_host_blk *vblk)
 	req->iovec[1].buf = vblk->raw_serial;
 	req->iovec[1].buf_len = VMM_VIRTIO_BLK_ID_BYTES;
 
-	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 1, req);
+	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 2, req);
 	if (rc) {
 		vmm_lerror(vblk->vdev->dev.name,
 			   "Failed to add iovecs to VirtIO host queue\n");
@@ -301,8 +303,11 @@ static int virtio_host_blk_init_pool(struct virtio_host_blk *vblk)
 		req->iovec[0].buf_len = sizeof(req->hdr);
 		req->iovec[1].buf = NULL;
 		req->iovec[1].buf_len = 0;
+		req->iovec[2].buf = &req->status;
+		req->iovec[2].buf_len = sizeof(req->status);
 		req->ivs[0] = &req->iovec[0];
 		req->ivs[1] = &req->iovec[1];
+		req->ivs[2] = &req->iovec[2];
 		fifo_enqueue(vblk->reqs_fifo, &req, TRUE);
 	}
 
