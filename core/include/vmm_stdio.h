@@ -127,6 +127,10 @@ int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev,
 /** Print formatted string to default device */
 #define vmm_printf(args...)	vmm_cprintf(NULL, args)
 
+/** Print contents of some data in hex format */
+void vmm_chexdump(struct vmm_chardev *cdev,
+		  u64 print_base_addr, void *data, u64 len);
+
 /** Predefined log levels */
 enum vmm_print_level {
 	VMM_LOGLEVEL_EMERGENCY=0,

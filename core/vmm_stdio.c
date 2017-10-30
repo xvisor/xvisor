@@ -484,6 +484,29 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	return retval;
 }
 
+void vmm_chexdump(struct vmm_chardev *cdev,
+		  u64 print_base_addr, void *data, u64 len)
+{
+	u64 i;
+
+	if (!data || !len) {
+		return;
+	}
+
+	for (i = 0; i < len; i++) {
+		if ((i & 0xF) == 0) {
+			vmm_cprintf(cdev, "%016"PRIx64"  %02x",
+				    (print_base_addr + i), ((u8 *)data)[i]);
+		} else if ((i & 0xF) == 0x8) {
+			vmm_cprintf(cdev, "  %02x", ((u8 *)data)[i]);
+		} else if ((i & 0xF) == 0xF) {
+			vmm_cprintf(cdev, " %02x\n", ((u8 *)data)[i]);
+		} else {
+			vmm_cprintf(cdev, " %02x", ((u8 *)data)[i]);
+		}
+	}
+}
+
 static int vmm_lvprintf(enum vmm_print_level level,
 			const char *prefix, const char *format, va_list args)
 {
