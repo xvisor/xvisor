@@ -149,14 +149,14 @@ struct vmm_virtio_blk_outhdr {
 	u32 ioprio;
 	/* Sector (ie. 512 byte offset) */
 	u64 sector;
-};
+} __attribute__((packed));
 
 struct vmm_virtio_scsi_inhdr {
 	u32 errors;
 	u32 data_len;
 	u32 sense_len;
 	u32 residual;
-};
+} __attribute__((packed));
 
 /* And this is the final byte of the write scatter-gather list. */
 #define VMM_VIRTIO_BLK_S_OK		0
