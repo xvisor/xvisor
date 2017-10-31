@@ -166,7 +166,39 @@ static int virtio_host_blk_write(struct vmm_blockrq *brq,
 
 static void virtio_host_blk_flush(struct vmm_blockrq *brq, void *priv)
 {
-	/* TODO: */
+	int rc;
+	struct virtio_host_blk *vblk = priv;
+	struct virtio_host_blk_req *req;
+
+	if (!fifo_dequeue(vblk->reqs_fifo, &req)) {
+		vmm_lerror(vblk->vdev->dev.name,
+			   "Failed to dequeue free request\n");
+		return;
+	}
+
+	req->r = NULL;
+	req->cmpl = NULL;
+	req->hdr.type = cpu_to_virtio32(vblk->vdev, VMM_VIRTIO_BLK_T_FLUSH);
+	req->hdr.ioprio = 0;
+	req->hdr.sector = 0;
+	req->iovec[1].buf = req->iovec[2].buf;
+	req->iovec[1].buf_len = req->iovec[2].buf_len;
+
+	DPRINTF(vblk, "%s: req=0x%p\n", __func__, req);
+
+	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 1, req);
+	if (rc) {
+		vmm_lerror(vblk->vdev->dev.name,
+			   "Failed to add iovecs to VirtIO host queue\n");
+		req->r = NULL;
+		req->cmpl = NULL;
+		fifo_enqueue(vblk->reqs_fifo, &req, TRUE);
+		return;
+	}
+
+	virtio_host_queue_kick(vblk->vqs[0]);
+
+	return;
 }
 
 #define VIRTIO_HOST_BLK_DONE_BUDGET	8
