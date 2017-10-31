@@ -149,7 +149,7 @@ static int virtio_host_blk_write(struct vmm_blockrq *brq,
 	DPRINTF(vblk, "%s: req=0x%p lba=%"PRIu64" bcnt=%d data=0x%p\n",
 		__func__, req, req->r->lba, req->r->bcnt, req->r->data);
 
-	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 1, 2, req);
+	rc = virtio_host_queue_add_iovecs(vblk->vqs[0], req->ivs, 2, 1, req);
 	if (rc) {
 		vmm_lerror(vblk->vdev->dev.name,
 			   "Failed to add iovecs to VirtIO host queue\n");
