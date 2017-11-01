@@ -96,7 +96,7 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 		return VMM_EFAIL;
 	}
 
-	cpu_read_msr32(IA32_FEATURE_CONTROL_MSR, &eax, &edx);
+	cpu_read_msr32(IA32_FEATURE_CONTROL_MSR, &edx, &eax);
 
 	/*
 	 * Ensure that the IA32_FEATURE_CONTROL MSR has been

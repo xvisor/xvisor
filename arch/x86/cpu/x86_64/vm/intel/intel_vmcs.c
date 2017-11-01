@@ -113,8 +113,8 @@ static void __init vmx_display_features(void)
 /* Intel IA-32 manual 3B 27.5.1 p. 222 */
 void vmx_detect_capability(void)
 {
-	cpu_read_msr32(MSR_IA32_VMX_BASIC, &vmx_basic_msr_low,
-                       &vmx_basic_msr_high);
+	cpu_read_msr32(MSR_IA32_VMX_BASIC, &vmx_basic_msr_high,
+                       &vmx_basic_msr_low);
 
 	/* save the revision_id */
 	vmcs_revision_id = vmx_basic_msr_low;
