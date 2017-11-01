@@ -99,7 +99,7 @@ static int __init acpi_read_sdt_at(void *sdt_va,
 		return VMM_EFAIL;
 	}
 
-	memcpy(tb, sdt_va, size);
+	memcpy(tb, sdt_va, tb->len);
 
 	if (acpi_check_csum(tb, tb->len)) {
 		vmm_printf("ACPI ERROR: acpi %s checksum does not match\n", name);
