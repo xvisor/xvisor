@@ -55,6 +55,8 @@ static unsigned int __unused __read_mostly ple_window = 4096;
 
 static u32 vmx_basic_msr_low __read_mostly;
 static u32 vmx_basic_msr_high __read_mostly;
+static u32 vmx_misc_msr_low __read_mostly;
+static u32 vmx_misc_msr_high __read_mostly;
 
 /* Dynamic (run-time adjusted) execution control flags. */
 u32 vmx_pin_based_exec_control __read_mostly;
@@ -115,6 +117,12 @@ void vmx_detect_capability(void)
 {
 	cpu_read_msr32(MSR_IA32_VMX_BASIC, &vmx_basic_msr_high,
                        &vmx_basic_msr_low);
+
+	cpu_read_msr32(MSR_IA32_VMX_MISC, &vmx_misc_msr_high,
+		       &vmx_misc_msr_low);
+
+	if (!(vmx_misc_msr_low & (0x1UL << 5)))
+	  vmm_panic("Unrestricted guest is not supported!\n");
 
 	/* save the revision_id */
 	vmcs_revision_id = vmx_basic_msr_low;
