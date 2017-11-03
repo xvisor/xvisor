@@ -4,16 +4,17 @@
 # What library to link
 ldflags()
 {
+	LIBS=""
 	for ext in so a dylib ; do
-		for lib in ncursesw ncurses curses ; do
+		for lib in ncursesw ncurses curses tinfo; do
 			$cc -print-file-name=lib${lib}.${ext} | grep -q /
 			if [ $? -eq 0 ]; then
-				echo "-l${lib}"
-				exit
+				LIBS="${LIBS} -l${lib}"
 			fi
 		done
 	done
-	exit 1
+	[ -z "${LIBS}" ] && exit 1
+	echo "${LIBS}"
 }
 
 # Where is ncurses.h?
