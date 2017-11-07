@@ -1,6 +1,6 @@
 			Xvisor v0.2.10
 	(Last Commit: -------------------------------)
-		(Release Date: 11-Nov-2017)
+		(Release Date: 19-Nov-2017)
 
 In this release, we primarily have new features, drivers, and
 emulators.
@@ -24,7 +24,7 @@ New Commands:
 New Drivers:
  - VirtIO host MMIO transport driver
  - ARM SMMUv2 driver (EXPERIMENTAL)
- - VirtIO host block driver (EXPERIMENTAL)
+ - VirtIO host block driver
  - Generic DT-based cache color driver
  - SMSC95xx usb network driver (EXPERIMENTAL)
 
@@ -32,7 +32,7 @@ New Emulators:
  - GPIO based power emulator
  - GPIO forward slave emulator
  - PL022 SPI host controller emulator
- - VirtIO RPMSG emulator
+ - VirtIO RPMSG emulator (EXPERIMENTAL)
 
 New Boards:
  - Added Renesas R-Car H2 Lager board support
