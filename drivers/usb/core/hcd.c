@@ -93,7 +93,9 @@ void usb_hcd_giveback_urb(struct usb_hcd *hcd, struct urb *urb, int status)
 	/* pass ownership to the completion handler */
 	urb->status = status;
 
-	urb->complete(urb);
+	if (urb->complete) {
+		urb->complete(urb);
+	}
 
 	usb_free_urb(urb);
 }
