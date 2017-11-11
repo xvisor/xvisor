@@ -1074,7 +1074,8 @@ static int wait_for_chhltd(struct dwc2_hc *hc,
 
 static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 			  u8 *pid, int in, void *buffer, int num_packets,
-			  int xfer_len, int *actual_len, int odd_frame)
+			  int xfer_len, int *actual_len, int odd_frame,
+			  int xfer_intr)
 {
 	int ret = 0;
 	u32 sub, haintmsk;
@@ -1098,13 +1099,14 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 
 	/* Clear old interrupt conditions for this host channel. */
 	vmm_writel(0x3fff, &hc->regs->hcint);
-	vmm_writel(0x3fff, &hc->regs->hcintmsk);
-
-	vmm_spin_lock_irqsave(&dwc2->host_regs_lock, flags);
-	haintmsk = vmm_readl(&host_regs->haintmsk);
-	haintmsk |= (1 << hc->index);
-	vmm_writel(haintmsk, &host_regs->haintmsk);
-	vmm_spin_unlock_irqrestore(&dwc2->host_regs_lock, flags);
+	if (xfer_intr) {
+		vmm_writel(0x3fff, &hc->regs->hcintmsk);
+		vmm_spin_lock_irqsave(&dwc2->host_regs_lock, flags);
+		haintmsk = vmm_readl(&host_regs->haintmsk);
+		haintmsk |= (1 << hc->index);
+		vmm_writel(haintmsk, &host_regs->haintmsk);
+		vmm_spin_unlock_irqrestore(&dwc2->host_regs_lock, flags);
+	}
 
 	/* Set host channel enable after all other setup is complete. */
 	vmm_clrsetbits_le32(&hc->regs->hcchar, DWC2_HCCHAR_MULTICNT_MASK |
@@ -1115,8 +1117,10 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 					DWC2_HCCHAR_CHEN);
 
 	/* Wait for channel to halt */
-	timeout = 3000000000; /* 3 seconds */
-	vmm_completion_wait_timeout(&dwc2->worker_irq_wait, &timeout);
+	if (xfer_intr) {
+		timeout = 3000000000; /* 3 seconds */
+		vmm_completion_wait_timeout(&dwc2->worker_irq_wait, &timeout);
+	}
 	ret = wait_for_chhltd(hc, &sub, pid);
 	if (ret < 0) {
 		goto done;
@@ -1125,8 +1129,11 @@ static int transfer_chunk(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	*actual_len = xfer_len;
 
 done:
-	vmm_writel(0x0, &hc->regs->hcint);
-	vmm_writel(0x0, &hc->regs->hcintmsk);
+	if (xfer_intr) {
+		vmm_writel(0x0, &hc->regs->hcint);
+		vmm_writel(0x0, &hc->regs->hcintmsk);
+	}
+
 	vmm_dma_unmap(pa, xfer_len,
 		      in ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 
@@ -1151,9 +1158,14 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	u32 max_xfer_len;
 	int ssplit_frame_num = 0;
 	irq_flags_t flags;
+	int xfer_intr = 0;
 
 	DPRINTF("%s: msg: pipe %x pid %d in %d len %d\n",
 		__func__, u->pipe, *pid, in, len);
+
+	if (usb_pipetype(u->pipe) == USB_PIPE_INTERRUPT) {
+		xfer_intr = 1;
+	}
 
 	max_xfer_len = CONFIG_DWC2_MAX_PACKET_COUNT * max;
 	if (max_xfer_len > CONFIG_DWC2_MAX_TRANSFER_SIZE)
@@ -1214,7 +1226,7 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 
 		ret = transfer_chunk(dwc2, hc, pid, in,
 				     (char *)buffer + done, num_packets,
-				     xfer_len, &actual_len, odd_frame);
+				     xfer_len, &actual_len, odd_frame, xfer_intr);
 
 		hcint = vmm_readl(&hc->regs->hcint);
 		if (complete_split) {
@@ -1263,6 +1275,11 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 
 	u->status = 0;
 	u->actual_length = done;
+
+	if (xfer_intr == 0) {
+		vmm_writel(0xFFFF, &hc->regs->hcint);
+		vmm_writel(0xFFFFFFFF, &hc->regs->hcintmsk);
+	}
 
 	return ret;
 }
