@@ -271,7 +271,7 @@ static int usb_storage_BBB_transport(struct scsi_request *srb,
 	}
 
 	/* Wait here for data to be ready */
-	vmm_msleep(10);
+	vmm_msleep(5);
 
 	/* DATA phase + error handling */
 	data_actlen = 0;
