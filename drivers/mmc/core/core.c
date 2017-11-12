@@ -301,8 +301,6 @@ static int __mmc_detect_card_removed(struct mmc_host *host)
 	/* FIXME: Need to wait for pending IO on mmc card */
 	if (host->card->bdev)
 		vmm_blockdev_unregister(host->card->bdev);
-	if (host->card->bdev->rq)
-		vmm_free(host->card->bdev->rq);
 	if (host->card->bdev)
 		vmm_blockdev_free(host->card->bdev);
 
