@@ -38,11 +38,11 @@ as follow:
  gpu_mem=64
  6) Unmount the boot partition of pre-installed SD card
 
-Once we have u-boot installed on SD card, we add 3 more images to the boot
+Once we have u-boot installed on SD card, we add 3 more images to the data
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
  2) DTB for Xvisor (one_guest_vexpress-a15.dtb)
- 3) U-Boot compatible Xvisro disk containing guest binaries (udisk.img)
+ 3) U-Boot compatible Xvisor disk containing guest binaries (udisk.img)
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi2:
 
@@ -126,7 +126,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
   # cp -f build/arch/arm/board/generic/dts/bcm2836/one_guest_vexpress-a15.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
-  [19. Unmount data partition (or partition 0) of SD card from your development machine]
+  [19. Unmount data partition (or partition 2) of SD card from your development machine]
 
   [20. Unplug SD card from your development machine and plug it back on Raspberry Pi2 board]
 
