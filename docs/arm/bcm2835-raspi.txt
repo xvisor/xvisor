@@ -6,19 +6,43 @@ Raspberry Pi board using SD booting feature of Raspberry Pi (or BCM2835 SOC).
 By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
 show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
 
-As first step of SD booting on BCM2835 SOC, we prepare a SD card (> 4GB) with
-Uboot. To do this,
- 1) Setup SD card with debian weezy image and make sure that you get
-    Raspberry Pi linux console on serial port
-    (For detailed steps, http://elinux.org/RPi_Easy_SD_Card_Setup)
- 2) Now compile and install u-boot on SD card for Raspberry Pi so that you get
-    u-boot prompt whenever you power-on Raspberry Pi
-    (For detailed steps, http://elinux.org/RPi_U-Boot)
+The Raspberry Pi usually comes with and SD card containig the GPU firmware
+necessary to boot the ARM processor.
+To create your own SD Card to boot the Raspberry Pi, do the following:
+ 1) Download and write prebuild raspbian image (not older than 7th Sept 2017)
+ to SD card as described in: https://www.raspberrypi.org/downloads/raspbian/
+ 2) Optionally download the following files from the Raspberry Official
+ Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
+ to the SD card if you are not able detect complete 1GB RAM:
+ - fixup.dat
+ - fixup_cd.dat
+ - start.elf
+ - start_cd.elf
+ (Note: the _cd files are used when gpu_mem=16)
 
-Once we have SD card prepared for SD booting with u-boot, we add 2 images to
-the boot partition of SD card:
- 1) U-Boot compatible Xvisor binary (uvmm.bin).
- 2) Disk image containing guest binaries (disk.img).
+As next step, we install u-boot-2017.09 on the Raspberry Pi SD card
+as follow:
+ 1) Download and build u-boot-2017.09
+ # export ARCH=arm
+ # export CROSS_COMPILE=arm-linux-gnueabi-
+ # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2017.09.tar.bz2
+ # tar -xvf u-boot-2017.09.tar.bz2
+ # cd u-boot-2017.09
+ # make rpi_defconfig
+ # make all
+ 2) Mount the boot partition of pre-installed SD card
+ 3) Copy u-boot.bin to <raspi_sd_card_boot_partition>
+ 4) Create <raspi_sd_card_boot_partition>/config.txt if it does not exist
+ 5) Add following lines to <raspi_sd_card_boot_partition>/config.txt:
+ kernel=u-boot.bin
+ gpu_mem=64
+ 6) Unmount the boot partition of pre-installed SD card
+
+Once we have u-boot installed on SD card, we add 3 more images to the data
+partition of SD card:
+ 1) U-Boot compatible Xvisor binary (uvmm.bin)
+ 2) DTB for Xvisor (one_guest_ebmp.dtb)
+ 3) U-Boot compatible Xvisor disk containing guest binaries (udisk.img)
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
@@ -102,14 +126,14 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [18. Unplug bootable SD card from Raspberry Pi and plug it on your development machine]
 
-  [19. Mount boot partition (or partition 0) of SD card on your development machine]
+  [19. Mount data partition (or partition 2) of SD card on your development machine]
 
-  [20. Copy uvmm.bin, DTB, and disk.im to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
+  [20. Copy uvmm.bin, DTB, and disk.im to data partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_dat_partition_of_sd_card>
 
-  [21. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [21. Unmount data partition (or partition 2) of SD card from your development machine]
 
   [22. Unplug SD card from your development machine and plug it back on Raspberry Pi]
 
@@ -121,13 +145,13 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   U-Boot> mmc dev 0:0
 
   [26. Copy Xvisor from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x00200000 uvmm.bin
+  U-Boot> ext4load mmc 0:2 0x00200000 uvmm.bin
 
   [27. Copy Xvisor DTB from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x00800000 one_guest_ebmp.dtb
+  U-Boot> ext4load mmc 0:2 0x00800000 one_guest_ebmp.dtb
 
   [28. Copy disk image from SD card to SDRAM]
-  U-Boot> fatload mmc 0 0x02000000 udisk.img
+  U-Boot> ext4load mmc 0:2 0x02000000 udisk.img
 
   [29. Jump into Xvisor after disabling MMU, interrupts, etc]
   U-Boot> bootm 0x00200000 0x02000000 0x00800000
