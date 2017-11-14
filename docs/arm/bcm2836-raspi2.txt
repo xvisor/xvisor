@@ -9,7 +9,7 @@ how to run Linux using Basic Firmware on Vexpress-A15 guest.
 The Raspberry Pi2 usually comes with and SD card containig the GPU firmware
 necessary to boot the ARM processor.
 To create your own SD Card to boot the Raspberry Pi2, do the following:
- 1) Download and write prebuild raspbian image (not older then 1st May 2016)
+ 1) Download and write prebuild raspbian image (not older than 7th Sept 2017)
  to SD card as described in: https://www.raspberrypi.org/downloads/raspbian/
  2) Optionally download the following files from the Raspberry Official
  Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
@@ -20,14 +20,14 @@ To create your own SD Card to boot the Raspberry Pi2, do the following:
  - start_cd.elf
  (Note: the _cd files are used when gpu_mem=16)
 
-As next step, we install u-boot-2016.07 on the Raspberry Pi2 SD card
+As next step, we install 2017.09 on the Raspberry Pi2 SD card
 as follow:
- 1) Download and build u-boot-2016.07
+ 1) Download and build u-boot-2017.09
  # export ARCH=arm
  # export CROSS_COMPILE=arm-linux-gnueabi-
- # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2016.07.tar.bz2
- # tar -xvf u-boot-2016.07.tar.bz2
- # cd u-boot-2016.07
+ # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2017.09.tar.bz2
+ # tar -xvf u-boot-2017.09.tar.bz2
+ # cd u-boot-2017.09
  # make rpi_2_defconfig
  # make all
  2) Mount the boot partition of pre-installed SD card
@@ -46,7 +46,7 @@ partition of SD card:
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi2:
 
-  [1. Build environment]
+  [1. Build environment for Xvisor]
   # export CROSS_COMPILE=arm-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
@@ -60,7 +60,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
   [4. Configure Xvisor with Generic-v7-ve default settings]
   # make ARCH=arm generic-v7-ve-defconfig
 
-  [5. Build Xvisor and DTBs]
+  [5. Build Xvisor & DTBs]
   # make; make dtbs
 
   [6. Make U-Boot compatible uvmm.bin for use with bootm command]
