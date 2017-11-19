@@ -9,24 +9,24 @@ to boot Linux using Basic Firmware on Virt-v8 guest.
 The Raspberry Pi3 usually comes with and SD card containig the GPU firmware
 necessary to boot the ARM processor.
 To create your own SD Card to boot the Raspberry Pi3, do the following:
- 1) Download and write prebuild raspbian image (not older then 1st May 2016)
+ 1) Download and write prebuild raspbian image (not older than 7th Sept 2017)
  to SD card as described in: https://www.raspberrypi.org/downloads/raspbian/
- 2) Download appropriate firmware from the Raspberry Official
- Repository (https://github.com/raspberrypi/firmware.git)
- to the SD card:
- # git clone https://github.com/raspberrypi/firmware.git
- # cd firmware/boot
- # git checkout -b tmp 1205048f037098b1532bb947d1f4b823bcdebdf7
- # cp -rf * <raspi3_sd_card_boot_partition>
- # cd ../..
+ 2) Optionally download the following files from the Raspberry Official
+ Repository (https://github.com/raspberrypi/firmware/tree/master/boot)
+ to the SD card if you are not able detect complete 1GB RAM:
+ - fixup.dat
+ - fixup_cd.dat
+ - start.elf
+ - start_cd.elf
+ (Note: the _cd files are used when gpu_mem=16)
 
-As next step, we install u-boot-2016.09-rc1 on the Raspberry Pi3 SD card
+As next step, we install u-boot-2017.09 on the Raspberry Pi3 SD card
 as follow:
- 1) Download and build u-boot-2016.09-rc1
+ 1) Download and build u-boot-2017.09
  # export ARCH=arm64
  # export CROSS_COMPILE=aarch64-linux-gnu-
- # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2016.09-rc1.tar.bz2
- # cd u-boot-2016.09-rc1
+ # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2017.09.tar.bz2
+ # cd u-boot-2017.09
  # make rpi_3_defconfig
  # make all
  # cd ..
@@ -37,6 +37,7 @@ as follow:
  enable_uart=1
  arm_control=0x200
  kernel=u-boot.bin
+ gpu_mem=64
  6) Unmount the boot partition of pre-installed SD card
 
 Once we have u-boot installed on SD card, we add 3 more images to the boot
@@ -127,7 +128,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   # cp -f build/arch/arm/board/generic/dts/bcm2837/one_guest_virt-v8.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
-  [19. Unmount data partition (or partition 0) of SD card from your development machine]
+  [19. Unmount data partition (or partition 2) of SD card from your development machine]
 
   [20. Unplug SD card from your development machine and plug it back on Raspberry Pi3 board]
 
