@@ -4,13 +4,8 @@
 #
 
 AARCH64_CROSS_COMPILE_LIST="aarch64-linux-gnu-"
-AARCH64_CROSS_COMPILE_LIST+=" aarch64-elf-"
-AARCH64_CROSS_COMPILE_LIST+=" aarch64-none-elf-"
 
-ARM32_CROSS_COMPILE_LIST="arm-none-eabi-"
-ARM32_CROSS_COMPILE_LIST+=" arm-none-linux-gnueabi-"
-ARM32_CROSS_COMPILE_LIST+=" arm-unknown-linux-gnueabi-"
-ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST=" arm-linux-gnueabi-"
 ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
 
 X86_64_CROSS_COMPILE_LIST="x86_64-linux-x86_64-linux-"
@@ -89,7 +84,7 @@ get_cross_compiler() {
 set -e
 
 # Build for all architecture
-for ARCH in x86 arm
+for ARCH in arm x86
 do
 	# Build for all supported targets
 	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
@@ -99,9 +94,9 @@ do
 
 		CROSS_COMPILE=`get_cross_compiler $ARCH $DEFCONFIG`
 
-		rm -rf build
-		make ARCH=$ARCH $DEFCONFIG
-		make CROSS_COMPILE=$CROSS_COMPILE -j
+		make clean distclean
+		make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $DEFCONFIG
+		make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE -j
 
 		# cancel trap
 		trap - EXIT
