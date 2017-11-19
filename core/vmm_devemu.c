@@ -1243,7 +1243,7 @@ static struct vmm_emudev *devemu_probe_edev(struct vmm_guest *guest,
 	irq_flags_t f;
 	struct vmm_emulator *emu;
 	struct vmm_devtree_node *child;
-	struct vmm_emudev *edev, *edevc;
+	struct vmm_emudev *edev = NULL, *edevc;
 	const struct vmm_devtree_nodeid *match;
 
 	vmm_mutex_lock(&dectrl.emu_lock);
