@@ -588,6 +588,7 @@ static int imx_emulator_probe(struct vmm_guest *guest,
 					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
 					  &s->txirq, 1);
 	if (rc) {
+		rc = VMM_OK;
 		s->txirq = s->rdirq;
 	}
 
