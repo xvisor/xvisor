@@ -21,8 +21,9 @@
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of x86_64 object files.
 # */
-cpu-cflags +=-finline-functions -O0 -mcmodel=large
-cpu-cppflags +=-DCPU_TEXT_LMA=${CONFIG_VAPOOL_ALIGN_MB}
+cpu-cflags +=-finline-functions -O0 -mcmodel=large -no-pie
+cpu-cppflags +=-DCPU_TEXT_LMA=${CONFIG_VAPOOL_ALIGN_MB} -no-pie
+cpu-ldflags += -no-pie
 
 cpu-objs-y+= start.o
 
