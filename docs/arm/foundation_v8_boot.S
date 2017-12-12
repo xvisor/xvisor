@@ -515,7 +515,7 @@ input_bin:
 #ifdef INITRD
 	/* INITRD binary */
 	.globl	initrd
-	.balign 0x800000
+	.balign 0x1000000
 initrd:
 	.incbin	stringify(INITRD)
 	.dword 0x0
