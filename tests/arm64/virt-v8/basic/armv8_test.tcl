@@ -29,7 +29,7 @@ set fvp_img [lrange $argv 0 0]
 set xvisor_prompt "XVisor#"
 set arm_prompt "basic#"
 set  terminal_prompt "terminal_0"
-spawn $env(FOUNDATION_V8)/Foundation_Platform --image  $fvp_img --network=nat
+spawn $env(FOUNDATION_V8)/Foundation_Platform  --no-gicv3 --no-sve --image  $fvp_img --network=nat
 expect $terminal_prompt
 expect "\n"
 set port $expect_out(buffer)
