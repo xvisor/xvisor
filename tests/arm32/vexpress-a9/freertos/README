@@ -138,7 +138,7 @@ have been successfully tested.
      | $dtc -I dts -O dtb -o $img_dir/vexpress-a9x2.dtb $srcdir/vexpress-a9x2.dts
      | cp -f ./build/$srcdir/freertos/freertos.patched.bin $bindir/freertos.bin
      | cp -f $srcdir/freertos/nor_flash.list $bindir/nor_flash.list
-     | genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+     | genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
      `----
 
   2. Launch QEMU:

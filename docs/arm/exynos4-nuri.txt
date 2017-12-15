@@ -69,7 +69,7 @@ guest with Xvisor running on QEMU NURI Host:
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dtb ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
-  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
   OR
   [15. Create disk image for Xvisor with only Guest Basic Firmware]
   # mkdir -p ./build/disk/tmp
@@ -80,7 +80,7 @@ guest with Xvisor running on QEMU NURI Host:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
-  # genext2fs -B 1024 -b 16384 -d ./build/disk ./build/disk.img
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [16. Launch QEMU]
   # qemu-system-arm -M nuri -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/exynos4/nuri/one_guest_vexpress-a9.dtb -initrd build/disk.img
