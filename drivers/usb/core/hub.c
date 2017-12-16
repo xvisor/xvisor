@@ -998,7 +998,7 @@ static int usb_hub_detect_new_device(struct usb_device *parent,
 	dev->epmaxpacketin[0] = dev->descriptor.bMaxPacketSize0;
 	dev->epmaxpacketout[0] = dev->descriptor.bMaxPacketSize0;
 
-	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, tmpbuf, 64);
+	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, tmpbuf, 8);
 	if (err) {
 		vmm_printf("%s: usb_get_descriptor() failed\n", __func__);
 		dev->devnum = addr;
