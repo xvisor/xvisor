@@ -650,13 +650,17 @@ static void dwc2_core_init(struct dwc2_control *dwc2)
  */
 static void dwc2_hc_init(struct dwc2_hc_regs *hc_regs,
 			 u8 dev_addr, u8 ep_num, u8 ep_is_in,
-			 u8 ep_type, u16 max_packet)
+			 u8 ep_type, u16 max_packet, int speed)
 {
-	const u32 hcchar = (dev_addr << DWC2_HCCHAR_DEVADDR_OFFSET) |
-				(ep_num << DWC2_HCCHAR_EPNUM_OFFSET) |
-				(ep_is_in << DWC2_HCCHAR_EPDIR_OFFSET) |
-				(ep_type << DWC2_HCCHAR_EPTYPE_OFFSET) |
-				(max_packet << DWC2_HCCHAR_MPS_OFFSET);
+	u32 hcchar = (dev_addr << DWC2_HCCHAR_DEVADDR_OFFSET) |
+		(ep_num << DWC2_HCCHAR_EPNUM_OFFSET) |
+		(ep_is_in << DWC2_HCCHAR_EPDIR_OFFSET) |
+		(ep_type << DWC2_HCCHAR_EPTYPE_OFFSET) |
+		(max_packet << DWC2_HCCHAR_MPS_OFFSET);
+
+	if (speed == USB_SPEED_LOW) {
+		hcchar |= DWC2_HCCHAR_LSPDDEV;
+	}
 
 	/*
 	 * Program the HCCHARn register with the endpoint characteristics
@@ -1178,7 +1182,7 @@ static int chunk_msg(struct dwc2_control *dwc2, struct dwc2_hc *hc,
 	max_xfer_len = num_packets * max;
 
 	/* Initialize channel */
-	dwc2_hc_init(hc->regs, devnum, ep, in, eptype, max);
+	dwc2_hc_init(hc->regs, devnum, ep, in, eptype, max, u->dev->speed);
 
 	/* Check if the target is a FS/LS device behind a HS hub */
 	if (u->dev->speed != USB_SPEED_HIGH) {
