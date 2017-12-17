@@ -198,32 +198,64 @@ static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq)
 	}
 }
 
-static void virtio_net_handle_comp(struct virtio_net_dev *ndev, u32 qnum)
+static void virtio_net_handle_ctrl(struct virtio_net_dev *ndev, u32 qnum)
 {
 	struct virtio_net_queue *q = &ndev->vqs[qnum];
 	struct vmm_virtio_queue *vq = &q->vq;
 	struct vmm_virtio_iovec *iov = q->iov;
 	struct vmm_virtio_device *dev = ndev->vdev;
-	struct vmm_virtio_net_ctrl_hdr ctrl;
-	vmm_virtio_net_ctrl_ack_t status = VMM_VIRTIO_NET_ERR;
+	struct vmm_virtio_net_ctrl_hdr ctrl_hdr;
+	struct vmm_virtio_net_ctrl_mq ctrl_mq;
+	vmm_virtio_net_ctrl_ack_t status;
 	u16 head = 0;
 	u32 iov_cnt = 0, total_len = 0;
 
-	if (vmm_virtio_queue_available(vq)) {
+	while (vmm_virtio_queue_available(vq)) {
 		head = vmm_virtio_queue_get_iovec(vq, iov,
 						  &iov_cnt, &total_len);
 
-		if (total_len < sizeof(status) || total_len < sizeof(ctrl)) {
-			vmm_printf("%s: virtio-net ctrl missing"
-					" headers", __func__);
+		status = VMM_VIRTIO_NET_ERR;
+
+		if ((iov_cnt < 2) ||
+		    (iov[0].len < sizeof(ctrl_hdr)) ||
+		    (iov[iov_cnt - 1].len < sizeof(status))) {
+			vmm_printf("%s: invalid ctrl IOV\n", __func__);
+			goto skip;
 		}
 
 		vmm_virtio_iovec_to_buf_read(dev, &iov[0], 1,
-					     &ctrl, sizeof(ctrl));
+					     &ctrl_hdr, sizeof(ctrl_hdr));
 
-		vmm_printf("%s: IOV Class %d is not handled\n", __func__,
-				ctrl.class);
+		switch (ctrl_hdr.class) {
+		case VMM_VIRTIO_NET_CTRL_MQ:
+			if ((iov_cnt < 3) ||
+			    (iov[1].len < sizeof(ctrl_mq))) {
+				vmm_printf("%s: invalid ctrl mq IOV\n",
+					   __func__);
+				goto skip;
+			}
+			vmm_virtio_iovec_to_buf_read(dev, &iov[1], 1,
+						     &ctrl_mq, sizeof(ctrl_mq));
+
+			if (ctrl_mq.virtqueue_pairs < ndev->max_queues) {
+				status = VMM_VIRTIO_NET_OK;
+			}
+			break;
+		default:
+			vmm_printf("%s: IOV Class %d is not handled\n",
+				   __func__, ctrl_hdr.class);
+			break;
+		};
+
+skip:
+		vmm_virtio_buf_to_iovec_write(dev, &iov[iov_cnt - 1], 1,
+					      &status, 1);
+
 		vmm_virtio_queue_set_used_elem(vq, head, total_len);
+	}
+
+	if (vmm_virtio_queue_should_signal(vq)) {
+		dev->tra->notify(dev, q->num);
 	}
 }
 
@@ -239,7 +271,7 @@ static int virtio_net_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 	case VIRTIO_NET_RX_QUEUE:
 		break;
 	case VIRTIO_NET_CTRL_QUEUE:
-		virtio_net_handle_comp(ndev, vq);
+		virtio_net_handle_ctrl(ndev, vq);
 		break;
 	default:
 		rc = VMM_EINVALID;
@@ -286,13 +318,15 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 				       struct vmm_mbuf *mb)
 {
 	u16 head = 0;
-	u32 iov_cnt = 0, total_len = 0, pkt_len = 0;
+	u64 iov0_addr;
+	u32 iov_cnt = 0, iov0_len, total_len = 0, pkt_len = 0;
 	struct virtio_net_dev *ndev = p->priv;
 	/* FIXME: Select correct RX queue here  */
 	struct virtio_net_queue *q = &ndev->vqs[0];
 	struct vmm_virtio_queue *vq = &q->vq;
 	struct vmm_virtio_iovec *iov = q->iov;
 	struct vmm_virtio_device *dev = ndev->vdev;
+	struct vmm_virtio_net_hdr hdr;
 
 	pkt_len = min(VIRTIO_NET_MTU, mb->m_pktlen);
 
@@ -301,16 +335,31 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 						  &iov_cnt, &total_len);
 	}
 
-	if (iov_cnt > 1) {
-		vmm_virtio_iovec_fill_zeros(dev, &iov[0], 1);
-		vmm_virtio_buf_to_iovec_write(dev, &iov[1], 1,
-						M_BUFADDR(mb), pkt_len);
+	memset(&hdr, 0, sizeof(hdr));
+	if (iov_cnt == 1) {
+		vmm_virtio_buf_to_iovec_write(dev, &iov[0], 1,
+					      &hdr, sizeof(hdr));
+		iov0_addr = iov[0].addr;
+		iov0_len = iov[0].len;
+		iov[0].addr += sizeof(hdr);
+		iov[0].len -= sizeof(hdr);
+		vmm_virtio_buf_to_iovec_write(dev, &iov[0], 1,
+					      M_BUFADDR(mb), pkt_len);
+		vmm_virtio_queue_set_used_elem(vq, head,
+					       sizeof(hdr) + pkt_len);
+		iov[0].addr = iov0_addr;
+		iov[0].len = iov0_len;
+	} else if (iov_cnt > 1) {
+		vmm_virtio_buf_to_iovec_write(dev, &iov[0], 1,
+					      &hdr, sizeof(hdr));
+		vmm_virtio_buf_to_iovec_write(dev, &iov[1], iov_cnt - 1,
+					      M_BUFADDR(mb), pkt_len);
 		vmm_virtio_queue_set_used_elem(vq, head, iov[0].len + pkt_len);
+	}
 
-		if (vmm_virtio_queue_should_signal(vq)) {
-			/* FIXME: Select correct RX queue here  */
-			dev->tra->notify(dev, 0);
-		}
+	if (vmm_virtio_queue_should_signal(vq)) {
+		/* FIXME: Select correct RX queue here  */
+		dev->tra->notify(dev, 0);
 	}
 
 	m_freem(mb);
