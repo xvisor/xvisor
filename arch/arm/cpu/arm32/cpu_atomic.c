@@ -217,7 +217,7 @@ long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 
 	arch_smp_mb();
 
-	return oldval;
+	return previous;
 }
 
 #endif
