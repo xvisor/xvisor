@@ -189,6 +189,13 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
+	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "dma-coherent", "virtio_net");
+		return;
+	}
+
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_block");
 	if (poff < 0) {
 		arm_printf("%s: failed to add %s subnode in %s node\n",
@@ -223,6 +230,13 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_block");
+		return;
+	}
+
+	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "dma-coherent", "virtio_block");
 		return;
 	}
 
@@ -263,6 +277,13 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
+	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "dma-coherent", "virtio_console");
+		return;
+	}
+
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_rpmsg");
 	if (poff < 0) {
 		arm_printf("%s: failed to add %s subnode in %s node\n",
@@ -297,6 +318,13 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_rpmsg");
+		return;
+	}
+
+	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
+	if (rc < 0) {
+		arm_printf("%s: failed to setprop %s in %s node\n",
+			   __func__, "dma-coherent", "virtio_rpmsg");
 		return;
 	}
 }

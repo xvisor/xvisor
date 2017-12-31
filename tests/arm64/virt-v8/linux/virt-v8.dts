@@ -120,24 +120,28 @@
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A000000 0x0 0x1000>;
 			interrupts = <0 16 4>;
+			dma-coherent;
 		};
 
 		virtio_block@0A001000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A001000 0x0 0x1000>;
 			interrupts = <0 17 4>;
+			dma-coherent;
 		};
 
 		virtio_console@0A002000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A002000 0x0 0x1000>;
 			interrupts = <0 18 4>;
+			dma-coherent;
 		};
 
 		virtio_rpmsg@0A003000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A003000 0x0 0x1000>;
 			interrupts = <0 19 4>;
+			dma-coherent;
 		};
 
 		simplefb@30000000 {

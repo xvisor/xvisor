@@ -83,7 +83,7 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	arm_strcpy(cmdline, "root=/dev/ram rw "
 			    "earlycon=pl011,0x09000000 "
-			    "console=ttyAMA0 swiotlb=4096");
+			    "console=ttyAMA0");
 }
 
 void arm_board_fdt_fixup(void *fdt_addr)
