@@ -33,6 +33,14 @@
 #include <libs/radix-tree.h>
 #include <libs/stringlib.h>
 
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
+
 #define MODULE_DESC			"VirtIO Rpmsg Emulator"
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
@@ -160,8 +168,8 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 			}
 
 			len = vmm_virtio_iovec_to_buf_read(dev, &tiov,
-						1, &hdr, sizeof(hdr) - 1);
-			if (len != (sizeof(hdr) - 1)) {
+							1, &hdr, sizeof(hdr));
+			if (len != sizeof(hdr)) {
 				continue;
 			}
 
@@ -290,7 +298,7 @@ static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
 	hdr.flags = 0;
 
 	pos = vmm_virtio_buf_to_iovec_write(dev, &iov[0], 1,
-					    &hdr, sizeof(hdr) - 1);
+					    &hdr, sizeof(hdr));
 	iov[0].addr += pos;
 	iov[0].len -= pos;
 
@@ -316,6 +324,7 @@ static void virtio_rpmsg_peer_up(struct vmm_vmsg_node *node,
 		return;
 	}
 
+	memset(&nsmsg, 0, sizeof(nsmsg));
 	if (rdev->node_ns_name_avail) {
 		strncpy(nsmsg.name, rdev->node_ns_name, sizeof(nsmsg.name));
 	} else {
@@ -323,6 +332,9 @@ static void virtio_rpmsg_peer_up(struct vmm_vmsg_node *node,
 	}
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_CREATE;
+
+	DPRINTF("%s: node=%s peer=%s nsmsg.name=%s nsmsg.addr=0x%x\n",
+		__func__, node->name, peer_name, nsmsg.name, nsmsg.addr);
 
 	rc = virtio_rpmsg_rx_msg(rdev,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
@@ -348,6 +360,7 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 		return;
 	}
 
+	memset(&nsmsg, 0, sizeof(nsmsg));
 	if (rdev->node_ns_name_avail) {
 		strncpy(nsmsg.name, rdev->node_ns_name, sizeof(nsmsg.name));
 	} else {
@@ -355,6 +368,9 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 	}
 	nsmsg.addr = peer_addr;
 	nsmsg.flags = VMM_VIRTIO_RPMSG_NS_DESTROY;
+
+	DPRINTF("%s: node=%s peer=%s nsmsg.name=%s nsmsg.addr=0x%x\n",
+		__func__, node->name, peer_name, nsmsg.name, nsmsg.addr);
 
 	rc = virtio_rpmsg_rx_msg(rdev,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
