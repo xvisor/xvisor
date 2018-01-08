@@ -135,6 +135,7 @@ static void generic_timer_stop(void)
 	unsigned long ctrl;
 
 	ctrl = generic_timer_reg_read(GENERIC_TIMER_REG_HYP_CTRL);
+	ctrl |= GENERIC_TIMER_CTRL_IT_MASK;
 	ctrl &= ~GENERIC_TIMER_CTRL_ENABLE;
 	generic_timer_reg_write(GENERIC_TIMER_REG_HYP_CTRL, ctrl);
 }
