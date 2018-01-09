@@ -366,10 +366,9 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 
 	/*
 	 * Deal with the banked PPI and SGI interrupts - disable all
-	 * PPI interrupts, ensure all SGI interrupts are enabled.
+	 * PPI and SGI interrupts.
 	 */
-	gic_write(0xffff0000, gic->dist_base + GICD_ENABLE_CLEAR);
-	gic_write(0x0000ffff, gic->dist_base + GICD_ENABLE_SET);
+	gic_write(0xfffffff, gic->dist_base + GICD_ENABLE_CLEAR);
 
 	/*
 	 * Set priority on PPI and SGI interrupts
