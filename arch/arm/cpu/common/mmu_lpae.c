@@ -254,6 +254,7 @@ struct cpu_ttbl *mmu_lpae_ttbl_alloc(int stage)
 	ttbl->tte_cnt = 0;
 	ttbl->child_cnt = 0;
 	INIT_LIST_HEAD(&ttbl->child_list);
+	memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
 
 	return ttbl;
 }
@@ -288,7 +289,6 @@ int mmu_lpae_ttbl_free(struct cpu_ttbl *ttbl)
 
 	vmm_spin_lock_irqsave_lite(&ttbl->tbl_lock, flags);
 	ttbl->tte_cnt = 0;
-	memset((void *)ttbl->tbl_va, 0, TTBL_TABLE_SIZE);
 	vmm_spin_unlock_irqrestore_lite(&ttbl->tbl_lock, flags);
 
 	ttbl->level = TTBL_FIRST_LEVEL;
@@ -931,22 +931,19 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 					virtual_size_t *arch_resv_sz)
 {
 	int i, t, rc = VMM_EFAIL;
-	virtual_addr_t va, resv_va = *core_resv_va;
-	virtual_size_t sz, resv_sz = *core_resv_sz;
-	physical_addr_t pa, resv_pa = *core_resv_pa;
+	virtual_addr_t va, resv_va;
+	virtual_size_t sz, resv_sz;
+	physical_addr_t pa, resv_pa;
 	struct cpu_page hyppg;
 	struct cpu_ttbl *ttbl, *parent;
 
-	/* Check & setup core reserved space and update the
-	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
-	 * to inform host aspace about correct placement of the
-	 * core reserved space.
-	 */
+	/* Initial values of resv_va, resv_pa, and resv_sz */
 	pa = arch_code_paddr_start();
 	va = arch_code_vaddr_start();
 	sz = arch_code_size();
 	resv_va = va + sz;
 	resv_pa = pa + sz;
+	resv_sz = 0;
 	if (resv_va & (TTBL_L3_BLOCK_SIZE - 1)) {
 		resv_va += TTBL_L3_BLOCK_SIZE -
 			    (resv_va & (TTBL_L3_BLOCK_SIZE - 1));
@@ -955,13 +952,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		resv_pa += TTBL_L3_BLOCK_SIZE -
 			    (resv_pa & (TTBL_L3_BLOCK_SIZE - 1));
 	}
-	if (resv_sz & (TTBL_L3_BLOCK_SIZE - 1)) {
-		resv_sz += TTBL_L3_BLOCK_SIZE -
-			    (resv_sz & (TTBL_L3_BLOCK_SIZE - 1));
-	}
-	*core_resv_pa = resv_pa;
-	*core_resv_va = resv_va;
-	*core_resv_sz = resv_sz;
 
 	/* Initialize MMU control and allocate arch reserved space and
 	 * update the *arch_resv_pa, *arch_resv_va, and *arch_resv_sz
@@ -974,6 +964,10 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	mmuctrl.ttbl_base_va = resv_va + resv_sz;
 	mmuctrl.ttbl_base_pa = resv_pa + resv_sz;
 	resv_sz += TTBL_TABLE_SIZE * TTBL_MAX_TABLE_COUNT;
+	if (resv_sz & (TTBL_L3_BLOCK_SIZE - 1)) {
+		resv_sz += TTBL_L3_BLOCK_SIZE -
+			    (resv_sz & (TTBL_L3_BLOCK_SIZE - 1));
+	}
 	*arch_resv_sz = resv_sz - *arch_resv_sz;
 	mmuctrl.ittbl_base_va = (virtual_addr_t)&def_ttbl;
 	mmuctrl.ittbl_base_pa = mmuctrl.ittbl_base_va -
@@ -1071,6 +1065,20 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		/* Update MMU control */
 		mmuctrl.ttbl_alloc_count++;
 	}
+
+
+	/* Check & setup core reserved space and update the
+	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
+	 * to inform host aspace about correct placement of the
+	 * core reserved space.
+	 */
+	*core_resv_pa = resv_pa + resv_sz;
+	*core_resv_va = resv_va + resv_sz;
+	if (*core_resv_sz & (TTBL_L3_BLOCK_SIZE - 1)) {
+		*core_resv_sz += TTBL_L3_BLOCK_SIZE -
+			    (resv_sz & (TTBL_L3_BLOCK_SIZE - 1));
+	}
+	resv_sz += *core_resv_sz;
 
 	/* TODO: Unmap identity mappings from hypervisor ttbl
 	 *
