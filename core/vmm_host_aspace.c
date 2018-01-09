@@ -770,21 +770,50 @@ int __cpuinit vmm_host_aspace_init(void)
 		return rc;
 	}
 
-	/* Reserve all pages covering code space, core reserved space,
-	 * and arch reserved space in VAPOOL & RAM.
-	 */
+	/* Reserve RAM and MEMAP HASH for code area */
+	if ((rc = vmm_host_ram_reserve(arch_code_paddr_start(),
+				       arch_code_size()))) {
+		return rc;
+	}
+	if ((rc = host_mhash_add(arch_code_paddr_start(),
+				 arch_code_vaddr_start(),
+				 arch_code_size(),
+				 VMM_MEMORY_FLAGS_NORMAL))) {
+		return rc;
+	}
+
+	/* Reserve RAM and MEMAP HASH for core reserved area */
+	if ((rc = vmm_host_ram_reserve(core_resv_pa,
+				       core_resv_sz))) {
+		return rc;
+	}
+	if ((rc = host_mhash_add(core_resv_pa,
+				 core_resv_va,
+				 core_resv_sz,
+				 VMM_MEMORY_FLAGS_NORMAL))) {
+		return rc;
+	}
+
+	/* Reserve RAM and MEMAP HASH for arch reserved area */
+	if ((rc = vmm_host_ram_reserve(arch_resv_pa,
+				       arch_resv_sz))) {
+		return rc;
+	}
+	if ((rc = host_mhash_add(arch_resv_pa,
+				 arch_resv_va,
+				 arch_resv_sz,
+				 VMM_MEMORY_FLAGS_NORMAL))) {
+		return rc;
+	}
+
+	/* Reserve VAPOOL for code, core reserved, and arch reserved areas */
 	if (arch_code_vaddr_start() < core_resv_va) {
+		core_resv_sz += (core_resv_va - arch_code_vaddr_start());
 		core_resv_va = arch_code_vaddr_start();
 	}
 	if ((arch_resv_sz > 0) && (arch_resv_va < core_resv_va)) {
+		core_resv_sz += (core_resv_va - arch_resv_va);
 		core_resv_va = arch_resv_va;
-	}
-	if (arch_code_paddr_start() < core_resv_pa) {
-		core_resv_pa = arch_code_paddr_start();
-	}
-	if ((arch_resv_sz > 0) &&
-	    (arch_resv_pa < core_resv_pa)) {
-		core_resv_pa = arch_resv_pa;
 	}
 	if ((core_resv_va + core_resv_sz) <
 			(arch_code_vaddr_start() + arch_code_size())) {
@@ -797,16 +826,6 @@ int __cpuinit vmm_host_aspace_init(void)
 	}
 	if ((rc = vmm_host_vapool_reserve(core_resv_va,
 					  core_resv_sz))) {
-		return rc;
-	}
-	if ((rc = vmm_host_ram_reserve(core_resv_pa,
-				       core_resv_sz))) {
-		return rc;
-	}
-	if ((rc = host_mhash_add(core_resv_pa,
-				 core_resv_va,
-				 core_resv_sz,
-				 VMM_MEMORY_FLAGS_NORMAL))) {
 		return rc;
 	}
 
