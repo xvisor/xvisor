@@ -793,7 +793,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	 * This is terribly important because it messes runtime
 	 * with values greater than 32 bits (e.g. 64-bits integers).
 	 */
-	arm_regs(vcpu)->sp_excp = vcpu->stack_va + vcpu->stack_sz - 8;
+	arm_regs(vcpu)->sp_excp = vcpu->stack_va +
+			     (vcpu->stack_sz - ARCH_CACHE_LINE_SIZE);
 	arm_regs(vcpu)->sp_excp = arm_regs(vcpu)->sp_excp & ~0x7;
 
 	if (vcpu->is_normal) {
