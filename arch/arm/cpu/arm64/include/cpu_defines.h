@@ -818,6 +818,45 @@
 #define ID_AA64PFR0_EL0_MASK				0x0000000f
 #define ID_AA64PFR0_EL0_SHIFT				0
 
+/* Field offsets for struct arch_regs */
+#define ARM_ARCH_REGS_GPR0				0x0
+#define ARM_ARCH_REGS_GPR1				0x8
+#define ARM_ARCH_REGS_GPR2				0x10
+#define ARM_ARCH_REGS_GPR3				0x18
+#define ARM_ARCH_REGS_GPR4				0x20
+#define ARM_ARCH_REGS_GPR5				0x28
+#define ARM_ARCH_REGS_GPR6				0x30
+#define ARM_ARCH_REGS_GPR7				0x38
+#define ARM_ARCH_REGS_GPR8				0x40
+#define ARM_ARCH_REGS_GPR9				0x48
+#define ARM_ARCH_REGS_GPR10				0x50
+#define ARM_ARCH_REGS_GPR11				0x58
+#define ARM_ARCH_REGS_GPR12				0x60
+#define ARM_ARCH_REGS_GPR13				0x68
+#define ARM_ARCH_REGS_GPR14				0x70
+#define ARM_ARCH_REGS_GPR15				0x78
+#define ARM_ARCH_REGS_GPR16				0x80
+#define ARM_ARCH_REGS_GPR17				0x88
+#define ARM_ARCH_REGS_GPR18				0x90
+#define ARM_ARCH_REGS_GPR19				0x98
+#define ARM_ARCH_REGS_GPR20				0xa0
+#define ARM_ARCH_REGS_GPR21				0xa8
+#define ARM_ARCH_REGS_GPR22				0xb0
+#define ARM_ARCH_REGS_GPR23				0xb8
+#define ARM_ARCH_REGS_GPR24				0xc0
+#define ARM_ARCH_REGS_GPR25				0xc8
+#define ARM_ARCH_REGS_GPR26				0xd0
+#define ARM_ARCH_REGS_GPR27				0xd8
+#define ARM_ARCH_REGS_GPR28				0xe0
+#define ARM_ARCH_REGS_GPR29				0xe8
+#define ARM_ARCH_REGS_GPR30				0xf0
+#define ARM_ARCH_REGS_GPR31				0xf8
+#define ARM_ARCH_REGS_LR				0xf0
+#define ARM_ARCH_REGS_SP				0xf8
+#define ARM_ARCH_REGS_PC				0x100
+#define ARM_ARCH_REGS_PSTATE				0x108
+#define ARM_ARCH_REGS_SIZE				0x110
+
 /* Field offsets for struct arm_priv_sysregs */
 #define ARM_PRIV_SYSREGS_sp_el0				0x0
 #define ARM_PRIV_SYSREGS_sp_el1				0x8

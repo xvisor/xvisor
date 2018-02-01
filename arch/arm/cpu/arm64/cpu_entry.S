@@ -471,17 +471,6 @@ _cpu_init:
 
 	bl	cpu_init
 
-/* Stack pushing/popping (register pairs only). 
-   Equivalent to store decrement before, load increment after */
-
-.macro  push, xreg1, xreg2
-	stp     \xreg1, \xreg2, [sp, #-16]!
-.endm
-
-.macro  pop, xreg1, xreg2
-	ldp     \xreg1, \xreg2, [sp], #16
-.endm
-
 
 .macro EXCEPTION_HANDLER irqname
 	.align 6
@@ -491,27 +480,27 @@ _cpu_init:
 
 /* Push registers on stack */
 .macro	PUSH_REGS
-	sub	sp, sp, #0x20		/* room for LR, SP, SPSR, ELR */
-	push	x28, x29
-	push	x26, x27
-	push	x24, x25
-	push	x22, x23
-	push	x20, x21
-	push	x18, x19
-	push	x16, x17
-	push	x14, x15
-	push	x12, x13
-	push	x10, x11
-	push	x8, x9
-	push	x6, x7
-	push	x4, x5
-	push	x2, x3
-	push	x0, x1
-	add	x21, sp, #0x110
-	mrs	x22, elr_el2
+	sub	sp, sp, #ARM_ARCH_REGS_SIZE
+	stp	x28, x29, [sp, #ARM_ARCH_REGS_GPR28]	/* save GPR0-GPR29 */
+	stp	x26, x27, [sp, #ARM_ARCH_REGS_GPR26]
+	stp	x24, x25, [sp, #ARM_ARCH_REGS_GPR24]
+	stp	x22, x23, [sp, #ARM_ARCH_REGS_GPR22]
+	stp	x20, x21, [sp, #ARM_ARCH_REGS_GPR20]
+	stp	x18, x19, [sp, #ARM_ARCH_REGS_GPR18]
+	stp	x16, x17, [sp, #ARM_ARCH_REGS_GPR16]
+	stp	x14, x15, [sp, #ARM_ARCH_REGS_GPR14]
+	stp	x12, x13, [sp, #ARM_ARCH_REGS_GPR12]
+	stp	x10, x11, [sp, #ARM_ARCH_REGS_GPR10]
+	stp	x8, x9, [sp, #ARM_ARCH_REGS_GPR8]
+	stp	x6, x7, [sp, #ARM_ARCH_REGS_GPR6]
+	stp	x4, x5, [sp, #ARM_ARCH_REGS_GPR4]
+	stp	x2, x3, [sp, #ARM_ARCH_REGS_GPR2]
+	stp	x0, x1, [sp, #ARM_ARCH_REGS_GPR0]
+	add	x29, sp, #ARM_ARCH_REGS_SIZE		/* save LR, SP */
+	stp	x30, x29, [sp, #ARM_ARCH_REGS_LR]
+	mrs	x22, elr_el2				/* save ELR, SPSR */
 	mrs	x23, spsr_el2
-	stp	x30, x21, [sp, #0xF0]
-	stp	x22, x23, [sp, #0x100]
+	stp	x22, x23, [sp, #ARM_ARCH_REGS_PC]
 	/*
 	 * Registers that may be useful after this macro is invoked:
 	 *
@@ -529,28 +518,27 @@ _cpu_init:
 
 /* Pull registers from stack */
 .macro	PULL_REGS
-	ldp	x22, x23, [sp, #0x100]		/* load ELR, SPSR */
-	ldp	x30, x28, [sp, #0xF0]		/* load LR, SP */
+	ldp	x22, x23, [sp, #ARM_ARCH_REGS_PC]	/* load ELR, SPSR */
 	msr	elr_el2, x22
 	msr	spsr_el2, x23
+	ldp	x30, x28, [sp, #ARM_ARCH_REGS_LR]	/* load LR, SP */
 	mov	x29, sp
 	mov	sp, x28
-	ldp	x0, x1, [x29], #16
-	ldp	x2, x3, [x29], #16
-	ldp	x4, x5, [x29], #16
-	ldp	x6, x7, [x29], #16
-	ldp	x8, x9, [x29], #16
-	ldp	x10, x11, [x29], #16
-	ldp	x12, x13, [x29], #16
-	ldp	x14, x15, [x29], #16
-	ldp	x16, x17, [x29], #16
-	ldp	x18, x19, [x29], #16
-	ldp	x20, x21, [x29], #16
-	ldp	x22, x23, [x29], #16
-	ldp	x24, x25, [x29], #16
-	ldp	x26, x27, [x29], #16
-	ldr	x28, [x29], #8
-	ldr	x29, [x29]
+	ldp	x0, x1, [x29, #ARM_ARCH_REGS_GPR0]	/* load GPR0-GPR29 */
+	ldp	x2, x3, [x29, #ARM_ARCH_REGS_GPR2]
+	ldp	x4, x5, [x29, #ARM_ARCH_REGS_GPR4]
+	ldp	x6, x7, [x29, #ARM_ARCH_REGS_GPR6]
+	ldp	x8, x9, [x29, #ARM_ARCH_REGS_GPR8]
+	ldp	x10, x11, [x29, #ARM_ARCH_REGS_GPR10]
+	ldp	x12, x13, [x29, #ARM_ARCH_REGS_GPR12]
+	ldp	x14, x15, [x29, #ARM_ARCH_REGS_GPR14]
+	ldp	x16, x17, [x29, #ARM_ARCH_REGS_GPR16]
+	ldp	x18, x19, [x29, #ARM_ARCH_REGS_GPR18]
+	ldp	x20, x21, [x29, #ARM_ARCH_REGS_GPR20]
+	ldp	x22, x23, [x29, #ARM_ARCH_REGS_GPR22]
+	ldp	x24, x25, [x29, #ARM_ARCH_REGS_GPR24]
+	ldp	x26, x27, [x29, #ARM_ARCH_REGS_GPR26]
+	ldp	x28, x29, [x29, #ARM_ARCH_REGS_GPR28]
 	eret
 .endm
 
