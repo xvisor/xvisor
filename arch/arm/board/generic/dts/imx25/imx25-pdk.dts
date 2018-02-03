@@ -21,12 +21,34 @@
  * @brief i.MX25 PDK DTS file
  */
 
-#include "../imx25-pinfunc.h"
-#include "../imx25.dtsi"
+/dts-v1/;
+
+#include "imx25-pinfunc.h"
+#include "imx25.dtsi"
 
 / {
 	model = "Freescale i.MX25 Product Development Kit";
 	compatible = "fsl,imx25-pdk", "fsl,imx25";
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
 
 	chosen {
 		console = &uart1;

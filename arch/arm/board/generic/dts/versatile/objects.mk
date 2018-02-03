@@ -21,5 +21,5 @@
 # @brief list of Versatile DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/pb/one_guest_versatile.dtb
+board-dtbs-$(CONFIG_ARMV5)+=dts/versatile/versatile-pb.dtb
 

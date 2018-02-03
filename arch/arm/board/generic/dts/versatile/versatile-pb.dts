@@ -1,12 +1,35 @@
 
+/dts-v1/;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
 	compatible = "arm,versatile";
-	model = "versatilepb";
+	model = "versatile-pb";
 	interrupt-parent = <&vic>;
 
-	chosen { };
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &SERIAL0;
+		rtcdev = &RTC0;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+
 	aliases { };
 
 	cpus {
