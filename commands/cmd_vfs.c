@@ -412,13 +412,10 @@ static size_t cmd_vfs_file_buf_read(int fd, char buf[], u32 len)
 static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
 {
 	int fd, rc;
-	u32 len;
-	size_t buf_rd;
+	u32 line, len;
+	loff_t buf_off;
+	size_t end, buf_rd, buf_valid;
 	char *buf = NULL;
-	u32 tok_len;
-	char *token, *save;
-	const char *delim = "\n";
-	u32 end, cleanup = 0;
 
 	rc = cmd_vfs_file_open_read(cdev, path, &fd, &len);
 	if (VMM_OK != rc) {
@@ -431,33 +428,51 @@ static int cmd_vfs_run(struct vmm_chardev *cdev, const char *path)
 		return VMM_ENOMEM;
 	}
 
+	line = 0;
+	buf_off = 0;
 	while (len) {
-		buf_rd = cmd_vfs_file_buf_read(fd, buf, len);
+		buf_rd = cmd_vfs_file_buf_read(fd, buf, VFS_LOAD_BUF_SZ);
 		if (buf_rd < 1) {
 			break;
 		}
 
-		end = buf_rd - 1;
-		while (buf[end] != '\n') {
-			buf[end] = 0;
-			end--;
-			cleanup++;
+		for (end = 0; end < buf_rd; end++) {
+			if (buf[end] == '\n' ||
+			    buf[end] == '\r' ||
+			    buf[end] == '\0')
+				break;
 		}
 
-		if (cleanup) {
-			vfs_lseek(fd, (buf_rd - cleanup), SEEK_SET);
-			cleanup = 0;
+		if (end == buf_rd) {
+			vmm_cprintf(cdev, "line%d: failed to find end-of-line"
+				    " (%zd bytes)\n", line, buf_rd);
+			break;
 		}
 
-		for (token = strtok_r(buf, delim, &save); token;
-		     token = strtok_r(NULL, delim, &save)) {
-			tok_len = strlen(token);
-			if (*token != '#' && *token != '\n') {
-				vmm_cmdmgr_execute_cmdstr(cdev, token, NULL);
+		buf[end] = '\0';
+		buf_valid = end + 1;
+
+		if (buf_valid < buf_rd) {
+			vfs_lseek(fd, buf_off + buf_valid, SEEK_SET);
+		}
+
+		for (end = 0; end < buf_valid; end++) {
+			if (buf[end] == '#') {
+				buf[end] = '\0';
+				break;
 			}
-
-			len -= (tok_len + 1);
 		}
+
+		rc = vmm_cmdmgr_execute_cmdstr(cdev, buf, NULL);
+		if (rc) {
+			vmm_cprintf(cdev, "line%d: failed (error %d)\n",
+				    line, rc);
+			break;
+		}
+
+		buf_off += buf_valid;
+		len -= buf_valid;
+		line++;
 	}
 
 	vmm_free(buf);
