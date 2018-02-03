@@ -71,13 +71,14 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cp -f ./build/tests/arm32/versatilepb/basic/firmware.bin.patched ./build/disk/images/arm32/versatilepb/firmware.bin
   # cp -f ./tests/arm32/versatilepb/linux/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # cp -f ./tests/arm32/versatilepb/linux/cmdlist ./build/disk/images/arm32/versatilepb/cmdlist
+  # cp -f ./tests/arm32/versatilepb/xscript/one_guest_versatilepb.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/versatilepb/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/versatile-pb.dtb ./build/disk/images/arm32/versatilepb/versatile-pb.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [16. Launch QEMU]
-  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/versatile/pb/one_guest_versatile.dtb -initrd build/disk.img
+  # qemu-system-arm -M versatilepb -m 256M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/versatile/versatile-pb.dtb -initrd build/disk.img
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
