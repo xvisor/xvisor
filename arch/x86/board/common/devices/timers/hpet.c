@@ -34,6 +34,7 @@
 #include <acpi.h>
 #include <cpu_apic.h>
 #include <timers/hpet.h>
+#include <timers/timer.h>
 
 #undef DEBUG
 
@@ -193,6 +194,25 @@ static struct hpet_timer *get_timer_from_id(timer_id_t timer_id)
 	return NULL;
 }
 
+/*****************************/
+/* System Timer Registration */
+/*****************************/
+int hpet_system_clockchip_init(void)
+{
+	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER,
+				   "hpet_clkchip", 0);
+
+}
+
+int hpet_system_clocksource_init(void)
+{
+	return hpet_clocksource_init(DEFAULT_HPET_SYS_TIMER,
+				     "hpet_clksrc");
+}
+
+struct x86_system_timer_ops hpet_sys_timer_ops;
+
+
 int __init hpet_init(void)
 {
 	int rc, i, j, k;
@@ -202,6 +222,8 @@ int __init hpet_init(void)
 	struct hpet_timer *timer;
 	struct vmm_devtree_node *node;
 	char hpet_nm[512];
+
+	return VMM_EFAIL;
 
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				VMM_DEVTREE_MOTHERBOARD_NODE_NAME
@@ -280,6 +302,11 @@ int __init hpet_init(void)
 			}
 		}
 	}
+
+	hpet_sys_timer_ops.sys_cc_init = &hpet_system_clockchip_init;
+	hpet_sys_timer_ops.sys_cs_init = &hpet_system_clocksource_init;
+
+	x86_register_system_timer_ops(&hpet_sys_timer_ops);
 
 	return VMM_OK;
 }

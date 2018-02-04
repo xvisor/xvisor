@@ -16,20 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file timers.h
- * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief External Timer interface File
+ * @file tsc.h
+ * @author Himanshu Chauhan (hchauhan@xvisor-x86.org)
+ * @brief x86 Time Stamp Counter (TSC) related functions.
  */
 
-#ifndef _TIMERS_H_
-#define _TIMERS_H_
+#ifndef _TSC_H
+#define _TSC_H
 
-struct x86_system_timer_ops {
-	int (*sys_cc_init)(void);
-	int (*sys_cs_init)(void);
-};
+#include <vmm_types.h>
+#include <vmm_compiler.h>
+#include <processor.h>
 
-int x86_timer_init(void);
-void x86_register_system_timer_ops(struct x86_system_timer_ops *ops);
+typedef u64 cycles_t;
 
-#endif
+/* Returns the current value of the TSC counter. */
+static __always_inline cycles_t get_tsc(void)
+{
+	cycles_t ret = 0;
+	rdtscll(ret);
+	return ret;
+}
+
+/* Serialized version of get_tsc. It ensures that all the previous instructions
+ * have completed before reading the TSC.
+ */
+static __always_inline cycles_t get_tsc_serialized(void)
+{
+	__sync();
+	return get_tsc();
+}
+#endif /* _TSC_H */

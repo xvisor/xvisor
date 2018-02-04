@@ -41,6 +41,12 @@
 #define NR_GATES		256
 #define NR_IRQ_VECTORS		NR_GATES
 #define USER_DEFINED_IRQ_BASE	32
+#define LAPIC_TIMER_IRQ_VECTOR	USER_DEFINED_IRQ_BASE
+#define IOAPIC_IRQ_BASE		LAPIC_TIMER_IRQ_VECTOR
+
+#define IRQ_VECTOR_TO_IRQ(__vector) ((__vector < USER_DEFINED_IRQ_BASE) \
+				     ? -1 : (__vector - USER_DEFINED_IRQ_BASE))
+#define IRQ_TO_IRQ_VECTOR(__irq)    (__irq + USER_DEFINED_IRQ_BASE)
 
 /* Interrupt Descriptor Table */
 /* Segment Selector and Offset (SSO) */

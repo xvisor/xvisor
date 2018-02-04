@@ -280,6 +280,8 @@ struct cpuinfo_x86 {
 	u8 hw_nested_paging;
 	u8 decode_assist;
 	u32 hw_nr_asids;
+	u32 tsc_khz; /* calibrated TSC frequency */
+	u32 lapic_khz;
 }__aligned(ARCH_CACHE_LINE_SIZE);
 
 /*
@@ -349,6 +351,8 @@ static inline void cpu_write_msr32(u32 msr, u32 high, u32 low)
 	asm volatile ("wrmsr\n\t"
 		      ::"a"(low),"d"(high),"c"(msr));
 }
+
+#define write_tsc(v1, v2) cpu_write_msr32(0x10, v2, v1)
 
 extern struct cpuinfo_x86 cpu_info;
 extern void indentify_cpu(void);

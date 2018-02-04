@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.10
-# Thu Feb  1 12:25:49 2018
+# Sat Feb  3 12:05:25 2018
 #
 # CONFIG_ARCH_ARM is not set
 CONFIG_ARCH_x86=y
@@ -53,6 +53,7 @@ CONFIG_X86_64_GENERIC=y
 # System Timers
 #
 CONFIG_HPET=y
+CONFIG_LAPIC_TIMER=y
 
 #
 # Bus Quirks

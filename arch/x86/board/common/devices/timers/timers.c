@@ -33,6 +33,7 @@
 #include <vmm_wallclock.h>
 #include <acpi.h>
 #include <timers/timer.h>
+#include <tsc.h>
 
 #if defined(CONFIG_LAPIC_TIMER)
 #include <cpu_apic.h>
@@ -42,23 +43,55 @@
 #include <timers/hpet.h>
 #endif
 
+struct x86_system_timer_ops sys_timer_ops = { NULL };
+
 int __init arch_clocksource_init(void)
 {
-	return hpet_clocksource_init(DEFAULT_HPET_SYS_TIMER,
-				     "hpet_clksrc");
+	int rc;
+
+	BUG_ON(!sys_timer_ops.sys_cs_init);
+
+	rc = sys_timer_ops.sys_cs_init();
+
+	return rc;
 }
 
 int __cpuinit arch_clockchip_init(void)
 {
-	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, 
-				"hpet_clkchip", 0);
+	int rc;
+
+	BUG_ON(!sys_timer_ops.sys_cc_init);
+
+	rc = sys_timer_ops.sys_cc_init();
+
+	return rc;
 }
 
-int __init timer_init(void)
+void __init
+x86_register_system_timer_ops(struct x86_system_timer_ops *ops)
 {
-    int rv = VMM_OK;
+	sys_timer_ops.sys_cc_init = ops->sys_cc_init;
+	sys_timer_ops.sys_cs_init = ops->sys_cs_init;
+}
 
-    rv = hpet_init();
+int __init x86_timer_init(void)
+{
+	int rv = VMM_EFAIL;
 
-    return rv;
+#if defined(CONFIG_HPET)
+	if ((rv = hpet_init()) == VMM_OK) {
+		vmm_printf("HPET Init Succeeded!\n");
+		goto _init_done;
+	}
+#endif
+
+#if defined(CONFIG_LAPIC_TIMER)
+	if ((rv = lapic_timer_init()) == VMM_OK) {
+		vmm_printf("LAPIC timer init succeeded!\n");
+		goto _init_done;
+	}
+#endif
+
+ _init_done:
+	return rv;
 }

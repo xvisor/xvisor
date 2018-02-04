@@ -35,15 +35,6 @@ extern virtual_addr_t lapic_eoi_addr;
 #define APIC_FOCUS_DISABLED		(1 << 9)
 #define APIC_SIV			0xFF
 
-#define APIC_TDCR_2			0x00
-#define APIC_TDCR_4			0x01
-#define APIC_TDCR_8			0x02
-#define APIC_TDCR_16			0x03
-#define APIC_TDCR_32			0x08
-#define APIC_TDCR_64			0x09
-#define APIC_TDCR_128			0x0a
-#define APIC_TDCR_1			0x0b
-
 #define APIC_LVTT_VECTOR_MASK		0x000000FF
 #define APIC_LVTT_DS_PENDING		(1 << 12)
 #define APIC_LVTT_MASK			(1 << 16)
@@ -164,11 +155,41 @@ extern virtual_addr_t lapic_eoi_addr;
 #define LAPIC_LVTTMR(__vbase)		(__vbase + 0x330)
 #define LAPIC_LVTPCR(__vbase)		(__vbase + 0x340)
 #define LAPIC_LINT0(__vbase)		(__vbase + 0x350)
+#define         APIC_LVT_TIMER_BASE_MASK    (0x3<<18)
+#define         GET_APIC_TIMER_BASE(x)      (((x)>>18)&0x3)
+#define         SET_APIC_TIMER_BASE(x)      (((x)<<18))
+#define         APIC_TIMER_BASE_CLKIN       0x0
+#define         APIC_TIMER_BASE_TMBASE      0x1
+#define         APIC_TIMER_BASE_DIV     0x2
+#define         APIC_LVT_TIMER_ONESHOT  (0<<17)
+#define         APIC_LVT_TIMER_PERIODIC (1<<17)
+#define         APIC_LVT_TIMER_TSCDL    (2<<17)
+#define         APIC_LVT_MASKED         (1<<16)
+#define         APIC_LVT_LEVEL_TRIGGER      (1<<15)
+#define         APIC_LVT_REMOTE_IRR     (1<<14)
+#define         APIC_INPUT_POLARITY     (1<<13)
+#define         APIC_SEND_PENDING       (1<<12)
+#define         APIC_MODE_MASK          0x700
+#define         GET_APIC_DELIVERY_MODE(x)   (((x)>>8)&0x7)
+#define         SET_APIC_DELIVERY_MODE(x,y) (((x)&~0x700)|((y)<<8))
+#define             APIC_MODE_FIXED     0x0
+#define             APIC_MODE_NMI       0x4
+#define             APIC_MODE_EXTINT    0x7
+
 #define LAPIC_LINT1(__vbase)		(__vbase + 0x360)
 #define LAPIC_LVTER(__vbase)		(__vbase + 0x370)
 #define LAPIC_TIMER_ICR(__vbase)	(__vbase + 0x380)
 #define LAPIC_TIMER_CCR(__vbase)	(__vbase + 0x390)
 #define LAPIC_TIMER_DCR(__vbase)	(__vbase + 0x3e0)
+#define         LAPIC_TDR_DIV_TMBASE (1<<2)
+#define         LAPIC_TDR_DIV_1      0xB
+#define         LAPIC_TDR_DIV_2      0x0
+#define         LAPIC_TDR_DIV_4      0x1
+#define         LAPIC_TDR_DIV_8      0x2
+#define         LAPIC_TDR_DIV_16     0x3
+#define         LAPIC_TDR_DIV_32     0x8
+#define         LAPIC_TDR_DIV_64     0x9
+#define         LAPIC_TDR_DIV_128    0xA
 
 #define IS_INTEGRATED_APIC(_x)			\
 	({					\
@@ -260,5 +281,7 @@ int ioapic_route_pin_to_irq(u32 pin, u32 irqno);
 /** Attach an extern device to given IRQ line. */
 int ioapic_set_ext_irq_device(u32 irqno, struct ioapic_ext_irq_device *device,
 			      void *data);
+
+int lapic_timer_init(void);
 
 #endif /* __CPU_APIC_H__ */

@@ -157,7 +157,7 @@ int __init arch_board_early_init(void)
 {
 	int rv;
 
-	rv = timer_init();
+	rv = x86_timer_init();
 
     /* One of the several timers must succeed */
 	BUG_ON(rv != VMM_OK);
