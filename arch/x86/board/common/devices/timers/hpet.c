@@ -33,7 +33,7 @@
 #include <vmm_wallclock.h>
 #include <acpi.h>
 #include <cpu_apic.h>
-#include <hpet.h>
+#include <timers/hpet.h>
 
 #undef DEBUG
 

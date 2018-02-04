@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010-20 Himanshu Chauhan.
+# Copyright (c) 2018 Himanshu Chauhan.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,15 +17,10 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Himanshu Chauhan (hschauhan@nulltrace.org)
+# @author Himanshu Chauhan (hchauhan@xvisor-x86.org)
 # @brief list of board specific objects to be build
 # */
 
-board-asflags+=
-board-ldflags+=
+board-common-objs-y+= devices/timers/timers.o
 
-board-objs-y+= brd_main.o
-board-objs-y+= brd_defterm.o
-board-objs-y+= brd_pic.o
-
-board-objs-y+= dts/defconfig.o
+board-common-objs-${CONFIG_HPET}+= devices/timers/hpet.o

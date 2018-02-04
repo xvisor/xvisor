@@ -33,7 +33,7 @@
 #include <libs/bitops.h>
 #include <arch_board.h>
 
-#include <hpet.h>
+#include <timers/timer.h>
 
 #ifdef CONFIG_PCI
 extern int __init pci_arch_init(void);
@@ -157,7 +157,9 @@ int __init arch_board_early_init(void)
 {
 	int rv;
 
-	rv = hpet_init();
+	rv = timer_init();
+
+    /* One of the several timers must succeed */
 	BUG_ON(rv != VMM_OK);
 
 	/* Register reset & shutdown callbacks */
@@ -169,18 +171,6 @@ int __init arch_board_early_init(void)
 	}
 
 	return VMM_OK;
-}
-
-int __init arch_clocksource_init(void)
-{
-	return hpet_clocksource_init(DEFAULT_HPET_SYS_TIMER,
-				     "hpet_clksrc");
-}
-
-int __cpuinit arch_clockchip_init(void)
-{
-	return hpet_clockchip_init(DEFAULT_HPET_SYS_TIMER, 
-				"hpet_clkchip", 0);
 }
 
 int __init arch_board_final_init(void)
