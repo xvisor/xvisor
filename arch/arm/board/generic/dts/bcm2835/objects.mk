@@ -21,6 +21,4 @@
 # @brief list of BCM2835 DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV6)+=dts/bcm2835/one_guest_ebmp.dtb
-board-dtbs-$(CONFIG_ARMV6)+=dts/bcm2835/two_guest_ebmp.dtb
-
+board-dtbs-$(CONFIG_ARMV6)+=dts/bcm2835/bcm2835-rpi-b.dtb

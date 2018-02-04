@@ -21,7 +21,7 @@
 # @brief list of Realview DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV6)+=dts/realview/eb-mpcore/one_guest_ebmp.dtb
+board-dtbs-$(CONFIG_ARMV6)+=dts/realview/arm-realview-eb-11mp-ctrevb.dtb
 
 board-dtbs-$(CONFIG_ARMV7A)+=dts/realview/pb-a8/one_guest_pb-a8.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/realview/pb-a8/one_guest_vexpress-a9.dtb

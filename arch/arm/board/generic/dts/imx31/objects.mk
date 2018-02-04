@@ -21,5 +21,5 @@
 # @brief list of IMX31 DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV6)+=dts/imx31/kzm/one_guest_ebmp.dtb
+board-dtbs-$(CONFIG_ARMV6)+=dts/imx31/imx31-kzm.dtb
 
