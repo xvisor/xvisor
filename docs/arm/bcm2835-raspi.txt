@@ -41,7 +41,7 @@ as follow:
 Once we have u-boot installed on SD card, we add 3 more images to the data
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
- 2) DTB for Xvisor (one_guest_ebmp.dtb)
+ 2) DTB for Xvisor (bcm2835-rpi-b.dtb)
  3) U-Boot compatible Xvisor disk containing guest binaries (udisk.img)
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi:
@@ -105,6 +105,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
+  # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-eb-11mp-ctrevb.dtb ./build/disk/images/arm32/realview-eb-mpcore/arm-realview-eb-11mp-ctrevb.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -119,6 +120,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [17. Make U-boot compatible initrd for use with bootm command]
@@ -130,7 +132,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [20. Copy uvmm.bin, DTB, and disk.im to data partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/bcm2835/bcm2835-rpi-b.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_dat_partition_of_sd_card>
 
   [21. Unmount data partition (or partition 2) of SD card from your development machine]
@@ -148,7 +150,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   U-Boot> ext4load mmc 0:2 0x00200000 uvmm.bin
 
   [27. Copy Xvisor DTB from SD card to SDRAM]
-  U-Boot> ext4load mmc 0:2 0x00800000 one_guest_ebmp.dtb
+  U-Boot> ext4load mmc 0:2 0x00800000 bcm2835-rpi-b.dtb
 
   [28. Copy disk image from SD card to SDRAM]
   U-Boot> ext4load mmc 0:2 0x02000000 udisk.img
@@ -256,6 +258,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
+  # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-eb-mpcore/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-eb-11mp-ctrevb.dtb ./build/disk/images/arm32/realview-eb-mpcore/arm-realview-eb-11mp-ctrevb.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -270,10 +273,11 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
+  # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [16. Launch QEMU]
-  # qemu-system-arm -M raspi -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/bcm2835/one_guest_ebmp.dtb -initrd build/disk.img
+  # qemu-system-arm -M raspi -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/bcm2835/bcm2835-rpi-b.dtb -initrd build/disk.img
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
