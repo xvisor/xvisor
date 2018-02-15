@@ -1,0 +1,35 @@
+
+/dts-v1/;
+
+/include/ "./omap3.dtsi"
+
+/ {
+        model = "BeagleBoard-xM";
+	compatible = "ti,omap3";
+
+	memory {
+		device_type = "memory"; 
+		reg = <0x88000000 0x10000000>; /* 256 MB */
+	};
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &SERIAL0;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+};

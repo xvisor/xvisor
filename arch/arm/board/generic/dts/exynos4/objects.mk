@@ -21,15 +21,11 @@
 # @brief list of OMAP3 DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/nuri/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4210-nuri.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/nuri/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/nuri/two_guest_pb-a8.dtb
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/odroidx/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4412-odroidx.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/odroidx/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/odroidx/two_guest_pb-a8.dtb
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/smdkc210/one_guest_pb-a8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4210-smdkc210.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/smdkc210/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/smdkc210/two_guest_pb-a8.dtb
-
