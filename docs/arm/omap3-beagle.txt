@@ -73,6 +73,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-pba8.dtb ./build/disk/images/arm32/realview-pb-a8/arm-realview-pba8.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -87,6 +88,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [17. Make U-boot compatible initrd for use with bootm command]
@@ -98,7 +100,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
 
   [20. Copy uvmm.bin, DTB, and disk image to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/omap3/beagleboard-xm/one_guest_pb-a8.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/omap3/omap3-beagle-xm.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [21. Unmount boot partition (or partition 0) of SD card from your development machine]
@@ -119,7 +121,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   OMAP3 beagleboard.org # fatload mmc 0 0x8B000000 udisk.img
 
   [28. Copy DTB from SD card to SDRAM]
-  OMAP3 beagleboard.org # fatload mmc 0 0x8A000000 one_guest_pb-a8.dtb
+  OMAP3 beagleboard.org # fatload mmc 0 0x8A000000 omap3-beagle-xm.dtb
 
   [29. Jump into Xvisor after disabling MMU, interrupts, etc]
   OMAP3 beagleboard.org # bootm 0x80200000 0x8B000000 0x8A000000
@@ -240,6 +242,7 @@ follows:
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
+  # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-pba8.dtb ./build/disk/images/arm32/realview-pb-a8/arm-realview-pba8.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -254,13 +257,14 @@ follows:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [18. Make U-boot compatible initrd for use with bootm command]
   # mkimage -A arm -O linux -T ramdisk -a 0x81000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
   [19. Create a flat binary with all our binaries appended]
-  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/omap3/beagleboard/one_guest_pb-a8.dtb@0x680000 build/udisk.img@0x700000
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/omap3/omap3-beagle.dtb@0x680000 build/udisk.img@0x700000
 
   [20. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 

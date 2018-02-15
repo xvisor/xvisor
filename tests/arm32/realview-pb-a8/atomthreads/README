@@ -58,6 +58,7 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/atomthreads/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
+  # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # cp -f <atomthreads_source_directory>/ports/arm32/build/kern1.bin ./build/disk/images/arm32/realview-pb-a8/kern1.bin
   # cp -f <atomthreads_source_directory>/ports/arm32/build/kern2.bin ./build/disk/images/arm32/realview-pb-a8/kern2.bin
   # cp -f <atomthreads_source_directory>/ports/arm32/build/kern3.bin ./build/disk/images/arm32/realview-pb-a8/kern3.bin
@@ -100,7 +101,7 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [13. Launch QEMU]
-  # qemu-system-arm -M realview-pb-a8 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/pb-a8/one_guest_pb-a8.dtb -initrd build/disk.img
+  # qemu-system-arm -M realview-pb-a8 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/realview/arm-realview-pba8.dtb -initrd build/disk.img
 
   [14. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

@@ -89,7 +89,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
 
   [19. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
   # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite/Image
-  # cp -f build/imx6q-nitrogen6x.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
+  # cp -f build/imx6dl-sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
 
   [20. Copy the boot script to boot partition of SD card]
   # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>/

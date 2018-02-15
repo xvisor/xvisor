@@ -4,7 +4,7 @@ setenv dtbaddr 12000000
 setenv bootaddr 10800000
 setenv bootimg uvmm.bin
 
-dtbname="vmm-imx6";
+dtbname="imx6";
 if itest.s x6SOLO == "x${cpu}" ; then
     dtbname=${dtbname}dl-
 elif itest.s x6DL == "x${cpu}" ; then
