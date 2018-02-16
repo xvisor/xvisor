@@ -76,6 +76,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dtb ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -90,6 +91,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [17. Make U-boot compatible initrd for use with bootm command]
@@ -101,7 +103,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [20. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/exynos4/odroidx/one_guest_vexpress-a9.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/exynos4/exynos4412-odroidx.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [21. Unmount boot partition (or partition 0) of SD card from your development machine]
@@ -119,7 +121,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   ODROIDX# fatload mmc 0:2 0x40200000 uvmm.bin
 
   [27. Copy the Xvisor DTB from SD card to SDRAM]
-  ODROIDX# fatload mmc 0:2 0x40800000 one_guest_vexpress-a9.dtb
+  ODROIDX# fatload mmc 0:2 0x40800000 exynos4412-odroidx.dtb
 
   [28. Copy disk image from SD card to SDRAM]
   ODROIDX# fatload mmc 0:2 0x42000000 udisk.img

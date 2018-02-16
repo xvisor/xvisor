@@ -8,18 +8,16 @@ or FAT).
 We need to add 2 images in boot partition of SD card that is shipped with
 Sabre LITE:
  1) U-Boot compatible Xvisor binary (uvmm.bin).
- 2) Boot script used by Boundary's U-Boot configuration (6x_bootscript)
+ 2) U-Boot compatible Xvisor dtb (imx6dl-sabrelite.dtb)
+ 3) U-Boot compatible Xvisor disk (udisk.img) 
+ 4) Boot script used by Boundary's U-Boot configuration (6x_bootscript)
 
 Follow the following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [1. Build environment]
-  # CROSS_COMPILE=arm-linux-gnueabi-
-  # export CROSS_COMPILE
-  (NOTE: Also place your compiler in PATH.)
-  (NOTE: arm-linux-gnueabi- is here assumed as being the toolchain. It
-         is not necessarily the case.)
+  # export CROSS_COMPILE=arm-linux-gnueabi-
 
-  [2. Go to Xvisor source directory]
+  [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
   [3. Initialize Xvisor submodules]
@@ -27,104 +25,111 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # git submodule update
   (Note: This is required to be done only once in freshly cloned xvisor source)
 
-  [4. Configure Xvisor with Sabre LITE (or Nitrogen6X) host default settings]
-  # make ARCH=arm imx6-defconfig
+  [4. Configure Xvisor with Generic v7 default settings]
+  # make ARCH=arm generic-v7-defconfig
 
-  [5. Build Xvisor and DTBs]
+  [5. Build Xvisor & DTBs]
   # make; make dtbs
 
-  [6. Build Basic Firmware]
-  # make -C tests/arm32/sabrelite/basic
+  [6. Make U-Boot compatible uvmm.bin, for use with bootm command]
+  # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n "Xvisor" -d build/vmm.bin build/uvmm.bin
+ 
+  [7. Build Basic Firmware]
+  # make -C tests/arm32/vexpress-a9/basic
 
-  [7. Make U-Boot compatible uvmm.bin for use with bootm command]
-  # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+  [8. Copy defconfig to Linux build directory]
+  # cp tests/arm32/vexpress-a9/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
-  [8. Make the script to boot the card as preconfigured U-Boot expect]
-  # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
-
-  [9. Create the guest device tree configuration]
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb ./tests/arm32/sabrelite/sabrelite.dts -o build/sabrelite.dtb
-
-  [10. Unplug SD card from Sabre LITE and plug it on your development machine]
-
-  [11. Mount boot partition (or partition 0) of SD card on your development machine]
-
-  [12. Copy uvmm.bin to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-
-  [13. Create the tree structure in your SD card]
-  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite/
-  # mkdir -p <path_to_mounted_boot_partition_of_sd_card>/system/
-
-  [14. Copy and rename the host and guest device tree to boot partition of SD card. <board_name> being sabrelite or nitrogen6x]
-  # cp -f build/arch/arm/board/generic/dts/imx6/sabrelite/one_guest_sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/vmm-imx6q-<board_name>.dtb
-  # cp -f build/sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/
-
-  [15. Copy the basic firmware, the nor_flash.list and the cmdlist on the SD card boot partition]
-  # cp -f build/tests/arm32/sabrelite/basic/firmware.bin <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
-  # cp -f tests/arm32/sabrelite/linux/nor_flash.list <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
-  # cp -f tests/arm32/sabrelite/linux/cmdlist <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
-
-  [16. Configure, build and patch the kernel image (linux 4.5.0 is advised)]
+  [9. GoTo Linux source directory]
   # cd <linux_source_directory>
-  # cp -f <xvisor_source_directory>/tests/arm32/sabrelite/linux/linux-<kernel_version>_defconfig <linux_build_directory>/.config
+
+  [10. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # make O=<linux_build_directory> ARCH=arm oldconfig
+
+  [11. Build Linux in build directory]
   # make O=<linux_build_directory> ARCH=arm Image dtbs
+
+  [12. Patch Linux kernel to replace sensitive non-priviledged instructions]
   # <xvisor_source_directory>/arch/arm/cpu/arm32/elf2cpatch.py -f <linux_build_directory>/vmlinux | <xvisor_source_directory>/build/tools/cpatch/cpatch32 <linux_build_directory>/vmlinux 0
+
+  [13. Extract patched Linux kernel image]
   # ${CROSS_COMPILE}objcopy -O binary <linux_build_directory>/vmlinux <linux_build_directory>/arch/arm/boot/Image
+
+  [14. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [15. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [17. Then, make cpp process the Linux kernel device tree]
-  # sed -re 's|/include/|#include|' tests/arm32/sabrelite/linux/imx6q-nitrogen6x.dts > build/tmp.dts
-  # ${CROSS_COMPILE}cpp \
-	-nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-with-cpp \
-	-Itests/arm32/sabrelite/linux \
-	-I<linux_source_directory>/include \
-	-I<linux_source_directory>/arch/arm/boot/dts \
-	build/tmp.dts -o build/imx6q-nitrogen6x.dts
+  [16. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/vexpress-a9
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
+  # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
+  # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
+  # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
+  # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dtb ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
+  OR
+  [16. Create disk image for Xvisor with only Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm32/vexpress-a9
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
+  # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
+  # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
-  [18. Build the Linux kernel device tree]
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -p 0x800 build/imx6q-nitrogen6x.dts -o build/imx6q-nitrogen6x.dtb
+  [17. Make U-boot compatible initrd for use with bootm command]
+  # mkimage -A arm -O linux -T ramdisk -a 0x14000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
+ 
+  [18. Make the script to boot the card as preconfigured U-Boot expect]
+  # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
 
-  [19. Copy the _patched_ kernel image, and its device tree to the SD card boot partition]
-  # cp -f <linux_build_directory>/arch/arm/boot/Image <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite/Image
-  # cp -f build/imx6dl-sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>/images/arm32/sabrelite
+  [19. Unplug SD card from Sabre LITE and plug it on your development machine]
 
-  [20. Copy the boot script to boot partition of SD card]
-  # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>/
+  [20. Mount boot partition (or partition 0) of SD card on your development machine]
 
-  [21. Create the banner]
-  # cp -f docs/banner/roman.txt <path_to_mounted_boot_partition_of_sd_card>/system/banner.txt
+  [21. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/imx6/imx6dl-sabrelite.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/6x_bootscript <path_to_mounted_boot_partition_of_sd_card>
 
-  [22. Generate the rootfs]
-  You need to refer to tests/common/busybox/README.md to see how to generate rootfs.img
-  using BusyBox.
-  # cp -f <busybox_rootfs_directory>/rootfs.img <path_to_mounted_boot_partition_of_sd_card>/images/arm32/rootfs.img
+  [22. Unmount boot partition (or partition 0) of SD card from your development machine]
 
-  [23. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [23. Unplug SD card from your development machine and plug it back on Sabre LITE]
 
-  [24. Unplug SD card from your development machine and plug it back on Sabre LITE]
+  [24. Connect to serial port of Sabre LITE using Putty or Minicom]
 
-  [25. Connect to serial port of Sabre LITE using Putty or Minicom]
+  [25. Power-up or Reset Sabre LITE and press any key when U-Boot shows auto-boot count down]
 
-  [26. Power-up or Reset Sabre LITE]
-
-  [27. When U-Boot starts, stop its autoboot and set the board name]
+  [26. When U-Boot starts, stop its autoboot and set the board name]
   U-Boot > setenv board sabrelite
-  [Or]
+  OR
   U-Boot > setenv board nitrogen6x
 
-  [28. Now, you can finally run the bootscript]
+  [27. Now, you can finally run the bootscript]
   U-Boot > for disk in 0 1 ; do mmc dev ${disk} ; for fs in fat ext2 ; do if ${fs}load mmc ${disk}:1 10008000 /6x_bootscript; then source 10008000; fi ; done ; done
 
-  [29. Kick a guest]
+  [28. Kick a guest]
   XVisor# guest kick guest0
 
-  [30. Bind to virtual UART0 of Linux Guest]
+  [29. Bind to virtual UART0 of Linux Guest]
   XVisor# vserial bind guest0/uart0
 
-  [31. Start linux booting from RAM]
+  [30. Start linux booting from RAM]
   [guest0/uart0] basic# autoexec
 
   (Note: replace all <> brackets based on your workspace)
@@ -200,6 +205,7 @@ guest with Xvisor running on QEMU Sabre LITE Host:
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a9/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca9.dtb ./build/disk/images/arm32/vexpress-a9/vexpress-v2p-ca9.dtb
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
@@ -214,10 +220,11 @@ guest with Xvisor running on QEMU Sabre LITE Host:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9x2.dtb ./tests/arm32/vexpress-a9/vexpress-a9x2.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
+  # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [16. Launch QEMU]
-  # qemu-system-arm -M sabrelite -m 512M -display none -serial null -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/imx6/sabrelite/one_guest_vexpress-a9.dtb -initrd build/disk.img
+  # qemu-system-arm -M sabrelite -m 512M -display none -serial null -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/imx6/imx6dl-sabrelite.dtb -initrd build/disk.img
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

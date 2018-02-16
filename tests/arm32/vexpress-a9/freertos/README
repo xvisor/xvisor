@@ -138,6 +138,7 @@ have been successfully tested.
      | $dtc -I dts -O dtb -o $img_dir/vexpress-a9x2.dtb $srcdir/vexpress-a9x2.dts
      | cp -f ./build/$srcdir/freertos/freertos.patched.bin $bindir/freertos.bin
      | cp -f $srcdir/freertos/nor_flash.list $bindir/nor_flash.list
+     | cp -f $srcdir/xscript/one_guest_vexpress-a9.xscript ./build/boot.xscript
      | genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
      `----
 
@@ -146,7 +147,7 @@ have been successfully tested.
      ,----
      | qemu-system-arm -M vexpress-a9 -m 512M -display none -serial stdio \
      |   -kernel build/vmm.bin \
-     |   -dtb    build/arch/arm/board/generic/dts/vexpress/a9/one_guest_vexpress-a9.dtb \
+     |   -dtb    build/arch/arm/board/generic/dts/vexpress/vexpress-v2p-ca9.dtb \
      |   -initrd build/disk.img
      `----
 
