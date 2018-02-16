@@ -22,7 +22,5 @@
 # */
 
 board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/omap3-beagle.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard/one_guest_vexpress-a9.dtb
 
 board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/omap3-beagle-xm.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/beagleboard-xm/one_guest_vexpress-a9.dtb

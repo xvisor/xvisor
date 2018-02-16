@@ -1,7 +1,0 @@
-
-/include/ "../omap3.dtsi"
-
-/ {
-        model = "BeagleBoard";
-	compatible = "ti,omap3";
-};
