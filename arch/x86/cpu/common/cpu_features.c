@@ -195,6 +195,10 @@ static inline void gather_intel_features(struct cpuinfo_x86 *cpu_info)
 
 	cpuid(CPUID_BASE_FEATURES, &a, &b, &c, &d);
 	cpu_info->hw_virt_available = ((c >> 5) & 1);
+
+	cpuid(INTEL_CPUID_EXTENDED_ADDR_BITS, &a, &b, &c, &d);
+	cpu_info->phys_bits = (a & 0xfful);
+	cpu_info->virt_bits = ((a >> 8) & 0xfful);
 }
 
 void indentify_cpu(void)
