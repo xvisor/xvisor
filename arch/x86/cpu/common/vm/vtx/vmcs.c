@@ -35,6 +35,7 @@
 #include <control_reg_access.h>
 #include <vm/vmcs.h>
 #include <vm/vmx.h>
+#include <vm/ept.h>
 
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
 
@@ -334,8 +335,10 @@ static void vmcs_init_host_env(void)
 
 }
 
-void vmx_set_control_params(struct vcpu_hw_context *context)
+int vmx_set_control_params(struct vcpu_hw_context *context)
 {
+	int rc = VMM_OK;
+
 	/* Initialize pin based control */
 	__vmwrite(PIN_BASED_VM_EXEC_CONTROL, vmx_pin_based_exec_control);
 
@@ -364,18 +367,14 @@ void vmx_set_control_params(struct vcpu_hw_context *context)
 
 	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_cpu_based_exec_control);
 
-#if defined(CONFIG_SLAT_SUPPORT)
+	/* Set up the VCPU's guest extended page tables */
+	if ((rc = setup_ept(context)) != VMM_OK)
+		return rc;
+
 	/* Enable Extended Page Table (nested paging) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_EPT;
 
-	// setup eptp
-	vmx_ept_control.ept_mt = 6; // Memory type WriteBack
-	vmx_ept_control.ept_wl = 3; // Page-walk length-1
-	vmx_ept_control.rsvd = 0; // reserved
-	vmx_ept_control.asr = context->n_cr3; // nested cr3
-
-	__vmwrite(EPT_POINTER, vmx_ept_control.eptp);
-#endif
+	__vmwrite(EPT_POINTER, context->eptp);
 
 	/* Enable Virtual-Processor Identification (asid) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_VPID;
@@ -395,6 +394,8 @@ void vmx_set_control_params(struct vcpu_hw_context *context)
 
 	/* Initialize host save area */
 	vmcs_init_host_env();
+
+	return VMM_OK;
 }
 
 struct xgt_desc {

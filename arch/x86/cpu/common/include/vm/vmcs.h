@@ -311,7 +311,7 @@ enum vmcs_field {
 extern void vmx_detect_capability(void);
 extern struct vmcs* create_vmcs(void);
 void *alloc_vmx_on_region(void);
-extern void vmx_set_control_params(struct vcpu_hw_context *context);
+extern int vmx_set_control_params(struct vcpu_hw_context *context);
 extern void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context);
 extern void vmx_save_host_state(struct vcpu_hw_context *context);
 extern void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context);

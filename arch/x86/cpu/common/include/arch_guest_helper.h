@@ -26,6 +26,14 @@
 #include <cpu_vm.h>
 #include <emu/rtc/mc146818rtc.h>
 #include <emu/i8259.h>
+#include <vmm_manager.h>
+
+#define EPT_BOOT_PAGE	(0xFFFFF000UL)
+
+#define IS_BIOS_ADDRESS(_address_flag)			\
+	(_address_flag & (VMM_REGION_READONLY		\
+			  | VMM_REGION_ISROM		\
+			  | VMM_REGION_REAL))
 
 #define GUEST_HALT_SW_CODE	0x80
 /* When CPU exited from VM mode for VMM to handle */
@@ -54,6 +62,8 @@ extern int gva_to_gpa(struct vcpu_hw_context *context, virtual_addr_t vaddr,
 		      physical_addr_t *gpa);
 extern int gpa_to_hpa(struct vcpu_hw_context *context, physical_addr_t vaddr,
 		      physical_addr_t *hpa);
+extern virtual_addr_t get_free_page_for_pagemap(struct vcpu_hw_context *context,
+						physical_addr_t *page_phys);
 extern int purge_guest_shadow_pagetable(struct vcpu_hw_context *context);
 extern int create_guest_shadow_map(struct vcpu_hw_context *context,
 				   virtual_addr_t vaddr, physical_addr_t paddr,

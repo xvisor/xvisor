@@ -38,3 +38,4 @@ cpu-common-objs-$(CONFIG_VEXT_AMD_SVM)+= vm/svm/svm.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/vmcs.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/vmx.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/intercept.o
+cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/ept.o

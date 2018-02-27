@@ -163,7 +163,8 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 	/* VMPTRLD: mark this vmcs active, current & clear */
 	__vmptrld(context->vmcs_pa);
 
-	vmx_set_control_params(context);
+	if ((ret = vmx_set_control_params(context)) != VMM_OK)
+		goto _fail;
 
 	vmx_set_vm_to_powerup_state(context);
 

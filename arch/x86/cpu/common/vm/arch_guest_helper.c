@@ -311,6 +311,30 @@ static inline int free_page_index_in_pglist(struct vcpu_hw_context *context)
 	return boffs;
 }
 
+/* These pages are used strictly for guest page tables (Shadow or EPT) */
+virtual_addr_t get_free_page_for_pagemap(struct vcpu_hw_context *context,
+					 physical_addr_t *page_phys)
+{
+	int index = free_page_index_in_pglist(context);
+	virtual_addr_t tvaddr;
+
+	if (index != VMM_OK)
+		return 0;
+
+	tvaddr = (virtual_addr_t)
+		(((virtual_addr_t)context->shadow32_pg_list)
+		 + (index * PAGE_SIZE));
+
+	memset((void *)tvaddr, 0, PAGE_SIZE);
+
+	if (page_phys) {
+		if (vmm_host_va2pa(tvaddr, page_phys) != VMM_OK)
+			return VMM_EFAIL;
+	}
+
+	return tvaddr;
+}
+
 int create_guest_shadow_map(struct vcpu_hw_context *context,
 			    virtual_addr_t vaddr, physical_addr_t paddr,
 			    size_t size, u32 pdprot, u32 pgprot)
