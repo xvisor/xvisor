@@ -20,7 +20,7 @@
 #define __VMX_H__
 
 #include <vmm_types.h>
-#include <vm/intel_vmcs.h>
+#include <vm/vmcs.h>
 
 typedef union {
 	struct {

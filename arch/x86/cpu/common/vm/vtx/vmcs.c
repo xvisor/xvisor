@@ -33,8 +33,8 @@
 #include <vmm_stdio.h>
 #include <cpu_features.h>
 #include <control_reg_access.h>
-#include <vm/intel_vmcs.h>
-#include <vm/intel_vmx.h>
+#include <vm/vmcs.h>
+#include <vm/vmx.h>
 
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
 
@@ -313,7 +313,7 @@ static void vmcs_init_host_env(void)
 
 	/* Host CS:RIP. */
 	__vmwrite(HOST_CS_SELECTOR, VMM_CS64);
-	__vmwrite(HOST_RIP, (unsigned long)vmx_asm_vmexit_handler);
+	//__vmwrite(HOST_RIP, (unsigned long)vmx_asm_vmexit_handler);
 
 	/* Host SYSENTER CS:RIP. */
 	__vmwrite(HOST_SYSENTER_CS, 0);

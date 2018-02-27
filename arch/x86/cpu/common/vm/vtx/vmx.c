@@ -27,9 +27,9 @@
 #include <cpu_vm.h>
 #include <vmm_stdio.h>
 #include <control_reg_access.h>
-#include <vm/intel_vmcs.h>
-#include <vm/intel_vmx.h>
-#include <vm/intel_intercept.h>
+#include <vm/vmcs.h>
+#include <vm/vmx.h>
+#include <vm/vmx_intercept.h>
 
 extern struct vmcs *alloc_vmcs(void);
 extern u32 vmxon_region_nr_pages;

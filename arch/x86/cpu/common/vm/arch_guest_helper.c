@@ -31,7 +31,7 @@
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
-#include <vm/amd_svm.h>
+#include <vm/svm.h>
 #include <libs/stringlib.h>
 #include <arch_guest_helper.h>
 

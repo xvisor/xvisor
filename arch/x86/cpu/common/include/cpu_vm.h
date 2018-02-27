@@ -2,7 +2,7 @@
 #define __CPU_VM_H__
 
 #include <multiboot.h>
-#include <vm/amd_vmcb.h>
+#include <vm/vmcb.h>
 #include <processor_flags.h>
 #include <cpu_features.h>
 #include <vmm_types.h>

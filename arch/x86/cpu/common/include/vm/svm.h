@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015 Himanshu Chauhan.
+ * Copyright (c) 2013 Himanshu Chauhan.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,27 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file intel_intercept.c
+ * @file amd_svm.h
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
- * @brief VMX intercept handling code.
+ * @brief Header file for SVM's definition.
  */
-#include <vmm_error.h>
-#include <vmm_types.h>
-#include <vmm_stdio.h>
-#include <vmm_host_aspace.h>
-#include <vmm_guest_aspace.h>
-#include <cpu_vm.h>
-#include <cpu_inst_decode.h>
-#include <cpu_features.h>
-#include <cpu_mmu.h>
-#include <cpu_pgtbl_helper.h>
-#include <arch_guest_helper.h>
-#include <vm/amd_intercept.h>
-#include <vm/amd_svm.h>
-#include <vmm_devemu.h>
-#include <vmm_manager.h>
-#include <vmm_main.h>
 
-void vmx_vcpu_exit(struct vcpu_hw_context *context)
+#ifndef _AMD_SVM_H__
+#define _AMD_SVM_H__
+
+#include <vmm_types.h>
+#include <cpu_features.h>
+#include <cpu_vm.h>
+#include <vm/vmcb.h>
+
+#ifndef __ASSEMBLY__
+
+static inline void clgi(void)
 {
+	asm volatile("clgi\n\t");
 }
+
+static inline void stgi(void)
+{
+	asm volatile("stgi\n\t");
+}
+
+extern int amd_setup_vm_control(struct vcpu_hw_context *context);
+extern int amd_init(struct cpuinfo_x86 *cpuinfo);
+
+#endif
+
+#endif /* _AMD_SVM_H__ */

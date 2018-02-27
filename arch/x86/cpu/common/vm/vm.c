@@ -31,10 +31,10 @@
 #include <cpu_features.h>
 #include <cpu_pgtbl_helper.h>
 #include <arch_guest_helper.h>
-#include <vm/amd_svm.h>
-#include <vm/amd_intercept.h>
-#include <vm/intel_vmx.h>
-#include <vm/intel_intercept.h>
+#include <vm/svm.h>
+#include <vm/svm_intercept.h>
+#include <vm/vmx.h>
+#include <vm/vmx_intercept.h>
 
 int vm_default_log_lvl = VM_LOG_LVL_INFO;
 

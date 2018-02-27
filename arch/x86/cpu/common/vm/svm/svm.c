@@ -31,8 +31,8 @@
 #include <cpu_features.h>
 #include <cpu_vm.h>
 #include <cpu_interrupts.h>
-#include <vm/amd_svm.h>
-#include <vm/amd_intercept.h>
+#include <vm/svm.h>
+#include <vm/svm_intercept.h>
 #include <emu/i8259.h>
 #include <arch_guest_helper.h>
 
