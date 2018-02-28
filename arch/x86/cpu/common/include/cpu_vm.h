@@ -118,6 +118,7 @@ struct vcpu_hw_context {
 
 	unsigned int asid;
 	u64 eptp;
+	u64 vmcs_state;
 	unsigned long n_cr3;  /* [Note] When #VMEXIT occurs with
 			       * nested paging enabled, hCR3 is not
 			       * saved back into the VMCB (vol2 p. 409)???*/
@@ -180,6 +181,9 @@ struct x86_vcpu_priv {
 };
 
 #define x86_vcpu_priv(vcpu) ((struct x86_vcpu_priv *)((vcpu)->arch_priv))
+#define x86_vcpu_guest(vcpu) ((struct vmm_guest *)((vcpu)->guest))
+#define x86_vcpu_hw_context_guest(hw_context) (x86_vcpu_guest(hw_context->assoc_vcpu))
+
 #define x86_vcpu_hw_context(vcpu)					\
 	((struct vcpu_hw_context *)					\
 	 (((struct x86_vcpu_priv *)((vcpu)->arch_priv))->hw_context))	\

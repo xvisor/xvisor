@@ -47,16 +47,11 @@ struct vmx_msr_state {
 	unsigned long msrs[VMX_MSR_COUNT];
 };
 
-union {
-	struct {
-		u64 ept_mt :3,
-			ept_wl :3,
-			rsvd   :6,
-			asr    :52;
-	};
-	u64 eptp;
-} vmx_ept_control;
-
+typedef enum {
+	VMCS_STATE_LAUNCHED = (0x1 << 0),
+	VMCS_STATE_ACTIVE   = (0x1 << 1),
+	VMCS_STATE_CURRENT  = (0x1 << 2),
+} vmcs_state_t;
 
 #define CPU_BASED_VIRTUAL_INTR_PENDING        0x00000004
 #define CPU_BASED_USE_TSC_OFFSETING           0x00000008
@@ -310,6 +305,7 @@ enum vmcs_field {
 
 extern void vmx_detect_capability(void);
 extern struct vmcs* create_vmcs(void);
+extern struct vmcs *current_vmcs(physical_addr_t *phys);
 void *alloc_vmx_on_region(void);
 extern int vmx_set_control_params(struct vcpu_hw_context *context);
 extern void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context);

@@ -31,6 +31,7 @@
 #include <libs/stringlib.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_manager.h>
 #include <cpu_features.h>
 #include <control_reg_access.h>
 #include <vm/vmcs.h>
@@ -237,9 +238,9 @@ void *alloc_vmx_on_region(void)
 	return vmcs;
 }
 
-struct vmcs *current_vmcs(void)
+struct vmcs *current_vmcs(physical_addr_t *phys)
 {
-        u64 vmcs_phys = 0;
+        physical_addr_t vmcs_phys = 0;
         virtual_addr_t vmcs_virt = 0;
 
         vmcs_phys = __vmptrst();
@@ -254,6 +255,9 @@ struct vmcs *current_vmcs(void)
                 vmm_printf("%s: Could not find virtual address for current VMCS\n", __func__);
                 return NULL;
         }
+
+	if (phys)
+		*phys = vmcs_phys;
 
         return (struct vmcs *)(vmcs_virt);
 }
@@ -338,6 +342,7 @@ static void vmcs_init_host_env(void)
 int vmx_set_control_params(struct vcpu_hw_context *context)
 {
 	int rc = VMM_OK;
+	u32 vcpu_id = context->assoc_vcpu->subid;
 
 	/* Initialize pin based control */
 	__vmwrite(PIN_BASED_VM_EXEC_CONTROL, vmx_pin_based_exec_control);
@@ -379,7 +384,7 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 	/* Enable Virtual-Processor Identification (asid) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_VPID;
 
-	__vmwrite(VIRTUAL_PROCESSOR_ID, 1);
+	__vmwrite(VIRTUAL_PROCESSOR_ID, vcpu_id);
 
 	/* Initialize vm exit controls */
 	vmx_vmexit_control |= (VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT);

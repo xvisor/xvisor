@@ -25,6 +25,8 @@
 #include <libs/stringlib.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
+#include <cpu_interrupts.h>
+#include <arch_guest_helper.h>
 #include <vmm_stdio.h>
 #include <control_reg_access.h>
 #include <vm/vmcs.h>
@@ -113,8 +115,125 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 	return VMM_OK;
 }
 
+static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
+{
+	int rc;
+
+	__asm__ __volatile__("cmpl $1, %1 \n\t"
+			     /* Save host RSP */
+			     "mov %%rsp, %%rax \n\t"
+			     "vmwrite %%rax, %%rdx \n\t"
+			     /*
+			      * Check if vmlaunch or vmresume is needed, set the condition code
+			      * appropriately for use below.
+			      */
+			     /* Load guest general purpose registers from the trap frame.
+			      * Don't clobber flags.
+			      */
+			     "movq %c[rax](%[context]), %%rax \n\t"
+			     "movq %c[rbx](%[context]), %%rbx \n\t"
+			     "movq %c[rdx](%[context]), %%rdx \n\t"
+			     "movq %c[rbp](%[context]), %%rbp \n\t"
+			     "movq %c[rdi](%[context]), %%rdi \n\t"
+			     "movq %c[rsi](%[context]), %%rsi \n\t"
+			     "movq %c[r8](%[context]),  %%r8  \n\t"
+			     "movq %c[r9](%[context]),  %%r9  \n\t"
+			     "movq %c[r10](%[context]), %%r10 \n\t"
+			     "movq %c[r11](%[context]), %%r11 \n\t"
+			     "movq %c[r12](%[context]), %%r12 \n\t"
+			     "movq %c[r13](%[context]), %%r13 \n\t"
+			     "movq %c[r14](%[context]), %%r14 \n\t"
+			     "movq %c[r15](%[context]), %%r15 \n\t"
+			     "movq %c[rcx](%[context]), %%rcx \n\t"
+			     /* Check if above comparison holds if yes vmlaunch else vmresume */
+			     "jne 1f                 \n\t"
+			     "vmlaunch               \n\t"
+			     "jmp 2f                 \n\t"
+			     "1: " "vmresume         \n\t"
+			     "2: "
+			     "vmx_return: "
+			     /*
+			      * VM EXIT
+			      * Save general purpose guest registers.
+			      */
+			     "movq %%rax, %c[rax](%[context]) \n\t"
+			     "movq %%rbx, %c[rbx](%[context]) \n\t"
+			     "movq %%rcx, %c[rcx](%[context]) \n\t"
+			     "movq %%rdx, %c[rdx](%[context]) \n\t"
+			     "movq %%rbp, %c[rbp](%[context]) \n\t"
+			     "movq %%rdi, %c[rdi](%[context]) \n\t"
+			     "movq %%rsi, %c[rsi](%[context]) \n\t"
+			     "movq %%r8,  %c[r8](%[context])  \n\t"
+			     "movq %%r9,  %c[r9](%[context])  \n\t"
+			     "movq %%r10, %c[r10](%[context]) \n\t"
+			     "movq %%r11, %c[r11](%[context]) \n\t"
+			     "movq %%r12, %c[r12](%[context]) \n\t"
+			     "movq %%r13, %c[r13](%[context]) \n\t"
+			     "movq %%r14, %c[r14](%[context]) \n\t"
+			     "movq %%r15, %c[r15](%[context]) \n\t"
+			     "jz fail_valid \n\t"
+			     "jc fail_invalid \n\t"
+			     "movq $0, 0(%0) \n\t"
+			     "jmp _done\n\t"
+			     "fail_valid: movq $1, 0(%0)\n\t"
+			     "fail_invalid: movq $2, 0(%0)\n\t"
+			     "_done:\n\t"
+			     :"=r"(rc):"m"(resume), "d"((unsigned long)HOST_RSP),
+			      [context]"r"(context),
+			      [rax]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RAX])),
+			      [rbx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RBX])),
+			      [rcx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RCX])),
+			      [rdx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RDX])),
+			      [rsi]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RSI])),
+			      [rdi]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RDI])),
+			      [rbp]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RBP])),
+			      [r8]"i"(offsetof(struct vcpu_hw_context,  g_regs[GUEST_REGS_R8])),
+			      [r9]"i"(offsetof(struct vcpu_hw_context,  g_regs[GUEST_REGS_R9])),
+			      [r10]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R10])),
+			      [r11]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R11])),
+			      [r12]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R12])),
+			      [r13]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R13])),
+			      [r14]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R14])),
+			      [r15]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R15]))
+			     : "cc", "memory"
+			       , "rax", "rbx", "rdi", "rsi"
+			       , "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+			     );
+
+	/* TR is not reloaded back the cpu after VM exit. */
+	reload_host_tss();
+
+	arch_guest_handle_vm_exit(context);
+
+	return VMM_OK;
+}
+
 static void vmx_vcpu_run(struct vcpu_hw_context *context)
 {
+	int rc;
+	physical_addr_t phys;
+
+	if (unlikely(!(context->vmcs_state & VMCS_STATE_ACTIVE))) {
+		/*
+		 * If the current VMCS is not same as we are going to load
+		 * make the current VMCS non-current.
+		 */
+		if (current_vmcs(&phys) && phys != context->vmcs_pa)
+			context->vmcs_state &= ~VMCS_STATE_CURRENT;
+
+		/* VMPTRLD: mark this vmcs active, current & clear */
+		__vmptrld(context->vmcs_pa);
+		context->vmcs_state  |=  (VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
+	}
+
+	if (likely(context->vmcs_state & VMCS_STATE_LAUNCHED)) {
+		rc = __vmcs_run(context, true);
+	} else {
+		context->vmcs_state |= VMCS_STATE_LAUNCHED;
+		rc = __vmcs_run(context, false);
+	}
+
+	BUG_ON(rc != VMM_OK);
 }
 
 int intel_setup_vm_control(struct vcpu_hw_context *context)
@@ -159,9 +278,7 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 
 	/* VMCLEAR: clear launched state */
 	__vmpclear(context->vmcs_pa);
-
-	/* VMPTRLD: mark this vmcs active, current & clear */
-	__vmptrld(context->vmcs_pa);
+	context->vmcs_state &= ~(VMCS_STATE_LAUNCHED  | VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
 
 	if ((ret = vmx_set_control_params(context)) != VMM_OK)
 		goto _fail;
