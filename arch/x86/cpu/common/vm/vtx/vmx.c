@@ -250,7 +250,6 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 	}
 
 	context->vmcs = vmcs;
-	vmm_printf("VMCS location: 0x%p\n", vmcs);
 
 	if (vmm_host_va2pa((virtual_addr_t)context->vmcs,
 			   &context->vmcs_pa) != VMM_OK) {
@@ -274,10 +273,25 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 	}
 
 	/* get in VMX ON  state */
-	__vmxon(context->vmxon_region_pa);
+	if ((ret = __vmxon(context->vmxon_region_pa)) != VMM_OK) {
+		vmm_printf("VMXON returned with error: %d\n", ret);
+		ret = VMM_EACCESS;
+		goto _fail;
+	}
+
+	if ((ret = __vmptrld(context->vmcs_pa)) != VMM_OK) {
+		vmm_printf("VMCS load failed with error: %d\n", ret);
+		ret = VMM_EACCESS;
+		goto _fail;
+	}
 
 	/* VMCLEAR: clear launched state */
-	__vmpclear(context->vmcs_pa);
+	if ((ret = __vmpclear(context->vmcs_pa)) != VMM_OK) {
+		vmm_printf("VMClear failed with error: %d\n", ret);
+		ret = VMM_EACCESS;
+		goto _fail;
+	}
+
 	context->vmcs_state &= ~(VMCS_STATE_LAUNCHED  | VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
 
 	if ((ret = vmx_set_control_params(context)) != VMM_OK)

@@ -749,23 +749,6 @@ int vmx_add_host_load_msr(struct vcpu_hw_context *context, u32 msr)
 	return 0;
 }
 
-void vm_launch_fail(void)
-{
-	unsigned long error = __vmread(VM_INSTRUCTION_ERROR);
-	vmm_printf("<vm_launch_fail> error code %lx\n", error);
-}
-
-void vm_resume_fail(void)
-{
-	unsigned long error = __vmread(VM_INSTRUCTION_ERROR);
-	vmm_printf("<vm_resume_fail> error code %lx\n", error);
-}
-
-void vmx_do_resume(struct vcpu_hw_context *context)
-{
-	//reset_stack_and_jump(vmx_asm_do_vmentry);
-}
-
 static unsigned long vmr(unsigned long field)
 {
 	int rc;

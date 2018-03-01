@@ -183,88 +183,162 @@ extern u64 vmx_ept_vpid_cap;
 #define __FIXUP_ALIGN ".align 8"
 #define __FIXUP_WORD  ".quad"
 
-static inline void __vmptrld(u64 addr)
+static inline u8 __vmptrld(u64 addr)
 {
-	asm volatile ("vmptrld (%0)\n"
-		       /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 1f ; ud2 ; 1:\n"
-		       :
-		       : "a"(&addr)
-		       : "memory");
+	u8 rc = 0;
+
+	asm volatile("clc \n\t"
+		     "1: vmptrld %2 \n\t"
+		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
+		     "2:\n"
+		     ".section .fixup,\"ax\"\n"
+		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     ".previous\n"
+		     ".section __ex_table,\"a\"\n"
+		     "   "__FIXUP_ALIGN"\n"
+		     "   "__FIXUP_WORD" 1b,3b\n"
+		     ".previous\n"
+		     : "=q" (rc)
+		     : "0" (0), "m" (addr)
+		     : "memory", "cc");
+
+	return rc;
 }
 
 static inline u64 __vmptrst(void)
 {
-        u64 addr;
+        u64 addr = 0;
+	int rc = VMM_OK;
 
-	asm volatile ("vmptrst (%0)\n"
-		       :
-		       : "a" (&addr)
-		       : "memory");
+	asm volatile("clc \n\t"
+		     "1: vmptrst (%1) \n\t"
+		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
+		     "2:\n"
+		     ".section .fixup,\"ax\"\n"
+		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     ".previous\n"
+		     ".section __ex_table,\"a\"\n"
+		     "   "__FIXUP_ALIGN"\n"
+		     "   "__FIXUP_WORD" 1b,3b\n"
+		     ".previous\n"
+		     : "=q" (rc), "=r"(addr)
+		     : "0" (0)
+		     : "memory", "cc");
 
         return addr;
 }
 
-static inline void __vmpclear(u64 addr)
+static inline u8 __vmpclear(u64 addr)
 {
-	asm volatile ("vmclear (%0)\n"
-		       /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 1f ; ud2 ; 1:\n"
-		       :
-		       : "a"(&addr)
-		       : "memory");
+	u8 rc = VMM_OK;
+
+	asm volatile("clc \n\t"
+		     "1: vmclear %2 \n\t"
+		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
+		     "2:\n"
+		     ".section .fixup,\"ax\"\n"
+		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     ".previous\n"
+		     ".section __ex_table,\"a\"\n"
+		     "   "__FIXUP_ALIGN"\n"
+		     "   "__FIXUP_WORD" 1b,3b\n"
+		     ".previous\n"
+		     : "=q" (rc)
+		     : "0" (0), "m" (addr)
+		     : "memory", "cc");
+
+	return rc;
 }
 
-static inline unsigned long __vmread(unsigned long field)
+static inline int __vmread(unsigned long field, unsigned long *value)
 {
 	unsigned long ecx;
+	int rc = VMM_OK;
 
-	asm volatile ("vmread %0, (%1)\n"
-		       /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 1f ; ud2 ; 1:\n"
-		       : "=c"(ecx)
-		       : "a"(field)
-		       : "memory");
+	asm volatile ("clc \n\t"
+		      "1: vmread %1, (%2)\n\t"
+		      "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
+		      "2:\n"
+		      ".section .fixup,\"ax\"\n"
+		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      ".previous\n"
+		      ".section __ex_table,\"a\"\n"
+		      "   "__FIXUP_ALIGN"\n"
+		      "   "__FIXUP_WORD" 1b,3b\n"
+		      ".previous\n"
+		      : "=q"(rc), "=c"(ecx)
+		      : "a"(field)
+		      : "memory");
 
-	return ecx;
+	if (!rc)
+		*value = ecx;
+
+	return rc;
 }
 
-static inline void __vmwrite(unsigned long field, unsigned long value)
+static inline int __vmwrite(unsigned long field, unsigned long value)
 {
-	asm volatile ("vmwrite %1, %0\n"
-		       /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 1f ; ud2 ; 1:\n"
-		       :
-		       : "a"(field) , "c"(value)
-		       : "memory");
+	int rc = VMM_OK;
+	asm volatile ("clc \n\t"
+		      "1: vmwrite %2, %1\n"
+		      "   setna %b0; neg %0\n\t"
+		      "2:\n"
+		      ".section .fixup,\"ax\"\n"
+		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      ".previous\n"
+		      ".section __ex_table,\"a\"\n"
+		      "   "__FIXUP_ALIGN"\n"
+		      "   "__FIXUP_WORD" 1b,3b\n"
+		      ".previous\n"
+		      : "=q"(rc)
+		      : "a"(field) , "c"(value)
+		      : "memory");
+
+	return rc;
 }
 
 static inline unsigned long __vmread_safe(unsigned long field, int *error)
 {
 	unsigned long ecx;
+	int rc;
 
-	asm volatile ("vmread %1, (%3)\n"
-		      /* CF==1 or ZF==1 --> rc = -1 */
-		      "setna %b0 ; neg %0"
-		      : "=q" (*error), "=c" (ecx)
-		      : "0" (0), "a" (field)
-		      : "memory");
+	if ((rc = __vmread(field, &ecx)) != VMM_OK) {
+		*error = rc;
+		return 0;
+	}
 
 	return ecx;
 }
 
-static inline void __vm_set_bit(unsigned long field, unsigned int bit)
+static inline int __vm_set_bit(unsigned long field, unsigned int bit)
 {
-	__vmwrite(field, __vmread(field) | (1UL << bit));
+	unsigned long value;
+	int rc = VMM_OK;
+
+	if ((rc = __vmread(field, &value)) != VMM_OK)
+		return rc;
+	if ((rc = __vmwrite(field, value | (1UL << bit))) != VMM_OK)
+		return rc;
+
+	return VMM_OK;
 }
 
-static inline void __vm_clear_bit(unsigned long field, unsigned int bit)
+static inline int __vm_clear_bit(unsigned long field, unsigned int bit)
 {
-	__vmwrite(field, __vmread(field) & ~(1UL << bit));
+	unsigned long value;
+	int rc = VMM_OK;
+
+	if ((rc = __vmread(field, &value)) != VMM_OK)
+		return rc;
+	if ((rc = __vmwrite(field, value & ~(1UL << bit))) != VMM_OK)
+		return rc;
+
+	return VMM_OK;
 }
 
-static inline void __invept(int type, u64 eptp, u64 gpa)
+static inline int __invept(int type, u64 eptp, u64 gpa)
 {
+	int rc = VMM_OK;
 	struct {
 		u64 eptp, gpa;
 	} operand = {eptp, gpa};
@@ -277,16 +351,27 @@ static inline void __invept(int type, u64 eptp, u64 gpa)
 	     !cpu_has_vmx_ept_invept_single_context )
 		type = INVEPT_ALL_CONTEXT;
 
-	asm volatile ("invept %1, (%0)\n"
-		      /* CF==1 or ZF==1 --> crash (ud2) */
-		      "ja 1f ; ud2 ; 1:\n"
-		      :
+	asm volatile ("clc \n\t"
+		      "1:invept %2, (%1)\n"
+		      "  setna %b0 ; neg %0\n"
+		      "2:\n"
+		      ".section .fixup,\"ax\"\n"
+		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      ".previous\n"
+		      ".section __ex_table,\"a\"\n"
+		      "   "__FIXUP_ALIGN"\n"
+		      "   "__FIXUP_WORD" 1b,3b\n"
+		      ".previous\n"
+		      : "=q"(rc)
 		      : "a"(&operand), "c"(type)
 		      : "memory" );
+
+	return rc;
 }
 
-static inline void __invvpid(int type, u16 vpid, u64 gva)
+static inline int __invvpid(int type, u16 vpid, u64 gva)
 {
+	int rc = VMM_OK;
 	struct {
 		u64 vpid:16;
 		u64 rsvd:48;
@@ -297,16 +382,21 @@ static inline void __invvpid(int type, u16 vpid, u64 gva)
 	type &= 0xfffffffful;
 
 	/* Fix up #UD exceptions which occur when TLBs are flushed before VMXON. */
-	asm volatile ("invvpid %1, %0\n"
-		      /* CF==1 or ZF==1 --> crash (ud2) */
-		       "ja 2f ; ud2 ; 2:\n"
-		       ".section __ex_table,\"a\"\n"
-		       "    "__FIXUP_ALIGN"\n"
-		       "    "__FIXUP_WORD" 1b,2b\n"
-		       ".previous"
-		       :
-		       : "a"(&operand), "c"(type)
-		       : "memory" );
+	asm volatile ("invvpid %2, %1\n"
+		      "  setna %b0 ; neg %0\n"
+		      "2:\n"
+		      ".section .fixup,\"ax\"\n"
+		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      ".previous\n"
+		      ".section __ex_table,\"a\"\n"
+		      "   "__FIXUP_ALIGN"\n"
+		      "   "__FIXUP_WORD" 1b,3b\n"
+		      ".previous\n"
+		      : "=q"(rc)
+		      : "a"(&operand), "c"(type)
+		      : "memory" );
+
+	return rc;
 }
 
 static inline void ept_sync_all(void)
@@ -351,9 +441,9 @@ static inline void __vmxoff(void)
 
 static inline int __vmxon(u64 addr)
 {
-	int rc;
+	int rc = VMM_OK;
 
-	asm volatile ("1: vmxon (%2)\n"
+	asm volatile ("1: vmxon %2\n"
 		      "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
 		      "2:\n"
 		      ".section .fixup,\"ax\"\n"
@@ -364,7 +454,7 @@ static inline int __vmxon(u64 addr)
 		      "   "__FIXUP_WORD" 1b,3b\n"
 		      ".previous\n"
 		      : "=q" (rc)
-		      : "0" (0), "a" (&addr)
+		      : "0" (0), "m" (addr)
 		      : "memory");
 
 	return rc;
