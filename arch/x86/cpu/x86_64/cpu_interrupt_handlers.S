@@ -60,54 +60,54 @@
  *      |     rax       |
  *      +---------------+
  */
-EXCEPTION_HANDLER(_exception_div_error) /* division error */
+IRQ_HANDLER(_exception_div_error) /* division error */
 	movq $0, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_debug) /* debug exception */
+IRQ_HANDLER(_exception_debug) /* debug exception */
 	movq $1, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_nmi) /* NMI */
+IRQ_HANDLER(_exception_nmi) /* NMI */
 	movq $2, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
 .extern do_breakpoint
-EXCEPTION_HANDLER(_exception_bp) /* Breat point */
+IRQ_HANDLER(_exception_bp) /* Breat point */
 	movq	$3, %rdi /* first arg as int num */
 	movq	%rsp, %rsi /* pt_regs */
 	callq	do_breakpoint
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_ovf) /* overflow */
+IRQ_HANDLER(_exception_ovf) /* overflow */
 	movq $4, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_bounds) /* bounds */
+IRQ_HANDLER(_exception_bounds) /* bounds */
 	movq $5, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_inval_opc) /* invalid opc. */
+IRQ_HANDLER(_exception_inval_opc) /* invalid opc. */
 	movq $6, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_no_dev) /* dev not avail */
+IRQ_HANDLER(_exception_no_dev) /* dev not avail */
 	movq $7, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
 EXCEPTION_HANDLER(_exception_double_fault) /* double fault */
 	movq $8, %rdi
@@ -115,11 +115,11 @@ EXCEPTION_HANDLER(_exception_double_fault) /* double fault */
 	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
-EXCEPTION_HANDLER(_exception_coproc_overrun) /* coproc seg overrn */
+IRQ_HANDLER(_exception_coproc_overrun) /* coproc seg overrn */
 	movq $9, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
 EXCEPTION_HANDLER(_exception_inval_tss) /* invalid tss */
 	movq $10, %rdi
@@ -152,29 +152,35 @@ EXCEPTION_HANDLER(_exception_page_fault) /* page fault */
 	callq do_page_fault
 END_EXCEPTION_HANDLER
 
-EXCEPTION_HANDLER(_exception_coproc_err) /* coproc error */
-	movq $15, %rdi
-	movq %rsp, %rsi
-	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
-
-EXCEPTION_HANDLER(_exception_align_check) /* alignment check */
+IRQ_HANDLER(_exception_coproc_err) /* coproc error */
 	movq $16, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
 
-EXCEPTION_HANDLER(_exception_machine_check) /* machine check */
+EXCEPTION_HANDLER(_exception_align_check) /* alignment check */
 	movq $17, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
 END_EXCEPTION_HANDLER
 
-EXCEPTION_HANDLER(_exception_simd_err) /* SIMD coproc error */
+IRQ_HANDLER(_exception_machine_check) /* machine check */
 	movq $18, %rdi
 	movq %rsp, %rsi
 	callq do_generic_exception_handler
-END_EXCEPTION_HANDLER
+END_IRQ_HANDLER
+
+IRQ_HANDLER(_exception_simd_err) /* SIMD coproc error */
+	movq $19, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
+END_IRQ_HANDLER
+
+IRQ_HANDLER(_exception_ve) /* Vritualization exception */
+	movq $20, %rdi
+	movq %rsp, %rsi
+	callq do_generic_exception_handler
+END_IRQ_HANDLER
 
 .extern do_generic_int_handler
 EXCEPTION_HANDLER(_generic_handler) /* other interrupts */
