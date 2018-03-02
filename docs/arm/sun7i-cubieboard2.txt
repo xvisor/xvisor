@@ -19,7 +19,7 @@ the above link.
 Once we have SD card prepared for SD booting, we add 2 images to the boot 
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
- 2) DTB for Xvisor (one_guest_vexpress-a15.dtb)
+ 2) DTB for Xvisor (sun7i-a20-cubieboard2.dtb)
  3) Disk image containing guest binaries (disk.img)
 
 Following are steps to create these images and then boot Xvisor on Allwinner
@@ -102,7 +102,7 @@ A20:
 
   [18. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/sun7i/cubieboard2/one_guest_vexpress-a15.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/sun7i/sun7i-a20-cubieboard2.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [19. Unmount boot partition (or partition 0) of SD card from your development machine]
@@ -120,7 +120,7 @@ A20:
   sun7i# fatload mmc 0 0x40200000 uvmm.bin
 
   [25. Copy the Xvisor DTB from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x40800000 one_guest_vexpress-a15.dtb
+  sun7i# fatload mmc 0 0x40800000 sun7i-a20-cubieboard2.dtb
 
   [26. Copy disk image from SD card to SDRAM]
   sun7i# fatload mmc 0 0x41000000 udisk.img
@@ -134,7 +134,7 @@ A20:
    the following commands in the "boot.cmd" file:
    mmc dev 0:0
    fatload mmc 0 0x40200000 uvmm.bin
-   fatload mmc 0 0x40800000 one_guest_vexpress-a15.dtb
+   fatload mmc 0 0x40800000 sun7i-a20-cubieboard2.dtb
    fatload mmc 0 0x41000000 udisk.img
    bootm 0x40200000 0x41000000 0x40800000
    Then you can create the boot.scr file wit the following command:
