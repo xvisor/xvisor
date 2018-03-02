@@ -1,0 +1,42 @@
+
+/dts-v1/;
+
+#include "./sun7i-a20.dtsi"
+
+/ {
+	model = "Cubietech Cubieboard2";
+	compatible = "cubietech,cubieboard2", "allwinner,sun7i-a20";
+
+        chosen {
+                bootargs = "earlyprintk console=ttyS0,115200";
+        };
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		console = &uart0;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&mmc0 {
+	status = "okay";
+};

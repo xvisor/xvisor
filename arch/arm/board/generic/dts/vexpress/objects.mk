@@ -22,12 +22,5 @@
 # */
 
 board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/vexpress-v2p-ca9.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/zero_guest.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_vexpress-a15.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/one_guest_virt-v7.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/two_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/two_guest_vexpress-a15.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/a15/two_pt_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/vexpress-v2p-ca15-tc1.dtb
 board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/vexpress-v2p-ca15-tc1-nove.dtb

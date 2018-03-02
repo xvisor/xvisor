@@ -21,13 +21,7 @@
 # @brief list of Renesas R-Car SoC DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/zero_guest.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/one_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/one_guest_vexpress-a9.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/one_guest_vexpress-a15.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/one_guest_virt-v7.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/two_guest_pb-a8.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/lager/two_guest_vexpress-a15.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/r8a7790-lager.dtb
 
 board-dtbs-$(CONFIG_ARMV8)+=dts/rcar/salvator-x/zero_guest.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/rcar/salvator-x/one_guest_pb-a8.dtb
