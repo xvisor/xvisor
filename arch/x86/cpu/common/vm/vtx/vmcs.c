@@ -124,13 +124,18 @@ void vmx_detect_capability(void)
 		       &vmx_misc_msr_low);
 
 	if (!(vmx_misc_msr_low & (0x1UL << 5)))
-	  vmm_panic("Unrestricted guest is not supported!\n");
+		vmm_panic("CPU doesn't supports the mandated unrestricted guest mode!\n");
 
 	/* save the revision_id */
 	vmcs_revision_id = vmx_basic_msr_low;
 
+	VM_LOG(LVL_VERBOSE, "%s: Basic MSR: 0x%lx\n", __func__, cpu_read_msr(MSR_IA32_VMX_BASIC));
+	VM_LOG(LVL_VERBOSE, "%s: Basic low: 0x%x\n", __func__, vmx_basic_msr_low);
+
 	vmxon_region_size = VMM_ROUNDUP2_PAGE_SIZE(vmx_basic_msr_high
 						   & 0x1ffful);
+	VM_LOG(LVL_VERBOSE, "%s: VMXON Region Size: 0x%x\n", __func__, vmxon_region_size);
+
 	vmxon_region_nr_pages = VMM_SIZE_TO_PAGE(vmxon_region_size);
 
 	/* Determine the default1 and default0 for control msrs
@@ -247,12 +252,13 @@ struct vmcs *current_vmcs(physical_addr_t *phys)
 
         /* There is not current VMCS */
         if (vmcs_phys == 0xFFFFFFFFFFFFFFFFULL) {
-                vmm_printf("%s: There is not active(current) VMCS on this logical processor.\n", __func__);
+                VM_LOG(LVL_ERR, "%s: There is not active(current) VMCS on this "
+		       "logical processor.\n", __func__);
                 return NULL;
         }
 
         if (vmm_host_pa2va(vmcs_phys, &vmcs_virt) != VMM_OK) {
-                vmm_printf("%s: Could not find virtual address for current VMCS\n", __func__);
+                VM_LOG(LVL_ERR, "%s: Could not find virtual address for current VMCS\n", __func__);
                 return NULL;
         }
 
@@ -268,19 +274,19 @@ struct vmcs* create_vmcs(void)
 
 	/* IA-32 SDM Vol 3B: VMCS size is never greater than 4kB. */
 	if ((vmx_basic_msr_high & 0x1fff) > PAGE_SIZE) {
-		vmm_printf("VMCS size larger than 4K\n");
+		VM_LOG(LVL_ERR, "VMCS size larger than 4K\n");
 		return NULL;
 	}
 
 	/* IA-32 SDM Vol 3B: 64-bit CPUs always have VMX_BASIC_MSR[48]==0. */
 	if (vmx_basic_msr_high & (1u<<16)) {
-		vmm_printf("VMX_BASIC_MSR[48] = 1\n");
+		VM_LOG(LVL_ERR, "VMX_BASIC_MSR[48] = 1\n");
 		return NULL;
 	}
 
 	/* Require Write-Back (WB) memory type for VMCS accesses. */
 	if (((vmx_basic_msr_high >> 18) & 15) != 6) {
-		vmm_printf("Write-back memory required for VMCS\n");
+		VM_LOG(LVL_ERR, "Write-back memory required for VMCS\n");
 		return NULL;
 	}
 
@@ -373,8 +379,10 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_cpu_based_exec_control);
 
 	/* Set up the VCPU's guest extended page tables */
-	if ((rc = setup_ept(context)) != VMM_OK)
+	if ((rc = setup_ept(context)) != VMM_OK) {
+		VM_LOG(LVL_ERR, "EPT Setup failed with error: %d\n", rc);
 		return rc;
+	}
 
 	/* Enable Extended Page Table (nested paging) */
 	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_EPT;
