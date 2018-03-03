@@ -22,20 +22,9 @@
 #include <vmm_types.h>
 #include <vm/vmcs.h>
 
-typedef union {
-	struct {
-		u64 r:1;
-		u64 w:1;
-		u64 x:1;
-		u64 emt:3;
-		u64 ipat:1;
-		u64 sp:1;
-		u64 avail1:4;
-		u64 mfn:40;
-		u64 avail2:12;
-	};
-	u64 epte;
-} ept_entry_t;
+#define VMX_FAIL_INVALID	-1
+#define VMX_FAIL_VALID          -2
+#define VMX_FAIL_UD_GF		-3
 
 #define EPT_TABLE_ORDER         9
 #define EPTE_SUPER_PAGE_MASK    0x80
@@ -183,23 +172,28 @@ extern u64 vmx_ept_vpid_cap;
 #define __FIXUP_ALIGN ".align 8"
 #define __FIXUP_WORD  ".quad"
 
-static inline u8 __vmptrld(u64 addr)
+static inline int __vmptrld(u64 addr)
 {
-	u8 rc = 0;
+	int rc = 0;
 
-	asm volatile("clc \n\t"
-		     "1: vmptrld %2 \n\t"
-		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
-		     "2:\n"
+	asm volatile("1: vmptrld (%1) \n\t"
+		     "jz 5f\n"
+		     "jc 2f\n"
+		     "jmp 3f\n"
+		     "5:sub $%c4, %0\n"
+		     "jmp  3f\n"
+		     "2:sub  $%c3, %0\n"
+		     "3:\n"
 		     ".section .fixup,\"ax\"\n"
-		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     "4:sub $%c5, %0 ; jmp 3b\n"
 		     ".previous\n"
 		     ".section __ex_table,\"a\"\n"
 		     "   "__FIXUP_ALIGN"\n"
-		     "   "__FIXUP_WORD" 1b,3b\n"
+		     "   "__FIXUP_WORD" 1b,4b\n"
 		     ".previous\n"
-		     : "=q" (rc)
-		     : "0" (0), "m" (addr)
+		     : "=a"(rc)
+		     : "c"(&addr), "0"(0),  "i"(-VMX_FAIL_INVALID),
+		       "i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
 		     : "memory", "cc");
 
 	return rc;
@@ -210,41 +204,44 @@ static inline u64 __vmptrst(void)
         u64 addr = 0;
 	int rc = VMM_OK;
 
-	asm volatile("clc \n\t"
-		     "1: vmptrst (%1) \n\t"
-		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
+	asm volatile("1: vmptrst %1 \n\t"
 		     "2:\n"
 		     ".section .fixup,\"ax\"\n"
-		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     "3: sub $%c2, %0 ; jmp 2b\n"
 		     ".previous\n"
 		     ".section __ex_table,\"a\"\n"
 		     "   "__FIXUP_ALIGN"\n"
 		     "   "__FIXUP_WORD" 1b,3b\n"
 		     ".previous\n"
-		     : "=q" (rc), "=r"(addr)
-		     : "0" (0)
-		     : "memory", "cc");
+		     : "=q" (rc), "=m"(addr)
+		     : "i"(-VMX_FAIL_UD_GF)
+		     : "memory");
 
         return addr;
 }
 
-static inline u8 __vmpclear(u64 addr)
+static inline int __vmpclear(u64 addr)
 {
-	u8 rc = VMM_OK;
+	int rc = VMM_OK;
 
-	asm volatile("clc \n\t"
-		     "1: vmclear %2 \n\t"
-		     "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
-		     "2:\n"
+	asm volatile("1: vmclear (%1) \n\t"
+		     "jz 5f\n"
+		     "jc 2f\n"
+		     "jmp 3f\n"
+		     "5:sub $%c4, %0\n"
+		     "jmp  3f\n"
+		     "2:sub  $%c3, %0\n"
+		     "3:\n"
 		     ".section .fixup,\"ax\"\n"
-		     "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		     "4:sub $%c5, %0 ; jmp 3b\n"
 		     ".previous\n"
 		     ".section __ex_table,\"a\"\n"
 		     "   "__FIXUP_ALIGN"\n"
-		     "   "__FIXUP_WORD" 1b,3b\n"
+		     "   "__FIXUP_WORD" 1b,4b\n"
 		     ".previous\n"
-		     : "=q" (rc)
-		     : "0" (0), "m" (addr)
+		     : "=a"(rc)
+		     : "c"(&addr), "0"(0),  "i"(-VMX_FAIL_INVALID),
+		       "i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
 		     : "memory", "cc");
 
 	return rc;
@@ -252,26 +249,31 @@ static inline u8 __vmpclear(u64 addr)
 
 static inline int __vmread(unsigned long field, unsigned long *value)
 {
-	unsigned long ecx;
+	unsigned long edx;
 	int rc = VMM_OK;
 
-	asm volatile ("clc \n\t"
-		      "1: vmread %1, (%2)\n\t"
-		      "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
-		      "2:\n"
+	asm volatile ("1: vmread %1, %2\n\t"
+		      "jz 5f\n"
+		      "jc 2f\n"
+		      "jmp 3f\n"
+		      "5:sub $%c4, %0\n"
+		      "jmp  3f\n"
+		      "2:sub  $%c3, %0\n"
+		      "3:\n"
 		      ".section .fixup,\"ax\"\n"
-		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      "4:sub $%c5, %0 ; jmp 3b\n"
 		      ".previous\n"
 		      ".section __ex_table,\"a\"\n"
 		      "   "__FIXUP_ALIGN"\n"
-		      "   "__FIXUP_WORD" 1b,3b\n"
+		      "   "__FIXUP_WORD" 1b,4b\n"
 		      ".previous\n"
-		      : "=q"(rc), "=c"(ecx)
-		      : "a"(field)
-		      : "memory");
+		      : "=r"(rc), "=r"(edx)
+		      : "r"(field), "i"(-VMX_FAIL_INVALID),
+			"i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
+		      : "memory", "cc");
 
 	if (!rc)
-		*value = ecx;
+		*value = edx;
 
 	return rc;
 }
@@ -279,19 +281,24 @@ static inline int __vmread(unsigned long field, unsigned long *value)
 static inline int __vmwrite(unsigned long field, unsigned long value)
 {
 	int rc = VMM_OK;
-	asm volatile ("clc \n\t"
-		      "1: vmwrite %2, %1\n"
-		      "   setna %b0; neg %0\n\t"
-		      "2:\n"
+	asm volatile ("1: vmwrite %1, %2\n"
+		      "jz 5f\n"
+		      "jc 2f\n"
+		      "jmp 3f\n"
+		      "5:sub $%c4, %0\n"
+		      "jmp  3f\n"
+		      "2:sub  $%c3, %0\n"
+		      "3:\n"
 		      ".section .fixup,\"ax\"\n"
-		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      "4:sub $%c5, %0 ; jmp 3b\n"
 		      ".previous\n"
 		      ".section __ex_table,\"a\"\n"
 		      "   "__FIXUP_ALIGN"\n"
-		      "   "__FIXUP_WORD" 1b,3b\n"
+		      "   "__FIXUP_WORD" 1b,4b\n"
 		      ".previous\n"
-		      : "=q"(rc)
-		      : "a"(field) , "c"(value)
+		      : "=qm"(rc)
+		      : "r"(value), "r"(field),  "i"(-VMX_FAIL_INVALID),
+			"i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
 		      : "memory");
 
 	return rc;
@@ -336,103 +343,6 @@ static inline int __vm_clear_bit(unsigned long field, unsigned int bit)
 	return VMM_OK;
 }
 
-static inline int __invept(int type, u64 eptp, u64 gpa)
-{
-	int rc = VMM_OK;
-	struct {
-		u64 eptp, gpa;
-	} operand = {eptp, gpa};
-
-	/*
-	 * If single context invalidation is not supported, we escalate to
-	 * use all context invalidation.
-	 */
-	if ( (type == INVEPT_SINGLE_CONTEXT) &&
-	     !cpu_has_vmx_ept_invept_single_context )
-		type = INVEPT_ALL_CONTEXT;
-
-	asm volatile ("clc \n\t"
-		      "1:invept %2, (%1)\n"
-		      "  setna %b0 ; neg %0\n"
-		      "2:\n"
-		      ".section .fixup,\"ax\"\n"
-		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
-		      ".previous\n"
-		      ".section __ex_table,\"a\"\n"
-		      "   "__FIXUP_ALIGN"\n"
-		      "   "__FIXUP_WORD" 1b,3b\n"
-		      ".previous\n"
-		      : "=q"(rc)
-		      : "a"(&operand), "c"(type)
-		      : "memory" );
-
-	return rc;
-}
-
-static inline int __invvpid(int type, u16 vpid, u64 gva)
-{
-	int rc = VMM_OK;
-	struct {
-		u64 vpid:16;
-		u64 rsvd:48;
-		u64 gva;
-	} __attribute__ ((packed)) operand = {vpid, 0, gva};
-
-	/* invvpid might fail if 32:64 are non-zero */
-	type &= 0xfffffffful;
-
-	/* Fix up #UD exceptions which occur when TLBs are flushed before VMXON. */
-	asm volatile ("invvpid %2, %1\n"
-		      "  setna %b0 ; neg %0\n"
-		      "2:\n"
-		      ".section .fixup,\"ax\"\n"
-		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
-		      ".previous\n"
-		      ".section __ex_table,\"a\"\n"
-		      "   "__FIXUP_ALIGN"\n"
-		      "   "__FIXUP_WORD" 1b,3b\n"
-		      ".previous\n"
-		      : "=q"(rc)
-		      : "a"(&operand), "c"(type)
-		      : "memory" );
-
-	return rc;
-}
-
-static inline void ept_sync_all(void)
-{
-	__invept(INVEPT_ALL_CONTEXT, 0, 0);
-}
-
-static inline void vpid_sync_vcpu_gva(struct vcpu_hw_context *context, unsigned long gva)
-{
-	int type = INVVPID_INDIVIDUAL_ADDR;
-
-	/*
-	 * If individual address invalidation is not supported, we escalate to
-	 * use single context invalidation.
-	 */
-	if (likely(cpu_has_vmx_vpid_invvpid_individual_addr))
-		goto execute_invvpid;
-
-	type = INVVPID_SINGLE_CONTEXT;
-
-	/*
-	 * If single context invalidation is not supported, we escalate to
-	 * use all context invalidation.
-	 */
-	if (!cpu_has_vmx_vpid_invvpid_single_context)
-		type = INVVPID_ALL_CONTEXT;
-
- execute_invvpid:
-	__invvpid(type, context->asid, (u64)gva);
-}
-
-static inline void vpid_sync_all(void)
-{
-	__invvpid(INVVPID_ALL_CONTEXT, 0, 0);
-}
-
 static inline void __vmxoff(void)
 {
 	asm volatile("vmxoff\n"
@@ -443,18 +353,24 @@ static inline int __vmxon(u64 addr)
 {
 	int rc = VMM_OK;
 
-	asm volatile ("1: vmxon %2\n"
-		      "   setna %b0 ; neg %0\n" /* CF==1 or ZF==1 --> rc = -1 */
-		      "2:\n"
+	asm volatile ("1: vmxon (%1)\n"
+		      "jz 5f\n"
+		      "jc 2f\n"
+		      "jmp 3f\n"
+		      "5:sub $%c4, %0\n"
+		      "jmp  3f\n"
+		      "2:sub  $%c3, %0\n"
+		      "3:\n"
 		      ".section .fixup,\"ax\"\n"
-		      "3: sub $2,%0 ; jmp 2b\n"    /* #UD or #GP --> rc = -2 */
+		      "4:sub $%c5, %0 ; jmp 3b\n"
 		      ".previous\n"
 		      ".section __ex_table,\"a\"\n"
 		      "   "__FIXUP_ALIGN"\n"
-		      "   "__FIXUP_WORD" 1b,3b\n"
+		      "   "__FIXUP_WORD" 1b,4b\n"
 		      ".previous\n"
-		      : "=q" (rc)
-		      : "0" (0), "m" (addr)
+		      : "=a"(rc)
+		      : "c"(&addr), "0"(0),  "i"(-VMX_FAIL_INVALID),
+			"i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
 		      : "memory");
 
 	return rc;
