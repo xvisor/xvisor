@@ -181,6 +181,9 @@ int setup_boot_pagetable(struct vcpu_hw_context *context)
 
 	if ((rc = ept_create_pte(context, EPT_BOOT_PAGE, hphys_addr, PAGE_SIZE,
 				 (EPT_PROT_READ | EPT_PROT_EXEC_S))) != VMM_OK) {
+		VM_LOG(LVL_ERR, "Failed to create guest pte for boot page. "
+		       "Host Phys: 0x%lx Boot page: 0x%lx\n", hphys_addr,
+		       EPT_BOOT_PAGE);
 		return rc;
 	}
 
@@ -192,9 +195,12 @@ int setup_ept(struct vcpu_hw_context *context)
 	physical_addr_t pml4_phys;
 	eptp_t *eptp = (eptp_t *)&context->eptp;
 	virtual_addr_t pml4 = get_free_page_for_pagemap(context, &pml4_phys);
+	int rc = VMM_OK;
 
-	if (!pml4)
-		return VMM_EFAIL;
+	if (!pml4) {
+		VM_LOG(LVL_ERR, "%s: Failed to allocate EPT page\n", __func__);
+		return VMM_ENOMEM;
+	}
 
 	eptp->bits.mt = 6; /* Write back */
 	eptp->bits.pgwl = 4; /* 4 page levels */
@@ -203,8 +209,10 @@ int setup_ept(struct vcpu_hw_context *context)
 
 	context->n_cr3 = pml4;
 
-	if (setup_boot_pagetable(context) != VMM_OK)
-		return VMM_EFAIL;
+	if ((rc = setup_boot_pagetable(context)) != VMM_OK) {
+		VM_LOG(LVL_ERR, "%s: Failed to setup boot page tables\n", __func__);
+		return rc;
+	}
 
 	return VMM_OK;
 }
