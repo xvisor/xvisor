@@ -318,7 +318,7 @@ virtual_addr_t get_free_page_for_pagemap(struct vcpu_hw_context *context,
 	int index = free_page_index_in_pglist(context);
 	virtual_addr_t tvaddr;
 
-	if (index != VMM_OK)
+	if (index < 0)
 		return 0;
 
 	tvaddr = (virtual_addr_t)
@@ -329,7 +329,7 @@ virtual_addr_t get_free_page_for_pagemap(struct vcpu_hw_context *context,
 
 	if (page_phys) {
 		if (vmm_host_va2pa(tvaddr, page_phys) != VMM_OK)
-			return VMM_EFAIL;
+			return 0;
 	}
 
 	return tvaddr;
