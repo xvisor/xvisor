@@ -88,7 +88,7 @@ u8 cpu_has_vmx_ins_outs_instr_info __read_mostly;
 u32 vmxon_region_size __read_mostly;
 u32 vmxon_region_nr_pages __read_mostly;
 
-static u32 vmcs_revision_id __read_mostly;
+u32 vmcs_revision_id __read_mostly;
 
 static void __init vmx_display_features(void)
 {
