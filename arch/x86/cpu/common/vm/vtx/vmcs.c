@@ -454,9 +454,6 @@ void vmx_disable_intercept_for_msr(struct vcpu_hw_context *context, u32 msr)
 
 void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
-	physical_addr_t gcr3_pa;
-	struct vmcb *vmcb = context->vmcb;
-
 	/* MSR intercepts. */
 	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
 	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
@@ -560,15 +557,6 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 
 	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
 	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
-
-        /* Allocate shadow page table if we are not using SLAT */
-#if !defined(CONFIG_SLAT_SUPPORT)
-	if (vmm_host_va2pa((virtual_addr_t)context->shadow32_pgt, &gcr3_pa) != VMM_OK)
-		vmm_panic("ERROR: Couldn't convert guest shadow table virtual address to physical!\n");
-
-	/* Since this VCPU is in power-up stage, two-fold 32-bit page table apply to it */
-	vmcb->cr3 = gcr3_pa;
-#endif
 }
 
 void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
