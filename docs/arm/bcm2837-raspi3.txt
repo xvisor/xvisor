@@ -43,7 +43,7 @@ as follow:
 Once we have u-boot installed on SD card, we add 3 more images to the boot
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
- 2) DTB for Xvisor (one_guest_virt-v8.dtb)
+ 2) DTB for Xvisor (bcm2837-rpi-3-b.dtb)
  3) U-Boot compatible Xvisro disk containing guest binaries (udisk.img)
 
 Following are steps to create these images and boot Xvisor on Raspberry Pi3:
@@ -100,6 +100,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
   # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
   # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
+  # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm64/boot/Image ./build/disk/images/arm64/virt-v8/Image
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
@@ -114,6 +115,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8x2.dtb ./tests/arm64/virt-v8/virt-v8x2.dts
   # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
   # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [15. Make U-boot compatible udisk.img for use with bootm command]
@@ -125,7 +127,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
 
   [18. Copy uvmm.bin, DTB, and udisk.img to data partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/bcm2837/one_guest_virt-v8.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/bcm2837/bcm2837-rpi-3-b.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
   [19. Unmount data partition (or partition 2) of SD card from your development machine]
@@ -143,7 +145,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   U-Boot> ext4load mmc 0:2 0x200000 uvmm.bin
 
   [25. Copy the Xvisor DTB from SD card to SDRAM]
-  U-Boot> ext4load mmc 0:2 0x800000 one_guest_virt-v8.dtb
+  U-Boot> ext4load mmc 0:2 0x800000 bcm2837-rpi-3-b.dtb
 
   [26. Copy disk image from SD card to SDRAM]
   U-Boot> ext4load mmc 0:2 0x2000000 udisk.img
@@ -157,7 +159,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
    the following commands in the "boot.cmd" file:
    mmc dev 0:0
    ext4load mmc 0 0x200000 uvmm.bin
-   ext4load mmc 0 0x800000 one_guest_virt-v8.dtb
+   ext4load mmc 0 0x800000 bcm2837-rpi-3-b.dtb
    ext4load mmc 0 0x2000000 udisk.img
    bootm 0x200000 0x2000000 0x800000
    Then you can create the boot.scr file wit the following command:
