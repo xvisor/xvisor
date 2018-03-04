@@ -147,55 +147,11 @@ int ept_create_pte(struct vcpu_hw_context *context,
 	return VMM_OK;
 }
 
-int setup_boot_pagetable(struct vcpu_hw_context *context)
-{
-	int rc = VMM_OK;
-	struct vmm_guest *guest = context->assoc_vcpu->guest;
-	physical_addr_t hphys_addr;
-	u32 flags;
-	physical_size_t availsz;
-
-	/* Find-out region mapping. */
-	rc = vmm_guest_physical_map(guest, EPT_BOOT_PAGE, PAGE_SIZE,
-				    &hphys_addr, &availsz, &flags);
-	if (rc) {
-		VM_LOG(LVL_ERR, "Could not locate guest boot address "
-		       " 0x%x in the guest DTS file.\n", (unsigned int)EPT_BOOT_PAGE);
-		return rc;
-	}
-
-	if (availsz < PAGE_SIZE) {
-		VM_LOG(LVL_ERR, "The size of boot area (guest bios) is less "
-		       "then system page size(%d bytes). Make it multiple of page size.\n",
-		       PAGE_SIZE);
-		return VMM_ENOMEM;
-	}
-
-	/* Make sure that region we have read from DTS is
-	 * marked as BIOS */
-	if (!IS_BIOS_ADDRESS(flags)) {
-		VM_LOG(LVL_ERR, "Guest boot address 0x%x is not marked as"
-		       " BIOS in guest DTS\n", (unsigned int)EPT_BOOT_PAGE);
-		return VMM_EINVALID;
-	}
-
-	if ((rc = ept_create_pte(context, EPT_BOOT_PAGE, hphys_addr, PAGE_SIZE,
-				 (EPT_PROT_READ | EPT_PROT_EXEC_S))) != VMM_OK) {
-		VM_LOG(LVL_ERR, "Failed to create guest pte for boot page. "
-		       "Host Phys: 0x%lx Boot page: 0x%lx\n", hphys_addr,
-		       EPT_BOOT_PAGE);
-		return rc;
-	}
-
-	return VMM_OK;
-}
-
 int setup_ept(struct vcpu_hw_context *context)
 {
 	physical_addr_t pml4_phys;
 	eptp_t *eptp = (eptp_t *)&context->eptp;
 	virtual_addr_t pml4 = get_free_page_for_pagemap(context, &pml4_phys);
-	int rc = VMM_OK;
 
 	if (!pml4) {
 		VM_LOG(LVL_ERR, "%s: Failed to allocate EPT page\n", __func__);
@@ -208,11 +164,6 @@ int setup_ept(struct vcpu_hw_context *context)
 	eptp->bits.pml4 = pml4_phys;
 
 	context->n_cr3 = pml4;
-
-	if ((rc = setup_boot_pagetable(context)) != VMM_OK) {
-		VM_LOG(LVL_ERR, "%s: Failed to setup boot page tables\n", __func__);
-		return rc;
-	}
 
 	return VMM_OK;
 }
