@@ -32,22 +32,40 @@
  *	amixer set "DVC Out" 100%  // Volume Up
  */
 
-#include "../r8a7795.dtsi"
+/dts-v1/;
+
+#include "./r8a7795.dtsi"
 
 / {
 	model = "Renesas Salvator-X board based on r8a7795";
 	compatible = "renesas,salvator-x", "renesas,r8a7795";
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+                console = &scif2;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
 
 	aliases {
 
 		serial0 = &scif2;
 
 	};
-
-	chosen {
-		console = &scif2;
-	};
-
 
 	soc {
 		serial@e6e88000 {
