@@ -183,12 +183,28 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 
 static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 {
-	int rc;
+	int rc = 0;
+	u32 ins_err = 0;
 
-	__asm__ __volatile__("cmpl $1, %1 \n\t"
-			     /* Save host RSP */
-			     "mov %%rsp, %%rax \n\t"
-			     "vmwrite %%rax, %%rdx \n\t"
+	__asm__ __volatile__("cli\n\t"
+			     "pushfq\n\t" /* Save flags */
+			     "cmpl $1, %1\n\t"
+			     "movq %%rsp, %%rax\n\t" /* Save host RSP */
+			     "vmwrite %%rax, %%rdx\n\t"
+			     "movq $vmx_return, %%rax\n\t"
+			     "vmwrite %%rax, %%rbx\n\t" /* Save host RIP */
+			     "pushq %%rbp\n\t"
+			     "pushq %%rdi\n\t"
+			     "pushq %%rsi\n\t"
+			     "pushq %%r8\n\t"
+			     "pushq %%r9\n\t"
+			     "pushq %%r10\n\t"
+			     "pushq %%r11\n\t"
+			     "pushq %%r12\n\t"
+			     "pushq %%r13\n\t"
+			     "pushq %%r14\n\t"
+			     "pushq %%r15\n\t"
+			     "pushq %%rcx\n\t"
 			     /*
 			      * Check if vmlaunch or vmresume is needed, set the condition code
 			      * appropriately for use below.
@@ -212,19 +228,50 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "movq %c[r15](%[context]), %%r15 \n\t"
 			     "movq %c[rcx](%[context]), %%rcx \n\t"
 			     /* Check if above comparison holds if yes vmlaunch else vmresume */
-			     "jne 1f                 \n\t"
-			     "vmlaunch               \n\t"
-			     "jmp 2f                 \n\t"
-			     "1: " "vmresume         \n\t"
-			     "2: "
-			     "vmx_return: "
+			     "jne 3f                 \n\t"
+			     "1:vmlaunch               \n\t"
+			     "jz 5f \n\t"
+			     "jc 6f \n\t"
+			      /*
+			       * We can't come here, if we do there is serious problem
+			       * so we want an unfixed #UD
+			       */
+			     "ud2\n\t"
+			     ".section .fixup,\"ax\"\n"
+			     "2:sub $3, %0 ; jmp 7f\n" /* Return -3 if #UD or #GF */
+			     ".previous\n"
+			     ".section __ex_table,\"a\"\n"
+			     "   "__FIXUP_ALIGN"\n"
+			     "   "__FIXUP_WORD" 1b,2b\n"
+			     ".previous\n"
+			     "3: vmresume         \n\t"
+			     "jz 5f \n\t"
+			     "jc 6f \n\t"
+			      /*
+			       * We can't come here, if we do there is serious problem
+			       * so we want an unfixed #UD
+			       */
+			     "ud2\n\t"
+			     ".section .fixup,\"ax\"\n"
+			     "4:sub $4, %0 ; jmp 7f\n" /* Return -4 if #UD or #GF */
+			     ".previous\n"
+			     ".section __ex_table,\"a\"\n"
+			     "   "__FIXUP_ALIGN"\n"
+			     "   "__FIXUP_WORD" 3b,4b\n"
+			     ".previous\n"
+
+			     /* We shall come here only on successful VMEXIT */
+			     "vmx_return: \n\t"
 			     /*
 			      * VM EXIT
 			      * Save general purpose guest registers.
 			      */
-			     "movq %%rax, %c[rax](%[context]) \n\t"
+			     "pushq %%rcx\n\t" /* save guest rcx */
+			     "movq 8(%%rsp), %%rcx\n\t" /* load our rcx(context) */
+			     "movq %%rax, %c[rax](%[context]) \n\t" /* save guest rax and free it */
+			     "popq %%rax\n\t" /* pop the guest rcx in rax */
+			     "movq %%rax, %c[rcx](%[context]) \n\t" /* save the guest rcx */
 			     "movq %%rbx, %c[rbx](%[context]) \n\t"
-			     "movq %%rcx, %c[rcx](%[context]) \n\t"
 			     "movq %%rdx, %c[rdx](%[context]) \n\t"
 			     "movq %%rbp, %c[rbp](%[context]) \n\t"
 			     "movq %%rdi, %c[rdi](%[context]) \n\t"
@@ -237,15 +284,54 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "movq %%r13, %c[r13](%[context]) \n\t"
 			     "movq %%r14, %c[r14](%[context]) \n\t"
 			     "movq %%r15, %c[r15](%[context]) \n\t"
-			     "jz fail_valid \n\t"
-			     "jc fail_invalid \n\t"
-			     "movq $0, 0(%0) \n\t"
-			     "jmp _done\n\t"
-			     "fail_valid: movq $1, 0(%0)\n\t"
-			     "fail_invalid: movq $2, 0(%0)\n\t"
-			     "_done:\n\t"
-			     :"=r"(rc):"m"(resume), "d"((unsigned long)HOST_RSP),
-			      [context]"r"(context),
+			     /* restore the host state */
+			     "popq %%rcx\n\t"
+			     "popq %%r15\n\t"
+			     "popq %%r14\n\t"
+			     "popq %%r13\n\t"
+			     "popq %%r12\n\t"
+			     "popq %%r11\n\t"
+			     "popq %%r10\n\t"
+			     "popq %%r9\n\t"
+			     "popq %%r8\n\t"
+			     "popq %%rsi\n\t"
+			     "popq %%rdi\n\t"
+			     "popq %%rbp\n\t"
+			     "popfq\n\t"
+			     "jmp 7f\n\t"
+			     "5:popq %%rcx\n\t"
+			     "popq %%r15\n\t"
+			     "popq %%r14\n\t"
+			     "popq %%r13\n\t"
+			     "popq %%r12\n\t"
+			     "popq %%r11\n\t"
+			     "popq %%r10\n\t"
+			     "popq %%r9\n\t"
+			     "popq %%r8\n\t"
+			     "popq %%rsi\n\t"
+			     "popq %%rdi\n\t"
+			     "popq %%rbp\n\t"
+			     "popfq\n\t"
+			     "sub $1, %0\n\t" /* -1 valid failure */
+			     "jmp 7f\n\t"
+			     "6:popq %%rcx\n\t"
+			     "popq %%r15\n\t"
+			     "popq %%r14\n\t"
+			     "popq %%r13\n\t"
+			     "popq %%r12\n\t"
+			     "popq %%r11\n\t"
+			     "popq %%r10\n\t"
+			     "popq %%r9\n\t"
+			     "popq %%r8\n\t"
+			     "popq %%rsi\n\t"
+			     "popq %%rdi\n\t"
+			     "popq %%rbp\n\t"
+			     "popfq\n\t"
+			     "sub $2, %0\n\t" /* -2 invalid failure */
+			     "7:sti\n\t"
+			     :"=q"(rc)
+			     :[resume]"m"(resume), "d"((unsigned long)HOST_RSP),
+			      [context]"c"(context), "b"((unsigned long)HOST_RIP),
 			      [rax]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RAX])),
 			      [rbx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RBX])),
 			      [rcx]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RCX])),
@@ -261,13 +347,23 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			      [r13]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R13])),
 			      [r14]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R14])),
 			      [r15]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_R15]))
-			     : "cc", "memory"
-			       , "rax", "rbx", "rdi", "rsi"
-			       , "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+			     : "cc", "memory", "rax"
 			     );
 
 	/* TR is not reloaded back the cpu after VM exit. */
 	reload_host_tss();
+
+	if (rc == -1) {
+		if (__vmread(VM_INSTRUCTION_ERROR, &ins_err) == VMM_OK)
+			vmm_printf("Instruction Error: %d\n", ins_err);
+		else
+			vmm_printf("Failed to read instruction error\n");
+		BUG();
+	} else if (rc == -2) {
+		/* Invalid error: which probably means there is not current VMCS: Problem! */
+		if (context->vcpu_emergency_shutdown)
+			context->vcpu_emergency_shutdown(context);
+	}
 
 	arch_guest_handle_vm_exit(context);
 
