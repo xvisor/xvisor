@@ -18,6 +18,7 @@ function usage()
 	echo "                                  vexpress-a15"
 	echo "                                  virt-v7"
 	echo "                                  virt-v8"
+	echo "     -s <guest_xscript>       Xvisor Guest creation script (Mandatory)"
 	echo "     -p <xvisor_source_path>  Xvisor source path (Optional)"
 	echo "     -o <xvisor_output_path>  Xvisor output path (Optional)"
 	echo "     -d <tarball_path>        Directory containing Linux and Busybox tarball (Optional)"
@@ -33,14 +34,15 @@ function usage()
 # Command line options
 BUILD_ARM_FAMILY=
 BUILD_GUEST_TYPE=
+BUILD_GUEST_XSCRIPT=
 BUILD_NUM_THREADS=1
 BUILD_XVISOR_SOURCE_PATH=`pwd`
 BUILD_XVISOR_ONLY="no"
 BUILD_XVISOR_OUTPUT_PATH=`pwd`/build
 BUILD_TARBALL_PATH=`pwd`/build-targz
 BUILD_GUEST_OUTPUT_PATH=`pwd`/build-guest
-BUILD_LINUX_VERSION="4.9"
-BUILD_BUSYBOX_VERSION="1.25.1"
+BUILD_LINUX_VERSION="4.15"
+BUILD_BUSYBOX_VERSION="1.27.2"
 BUILD_PRINT_CONFIG_ONLY="no"
 
 # Derived options
@@ -72,7 +74,7 @@ BUILD_BUSYBOX_OUTPUT_PATH=
 BUILD_BUSYBOX_ROOTFS_CPIO_PATH=
 BUILD_BUSYBOX_ROOTFS_EXT2_PATH=
 
-while getopts ":a:b:d:g:h:ij:l:o:p:v:x" o; do
+while getopts ":a:b:d:g:s:h:ij:l:o:p:v:x" o; do
 	case "${o}" in
 	a)
 		BUILD_ARM_FAMILY=${OPTARG}
@@ -85,6 +87,9 @@ while getopts ":a:b:d:g:h:ij:l:o:p:v:x" o; do
 		;;
 	g)
 		BUILD_GUEST_TYPE=${OPTARG}
+		;;
+	s)
+		BUILD_GUEST_XSCRIPT=${OPTARG}
 		;;
 	h)
 		usage
@@ -297,6 +302,11 @@ if [ "${BUILD_XVISOR_OUTPUT_PATH}" == "${BUILD_XVISOR_SOURCE_PATH}" ]; then
 	usage
 fi
 
+if [ ! -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/xscript/${BUILD_GUEST_XSCRIPT} ]; then
+	echo "Xvisor Guest creation script does not exist"
+	usage
+fi
+
 if [ -z "${BUILD_LINUX_VERSION}" ]; then
 	echo "Must specify Linux version"
 	usage
@@ -335,6 +345,7 @@ BUILD_BUSYBOX_ROOTFS_EXT2_PATH=${BUILD_GUEST_OUTPUT_PATH}/rootfs-${BUILD_GUEST_T
 echo "=== Build configuration ==="
 echo "arm_family = ${BUILD_ARM_FAMILY}"
 echo "guest_type = ${BUILD_GUEST_TYPE}"
+echo "guest_xscript = ${BUILD_GUEST_XSCRIPT}"
 echo "guest_output_path = ${BUILD_GUEST_OUTPUT_PATH}"
 echo "num_threads = ${BUILD_NUM_THREADS}"
 echo "tarball_path = ${BUILD_TARBALL_PATH}"
@@ -476,6 +487,7 @@ if [ ! -d ${BUILD_XVISOR_DISK_PATH} ]; then
 	fi
 	cp -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/linux/nor_flash.list ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/nor_flash.list
 	cp -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/linux/cmdlist ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/cmdlist
+	cp -f ${BUILD_XVISOR_SOURCE_PATH}/tests/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/xscript/${BUILD_GUEST_XSCRIPT} ${BUILD_XVISOR_DISK_PATH}/boot.xscript
 	cp -f ${BUILD_LINUX_OUTPUT_PATH}/arch/${BUILD_LINUX_ARCH}/boot/Image ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/Image
 	if [ ! -z "${BUILD_LINUX_DTS_PATH}" ]; then
 		${BUILD_XVISOR_OUTPUT_PATH}/tools/dtc/bin/dtc -I dts -O dtb -o ${BUILD_XVISOR_DISK_PATH}/images/${BUILD_XVISOR_TESTS_DIR}/${BUILD_GUEST_TYPE}/${BUILD_LINUX_DTB_NAME} ${BUILD_LINUX_DTS_PATH}
