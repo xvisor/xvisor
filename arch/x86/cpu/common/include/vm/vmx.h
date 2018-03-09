@@ -247,12 +247,12 @@ static inline int __vmpclear(u64 addr)
 	return rc;
 }
 
-static inline int __vmread(unsigned long field, unsigned long *value)
+static inline int __vmread(u64 field, u64 *value)
 {
 	unsigned long edx;
 	int rc = VMM_OK;
 
-	asm volatile ("1: vmread %1, %2\n\t"
+	asm volatile ("1: vmread %2, %1\n\t"
 		      "jz 5f\n"
 		      "jc 2f\n"
 		      "jmp 3f\n"
@@ -269,7 +269,7 @@ static inline int __vmread(unsigned long field, unsigned long *value)
 		      ".previous\n"
 		      : "=r"(rc), "=r"(edx)
 		      : "r"(field), "i"(-VMX_FAIL_INVALID),
-			"i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF)
+			"i"(-VMX_FAIL_VALID), "i"(-VMX_FAIL_UD_GF),  "0"(0)
 		      : "memory", "cc");
 
 	if (!rc)
@@ -313,6 +313,8 @@ static inline unsigned long __vmread_safe(unsigned long field, int *error)
 		*error = rc;
 		return 0;
 	}
+
+	*error = 0;
 
 	return ecx;
 }

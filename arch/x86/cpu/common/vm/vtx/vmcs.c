@@ -251,7 +251,7 @@ struct vmcs *current_vmcs(physical_addr_t *phys)
         vmcs_phys = __vmptrst();
 
         /* There is not current VMCS */
-        if (vmcs_phys == 0xFFFFFFFFFFFFFFFFULL) {
+        if (!vmcs_phys || vmcs_phys == 0xFFFFFFFFFFFFFFFFULL) {
                 VM_LOG(LVL_ERR, "%s: There is not active(current) VMCS on this "
 		       "logical processor.\n", __func__);
                 return NULL;
