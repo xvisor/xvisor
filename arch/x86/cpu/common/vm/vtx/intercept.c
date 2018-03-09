@@ -34,7 +34,19 @@
 #include <vmm_devemu.h>
 #include <vmm_manager.h>
 #include <vmm_main.h>
+#include <vm/vmcs.h>
+#include <vm/vmx.h>
 
 void vmx_vcpu_exit(struct vcpu_hw_context *context)
 {
+	unsigned long reason = 0;
+	int rc;
+
+	if (unlikely((rc = __vmread(VM_INSTRUCTION_ERROR, &reason)) != VMM_OK))
+		if (likely(context->vcpu_emergency_shutdown))
+			context->vcpu_emergency_shutdown(context);
+
+	vmm_printf("Guest Exited with Error: 0x%ld\n", reason);
+
+	context->vcpu_emergency_shutdown(context);
 }

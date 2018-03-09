@@ -38,6 +38,36 @@ extern struct vmcs *alloc_vmcs(void);
 extern u32 vmxon_region_nr_pages;
 extern u32 vmcs_revision_id;
 
+/* IMS: Table 30-1 Section 30.4 */
+static char *ins_err_str[] = {
+	"Index zero invalid\n",
+	"VMCALL executed in VMX root operation",
+	"VMCLEAR with invalid physical address",
+	"VMCLEAR with VMXON pointer",
+	"VMLAUNCH with non-clear VMCS",
+	"VMRESUME with non-launched VMCS",
+	"VMRESUME after VMXOFF (VMXOFF and VMXON between VMLAUNCH and VMRESUME)",
+	"VM entry with invalid control field(s)",
+	"VM entry with invalid host-state field(s)",
+	"VMPTRLD with invalid physical address",
+	"VMPTRLD with VMXON pointer",
+	"VMPTRLD with incorrect VMCS revision identifier",
+	"VMREAD/VMWRITE from/to unsupported VMCS component",
+	"VMWRITE to read-only VMCS component",
+	"VMXON executed in VMX root operation",
+	"VM entry with invalid executive-VMCS pointer",
+	"VM entry with non-launched executive VMCS",
+	"VM entry with executive-VMCS pointer not VMXON pointer",
+	"VMCALL with non-clear VMCS",
+	"VMCALL with invalid VM-exit control fields",
+	"VMCALL with incorrect MSEG revision identifier",
+	"VMXOFF under dual-monitor treatment of SMIs and SMM",
+	"VMCALL with invalid SMM-monitor features",
+	"VM entry with invalid VM-execution control fields in executive VMCS",
+	"VM entry with events blocked by MOV SS",
+	"Invalid operand to INVEPT/INVVPID"
+};
+
 DEFINE_PER_CPU(physical_addr_t, vmxon_region_pa);
 DEFINE_PER_CPU(virtual_addr_t, vmxon_region);
 
