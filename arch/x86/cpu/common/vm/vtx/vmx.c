@@ -184,11 +184,10 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 {
 	int rc = 0;
-	u32 ins_err = 0;
+	u64 ins_err = 0;
 
 	__asm__ __volatile__("cli\n\t"
 			     "pushfq\n\t" /* Save flags */
-			     "cmpl $1, %1\n\t"
 			     "movq %%rsp, %%rax\n\t" /* Save host RSP */
 			     "vmwrite %%rax, %%rdx\n\t"
 			     "movq $vmx_return, %%rax\n\t"
@@ -212,6 +211,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     /* Load guest general purpose registers from the trap frame.
 			      * Don't clobber flags.
 			      */
+			     "cmpl $1, %[resume]\n\t"
 			     "movq %c[rax](%[context]), %%rax \n\t"
 			     "movq %c[rbx](%[context]), %%rbx \n\t"
 			     "movq %c[rdx](%[context]), %%rdx \n\t"
@@ -228,7 +228,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "movq %c[r15](%[context]), %%r15 \n\t"
 			     "movq %c[rcx](%[context]), %%rcx \n\t"
 			     /* Check if above comparison holds if yes vmlaunch else vmresume */
-			     "jne 3f                 \n\t"
+			     "je 3f                 \n\t"
 			     "1:vmlaunch               \n\t"
 			     "jz 5f \n\t"
 			     "jc 6f \n\t"
@@ -354,10 +354,11 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	reload_host_tss();
 
 	if (rc == -1) {
-		if (__vmread(VM_INSTRUCTION_ERROR, &ins_err) == VMM_OK)
-			vmm_printf("Instruction Error: %d\n", ins_err);
-		else
-			vmm_printf("Failed to read instruction error\n");
+		if ((rc = __vmread(VM_INSTRUCTION_ERROR, &ins_err)) == VMM_OK) {
+			vmm_printf("Instruction Error: (%s:%ld)\n", ins_err_str[ins_err], ins_err);
+			vmcs_dump(context);
+		} else
+			vmm_printf("Failed to read instruction error (%d)\n", rc);
 		BUG();
 	} else if (rc == -2) {
 		/* Invalid error: which probably means there is not current VMCS: Problem! */
