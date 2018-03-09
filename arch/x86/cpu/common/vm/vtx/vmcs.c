@@ -307,11 +307,11 @@ static void vmcs_init_host_env(void)
 	} __attribute__ ((packed)) xdt;
 
 	/* Host data selectors. */
-	__vmwrite(HOST_SS_SELECTOR, VMM_DS64);
-	__vmwrite(HOST_DS_SELECTOR, VMM_DS64);
-	__vmwrite(HOST_ES_SELECTOR, VMM_DS64);
-	__vmwrite(HOST_FS_SELECTOR, VMM_DS64);
-	__vmwrite(HOST_GS_SELECTOR, VMM_DS64);
+	__vmwrite(HOST_SS_SELECTOR, VMM_DATA_SEG_SEL);
+	__vmwrite(HOST_DS_SELECTOR, VMM_DATA_SEG_SEL);
+	__vmwrite(HOST_ES_SELECTOR, VMM_DATA_SEG_SEL);
+	__vmwrite(HOST_FS_SELECTOR, VMM_DATA_SEG_SEL);
+	__vmwrite(HOST_GS_SELECTOR, VMM_DATA_SEG_SEL);
 	__vmwrite(HOST_FS_BASE, 0);
 	__vmwrite(HOST_GS_BASE, 0);
 
@@ -323,7 +323,7 @@ static void vmcs_init_host_env(void)
 	__vmwrite(HOST_CR4, cr4);
 
 	/* Host CS:RIP. */
-	__vmwrite(HOST_CS_SELECTOR, VMM_CS64);
+	__vmwrite(HOST_CS_SELECTOR, VMM_CODE_SEG_SEL);
 	//__vmwrite(HOST_RIP, (unsigned long)vmx_asm_vmexit_handler);
 
 	/* Host SYSENTER CS:RIP. */
@@ -340,7 +340,7 @@ static void vmcs_init_host_env(void)
 	__vmwrite(HOST_IDTR_BASE, xdt.base);
 
 	/* TR */
-	__vmwrite(HOST_TR_SELECTOR, VMM_DS64);
+	__vmwrite(HOST_TR_SELECTOR, VMM_DATA_SEG_SEL);
 	__vmwrite(HOST_TR_BASE, 0);
 
 }
