@@ -427,13 +427,6 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 		goto _fail;
 	}
 
-	/* VMCLEAR: clear launched state */
-	if ((ret = __vmpclear(context->vmcs_pa)) != VMM_OK) {
-		vmm_printf("VMClear failed with error: %d\n", ret);
-		ret = VMM_EACCESS;
-		goto _fail;
-	}
-
 	context->vmcs_state &= ~(VMCS_STATE_LAUNCHED  | VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
 
 	if ((ret = vmx_set_control_params(context)) != VMM_OK) {
