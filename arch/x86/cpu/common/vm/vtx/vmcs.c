@@ -557,6 +557,8 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 
 	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
 	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
+
+	vmcs_dump(context);
 }
 
 void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)

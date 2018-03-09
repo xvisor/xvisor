@@ -311,6 +311,7 @@ extern int vmx_set_control_params(struct vcpu_hw_context *context);
 extern void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context);
 extern void vmx_save_host_state(struct vcpu_hw_context *context);
 extern void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context);
+void vmcs_dump(struct vcpu_hw_context *context);
 
 extern void vmx_asm_vmexit_handler(void);
 extern void vmx_asm_vmentry(void);
