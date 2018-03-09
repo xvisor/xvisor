@@ -254,7 +254,7 @@ bootstrap32:
         /* Load the new 64-bit GDT */
         movl   $.GDT_POINTER, %eax
         lgdt   (%eax)
-        movl   $0x10, %eax
+        movl   $VMM_DATA_SEG_SEL, %eax
         movl   %eax, %ds
         movl   %eax, %es
         movl   %eax, %fs
@@ -265,7 +265,7 @@ bootstrap32:
          * Do a far call to 64-bit trampoline
          * Bootstrapping is almost done!
          */
-        ljmp   $0x8, $(__64_bit_entry_trampoline)
+        ljmp   $VMM_CODE_SEG_SEL, $(__64_bit_entry_trampoline)
 
 /*
  * 1 page for PML4, 1 page for PGPT, 1 page
