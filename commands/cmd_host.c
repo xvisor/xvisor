@@ -65,6 +65,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host vapool info\n");
 	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
+	vmm_cprintf(cdev, "   host memmap info\n");
 	vmm_cprintf(cdev, "   host resources\n");
 	vmm_cprintf(cdev, "   host bus_list\n");
 	vmm_cprintf(cdev, "   host bus_device_list <bus_name>\n");
@@ -367,6 +368,15 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 	vmm_cprintf(cdev, "\n");
 }
 
+static void cmd_host_memmap_info(struct vmm_chardev *cdev)
+{
+	u32 free = vmm_host_memmap_hash_free_count();
+	u32 total = vmm_host_memmap_hash_total_count();
+
+	vmm_cprintf(cdev, "Free Entry   : %u (0x%08x)\n", free, free);
+	vmm_cprintf(cdev, "Total Entry  : %u (0x%08x)\n", total, total);
+}
+
 static int cmd_host_resources_print(const char *name,
 				    u64 start, u64 end,
 				    unsigned long flags,
@@ -589,6 +599,11 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				colcnt = 64;
 			}
 			cmd_host_vapool_bitmap(cdev, colcnt);
+			return VMM_OK;
+		}
+	} else if ((strcmp(argv[1], "memmap") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "info") == 0) {
+			cmd_host_memmap_info(cdev);
 			return VMM_OK;
 		}
 	} else if ((strcmp(argv[1], "resources") == 0) && (2 == argc)) {
