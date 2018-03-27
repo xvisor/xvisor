@@ -113,6 +113,12 @@ enum vmm_host_memory_flags {
 					 VMM_MEMORY_EXECUTABLE | \
 					 VMM_MEMORY_IO_DEVICE)
 
+/** Total number of enteries in memmap hash */
+u32 vmm_host_memmap_hash_total_count(void);
+
+/** Number of free enteries in memmap hash */
+u32 vmm_host_memmap_hash_free_count(void);
+
 /** Map physical memory to a virtual memory */
 virtual_addr_t vmm_host_memmap(physical_addr_t pa, 
 			       virtual_size_t sz, 

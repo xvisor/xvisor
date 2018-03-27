@@ -35,6 +35,16 @@
 #include <libs/stringlib.h>
 #include <libs/rbtree_augmented.h>
 
+#define VAPOOL_SIZE	(CONFIG_VAPOOL_SIZE_MB << 20)
+
+#if ((VAPOOL_SIZE / VMM_PAGE_SIZE) < CONFIG_MEMMAP_HASH_SIZE_FACTOR) || \
+    (CONFIG_MEMMAP_HASH_SIZE_FACTOR < 1)
+#error "Invalid value of CONFIG_MEMMAP_HASH_SIZE_FACTOR"
+#else
+#define MEMMAP_HASH_SIZE	\
+((VAPOOL_SIZE / VMM_PAGE_SIZE) / CONFIG_MEMMAP_HASH_SIZE_FACTOR)
+#endif
+
 static virtual_addr_t host_mem_rw_va[CONFIG_CPU_COUNT];
 
 struct host_mhash_entry {
@@ -75,6 +85,26 @@ static struct host_mhash_entry *__host_mhash_alloc(void)
 }
 
 /* NOTE: Must be called with read/write lock held on host_mhash.lock */
+static u32 __host_mhash_total_count(void)
+{
+	return host_mhash.count;
+}
+
+/* NOTE: Must be called with read/write lock held on host_mhash.lock */
+static u32 __host_mhash_free_count(void)
+{
+	u32 i, ret = 0;
+
+	for (i = 0; i < host_mhash.count; i++) {
+		if (!host_mhash.entry[i].ref_count) {
+			ret++;
+		}
+	}
+
+	return ret;
+}
+
+/* NOTE: Must be called with read/write lock held on host_mhash.lock */
 static struct host_mhash_entry *__host_mhash_find(physical_addr_t pa)
 {
 	struct rb_node *n;
@@ -96,6 +126,30 @@ static struct host_mhash_entry *__host_mhash_find(physical_addr_t pa)
 			vmm_panic("%s: can't find physical address\n", __func__);
 		}
 	}
+
+	return ret;
+}
+
+static u32 host_mhash_total_count(void)
+{
+	u32 ret;
+	irq_flags_t flags;
+
+	vmm_read_lock_irqsave(&host_mhash.lock, flags);
+	ret = __host_mhash_total_count();
+	vmm_read_unlock_irqrestore(&host_mhash.lock, flags);
+
+	return ret;
+}
+
+static u32 host_mhash_free_count(void)
+{
+	u32 ret;
+	irq_flags_t flags;
+
+	vmm_read_lock_irqsave(&host_mhash.lock, flags);
+	ret = __host_mhash_free_count();
+	vmm_read_unlock_irqrestore(&host_mhash.lock, flags);
 
 	return ret;
 }
@@ -259,7 +313,7 @@ static int host_mhash_pa2va(physical_addr_t pa,
 
 static virtual_size_t host_mhash_estimate_hksize(void)
 {
-	return sizeof(struct host_mhash_entry) * CONFIG_MEMMAP_HASH_SIZE;
+	return sizeof(struct host_mhash_entry) * MEMMAP_HASH_SIZE;
 }
 
 static int host_mhash_init(virtual_addr_t mhash_start,
@@ -381,6 +435,16 @@ static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
 	}
 
 	return VMM_OK;
+}
+
+u32 vmm_host_memmap_hash_total_count(void)
+{
+	return host_mhash_total_count();
+}
+
+u32 vmm_host_memmap_hash_free_count(void)
+{
+	return host_mhash_free_count();
 }
 
 virtual_addr_t vmm_host_memmap(physical_addr_t pa,
@@ -663,7 +727,7 @@ int __cpuinit vmm_host_aspace_init(void)
 
 	/* Determine VAPOOL start and size */
 	vapool_start = arch_code_vaddr_start();
-	vapool_size = (CONFIG_VAPOOL_SIZE_MB << 20);
+	vapool_size = VAPOOL_SIZE;
 
 	/* Determine VAPOOL house-keeping size based on VAPOOL size */
 	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
