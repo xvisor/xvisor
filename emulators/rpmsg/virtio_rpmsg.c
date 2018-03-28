@@ -147,6 +147,7 @@ static int virtio_rpmsg_set_size_vq(struct vmm_virtio_device *dev,
 static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				struct virtio_rpmsg_dev *rdev)
 {
+	int rc;
 	u16 head = 0;
 	void *local_addr;
 	u32 i, len, iov_cnt = 0, total_len = 0;
@@ -157,8 +158,13 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 	struct vmm_vmsg *msg;
 
 	while (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						  &iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			continue;
+		}
 
 		for (i = 0; i < iov_cnt; i++) {
 			memcpy(&tiov, &iov[i], sizeof(tiov));
@@ -264,6 +270,7 @@ static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
 			       u32 src, u32 dst, void *msg, u16 len,
 			       bool override_dst)
 {
+	int rc;
 	u16 head = 0;
 	void *local_addr;
 	u32 pos, iov_cnt = 0, total_len = 0;
@@ -276,8 +283,13 @@ static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
 		return VMM_ENODEV;
 	}
 
-	head = vmm_virtio_queue_get_iovec(vq, iov,
-					  &iov_cnt, &total_len);
+	rc = vmm_virtio_queue_get_iovec(vq, iov,
+					&iov_cnt, &total_len, &head);
+	if (rc) {
+		vmm_printf("%s: failed to get iovec (error %d)\n",
+			   __func__, rc);
+		return rc;
+	}
 	if (!iov_cnt || (iov->len < (sizeof(hdr) + len))) {
 		return VMM_ENOSPC;
 	}

@@ -401,11 +401,12 @@ static unsigned next_desc(struct vmm_virtio_queue *vq,
 	return next;
 }
 
-u16 vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
+int vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
 				    u16 head, struct vmm_virtio_iovec *iov,
-				    u32 *ret_iov_cnt, u32 *ret_total_len)
+				    u32 *ret_iov_cnt, u32 *ret_total_len,
+				    u16 *ret_head)
 {
-	int i, rc;
+	int i, rc = VMM_OK;
 	u16 idx, max;
 	struct vmm_vring_desc desc;
 
@@ -420,6 +421,9 @@ u16 vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
 	}
 	if (ret_total_len) {
 		*ret_total_len = 0;
+	}
+	if (ret_head) {
+		*ret_head = 0;
 	}
 
 	max = vmm_virtio_queue_max_desc(vq);
@@ -439,6 +443,7 @@ u16 vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
 #endif
 		vmm_printf("%s: indirect descriptor not supported idx=%d\n",
 			   __func__, idx);
+		rc = VMM_ENOTSUPP;
 		goto fail;
 	}
 
@@ -466,7 +471,11 @@ u16 vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
 
 	vmm_virtio_queue_set_avail_event(vq);
 
-	return head;
+	if (ret_head) {
+		*ret_head = head;
+	}
+
+	return VMM_OK;
 
 fail:
 	if (ret_iov_cnt) {
@@ -475,18 +484,20 @@ fail:
 	if (ret_total_len) {
 		*ret_total_len = 0;
 	}
-	return 0;
+	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_virtio_queue_get_head_iovec);
 
-u16 vmm_virtio_queue_get_iovec(struct vmm_virtio_queue *vq,
+int vmm_virtio_queue_get_iovec(struct vmm_virtio_queue *vq,
 			       struct vmm_virtio_iovec *iov,
-			       u32 *ret_iov_cnt, u32 *ret_total_len)
+			       u32 *ret_iov_cnt, u32 *ret_total_len,
+			       u16 *ret_head)
 {
 	u16 head = vmm_virtio_queue_pop(vq);
 
 	return vmm_virtio_queue_get_head_iovec(vq, head, iov, 
-					       ret_iov_cnt, ret_total_len);
+					       ret_iov_cnt, ret_total_len,
+					       ret_head);
 }
 VMM_EXPORT_SYMBOL(vmm_virtio_queue_get_iovec);
 

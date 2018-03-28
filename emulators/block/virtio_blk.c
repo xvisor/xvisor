@@ -242,17 +242,23 @@ static void virtio_blk_req_failed(struct vmm_vdisk *vdisk,
 static void virtio_blk_do_io(struct vmm_virtio_device *dev,
 			     struct virtio_blk_dev *vbdev)
 {
-	u16 head;
+	int rc;
+	u16 head, thead;
 	u32 i, iov_cnt, len;
 	struct virtio_blk_dev_req *req;
 	struct vmm_virtio_queue *vq = &vbdev->vqs[VIRTIO_BLK_IO_QUEUE];
 	struct vmm_virtio_blk_outhdr hdr;
 
 	while (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_pop(vq);
-		req = &vbdev->reqs[head];
-		head = vmm_virtio_queue_get_head_iovec(vq, head, vbdev->iov,
-						       &iov_cnt, &len);
+		thead = vmm_virtio_queue_pop(vq);
+		req = &vbdev->reqs[thead];
+		rc = vmm_virtio_queue_get_head_iovec(vq, thead, vbdev->iov,
+						     &iov_cnt, &len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			continue;
+		}
 
 		req->vq = vq;
 		req->head = head;

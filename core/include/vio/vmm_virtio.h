@@ -220,16 +220,18 @@ int vmm_virtio_queue_setup(struct vmm_virtio_queue *vq,
 /** Get guest IO vectors based on given head
  *  Note: works only after queue setup is done
  */
-u16 vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
-				u16 head, struct vmm_virtio_iovec *iov,
-				u32 *ret_iov_cnt, u32 *ret_total_len);
+int vmm_virtio_queue_get_head_iovec(struct vmm_virtio_queue *vq,
+				    u16 head, struct vmm_virtio_iovec *iov,
+				    u32 *ret_iov_cnt, u32 *ret_total_len,
+				    u16 *ret_head);
 
 /** Get guest IO vectors based on current head
  *  Note: works only after queue setup is done
  */
-u16 vmm_virtio_queue_get_iovec(struct vmm_virtio_queue *vq,
+int vmm_virtio_queue_get_iovec(struct vmm_virtio_queue *vq,
 			       struct vmm_virtio_iovec *iov,
-			       u32 *ret_iov_cnt, u32 *ret_total_len);
+			       u32 *ret_iov_cnt, u32 *ret_total_len,
+			       u16 *ret_head);
 
 /** Read contents from guest IO vectors to a buffer */
 u32 vmm_virtio_iovec_to_buf_read(struct vmm_virtio_device *dev,

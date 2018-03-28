@@ -151,6 +151,7 @@ static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq);
 
 static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 {
+	int rc;
 	u16 head = 0;
 	u32 iov_cnt = 0, pkt_len = 0, total_len = 0;
 	struct virtio_net_queue *q = arg;
@@ -161,7 +162,13 @@ static void virtio_net_tx_lazy(struct vmm_netport *port, void *arg, int budget)
 	struct vmm_mbuf *mb;
 
 	while ((budget > 0) && vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov, &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						&iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			continue;
+		}
 
 		/* iov[0] is offload info */
 		pkt_len = total_len - iov[0].len;
@@ -200,6 +207,9 @@ static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq)
 
 static void virtio_net_handle_ctrl(struct virtio_net_dev *ndev, u32 qnum)
 {
+	int rc;
+	u16 head = 0;
+	u32 iov_cnt = 0, total_len = 0;
 	struct virtio_net_queue *q = &ndev->vqs[qnum];
 	struct vmm_virtio_queue *vq = &q->vq;
 	struct vmm_virtio_iovec *iov = q->iov;
@@ -207,12 +217,15 @@ static void virtio_net_handle_ctrl(struct virtio_net_dev *ndev, u32 qnum)
 	struct vmm_virtio_net_ctrl_hdr ctrl_hdr;
 	struct vmm_virtio_net_ctrl_mq ctrl_mq;
 	vmm_virtio_net_ctrl_ack_t status;
-	u16 head = 0;
-	u32 iov_cnt = 0, total_len = 0;
 
 	while (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						  &iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			continue;
+		}
 
 		status = VMM_VIRTIO_NET_ERR;
 
@@ -317,6 +330,7 @@ static int virtio_net_can_receive(struct vmm_netport *p)
 static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 				       struct vmm_mbuf *mb)
 {
+	int rc;
 	u16 head = 0;
 	u64 iov0_addr;
 	u32 iov_cnt = 0, iov0_len, total_len = 0, pkt_len = 0;
@@ -331,8 +345,13 @@ static int virtio_net_switch2port_xfer(struct vmm_netport *p,
 	pkt_len = min(VIRTIO_NET_MTU, mb->m_pktlen);
 
 	if (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						&iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			return rc;
+		}
 	}
 
 	memset(&hdr, 0, sizeof(hdr));

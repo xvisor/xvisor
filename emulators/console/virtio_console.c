@@ -138,6 +138,7 @@ static int virtio_console_set_size_vq(struct vmm_virtio_device *dev,
 static int virtio_console_do_tx(struct vmm_virtio_device *dev,
 				struct virtio_console_dev *cdev)
 {
+	int rc;
 	u8 buf[8];
 	u16 head = 0;
 	u32 i, len, iov_cnt = 0, total_len = 0;
@@ -146,8 +147,13 @@ static int virtio_console_do_tx(struct vmm_virtio_device *dev,
 	struct vmm_virtio_iovec tiov;
 
 	while (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						&iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			continue;
+		}
 
 		for (i = 0; i < iov_cnt; i++) {
 			memcpy(&tiov, &iov[i], sizeof(tiov));
@@ -204,6 +210,7 @@ static bool virtio_console_vserial_can_send(struct vmm_vserial *vser)
 
 static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 {
+	int rc;
 	u16 head = 0;
 	u32 iov_cnt = 0, total_len = 0;
 	struct virtio_console_dev *cdev = vmm_vserial_priv(vser);
@@ -214,8 +221,13 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 	fifo_enqueue(cdev->emerg_rd, &data, TRUE);
 
 	if (vmm_virtio_queue_available(vq)) {
-		head = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len);
+		rc = vmm_virtio_queue_get_iovec(vq, iov,
+						&iov_cnt, &total_len, &head);
+		if (rc) {
+			vmm_printf("%s: failed to get iovec (error %d)\n",
+				   __func__, rc);
+			return rc;
+		}
 		if (iov_cnt) {
 			vmm_virtio_buf_to_iovec_write(dev, &iov[0], 1,
 						      &data, 1);
