@@ -23,11 +23,20 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_stdio.h>
 #include <vmm_modules.h>
 #include <vmm_workqueue.h>
 #include <vio/vmm_vmsg.h>
 #include <libs/idr.h>
 #include <libs/stringlib.h>
+
+#undef DEBUG
+
+#ifdef DEBUG
+#define DPRINTF(msg...)			vmm_printf(msg)
+#else
+#define DPRINTF(msg...)
+#endif
 
 #define MODULE_DESC			"Virtual Messaging Framework"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -89,7 +98,7 @@ static void vmsg_release(struct vmm_vmsg *msg)
 	vmm_free(msg);
 }
 
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, size_t len)
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len)
 {
 	void *data;
 	struct vmm_vmsg *msg;
@@ -109,7 +118,7 @@ struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, size_t len)
 		return NULL;
 	}
 
-	INIT_VMSG(msg, dst, src, data, len, NULL, vmsg_release);
+	INIT_VMSG(msg, dst, src, local, data, len, NULL, vmsg_release);
 
 	return msg;
 }
@@ -228,6 +237,8 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 	int err;
 	struct vmm_vmsg_domain *domain = node->domain;
 
+	DPRINTF("%s: node=%s\n", __func__, node->name);
+
 	if (arch_atomic_cmpxchg(&node->is_ready, 1, 0)) {
 		err = vmsg_domain_enqueue_work(domain, NULL,
 					       node->name, node->addr,
@@ -278,6 +289,8 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	int err;
 	struct vmm_vmsg_domain *domain = node->domain;
 
+	DPRINTF("%s: node=%s\n", __func__, node->name);
+
 	if (!arch_atomic_cmpxchg(&node->is_ready, 0, 1)) {
 		err = vmsg_domain_enqueue_work(domain, NULL,
 					       node->name, node->addr,
@@ -318,12 +331,14 @@ static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
 	if (!node || !msg || !msg->data || !msg->len ||
 	    (msg->dst == node->addr) ||
-	    (msg->dst == msg->src) ||
 	    (msg->dst < VMM_VMSG_NODE_ADDR_MIN)) {
 		return VMM_EINVALID;
 	}
 
 	msg->src = node->addr;
+
+	DPRINTF("%s: node=%s src=0x%x dst=0x%x len=0x%zx\n",
+		__func__, node->name, msg->src, msg->dst, msg->len);
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
 					node->name, node->addr,

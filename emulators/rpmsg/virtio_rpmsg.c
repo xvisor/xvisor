@@ -30,7 +30,6 @@
 #include <vio/vmm_virtio.h>
 #include <vio/vmm_virtio_rpmsg.h>
 #include <libs/fifo.h>
-#include <libs/radix-tree.h>
 #include <libs/stringlib.h>
 
 #undef DEBUG
@@ -66,7 +65,6 @@ struct virtio_rpmsg_dev {
 	bool node_ns_name_avail;
 	char node_ns_name[VMM_VIRTIO_RPMSG_NS_NAME_SIZE];
 	struct vmm_vmsg_node *node;
-	struct radix_tree_root global_to_local;
 };
 
 static u32 virtio_rpmsg_get_host_features(struct vmm_virtio_device *dev)
@@ -149,7 +147,6 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 {
 	int rc;
 	u16 head = 0;
-	void *local_addr;
 	u32 i, len, iov_cnt = 0, total_len = 0;
 	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_TX_QUEUE];
 	struct vmm_virtio_iovec *iov = rdev->tx_iov;
@@ -159,12 +156,15 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 
 	while (vmm_virtio_queue_available(vq)) {
 		rc = vmm_virtio_queue_get_iovec(vq, iov,
-						  &iov_cnt, &total_len, &head);
+						&iov_cnt, &total_len, &head);
 		if (rc) {
 			vmm_printf("%s: failed to get iovec (error %d)\n",
 				   __func__, rc);
 			continue;
 		}
+
+		DPRINTF("%s: node=%s iov_cnt=%d total_len=0x%x\n",
+			__func__, rdev->node->name, iov_cnt, total_len);
 
 		for (i = 0; i < iov_cnt; i++) {
 			memcpy(&tiov, &iov[i], sizeof(tiov));
@@ -184,20 +184,12 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 
 			if (!tiov.len ||
 			    (hdr.dst < VMM_VMSG_NODE_ADDR_MIN) ||
-			    (hdr.src < VMM_VMSG_NODE_ADDR_MIN) ||
 			    (hdr.len != tiov.len)) {
 				continue;
 			}
 
-			local_addr = radix_tree_lookup(&rdev->global_to_local,
-							hdr.dst);
-			if (!local_addr) {
-				local_addr = (void *)((unsigned long)hdr.src);
-				radix_tree_insert(&rdev->global_to_local,
-						  hdr.dst, local_addr);
-			}
-
-			msg = vmm_vmsg_alloc(hdr.src, hdr.dst, hdr.len);
+			msg = vmm_vmsg_alloc(hdr.dst, rdev->node->addr,
+					     hdr.src, hdr.len);
 			if (!msg) {
 				continue;
 			}
@@ -208,6 +200,10 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				goto skip_msg;
 			}
 
+			DPRINTF("%s: node=%s addr=0x%x src=0x%x dst=0x%x "
+				"local=0x%x len=0x%zx\n", __func__,
+				rdev->node->name, rdev->node->addr,
+				msg->src, msg->dst, msg->local, msg->len);
 			vmm_vmsg_node_send(rdev->node, msg);
 
 skip_msg:
@@ -267,17 +263,20 @@ static void virtio_rpmsg_status_changed(struct vmm_virtio_device *dev,
 }
 
 static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
-			       u32 src, u32 dst, void *msg, u16 len,
-			       bool override_dst)
+			       u32 src, u32 dst, u32 local, void *msg, u16 len,
+			       bool use_local_as_dst)
 {
 	int rc;
 	u16 head = 0;
-	void *local_addr;
 	u32 pos, iov_cnt = 0, total_len = 0;
 	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_RX_QUEUE];
 	struct vmm_virtio_iovec *iov = rdev->rx_iov;
 	struct vmm_virtio_device *dev = rdev->vdev;
 	struct vmm_rpmsg_hdr hdr;
+
+	DPRINTF("%s: node=%s src=0x%x dst=0x%x local=0x%x len=0x%x "
+		"use_local_as_dst=%d\n", __func__, rdev->node->name,
+		src, dst, local, len, use_local_as_dst);
 
 	if (!vmm_virtio_queue_available(vq)) {
 		return VMM_ENODEV;
@@ -294,13 +293,8 @@ static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
 		return VMM_ENOSPC;
 	}
 
-	if (override_dst) {
-		/* Use global 'src' to determine local 'dst' */
-		local_addr = radix_tree_lookup(&rdev->global_to_local, src);
-		if (!local_addr) {
-			return VMM_ENOTAVAIL;
-		}
-		dst = (u32)((unsigned long)local_addr);
+	if (use_local_as_dst) {
+		dst = local;
 	}
 
 	hdr.src = src;
@@ -351,14 +345,13 @@ static void virtio_rpmsg_peer_up(struct vmm_vmsg_node *node,
 	rc = virtio_rpmsg_rx_msg(rdev,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
+				 VMM_VIRTIO_RPMSG_NS_ADDR,
 				 &nsmsg, sizeof(nsmsg), FALSE);
 	if (rc) {
 		vmm_printf("%s: Failed to rx message (error %d)\n",
 			   __func__, rc);
 		return;
 	}
-
-	radix_tree_delete(&rdev->global_to_local, peer_addr);
 }
 
 static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
@@ -387,13 +380,12 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 	rc = virtio_rpmsg_rx_msg(rdev,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
 				 VMM_VIRTIO_RPMSG_NS_ADDR,
+				 VMM_VIRTIO_RPMSG_NS_ADDR,
 				 &nsmsg, sizeof(nsmsg), FALSE);
 	if (rc) {
 		vmm_printf("%s: Failed to rx message (error %d)\n",
 			   __func__, rc);
 	}
-
-	radix_tree_delete(&rdev->global_to_local, peer_addr);
 }
 
 static void virtio_rpmsg_recv_msg(struct vmm_vmsg_node *node,
@@ -402,7 +394,7 @@ static void virtio_rpmsg_recv_msg(struct vmm_vmsg_node *node,
 	int rc;
 	struct virtio_rpmsg_dev *rdev = vmm_vmsg_node_priv(node);
 
-	rc = virtio_rpmsg_rx_msg(rdev, msg->src, msg->dst,
+	rc = virtio_rpmsg_rx_msg(rdev, msg->src, msg->dst, msg->local,
 				 msg->data, (u32)msg->len, TRUE);
 	if (rc) {
 		vmm_printf("%s: Failed to rx message (error %d)\n",
@@ -426,15 +418,6 @@ static int virtio_rpmsg_write_config(struct vmm_virtio_device *dev,
 	return VMM_EINVALID;
 }
 
-static int virtio_rpmsg_reset_iter(struct vmm_vmsg_node *node, void *data)
-{
-	struct virtio_rpmsg_dev *rdev = data;
-
-	radix_tree_delete(&rdev->global_to_local, vmm_vmsg_node_get_addr(node));
-
-	return VMM_OK;
-}
-
 static int virtio_rpmsg_reset(struct vmm_virtio_device *dev)
 {
 	int rc;
@@ -443,9 +426,6 @@ static int virtio_rpmsg_reset(struct vmm_virtio_device *dev)
 	vmm_vmsg_node_stop_work(rdev->node, rdev, virtio_rpmsg_tx_work);
 
 	vmm_vmsg_node_notready(rdev->node);
-
-	vmm_vmsg_domain_node_iterate(vmm_vmsg_node_get_domain(rdev->node),
-				     NULL, rdev, virtio_rpmsg_reset_iter);
 
 	rc = vmm_virtio_queue_cleanup(&rdev->vqs[VIRTIO_RPMSG_RX_QUEUE]);
 	if (rc) {
@@ -518,8 +498,6 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		vmm_free(rdev);
 		return VMM_EFAIL;
 	}
-
-	INIT_RADIX_TREE(&rdev->global_to_local, 0);
 
 	dev->emu_data = rdev;
 

@@ -82,17 +82,19 @@ struct vmm_vmsg {
 	atomic_t ref_count;
 	u32 dst;
 	u32 src;
+	u32 local;
 	void *data;
 	size_t len;
 	void *priv;
 	void (*release) (struct vmm_vmsg *);
 };
 
-#define INIT_VMSG(__msg, __dst, __src, __data, __len, __priv, __rel)	\
+#define INIT_VMSG(__msg, __dst, __src, __local, __data, __len, __priv, __rel) \
 	do {								\
 		arch_atomic_write(&(__msg)->ref_count, 1);		\
 		(__msg)->dst = (__dst);					\
 		(__msg)->src = (__src);					\
+		(__msg)->local = (__local);				\
 		(__msg)->data = (__data);				\
 		(__msg)->len = (__len);					\
 		(__msg)->priv = (__priv);				\
@@ -142,7 +144,7 @@ void vmm_vmsg_ref(struct vmm_vmsg *msg);
 void vmm_vmsg_dref(struct vmm_vmsg *msg);
 
 /** Allocate new virtual message */
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, size_t len);
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len);
 
 /** Free a virtual message */
 static inline void vmm_vmsg_free(struct vmm_vmsg *msg)
