@@ -142,8 +142,11 @@ static int virtio_rpmsg_set_size_vq(struct vmm_virtio_device *dev,
 	return size;
 }
 
+static void virtio_rpmsg_tx_work(void *data);
+
 static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
-				struct virtio_rpmsg_dev *rdev)
+				struct virtio_rpmsg_dev *rdev,
+				int budget)
 {
 	int rc;
 	u16 head = 0;
@@ -154,7 +157,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 	struct vmm_rpmsg_hdr hdr;
 	struct vmm_vmsg *msg;
 
-	while (vmm_virtio_queue_available(vq)) {
+	while ((budget > 0) && vmm_virtio_queue_available(vq)) {
 		rc = vmm_virtio_queue_get_iovec(vq, iov,
 						&iov_cnt, &total_len, &head);
 		if (rc) {
@@ -211,10 +214,20 @@ skip_msg:
 		}
 
 		vmm_virtio_queue_set_used_elem(vq, head, total_len);
+
+		budget--;
 	}
 
 	if (vmm_virtio_queue_should_signal(vq)) {
 		dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
+	}
+
+	if (vmm_virtio_queue_available(vq)) {
+		rc = vmm_vmsg_node_start_work(rdev->node, rdev,
+					      virtio_rpmsg_tx_work);
+		if (rc) {
+			return rc;
+		}
 	}
 
 	return VMM_OK;
@@ -225,7 +238,8 @@ static void virtio_rpmsg_tx_work(void *data)
 	int rc;
 	struct virtio_rpmsg_dev *rdev = data;
 
-	rc = virtio_rpmsg_tx_msgs(rdev->vdev, rdev);
+	rc = virtio_rpmsg_tx_msgs(rdev->vdev, rdev,
+				  VIRTIO_RPMSG_QUEUE_SIZE / 8);
 	WARN_ON(rc);
 }
 
