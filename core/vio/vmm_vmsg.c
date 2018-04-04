@@ -112,7 +112,7 @@ struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len)
 		return NULL;
 	}
 
-	msg = vmm_zalloc(sizeof(*msg));
+	msg = vmm_malloc(sizeof(*msg));
 	if (!msg) {
 		vmm_free(data);
 		return NULL;
@@ -148,7 +148,7 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 		return VMM_EINVALID;
 	}
 
-	work = vmm_zalloc(sizeof(*work));
+	work = vmm_malloc(sizeof(*work));
 	if (!work) {
 		return VMM_ENOMEM;
 	}
