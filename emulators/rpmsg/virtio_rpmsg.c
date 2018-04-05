@@ -48,6 +48,10 @@
 #define MODULE_INIT			virtio_rpmsg_init
 #define MODULE_EXIT			virtio_rpmsg_exit
 
+#define VIRTIO_RPMSG_MAX_BUFF_SIZE	512
+#define VIRTIO_RPMSG_NODE_MAX_BUFF_SIZE	\
+	(VIRTIO_RPMSG_MAX_BUFF_SIZE - sizeof(struct vmm_rpmsg_hdr))
+
 #define VIRTIO_RPMSG_QUEUE_SIZE		256
 #define VIRTIO_RPMSG_NUM_QUEUES		2
 #define VIRTIO_RPMSG_RX_QUEUE		0
@@ -172,7 +176,8 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 		for (i = 0; i < iov_cnt; i++) {
 			memcpy(&tiov, &iov[i], sizeof(tiov));
 
-			if (tiov.len < sizeof(hdr)) {
+			if ((tiov.len < sizeof(hdr)) ||
+			    (VIRTIO_RPMSG_MAX_BUFF_SIZE < tiov.len)) {
 				continue;
 			}
 
@@ -277,8 +282,8 @@ static void virtio_rpmsg_status_changed(struct vmm_virtio_device *dev,
 }
 
 static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
-			       u32 src, u32 dst, u32 local, void *msg, u16 len,
-			       bool use_local_as_dst)
+			       u32 src, u32 dst, u32 local,
+			       void *msg, u16 len, bool use_local_as_dst)
 {
 	int rc;
 	u16 head = 0;
@@ -506,8 +511,8 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 	}
 
 	rdev->node = vmm_vmsg_node_create(dev->name, addr,
-					  &virtio_rpmsg_ops,
-					  dom, rdev);
+					  VIRTIO_RPMSG_NODE_MAX_BUFF_SIZE,
+					  &virtio_rpmsg_ops, dom, rdev);
 	if (!rdev->node) {
 		vmm_free(rdev);
 		return VMM_EFAIL;

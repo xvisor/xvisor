@@ -56,12 +56,13 @@ static int cmd_vmsg_node_list_iter(struct vmm_vmsg_node *node, void *data)
 {
 	struct cmd_vmsg_list_priv *p = data;
 
-	vmm_cprintf(p->cdev, " %-5d %-24s %-16s %-10s 0x%08x\n",
+	vmm_cprintf(p->cdev, " %-4d %-26s %-16s %-7s 0x%08x 0x%08x\n",
 		    p->num1,
 		    vmm_vmsg_node_get_name(node),
 		    vmm_vmsg_domain_get_name(vmm_vmsg_node_get_domain(node)),
-		    vmm_vmsg_node_is_ready(node) ? "READY" : "NOT-READY",
-		    vmm_vmsg_node_get_addr(node));
+		    vmm_vmsg_node_is_ready(node) ? "RDY" : "NOT-RDY",
+		    vmm_vmsg_node_get_addr(node),
+		    vmm_vmsg_node_get_max_data_len(node));
 	p->num1++;
 
 	return VMM_OK;
@@ -72,14 +73,14 @@ static int cmd_vmsg_node_list(struct vmm_chardev *cdev)
 	struct cmd_vmsg_list_priv p = { .num1 = 0, .num2 = 0, .cdev = cdev };
 
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "------------------------------\n");
-	vmm_cprintf(cdev, " %-5s %-24s %-16s %-10s %-10s\n",
-		    "Num#", "Node", "Domain", "State", "Address");
+			  "---------------------------------------\n");
+	vmm_cprintf(cdev, " %-4s %-26s %-16s %-7s %-10s %-10s\n",
+		    "Num#", "Node", "Domain", "State", "Address", "Max Data");
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "------------------------------\n");
+			  "---------------------------------------\n");
 	vmm_vmsg_node_iterate(NULL, &p, cmd_vmsg_node_list_iter);
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "------------------------------\n");
+			  "---------------------------------------\n");
 
 	return VMM_OK;
 }

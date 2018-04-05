@@ -133,6 +133,7 @@ struct vmm_vmsg_node {
 	struct dlist head;
 	struct dlist domain_head;
 	char name[VMM_FIELD_NAME_SIZE];
+	u32 max_data_len;
 	void *priv;
 	atomic_t is_ready;
 	struct vmm_vmsg_domain *domain;
@@ -191,9 +192,10 @@ const char *vmm_vmsg_domain_get_name(struct vmm_vmsg_domain *domain);
  * node address is allocated using host wide ID allocator.
  */
 struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name, u32 addr,
-				struct vmm_vmsg_node_ops *ops,
-				struct vmm_vmsg_domain *domain,
-				void *priv);
+					u32 max_data_len,
+					struct vmm_vmsg_node_ops *ops,
+					struct vmm_vmsg_domain *domain,
+					void *priv);
 
 /** Destroy a virtual messaging node */
 int vmm_vmsg_node_destroy(struct vmm_vmsg_node *node);
@@ -241,6 +243,9 @@ const char *vmm_vmsg_node_get_name(struct vmm_vmsg_node *node);
 
 /** Get address of virtual messaging node */
 u32 vmm_vmsg_node_get_addr(struct vmm_vmsg_node *node);
+
+/** Get maximum data len of virtual messaging node */
+u32 vmm_vmsg_node_get_max_data_len(struct vmm_vmsg_node *node);
 
 /** Get domain of virtual messaging node */
 struct vmm_vmsg_domain *vmm_vmsg_node_get_domain(struct vmm_vmsg_node *node);

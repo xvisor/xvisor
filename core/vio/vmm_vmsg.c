@@ -343,8 +343,9 @@ static void vmsg_node_send_func(struct vmsg_work *work)
 		    !arch_atomic_read(&node->is_ready))
 			continue;
 
-		if ((node->addr == msg->dst) ||
-		    (msg->dst == VMM_VMSG_NODE_ADDR_ANY)) {
+		if (((node->addr == msg->dst) ||
+		    (msg->dst == VMM_VMSG_NODE_ADDR_ANY)) &&
+		    (msg->len <= node->max_data_len)) {
 			if (node->ops->recv_msg)
 				node->ops->recv_msg(node, msg);
 		}
@@ -667,9 +668,10 @@ const char *vmm_vmsg_domain_get_name(struct vmm_vmsg_domain *domain)
 VMM_EXPORT_SYMBOL(vmm_vmsg_domain_get_name);
 
 struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name, u32 addr,
-				struct vmm_vmsg_node_ops *ops,
-				struct vmm_vmsg_domain *domain,
-				void *priv)
+					u32 max_data_len,
+					struct vmm_vmsg_node_ops *ops,
+					struct vmm_vmsg_domain *domain,
+					void *priv)
 {
 	bool found;
 	int id_min, id_max, a;
@@ -726,6 +728,7 @@ struct vmm_vmsg_node *vmm_vmsg_node_create(const char *name, u32 addr,
 	INIT_LIST_HEAD(&new_vmn->head);
 	INIT_LIST_HEAD(&new_vmn->domain_head);
 	strncpy(new_vmn->name, name, sizeof(new_vmn->name));
+	new_vmn->max_data_len = max_data_len;
 	new_vmn->priv = priv;
 	arch_atomic_write(&new_vmn->is_ready, 0);
 	new_vmn->domain = domain;
@@ -944,6 +947,12 @@ u32 vmm_vmsg_node_get_addr(struct vmm_vmsg_node *node)
 	return (node) ? node->addr : VMM_VMSG_NODE_ADDR_ANY;
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_get_addr);
+
+u32 vmm_vmsg_node_get_max_data_len(struct vmm_vmsg_node *node)
+{
+	return (node) ? node->max_data_len : 0x0;
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_node_get_max_data_len);
 
 struct vmm_vmsg_domain *vmm_vmsg_node_get_domain(struct vmm_vmsg_node *node)
 {
