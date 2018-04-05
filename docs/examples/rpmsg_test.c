@@ -131,18 +131,18 @@ void usage(const char *app)
 {
 	printf("Usage: %s -d <rpmsg_device_path> [<options>]\n", app);
 	printf("Common options:\n");
-	printf("\t-d <rpmsg_device_path>     - Rpmsg device path (Mandatory)\n");
-	printf("\t-h                         - Display this help (Optional)\n");
-	printf("\t-r <rpmsg_max_buffer_size> - Rpmsg max buffer size (Optional)\n");
-	printf("\t-s                         - Server mode (Optional)\n");
-	printf("\t-v                         - Verbose (Optional)\n");
+	printf("\t-d <rpmsg_device_path>         - Rpmsg device path (Mandatory)\n");
+	printf("\t-h                             - Display this help (Optional)\n");
+	printf("\t-r <rpmsg_max_kernel_buf_size> - Rpmsg max kernel buffer size (Optional)\n");
+	printf("\t-s                             - Server mode (Optional)\n");
+	printf("\t-v                             - Verbose (Optional)\n");
 	printf("Client options:\n");
-	printf("\t-f <fixed_transfer_size>   - Use specified fixed transfer size (Optional)\n");
-	printf("\t-i                         - Check data integrity (Optional)\n");
-	printf("\t-l <local_address>         - Use specified local address (Optional)\n");
-	printf("\t-n <number_of_rounds>      - Number of rounds (Optional)\n");
-	printf("\t-p <payloads_per_round>    - Number of payloads per round (Optional)\n");
-	printf("\t-u                         - Unidirectional transfer (Optional)\n");
+	printf("\t-f <fixed_payload_size>        - Use specified fixed payload size (Optional)\n");
+	printf("\t-i                             - Check data integrity (Optional)\n");
+	printf("\t-l <local_address>             - Use specified local address (Optional)\n");
+	printf("\t-n <number_of_rounds>          - Number of rounds (Optional)\n");
+	printf("\t-p <payloads_per_round>        - Number of payloads per round (Optional)\n");
+	printf("\t-u                             - Unidirectional transfer (Optional)\n");
 }
 
 int main(int argc, char *argv[])
@@ -219,10 +219,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (fsize < RPMSG_TEST_PAYLOAD_MIN_SIZE(rmax))
-		fsize = RPMSG_TEST_PAYLOAD_MIN_SIZE(rmax);
-	else if (RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax) < fsize)
-		fsize = RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax);
+
+	if (fpayload) {
+		if (fsize < RPMSG_TEST_PAYLOAD_MIN_SIZE(rmax))
+			fsize = RPMSG_TEST_PAYLOAD_MIN_SIZE(rmax);
+		else if (RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax) < fsize)
+			fsize = RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax);
+	} else {
+		if (RPMSG_TEST_NUM_PAYLOADS(rmax) < pcount)
+			pcount = RPMSG_TEST_NUM_PAYLOADS(rmax);
+	}
 
 	if (is_server) {
 		printf("Rpmsg test started\n");
@@ -231,14 +237,18 @@ int main(int argc, char *argv[])
 		printf("Rpmsg test started for %d rounds and "
 			"%d payloads in each round\n", ntimes, pcount);
 		printf("Rpmsg test client mode\n");
+		printf("Rpmsg test %s payload\n",
+			(fpayload) ? "fixed" : "dynamic");
 		if (is_unidir) {
 			printf("Rpmsg test unidirectional transfer\n");
 		} else {
 			printf("Rpmsg test bidirectional transfer\n");
 		}
 	}
-	printf("Rpmsg test buffer size %d bytes (%d bytes)\n",
-		RPMSG_TEST_MAX_BUFF_SIZE(rmax), rmax);
+	printf("Rpmsg test max kernel buffer size %d bytes\n", rmax);
+	printf("Rpmsg test max payload size %d bytes (%d bytes)\n",
+		RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax),
+		RPMSG_TEST_MAX_BUFF_SIZE(rmax));
 	printf("Rpmsg test open dev %s!\n", rpmsg_dev);
 
 	fd = open(rpmsg_dev, O_RDWR | O_NONBLOCK);
