@@ -192,7 +192,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 			}
 
 			msg = vmm_vmsg_alloc(hdr.dst, rdev->node->addr,
-					     hdr.src, hdr.len);
+					     hdr.src, hdr.len, rdev);
 			if (!msg) {
 				continue;
 			}

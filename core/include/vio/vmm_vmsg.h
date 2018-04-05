@@ -86,19 +86,21 @@ struct vmm_vmsg {
 	void *data;
 	size_t len;
 	void *priv;
-	void (*release) (struct vmm_vmsg *);
+	void (*free_data) (struct vmm_vmsg *);
+	void (*free_hdr) (struct vmm_vmsg *);
 };
 
-#define INIT_VMSG(__msg, __dst, __src, __local, __data, __len, __priv, __rel) \
+#define INIT_VMSG(__m, __dst, __src, __local, __d, __l, __p, __fd, __fh)\
 	do {								\
-		arch_atomic_write(&(__msg)->ref_count, 1);		\
-		(__msg)->dst = (__dst);					\
-		(__msg)->src = (__src);					\
-		(__msg)->local = (__local);				\
-		(__msg)->data = (__data);				\
-		(__msg)->len = (__len);					\
-		(__msg)->priv = (__priv);				\
-		(__msg)->release = (__rel);				\
+		arch_atomic_write(&(__m)->ref_count, 1);		\
+		(__m)->dst = (__dst);					\
+		(__m)->src = (__src);					\
+		(__m)->local = (__local);				\
+		(__m)->data = (__d);					\
+		(__m)->len = (__l);					\
+		(__m)->priv = (__p);					\
+		(__m)->free_data = (__fd);				\
+		(__m)->free_hdr = (__fh);				\
 	} while (0)
 
 /** Representation of a virtual messaging domain */
@@ -143,8 +145,14 @@ void vmm_vmsg_ref(struct vmm_vmsg *msg);
 /** Decrement ref count of virtual message */
 void vmm_vmsg_dref(struct vmm_vmsg *msg);
 
-/** Allocate new virtual message */
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len);
+/** Allocate new virtual message with data allocated externally */
+struct vmm_vmsg *vmm_vmsg_alloc_ext(u32 dst, u32 src, u32 local,
+				    void *data, size_t len, void *priv,
+				    void (*free_data)(struct vmm_vmsg *));
+
+/** Allocate new virtual message from heap */
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local,
+				size_t len, void *priv);
 
 /** Free a virtual message */
 static inline void vmm_vmsg_free(struct vmm_vmsg *msg)

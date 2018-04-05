@@ -86,19 +86,46 @@ void vmm_vmsg_dref(struct vmm_vmsg *msg)
 		return;
 	}
 
-	if (msg->release) {
-		msg->release(msg);
+	if (msg->free_data) {
+		msg->free_data(msg);
+	}
+
+	if (msg->free_hdr) {
+		msg->free_hdr(msg);
 	}
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_dref);
 
-static void vmsg_release(struct vmm_vmsg *msg)
+static void vmsg_free_data(struct vmm_vmsg *msg)
 {
 	vmm_free(msg->data);
+}
+
+static void vmsg_free_hdr(struct vmm_vmsg *msg)
+{
 	vmm_free(msg);
 }
 
-struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len)
+struct vmm_vmsg *vmm_vmsg_alloc_ext(u32 dst, u32 src, u32 local,
+				    void *data, size_t len, void *priv,
+				    void (*free_data)(struct vmm_vmsg *))
+{
+	struct vmm_vmsg *msg;
+
+	msg = vmm_malloc(sizeof(*msg));
+	if (!msg) {
+		return NULL;
+	}
+
+	INIT_VMSG(msg, dst, src, local, data, len, priv,
+		  free_data, vmsg_free_hdr);
+
+	return msg;
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_alloc_ext);
+
+struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local,
+				size_t len, void *priv)
 {
 	void *data;
 	struct vmm_vmsg *msg;
@@ -112,13 +139,12 @@ struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local, size_t len)
 		return NULL;
 	}
 
-	msg = vmm_malloc(sizeof(*msg));
+	msg = vmm_vmsg_alloc_ext(dst, src, local, data, len,
+				 priv, vmsg_free_data);
 	if (!msg) {
 		vmm_free(data);
 		return NULL;
 	}
-
-	INIT_VMSG(msg, dst, src, local, data, len, NULL, vmsg_release);
 
 	return msg;
 }
