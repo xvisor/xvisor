@@ -124,7 +124,8 @@ struct vmm_vmsg_node_ops {
 			 const char *peer_name, u32 peer_addr);
 	void (*peer_down) (struct vmm_vmsg_node *node,
 			   const char *peer_name, u32 peer_addr);
-	void (*recv_msg) (struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
+	bool (*can_recv_msg) (struct vmm_vmsg_node *node);
+	int (*recv_msg) (struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
 };
 
 /** Representation of a virtual messaging node */

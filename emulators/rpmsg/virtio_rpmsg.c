@@ -25,11 +25,12 @@
 #include <vmm_macros.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
+#include <vmm_host_aspace.h>
 #include <vmm_devemu.h>
 #include <vio/vmm_vmsg.h>
 #include <vio/vmm_virtio.h>
 #include <vio/vmm_virtio_rpmsg.h>
-#include <libs/fifo.h>
+#include <libs/mempool.h>
 #include <libs/stringlib.h>
 
 #undef DEBUG
@@ -57,12 +58,23 @@
 #define VIRTIO_RPMSG_RX_QUEUE		0
 #define VIRTIO_RPMSG_TX_QUEUE		1
 
+struct virtio_rpmsg_buf {
+	bool notify_tx;
+	u16 head;
+	u32 total_len;
+	struct vmm_vmsg msg;
+	char data[VIRTIO_RPMSG_MAX_BUFF_SIZE];
+};
+
 struct virtio_rpmsg_dev {
 	struct vmm_virtio_device *vdev;
 
 	struct vmm_virtio_queue vqs[VIRTIO_RPMSG_NUM_QUEUES];
 	struct vmm_virtio_iovec rx_iov[VIRTIO_RPMSG_QUEUE_SIZE];
 	struct vmm_virtio_iovec tx_iov[VIRTIO_RPMSG_QUEUE_SIZE];
+
+	struct mempool *tx_buf_pool;
+
 	u32 features;
 
 	char name[VMM_VIRTIO_DEVICE_MAX_NAME_LEN];
@@ -146,6 +158,25 @@ static int virtio_rpmsg_set_size_vq(struct vmm_virtio_device *dev,
 	return size;
 }
 
+static void virtio_rpmsg_free_hdr(struct vmm_vmsg *m)
+{
+	struct virtio_rpmsg_dev *rdev = m->priv;
+	struct virtio_rpmsg_buf *buf =
+			container_of(m, struct virtio_rpmsg_buf, msg);
+	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_TX_QUEUE];
+	struct vmm_virtio_device *dev = rdev->vdev;
+
+	if (buf->notify_tx) {
+		vmm_virtio_queue_set_used_elem(vq, buf->head, buf->total_len);
+
+		if (vmm_virtio_queue_should_signal(vq)) {
+			dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
+		}
+	}
+
+	mempool_free(rdev->tx_buf_pool, buf);
+}
+
 static void virtio_rpmsg_tx_work(void *data);
 
 static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
@@ -159,6 +190,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 	struct vmm_virtio_iovec *iov = rdev->tx_iov;
 	struct vmm_virtio_iovec tiov;
 	struct vmm_rpmsg_hdr hdr;
+	struct virtio_rpmsg_buf *buf;
 	struct vmm_vmsg *msg;
 
 	while ((budget > 0) && vmm_virtio_queue_available(vq)) {
@@ -196,11 +228,27 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				continue;
 			}
 
-			msg = vmm_vmsg_alloc(hdr.dst, rdev->node->addr,
-					     hdr.src, hdr.len, rdev);
-			if (!msg) {
+			buf = mempool_malloc(rdev->tx_buf_pool);
+			if (!buf) {
+				vmm_printf("%s: node=%s failed to alloc buf\n",
+					   __func__, rdev->node->name);
 				continue;
 			}
+			msg = &buf->msg;
+
+			if (i == 0) {
+				buf->notify_tx = TRUE;
+				buf->head = head;
+				buf->total_len = total_len;
+			} else {
+				buf->notify_tx = FALSE;
+				buf->head = 0;
+				buf->total_len = 0;
+			}
+
+			INIT_VMSG(msg, hdr.dst, rdev->node->addr,
+				  hdr.src, &buf->data[0], hdr.len, rdev,
+				  NULL, virtio_rpmsg_free_hdr);
 
 			len = vmm_virtio_iovec_to_buf_read(dev, &tiov,
 						1, msg->data, msg->len);
@@ -218,13 +266,7 @@ skip_msg:
 			vmm_vmsg_dref(msg);
 		}
 
-		vmm_virtio_queue_set_used_elem(vq, head, total_len);
-
 		budget--;
-	}
-
-	if (vmm_virtio_queue_should_signal(vq)) {
-		dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
 	}
 
 	if (vmm_virtio_queue_available(vq)) {
@@ -298,7 +340,7 @@ static int virtio_rpmsg_rx_msg(struct virtio_rpmsg_dev *rdev,
 		src, dst, local, len, use_local_as_dst);
 
 	if (!vmm_virtio_queue_available(vq)) {
-		return VMM_ENODEV;
+		return VMM_ENOSPC;
 	}
 
 	rc = vmm_virtio_queue_get_iovec(vq, iov,
@@ -407,18 +449,21 @@ static void virtio_rpmsg_peer_down(struct vmm_vmsg_node *node,
 	}
 }
 
-static void virtio_rpmsg_recv_msg(struct vmm_vmsg_node *node,
-				  struct vmm_vmsg *msg)
+static bool virtio_rpmsg_can_recv_msg(struct vmm_vmsg_node *node)
 {
-	int rc;
+	struct virtio_rpmsg_dev *rdev = vmm_vmsg_node_priv(node);
+	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_RX_QUEUE];
+
+	return vmm_virtio_queue_available(vq);
+}
+
+static int virtio_rpmsg_recv_msg(struct vmm_vmsg_node *node,
+				 struct vmm_vmsg *msg)
+{
 	struct virtio_rpmsg_dev *rdev = vmm_vmsg_node_priv(node);
 
-	rc = virtio_rpmsg_rx_msg(rdev, msg->src, msg->dst, msg->local,
-				 msg->data, (u32)msg->len, TRUE);
-	if (rc) {
-		vmm_printf("%s: Failed to rx message (error %d)\n",
-			   __func__, rc);
-	}
+	return virtio_rpmsg_rx_msg(rdev, msg->src, msg->dst, msg->local,
+				   msg->data, (u32)msg->len, TRUE);
 }
 
 static int virtio_rpmsg_read_config(struct vmm_virtio_device *dev,
@@ -462,13 +507,14 @@ static int virtio_rpmsg_reset(struct vmm_virtio_device *dev)
 static struct vmm_vmsg_node_ops virtio_rpmsg_ops = {
 	.peer_up = virtio_rpmsg_peer_up,
 	.peer_down = virtio_rpmsg_peer_down,
+	.can_recv_msg = virtio_rpmsg_can_recv_msg,
 	.recv_msg = virtio_rpmsg_recv_msg,
 };
 
 static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 				struct vmm_virtio_emulator *emu)
 {
-	u32 addr;
+	u32 addr, page_count;
 	const char *dom_name = NULL;
 	const char *ns_name = NULL;
 	struct vmm_vmsg_domain *dom;
@@ -510,10 +556,20 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		addr = VMM_VMSG_NODE_ADDR_ANY;
 	}
 
+	page_count = VMM_SIZE_TO_PAGE(sizeof(struct virtio_rpmsg_buf) *
+				      VIRTIO_RPMSG_QUEUE_SIZE);
+	rdev->tx_buf_pool = mempool_ram_create(sizeof(struct virtio_rpmsg_buf),
+					page_count, VMM_MEMORY_FLAGS_NORMAL);
+	if (!rdev->tx_buf_pool) {
+		vmm_free(rdev);
+		return VMM_ENOMEM;
+	}
+
 	rdev->node = vmm_vmsg_node_create(dev->name, addr,
 					  VIRTIO_RPMSG_NODE_MAX_BUFF_SIZE,
 					  &virtio_rpmsg_ops, dom, rdev);
 	if (!rdev->node) {
+		mempool_destroy(rdev->tx_buf_pool);
 		vmm_free(rdev);
 		return VMM_EFAIL;
 	}
@@ -528,6 +584,7 @@ static void virtio_rpmsg_disconnect(struct vmm_virtio_device *dev)
 	struct virtio_rpmsg_dev *rdev = dev->emu_data;
 
 	vmm_vmsg_node_destroy(rdev->node);
+	mempool_destroy(rdev->tx_buf_pool);
 	vmm_free(rdev);
 }
 

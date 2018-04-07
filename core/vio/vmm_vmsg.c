@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_scheduler.h>
 #include <vmm_modules.h>
 #include <vmm_workqueue.h>
 #include <vio/vmm_vmsg.h>
@@ -271,6 +272,8 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 					       NULL, NULL,
 					       vmsg_node_peer_down_func);
 		if (err) {
+			vmm_printf("%s: node=%s error=%d\n",
+				   __func__, node->name, err);
 			return err;
 		}
 	}
@@ -323,6 +326,8 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 					       NULL, NULL,
 					       vmsg_node_peer_up_func);
 		if (err) {
+			vmm_printf("%s: node=%s error=%d\n",
+				   __func__, node->name, err);
 			return err;
 		}
 	}
@@ -332,6 +337,7 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 
 static void vmsg_node_send_func(struct vmsg_work *work)
 {
+	int err, retry;
 	struct vmm_vmsg_node *node;
 	struct vmm_vmsg *msg = work->msg;
 	struct vmm_vmsg_domain *domain = work->domain;
@@ -346,8 +352,20 @@ static void vmsg_node_send_func(struct vmsg_work *work)
 		if (((node->addr == msg->dst) ||
 		    (msg->dst == VMM_VMSG_NODE_ADDR_ANY)) &&
 		    (msg->len <= node->max_data_len)) {
-			if (node->ops->recv_msg)
-				node->ops->recv_msg(node, msg);
+			if (node->ops->can_recv_msg && node->ops->recv_msg) {
+				retry = 10;
+				while (!node->ops->can_recv_msg(node) &&
+					retry) {
+					vmm_scheduler_yield();
+					retry--;
+				}
+
+				err = node->ops->recv_msg(node, msg);
+				if (err) {
+					vmm_printf("%s: node=%s error=%d\n",
+						   __func__, node->name, err);
+				}
+			}
 		}
 	}
 
