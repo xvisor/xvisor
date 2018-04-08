@@ -58,8 +58,11 @@
 #define VIRTIO_RPMSG_RX_QUEUE		0
 #define VIRTIO_RPMSG_TX_QUEUE		1
 
+#define VIRTIO_RPMSG_BUF_SET_USED_TX	(1 << 0)
+#define VIRTIO_RPMSG_BUF_NOTIFY_TX	(1 << 1)
+
 struct virtio_rpmsg_buf {
-	bool notify_tx;
+	u32 flags;
 	u16 head;
 	u32 total_len;
 	struct vmm_vmsg msg;
@@ -166,9 +169,11 @@ static void virtio_rpmsg_free_hdr(struct vmm_vmsg *m)
 	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_TX_QUEUE];
 	struct vmm_virtio_device *dev = rdev->vdev;
 
-	if (buf->notify_tx) {
+	if (buf->flags & VIRTIO_RPMSG_BUF_SET_USED_TX) {
 		vmm_virtio_queue_set_used_elem(vq, buf->head, buf->total_len);
+	}
 
+	if (buf->flags & VIRTIO_RPMSG_BUF_NOTIFY_TX) {
 		if (vmm_virtio_queue_should_signal(vq)) {
 			dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
 		}
@@ -237,11 +242,12 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 			msg = &buf->msg;
 
 			if (i == 0) {
-				buf->notify_tx = TRUE;
+				buf->flags = VIRTIO_RPMSG_BUF_SET_USED_TX |
+					     VIRTIO_RPMSG_BUF_NOTIFY_TX;
 				buf->head = head;
 				buf->total_len = total_len;
 			} else {
-				buf->notify_tx = FALSE;
+				buf->flags = 0;
 				buf->head = 0;
 				buf->total_len = 0;
 			}
@@ -297,7 +303,6 @@ static int virtio_rpmsg_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 
 	switch (vq) {
 	case VIRTIO_RPMSG_TX_QUEUE:
-		/* TODO: */
 		rc = vmm_vmsg_node_start_work(rdev->node, rdev,
 					      virtio_rpmsg_tx_work);
 		break;
