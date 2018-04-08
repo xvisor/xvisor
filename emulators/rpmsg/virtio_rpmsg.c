@@ -195,7 +195,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 	struct vmm_virtio_iovec *iov = rdev->tx_iov;
 	struct vmm_virtio_iovec tiov;
 	struct vmm_rpmsg_hdr hdr;
-	struct virtio_rpmsg_buf *buf;
+	struct virtio_rpmsg_buf *buf, *last_buf = NULL;
 	struct vmm_vmsg *msg;
 
 	while ((budget > 0) && vmm_virtio_queue_available(vq)) {
@@ -242,8 +242,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 			msg = &buf->msg;
 
 			if (i == 0) {
-				buf->flags = VIRTIO_RPMSG_BUF_SET_USED_TX |
-					     VIRTIO_RPMSG_BUF_NOTIFY_TX;
+				buf->flags = VIRTIO_RPMSG_BUF_SET_USED_TX;
 				buf->head = head;
 				buf->total_len = total_len;
 			} else {
@@ -251,6 +250,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				buf->head = 0;
 				buf->total_len = 0;
 			}
+			last_buf = buf;
 
 			INIT_VMSG(msg, hdr.dst, rdev->node->addr,
 				  hdr.src, &buf->data[0], hdr.len, rdev,
@@ -273,6 +273,10 @@ skip_msg:
 		}
 
 		budget--;
+	}
+
+	if (last_buf) {
+		last_buf->flags |= VIRTIO_RPMSG_BUF_NOTIFY_TX;
 	}
 
 	if (vmm_virtio_queue_available(vq)) {
