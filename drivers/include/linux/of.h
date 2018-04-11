@@ -17,6 +17,11 @@ typedef u32 phandle;
 #define of_device_id			vmm_devtree_nodeid
 #define	of_phandle_args			vmm_devtree_phandle_args
 
+static inline const char *of_node_full_name(const struct device_node *np)
+{
+ return np ? np->name : "<no-node>";
+}
+
 static inline struct device_node *of_node_get(struct device_node *node)
 {
 	vmm_devtree_ref_node(node);
@@ -111,6 +116,9 @@ static inline int of_modalias_node(struct device_node *node,
 #define	of_property_read_u8		vmm_devtree_read_u8
 #define	of_property_read_u16		vmm_devtree_read_u16
 #define	of_property_read_u32		vmm_devtree_read_u32
+
+#define of_property_read_u32_index(np, attr, out, i) \
+			vmm_devtree_read_u32_atindex(np, attr, i, out)
 
 #define	of_property_read_u8_array	vmm_devtree_read_u8_array
 #define	of_property_read_u16_array	vmm_devtree_read_u16_array

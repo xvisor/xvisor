@@ -774,10 +774,8 @@ static int bcm2835_pctl_dt_node_to_map_func(struct bcm2835_pinctrl *pc,
 	struct pinctrl_map *map = *maps;
 
 	if (fnum >= ARRAY_SIZE(bcm2835_functions)) {
-#if 0
 		dev_err(pc->dev, "%s: invalid brcm,function %d\n",
 			of_node_full_name(np), fnum);
-#endif
 		return -EINVAL;
 	}
 
@@ -797,10 +795,8 @@ static int bcm2835_pctl_dt_node_to_map_pull(struct bcm2835_pinctrl *pc,
 	unsigned long *configs;
 
 	if (pull > 2) {
-#if 0
 		dev_err(pc->dev, "%s: invalid brcm,pull %d\n",
 			of_node_full_name(np), pull);
-#endif
 		return -EINVAL;
 	}
 
@@ -831,10 +827,8 @@ static int bcm2835_pctl_dt_node_to_map(struct pinctrl_dev *pctldev,
 
 	pins = of_find_property(np, "brcm,pins", NULL);
 	if (!pins) {
-#if 0
 		dev_err(pc->dev, "%s: missing brcm,pins property\n",
 				of_node_full_name(np));
-#endif
 		return -EINVAL;
 	}
 
@@ -842,11 +836,9 @@ static int bcm2835_pctl_dt_node_to_map(struct pinctrl_dev *pctldev,
 	pulls = of_find_property(np, "brcm,pull", NULL);
 
 	if (!funcs && !pulls) {
-#if 0
 		dev_err(pc->dev,
 			"%s: neither brcm,function nor brcm,pull specified\n",
 			of_node_full_name(np));
-#endif
 		return -EINVAL;
 	}
 
@@ -855,20 +847,16 @@ static int bcm2835_pctl_dt_node_to_map(struct pinctrl_dev *pctldev,
 	num_pulls = pulls ? (pulls->len / 4) : 0;
 
 	if (num_funcs > 1 && num_funcs != num_pins) {
-#if 0
 		dev_err(pc->dev,
 			"%s: brcm,function must have 1 or %d entries\n",
 			of_node_full_name(np), num_pins);
-#endif
 		return -EINVAL;
 	}
 
 	if (num_pulls > 1 && num_pulls != num_pins) {
-#if 0
 		dev_err(pc->dev,
 			"%s: brcm,pull must have 1 or %d entries\n",
 			of_node_full_name(np), num_pins);
-#endif
 		return -EINVAL;
 	}
 
@@ -883,39 +871,31 @@ static int bcm2835_pctl_dt_node_to_map(struct pinctrl_dev *pctldev,
 		return -ENOMEM;
 
 	for (i = 0; i < num_pins; i++) {
-#if 0
 		err = of_property_read_u32_index(np, "brcm,pins", i, &pin);
 		if (err)
 			goto out;
-#endif
 		if (pin >= ARRAY_SIZE(bcm2835_gpio_pins)) {
-#if 0
 			dev_err(pc->dev, "%s: invalid brcm,pins value %d\n",
 				of_node_full_name(np), pin);
-#endif
 			err = -EINVAL;
 			goto out;
 		}
 
 		if (num_funcs) {
-#if 0
 			err = of_property_read_u32_index(np, "brcm,function",
 					(num_funcs > 1) ? i : 0, &func);
 			if (err)
 				goto out;
-#endif
 			err = bcm2835_pctl_dt_node_to_map_func(pc, np, pin,
 							func, &cur_map);
 			if (err)
 				goto out;
 		}
 		if (num_pulls) {
-#if 0
 			err = of_property_read_u32_index(np, "brcm,pull",
 					(num_pulls > 1) ? i : 0, &pull);
 			if (err)
 				goto out;
-#endif
 			err = bcm2835_pctl_dt_node_to_map_pull(pc, np, pin,
 							pull, &cur_map);
 			if (err)
@@ -1014,6 +994,10 @@ static int bcm2835_pmx_gpio_set_direction(struct pinctrl_dev *pctldev,
 static int bcm2835_pmx_enable(struct pinctrl_dev *pctldev, unsigned selector,
 			   unsigned group)
 {
+	struct bcm2835_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
+
+	bcm2835_pinctrl_fsel_set(pc, group, selector);
+
 	return VMM_OK;
 }
 
@@ -1130,7 +1114,11 @@ static int bcm2835_pinctrl_probe(struct vmm_device *dev,
 		dev_err(dev, "could not get IO memory\n");
 		return err;
 	}
-#endif
+
+	pc->base = devm_ioremap_resource(dev, &iomem);
+	if (IS_ERR(pc->base))
+		return PTR_ERR(pc->base);
+#else
 	DPRINTF("Requesting a mapping of the registers\n");
 	/* Map the register to pc->base */
 	err = vmm_devtree_request_regmap(np, (virtual_addr_t *)&pc->base, 0,
@@ -1139,10 +1127,6 @@ static int bcm2835_pinctrl_probe(struct vmm_device *dev,
 		dev_err(dev, "fail to map registers from the device tree\n");
 		goto out_regmap;
 	}
-#if 0
-	pc->base = devm_ioremap_resource(dev, &iomem);
-	if (IS_ERR(pc->base))
-		return PTR_ERR(pc->base);
 #endif
 
 	/* Init the gpio_chip with the required function/values */
@@ -1169,10 +1153,11 @@ static int bcm2835_pinctrl_probe(struct vmm_device *dev,
 					 &bcm2835_gpio_irq_chip,
 					 vmm_handle_level_irq);
 		irq_set_chip_data(irq, pc);
-#endif
+#else
 		vmm_host_irq_set_chip(irq, &bcm2835_gpio_irq_chip);
 		vmm_host_irq_set_handler(irq, vmm_handle_level_irq);
 		vmm_host_irq_set_chip_data(irq, pc);
+#endif
 	}
 
 	/* Clear the flags and init the spin lock */
