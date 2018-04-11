@@ -321,13 +321,7 @@ next:
 int __init arch_smp_prepare_cpus(unsigned int max_cpus)
 {
 	int err;
-	unsigned int cpu, ncores = vmm_num_possible_cpus();
-
-	/*
-	 * are we trying to boot more cores than exist?
-	 */
-	if (max_cpus > ncores)
-		max_cpus = ncores;
+	unsigned int cpu;
 
 	/* Don't bother if we're effectively UP */
 	if (max_cpus <= 1) {
