@@ -247,8 +247,8 @@ int main(int argc, char *argv[])
 	}
 	printf("Rpmsg test max kernel buffer size %d bytes\n", rmax);
 	printf("Rpmsg test max payload size %d bytes (%d bytes)\n",
-		RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax),
-		RPMSG_TEST_MAX_BUFF_SIZE(rmax));
+		(int)RPMSG_TEST_PAYLOAD_MAX_SIZE(rmax),
+		(int)RPMSG_TEST_MAX_BUFF_SIZE(rmax));
 	printf("Rpmsg test open dev %s!\n", rpmsg_dev);
 
 	fd = open(rpmsg_dev, O_RDWR | O_NONBLOCK);
