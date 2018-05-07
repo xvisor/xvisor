@@ -112,7 +112,7 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     mkdir -p ./_install/dev
     mkdir -p ./_install/proc
     mkdir -p ./_install/sys
-    ln -sf /sbin/init ./_install/init
+    ln -sf sbin/init ./_install/init
     cp -f <xvisor_source_directory>/tests/common/busybox/fstab ./_install/etc/fstab
     cp -f <xvisor_source_directory>/tests/common/busybox/rcS ./_install/etc/init.d/rcS
     cp -f <xvisor_source_directory>/tests/common/busybox/motd ./_install/etc/motd
