@@ -335,12 +335,11 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	return VMM_OK;
 }
 
-static void vmsg_node_send_func(struct vmsg_work *work)
+static void vmsg_node_send_fast_func(struct vmm_vmsg *msg,
+				     struct vmm_vmsg_domain *domain)
 {
 	int err, retry;
 	struct vmm_vmsg_node *node;
-	struct vmm_vmsg *msg = work->msg;
-	struct vmm_vmsg_domain *domain = work->domain;
 
 	vmm_mutex_lock(&domain->node_lock);
 
@@ -372,9 +371,16 @@ static void vmsg_node_send_func(struct vmsg_work *work)
 	vmm_mutex_unlock(&domain->node_lock);
 }
 
-static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
+static void vmsg_node_send_func(struct vmsg_work *work)
 {
-	if (!node || !msg || !msg->data || !msg->len ||
+	vmsg_node_send_fast_func(work->msg, work->domain);
+}
+
+static int vmsg_node_send(struct vmm_vmsg_node *node,
+			  struct vmm_vmsg *msg, bool fast)
+{
+	if (!node || !node->domain ||
+	    !msg || !msg->data || !msg->len ||
 	    (msg->dst == node->addr) ||
 	    (msg->dst < VMM_VMSG_NODE_ADDR_MIN)) {
 		return VMM_EINVALID;
@@ -384,6 +390,11 @@ static int vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 
 	DPRINTF("%s: node=%s src=0x%x dst=0x%x len=0x%zx\n",
 		__func__, node->name, msg->src, msg->dst, msg->len);
+
+	if (fast) {
+		vmsg_node_send_fast_func(msg, node->domain);
+		return VMM_OK;
+	}
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
 					node->name, node->addr,
@@ -900,9 +911,19 @@ int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 		return VMM_EINVALID;
 	}
 
-	return vmsg_node_send(node, msg);
+	return vmsg_node_send(node, msg, false);
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_send);
+
+int vmm_vmsg_node_send_fast(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
+{
+	if (!node || !msg || !msg->data || !msg->len) {
+		return VMM_EINVALID;
+	}
+
+	return vmsg_node_send(node, msg, true);
+}
+VMM_EXPORT_SYMBOL(vmm_vmsg_node_send_fast);
 
 int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
 			     void *data, void (*fn) (void *))

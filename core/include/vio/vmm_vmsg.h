@@ -220,6 +220,11 @@ u32 vmm_vmsg_node_count(void);
 /** Send message from virtual messaging node */
 int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
 
+/** Faster Send message from virtual messaging node
+ * Note: This function can only be called from Orphan context
+ */
+int vmm_vmsg_node_send_fast(struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
+
 /** Schedule work for virtual messaging node */
 int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
 			     void *data, void (*fn) (void *));
