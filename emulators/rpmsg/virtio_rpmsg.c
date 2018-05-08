@@ -266,7 +266,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				"local=0x%x len=0x%zx\n", __func__,
 				rdev->node->name, rdev->node->addr,
 				msg->src, msg->dst, msg->local, msg->len);
-			vmm_vmsg_node_send(rdev->node, msg);
+			vmm_vmsg_node_send_fast(rdev->node, msg);
 
 skip_msg:
 			vmm_vmsg_dref(msg);
