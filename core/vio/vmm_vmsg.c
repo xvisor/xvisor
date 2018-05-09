@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
+#include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_workqueue.h>
 #include <vio/vmm_vmsg.h>
@@ -160,7 +161,18 @@ struct vmsg_work {
 	void *data;
 	void *data1;
 	void (*func) (struct vmsg_work *work);
+	void (*free) (struct vmsg_work *work);
 };
+
+static void vmsg_free_pool_work(struct vmsg_work *work)
+{
+	mempool_free(work->domain->work_pool, work);
+}
+
+static void vmsg_free_heap_work(struct vmsg_work *work)
+{
+	vmm_free(work);
+}
 
 static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 				    struct vmm_vmsg *msg,
@@ -175,9 +187,15 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 		return VMM_EINVALID;
 	}
 
-	work = vmm_malloc(sizeof(*work));
+	work = mempool_malloc(domain->work_pool);
 	if (!work) {
-		return VMM_ENOMEM;
+		work = vmm_malloc(sizeof(*work));
+		if (!work) {
+			return VMM_ENOMEM;
+		}
+		work->free = vmsg_free_heap_work;
+	} else {
+		work->free = vmsg_free_pool_work;
 	}
 
 	INIT_LIST_HEAD(&work->head);
@@ -232,7 +250,7 @@ static int vmsg_domain_worker_main(void *data)
 			work->msg = NULL;
 		}
 
-		vmm_free(work);
+		work->free(work);
 	}
 
 	return VMM_OK;
@@ -416,6 +434,9 @@ static int vmsg_node_start_work(struct vmm_vmsg_node *node,
 		return VMM_EINVALID;
 	}
 
+	DPRINTF("%s: node=%s data=0x%p fn=0x%p\n",
+		__func__, node->name, data, fn);
+
 	return vmsg_domain_enqueue_work(node->domain, NULL,
 					node->name, node->addr,
 					data, fn,
@@ -450,14 +471,15 @@ static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
 	return VMM_OK;
 }
 
-struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
+struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name,
+				u32 work_pool_pages, void *priv)
 {
 	int ret;
 	bool found;
 	struct vmm_vmsg_event event;
 	struct vmm_vmsg_domain *vmd, *new_vmd;
 
-	if (!name) {
+	if (!name || !work_pool_pages) {
 		return NULL;
 	}
 
@@ -485,11 +507,21 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 	strncpy(new_vmd->name, name, sizeof(new_vmd->name));
 	new_vmd->priv = priv;
 	new_vmd->worker = NULL;
+	new_vmd->work_pool = NULL;
 	INIT_COMPLETION(&new_vmd->work_avail);
 	INIT_SPIN_LOCK(&new_vmd->work_lock);
 	INIT_LIST_HEAD(&new_vmd->work_list);
 	INIT_MUTEX(&new_vmd->node_lock);
 	INIT_LIST_HEAD(&new_vmd->node_list);
+
+	new_vmd->work_pool = mempool_ram_create(sizeof(struct vmsg_work),
+						work_pool_pages,
+						VMM_MEMORY_FLAGS_NORMAL);
+	if (!new_vmd->work_pool) {
+		vmm_free(new_vmd);
+		vmm_mutex_unlock(&vmctrl.lock);
+		return NULL;
+	}
 
 	new_vmd->worker = vmm_threads_create(name,
 					     vmsg_domain_worker_main,
@@ -497,6 +529,7 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 					     VMM_THREAD_DEF_PRIORITY,
 					     VMM_THREAD_DEF_TIME_SLICE);
 	if (!new_vmd->worker) {
+		mempool_destroy(new_vmd->work_pool);
 		vmm_free(new_vmd);
 		vmm_mutex_unlock(&vmctrl.lock);
 		return NULL;
@@ -505,6 +538,7 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 	ret = vmm_threads_start(new_vmd->worker);
 	if (ret) {
 		vmm_threads_destroy(new_vmd->worker);
+		mempool_destroy(new_vmd->work_pool);
 		vmm_free(new_vmd);
 		vmm_mutex_unlock(&vmctrl.lock);
 		return NULL;
@@ -562,6 +596,7 @@ int vmm_vmsg_domain_destroy(struct vmm_vmsg_domain *domain)
 
 	list_del(&domain->head);
 	vmm_threads_destroy(domain->worker);
+	mempool_destroy(domain->work_pool);
 	vmm_free(domain);
 
 	vmm_mutex_unlock(&vmctrl.lock);
@@ -907,7 +942,7 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_node_count);
 
 int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
-	if (!node || !msg || !msg->data || !msg->len) {
+	if (!node || !msg) {
 		return VMM_EINVALID;
 	}
 
@@ -917,7 +952,7 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_node_send);
 
 int vmm_vmsg_node_send_fast(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
-	if (!node || !msg || !msg->data || !msg->len) {
+	if (!node || !msg) {
 		return VMM_EINVALID;
 	}
 
@@ -1009,7 +1044,8 @@ static int __init vmm_vmsg_init(void)
 	INIT_IDA(&vmctrl.node_ida);
 	BLOCKING_INIT_NOTIFIER_CHAIN(&vmctrl.notifier_chain);
 
-	vmctrl.default_domain = vmm_vmsg_domain_create("vmsg_default", NULL);
+	vmctrl.default_domain = vmm_vmsg_domain_create("vmsg_default",
+						       16, NULL);
 	if (!vmctrl.default_domain) {
 		return VMM_ENOMEM;
 	}

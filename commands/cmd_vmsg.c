@@ -41,7 +41,7 @@ static void cmd_vmsg_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "Usage:\n");
 	vmm_cprintf(cdev, "   vmsg help\n");
 	vmm_cprintf(cdev, "   vmsg node_list\n");
-	vmm_cprintf(cdev, "   vmsg domain_create <domain_name>\n");
+	vmm_cprintf(cdev, "   vmsg domain_create <domain_name> <work_pool_pages>\n");
 	vmm_cprintf(cdev, "   vmsg domain_destroy <domain_name>\n");
 	vmm_cprintf(cdev, "   vmsg domain_list\n");
 }
@@ -146,7 +146,8 @@ done:
 	return VMM_OK;
 }
 
-static int cmd_vmsg_domain_create(struct vmm_chardev *cdev, const char *name)
+static int cmd_vmsg_domain_create(struct vmm_chardev *cdev,
+				  const char *name, u32 work_pool_pages)
 {
 	int ret;
 	struct vmm_vmsg_domain *domain = vmm_vmsg_domain_find(name);
@@ -156,7 +157,7 @@ static int cmd_vmsg_domain_create(struct vmm_chardev *cdev, const char *name)
 		return VMM_ENOTAVAIL;
 	}
 
-	domain = vmm_vmsg_domain_create(name, NULL);
+	domain = vmm_vmsg_domain_create(name, work_pool_pages, NULL);
 	if (domain) {
 		vmm_cprintf(cdev, "%s: Created\n", name);
 		ret = VMM_OK;
@@ -200,8 +201,8 @@ static int cmd_vmsg_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vmsg_node_list(cdev);
 	} else if (strcmp(argv[1], "domain_list") == 0 && (argc == 2)) {
 		return cmd_vmsg_domain_list(cdev);
-	} else if (strcmp(argv[1], "domain_create") == 0 && (argc == 3)) {
-		return cmd_vmsg_domain_create(cdev, argv[2]);
+	} else if (strcmp(argv[1], "domain_create") == 0 && (argc == 4)) {
+		return cmd_vmsg_domain_create(cdev, argv[2], atoi(argv[3]));
 	} else if (strcmp(argv[1], "domain_destroy") == 0 && (argc == 3)) {
 		return cmd_vmsg_domain_destroy(cdev, argv[2]);
 	}
