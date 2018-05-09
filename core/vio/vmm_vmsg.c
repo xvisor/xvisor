@@ -24,7 +24,6 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
-#include <vmm_scheduler.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_workqueue.h>
@@ -160,7 +159,7 @@ struct vmsg_work {
 	u32 addr;
 	void *data;
 	void *data1;
-	void (*func) (struct vmsg_work *work);
+	int (*func) (struct vmsg_work *work);
 	void (*free) (struct vmsg_work *work);
 };
 
@@ -178,7 +177,7 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 				    struct vmm_vmsg *msg,
 				    const char *name, u32 addr,
 				    void *data, void *data1,
-				    void (*func) (struct vmsg_work *))
+				    int (*func) (struct vmsg_work *))
 {
 	irq_flags_t flags;
 	struct vmsg_work *work;
@@ -222,7 +221,8 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 
 static int vmsg_domain_worker_main(void *data)
 {
-	irq_flags_t flags;
+	int rc;
+	irq_flags_t f;
 	struct vmm_vmsg_domain *vmd = data;
 	struct vmsg_work *work;
 
@@ -230,19 +230,28 @@ static int vmsg_domain_worker_main(void *data)
 		vmm_completion_wait(&vmd->work_avail);
 
 		work = NULL;
-		vmm_spin_lock_irqsave(&vmd->work_lock, flags);
+		vmm_spin_lock_irqsave(&vmd->work_lock, f);
 		if (!list_empty(&vmd->work_list)) {
 			work = list_first_entry(&vmd->work_list,
 						struct vmsg_work, head);
 			list_del(&work->head);
 		}
-		vmm_spin_unlock_irqrestore(&vmd->work_lock, flags);
+		vmm_spin_unlock_irqrestore(&vmd->work_lock, f);
 		if (!work) {
 			continue;
 		}
 
 		if (work->func) {
-			work->func(work);
+			rc = work->func(work);
+			if (rc == VMM_EAGAIN) {
+				vmm_spin_lock_irqsave(&vmd->work_lock, f);
+				list_add_tail(&work->head, &vmd->work_list);
+				vmm_spin_unlock_irqrestore(&vmd->work_lock, f);
+
+				vmm_completion_complete(&vmd->work_avail);
+
+				continue;
+			}
 		}
 
 		if (work->msg) {
@@ -256,7 +265,7 @@ static int vmsg_domain_worker_main(void *data)
 	return VMM_OK;
 }
 
-static void vmsg_node_peer_down_func(struct vmsg_work *work)
+static int vmsg_node_peer_down_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node;
 	struct vmm_vmsg_domain *domain = work->domain;
@@ -275,6 +284,8 @@ static void vmsg_node_peer_down_func(struct vmsg_work *work)
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
+
+	return VMM_OK;
 }
 
 static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
@@ -299,7 +310,7 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 	return VMM_OK;
 }
 
-static void vmsg_node_peer_up_func(struct vmsg_work *work)
+static int vmsg_node_peer_up_func(struct vmsg_work *work)
 {
 	struct vmm_vmsg_node *node, *peer_node;
 	struct vmm_vmsg_domain *domain = work->domain;
@@ -329,6 +340,8 @@ static void vmsg_node_peer_up_func(struct vmsg_work *work)
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
+
+	return VMM_OK;
 }
 
 static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
@@ -353,10 +366,10 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	return VMM_OK;
 }
 
-static void vmsg_node_send_fast_func(struct vmm_vmsg *msg,
-				     struct vmm_vmsg_domain *domain)
+static int vmsg_node_send_fast_func(struct vmm_vmsg *msg,
+				    struct vmm_vmsg_domain *domain)
 {
-	int err, retry;
+	int err;
 	struct vmm_vmsg_node *node;
 
 	vmm_mutex_lock(&domain->node_lock);
@@ -370,11 +383,10 @@ static void vmsg_node_send_fast_func(struct vmm_vmsg *msg,
 		    (msg->dst == VMM_VMSG_NODE_ADDR_ANY)) &&
 		    (msg->len <= node->max_data_len)) {
 			if (node->ops->can_recv_msg && node->ops->recv_msg) {
-				retry = 10;
-				while (!node->ops->can_recv_msg(node) &&
-					retry) {
-					vmm_scheduler_yield();
-					retry--;
+				if (!node->ops->can_recv_msg(node) &&
+				    (msg->dst != VMM_VMSG_NODE_ADDR_ANY)) {
+					vmm_mutex_unlock(&domain->node_lock);
+					return VMM_EAGAIN;
 				}
 
 				err = node->ops->recv_msg(node, msg);
@@ -387,11 +399,13 @@ static void vmsg_node_send_fast_func(struct vmm_vmsg *msg,
 	}
 
 	vmm_mutex_unlock(&domain->node_lock);
+
+	return VMM_OK;
 }
 
-static void vmsg_node_send_func(struct vmsg_work *work)
+static int vmsg_node_send_func(struct vmsg_work *work)
 {
-	vmsg_node_send_fast_func(work->msg, work->domain);
+	return vmsg_node_send_fast_func(work->msg, work->domain);
 }
 
 static int vmsg_node_send(struct vmm_vmsg_node *node,
@@ -410,8 +424,7 @@ static int vmsg_node_send(struct vmm_vmsg_node *node,
 		__func__, node->name, msg->src, msg->dst, msg->len);
 
 	if (fast) {
-		vmsg_node_send_fast_func(msg, node->domain);
-		return VMM_OK;
+		return vmsg_node_send_fast_func(msg, node->domain);
 	}
 
 	return vmsg_domain_enqueue_work(node->domain, msg,
@@ -420,15 +433,15 @@ static int vmsg_node_send(struct vmm_vmsg_node *node,
 					vmsg_node_send_func);
 }
 
-static void vmsg_node_start_work_func(struct vmsg_work *work)
+static int vmsg_node_start_work_func(struct vmsg_work *work)
 {
-	void (*fn) (void *) = work->data1;
+	int (*fn) (void *) = work->data1;
 
-	fn(work->data);
+	return fn(work->data);
 }
 
 static int vmsg_node_start_work(struct vmm_vmsg_node *node,
-				void *data, void (*fn) (void *))
+				void *data, int (*fn) (void *))
 {
 	if (!node || !fn) {
 		return VMM_EINVALID;
@@ -444,7 +457,7 @@ static int vmsg_node_start_work(struct vmm_vmsg_node *node,
 }
 
 static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
-			       void *data, void (*fn) (void *))
+			       void *data, int (*fn) (void *))
 {
 	irq_flags_t flags;
 	struct vmsg_work *work, *work1;
@@ -952,16 +965,23 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_node_send);
 
 int vmm_vmsg_node_send_fast(struct vmm_vmsg_node *node, struct vmm_vmsg *msg)
 {
+	int rc;
+
 	if (!node || !msg) {
 		return VMM_EINVALID;
 	}
 
-	return vmsg_node_send(node, msg, true);
+	rc = vmsg_node_send(node, msg, true);
+	if (rc == VMM_EAGAIN) {
+		return vmsg_node_send(node, msg, false);
+	}
+
+	return rc;
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_send_fast);
 
 int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
-			     void *data, void (*fn) (void *))
+			     void *data, int (*fn) (void *))
 {
 	if (!node || !fn) {
 		return VMM_EINVALID;
@@ -972,7 +992,7 @@ int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_start_work);
 
 int vmm_vmsg_node_stop_work(struct vmm_vmsg_node *node,
-			    void *data, void (*fn) (void *))
+			    void *data, int (*fn) (void *))
 {
 	if (!node || !fn) {
 		return VMM_EINVALID;

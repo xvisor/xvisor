@@ -182,7 +182,7 @@ static void virtio_rpmsg_free_hdr(struct vmm_vmsg *m)
 	mempool_free(rdev->tx_buf_pool, buf);
 }
 
-static void virtio_rpmsg_tx_work(void *data);
+static int virtio_rpmsg_tx_work(void *data);
 
 static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				struct virtio_rpmsg_dev *rdev,
@@ -195,7 +195,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 	struct vmm_virtio_iovec *iov = rdev->tx_iov;
 	struct vmm_virtio_iovec tiov;
 	struct vmm_rpmsg_hdr hdr;
-	struct virtio_rpmsg_buf *buf, *last_buf = NULL;
+	struct virtio_rpmsg_buf *buf;
 	struct vmm_vmsg *msg;
 
 	while ((budget > 0) && vmm_virtio_queue_available(vq)) {
@@ -250,7 +250,6 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				buf->head = 0;
 				buf->total_len = 0;
 			}
-			last_buf = buf;
 
 			INIT_VMSG(msg, hdr.dst, rdev->node->addr,
 				  hdr.src, &buf->data[0], hdr.len, rdev,
@@ -266,6 +265,7 @@ static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
 				"local=0x%x len=0x%zx\n", __func__,
 				rdev->node->name, rdev->node->addr,
 				msg->src, msg->dst, msg->local, msg->len);
+
 			vmm_vmsg_node_send_fast(rdev->node, msg);
 
 skip_msg:
@@ -273,10 +273,6 @@ skip_msg:
 		}
 
 		budget--;
-	}
-
-	if (last_buf) {
-		last_buf->flags |= VIRTIO_RPMSG_BUF_NOTIFY_TX;
 	}
 
 	if (vmm_virtio_queue_available(vq)) {
@@ -287,17 +283,23 @@ skip_msg:
 		}
 	}
 
+	if (vmm_virtio_queue_should_signal(vq)) {
+		dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
+	}
+
 	return VMM_OK;
 }
 
-static void virtio_rpmsg_tx_work(void *data)
+static int virtio_rpmsg_tx_work(void *data)
 {
 	int rc;
 	struct virtio_rpmsg_dev *rdev = data;
 
 	rc = virtio_rpmsg_tx_msgs(rdev->vdev, rdev,
-				  VIRTIO_RPMSG_QUEUE_SIZE / 8);
+				  VIRTIO_RPMSG_QUEUE_SIZE / 16);
 	WARN_ON(rc);
+
+	return rc;
 }
 
 static int virtio_rpmsg_notify_vq(struct vmm_virtio_device *dev, u32 vq)
