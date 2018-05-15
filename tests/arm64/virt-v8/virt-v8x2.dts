@@ -10,6 +10,7 @@
 		mem0 = &MEM0;
 		net0 = &NET0;
 		disk0 = &DISK0;
+		shmem0 = &SHMEM0;
 	};
 
 	vcpus {
@@ -173,6 +174,15 @@
 			align_order = <21>; /* Align alloced memory to 2MB */
 			map_order = <24>; /* Allocate memory in-terms of 16MB mappings */
 			device_type = "alloced_ram";
+		};
+
+		SHMEM0: shmem {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x38000000>;
+			physical_size = <0x01000000>;
+			device_type = "shared_ram";
+			shared_mem = ""; /* Override this before guest creation */
 		};
 
 		MEM0: mem0 {
