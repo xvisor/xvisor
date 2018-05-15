@@ -471,7 +471,8 @@ static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
 	vmm_spin_lock_irqsave(&domain->work_lock, flags);
 
 	list_for_each_entry_safe(work, work1, &domain->work_list, head) {
-		if ((work->data == data) &&
+		if ((work->addr == node->addr) &&
+		    (work->data == data) &&
 		    (work->data1 == fn) &&
 		    (work->msg == NULL)) {
 			list_del(&work->head);
