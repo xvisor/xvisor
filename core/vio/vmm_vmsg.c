@@ -475,7 +475,7 @@ static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
 		    (work->data1 == fn) &&
 		    (work->msg == NULL)) {
 			list_del(&work->head);
-			vmm_free(work);
+			work->free(work);
 		}
 	}
 
