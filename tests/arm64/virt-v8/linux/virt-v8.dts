@@ -41,6 +41,18 @@
 		};
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		SHMEM0: shmem@38000000 {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0x0 0x38000000 0x0 0x01000000>;
+		};
+	};
+
 	memory@80000000 {
 		device_type = "memory";
 		reg = <0x00000000 0x40000000 0 0x06000000>;
@@ -151,6 +163,15 @@
 			height = <768>;
 			stride = <2048>;
 			format = "r5g6b5";
+		};
+
+		udmabuf0 {
+			compatible = "ikwzm,udmabuf-0.10.a";
+			device-name = "udmabuf0";
+			minor-number = <0>;
+			size = <0x01000000>;
+			memory-region = <&SHMEM0>;
+			dma-coherent;
 		};
 	};
 };
