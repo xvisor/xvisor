@@ -165,9 +165,9 @@
 			format = "r5g6b5";
 		};
 
-		udmabuf0 {
+		shmem0 {
 			compatible = "ikwzm,udmabuf-0.10.a";
-			device-name = "udmabuf0";
+			device-name = "shmem0";
 			minor-number = <0>;
 			size = <0x01000000>;
 			memory-region = <&SHMEM0>;
