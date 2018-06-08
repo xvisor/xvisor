@@ -419,8 +419,6 @@ void arm_cmd_copy(int argc, char **argv)
 	arm_puts(" bytes\n");
 }
 
-#define CONFIG_RAM_SIZE		(arm_linux_memory_size() >> 20)
-#define CONFIG_NR_CPUS		2
 char linux_cmdline[1024];
 
 typedef void (* linux_entry_t) (u64 fdt_addr, u64 arg0, u64 arg1, u64 arg2);
@@ -496,8 +494,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 			   __func__, fdt_strerror(err));
 		return;
 	}
-	sprintf(cfg_str, " mem=%dM maxcpus=%d", 
-				(int)(meminfo[1] >> 20), CONFIG_NR_CPUS);
+	sprintf(cfg_str, " mem=%dM", (int)(meminfo[1] >> 20));
 	arm_strcat(linux_cmdline, cfg_str);
 	if ((err = fdt_chosen((void *)fdt_addr, 1))) {
 		arm_printf("%s: fdt_chosen() failed: %s\n", __func__, 
