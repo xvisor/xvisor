@@ -153,12 +153,22 @@ int __delete_bootstrap_pgtbl_entry(u64 va)
 	return VMM_OK;
 }
 
+u32 arch_cpu_aspace_hugepage_log2size(void)
+{
+	/* FIXME: hugepage support will be added in-future */
+	return PAGE_SHIFT;
+}
+
 /* mmu inline asm routines */
 int arch_cpu_aspace_map(virtual_addr_t page_va,
+			virtual_size_t page_sz,
 			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	union page pg;
+
+	if (page_sz != PAGE_SIZE)
+		return VMM_EINVALID;
 
 	/* FIXME: more specific page attributes */
 	pg._val = 0x0;

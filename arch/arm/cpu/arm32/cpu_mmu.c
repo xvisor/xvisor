@@ -1697,18 +1697,28 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 
 #endif
 
+u32 arch_cpu_aspace_hugepage_log2size(void)
+{
+	return TTBL_L1TBL_SECTION_PAGE_SHIFT;
+}
+
 int arch_cpu_aspace_map(virtual_addr_t page_va,
+			virtual_size_t page_sz,
 			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	struct cpu_page p;
+
+	if (page_sz != TTBL_L2TBL_SMALL_PAGE_SIZE &&
+	    page_sz != TTBL_L1TBL_SECTION_PAGE_SIZE)
+		return VMM_EINVALID;
 
 	memset(&p, 0, sizeof(p));
 
 	/* Initialize the page struct */
 	p.pa = page_pa;
 	p.va = page_va;
-	p.sz = VMM_PAGE_SIZE;
+	p.sz = page_sz;
 	p.dom = TTBL_L1TBL_TTE_DOM_RESERVED;
 
 #if defined(CONFIG_ARMV5)
@@ -2022,4 +2032,3 @@ int __cpuinit arch_cpu_aspace_secondary_init(void)
 
 	return VMM_OK;
 }
-

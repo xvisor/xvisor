@@ -383,8 +383,9 @@ static virtual_addr_t host_memmap(physical_addr_t pa,
 
 		for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
 			rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE,
-						tpa + ite * VMM_PAGE_SIZE,
-						mem_flags);
+						 VMM_PAGE_SIZE,
+						 tpa + ite * VMM_PAGE_SIZE,
+						 mem_flags);
 			if (rc) {
 				/* We were not able to map physical address */
 				vmm_panic("%s: failed to create VA->PA "
@@ -563,7 +564,8 @@ u32 vmm_host_memory_read(physical_addr_t hpa,
 		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_MEMORY_READWRITE)
-		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK,
+		rc = arch_cpu_aspace_map(tmp_va, VMM_PAGE_SIZE,
+					 hpa & ~VMM_PAGE_MASK,
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
 					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
@@ -616,7 +618,8 @@ u32 vmm_host_memory_write(physical_addr_t hpa,
 		arch_cpu_irq_save(flags);
 
 #if !defined(ARCH_HAS_MEMORY_READWRITE)
-		rc = arch_cpu_aspace_map(tmp_va, hpa & ~VMM_PAGE_MASK,
+		rc = arch_cpu_aspace_map(tmp_va, VMM_PAGE_SIZE,
+					 hpa & ~VMM_PAGE_MASK,
 					 (cacheable) ?
 					 VMM_MEMORY_FLAGS_NORMAL :
 					 VMM_MEMORY_FLAGS_NORMAL_NOCACHE);

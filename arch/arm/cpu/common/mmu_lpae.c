@@ -854,16 +854,26 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 	return VMM_OK;
 }
 
+u32 arch_cpu_aspace_hugepage_log2size(void)
+{
+	return TTBL_L2_BLOCK_SHIFT;
+}
+
 int arch_cpu_aspace_map(virtual_addr_t page_va,
+			virtual_size_t page_sz,
 			physical_addr_t page_pa,
 			u32 mem_flags)
 {
 	struct cpu_page p;
 
+	if (page_sz != TTBL_L3_BLOCK_SIZE &&
+	    page_sz != TTBL_L2_BLOCK_SIZE)
+		return VMM_EINVALID;
+
 	memset(&p, 0, sizeof(p));
 	p.ia = page_va;
 	p.oa = page_pa;
-	p.sz = VMM_PAGE_SIZE;
+	p.sz = page_sz;
 	p.af = 1;
 	if (mem_flags & VMM_MEMORY_WRITEABLE) {
 		p.ap = TTBL_AP_SRW_U;

@@ -26,7 +26,7 @@
 #include <vmm_types.h>
 
 /** Initialize address space on primary cpu */
-int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa, 
+int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 				 virtual_addr_t *core_resv_va,
 				 virtual_size_t *core_resv_sz,
 				 physical_addr_t *arch_resv_pa,
@@ -36,8 +36,15 @@ int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 /** Initialize address space on secondary cpu */
 int arch_cpu_aspace_secondary_init(void);
 
+/** Get log2 size of huge pages
+ *  NOTE: If arch does note have huge pages then simply return
+ *  VMM_PAGE_SHIFT
+ */
+u32 arch_cpu_aspace_hugepage_log2size(void);
+
 /** Map given page virtual address to page physical address */
-int arch_cpu_aspace_map(virtual_addr_t page_va, 
+int arch_cpu_aspace_map(virtual_addr_t page_va,
+			virtual_size_t page_sz,
 			physical_addr_t page_pa,
 			u32 mem_flags);
 
@@ -45,10 +52,10 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 int arch_cpu_aspace_unmap(virtual_addr_t page_va);
 
 /** Find out physical address mapped by given virtual address */
-int arch_cpu_aspace_va2pa(virtual_addr_t va, 
+int arch_cpu_aspace_va2pa(virtual_addr_t va,
 			  physical_addr_t *pa);
 
-/** Read data from memory with given physical adress 
+/** Read data from memory with given physical adress
  *  NOTE: This arch function is optional.
  *  NOTE: The tmp_va is per host CPU temporary virtual address which
  *  can be optionally used to access the physical memory.
@@ -57,8 +64,8 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va,
  *  NOTE: If arch implments this function then arch_config.h
  *  will define ARCH_HAS_MEMORY_READWRITE feature.
  */
-int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va, 
-				physical_addr_t src, 
+int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
+				physical_addr_t src,
 				void *dst, u32 len, bool cacheable);
 
 /** Write data to memory with given physical adress
@@ -70,8 +77,8 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
  *  NOTE: If arch implments this function then arch_config.h
  *  will define ARCH_HAS_MEMORY_READWRITE feature.
  */
-int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va, 
-				 physical_addr_t dst, 
+int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
+				 physical_addr_t dst,
 				 void *src, u32 len, bool cacheable);
 
 /** Write data to memory with given physical adress
