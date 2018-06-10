@@ -344,16 +344,26 @@ static int host_mhash_init(virtual_addr_t mhash_start,
 
 static virtual_addr_t host_memmap(physical_addr_t pa,
 				  virtual_size_t sz,
-				  u32 mem_flags)
+				  u32 mem_flags,
+				  bool use_hugepage)
 {
-	int rc, ite;
+	int rc, page_shift;
+	virtual_addr_t ite, page_size, page_mask;
 	virtual_addr_t va = 0;
 	virtual_addr_t tsz = 0;
 	physical_addr_t tpa = 0;
 	u32 tmem_flags = 0;
 
-	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
-	tpa = pa & ~VMM_PAGE_MASK;
+	if (use_hugepage) {
+		page_shift = arch_cpu_aspace_hugepage_log2size();
+	} else {
+		page_shift = VMM_PAGE_SHIFT;
+	}
+	page_size = (1 << page_shift);
+	page_mask = (page_size - 1);
+
+	sz = roundup2_order_size(sz, page_shift);
+	tpa = pa & ~page_mask;
 
 	rc = host_mhash_pa2va(tpa, &va, &tsz, &tmem_flags);
 	if (rc == VMM_OK) {
@@ -370,7 +380,7 @@ static virtual_addr_t host_memmap(physical_addr_t pa,
 			vmm_panic("%s: size mismatch\n", __func__);
 		}
 
-		va = va & ~VMM_PAGE_MASK;
+		va = va & ~page_mask;
 	} else if (rc != VMM_ENOTAVAIL) {
 		/* Something went wrong. */
 		vmm_panic("%s: unhandled error=%d\n", __func__, rc);
@@ -381,10 +391,10 @@ static virtual_addr_t host_memmap(physical_addr_t pa,
 				  __func__, rc);
 		}
 
-		for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-			rc = arch_cpu_aspace_map(va + ite * VMM_PAGE_SIZE,
-						 VMM_PAGE_SIZE,
-						 tpa + ite * VMM_PAGE_SIZE,
+		for (ite = 0; ite < (sz >> page_shift); ite++) {
+			rc = arch_cpu_aspace_map(va + ite * page_size,
+						 page_size,
+						 tpa + ite * page_size,
 						 mem_flags);
 			if (rc) {
 				/* We were not able to map physical address */
@@ -401,16 +411,27 @@ static virtual_addr_t host_memmap(physical_addr_t pa,
 			  __func__, rc);
 	}
 
-	return va + (pa & VMM_PAGE_MASK);
+	return va + (pa & page_mask);
 }
 
-static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
+static int host_memunmap(virtual_addr_t va,
+			 virtual_size_t sz,
+			 bool use_hugepage)
 {
-	int rc, ite;
+	int rc, page_shift;
+	virtual_addr_t ite, page_size, page_mask;
 	physical_addr_t pa = 0x0;
 
-	sz = VMM_ROUNDUP2_PAGE_SIZE(sz);
-	va &= ~VMM_PAGE_MASK;
+	if (use_hugepage) {
+		page_shift = arch_cpu_aspace_hugepage_log2size();
+	} else {
+		page_shift = VMM_PAGE_SHIFT;
+	}
+	page_size = (1 << page_shift);
+	page_mask = (page_size - 1);
+
+	sz = roundup2_order_size(sz, page_shift);
+	va &= ~page_mask;
 
 	if ((rc = arch_cpu_aspace_va2pa(va, &pa))) {
 		return rc;
@@ -423,8 +444,8 @@ static int host_memunmap(virtual_addr_t va, virtual_size_t sz)
 		vmm_panic("%s: unhandled error=%d\n", __func__, rc);
 	}
 
-	for (ite = 0; ite < (sz >> VMM_PAGE_SHIFT); ite++) {
-		rc = arch_cpu_aspace_unmap(va + ite * VMM_PAGE_SIZE);
+	for (ite = 0; ite < (sz >> page_shift); ite++) {
+		rc = arch_cpu_aspace_unmap(va + ite * page_size);
 		if (rc) {
 			return rc;
 		}
@@ -452,7 +473,7 @@ virtual_addr_t vmm_host_memmap(physical_addr_t pa,
 			       virtual_size_t sz,
 			       u32 mem_flags)
 {
-	return host_memmap(pa, sz, mem_flags);
+	return host_memmap(pa, sz, mem_flags, false);
 }
 
 int vmm_host_memunmap(virtual_addr_t va)
@@ -466,7 +487,7 @@ int vmm_host_memunmap(virtual_addr_t va)
 		return rc;
 	}
 
-	return host_memunmap(alloc_va, alloc_sz);
+	return host_memunmap(alloc_va, alloc_sz, false);
 }
 
 virtual_addr_t vmm_host_alloc_aligned_pages(u32 page_count,
@@ -503,7 +524,7 @@ int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 		return rc;
 	}
 
-	if ((rc = host_memunmap(page_va, page_count * VMM_PAGE_SIZE))) {
+	if ((rc = host_memunmap(page_va, page_count * VMM_PAGE_SIZE, false))) {
 		return rc;
 	}
 
