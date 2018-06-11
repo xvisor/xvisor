@@ -295,10 +295,10 @@ static int host_mhash_pa2va(physical_addr_t pa,
 	e = __host_mhash_find(pa);
 	if (e) {
 		if (va) {
-			*va = e->va + (e->pa - pa);
+			*va = e->va + (pa - e->pa);
 		}
 		if (sz) {
-			*sz = e->sz - (e->pa - pa);
+			*sz = e->sz - (pa - e->pa);
 		}
 		if (mem_flags) {
 			*mem_flags = e->mem_flags;
@@ -391,6 +391,13 @@ static virtual_addr_t host_memmap(physical_addr_t pa,
 				  __func__, rc);
 		}
 
+		/* Sanity check on VA */
+		if (va & page_mask) {
+			/* Don't have space */
+			vmm_panic("%s: vapool alloc returned VA not aligned "
+				  "to page_size\n", __func__);
+		}
+
 		for (ite = 0; ite < (sz >> page_shift); ite++) {
 			rc = arch_cpu_aspace_map(va + ite * page_size,
 						 page_size,
@@ -459,6 +466,69 @@ static int host_memunmap(virtual_addr_t va,
 	return VMM_OK;
 }
 
+static virtual_addr_t host_alloc_aligned_pages(u32 page_count,
+					       u32 align_order,
+					       u32 mem_flags,
+					       bool use_hugepage)
+{
+	u32 page_shift;
+	virtual_addr_t page_size;
+	physical_addr_t pa = 0x0;
+
+	if (use_hugepage) {
+		page_shift = arch_cpu_aspace_hugepage_log2size();
+	} else {
+		page_shift = VMM_PAGE_SHIFT;
+	}
+	page_size = (1 << page_shift);
+
+	if (align_order < page_shift)
+		align_order = page_shift;
+
+	if (!vmm_host_ram_alloc(&pa,
+				page_count * page_size,
+				align_order)) {
+		return 0x0;
+	}
+
+	return host_memmap(pa,
+			   page_count * page_size,
+			   mem_flags,
+			   use_hugepage);
+}
+
+static int host_free_pages(virtual_addr_t page_va,
+			   u32 page_count,
+			   bool use_hugepage)
+{
+	int rc = VMM_OK;
+	u32 page_shift;
+	virtual_addr_t page_size, page_mask;
+	physical_addr_t pa = 0x0;
+
+	if (use_hugepage) {
+		page_shift = arch_cpu_aspace_hugepage_log2size();
+	} else {
+		page_shift = VMM_PAGE_SHIFT;
+	}
+	page_size = (1 << page_shift);
+	page_mask = (page_size - 1);
+
+	page_va &= ~page_mask;
+
+	if ((rc = arch_cpu_aspace_va2pa(page_va, &pa))) {
+		return rc;
+	}
+
+	if ((rc = host_memunmap(page_va,
+				page_count * page_size,
+				use_hugepage))) {
+		return rc;
+	}
+
+	return vmm_host_ram_free(pa, page_count * page_size);
+}
+
 u32 vmm_host_memmap_hash_total_count(void)
 {
 	return host_mhash_total_count();
@@ -490,45 +560,44 @@ int vmm_host_memunmap(virtual_addr_t va)
 	return host_memunmap(alloc_va, alloc_sz, false);
 }
 
+u32 vmm_host_hugepage_shift(void)
+{
+	return arch_cpu_aspace_hugepage_log2size();
+}
+
+virtual_size_t vmm_host_hugepage_size(void)
+{
+	return ((virtual_size_t)1) << arch_cpu_aspace_hugepage_log2size();
+}
+
+virtual_addr_t vmm_host_alloc_hugepages(u32 page_count, u32 mem_flags)
+{
+	return host_alloc_aligned_pages(page_count,
+					arch_cpu_aspace_hugepage_log2size(),
+					mem_flags, true);
+}
+
+int vmm_host_free_hugepages(virtual_addr_t page_va, u32 page_count)
+{
+	return host_free_pages(page_va, page_count, true);
+}
+
 virtual_addr_t vmm_host_alloc_aligned_pages(u32 page_count,
 					    u32 align_order, u32 mem_flags)
 {
-	physical_addr_t pa = 0x0;
-
-	if (align_order < VMM_PAGE_SHIFT)
-		align_order = VMM_PAGE_SHIFT;
-
-	if (!vmm_host_ram_alloc(&pa,
-				page_count * VMM_PAGE_SIZE,
-				align_order)) {
-		return 0x0;
-	}
-
-	return vmm_host_memmap(pa, page_count * VMM_PAGE_SIZE, mem_flags);
+	return host_alloc_aligned_pages(page_count,
+					align_order, mem_flags, false);
 }
 
 virtual_addr_t vmm_host_alloc_pages(u32 page_count, u32 mem_flags)
 {
-	return vmm_host_alloc_aligned_pages(page_count,
-					    VMM_PAGE_SHIFT, mem_flags);
+	return host_alloc_aligned_pages(page_count,
+					VMM_PAGE_SHIFT, mem_flags, false);
 }
 
 int vmm_host_free_pages(virtual_addr_t page_va, u32 page_count)
 {
-	int rc = VMM_OK;
-	physical_addr_t pa = 0x0;
-
-	page_va &= ~VMM_PAGE_MASK;
-
-	if ((rc = arch_cpu_aspace_va2pa(page_va, &pa))) {
-		return rc;
-	}
-
-	if ((rc = host_memunmap(page_va, page_count * VMM_PAGE_SIZE, false))) {
-		return rc;
-	}
-
-	return vmm_host_ram_free(pa, page_count * VMM_PAGE_SIZE);
+	return host_free_pages(page_va, page_count, false);
 }
 
 int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
@@ -536,12 +605,12 @@ int vmm_host_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	int rc = VMM_OK;
 	physical_addr_t _pa = 0x0;
 
-	if ((rc = arch_cpu_aspace_va2pa(va & ~VMM_PAGE_MASK, &_pa))) {
+	if ((rc = arch_cpu_aspace_va2pa(va, &_pa))) {
 		return rc;
 	}
 
 	if (pa) {
-		*pa = _pa | (va & VMM_PAGE_MASK);
+		*pa = _pa;
 	}
 
 	return VMM_OK;
@@ -552,13 +621,13 @@ int vmm_host_pa2va(physical_addr_t pa, virtual_addr_t *va)
 	int rc = VMM_OK;
 	virtual_addr_t _va = 0x0;
 
-	rc = host_mhash_pa2va(pa & ~VMM_PAGE_MASK, &_va, NULL, NULL);
+	rc = host_mhash_pa2va(pa, &_va, NULL, NULL);
 	if (rc) {
 		return rc;
 	}
 
 	if (va) {
-		*va = _va | (pa & VMM_PAGE_MASK);
+		*va = _va;
 	}
 
 	return VMM_OK;

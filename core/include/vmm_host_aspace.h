@@ -140,6 +140,18 @@ static inline int vmm_host_iounmap(virtual_addr_t va)
 	return vmm_host_memunmap(va);
 }
 
+/** Get page_shift/order of hugepage */
+u32 vmm_host_hugepage_shift(void);
+
+/** Get size of hugepage */
+virtual_size_t vmm_host_hugepage_size(void);
+
+/** Allocate hugepages from host memory with default alignment */
+virtual_addr_t vmm_host_alloc_hugepages(u32 page_count, u32 mem_flags);
+
+/** Free hugepages back to host memory */
+int vmm_host_free_hugepages(virtual_addr_t page_va, u32 page_count);
+
 /** Allocate pages from host memory with particular alignment */
 virtual_addr_t vmm_host_alloc_aligned_pages(u32 page_count,
 					    u32 align_order, u32 mem_flags);
