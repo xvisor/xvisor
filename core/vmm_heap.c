@@ -163,16 +163,31 @@ static int heap_print_state(struct vmm_heap_control *heap,
 }
 
 static int heap_init(struct vmm_heap_control *heap,
-		     bool is_normal, const u32 size_kb, u32 mem_flags)
+		     bool use_hugepage,
+		     bool is_normal,
+		     const u32 size_kb,
+		     u32 mem_flags)
 {
 	int rc = VMM_OK;
+	u32 hp_shift = vmm_host_hugepage_shift();
+	virtual_size_t size = ((virtual_size_t)size_kb) * 1024;
+
+	if (use_hugepage) {
+		size = roundup2_order_size(size, hp_shift);
+	}
 
 	memset(heap, 0, sizeof(*heap));
 
-	heap->heap_size = size_kb * 1024;
-	heap->heap_start = (void *)vmm_host_alloc_pages(
+	heap->heap_size = size;
+	if (use_hugepage) {
+		heap->heap_start = (void *)vmm_host_alloc_hugepages(
+					(heap->heap_size >> hp_shift),
+					mem_flags);
+	} else {
+		heap->heap_start = (void *)vmm_host_alloc_pages(
 					VMM_SIZE_TO_PAGE(heap->heap_size),
 					mem_flags);
+	}
 	if (!heap->heap_start) {
 		return VMM_ENOMEM;
 	}
@@ -425,7 +440,7 @@ int __init vmm_heap_init(void)
 	 */
 
 	/* Create Normal heap */
-	rc = heap_init(&normal_heap, TRUE,
+	rc = heap_init(&normal_heap, TRUE, TRUE,
 			CONFIG_HEAP_SIZE_MB * 1024,
 			VMM_MEMORY_FLAGS_NORMAL);
 	if (rc) {
@@ -433,7 +448,7 @@ int __init vmm_heap_init(void)
 	}
 
 	/* Create DMA heap */
-	rc= heap_init(&dma_heap, FALSE,
+	rc= heap_init(&dma_heap, FALSE, FALSE,
 			CONFIG_DMA_HEAP_SIZE_KB,
 			VMM_MEMORY_FLAGS_DMA_NONCOHERENT);
 	if (rc) {
