@@ -51,15 +51,15 @@ struct vmm_manager_ctrl {
 	struct vmm_mutex lock;
 	u32 vcpu_count;
 	u32 guest_count;
-	struct vmm_cpumask vcpu_affinity_mask[CONFIG_MAX_VCPU_COUNT];
-	struct vmm_vcpu vcpu_array[CONFIG_MAX_VCPU_COUNT];
-	bool vcpu_avail_array[CONFIG_MAX_VCPU_COUNT];
-	struct vmm_guest guest_array[CONFIG_MAX_GUEST_COUNT];
-	bool guest_avail_array[CONFIG_MAX_GUEST_COUNT];
+	struct vmm_cpumask *vcpu_affinity_mask;
+	struct vmm_vcpu *vcpu_array;
+	bool *vcpu_avail_array;
+	struct vmm_guest *guest_array;
+	bool *guest_avail_array;
 	struct dlist orphan_vcpu_list;
 	struct dlist guest_list;
 	/* Work structs to process guest request */
-	struct vmm_work guest_work_array[CONFIG_MAX_GUEST_COUNT];
+	struct vmm_work *guest_work_array;
 };
 
 static struct vmm_manager_ctrl mngr;
@@ -1722,8 +1722,61 @@ int __init vmm_manager_init(void)
 	INIT_MUTEX(&mngr.lock);
 	mngr.vcpu_count = 0;
 	mngr.guest_count = 0;
+	mngr.vcpu_affinity_mask = NULL;
+	mngr.vcpu_array = NULL;
+	mngr.vcpu_avail_array = NULL;
+	mngr.guest_array = NULL;
+	mngr.guest_avail_array = NULL;
 	INIT_LIST_HEAD(&mngr.orphan_vcpu_list);
 	INIT_LIST_HEAD(&mngr.guest_list);
+	mngr.guest_work_array = NULL;
+
+	/* Alloc memory for guest & vcpu managment */
+	mngr.vcpu_affinity_mask = vmm_zalloc(CONFIG_MAX_VCPU_COUNT *
+					sizeof(*mngr.vcpu_affinity_mask));
+	if (!mngr.vcpu_affinity_mask) {
+		return VMM_ENOMEM;
+	}
+	mngr.vcpu_array = vmm_zalloc(CONFIG_MAX_VCPU_COUNT *
+				     sizeof(*mngr.vcpu_array));
+	if (!mngr.vcpu_array) {
+		vmm_free(mngr.vcpu_affinity_mask);
+		return VMM_ENOMEM;
+	}
+	mngr.vcpu_avail_array = vmm_zalloc(CONFIG_MAX_VCPU_COUNT *
+					   sizeof(*mngr.vcpu_avail_array));
+	if (!mngr.vcpu_avail_array) {
+		vmm_free(mngr.vcpu_array);
+		vmm_free(mngr.vcpu_affinity_mask);
+		return VMM_ENOMEM;
+	}
+	mngr.guest_array = vmm_zalloc(CONFIG_MAX_GUEST_COUNT *
+				      sizeof(*mngr.guest_array));
+	if (!mngr.guest_array) {
+		vmm_free(mngr.vcpu_avail_array);
+		vmm_free(mngr.vcpu_array);
+		vmm_free(mngr.vcpu_affinity_mask);
+		return VMM_ENOMEM;
+	}
+	mngr.guest_avail_array = vmm_zalloc(CONFIG_MAX_GUEST_COUNT *
+					    sizeof(*mngr.guest_avail_array));
+	if (!mngr.guest_avail_array) {
+		vmm_free(mngr.guest_array);
+		vmm_free(mngr.vcpu_avail_array);
+		vmm_free(mngr.vcpu_array);
+		vmm_free(mngr.vcpu_affinity_mask);
+		return VMM_ENOMEM;
+	}
+	mngr.guest_work_array = vmm_zalloc(CONFIG_MAX_GUEST_COUNT *
+					   sizeof(*mngr.guest_work_array));
+	if (!mngr.guest_work_array) {
+		vmm_free(mngr.guest_avail_array);
+		vmm_free(mngr.guest_array);
+		vmm_free(mngr.vcpu_avail_array);
+		vmm_free(mngr.vcpu_array);
+		vmm_free(mngr.vcpu_affinity_mask);
+		return VMM_ENOMEM;
+	}
 
 	/* Initialze memory for guest instances */
 	for (gnum = 0; gnum < CONFIG_MAX_GUEST_COUNT; gnum++) {
