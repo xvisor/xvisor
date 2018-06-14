@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_pagepool.h>
 #include <vmm_devtree.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
@@ -335,6 +336,12 @@ static void __init init_bootcpu(void)
 	/* Initialize heap */
 	vmm_printf("init: heap management\n");
 	ret = vmm_heap_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	vmm_printf("init: page pool\n");
+	ret = vmm_pagepool_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
