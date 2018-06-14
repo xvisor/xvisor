@@ -28,6 +28,7 @@
 #include <vmm_cache.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
+#include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <libs/stringlib.h>
 #include <libs/buddy.h>
@@ -165,15 +166,19 @@ static int heap_print_state(struct vmm_heap_control *heap,
 static int heap_init(struct vmm_heap_control *heap,
 		     bool use_hugepage,
 		     bool is_normal,
-		     const u32 size_kb,
+		     virtual_size_t size,
 		     u32 mem_flags)
 {
 	int rc = VMM_OK;
 	u32 hp_shift = vmm_host_hugepage_shift();
-	virtual_size_t size = ((virtual_size_t)size_kb) * 1024;
+
+	if (!size)
+		return VMM_EINVALID;
 
 	if (use_hugepage) {
 		size = roundup2_order_size(size, hp_shift);
+	} else {
+		size = roundup2_order_size(size, VMM_PAGE_SHIFT);
 	}
 
 	memset(heap, 0, sizeof(*heap));
@@ -441,7 +446,7 @@ int __init vmm_heap_init(void)
 
 	/* Create Normal heap */
 	rc = heap_init(&normal_heap, TRUE, TRUE,
-			CONFIG_HEAP_SIZE_MB * 1024,
+			vmm_host_vapool_size() / CONFIG_HEAP_SIZE_FACTOR,
 			VMM_MEMORY_FLAGS_NORMAL);
 	if (rc) {
 		return rc;
@@ -449,7 +454,7 @@ int __init vmm_heap_init(void)
 
 	/* Create DMA heap */
 	rc= heap_init(&dma_heap, FALSE, FALSE,
-			CONFIG_DMA_HEAP_SIZE_KB,
+			vmm_host_vapool_size() / CONFIG_DMA_HEAP_SIZE_FACTOR,
 			VMM_MEMORY_FLAGS_DMA_NONCOHERENT);
 	if (rc) {
 		return rc;
