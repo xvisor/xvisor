@@ -39,6 +39,21 @@ enum vmm_pagepool_type {
 	VMM_PAGEPOOL_MAX
 };
 
+/** Get total space in given page pool type */
+virtual_size_t vmm_pagepool_space(enum vmm_pagepool_type page_type);
+
+/** Get number of entries in given page pool type */
+u32 vmm_pagepool_entry_count(enum vmm_pagepool_type page_type);
+
+/** Get number of hugepages in given page pool type */
+u32 vmm_pagepool_hugepage_count(enum vmm_pagepool_type page_type);
+
+/** Get total number of pages in given page pool type */
+u32 vmm_pagepool_page_count(enum vmm_pagepool_type page_type);
+
+/** Get number of availabe pages in given page pool type */
+u32 vmm_pagepool_page_avail_count(enum vmm_pagepool_type page_type);
+
 /** Allocate pages from page pool */
 virtual_addr_t vmm_pagepool_alloc(enum vmm_pagepool_type page_type,
 				  u32 page_count);

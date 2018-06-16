@@ -307,6 +307,121 @@ static int pagepool_free(struct vmm_pagepool_ctrl *pp,
 	return VMM_OK;	
 }
 
+virtual_size_t vmm_pagepool_space(enum vmm_pagepool_type page_type)
+{
+	virtual_size_t ret = 0;
+	irq_flags_t flags;
+	struct vmm_pagepool_entry *e;
+	struct vmm_pagepool_ctrl *pp;
+
+	if (VMM_PAGEPOOL_MAX <= page_type) {
+		return 0;
+	}
+	pp = &pparr[page_type];
+
+	vmm_spin_lock_irqsave_lite(&pp->lock, flags);
+
+	list_for_each_entry(e, &pp->entry_list, head) {
+		ret += e->size;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pp->lock, flags);
+
+	return ret;
+}
+
+u32 vmm_pagepool_entry_count(enum vmm_pagepool_type page_type)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+	struct vmm_pagepool_entry *e;
+	struct vmm_pagepool_ctrl *pp;
+
+	if (VMM_PAGEPOOL_MAX <= page_type) {
+		return 0;
+	}
+	pp = &pparr[page_type];
+
+	vmm_spin_lock_irqsave_lite(&pp->lock, flags);
+
+	list_for_each_entry(e, &pp->entry_list, head) {
+		ret++;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pp->lock, flags);
+
+	return ret;
+}
+
+u32 vmm_pagepool_hugepage_count(enum vmm_pagepool_type page_type)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+	struct vmm_pagepool_entry *e;
+	struct vmm_pagepool_ctrl *pp;
+
+	if (VMM_PAGEPOOL_MAX <= page_type) {
+		return 0;
+	}
+	pp = &pparr[page_type];
+
+	vmm_spin_lock_irqsave_lite(&pp->lock, flags);
+
+	list_for_each_entry(e, &pp->entry_list, head) {
+		ret += e->hugepage_count;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pp->lock, flags);
+
+	return ret;
+}
+
+u32 vmm_pagepool_page_count(enum vmm_pagepool_type page_type)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+	struct vmm_pagepool_entry *e;
+	struct vmm_pagepool_ctrl *pp;
+
+	if (VMM_PAGEPOOL_MAX <= page_type) {
+		return 0;
+	}
+	pp = &pparr[page_type];
+
+	vmm_spin_lock_irqsave_lite(&pp->lock, flags);
+
+	list_for_each_entry(e, &pp->entry_list, head) {
+		ret += e->page_count;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pp->lock, flags);
+
+	return ret;
+}
+
+u32 vmm_pagepool_page_avail_count(enum vmm_pagepool_type page_type)
+{
+	u32 ret = 0;
+	irq_flags_t flags;
+	struct vmm_pagepool_entry *e;
+	struct vmm_pagepool_ctrl *pp;
+
+	if (VMM_PAGEPOOL_MAX <= page_type) {
+		return 0;
+	}
+	pp = &pparr[page_type];
+
+	vmm_spin_lock_irqsave_lite(&pp->lock, flags);
+
+	list_for_each_entry(e, &pp->entry_list, head) {
+		ret += e->page_avail_count;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pp->lock, flags);
+
+	return ret;
+}
+
 virtual_addr_t vmm_pagepool_alloc(enum vmm_pagepool_type page_type,
 				  u32 page_count)
 {
