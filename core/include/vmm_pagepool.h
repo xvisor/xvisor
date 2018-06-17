@@ -39,6 +39,9 @@ enum vmm_pagepool_type {
 	VMM_PAGEPOOL_MAX
 };
 
+/** Get name of page pool type */
+const char *vmm_pagepool_name(enum vmm_pagepool_type page_type);
+
 /** Get total space in given page pool type */
 virtual_size_t vmm_pagepool_space(enum vmm_pagepool_type page_type);
 

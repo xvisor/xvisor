@@ -307,6 +307,28 @@ static int pagepool_free(struct vmm_pagepool_ctrl *pp,
 	return VMM_OK;	
 }
 
+const char *vmm_pagepool_name(enum vmm_pagepool_type page_type)
+{
+	switch (page_type) {
+	case VMM_PAGEPOOL_NORMAL:
+		return "NORMAL";
+	case VMM_PAGEPOOL_NORMAL_NOCACHE:
+		return "NORMAL_NOCACHE";
+	case VMM_PAGEPOOL_NORMAL_WT:
+		return "NORMAL_WT";
+	case VMM_PAGEPOOL_DMA_COHERENT:
+		return "DMA_COHERENT";
+	case VMM_PAGEPOOL_DMA_NONCOHERENT:
+		return "DMA_NONCOHERENT";
+	case VMM_PAGEPOOL_IO:
+		return "IO";
+	default:
+		break;
+	};
+
+	return NULL;
+}
+
 virtual_size_t vmm_pagepool_space(enum vmm_pagepool_type page_type)
 {
 	virtual_size_t ret = 0;
