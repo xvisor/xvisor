@@ -35,6 +35,7 @@
 #include <vmm_error.h>
 #include <vmm_delay.h>
 #include <vmm_cache.h>
+#include <vmm_pagepool.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_aspace.h>
@@ -739,7 +740,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 	}
 	host->gpio = (struct sunxi_gpio_reg *)base;
 
-	base = vmm_host_alloc_pages(1, VMM_MEMORY_FLAGS_NORMAL);
+	base = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL, 1);
 	if (!base) {
 		rc = VMM_ENOMEM;
 		goto free_gpio;
@@ -806,7 +807,7 @@ static int sunxi_mmc_driver_probe(struct vmm_device *dev,
 free_irq:
 	vmm_host_irq_unregister(host->irq, mmc);
 free_pdes:
-	vmm_host_free_pages((virtual_addr_t)host->pdes, 1);
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL, (virtual_addr_t)host->pdes, 1);
 free_gpio:
 	vmm_devtree_regunmap(dev->of_node, (virtual_addr_t)host->gpio, 4);
 free_pll5_cfg:
@@ -840,7 +841,7 @@ static int sunxi_mmc_driver_remove(struct vmm_device *dev)
 		/* Free resources */
 		vmm_host_irq_unregister(host->irq, mmc);
 		base = (virtual_addr_t)host->pdes;
-		vmm_host_free_pages(base, 1);
+		vmm_pagepool_free(VMM_PAGEPOOL_NORMAL, base, 1);
 		base = (virtual_addr_t)host->gpio;
 		vmm_devtree_regunmap(dev->of_node, base, 4);
 		base = (virtual_addr_t)host->pll5_cfg;

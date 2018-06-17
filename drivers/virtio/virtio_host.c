@@ -30,6 +30,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_mutex.h>
+#include <vmm_pagepool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <libs/idr.h>
@@ -557,8 +558,8 @@ static void *virtio_host_alloc_queue(struct virtio_host_device *vdev,
 	} else {
 		virtual_addr_t queue;
 
-		queue = vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(size),
-					     VMM_MEMORY_FLAGS_NORMAL);
+		queue = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+					   VMM_SIZE_TO_PAGE(size));
 		if (queue) {
 			int rc;
 			physical_addr_t queue_phys_addr;
@@ -567,8 +568,9 @@ static void *virtio_host_alloc_queue(struct virtio_host_device *vdev,
 
 			rc = vmm_host_va2pa(queue, &queue_phys_addr);
 			if (rc) {
-				vmm_host_free_pages((virtual_addr_t)queue,
-						    VMM_SIZE_TO_PAGE(size));
+				vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+						  (virtual_addr_t)queue,
+						  VMM_SIZE_TO_PAGE(size));
 				return NULL;
 			}
 
@@ -586,8 +588,9 @@ static void virtio_host_free_queue(struct virtio_host_device *vdev,
 	if (virtio_use_dma_api(vdev)) {
 		vmm_dma_free(queue);
 	} else {
-		vmm_host_free_pages((virtual_addr_t)queue,
-				    VMM_SIZE_TO_PAGE(size));
+		vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+				  (virtual_addr_t)queue,
+				  VMM_SIZE_TO_PAGE(size));
 	}
 }
 

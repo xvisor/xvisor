@@ -25,6 +25,7 @@
 #define __MEMPOOL_H__
 
 #include <vmm_types.h>
+#include <vmm_pagepool.h>
 #include <libs/fifo.h>
 
 /** MEMPOOL types */
@@ -65,7 +66,7 @@ struct mempool {
 		/* Additional fields for MEMPOOL_TYPE_RAM */
 		struct {
 			u32 page_count;
-			u32 mem_flags;
+			enum vmm_pagepool_type page_type;
 		} ram;
 	} d;
 };
@@ -79,7 +80,7 @@ struct mempool *mempool_raw_create(u32 entity_size,
 /** Create a MEMPOOL on RAM pages */
 struct mempool *mempool_ram_create(u32 entity_size,
 				   u32 page_count,
-				   u32 mem_flags);
+				   enum vmm_pagepool_type page_type);
 
 /** Create a MEMPOOL on Heap memory */
 struct mempool *mempool_heap_create(u32 entity_size,

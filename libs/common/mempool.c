@@ -76,7 +76,7 @@ struct mempool *mempool_raw_create(u32 entity_size,
 
 struct mempool *mempool_ram_create(u32 entity_size,
 				   u32 page_count,
-				   u32 mem_flags)
+				   enum vmm_pagepool_type page_type)
 {
 	u32 e;
 	virtual_addr_t va;
@@ -103,14 +103,14 @@ struct mempool *mempool_ram_create(u32 entity_size,
 		return NULL;
 	}
 
-	mp->entity_base = vmm_host_alloc_pages(page_count, mem_flags);
+	mp->entity_base = vmm_pagepool_alloc(page_type, page_count);
 	if (!mp->entity_base) {
 		fifo_free(mp->f);
 		vmm_free(mp);
 		return NULL;
 	}
 	mp->d.ram.page_count = page_count;
-	mp->d.ram.mem_flags = mem_flags;
+	mp->d.ram.page_type = page_type;
 
 	for (e = 0; e < mp->entity_count; e++) {
 		va = mp->entity_base + e * entity_size;
@@ -175,8 +175,9 @@ int mempool_destroy(struct mempool *mp)
 		rc = vmm_host_memunmap(mp->entity_base);
 		break;
 	case MEMPOOL_TYPE_RAM:
-		rc = vmm_host_free_pages(mp->entity_base,
-					 mp->d.ram.page_count);
+		rc = vmm_pagepool_free(mp->d.ram.page_type,
+					mp->entity_base,
+					mp->d.ram.page_count);
 		break;
 	case MEMPOOL_TYPE_HEAP:
 		vmm_free((void *)mp->entity_base);

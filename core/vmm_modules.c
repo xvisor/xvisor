@@ -26,6 +26,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_spinlocks.h>
+#include <vmm_pagepool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <libs/list.h>
@@ -445,9 +446,8 @@ static int move_module(struct module_wrap *mwrap,
 			struct load_info *info)
 {
 	u32 i;
-	virtual_addr_t addr =
-		vmm_host_alloc_pages(VMM_SIZE_TO_PAGE(mwrap->core_size),
-				     VMM_MEMORY_FLAGS_NORMAL);
+	virtual_addr_t addr = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+					VMM_SIZE_TO_PAGE(mwrap->core_size));
 	if (!addr) {
 		return VMM_ENOMEM;
 	}
@@ -674,7 +674,8 @@ int vmm_modules_load(virtual_addr_t load_addr, virtual_size_t load_size)
 	return VMM_OK;
 
 free_pages:
-	vmm_host_free_pages(mwrap->pg_start, mwrap->pg_count);
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+			  mwrap->pg_start, mwrap->pg_count);
 free_syms:
 	if (mwrap->syms) {
 		vmm_free(mwrap->syms);
@@ -707,7 +708,8 @@ int vmm_modules_unload(struct vmm_module *mod)
 		mwrap->mod.exit();
 	}
 	list_del(&mwrap->head);
-	vmm_host_free_pages(mwrap->pg_start, mwrap->pg_count);
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+			  mwrap->pg_start, mwrap->pg_count);
 	vmm_free(mwrap);
 	modctrl.mod_count--;
 

@@ -570,7 +570,7 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 	page_count = VMM_SIZE_TO_PAGE(sizeof(struct virtio_rpmsg_buf) *
 				      VIRTIO_RPMSG_QUEUE_SIZE);
 	rdev->tx_buf_pool = mempool_ram_create(sizeof(struct virtio_rpmsg_buf),
-					page_count, VMM_MEMORY_FLAGS_NORMAL);
+					page_count, VMM_PAGEPOOL_NORMAL);
 	if (!rdev->tx_buf_pool) {
 		vmm_free(rdev);
 		return VMM_ENOMEM;

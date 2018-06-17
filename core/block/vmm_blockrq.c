@@ -27,6 +27,7 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_modules.h>
+#include <vmm_pagepool.h>
 #include <vmm_host_aspace.h>
 #include <block/vmm_blockrq.h>
 
@@ -295,7 +296,8 @@ int vmm_blockrq_destroy(struct vmm_blockrq *brq)
 		return rc;
 	}
 
-	vmm_host_free_pages(brq->wq_page_va, brq->wq_page_count);
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+			  brq->wq_page_va, brq->wq_page_count);
 
 	vmm_free(brq);
 
@@ -338,8 +340,8 @@ struct vmm_blockrq *vmm_blockrq_create(
 
 	brq->wq_page_count =
 		VMM_SIZE_TO_PAGE(max_pending * sizeof(*bwork) * 2);
-	brq->wq_page_va = vmm_host_alloc_pages(brq->wq_page_count,
-					       VMM_MEMORY_FLAGS_NORMAL);
+	brq->wq_page_va = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+					     brq->wq_page_count);
 	INIT_SPIN_LOCK(&brq->wq_lock);
 	INIT_LIST_HEAD(&brq->wq_rw_free_list);
 	INIT_LIST_HEAD(&brq->wq_w_free_list);
@@ -386,7 +388,8 @@ struct vmm_blockrq *vmm_blockrq_create(
 	return brq;
 
 fail_free_pages:
-	vmm_host_free_pages(brq->wq_page_va, brq->wq_page_count);
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL,
+			  brq->wq_page_va, brq->wq_page_count);
 fail_free_brq:
 	vmm_free(brq);
 fail:

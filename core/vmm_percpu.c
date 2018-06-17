@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_cpumask.h>
+#include <vmm_pagepool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_percpu.h>
 #include <arch_sections.h>
@@ -44,12 +45,10 @@ int __init vmm_percpu_init(void)
 
 	__percpu_vaddr[0] = base;
 	__percpu_offset[0] = 0;
-	for_each_possible_cpu(cpu){
-		if (cpu == 0) {
-			continue;
-		}
-		__percpu_vaddr[cpu] = vmm_host_alloc_pages(pgcount, 
-						VMM_MEMORY_FLAGS_NORMAL);
+
+	for_each_possible_cpu(cpu) {
+		__percpu_vaddr[cpu] = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+							 pgcount);
 		if (!__percpu_vaddr[cpu]) {
 			return VMM_ENOMEM;
 		}

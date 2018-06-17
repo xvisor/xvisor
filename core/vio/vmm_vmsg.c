@@ -296,6 +296,8 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 	DPRINTF("%s: node=%s\n", __func__, node->name);
 
 	if (arch_atomic_cmpxchg(&node->is_ready, 1, 0)) {
+		/* TODO: purge all work with work->addr == node->addr */
+
 		err = vmsg_domain_enqueue_work(domain, NULL,
 					       node->name, node->addr,
 					       NULL, NULL,
@@ -530,7 +532,7 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name,
 
 	new_vmd->work_pool = mempool_ram_create(sizeof(struct vmsg_work),
 						work_pool_pages,
-						VMM_MEMORY_FLAGS_NORMAL);
+						VMM_PAGEPOOL_NORMAL);
 	if (!new_vmd->work_pool) {
 		vmm_free(new_vmd);
 		vmm_mutex_unlock(&vmctrl.lock);
