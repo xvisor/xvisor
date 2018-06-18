@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2016 Marvell Technology Group Ltd.
+ *
+ * Device Tree file for MACCHIATOBin Armada 8040 community board platform
+ */
+
+#include "armada-8040.dtsi"
+
+/ {
+	model = "Marvell 8040 MACCHIATOBin";
+	compatible = "marvell,armada8040-mcbin", "marvell,armada8040",
+			"marvell,armada-ap806-quad", "marvell,armada-ap806";
+
+	vmm {
+		net {
+			br0 {
+				device_type = "netswitch";
+				compatible = "bridge";
+			};
+		};
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		console = &uart0;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x80000000>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
