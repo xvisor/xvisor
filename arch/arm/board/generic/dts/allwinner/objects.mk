@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2014 Jean-Christophe DUBOIS.
+# Copyright (c) 2018 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,8 +17,11 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
+# @author Anup Patel (anup@brainfault.org)
 # @author Jean-Christophe DUBOIS (jcd@tribudubois.net)
-# @brief list of Sun7i DTBs.
+# @brief list of Allwinnner DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/sun7i/sun7i-a20-cubieboard2.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/allwinner/sun7i-a20-cubieboard2.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/allwinner/sun4i-a10-cubieboard.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/allwinner/sun4i-a10-hackberry.dtb

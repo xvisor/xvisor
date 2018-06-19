@@ -102,7 +102,7 @@ A20:
 
   [18. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/sun7i/sun7i-a20-cubieboard2.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/allwinner/sun7i-a20-cubieboard2.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [19. Unmount boot partition (or partition 0) of SD card from your development machine]

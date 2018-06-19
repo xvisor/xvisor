@@ -106,7 +106,7 @@ A10:
 
   [20. Copy uvmm.bin to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/sun4i/sun4i-a10-hackberry.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/allwinner/sun4i-a10-hackberry.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [21. Unmount boot partition (or partition 0) of SD card from your development machine]
