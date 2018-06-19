@@ -18,8 +18,8 @@
 #
 # @file objects.mk
 # @author Bhargav Shah (bhargavshah1988@gmail.com)
-# @brief list of ZynqMP DTBs.
+# @brief list of Xilinx DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zynqmp-zcu102.dtb
-board-dtbs-$(CONFIG_ARMV8) += dts/zynqmp/zynqmp-zcu100.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/xilinx/zynqmp-zcu102.dtb
+board-dtbs-$(CONFIG_ARMV8) += dts/xilinx/zynqmp-zcu100.dtb
