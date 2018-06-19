@@ -18,9 +18,8 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of OMAP3 DTBs.
+# @brief list of TI DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/omap3-beagle.dtb
-
-board-dtbs-$(CONFIG_ARMV7A)+=dts/omap3/omap3-beagle-xm.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/ti/omap3-beagle.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/ti/omap3-beagle-xm.dtb
