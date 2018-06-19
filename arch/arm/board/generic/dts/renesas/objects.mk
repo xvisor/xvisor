@@ -21,5 +21,5 @@
 # @brief list of Renesas R-Car SoC DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/rcar/r8a7790-lager.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/rcar/r8a7795-salvator-x.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/renesas/r8a7790-lager.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/renesas/r8a7795-salvator-x.dtb

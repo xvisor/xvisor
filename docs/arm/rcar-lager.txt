@@ -98,7 +98,7 @@ using SD card:
 
   [17. Copy uvmm.bin, DTB, and disk.img to first partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/rcar/r8a7790-lager.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/renesas/r8a7790-lager.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [18. Unmount first partition (or partition 0) of SD card from your development machine]
