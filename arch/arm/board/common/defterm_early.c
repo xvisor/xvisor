@@ -51,7 +51,7 @@ void __init arch_defterm_early_putc(u8 ch)
 #include <drv/serial/8250-uart.h>
 
 /*
- * 8250/16550 (8-bit aligned registers) single character TX.
+ * 8250/16550 (8-bit 1-byte aligned registers) single character TX.
  */
 void __init arch_defterm_early_putc(u8 ch)
 {
@@ -60,12 +60,26 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, early_base + UART_THR_OFFSET);
 }
 
+#elif defined(CONFIG_DEFTERM_EARLY_UART8250_8BIT_4ALIGN)
+
+#include <drv/serial/8250-uart.h>
+
+/*
+ * 8250/16550 (8-bit 4-byte aligned registers) single character TX.
+ */
+void __init arch_defterm_early_putc(u8 ch)
+{
+	while (!(vmm_readb(early_base + (UART_LSR_OFFSET << 2)) & UART_LSR_THRE))
+		;
+	vmm_writeb(ch, early_base + (UART_THR_OFFSET << 2));
+}
+
 #elif defined(CONFIG_DEFTERM_EARLY_UART8250_32BIT)
 
 #include <drv/serial/8250-uart.h>
 
 /*
- * 8250/16550 (32-bit aligned registers) single character TX.
+ * 8250/16550 (32-bit 4-byte aligned registers) single character TX.
  */
 void __init arch_defterm_early_putc(u8 ch)
 {
