@@ -18,11 +18,9 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of OMAP3 DTBs.
+# @brief list of Samsung DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4210-nuri.dtb
-
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4412-odroidx.dtb
-
-board-dtbs-$(CONFIG_ARMV7A)+=dts/exynos4/exynos4210-smdkc210.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4210-nuri.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4412-odroidx.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4210-smdkc210.dtb

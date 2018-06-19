@@ -103,7 +103,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [20. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/exynos4/exynos4412-odroidx.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/samsung/exynos4412-odroidx.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [21. Unmount boot partition (or partition 0) of SD card from your development machine]
