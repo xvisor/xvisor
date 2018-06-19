@@ -18,9 +18,14 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of VExpress DTBs.
+# @brief list of ARM Ltd DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/vexpress-v2p-ca9.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/vexpress/vexpress-v2p-ca15-tc1.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/vexpress/vexpress-v2p-ca15-tc1-nove.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/arm/foundation-v8-gicv2.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/arm/foundation-v8-gicv3.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/arm/vexpress-v2p-ca15-tc1.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/arm-realview-pba8.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/vexpress-v2p-ca9.dtb
+board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/vexpress-v2p-ca15-tc1-nove.dtb
+board-dtbs-$(CONFIG_ARMV6)+=dts/arm/arm-realview-eb-11mp-ctrevb.dtb
+board-dtbs-$(CONFIG_ARMV5)+=dts/arm/versatile-pb.dtb

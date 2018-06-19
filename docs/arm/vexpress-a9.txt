@@ -85,7 +85,7 @@ guest with Xvisor running on QEMU Vexpress-A9 Host:
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [16. Launch QEMU]
-  # qemu-system-arm -M vexpress-a9 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/vexpress/vexpress-v2p-ca9.dtb -initrd build/disk.img
+  # qemu-system-arm -M vexpress-a9 -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/arm/vexpress-v2p-ca9.dtb -initrd build/disk.img
 
   [17. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
