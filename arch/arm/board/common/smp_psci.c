@@ -313,7 +313,7 @@ static int __init psci_smp_boot(unsigned int cpu)
 		return rc;
 	}
 
-	return psci_cpu_on(cpu, _start_secondary_pa);
+	return psci_cpu_on(smp_logical_map(cpu), _start_secondary_pa);
 }
 
 static struct smp_operations psci_smp_ops = {
