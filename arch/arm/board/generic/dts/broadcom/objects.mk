@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2014 Anup Patel.
+# Copyright (c) 2018 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,9 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of BCM2835 DTBs.
+# @brief list of Broadcom DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV6)+=dts/bcm2835/bcm2835-rpi-b.dtb
+board-dtbs-$(CONFIG_ARMV6)+=dts/broadcom/bcm2835-rpi-b.dtb
+board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/broadcom/bcm2836-rpi-2-b.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/broadcom/bcm2837-rpi-3-b.dtb
