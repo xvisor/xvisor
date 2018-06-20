@@ -28,20 +28,11 @@
 #include <vmm_devtree.h>
 #include <libs/stringlib.h>
 
-int vmm_devtree_regsize(struct vmm_devtree_node *node,
-		        physical_size_t *size, int regset)
+static int devtree_get_regcells(struct vmm_devtree_node *node,
+				u32 *addr_cells_p, u32 *size_cells_p)
 {
-	int rc;
-	u32 start, addr_cells, size_cells, cells[2] = { 0, 0 };
+	u32 addr_cells, size_cells;
 	struct vmm_devtree_node *np;
-
-	if (!node || !size || regset < 0) {
-		return VMM_EFAIL;
-	}
-
-	if (vmm_devtree_getattr(node, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
-		return VMM_ENOTAVAIL;
-	}
 
 	addr_cells = sizeof(physical_addr_t) / sizeof(u32);
 	size_cells = sizeof(physical_size_t) / sizeof(u32);
@@ -58,7 +49,171 @@ int vmm_devtree_regsize(struct vmm_devtree_node *node,
 		np = node->parent;
 	}
 
-	if ((addr_cells > 2) || (size_cells < 1) || (2 < size_cells)) {
+	if ((2 < addr_cells) || (2 < size_cells)) {
+		return VMM_EINVALID;
+	}
+
+	if (addr_cells_p) {
+		*addr_cells_p = addr_cells;
+	}
+
+	if (size_cells_p) {
+		*size_cells_p = addr_cells;
+	}
+
+	return VMM_OK;
+}
+
+static void devtree_map_regaddr(struct vmm_devtree_node *node,
+				physical_addr_t addr,
+				physical_addr_t *map_addr)
+{
+	int rc;
+	u32 start, end, c[2] = { 0, 0 };
+	u32 addr_cells, size_cells;
+	u32 n_addr_cells, n_size_cells;
+	physical_addr_t in_addr, out_addr;
+	physical_size_t in_size;
+	struct vmm_devtree_node *np;
+
+	if (!node) {
+		goto done;
+	}
+
+	np = node->parent;
+	while (np) {
+		if (!vmm_devtree_getattr(np,
+					 VMM_DEVTREE_RANGES_ATTR_NAME)) {
+			goto skip;
+		}
+
+		rc = vmm_devtree_read_u32(np,
+			VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &addr_cells);
+		if (rc) {
+			goto skip;
+		}
+
+		rc = vmm_devtree_read_u32(np,
+			VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &size_cells);
+		if (rc) {
+			goto skip;
+		}
+
+		if ((addr_cells < 1) || (size_cells < 1)) {
+			goto done;
+		}
+
+		rc = devtree_get_regcells(np, &n_addr_cells, &n_size_cells);
+		if (rc) {
+			goto skip;
+		}
+
+		if ((n_addr_cells < 1) || (n_size_cells < 1)) {
+			goto done;
+		}
+
+		start = 0;
+		end = vmm_devtree_attrlen(np, VMM_DEVTREE_RANGES_ATTR_NAME);
+		end = end / sizeof(u32);
+		while (start < end) {
+			rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[0], start);
+			start++;
+			if (rc) {
+				continue;
+			}
+
+			if (addr_cells == 2) {
+				rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[1], start);
+				start++;
+				if (rc) {
+					continue;
+				}
+				in_addr = ((u64)c[0] << 32) | (u64)c[1];
+			} else {
+				in_addr = c[0];
+			}
+
+			rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[0], start);
+			start++;
+			if (rc) {
+				continue;
+			}
+
+			if (n_addr_cells == 2) {
+				rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[1], start);
+				start++;
+				if (rc) {
+					continue;
+				}
+				out_addr = ((u64)c[0] << 32) | (u64)c[1];
+			} else {
+				out_addr = c[0];
+			}
+
+			rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[0], start);
+			start++;
+			if (rc) {
+				continue;
+			}
+
+			if (size_cells == 2) {
+				rc = vmm_devtree_read_u32_atindex(np,
+						VMM_DEVTREE_RANGES_ATTR_NAME,
+						&c[1], start);
+				start++;
+				if (rc) {
+					continue;
+				}
+				in_size = ((u64)c[0] << 32) | (u64)c[1];
+			} else {
+				in_size = c[0];
+			}
+
+			if (in_addr <= addr && addr < (in_addr + in_size)) {
+				addr = out_addr + (addr - in_addr);
+			}
+		}
+
+skip:
+		np = np->parent;
+	}
+
+done:
+	if (map_addr) {
+		*map_addr = addr;
+	}
+}
+
+int vmm_devtree_regsize(struct vmm_devtree_node *node,
+		        physical_size_t *size, int regset)
+{
+	int rc;
+	u32 start, addr_cells, size_cells, cells[2] = { 0, 0 };
+
+	if (!node || !size || regset < 0) {
+		return VMM_EFAIL;
+	}
+
+	if (vmm_devtree_getattr(node, VMM_DEVTREE_VIRTUAL_REG_ATTR_NAME)) {
+		return VMM_ENOTAVAIL;
+	}
+
+	rc = devtree_get_regcells(node, &addr_cells, &size_cells);
+	if (rc) {
+		return rc;
+	}
+
+	if (size_cells < 1) {
 		return VMM_EINVALID;
 	}
 
@@ -79,7 +234,7 @@ int vmm_devtree_regsize(struct vmm_devtree_node *node,
 	}
 
 	if (size_cells == 2) {
-		*size = ((u64)cells[0] << 32) | (u64)cells[1];		
+		*size = ((u64)cells[0] << 32) | (u64)cells[1];
 	} else {
 		*size = cells[0];
 	}
@@ -92,7 +247,6 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 {
 	int rc;
 	u32 start, addr_cells, size_cells, cells[2] = { 0, 0 };
-	struct vmm_devtree_node *np;
 
 	if (!node || !addr || regset < 0) {
 		return VMM_EFAIL;
@@ -102,22 +256,12 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 		return VMM_ENOTAVAIL;
 	}
 
-	addr_cells = sizeof(physical_addr_t) / sizeof(u32);
-	size_cells = sizeof(physical_size_t) / sizeof(u32);
-
-	np = node->parent;
-	while (np && vmm_devtree_read_u32(np,
-			VMM_DEVTREE_ADDR_CELLS_ATTR_NAME, &addr_cells)) {
-		np = node->parent;
+	rc = devtree_get_regcells(node, &addr_cells, &size_cells);
+	if (rc) {
+		return rc;
 	}
 
-	np = node->parent;
-	while (np && vmm_devtree_read_u32(np,
-			VMM_DEVTREE_SIZE_CELLS_ATTR_NAME, &size_cells)) {
-		np = node->parent;
-	}
-
-	if ((size_cells > 2) || (addr_cells < 1) || (2 < addr_cells)) {
+	if (addr_cells < 1) {
 		return VMM_EINVALID;
 	}
 
@@ -138,10 +282,12 @@ int vmm_devtree_regaddr(struct vmm_devtree_node *node,
 	}
 
 	if (addr_cells == 2) {
-		*addr = ((u64)cells[0] << 32) | (u64)cells[1];		
+		*addr = ((u64)cells[0] << 32) | (u64)cells[1];
 	} else {
 		*addr = cells[0];
 	}
+
+	devtree_map_regaddr(node, *addr, addr);
 
 	return VMM_OK;
 }
