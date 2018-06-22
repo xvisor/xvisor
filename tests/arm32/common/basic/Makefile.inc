@@ -146,13 +146,23 @@ ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
 cmd_patch_elf = CROSS_COMPILE=$(FW_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ | $(CPATCH32) $@ 0
 
-FIRMWARE_TARGETS = $(obj_dir)/firmware.bin
+FIRMWARE_TARGETS = $(obj_dir)/firmware.elf
+FIRMWARE_TARGETS += $(obj_dir)/firmware.bin
 ifdef CONFIG_ARM32
+FIRMWARE_TARGETS += $(obj_dir)/firmware.elf.patched
 FIRMWARE_TARGETS += $(obj_dir)/firmware.bin.patched
 endif
 
 .PHONY: all
 all: $(FIRMWARE_TARGETS)
+
+.PHONY: install
+install: all
+	@mkdir -p $(install_dir);
+	@for f in $(FIRMWARE_TARGETS) ; do \
+	echo " (INSTALL)  " `echo $$f | sed -e "s@$(obj_dir)/@@"`; \
+	cp -f $$f $(install_dir); \
+	done
 
 $(obj_dir)/firmware.bin.patched: $(obj_dir)/firmware.elf.patched
 	@mkdir -p `dirname $@`

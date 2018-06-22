@@ -28,6 +28,11 @@ ifdef O
 else
  build_dir=$(top_dir)/build
 endif
+ifdef I
+ install_dir=$(shell readlink -f $(I))
+else
+ install_dir=$(top_dir)/install
+endif
 
 obj_dir=$(build_dir)/tests/arm32/realview-pb-a8/basic
 common_dir=$(top_dir)/tests/arm32/common/basic

@@ -81,10 +81,19 @@ FIRMWARE_COMMON_DEPS=$(common_dir)/arm_asm_macro.h \
                 $(common_dir)/libfdt/libfdt_env.h \
                 $(common_dir)/libfdt/libfdt_internal.h
 
-FIRMWARE_TARGETS = $(obj_dir)/firmware.bin
+FIRMWARE_TARGETS = $(obj_dir)/firmware.elf
+FIRMWARE_TARGETS += $(obj_dir)/firmware.bin
 
 .PHONY: all
 all: $(FIRMWARE_TARGETS)
+
+.PHONY: install
+install: all
+	@mkdir -p $(install_dir);
+	@for f in $(FIRMWARE_TARGETS) ; do \
+	echo " (INSTALL)  " `echo $$f | sed -e "s@$(obj_dir)/@@"`; \
+	cp -f $$f $(install_dir); \
+	done
 
 $(obj_dir)/firmware.bin: $(obj_dir)/firmware.elf
 	@mkdir -p `dirname $@`
