@@ -35,7 +35,7 @@ RELEASE = 10
 # o  Do not print "Entering directory ...";
 MAKEFLAGS += -rR --no-print-directory
 
-# Find out source & build directories
+# Find out source, build and install directories
 src_dir=$(CURDIR)
 ifdef O
  build_dir=$(shell readlink -f $(O))
@@ -44,6 +44,14 @@ else
 endif
 ifeq ($(build_dir),$(CURDIR))
 $(error Build directory is same as source directory.)
+endif
+ifdef I
+ install_dir=$(shell readlink -f $(I))
+else
+ install_dir=$(CURDIR)/install
+endif
+ifeq ($(install_dir),$(CURDIR))
+$(error Install directory is same as source directory.)
 endif
 
 # Check if verbosity is ON for build process
@@ -211,6 +219,14 @@ compile_nm = $(V)mkdir -p `dirname $(1)`; \
 compile_objcopy = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (objcopy)   $(subst $(build_dir)/,,$(1))"; \
 	     $(objcopy) -O binary $(2) $(1)
+inst_file =  $(V)mkdir -p `dirname $(1)`; \
+	     echo " (install)   $(subst $(install_dir)/,,$(1))"; \
+	     cp -f $(2) $(1)
+inst_file_list =  $(V)mkdir -p $(1); \
+	     for f in $(2) ; do \
+	     echo " (install)  " `echo $$f | sed -e "s@$(3)/@@"`; \
+	     cp -f $$f $(1); \
+	     done
 
 # Setup list of objects.mk files
 cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "objects.mk" | sort -r; fi)
@@ -315,12 +331,18 @@ all-m+=$(emulators-m:.o=.xo)
 
 # Default rule "make"
 .PHONY: all
-all: $(CONFIG_FILE) $(tools-y) $(targets-y)
+all: $(CONFIG_FILE) $(tools-y) $(targets-y) $(dtbs-y)
+
+.PHONY: dtbs
+dtbs: $(CONFIG_FILE) $(dtbs-y)
 
 .PHONY: modules
 modules: $(CONFIG_FILE) $(all-m)
 
-dtbs: $(dtbs-y)
+.PHONY: install
+install: all
+	$(call inst_file_list,$(install_dir),$(targets-y),$(build_dir))
+	$(call inst_file_list,$(install_dir),$(dtbs-y),$(build_dir))
 
 # Include additional rules for tools
 include $(tools_dir)/rules.mk
