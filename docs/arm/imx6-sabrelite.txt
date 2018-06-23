@@ -29,7 +29,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # make ARCH=arm generic-v7-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Make U-Boot compatible uvmm.bin, for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n "Xvisor" -d build/vmm.bin build/uvmm.bin
@@ -164,7 +164,7 @@ guest with Xvisor running on QEMU Sabre LITE Host:
   # make ARCH=arm generic-v7-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic

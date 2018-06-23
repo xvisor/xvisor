@@ -30,7 +30,7 @@ ARM Fast Models Host:
   # make ARCH=arm generic-v7-ve-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/virt-v7/basic

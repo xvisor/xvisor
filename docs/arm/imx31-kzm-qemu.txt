@@ -24,7 +24,7 @@ realview-eb-mpcore guest with Xvisor running on QEMU KZM Host:
   # make ARCH=arm generic-v6-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic

@@ -26,8 +26,8 @@ Guest with Xvisor running on QEMU Realview-PB-A8 Host:
   [4. Configure Xvisor with Generic v7 default settings]
   # make ARCH=arm generic-v7-defconfig
 
-  [5. Build Xvisor]
-  # make; make dtbs
+  [5. Build Xvisor & DTBs]
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/realview-pb-a8/basic

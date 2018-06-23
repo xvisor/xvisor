@@ -65,10 +65,10 @@ have been successfully tested.
      | make ARCH=arm generic-v7-defconfig
      `----
 
-  5. Build Xvisor:
+  5. Build Xvisor and DTBs:
 
      ,----
-     | make all dtbs
+     | make
      `----
 
 

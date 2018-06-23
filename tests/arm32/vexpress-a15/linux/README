@@ -30,7 +30,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   # make ARCH=arm generic-v7-ve-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a15/basic

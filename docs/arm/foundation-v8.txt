@@ -52,7 +52,7 @@ Model (v11.xx or higher) and also boot ARM64 Linux as Guest OS:
   # make ARCH=arm generic-v8-defconfig 
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
@@ -147,7 +147,7 @@ Model (v11.xx or higher) and also boot ARM32 Linux as Guest OS:
   # make ARCH=arm generic-v8-defconfig 
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Change build environment for Guest]
   # export CROSS_COMPILE=arm-linux-gnueabi-

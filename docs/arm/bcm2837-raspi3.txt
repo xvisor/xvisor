@@ -63,7 +63,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   # make ARCH=arm generic-v8-defconfig
 
   [5. Build Xvisor and DTBs]
-  # make; make dtbs
+  # make
 
   [6. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm64 -O linux -T kernel -C none -a 0x00080000 -e 0x00080000 -n Xvisor -d build/vmm.bin build/uvmm.bin

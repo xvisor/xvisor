@@ -29,7 +29,7 @@ Guest with Xvisor running on QEMU VExpress-A9 Host:
   # make ARCH=arm generic-v7-defconfig
 
   [5. Build Xvisor]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic

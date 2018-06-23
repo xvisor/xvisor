@@ -29,7 +29,7 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   # make ARCH=arm generic-v6-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/realview-eb-mpcore/basic

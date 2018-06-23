@@ -26,7 +26,7 @@ Vexpress-A15 Host:
   # make ARCH=arm generic-v7-ve-defconfig
 
   [5. Build Xvisor and DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a15/basic

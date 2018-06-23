@@ -29,7 +29,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # make ARCH=arm generic-v7-defconfig
 
   [5. Build Xvisor and DTBs, this creates vmm.bin]
-  # make; make dtbs
+  # make
 
   [6. Make U-Boot compatible uvmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x88000000 -e 0x88000000 -n Xvisor -d build/vmm.bin build/uvmm.bin
@@ -198,7 +198,7 @@ follows:
   # make ARCH=arm generic-v7-defconfig
 
   [6. Build Xvisor and DTBs, this creates vmm.bin]
-  # make; make dtbs
+  # make
 
   [7. Add uboot header to vmm.bin for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 -n Xvisor -d build/vmm.bin build/uvmm.bin

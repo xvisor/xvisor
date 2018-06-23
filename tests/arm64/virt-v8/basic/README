@@ -29,7 +29,7 @@ Guest with Xvisor running on Foundation v8 Model (v11.xx or higher):
   # make ARCH=arm generic-v8-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic

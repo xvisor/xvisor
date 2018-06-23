@@ -30,7 +30,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # make ARCH=arm generic-v5-defconfig
 
   [5. Build Xvisor & DTBs]
-  # make; make dtbs
+  # make
 
   [6. Build Basic Firmware]
   # make -C tests/arm32/versatilepb/basic
