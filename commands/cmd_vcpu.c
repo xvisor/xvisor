@@ -629,7 +629,7 @@ static const struct {
 	char *name;
 	int (*function) (struct vmm_chardev *, int, char **);
 	int argc;
-} const command[] = {
+} command[] = {
 	{"help", cmd_vcpu_help, 0},
 	{"list", cmd_vcpu_list, 0},
 	{"orphan_list", cmd_vcpu_orphan_list, 0},
