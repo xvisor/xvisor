@@ -227,7 +227,7 @@ static size_t cpiofs_read(struct vnode *v, loff_t off, void *buf, size_t len)
 		sz = v->v_size - off;
 	}
 
-	toff = (u64)((u32)(v->v_data));
+	toff = (u64)((unsigned long)(v->v_data));
 	sz = vmm_blockdev_read(v->v_mount->m_dev, (u8 *)buf, (toff + off), sz);
 
 	return sz;
@@ -437,7 +437,7 @@ static int cpiofs_lookup(struct vnode *dv, const char *name, struct vnode *v)
 
 	off += sizeof(struct cpio_newc_header);
 	off += (((name_size + 1) & ~3) + 2);
-	v->v_data = (void *)((u32)off);
+	v->v_data = (void *)((unsigned long)off);
 
 	return 0;
 }
