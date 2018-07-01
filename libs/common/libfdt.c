@@ -252,6 +252,81 @@ int libfdt_parse_devtree(struct fdt_fileinfo *fdt,
 	return VMM_OK;
 }
 
+static struct fdt_node_header *libfdt_find_matching_node_recursive(
+			char **data, char *str, int level,
+			int (*match)(struct fdt_node_header *, int, void *),
+			void *priv)
+{
+	u32 len = 0x0;
+	struct fdt_node_header *ret = NULL;
+
+	if (LIBFDT_DATA32(*data) != FDT_BEGIN_NODE) {
+		return NULL;
+	}
+
+	if (match((struct fdt_node_header *)(*data), level, priv)) {
+		return (struct fdt_node_header *)(*data);
+	}
+
+	*data += sizeof(fdt_cell_t);
+	len = strlen(*data);
+
+	/* Skip the entire node by looking for matching FDT_END_NODE */
+	*data += len + 1;
+	while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+		(*data)++;
+	}
+
+	while (LIBFDT_DATA32(*data) != FDT_END_NODE) {
+		switch (LIBFDT_DATA32(*data)) {
+		case FDT_PROP:
+			*data += sizeof(fdt_cell_t);
+			len = LIBFDT_DATA32(*data);
+			*data += sizeof(fdt_cell_t);
+			*data += sizeof(fdt_cell_t);
+			*data += len;
+			while ((virtual_addr_t) (*data) % sizeof(fdt_cell_t) != 0) {
+				(*data)++;
+			}
+			break;
+		case FDT_NOP:
+			*data += sizeof(fdt_cell_t);
+			break;
+		case FDT_BEGIN_NODE:
+			ret = libfdt_find_matching_node_recursive(data, str,
+						level + 1, match, priv);
+			if (ret) {
+				return ret;
+			}
+			break;
+		default:
+			return NULL;
+			break;
+		};
+	}
+
+	*data += sizeof(fdt_cell_t);
+
+	return NULL;
+}
+
+struct fdt_node_header *libfdt_find_matching_node(struct fdt_fileinfo *fdt,
+			int (*match)(struct fdt_node_header *, int, void *),
+			void *priv)
+{
+	char *data = NULL;
+
+	/* Sanity checks */
+	if (!fdt || !match) {
+		return NULL;
+	}
+
+	/* Find the FDT node recursively */
+	data = fdt->data;
+	return libfdt_find_matching_node_recursive(&data, fdt->str, 0,
+						   match, priv);
+}
+
 static struct fdt_node_header *libfdt_find_node_recursive(char **data, 
 							  char *str, 
 							  const char *node_path)

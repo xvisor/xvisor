@@ -117,6 +117,10 @@ int libfdt_reserve_address(struct fdt_fileinfo *fdt, u32 index, u64 *addr);
 
 int libfdt_reserve_size(struct fdt_fileinfo *fdt, u32 index, u64 *size);
 
+struct fdt_node_header *libfdt_find_matching_node(struct fdt_fileinfo *fdt,
+			int (*match)(struct fdt_node_header *, int, void *),
+			void *priv);
+
 struct fdt_node_header *libfdt_find_node(struct fdt_fileinfo *fdt,
 					 const char *node_path);
 
