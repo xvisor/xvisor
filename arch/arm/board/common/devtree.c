@@ -35,10 +35,41 @@ static u32 bank_nr;
 static physical_addr_t bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 static physical_addr_t dt_bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 
+struct match_info {
+	struct fdt_fileinfo *fdt;
+	u32 address_cells;
+	u32 size_cells;
+};
+
+static int match_memory_node(struct fdt_node_header *fdt_node,
+			     int level, void *priv)
+{
+	int rc;
+	char dev_type[16];
+	struct match_info *info = priv;
+
+	if (level == 1) {
+		rc = libfdt_get_property(info->fdt, fdt_node,
+				info->address_cells, info->size_cells,
+				 VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
+				 dev_type, sizeof(dev_type));
+		if (rc) {
+			return 0;
+		}
+
+		if (!strncmp(dev_type, "memory", sizeof(dev_type))) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 int arch_devtree_ram_bank_setup(void)
 {
 	int rc = VMM_OK;
 	physical_addr_t tmp;
+	struct match_info info;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_root;
 	struct fdt_node_header *fdt_node;
@@ -72,9 +103,10 @@ int arch_devtree_ram_bank_setup(void)
 		size_cells = i;
 	}
 
-	fdt_node = libfdt_find_node(&fdt,
-				    VMM_DEVTREE_PATH_SEPARATOR_STRING
-				    VMM_DEVTREE_MEMORY_NODE_NAME);
+	info.fdt = &fdt;
+	info.address_cells = address_cells;
+	info.size_cells = size_cells;
+	fdt_node = libfdt_find_matching_node(&fdt, match_memory_node, &info);
 	if (!fdt_node) {
 		return VMM_EFAIL;
 	}
