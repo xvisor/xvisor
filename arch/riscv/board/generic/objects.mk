@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2010 Anup Patel.
+# Copyright (c) 2018 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,42 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
-# @file openconf.cfg
+# @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief config file for architecture options
+# @brief list of Generic board objects.
 # */
 
-choice
-	prompt "Target Architecture"
-	default CONFIG_ARCH_ARM
-	help
-	  The architecture of your target.
-
-config CONFIG_ARCH_ARM
-	bool "arm"
-	help
-	 ARM support
-
-config CONFIG_ARCH_RISCV
-	bool "riscv"
-	help
-	  RISC-V support.
-
-config CONFIG_ARCH_x86
-	bool "x86"
-	help
-	  Intel ia32 and Intel 64 architecture.
-
-endchoice
-
-if CONFIG_ARCH_ARM
-source "arch/arm/openconf.cfg"
-endif
-
-if CONFIG_ARCH_RISCV
-source "arch/riscv/openconf.cfg"
-endif
-
-if CONFIG_ARCH_x86
-source "arch/x86/openconf.cfg"
-endif
+board-objs-y+= brd_main.o
+board-objs-y+= dts/skeleton.o
