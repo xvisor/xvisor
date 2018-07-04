@@ -239,6 +239,28 @@ _cpu_init:
 	la	a6, _start_hang
 	csrw	stvec, a6
 
+	/* Setup scratch space */
+	la	a6, __hvc_stack_end
+	REG_L	a5, (a6)
+#ifdef CONFIG_SMP
+	li	a4, CONFIG_IRQ_STACK_SIZE
+	la	a6, __start_secondary_smp_id
+	REG_L	a0, (a6)
+	REG_L	a0, (a0)
+	mul	a4, a4, a0
+#else
+	li	a4, 0
+#endif
+	sub	a5, a5, a4
+	li	a3, RISCV_SCRATCH_SIZE
+	sub	a5, a5, a3
+	csrw	sscratch, a5
+
+	/* Setup Hypervisor Exception Stack */
+	csrr	tp, sscratch
+	REG_S	tp, RISCV_SCRATCH_EXCE_STACK_OFFSET(tp)
+	add	sp, tp, zero
+
 #ifdef CONFIG_SMP
 	/* Setup SMP ID for current processor */
 	la	a6, __start_secondary_smp_id
@@ -246,18 +268,6 @@ _cpu_init:
 	REG_L	a0, (a0)
 	call	proc_setup_smp_id
 #endif
-
-	/* Setup Hypervisor Stack */
-	la	a6, __hvc_stack_end
-	REG_L	a5, (a6)
-#ifdef CONFIG_SMP
-	li	a4, CONFIG_IRQ_STACK_SIZE
-	call	arch_smp_id
-	mul	a4, a4, a0
-#else
-	li	a4, 0
-#endif
-	sub	sp, a5, a4
 
 	/* Jump to C code */
 	call	cpu_init
@@ -271,8 +281,118 @@ _cpu_init:
 	.align 3
 	.global _handle_exception
 _handle_exception:
-	/* TODO: Save arch_regs_t */
-	li	a0, 0 /* TODO: a0 points to arch_regs_t on stack */
+	/* Swap TP and SSCRATCH */
+	csrrw	tp, sscratch, tp
+
+	/* Save S0 in scratch space */
+	REG_S	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
+
+	/* Save SP in S0 */
+	add	s0, sp, zero
+
+	/* Setup exception stack */
+	REG_L	sp, RISCV_SCRATCH_EXCE_STACK_OFFSET(tp)
+	addi	sp, sp, -(RISCV_ARCH_REGS_SIZE)
+
+	/* Save original SP (in S0) */
+	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sp)(sp)
+
+	/* Save original S0 */
+	REG_L	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
+	REG_S	s0, RISCV_ARCH_REGS_OFFSET(s0)(sp)
+
+	/* Swap TP and SSCRATCH */
+	csrrw	tp, sscratch, tp
+
+	/* Save all general regisers except ZERO, SP & S0 */
+	REG_S	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
+	REG_S	gp, RISCV_ARCH_REGS_OFFSET(gp)(sp)
+	REG_S	tp, RISCV_ARCH_REGS_OFFSET(tp)(sp)
+	REG_S	t0, RISCV_ARCH_REGS_OFFSET(t0)(sp)
+	REG_S	t1, RISCV_ARCH_REGS_OFFSET(t1)(sp)
+	REG_S	t2, RISCV_ARCH_REGS_OFFSET(t2)(sp)
+	REG_S	s1, RISCV_ARCH_REGS_OFFSET(s1)(sp)
+	REG_S	a0, RISCV_ARCH_REGS_OFFSET(a0)(sp)
+	REG_S	a1, RISCV_ARCH_REGS_OFFSET(a1)(sp)
+	REG_S	a2, RISCV_ARCH_REGS_OFFSET(a2)(sp)
+	REG_S	a3, RISCV_ARCH_REGS_OFFSET(a3)(sp)
+	REG_S	a4, RISCV_ARCH_REGS_OFFSET(a4)(sp)
+	REG_S	a5, RISCV_ARCH_REGS_OFFSET(a5)(sp)
+	REG_S	a6, RISCV_ARCH_REGS_OFFSET(a6)(sp)
+	REG_S	a7, RISCV_ARCH_REGS_OFFSET(a7)(sp)
+	REG_S	s2, RISCV_ARCH_REGS_OFFSET(s2)(sp)
+	REG_S	s3, RISCV_ARCH_REGS_OFFSET(s3)(sp)
+	REG_S	s4, RISCV_ARCH_REGS_OFFSET(s4)(sp)
+	REG_S	s5, RISCV_ARCH_REGS_OFFSET(s5)(sp)
+	REG_S	s6, RISCV_ARCH_REGS_OFFSET(s6)(sp)
+	REG_S	s7, RISCV_ARCH_REGS_OFFSET(s7)(sp)
+	REG_S	s8, RISCV_ARCH_REGS_OFFSET(s8)(sp)
+	REG_S	s9, RISCV_ARCH_REGS_OFFSET(s9)(sp)
+	REG_S	s10, RISCV_ARCH_REGS_OFFSET(s10)(sp)
+	REG_S	s11, RISCV_ARCH_REGS_OFFSET(s11)(sp)
+	REG_S	t3, RISCV_ARCH_REGS_OFFSET(t3)(sp)
+	REG_S	t4, RISCV_ARCH_REGS_OFFSET(t4)(sp)
+	REG_S	t5, RISCV_ARCH_REGS_OFFSET(t5)(sp)
+	REG_S	t6, RISCV_ARCH_REGS_OFFSET(t6)(sp)
+
+	/* Save SEPC and SSTATUS CSRs */
+	csrr	s0, sepc
+	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
+	csrr	s1, sstatus
+	REG_S	s1, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
+
+	/* Save exception SP */
+	add	s2, sp, RISCV_ARCH_REGS_SIZE
+	REG_S	s2, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
+
+	/* Call C routine */
+	add	a0, sp, zero
 	call	do_handle_exception
-	/* TODO: Restore arch_regs_t */
+
+	/* Restore exception SP in scratch space */
+	REG_L	s0, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
+	csrr	s1, sscratch
+	REG_S	s0, RISCV_SCRATCH_EXCE_STACK_OFFSET(s1)
+
+	/* Restore SEPC and SSTATUS CSRs */
+	REG_L	s2, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
+	csrw	sepc, s2
+	REG_L	s3, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
+	csrw	sstatus, s3
+
+	/* Restore all general regisers except SP */
+	REG_L	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
+	REG_L	gp, RISCV_ARCH_REGS_OFFSET(gp)(sp)
+	REG_L	tp, RISCV_ARCH_REGS_OFFSET(tp)(sp)
+	REG_L	t0, RISCV_ARCH_REGS_OFFSET(t0)(sp)
+	REG_L	t1, RISCV_ARCH_REGS_OFFSET(t1)(sp)
+	REG_L	t2, RISCV_ARCH_REGS_OFFSET(t2)(sp)
+	REG_L	s0, RISCV_ARCH_REGS_OFFSET(s0)(sp)
+	REG_L	s1, RISCV_ARCH_REGS_OFFSET(s1)(sp)
+	REG_L	a0, RISCV_ARCH_REGS_OFFSET(a0)(sp)
+	REG_L	a1, RISCV_ARCH_REGS_OFFSET(a1)(sp)
+	REG_L	a2, RISCV_ARCH_REGS_OFFSET(a2)(sp)
+	REG_L	a3, RISCV_ARCH_REGS_OFFSET(a3)(sp)
+	REG_L	a4, RISCV_ARCH_REGS_OFFSET(a4)(sp)
+	REG_L	a5, RISCV_ARCH_REGS_OFFSET(a5)(sp)
+	REG_L	a6, RISCV_ARCH_REGS_OFFSET(a6)(sp)
+	REG_L	a7, RISCV_ARCH_REGS_OFFSET(a7)(sp)
+	REG_L	s2, RISCV_ARCH_REGS_OFFSET(s2)(sp)
+	REG_L	s3, RISCV_ARCH_REGS_OFFSET(s3)(sp)
+	REG_L	s4, RISCV_ARCH_REGS_OFFSET(s4)(sp)
+	REG_L	s5, RISCV_ARCH_REGS_OFFSET(s5)(sp)
+	REG_L	s6, RISCV_ARCH_REGS_OFFSET(s6)(sp)
+	REG_L	s7, RISCV_ARCH_REGS_OFFSET(s7)(sp)
+	REG_L	s8, RISCV_ARCH_REGS_OFFSET(s8)(sp)
+	REG_L	s9, RISCV_ARCH_REGS_OFFSET(s9)(sp)
+	REG_L	s10, RISCV_ARCH_REGS_OFFSET(s10)(sp)
+	REG_L	s11, RISCV_ARCH_REGS_OFFSET(s11)(sp)
+	REG_L	t3, RISCV_ARCH_REGS_OFFSET(t3)(sp)
+	REG_L	t4, RISCV_ARCH_REGS_OFFSET(t4)(sp)
+	REG_L	t5, RISCV_ARCH_REGS_OFFSET(t5)(sp)
+	REG_L	t6, RISCV_ARCH_REGS_OFFSET(t6)(sp)
+
+	/* Restore SP */
+	REG_L	sp, RISCV_ARCH_REGS_OFFSET(sp)(sp)
+
 	sret

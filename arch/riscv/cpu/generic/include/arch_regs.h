@@ -27,7 +27,7 @@
 #include <vmm_compiler.h>
 
 struct arch_regs {
-	unsigned long sepc;
+	unsigned long zero;
 	unsigned long ra;
 	unsigned long sp;
 	unsigned long gp;
@@ -59,12 +59,9 @@ struct arch_regs {
 	unsigned long t4;
 	unsigned long t5;
 	unsigned long t6;
-	/* Supervisor CSRs */
+	unsigned long sepc;
 	unsigned long sstatus;
-	unsigned long sbadaddr;
-	unsigned long scause;
-        /* a0 value before the syscall */
-        unsigned long orig_a0;
+	unsigned long sp_exec;
 } __packed;
 
 typedef struct arch_regs arch_regs_t;

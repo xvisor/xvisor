@@ -21,20 +21,28 @@
  * @brief Low-level implementation of CPU specific quirky functions
  */
 
+#include <riscv_asm.h>
+
 #ifdef CONFIG_SMP
 	/* 
 	 * Retrive SMP ID of current processor
 	 */
 	.globl arch_smp_id
 arch_smp_id:
-	csrr	a0, sscratch
+	addi	sp, sp, -(__SIZEOF_POINTER__)
+	REG_S	tp, (sp)
+	csrr	tp, sscratch
+	REG_L	a0, RISCV_SCRATCH_SMP_ID_OFFSET(tp)
+	REG_L	tp, (sp)
+	addi	sp, sp, __SIZEOF_POINTER__
 	ret
 
-	/* 
+	/*
 	 * Setup SMP ID of current processor
 	 */
 	.globl proc_setup_smp_id
 proc_setup_smp_id:
-	csrw	sscratch, a0
+	csrr	tp, sscratch
+	REG_S	a0, RISCV_SCRATCH_SMP_ID_OFFSET(tp)
 	ret
 #endif
