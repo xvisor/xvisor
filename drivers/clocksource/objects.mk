@@ -30,4 +30,4 @@ drivers-objs-$(CONFIG_OMAP_S32K)+= clocksource/omap_s32k.o
 drivers-objs-$(CONFIG_OMAP2_TIMER)+= clocksource/omap2_timer.o
 drivers-objs-$(CONFIG_SUN4I_TIMER)+= clocksource/sun4i_timer.o
 drivers-objs-$(CONFIG_SAMSUNG_MCT)+= clocksource/exynos_mct.o
-
+drivers-objs-$(CONFIG_RISCV_TIMER)+= clocksource/riscv_timer.o
