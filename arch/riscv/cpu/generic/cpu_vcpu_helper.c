@@ -25,19 +25,21 @@
 #include <vmm_heap.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
+#include <vmm_pagepool.h>
+#include <vmm_host_aspace.h>
 #include <arch_barrier.h>
 #include <arch_guest.h>
 #include <arch_vcpu.h>
 
 int arch_guest_init(struct vmm_guest *guest)
 {
-	/* TODO: */
+	/* TODO: For now, nothing to do here. */
 	return VMM_OK;
 }
 
 int arch_guest_deinit(struct vmm_guest *guest)
 {
-	/* TODO: */
+	/* TODO: For now, nothing to do here. */
 	return VMM_OK;
 }
 
@@ -53,21 +55,50 @@ int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
+	virtual_addr_t sp_exec;
+
+	/* First time allocate exception stack */
+	if (!vcpu->reset_count) {
+		sp_exec = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+				VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
+		if (!sp_exec) {
+			return VMM_ENOMEM;
+		}
+		sp_exec += CONFIG_IRQ_STACK_SIZE;
+	} else {
+		sp_exec = riscv_regs(vcpu)->sp_exec;
+	}
+
 	/* For both Orphan & Normal VCPUs */
 	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
 	riscv_regs(vcpu)->sepc = vcpu->start_pc;
+	riscv_regs(vcpu)->sstatus = SR_SPIE|SR_SIE; /* TODO: */
 	riscv_regs(vcpu)->sp = vcpu->stack_va +
 			     (vcpu->stack_sz - ARCH_CACHE_LINE_SIZE);
 	riscv_regs(vcpu)->sp = riscv_regs(vcpu)->sp & ~0x7;
+	riscv_regs(vcpu)->sp_exec = sp_exec;
 
-	/* TODO: */
+	/* TODO: For Normal VCPUs */
 
 	return VMM_OK;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
-	/* TODO: */
+	virtual_addr_t sp_exec =
+			riscv_regs(vcpu)->sp_exec - CONFIG_IRQ_STACK_SIZE;
+
+	/* TODO: For Normal VCPUs */
+
+	/* For both Orphan & Normal VCPUs */
+
+	/* Free-up excepiton stack */
+	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL, sp_exec,
+			  VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
+
+	/* Clear arch registers */
+	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
+
 	return VMM_OK;
 }
 
@@ -85,11 +116,6 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
 	/* Nothing to do here */
-}
-
-void arch_vcpu_preempt_orphan(void)
-{
-	/* TODO: */
 }
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

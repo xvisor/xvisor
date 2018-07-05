@@ -46,3 +46,8 @@ proc_setup_smp_id:
 	REG_S	a0, RISCV_SCRATCH_SMP_ID_OFFSET(tp)
 	ret
 #endif
+
+	.globl arch_vcpu_preempt_orphan
+arch_vcpu_preempt_orphan:
+	REG_S	zero, (zero)
+	ret
