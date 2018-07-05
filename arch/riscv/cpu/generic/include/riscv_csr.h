@@ -33,10 +33,13 @@
 #include <vmm_const.h>
 
 /* Status register flags */
+#define SR_UIE	_AC(0x00000001, UL) /* User Interrupt Enable */
 #define SR_SIE	_AC(0x00000002, UL) /* Supervisor Interrupt Enable */
+#define SR_UPIE	_AC(0x00000010, UL) /* Previous User IE */
 #define SR_SPIE	_AC(0x00000020, UL) /* Previous Supervisor IE */
 #define SR_SPP	_AC(0x00000100, UL) /* Previously Supervisor */
 #define SR_SUM	_AC(0x00040000, UL) /* Supervisor may access User Memory */
+#define SR_MXR	_AC(0x00080000, UL) /* Make executable readable */
 
 #define SR_FS           _AC(0x00006000, UL) /* Floating-point Status */
 #define SR_FS_OFF       _AC(0x00000000, UL)
@@ -72,15 +75,30 @@
 #define SIE_STIE _AC(0x00000020, UL) /* Timer Interrupt Enable */
 #define SIE_SEIE _AC(0x000000200, UL) /* External Interrupt Enable */
 
-#define EXC_INST_MISALIGNED     0
-#define EXC_INST_ACCESS         1
-#define EXC_BREAKPOINT          3
-#define EXC_LOAD_ACCESS         5
-#define EXC_STORE_ACCESS        7
-#define EXC_SYSCALL             8
-#define EXC_INST_PAGE_FAULT     12
-#define EXC_LOAD_PAGE_FAULT     13
-#define EXC_STORE_PAGE_FAULT    15
+/* SCAUSE */
+#if __riscv_xlen == 32
+#define SCAUSE_INTERRUPT_MASK   _AC(0x80000000, UL)
+#define SCAUSE_EXC_MASK		_AC(0x7FFFFFFF, UL)
+#else
+#define SCAUSE_INTERRUPT_MASK   _AC(0x8000000000000000, UL)
+#define SCAUSE_EXC_MASK		_AC(0x7FFFFFFFFFFFFFFF, UL)
+#endif
+#define EXC_INST_MISALIGNED		0
+#define EXC_INST_ACCESS_FAULT		1
+#define EXC_INST_ILLEGAL		2
+#define EXC_BREAKPOINT			3
+#define EXC_RESERVED1			4
+#define EXC_LOAD_ACCESS_FAULT		5
+#define EXC_AMO_MISALIGNED		6
+#define EXC_STORE_AMO_ACCESS_FAULT	7
+#define EXC_ECALL			8
+#define EXC_RESERVED2			9
+#define EXC_RESERVED3			10
+#define EXC_RESERVED4			11
+#define EXC_INST_PAGE_FAULT		12
+#define EXC_LOAD_PAGE_FAULT     	13
+#define EXC_RESERVED5			14
+#define EXC_STORE_AMO_PAGE_FAULT    	15
 
 #ifndef __ASSEMBLY__
 
