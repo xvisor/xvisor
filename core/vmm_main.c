@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_pagepool.h>
 #include <vmm_devtree.h>
+#include <vmm_params.h>
 #include <vmm_stdio.h>
 #include <vmm_version.h>
 #include <vmm_initfn.h>
@@ -66,6 +67,20 @@ static struct vmm_work sys_init;
 static struct vmm_work sys_postinit;
 static bool sys_init_done = FALSE;
 
+static char *bootcmd_param = NULL;
+static int vmm_bootcmd_param(char *cmds)
+{
+	size_t len = strlen(cmds);
+	bootcmd_param = vmm_zalloc(len + 1);
+	if (!bootcmd_param) {
+		return VMM_ENOMEM;
+	}
+	strncpy(bootcmd_param, cmds, len + 1);
+	bootcmd_param[len] = '\0';
+	return VMM_OK;
+}
+vmm_early_param("vmm.bootcmd=", vmm_bootcmd_param);
+
 bool vmm_init_done(void)
 {
 	return sys_init_done;
@@ -98,6 +113,13 @@ static void system_postinit_work(struct vmm_work *work)
 	vmm_printf("init: freeing init memory ");
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
+
+	/* Process boot commands passed via bootargs */
+	if (bootcmd_param) {
+		vmm_printf("init: %s\n", bootcmd_param);
+		cdev = vmm_stdio_device();
+		vmm_cmdmgr_execute_cmdstr(cdev, bootcmd_param, NULL);
+	}
 
 	/* Process attributes in chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
