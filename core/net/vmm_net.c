@@ -74,16 +74,13 @@ static int __init vmm_net_init(void)
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_VMMINFO_NODE_NAME
 				   VMM_DEVTREE_PATH_SEPARATOR_STRING "net");
-	if (!node) {
-		vmm_printf("%s: devtree node not found\n", __func__);
-		goto net_devtree_probe_failed;
-	}
-
-	rc = vmm_platform_probe(node);
-	vmm_devtree_dref_node(node);
-	if (rc) {
-		vmm_printf("%s: devtree node probe failed\n", __func__);
-		goto net_devtree_probe_failed;
+	if (node) {
+		rc = vmm_platform_probe(node);
+		vmm_devtree_dref_node(node);
+		if (rc) {
+			vmm_printf("%s: platform probe failed\n", __func__);
+			goto net_devtree_probe_failed;
+		}
 	}
 
 	goto net_init_done;
