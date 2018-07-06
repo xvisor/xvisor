@@ -21,28 +21,26 @@
  * @brief Low-level implementation of delay functions 
  */
 
+#include <riscv_asm.h>
+
 	/* 
 	 * arch specific delay loop
 	 */
 	.globl arch_delay_loop
 arch_delay_loop:
-#if 0
-	subs	x0, x0, #1
-	b.hi	arch_delay_loop
+	addi	a0, a0, -1
+	bgtz	a0, arch_delay_loop
 	ret
-#endif
 
 	/*
 	 * arch specific machine cycle count from delay loop count
 	 */
 	.globl arch_delay_loop_cycles
 arch_delay_loop_cycles:
-#if 0
-	stp     x1, x2, [sp, #-16]!
-	mov	x1, x0
-	mov	x2, #3
-	mul	x0, x1, x2
-	ldp     x1, x2, [sp], #16
+	addi	sp, sp, -(__SIZEOF_POINTER__)
+	REG_S	a1, (sp)
+	li	a1, 2
+	mul	a0, a0, a1
+	REG_L	a1, (sp)
+	addi	sp, sp, __SIZEOF_POINTER__
 	ret
-#endif
-
