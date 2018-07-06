@@ -47,18 +47,13 @@ static bool parameqn(const char *a, const char *b, size_t n)
         return true;
 }
 
-static bool parameq(const char *a, const char *b)
-{
-        return parameqn(a, b, strlen(a)+1);
-}
-
 /* Check for early params. */
 static int __init do_early_param(char *param, char *val, const char *unused)
 {
 	const struct vmm_setup_param *p;
 
         for (p = __setup_start; p < __setup_end; p++) {
-                if ((p->early && parameq(param, p->str)) ||
+                if ((p->early && parameqn(param, p->str, strlen(param))) ||
 			(strcmp(param, "console") == 0 &&
 				strcmp(p->str, "earlycon") == 0)
 			) {
