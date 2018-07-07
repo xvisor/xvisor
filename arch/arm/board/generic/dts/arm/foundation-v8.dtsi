@@ -84,7 +84,6 @@
 			compatible = "smc91x";
 			reg = <0x1a000000 0x10000>;
 			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-			switch = "br0";
 		};
 
 		gpio-leds { /* LEDs */

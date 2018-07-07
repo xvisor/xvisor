@@ -41,7 +41,6 @@
 			compatible = "smc911x";
 			reg = <0x05000000 0x1000>;
 			interrupts = <53>;
-			switch = "br0";
 		};
 	};
 };

@@ -341,7 +341,6 @@
                         interrupts = <1 23>;
                         clocks = <&ahb_gates 17>;
                         status = "disabled";
-			switch = "br0";
                 };
 
 		intc: interrupt-controller@01c20400 {

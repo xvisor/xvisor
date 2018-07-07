@@ -86,7 +86,6 @@
 				compatible = "smc91x";
 				reg = <0x10010000 0x1000>;
 				interrupts = <25>;
-				switch = "br0";
 			};
 
 			clcd {

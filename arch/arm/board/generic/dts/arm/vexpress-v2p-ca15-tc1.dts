@@ -175,7 +175,6 @@
 				compatible = "smc91x";
 				reg = <0x1A000000 0x1000>;
 				interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-				switch = "br0";
 			};
 
 			iofpga {
