@@ -119,6 +119,8 @@ static void system_postinit_work(struct vmm_work *work)
 		vmm_printf("init: %s\n", bootcmd_param);
 		cdev = vmm_stdio_device();
 		vmm_cmdmgr_execute_cmdstr(cdev, bootcmd_param, NULL);
+		vmm_free(bootcmd_param);
+		bootcmd_param = NULL;
 	}
 
 	/* Process attributes in chosen node */
