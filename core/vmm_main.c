@@ -67,6 +67,20 @@ static struct vmm_work sys_init;
 static struct vmm_work sys_postinit;
 static bool sys_init_done = FALSE;
 
+static char *console_param = NULL;
+static int vmm_console_param(char *cdev)
+{
+	size_t len = strlen(cdev);
+	console_param = vmm_zalloc(len + 1);
+	if (!console_param) {
+		return VMM_ENOMEM;
+	}
+	strncpy(console_param, cdev, len + 1);
+	console_param[len] = '\0';
+	return VMM_OK;
+}
+vmm_early_param("vmm.console=", vmm_console_param);
+
 static char *bootcmd_param = NULL;
 static int vmm_bootcmd_param(char *cmds)
 {
@@ -114,9 +128,27 @@ static void system_postinit_work(struct vmm_work *work)
 	freed = vmm_host_free_initmem();
 	vmm_printf("%dK\n", freed);
 
+	/* Process console device passed via bootargs */
+	if (console_param) {
+		/* Find character device based on console parameter */
+		if (!(cdev = vmm_chardev_find(console_param))) {
+			if ((node1 = vmm_devtree_getnode(console_param))) {
+				cdev = vmm_chardev_find(node1->name);
+				vmm_devtree_dref_node(node1);
+			}
+		}
+		/* Set chosen console device as stdio device */
+		if (cdev) {
+			vmm_printf("init: change stdio device to %s\n", cdev->name);
+			vmm_stdio_change_device(cdev);
+		}
+		vmm_free(console_param);
+		console_param = NULL;
+	}
+
 	/* Process boot commands passed via bootargs */
 	if (bootcmd_param) {
-		vmm_printf("init: %s\n", bootcmd_param);
+		vmm_printf("bootcmd: %s\n", bootcmd_param);
 		cdev = vmm_stdio_device();
 		vmm_cmdmgr_execute_cmdstr(cdev, bootcmd_param, NULL);
 		vmm_free(bootcmd_param);
@@ -171,10 +203,8 @@ static void system_postinit_work(struct vmm_work *work)
 			c = vmm_devtree_attrlen(node,
 						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
 			while (c) {
-#if defined(CONFIG_VERBOSE_MODE)
 				/* Print boot command */
 				vmm_printf("bootcmd: %s\n", str);
-#endif
 				/* Execute boot command */
 				strlcpy(bcmd, str, sizeof(bcmd));
 				cdev = vmm_stdio_device();
