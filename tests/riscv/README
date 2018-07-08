@@ -1,0 +1,9 @@
+		       RISC-V Guest
+
+This directory contains the following sub-directories:
+
+  1. common - Common code for all RISC-V guests
+  2. virt - Virt guest directory
+
+Please follow the README under specific directory for detailed
+steps to configure, compile and run.

@@ -19,6 +19,8 @@ DriverPorting
 	- Recommendation for porint driver from Linux to Xvisor.
 arm/
 	- ARM architecture support documentation.
+riscv/
+	- RISC-V architecture support documentation.
 x86/
 	- x86 architecture support documentation.
 
