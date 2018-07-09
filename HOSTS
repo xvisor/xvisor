@@ -193,6 +193,15 @@ S:	Able to boot Virt-v7 linux guest on VExpress-A15 emulated by
 	ARM fast models.
 D:	docs/arm/vexpress-a15.txt
 
+M:	RISC-V QEMU VirtIO board
+A:	RISC-V 64-bit
+C:	RV64GC
+V:	RISC-V Foundation (https://riscv.org/)
+E:	QEMU (http://qemu.org/)
+G:	Work-In-Progress.
+S:	Work-In-Progress.
+D:	docs/riscv/riscv-virt-qemu.txt
+
 M:	x86_64 Generic
 A:	x86 64-bit
 C:	x86_64
