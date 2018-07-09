@@ -104,14 +104,11 @@ static int cmd_net_switch_list_iter(struct vmm_netswitch *nsw, void *data)
 	struct vmm_netport *port;
 	struct cmd_net_list_priv *p = data;
 
+	vmm_cprintf(p->cdev, " %-5d %-13s %-49s\n",
+		    p->num, nsw->name, "----+");
 	list_for_each_entry(port, &nsw->port_list, head) {
-		if (pos == 0) {
-			vmm_cprintf(p->cdev, " %-5d %-13s +--%-46s\n",
-				    p->num, nsw->name, port->name);
-		} else {
-			vmm_cprintf(p->cdev, " %-5s %-13s +--%-46s\n",
-				    "", "", port->name);
-		}
+		vmm_cprintf(p->cdev, " %-5s %-13s     +--- %-40s\n",
+			    "", "", port->name);
 		pos++;
 	}
 	p->num++;
