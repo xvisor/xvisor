@@ -7,15 +7,6 @@
         model = "BeagleBoard";
 	compatible = "ti,omap3";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Mount initrd device */

@@ -10,15 +10,6 @@
 	compatible = "solidrun,clearfog-gt-8k", "marvell,armada8040",
 			"marvell,armada-ap806-quad", "marvell,armada-ap806";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		stdout-path = "serial0:115200n8";
 		console = &uart0;

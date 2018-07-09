@@ -10,15 +10,6 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		initrd-start = <0x0 0x81000000>;
 		initrd-end = <0x0 0x83000000>;

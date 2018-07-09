@@ -7,15 +7,6 @@
 	compatible = "raspberrypi,model-b", "brcm,bcm2835";
 	model = "Raspberry Pi Model B";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &SERIAL0;
 		bootcmd = /* Mount initrd device */

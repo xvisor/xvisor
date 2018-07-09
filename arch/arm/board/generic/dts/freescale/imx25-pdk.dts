@@ -30,15 +30,6 @@
 	model = "Freescale i.MX25 Product Development Kit";
 	compatible = "fsl,imx25-pdk", "fsl,imx25";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		bootcmd = /* Mount initrd device */
 			  "vfs mount initrd /",

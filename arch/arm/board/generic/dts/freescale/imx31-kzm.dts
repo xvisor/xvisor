@@ -6,15 +6,6 @@
 / {
 	model = "kzm";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &SERIAL1;
 		bootcmd = /* Mount initrd device */

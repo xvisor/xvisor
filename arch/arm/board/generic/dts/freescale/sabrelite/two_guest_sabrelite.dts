@@ -11,15 +11,6 @@
 #include "sabrelite.dtsi"
 
 / {
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &SERIAL2;
 		bootcmd =

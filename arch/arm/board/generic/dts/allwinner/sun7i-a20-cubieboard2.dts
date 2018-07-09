@@ -11,15 +11,6 @@
                 bootargs = "earlyprintk console=ttyS0,115200";
         };
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &uart0;
 		bootcmd = /* Mount initrd device */

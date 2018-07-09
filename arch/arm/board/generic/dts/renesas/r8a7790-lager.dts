@@ -17,15 +17,6 @@
 		      <1 0x40000000 0 0xc0000000>;
 	};
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &scif0;
 		bootcmd = /* Mount initrd device */

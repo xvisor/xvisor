@@ -7,15 +7,6 @@
 	model = "Xilinx zynqmp zcu100 board";
 	compatible = "xlnx,zynqmp-zcu100";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &uart1;
 		bootcmd = /* Mount initrd device */

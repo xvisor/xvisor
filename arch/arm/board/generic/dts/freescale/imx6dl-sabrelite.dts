@@ -35,15 +35,6 @@
 		reg = <0x10000000 0x40000000>; /* 1 GB */
 	};
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &SERIAL2;
 		bootcmd = /* Mount initrd device */

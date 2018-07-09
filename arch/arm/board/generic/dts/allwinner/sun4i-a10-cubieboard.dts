@@ -7,15 +7,6 @@
         model = "Cubietech Cubieboard";
         compatible = "cubietech,a10-cubieboard", "allwinner,sun4i-a10";
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		console = &uart0;
                 bootargs = "earlyprintk console=ttyS0,115200";

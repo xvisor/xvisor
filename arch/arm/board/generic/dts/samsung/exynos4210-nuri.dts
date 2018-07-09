@@ -16,15 +16,6 @@
 		reg = <0x40000000 0x10000000>; /* 256 MB */
 	};
 
-	vmm {
-		net {
-			br0 {
-				device_type = "netswitch";
-				compatible = "bridge";
-			};
-		};
-	};
-
 	chosen {
 		bootcmd = /* Mount initrd device */
 			  "vfs mount initrd /",
