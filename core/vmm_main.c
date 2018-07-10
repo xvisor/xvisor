@@ -68,32 +68,132 @@ static struct vmm_work sys_postinit;
 static bool sys_init_done = FALSE;
 
 static char *console_param = NULL;
-static int vmm_console_param(char *cdev)
+static size_t console_param_len = 0;
+static void console_param_process(const char *str)
 {
-	size_t len = strlen(cdev);
-	console_param = vmm_zalloc(len + 1);
+	struct vmm_chardev *cdev;
+	struct vmm_devtree_node *node;
+
+	/* Find character device based on console attribute */
+	if (!(cdev = vmm_chardev_find(str))) {
+		if ((node = vmm_devtree_getnode(str))) {
+			cdev = vmm_chardev_find(node->name);
+			vmm_devtree_dref_node(node);
+		}
+	}
+	/* Set chosen console device as stdio device */
+	if (cdev) {
+		vmm_printf("init: change stdio device to %s\n", cdev->name);
+		vmm_stdio_change_device(cdev);
+	}
+	/* Free-up early param */
+	if (console_param) {
+		vmm_free(console_param);
+		console_param = NULL;
+		console_param_len = 0;
+	}
+}
+static int console_param_save(char *cdev)
+{
+	console_param_len = strlen(cdev) + 1;
+	console_param = vmm_zalloc(console_param_len);
 	if (!console_param) {
 		return VMM_ENOMEM;
 	}
-	strncpy(console_param, cdev, len + 1);
-	console_param[len] = '\0';
+	strncpy(console_param, cdev, console_param_len);
+	console_param[console_param_len - 1] = '\0';
 	return VMM_OK;
 }
-vmm_early_param("vmm.console=", vmm_console_param);
+vmm_early_param("vmm."VMM_DEVTREE_CONSOLE_ATTR_NAME"=", console_param_save);
+
+static char *rtcdev_param = NULL;
+static size_t rtcdev_param_len = 0;
+static void rtcdev_param_process(const char *str)
+{
+#if defined(CONFIG_RTC)
+	int ret;
+	struct rtc_device *rdev;
+	struct vmm_devtree_node *node;
+
+	/* Find rtc device based on rtc_device attribute */
+	if (!(rdev = rtc_device_find(str))) {
+		if ((node = vmm_devtree_getnode(str))) {
+			rdev = rtc_device_find(node->name);
+			vmm_devtree_dref_node(node);
+		}
+	}
+	/* Syncup wallclock time with chosen rtc device */
+	if (rdev) {
+		ret = rtc_device_sync_wallclock(rdev);
+		vmm_printf("init: syncup wallclock using %s", rdev->name);
+		if (ret) {
+			vmm_printf("(error %d)", ret);
+		}
+		vmm_printf("\n");
+	}
+#endif
+	/* Free-up early param */
+	if (rtcdev_param) {
+		vmm_free(rtcdev_param);
+		rtcdev_param = NULL;
+		rtcdev_param_len = 0;
+	}
+}
+static int rtcdev_param_save(char *rdev)
+{
+	rtcdev_param_len = strlen(rdev) + 1;
+	rtcdev_param = vmm_zalloc(rtcdev_param_len);
+	if (!rtcdev_param) {
+		return VMM_ENOMEM;
+	}
+	strncpy(rtcdev_param, rdev, rtcdev_param_len);
+	rtcdev_param[rtcdev_param_len - 1] = '\0';
+	return VMM_OK;
+}
+vmm_early_param("vmm."VMM_DEVTREE_RTCDEV_ATTR_NAME"=", rtcdev_param_save);
 
 static char *bootcmd_param = NULL;
-static int vmm_bootcmd_param(char *cmds)
+static size_t bootcmd_param_len = 0;
+static void bootcmd_param_process(const char *str, size_t str_len)
 {
-	size_t len = strlen(cmds);
-	bootcmd_param = vmm_zalloc(len + 1);
+#define BOOTCMD_WIDTH		256
+	char bcmd[BOOTCMD_WIDTH];
+	/* For each boot command */
+	while (str_len) {
+		/* Print boot command */
+		vmm_printf("%s: %s\n", VMM_DEVTREE_BOOTCMD_ATTR_NAME, str);
+		/* Execute boot command */
+		strlcpy(bcmd, str, sizeof(bcmd));
+		vmm_cmdmgr_execute_cmdstr(vmm_stdio_device(),
+					  bcmd, NULL);
+		/* Next boot command */
+		str_len -= strlen(str) + 1;
+		str += strlen(str) + 1;
+	}
+	/* Free-up early param */
+	if (bootcmd_param) {
+		vmm_free(bootcmd_param);
+		bootcmd_param = NULL;
+		bootcmd_param_len = 0;
+	}
+}
+static int bootcmd_param_save(char *cmds)
+{
+	size_t i;
+	bootcmd_param_len = strlen(cmds) + 1;
+	bootcmd_param = vmm_zalloc(bootcmd_param_len);
 	if (!bootcmd_param) {
 		return VMM_ENOMEM;
 	}
-	strncpy(bootcmd_param, cmds, len + 1);
-	bootcmd_param[len] = '\0';
+	strncpy(bootcmd_param, cmds, bootcmd_param_len);
+	bootcmd_param[bootcmd_param_len - 1] = '\0';
+	for (i = 0; i < bootcmd_param_len; i++) {
+		if (bootcmd_param[i] == ';')
+			bootcmd_param[i] = '\0';
+	}
 	return VMM_OK;
 }
-vmm_early_param("vmm.bootcmd=", vmm_bootcmd_param);
+vmm_early_param("vmm."VMM_DEVTREE_BOOTCMD_ATTR_NAME"=", bootcmd_param_save);
 
 bool vmm_init_done(void)
 {
@@ -102,16 +202,9 @@ bool vmm_init_done(void)
 
 static void system_postinit_work(struct vmm_work *work)
 {
-#define BOOTCMD_WIDTH		256
-	char bcmd[BOOTCMD_WIDTH];
 	const char *str;
 	u32 c, freed;
-	struct vmm_chardev *cdev;
-#if defined(CONFIG_RTC)
-	int ret;
-	struct rtc_device *rdev;
-#endif
-	struct vmm_devtree_node *node, *node1;
+	struct vmm_devtree_node *node;
 
 	/* Print status of present host CPUs */
 	for_each_present_cpu(c) {
@@ -130,89 +223,44 @@ static void system_postinit_work(struct vmm_work *work)
 
 	/* Process console device passed via bootargs */
 	if (console_param) {
-		/* Find character device based on console parameter */
-		if (!(cdev = vmm_chardev_find(console_param))) {
-			if ((node1 = vmm_devtree_getnode(console_param))) {
-				cdev = vmm_chardev_find(node1->name);
-				vmm_devtree_dref_node(node1);
-			}
-		}
-		/* Set chosen console device as stdio device */
-		if (cdev) {
-			vmm_printf("init: change stdio device to %s\n", cdev->name);
-			vmm_stdio_change_device(cdev);
-		}
-		vmm_free(console_param);
-		console_param = NULL;
+		console_param_process(console_param);
+	}
+
+	/* Process rtc device passed via bootargs */
+	if (rtcdev_param) {
+		rtcdev_param_process(rtcdev_param);
 	}
 
 	/* Process boot commands passed via bootargs */
 	if (bootcmd_param) {
-		vmm_printf("bootcmd: %s\n", bootcmd_param);
-		cdev = vmm_stdio_device();
-		vmm_cmdmgr_execute_cmdstr(cdev, bootcmd_param, NULL);
-		vmm_free(bootcmd_param);
-		bootcmd_param = NULL;
+		bootcmd_param_process(bootcmd_param, bootcmd_param_len);
 	}
 
 	/* Process attributes in chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (node) {
-		/* Find character device based on console attribute */
+		/* Process console device passed via chosen node */
 		str = NULL;
-		vmm_devtree_read_string(node,
-					VMM_DEVTREE_CONSOLE_ATTR_NAME, &str);
-		if (!(cdev = vmm_chardev_find(str))) {
-			if ((node1 = vmm_devtree_getnode(str))) {
-				cdev = vmm_chardev_find(node1->name);
-				vmm_devtree_dref_node(node1);
-			}
-		}
-		/* Set chosen console device as stdio device */
-		if (cdev) {
-			vmm_printf("init: change stdio device to %s\n", cdev->name);
-			vmm_stdio_change_device(cdev);
+		if (vmm_devtree_read_string(node,
+			VMM_DEVTREE_CONSOLE_ATTR_NAME, &str) == VMM_OK) {
+			console_param_process(str);
 		}
 
-#if defined(CONFIG_RTC)
-		/* Find rtc device based on rtc_device attribute */
+		/* Process rtc device passed via chosen node */
 		str = NULL;
-		vmm_devtree_read_string(node,
-					VMM_DEVTREE_RTCDEV_ATTR_NAME, &str);
-		if (!(rdev = rtc_device_find(str))) {
-			if ((node1 = vmm_devtree_getnode(str))) {
-				rdev = rtc_device_find(node1->name);
-				vmm_devtree_dref_node(node1);
-			}
+		if (vmm_devtree_read_string(node,
+			VMM_DEVTREE_RTCDEV_ATTR_NAME, &str) == VMM_OK) {
+			rtcdev_param_process(str);
 		}
-		/* Syncup wallclock time with chosen rtc device */
-		if (rdev) {
-			ret = rtc_device_sync_wallclock(rdev);
-			vmm_printf("init: syncup wallclock using %s", rdev->name);
-			if (ret) {
-				vmm_printf("(error %d)", ret);
-			}
-			vmm_printf("\n");
-		}
-#endif
 
-		/* Execute boot commands */
+		/* Process boot commands passed via chosen node */
+		str = NULL;
 		if (vmm_devtree_read_string(node,
 			VMM_DEVTREE_BOOTCMD_ATTR_NAME, &str) == VMM_OK) {
-			c = vmm_devtree_attrlen(node,
-						VMM_DEVTREE_BOOTCMD_ATTR_NAME);
-			while (c) {
-				/* Print boot command */
-				vmm_printf("bootcmd: %s\n", str);
-				/* Execute boot command */
-				strlcpy(bcmd, str, sizeof(bcmd));
-				cdev = vmm_stdio_device();
-				vmm_cmdmgr_execute_cmdstr(cdev, bcmd, NULL);
-				/* Next boot command */
-				c -= strlen(str) + 1;
-				str += strlen(str) + 1;
-			}
+			bootcmd_param_process(str,
+				vmm_devtree_attrlen(node,
+					VMM_DEVTREE_BOOTCMD_ATTR_NAME));
 		}
 
 		/* De-reference chosen node */
