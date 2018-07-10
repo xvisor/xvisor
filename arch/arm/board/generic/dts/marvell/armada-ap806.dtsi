@@ -36,7 +36,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";
-			ranges = <0x0 0x0 0x0 0x1000000>;
+			ranges = <0x0 0x0 0xf0000000 0x1000000>;
 
 			gic: interrupt-controller@210000 {
 				compatible = "arm,gic-400";
@@ -46,36 +46,36 @@
 				ranges;
 				interrupt-controller;
 				interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
-				reg = <0xf0210000 0x10000>,
-				      <0xf0220000 0x20000>,
-				      <0xf0240000 0x20000>,
-				      <0xf0260000 0x20000>;
+				reg = <0x210000 0x10000>,
+				      <0x220000 0x20000>,
+				      <0x240000 0x20000>,
+				      <0x260000 0x20000>;
 
 				gic_v2m0: v2m@280000 {
 					compatible = "arm,gic-v2m-frame";
 					msi-controller;
-					reg = <0xf0280000 0x1000>;
+					reg = <0x280000 0x1000>;
 					arm,msi-base-spi = <160>;
 					arm,msi-num-spis = <32>;
 				};
 				gic_v2m1: v2m@290000 {
 					compatible = "arm,gic-v2m-frame";
 					msi-controller;
-					reg = <0xf0290000 0x1000>;
+					reg = <0x290000 0x1000>;
 					arm,msi-base-spi = <192>;
 					arm,msi-num-spis = <32>;
 				};
 				gic_v2m2: v2m@2a0000 {
 					compatible = "arm,gic-v2m-frame";
 					msi-controller;
-					reg = <0xf02a0000 0x1000>;
+					reg = <0x2a0000 0x1000>;
 					arm,msi-base-spi = <224>;
 					arm,msi-num-spis = <32>;
 				};
 				gic_v2m3: v2m@2b0000 {
 					compatible = "arm,gic-v2m-frame";
 					msi-controller;
-					reg = <0xf02b0000 0x1000>;
+					reg = <0x2b0000 0x1000>;
 					arm,msi-base-spi = <256>;
 					arm,msi-num-spis = <32>;
 				};
@@ -91,7 +91,7 @@
 
 			uart0: serial@512000 {
 				compatible = "snps,dw-apb-uart";
-				reg = <0xf0512000 0x100>;
+				reg = <0x512000 0x100>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
 				reg-io-width = <1>;
@@ -103,7 +103,7 @@
 
 			uart1: serial@512100 {
 				compatible = "snps,dw-apb-uart";
-				reg = <0xf0512100 0x100>;
+				reg = <0x512100 0x100>;
 				reg-shift = <2>;
 				interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
 				reg-io-width = <1>;
@@ -113,13 +113,13 @@
 
 			watchdog: watchdog@610000 {
 				compatible = "arm,sbsa-gwdt";
-				reg = <0xf0610000 0x1000>, <0xf0600000 0x1000>;
+				reg = <0x610000 0x1000>, <0x600000 0x1000>;
 				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
 			ap_sdhci0: sdhci@6e0000 {
 				compatible = "marvell,armada-ap806-sdhci";
-				reg = <0xf06e0000 0x300>;
+				reg = <0x6e0000 0x300>;
 				interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 				clock-names = "core";
 				clocks = <&ap_clk 4>;
@@ -130,7 +130,7 @@
 
 			ap_syscon: system-controller@6f4000 {
 				compatible = "syscon", "simple-mfd";
-				reg = <0xf06f4000 0x2000>;
+				reg = <0x6f4000 0x2000>;
 
 				ap_clk: clock {
 					compatible = "marvell,ap806-clock";
@@ -158,8 +158,8 @@
 
 			ap_thermal: thermal@6f808c {
 				compatible = "marvell,armada-ap806-thermal";
-				reg = <0xf06f808c 0x4>,
-				      <0xf06f8084 0x8>;
+				reg = <0x6f808c 0x4>,
+				      <0x6f8084 0x8>;
 			};
 		};
 	};
