@@ -52,8 +52,7 @@
  * aliases of non-secure registers (e.g. nsCR0: 0x400, nsGFSR: 0x448,
  * nsGFSYNR0: 0x450)
  */
-#define ARM_SMMU_GR0_NS(smmu)						\
-	((smmu)->base)
+#define ARM_SMMU_GR0_NS(smmu)		((smmu)->base)
 
 /*
  * Some 64-bit registers only make sense to write atomically, but in such
@@ -279,11 +278,13 @@ struct arm_smmu_s2cr {
 };
 
 struct smmu_vmsa_device {
-	struct vmm_devtree_node *node;
-	void *base;
 	struct list_head list;
-	
-	unsigned long reg_size;
+	struct vmm_devtree_node *node;
+
+	void *base;
+	physical_addr_t reg_pa;
+	physical_size_t reg_size;
+
 	unsigned int *irqs;
 	u32 num_global_irqs;
 	u32 num_context_irqs;
@@ -296,11 +297,6 @@ struct smmu_vmsa_device {
 	u32 num_context_banks;
 	u16 num_mapping_groups;
 	u16 streamid_mask;
-	u16 smr_mask_mask;
-
-	/* io_xxx only updated at time of attaching device */
-	struct vmm_device *io_dev;
-	struct vmm_iommu_domain *io_domain;
 };
 
 struct smmu_vmsa_domain {
@@ -314,20 +310,21 @@ struct smmu_vmsa_domain {
 	vmm_spinlock_t lock;			/* Protects mappings */
 };
 
-struct sids_t {
+struct smmu_vmsa_sid {
 	unsigned int sid;
 	unsigned int mask;
+	int smr;
 };
 
 struct smmu_vmsa_archdata {
 	struct smmu_vmsa_device *mmu;
-	struct sids_t *sids;
+	struct smmu_vmsa_sid *sids;
 	unsigned int num_sid;
-	int total_cb;
-	int cbnum[];
+
+	/* io_xxx only updated at time of attaching device */
+	struct vmm_device *io_dev;
+	struct vmm_iommu_domain *io_domain;
 };
-
-
 
 static DEFINE_SPINLOCK(smmu_devices_lock);
 static LIST_HEAD(smmu_devices);
@@ -357,59 +354,25 @@ static void arm_smmu_write_smr(struct smmu_vmsa_device *smmu, int idx)
 	vmm_writel_relaxed(reg, ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_SMR(idx));
 }
 
-static void smmu_write_sme(struct smmu_vmsa_device *smmu, int idx)
+static void arm_smmu_write_sme(struct smmu_vmsa_device *smmu, int idx)
 {
 	arm_smmu_write_s2cr(smmu, idx);
 	if (smmu->smrs)
 		arm_smmu_write_smr(smmu, idx);
 }
 
-static physical_addr_t smmu_iova_to_phys(struct vmm_iommu_domain *domain,
-					physical_addr_t iova)
+static void arm_smmu_reset_sme(struct smmu_vmsa_device *smmu, int idx)
 {
-	physical_addr_t ret;
-	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
-	struct io_pgtable_ops *ops= smmu_domain->iop;
+	u32 reg;
+	reg = (0x3 << S2CR_TYPE_SHIFT);
+	vmm_writel_relaxed(reg, ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_S2CR(idx));
 
-	if (!ops)
-		return 0;
-
-	ret = ops->iova_to_phys(ops, iova);
-
-	return ret;
+	reg = 0x00;
+	vmm_writel_relaxed(reg, ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_SMR(idx));
 }
 
-static int smmu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
-			physical_addr_t paddr, size_t size, int prot)
+static void arm_smmu_destroy_domain_context(struct smmu_vmsa_domain *smmu_domain)
 {
-	int ret;
-	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
-	struct io_pgtable_ops *ops= smmu_domain->iop;
-
-	if (!ops)
-		return VMM_ENODEV;
-
-	ret = ops->map(ops, iova, paddr, size, prot);
-	return ret;
-}
-
-static size_t smmu_unmap(struct vmm_iommu_domain *domain, physical_addr_t iova,
-			     size_t size)
-{
-	size_t ret;
-	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
-	struct io_pgtable_ops *ops= smmu_domain->iop;
-
-	if (!ops)
-		return 0;
-
-	ret = ops->unmap(ops, iova, size);
-	return ret;
-}
-
-static void arm_smmu_destroy_domain_context(struct vmm_iommu_domain *domain)
-{
-	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
 	struct smmu_vmsa_device *smmu = smmu_domain->mmu;
 	void *cb_base;
 
@@ -424,37 +387,8 @@ static void arm_smmu_destroy_domain_context(struct vmm_iommu_domain *domain)
 	vmm_writel_relaxed(0, cb_base + ARM_SMMU_CB_SCTLR);
 }
 
-static void smmu_domain_free(struct vmm_iommu_domain *io_domain)
-{
-	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(io_domain);
-
-	/*
-	 * Free the domain resources. We assume that all devices have already
-	 * been detached.
-	 */
-	arm_smmu_destroy_domain_context(io_domain);
-	free_io_pgtable_ops(smmu_domain->iop);
-	vmm_free(smmu_domain);
-}
-
-static struct vmm_iommu_domain * smmu_domain_alloc(unsigned int type)
-{
-	struct smmu_vmsa_domain *domain;
-
-	if (type != VMM_IOMMU_DOMAIN_UNMANAGED)
-		return NULL;
-
-	domain = vmm_zalloc(sizeof(*domain));
-	if (!domain)
-		return NULL;
-
-	INIT_SPIN_LOCK(&domain->lock);
-
-	return &domain->io_domain;
-}
-
-static int smmu_find_sids(struct smmu_vmsa_device *mmu, struct vmm_device *dev,
-			    struct sids_t *sids, unsigned int num_sid)
+static int arm_smmu_find_sids(struct smmu_vmsa_device *mmu, struct vmm_device *dev,
+			      struct smmu_vmsa_sid *sids, unsigned int num_sid)
 {
 	unsigned int i;
 
@@ -473,9 +407,9 @@ static int smmu_find_sids(struct smmu_vmsa_device *mmu, struct vmm_device *dev,
 			return VMM_EINVALID;
 
 		sids[i].sid = args.args[0];
-	
-		if (args.args_count == 2)	
+		if (args.args_count == 2)
 			sids[i].mask = args.args[1];
+		sids[i].smr = -1;
 	}
 
 	return 0;
@@ -615,45 +549,7 @@ static int arm_smmu_init_domain_context(struct smmu_vmsa_domain *domain,
 	return VMM_OK;
 }
 
-static int smmu_attach_device(struct vmm_iommu_domain *io_domain,
-			       struct vmm_device *dev)
-{
-	struct smmu_vmsa_archdata *archdata = dev->iommu_priv;
-	struct smmu_vmsa_device *mmu = archdata->mmu;
-	struct smmu_vmsa_domain *domain = to_vmsa_domain(io_domain);
-	irq_flags_t flags;
-	int ret = VMM_OK;
-
-	if (!mmu) {
-		vmm_lerror(dev->name, "Cannot attach to SMMU\n");
-		return VMM_ENXIO;
-	}
-
-	vmm_spin_lock_irqsave(&domain->lock, flags);
-
-	if (!domain->mmu) {
-		/* The domain hasn't been used yet, initialize it. */
-		domain->mmu = mmu;
-		mmu->io_dev = dev;
-		mmu->io_domain = io_domain;
-		ret = arm_smmu_init_domain_context(domain, mmu);
-	} else if (domain->mmu != mmu) {
-		/*
-		 * Something is wrong, we can't attach two devices using
-		 * different IOMMUs to the same domain.
-		 */
-		vmm_lerror(dev->name,
-			   "Can't attach SMMU %s to domain on SMMU %s\n",
-			   mmu->node->name, domain->mmu->node->name);
-		ret = VMM_EINVALID;
-	}
-
-	vmm_spin_unlock_irqrestore(&domain->lock, flags);
-
-	return ret;
-}
-
-static int smmu_find_sme(struct smmu_vmsa_device *smmu, u16 id, u16 mask)
+static int arm_smmu_find_sme(struct smmu_vmsa_device *smmu, u16 id, u16 mask)
 {
 	struct arm_smmu_smr *smrs = smmu->smrs;
 	int i, free_idx = -1;
@@ -673,6 +569,7 @@ static int smmu_find_sme(struct smmu_vmsa_device *smmu, u16 id, u16 mask)
 				free_idx = i;
 			continue;
 		}
+
 		/*
 		 * If the new entry is _entirely_ matched by an existing entry,
 		 * then reuse that, with the guarantee that there also cannot
@@ -683,6 +580,7 @@ static int smmu_find_sme(struct smmu_vmsa_device *smmu, u16 id, u16 mask)
 		if ((mask & smrs[i].mask) == mask &&
 		    !((id ^ smrs[i].id) & ~smrs[i].mask))
 			return i;
+
 		/*
 		 * If the new entry has any other overlap with an existing one,
 		 * though, then there always exists at least one stream ID
@@ -695,20 +593,202 @@ static int smmu_find_sme(struct smmu_vmsa_device *smmu, u16 id, u16 mask)
 	return free_idx;
 }
 
+static bool arm_smmu_free_sme(struct smmu_vmsa_device *smmu, int idx)
+{
+	if (--smmu->s2crs[idx].count)
+		return FALSE;
+
+	/* TODO: smmu->s2crs[idx]->reg = 0x0; */
+	if (smmu->smrs)
+		smmu->smrs[idx].valid = 0;
+
+	return TRUE;
+}
+
+static void arm_smmu_master_free_smes(struct smmu_vmsa_archdata *archdata)
+{
+	struct smmu_vmsa_device *smmu = archdata->mmu;
+	int i;
+
+	for (i = 0; i < archdata->num_sid; i++) {
+		if ((archdata->sids[i].smr > -1) &&
+		    arm_smmu_free_sme(smmu, archdata->sids[i].smr)) {
+			arm_smmu_write_sme(smmu, archdata->sids[i].smr);
+			archdata->sids[i].smr = -1;
+		}
+	}
+}
+
+static physical_addr_t smmu_iova_to_phys(struct vmm_iommu_domain *domain,
+					physical_addr_t iova)
+{
+	physical_addr_t ret;
+	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
+	struct io_pgtable_ops *ops= smmu_domain->iop;
+
+	if (!ops)
+		return 0;
+
+	ret = ops->iova_to_phys(ops, iova);
+
+	return ret;
+}
+
+static int smmu_map(struct vmm_iommu_domain *domain, physical_addr_t iova,
+			physical_addr_t paddr, size_t size, int prot)
+{
+	int ret;
+	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
+	struct io_pgtable_ops *ops= smmu_domain->iop;
+
+	if (!ops)
+		return VMM_ENODEV;
+
+	ret = ops->map(ops, iova, paddr, size, prot);
+	return ret;
+}
+
+static size_t smmu_unmap(struct vmm_iommu_domain *domain,
+			 physical_addr_t iova, size_t size)
+{
+	size_t ret;
+	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
+	struct io_pgtable_ops *ops= smmu_domain->iop;
+
+	if (!ops)
+		return 0;
+
+	ret = ops->unmap(ops, iova, size);
+	return ret;
+}
+
+static void smmu_domain_free(struct vmm_iommu_domain *domain)
+{
+	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
+
+	/*
+	 * Free the domain resources. We assume that all devices have already
+	 * been detached.
+	 */
+	arm_smmu_destroy_domain_context(smmu_domain);
+	free_io_pgtable_ops(smmu_domain->iop);
+	vmm_free(smmu_domain);
+}
+
+static struct vmm_iommu_domain * smmu_domain_alloc(unsigned int type)
+{
+	struct smmu_vmsa_domain *domain;
+
+	if (type != VMM_IOMMU_DOMAIN_UNMANAGED)
+		return NULL;
+
+	domain = vmm_zalloc(sizeof(*domain));
+	if (!domain)
+		return NULL;
+
+	INIT_SPIN_LOCK(&domain->lock);
+
+	return &domain->io_domain;
+}
+
+static int smmu_attach_device(struct vmm_iommu_domain *domain,
+			      struct vmm_device *dev)
+{
+	struct smmu_vmsa_archdata *archdata = dev->iommu_priv;
+	struct smmu_vmsa_device *smmu = archdata->mmu;
+	struct smmu_vmsa_domain *smmu_domain = to_vmsa_domain(domain);
+	irq_flags_t flags;
+	int i, ret = VMM_OK;
+
+	if (!smmu) {
+		vmm_lerror(dev->name, "Cannot attach to SMMU\n");
+		return VMM_ENXIO;
+	}
+
+	vmm_spin_lock_irqsave(&smmu_domain->lock, flags);
+	if (!smmu_domain->mmu) {
+		/* The domain hasn't been used yet, initialize it. */
+		smmu_domain->mmu = smmu;
+		ret = arm_smmu_init_domain_context(smmu_domain, smmu);
+	} else if (smmu_domain->mmu != smmu) {
+		/*
+		 * Something is wrong, we can't attach two devices using
+		 * different IOMMUs to the same domain.
+		 */
+		vmm_lerror(dev->name,
+			   "Can't attach SMMU %s to domain on SMMU %s\n",
+			   smmu->node->name, smmu_domain->mmu->node->name);
+		ret = VMM_EINVALID;
+	}
+	vmm_spin_unlock_irqrestore(&smmu_domain->lock, flags);
+	if (ret)
+		return ret;
+
+	/* Allocate stream matching entries */
+	for (i = 0; i < archdata->num_sid; ++i) {
+		ret = arm_smmu_find_sme(smmu,
+					archdata->sids[i].sid,
+					archdata->sids[i].mask);
+		if (ret < 0)
+			goto free_archdata_smes;
+
+		if (smmu->smrs && smmu->s2crs[ret].count == 0) {
+			smmu->smrs[ret].id = archdata->sids[i].sid;
+			smmu->smrs[ret].mask = archdata->sids[i].mask;
+			smmu->smrs[ret].valid = 1;
+		}
+
+		smmu->s2crs[ret].count++;
+
+		archdata->sids[i].smr = ret;
+
+		arm_smmu_write_sme(smmu, archdata->sids[i].smr);
+	}
+
+	archdata->io_dev = dev;
+	archdata->io_domain = domain;
+
+	vmm_linfo(smmu->node->name, "arm-smmu: attached %s device "
+		  "to domain=0x%p\n", dev->name, domain);
+
+	return VMM_OK;
+
+free_archdata_smes:
+	arm_smmu_master_free_smes(archdata);
+	return ret;
+}
+
+static void smmu_detach_device(struct vmm_iommu_domain *domain,
+			       struct vmm_device *dev)
+{
+	struct smmu_vmsa_archdata *archdata = dev->iommu_priv;
+	struct smmu_vmsa_device *smmu = archdata->mmu;
+
+	vmm_linfo(smmu->node->name, "arm-smmu: detached %s device "
+		  "from domain=0x%p\n", dev->name, domain);
+
+	arm_smmu_master_free_smes(archdata);
+}
+
 static int smmu_add_device(struct vmm_device *dev)
 {
-	struct smmu_vmsa_archdata *archdata;
-	struct smmu_vmsa_device *mmu;
+	struct smmu_vmsa_archdata *archdata = NULL;
+	struct smmu_vmsa_device *smmu;
 	struct vmm_iommu_group *group = NULL;
-	struct sids_t *sids = NULL;
+	struct smmu_vmsa_sid *sids = NULL;
 	unsigned int i;
 	int num_sid;
 	int ret = VMM_ENODEV;
-	
-	vmm_lerror(dev->name, "name: %s, of_name: %s\n",dev->name, dev->of_node->name);
+
+	num_sid = vmm_devtree_count_phandle_with_args(dev->of_node,
+						"iommus", "#iommu-cells");
+	if (num_sid <= 0)
+		return VMM_ENODEV;
+
 	if (dev->iommu_priv) {
-		vmm_lwarning(dev->name,
-			     "IOMMU driver already assigned to device\n");
+		vmm_lerror(dev->name,
+			   "%s: IOMMU driver already assigned to device\n",
+			   __func__);
 		return VMM_EINVALID;
 	}
 
@@ -717,21 +797,19 @@ static int smmu_add_device(struct vmm_device *dev)
 		return VMM_ENOMEM;
 	}
 
-	num_sid = vmm_devtree_count_phandle_with_args(dev->of_node,
-						"iommus", "#iommu-cells");
-	if (num_sid <= 0)
-		return VMM_ENODEV;
-	
 	sids = vmm_zalloc(num_sid * sizeof(*sids));
 	if (!sids) {
-		vmm_free(archdata);
-		return VMM_ENOMEM;
+		ret = VMM_ENOMEM;
+		goto free_archdata;
 	}
-	
+	for (i = 0; i < num_sid; i++)
+		sids[i].smr = -1;
+	archdata->sids = sids;
+	archdata->num_sid = num_sid;
+
 	vmm_spin_lock(&smmu_devices_lock);
-	
-	list_for_each_entry(mmu, &smmu_devices, list) {
-		ret = smmu_find_sids(mmu, dev, sids, num_sid);
+	list_for_each_entry(smmu, &smmu_devices, list) {
+		ret = arm_smmu_find_sids(smmu, dev, sids, num_sid);
 		if (!ret) {
 			/*
 			 * TODO Take a reference to the MMU to protect
@@ -740,122 +818,77 @@ static int smmu_add_device(struct vmm_device *dev)
 			break;
 		}
 	}
-	
-		
 	vmm_spin_unlock(&smmu_devices_lock);
-	
 	if (ret < 0)
-		goto error;
-	
-	/* check number of bits in stream ID */
+		goto free_archdata_sids;
+	archdata->mmu = smmu;
+
+	/* Sanity check number of bits in stream ID */
 	for (i = 0; i < num_sid; ++i) {
-		if (sids[i].sid & ~mmu->streamid_mask) {
+		if (sids[i].sid & ~smmu->streamid_mask) {
 			ret = VMM_EINVALID;
-			goto error;
+			goto free_archdata_sids;
 		}
-		sids[i].mask &= mmu->smr_mask_mask;
-
-		ret = smmu_find_sme(mmu, sids[i].sid, sids[i].mask);
-		if (ret < 0)
-			goto error;
-
-		if (mmu->smrs && mmu->s2crs[ret].count == 0) {
-			mmu->smrs[ret].id = sids[i].sid;
-			mmu->smrs[ret].mask = sids[i].mask;
-			mmu->smrs[ret].valid = 1;
-		}
-
-		mmu->s2crs[ret].count++;
-		archdata->cbnum[i] = ret;
+		sids[i].mask &= smmu->streamid_mask;
 	}
-	
-	archdata->total_cb = i;
 
-	group = vmm_iommu_group_alloc();	
+	archdata->io_dev = NULL;
+	archdata->io_domain = NULL;
+
+	group = vmm_iommu_group_alloc();
 	if (VMM_IS_ERR(group)) {
 		vmm_lerror(dev->name, "Failed to allocate IOMMU group\n");
 		ret = VMM_PTR_ERR(group);
-		goto error;
+		goto free_archdata_sids;
 	}
-	
+
 	ret = vmm_iommu_group_add_device(group, dev);
 	vmm_iommu_group_put(group);
-
 	if (ret < 0) {
 		vmm_lerror(dev->name, "Failed to add device to IPMMU group\n");
-		group = NULL;
-		goto error;
+		goto free_archdata_sids;
 	}
-	
-		archdata->mmu = mmu;
-	archdata->sids = sids;
-	archdata->num_sid = num_sid;
+
 	dev->iommu_priv = archdata;
 
-	/* Enough bookeeping, configure actual hardware here */
-	for (i = 0; i < num_sid; ++i) {
-		smmu_write_sme(mmu, archdata->cbnum[i]);
-	}
+	vmm_linfo(smmu->node->name, "arm-smmu: added %s device\n", dev->name);
 
 	return 0;
 
-error:
-	vmm_free(sids);
-	vmm_free(dev->iommu_priv);
-	dev->iommu_priv = NULL;
-	
-	if (!VMM_IS_ERR_OR_NULL(group))
-		vmm_iommu_group_remove_device(dev);
+free_archdata_sids:
+	vmm_free(archdata->sids);
+free_archdata:
+	vmm_free(archdata);
 
 	return ret;
-}
-
-static bool smmu_free_sme(struct smmu_vmsa_device *smmu, int idx)
-{
-	if (--smmu->s2crs[idx].count)
-		return false;
-
-	/* TODO: smmu->s2crs[idx]->reg = 0x0; */
-	if (smmu->smrs)
-		smmu->smrs[idx].valid = false;
-
-	return true;
-}
-
-static void smmu_master_free_smes(struct smmu_vmsa_archdata *archdata)
-{
-	struct smmu_vmsa_device *smmu = archdata->mmu;
-	int i, idx = 0; /* TODO: idx ?? */
-
-	for (i =0; i < archdata->total_cb; i++) {
-		if (smmu_free_sme(smmu, idx))
-			smmu_write_sme(smmu, idx);
-	}
 }
 
 static void smmu_remove_device(struct vmm_device *dev)
 {
 	struct smmu_vmsa_archdata *archdata = dev->iommu_priv;
+	struct smmu_vmsa_device *smmu = archdata->mmu;
 
-	smmu_master_free_smes(archdata);
+	vmm_linfo(smmu->node->name, "arm-smmu: removed %s device\n",
+		  dev->name);
 
 	vmm_iommu_group_remove_device(dev);
 
-	vmm_free(dev->iommu_priv);
+	vmm_free(archdata->sids);
+	vmm_free(archdata);
 
 	dev->iommu_priv = NULL;
 }
 
 static struct vmm_iommu_ops smmu_ops = {
 	.domain_alloc = smmu_domain_alloc,
-	.domain_free = smmu_domain_free,	
+	.domain_free = smmu_domain_free,
 	.attach_dev = smmu_attach_device,
-	.detach_dev = NULL,	
+	.detach_dev = smmu_detach_device,
 	.map = smmu_map,
-	.unmap = smmu_unmap,	
-	.iova_to_phys = smmu_iova_to_phys,	
+	.unmap = smmu_unmap,
+	.iova_to_phys = smmu_iova_to_phys,
 	.add_device = smmu_add_device,
-	.remove_device = smmu_remove_device,	
+	.remove_device = smmu_remove_device,
 	.pgsize_bitmap = SZ_1G | SZ_2M | SZ_4K,
 };
 
@@ -880,7 +913,8 @@ static vmm_irq_return_t smmu_global_fault(int irq, void *dev)
 		gfsr, gfsynr0, gfsynr1, gfsynr2);
 
 	vmm_writel(gfsr, gr0_base + ARM_SMMU_GR0_sGFSR);
-	return VMM_IRQ_NONE;
+
+	return VMM_IRQ_HANDLED;
 }
 
 static int arm_smmu_id_size_to_bits(int size)
@@ -910,86 +944,59 @@ static int arm_smmu_device_cfg_probe(struct smmu_vmsa_device *smmu)
 	u32 id;
 
 	/* ID0 */
-	gr0_base = (gr0_base + ARM_SMMU_GR0_ID0);
-
 	id = vmm_readl_relaxed(gr0_base + ARM_SMMU_GR0_ID0);
-
-	gr0_base = gr0_base - ARM_SMMU_GR0_ID0;
-
 	if (id & ID0_S1TS) {
-		vmm_lerror(node->name, "stage 1 translation\n");
+		vmm_linfo(node->name, "arm-smmu: stage 1 translation\n");
 	}
 
 	if (id & ID0_S2TS) {
-		vmm_lerror(node->name, "\tstage 2 translation\n");
+		vmm_linfo(node->name, "arm-smmu: stage 2 translation\n");
 	}
 
 	if (id & ID0_NTS) {
-		vmm_lerror(node->name, "nested translation\n");
+		vmm_linfo(node->name, "arm-smmu: nested translation\n");
 	}
 
 	/* Max. number of entries we have for stream matching/indexing */
 	size = 1 << ((id >> ID0_NUMSIDB_SHIFT) & ID0_NUMSIDB_MASK);
 	smmu->streamid_mask = size - 1;
 	if (id & ID0_SMS) {
-		u32 smr;
-
 		size = (id >> ID0_NUMSMRG_SHIFT) & ID0_NUMSMRG_MASK;
-
-		smr = smmu->streamid_mask << SMR_ID_SHIFT;
-		vmm_writel_relaxed(smr, gr0_base + ARM_SMMU_GR0_SMR(0));
-		smr = vmm_readl_relaxed(gr0_base + ARM_SMMU_GR0_SMR(0));
-		smmu->streamid_mask = smr >> SMR_ID_SHIFT;
-
-		smr = smmu->streamid_mask << SMR_MASK_SHIFT;
-		vmm_writel_relaxed(smr, gr0_base + ARM_SMMU_GR0_SMR(0));
-		smr = vmm_readl_relaxed(gr0_base + ARM_SMMU_GR0_SMR(0));
-		smmu->smr_mask_mask = smr >> SMR_MASK_SHIFT;
-
-		/* Zero-initialised to mark as invalid */
-		smmu->smrs = vmm_zalloc(size * sizeof(*smmu->smrs));
-
-		if (!smmu->smrs)
-			return VMM_ENOMEM;
+		smmu->num_mapping_groups = size;
+	} else {
+		return VMM_EINVALID;
 	}
-	smmu->s2crs = vmm_zalloc(size *sizeof(*smmu->s2crs));
-	smmu->num_mapping_groups = size;
-	vmm_lerror(node->name, "num_mapping_groups 0x%x\n", smmu->num_mapping_groups);
-	vmm_lerror(node->name, "streamid_mask : 0x%x\n", smmu->streamid_mask);
 
 	/* ID1 */
 	id = vmm_readl_relaxed(gr0_base + ARM_SMMU_GR0_ID1);
 	smmu->pgshift = (id & ID1_PAGESIZE) ? 16 : 12;
 	smmu->num_context_banks = (id >> ID1_NUMCB_SHIFT) & ID1_NUMCB_MASK;
-	vmm_lerror(node->name, "smmu->num_context_banks : 0x%x\n", smmu->num_context_banks);
+
+	vmm_linfo(node->name, "arm-smmu: num_contexts=%d num_groups=%d "
+		  "streamid_mask=0x%x\n", smmu->num_context_banks,
+		  smmu->num_mapping_groups, smmu->streamid_mask);
 
 	/* Check for size mismatch of SMMU address space from mapped region */
 	size = 1 << (((id >> ID1_NUMPAGENDXB_SHIFT) & ID1_NUMPAGENDXB_MASK) + 1);
 	size *= 2 << smmu->pgshift;
-	if (smmu->reg_size != size)
-		vmm_lerror(node->name,
-			"SMMU address space size (0x%lx) differs from mapped region size (0x%lx)!\n",
-			size, smmu->reg_size);
+	if (smmu->reg_size != size) {
+		vmm_lerror(node->name, "%s: address space size (0x%lx) "
+			   "differs from mapped region size (0x%lx)!\n",
+			   __func__, size, smmu->reg_size);
+		return VMM_EINVALID;
+	}
 
 	/* ID2 */
 	id = vmm_readl_relaxed(gr0_base + ARM_SMMU_GR0_ID2);
 	size = arm_smmu_id_size_to_bits((id >> ID2_IAS_SHIFT) & ID2_IAS_MASK);
 	smmu->ipa_size = size;
-
-	/* The output mask is also applied for bypass */
 	size = arm_smmu_id_size_to_bits((id >> ID2_OAS_SHIFT) & ID2_OAS_MASK);
 	smmu->pa_size = size;
+
+	vmm_linfo(node->name, "arm-smmu: ias_bits=%ld oas_bits=%ld\n",
+		  smmu->ipa_size, smmu->pa_size);
+
 	return 0;
-}
-
-static void smmu_reset_sme(struct smmu_vmsa_device *smmu, int idx)
-{
-	u32 reg;
-	reg = (0x3 << S2CR_TYPE_SHIFT);
-	vmm_writel_relaxed(reg, ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_S2CR(idx));
-
-	reg = 0x00;
-	vmm_writel_relaxed(reg, ARM_SMMU_GR0(smmu) + ARM_SMMU_GR0_SMR(idx));
 }
 
 static void __arm_smmu_tlb_sync(struct smmu_vmsa_device *smmu)
@@ -1026,7 +1033,7 @@ static void arm_smmu_device_reset(struct smmu_vmsa_device *smmu)
 	 * invalid and all S2CRn as bypass unless overridden.
 	 */
 	for (i = 0; i < smmu->num_mapping_groups; ++i) {
-		smmu_reset_sme(smmu, i);
+		arm_smmu_reset_sme(smmu, i);
 	}
 
 	/*
@@ -1080,110 +1087,172 @@ static void arm_smmu_device_reset(struct smmu_vmsa_device *smmu)
 
 static int arm_smmu_init(struct vmm_devtree_node *node)
 {
-	struct smmu_vmsa_device *smmu;
+	int ret = VMM_OK, i;
+	irq_flags_t flags;
 	virtual_addr_t va;
+	physical_addr_t pa;
 	physical_size_t size;
-	int ret, num_irqs, i;
-	u32 global_irq;
+	u32 num_irqs, global_irqs;
+	struct smmu_vmsa_device *smmu;
 
-	vmm_lerror(node->name, "SMMU probed\n\n");
 	smmu = vmm_zalloc(sizeof(*smmu));
 	if (!smmu) {
-		vmm_lerror(node->name, "cannot allocate device data\n");
-		return VMM_ENOMEM;
+		vmm_lerror(node->name, "%s: can't allocate device data\n",
+			   __func__);
+		ret = VMM_ENOMEM;
+		goto fail;
 	}
+	INIT_LIST_HEAD(&smmu->list);
+	vmm_devtree_ref_node(node);
+	smmu->node = node;
 
 	ret = vmm_devtree_request_regmap(node, &va, 0, "SMMU");
 	if (ret) {
-		vmm_lerror(node->name, "cannot map device registers\n");
-		vmm_free(smmu);
-		return ret;
+		vmm_lerror(node->name, "%s: can't map device regs\n",
+			   __func__);
+		goto fail_free_smmu;
 	}
+	smmu->base = (void *)va;
+
+	ret = vmm_devtree_regsize(node, &pa, 0);
+	if (ret) {
+		vmm_lerror(node->name, "%s: can't find reg physical address\n",
+			   __func__);
+		goto fail_unmap_regs;
+	}
+	smmu->reg_pa = size;
 
 	ret = vmm_devtree_regsize(node, &size, 0);
 	if (ret) {
-		vmm_lerror(node->name, "cannot find size of smmu regs\n");
-		vmm_free(smmu);
-		return ret;
+		vmm_lerror(node->name, "%s: can't find reg size\n", __func__);
+		goto fail_unmap_regs;
 	}
-	vmm_lerror(node->name, "size: 0x%"PRIPSIZE"\n", size);
-
-	vmm_devtree_ref_node(node);
-	smmu->node = node;
-	smmu->base = (void *)va;
 	smmu->reg_size = size;
 
-	INIT_LIST_HEAD(&smmu->list);
+	vmm_linfo(node->name, "arm-smmu: phys=0x%"PRIPADDR" size=%"PRIPSIZE
+		  "\n", pa, size);
 
 	if (vmm_devtree_read_u32(node, "#global-interrupts",
-				 &global_irq)) {
-		vmm_lerror(node->name, "missing #global-intretupts property\n");
-		return VMM_ENODEV;
+				 &global_irqs)) {
+		vmm_lerror(node->name, "%s: can't find #global-intretupts "
+			   "DT prop\n", __func__);
+		ret = VMM_ENODEV;
+		goto fail_unmap_regs;
+	}
+	num_irqs = vmm_devtree_irq_count(node);
+	if (num_irqs < global_irqs) {
+		vmm_lerror(node->name, "%s: number of global-intretupts "
+			   "cannot be larger than total interrupts\n",
+			   __func__);
+		ret = VMM_ENODEV;
+		goto fail_unmap_regs;
 	}
 
-	smmu->num_global_irqs = global_irq;
+	smmu->num_global_irqs = global_irqs;
+	smmu->num_context_irqs = num_irqs - global_irqs;
 
-	vmm_lerror(node->name, "num_global_irqs %x\n\n", global_irq);
-
-	num_irqs = vmm_devtree_irq_count(node);
-	vmm_lerror(node->name, "num_irqs %x\n\n", num_irqs);
-
-	smmu->num_context_irqs = num_irqs - 1;
+	vmm_linfo(node->name, "arm-smmu: num_irqs=%d num_global_irqs=%d\n",
+		  num_irqs, global_irqs);
 
 	if (!smmu->num_context_irqs) {
-		vmm_lerror(node->name, "found %d intretupts but expected at least %d\n",
-			num_irqs, smmu->num_global_irqs + 1);
-		return VMM_ENODEV;
+		vmm_lerror(node->name, "%s: need atleast one context irqs\n",
+			   __func__);
+		ret = VMM_ENODEV;
+		goto fail_unmap_regs;
 	}
 
 	smmu->irqs = vmm_zalloc(sizeof(*smmu->irqs) * num_irqs);
 	if (!smmu->irqs) {
-		vmm_lerror(node->name, "failed to allocate %d irqs\n", num_irqs);
-		return VMM_ENOMEM;
+		vmm_lerror(node->name, "%s: failed to allocate irqs\n",
+			   __func__);
+		ret = VMM_ENOMEM;
+		goto fail_unmap_regs;
 	}
 
 	for (i = 0; i < num_irqs; ++i) {
 		int irq = vmm_devtree_irq_parse_map(node, i);
-
 		if (irq < 0) {
-			vmm_lerror(node->name, "failed to get irq index %d\n", i);
-			return VMM_ENODEV;
+			vmm_lerror(node->name, "%s: failed to parse irq%d\n",
+				   __func__, i);
+			ret = VMM_ENODEV;
+			goto fail_free_irqs;
 		}
+
 		smmu->irqs[i] = irq;
 	}
+
 	ret = arm_smmu_device_cfg_probe(smmu);
-	if (ret)
-		return ret;
+	if (ret) {
+		vmm_lerror(node->name, "%s: cfg_probe() failed\n", __func__);
+		goto fail_free_irqs;
+	}
 
 	if (smmu->num_context_banks != smmu->num_context_irqs) {
-		vmm_lerror(node->name,
-			"found only %d context intretupt(s) but %d required\n",
-			smmu->num_context_irqs, smmu->num_context_banks);
-		return VMM_ENODEV;
+		vmm_lerror(node->name, "%s: number of context banks don't match "
+			   "number of context irqs\n", __func__);
+		ret = VMM_ENODEV;
+		goto fail_free_irqs;
+	}
+
+	smmu->smrs = vmm_zalloc(smmu->num_mapping_groups * sizeof(*smmu->smrs));
+	if (!smmu->smrs) {
+		vmm_lerror(node->name, "%s: failed to alloc SMRs\n",
+			   __func__);
+		ret = VMM_ENOMEM;
+		goto fail_free_irqs;
+	}
+
+	smmu->s2crs = vmm_zalloc(smmu->num_mapping_groups *sizeof(*smmu->s2crs));
+	if (!smmu->s2crs) {
+		vmm_lerror(node->name, "%s: failed to alloc S2CRs\n",
+			   __func__);
+		ret = VMM_ENOMEM;
+		goto fail_free_smrs;
 	}
 
 	for (i = 0; i < smmu->num_global_irqs; ++i) {
-		ret = vmm_host_irq_register(smmu->irqs[i],
-					   "arm-smmu global fault",
-				           smmu_global_fault,
-				           smmu);
+		ret = vmm_host_irq_register(smmu->irqs[i], "arm-smmu-global",
+				           smmu_global_fault, smmu);
 		if (ret) {
-			vmm_lerror(node->name, "failed to request global IRQ %d (%u)\n",
-				i, smmu->irqs[i]);
-			return ret;
+			vmm_lerror(node->name, "%s: failed to register global "
+				   "irq%d (%u)\n", __func__, i, smmu->irqs[i]);
+			while (i > 0) {
+				vmm_host_irq_unregister(smmu->irqs[i], smmu);
+				i--;
+			}
+			goto fail_free_s2crs;
 		}
 	}
 
 	arm_smmu_device_reset(smmu);
 
-	vmm_spin_lock(&smmu_devices_lock);
+	vmm_spin_lock_irqsave(&smmu_devices_lock, flags);
 	list_add_tail(&smmu->list, &smmu_devices);
-	vmm_spin_unlock(&smmu_devices_lock);
+	vmm_spin_unlock_irqrestore(&smmu_devices_lock, flags);
 
 	///* Oh, for a proper bus abstraction */
 	if (!vmm_iommu_present(&platform_bus))
 		vmm_bus_set_iommu(&platform_bus, &smmu_ops);
 
-	return 0;
+	vmm_linfo(node->name, "arm-smmu: ready!\n");
+
+	return VMM_OK;
+
+fail_free_s2crs:
+	vmm_free(smmu->s2crs);
+fail_free_smrs:
+	vmm_free(smmu->smrs);
+fail_free_irqs:
+	vmm_free(smmu->irqs);
+fail_unmap_regs:
+	vmm_devtree_regunmap_release(node, (virtual_addr_t)smmu->base, 0);
+fail_free_smmu:
+	vmm_devtree_dref_node(smmu->node);
+	vmm_free(smmu);
+fail:
+	return ret;
 }
+VMM_IOMMU_INIT_DECLARE(smmu_v2, "arm,smmu-v2", arm_smmu_init);
+VMM_IOMMU_INIT_DECLARE(smmu_400, "arm,mmu-400", arm_smmu_init);
+VMM_IOMMU_INIT_DECLARE(smmu_401, "arm,mmu-401", arm_smmu_init);
 VMM_IOMMU_INIT_DECLARE(smmu_500, "arm,mmu-500", arm_smmu_init);
