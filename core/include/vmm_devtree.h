@@ -49,6 +49,7 @@
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_COLORED_ROM	"colored_rom"
 #define VMM_DEVTREE_DEVICE_TYPE_VAL_SHARED_ROM	"shared_rom"
 #define VMM_DEVTREE_COMPATIBLE_ATTR_NAME	"compatible"
+#define VMM_DEVTREE_DMA_COHERENT_ATTR_NAME	"dma-coherent"
 #define VMM_DEVTREE_CLOCK_FREQ_ATTR_NAME	"clock-frequency"
 #define VMM_DEVTREE_CLOCKS_ATTR_NAME		"clocks"
 #define VMM_DEVTREE_CLOCK_NAMES_ATTR_NAME	"clock-names"
@@ -767,6 +768,9 @@ int vmm_devtree_regunmap_release(struct vmm_devtree_node *node,
 
 /** Check whether device registers are big endian */
 bool vmm_devtree_is_reg_big_endian(struct vmm_devtree_node *node);
+
+/** Check whether device is DMA cache-coherent */
+bool vmm_devtree_is_dma_coherent(struct vmm_devtree_node *node);
 
 /** Count number of enteries in nodeid table */
 u32 vmm_devtree_nidtbl_count(void);

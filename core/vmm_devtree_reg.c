@@ -420,6 +420,14 @@ bool vmm_devtree_is_reg_big_endian(struct vmm_devtree_node *node)
 	return FALSE;
 }
 
+bool vmm_devtree_is_dma_coherent(struct vmm_devtree_node *node)
+{
+	if (node &&
+	    vmm_devtree_getattr(node, VMM_DEVTREE_DMA_COHERENT_ATTR_NAME))
+		return TRUE;
+	return FALSE;
+}
+
 int vmm_devtree_request_regmap(struct vmm_devtree_node *node,
 			       virtual_addr_t *addr, int regset,
 			       const char *resname)
