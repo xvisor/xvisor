@@ -178,6 +178,8 @@ struct arm_smmu_device {
 	unsigned long			pgsize_bitmap;
 
 	vmm_spinlock_t			global_sync_lock;
+
+	struct vmm_iommu_controller	controller;
 };
 
 enum arm_smmu_context_fmt {
@@ -248,9 +250,14 @@ static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ 0, NULL},
 };
 
-static struct arm_smmu_domain* to_smmu_domain(struct vmm_iommu_domain *dom)
+static struct arm_smmu_domain *to_smmu_domain(struct vmm_iommu_domain *dom)
 {
 	return container_of(dom, struct arm_smmu_domain, domain);
+}
+
+static struct arm_smmu_device *to_smmu_device(struct vmm_iommu_controller *ct)
+{
+	return container_of(ct, struct arm_smmu_device, controller);
 }
 
 static void parse_driver_options(struct arm_smmu_device *smmu)
@@ -1093,27 +1100,41 @@ static void arm_smmu_domain_free(struct vmm_iommu_domain *domain)
 	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 
 	/*
-	 * Free the domain resources. We assume that all devices have already
-	 * been detached.
+	 * Free the domain resources. We assume that all devices
+	 * have already been detached.
 	 */
 	arm_smmu_destroy_domain_context(domain);
 	vmm_free(smmu_domain);
 }
 
-static struct vmm_iommu_domain *arm_smmu_domain_alloc(unsigned int type)
+static struct vmm_iommu_domain *arm_smmu_domain_alloc(unsigned int type,
+					struct vmm_iommu_controller *ctrl)
 {
+	int ret;
 	struct arm_smmu_domain *smmu_domain;
+	struct arm_smmu_device *smmu = to_smmu_device(ctrl);
 
 	if (type != VMM_IOMMU_DOMAIN_UNMANAGED &&
 	    type != VMM_IOMMU_DOMAIN_IDENTITY)
 		return NULL;
 
+	/* Allocate SMMU domain */
 	smmu_domain = vmm_zalloc(sizeof(*smmu_domain));
 	if (!smmu_domain)
 		return NULL;
 
 	INIT_MUTEX(&smmu_domain->init_mutex);
 	INIT_SPIN_LOCK(&smmu_domain->cb_lock);
+
+	/* Allocate and initialize context bank */
+	ret = arm_smmu_init_domain_context(&smmu_domain->domain, smmu);
+	if (ret) {
+		vmm_lerror(smmu->node->name,
+			   "Failed to init SMMU context bank (error %d)\n",
+			   ret);
+		vmm_free(smmu_domain);
+		return NULL;
+	}
 
 	return &smmu_domain->domain;
 }
@@ -1130,11 +1151,7 @@ static int arm_smmu_attach_device(struct vmm_iommu_domain *domain,
 		return VMM_ENXIO;
 	}
 
-	ret = arm_smmu_init_domain_context(domain, smmu);
-	if (ret)
-		return ret;
-
-	/* Allocate stream matching entries */
+	/* Allocate and update stream matching entries */
 	vmm_mutex_lock(&smmu->stream_map_mutex);
 	for (i = 0; i < archdata->num_sid; ++i) {
 		ret = arm_smmu_find_sme(smmu,
@@ -1213,7 +1230,7 @@ static int arm_smmu_add_device(struct vmm_device *dev)
 	sids = vmm_zalloc(num_sid * sizeof(*sids));
 	if (!sids) {
 		ret = VMM_ENOMEM;
-		goto free_archdata;
+		goto fail_free_archdata;
 	}
 	for (i = 0; i < num_sid; i++)
 		sids[i].sme = -1;
@@ -1233,18 +1250,18 @@ static int arm_smmu_add_device(struct vmm_device *dev)
 	}
 	vmm_spin_unlock(&smmu_devices_lock);
 	if (ret < 0)
-		goto free_archdata_sids;
+		goto fail_free_archdata_sids;
 	archdata->smmu = smmu;
 
 	/* Sanity check number of bits in stream ID */
 	for (i = 0; i < num_sid; ++i) {
 		if (sids[i].sid & ~smmu->streamid_mask) {
 			ret = VMM_EINVALID;
-			goto free_archdata_sids;
+			goto fail_free_archdata_sids;
 		}
 		if (sids[i].mask & ~smmu->smr_mask_mask) {
 			ret = VMM_EINVALID;
-			goto free_archdata_sids;
+			goto fail_free_archdata_sids;
 		}
 		sids[i].mask &= smmu->streamid_mask;
 	}
@@ -1252,19 +1269,24 @@ static int arm_smmu_add_device(struct vmm_device *dev)
 	archdata->io_dev = NULL;
 	archdata->io_domain = NULL;
 
-	group = vmm_iommu_group_alloc();
+	group = vmm_iommu_group_alloc(dev->name, &smmu->controller);
 	if (VMM_IS_ERR(group)) {
 		vmm_lerror(dev->name, "Failed to allocate IOMMU group\n");
 		ret = VMM_PTR_ERR(group);
-		goto free_archdata_sids;
+		goto fail_free_archdata_sids;
 	}
 
 	ret = vmm_iommu_group_add_device(group, dev);
-	vmm_iommu_group_put(group);
 	if (ret < 0) {
-		vmm_lerror(dev->name, "Failed to add device to IPMMU group\n");
-		goto free_archdata_sids;
+		vmm_lerror(dev->name, "Failed to add device to IOMMU group\n");
+		goto fail_free_group;
 	}
+
+	/*
+	 * We put group in-advance so that group is free'ed
+	 * automatically when all device are removed from it.
+	 */
+	vmm_iommu_group_put(group);
 
 	dev->iommu_priv = archdata;
 
@@ -1272,9 +1294,11 @@ static int arm_smmu_add_device(struct vmm_device *dev)
 
 	return 0;
 
-free_archdata_sids:
+fail_free_group:
+	vmm_iommu_group_put(group);
+fail_free_archdata_sids:
 	vmm_free(archdata->sids);
-free_archdata:
+fail_free_archdata:
 	vmm_free(archdata);
 
 	return ret;
@@ -1288,14 +1312,14 @@ static void arm_smmu_remove_device(struct vmm_device *dev)
 	vmm_linfo(smmu->node->name, "arm-smmu: removed %s device\n",
 		  dev->name);
 
+	dev->iommu_priv = NULL;
+
 	arm_smmu_master_free_smes(archdata);
 
 	vmm_iommu_group_remove_device(dev);
 
 	vmm_free(archdata->sids);
 	vmm_free(archdata);
-
-	dev->iommu_priv = NULL;
 }
 
 static struct vmm_iommu_ops arm_smmu_ops = {
@@ -1756,6 +1780,21 @@ static int arm_smmu_init(struct vmm_devtree_node *node,
 
 	arm_smmu_device_reset(smmu);
 	arm_smmu_test_smr_masks(smmu);
+
+	/* Register IOMMU controller */
+	if (strlcpy(smmu->controller.name, smmu->node->name,
+	    sizeof(smmu->controller.name)) >= sizeof(smmu->controller.name)) {
+		vmm_lerror(node->name, "%s: failed to copy controller name\n",
+			   __func__);
+		ret = VMM_EOVERFLOW;
+		goto fail_free_cbs;
+	}
+	ret = vmm_iommu_controller_register(&smmu->controller);
+	if (ret) {
+		vmm_lerror(node->name, "%s: failed to register controller\n",
+			   __func__);
+		goto fail_free_cbs;
+	}
 
 	vmm_spin_lock_irqsave(&smmu_devices_lock, flags);
 	list_add_tail(&smmu->list, &smmu_devices);

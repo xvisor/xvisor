@@ -36,7 +36,6 @@
 #include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
-#include <vmm_devdrv.h>
 #include <vmm_stdio.h>
 #include <vmm_iommu.h>
 #include <libs/bitops.h>
@@ -51,6 +50,10 @@
 #endif
 
 struct vmm_iommu_group {
+	char *name;
+	struct vmm_iommu_controller *ctrl;
+	struct dlist head;
+
 	atomic_t ref_count;
 	struct vmm_mutex mutex;
 	struct vmm_iommu_domain *domain;
@@ -58,32 +61,149 @@ struct vmm_iommu_group {
 	struct vmm_blocking_notifier_chain notifier;
 	void *iommu_data;
 	void (*iommu_data_release)(void *iommu_data);
-	char *name;
 	int id;
 };
 
 struct vmm_iommu_device {
 	struct dlist list;
 	struct vmm_device *dev;
-	char *name;
 };
 
 static vmm_rwlock_t iommu_groups_lock;
 static struct vmm_iommu_group *iommu_groups[CONFIG_IOMMU_MAX_GROUPS];
 static const struct vmm_devtree_nodeid *iommu_matches;
 
+/* =============== IOMMU Controller APIs =============== */
+
+static struct vmm_class iommuctrl_class = {
+	.name = VMM_IOMMU_CONTROLLER_CLASS_NAME,
+};
+
+int vmm_iommu_controller_register(struct vmm_iommu_controller *ctrl)
+{
+	if (!ctrl) {
+		return VMM_EINVALID;
+	}
+
+	vmm_devdrv_initialize_device(&ctrl->dev);
+	if (strlcpy(ctrl->dev.name, ctrl->name, sizeof(ctrl->dev.name)) >=
+	    sizeof(ctrl->dev.name)) {
+		return VMM_EOVERFLOW;
+	}
+	ctrl->dev.class = &iommuctrl_class;
+	vmm_devdrv_set_data(&ctrl->dev, ctrl);
+
+	INIT_MUTEX(&ctrl->groups_lock);
+	INIT_LIST_HEAD(&ctrl->groups);
+
+	return vmm_devdrv_register_device(&ctrl->dev);
+}
+
+int vmm_iommu_controller_unregister(struct vmm_iommu_controller *ctrl)
+{
+	if (!ctrl) {
+		return VMM_EFAIL;
+	}
+
+	return vmm_devdrv_unregister_device(&ctrl->dev);
+}
+
+struct vmm_iommu_controller *vmm_iommu_controller_find(const char *name)
+{
+	struct vmm_device *dev;
+
+	dev = vmm_devdrv_class_find_device_by_name(&iommuctrl_class, name);
+	if (!dev) {
+		return NULL;
+	}
+
+	return vmm_devdrv_get_data(dev);
+}
+
+struct iommu_controller_iterate_priv {
+	void *data;
+	int (*fn)(struct vmm_iommu_controller *, void *);
+};
+
+static int iommu_controller_iterate(struct vmm_device *dev, void *data)
+{
+	struct iommu_controller_iterate_priv *p = data;
+	struct vmm_iommu_controller *ctrl = vmm_devdrv_get_data(dev);
+
+	return p->fn(ctrl, p->data);
+}
+
+int vmm_iommu_controller_iterate(struct vmm_iommu_controller *start,
+		void *data, int (*fn)(struct vmm_iommu_controller *, void *))
+{
+	struct vmm_device *st = (start) ? &start->dev : NULL;
+	struct iommu_controller_iterate_priv p;
+
+	if (!fn) {
+		return VMM_EINVALID;
+	}
+
+	p.data = data;
+	p.fn = fn;
+
+	return vmm_devdrv_class_device_iterate(&iommuctrl_class, st,
+						&p, iommu_controller_iterate);
+}
+
+u32 vmm_iommu_controller_count(void)
+{
+	return vmm_devdrv_class_device_count(&iommuctrl_class);
+}
+
+int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
+		void *data, int (*fn)(struct vmm_iommu_group *, void *))
+{
+	struct vmm_iommu_group *group;
+	int ret = 0;
+
+	if (!ctrl || !fn)
+		return VMM_EINVALID;
+
+	vmm_mutex_lock(&ctrl->groups_lock);
+
+	list_for_each_entry(group, &ctrl->groups, head) {
+		ret = fn(group, data);
+		if (ret)
+			break;
+	}
+
+	vmm_mutex_unlock(&ctrl->groups_lock);
+
+	return ret;
+}
+
 /* =============== IOMMU Group APIs =============== */
 
-struct vmm_iommu_group *vmm_iommu_group_alloc(void)
+struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
+				struct vmm_iommu_controller *ctrl)
 {
 	int id;
 	irq_flags_t flags;
 	struct vmm_iommu_group *group;
 
+	if (!name || !ctrl) {
+		return VMM_ERR_PTR(VMM_EINVALID);
+	}
+
 	group = vmm_zalloc(sizeof(*group));
 	if (!group) {
 		return VMM_ERR_PTR(VMM_ENOMEM);
 	}
+
+	group->name = vmm_zalloc(strlen(name) + 1);
+	if (!group->name) {
+		vmm_free(group);
+		return VMM_ERR_PTR(VMM_ENOMEM);
+	}
+	strcpy(group->name, name);
+	group->name[strlen(name)] = '\0';
+	group->ctrl = ctrl;
+	INIT_LIST_HEAD(&group->head);
 
 	arch_atomic_write(&group->ref_count, 1);
 	INIT_MUTEX(&group->mutex);
@@ -102,9 +222,14 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(void)
 	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
 
 	if (id < 0 || CONFIG_IOMMU_MAX_GROUPS <= id) {
+		vmm_free(group->name);
 		vmm_free(group);
 		return VMM_ERR_PTR(VMM_ENOSPC);
 	}
+
+	vmm_mutex_lock(&ctrl->groups_lock);
+	list_add_tail(&group->head, &ctrl->groups);
+	vmm_mutex_unlock(&ctrl->groups_lock);
 
 	return group;
 }
@@ -131,9 +256,15 @@ void vmm_iommu_group_free(struct vmm_iommu_group *group)
 		return;
 	}
 
+	vmm_mutex_lock(&group->ctrl->groups_lock);
+	list_del(&group->head);
+	vmm_mutex_unlock(&group->ctrl->groups_lock);
+
 	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
 	iommu_groups[group->id] = NULL;
 	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
+
+	vmm_free(group->name);
 
 	if (group->iommu_data_release)
 		group->iommu_data_release(group->iommu_data);
@@ -154,48 +285,36 @@ struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id)
 	group = iommu_groups[id];
 	vmm_read_unlock_irqrestore_lite(&iommu_groups_lock, flags);
 
-	arch_atomic_inc(&group->ref_count);
+	if (group) {
+		arch_atomic_inc(&group->ref_count);
+	}
 
 	return group;
 }
 
 void *vmm_iommu_group_get_iommudata(struct vmm_iommu_group *group)
 {
-	return group->iommu_data;
+	return (group) ? group->iommu_data : NULL;
 }
 
 void vmm_iommu_group_set_iommudata(struct vmm_iommu_group *group,
 				   void *iommu_data,
 				   void (*release)(void *iommu_data))
 {
+	if (!group)
+		return;
+
 	group->iommu_data = iommu_data;
 	group->iommu_data_release = release;
-}
-
-int vmm_iommu_group_set_name(struct vmm_iommu_group *group,
-			     const char *name)
-{
-	if (group->name) {
-		vmm_free(group->name);
-		group->name = NULL;
-	}
-
-	if (!name)
-		return VMM_OK;
-
-	group->name = vmm_zalloc(strlen(name) + 1);
-	if (!group->name)
-		return VMM_ENOMEM;
-
-	strcpy(group->name, name);
-
-	return VMM_OK;
 }
 
 int vmm_iommu_group_add_device(struct vmm_iommu_group *group,
 				struct vmm_device *dev)
 {
 	struct vmm_iommu_device *device;
+
+	if (!group || !dev)
+		return VMM_EINVALID;
 
 	vmm_mutex_lock(&group->mutex);
 
@@ -253,7 +372,6 @@ void vmm_iommu_group_remove_device(struct vmm_device *dev)
 	if (!device)
 		return;
 
-	vmm_free(device->name);
 	vmm_free(device);
 	dev->iommu_group = NULL;
 
@@ -265,6 +383,9 @@ int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 {
 	struct vmm_iommu_device *device;
 	int ret = 0;
+
+	if (!group || !fn)
+		return VMM_EINVALID;
 
 	vmm_mutex_lock(&group->mutex);
 
@@ -282,18 +403,24 @@ int vmm_iommu_group_for_each_dev(struct vmm_iommu_group *group, void *data,
 int vmm_iommu_group_register_notifier(struct vmm_iommu_group *group,
 				      struct vmm_notifier_block *nb)
 {
+	if (!group)
+		return VMM_EINVALID;
+
 	return vmm_blocking_notifier_register(&group->notifier, nb);
 }
 
 int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 					struct vmm_notifier_block *nb)
 {
+	if (!group)
+		return VMM_EINVALID;
+
 	return vmm_blocking_notifier_unregister(&group->notifier, nb);
 }
 
 int vmm_iommu_group_id(struct vmm_iommu_group *group)
 {
-	return group->id;
+	return (group) ? group->id : VMM_EINVALID;
 }
 
 /* =============== IOMMU Domain APIs =============== */
@@ -356,7 +483,7 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 		goto done_unlock;
 	}
 
-	domain = bus->iommu_ops->domain_alloc(type);
+	domain = bus->iommu_ops->domain_alloc(type, group->ctrl);
 	if (!domain)
 		goto fail_unlock;
 
@@ -774,6 +901,12 @@ static void __init iommu_nidtbl_found(struct vmm_devtree_node *node,
 
 int __init vmm_iommu_init(void)
 {
+	int ret;
+
+	ret = vmm_devdrv_register_class(&iommuctrl_class);
+	if (ret)
+		return ret;
+
 	memset(iommu_groups, 0, sizeof(iommu_groups));
 
 	INIT_RW_LOCK(&iommu_groups_lock);

@@ -53,6 +53,8 @@ struct ipmmu_vmsa_device {
 	/* io_xxx only updated at time of attaching device */
 	struct vmm_device *io_dev;
 	struct vmm_iommu_domain *io_domain;
+
+	struct vmm_iommu_controller controller;
 };
 
 struct ipmmu_vmsa_domain {
@@ -467,7 +469,8 @@ static vmm_irq_return_t ipmmu_irq(int irq, void *dev)
  * IOMMU Operations
  */
 
-static struct vmm_iommu_domain *ipmmu_domain_alloc(unsigned int type)
+static struct vmm_iommu_domain *ipmmu_domain_alloc(unsigned int type,
+					struct vmm_iommu_controller *ctrl)
 {
 	struct ipmmu_vmsa_domain *domain;
 
@@ -663,7 +666,7 @@ static int ipmmu_add_device(struct vmm_device *dev)
 	}
 
 	/* Create a device group and add the device to it. */
-	group = vmm_iommu_group_alloc();
+	group = vmm_iommu_group_alloc(dev->name, &mmu->controller);
 	if (VMM_IS_ERR(group)) {
 		vmm_lerror(dev->name, "Failed to allocate IOMMU group\n");
 		ret = VMM_PTR_ERR(group);
@@ -671,18 +674,21 @@ static int ipmmu_add_device(struct vmm_device *dev)
 	}
 
 	ret = vmm_iommu_group_add_device(group, dev);
-	vmm_iommu_group_put(group);
-
 	if (ret < 0) {
-		vmm_lerror(dev->name, "Failed to add device to IPMMU group\n");
-		group = NULL;
-		goto error;
+		vmm_lerror(dev->name, "Failed to add device to IOMMU group\n");
+		goto error_put_group;
 	}
+
+	/*
+	 * We put group in-advance so that group is free'ed
+	 * automatically when all device are removed from it.
+	 */
+	vmm_iommu_group_put(group);
 
 	archdata = vmm_zalloc(sizeof(*archdata));
 	if (!archdata) {
 		ret = VMM_ENOMEM;
-		goto error;
+		goto error_remove_dev;
 	}
 
 	archdata->mmu = mmu;
@@ -692,14 +698,12 @@ static int ipmmu_add_device(struct vmm_device *dev)
 
 	return 0;
 
+error_remove_dev:
+	vmm_iommu_group_remove_device(dev);
+error_put_group:
+	vmm_iommu_group_put(group);
 error:
-	vmm_free(dev->iommu_priv);
 	vmm_free(utlbs);
-
-	dev->iommu_priv = NULL;
-
-	if (!VMM_IS_ERR_OR_NULL(group))
-		vmm_iommu_group_remove_device(dev);
 
 	return ret;
 }
@@ -711,6 +715,7 @@ static void ipmmu_remove_device(struct vmm_device *dev)
 	vmm_iommu_group_remove_device(dev);
 
 	vmm_free(dev->iommu_priv);
+
 	vmm_free(archdata->utlbs);
 
 	dev->iommu_priv = NULL;
@@ -798,6 +803,24 @@ static int ipmmu_init(struct vmm_devtree_node *node)
 	}
 
 	ipmmu_device_reset(mmu);
+
+	/* Register IOMMU controller */
+	if (strlcpy(mmu->controller.name, mmu->node->name,
+	    sizeof(mmu->controller.name)) >= sizeof(mmu->controller.name)) {
+		vmm_lerror(node->name, "cannot copy controller name\n");
+		vmm_host_irq_unregister(hirq, mmu);
+		vmm_devtree_regunmap_release(node, va, 0);
+		vmm_free(mmu);
+		return VMM_EOVERFLOW;
+	}
+	ret = vmm_iommu_controller_register(&mmu->controller);
+	if (ret) {
+		vmm_lerror(node->name, "failed to register controller\n");
+		vmm_host_irq_unregister(hirq, mmu);
+		vmm_devtree_regunmap_release(node, va, 0);
+		vmm_free(mmu);
+		return ret;
+	}
 
 	vmm_spin_lock(&ipmmu_devices_lock);
 	list_add_tail(&mmu->list, &ipmmu_devices);
