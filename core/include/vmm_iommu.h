@@ -107,7 +107,6 @@ struct vmm_iommu_domain {
 	atomic_t ref_count;
 	struct vmm_bus *bus;
 	struct vmm_iommu_controller *ctrl;
-	struct vmm_iommu_group *group;
 	struct vmm_iommu_ops *ops;
 	void *priv;
 	vmm_iommu_fault_handler_t handler;
@@ -237,7 +236,7 @@ int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 
 /** Alloc new IOMMU group */
 struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
-				struct vmm_iommu_controller *ctrl);
+					struct vmm_iommu_controller *ctrl);
 
 /** Get IOMMU group of given device */
 struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev);
@@ -289,19 +288,50 @@ int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 /** Get ID for given IOMMU group */
 int vmm_iommu_group_id(struct vmm_iommu_group *group);
 
+/** Get name for given IOMMU group */
+const char *vmm_iommu_group_name(struct vmm_iommu_group *group);
+
+/** Get bus type for given IOMMU group */
+struct vmm_bus *vmm_iommu_group_bus(struct vmm_iommu_group *group);
+
+/** Get IOMMU controller for given IOMMU group */
+struct vmm_iommu_controller *vmm_iommu_group_controller(
+					struct vmm_iommu_group *group);
+
+/** Attach IOMMU domain to given IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+int vmm_iommu_group_attach_domain(struct vmm_iommu_group *group,
+				  struct vmm_iommu_domain *domain);
+
+/** Detach IOMMU domain from given IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+int vmm_iommu_group_detach_domain(struct vmm_iommu_group *group);
+
+/** Get IOMMU domain of given IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+struct vmm_iommu_domain *vmm_iommu_group_get_domain(
+					struct vmm_iommu_group *group);
+
 /* =============== IOMMU Domain APIs =============== */
 
-/** Alloc new IOMMU domain for given bus type
+/** Alloc new IOMMU domain for given bus type and IOMMU controller
  *  Note: This function must be called in Orphan (or Thread) context
  */
 struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
-					struct vmm_iommu_group *group,
+					struct vmm_iommu_controller *ctrl,
 					unsigned int type);
+
+/**  Increase reference count of a domain */
+void vmm_iommu_domain_ref(struct vmm_iommu_domain *domain);
 
 /** Free existing IOMMU domain
  *  Note: This function must be called in Orphan (or Thread) context
  */
 void vmm_iommu_domain_free(struct vmm_iommu_domain *domain);
+#define vmm_iommu_domain_dref(domain)	vmm_iommu_domain_free(domain)
 
 /** Set fault handler for given IOMMU domain */
 void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,

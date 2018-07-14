@@ -180,7 +180,7 @@ int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 /* =============== IOMMU Group APIs =============== */
 
 struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
-				struct vmm_iommu_controller *ctrl)
+					struct vmm_iommu_controller *ctrl)
 {
 	int id;
 	irq_flags_t flags;
@@ -423,7 +423,16 @@ int vmm_iommu_group_id(struct vmm_iommu_group *group)
 	return (group) ? group->id : VMM_EINVALID;
 }
 
-/* =============== IOMMU Domain APIs =============== */
+const char *vmm_iommu_group_name(struct vmm_iommu_group *group)
+{
+	return (group) ? group->name : NULL;
+}
+
+struct vmm_iommu_controller *vmm_iommu_group_controller(
+					struct vmm_iommu_group *group)
+{
+	return (group) ? group->ctrl : NULL;
+}
 
 /*
  * IOMMU groups are really the natrual working unit of the IOMMU, but
@@ -457,13 +466,89 @@ static int iommu_group_do_detach_device(struct vmm_device *dev, void *data)
 	return VMM_OK;
 }
 
+int vmm_iommu_group_attach_domain(struct vmm_iommu_group *group,
+				  struct vmm_iommu_domain *domain)
+{
+	int ret = VMM_OK;
+
+	if (!group || !domain)
+		return VMM_EINVALID;
+
+	vmm_mutex_lock(&group->mutex);
+
+	if (group->domain == domain) {
+		ret = VMM_OK;
+		goto out_unlock;
+	} else if (group->domain != NULL) {
+		ret = VMM_EEXIST;
+		goto out_unlock;
+	}
+
+	ret = vmm_iommu_group_for_each_dev(group, domain,
+					 iommu_group_do_attach_device);
+	if (ret)
+		goto out_unlock;
+
+	vmm_iommu_domain_ref(domain);
+	group->domain = domain;
+
+out_unlock:
+	vmm_mutex_unlock(&group->mutex);
+
+	return ret;
+}
+
+int vmm_iommu_group_detach_domain(struct vmm_iommu_group *group)
+{
+	int ret = VMM_OK;
+	struct vmm_iommu_domain *domain;
+
+	if (!group)
+		return VMM_EINVALID;
+
+	vmm_mutex_lock(&group->mutex);
+
+	domain = group->domain;
+	group->domain = NULL;
+	if (!domain)
+		goto out_unlock;
+
+	ret = vmm_iommu_group_for_each_dev(group, domain,
+				     iommu_group_do_detach_device);
+
+out_unlock:
+	vmm_mutex_unlock(&group->mutex);
+
+	vmm_iommu_domain_dref(domain);
+
+	return ret;
+}
+
+struct vmm_iommu_domain *vmm_iommu_group_get_domain(
+					struct vmm_iommu_group *group)
+{
+	struct vmm_iommu_domain *domain = NULL;
+
+	if (!group)
+		return NULL;
+
+	vmm_mutex_lock(&group->mutex);
+	domain = group->domain;
+	vmm_iommu_domain_ref(domain);
+	vmm_mutex_unlock(&group->mutex);
+
+	return domain;
+}
+
+/* =============== IOMMU Domain APIs =============== */
+
 struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
-					struct vmm_iommu_group *group,
+					struct vmm_iommu_controller *ctrl,
 					unsigned int type)
 {
 	struct vmm_iommu_domain *domain;
 
-	if (bus == NULL || bus->iommu_ops == NULL || group == NULL)
+	if (bus == NULL || bus->iommu_ops == NULL || ctrl == NULL)
 		return NULL;
 
 	if ((type != VMM_IOMMU_DOMAIN_BLOCKED) ||
@@ -472,64 +557,34 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 	    (type != VMM_IOMMU_DOMAIN_DMA))
 		return NULL;
 
-	vmm_mutex_lock(&group->mutex);
-
-	if (group->domain != NULL) {
-		domain = group->domain;
-		if (domain->type == type)
-			arch_atomic_inc(&domain->ref_count);
-		else
-			domain = NULL;
-		goto done_unlock;
-	}
-
-	domain = bus->iommu_ops->domain_alloc(type, group->ctrl);
+	domain = bus->iommu_ops->domain_alloc(type, ctrl);
 	if (!domain)
-		goto fail_unlock;
+		return NULL;
 
 	domain->type = type;
 	arch_atomic_write(&domain->ref_count, 1);
 	domain->bus = bus;
-	domain->group = group;
 	domain->ops = bus->iommu_ops;
 
-	if (vmm_iommu_group_for_each_dev(group, domain,
-					 iommu_group_do_attach_device))
-		goto fail_free;
-
-	group->domain = domain;
-
-done_unlock:
-	vmm_mutex_unlock(&group->mutex);
-
 	return domain;
+}
 
-fail_free:
-	if (likely(domain->ops->domain_free != NULL))
-		domain->ops->domain_free(domain);
-fail_unlock:
-	vmm_mutex_unlock(&group->mutex);
-	return NULL;
+void vmm_iommu_domain_ref(struct vmm_iommu_domain *domain)
+{
+	if (domain == NULL)
+		return;
+
+	arch_atomic_add(&domain->ref_count, 1);
 }
 
 void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 {
-	struct vmm_iommu_group *group;
-
 	if (domain == NULL)
 		return;
 
 	if (arch_atomic_sub_return(&domain->ref_count, 1)) {
 		return;
 	}
-
-	group = domain->group;
-	vmm_mutex_lock(&group->mutex);
-	group->domain = NULL;
-	vmm_mutex_unlock(&group->mutex);
-
-	vmm_iommu_group_for_each_dev(group, domain,
-				     iommu_group_do_detach_device);
 
 	if (likely(domain->ops->domain_free != NULL))
 		domain->ops->domain_free(domain);

@@ -378,31 +378,44 @@ static int platform_pt_probe(struct vmm_guest *guest,
 
 		vmm_devdrv_ref_device(s->dev);
 
-		s->dom = vmm_iommu_domain_alloc(&platform_bus,
-						s->dev->iommu_group,
-						VMM_IOMMU_DOMAIN_UNMANAGED);
+		s->dom = vmm_iommu_group_get_domain(s->dev->iommu_group);
+		if (!s->dom) {
+			s->dom = vmm_iommu_domain_alloc(&platform_bus,
+				vmm_iommu_group_controller(s->dev->iommu_group),
+				VMM_IOMMU_DOMAIN_UNMANAGED);
+		}
 		if (!s->dom) {
 			rc = VMM_EFAIL;
 			goto platform_pt_probe_dref_dev_fail;
 		}
 
 		vmm_iommu_set_fault_handler(s->dom, platform_pt_fault, s);
+
+		rc = vmm_iommu_group_attach_domain(s->dev->iommu_group,
+						   s->dom);
+		if (rc) {
+			goto platform_pt_probe_free_dom_fail;
+		}
 	}
 
 	s->nb.notifier_call = &platform_pt_guest_aspace_notification;
 	s->nb.priority = 0;
 	rc = vmm_guest_aspace_register_client(&s->nb);
 	if (rc) {
-		goto platform_pt_probe_free_dom_fail;
+		goto platform_pt_probe_detach_dom_fail;
 	}
 
 	edev->priv = s;
 
 	return VMM_OK;
 
+platform_pt_probe_detach_dom_fail:
+	if (s->dom) {
+		vmm_iommu_group_detach_domain(s->dev->iommu_group);
+	}
 platform_pt_probe_free_dom_fail:
 	if (s->dom) {
-		vmm_iommu_domain_free(s->dom);
+		vmm_iommu_domain_dref(s->dom);
 	}
 platform_pt_probe_dref_dev_fail:
 	if (s->dev) {
@@ -447,7 +460,10 @@ static int platform_pt_remove(struct vmm_emudev *edev)
 
 	vmm_guest_aspace_unregister_client(&s->nb);
 	if (s->dom) {
-		vmm_iommu_domain_free(s->dom);
+		vmm_iommu_group_detach_domain(s->dev->iommu_group);
+	}
+	if (s->dom) {
+		vmm_iommu_domain_dref(s->dom);
 	}
 	if (s->dev) {
 		vmm_devdrv_dref_device(s->dev);
