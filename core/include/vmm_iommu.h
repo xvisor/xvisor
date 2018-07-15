@@ -57,6 +57,8 @@ struct vmm_iommu_controller {
 	struct vmm_device dev;
 	struct vmm_mutex groups_lock;
 	struct dlist groups;
+	struct vmm_mutex domains_lock;
+	struct dlist domains;
 };
 
 /* iommu mapping attributes */
@@ -103,6 +105,7 @@ struct vmm_iommu_domain_geometry {
 };
 
 struct vmm_iommu_domain {
+	struct dlist head;
 	unsigned int type;
 	atomic_t ref_count;
 	struct vmm_bus *bus;
@@ -212,36 +215,59 @@ struct vmm_iommu_ops {
 
 /* =============== IOMMU Controller APIs =============== */
 
-/** Register IOMMU controller */
+/** Register IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_controller_register(struct vmm_iommu_controller *ctrl);
 
-/** Unregister IOMMU controller */
+/** Unregister IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_controller_unregister(struct vmm_iommu_controller *ctrl);
 
-/** Find an IOMMU controller */
+/** Find an IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 struct vmm_iommu_controller *vmm_iommu_controller_find(const char *name);
 
-/** Iterate over each IOMMU controller */
+/** Iterate over each IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_controller_iterate(struct vmm_iommu_controller *start,
 		void *data, int (*fn)(struct vmm_iommu_controller *, void *));
 
-/** Count number of IOMMU controllers */
+/** Count number of IOMMU controllers
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 u32 vmm_iommu_controller_count(void);
 
-/** Iterate over each IOMMU group of given IOMMU controller */
+/** Iterate over each IOMMU group of given IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 		void *data, int (*fn)(struct vmm_iommu_group *, void *));
 
+/** Iterate over each IOMMU domain of given IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
+		void *data, int (*fn)(struct vmm_iommu_domain *, void *));
+
+
 /* =============== IOMMU Group APIs =============== */
 
-/** Alloc new IOMMU group */
+/** Alloc new IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
 					struct vmm_iommu_controller *ctrl);
 
 /** Get IOMMU group of given device */
 struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev);
 
-/** Put IOMMU group */
+/** Put IOMMU group
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
 void vmm_iommu_group_free(struct vmm_iommu_group *group);
 #define vmm_iommu_group_put(group)	vmm_iommu_group_free(group)
 

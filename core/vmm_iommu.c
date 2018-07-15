@@ -95,6 +95,8 @@ int vmm_iommu_controller_register(struct vmm_iommu_controller *ctrl)
 
 	INIT_MUTEX(&ctrl->groups_lock);
 	INIT_LIST_HEAD(&ctrl->groups);
+	INIT_MUTEX(&ctrl->domains_lock);
+	INIT_LIST_HEAD(&ctrl->domains);
 
 	return vmm_devdrv_register_device(&ctrl->dev);
 }
@@ -173,6 +175,28 @@ int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 	}
 
 	vmm_mutex_unlock(&ctrl->groups_lock);
+
+	return ret;
+}
+
+int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
+		void *data, int (*fn)(struct vmm_iommu_domain *, void *))
+{
+	struct vmm_iommu_domain *domain;
+	int ret = 0;
+
+	if (!ctrl || !fn)
+		return VMM_EINVALID;
+
+	vmm_mutex_lock(&ctrl->domains_lock);
+
+	list_for_each_entry(domain, &ctrl->domains, head) {
+		ret = fn(domain, data);
+		if (ret)
+			break;
+	}
+
+	vmm_mutex_unlock(&ctrl->domains_lock);
 
 	return ret;
 }
@@ -561,10 +585,16 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 	if (!domain)
 		return NULL;
 
+	INIT_LIST_HEAD(&domain->head);
 	domain->type = type;
+	domain->ctrl = ctrl;
 	arch_atomic_write(&domain->ref_count, 1);
 	domain->bus = bus;
 	domain->ops = bus->iommu_ops;
+
+	vmm_mutex_lock(&ctrl->domains_lock);
+	list_add_tail(&domain->head, &ctrl->domains);
+	vmm_mutex_unlock(&ctrl->domains_lock);
 
 	return domain;
 }
@@ -585,6 +615,10 @@ void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 	if (arch_atomic_sub_return(&domain->ref_count, 1)) {
 		return;
 	}
+
+	vmm_mutex_lock(&domain->ctrl->domains_lock);
+	list_del(&domain->head);
+	vmm_mutex_unlock(&domain->ctrl->domains_lock);
 
 	if (likely(domain->ops->domain_free != NULL))
 		domain->ops->domain_free(domain);
