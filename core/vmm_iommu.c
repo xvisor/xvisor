@@ -566,7 +566,8 @@ struct vmm_iommu_domain *vmm_iommu_group_get_domain(
 
 /* =============== IOMMU Domain APIs =============== */
 
-struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
+struct vmm_iommu_domain *vmm_iommu_domain_alloc(const char *name,
+					struct vmm_bus *bus,
 					struct vmm_iommu_controller *ctrl,
 					unsigned int type)
 {
@@ -584,6 +585,12 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
 	domain = bus->iommu_ops->domain_alloc(type, ctrl);
 	if (!domain)
 		return NULL;
+
+	if (strlcpy(domain->name, name, sizeof(domain->name)) >=
+	    sizeof(domain->name)) {
+		vmm_free(domain);
+		return NULL;
+	}
 
 	INIT_LIST_HEAD(&domain->head);
 	domain->type = type;

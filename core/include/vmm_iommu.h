@@ -53,7 +53,9 @@ typedef int (*vmm_iommu_init_t)(struct vmm_devtree_node *);
 VMM_DEVTREE_NIDTBL_ENTRY(name, "iommu", "", "", compat, fn)
 
 struct vmm_iommu_controller {
+	/* Public members */
 	char name[VMM_FIELD_NAME_SIZE];
+	/* Private members */
 	struct vmm_device dev;
 	struct vmm_mutex groups_lock;
 	struct dlist groups;
@@ -105,11 +107,14 @@ struct vmm_iommu_domain_geometry {
 };
 
 struct vmm_iommu_domain {
-	struct dlist head;
+	/* Public members */
+	char name[VMM_FIELD_NAME_SIZE];
 	unsigned int type;
-	atomic_t ref_count;
 	struct vmm_bus *bus;
 	struct vmm_iommu_controller *ctrl;
+	/* Private members */
+	struct dlist head;
+	atomic_t ref_count;
 	struct vmm_iommu_ops *ops;
 	void *priv;
 	vmm_iommu_fault_handler_t handler;
@@ -346,7 +351,8 @@ struct vmm_iommu_domain *vmm_iommu_group_get_domain(
 /** Alloc new IOMMU domain for given bus type and IOMMU controller
  *  Note: This function must be called in Orphan (or Thread) context
  */
-struct vmm_iommu_domain *vmm_iommu_domain_alloc(struct vmm_bus *bus,
+struct vmm_iommu_domain *vmm_iommu_domain_alloc(const char *name,
+					struct vmm_bus *bus,
 					struct vmm_iommu_controller *ctrl,
 					unsigned int type);
 

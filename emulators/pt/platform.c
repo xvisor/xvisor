@@ -380,7 +380,7 @@ static int platform_pt_probe(struct vmm_guest *guest,
 
 		s->dom = vmm_iommu_group_get_domain(s->dev->iommu_group);
 		if (!s->dom) {
-			s->dom = vmm_iommu_domain_alloc(&platform_bus,
+			s->dom = vmm_iommu_domain_alloc(s->name, &platform_bus,
 				vmm_iommu_group_controller(s->dev->iommu_group),
 				VMM_IOMMU_DOMAIN_UNMANAGED);
 		}
