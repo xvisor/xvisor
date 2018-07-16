@@ -173,6 +173,27 @@ int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 	return ret;
 }
 
+static int iommu_controller_group_count_iter(struct vmm_iommu_group *group,
+					     void *data)
+{
+	(*((u32 *)data))++;
+
+	return VMM_OK;
+}
+
+u32 vmm_iommu_controller_group_count(struct vmm_iommu_controller *ctrl)
+{
+	u32 ret = 0;
+
+	if (!ctrl)
+		return 0;
+
+	vmm_iommu_controller_for_each_group(ctrl, &ret,
+					iommu_controller_group_count_iter);
+
+	return ret;
+}
+
 int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
 		void *data, int (*fn)(struct vmm_iommu_domain *, void *))
 {
@@ -191,6 +212,27 @@ int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
 	}
 
 	vmm_mutex_unlock(&ctrl->domains_lock);
+
+	return ret;
+}
+
+static int iommu_controller_domain_count_iter(struct vmm_iommu_domain *domain,
+					      void *data)
+{
+	(*((u32 *)data))++;
+
+	return VMM_OK;
+}
+
+u32 vmm_iommu_controller_domain_count(struct vmm_iommu_controller *ctrl)
+{
+	u32 ret = 0;
+
+	if (!ctrl)
+		return 0;
+
+	vmm_iommu_controller_for_each_domain(ctrl, &ret,
+					iommu_controller_domain_count_iter);
 
 	return ret;
 }

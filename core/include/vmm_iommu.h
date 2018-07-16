@@ -252,12 +252,21 @@ u32 vmm_iommu_controller_count(void);
 int vmm_iommu_controller_for_each_group(struct vmm_iommu_controller *ctrl,
 		void *data, int (*fn)(struct vmm_iommu_group *, void *));
 
+/** Count number of IOMMU groups in given IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+u32 vmm_iommu_controller_group_count(struct vmm_iommu_controller *ctrl);
+
 /** Iterate over each IOMMU domain of given IOMMU controller
  *  Note: This function must be called in Orphan (or Thread) context
  */
 int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
 		void *data, int (*fn)(struct vmm_iommu_domain *, void *));
 
+/** Count number of IOMMU domains in given IOMMU controller
+ *  Note: This function must be called in Orphan (or Thread) context
+ */
+u32 vmm_iommu_controller_domain_count(struct vmm_iommu_controller *ctrl);
 
 /* =============== IOMMU Group APIs =============== */
 
