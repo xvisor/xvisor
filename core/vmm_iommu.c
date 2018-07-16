@@ -33,7 +33,6 @@
 #include <vmm_macros.h>
 #include <vmm_compiler.h>
 #include <vmm_heap.h>
-#include <vmm_spinlocks.h>
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
 #include <vmm_stdio.h>
@@ -61,17 +60,12 @@ struct vmm_iommu_group {
 	struct vmm_blocking_notifier_chain notifier;
 	void *iommu_data;
 	void (*iommu_data_release)(void *iommu_data);
-	int id;
 };
 
 struct vmm_iommu_device {
 	struct dlist list;
 	struct vmm_device *dev;
 };
-
-static vmm_rwlock_t iommu_groups_lock;
-static struct vmm_iommu_group *iommu_groups[CONFIG_IOMMU_MAX_GROUPS];
-static const struct vmm_devtree_nodeid *iommu_matches;
 
 /* =============== IOMMU Controller APIs =============== */
 
@@ -206,8 +200,6 @@ int vmm_iommu_controller_for_each_domain(struct vmm_iommu_controller *ctrl,
 struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
 					struct vmm_iommu_controller *ctrl)
 {
-	int id;
-	irq_flags_t flags;
 	struct vmm_iommu_group *group;
 
 	if (!name || !ctrl) {
@@ -235,22 +227,6 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
 	group->domain = NULL;
 	BLOCKING_INIT_NOTIFIER_CHAIN(&group->notifier);
 
-	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
-	for (id = 0; id < CONFIG_IOMMU_MAX_GROUPS; id++) {
-		if (!iommu_groups[id]) {
-			iommu_groups[id] = group;
-			group->id = id;
-			break;
-		}
-	}
-	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
-
-	if (id < 0 || CONFIG_IOMMU_MAX_GROUPS <= id) {
-		vmm_free(group->name);
-		vmm_free(group);
-		return VMM_ERR_PTR(VMM_ENOSPC);
-	}
-
 	vmm_mutex_lock(&ctrl->groups_lock);
 	list_add_tail(&group->head, &ctrl->groups);
 	vmm_mutex_unlock(&ctrl->groups_lock);
@@ -270,8 +246,6 @@ struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
 
 void vmm_iommu_group_free(struct vmm_iommu_group *group)
 {
-	irq_flags_t flags;
-
 	if (!group) {
 		return;
 	}
@@ -284,36 +258,12 @@ void vmm_iommu_group_free(struct vmm_iommu_group *group)
 	list_del(&group->head);
 	vmm_mutex_unlock(&group->ctrl->groups_lock);
 
-	vmm_write_lock_irqsave_lite(&iommu_groups_lock, flags);
-	iommu_groups[group->id] = NULL;
-	vmm_write_unlock_irqrestore_lite(&iommu_groups_lock, flags);
-
 	vmm_free(group->name);
 
 	if (group->iommu_data_release)
 		group->iommu_data_release(group->iommu_data);
 
 	vmm_free(group);
-}
-
-struct vmm_iommu_group *vmm_iommu_group_get_by_id(int id)
-{
-	irq_flags_t flags;
-	struct vmm_iommu_group *group;
-
-	if (id < 0 || CONFIG_IOMMU_MAX_GROUPS <= id) {
-		return NULL;
-	}
-
-	vmm_read_lock_irqsave_lite(&iommu_groups_lock, flags);
-	group = iommu_groups[id];
-	vmm_read_unlock_irqrestore_lite(&iommu_groups_lock, flags);
-
-	if (group) {
-		arch_atomic_inc(&group->ref_count);
-	}
-
-	return group;
 }
 
 void *vmm_iommu_group_get_iommudata(struct vmm_iommu_group *group)
@@ -440,11 +390,6 @@ int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 		return VMM_EINVALID;
 
 	return vmm_blocking_notifier_unregister(&group->notifier, nb);
-}
-
-int vmm_iommu_group_id(struct vmm_iommu_group *group)
-{
-	return (group) ? group->id : VMM_EINVALID;
 }
 
 const char *vmm_iommu_group_name(struct vmm_iommu_group *group)
@@ -998,14 +943,11 @@ static void __init iommu_nidtbl_found(struct vmm_devtree_node *node,
 int __init vmm_iommu_init(void)
 {
 	int ret;
+	const struct vmm_devtree_nodeid *iommu_matches;
 
 	ret = vmm_devdrv_register_class(&iommuctrl_class);
 	if (ret)
 		return ret;
-
-	memset(iommu_groups, 0, sizeof(iommu_groups));
-
-	INIT_RW_LOCK(&iommu_groups_lock);
 
 	/* Probe all device tree nodes matching
 	 * IOMMU nodeid table enteries.

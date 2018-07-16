@@ -316,14 +316,8 @@ int vmm_iommu_group_register_notifier(struct vmm_iommu_group *group,
 int vmm_iommu_group_unregister_notifier(struct vmm_iommu_group *group,
 					struct vmm_notifier_block *nb);
 
-/** Get ID for given IOMMU group */
-int vmm_iommu_group_id(struct vmm_iommu_group *group);
-
 /** Get name for given IOMMU group */
 const char *vmm_iommu_group_name(struct vmm_iommu_group *group);
-
-/** Get bus type for given IOMMU group */
-struct vmm_bus *vmm_iommu_group_bus(struct vmm_iommu_group *group);
 
 /** Get IOMMU controller for given IOMMU group */
 struct vmm_iommu_controller *vmm_iommu_group_controller(
