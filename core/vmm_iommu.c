@@ -563,9 +563,9 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(const char *name,
 	if (bus == NULL || bus->iommu_ops == NULL || ctrl == NULL)
 		return NULL;
 
-	if ((type != VMM_IOMMU_DOMAIN_BLOCKED) ||
-	    (type != VMM_IOMMU_DOMAIN_IDENTITY) ||
-	    (type != VMM_IOMMU_DOMAIN_UNMANAGED) ||
+	if ((type != VMM_IOMMU_DOMAIN_BLOCKED) &&
+	    (type != VMM_IOMMU_DOMAIN_IDENTITY) &&
+	    (type != VMM_IOMMU_DOMAIN_UNMANAGED) &&
 	    (type != VMM_IOMMU_DOMAIN_DMA))
 		return NULL;
 
