@@ -23,4 +23,5 @@
 
 drivers-objs-$(CONFIG_PINCTRL)+= base/pinctrl.o
 drivers-objs-$(CONFIG_GENERIC_IO) += base/iomap.o
-
+drivers-objs-$(CONFIG_REGMAP) += base/regmap.o
+drivers-objs-$(CONFIG_REGMAP_MMIO) += base/regmap-mmio.o
