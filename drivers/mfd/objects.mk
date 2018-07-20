@@ -25,4 +25,4 @@ drivers-objs-$(CONFIG_REALVIEW_CONFIG) += mfd/realview-sysreg.o
 drivers-objs-$(CONFIG_VEXPRESS_CONFIG) += mfd/vexpress-config.o
 drivers-objs-$(CONFIG_VEXPRESS_CONFIG) += mfd/vexpress-sysreg.o
 drivers-objs-$(CONFIG_MXC_HDMI_CORE) += mfd/mxc_hdmi_core.o
-
+drivers-objs-$(CONFIG_MFD_SYSCON) += mfd/syscon.o
