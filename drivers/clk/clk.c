@@ -1997,6 +1997,47 @@ out:
 	return ret;
 }
 
+struct clk *__clk_create_clk(struct clk_hw *hw, const char *dev_id,
+			     const char *con_id)
+{
+	struct clk *clk;
+
+	/* This is to allow this function to be chained to others */
+	if (IS_ERR_OR_NULL(hw))
+		return ERR_CAST(hw);
+
+	clk = kzalloc(sizeof(*clk), GFP_KERNEL);
+	if (!clk)
+		return ERR_PTR(-ENOMEM);
+
+
+	clk->hw = hw;
+
+	/* TODO: Not in sync with latest code. */
+
+#if 0
+	clk_prepare_lock();
+	hlist_add_head(&clk->clks_node, &hw->core->clks);
+	clk_prepare_unlock();
+#endif
+
+	return clk;
+}
+
+void __clk_free_clk(struct clk *clk)
+{
+	/* TODO: Not in sync with latest code. */
+
+#if 0
+	clk_prepare_lock();
+	hlist_del(&clk->clks_node);
+	clk_prepare_unlock();
+
+	kfree_const(clk->con_id);
+#endif
+	kfree(clk);
+}
+
 /**
  * __clk_register - register a clock and return a cookie.
  *
@@ -2143,6 +2184,22 @@ fail_out:
 }
 EXPORT_SYMBOL_GPL(clk_register);
 
+/**
+ * clk_hw_register - register a clk_hw and return an error code
+ * @dev: device that is registering this clock
+ * @hw: link to hardware-specific clock data
+ *
+ * clk_hw_register is the primary interface for populating the clock tree with
+ * new clock nodes. It returns an integer equal to zero indicating success or
+ * less than zero indicating failure. Drivers must test for an error code after
+ * calling clk_hw_register().
+ */
+int clk_hw_register(struct device *dev, struct clk_hw *hw)
+{
+	return PTR_ERR_OR_ZERO(clk_register(dev, hw));
+}
+EXPORT_SYMBOL_GPL(clk_hw_register);
+
 /*
  * Free memory allocated for a clock.
  * Caller must hold prepare_lock.
@@ -2242,6 +2299,16 @@ out:
 	clk_prepare_unlock();
 }
 EXPORT_SYMBOL_GPL(clk_unregister);
+
+/**
+ * clk_hw_unregister - unregister a currently registered clk_hw
+ * @hw: hardware-specific clock data to unregister
+ */
+void clk_hw_unregister(struct clk_hw *hw)
+{
+	clk_unregister(hw->clk);
+}
+EXPORT_SYMBOL_GPL(clk_hw_unregister);
 
 static void devm_clk_release(struct device *dev, void *res)
 {
@@ -2448,6 +2515,7 @@ struct of_clk_provider {
 
 	struct device_node *node;
 	struct clk *(*get)(struct of_phandle_args *clkspec, void *data);
+	struct clk_hw *(*get_hw)(struct of_phandle_args *clkspec, void *data);
 	void *data;
 };
 
@@ -2540,6 +2608,53 @@ int of_clk_add_provider(struct device_node *np,
 EXPORT_SYMBOL_GPL(of_clk_add_provider);
 
 /**
+ * of_clk_add_hw_provider() - Register a clock provider for a node
+ * @np: Device node pointer associated with clock provider
+ * @get: callback for decoding clk_hw
+ * @data: context pointer for @get callback.
+ */
+int of_clk_add_hw_provider(struct device_node *np,
+			   struct clk_hw *(*get)(struct of_phandle_args *clkspec,
+						 void *data),
+			   void *data)
+{
+	struct of_clk_provider *cp;
+	int ret;
+
+	cp = kzalloc(sizeof(*cp), GFP_KERNEL);
+	if (!cp)
+		return -ENOMEM;
+
+	cp->node = of_node_get(np);
+	cp->data = data;
+	cp->get_hw = get;
+
+#if 0
+	mutex_lock(&of_clk_mutex);
+#else
+	spin_lock(&of_clk_slock);
+#endif
+	list_add(&cp->link, &of_clk_providers);
+#if 0
+	mutex_unlock(&of_clk_mutex);
+#else
+	spin_unlock(&of_clk_slock);
+#endif
+	pr_debug("Added clk_hw provider from %pOF\n", np);
+
+#if 0
+	ret = of_clk_set_defaults(np, true);
+	if (ret < 0)
+		of_clk_del_provider(np);
+#else
+	ret = 0;
+#endif
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(of_clk_add_hw_provider);
+
+/**
  * of_clk_del_provider() - Remove a previously registered clock provider
  * @np: Device node pointer associated with clock provider
  */
@@ -2568,15 +2683,23 @@ void of_clk_del_provider(struct device_node *np)
 }
 EXPORT_SYMBOL_GPL(of_clk_del_provider);
 
-struct clk *__of_clk_get_from_provider(struct of_phandle_args *clkspec)
+struct clk *__of_clk_get_from_provider(struct of_phandle_args *clkspec,
+				const char *dev_id, const char *con_id)
 {
 	struct of_clk_provider *provider;
+	struct clk_hw *hw;
 	struct clk *clk = ERR_PTR(-EPROBE_DEFER);
 
 	/* Check if we have such a provider in our array */
 	list_for_each_entry(provider, &of_clk_providers, link) {
-		if (provider->node == clkspec->np)
-			clk = provider->get(clkspec, provider->data);
+		if (provider->node == clkspec->np) {
+			if (provider->get_hw) {
+				hw = provider->get_hw(clkspec, provider->data);
+				clk = __clk_create_clk(hw, dev_id, con_id);
+			} else {
+				clk = provider->get(clkspec, provider->data);
+			}
+		}
 		if (!IS_ERR(clk))
 			break;
 	}
@@ -2593,7 +2716,7 @@ struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 #else
 	spin_lock(&of_clk_slock);
 #endif
-	clk = __of_clk_get_from_provider(clkspec);
+	clk = __of_clk_get_from_provider(clkspec, NULL, __func__);
 #if 0
 	mutex_unlock(&of_clk_mutex);
 #else

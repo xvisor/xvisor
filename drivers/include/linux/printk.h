@@ -12,6 +12,8 @@
 #define	KERN_INFO
 #define	KERN_DEBUG
 
+#define FW_WARN
+
 #define printk(args...) vmm_printf(args)
 #define no_printk(args...)
 

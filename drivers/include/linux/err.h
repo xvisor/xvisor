@@ -28,4 +28,6 @@
 
 #define PTR_RET(ptr)		VMM_PTR_ERR(ptr)
 
+#define PTR_ERR_OR_ZERO(ptr)	VMM_PTR_RET(ptr)
+
 #endif /* _LINUX_ERR_H */
