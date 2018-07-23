@@ -722,7 +722,7 @@ unsigned long __clk_get_rate(struct clk *clk)
 
 	ret = clk->rate;
 
-	if (clk->flags & CLK_IS_ROOT)
+	if (!clk->num_parents)
 		goto out;
 
 	if (!clk->parent)
