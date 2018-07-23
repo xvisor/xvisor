@@ -48,10 +48,13 @@ static char *ap806_unique_name(struct device *dev, struct device_node *np,
 static char *ap806_unique_name(struct device *dev, struct device_node *np,
 			       char *name)
 {
+	int rc;
 	char str[128];
 	physical_addr_t addr;
 
-	addr = vmm_devtree_regaddr(np, &addr, 0);
+	rc = vmm_devtree_regaddr(np, &addr, 0);
+	if (rc)
+		return NULL;
 	vmm_snprintf(str, sizeof(str), "%"PRIPADDR"-%s", addr, name);
 	return vmm_devm_strdup(dev, str);
 }
