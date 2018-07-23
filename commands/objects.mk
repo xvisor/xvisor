@@ -49,6 +49,7 @@ commands-objs-$(CONFIG_CMD_VDISPLAY)+= cmd_vdisplay.o
 commands-objs-$(CONFIG_CMD_VINPUT)+= cmd_vinput.o
 commands-objs-$(CONFIG_CMD_VSCREEN)+= cmd_vscreen.o
 
+commands-objs-$(CONFIG_CMD_CLK)+= cmd_clk.o
 commands-objs-$(CONFIG_CMD_RTCDEV)+= cmd_rtcdev.o
 commands-objs-$(CONFIG_CMD_INPUT)+= cmd_input.o
 commands-objs-$(CONFIG_CMD_GPIO)+= cmd_gpio.o
