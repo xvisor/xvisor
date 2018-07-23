@@ -21,6 +21,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <drv/clk.h>
+#include <drv/clk-provider.h>
 
 static int __set_clk_parents(struct vmm_devtree_node *node, bool clk_supplier)
 {

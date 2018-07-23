@@ -23,8 +23,6 @@
  * parent - fixed parent.  No clk_set_parent support
  */
 
-#define to_clk_fixed_factor(_hw) container_of(_hw, struct clk_fixed_factor, hw)
-
 static unsigned long clk_factor_recalc_rate(struct clk_hw *hw,
 		unsigned long parent_rate)
 {
@@ -70,7 +68,7 @@ static int clk_factor_set_rate(struct clk_hw *hw, unsigned long rate,
 	return 0;
 }
 
-struct clk_ops clk_fixed_factor_ops = {
+const struct clk_ops clk_fixed_factor_ops = {
 	.round_rate = clk_factor_round_rate,
 	.set_rate = clk_factor_set_rate,
 	.recalc_rate = clk_factor_recalc_rate,

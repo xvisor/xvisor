@@ -9,7 +9,9 @@
  * Standard functionality for the common clock API.  See Documentation/clk.txt
  */
 
-#include <linux/clk-private.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
+#include <linux/clk/clk-conf.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
@@ -19,7 +21,9 @@
 #include <linux/of.h>
 #include <linux/device.h>
 #include <linux/init.h>
+#include <linux/pm_runtime.h>
 #include <linux/sched.h>
+#include <linux/clkdev.h>
 
 #include "clk.h"
 
@@ -39,6 +43,38 @@ static int enable_refcnt;
 static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
+
+/***    private data structures    ***/
+#include <linux/kref.h>
+
+struct module;
+
+struct clk {
+	const char		*name;
+	const struct clk_ops	*ops;
+	struct clk_hw		*hw;
+	struct module		*owner;
+	struct clk		*parent;
+	const char		**parent_names;
+	struct clk		**parents;
+	u8			num_parents;
+	u8			new_parent_index;
+	unsigned long		rate;
+	unsigned long		new_rate;
+	struct clk		*new_parent;
+	struct clk		*new_child;
+	unsigned long		flags;
+	unsigned int		enable_count;
+	unsigned int		prepare_count;
+	unsigned long		accuracy;
+	struct hlist_head	children;
+	struct hlist_node	child_node;
+	unsigned int		notifier_count;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry		*dentry;
+#endif
+	struct kref		ref;
+};
 
 /***           locking             ***/
 static void clk_prepare_lock(void)
@@ -157,12 +193,13 @@ static void clk_summary_show_subtree(struct seq_file *s, struct clk *c,
 #if 0
 static int clk_summary_show(struct seq_file *s, void *data)
 #else
-int clk_summary_show(struct seq_file *s, void *data)
+int clk_summary_show(struct seq_file *s)
 #endif
 {
 	struct clk *c;
 
-	seq_printf(s, "   clock                        enable_cnt  prepare_cnt  rate        accuracy\n");
+	seq_printf(s, "---------------------------------------------------------------------------------\n");
+	seq_printf(s, " clock                          enable_cnt  prepare_cnt  rate       accuracy\n");
 	seq_printf(s, "---------------------------------------------------------------------------------\n");
 
 	clk_prepare_lock();
@@ -174,6 +211,8 @@ int clk_summary_show(struct seq_file *s, void *data)
 		clk_summary_show_subtree(s, c, 0);
 
 	clk_prepare_unlock();
+
+	seq_printf(s, "---------------------------------------------------------------------------------\n");
 
 	return 0;
 }
@@ -240,7 +279,7 @@ static void clk_dump_subtree(struct seq_file *s, struct clk *c, int level)
 #if 0
 static int clk_dump(struct seq_file *s, void *data)
 #else
-int clk_dump(struct seq_file *s, void *data)
+int clk_dump(struct seq_file *s)
 #endif
 {
 	struct clk *c;
@@ -624,7 +663,7 @@ late_initcall_sync(clk_disable_unused);
 
 /***    helper functions   ***/
 
-const char *__clk_get_name(struct clk *clk)
+const char *__clk_get_name(const struct clk *clk)
 {
 	return !clk ? NULL : clk->name;
 }
@@ -2065,7 +2104,7 @@ struct clk *__clk_register(struct device *dev, struct clk_hw *hw)
 	clk->ops = hw->init->ops;
 	clk->hw = hw;
 	clk->flags = hw->init->flags;
-	clk->parent_names = hw->init->parent_names;
+	clk->parent_names = (const char **)hw->init->parent_names;
 	clk->num_parents = hw->init->num_parents;
 #if 0
 	if (dev && dev->driver)
@@ -2726,7 +2765,7 @@ struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 	return clk;
 }
 
-int of_clk_get_parent_count(struct device_node *np)
+unsigned int of_clk_get_parent_count(struct device_node *np)
 {
 	return of_count_phandle_with_args(np, "clocks", "#clock-cells");
 }

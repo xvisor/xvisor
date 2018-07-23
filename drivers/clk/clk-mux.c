@@ -27,8 +27,6 @@
  * parent - parent is adjustable through clk_set_parent
  */
 
-#define to_clk_mux(_hw) container_of(_hw, struct clk_mux, hw)
-
 static u8 clk_mux_get_parent(struct clk_hw *hw)
 {
 	struct clk_mux *mux = to_clk_mux(hw);
@@ -144,7 +142,7 @@ struct clk_hw *clk_hw_register_mux_table(struct device *dev, const char *name,
 	else
 		init.ops = &clk_mux_ops;
 	init.flags = flags | CLK_IS_BASIC;
-	init.parent_names = (const char	**)parent_names;
+	init.parent_names = parent_names;
 	init.num_parents = num_parents;
 
 	/* struct clk_mux assignments */

@@ -26,8 +26,7 @@
 #include <vmm_stdio.h>
 #include <vmm_cmdmgr.h>
 #include <imx-common.h>
-#include <linux/clk-provider.h>
-#include <linux/clk-private.h>
+#include <drv/clk-provider.h>
 #include <drv/serial/imx-uart.h>
 #include <libs/mathlib.h>
 
@@ -131,8 +130,7 @@ static int cmd_imx6_uart(struct vmm_chardev *cdev, int argc, char **argv)
 static int cmd_imx6_clocks(struct vmm_chardev *cdev, int __unused argc,
 			  char __unused **argv)
 {
-	/* clk_summary_show(cdev, NULL); */
-	return clk_dump(cdev, NULL);
+	return clk_dump(cdev);
 }
 
 static void cmd_imx6_usage(struct vmm_chardev *cdev)

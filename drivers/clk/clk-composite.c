@@ -19,8 +19,6 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 
-#define to_clk_composite(_hw) container_of(_hw, struct clk_composite, hw)
-
 static u8 clk_composite_get_parent(struct clk_hw *hw)
 {
 	struct clk_composite *composite = to_clk_composite(hw);
@@ -157,7 +155,7 @@ struct clk_hw *clk_hw_register_composite(struct device *dev, const char *name,
 
 	init.name = name;
 	init.flags = flags | CLK_IS_BASIC;
-	init.parent_names = (const char **)parent_names;
+	init.parent_names = parent_names;
 	init.num_parents = num_parents;
 	hw = &composite->hw;
 

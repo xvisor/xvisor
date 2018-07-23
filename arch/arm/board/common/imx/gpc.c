@@ -180,8 +180,8 @@ void __init imx_gpc_clocks_init(void)
 	for (i = 0; i < clocks_count; i++) {
 		chk = clk_prepare_enable(clocks[i]);
 		if (chk != 0) {
-			vmm_lerror("imx-gpc", "error %i, failed to enable clock %s\n",
-					chk, __clk_get_name(clocks[i]));
+			vmm_lerror("imx-gpc", "error %i, failed to enable clock %d\n",
+					chk, i);
 		}
 	}
 }
