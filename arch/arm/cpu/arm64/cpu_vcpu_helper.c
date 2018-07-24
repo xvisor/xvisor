@@ -559,6 +559,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 					HCR_TSC_MASK |
 					HCR_TWE_MASK |
 					HCR_TWI_MASK |
+					HCR_FB_MASK  |
 					HCR_AMO_MASK |
 					HCR_IMO_MASK |
 					HCR_FMO_MASK |
