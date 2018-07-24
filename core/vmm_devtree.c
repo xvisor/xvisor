@@ -1571,13 +1571,15 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 						0, -1, NULL);
 }
 
-void vmm_devtree_ref_node(struct vmm_devtree_node *node)
+struct vmm_devtree_node *vmm_devtree_ref_node(struct vmm_devtree_node *node)
 {
 	if (!node) {
-		return;
+		return NULL;
 	}
 
 	arch_atomic_inc(&node->ref_count);
+
+	return node;
 }
 
 void vmm_devtree_dref_node(struct vmm_devtree_node *node)

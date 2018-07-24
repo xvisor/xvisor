@@ -588,7 +588,7 @@ int vmm_devtree_count_phandle_with_args(const struct vmm_devtree_node *node,
 					const char *cells_name);
 
 /** Increase reference count of give node */
-void vmm_devtree_ref_node(struct vmm_devtree_node *node);
+struct vmm_devtree_node *vmm_devtree_ref_node(struct vmm_devtree_node *node);
 
 /** De-refernce a device tree node */
 void vmm_devtree_dref_node(struct vmm_devtree_node *node);
