@@ -79,7 +79,8 @@ static int clk_sp810_timerclken_prepare(struct clk_hw *hw)
 {
 	struct clk_sp810_timerclken *timerclken = to_clk_sp810_timerclken(hw);
 	struct clk_sp810 *sp810 = timerclken->sp810;
-	struct clk *old_parent = __clk_get_parent(hw->clk);
+	struct clk_hw *old_hw = clk_hw_get_parent(hw);
+	struct clk *old_parent = (old_hw) ? old_hw->clk : NULL;
 	struct clk *new_parent;
 
 	if (!sp810->refclk)

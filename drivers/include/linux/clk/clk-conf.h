@@ -15,19 +15,11 @@
  * @brief Device tree clock configuration helper.
  */
 
-#ifndef _CLK_CONF_H
-# define _CLK_CONF_H
+#ifndef __LINUX_CLK_CONF_H__
+#define __LINUX_CLK_CONF_H__
 
-struct vmm_devtree_node;
+#include <drv/clk/clk-conf.h>
 
-#ifdef CONFIG_COMMON_CLK
-int of_clk_set_defaults(struct vmm_devtree_node *node, bool clk_supplier);
-#else /* !CONFIG_COMMON_CLK */
-static inline of_clk_set_defaults(struct vmm_devtree_node *node,
-				  bool clk_supplier)
-{
-	return 0;
-}
-#endif /* CONFIG_COMMON_CLK */
+/* For now this is just place holder header. */
 
-#endif /* !_CLK_CONF_H */
+#endif /* __LINUX_CLK_CONF_H__ */

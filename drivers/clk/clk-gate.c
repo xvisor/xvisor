@@ -107,7 +107,7 @@ const struct clk_ops clk_gate_ops = {
 EXPORT_SYMBOL_GPL(clk_gate_ops);
 
 /**
- * clk_register_gate - register a gate clock with the clock framework
+ * clk_hw_register_gate - register a gate clock with the clock framework
  * @dev: device that is registering this clock
  * @name: name of this clock
  * @parent_name: name of this clock's parent
@@ -128,24 +128,22 @@ struct clk_hw *clk_hw_register_gate(struct device *dev, const char *name,
 	int ret;
 
 	if (clk_gate_flags & CLK_GATE_HIWORD_MASK) {
-		if (bit_idx > 16) {
+		if (bit_idx > 15) {
 			pr_err("gate bit exceeds LOWORD field\n");
 			return ERR_PTR(-EINVAL);
 		}
 	}
 
 	/* allocate the gate */
-	gate = kzalloc(sizeof(struct clk_gate), GFP_KERNEL);
-	if (!gate) {
-		pr_err("%s: could not allocate gated clk\n", __func__);
+	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
+	if (!gate)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	init.name = name;
 	init.ops = &clk_gate_ops;
 	init.flags = flags | CLK_IS_BASIC;
-	init.parent_names = (parent_name ? &parent_name: NULL);
-	init.num_parents = (parent_name ? 1 : 0);
+	init.parent_names = parent_name ? &parent_name : NULL;
+	init.num_parents = parent_name ? 1 : 0;
 
 	/* struct clk_gate assignments */
 	gate->reg = reg;

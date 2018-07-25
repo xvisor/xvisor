@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/platform_device.h>
 
 /*
  * DOC: basic fixed multiplier and divider clock that cannot gate
@@ -43,7 +44,7 @@ static long clk_factor_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_fixed_factor *fix = to_clk_fixed_factor(hw);
 
-	if (__clk_get_flags(hw->clk) & CLK_SET_RATE_PARENT) {
+	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
 		unsigned long best_parent;
 
 #if 0
@@ -51,8 +52,7 @@ static long clk_factor_round_rate(struct clk_hw *hw, unsigned long rate,
 #else
 		best_parent = udiv64(rate, fix->mult) * fix->div;
 #endif
-		*prate = __clk_round_rate(__clk_get_parent(hw->clk),
-				best_parent);
+		*prate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
 	}
 
 #if 0
@@ -65,6 +65,12 @@ static long clk_factor_round_rate(struct clk_hw *hw, unsigned long rate,
 static int clk_factor_set_rate(struct clk_hw *hw, unsigned long rate,
 				unsigned long parent_rate)
 {
+	/*
+	 * We must report success but we can do so unconditionally because
+	 * clk_factor_round_rate returns values that ensure this call is a
+	 * nop.
+	 */
+
 	return 0;
 }
 
@@ -85,10 +91,8 @@ struct clk_hw *clk_hw_register_fixed_factor(struct device *dev,
 	int ret;
 
 	fix = kmalloc(sizeof(*fix), GFP_KERNEL);
-	if (!fix) {
-		pr_err("%s: could not allocate fixed factor clk\n", __func__);
+	if (!fix)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	/* struct clk_fixed_factor assignments */
 	fix->mult = mult;

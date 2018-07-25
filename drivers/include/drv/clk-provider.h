@@ -227,9 +227,8 @@ struct clk_ops {
 					unsigned long parent_rate);
 	long		(*round_rate)(struct clk_hw *hw, unsigned long,
 					unsigned long *);
-	long		(*determine_rate)(struct clk_hw *hw, unsigned long rate,
-					unsigned long *best_parent_rate,
-					struct clk **best_parent_clk);
+	int		(*determine_rate)(struct clk_hw *hw,
+					  struct clk_rate_request *req);
 	int		(*set_parent)(struct clk_hw *hw, u8 index);
 	u8		(*get_parent)(struct clk_hw *hw);
 	int		(*set_rate)(struct clk_hw *hw, unsigned long,
@@ -727,9 +726,8 @@ bool clk_hw_is_prepared(const struct clk_hw *hw);
 bool clk_hw_is_enabled(const struct clk_hw *hw);
 bool __clk_is_enabled(struct clk *clk);
 struct clk *__clk_lookup(const char *name);
-long __clk_mux_determine_rate(struct clk_hw *hw, unsigned long rate,
-			      unsigned long *best_parent_rate,
-			      struct clk **best_parent_p);
+int __clk_mux_determine_rate(struct clk_hw *hw,
+			     struct clk_rate_request *req);
 int __clk_determine_rate(struct clk_hw *core, struct clk_rate_request *req);
 int __clk_mux_determine_rate_closest(struct clk_hw *hw,
 				     struct clk_rate_request *req);
@@ -756,10 +754,6 @@ static inline long divider_round_rate(struct clk_hw *hw, unsigned long rate,
  * FIXME clock api without lock protection
  */
 unsigned long clk_hw_round_rate(struct clk_hw *hw, unsigned long rate);
-unsigned long __clk_round_rate(struct clk *clk, unsigned long rate);
-struct clk *__clk_get_parent(struct clk *clk);
-u8 __clk_get_num_parents(struct clk *clk);
-unsigned long __clk_get_rate(struct clk *clk);
 
 typedef void (*of_clk_init_cb_t)(struct vmm_devtree_node *);
 

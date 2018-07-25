@@ -45,13 +45,10 @@ struct clk *of_clk_get(struct device_node *np, int index)
 	if (rc)
 		return ERR_PTR(rc);
 
-	of_clk_lock();
 	clk = __of_clk_get_from_provider(&clkspec, NULL, __func__);
-
 	if (!IS_ERR(clk) && !__clk_get(clk))
 		clk = ERR_PTR(-ENOENT);
 
-	of_clk_unlock();
 	of_node_put(clkspec.np);
 	return clk;
 }
