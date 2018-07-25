@@ -36,6 +36,18 @@ void *vmm_malloc(virtual_size_t size);
 /** Allocate Normal memory and zero set */
 void *vmm_zalloc(virtual_size_t size);
 
+/** Allocate object array in Normal memory and zero set */
+void *vmm_calloc(virtual_size_t element_count, virtual_size_t element_size);
+
+/** Create a duplicate string */
+char *vmm_strdup(const char *str);
+
+/** Create a duplicate const string */
+static inline const char *vmm_strdup_const(const char *str)
+{
+	return vmm_strdup(str);
+}
+
 /** Retrieve allocation size from Normal heap */
 virtual_size_t vmm_alloc_size(const void *ptr);
 

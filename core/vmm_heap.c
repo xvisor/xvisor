@@ -255,6 +255,33 @@ void *vmm_zalloc(virtual_size_t size)
 	return ret;
 }
 
+void *vmm_calloc(virtual_size_t element_count, virtual_size_t element_size)
+{
+	if (!element_count)
+		element_count = 1;
+	return vmm_zalloc(element_count * element_size);
+}
+
+char *vmm_strdup(const char *str)
+{
+	char *tstr;
+	size_t tlen;
+
+	if (!str) {
+		return NULL;
+	}
+
+	tlen = strlen(str);
+	tstr = vmm_zalloc(tlen + 1);
+	if (!tstr) {
+		return NULL;
+	}
+	strcpy(tstr, str);
+	tstr[tlen] = '\0';
+
+	return tstr;
+}
+
 virtual_size_t vmm_alloc_size(const void *ptr)
 {
 	return heap_alloc_size(&normal_heap, ptr);
