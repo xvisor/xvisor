@@ -18,7 +18,7 @@
  *
  * @file clk.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief generic interface for clocking framework
+ * @brief common clocking framework implementation
  *
  * Adapted from linux/drivers/clk/clk.c
  *
@@ -2435,7 +2435,8 @@ void __clk_free_clk(struct clk *clk)
 	hlist_del(&clk->clks_node);
 	clk_prepare_unlock();
 
-	vmm_free((void *)clk->con_id);
+	if (clk->con_id)
+		vmm_free((void *)clk->con_id);
 	vmm_free(clk);
 }
 
@@ -2990,6 +2991,7 @@ int of_clk_add_provider(struct vmm_devtree_node *np,
 			void *data)
 {
 	struct of_clk_provider *cp;
+	int ret;
 
 	cp = vmm_zalloc(sizeof(struct of_clk_provider));
 	if (!cp)
@@ -3003,7 +3005,11 @@ int of_clk_add_provider(struct vmm_devtree_node *np,
 	list_add(&cp->link, &of_clk_providers);
 	vmm_spin_unlock(&of_clk_slock);
 
-	return 0;
+	ret = of_clk_set_defaults(np, true);
+	if (ret < 0)
+		of_clk_del_provider(np);
+
+	return ret;
 }
 VMM_EXPORT_SYMBOL(of_clk_add_provider);
 
@@ -3019,6 +3025,7 @@ int of_clk_add_hw_provider(struct vmm_devtree_node *np,
 			   void *data)
 {
 	struct of_clk_provider *cp;
+	int ret;
 
 	cp = vmm_zalloc(sizeof(*cp));
 	if (!cp)
@@ -3032,7 +3039,11 @@ int of_clk_add_hw_provider(struct vmm_devtree_node *np,
 	list_add(&cp->link, &of_clk_providers);
 	vmm_spin_unlock(&of_clk_slock);
 
-	return 0;
+	ret = of_clk_set_defaults(np, true);
+	if (ret < 0)
+		of_clk_del_provider(np);
+
+	return ret;
 }
 VMM_EXPORT_SYMBOL(of_clk_add_hw_provider);
 
