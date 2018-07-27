@@ -50,6 +50,7 @@
 #include <vmm_threads.h>
 #include <vmm_notifier.h>
 #include <arch_atomic.h>
+#include <libs/xref.h>
 #include <libs/list.h>
 #include <libs/mempool.h>
 
@@ -80,7 +81,7 @@ int vmm_vmsg_unregister_client(struct vmm_notifier_block *nb);
 
 /** Representation of a virtual message */
 struct vmm_vmsg {
-	atomic_t ref_count;
+	struct xref ref_count;
 	u32 dst;
 	u32 src;
 	u32 local;
@@ -93,7 +94,7 @@ struct vmm_vmsg {
 
 #define INIT_VMSG(__m, __dst, __src, __local, __d, __l, __p, __fd, __fh)\
 	do {								\
-		arch_atomic_write(&(__m)->ref_count, 1);		\
+		xref_init(&(__m)->ref_count);				\
 		(__m)->dst = (__dst);					\
 		(__m)->src = (__src);					\
 		(__m)->local = (__local);				\

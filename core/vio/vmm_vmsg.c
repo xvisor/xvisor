@@ -72,20 +72,14 @@ VMM_EXPORT_SYMBOL(vmm_vmsg_unregister_client);
 void vmm_vmsg_ref(struct vmm_vmsg *msg)
 {
 	if (msg) {
-		arch_atomic_add(&msg->ref_count, 1);
+		xref_get(&msg->ref_count);
 	}
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_unregister_client);
 
-void vmm_vmsg_dref(struct vmm_vmsg *msg)
+static void __vmsg_free(struct xref *ref)
 {
-	if (!msg) {
-		return;
-	}
-
-	if (arch_atomic_sub_return(&msg->ref_count, 1)) {
-		return;
-	}
+	struct vmm_vmsg *msg = container_of(ref, struct vmm_vmsg, ref_count);
 
 	if (msg->free_data) {
 		msg->free_data(msg);
@@ -93,6 +87,13 @@ void vmm_vmsg_dref(struct vmm_vmsg *msg)
 
 	if (msg->free_hdr) {
 		msg->free_hdr(msg);
+	}
+}
+
+void vmm_vmsg_dref(struct vmm_vmsg *msg)
+{
+	if (msg) {
+		xref_put(&msg->ref_count, __vmsg_free);
 	}
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_dref);
