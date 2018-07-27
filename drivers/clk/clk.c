@@ -32,6 +32,7 @@
 #include <vmm_macros.h>
 #include <vmm_params.h>
 #include <vmm_spinlocks.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_scheduler.h>
 #include <vmm_notifier.h>
@@ -166,16 +167,16 @@ static void clk_prepare_lock(void)
 		}
 		vmm_spin_lock(&prepare_lock);
 	}
-	WARN_ON_ONCE(prepare_owner != NULL);
-	WARN_ON_ONCE(prepare_refcnt != 0);
+	WARN_ON(prepare_owner != NULL);
+	WARN_ON(prepare_refcnt != 0);
 	prepare_owner = vmm_scheduler_current_vcpu();
 	prepare_refcnt = 1;
 }
 
 static void clk_prepare_unlock(void)
 {
-	WARN_ON_ONCE(prepare_owner != vmm_scheduler_current_vcpu());
-	WARN_ON_ONCE(prepare_refcnt == 0);
+	WARN_ON(prepare_owner != vmm_scheduler_current_vcpu());
+	WARN_ON(prepare_refcnt == 0);
 
 	if (--prepare_refcnt)
 		return;
@@ -2576,7 +2577,7 @@ static int clk_nodrv_prepare_enable(struct clk_hw *hw)
 
 static void clk_nodrv_disable_unprepare(struct clk_hw *hw)
 {
-	WARN_ON_ONCE(1);
+	WARN_ON(1);
 }
 
 static int clk_nodrv_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -2607,7 +2608,7 @@ void clk_unregister(struct clk *clk)
 {
 	unsigned long flags;
 
-	if (!clk || WARN_ON_ONCE(VMM_IS_ERR(clk)))
+	if (!clk || WARN_ON(VMM_IS_ERR(clk)))
 		return;
 
 	clk_debug_unregister(clk->core);

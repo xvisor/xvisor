@@ -1,71 +1,97 @@
-/*
- * drivers/clk/clkdev.c
+/**
+ * Copyright (c) 2018 Anup Patel.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file clkdev.c
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief helper APIs for clk lookup
+ *
+ * Adapted from linux/drivers/clk/clkdev.c
  *
  *  Copyright (C) 2008 Russell King.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
  * Helper for the clk API to assist looking up a struct clk.
+ *
+ * The original source is licensed under GPL.
  */
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/device.h>
-#include <linux/list.h>
-#include <linux/errno.h>
-#include <linux/err.h>
-#include <linux/string.h>
-#include <linux/mutex.h>
-#include <linux/clk.h>
-#include <linux/clkdev.h>
-#include <linux/of.h>
 
+#include <vmm_error.h>
+#include <vmm_spinlocks.h>
+#include <vmm_heap.h>
+#include <vmm_devdrv.h>
+#include <vmm_devtree.h>
+#include <vmm_modules.h>
+#include <libs/list.h>
+#include <libs/stringlib.h>
+#include <drv/clk.h>
+#include <drv/clkdev.h>
+#include <drv/clk-provider.h>
+
+#include <stdarg.h>
 #include "clk.h"
 
-static LIST_HEAD(clocks);
-#if 0
-static DEFINE_MUTEX(clocks_mutex);
-#else
-static DEFINE_SPINLOCK(clocks_slock);
+/* asm/clkdev.h --- start --- */
+#ifndef CONFIG_COMMON_CLK
+static inline int __clk_get(struct clk *clk) { return 1; }
+static inline void __clk_put(struct clk *clk) { }
 #endif
 
-#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
-struct clk *of_clk_get(struct device_node *np, int index)
+static inline struct clk_lookup_alloc *__clkdev_alloc(size_t size)
 {
-	struct of_phandle_args clkspec;
+	return vmm_zalloc(size);
+}
+/* asm/clkdev.h --- finish --- */
+
+static LIST_HEAD(clocks);
+static DEFINE_SPINLOCK(clocks_slock);
+
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
+static struct clk *__of_clk_get(struct vmm_devtree_node *np, int index,
+			       const char *dev_id, const char *con_id)
+{
+	struct vmm_devtree_phandle_args clkspec;
 	struct clk *clk;
 	int rc;
 
 	if (index < 0)
-		return ERR_PTR(-EINVAL);
+		return VMM_ERR_PTR(VMM_EINVALID);
 
-	rc = of_parse_phandle_with_args(np, "clocks", "#clock-cells", index,
-					&clkspec);
+	rc = vmm_devtree_parse_phandle_with_args(np, "clocks", "#clock-cells",
+						 index, &clkspec);
 	if (rc)
-		return ERR_PTR(rc);
+		return VMM_ERR_PTR(rc);
 
-	clk = __of_clk_get_from_provider(&clkspec, NULL, __func__);
-	if (!IS_ERR(clk) && !__clk_get(clk))
-		clk = ERR_PTR(-ENOENT);
+	clk = __of_clk_get_from_provider(&clkspec, dev_id, con_id);
+	vmm_devtree_dref_node(clkspec.np);
 
-	of_node_put(clkspec.np);
 	return clk;
 }
-EXPORT_SYMBOL(of_clk_get);
 
-/**
- * of_clk_get_by_name() - Parse and lookup a clock referenced by a device node
- * @np: pointer to clock consumer node
- * @name: name of consumer's clock input, or NULL for the first clock reference
- *
- * This function parses the clocks and clock-names properties,
- * and uses them to look up the struct clk from the registered list of clock
- * providers.
- */
-struct clk *of_clk_get_by_name(struct device_node *np, const char *name)
+struct clk *of_clk_get(struct vmm_devtree_node *np, int index)
 {
-	struct clk *clk = ERR_PTR(-ENOENT);
+	return __of_clk_get(np, index, np->name, NULL);
+}
+VMM_EXPORT_SYMBOL(of_clk_get);
+
+static struct clk *__of_clk_get_by_name(struct vmm_devtree_node *np,
+					const char *dev_id,
+					const char *name)
+{
+	struct clk *clk = VMM_ERR_PTR(VMM_ENOENT);
 
 	/* Walk up the tree of devices looking for a clock that matches */
 	while (np) {
@@ -77,18 +103,14 @@ struct clk *of_clk_get_by_name(struct device_node *np, const char *name)
 		 * index will be an error code, and of_clk_get() will fail.
 		 */
 		if (name)
-			index = of_property_match_string(np, "clock-names", name);
-		clk = of_clk_get(np, index);
-		if (!IS_ERR(clk))
+			index = vmm_devtree_match_string(np, "clock-names", name);
+		clk = __of_clk_get(np, index, dev_id, name);
+		if (!VMM_IS_ERR(clk)) {
 			break;
-		else if (name && index >= 0) {
-#if 0
-			pr_err("ERROR: could not get clock %s:%s(%i)\n",
-				np->full_name, name ? name : "", index);
-#else
-			pr_err("ERROR: could not get clock %s:%s(%i)\n",
-				np->name, name ? name : "", index);
-#endif
+		} else if (name && index >= 0) {
+			if (VMM_PTR_ERR(clk) != VMM_EPROBE_DEFER)
+				vmm_lerror(__func__, "could not get clock %pOF:%s(%i)\n",
+					np, name ? name : "", index);
 			return clk;
 		}
 
@@ -98,13 +120,39 @@ struct clk *of_clk_get_by_name(struct device_node *np, const char *name)
 		 * clocks.
 		 */
 		np = np->parent;
-		if (np && !of_get_property(np, "clock-ranges", NULL))
+		if (np && !vmm_devtree_getattr(np, "clock-ranges"))
 			break;
 	}
 
 	return clk;
 }
-EXPORT_SYMBOL(of_clk_get_by_name);
+
+/**
+ * of_clk_get_by_name() - Parse and lookup a clock referenced by a device node
+ * @np: pointer to clock consumer node
+ * @name: name of consumer's clock input, or NULL for the first clock reference
+ *
+ * This function parses the clocks and clock-names properties,
+ * and uses them to look up the struct clk from the registered list of clock
+ * providers.
+ */
+struct clk *of_clk_get_by_name(struct vmm_devtree_node *np, const char *name)
+{
+	if (!np)
+		return VMM_ERR_PTR(VMM_ENOENT);
+
+	return __of_clk_get_by_name(np, np->name, name);
+}
+VMM_EXPORT_SYMBOL(of_clk_get_by_name);
+
+#else /* defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK) */
+
+static struct clk *__of_clk_get_by_name(struct vmm_devtree_node *np,
+					const char *dev_id,
+					const char *name)
+{
+	return VMM_ERR_PTR(VMM_ENOENT);
+}
 #endif
 
 /*
@@ -153,80 +201,76 @@ static struct clk_lookup *clk_find(const char *dev_id, const char *con_id)
 struct clk *clk_get_sys(const char *dev_id, const char *con_id)
 {
 	struct clk_lookup *cl;
+	struct clk *clk = NULL;
 
-#if 0
-	mutex_lock(&clocks_mutex);
-#else
-	spin_lock(&clocks_slock);
-#endif
+	vmm_spin_lock(&clocks_slock);
+
 	cl = clk_find(dev_id, con_id);
-	if (cl && !__clk_get(cl->clk))
+	if (!cl)
+		goto out;
+
+	clk = __clk_create_clk(cl->clk_hw, dev_id, con_id);
+	if (VMM_IS_ERR(clk))
+		goto out;
+
+	if (!__clk_get(clk)) {
+		__clk_free_clk(clk);
 		cl = NULL;
-#if 0
-	mutex_unlock(&clocks_mutex);
-#else
-	spin_unlock(&clocks_slock);
-#endif
+		goto out;
+	}
 
-	return cl ? cl->clk : ERR_PTR(-ENOENT);
+out:
+	vmm_spin_unlock(&clocks_slock);
+
+	return cl ? clk : VMM_ERR_PTR(VMM_ENOENT);
 }
-EXPORT_SYMBOL(clk_get_sys);
+VMM_EXPORT_SYMBOL(clk_get_sys);
 
-struct clk *clk_get(struct device *dev, const char *con_id)
+struct clk *clk_get(struct vmm_device *dev, const char *con_id)
 {
-	const char *dev_id = dev ? dev_name(dev) : NULL;
+	const char *dev_id = dev ? dev->name : NULL;
 	struct clk *clk;
 
 	if (dev) {
-		clk = of_clk_get_by_name(dev->of_node, con_id);
-		if (!IS_ERR(clk))
-			return clk;
-		if (PTR_ERR(clk) == -EPROBE_DEFER)
+		clk = __of_clk_get_by_name(dev->of_node, dev_id, con_id);
+		if (!VMM_IS_ERR(clk) || VMM_PTR_ERR(clk) == VMM_EPROBE_DEFER)
 			return clk;
 	}
 
 	return clk_get_sys(dev_id, con_id);
 }
-EXPORT_SYMBOL(clk_get);
+VMM_EXPORT_SYMBOL(clk_get);
 
 void clk_put(struct clk *clk)
 {
 	__clk_put(clk);
 }
-EXPORT_SYMBOL(clk_put);
+VMM_EXPORT_SYMBOL(clk_put);
+
+static void __clkdev_add(struct clk_lookup *cl)
+{
+	vmm_spin_lock(&clocks_slock);
+	list_add_tail(&cl->node, &clocks);
+	vmm_spin_unlock(&clocks_slock);
+}
 
 void clkdev_add(struct clk_lookup *cl)
 {
-#if 0
-	mutex_lock(&clocks_mutex);
-#else
-	spin_lock(&clocks_slock);
-#endif
-	list_add_tail(&cl->node, &clocks);
-#if 0
-	mutex_unlock(&clocks_mutex);
-#else
-	spin_unlock(&clocks_slock);
-#endif
+	if (!cl->clk_hw)
+		cl->clk_hw = __clk_get_hw(cl->clk);
+	__clkdev_add(cl);
 }
-EXPORT_SYMBOL(clkdev_add);
+VMM_EXPORT_SYMBOL(clkdev_add);
 
-void __init clkdev_add_table(struct clk_lookup *cl, size_t num)
+void clkdev_add_table(struct clk_lookup *cl, size_t num)
 {
-#if 0
-	mutex_lock(&clocks_mutex);
-#else
-	spin_lock(&clocks_slock);
-#endif
+	vmm_spin_lock(&clocks_slock);
 	while (num--) {
+		cl->clk_hw = __clk_get_hw(cl->clk);
 		list_add_tail(&cl->node, &clocks);
 		cl++;
 	}
-#if 0
-	mutex_unlock(&clocks_mutex);
-#else
-	spin_unlock(&clocks_slock);
-#endif
+	vmm_spin_unlock(&clocks_slock);
 }
 
 #define MAX_DEV_ID	20
@@ -238,8 +282,8 @@ struct clk_lookup_alloc {
 	char	con_id[MAX_CON_ID];
 };
 
-static struct clk_lookup * __init_refok
-vclkdev_alloc(struct clk *clk, const char *con_id, const char *dev_fmt,
+static struct clk_lookup *
+vclkdev_alloc(struct clk_hw *hw, const char *con_id, const char *dev_fmt,
 	va_list ap)
 {
 	struct clk_lookup_alloc *cla;
@@ -248,81 +292,155 @@ vclkdev_alloc(struct clk *clk, const char *con_id, const char *dev_fmt,
 	if (!cla)
 		return NULL;
 
-	cla->cl.clk = clk;
+	cla->cl.clk_hw = hw;
 	if (con_id) {
 		strlcpy(cla->con_id, con_id, sizeof(cla->con_id));
 		cla->cl.con_id = cla->con_id;
 	}
 
 	if (dev_fmt) {
-#if 0
-		vscnprintf(cla->dev_id, sizeof(cla->dev_id), dev_fmt, ap);
-#else
 		vmm_snprintf(cla->dev_id, sizeof(cla->dev_id), dev_fmt, ap);
-#endif
 		cla->cl.dev_id = cla->dev_id;
 	}
 
 	return &cla->cl;
 }
 
-struct clk_lookup * __init_refok
+static struct clk_lookup *
+vclkdev_create(struct clk_hw *hw, const char *con_id, const char *dev_fmt,
+	va_list ap)
+{
+	struct clk_lookup *cl;
+
+	cl = vclkdev_alloc(hw, con_id, dev_fmt, ap);
+	if (cl)
+		__clkdev_add(cl);
+
+	return cl;
+}
+
+struct clk_lookup *
 clkdev_alloc(struct clk *clk, const char *con_id, const char *dev_fmt, ...)
 {
 	struct clk_lookup *cl;
 	va_list ap;
 
 	va_start(ap, dev_fmt);
-	cl = vclkdev_alloc(clk, con_id, dev_fmt, ap);
+	cl = vclkdev_alloc(__clk_get_hw(clk), con_id, dev_fmt, ap);
 	va_end(ap);
 
 	return cl;
 }
-EXPORT_SYMBOL(clkdev_alloc);
+VMM_EXPORT_SYMBOL(clkdev_alloc);
 
-int clk_add_alias(const char *alias, const char *alias_dev_name, char *id,
-	struct device *dev)
+struct clk_lookup *
+clkdev_hw_alloc(struct clk_hw *hw, const char *con_id, const char *dev_fmt, ...)
 {
-	struct clk *r = clk_get(dev, id);
+	struct clk_lookup *cl;
+	va_list ap;
+
+	va_start(ap, dev_fmt);
+	cl = vclkdev_alloc(hw, con_id, dev_fmt, ap);
+	va_end(ap);
+
+	return cl;
+}
+VMM_EXPORT_SYMBOL(clkdev_hw_alloc);
+
+/**
+ * clkdev_create - allocate and add a clkdev lookup structure
+ * @clk: struct clk to associate with all clk_lookups
+ * @con_id: connection ID string on device
+ * @dev_fmt: format string describing device name
+ *
+ * Returns a clk_lookup structure, which can be later unregistered and
+ * freed.
+ */
+struct clk_lookup *clkdev_create(struct clk *clk, const char *con_id,
+	const char *dev_fmt, ...)
+{
+	struct clk_lookup *cl;
+	va_list ap;
+
+	va_start(ap, dev_fmt);
+	cl = vclkdev_create(__clk_get_hw(clk), con_id, dev_fmt, ap);
+	va_end(ap);
+
+	return cl;
+}
+VMM_EXPORT_SYMBOL(clkdev_create);
+
+/**
+ * clkdev_hw_create - allocate and add a clkdev lookup structure
+ * @hw: struct clk_hw to associate with all clk_lookups
+ * @con_id: connection ID string on device
+ * @dev_fmt: format string describing device name
+ *
+ * Returns a clk_lookup structure, which can be later unregistered and
+ * freed.
+ */
+struct clk_lookup *clkdev_hw_create(struct clk_hw *hw, const char *con_id,
+	const char *dev_fmt, ...)
+{
+	struct clk_lookup *cl;
+	va_list ap;
+
+	va_start(ap, dev_fmt);
+	cl = vclkdev_create(hw, con_id, dev_fmt, ap);
+	va_end(ap);
+
+	return cl;
+}
+VMM_EXPORT_SYMBOL(clkdev_hw_create);
+
+int clk_add_alias(const char *alias, const char *alias_dev_name,
+	const char *con_id, struct vmm_device *dev)
+{
+	struct clk *r = clk_get(dev, con_id);
 	struct clk_lookup *l;
 
-	if (IS_ERR(r))
-		return PTR_ERR(r);
+	if (VMM_IS_ERR(r))
+		return VMM_PTR_ERR(r);
 
-	l = clkdev_alloc(r, alias, alias_dev_name);
+	l = clkdev_create(r, alias, alias_dev_name ? "%s" : NULL,
+			  alias_dev_name);
 	clk_put(r);
-	if (!l)
-		return -ENODEV;
-	clkdev_add(l);
-	return 0;
+
+	return l ? 0 : VMM_ENODEV;
 }
-EXPORT_SYMBOL(clk_add_alias);
+VMM_EXPORT_SYMBOL(clk_add_alias);
 
 /*
  * clkdev_drop - remove a clock dynamically allocated
  */
 void clkdev_drop(struct clk_lookup *cl)
 {
-#if 0
-	mutex_lock(&clocks_mutex);
-#else
-	spin_lock(&clocks_slock);
-#endif
+	vmm_spin_lock(&clocks_slock);
 	list_del(&cl->node);
-#if 0
-	mutex_unlock(&clocks_mutex);
-#else
-	spin_unlock(&clocks_slock);
-#endif
-	kfree(cl);
+	vmm_spin_unlock(&clocks_slock);
+	vmm_free(cl);
 }
-EXPORT_SYMBOL(clkdev_drop);
+VMM_EXPORT_SYMBOL(clkdev_drop);
+
+static struct clk_lookup *__clk_register_clkdev(struct clk_hw *hw,
+						const char *con_id,
+						const char *dev_id, ...)
+{
+	struct clk_lookup *cl;
+	va_list ap;
+
+	va_start(ap, dev_id);
+	cl = vclkdev_create(hw, con_id, dev_id, ap);
+	va_end(ap);
+
+	return cl;
+}
 
 /**
  * clk_register_clkdev - register one clock lookup for a struct clk
  * @clk: struct clk to associate with all clk_lookups
  * @con_id: connection ID string on device
- * @dev_id: format string describing device name
+ * @dev_id: string describing device name
  *
  * con_id or dev_id may be NULL as a wildcard, just as in the rest of
  * clkdev.
@@ -333,49 +451,58 @@ EXPORT_SYMBOL(clkdev_drop);
  * after clk_register().
  */
 int clk_register_clkdev(struct clk *clk, const char *con_id,
-	const char *dev_fmt, ...)
+	const char *dev_id)
 {
 	struct clk_lookup *cl;
-	va_list ap;
 
-	if (IS_ERR(clk))
-		return PTR_ERR(clk);
+	if (VMM_IS_ERR(clk))
+		return VMM_PTR_ERR(clk);
 
-	va_start(ap, dev_fmt);
-	cl = vclkdev_alloc(clk, con_id, dev_fmt, ap);
-	va_end(ap);
+	/*
+	 * Since dev_id can be NULL, and NULL is handled specially, we must
+	 * pass it as either a NULL format string, or with "%s".
+	 */
+	if (dev_id)
+		cl = __clk_register_clkdev(__clk_get_hw(clk), con_id, "%s",
+					   dev_id);
+	else
+		cl = __clk_register_clkdev(__clk_get_hw(clk), con_id, NULL);
 
-	if (!cl)
-		return -ENOMEM;
-
-	clkdev_add(cl);
-
-	return 0;
+	return cl ? 0 : VMM_ENOMEM;
 }
+VMM_EXPORT_SYMBOL(clk_register_clkdev);
 
 /**
- * clk_register_clkdevs - register a set of clk_lookup for a struct clk
- * @clk: struct clk to associate with all clk_lookups
- * @cl: array of clk_lookup structures with con_id and dev_id pre-initialized
- * @num: number of clk_lookup structures to register
+ * clk_hw_register_clkdev - register one clock lookup for a struct clk_hw
+ * @hw: struct clk_hw to associate with all clk_lookups
+ * @con_id: connection ID string on device
+ * @dev_id: format string describing device name
  *
- * To make things easier for mass registration, we detect error clks
- * from a previous clk_register() call, and return the error code for
+ * con_id or dev_id may be NULL as a wildcard, just as in the rest of
+ * clkdev.
+ *
+ * To make things easier for mass registration, we detect error clk_hws
+ * from a previous clk_hw_register_*() call, and return the error code for
  * those.  This is to permit this function to be called immediately
- * after clk_register().
+ * after clk_hw_register_*().
  */
-int clk_register_clkdevs(struct clk *clk, struct clk_lookup *cl, size_t num)
+int clk_hw_register_clkdev(struct clk_hw *hw, const char *con_id,
+	const char *dev_id)
 {
-	unsigned i;
+	struct clk_lookup *cl;
 
-	if (IS_ERR(clk))
-		return PTR_ERR(clk);
+	if (VMM_IS_ERR(hw))
+		return VMM_PTR_ERR(hw);
 
-	for (i = 0; i < num; i++, cl++) {
-		cl->clk = clk;
-		clkdev_add(cl);
-	}
+	/*
+	 * Since dev_id can be NULL, and NULL is handled specially, we must
+	 * pass it as either a NULL format string, or with "%s".
+	 */
+	if (dev_id)
+		cl = __clk_register_clkdev(hw, con_id, "%s", dev_id);
+	else
+		cl = __clk_register_clkdev(hw, con_id, NULL);
 
-	return 0;
+	return cl ? 0 : VMM_ENOMEM;
 }
-EXPORT_SYMBOL(clk_register_clkdevs);
+VMM_EXPORT_SYMBOL(clk_hw_register_clkdev);
