@@ -32,6 +32,7 @@
 #include <vmm_mutex.h>
 #include <vmm_notifier.h>
 #include <libs/list.h>
+#include <libs/xref.h>
 
 #define VMM_DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 
@@ -79,7 +80,7 @@ struct vmm_device {
 	/* Private fields (for device driver framework) */
 	struct dlist bus_head;
 	struct dlist class_head;
-	atomic_t ref_count;
+	struct xref ref_count;
 	bool is_registered;
 	struct dlist child_head;
 	struct vmm_mutex child_list_lock;

@@ -1393,7 +1393,7 @@ void vmm_devdrv_initialize_device(struct vmm_device *dev)
 	/* Only initialize the private fields of device */
 	INIT_LIST_HEAD(&dev->bus_head);
 	INIT_LIST_HEAD(&dev->class_head);
-	arch_atomic_write(&dev->ref_count, 1);
+	xref_init(&dev->ref_count);
 	dev->is_registered = FALSE;
 	INIT_LIST_HEAD(&dev->child_head);
 	INIT_MUTEX(&dev->child_list_lock);
@@ -1410,22 +1410,16 @@ struct vmm_device *vmm_devdrv_ref_device(struct vmm_device *dev)
 	if (!dev) {
 		return NULL;
 	}
-
-	arch_atomic_inc(&dev->ref_count);
+	
+	xref_get(&dev->ref_count);
 	return dev;
 }
 
-void vmm_devdrv_dref_device(struct vmm_device *dev)
+static void __devdrv_device_free(struct xref *ref)
 {
 	bool released;
-
-	if (!dev) {
-		return;
-	}
-
-	if (arch_atomic_sub_return(&dev->ref_count, 1)) {
-		return;
-	}
+	struct vmm_device *dev =
+			container_of(ref, struct vmm_device, ref_count);
 
 	released = TRUE;
 	if (dev->release) {
@@ -1439,6 +1433,13 @@ void vmm_devdrv_dref_device(struct vmm_device *dev)
 	}
 
 	WARN_ON(!released);
+}
+
+void vmm_devdrv_dref_device(struct vmm_device *dev)
+{
+	if (dev) {
+		xref_put(&dev->ref_count, __devdrv_device_free);
+	}
 }
 
 bool vmm_devdrv_isregistered_device(struct vmm_device *dev)
