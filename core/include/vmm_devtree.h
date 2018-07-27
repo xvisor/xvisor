@@ -29,8 +29,8 @@
 #include <vmm_compiler.h>
 #include <vmm_types.h>
 #include <vmm_spinlocks.h>
-#include <arch_atomic.h>
 #include <libs/list.h>
+#include <libs/xref.h>
 
 #define VMM_DEVTREE_PATH_SEPARATOR		'/'
 #define VMM_DEVTREE_PATH_SEPARATOR_STRING	"/"
@@ -191,7 +191,7 @@ struct vmm_devtree_node {
 	struct dlist attr_list;
 	vmm_rwlock_t child_lock;
 	struct dlist child_list;
-	atomic_t ref_count;
+	struct xref ref_count;
 	/* Public fields */
 	char name[VMM_FIELD_SHORT_NAME_SIZE];
 	struct vmm_devtree_node *parent;
