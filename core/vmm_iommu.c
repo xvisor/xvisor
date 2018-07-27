@@ -53,7 +53,7 @@ struct vmm_iommu_group {
 	struct vmm_iommu_controller *ctrl;
 	struct dlist head;
 
-	atomic_t ref_count;
+	struct xref ref_count;
 	struct vmm_mutex mutex;
 	struct vmm_iommu_domain *domain;
 	struct dlist devices;
@@ -263,7 +263,7 @@ struct vmm_iommu_group *vmm_iommu_group_alloc(const char *name,
 	group->ctrl = ctrl;
 	INIT_LIST_HEAD(&group->head);
 
-	arch_atomic_write(&group->ref_count, 1);
+	xref_init(&group->ref_count);
 	INIT_MUTEX(&group->mutex);
 	INIT_LIST_HEAD(&group->devices);
 	group->domain = NULL;
@@ -281,20 +281,15 @@ struct vmm_iommu_group *vmm_iommu_group_get(struct vmm_device *dev)
 	struct vmm_iommu_group *group = dev->iommu_group;
 
 	if (group)
-		arch_atomic_inc(&group->ref_count);
+		xref_get(&group->ref_count);
 
 	return group;
 }
 
-void vmm_iommu_group_free(struct vmm_iommu_group *group)
+static void __iommu_group_free(struct xref *ref)
 {
-	if (!group) {
-		return;
-	}
-
-	if (arch_atomic_sub_return(&group->ref_count, 1)) {
-		return;
-	}
+	struct vmm_iommu_group *group =
+			container_of(ref, struct vmm_iommu_group, ref_count);
 
 	vmm_mutex_lock(&group->ctrl->groups_lock);
 	list_del(&group->head);
@@ -306,6 +301,13 @@ void vmm_iommu_group_free(struct vmm_iommu_group *group)
 		group->iommu_data_release(group->iommu_data);
 
 	vmm_free(group);
+}
+
+void vmm_iommu_group_free(struct vmm_iommu_group *group)
+{
+	if (group) {
+		xref_put(&group->ref_count, __iommu_group_free);
+	}
 }
 
 void *vmm_iommu_group_get_iommudata(struct vmm_iommu_group *group)
@@ -349,7 +351,7 @@ int vmm_iommu_group_add_device(struct vmm_iommu_group *group,
 
 	device->dev = dev;
 	dev->iommu_group = group;
-	arch_atomic_inc(&group->ref_count);
+	xref_get(&group->ref_count);
 	list_add_tail(&device->list, &group->devices);
 
 	vmm_mutex_unlock(&group->mutex);
@@ -582,7 +584,7 @@ struct vmm_iommu_domain *vmm_iommu_domain_alloc(const char *name,
 	INIT_LIST_HEAD(&domain->head);
 	domain->type = type;
 	domain->ctrl = ctrl;
-	arch_atomic_write(&domain->ref_count, 1);
+	xref_init(&domain->ref_count);
 	domain->bus = bus;
 	domain->ops = bus->iommu_ops;
 
@@ -598,17 +600,13 @@ void vmm_iommu_domain_ref(struct vmm_iommu_domain *domain)
 	if (domain == NULL)
 		return;
 
-	arch_atomic_add(&domain->ref_count, 1);
+	xref_get(&domain->ref_count);
 }
 
-void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
+static void __iommu_domain_free(struct xref *ref)
 {
-	if (domain == NULL)
-		return;
-
-	if (arch_atomic_sub_return(&domain->ref_count, 1)) {
-		return;
-	}
+	struct vmm_iommu_domain *domain =
+			container_of(ref, struct vmm_iommu_domain, ref_count);
 
 	vmm_mutex_lock(&domain->ctrl->domains_lock);
 	list_del(&domain->head);
@@ -616,6 +614,13 @@ void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
 
 	if (likely(domain->ops->domain_free != NULL))
 		domain->ops->domain_free(domain);
+}
+
+void vmm_iommu_domain_free(struct vmm_iommu_domain *domain)
+{
+	if (domain) {
+		xref_put(&domain->ref_count, __iommu_domain_free);
+	}
 }
 
 void vmm_iommu_set_fault_handler(struct vmm_iommu_domain *domain,

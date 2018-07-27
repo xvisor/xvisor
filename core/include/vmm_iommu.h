@@ -35,7 +35,7 @@
 #include <vmm_types.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <arch_atomic.h>
+#include <libs/xref.h>
 
 #define VMM_IOMMU_CONTROLLER_CLASS_NAME				"iommu"
 
@@ -114,7 +114,7 @@ struct vmm_iommu_domain {
 	struct vmm_iommu_controller *ctrl;
 	/* Private members */
 	struct dlist head;
-	atomic_t ref_count;
+	struct xref ref_count;
 	struct vmm_iommu_ops *ops;
 	void *priv;
 	vmm_iommu_fault_handler_t handler;
