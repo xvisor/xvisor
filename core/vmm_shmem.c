@@ -151,18 +151,13 @@ void vmm_shmem_ref(struct vmm_shmem *shm)
 		return;
 	}
 
-	arch_atomic_inc(&shm->ref_count);
+	xref_get(&shm->ref_count);
 }
 
-void vmm_shmem_dref(struct vmm_shmem *shm)
+static void __shmem_free(struct xref *ref)
 {
-	if (!shm) {
-		return;
-	}
-
-	if (arch_atomic_sub_return(&shm->ref_count, 1)) {
-		return;
-	}
+	struct vmm_shmem *shm =
+		container_of(ref, struct vmm_shmem, ref_count);
 
 	vmm_mutex_lock(&shmctrl.lock);
 
@@ -171,6 +166,13 @@ void vmm_shmem_dref(struct vmm_shmem *shm)
 	vmm_free(shm);
 
 	vmm_mutex_unlock(&shmctrl.lock);
+}
+
+void vmm_shmem_dref(struct vmm_shmem *shm)
+{
+	if (shm) {
+		xref_put(&shm->ref_count, __shmem_free);
+	}
 }
 
 struct vmm_shmem *vmm_shmem_create(const char *name,
@@ -206,7 +208,7 @@ struct vmm_shmem *vmm_shmem_create(const char *name,
 	}
 
 	INIT_LIST_HEAD(&shm->head);
-	arch_atomic_write(&shm->ref_count, 1);
+	xref_init(&shm->ref_count);
 	strncpy(shm->name, name, sizeof(shm->name));
 
 	shm->size = vmm_host_ram_alloc(&shm->addr, size, align_order);

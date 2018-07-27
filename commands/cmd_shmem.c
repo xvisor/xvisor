@@ -57,7 +57,7 @@ static int cmd_shmem_list_iter(struct vmm_shmem *shm, void *priv)
 		     vmm_shmem_get_size(shm));
 	vmm_snprintf(aorder, sizeof(aorder), "%d",
 		     vmm_shmem_get_align_order(shm));
-	vmm_snprintf(rcount, sizeof(rcount), "%d",
+	vmm_snprintf(rcount, sizeof(rcount), "%ld",
 		     vmm_shmem_get_ref_count(shm));
 	vmm_cprintf(cdev, "%-16s %-18s %-18s %-12s %-12s\n",
 		    vmm_shmem_get_name(shm), addr, size, aorder, rcount);

@@ -25,12 +25,12 @@
 
 #include <vmm_types.h>
 #include <vmm_limits.h>
-#include <arch_atomic.h>
+#include <libs/xref.h>
 #include <libs/list.h>
 
 struct vmm_shmem {
 	struct dlist head;
-	atomic_t ref_count;
+	struct xref ref_count;
 	char name[VMM_FIELD_NAME_SIZE];
 	physical_addr_t addr;
 	physical_size_t size;
@@ -104,9 +104,9 @@ static inline u32 vmm_shmem_get_align_order(struct vmm_shmem *shm)
 }
 
 /** Get reference count of shared memory */
-static inline u32 vmm_shmem_get_ref_count(struct vmm_shmem *shm)
+static inline long vmm_shmem_get_ref_count(struct vmm_shmem *shm)
 {
-	return (shm) ? arch_atomic_read(&shm->ref_count) : 0;
+	return (shm) ? xref_val(&shm->ref_count) : 0;
 }
 
 /** Get private pointer of shared memory instance */
