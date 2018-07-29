@@ -484,6 +484,27 @@ int vmm_cprintf(struct vmm_chardev *cdev, const char *format, ...)
 	return retval;
 }
 
+int vmm_printf(const char *format, ...)
+{
+	va_list args;
+	int retval;
+	va_start(args, format);
+	retval = vmm_cvprintf(NULL, format, args);
+	va_end(args);
+	return retval;
+}
+
+int vmm_init_printf(const char *format, ...)
+{
+	va_list args;
+	int retval;
+	va_start(args, format);
+	vmm_cvprintf(NULL, "INIT: ", args);
+	retval = vmm_cvprintf(NULL, format, args);
+	va_end(args);
+	return retval;
+}
+
 void vmm_chexdump(struct vmm_chardev *cdev,
 		  u64 print_base_addr, void *data, u64 len)
 {

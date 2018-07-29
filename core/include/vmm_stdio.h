@@ -125,7 +125,10 @@ int __printf(2, 3) vmm_cprintf(struct vmm_chardev *cdev,
 				const char *format, ...);
 
 /** Print formatted string to default device */
-#define vmm_printf(args...)	vmm_cprintf(NULL, args)
+int __printf(1, 2) vmm_printf(const char *format, ...);
+
+/** Print formatted string to default device at boot-time */
+int __printf(1, 2) vmm_init_printf(const char *format, ...);
 
 /** Print contents of some data in hex format */
 void vmm_chexdump(struct vmm_chardev *cdev,
