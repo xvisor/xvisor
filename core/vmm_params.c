@@ -23,28 +23,28 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_compiler.h>
+#include <vmm_stdio.h>
 #include <vmm_params.h>
 #include <libs/stringlib.h>
-#include <arch_cpu_irq.h>
 
 extern const struct vmm_setup_param __setup_start[], __setup_end[];
 
 static char dash2underscore(char c)
 {
-        if (c == '-')
-                return '_';
-        return c;
+	if (c == '-')
+		return '_';
+	return c;
 }
 
 static bool parameqn(const char *a, const char *b, size_t n)
 {
-        size_t i;
+	size_t i;
 
-        for (i = 0; i < n; i++) {
-                if (dash2underscore(a[i]) != dash2underscore(b[i]))
-                        return false;
+	for (i = 0; i < n; i++) {
+		if (dash2underscore(a[i]) != dash2underscore(b[i]))
+			return false;
 	}
-        return true;
+	return true;
 }
 
 /* Check for early params. */
@@ -52,16 +52,16 @@ static int __init do_early_param(char *param, char *val, const char *unused)
 {
 	const struct vmm_setup_param *p;
 
-        for (p = __setup_start; p < __setup_end; p++) {
-                if ((p->early && parameqn(param, p->str, strlen(param))) ||
+	for (p = __setup_start; p < __setup_end; p++) {
+		if ((p->early && parameqn(param, p->str, strlen(param))) ||
 			(strcmp(param, "console") == 0 &&
 				strcmp(p->str, "earlycon") == 0)
 			) {
-                        p->setup_func(val);
-                }
-        }
-        /* We accept everything at this stage. */
-        return 0;
+			p->setup_func(val);
+		}
+	}
+	/* We accept everything at this stage. */
+	return 0;
 }
 
 /* You can use " around spaces, but can't escape ". */
@@ -147,24 +147,25 @@ static int parse_args(const char *doing,
 
 int vmm_get_option(char **str, int *pint)
 {
-        char *cur = *str;
+	char *cur = *str;
 
-        if (!cur || !(*cur))
-                return 0;
-        *pint = strtol(cur, str, 0);
-        if (cur == *str)
-                return 0;
-        if (**str == ',') {
-                (*str)++;
-                return 2;
-        }
-        if (**str == '-')
-                return 3;
+	if (!cur || !(*cur))
+		return 0;
+	*pint = strtol(cur, str, 0);
+	if (cur == *str)
+		return 0;
+	if (**str == ',') {
+		(*str)++;
+		return 2;
+	}
+	if (**str == '-')
+		return 3;
 
-        return 1;
+	return 1;
 }
 
 void __init vmm_parse_early_options(const char *cmdline)
 {
-        parse_args("early options", (char *)cmdline, 0, 0, 0, do_early_param);
+	vmm_init_printf("early_params: %s\n", cmdline);
+	parse_args("early options", (char *)cmdline, 0, 0, 0, do_early_param);
 }
