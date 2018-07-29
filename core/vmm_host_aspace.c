@@ -928,6 +928,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	}
 
 	/* Reserve RAM and MEMAP HASH for code area */
+	vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR" size=%"PRISIZE"\n",
+			arch_code_paddr_start(), arch_code_size());
 	if ((rc = vmm_host_ram_reserve(arch_code_paddr_start(),
 				       arch_code_size()))) {
 		return rc;
@@ -940,6 +942,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	}
 
 	/* Reserve RAM and MEMAP HASH for core reserved area */
+	vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR" size=%"PRISIZE"\n",
+			core_resv_pa, core_resv_sz);
 	if ((rc = vmm_host_ram_reserve(core_resv_pa,
 				       core_resv_sz))) {
 		return rc;
@@ -952,6 +956,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	}
 
 	/* Reserve RAM and MEMAP HASH for arch reserved area */
+	vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR" size=%"PRISIZE"\n",
+			arch_resv_pa, arch_resv_sz);
 	if ((rc = vmm_host_ram_reserve(arch_resv_pa,
 				       arch_resv_sz))) {
 		return rc;
@@ -981,6 +987,8 @@ int __cpuinit vmm_host_aspace_init(void)
 	    ((core_resv_va + core_resv_sz) < (arch_resv_va + arch_resv_sz))) {
 		core_resv_sz = (arch_resv_va + arch_resv_sz) - core_resv_va;
 	}
+	vmm_init_printf("vapool_reserve: virt=0x%"PRIADDR" size=%"PRISIZE"\n",
+			core_resv_va, core_resv_sz);
 	if ((rc = vmm_host_vapool_reserve(core_resv_va,
 					  core_resv_sz))) {
 		return rc;
@@ -1004,6 +1012,8 @@ int __cpuinit vmm_host_aspace_init(void)
 			ram_start -= ram_start & VMM_PAGE_MASK;
 		}
 		ram_size &= ~VMM_PAGE_MASK;
+		vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR
+				" size=%"PRIPSIZE"\n", ram_start, ram_size);
 		if ((rc = vmm_host_ram_reserve(ram_start, ram_size))) {
 			return rc;
 		}

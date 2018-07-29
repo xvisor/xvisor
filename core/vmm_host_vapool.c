@@ -193,10 +193,18 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 				virtual_addr_t hkbase)
 {
 	int rc;
+	virtual_size_t hksize;
+
+	vmm_init_printf("vapool: base=0x%"PRIADDR" size=%"PRISIZE"\n",
+			base, size);
 
 	if ((hkbase < base) || ((base + size) <= hkbase)) {
 		return VMM_EFAIL;
 	}
+	hksize = vmm_host_vapool_estimate_hksize(size);
+
+	vmm_init_printf("vapool: hkbase=0x%"PRIADDR" hksize=%"PRISIZE"\n",
+			hkbase, hksize);
 
 	vpctrl.vapool_start = base;
 	vpctrl.vapool_size = size;
@@ -204,8 +212,7 @@ int __init vmm_host_vapool_init(virtual_addr_t base,
 	vpctrl.vapool_size &= ~VMM_PAGE_MASK;
 	vpctrl.vapool_page_count = vpctrl.vapool_size >> VMM_PAGE_SHIFT;
 
-	rc = buddy_allocator_init(&vpctrl.ba, (void *)hkbase,
-				  vmm_host_vapool_estimate_hksize(size),
+	rc = buddy_allocator_init(&vpctrl.ba, (void *)hkbase, hksize,
 				  base, size, VAPOOL_MIN_BIN, VAPOOL_MAX_BIN);
 	if (rc) {
 		return rc;

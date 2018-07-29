@@ -475,6 +475,12 @@ int __init vmm_host_ram_init(virtual_addr_t hkbase)
 			return rc;
 		}
 
+		vmm_init_printf("ram: bank%d phys=0x%"PRIPADDR" size=%"PRIPSIZE"\n",
+				bn, bank->start, bank->size);
+
+		vmm_init_printf("ram: bank%d hkbase=0x%"PRIADDR" hksize=%d\n",
+				bn, hkbase, bank->bmap_sz);
+
 		hkbase += bank->bmap_sz;
 	}
 
