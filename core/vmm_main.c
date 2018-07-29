@@ -463,6 +463,13 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
+	/* Initialize device tree based reserved-memory */
+	vmm_init_printf("device tree reserved-memory\n");
+	ret = vmm_devtree_reserved_memory_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
 #if defined(CONFIG_SMP)
 	/* Initialize secondary CPUs */
 	vmm_init_printf("discover secondary CPUs\n");

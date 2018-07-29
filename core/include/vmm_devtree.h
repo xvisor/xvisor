@@ -82,6 +82,8 @@
 #define VMM_DEVTREE_MEMORY_PHYS_ADDR_ATTR_NAME	"physical_addr"
 #define VMM_DEVTREE_MEMORY_PHYS_SIZE_ATTR_NAME	"physical_size"
 
+#define VMM_DEVTREE_RESERVED_MEMORY_NODE_NAME	"reserved-memory"
+
 #define VMM_DEVTREE_CPUS_NODE_NAME		"cpus"
 #define VMM_DEVTREE_INTERRUPTS_ATTR_NAME	"interrupts"
 #define VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME	"enable-method"
@@ -771,6 +773,9 @@ bool vmm_devtree_is_reg_big_endian(struct vmm_devtree_node *node);
 
 /** Check whether device is DMA cache-coherent */
 bool vmm_devtree_is_dma_coherent(struct vmm_devtree_node *node);
+
+/** Initialize device tree based reserved-memory */
+int vmm_devtree_reserved_memory_init(void);
 
 /** Count number of enteries in nodeid table */
 u32 vmm_devtree_nidtbl_count(void);

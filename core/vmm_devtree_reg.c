@@ -22,7 +22,9 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_stdio.h>
 #include <vmm_resource.h>
+#include <vmm_host_ram.h>
 #include <vmm_host_vapool.h>
 #include <vmm_host_aspace.h>
 #include <vmm_devtree.h>
@@ -510,6 +512,42 @@ int vmm_devtree_regunmap_release(struct vmm_devtree_node *node,
 	}
 
 	vmm_release_mem_region(pa, sz);
+
+	return VMM_OK;
+}
+
+int __init vmm_devtree_reserved_memory_init(void)
+{
+	int pos,ret;
+	physical_addr_t pa;
+	physical_size_t sz;
+	struct vmm_devtree_node *child, *node;
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_RESERVED_MEMORY_NODE_NAME);
+	if (!node)
+		return VMM_OK;
+
+	vmm_devtree_for_each_child(child, node) {
+		pos = 0;
+		while (1) {
+			if (vmm_devtree_regaddr(child, &pa, pos) != VMM_OK)
+				break;
+			if (vmm_devtree_regsize(child, &sz, pos) != VMM_OK)
+				break;
+			pos++;
+			vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR
+					" size=%"PRIPSIZE"\n", pa, sz);
+			ret = vmm_host_ram_reserve(pa, sz);
+			if (ret) {
+				vmm_devtree_dref_node(child);
+				vmm_devtree_dref_node(node);
+				return ret;
+			}
+		}
+	}
+
+	vmm_devtree_dref_node(node);
 
 	return VMM_OK;
 }
