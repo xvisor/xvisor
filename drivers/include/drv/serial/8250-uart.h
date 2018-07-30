@@ -71,6 +71,7 @@ struct uart_8250_port {
 	struct serial *p;
 	bool use_ioport;
 	virtual_addr_t base;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 reg_shift;

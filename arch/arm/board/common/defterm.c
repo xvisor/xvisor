@@ -162,7 +162,9 @@ static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&uart8250_port.input_clock);
 	if (rc) {
-		return rc;
+		uart8250_port.skip_baudrate_config = TRUE;
+	} else {
+		uart8250_port.skip_baudrate_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
