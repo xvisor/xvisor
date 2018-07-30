@@ -217,8 +217,6 @@
 				reg-io-width = <1>;
 				clocks = <&ap_clk 3>;
 				status = "disabled";
-				/* Only for Xvisor */
-				clock-frequency = <200000000>;
 			};
 
 			uart1: serial@512100 {
