@@ -78,11 +78,11 @@ void bcm283x_mu_lowlevel_putc(virtual_addr_t base, u8 ch)
 	vmm_writel(ch, (void *)(base + BCM283X_MU_IO));
 }
 
-void bcm283x_mu_lowlevel_init(virtual_addr_t base,
+void bcm283x_mu_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
 			      u32 baudrate, u32 input_clock)
 {
 	u32 val;
-	u32 divider = udiv32(input_clock, (baudrate * 8));
+	u32 divider;
 	void *ier = (void *)(base + BCM283X_MU_IER);
 	void *lcr = (void *)(base + BCM283X_MU_LCR);
 	void *baud = (void *)(base + BCM283X_MU_BAUD);
@@ -99,7 +99,10 @@ void bcm283x_mu_lowlevel_init(virtual_addr_t base,
 
 	/* Setup 8bit data width and baudrate */
 	vmm_writel(BCM283X_MU_LCR_8BIT, lcr);
-	vmm_writel(divider - 1, baud);
+	if (!skip_baudrate_config) {
+		divider = udiv32(input_clock, (baudrate * 8));
+		vmm_writel(divider - 1, baud);
+	}
 
 	/* Enable RX & TX port */
 	val = BCM283X_MU_CNTL_RX_ENABLE | BCM283X_MU_CNTL_TX_ENABLE;
@@ -109,6 +112,7 @@ void bcm283x_mu_lowlevel_init(virtual_addr_t base,
 struct bcm283x_mu_port {
 	struct serial *p;
 	virtual_addr_t base;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 irq;
@@ -176,7 +180,9 @@ static int bcm283x_mu_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
@@ -190,7 +196,7 @@ static int bcm283x_mu_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Call low-level init function */
-	bcm283x_mu_lowlevel_init(port->base,
+	bcm283x_mu_lowlevel_init(port->base, port->skip_baudrate_config,
 				 port->baudrate, port->input_clock);
 
 	/* Create Serial Port */

@@ -492,6 +492,7 @@ static struct defterm_ops scifa_ops = {
 static virtual_addr_t bcm283x_mu_defterm_base;
 static u32 bcm283x_mu_defterm_inclk;
 static u32 bcm283x_mu_defterm_baud;
+static bool bcm283x_mu_defterm_skip_baud_config;
 
 static int bcm283x_mu_defterm_putc(u8 ch)
 {
@@ -523,7 +524,9 @@ static int __init bcm283x_mu_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&bcm283x_mu_defterm_inclk);
 	if (rc) {
-		return rc;
+		bcm283x_mu_defterm_skip_baud_config = TRUE;
+	} else {
+		bcm283x_mu_defterm_skip_baud_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
@@ -532,6 +535,7 @@ static int __init bcm283x_mu_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	bcm283x_mu_lowlevel_init(bcm283x_mu_defterm_base,
+				 bcm283x_mu_defterm_skip_baud_config,
 				 bcm283x_mu_defterm_baud,
 				 bcm283x_mu_defterm_inclk);
 

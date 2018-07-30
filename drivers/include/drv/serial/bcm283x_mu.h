@@ -60,7 +60,7 @@ bool bcm283x_mu_lowlevel_can_getc(virtual_addr_t base);
 u8 bcm283x_mu_lowlevel_getc(virtual_addr_t base);
 bool bcm283x_mu_lowlevel_can_putc(virtual_addr_t base);
 void bcm283x_mu_lowlevel_putc(virtual_addr_t base, u8 ch);
-void bcm283x_mu_lowlevel_init(virtual_addr_t base,
+void bcm283x_mu_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
 			      u32 baudrate, u32 input_clock);
 
 #endif /* __BCM283X_MU__ */
