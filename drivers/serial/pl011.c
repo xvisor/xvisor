@@ -211,7 +211,7 @@ static int pl011_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		skip_baudrate_config = TRUE;
 	}
 
 	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);
@@ -223,9 +223,6 @@ static int pl011_driver_probe(struct vmm_device *dev,
 					pl011_irq_handler, port))) {
 		goto free_reg;
 	}
-
-	if (vmm_devtree_getattr(dev->of_node, "skip-baudrate-config"))
-		skip_baudrate_config = TRUE;
 
 	/* Call low-level init function */
 	pl011_lowlevel_init(port->base, skip_baudrate_config,

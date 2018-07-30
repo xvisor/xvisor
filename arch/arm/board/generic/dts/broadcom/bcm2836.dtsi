@@ -121,9 +121,7 @@
 		SERIAL0: uart0 {
 			compatible = "brcm,bcm2835-pl011", "arm,pl011";
 			reg = <0x3f201000 0x1000>;
-			clock-frequency = <3000000>;
 			interrupts = <2 25>;
-			skip-baudrate-config;
 		};
 
 		spi0: spi@3f204000 {

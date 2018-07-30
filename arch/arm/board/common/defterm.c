@@ -93,15 +93,12 @@ static int __init pl011_defterm_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
-	if (vmm_devtree_getattr(node, "skip-baudrate-config"))
-		pl011_defterm_skip_baud_config = TRUE;
-	else
-		pl011_defterm_skip_baud_config = FALSE;
-
 	rc = vmm_devtree_clock_frequency(node,
 				&pl011_defterm_inclk);
 	if (rc) {
-		return rc;
+		pl011_defterm_skip_baud_config = TRUE;
+	} else {
+		pl011_defterm_skip_baud_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",

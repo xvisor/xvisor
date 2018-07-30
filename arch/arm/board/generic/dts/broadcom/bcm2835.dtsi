@@ -72,9 +72,7 @@
 		SERIAL0: uart0 {
 			compatible = "brcm,bcm2835-pl011", "arm,pl011";
 			reg = <0x20201000 0x1000>;
-			clock-frequency = <3000000>;
 			interrupts = <2 25>;
-			skip-baudrate-config;
 		};
 
 		i2c0: i2c@20205000 {
