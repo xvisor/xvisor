@@ -23,7 +23,6 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
-#include <vmm_devdrv.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
 #include <net/vmm_netport.h>
@@ -66,84 +65,68 @@ static int hub_rx_handler(struct vmm_netswitch *nsw,
 	return VMM_OK;
 }
 
-static int hub_port_add(struct vmm_netswitch *nsw, 
+static int hub_port_add(struct vmm_netswitch *nsw,
 			struct vmm_netport *port)
 {
 	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
-static int hub_port_remove(struct vmm_netswitch *nsw, 
+static int hub_port_remove(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port)
 {
 	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
-static int hub_probe(struct vmm_device *dev,
-		     const struct vmm_devtree_nodeid *nid)
+static struct vmm_netswitch *hub_create(struct vmm_netswitch_policy *policy,
+					const char *name,
+					int argc, char **argv)
 {
-	int rc = VMM_OK;
+	int rc;
 	struct vmm_netswitch *nsw = NULL;
 
-	nsw = vmm_netswitch_alloc(dev->name);
+	nsw = vmm_netswitch_alloc(policy, name);
 	if (!nsw) {
-		rc = VMM_ENOMEM;
 		goto hub_netswitch_alloc_failed;
 	}
 	nsw->port2switch_xfer = hub_rx_handler;
 	nsw->port_add = hub_port_add;
 	nsw->port_remove = hub_port_remove;
 
-	dev->priv = nsw;
-
-	rc = vmm_netswitch_register(nsw, dev, NULL);
+	rc = vmm_netswitch_register(nsw, NULL, NULL);
 	if (rc) {
 		goto hub_netswitch_register_fail;
 	}
 
-	return VMM_OK;
+	return nsw;
 
 hub_netswitch_register_fail:
 	vmm_netswitch_free(nsw);
 hub_netswitch_alloc_failed:
-	return rc;
+	return NULL;
 }
 
-static int hub_remove(struct vmm_device *dev)
+static void hub_destroy(struct vmm_netswitch_policy *policy,
+			struct vmm_netswitch *nsw)
 {
-	struct vmm_netswitch *nsw = dev->priv;
-
-	if (!nsw) {
-		return VMM_ENODEV;
-	}
-
 	vmm_netswitch_unregister(nsw);
 
 	vmm_netswitch_free(nsw);
-
-	return VMM_OK;
 }
 
-static struct vmm_devtree_nodeid hub_id_table[] = {
-	{.type = "netswitch",.compatible = "hub"},
-	{ /* end of list */ },
-};
-
-static struct vmm_driver hub = {
+static struct vmm_netswitch_policy hub = {
 	.name = "hub",
-	.match_table = hub_id_table,
-	.probe = hub_probe,
-	.remove = hub_remove,
+	.create = hub_create,
+	.destroy = hub_destroy,
 };
 
 int __init vmm_hub_init(void)
 {
-	return vmm_devdrv_register_driver(&hub);
+	return vmm_netswitch_policy_register(&hub);
 }
 
 void __exit vmm_hub_exit(void)
 {
-	vmm_devdrv_unregister_driver(&hub);
+	vmm_netswitch_policy_unregister(&hub);
 }
-

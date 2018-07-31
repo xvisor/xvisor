@@ -24,10 +24,9 @@
 #include <vmm_types.h>
 #include <vmm_error.h>
 #include <vmm_modules.h>
-#include <vmm_platform.h>
-#include <vmm_devtree.h>
 #include <vmm_stdio.h>
 #include <net/vmm_net.h>
+#include <net/vmm_netswitch.h>
 
 #define MODULE_DESC			"Network Framework"
 #define MODULE_AUTHOR			"Sukanto Ghosh"
@@ -39,11 +38,6 @@
 static int __init vmm_net_init(void)
 {
 	int rc = VMM_OK;
-	char tmp[16];
-	struct vmm_devtree_node *vmm_node, *net_node;
-#ifdef CONFIG_NET_AUTOCREATE_BRIDGE
-	struct vmm_devtree_node *br_node;
-#endif
 
 	rc = vmm_mbufpool_init();
 	if (rc) {
@@ -66,7 +60,7 @@ static int __init vmm_net_init(void)
 	rc = vmm_hub_init();
 	if (rc) {
 		vmm_printf("%s: Failed to init hub\n", __func__);
-		goto bridge_init_failed;
+		goto hub_init_failed;
 	}
 
 	rc = vmm_bridge_init();
@@ -75,76 +69,23 @@ static int __init vmm_net_init(void)
 		goto bridge_init_failed;
 	}
 
-	vmm_node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				       VMM_DEVTREE_VMMINFO_NODE_NAME);
-	if (!vmm_node) {
-		vmm_node = vmm_devtree_addnode(NULL,
-				VMM_DEVTREE_VMMINFO_NODE_NAME);
-		if (!vmm_node) {
-			return VMM_ENOMEM;
-		}
-		vmm_devtree_ref_node(vmm_node);
-	}
-
-	net_node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				       VMM_DEVTREE_VMMINFO_NODE_NAME
-				       VMM_DEVTREE_PATH_SEPARATOR_STRING "net");
-	if (!net_node) {
-		net_node = vmm_devtree_addnode(vmm_node, "net");
-		if (!net_node) {
-			vmm_devtree_dref_node(vmm_node);
-			return VMM_ENOMEM;
-		}
-		vmm_devtree_ref_node(net_node);
-	}
-
 #ifdef CONFIG_NET_AUTOCREATE_BRIDGE
-	if (!vmm_devtree_have_child(net_node)) {
-		br_node = vmm_devtree_addnode(net_node,
-					CONFIG_NET_AUTOCREATE_BRIDGE_NAME);
-		if (!br_node) {
-			vmm_devtree_dref_node(net_node);
-			vmm_devtree_dref_node(vmm_node);
-			return VMM_ENOMEM;
-		}
-		strcpy(tmp, "netswitch");
-		rc = vmm_devtree_setattr(br_node,
-					VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
-					tmp, VMM_DEVTREE_ATTRTYPE_STRING,
-					strlen(tmp) + 1, FALSE);
-		if (rc) {
-			vmm_devtree_dref_node(br_node);
-			vmm_devtree_dref_node(net_node);
-			vmm_devtree_dref_node(vmm_node);
-			return rc;
-		}
-		strcpy(tmp, "bridge");
-		rc = vmm_devtree_setattr(br_node,
-					VMM_DEVTREE_COMPATIBLE_ATTR_NAME,
-					tmp, VMM_DEVTREE_ATTRTYPE_STRING,
-					strlen(tmp) + 1, FALSE);
-		if (rc) {
-			vmm_devtree_dref_node(br_node);
-			vmm_devtree_dref_node(net_node);
-			vmm_devtree_dref_node(vmm_node);
-			return rc;
-		}
+	rc = vmm_netswitch_policy_create_switch("bridge",
+				CONFIG_NET_AUTOCREATE_BRIDGE_NAME, 0, NULL);
+	if (rc) {
+		goto net_autocreate_failed;
 	}
 #endif
 
-	rc = vmm_platform_probe(net_node);
-	vmm_devtree_dref_node(net_node);
-	vmm_devtree_dref_node(vmm_node);
-	if (rc) {
-		vmm_printf("%s: platform probe failed\n", __func__);
-		goto net_devtree_probe_failed;
-	}
-
 	goto net_init_done;
 
-net_devtree_probe_failed:
+#ifdef CONFIG_NET_AUTOCREATE_BRIDGE
+net_autocreate_failed:
 	vmm_bridge_exit();
+#endif
 bridge_init_failed:
+	vmm_hub_exit();
+hub_init_failed:
 	vmm_netport_exit();
 netport_init_failed:
 	vmm_netswitch_exit();

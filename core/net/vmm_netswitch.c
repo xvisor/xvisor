@@ -136,6 +136,9 @@ struct vmm_netswitch_bh_ctrl {
 
 static DEFINE_PER_CPU(struct vmm_netswitch_bh_ctrl, nbctrl);
 
+static DEFINE_MUTEX(policy_list_lock);
+static LIST_HEAD(policy_list);
+
 static void __init netswitch_bh_init(struct vmm_netswitch_bh_ctrl *nbp)
 {
 	INIT_COMPLETION(&nbp->xfer_cmpl);
@@ -394,9 +397,14 @@ int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,
 }
 VMM_EXPORT_SYMBOL(vmm_switch2port_xfer_mbuf);
 
-struct vmm_netswitch *vmm_netswitch_alloc(char *name)
+struct vmm_netswitch *vmm_netswitch_alloc(struct vmm_netswitch_policy *nsp,
+					  const char *name)
 {
-	struct vmm_netswitch *nsw;
+	struct vmm_netswitch *nsw = NULL;
+
+	if (!nsp || !name) {
+		goto vmm_netswitch_alloc_done;
+	}
 
 	nsw = vmm_zalloc(sizeof(struct vmm_netswitch));
 	if (!nsw) {
@@ -404,6 +412,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 		goto vmm_netswitch_alloc_failed;
 	}
 
+	nsw->policy = nsp;
 	strncpy(nsw->name, name, VMM_FIELD_NAME_SIZE);
 
 	INIT_RW_LOCK(&nsw->port_list_lock);
@@ -412,7 +421,7 @@ struct vmm_netswitch *vmm_netswitch_alloc(char *name)
 	goto vmm_netswitch_alloc_done;
 
 vmm_netswitch_alloc_failed:
-	if(nsw) {
+	if (nsw) {
 		vmm_free(nsw);
 		nsw = NULL;
 	}
@@ -533,8 +542,8 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 {
 	int rc;
 
-	if (!nsw) {
-		return VMM_EFAIL;
+	if (!nsw || !nsw->policy) {
+		return VMM_EINVALID;
 	}
 
 	vmm_devdrv_initialize_device(&nsw->dev);
@@ -659,6 +668,200 @@ u32 vmm_netswitch_count(void)
 	return vmm_devdrv_class_device_count(&nsw_class);
 }
 VMM_EXPORT_SYMBOL(vmm_netswitch_count);
+
+int vmm_netswitch_policy_register(struct vmm_netswitch_policy *nsp)
+{
+	struct vmm_netswitch_policy *nsp1;
+
+	if (!nsp || !nsp->create || !nsp->destroy) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&policy_list_lock);
+
+	list_for_each_entry(nsp1, &policy_list, head) {
+		if (strcmp(nsp1->name, nsp->name) == 0) {
+			vmm_mutex_unlock(&policy_list_lock);
+			return VMM_EEXIST;
+		}
+	}
+
+	INIT_LIST_HEAD(&nsp->head);
+	list_add_tail(&nsp->head, &policy_list);
+
+	vmm_mutex_unlock(&policy_list_lock);
+
+	return VMM_OK;
+}
+
+struct netswitch_policy_unregister_priv {
+	struct vmm_netswitch_policy *nsp;
+	struct vmm_netswitch *nsw;
+};
+
+int netswitch_policy_unregister_find(struct vmm_netswitch *nsw, void *data)
+{
+	struct netswitch_policy_unregister_priv *priv = data;
+
+	if (nsw->policy == priv->nsp) {
+		priv->nsw = nsw;
+	}
+
+	return VMM_OK;
+}
+
+void vmm_netswitch_policy_unregister(struct vmm_netswitch_policy *nsp)
+{
+	int ret;
+	struct netswitch_policy_unregister_priv priv;
+
+	if (!nsp) {
+		return;
+	}
+
+	vmm_mutex_lock(&policy_list_lock);
+
+	do {
+		priv.nsw = NULL;
+		priv.nsp = nsp;
+		ret = vmm_netswitch_iterate(NULL, &priv,
+				      netswitch_policy_unregister_find);
+		if (ret || !priv.nsw) {
+			break;
+		}
+
+		nsp->destroy(nsp, priv.nsw);
+	} while (1);
+
+	list_del(&nsp->head);
+
+	vmm_mutex_unlock(&policy_list_lock);
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_unregister);
+
+int vmm_netswitch_policy_iterate(struct vmm_netswitch_policy *start,
+		void *data, int (*fn)(struct vmm_netswitch_policy *, void *))
+{
+	int ret = VMM_OK;
+	bool found_start = (start) ? FALSE : TRUE;
+	struct vmm_netswitch_policy *nsp;
+
+	vmm_mutex_lock(&policy_list_lock);
+
+	list_for_each_entry(nsp, &policy_list, head) {
+		if (start == nsp)
+			found_start = TRUE;
+		if (found_start) {
+			ret = fn(nsp, data);
+			if (ret) {
+				vmm_mutex_unlock(&policy_list_lock);
+				return ret;
+			}
+		}
+	}
+
+	vmm_mutex_unlock(&policy_list_lock);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_iterate);
+
+struct netswitch_policy_find_priv {
+	const char *name;
+	struct vmm_netswitch_policy *nsp;
+};
+
+static int netswitch_policy_find(struct vmm_netswitch_policy *nsp, void *data)
+{
+	struct netswitch_policy_find_priv *priv = data;
+
+	if (strcmp(priv->name, nsp->name) == 0) {
+		priv->nsp = nsp;
+	}
+
+	return VMM_OK;
+}
+
+struct vmm_netswitch_policy *vmm_netswitch_policy_find(const char *name)
+{
+	int ret;
+	struct netswitch_policy_find_priv priv = { .name = name, .nsp = NULL };
+
+	ret = vmm_netswitch_policy_iterate(NULL, &priv, netswitch_policy_find);
+
+	return (ret) ? NULL : priv.nsp;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_find);
+
+static int netswitch_policy_count(struct vmm_netswitch_policy *nsp, void *data)
+{
+	u32 *ret = data;
+
+	(*ret)++;
+
+	return VMM_OK;
+}
+
+u32 vmm_netswitch_policy_count(void)
+{
+	u32 ret = 0;
+
+	vmm_netswitch_policy_iterate(NULL, &ret, netswitch_policy_count);
+
+	return ret;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_count);
+
+int vmm_netswitch_policy_create_switch(const char *policy_name,
+				       const char *switch_name,
+				       int argc, char **argv)
+{
+	int ret = VMM_OK;
+	struct vmm_netswitch *nsw = NULL;
+	struct vmm_netswitch_policy *nsp;
+
+	if (!policy_name || !switch_name || ((argc > 0) && !argv)) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&policy_list_lock);
+
+	list_for_each_entry(nsp, &policy_list, head) {
+		if (strcmp(nsp->name, policy_name) != 0)
+			continue;
+		nsw = nsp->create(nsp, switch_name, argc, argv);
+		if (!nsw) {
+			ret = VMM_EFAIL;
+			goto done_unlock;
+		}
+
+		break;
+	}
+
+	if (!nsw) {
+		ret = VMM_EINVALID;
+	}
+
+done_unlock:
+	vmm_mutex_unlock(&policy_list_lock);
+
+	return ret;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_create_switch);
+
+int vmm_netswitch_policy_destroy_switch(struct vmm_netswitch *nsw)
+{
+	if (!nsw || !nsw->policy) {
+		return VMM_EINVALID;
+	}
+
+	vmm_mutex_lock(&policy_list_lock);
+	nsw->policy->destroy(nsw->policy, nsw);
+	vmm_mutex_unlock(&policy_list_lock);
+
+	return VMM_OK;
+}
+VMM_EXPORT_SYMBOL(vmm_netswitch_policy_destroy_switch);
 
 static void vmm_netswitch_percpu_init(void *a1, void *a2, void *a3)
 {

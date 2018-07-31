@@ -25,7 +25,6 @@
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
-#include <vmm_devdrv.h>
 #include <net/vmm_protocol.h>
 #include <net/vmm_mbuf.h>
 #include <net/vmm_netswitch.h>
@@ -44,8 +43,8 @@
 #define BRIDGE_MAC_TABLE_SZ	32
 #define BRIDGE_MAC_EXPIRY	30000000000LLU
 
-/* We maintain a table of learned mac addresses 
- * (please note that the mac of the immediate netports are not 
+/* We maintain a table of learned mac addresses
+ * (please note that the mac of the immediate netports are not
  * kept in this table) */
 struct bridge_mac_entry {
 	struct vmm_netport *port;
@@ -235,7 +234,7 @@ static int bridge_rx_handler(struct vmm_netswitch *nsw,
 	dst = bridge_mactable_learn_find(br, dstmac, srcmac, src);
 
 	/* If the frame below cases then it should be unicast.
-	 * 
+	 *
 	 * Case 1: destination MAC address is not broadcast address
 	 * Case 2: We found port matching destination mac address
 	 */
@@ -266,14 +265,14 @@ static int bridge_rx_handler(struct vmm_netswitch *nsw,
 	return VMM_OK;
 }
 
-static int bridge_port_add(struct vmm_netswitch *nsw, 
+static int bridge_port_add(struct vmm_netswitch *nsw,
 			   struct vmm_netport *port)
 {
 	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
-static int bridge_port_remove(struct vmm_netswitch *nsw, 
+static int bridge_port_remove(struct vmm_netswitch *nsw,
 			      struct vmm_netport *port)
 {
 	struct bridge_ctrl *br = nsw->priv;
@@ -284,27 +283,24 @@ static int bridge_port_remove(struct vmm_netswitch *nsw,
 	return VMM_OK;
 }
 
-static int bridge_probe(struct vmm_device *dev,
-			const struct vmm_devtree_nodeid *nid)
+static struct vmm_netswitch *bridge_create(
+				struct vmm_netswitch_policy *policy,
+				const char *name, int argc, char **argv)
 {
-	int rc = VMM_OK;
+	int rc;
 	struct bridge_ctrl *br;
 	struct vmm_netswitch *nsw = NULL;
 
-	nsw = vmm_netswitch_alloc(dev->name);
+	nsw = vmm_netswitch_alloc(policy, name);
 	if (!nsw) {
-		rc = VMM_ENOMEM;
 		goto bridge_netswitch_alloc_failed;
 	}
 	nsw->port2switch_xfer = bridge_rx_handler;
 	nsw->port_add = bridge_port_add;
 	nsw->port_remove = bridge_port_remove;
 
-	dev->priv = nsw;
-
 	br = vmm_zalloc(sizeof(struct bridge_ctrl));
 	if (!br) {
-		rc = VMM_ENOMEM;
 		goto bridge_alloc_failed;
 	}
 
@@ -315,35 +311,35 @@ static int bridge_probe(struct vmm_device *dev,
 	br->mac_table = vmm_zalloc(sizeof(struct bridge_mac_entry) *
 				   br->mac_table_sz);
 	if (!br->mac_table) {
-		rc = VMM_ENOMEM;
 		goto bridge_alloc_mac_table_fail;
 	}
 
-	rc = vmm_netswitch_register(nsw, dev, br);
+	rc = vmm_netswitch_register(nsw, NULL, br);
 	if (rc) {
 		goto bridge_netswitch_register_fail;
 	}
 
 	vmm_timer_event_start(&br->ev, BRIDGE_MAC_EXPIRY);
 
-	return VMM_OK;
+	return nsw;
 
 bridge_netswitch_register_fail:
+	vmm_free(br->mac_table);
 bridge_alloc_mac_table_fail:
 	vmm_free(br);
 bridge_alloc_failed:
 	vmm_netswitch_free(nsw);
 bridge_netswitch_alloc_failed:
-	return rc;
+	return NULL;
 }
 
-static int bridge_remove(struct vmm_device *dev)
+static void bridge_destroy(struct vmm_netswitch_policy *policy,
+			   struct vmm_netswitch *nsw)
 {
 	struct bridge_ctrl *br;
-	struct vmm_netswitch *nsw = dev->priv;
 
 	if (!nsw || !nsw->priv) {
-		return VMM_ENODEV;
+		return;
 	}
 	br = nsw->priv;
 
@@ -355,29 +351,20 @@ static int bridge_remove(struct vmm_device *dev)
 	vmm_free(br);
 
 	vmm_netswitch_free(nsw);
-
-	return VMM_OK;
 }
 
-static struct vmm_devtree_nodeid bridge_id_table[] = {
-	{.type = "netswitch",.compatible = "bridge"},
-	{ /* end of list */ },
-};
-
-static struct vmm_driver bridge = {
+static struct vmm_netswitch_policy bridge = {
 	.name = "bridge",
-	.match_table = bridge_id_table,
-	.probe = bridge_probe,
-	.remove = bridge_remove,
+	.create = bridge_create,
+	.destroy = bridge_destroy,
 };
 
 int __init vmm_bridge_init(void)
 {
-	return vmm_devdrv_register_driver(&bridge);
+	return vmm_netswitch_policy_register(&bridge);
 }
 
 void __exit vmm_bridge_exit(void)
 {
-	vmm_devdrv_unregister_driver(&bridge);
+	vmm_netswitch_policy_unregister(&bridge);
 }
-
