@@ -60,7 +60,7 @@ static int devtree_get_regcells(struct vmm_devtree_node *node,
 	}
 
 	if (size_cells_p) {
-		*size_cells_p = addr_cells;
+		*size_cells_p = size_cells;
 	}
 
 	return VMM_OK;
