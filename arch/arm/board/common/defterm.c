@@ -269,6 +269,7 @@ static struct defterm_ops omapuart_ops = {
 #include <drv/serial/imx-uart.h>
 
 static virtual_addr_t imx_defterm_base;
+static bool imx_defterm_skip_baudrate_config;
 static u32 imx_defterm_inclk;
 static u32 imx_defterm_baud;
 
@@ -299,10 +300,11 @@ static int __init imx_defterm_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node,
-				&imx_defterm_inclk);
+	rc = vmm_devtree_clock_frequency(node, &imx_defterm_inclk);
 	if (rc) {
-		return rc;
+		imx_defterm_skip_baudrate_config = TRUE;
+	} else {
+		imx_defterm_skip_baudrate_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
@@ -311,6 +313,7 @@ static int __init imx_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	imx_lowlevel_init(imx_defterm_base,
+			  imx_defterm_skip_baudrate_config,
 			  imx_defterm_baud,
 			  imx_defterm_inclk);
 

@@ -70,6 +70,7 @@
 struct imx_port {
 	struct serial *p;
 	virtual_addr_t base;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 irq;
@@ -119,7 +120,8 @@ void imx_lowlevel_putc(virtual_addr_t base, u8 ch)
 	vmm_writel(ch, (void *)(base + URTX0));
 }
 
-void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
+void imx_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+		       u32 baudrate, u32 input_clock)
 {
 	unsigned int temp = vmm_readl((void *)(base + UCR1));
 	unsigned int divider;
@@ -162,17 +164,19 @@ void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	temp = vmm_readl((void *)(base + UFCR));
 	vmm_writel((temp & 0xFFC0) | 1, (void *)(base + UFCR));
 
-	/* Divide input clock by 2 */
-	temp = vmm_readl((void *)(base + UFCR)) & ~UFCR_RFDIV;
-	vmm_writel(temp | UFCR_RFDIV_REG(2), (void *)(base + UFCR));
-	input_clock /= 2;
+	if (!skip_baudrate_config) {
+		/* Divide input clock by 2 */
+		temp = vmm_readl((void *)(base + UFCR)) & ~UFCR_RFDIV;
+		vmm_writel(temp | UFCR_RFDIV_REG(2), (void *)(base + UFCR));
+		input_clock /= 2;
 
-	divider = udiv32(baudrate, 100) - 1;
-	vmm_writel(divider, (void *)(base + UBIR));
-	/* UBMR = Ref Freq / (16 * baudrate) * (UBIR + 1) - 1 */
-	/* As UBIR = baudrate / 100 - 1, UBMR = Ref Freq / (16 * 100) - 1 */
-	temp = udiv32(input_clock, 16 * 100) - 1;
-	vmm_writel(temp, (void *)(base + UBMR));
+		divider = udiv32(baudrate, 100) - 1;
+		vmm_writel(divider, (void *)(base + UBIR));
+		/* UBMR = Ref Freq / (16 * baudrate) * (UBIR + 1) - 1 */
+		/* As UBIR = baudrate / 100 - 1, UBMR = Ref Freq / (16 * 100) - 1 */
+		temp = udiv32(input_clock, 16 * 100) - 1;
+		vmm_writel(temp, (void *)(base + UBMR));
+	}
 
 	/* enable the UART */
 	temp = UCR1_UARTEN;
@@ -277,7 +281,9 @@ static int imx_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	/* Setup clocks */
@@ -316,7 +322,8 @@ static int imx_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Call low-level init function */
-	imx_lowlevel_init(port->base, port->baudrate, port->input_clock);
+	imx_lowlevel_init(port->base, port->skip_baudrate_config,
+			  port->baudrate, port->input_clock);
 
 	/* Create Serial Port */
 	port->p = serial_create(dev, 256, imx_tx, port);

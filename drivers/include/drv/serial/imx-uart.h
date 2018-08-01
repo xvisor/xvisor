@@ -144,6 +144,7 @@ bool imx_lowlevel_can_getc(virtual_addr_t base);
 u8 imx_lowlevel_getc(virtual_addr_t base);
 bool imx_lowlevel_can_putc(virtual_addr_t base);
 void imx_lowlevel_putc(virtual_addr_t base, u8 ch);
-void imx_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock);
+void imx_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+		       u32 baudrate, u32 input_clock);
 
 #endif /* __IMX_UART_H */
