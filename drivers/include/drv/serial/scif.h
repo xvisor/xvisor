@@ -143,6 +143,7 @@ u8 scif_lowlevel_getc(virtual_addr_t base, unsigned long regtype);
 bool scif_lowlevel_can_putc(virtual_addr_t base, unsigned long regtype);
 void scif_lowlevel_putc(virtual_addr_t base, unsigned long regtype, u8 ch);
 void scif_lowlevel_init(virtual_addr_t base, unsigned long regtype,
-			u32 baudrate, u32 input_clock, bool use_internal_clock);
+			bool skip_baudrate_config, u32 baudrate,
+			u32 input_clock, bool use_internal_clock);
 
 #endif /* __SCIF_H_ */

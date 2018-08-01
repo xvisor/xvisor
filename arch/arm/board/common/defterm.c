@@ -406,6 +406,7 @@ static struct defterm_ops samsung_ops = {
 #include <drv/serial/scif.h>
 
 static virtual_addr_t scif_defterm_base;
+static bool scif_defterm_skip_baud_config;
 static u32 scif_defterm_inclk;
 static u32 scif_defterm_baud;
 static unsigned long scif_regtype = SCIx_SH4_SCIF_BRG_REGTYPE;
@@ -441,7 +442,9 @@ static int __init scif_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&scif_defterm_inclk);
 	if (rc) {
-		return rc;
+		scif_defterm_skip_baud_config = TRUE;
+	} else {
+		scif_defterm_skip_baud_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
@@ -457,6 +460,7 @@ static int __init scif_defterm_init(struct vmm_devtree_node *node)
 
 	scif_lowlevel_init(scif_defterm_base,
 			   scif_regtype,
+			   scif_defterm_skip_baud_config,
 			   scif_defterm_baud,
 			   scif_defterm_inclk,
 			   scif_defterm_use_intclk);

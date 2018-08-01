@@ -430,6 +430,7 @@ void scif_lowlevel_putc(virtual_addr_t base, unsigned long regtype,
 }
 
 void scif_lowlevel_init(virtual_addr_t base, unsigned long regtype,
+			bool skip_baudrate_config,
 			u32 baudrate, u32 input_clock,
 			bool use_internal_clock)
 {
@@ -472,6 +473,7 @@ struct scif_port {
 	struct serial *p;
 	virtual_addr_t base;
 	unsigned long regtype;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	/* Clocks */
@@ -619,7 +621,9 @@ static int scif_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	if (vmm_devtree_getattr(dev->of_node, "clock-internal")) {
@@ -644,7 +648,8 @@ static int scif_driver_probe(struct vmm_device *dev,
 	sci_init_clocks(port, dev);
 
 	/* Call low-level init function */
-	scif_lowlevel_init(port->base, port->regtype, port->baudrate,
+	scif_lowlevel_init(port->base, port->regtype,
+			   port->skip_baudrate_config, port->baudrate,
 			   port->input_clock, port->use_internal_clock);
 
 	/* Create Serial Port */
