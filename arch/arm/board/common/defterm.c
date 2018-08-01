@@ -595,7 +595,9 @@ static int __init zynq_uart_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&uart_port.input_clock);
 	if (rc) {
-		return rc;
+		uart_port.skip_baudrate_config = TRUE;
+	} else {
+		uart_port.skip_baudrate_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",

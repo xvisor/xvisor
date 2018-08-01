@@ -151,8 +151,10 @@ void zynq_uart_lowlevel_init(struct zynq_uart_priv *port)
 	/* 8 bit, no parity */
 	vmm_writel(ZYNQ_UART_MR_PARITY_NONE, &regs->mode);
 
-	/* Set baud rate here */
-	zynq_uart_setbrg(port);
+	if (!port->skip_baudrate_config) {
+		/* Set baud rate here */
+		zynq_uart_setbrg(port);
+	}
 }
 
 static vmm_irq_return_t zynq_uart_irq_handler(int irq_no, void *pdev)
@@ -206,7 +208,9 @@ static int zynq_uart_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	port->irq = vmm_devtree_irq_parse_map(dev->of_node, 0);

@@ -63,6 +63,7 @@ struct uart_zynq {
 struct zynq_uart_priv {
 	struct serial *p;
 	struct uart_zynq *regs;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 irq;
