@@ -250,6 +250,7 @@ bool samsung_lowlevel_can_getc(virtual_addr_t base);
 u8 samsung_lowlevel_getc(virtual_addr_t base);
 bool samsung_lowlevel_can_putc(virtual_addr_t base);
 void samsung_lowlevel_putc(virtual_addr_t base, u8 ch);
-void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock);
+void samsung_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+			   u32 baudrate, u32 input_clock);
 
 #endif /* __SAMSUNG_UART_H_ */

@@ -337,6 +337,7 @@ static struct defterm_ops imx_ops = {
 #include <drv/serial/samsung-uart.h>
 
 static virtual_addr_t samsung_defterm_base;
+static bool samsung_defterm_skip_baud_config;
 static u32 samsung_defterm_inclk;
 static u32 samsung_defterm_baud;
 
@@ -372,7 +373,9 @@ static int __init samsung_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&samsung_defterm_inclk);
 	if (rc) {
-		return rc;
+		samsung_defterm_skip_baud_config = TRUE;
+	} else {
+		samsung_defterm_skip_baud_config = FALSE;
 	}
 	
 	/* retrieve baud rate */
@@ -383,6 +386,7 @@ static int __init samsung_defterm_init(struct vmm_devtree_node *node)
 
 	/* initialize the console port */
 	samsung_lowlevel_init(samsung_defterm_base,
+			      samsung_defterm_skip_baud_config,
 			      samsung_defterm_baud,
 			      samsung_defterm_inclk);
 

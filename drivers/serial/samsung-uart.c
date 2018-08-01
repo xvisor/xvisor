@@ -87,7 +87,8 @@ void samsung_lowlevel_putc(virtual_addr_t base, u8 ch)
 	vmm_out_8((void *)(base + S3C2410_UTXH), ch);
 }
 
-void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
+void samsung_lowlevel_init(virtual_addr_t base, bool skip_baudrate_config,
+			   u32 baudrate, u32 input_clock)
 {
 	unsigned int divider;
 	unsigned int temp;
@@ -96,20 +97,22 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 	/* First, disable everything */
 	vmm_out_le16((void *)(base + S3C2410_UCON), 0);
 
-	/*
-	 * Set baud rate
-	 *
-	 * UBRDIV  = (UART_CLK / (16 * BAUD_RATE)) - 1
-	 * DIVSLOT = MOD(UART_CLK / BAUD_RATE, 16)
-	 */
-	temp = udiv32(input_clock, baudrate);
-	divider =  udiv32(temp, 16) - 1;
-	remainder = umod32(temp, 16);
+	if (!skip_baudrate_config) {
+		/*
+		 * Set baud rate
+		 *
+		 * UBRDIV  = (UART_CLK / (16 * BAUD_RATE)) - 1
+		 * DIVSLOT = MOD(UART_CLK / BAUD_RATE, 16)
+		 */
+		temp = udiv32(input_clock, baudrate);
+		divider =  udiv32(temp, 16) - 1;
+		remainder = umod32(temp, 16);
 
-	vmm_out_le16((void *)(base + S3C2410_UBRDIV), (u16)
-		     divider);
-	vmm_out_8((void *)(base + S3C2443_DIVSLOT), (u8)
-		  remainder);
+		vmm_out_le16((void *)(base + S3C2410_UBRDIV), (u16)
+			     divider);
+		vmm_out_8((void *)(base + S3C2443_DIVSLOT), (u8)
+			  remainder);
+	}
 
 	/* Set the UART to be 8 bits, 1 stop bit, no parity */
 	vmm_out_le32((void *)(base + S3C2410_ULCON),
@@ -125,6 +128,7 @@ void samsung_lowlevel_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 struct samsung_port {
 	struct serial *p;
 	virtual_addr_t base;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 irq;
@@ -200,7 +204,9 @@ static int samsung_driver_probe(struct vmm_device *dev,
 
 	rc = vmm_devtree_clock_frequency(dev->of_node, &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	/* Setup interrupt handler */
@@ -215,7 +221,8 @@ static int samsung_driver_probe(struct vmm_device *dev,
 	}
 
 	/* Call low-level init function */
-	samsung_lowlevel_init(port->base, port->baudrate, port->input_clock);
+	samsung_lowlevel_init(port->base, port->skip_baudrate_config,
+			      port->baudrate, port->input_clock);
 
 	/* Create Serial Port */
 	port->p = serial_create(dev, 256, samsung_tx, port);
