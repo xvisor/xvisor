@@ -237,7 +237,7 @@ bool omap_uart_lowlevel_can_getc(virtual_addr_t base, u32 reg_shift);
 u8 omap_uart_lowlevel_getc(virtual_addr_t base, u32 reg_shift);
 bool omap_uart_lowlevel_can_putc(virtual_addr_t base, u32 reg_shift);
 void omap_uart_lowlevel_putc(virtual_addr_t base, u32 reg_shift, u8 ch);
-void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift, 
-		u32 baudrate, u32 input_clock);
+void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
+		bool skip_baudrate_config, u32 baudrate, u32 input_clock);
 
 #endif /* __UART_H_ */

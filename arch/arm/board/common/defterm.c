@@ -204,6 +204,7 @@ static struct defterm_ops uart8250_ops = {
 #include <drv/serial/omap-uart.h>
 
 static virtual_addr_t omap_defterm_base;
+static bool omap_defterm_skip_baud_config;
 static u32 omap_defterm_inclk;
 static u32 omap_defterm_baud;
 
@@ -237,7 +238,9 @@ static int __init omap_defterm_init(struct vmm_devtree_node *node)
 	rc = vmm_devtree_clock_frequency(node,
 				&omap_defterm_inclk);
 	if (rc) {
-		return rc;
+		omap_defterm_skip_baud_config = TRUE;
+	} else {
+		omap_defterm_skip_baud_config = FALSE;
 	}
 
 	if (vmm_devtree_read_u32(node, "baudrate",
@@ -246,6 +249,7 @@ static int __init omap_defterm_init(struct vmm_devtree_node *node)
 	}
 
 	omap_uart_lowlevel_init(omap_defterm_base, 2,
+				omap_defterm_skip_baud_config,
 				omap_defterm_baud,
 				omap_defterm_inclk);
 

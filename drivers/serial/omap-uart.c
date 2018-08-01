@@ -43,6 +43,7 @@
 struct omap_uart_port {
 	struct serial *p;
 	virtual_addr_t base;
+	bool skip_baudrate_config;
 	u32 baudrate;
 	u32 input_clock;
 	u32 reg_shift;
@@ -92,7 +93,7 @@ void omap_uart_lowlevel_putc(virtual_addr_t base, u32 reg_shift, u8 ch)
 }
 
 void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
-				u32 baudrate, u32 input_clock)
+		bool skip_baudrate_config, u32 baudrate, u32 input_clock)
 {
 	u16 bdiv;
 	bdiv = udiv32(input_clock, (16 * baudrate));
@@ -116,8 +117,10 @@ void omap_uart_lowlevel_init(virtual_addr_t base, u32 reg_shift,
 
 	/* set baudrate divisor */
 	omap_serial_out(UART_LCR, UART_LCR_CONF_MODE_B);
-	omap_serial_out(UART_DLL, bdiv & 0xFF);
-	omap_serial_out(UART_DLM, (bdiv >> 8) & 0xFF);
+	if (!skip_baudrate_config) {
+		omap_serial_out(UART_DLL, bdiv & 0xFF);
+		omap_serial_out(UART_DLM, (bdiv >> 8) & 0xFF);
+	}
 	omap_serial_out(UART_LCR, UART_LCR_WLEN8);
 
 	/* set mode select to 16x mode  */
@@ -185,101 +188,103 @@ void uart_configure_xonxoff(struct omap_uart_port *port)
 static int omap_uart_startup_configure(struct omap_uart_port *port)
 {
 	u16 bdiv, cval;
-	bdiv = udiv32(port->input_clock, (16 * port->baudrate));
 
-        /*
-         * Clear the FIFO buffers and disable them.
-         */
-        omap_serial_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
-        omap_serial_out(port, UART_FCR, UART_FCR_ENABLE_FIFO |
-                       UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT);
-        omap_serial_out(port, UART_FCR, 0);
+	/*
+	 * Clear the FIFO buffers and disable them.
+	 */
+	omap_serial_out(port, UART_FCR, UART_FCR_ENABLE_FIFO);
+	omap_serial_out(port, UART_FCR, UART_FCR_ENABLE_FIFO |
+		       UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT);
+	omap_serial_out(port, UART_FCR, 0);
 
-        /*
-         * Clear the interrupt registers.
-         */
-        (void) omap_serial_in(port, UART_LSR);
-        if (omap_serial_in(port, UART_LSR) & UART_LSR_DR)
-                (void) omap_serial_in(port, UART_RBR);
-        (void) omap_serial_in(port, UART_IIR);
-        (void) omap_serial_in(port, UART_MSR);
+	/*
+	 * Clear the interrupt registers.
+	 */
+	(void) omap_serial_in(port, UART_LSR);
+	if (omap_serial_in(port, UART_LSR) & UART_LSR_DR)
+		(void) omap_serial_in(port, UART_RBR);
+	(void) omap_serial_in(port, UART_IIR);
+	(void) omap_serial_in(port, UART_MSR);
 
-        cval = UART_LCR_WLEN8;
+	cval = UART_LCR_WLEN8;
 
-        /*
-         * Now, initialize the UART
-         */
-        omap_serial_out(port, UART_LCR, cval);
+	/*
+	 * Now, initialize the UART
+	 */
+	omap_serial_out(port, UART_LCR, cval);
 
-        /*
-         * Finally, enable interrupts
-         */
-        port->ier = UART_IER_RLSI | UART_IER_RDI;
-        omap_serial_out(port, UART_IER, port->ier);
+	/*
+	 * Finally, enable interrupts
+	 */
+	port->ier = UART_IER_RLSI | UART_IER_RDI;
+	omap_serial_out(port, UART_IER, port->ier);
 
-        /* Enable module level wake port */
-        omap_serial_out(port, UART_OMAP_WER, OMAP_UART_WER_MOD_WKUP);
+	/* Enable module level wake port */
+	omap_serial_out(port, UART_OMAP_WER, OMAP_UART_WER_MOD_WKUP);
 
 
-        port->fcr = UART_FCR_R_TRIG_01 | UART_FCR_T_TRIG_01 |
-                        UART_FCR_ENABLE_FIFO;
+	port->fcr = UART_FCR_R_TRIG_01 | UART_FCR_T_TRIG_01 |
+			UART_FCR_ENABLE_FIFO;
 
-        port->ier &= ~UART_IER_MSI;
+	port->ier &= ~UART_IER_MSI;
 
-        omap_serial_out(port, UART_IER, port->ier);
-        omap_serial_out(port, UART_LCR, cval);         /* reset DLAB */
+	omap_serial_out(port, UART_IER, port->ier);
+	omap_serial_out(port, UART_LCR, cval);	 /* reset DLAB */
 
-        /* FCR can be changed only when the
-         * baud clock is not running
-         * DLL_REG and DLH_REG set to 0.
-         */
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
-        omap_serial_out(port, UART_DLL, 0);
-        omap_serial_out(port, UART_DLM, 0);
-        omap_serial_out(port, UART_LCR, 0);
+	/* FCR can be changed only when the
+	 * baud clock is not running
+	 * DLL_REG and DLH_REG set to 0.
+	 */
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
+	omap_serial_out(port, UART_DLL, 0);
+	omap_serial_out(port, UART_DLM, 0);
+	omap_serial_out(port, UART_LCR, 0);
 
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
 
-        port->efr = omap_serial_in(port, UART_EFR);
-        omap_serial_out(port, UART_EFR, port->efr | UART_EFR_ECB);
+	port->efr = omap_serial_in(port, UART_EFR);
+	omap_serial_out(port, UART_EFR, port->efr | UART_EFR_ECB);
 
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
-        port->mcr = omap_serial_in(port, UART_MCR);
-        omap_serial_out(port, UART_MCR, port->mcr | UART_MCR_TCRTLR);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
+	port->mcr = omap_serial_in(port, UART_MCR);
+	omap_serial_out(port, UART_MCR, port->mcr | UART_MCR_TCRTLR);
 
-        /* FIFO ENABLE, DMA MODE */
-        omap_serial_out(port, UART_FCR, port->fcr);
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+	/* FIFO ENABLE, DMA MODE */
+	omap_serial_out(port, UART_FCR, port->fcr);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
 
-        omap_serial_out(port, UART_EFR, port->efr);
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
-        omap_serial_out(port, UART_MCR, port->mcr);
+	omap_serial_out(port, UART_EFR, port->efr);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_A);
+	omap_serial_out(port, UART_MCR, port->mcr);
 
-        /* Protocol, Baud Rate, and Interrupt Settings */
+	/* Protocol, Baud Rate, and Interrupt Settings */
 
-        omap_serial_out(port, UART_OMAP_MDR1, UART_OMAP_MDR1_DISABLE);
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+	omap_serial_out(port, UART_OMAP_MDR1, UART_OMAP_MDR1_DISABLE);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
 
-        port->efr = omap_serial_in(port, UART_EFR);
-        omap_serial_out(port, UART_EFR, port->efr | UART_EFR_ECB);
+	port->efr = omap_serial_in(port, UART_EFR);
+	omap_serial_out(port, UART_EFR, port->efr | UART_EFR_ECB);
 
-        omap_serial_out(port, UART_LCR, 0);
-        omap_serial_out(port, UART_IER, 0);
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+	omap_serial_out(port, UART_LCR, 0);
+	omap_serial_out(port, UART_IER, 0);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
 
-        omap_serial_out(port, UART_DLL, bdiv & 0xff);          /* LS of divisor */
-        omap_serial_out(port, UART_DLM, bdiv >> 8);            /* MS of divisor */
+	if (!port->skip_baudrate_config) {
+		bdiv = udiv32(port->input_clock, (16 * port->baudrate));
+		omap_serial_out(port, UART_DLL, bdiv & 0xff);	  /* LS of divisor */
+		omap_serial_out(port, UART_DLM, bdiv >> 8);	  /* MS of divisor */
+	}
 
-        omap_serial_out(port, UART_LCR, 0);
-        omap_serial_out(port, UART_IER, port->ier);
-        omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
+	omap_serial_out(port, UART_LCR, 0);
+	omap_serial_out(port, UART_IER, port->ier);
+	omap_serial_out(port, UART_LCR, UART_LCR_CONF_MODE_B);
 
-        omap_serial_out(port, UART_EFR, port->efr);
-        omap_serial_out(port, UART_LCR, cval);
+	omap_serial_out(port, UART_EFR, port->efr);
+	omap_serial_out(port, UART_LCR, cval);
 
-        omap_serial_out(port, UART_OMAP_MDR1, UART_OMAP_MDR1_16X_MODE);
+	omap_serial_out(port, UART_OMAP_MDR1, UART_OMAP_MDR1_16X_MODE);
 
-        omap_serial_out(port, UART_MCR, port->mcr);
+	omap_serial_out(port, UART_MCR, port->mcr);
 
 	uart_configure_xonxoff(port);
 
@@ -291,14 +296,14 @@ static vmm_irq_return_t omap_uart_irq_handler(int irq_no, void *dev)
 	u16 iir, lsr;
 	struct omap_uart_port *port = (struct omap_uart_port *)dev;
 
-        iir = omap_serial_in(port, UART_IIR);
-        if (iir & UART_IIR_NO_INT)
-                return VMM_IRQ_NONE;
+	iir = omap_serial_in(port, UART_IIR);
+	if (iir & UART_IIR_NO_INT)
+		return VMM_IRQ_NONE;
 
-        lsr = omap_serial_in(port, UART_LSR);
+	lsr = omap_serial_in(port, UART_LSR);
 
 	/* Handle RX FIFO not empty */
-         if (iir & (UART_IIR_RLSI | UART_IIR_RTO | UART_IIR_RDI)) {
+	if (iir & (UART_IIR_RLSI | UART_IIR_RTO | UART_IIR_RDI)) {
 		if (lsr & UART_LSR_DR) {
 			do {
 				u8 ch = omap_serial_in(port, UART_RBR);
@@ -310,7 +315,7 @@ static vmm_irq_return_t omap_uart_irq_handler(int irq_no, void *dev)
 				  UART_LSR_BI | UART_LSR_FE) ) {
 			while (1);
 		}
-        }
+	}
 
 	omap_serial_out(port, UART_IER, port->ier);
 
@@ -363,7 +368,9 @@ static int omap_uart_driver_probe(struct vmm_device *dev,
 	rc = vmm_devtree_clock_frequency(dev->of_node,
 					 &port->input_clock);
 	if (rc) {
-		goto free_reg;
+		port->skip_baudrate_config = TRUE;
+	} else {
+		port->skip_baudrate_config = FALSE;
 	}
 
 	omap_uart_startup_configure(port);
