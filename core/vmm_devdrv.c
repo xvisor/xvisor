@@ -592,7 +592,8 @@ static int devdrv_class_register_device(struct vmm_class *cls,
 
 	/* Check duplicacy */
 	list_for_each_entry(d, &cls->device_list, class_head) {
-		if (strcmp(d->name, dev->name) == 0) {
+		if ((strcmp(d->name, dev->name) == 0) &&
+		    (d->parent == dev->parent)) {
 			found = TRUE;
 			break;
 		}
@@ -976,7 +977,8 @@ static int devdrv_bus_register_device(struct vmm_bus *bus,
 
 	/* Check duplicacy */
 	list_for_each_entry(d, &bus->device_list, bus_head) {
-		if (strcmp(d->name, dev->name) == 0) {
+		if ((strcmp(d->name, dev->name) == 0) &&
+		    (d->parent == dev->parent)) {
 			found = TRUE;
 			break;
 		}
