@@ -239,6 +239,10 @@ static char *cp110_unique_name(struct device *dev, struct device_node *np,
 	char str[128];
 	physical_addr_t addr;
 
+	/* Do not create a name if there is no clock */
+	if (!name)
+		return NULL;
+
 	rc = vmm_devtree_regaddr(np, &addr, 0);
 	if (rc)
 		return NULL;
