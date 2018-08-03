@@ -394,7 +394,7 @@ static void sunxi_pmx_set(struct pinctrl_dev *pctldev,
 	spin_unlock_irqrestore(&pctl->lock, flags);
 }
 
-static int sunxi_pmx_enable(struct pinctrl_dev *pctldev,
+static int sunxi_pmx_set_mux(struct pinctrl_dev *pctldev,
 			    unsigned function,
 			    unsigned group)
 {
@@ -442,7 +442,7 @@ static const struct pinmux_ops sunxi_pmx_ops = {
 	.get_functions_count	= sunxi_pmx_get_funcs_cnt,
 	.get_function_name	= sunxi_pmx_get_func_name,
 	.get_function_groups	= sunxi_pmx_get_func_groups,
-	.enable			= sunxi_pmx_enable,
+	.set_mux		= sunxi_pmx_set_mux,
 	.gpio_set_direction	= sunxi_pmx_gpio_set_direction,
 };
 
@@ -454,12 +454,12 @@ static struct pinctrl_desc sunxi_pctrl_desc = {
 
 static int sunxi_pinctrl_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
-	return pinctrl_request_gpio(chip->base + offset);
+	return pinctrl_gpio_request(chip->base + offset);
 }
 
 static void sunxi_pinctrl_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
-	pinctrl_free_gpio(chip->base + offset);
+	pinctrl_gpio_free(chip->base + offset);
 }
 
 static int sunxi_pinctrl_gpio_direction_input(struct gpio_chip *chip,

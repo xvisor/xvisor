@@ -425,7 +425,7 @@ static int bcm2835_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 /*Copied from raspbian gpiolib*/
 int gpiochip_generic_request(struct gpio_chip *chip, unsigned offset)
 {
-	return pinctrl_request_gpio(chip->base + offset);
+	return pinctrl_gpio_request(chip->base + offset);
 }
 /**
  * gpiochip_generic_free() - free the gpio function from a pin
@@ -439,7 +439,7 @@ void gpiochip_generic_free(struct gpio_chip *chip, unsigned offset)
 			container_of(chip, struct bcm2835_pinctrl, gpio_chip);
 	BUG_ON(offset >= BCM2835_NUM_GPIOS);
 	gpiochip_free_own_desc(port->gpio_desc[offset]);
-	pinctrl_free_gpio(chip->base + offset);
+	pinctrl_gpio_free(chip->base + offset);
 }
 
 static struct gpio_chip bcm2835_gpio_chip = {
@@ -991,7 +991,7 @@ static int bcm2835_pmx_gpio_set_direction(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
-static int bcm2835_pmx_enable(struct pinctrl_dev *pctldev, unsigned selector,
+static int bcm2835_pmx_set_mux(struct pinctrl_dev *pctldev, unsigned selector,
 			   unsigned group)
 {
 	struct bcm2835_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
@@ -1006,7 +1006,7 @@ static const struct pinmux_ops bcm2835_pmx_ops = {
 	.get_functions_count = bcm2835_pmx_get_functions_count,
 	.get_function_name = bcm2835_pmx_get_function_name,
 	.get_function_groups = bcm2835_pmx_get_function_groups,
-	.enable = bcm2835_pmx_enable, // TODO
+	.set_mux = bcm2835_pmx_set_mux, // TODO
 	/*.set_mux = bcm2835_pmx_set,*/
 	.gpio_disable_free = bcm2835_pmx_gpio_disable_free,
 	.gpio_set_direction = bcm2835_pmx_gpio_set_direction,

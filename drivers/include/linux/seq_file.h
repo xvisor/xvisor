@@ -8,4 +8,8 @@
 
 #define seq_printf(s, msg...)	vmm_cprintf(s, msg)
 
+#define seq_putc(s, ch)		vmm_cputc(s, ch)
+
+#define seq_puts(s, str)	vmm_cputs(s, str)
+
 #endif

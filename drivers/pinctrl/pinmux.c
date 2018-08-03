@@ -41,7 +41,7 @@ int pinmux_check_ops(struct pinctrl_dev *pctldev)
 	    !ops->get_functions_count ||
 	    !ops->get_function_name ||
 	    !ops->get_function_groups ||
-	    !ops->enable) {
+	    !ops->set_mux) {
 		dev_err(pctldev->dev, "pinmux ops lacks necessary functions\n");
 		return -EINVAL;
 	}
@@ -450,7 +450,7 @@ int pinmux_enable_setting(struct pinctrl_setting const *setting)
 		desc->mux_setting = &(setting->data.mux);
 	}
 
-	ret = ops->enable(pctldev, setting->data.mux.func,
+	ret = ops->set_mux(pctldev, setting->data.mux.func,
 			  setting->data.mux.group);
 
 	if (ret)
@@ -476,7 +476,6 @@ void pinmux_disable_setting(struct pinctrl_setting const *setting)
 {
 	struct pinctrl_dev *pctldev = setting->pctldev;
 	const struct pinctrl_ops *pctlops = pctldev->desc->pctlops;
-	const struct pinmux_ops *ops = pctldev->desc->pmxops;
 	int ret;
 	const unsigned *pins;
 	unsigned num_pins;
@@ -524,9 +523,6 @@ void pinmux_disable_setting(struct pinctrl_setting const *setting)
 				 pins[i], pname, gname);
 		}
 	}
-
-	if (ops->disable)
-		ops->disable(pctldev, setting->data.mux.func, setting->data.mux.group);
 }
 
 #ifdef CONFIG_DEBUG_FS

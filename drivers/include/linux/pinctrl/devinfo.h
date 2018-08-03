@@ -15,35 +15,15 @@
 #ifndef PINCTRL_DEVINFO_H
 #define PINCTRL_DEVINFO_H
 
+#include <drv/pinctrl/devinfo.h>
+
 #ifdef CONFIG_PINCTRL
 
 /* The device core acts as a consumer toward pinctrl */
 #include <linux/pinctrl/consumer.h>
 
-/**
- * struct dev_pin_info - pin state container for devices
- * @p: pinctrl handle for the containing device
- * @default_state: the default state for the handle, if found
- */
-struct dev_pin_info {
-	struct pinctrl *p;
-	struct pinctrl_state *default_state;
-#ifdef CONFIG_PM
-	struct pinctrl_state *sleep_state;
-	struct pinctrl_state *idle_state;
-#endif
-};
-
-extern int pinctrl_bind_pins(struct device *dev);
-
-#else
-
-/* Stubs if we're not using pinctrl */
-
-static inline int pinctrl_bind_pins(struct device *dev)
-{
-	return 0;
-}
-
 #endif /* CONFIG_PINCTRL */
+
+/* For now this is just place holder header. */
+
 #endif /* PINCTRL_DEVINFO_H */
