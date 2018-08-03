@@ -130,13 +130,6 @@ static void deferred_probe_del(struct vmm_device *dev)
 	vmm_mutex_unlock(&ddctrl.deferred_probe_lock);
 }
 
-int __weak vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
-{
-	/* Nothing to do here. */
-	/* The pinctrl framework will provide actual implementation */
-	return VMM_OK;
-}
-
 /* Note: Must be called with bus->lock held */
 static int __bus_probe_device_driver(struct vmm_bus *bus,
 				     struct vmm_device *dev,

@@ -169,15 +169,6 @@ static inline int vmm_dma_set_mask(struct vmm_device *dev, u64 mask)
 	return VMM_OK;
 }
 
-/** Bind device pins
- *  Note: The device driver framework only provide dummy weak
- *  implementation of this function which does nothing.
- *  Note: The pinctrl framework will provide complete implementation
- *  of this function. If pinctrl framework is not available then
- *  this function will do nothing.
- */
-int vmm_devdrv_pinctrl_bind(struct vmm_device *dev);
-
 /** Register class */
 int vmm_devdrv_register_class(struct vmm_class *cls);
 

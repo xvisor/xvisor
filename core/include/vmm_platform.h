@@ -31,6 +31,24 @@
 /** Forward declaration of platform bus */
 extern struct vmm_bus platform_bus;
 
+/** Bind device pins
+ *  Note: The device driver framework only provide dummy weak
+ *  implementation of this function which does nothing.
+ *  Note: The pinctrl framework will provide complete implementation
+ *  of this function. If pinctrl framework is not available then
+ *  this function will do nothing.
+ */
+int vmm_platform_pinctrl_bind(struct vmm_device *dev);
+
+/** Init device pins
+ *  Note: The device driver framework only provide dummy weak
+ *  implementation of this function which does nothing.
+ *  Note: The pinctrl framework will provide complete implementation
+ *  of this function. If pinctrl framework is not available then
+ *  this function will do nothing.
+ */
+int vmm_platform_pinctrl_init(struct vmm_device *dev);
+
 /** Find platform device by node */
 struct vmm_device *vmm_platform_find_device_by_node(
 					struct vmm_devtree_node *np);

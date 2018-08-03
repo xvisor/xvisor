@@ -91,8 +91,12 @@ cleanup_alloc:
 	return ret;
 }
 
-int vmm_devdrv_pinctrl_bind(struct vmm_device *dev)
+int vmm_platform_pinctrl_bind(struct vmm_device *dev)
 {
 	return pinctrl_bind_pins(dev);
 }
 
+int vmm_platform_pinctrl_init(struct vmm_device *dev)
+{
+	return VMM_OK;
+}

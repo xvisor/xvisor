@@ -28,6 +28,20 @@
 #include <vmm_msi.h>
 #include <vmm_platform.h>
 
+int __weak vmm_platform_pinctrl_bind(struct vmm_device *dev)
+{
+	/* Nothing to do here. */
+	/* The pinctrl framework will provide actual implementation */
+	return VMM_OK;
+}
+
+int __weak vmm_platform_pinctrl_init(struct vmm_device *dev)
+{
+	/* Nothing to do here. */
+	/* The pinctrl framework will provide actual implementation */
+	return VMM_OK;
+}
+
 static struct vmm_msi_domain *platform_get_msi_domain(struct vmm_device *dev,
 						struct vmm_devtree_node *np)
 {
@@ -109,17 +123,19 @@ static int platform_bus_probe(struct vmm_device *dev)
 		return VMM_EFAIL;
 	}
 
-	rc = vmm_devdrv_pinctrl_bind(dev);
+	rc = vmm_platform_pinctrl_bind(dev);
 	if (rc == VMM_EPROBE_DEFER) {
 		return rc;
 	}
 
 	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
 	if (match) {
-		return drv->probe(dev, match);
+		rc = drv->probe(dev, match);
 	}
 
-	return VMM_OK;
+	vmm_platform_pinctrl_init(dev);
+
+	return rc;
 }
 
 static int platform_bus_remove(struct vmm_device *dev)
