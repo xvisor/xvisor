@@ -31,3 +31,4 @@ drivers-objs-$(CONFIG_BCM2836_LOCAL_INTC)+= irqchip/irq-bcm2836.o
 drivers-objs-$(CONFIG_SUN4I_VIC)+= irqchip/irq-sun4i.o
 drivers-objs-$(CONFIG_OMAP_INTC)+= irqchip/irq-omap-intc.o
 drivers-objs-$(CONFIG_RISCV_INTC)+= irqchip/irq-riscv-intc.o
+drivers-objs-$(CONFIG_RISCV_PLIC)+= irqchip/irq-riscv-plic.o
