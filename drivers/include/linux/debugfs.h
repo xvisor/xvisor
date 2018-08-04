@@ -2,5 +2,7 @@
 #define _DEBUGFS_H_
 
 /* Placeholder */
+struct dentry {
+};
 
 #endif

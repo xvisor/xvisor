@@ -41,6 +41,7 @@
 #include <libs/list.h>
 #include <libs/radix-tree.h>
 #include <drv/pinctrl/pinctrl-state.h>
+#include <drv/pinctrl/devinfo.h>
 
 struct vmm_device;
 struct pinctrl_dev;
