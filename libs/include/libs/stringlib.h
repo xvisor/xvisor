@@ -117,6 +117,8 @@ char* strtok_r(char *str, const char *delim, char **context);
 
 int u64_to_size_str(u64 val, char *out, size_t out_len);
 
+int match_string(const char * const *array, size_t n, const char *string);
+
 int sscanf(const char *buf, const char *fmt, ...);
 
 #endif /* __STRINGLIB_H__ */

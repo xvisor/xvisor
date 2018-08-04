@@ -707,6 +707,31 @@ found:
 }
 
 /**
+ * match_string - matches given string in an array
+ * @array:	array of strings
+ * @n:		number of strings in the array or -1 for NULL terminated arrays
+ * @string:	string to match with
+ *
+ * Return:
+ * index of a @string in the @array if matches, or %VMM_EINVALID otherwise.
+ */
+int match_string(const char * const *array, size_t n, const char *string)
+{
+	int index;
+	const char *item;
+
+	for (index = 0; index < n; index++) {
+		item = array[index];
+		if (!item)
+			break;
+		if (!strcmp(item, string))
+			return index;
+	}
+
+	return VMM_EINVALID;
+}
+
+/**
  * vsscanf - Unformat a buffer into a list of arguments
  * @buf:	input buffer
  * @fmt:	format of buffer
