@@ -44,7 +44,8 @@
 
 u32 vmm_devtree_irq_count(struct vmm_devtree_node *node)
 {
-	u32 alen, tmp, rc;
+	int rc;
+	u32 alen, tmp;
 	struct vmm_devtree_node *parent;
 
 	rc = vmm_devtree_count_phandle_with_args(node,
