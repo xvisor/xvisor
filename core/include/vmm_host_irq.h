@@ -154,6 +154,7 @@ struct vmm_host_irq {
 	u32 hwirq;
 	const char *name;
 	u32 state;
+	struct vmm_cpumask affinity;
 	u32 percpu_state[CONFIG_CPU_COUNT];
 	u32 count[CONFIG_CPU_COUNT];
 	void *chip_data;
@@ -185,7 +186,7 @@ int vmm_host_active_irq_exec(u32 cpu_irq_no);
 /** Set callback for retriving active host irq number */
 void vmm_host_irq_set_active_callback(u32 (*active)(u32));
 
-/** Initialize host irq instance 
+/** Initialize host irq instance
  *  Note: This function is for internal use only.
  *  Note: Do not call this function directly.
  */
@@ -343,6 +344,13 @@ static inline u32 vmm_host_irq_get_count(struct vmm_host_irq *irq, u32 cpu)
 int vmm_host_irq_set_affinity(u32 hirq,
 			      const struct vmm_cpumask *dest,
 			      bool force);
+
+/** Get cpu affinity of given host irq */
+static inline
+const struct vmm_cpumask *vmm_host_irq_get_affinity(struct vmm_host_irq *irq)
+{
+	return (irq) ? &irq->affinity : NULL;
+}
 
 /** Set trigger type for given host irq */
 int vmm_host_irq_set_type(u32 hirq, u32 type);

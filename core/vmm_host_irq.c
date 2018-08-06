@@ -37,6 +37,7 @@ struct vmm_host_irqs_ctrl {
 	struct vmm_host_irq *irq;
 	u32 (*active)(u32);
 	const struct vmm_devtree_nodeid *matches;
+	struct vmm_cpumask default_affinity;
 };
 
 static struct vmm_host_irqs_ctrl hirqctrl;
@@ -279,20 +280,25 @@ int vmm_host_irq_set_affinity(u32 hirq,
 			      const struct vmm_cpumask *dest, 
 			      bool force)
 {
+	int rc = VMM_OK;
 	struct vmm_host_irq *irq;
 
 	if (NULL == (irq = vmm_host_irq_get(hirq)))
 		return VMM_ENOTAVAIL;
 
-	if (vmm_host_irq_is_per_cpu(irq))
+	if (!dest || vmm_host_irq_is_per_cpu(irq))
 		return VMM_EINVALID;
 
 	if (irq->chip && irq->chip->irq_set_affinity) {
 		irq->state |= VMM_IRQ_STATE_AFFINITY_SET;
-		return irq->chip->irq_set_affinity(irq, dest, force);
+		rc = irq->chip->irq_set_affinity(irq, dest, force);
 	}
 
-	return VMM_OK;
+	if (rc == VMM_OK) {
+		vmm_cpumask_copy(&irq->affinity, dest);
+	}
+
+	return rc;
 }
 
 int vmm_host_irq_set_type(u32 hirq, u32 type)
@@ -719,6 +725,7 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 	irq->name = NULL;
 	irq->state = state;
 	irq->state |= VMM_IRQ_TYPE_NONE;
+	vmm_cpumask_copy(&irq->affinity, &hirqctrl.default_affinity);
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
 		irq->percpu_state[cpu]= VMM_PERCPU_IRQ_STATE_MASKED;
 		irq->count[cpu] = 0;
@@ -762,6 +769,10 @@ int __cpuinit vmm_host_irq_init(void)
 		/* Determine clockchip matches from nodeid table */
 		hirqctrl.matches = 
 			vmm_devtree_nidtbl_create_matches("host_irq");
+
+		/* Setup default host IRQ affinity */
+		vmm_cpumask_copy(&hirqctrl.default_affinity,
+				 cpu_possible_mask);
 
 		/* Initialize extended host IRQs */
 		ret = vmm_host_irqext_init();
