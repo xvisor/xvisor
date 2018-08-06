@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013 Anup Patel.
+ * Copyright (c) 2018 Oza Pawandeep.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,9 +18,8 @@
  *
  * @file irq-riscv-plic.c
  * @author Oza Pawandeep (oza.pawandeep@gmail.com)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief riscv PLIC driver
- *
- * 
  */
 
 #include <vmm_error.h>
@@ -29,13 +28,13 @@
 #include <vmm_stdio.h>
 #include <vmm_smp.h>
 #include <vmm_heap.h>
+#include <vmm_spinlocks.h>
 #include <vmm_resource.h>
+#include <vmm_devtree.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
-#include <vmm_devtree.h>
-#include <libs/bitops.h>
 #include <drv/irqchip/riscv-intc.h>
 
 /*
@@ -54,7 +53,7 @@
  * 0 is defined to be non-existant so this device really only supports 1023
  * devices.
  */
- 
+
 #define MAX_DEVICES	1024
 #define MAX_CONTEXTS	15872
 
@@ -118,236 +117,270 @@
 #define CONTEXT_THRESHOLD	0
 #define CONTEXT_CLAIM		4
 
-struct plic_handler {
+struct plic_context {
 	bool present;
 	int contextid;
-	struct plic_data *data;
+	u32 target_cpu;
+	u32 parent_irq;
+	void *reg_base;
+	vmm_spinlock_t reg_enable_lock;
+	void *reg_enable_base;
 };
 
-struct plic_data {
-	struct vmm_host_irqdomain *domain;
-	virtual_addr_t base_va;
-	struct plic_handler *handler;
-	int handlers;
-	void *base;
+struct plic_hw {
 	u32 ndev;
+	u32 ncontexts;
+	struct vmm_host_irqdomain *domain;
+	struct plic_context *contexts;
+	physical_addr_t reg_phys;
+	physical_size_t reg_size;
+	virtual_addr_t reg_virt;
+	void *reg_base;
+	void *reg_priority_base;
 };
 
-static struct plic_data plic;
+static struct plic_hw plic;
 
-/* Addressing helper functions. */
-static inline
-u32 *plic_enable_vector(struct plic_data *data, int contextid)
+static void plic_context_disable_irq(struct plic_context *cntx, int hwirq)
 {
-	return data->base + ENABLE_BASE + contextid * ENABLE_PER_HART;
-}
+	u32 mask, *reg;
+	irq_flags_t flags;
 
-static inline
-u32 *plic_priority(struct plic_data *data, int hwirq)
-{
-	return data->base + PRIORITY_BASE + hwirq * PRIORITY_PER_ID;
-}
+	if (!cntx->present)
+		return;
 
-static inline
-u32 *plic_hart_threshold(struct plic_data *data, int contextid)
-{
-	return data->base + CONTEXT_BASE + CONTEXT_PER_HART * contextid + CONTEXT_THRESHOLD;
-}
+	reg = cntx->reg_enable_base + (hwirq / 32);
+	mask = ~(1 << (hwirq % 32));
 
-static inline
-u32 *plic_hart_claim(struct plic_data *data, int contextid)
-{
-	return data->base + CONTEXT_BASE + CONTEXT_PER_HART * contextid + CONTEXT_CLAIM;
-}
-
-/*
- * Handling an interrupt is a two-step process: first you claim the interrupt
- * by reading the claim register, then you complete the interrupt by writing
- * that source ID back to the same claim register.  This automatically enables
- * and disables the interrupt, so there's nothing else to do.
- */
-static inline
-u32 plic_claim(struct plic_data *data, int contextid)
-{
-	return vmm_readl(plic_hart_claim(data, contextid));
-}
-
-static inline
-void plic_complete(struct plic_data *data, int contextid, u32 claim)
-{
-	vmm_writel(claim, plic_hart_claim(data, contextid));
-}
-
-/* Explicit interrupt masking. */
-static void plic_disable(struct plic_data *data, int contextid, int hwirq)
-{
-	u32 *reg = plic_enable_vector(data, contextid) + (hwirq / 32);
-	u32 mask = ~(1 << (hwirq % 32));
-
+	vmm_spin_lock_irqsave_lite(&cntx->reg_enable_lock, flags);
 	vmm_writel(vmm_readl(reg) & mask, reg);
+	vmm_spin_unlock_irqrestore_lite(&cntx->reg_enable_lock, flags);
 }
 
-static void plic_enable(struct plic_data *data, int contextid, int hwirq)
+static void plic_context_enable_irq(struct plic_context *cntx, int hwirq)
 {
-	u32 *reg = plic_enable_vector(data, contextid) + (hwirq / 32);
-	u32 bit = 1 << (hwirq % 32);
+	u32 bit, *reg;
+	irq_flags_t flags;
 
+	if (!cntx->present)
+		return;
+
+	reg = cntx->reg_enable_base + (hwirq / 32);
+	bit = 1 << (hwirq % 32);
+
+	vmm_spin_lock_irqsave_lite(&cntx->reg_enable_lock, flags);
 	vmm_writel(vmm_readl(reg) | bit, reg);
+	vmm_spin_unlock_irqrestore_lite(&cntx->reg_enable_lock, flags);
+}
+
+static int plic_irq_enable_with_mask(struct vmm_host_irq *d,
+				     const struct vmm_cpumask *mask)
+{
+	int i;
+	bool done = FALSE;
+	u32 target_cpu;
+
+	target_cpu = vmm_cpumask_any(mask);
+
+ 	vmm_writel(1, plic.reg_priority_base + d->hwirq * PRIORITY_PER_ID);
+	for (i = 0; i < plic.ncontexts; ++i) {
+		if (plic.contexts[i].target_cpu == target_cpu) {
+			plic_context_enable_irq(&plic.contexts[i], d->hwirq);
+			done = TRUE;
+		}
+	}
+
+	return (done) ? VMM_OK : VMM_EINVALID;
 }
 
 static void plic_irq_enable(struct vmm_host_irq *d)
 {
-	void *priority;
-	int i;
- 
-	priority = plic_priority(&plic, d->hwirq);
- 	vmm_writel(1, priority);
-
-	for (i = 0; i < plic.handlers; ++i)
-		if (plic.handler[i].present)
-			plic_enable(&plic, plic.handler[i].contextid, d->hwirq);
+	plic_irq_enable_with_mask(d, vmm_host_irq_get_affinity(d));
 }
 
 static void plic_irq_disable(struct vmm_host_irq *d)
 {
 	int i;
-	void *priority = plic_priority(&plic, d->hwirq);
-	
-	vmm_writel(0, priority);
-	for (i = 0; i < plic.handlers; ++i)
-		if (plic.handler[i].present)
-			plic_disable(&plic, plic.handler[i].contextid, d->hwirq);
+
+	vmm_writel(0, plic.reg_priority_base + d->hwirq * PRIORITY_PER_ID);
+	for (i = 0; i < plic.ncontexts; ++i) {
+		plic_context_disable_irq(&plic.contexts[i], d->hwirq);
+	}
+}
+
+static int plic_irq_set_affinity(struct vmm_host_irq *d,
+				 const struct vmm_cpumask *mask, 
+				 bool force)
+{
+	int rc = VMM_OK;
+
+	/* If priority is non-zero then IRQ is enabled */
+	if (vmm_readl(plic.reg_priority_base + d->hwirq * PRIORITY_PER_ID)) {
+		/* Disable IRQ for all HARTs */
+		plic_irq_disable(d);
+		/* Re-enable IRQ using new affinity */
+		rc = plic_irq_enable_with_mask(d, mask);
+	}
+
+	return rc;
 }
 
 static struct vmm_host_irq_chip plic_chip = {
 	.name		= "riscv-plic",
 	.irq_enable	= plic_irq_enable,
 	.irq_disable	= plic_irq_disable,
+	.irq_set_affinity = plic_irq_set_affinity,
 };
 
-static vmm_irq_return_t plic_chained_handle_irq(int hirq, void *dev)
+static vmm_irq_return_t plic_chained_handle_irq(int irq, void *dev)
 {
-	struct plic_handler *handler = dev;
-	int pirq, virq;
+	int hwirq, hirq;
+	bool have_irq = FALSE;
+	struct plic_context *cntx = dev;
 
-	while ((pirq = plic_claim(&plic, handler->contextid))) {
-		virq = vmm_host_irqdomain_find_mapping(plic.domain, pirq);
-		vmm_host_generic_irq_exec(virq);
-		plic_complete(&plic, handler->contextid, pirq);
+	/*
+	 * Handling an interrupt is a two-step process: first you claim
+	 * the interrupt by reading the claim register, then you complete
+	 * the interrupt by writing that source ID back to the same claim
+	 * register.  This automatically enables and disables the interrupt,
+	 * so there's nothing else to do.
+	 */
+	while ((hwirq = vmm_readl(cntx->reg_base + CONTEXT_CLAIM))) {
+		hirq = vmm_host_irqdomain_find_mapping(plic.domain, hwirq);
+		vmm_host_generic_irq_exec(hirq);
+		vmm_writel(hwirq, cntx->reg_base + CONTEXT_CLAIM);
+		have_irq = TRUE;
 	}
 
-	return VMM_IRQ_HANDLED;
+	return (have_irq) ? VMM_IRQ_HANDLED : VMM_IRQ_NONE;
 }
 
 static struct vmm_host_irqdomain_ops plic_ops = {
 	.xlate = vmm_host_irqdomain_xlate_onecell,
 };
 
-static void __cpuinit plic_handler_init(struct plic_handler *handler,
+static void __cpuinit plic_context_init(struct plic_context *cntx,
 					struct vmm_devtree_node *node,
-					int irq_index,
 					const char *irq_name)
 {
-	int parent_irq, hwirq;
-
-	/* Disable all interrupts for this handler */
-	for (hwirq = 1; hwirq <= plic.ndev; ++hwirq) {
-		plic_disable(&plic, handler->contextid, hwirq);
-	}
-
-	/* Find parent IRQ for this handler */	
-	parent_irq = vmm_devtree_irq_parse_map(node, irq_index);
-	if (!parent_irq) {
+	/* Check parent IRQ of this context */
+	if (!cntx->parent_irq) {
 		return;
 	}
 
-	/* Register parent IRQ for this handler */
-	if (vmm_host_irq_register(parent_irq, irq_name,
-				  plic_chained_handle_irq, handler)) {
+	/* Register parent IRQ for this context */
+	if (vmm_host_irq_register(cntx->parent_irq, irq_name,
+				  plic_chained_handle_irq, cntx)) {
 		return;
 	}
 
 	/* HWIRQ prio must be > this to trigger an interrupt */
-	vmm_writel(0, plic_hart_threshold(&plic, handler->contextid));
+	vmm_writel(0, cntx->reg_base + CONTEXT_THRESHOLD);
 
-	/* Mark handler as present */
-	handler->present = true;
+	/* Mark context as present */
+	cntx->present = true;
+}
+
+static int __cpuinit plic_cpu_init(struct vmm_devtree_node *node)
+{
+	u32 cpu = vmm_smp_processor_id();
+
+	/* Machine PLIC context */
+	plic_context_init(&plic.contexts[cpu * 2], node,
+			  "riscv-plic-m");
+
+	/* Supervisor PLIC context */
+	plic_context_init(&plic.contexts[cpu * 2 + 1], node,
+			  "riscv-plic-s");
+
+	return VMM_OK;
 }
 
 static int __cpuinit plic_init(struct vmm_devtree_node *node)
 {
-	int i, rc;
-	struct plic_handler *handler;
-	int hwirq, virq;
-	physical_addr_t reg_phys;
-	physical_size_t reg_size;
-	u32 cpu = vmm_smp_processor_id();
+	int i, rc, hwirq, hirq;
+	struct plic_context *cntx;
 
 	if (!vmm_smp_is_bootcpu()) {
-		goto common;
-	}
-
-	/* Allocate handlers */
-	plic.handlers = CONFIG_CPU_COUNT * 2;
-	plic.handler = vmm_zalloc(sizeof(*plic.handler) * plic.handlers);
-
-	if (!plic.handler) {
-		return VMM_ENOMEM;
-	}
-	
-	for (i = 0; i < plic.handlers; ++i) {
-		handler = &plic.handler[i];
-		handler->present = false;
-		handler->contextid = i;
-		handler->data = &plic;
+		goto cpu_init;
 	}
 
 	/* Find number of devices */
 	if (vmm_devtree_read_u32(node, "riscv,ndev", &plic.ndev)) {
 		plic.ndev = MAX_DEVICES;
 	}
-	plic.ndev = plic.ndev + 1; 
+	plic.ndev = plic.ndev + 1;
+
+	/* Find number of contexts */
+	plic.ncontexts = vmm_num_possible_cpus() * 2;
+
+	/* Allocate contexts */
+	plic.contexts = vmm_zalloc(sizeof(*plic.contexts) * plic.ncontexts);
+	if (!plic.contexts) {
+		return VMM_ENOMEM;
+	}
+	for (i = 0; i < plic.ncontexts; ++i) {
+		cntx = &plic.contexts[i];
+		cntx->present = false;
+		cntx->contextid = i;
+		cntx->target_cpu = i / 2;
+		cntx->parent_irq = vmm_devtree_irq_parse_map(node, i % 2);
+		cntx->reg_base = NULL;
+		INIT_SPIN_LOCK(&cntx->reg_enable_lock);
+		cntx->reg_enable_base = NULL;
+	}
 
 	/* Create IRQ domain */
 	plic.domain = vmm_host_irqdomain_add(node, (int)RISCV_IRQ_COUNT,
 					     plic.ndev, &plic_ops, NULL);
 	if (!plic.domain) {
-		vmm_free(plic.handler);
+		vmm_free(plic.contexts);
 		return VMM_EFAIL;
+	}
+	/*
+	 * Create IRQ domain mappings
+	 * Note: Interrupt 0 is no device/interrupt.
+	 */
+	for (hwirq = 1; hwirq < plic.ndev; ++hwirq) {
+		hirq = vmm_host_irqdomain_create_mapping(plic.domain, hwirq);
+		vmm_host_irq_set_chip(hirq, &plic_chip);
+		vmm_host_irq_set_handler(hirq, vmm_handle_fast_eoi);
 	}
 
 	/* Find register base and size */
-	rc = vmm_devtree_regaddr(node, &reg_phys, 0);
+	rc = vmm_devtree_regaddr(node, &plic.reg_phys, 0);
 	if (rc) {
 		vmm_host_irqdomain_remove(plic.domain);
-		vmm_free(plic.handler);
+		vmm_free(plic.contexts);
 		return rc;
 	}
-	reg_size = CONTEXT_BASE + plic.handlers * CONTEXT_PER_HART;
+	plic.reg_size = CONTEXT_BASE + plic.ncontexts * CONTEXT_PER_HART;
 
 	/* Map registers */
-	vmm_request_mem_region(reg_phys, reg_size, "RISCV PLIC");
-	plic.base_va = vmm_host_iomap(reg_phys, reg_size);
-	plic.base = (void *)plic.base_va;
-
-	/* interrupt 0 is no device/interrupt. */
-	for (hwirq = 1; hwirq < plic.ndev; ++hwirq) {
-		virq = vmm_host_irqdomain_create_mapping(plic.domain, hwirq);
-		vmm_host_irq_set_chip(virq, &plic_chip);
-		vmm_host_irq_set_handler(virq, vmm_handle_fast_eoi);
-				
+	vmm_request_mem_region(plic.reg_phys, plic.reg_size, "RISCV PLIC");
+	plic.reg_virt = vmm_host_iomap(plic.reg_phys, plic.reg_size);
+	plic.reg_base = (void *)plic.reg_virt;
+	plic.reg_priority_base = plic.reg_base + PRIORITY_BASE;
+	for (i = 0; i < plic.ncontexts; ++i) {
+		cntx = &plic.contexts[i];
+		cntx->reg_base = plic.reg_base + CONTEXT_BASE +
+				    CONTEXT_PER_HART * cntx->contextid;
+		cntx->reg_enable_base = plic.reg_base + ENABLE_BASE +
+					ENABLE_PER_HART * cntx->contextid;
 	}
 
-common:
-	/* Machine CPU handler */
-	plic_handler_init(&plic.handler[cpu * 2], node, 0,
-			  "riscv-plic-m");
+	/* Disable all interrupts */
+	for (i = 0; i < plic.ncontexts; ++i) {
+		cntx = &plic.contexts[i];
+		if (!cntx->parent_irq)
+			continue;
+		for (hwirq = 1; hwirq <= plic.ndev; ++hwirq) {
+			plic_context_disable_irq(cntx, hwirq);
+		}
+	}
 
-	/* Supervisor CPU handler */
-	plic_handler_init(&plic.handler[cpu * 2 + 1], node, 1,
-			  "riscv-plic-s");
-
-	return VMM_OK;
+cpu_init:
+	return plic_cpu_init(node);
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(riscvplic, "riscv,plic0", plic_init);
