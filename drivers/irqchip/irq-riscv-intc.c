@@ -57,11 +57,6 @@ static void riscv_irqchip_unmask_irq(struct vmm_host_irq *d)
 	csr_set(sie, 1UL << d->hwirq);
 }
 
-static void riscv_irqchip_eoi_irq(struct vmm_host_irq *d)
-{
-	csr_clear(sip, 1UL << d->hwirq);
-}
-
 #ifdef CONFIG_SMP
 static void riscv_irqchip_raise(struct vmm_host_irq *d,
 				const struct vmm_cpumask *mask)
@@ -77,7 +72,6 @@ static struct vmm_host_irq_chip riscv_irqchip = {
 	.name = "riscv-intc",
 	.irq_mask = riscv_irqchip_mask_irq,
 	.irq_unmask = riscv_irqchip_unmask_irq,
-	.irq_eoi = riscv_irqchip_eoi_irq,
 #ifdef CONFIG_SMP
 	.irq_raise = riscv_irqchip_raise
 #endif
