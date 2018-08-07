@@ -130,6 +130,7 @@ struct plic_context {
 struct plic_hw {
 	u32 ndev;
 	u32 ncontexts;
+	u32 ncontexts_avail;
 	struct vmm_host_irqdomain *domain;
 	struct plic_context *contexts;
 	physical_addr_t reg_phys;
@@ -313,6 +314,7 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 
 	/* Find number of contexts */
 	plic.ncontexts = vmm_num_possible_cpus() * 2;
+	plic.ncontexts_avail = 0;
 
 	/* Allocate contexts */
 	plic.contexts = vmm_zalloc(sizeof(*plic.contexts) * plic.ncontexts);
@@ -325,6 +327,8 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 		cntx->contextid = i;
 		cntx->target_cpu = i / 2;
 		cntx->parent_irq = vmm_devtree_irq_parse_map(node, i % 2);
+		if (cntx->parent_irq)
+			plic.ncontexts_avail++;
 		cntx->reg_base = NULL;
 		INIT_SPIN_LOCK(&cntx->reg_enable_lock);
 		cntx->reg_enable_base = NULL;
@@ -378,6 +382,12 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 			plic_context_disable_irq(cntx, hwirq);
 		}
 	}
+
+	/* Print details */
+	vmm_init_printf("plic: base=0x%"PRIPADDR" size=%"PRIPSIZE"\n",
+			plic.reg_phys, plic.reg_size);
+	vmm_init_printf("plic: devices=%d contexts=%d/%d\n",
+			plic.ndev, plic.ncontexts_avail, plic.ncontexts);
 
 cpu_init:
 	return plic_cpu_init(node);
