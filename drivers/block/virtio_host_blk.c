@@ -206,7 +206,7 @@ static void virtio_host_blk_flush(struct vmm_blockrq *brq, void *priv)
 static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 {
 	int err;
-	unsigned int i, len, exp;
+	unsigned int i, len, exp1, exp2;
 	struct virtio_host_blk *vblk = priv;
 	struct virtio_host_blk_req *req;
 
@@ -222,14 +222,35 @@ static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 				"bcnt=%d data=0x%p\n", __func__,
 				req, req->r->lba, req->r->bcnt, req->r->data);
 
-			exp = sizeof(req->hdr);
-			exp += req->r->bcnt * vblk->block_size;
-			exp += sizeof(req->status);
+			exp1 = sizeof(req->hdr);
+			exp1 += req->r->bcnt * vblk->block_size;
+			exp1 += sizeof(req->status);
 
-			DPRINTF(vblk, "%s: req=0x%p exp=%d len=%d\n",
-				__func__, req, exp, len);
+			exp2 = req->r->bcnt * vblk->block_size;
+			exp2 += sizeof(req->status);
 
-			err = (len == exp) ? VMM_OK : VMM_EIO;
+			DPRINTF(vblk, "%s: req=0x%p exp1=%d exp2=%d "
+				"len=%d status=%d\n", __func__,
+				req, exp1, exp2, len, req->status);
+
+			if ((len == exp1) || (len == exp2)) {
+				switch (req->status) {
+				case VMM_VIRTIO_BLK_S_OK:
+					err = VMM_OK;
+					break;
+				case VMM_VIRTIO_BLK_S_IOERR:
+					err = VMM_EIO;
+					break;
+				case VMM_VIRTIO_BLK_S_UNSUPP:
+					err = VMM_ENOTSUPP;
+					break;
+				default:
+					err = VMM_EFAIL;
+					break;
+				};
+			} else {
+				err = VMM_EINVALID;
+			}
 			vmm_blockrq_async_done(vblk->brq, req->r, err);
 		} else if (req->cmpl) {
 			DPRINTF(vblk, "%s: req=0x%p cmpl=0x%p len=%d\n",
