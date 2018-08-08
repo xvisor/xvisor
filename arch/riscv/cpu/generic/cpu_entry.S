@@ -49,17 +49,17 @@ _start:
 	csrc sstatus, t0
 
 #ifdef CONFIG_SMP
-	/* Pick one hart to run the main boot sequence */
+	/* Pick one HART to run the main boot sequence */
 	la a3, _start_lottery
 	li a2, 1
 	amoadd.w a3, a2, (a3)
 	bnez a3, _start_secondary
 #endif
 
-	/* Save hart ID and DTB base */
-	la	a6, _boot_reg0
+	/* Save HART ID and DTB base */
+	la	a6, _bootcpu_reg0
 	REG_S	a0, (a6)
-	la	a6, _boot_reg1
+	la	a6, _bootcpu_reg1
 	REG_S	a1, (a6)
 
 	/* Save load addresses
@@ -101,7 +101,7 @@ _bss_zero:
 	add	sp, a0, a2
 
 	/* Check and copy FDT */
-	la	a6, _boot_reg1
+	la	a6, _bootcpu_reg1
 	REG_L	a0, (a6)
 	la	a6, __builtin_dtb
 	REG_L	a1, (a6)
@@ -125,17 +125,18 @@ _bss_zero:
 #ifdef CONFIG_SMP
 	.align	3
 _start_lottery:
-	.dword	0
+	RISCV_PTR	0
 	.align	3
 __start_secondary_smp_id:
-	.dword	start_secondary_smp_id
+	RISCV_PTR	start_secondary_smp_id
 	.align	3
 __start_secondary_pen_release:
-	.dword	.
-	.dword	start_secondary_pen_release
+	RISCV_PTR	.
+	RISCV_PTR	start_secondary_pen_release
 
 	/*
-	 * Secondary CPU startup code 
+	 * Secondary CPU startup code
+	 * a0 = HART ID
 	 */
 _start_secondary:
 	/*
@@ -182,55 +183,53 @@ _start_hang:
 
 	.align 3
 __pgtbl_root:
-	.dword def_pgtbl
+	RISCV_PTR def_pgtbl
 __builtin_dtb:
-	.dword dt_blob_start
+	RISCV_PTR dt_blob_start
 __exec_start:
-	.dword _code_start
+	RISCV_PTR _code_start
 __exec_end:
-	.dword _code_end
+	RISCV_PTR _code_end
 __bss_start:
-	.dword _bss_start
+	RISCV_PTR _bss_start
 __bss_end:
-	.dword _bss_end
+	RISCV_PTR _bss_end
 __cpu_init:
-	.dword _cpu_init
-__boot_reg0:
-	.dword _boot_reg0
+	RISCV_PTR _cpu_init
 
 	/*
 	 * Boot register 0 passed by bootloader
 	 */
-	.globl _boot_reg0
-_boot_reg0:
-	.dword 0x0
+	.globl _bootcpu_reg0
+_bootcpu_reg0:
+	RISCV_PTR 0x0
 
 	/*
 	 * Boot register 1 passed by bootloader
 	 */
 	.globl _boot_reg1
-_boot_reg1:
-	.dword 0x0
+_bootcpu_reg1:
+	RISCV_PTR 0x0
 
 	/* 
 	 * Load start address storage
 	 */
 	.globl _load_start
 _load_start:
-	.dword 0x0
+	RISCV_PTR 0x0
 
 	/* 
 	 * Load end address storage
 	 */
 	.globl _load_end
 _load_end:
-	.dword 0x0
+	RISCV_PTR 0x0
 
 	/* 
 	 * Exception stacks.
 	 */
 __hvc_stack_end:
-	.dword _hvc_stack_end
+	RISCV_PTR _hvc_stack_end
 
 	.align 3
 	.globl _cpu_init
