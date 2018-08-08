@@ -752,6 +752,9 @@ int __cpuinit vmm_host_irq_init(void)
 		/* Initialize spin lock */
 		INIT_SPIN_LOCK(&hirqctrl.lock);
 		
+		/* Setup default host IRQ affinity */
+		vmm_cpumask_setall(&hirqctrl.default_affinity);
+
 		/* Allocate memory for irq array */
 		hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
 					  CONFIG_HOST_IRQ_COUNT);
@@ -769,10 +772,6 @@ int __cpuinit vmm_host_irq_init(void)
 		/* Determine clockchip matches from nodeid table */
 		hirqctrl.matches = 
 			vmm_devtree_nidtbl_create_matches("host_irq");
-
-		/* Setup default host IRQ affinity */
-		vmm_cpumask_copy(&hirqctrl.default_affinity,
-				 cpu_possible_mask);
 
 		/* Initialize extended host IRQs */
 		ret = vmm_host_irqext_init();
