@@ -33,15 +33,19 @@
  * The original code is licensed under the GPL.
  */
 
-#include <linux/module.h>
-#include <linux/rtc.h>
-#include <linux/init.h>
-#include <linux/interrupt.h>
-#include <linux/amba/bus.h>
-#include <linux/io.h>
-#include <linux/bcd.h>
-#include <linux/delay.h>
-#include <linux/slab.h>
+#include <vmm_error.h>
+#include <vmm_heap.h>
+#include <vmm_stdio.h>
+#include <vmm_host_io.h>
+#include <vmm_host_irq.h>
+#include <vmm_modules.h>
+#include <vmm_devtree.h>
+#include <vmm_devdrv.h>
+#include <libs/stringlib.h>
+#include <libs/mathlib.h>
+#include <libs/bcd.h>
+#include <drv/rtc.h>
+#include <drv/amba/bus.h>
 
 #define MODULE_DESC			"PL031 RTC Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -108,14 +112,14 @@ static int pl031_alarm_irq_enable(struct rtc_device *rd,
 	struct pl031_local *ldata = rd->priv;
 
 	/* Clear any pending alarm interrupts. */
-	writel(RTC_BIT_AI, (void *)(ldata->base + RTC_ICR));
+	vmm_writel(RTC_BIT_AI, (void *)(ldata->base + RTC_ICR));
 
-	imsc = readl((void *)(ldata->base + RTC_IMSC));
+	imsc = vmm_readl((void *)(ldata->base + RTC_IMSC));
 
 	if (enabled == 1) {
-		writel(imsc | RTC_BIT_AI, (void *)(ldata->base + RTC_IMSC));
+		vmm_writel(imsc | RTC_BIT_AI, (void *)(ldata->base + RTC_IMSC));
 	} else {
-		writel(imsc & ~RTC_BIT_AI, (void *)(ldata->base + RTC_IMSC));
+		vmm_writel(imsc & ~RTC_BIT_AI, (void *)(ldata->base + RTC_IMSC));
 	}
 
 	return 0;
@@ -133,8 +137,8 @@ static int pl031_stv2_tm_to_time(struct rtc_device *rd,
 
 	/* wday masking is not working in hardware so wday must be valid */
 	if (wday < -1 || wday > 6) {
-		dev_err(&rd->dev, "invalid wday value %d\n", tm->tm_wday);
-		return -EINVAL;
+		vmm_lerror(rd->dev.name, "invalid wday value %d\n", tm->tm_wday);
+		return VMM_EINVALID;
 	} else if (wday == -1) {
 		/* wday is not provided, calculate it here */
 		unsigned long time;
@@ -181,8 +185,8 @@ static int pl031_stv2_read_time(struct rtc_device *rd, struct rtc_time *tm)
 {
 	struct pl031_local *ldata = rd->priv;
 
-	pl031_stv2_time_to_tm(readl(ldata->base + RTC_DR),
-			readl(ldata->base + RTC_YDR), tm);
+	pl031_stv2_time_to_tm(vmm_readl(ldata->base + RTC_DR),
+			vmm_readl(ldata->base + RTC_YDR), tm);
 
 	return 0;
 }
@@ -196,8 +200,8 @@ static int pl031_stv2_set_time(struct rtc_device *rd, struct rtc_time *tm)
 
 	ret = pl031_stv2_tm_to_time(rd, tm, &time, &bcd_year);
 	if (ret == 0) {
-		writel(bcd_year, ldata->base + RTC_YLR);
-		writel(time, ldata->base + RTC_LR);
+		vmm_writel(bcd_year, ldata->base + RTC_YLR);
+		vmm_writel(time, ldata->base + RTC_LR);
 	}
 
 	return ret;
@@ -208,11 +212,11 @@ static int pl031_stv2_read_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm
 	struct pl031_local *ldata = rd->priv;
 	int ret;
 
-	ret = pl031_stv2_time_to_tm(readl(ldata->base + RTC_MR),
-			readl(ldata->base + RTC_YMR), &alarm->time);
+	ret = pl031_stv2_time_to_tm(vmm_readl(ldata->base + RTC_MR),
+			vmm_readl(ldata->base + RTC_YMR), &alarm->time);
 
-	alarm->pending = readl(ldata->base + RTC_RIS) & RTC_BIT_AI;
-	alarm->enabled = readl(ldata->base + RTC_IMSC) & RTC_BIT_AI;
+	alarm->pending = vmm_readl(ldata->base + RTC_RIS) & RTC_BIT_AI;
+	alarm->enabled = vmm_readl(ldata->base + RTC_IMSC) & RTC_BIT_AI;
 
 	return ret;
 }
@@ -230,8 +234,8 @@ static int pl031_stv2_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 		ret = pl031_stv2_tm_to_time(rd, &alarm->time,
 					    &time, &bcd_year);
 		if (ret == 0) {
-			writel(bcd_year, ldata->base + RTC_YMR);
-			writel(time, ldata->base + RTC_MR);
+			vmm_writel(bcd_year, ldata->base + RTC_YMR);
+			vmm_writel(time, ldata->base + RTC_MR);
 
 			pl031_alarm_irq_enable(rd, alarm->enabled);
 		}
@@ -240,15 +244,15 @@ static int pl031_stv2_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 	return ret;
 }
 
-static irqreturn_t pl031_irq_handler(int irq_no, void *dev)
+static vmm_irq_return_t pl031_irq_handler(int irq_no, void *dev)
 {
 	struct pl031_local *ldata = (struct pl031_local *)dev;
 	unsigned long rtcmis;
 	unsigned long events = 0;
 
-	rtcmis = readl((void *)(ldata->base + RTC_MIS));
+	rtcmis = vmm_readl((void *)(ldata->base + RTC_MIS));
 	if (rtcmis) {
-		writel(rtcmis, (void *)(ldata->base + RTC_ICR));
+		vmm_writel(rtcmis, (void *)(ldata->base + RTC_ICR));
 
 		if (rtcmis & RTC_BIT_AI)
 			events |= (RTC_AF | RTC_IRQF);
@@ -260,17 +264,17 @@ static irqreturn_t pl031_irq_handler(int irq_no, void *dev)
 
 		rtc_update_irq(ldata->rtc, 1, events);
 
-		return IRQ_HANDLED;
+		return VMM_IRQ_HANDLED;
 	}
 
-	return IRQ_NONE;
+	return VMM_IRQ_NONE;
 }
 
 static int pl031_read_time(struct rtc_device *rd, struct rtc_time *tm)
 {
 	struct pl031_local *ldata = rd->priv;
 
-	rtc_time_to_tm(readl(ldata->base + RTC_DR), tm);
+	rtc_time_to_tm(vmm_readl(ldata->base + RTC_DR), tm);
 
 	return 0;
 }
@@ -284,7 +288,7 @@ static int pl031_set_time(struct rtc_device *rd, struct rtc_time *tm)
 	ret = rtc_tm_to_time(tm, &time);
 
 	if (ret == 0)
-		writel(time, ldata->base + RTC_LR);
+		vmm_writel(time, ldata->base + RTC_LR);
 
 	return ret;
 }
@@ -293,10 +297,10 @@ static int pl031_read_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 {
 	struct pl031_local *ldata = rd->priv;
 
-	rtc_time_to_tm(readl(ldata->base + RTC_MR), &alarm->time);
+	rtc_time_to_tm(vmm_readl(ldata->base + RTC_MR), &alarm->time);
 
-	alarm->pending = readl(ldata->base + RTC_RIS) & RTC_BIT_AI;
-	alarm->enabled = readl(ldata->base + RTC_IMSC) & RTC_BIT_AI;
+	alarm->pending = vmm_readl(ldata->base + RTC_RIS) & RTC_BIT_AI;
+	alarm->enabled = vmm_readl(ldata->base + RTC_IMSC) & RTC_BIT_AI;
 
 	return 0;
 }
@@ -312,7 +316,7 @@ static int pl031_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 	if (ret == 0) {
 		ret = rtc_tm_to_time(&alarm->time, &time);
 		if (ret == 0) {
-			writel(time, ldata->base + RTC_MR);
+			vmm_writel(time, ldata->base + RTC_MR);
 			pl031_alarm_irq_enable(rd, alarm->enabled);
 		}
 	}

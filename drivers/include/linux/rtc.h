@@ -13,13 +13,6 @@
 
 #include <drv/rtc.h>
 
-/* FIXME: interrupt event flags */
-#define RTC_IRQF 0x80	/* Any of the following is active */
-#define RTC_PF 0x40	/* Periodic interrupt */
-#define RTC_AF 0x20	/* Alarm interrupt */
-#define RTC_UF 0x10	/* Update interrupt for 1Hz RTC */
-
-/* FIXME: report interrupt event */
-#define rtc_update_irq(rtc,count,events)
+/* Note: This file is just a place holder */
 
 #endif
