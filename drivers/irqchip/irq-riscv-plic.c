@@ -117,10 +117,17 @@
 #define CONTEXT_THRESHOLD	0
 #define CONTEXT_CLAIM		4
 
+enum plic_target_mode {
+	PLIC_TARGET_MODE_M=0,
+	PLIC_TARGET_MODE_S,
+	PLIC_TARGET_MODE_MAX,
+};
+
 struct plic_context {
 	bool present;
 	int contextid;
-	u32 target_cpu;
+	u32 target_hart;
+	enum plic_target_mode target_mode;
 	u32 parent_irq;
 	void *reg_base;
 	vmm_spinlock_t reg_enable_lock;
@@ -131,6 +138,7 @@ struct plic_hw {
 	u32 ndev;
 	u32 ncontexts;
 	u32 ncontexts_avail;
+	u32 parent_irqs[PLIC_TARGET_MODE_MAX];
 	struct vmm_host_irqdomain *domain;
 	struct plic_context *contexts;
 	physical_addr_t reg_phys;
@@ -178,20 +186,32 @@ static int plic_irq_enable_with_mask(struct vmm_host_irq *d,
 				     const struct vmm_cpumask *mask)
 {
 	int i;
-	bool done = FALSE;
-	u32 target_cpu;
+	bool found_hart = FALSE;
+	u32 target_hart = UINT_MAX;
+	struct plic_context *cntx;
 
-	target_cpu = vmm_cpumask_any(mask);
+	for (i = 0; i < plic.ncontexts; ++i) {
+		cntx = &plic.contexts[i];
+		if (!cntx->present)
+			continue;
+		if (vmm_cpumask_test_cpu(cntx->target_hart, mask)) {
+			target_hart = cntx->target_hart;
+			found_hart = TRUE;
+			break;
+		}
+	}
+	if (!found_hart)
+		return VMM_EINVALID;
 
  	vmm_writel(1, plic.reg_priority_base + d->hwirq * PRIORITY_PER_ID);
 	for (i = 0; i < plic.ncontexts; ++i) {
-		if (plic.contexts[i].target_cpu == target_cpu) {
-			plic_context_enable_irq(&plic.contexts[i], d->hwirq);
-			done = TRUE;
+		cntx = &plic.contexts[i];
+		if (cntx->target_hart == target_hart) {
+			plic_context_enable_irq(cntx, d->hwirq);
 		}
 	}
 
-	return (done) ? VMM_OK : VMM_EINVALID;
+	return VMM_OK;
 }
 
 static void plic_irq_enable(struct vmm_host_irq *d)
@@ -261,38 +281,47 @@ static struct vmm_host_irqdomain_ops plic_ops = {
 };
 
 static void __cpuinit plic_context_init(struct plic_context *cntx,
-					struct vmm_devtree_node *node,
-					const char *irq_name)
+					struct vmm_devtree_node *node)
 {
-	/* Check parent IRQ of this context */
-	if (!cntx->parent_irq) {
+	const char *name;
+
+	/* Check if context is present */
+	if (!cntx->present) {
 		return;
 	}
 
 	/* Register parent IRQ for this context */
-	if (vmm_host_irq_register(cntx->parent_irq, irq_name,
+	switch (cntx->target_mode) {
+	case PLIC_TARGET_MODE_M:
+		name = "riscv-plic-m";
+		break;
+	case PLIC_TARGET_MODE_S:
+		name = "riscv-plic-s";
+		break;
+	default:
+		return;
+	};
+	if (vmm_host_irq_register(plic.parent_irqs[cntx->target_mode], name,
 				  plic_chained_handle_irq, cntx)) {
 		return;
 	}
 
 	/* HWIRQ prio must be > this to trigger an interrupt */
 	vmm_writel(0, cntx->reg_base + CONTEXT_THRESHOLD);
-
-	/* Mark context as present */
-	cntx->present = true;
 }
 
 static int __cpuinit plic_cpu_init(struct vmm_devtree_node *node)
 {
-	u32 cpu = vmm_smp_processor_id();
+	int i;
+	struct plic_context *cntx;
+	u32 hart = vmm_smp_processor_id();
 
-	/* Machine PLIC context */
-	plic_context_init(&plic.contexts[cpu * 2], node,
-			  "riscv-plic-m");
-
-	/* Supervisor PLIC context */
-	plic_context_init(&plic.contexts[cpu * 2 + 1], node,
-			  "riscv-plic-s");
+	for (i = 0; i < plic.ncontexts; ++i) {
+		cntx = &plic.contexts[i];
+		if (cntx->target_hart != hart)
+			continue;
+		plic_context_init(cntx, node);
+	}
 
 	return VMM_OK;
 }
@@ -316,6 +345,11 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 	plic.ncontexts = vmm_num_possible_cpus() * 2;
 	plic.ncontexts_avail = 0;
 
+	/* Find parent IRQs of each possible target mode */
+	for (i = 0; i < PLIC_TARGET_MODE_MAX; i++) {
+		plic.parent_irqs[i] = vmm_devtree_irq_parse_map(node, i);
+	}
+
 	/* Allocate contexts */
 	plic.contexts = vmm_zalloc(sizeof(*plic.contexts) * plic.ncontexts);
 	if (!plic.contexts) {
@@ -325,10 +359,14 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 		cntx = &plic.contexts[i];
 		cntx->present = false;
 		cntx->contextid = i;
-		cntx->target_cpu = i / 2;
-		cntx->parent_irq = vmm_devtree_irq_parse_map(node, i % 2);
-		if (cntx->parent_irq)
+		cntx->target_hart = i / 2;
+		cntx->target_mode = (i % 2) ?
+				PLIC_TARGET_MODE_S : PLIC_TARGET_MODE_M;
+		cntx->parent_irq = plic.parent_irqs[cntx->target_mode];
+		if (cntx->parent_irq) {
+			cntx->present = true;
 			plic.ncontexts_avail++;
+		}
 		cntx->reg_base = NULL;
 		INIT_SPIN_LOCK(&cntx->reg_enable_lock);
 		cntx->reg_enable_base = NULL;
@@ -376,8 +414,9 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 	/* Disable all interrupts */
 	for (i = 0; i < plic.ncontexts; ++i) {
 		cntx = &plic.contexts[i];
-		if (!cntx->parent_irq)
+		if (!cntx->present) {
 			continue;
+		}
 		for (hwirq = 1; hwirq <= plic.ndev; ++hwirq) {
 			plic_context_disable_irq(cntx, hwirq);
 		}
