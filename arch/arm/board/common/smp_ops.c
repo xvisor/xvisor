@@ -175,7 +175,9 @@ static void __init smp_init_ops(void)
 int __init arch_smp_init_cpus(void)
 {
 	int rc;
-	unsigned int i, cpu = 1;
+	const char *str;
+	physical_addr_t hwid;
+	unsigned int i, cpus_count = 0, cpu = 1;
 	bool bootcpu_valid = false;
 	struct vmm_devtree_node *dn, *cpus;
 
@@ -190,7 +192,37 @@ int __init arch_smp_init_cpus(void)
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
-		break;
+		str = NULL;
+		rc = vmm_devtree_read_string(dn,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
+		if (rc || !str) {
+			continue;
+		}
+		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
+			continue;
+		}
+		cpus_count++;
+	}
+
+	dn = NULL;
+	vmm_devtree_for_each_child(dn, cpus) {
+		str = NULL;
+		rc = vmm_devtree_read_string(dn,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
+		if (rc || !str) {
+			continue;
+		}
+		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
+			continue;
+		}
+		rc = vmm_devtree_read_physaddr(dn,
+			VMM_DEVTREE_REG_ATTR_NAME, &hwid);
+		if ((rc == VMM_OK) &&
+		    ((cpus_count < 2) ||
+		     (hwid == (read_mpidr() & MPIDR_HWID_BITMASK)))) {
+			smp_logical_map(0) = hwid;
+			break;
+		}
 	}
 	if (!dn) {
 		vmm_printf("%s: Failed to find node for boot cpu\n",
@@ -199,22 +231,11 @@ int __init arch_smp_init_cpus(void)
 		return VMM_ENODEV;
 	}
 
-	rc = vmm_devtree_read_physaddr(dn,
-			VMM_DEVTREE_REG_ATTR_NAME, &smp_logical_map(0));
-	if (rc) {
-		vmm_printf("%s: Failed to find reg property for boot cpu\n",
-			   __func__);
-		vmm_devtree_dref_node(dn);
-		vmm_devtree_dref_node(cpus);
-		return rc;
-	}
 	smp_read_ops(dn, 0);
 	vmm_devtree_dref_node(dn);
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
-		physical_addr_t hwid;
-
 		/*
 		 * A cpu node with missing "reg" property is
 		 * considered invalid to build a smp_logical_map

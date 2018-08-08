@@ -94,6 +94,8 @@ asm(
 		     : : "r" (__v));				\
 } while (0)
 
+#define read_mpidr()		mrs(mpidr_el1)
+
 /* TLB maintainence */
 
 #define inv_tlb_hyp_all()	asm volatile("tlbi alle2is\n\t" \
