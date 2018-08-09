@@ -190,16 +190,6 @@ static inline void arch_gic_write_sre(u32 val)
 	isb();
 }
 
-static inline unsigned long arch_gic_current_mpidr(void)
-{
-	return mrs(mpidr_el1) & 0xFF00FFFFFF;
-}
-
-#ifdef CONFIG_ARM_SMP_OPS
-#include <smp_ops.h>
-#define arch_gic_cpu_logical_map(cpu)	smp_logical_map(cpu)
-#endif
-
 static inline void arch_gic_write_irouter(u64 val, volatile void *addr)
 {
 	vmm_writel_relaxed((u32)val, addr);
