@@ -126,7 +126,7 @@ enum plic_target_mode {
 struct plic_context {
 	bool present;
 	int contextid;
-	u32 target_hart;
+	unsigned long target_hart;
 	enum plic_target_mode target_mode;
 	u32 parent_irq;
 	void *reg_base;
@@ -185,28 +185,36 @@ static void plic_context_enable_irq(struct plic_context *cntx, int hwirq)
 static int plic_irq_enable_with_mask(struct vmm_host_irq *d,
 				     const struct vmm_cpumask *mask)
 {
-	int i;
+	int i, rc, cpu;
+	unsigned long hart = UINT_MAX;
 	bool found_hart = FALSE;
-	u32 target_hart = UINT_MAX;
 	struct plic_context *cntx;
 
-	for (i = 0; i < plic.ncontexts; ++i) {
-		cntx = &plic.contexts[i];
-		if (!cntx->present)
-			continue;
-		if (vmm_cpumask_test_cpu(cntx->target_hart, mask)) {
-			target_hart = cntx->target_hart;
-			found_hart = TRUE;
+	for_each_cpu(cpu, mask) {
+		rc = vmm_smp_map_hwid(cpu, &hart);
+		if (rc)
+			return rc;
+		for (i = 0; i < plic.ncontexts; ++i) {
+			cntx = &plic.contexts[i];
+			if (!cntx->present)
+				continue;
+			if (cntx->target_hart == hart) {
+				found_hart = TRUE;
+				break;
+			}
+		}
+		if (found_hart) {
 			break;
 		}
 	}
-	if (!found_hart)
+	if (!found_hart) {
 		return VMM_EINVALID;
+	}
 
  	vmm_writel(1, plic.reg_priority_base + d->hwirq * PRIORITY_PER_ID);
 	for (i = 0; i < plic.ncontexts; ++i) {
 		cntx = &plic.contexts[i];
-		if (cntx->target_hart == target_hart) {
+		if (cntx->target_hart == hart) {
 			plic_context_enable_irq(cntx, d->hwirq);
 		}
 	}
@@ -312,9 +320,13 @@ static void __cpuinit plic_context_init(struct plic_context *cntx,
 
 static int __cpuinit plic_cpu_init(struct vmm_devtree_node *node)
 {
-	int i;
+	int i, rc;
 	struct plic_context *cntx;
-	u32 hart = vmm_smp_processor_id();
+	unsigned long hart;
+
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hart);
+	if (rc)
+		return rc;
 
 	for (i = 0; i < plic.ncontexts; ++i) {
 		cntx = &plic.contexts[i];
