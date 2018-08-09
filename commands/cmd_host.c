@@ -76,9 +76,11 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host class_device_list <class_name>\n");
 }
 
-static void cmd_host_info(struct vmm_chardev *cdev)
+static int cmd_host_info(struct vmm_chardev *cdev)
 {
+	int rc;
 	const char *attr;
+	unsigned long hwid;
 	struct vmm_devtree_node *node;
 	u32 total = vmm_host_ram_total_frame_count();
 
@@ -90,26 +92,33 @@ static void cmd_host_info(struct vmm_chardev *cdev)
 		vmm_devtree_dref_node(node);
 	}
 	if (attr) {
-		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", attr);
+		vmm_cprintf(cdev, "%-25s: %s\n", "Host Name", attr);
 	} else {
-		vmm_cprintf(cdev, "%-20s: %s\n", "Host Name", CONFIG_BOARD);
+		vmm_cprintf(cdev, "%-25s: %s\n", "Host Name", CONFIG_BOARD);
 	}
 
-	vmm_cprintf(cdev, "%-20s: %u\n", "Boot CPU",
-		    vmm_smp_bootcpu_id());
-	vmm_cprintf(cdev, "%-20s: %u\n", "Total Online CPUs",
+	rc = vmm_smp_map_hwid(vmm_smp_bootcpu_id(), &hwid);
+	if (rc)
+		return rc;
+
+	vmm_cprintf(cdev, "%-25s: 0x%lx\n", "Boot CPU Hardware ID", hwid);
+	vmm_cprintf(cdev, "%-25s: %u\n", "Total Online CPUs",
 		    vmm_num_online_cpus());
-	vmm_cprintf(cdev, "%-20s: %u MB\n", "Total VAPOOL",
+	vmm_cprintf(cdev, "%-25s: %u MB\n", "Total VAPOOL",
 		    CONFIG_VAPOOL_SIZE_MB);
-	vmm_cprintf(cdev, "%-20s: %lu MB\n", "Total RAM",
+	vmm_cprintf(cdev, "%-25s: %lu MB\n", "Total RAM",
 		    ((total *VMM_PAGE_SIZE) >> 20));
 
 	arch_board_print_info(cdev);
+
+	return VMM_OK;
 }
 
-static void cmd_host_cpu_info(struct vmm_chardev *cdev)
+static int cmd_host_cpu_info(struct vmm_chardev *cdev)
 {
+	int rc;
 	u32 c, khz;
+	unsigned long hwid;
 	char name[25];
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Type", CONFIG_CPU);
@@ -119,7 +128,15 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 			  "CPU Possible Count", vmm_num_possible_cpus());
 	vmm_cprintf(cdev, "%-25s: %u\n",
 			  "CPU Online Count", vmm_num_online_cpus());
+	vmm_cprintf(cdev, "\n");
+
 	for_each_online_cpu(c) {
+		rc = vmm_smp_map_hwid(c, &hwid);
+		if (rc)
+			return rc;
+		vmm_sprintf(name, "CPU%d Hardware ID", c);
+		vmm_cprintf(cdev, "%-25s: 0x%lx\n", name, hwid);
+
 		vmm_sprintf(name, "CPU%d Estimated Speed", c);
 		khz = vmm_delay_estimate_cpu_khz(c);
 		vmm_cprintf(cdev, "%-25s: %d.%03d MHz\n",
@@ -129,22 +146,33 @@ static void cmd_host_cpu_info(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "\n");
 
 	arch_cpu_print_info(cdev);
+
+	return VMM_OK;
 }
 
-static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
+static int cmd_host_cpu_stats(struct vmm_chardev *cdev)
 {
+	int rc;
+	char str[16];
 	u32 c, p, khz, util;
+	unsigned long hwid;
 
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "-------------------------\n");
-	vmm_cprintf(cdev, " %4s %15s %13s %12s %16s\n",
-			  "CPU#", "Speed (MHz)", "Util. (%)",
+			  "----------------------------------------\n");
+	vmm_cprintf(cdev, " %4s %14s %15s %13s %12s %16s\n",
+			  "CPU#", "HWID", "Speed (MHz)", "Util. (%)",
 			  "IRQs (%)", "Active VCPUs");
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "-------------------------\n");
+			  "----------------------------------------\n");
 
 	for_each_online_cpu(c) {
 		vmm_cprintf(cdev, " %4d", c);
+
+		rc = vmm_smp_map_hwid(c, &hwid);
+		if (rc)
+			return rc;
+		vmm_snprintf(str, sizeof(str), "0x%lx", hwid);
+		vmm_cprintf(cdev, " %14s", str);
 
 		khz = vmm_delay_estimate_cpu_khz(c);
 		vmm_cprintf(cdev, " %11d.%03d",
@@ -174,7 +202,9 @@ static void cmd_host_cpu_stats(struct vmm_chardev *cdev)
 	}
 
 	vmm_cprintf(cdev, "----------------------------------------"
-			  "-------------------------\n");
+			  "----------------------------------------\n");
+
+	return VMM_OK;
 }
 
 static void irq_stats_print(struct vmm_chardev *cdev, u32 irqno)
@@ -635,15 +665,12 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		cmd_host_usage(cdev);
 		return VMM_OK;
 	} else if (strcmp(argv[1], "info") == 0) {
-		cmd_host_info(cdev);
-		return VMM_OK;
+		return cmd_host_info(cdev);
 	} else if ((strcmp(argv[1], "cpu") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "info") == 0) {
-			cmd_host_cpu_info(cdev);
-			return VMM_OK;
+			return cmd_host_cpu_info(cdev);
 		} else if (strcmp(argv[2], "stats") == 0) {
-			cmd_host_cpu_stats(cdev);
-			return VMM_OK;
+			return cmd_host_cpu_stats(cdev);
 		}
 	} else if ((strcmp(argv[1], "irq") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "stats") == 0) {
