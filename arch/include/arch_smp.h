@@ -26,19 +26,26 @@
 #include <vmm_types.h>
 #include <vmm_cpumask.h>
 
-/** Retrive current processor id 
+/** Retrive current processor ID
  *  Note: This function is called from any CPU at runtime
  */
 u32 arch_smp_id(void);
 
-/** Initalize secondary CPUs 
+/** Retrive hardware ID for given processor ID
+ *  Note: This function is called from any CPU at runtime
+ *  Note: This function is supposed to work on possible CPUs only
+ *  hence should be called after arch_smp_init_cpus() is done.
+ */
+int arch_smp_map_hwid(u32 cpu, unsigned long *hwid);
+
+/** Initalize secondary CPUs
  *  Note: This function is called from primary CPU only at boot time
  *  Note: This function is supposed to inform about possible CPUs using
  *  vmm_set_cpu_possible() API
  */
 int arch_smp_init_cpus(void);
 
-/** Prepare possible secondary CPUs 
+/** Prepare possible secondary CPUs
  *  Note: This function is called from primary CPU only at boot time
  *  Note: This function is supposed to inform about present CPUs using
  *  vmm_set_cpu_present() API

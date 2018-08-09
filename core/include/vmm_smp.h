@@ -26,6 +26,7 @@
 
 #include <vmm_types.h>
 #include <vmm_error.h>
+#include <vmm_cpumask.h>
 #include <arch_smp.h>
 
 /** Get SMP processor ID
@@ -36,6 +37,21 @@
 #else
 #define vmm_smp_processor_id()	arch_smp_id()
 #endif
+
+/** Get Hardware ID for given SMP processor ID
+ *  Note: To ease development, this function returns 0 on UP systems.
+ */
+static inline int vmm_smp_map_hwid(u32 cpu, unsigned long *hwid)
+{
+	if (!hwid || !vmm_cpu_possible(cpu))
+		return VMM_EINVALID;
+#if !defined(CONFIG_SMP)
+	*hwid = 0;
+	return VMM_OK;
+#else
+	return arch_smp_map_hwid(cpu, hwid);
+#endif
+}
 
 /** Get SMP processor ID for Boot CPU
  *  Note: Boot CPU is the CPU on which we started booting.

@@ -172,6 +172,12 @@ static void __init smp_init_ops(void)
 	}
 }
 
+int arch_smp_map_hwid(u32 cpu, unsigned long *hwid)
+{
+	*hwid = smp_logical_map(cpu);
+	return VMM_OK;
+}
+
 int __init arch_smp_init_cpus(void)
 {
 	int rc;
