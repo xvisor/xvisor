@@ -57,14 +57,36 @@ static void riscv_irqchip_unmask_irq(struct vmm_host_irq *d)
 	csr_set(sie, 1UL << d->hwirq);
 }
 
+static void riscv_irqchip_ack_irq(struct vmm_host_irq *d)
+{
+	csr_clear(sip, 1UL << d->hwirq);
+}
+
 #ifdef CONFIG_SMP
 static void riscv_irqchip_raise(struct vmm_host_irq *d,
 				const struct vmm_cpumask *mask)
 {
+	int rc;
+	u32 cpu;
+	unsigned long hart;
+	struct vmm_cpumask tmask;
+
 	if (d->hwirq != RISCV_IRQ_SUPERVISOR_SOFTWARE)
 		return;
 
-	sbi_send_ipi(vmm_cpumask_bits(mask));
+	vmm_cpumask_clear(&tmask);
+	for_each_cpu(cpu, mask) {
+		rc = vmm_smp_map_hwid(cpu, &hart);
+		if (rc || (CONFIG_CPU_COUNT <= hart)) {
+			vmm_lwarning("riscv-intc",
+				     "ignoring IPI to cpu=%d (hard=0x%lx)\n",
+				     cpu, hart);
+			continue;
+		}
+		vmm_cpumask_set_cpu(hart, &tmask);
+	}
+
+	sbi_send_ipi(vmm_cpumask_bits(&tmask));
 }
 #endif
 
@@ -72,6 +94,7 @@ static struct vmm_host_irq_chip riscv_irqchip = {
 	.name = "riscv-intc",
 	.irq_mask = riscv_irqchip_mask_irq,
 	.irq_unmask = riscv_irqchip_unmask_irq,
+	.irq_ack = riscv_irqchip_ack_irq,
 #ifdef CONFIG_SMP
 	.irq_raise = riscv_irqchip_raise
 #endif
