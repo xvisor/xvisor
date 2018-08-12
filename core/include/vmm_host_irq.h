@@ -244,6 +244,9 @@ void vmm_handle_fast_eoi(struct vmm_host_irq *irq, u32 cpu, void *data);
 /** Level irq handler */
 void vmm_handle_level_irq(struct vmm_host_irq *irq, u32 cpu, void *data);
 
+/** Simple irq handler */
+void vmm_handle_simple_irq(struct vmm_host_irq *irq, u32 cpu, void *data);
+
 /** Get host irq number from host irq instance */
 static inline u32 vmm_host_irq_get_num(struct vmm_host_irq *irq)
 {

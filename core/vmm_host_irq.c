@@ -116,6 +116,20 @@ void vmm_handle_level_irq(struct vmm_host_irq *irq, u32 cpu, void *data)
 	}
 }
 
+void vmm_handle_simple_irq(struct vmm_host_irq *irq, u32 cpu, void *data)
+{
+	irq_flags_t flags;
+	struct vmm_host_irq_action *act;
+
+	vmm_read_lock_irqsave_lite(&irq->action_lock[cpu], flags);
+	list_for_each_entry(act, &irq->action_list[cpu], head) {
+		if (act->func(irq->num, act->dev) == VMM_IRQ_HANDLED) {
+			break;
+		}
+	}
+	vmm_read_unlock_irqrestore_lite(&irq->action_lock[cpu], flags);
+}
+
 struct vmm_host_irq *vmm_host_irq_get(u32 hirq)
 {
 	if (hirq < CONFIG_HOST_IRQ_COUNT) {
