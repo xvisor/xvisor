@@ -398,7 +398,7 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 	for (hwirq = 1; hwirq < plic.ndev; ++hwirq) {
 		hirq = vmm_host_irqdomain_create_mapping(plic.domain, hwirq);
 		vmm_host_irq_set_chip(hirq, &plic_chip);
-		vmm_host_irq_set_handler(hirq, vmm_handle_fast_eoi);
+		vmm_host_irq_set_handler(hirq, vmm_handle_simple_irq);
 	}
 
 	/* Find register base and size */
