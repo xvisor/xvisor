@@ -324,6 +324,30 @@ static int pl031_set_alarm(struct rtc_device *rd, struct rtc_wkalrm *alarm)
 	return ret;
 }
 
+static struct rtc_class_ops pl031_arm_ops = {
+	.read_time = pl031_read_time,
+	.set_time = pl031_set_time,
+	.read_alarm = pl031_read_alarm,
+	.set_alarm = pl031_set_alarm,
+	.alarm_irq_enable = pl031_alarm_irq_enable,
+};
+
+static struct rtc_class_ops pl031_stv1_ops = {
+	.read_time = pl031_read_time,
+	.set_time = pl031_set_time,
+	.read_alarm = pl031_read_alarm,
+	.set_alarm = pl031_set_alarm,
+	.alarm_irq_enable = pl031_alarm_irq_enable,
+};
+
+static struct rtc_class_ops pl031_stv2_ops = {
+	.read_time = pl031_stv2_read_time,
+	.set_time = pl031_stv2_set_time,
+	.read_alarm = pl031_stv2_read_alarm,
+	.set_alarm = pl031_stv2_set_alarm,
+	.alarm_irq_enable = pl031_alarm_irq_enable,
+};
+
 static int pl031_driver_probe(struct vmm_device *dev,
 			      const struct vmm_devtree_nodeid *devid)
 {
@@ -366,25 +390,13 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
 		/* ARM variant */
-		ldata->rtc.get_time = pl031_read_time;
-		ldata->rtc.set_time = pl031_set_time;
-		ldata->rtc.get_alarm = pl031_read_alarm;
-		ldata->rtc.set_alarm = pl031_set_alarm;
-		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.ops = &pl031_arm_ops;
 	} else if ((periphid & 0x00ffffff) == 0x00180031) {
 		/* ST Micro variant - stv1 */
-		ldata->rtc.get_time = pl031_read_time;
-		ldata->rtc.set_time = pl031_set_time;
-		ldata->rtc.get_alarm = pl031_read_alarm;
-		ldata->rtc.set_alarm = pl031_set_alarm;
-		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.ops = &pl031_stv1_ops;
 	} else if ((periphid & 0x00ffffff) == 0x00280031) {
 		/* ST Micro variant - stv2 */
-		ldata->rtc.get_time = pl031_stv2_read_time;
-		ldata->rtc.set_time = pl031_stv2_set_time;
-		ldata->rtc.get_alarm = pl031_stv2_read_alarm;
-		ldata->rtc.set_alarm = pl031_stv2_set_alarm;
-		ldata->rtc.alarm_irq_enable = pl031_alarm_irq_enable;
+		ldata->rtc.ops = &pl031_stv2_ops;
 	} else {
 		rc = VMM_EFAIL;
 		goto free_irq;

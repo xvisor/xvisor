@@ -41,8 +41,8 @@
 
 int rtc_device_get_time(struct rtc_device *rdev, struct rtc_time *tm)
 {
-	if (rdev && tm && rdev->get_time) {
-		return rdev->get_time(rdev, tm);
+	if (rdev && tm && rdev->ops && rdev->ops->read_time) {
+		return rdev->ops->read_time(rdev, tm);
 	}
 
 	return VMM_EFAIL;
@@ -51,8 +51,8 @@ VMM_EXPORT_SYMBOL(rtc_device_get_time);
 
 int rtc_device_set_time(struct rtc_device *rdev, struct rtc_time *tm)
 {
-	if (rdev && rdev->set_time) {
-		return rdev->set_time(rdev, tm);
+	if (rdev && rdev->ops && rdev->ops->set_time) {
+		return rdev->ops->set_time(rdev, tm);
 	}
 
 	return VMM_EFAIL;
@@ -133,7 +133,8 @@ static struct vmm_class rtc_class = {
 
 int rtc_device_register(struct rtc_device *rdev)
 {
-	if (!(rdev && rdev->set_time && rdev->get_time)) {
+	if (!rdev || !rdev->ops ||
+	    !rdev->ops->set_time || !rdev->ops->read_time) {
 		return VMM_EFAIL;
 	}
 

@@ -92,14 +92,22 @@ struct rtc_wkalrm {
 	struct rtc_time time;	/* time the alarm is set to */
 };
 
+struct rtc_device;
+
+struct rtc_class_ops {
+	int (*set_time)(struct rtc_device *rdev, struct rtc_time *tm);
+	int (*read_time)(struct rtc_device *rdev, struct rtc_time *tm);
+	int (*set_alarm)(struct rtc_device *rdev, struct rtc_wkalrm *alrm);
+	int (*read_alarm)(struct rtc_device *rdev, struct rtc_wkalrm *alrm);
+	int (*alarm_irq_enable)(struct rtc_device *rdev, unsigned int enabled);
+	int (*set_offset)(struct rtc_device *rdev, long offset);
+	int (*read_offset)(struct rtc_device *rdev, long *offset);
+};
+
 struct rtc_device {
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device dev;
-	int (*set_time)(struct rtc_device *rdev, struct rtc_time *tm);
-	int (*get_time)(struct rtc_device *rdev, struct rtc_time *tm);
-	int (*set_alarm)(struct rtc_device *rdev, struct rtc_wkalrm *alrm);
-	int (*get_alarm)(struct rtc_device *rdev, struct rtc_wkalrm *alrm);
-	int (*alarm_irq_enable)(struct rtc_device *rdev, unsigned int enabled);
+	struct rtc_class_ops *ops;
 	void *priv;
 };
 
