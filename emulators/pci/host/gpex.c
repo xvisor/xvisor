@@ -68,7 +68,6 @@ struct gpex_state {
 	struct vmm_guest *guest;
 	struct vmm_devtree_node *node;
 	struct pci_host_controller *controller;
-	struct vmm_notifier_block guest_aspace_client;
 };
 
 static u32 gpex_config_read(struct pci_class *pci_class, u16 reg_offset)
@@ -191,39 +190,6 @@ static int gpex_emulator_write32(struct vmm_emudev *edev,
 	return gpex_reg_write(edev->priv, offset, 0x00000000, src);
 }
 
-static int gpex_guest_aspace_notification(struct vmm_notifier_block *nb,
-					  unsigned long evt, void *data)
-{
-	int ret = NOTIFY_DONE;
-	int rc;
-	struct gpex_state *gpex =
-		container_of(nb, struct gpex_state, guest_aspace_client);
-
-	vmm_mutex_lock(&gpex->lock);
-
-	switch (evt) {
-	case VMM_GUEST_ASPACE_EVENT_RESET:
-		if ((rc =
-		     pci_emu_register_controller(gpex->node,
-						 gpex->guest,
-						 gpex->controller))
-		    != VMM_OK) {
-			GPEX_LOG(LVL_ERR,
-				   "Failed to attach PCI controller.\n");
-			goto _failed;
-		}
-		ret = NOTIFY_OK;
-		break;
-	default:
-		break;
-	}
-
- _failed:
-	vmm_mutex_unlock(&gpex->lock);
-
-	return ret;
-}
-
 static int gpex_emulator_probe(struct vmm_guest *guest,
 			       struct vmm_emudev *edev,
 			       const struct vmm_devtree_nodeid *eid)
@@ -251,6 +217,7 @@ static int gpex_emulator_probe(struct vmm_guest *guest,
 	INIT_MUTEX(&s->lock);
 	INIT_LIST_HEAD(&s->controller->head);
 	INIT_LIST_HEAD(&s->controller->attached_buses);
+	INIT_SPIN_LOCK(&s->controller->lock);
 
 	/* initialize class */
 	class = (struct pci_class *)s->controller;
@@ -288,14 +255,21 @@ static int gpex_emulator_probe(struct vmm_guest *guest,
 
 	edev->priv = s;
 
-	s->guest_aspace_client.notifier_call = &gpex_guest_aspace_notification;
-	s->guest_aspace_client.priority = 0;
+	vmm_mutex_lock(&s->lock);
 
-	vmm_guest_aspace_register_client(&s->guest_aspace_client);
+	if ((rc = pci_emu_register_controller(s->node, s->guest,
+				s->controller)) != VMM_OK) {
+			GPEX_LOG(LVL_ERR,
+				   "Failed to attach PCI controller.\n");
+			goto _controller_failed;
+	}
 
 	GPEX_LOG(LVL_VERBOSE, "Success.\n");
 
 	goto _done;
+
+_controller_failed:
+	vmm_mutex_unlock(&s->lock);
 
 _failed:
 	if (s && s->controller) vmm_free(s->controller);
