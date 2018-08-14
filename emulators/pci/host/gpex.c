@@ -264,6 +264,8 @@ static int gpex_emulator_probe(struct vmm_guest *guest,
 			goto _controller_failed;
 	}
 
+	vmm_mutex_unlock(&s->lock);
+
 	GPEX_LOG(LVL_VERBOSE, "Success.\n");
 
 	goto _done;
