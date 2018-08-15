@@ -125,7 +125,10 @@ int rtc_device_sync_wallclock(struct rtc_device *rdev);
 int rtc_device_sync_device(struct rtc_device *rdev);
 
 /** Register rtc device to device driver framework */
-int rtc_device_register(struct rtc_device *rdev);
+struct rtc_device *rtc_device_register(struct vmm_device *parent,
+					const char *name,
+					struct rtc_class_ops *ops,
+					void *priv);
 
 /** Unregister rtc device from device driver framework */
 int rtc_device_unregister(struct rtc_device *rdev);

@@ -131,33 +131,66 @@ static struct vmm_class rtc_class = {
 	.name = RTC_DEVICE_CLASS_NAME,
 };
 
-int rtc_device_register(struct rtc_device *rdev)
+struct rtc_device *rtc_device_register(struct vmm_device *parent,
+					const char *name,
+					struct rtc_class_ops *ops,
+					void *priv)
 {
-	if (!rdev || !rdev->ops ||
-	    !rdev->ops->set_time || !rdev->ops->read_time) {
-		return VMM_EFAIL;
+	int ret;
+	struct rtc_device *rdev;
+
+	if (!name || !ops || !ops->set_time || !ops->read_time) {
+		return VMM_ERR_PTR(VMM_EINVALID);
+	}
+
+	rdev = vmm_zalloc(sizeof(*rdev));
+	if (!rdev) {
+		return VMM_ERR_PTR(VMM_ENOMEM);
+	}
+
+	if (strlcpy(rdev->name, name, sizeof(rdev->name)) >=
+	    sizeof(rdev->name)) {
+		vmm_free(rdev);
+		return VMM_ERR_PTR(VMM_EOVERFLOW);
 	}
 
 	vmm_devdrv_initialize_device(&rdev->dev);
-	if (strlcpy(rdev->dev.name, rdev->name, sizeof(rdev->dev.name)) >=
+	if (strlcpy(rdev->dev.name, name, sizeof(rdev->dev.name)) >=
 	    sizeof(rdev->dev.name)) {
-		return VMM_EOVERFLOW;
+		vmm_free(rdev);
+		return VMM_ERR_PTR(VMM_EOVERFLOW);
 	}
 	rdev->dev.class = &rtc_class;
 	vmm_devdrv_set_data(&rdev->dev, rdev);
+	rdev->ops = ops;
+	rdev->priv = priv;
 
-	return vmm_devdrv_register_device(&rdev->dev);
+	ret = vmm_devdrv_register_device(&rdev->dev);
+	if (ret) {
+		vmm_free(rdev);
+		return VMM_ERR_PTR(ret);
+	}
 
+	return rdev;
 }
 VMM_EXPORT_SYMBOL(rtc_device_register);
 
 int rtc_device_unregister(struct rtc_device *rdev)
 {
+	int ret;
+
 	if (!rdev) {
-		return VMM_EFAIL;
+		return VMM_EINVALID;
 	}
 
-	return vmm_devdrv_unregister_device(&rdev->dev);
+	ret = vmm_devdrv_unregister_device(&rdev->dev);
+	if (ret) {
+		return ret;
+	}
+
+	vmm_free(rdev);
+
+	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(rtc_device_unregister);
 

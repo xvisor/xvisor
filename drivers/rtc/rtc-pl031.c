@@ -98,7 +98,7 @@
 #define RTC_TIMER_FREQ 32768
 
 struct pl031_local {
-	struct rtc_device rtc;
+	struct rtc_device *rtc;
 	void *base;
 	u32 irq;
 	u8 hw_designer;
@@ -354,6 +354,7 @@ static int pl031_driver_probe(struct vmm_device *dev,
 	int rc;
 	u32 periphid;
 	virtual_addr_t reg_base;
+	struct rtc_class_ops *ops = NULL;
 	struct pl031_local *ldata;
 
 	ldata = vmm_zalloc(sizeof(struct pl031_local));
@@ -381,34 +382,28 @@ static int pl031_driver_probe(struct vmm_device *dev,
 		goto free_reg;
 	}
 
-	if (strlcpy(ldata->rtc.name, dev->name, sizeof(ldata->rtc.name))
-	    >= sizeof(ldata->rtc.name)) {
-		rc = VMM_EOVERFLOW;
-		goto free_irq;
-	}
-	ldata->rtc.dev.parent = dev;
 	periphid = amba_periphid(dev);
 	if ((periphid & 0x000fffff) == 0x00041031) {
 		/* ARM variant */
-		ldata->rtc.ops = &pl031_arm_ops;
+		ops = &pl031_arm_ops;
 	} else if ((periphid & 0x00ffffff) == 0x00180031) {
 		/* ST Micro variant - stv1 */
-		ldata->rtc.ops = &pl031_stv1_ops;
+		ops = &pl031_stv1_ops;
 	} else if ((periphid & 0x00ffffff) == 0x00280031) {
 		/* ST Micro variant - stv2 */
-		ldata->rtc.ops = &pl031_stv2_ops;
+		ops = &pl031_stv2_ops;
 	} else {
 		rc = VMM_EFAIL;
 		goto free_irq;
 	}
-	ldata->rtc.priv = ldata;
 
-	rc = rtc_device_register(&ldata->rtc);
-	if (rc) {
+	ldata->rtc = rtc_device_register(dev, dev->name, ops, ldata);
+	if (VMM_IS_ERR(ldata->rtc)) {
+		rc = VMM_PTR_ERR(ldata->rtc);
 		goto free_irq;
 	}
 
-	dev->priv = ldata;
+	vmm_devdrv_set_data(dev, ldata);
 
 	return VMM_OK;
 
@@ -425,10 +420,10 @@ free_nothing:
 
 static int pl031_driver_remove(struct vmm_device *dev)
 {
-	struct pl031_local *ldata = dev->priv;
+	struct pl031_local *ldata = vmm_devdrv_get_data(dev);
 
 	if (ldata) {
-		rtc_device_unregister(&ldata->rtc);
+		rtc_device_unregister(ldata->rtc);
 		vmm_host_irq_unregister(ldata->irq, ldata);
 		vmm_devtree_regunmap_release(dev->of_node,
 					(virtual_addr_t)ldata->base, 0);

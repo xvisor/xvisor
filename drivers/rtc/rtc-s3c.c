@@ -418,11 +418,6 @@ static struct rtc_class_ops s3c_rtc_ops = {
 	.alarm_irq_enable = s3c_rtc_setaie,
 };
 
-static struct rtc_device s3c_rtc_device = {
-	.name = "s3c-rtc",
-	.ops = &s3c_rtc_ops,
-};
-
 static void s3c_rtc_enable(struct vmm_device *pdev, int en)
 {
 	void __iomem *base = s3c_rtc_base;
@@ -472,13 +467,13 @@ static int s3c_rtc_driver_remove(struct vmm_device *dev)
 {
 	struct rtc_device *rtc = dev->priv;
 
+	s3c_rtc_setaie(rtc, 0);
+
 	vmm_host_irq_unregister(s3c_rtc_alarmno, rtc);
 	vmm_host_irq_unregister(s3c_rtc_tickno, rtc);
 
-	dev->priv = NULL;
 	rtc_device_unregister(rtc);
-
-	s3c_rtc_setaie(rtc, 0);
+	dev->priv = NULL;
 
 	clk_put(rtc_clk);
 	rtc_clk = NULL;
@@ -494,6 +489,7 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 {
 	u32 alarmno, tickno;
 	struct rtc_time rtc_tm;
+	struct rtc_device *rtc;
 	int ret = VMM_OK, tmp, rc;
 
 	/* find the IRQs */
@@ -539,13 +535,10 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 
 	/* register RTC and exit */
 
-	s3c_rtc_device.dev.parent = pdev;
-
-	rc = rtc_device_register(&s3c_rtc_device);
-
-	if (rc) {
+	rtc = rtc_device_register(pdev, pdev->name, &s3c_rtc_ops, NULL);
+	if (VMM_IS_ERR(rtc)) {
 		dev_err(pdev, "cannot attach rtc\n");
-		ret = rc;
+		ret = VMM_PTR_ERR(rtc);
 		goto err_nortc;
 	}
 
@@ -581,20 +574,18 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 		writew(tmp, s3c_rtc_base + S3C2410_RTCCON);
 	}
 
-	pdev->priv = &s3c_rtc_device;
-
-	s3c_rtc_setfreq(&s3c_rtc_device, 1);
+	s3c_rtc_setfreq(rtc, 1);
 
 	if ((rc =
 	     vmm_host_irq_register(s3c_rtc_alarmno, "s3c_rtc_alarm",
-				   s3c_rtc_alarmirq, &s3c_rtc_device))) {
+				   s3c_rtc_alarmirq, rtc))) {
 		dev_err(pdev, "IRQ%d error %d\n", s3c_rtc_alarmno, rc);
 		goto err_alarm_irq;
 	}
 
 	if ((rc =
 	     vmm_host_irq_register(s3c_rtc_tickno, "s3c_rtc_tick",
-				   s3c_rtc_tickirq, &s3c_rtc_device))) {
+				   s3c_rtc_tickirq, rtc))) {
 		dev_err(pdev, "IRQ%d error %d\n", s3c_rtc_tickno, rc);
 		goto err_tick_irq;
 	}
@@ -604,11 +595,11 @@ static int s3c_rtc_driver_probe(struct vmm_device *pdev,
 	return 0;
 
  err_tick_irq:
-	vmm_host_irq_unregister(s3c_rtc_alarmno, &s3c_rtc_device);
+	vmm_host_irq_unregister(s3c_rtc_alarmno, rtc);
 
  err_alarm_irq:
 	pdev->priv = NULL;
-	rtc_device_unregister(&s3c_rtc_device);
+	rtc_device_unregister(rtc);
 
  err_nortc:
 	s3c_rtc_enable(pdev, 0);
