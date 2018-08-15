@@ -242,12 +242,16 @@ static const struct of_device_id imx_pwm_dt_ids[] = {
 	{ /* sentinel */ }
 };
 
-static int imx_pwm_probe(struct vmm_device *dev,
-			 const struct vmm_devtree_nodeid *nodeid)
+static int imx_pwm_probe(struct vmm_device *dev)
 {
+	const struct vmm_devtree_nodeid *nodeid;
 	const struct imx_pwm_data *data = NULL;
 	struct imx_chip *imx;
 	int ret = 0;
+
+	nodeid = vmm_platform_match_nodeid(dev);
+	if (!nodeid)
+		return -ENODEV;
 
 	imx = devm_kzalloc(dev, sizeof(*imx), GFP_KERNEL);
 	if (imx == NULL)

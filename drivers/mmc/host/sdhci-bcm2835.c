@@ -149,8 +149,7 @@ static u8 bcm2835_sdhci_readb(struct sdhci_host *host, int reg)
 	return byte;
 }
 
-static int bcm2835_sdhci_driver_probe(struct vmm_device *dev,
-				      const struct vmm_devtree_nodeid *devid)
+static int bcm2835_sdhci_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct sdhci_host *host;

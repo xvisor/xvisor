@@ -185,8 +185,7 @@ static u32 pl011_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
-static int pl011_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+static int pl011_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	bool skip_baudrate_config = FALSE;

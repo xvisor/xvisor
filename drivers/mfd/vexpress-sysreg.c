@@ -484,8 +484,7 @@ struct gpio_led_platform_data vexpress_sysreg_leds_pdata = {
 
 #endif
 
-static int vexpress_sysreg_probe(struct vmm_device *dev, 
-				 const struct vmm_devtree_nodeid *devid)
+static int vexpress_sysreg_probe(struct vmm_device *dev)
 {
 	int err;
 	virtual_addr_t base_va;

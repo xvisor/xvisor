@@ -143,8 +143,7 @@ static struct platform_driver armada_ap806_pinctrl_driver = {
 builtin_platform_driver(armada_ap806_pinctrl_driver);
 #else
 
-static int armada_ap806_pinctrl_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int armada_ap806_pinctrl_probe(struct vmm_device *dev)
 {
 	struct mvebu_pinctrl_soc_info *soc = &armada_ap806_pinctrl_info;
 

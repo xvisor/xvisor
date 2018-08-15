@@ -254,8 +254,7 @@ static u32 imx_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
-static int imx_driver_probe(struct vmm_device *dev,
-			    const struct vmm_devtree_nodeid *devid)
+static int imx_driver_probe(struct vmm_device *dev)
 {
 	int rc = VMM_EFAIL;
 	struct clk *clk_ipg = NULL;

@@ -273,8 +273,7 @@ struct regmap *syscon_regmap_lookup_by_phandle(struct vmm_devtree_node *np,
 }
 VMM_EXPORT_SYMBOL(syscon_regmap_lookup_by_phandle);
 
-static int syscon_probe(struct vmm_device *dev,
-			const struct vmm_devtree_nodeid *devid)
+static int syscon_probe(struct vmm_device *dev)
 {
 	struct syscon *syscon = node_to_syscon(dev->of_node);
 

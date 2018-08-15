@@ -179,8 +179,7 @@ static struct mbox_chan *bcm2835_mbox_index_xlate(
 	return &mbox->chans[0];
 }
 
-static int bcm2835_mbox_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+static int bcm2835_mbox_probe(struct vmm_device *dev)
 {
 	int ret = 0;
 	virtual_addr_t base;

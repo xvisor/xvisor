@@ -832,8 +832,7 @@ static const struct net_device_ops emac_netdev_ops = {
 
 /* Search EMAC board, allocate space and register it
  */
-static int emac_probe(struct vmm_device *pdev,
-			const struct vmm_devtree_nodeid *devid)
+static int emac_probe(struct vmm_device *pdev)
 {
 	struct device_node *np = pdev->of_node;
 	struct emac_board_info *db;

@@ -40,6 +40,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <vmm_modules.h>
 #include <libs/bitops.h>
 #include <libs/stringlib.h>
@@ -410,8 +411,7 @@ static vmm_irq_return_t mmci_pio_irq_handler(int irq_no, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static int mmci_driver_probe(struct vmm_device *dev,
-				   const struct vmm_devtree_nodeid *devid)
+static int mmci_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	u32 sdi;
@@ -419,6 +419,13 @@ static int mmci_driver_probe(struct vmm_device *dev,
 	physical_addr_t basepa;
 	struct mmc_host *mmc;
 	struct mmci_host *host;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		rc = VMM_ENODEV;
+		goto free_nothing;
+	}
 
 	mmc = mmc_alloc_host(sizeof(struct mmci_host), dev);
 	if (!mmc) {

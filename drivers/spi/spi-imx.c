@@ -781,8 +781,7 @@ spi_imx_unprepare_message(struct spi_master *master, struct spi_message *msg)
 	return 0;
 }
 
-static int spi_imx_probe(struct vmm_device *dev,
-			 const struct vmm_devtree_nodeid *devid)
+static int spi_imx_probe(struct vmm_device *dev)
 {
 	virtual_addr_t vaddr = 0;
 	struct spi_master *master;
@@ -790,6 +789,13 @@ static int spi_imx_probe(struct vmm_device *dev,
 	int i;
 	int ret = VMM_OK;
 	u32 num_cs;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		dev_info(dev, "nodeid not found\n");
+		return VMM_ENODEV;
+	}
 
 	if (!vmm_devtree_is_available(dev->of_node)) {
 		dev_info(dev, "device is disabled\n");

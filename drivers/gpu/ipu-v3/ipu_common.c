@@ -317,8 +317,7 @@ MODULE_DEVICE_TABLE(of, imx_ipuv3_dt_ids);
  *
  * @return      Returns 0 on success or negative error code on error
  */
-static int ipu_probe(struct vmm_device *dev,
-		     const struct vmm_devtree_nodeid *nodeid)
+static int ipu_probe(struct vmm_device *dev)
 {
 	struct ipu_soc *ipu = NULL;
 	virtual_addr_t ipu_base = 0;
@@ -327,6 +326,11 @@ static int ipu_probe(struct vmm_device *dev,
 	int ret = 0;
 	u32 bypass_reset = 0;
 	static u32 id = 0;
+	const struct vmm_devtree_nodeid *nodeid;
+
+	nodeid = vmm_platform_match_nodeid(dev);
+	if (!nodeid)
+		return VMM_ENODEV;
 
 	dev_dbg(dev, "<%s>\n", __func__);
 

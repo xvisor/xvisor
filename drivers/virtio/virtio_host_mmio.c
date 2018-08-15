@@ -479,8 +479,7 @@ static const struct virtio_host_config_ops virtio_host_mmio_config_ops = {
 	.bus_name	= vm_bus_name,
 };
 
-static int virtio_host_mmio_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int virtio_host_mmio_probe(struct vmm_device *dev)
 {
 	int ret = 0;
 	unsigned long magic;

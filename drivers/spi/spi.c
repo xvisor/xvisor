@@ -114,7 +114,7 @@ struct bus_type spi_bus_type = {
 EXPORT_SYMBOL_GPL(spi_bus_type);
 
 
-static int spi_drv_probe(struct device *dev, const struct of_device_id *id)
+static int spi_drv_probe(struct device *dev)
 {
 	const struct spi_driver *sdrv = to_spi_driver(dev->driver);
 	struct spi_device *spi = to_spi_device(dev);

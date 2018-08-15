@@ -207,8 +207,7 @@ void __init realview_sysreg_of_early_init(void)
 	}
 }
 
-static int realview_sysreg_probe(struct vmm_device *dev, 
-				 const struct vmm_devtree_nodeid *devid)
+static int realview_sysreg_probe(struct vmm_device *dev)
 {
 	int err;
 	virtual_addr_t base_va;

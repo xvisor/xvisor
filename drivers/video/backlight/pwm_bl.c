@@ -202,8 +202,7 @@ static struct vmm_devtree_nodeid pwm_backlight_of_match[] = {
 	{ }
 };
 
-static int pwm_backlight_probe(struct vmm_device *dev,
-			       const struct vmm_devtree_nodeid *nodeid)
+static int pwm_backlight_probe(struct vmm_device *dev)
 {
 	struct platform_pwm_backlight_data defdata;
 	struct platform_pwm_backlight_data *data = &defdata;

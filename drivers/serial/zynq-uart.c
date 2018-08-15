@@ -182,8 +182,7 @@ static vmm_irq_return_t zynq_uart_irq_handler(int irq_no, void *pdev)
 	return VMM_IRQ_HANDLED;
 }
 
-static int zynq_uart_driver_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int zynq_uart_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct zynq_uart_priv *port;

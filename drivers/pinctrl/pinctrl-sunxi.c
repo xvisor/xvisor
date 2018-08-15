@@ -888,10 +888,10 @@ static int sunxi_pinctrl_build_state(struct vmm_device *pdev)
 #if 0
 static int sunxi_pinctrl_probe(struct platform_device *pdev)
 #else
-static int sunxi_pinctrl_probe(struct vmm_device *pdev,
-			       const struct vmm_devtree_nodeid *devid)
+static int sunxi_pinctrl_probe(struct vmm_device *pdev)
 #endif
 {
+	const struct vmm_devtree_nodeid *devid;
 	struct device_node *node = pdev->of_node;
 #if 0
 	const struct of_device_id *device;
@@ -900,6 +900,10 @@ static int sunxi_pinctrl_probe(struct vmm_device *pdev,
 	struct sunxi_pinctrl *pctl;
 	int i, ret, last_pin;
 	struct clk *clk;
+
+	devid = vmm_platform_match_nodeid(pdev);
+	if (!devid)
+		return -ENODEV;
 
 	pctl = devm_kzalloc(pdev, sizeof(*pctl), GFP_KERNEL);
 	if (!pctl)

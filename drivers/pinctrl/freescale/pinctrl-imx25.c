@@ -352,8 +352,7 @@ static const struct of_device_id imx25_pinctrl_of_match[] = {
 #if 0
 static int imx25_pinctrl_probe(struct platform_device *pdev)
 #else
-static int imx25_pinctrl_probe(struct vmm_device *pdev,
-			       const struct vmm_devtree_nodeid *devid)
+static int imx25_pinctrl_probe(struct vmm_device *pdev)
 #endif
 {
 	return imx_pinctrl_probe(pdev, &imx25_pinctrl_info);

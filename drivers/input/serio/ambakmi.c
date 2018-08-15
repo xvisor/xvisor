@@ -133,8 +133,7 @@ static void amba_kmi_close(struct serio *io)
 	clk_disable_unprepare(kmi->clk);
 }
 
-static int amba_kmi_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+static int amba_kmi_driver_probe(struct vmm_device *dev)
 {
 	struct amba_kmi_port *kmi;
 	struct serio *io;

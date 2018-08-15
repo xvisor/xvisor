@@ -44,6 +44,7 @@
 #include <vmm_threads.h>
 #include <vmm_modules.h>
 #include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
@@ -1697,8 +1698,7 @@ static void dwc2_interrupts_disable(struct dwc2_control *dwc2) {
 }
 
 
-static int dwc2_driver_probe(struct vmm_device *dev,
-			     const struct vmm_devtree_nodeid *devid)
+static int dwc2_driver_probe(struct vmm_device *dev)
 {
 	int rc = VMM_OK;
 	u32 i, snpsid;
@@ -1706,7 +1706,15 @@ static int dwc2_driver_probe(struct vmm_device *dev,
 	struct usb_hcd *hcd;
 	struct dwc2_hc *hc;
 	struct dwc2_control *dwc2;
-	const struct dwc2_core_params *params = devid->data;
+	const struct vmm_devtree_nodeid *devid;
+	const struct dwc2_core_params *params;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		rc = VMM_ENODEV;
+		goto fail;
+	}
+	params = devid->data;
 
 	hcd = usb_create_hcd(&dwc2_hc, dev, "dwc2");
 	if (!hcd) {

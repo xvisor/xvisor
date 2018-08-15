@@ -155,8 +155,7 @@ static u32 bcm283x_mu_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
-static int bcm283x_mu_driver_probe(struct vmm_device *dev,
-				   const struct vmm_devtree_nodeid *devid)
+static int bcm283x_mu_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct bcm283x_mu_port *port;

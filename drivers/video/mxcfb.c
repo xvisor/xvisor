@@ -2611,8 +2611,7 @@ static int mxcfb_get_of_property(struct vmm_device *dev,
  *
  * @return      Appropriate error code to the kernel common code
  */
-static int mxcfb_probe(struct vmm_device *dev,
-		       const struct vmm_devtree_nodeid *nodeid)
+static int mxcfb_probe(struct vmm_device *dev)
 {
 	struct ipuv3_fb_platform_data *plat_data;
 	struct fb_info *fbi;

@@ -247,8 +247,7 @@ static struct platform_driver ap806_clock_driver = {
 };
 builtin_platform_driver(ap806_clock_driver);
 #else
-static int ap806_syscon_legacy_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int ap806_syscon_legacy_probe(struct vmm_device *dev)
 {
 	dev_warn(dev, FW_WARN "Using legacy device tree binding\n");
 	dev_warn(dev, FW_WARN "Update your device tree:\n");
@@ -259,8 +258,7 @@ static int ap806_syscon_legacy_probe(struct vmm_device *dev,
 
 }
 
-static int ap806_clock_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int ap806_clock_probe(struct vmm_device *dev)
 {
 	return ap806_syscon_common_probe(dev, dev->of_node->parent);
 }

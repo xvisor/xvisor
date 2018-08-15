@@ -2615,8 +2615,7 @@ static struct mxc_dispdrv_driver mxc_hdmi_drv = {
 	.disable = mxc_hdmi_power_off,
 };
 
-static int mxc_hdmi_probe(struct vmm_device *dev,
-			  const struct vmm_devtree_nodeid *nid)
+static int mxc_hdmi_probe(struct vmm_device *dev)
 {
 	struct mxc_hdmi *hdmi;
 	int ret = 0;

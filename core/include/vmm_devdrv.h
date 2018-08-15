@@ -114,7 +114,7 @@ struct vmm_driver {
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_bus *bus;
 	const struct vmm_devtree_nodeid *match_table;
-	int (*probe) (struct vmm_device *, const struct vmm_devtree_nodeid *);
+	int (*probe) (struct vmm_device *);
 	int (*suspend) (struct vmm_device *, u32);
 	int (*resume) (struct vmm_device *);
 	int (*remove) (struct vmm_device *);

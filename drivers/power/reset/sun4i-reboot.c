@@ -67,8 +67,7 @@ static int aw_timer_force_reset(void)
 	return VMM_OK;
 }
 
-static int __init sun4i_reboot_driver_probe(struct vmm_device *dev,
-					const struct vmm_devtree_nodeid *devid)
+static int __init sun4i_reboot_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 

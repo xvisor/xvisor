@@ -777,8 +777,7 @@ static struct bgpio_pdata *bgpio_parse_dt(struct vmm_device *dev,
 	return pdata;
 }
 
-static int bgpio_probe(struct vmm_device *dev,
-		       const struct vmm_devtree_nodeid *devid)
+static int bgpio_probe(struct vmm_device *dev)
 {
 	int err;
 	void *dat;

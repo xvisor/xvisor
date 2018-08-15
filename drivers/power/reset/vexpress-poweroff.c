@@ -28,6 +28,7 @@
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <vmm_modules.h>
 
 #include <linux/vexpress.h>
@@ -68,10 +69,14 @@ static int vexpress_shutdown(void)
 	return err;
 }
 
-static int __init vexpress_poweroff_driver_probe(struct vmm_device *dev,
-					const struct vmm_devtree_nodeid *devid)
+static int __init vexpress_poweroff_driver_probe(struct vmm_device *dev)
 {
 	enum vexpress_reset_func func;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid)
+		return VMM_ENODEV;
 
 	func = (enum vexpress_reset_func)devid->data;
 	switch (func) {

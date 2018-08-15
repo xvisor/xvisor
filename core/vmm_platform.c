@@ -112,7 +112,6 @@ static int platform_bus_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct vmm_driver *drv;
-	const struct vmm_devtree_nodeid *match;
 
 	if (!dev || !dev->of_node || !dev->driver) {
 		return VMM_EFAIL;
@@ -128,10 +127,7 @@ static int platform_bus_probe(struct vmm_device *dev)
 		return rc;
 	}
 
-	match = vmm_devtree_match_node(drv->match_table, dev->of_node);
-	if (match) {
-		rc = drv->probe(dev, match);
-	}
+	rc = drv->probe(dev);
 
 	vmm_platform_pinctrl_init(dev);
 
@@ -208,6 +204,18 @@ struct vmm_bus platform_bus = {
 	.probe = platform_bus_probe,
 	.remove = platform_bus_remove,
 };
+
+const struct vmm_devtree_nodeid *vmm_platform_match_nodeid(
+						struct vmm_device *dev)
+{
+	if (!dev || !dev->of_node ||
+	    !dev->driver || !dev->driver->match_table ||
+	    (dev->bus != &platform_bus)) {
+		return NULL;
+	}
+
+	return vmm_devtree_match_node(dev->driver->match_table, dev->of_node);
+}
 
 struct vmm_device *vmm_platform_find_device_by_node(
 					struct vmm_devtree_node *np)

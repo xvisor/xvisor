@@ -1083,10 +1083,8 @@ static struct pinctrl_gpio_range bcm2835_pinctrl_gpio_range = {
  *      - Values of gpio_chip (base, ...) (cf bcm2835_gpio_chip)
  *
  *  @param dev   device on which the gpios are
- *  @param devid device tree node containing gpio's info
  */
-static int bcm2835_pinctrl_probe(struct vmm_device *dev,
-				 const struct vmm_devtree_nodeid *devid)
+static int bcm2835_pinctrl_probe(struct vmm_device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct bcm2835_pinctrl *pc;

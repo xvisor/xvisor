@@ -2031,8 +2031,7 @@ err_out:
 	return retval;
 }
 
-static int smc911x_driver_probe(struct vmm_device *dev,
-				const struct vmm_devtree_nodeid *devid)
+static int smc911x_driver_probe(struct vmm_device *dev)
 {
 	int rc = VMM_OK;
 	struct net_device *ndev;

@@ -5,6 +5,7 @@
 #include <vmm_devtree.h>
 #include <vmm_devres.h>
 #include <vmm_devdrv.h>
+#include <vmm_platform.h>
 
 #include <linux/err.h>
 #include <linux/errno.h>

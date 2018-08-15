@@ -600,8 +600,7 @@ int hdmi_get_registered(void)
 }
 EXPORT_SYMBOL(hdmi_get_registered);
 
-static int mxc_hdmi_core_probe(struct vmm_device *dev,
-			       const struct vmm_devtree_nodeid *nid)
+static int mxc_hdmi_core_probe(struct vmm_device *dev)
 {
 	struct mxc_hdmi_data *hdmi_data = NULL;
 	unsigned long flags;

@@ -29,6 +29,7 @@
 #include <vmm_devdrv.h>
 #include <vmm_devres.h>
 #include <vmm_devtree.h>
+#include <vmm_platform.h>
 #include <vmm_notifier.h>
 
 #include <linux/types.h>
@@ -816,13 +817,18 @@ static const struct of_device_id imx_ldb_dt_ids[] = {
  *
  * @return      Returns 0 on success or negative error code on error
  */
-static int ldb_probe(struct vmm_device *dev,
-		     const struct vmm_devtree_nodeid *nodeid)
+static int ldb_probe(struct vmm_device *dev)
 {
 	int ret = 0;
 	struct ldb_data *ldb;
 	struct fsl_mxc_ldb_platform_data *plat_data;
-	const struct platform_device_id *data = nodeid->data;
+	const struct vmm_devtree_nodeid *nodeid;
+	const struct platform_device_id *data;
+
+	nodeid = vmm_platform_match_nodeid(dev);
+	if (!nodeid)
+		return VMM_ENODEV;
+	data = nodeid->data;
 
 	dev_dbg(dev, "%s enter\n", __func__);
 	ldb = vmm_devm_zalloc(dev, sizeof(struct ldb_data));

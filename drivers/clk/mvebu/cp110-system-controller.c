@@ -499,8 +499,7 @@ static struct platform_driver cp110_clock_driver = {
 };
 builtin_platform_driver(cp110_clock_driver);
 #else
-static int cp110_syscon_legacy_clk_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int cp110_syscon_legacy_clk_probe(struct vmm_device *dev)
 {
 	dev_warn(dev, FW_WARN "Using legacy device tree binding\n");
 	dev_warn(dev, FW_WARN "Update your device tree:\n");
@@ -510,8 +509,7 @@ static int cp110_syscon_legacy_clk_probe(struct vmm_device *dev,
 	return cp110_syscon_common_probe(dev, dev->of_node);
 }
 
-static int cp110_clk_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int cp110_clk_probe(struct vmm_device *dev)
 {
 	return cp110_syscon_common_probe(dev, dev->of_node->parent);
 }

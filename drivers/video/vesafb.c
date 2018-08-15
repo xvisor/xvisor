@@ -255,8 +255,7 @@ static int vesafb_setup(char *options)
 	return 0;
 }
 
-static int vesafb_probe(struct vmm_device *dev, 
-			const struct vmm_devtree_nodeid *id)
+static int vesafb_probe(struct vmm_device *dev)
 {
 	struct fb_info *info;
 	int i, err;

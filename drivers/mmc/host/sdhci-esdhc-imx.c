@@ -908,13 +908,19 @@ sdhci_esdhc_imx_probe_dt(struct platform_device *pdev,
 }
 #endif
 
-static int sdhci_esdhc_imx_probe(struct vmm_device *dev,
-				 const struct vmm_devtree_nodeid *devid)
+static int sdhci_esdhc_imx_probe(struct vmm_device *dev)
 {
 	struct sdhci_host *host;
 	struct esdhc_platform_data *boarddata;
 	u32 err = VMM_OK;
 	struct pltfm_imx_data *imx_data;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		dev_info(dev, "nodeid not found\n");
+		return VMM_ENOMEM;
+	}
 
 	if (!vmm_devtree_is_available(dev->of_node)) {
 		dev_info(dev, "device is disabled\n");

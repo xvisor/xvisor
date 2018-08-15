@@ -289,8 +289,7 @@ u32 rbd_count(void)
 }
 VMM_EXPORT_SYMBOL(rbd_count);
 
-static int rbd_driver_probe(struct vmm_device *dev,
-			    const struct vmm_devtree_nodeid *devid)
+static int rbd_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	physical_addr_t pa;

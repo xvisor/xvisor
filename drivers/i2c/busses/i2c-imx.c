@@ -642,13 +642,19 @@ static struct i2c_algorithm i2c_imx_algo = {
 	.functionality	= i2c_imx_func,
 };
 
-static int i2c_imx_probe(struct vmm_device *dev,
-			 const struct vmm_devtree_nodeid *devid)
+static int i2c_imx_probe(struct vmm_device *dev)
 {
+	const struct vmm_devtree_nodeid *devid;
 	struct imx_i2c_struct *i2c_imx;
 	virtual_addr_t base = 0;
 	unsigned int irq = 0;
 	int ret = VMM_OK;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		dev_info(dev, "nodeid not found\n");
+		return -ENODEV;
+	};
 
 	if (!vmm_devtree_is_available(dev->of_node)) {
 		dev_info(dev, "device is disabled\n");

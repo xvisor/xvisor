@@ -482,8 +482,7 @@ static int mxc_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 
 #define PORT_NAME_LEN	12
 
-static int mxc_gpio_probe(struct vmm_device *dev,
-			  const struct vmm_devtree_nodeid *devid)
+static int mxc_gpio_probe(struct vmm_device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct mxc_gpio_port *port;
@@ -491,6 +490,11 @@ static int mxc_gpio_probe(struct vmm_device *dev,
 	int port_num = 0;
 	char *name = NULL;
 	char *irq_name = NULL;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid)
+		return -ENODEV;
 
 	mxc_gpio_get_hw(devid);
 

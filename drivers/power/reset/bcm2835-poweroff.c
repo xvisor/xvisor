@@ -102,8 +102,7 @@ static int bcm2835_pm_poweroff(void)
 	return bcm2835_pm_reset();
 }
 
-static int __init bcm2835_poweroff_driver_probe(struct vmm_device *dev,
-					const struct vmm_devtree_nodeid *devid)
+static int __init bcm2835_poweroff_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 

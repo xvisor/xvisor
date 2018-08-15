@@ -337,8 +337,7 @@ static u32 omap_uart_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
-static int omap_uart_driver_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int omap_uart_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct omap_uart_port *port;

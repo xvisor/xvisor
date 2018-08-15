@@ -48,8 +48,7 @@ struct sram_dev {
 	struct clk *clk;
 };
 
-static int sram_probe(struct vmm_device *dev,
-		      const struct vmm_devtree_nodeid *nodeid)
+static int sram_probe(struct vmm_device *dev)
 {
 	void *virt_base = NULL;
 	struct sram_dev *sram = NULL;

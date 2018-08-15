@@ -43,8 +43,7 @@ static int realview_reset(void)
 	return realview_system_reset();
 }
 
-static int __init realview_reboot_driver_probe(struct vmm_device *dev,
-					const struct vmm_devtree_nodeid *devid)
+static int __init realview_reboot_driver_probe(struct vmm_device *dev)
 {
 	/* Register reset & shutdown callbacks */
 	vmm_register_system_reset(realview_reset);

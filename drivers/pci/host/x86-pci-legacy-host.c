@@ -42,8 +42,7 @@
 extern void pci_arch_init(void);
 extern void pci_subsys_init(void);
 
-static int x86_legacy_probe(struct vmm_device *dev,
-			    const struct vmm_devtree_nodeid *devid)
+static int x86_legacy_probe(struct vmm_device *dev)
 {
 	pci_subsys_init();
 

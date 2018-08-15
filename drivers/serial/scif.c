@@ -28,6 +28,7 @@
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_platform.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <drv/clk.h>
@@ -595,12 +596,17 @@ found:
 	return 0;
 }
 
-
-static int scif_driver_probe(struct vmm_device *dev,
-			     const struct vmm_devtree_nodeid *devid)
+static int scif_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	struct scif_port *port;
+	const struct vmm_devtree_nodeid *devid;
+
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid) {
+		rc = VMM_ENODEV;
+		goto free_nothing;
+	}
 
 	port = vmm_zalloc(sizeof(struct scif_port));
 	if (!port) {

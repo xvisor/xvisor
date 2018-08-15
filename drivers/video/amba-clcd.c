@@ -590,8 +590,7 @@ static int clcdfb_register(struct clcd_fb *fb, bool is_versatile)
 	return ret;
 }
 
-static int clcdfb_probe(struct vmm_device *dev, 
-			const struct vmm_devtree_nodeid *id)
+static int clcdfb_probe(struct vmm_device *dev)
 {
 	struct clcd_board *board = dev->of_node->system_data;
 	struct clcd_fb *fb;
@@ -601,7 +600,7 @@ static int clcdfb_probe(struct vmm_device *dev,
 	if (!board)
 		return -EINVAL;
 
-	if (!strcmp(id->compatible, "arm,pl110,versatile"))
+	if (vmm_devtree_is_compatible(dev->of_node, "arm,pl110,versatile"))
 		is_versatile = TRUE;
 	else
 		is_versatile = FALSE;

@@ -547,7 +547,7 @@ static int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 
 		d->driver = &genphy_driver.driver;
 
-		err = d->driver->probe(d, NULL);
+		err = d->driver->probe(d);
 		if (err >= 0)
 			err = device_bind_driver(d);
 
@@ -1003,8 +1003,7 @@ EXPORT_SYMBOL(genphy_resume);
  *   set the state to READY (the driver's init function should
  *   set it to STARTING if needed).
  */
-static int phy_probe(struct device *dev,
-			const struct vmm_devtree_nodeid *dev_node)
+static int phy_probe(struct device *dev)
 {
 	struct phy_device *phydev;
 	struct phy_driver *phydrv;

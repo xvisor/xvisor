@@ -173,8 +173,7 @@ static u32 samsung_tx(struct serial *p, u8 *src, size_t len)
 	return i;
 }
 
-static int samsung_driver_probe(struct vmm_device *dev,
-				const struct vmm_devtree_nodeid *devid)
+static int samsung_driver_probe(struct vmm_device *dev)
 {
 	u32 ucon;
 	int rc = VMM_EFAIL;

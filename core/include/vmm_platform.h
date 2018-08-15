@@ -49,6 +49,10 @@ int vmm_platform_pinctrl_bind(struct vmm_device *dev);
  */
 int vmm_platform_pinctrl_init(struct vmm_device *dev);
 
+/** Find matching nodeid for given platform device */
+const struct vmm_devtree_nodeid *vmm_platform_match_nodeid(
+						struct vmm_device *dev);
+
 /** Find platform device by node */
 struct vmm_device *vmm_platform_find_device_by_node(
 					struct vmm_devtree_node *np);

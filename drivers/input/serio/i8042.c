@@ -1410,8 +1410,7 @@ static int __init i8042_setup_kbd(void)
 	return error;
 }
 
-static int i8042_driver_probe(struct vmm_device *dev, 
-			      const struct vmm_devtree_nodeid *devid)
+static int i8042_driver_probe(struct vmm_device *dev)
 {
 	int error;
 

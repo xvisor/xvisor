@@ -3741,8 +3741,7 @@ failed_ioremap:
 }
 
 #else /* 0 */
-static int fec_probe(struct vmm_device *dev,
-		     const struct vmm_devtree_nodeid *of_id)
+static int fec_probe(struct vmm_device *dev)
 {
 	struct fec_enet_private *fep;
 	struct net_device *ndev;
@@ -3752,6 +3751,11 @@ static int fec_probe(struct vmm_device *dev,
 	struct device_node *np = dev->of_node, *phy_node;
 	u32 num_tx_qs;
 	u32 num_rx_qs;
+	const struct vmm_devtree_nodeid *of_id;
+
+	of_id = vmm_platform_match_nodeid(dev);
+	if (!of_id)
+		return -ENODEV;
 
 	fec_enet_get_queue_num(dev, &num_tx_qs, &num_rx_qs);
 

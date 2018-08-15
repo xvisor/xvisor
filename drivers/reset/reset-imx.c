@@ -146,8 +146,7 @@ void imx_set_cpu_arg(int cpu, u32 arg)
 	writel_relaxed(arg, src_base + SRC_GPR1 + cpu * 8 + 4);
 }
 
-static int imx_src_probe(struct vmm_device *dev,
-			 const struct vmm_devtree_nodeid *nodeid)
+static int imx_src_probe(struct vmm_device *dev)
 {
 	int ret = VMM_OK;
 	struct vmm_devtree_node *np = dev->of_node;

@@ -488,8 +488,7 @@ static struct of_device_id imx6q_pinctrl_of_match[] = {
 	{ /* sentinel */ }
 };
 
-static int imx6q_pinctrl_probe(struct vmm_device *dev,
-			       const struct vmm_devtree_nodeid *devid)
+static int imx6q_pinctrl_probe(struct vmm_device *dev)
 {
 	return imx_pinctrl_probe(dev, &imx6q_pinctrl_info);
 }

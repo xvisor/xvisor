@@ -690,13 +690,14 @@ static struct platform_driver armada_cp110_pinctrl_driver = {
 builtin_platform_driver(armada_cp110_pinctrl_driver);
 #else
 
-static int armada_cp110_pinctrl_probe(struct vmm_device *dev,
-				  const struct vmm_devtree_nodeid *devid)
+static int armada_cp110_pinctrl_probe(struct vmm_device *dev)
 {
+	const struct vmm_devtree_nodeid *devid;
 	struct mvebu_pinctrl_soc_info *soc;
 	int i;
 
-	if (!dev->parent)
+	devid = vmm_platform_match_nodeid(dev);
+	if (!devid || !dev->parent)
 		return -ENODEV;
 
 	soc = devm_kzalloc(dev,

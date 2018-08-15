@@ -216,8 +216,7 @@ static const struct i2c_algorithm bcm2835_i2c_algo = {
 	.functionality	= bcm2835_i2c_func,
 };
 
-static int bcm2835_i2c_probe(struct vmm_device *dev,
-			     const struct vmm_devtree_nodeid *devid)
+static int bcm2835_i2c_probe(struct vmm_device *dev)
 {
 	struct bcm2835_i2c_dev *i2c_dev;
 	virtual_addr_t mem;

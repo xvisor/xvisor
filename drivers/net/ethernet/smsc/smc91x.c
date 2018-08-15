@@ -2455,8 +2455,7 @@ module_exit(smc_cleanup);
  *	0 --> there is a device
  *	anything else, error
  */
-static int __devinit smc_drv_probe(struct vmm_device *pdev,
-                                const struct vmm_devtree_nodeid *devid)
+static int __devinit smc_drv_probe(struct vmm_device *pdev)
 {
 	struct smc91x_platdata *pd = pdev->of_node->system_data;
 	struct smc_local *lp;

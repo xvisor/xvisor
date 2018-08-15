@@ -233,8 +233,7 @@ rpi_firmware_print_firmware_revision(struct rpi_firmware *fw)
 	}
 }
 
-static int rpi_firmware_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+static int rpi_firmware_probe(struct vmm_device *dev)
 {
 	struct rpi_firmware *fw;
 

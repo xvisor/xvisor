@@ -348,8 +348,7 @@ static struct rtc_class_ops pl031_stv2_ops = {
 	.alarm_irq_enable = pl031_alarm_irq_enable,
 };
 
-static int pl031_driver_probe(struct vmm_device *dev,
-			      const struct vmm_devtree_nodeid *devid)
+static int pl031_driver_probe(struct vmm_device *dev)
 {
 	int rc;
 	u32 periphid;

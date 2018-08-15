@@ -173,7 +173,7 @@ static int __bus_probe_device_driver(struct vmm_bus *bus,
 			   "driver=\"%s\" probe.\n",
 			   bus->name, dev->name, dev->driver->name);
 #endif
-		rc = drv->probe(dev, NULL);
+		rc = drv->probe(dev);
 	}
 
 	if (rc) {

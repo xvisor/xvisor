@@ -299,8 +299,7 @@ out:
 	return 0;
 }
 
-static int bcm2835_spi_probe(struct vmm_device *dev,
-			const struct vmm_devtree_nodeid *devid)
+static int bcm2835_spi_probe(struct vmm_device *dev)
 {
 	struct spi_master *master;
 	struct bcm2835_spi *bs;

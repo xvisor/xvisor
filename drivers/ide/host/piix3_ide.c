@@ -72,8 +72,7 @@ struct piix3_ide_device piix3_ide_devices[2] = {
 					__dev.device,		\
 					__dev.function))
 
-static int piix3_ide_probe(struct vmm_device *dev,
-			   const struct vmm_devtree_nodeid *devid)
+static int piix3_ide_probe(struct vmm_device *dev)
 {
 	struct ide_host_controller *controller;
 	struct ide_drive *drive;
