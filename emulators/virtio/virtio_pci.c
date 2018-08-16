@@ -30,6 +30,9 @@
 #include <vio/vmm_virtio_pci.h>
 #include <emu/pci/pci_emu_core.h>
 
+#define VIRTIO_MAX_DEV_ID			10
+#define VIRTIO_MIN_DEV_ID			1
+
 #define VIRTIO_PCI_VENDOR_ID		0x1af4
 #define VIRTIO_PCI_DEVICE_ID_BASE	0x1000
 
@@ -184,6 +187,12 @@ static int virtio_pci_emulator_probe(struct pci_device *pdev,
 				     const struct vmm_devtree_nodeid *eid)
 {
 	struct pci_class *class = (struct pci_class *)pdev;
+
+	/* sanitize device ID */
+	if((pdev->device_id > VIRTIO_MAX_DEV_ID) ||
+				(pdev->device_id < VIRTIO_MIN_DEV_ID)) {
+		return VMM_EFAIL;
+	}
 
 	/* Virtio device */
 	class->conf_header.vendor_id = VIRTIO_PCI_VENDOR_ID;
