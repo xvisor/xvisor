@@ -30,6 +30,10 @@
 #include <vio/vmm_virtio_pci.h>
 #include <emu/pci/pci_emu_core.h>
 
+#define VIRTIO_PCI_VENDOR_ID		0x1af4
+#define VIRTIO_PCI_DEVICE_ID_BASE	0x1000
+
+#define GET_VIRTIO_PCI_DEVICE_ID(did)	(VIRTIO_PCI_DEVICE_ID_BASE + did)
 
 #define VIRTIO_PCI_EMU_IPRIORITY	(PCI_EMU_CORE_IPRIORITY +	\
 					 VMM_VIRTIO_IPRIORITY + 1)
@@ -182,9 +186,9 @@ static int virtio_pci_emulator_probe(struct pci_device *pdev,
 	struct pci_class *class = (struct pci_class *)pdev;
 
 	/* Virtio device */
-	class->conf_header.vendor_id = 0x1af4;
+	class->conf_header.vendor_id = VIRTIO_PCI_VENDOR_ID;
 	/* Block Device */
-	class->conf_header.device_id = 0x1001;
+	class->conf_header.device_id = GET_VIRTIO_PCI_DEVICE_ID(pdev->device_id);
 
 	pdev->priv = NULL;
 
