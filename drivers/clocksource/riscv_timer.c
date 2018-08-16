@@ -99,14 +99,20 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hart_id = 0;
+	unsigned long hwid;
 	struct vmm_clocksource *cs;
+
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
+	if (rc) {
+		return rc;
+	}
 
 	rc = riscv_hart_of_timer(node, &hart_id);
 	if (rc) {
 		return rc;
 	}
 
-	if (vmm_smp_processor_id() != hart_id) {
+	if (hwid != hart_id) {
 		return VMM_OK;
 	}
 
@@ -169,14 +175,20 @@ static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hart_id;
+	unsigned long hwid;
 	struct vmm_clockchip *cc;
+
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
+	if (rc) {
+		return rc;
+	}
 
 	rc = riscv_hart_of_timer(node, &hart_id);
 	if (rc) {
 		return rc;
 	}
 
-	if (vmm_smp_processor_id() != hart_id) {
+	if (hwid != hart_id) {
 		return VMM_OK;
 	}
 
