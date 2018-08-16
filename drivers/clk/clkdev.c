@@ -299,7 +299,7 @@ vclkdev_alloc(struct clk_hw *hw, const char *con_id, const char *dev_fmt,
 	}
 
 	if (dev_fmt) {
-		vmm_snprintf(cla->dev_id, sizeof(cla->dev_id), dev_fmt, ap);
+		__vmm_snprintf(cla->dev_id, sizeof(cla->dev_id), dev_fmt, ap);
 		cla->cl.dev_id = cla->dev_id;
 	}
 
