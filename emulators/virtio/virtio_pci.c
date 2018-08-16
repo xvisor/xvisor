@@ -186,7 +186,7 @@ static int virtio_pci_emulator_probe(struct pci_device *pdev,
 				     struct vmm_guest *guest,
 				     const struct vmm_devtree_nodeid *eid)
 {
-	struct pci_class *class = (struct pci_class *)pdev;
+	struct pci_class *class = PCI_DEVICE_TO_CLASS(pdev);
 
 	/* sanitize device ID */
 	if((pdev->device_id > VIRTIO_MAX_DEV_ID) ||

@@ -98,7 +98,7 @@ static int gpex_reg_write(struct gpex_state *s, u32 addr,
 
 	config_addr = addr & (PCI_CONFIG_SPACE_SIZE - 1);
 
-	ret = pci_emu_config_space_write((struct pci_class *) pdev,
+	ret = pci_emu_config_space_write(PCI_DEVICE_TO_CLASS(pdev),
 					 config_addr, val);
 
 exit:
@@ -120,7 +120,7 @@ static int gpex_reg_read(struct gpex_state *s, u32 addr, u32 *dst, u32 size)
 	}
 
 	config_addr = addr & (PCI_CONFIG_SPACE_SIZE - 1);
-	*dst = pci_emu_config_space_read((struct pci_class *)pdev,
+	*dst = pci_emu_config_space_read(PCI_DEVICE_TO_CLASS(pdev),
 					 config_addr, size);
 
 exit:
@@ -220,7 +220,8 @@ static int gpex_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&s->controller->lock);
 
 	/* initialize class */
-	class = (struct pci_class *)s->controller;
+	class = PCI_CONTROLLER_TO_CLASS(s->controller);
+
 	INIT_SPIN_LOCK(&class->lock);
 	class->conf_header.vendor_id = PCI_VENDOR_ID_REDHAT;
 	class->conf_header.device_id = PCI_DEVICE_ID_REDHAT_PCIE_HOST;

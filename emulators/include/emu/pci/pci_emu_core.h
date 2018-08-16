@@ -70,6 +70,10 @@
 #define PCI_CONFIG_MIN_GNT_OFFS		62
 #define PCI_CONFIG_MAX_LAT_OFFS		63
 
+#define PCI_CONTROLLER_TO_CLASS(controller)	(&(controller)->class)
+
+#define PCI_DEVICE_TO_CLASS(pdev)			(&(pdev)->class)
+
 struct pci_device;
 struct pci_bus;
 struct pci_host_controller;
