@@ -32,8 +32,6 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 
-#include <stdarg.h>
-
 #define PAD_RIGHT	1
 #define PAD_ZERO	2
 #define PAD_ALTERNATE	4
@@ -456,6 +454,11 @@ int vmm_sprintf(char *out, const char *format, ...)
 	retval = print(&out, NULL, stdio_ctrl.dev, format, args);
 	va_end(args);
 	return retval;
+}
+
+int __vmm_snprintf(char *out, u32 out_sz, const char *format, va_list args)
+{
+	return print(&out, &out_sz, stdio_ctrl.dev, format, args);
 }
 
 int vmm_snprintf(char *out, u32 out_sz, const char *format, ...)

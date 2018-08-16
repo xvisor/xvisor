@@ -27,6 +27,8 @@
 #include <vmm_compiler.h>
 #include <libs/stacktrace.h>
 
+#include <stdarg.h>
+
 #define BUG_ON(x)							\
 	do {								\
 		if (unlikely(x)) {					\
@@ -112,6 +114,12 @@ void vmm_cputs(struct vmm_chardev *cdev, char *str);
 
 /** Put string to default device */
 void vmm_puts(char *str);
+
+/** Print formatted string to another string with pre-parsed variable args
+ *  Note: Don't use this API directly unless you are familiar with variable
+ *  args parsing.
+ */
+int __vmm_snprintf(char *out, u32 out_sz, const char *format, va_list args);
 
 /** Print formatted string to another string */
 int __printf(2, 3) vmm_sprintf(char *out, const char *format, ...);
