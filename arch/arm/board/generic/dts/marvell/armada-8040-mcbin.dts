@@ -15,6 +15,7 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 		console = &uart0;
+		rtcdev = &cp1_rtc;
 		bootcmd = /* Mount initrd device */
 			  "vfs mount initrd /",
 
