@@ -127,13 +127,20 @@ int rtc_device_sync_device(struct rtc_device *rdev)
 }
 VMM_EXPORT_SYMBOL(rtc_device_sync_device);
 
+void rtc_update_irq(struct rtc_device *rtc,
+		    unsigned long num, unsigned long events)
+{
+	/* TODO: To be added later */
+}
+VMM_EXPORT_SYMBOL(rtc_update_irq);
+
 static struct vmm_class rtc_class = {
 	.name = RTC_DEVICE_CLASS_NAME,
 };
 
 struct rtc_device *rtc_device_register(struct vmm_device *parent,
 					const char *name,
-					struct rtc_class_ops *ops,
+					const struct rtc_class_ops *ops,
 					void *priv)
 {
 	int ret;

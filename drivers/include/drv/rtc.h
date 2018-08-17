@@ -73,14 +73,13 @@ int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time);
  */
 void rtc_time_to_tm(unsigned long time, struct rtc_time *tm);
 
-/* FIXME: interrupt event flags */
+/* Interrupt event flags */
 #define RTC_IRQF 0x80	/* Any of the following is active */
 #define RTC_PF 0x40	/* Periodic interrupt */
 #define RTC_AF 0x20	/* Alarm interrupt */
 #define RTC_UF 0x10	/* Update interrupt for 1Hz RTC */
 
-/* FIXME: report interrupt event */
-#define rtc_update_irq(rtc,count,events)
+#define RTC_MAX_FREQ	8192
 
 /*
  * This data structure is inspired by the EFI (v0.92) wakeup
@@ -107,7 +106,7 @@ struct rtc_class_ops {
 struct rtc_device {
 	char name[VMM_FIELD_NAME_SIZE];
 	struct vmm_device dev;
-	struct rtc_class_ops *ops;
+	const struct rtc_class_ops *ops;
 	void *priv;
 };
 
@@ -124,10 +123,14 @@ int rtc_device_sync_wallclock(struct rtc_device *rdev);
 /** Sync rtc device time from current wall-clock time */
 int rtc_device_sync_device(struct rtc_device *rdev);
 
+/** Update rtc device interrupt */
+void rtc_update_irq(struct rtc_device *rtc,
+		    unsigned long num, unsigned long events);
+
 /** Register rtc device to device driver framework */
 struct rtc_device *rtc_device_register(struct vmm_device *parent,
 					const char *name,
-					struct rtc_class_ops *ops,
+					const struct rtc_class_ops *ops,
 					void *priv);
 
 /** Unregister rtc device from device driver framework */
