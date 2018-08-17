@@ -33,5 +33,6 @@ rtc_core-y += rtc-lib.o
 	$(call merge_deps,$@,$^)
 
 drivers-objs-$(CONFIG_RTC_PL031)+= rtc/rtc-pl031.o
+drivers-objs-$(CONFIG_RTC_ARMADA38X)+= rtc/rtc-armada38x.o
 drivers-objs-$(CONFIG_RTC_S3C)+= rtc/rtc-s3c.o
 
