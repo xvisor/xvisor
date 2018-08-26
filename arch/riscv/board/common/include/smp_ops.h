@@ -28,6 +28,9 @@
 extern physical_addr_t __smp_logical_map[];
 #define smp_logical_map(cpu)	__smp_logical_map[(cpu)]
 
+#define HARTID_INVALID		-1
+#define HARTID_HWID_BITMASK	0xffffffff
+
 /**
  * Callback operations for SMP CPUs.
  *
@@ -54,6 +57,8 @@ struct smp_operations {
 
 #define SMP_OPS_DECLARE(name, ops) \
 VMM_DEVTREE_NIDTBL_ENTRY(name, "smp_ops", "", "", "", ops)
+
+extern struct smp_operations smp_default_ops;
 
 void smp_write_pen_release(unsigned long val);
 unsigned long smp_read_pen_release(void);

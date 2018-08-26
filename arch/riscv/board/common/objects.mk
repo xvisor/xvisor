@@ -25,4 +25,5 @@ board-common-objs-y+=devtree.o
 board-common-objs-y+=defterm.o
 board-common-objs-$(CONFIG_RISCV_DEFTERM_EARLY_PRINT)+=defterm_early.o
 board-common-objs-$(CONFIG_RISCV_SMP_OPS)+=smp_ops.o
+board-common-objs-$(CONFIG_RISCV_SMP_OPS)+=smp_ops_default.o
 board-common-objs-$(CONFIG_RISCV_SMP_IPI)+=smp_ipi.o

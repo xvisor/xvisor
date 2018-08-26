@@ -30,6 +30,7 @@
 #include <vmm_delay.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
+#include <arch_barrier.h>
 
 #include <riscv_csr.h>
 #include <smp_ops.h>
@@ -41,9 +42,6 @@
 #else
 #define DPRINTF(msg...)
 #endif
-
-#define HARTID_INVALID		-1
-#define HARTID_HWID_BITMASK	0xffffffff
 
 extern unsigned long _bootcpu_reg0;
 
@@ -64,6 +62,7 @@ static const struct smp_operations *smp_cpu_ops[CONFIG_CPU_COUNT];
 
 void smp_write_pen_release(unsigned long val)
 {
+	arch_smp_mb();
 	start_secondary_pen_release = val;
 	vmm_flush_dcache_range((virtual_addr_t)&start_secondary_pen_release,
 			(virtual_addr_t)&start_secondary_pen_release +
@@ -77,6 +76,7 @@ unsigned long smp_read_pen_release(void)
 
 void smp_write_logical_id(unsigned long val)
 {
+	arch_smp_mb();
 	start_secondary_smp_id = val;
 	vmm_flush_dcache_range((virtual_addr_t)&start_secondary_smp_id,
 			(virtual_addr_t)&start_secondary_smp_id +
@@ -88,7 +88,7 @@ unsigned long smp_read_logical_id(void)
 	return start_secondary_smp_id;
 }
 
-static const struct smp_operations * __init smp_get_ops(const char *name)
+static const struct smp_operations *__init smp_get_ops(const char *name)
 {
 	u32 i, count;
 	const struct smp_operations *ops;
@@ -126,10 +126,13 @@ static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 		 * spin-table is used for secondaries). Don't warn spuriously.
 		 */
 		if (cpu != 0) {
-			vmm_printf("%s: missing enable-method property\n",
+			vmm_printf("%s: missing enable-method DT property\n",
+				   dn->name);
+			vmm_printf("%s: falling back to default SMP ops\n",
 				   dn->name);
 		}
-		return rc;
+		smp_cpu_ops[cpu] = &smp_default_ops;
+		return 0;
 	}
 
 	smp_cpu_ops[cpu] = smp_get_ops(enable_method);
@@ -403,4 +406,3 @@ void __cpuinit arch_smp_postboot(void)
 	if (smp_cpu_ops[cpu]->cpu_postboot)
 		smp_cpu_ops[cpu]->cpu_postboot();
 }
-
