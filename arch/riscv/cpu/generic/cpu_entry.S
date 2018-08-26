@@ -131,7 +131,6 @@ __start_secondary_smp_id:
 	RISCV_PTR	start_secondary_smp_id
 	.align	3
 __start_secondary_pen_release:
-	RISCV_PTR	.
 	RISCV_PTR	start_secondary_pen_release
 
 	/*
@@ -140,13 +139,23 @@ __start_secondary_pen_release:
 	 */
 _start_secondary:
 	/*
-	 * TODO: This provides a "holding pen" for platforms to hold all secondary
+	 * This provides a "holding pen" for platforms to hold all secondary
 	 * cores are held until we're ready for them to initialise.
 	 */
 
-	/* TODO: Calculate load address of secondary_holding_pen_release */
+	/* Calculate load address of start_secondary_pen_release */
+	la	a2, _start
+	la	a6, __exec_start
+	REG_L	a4, (a6)
+	la	a6, __start_secondary_pen_release
+	REG_L	a6, (a6)
+	sub	a6, a6, a4
+	add	a6, a6, a2
 
-	j	_start_secondary
+_start_secondary_wait:
+	/* FIXME: We should use WFI to save some energy here. */
+	REG_L	a7, (a6)
+	bne	a7, a0, _start_secondary_wait
 #endif
 
 	/*
