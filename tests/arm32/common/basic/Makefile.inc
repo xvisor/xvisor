@@ -84,7 +84,7 @@ FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
 		$(obj_dir)/arm_string.o \
-		$(obj_dir)/arm_math.o \
+		$(obj_dir)/arch_math.o \
 		$(obj_dir)/dhry_1.o \
 		$(obj_dir)/dhry_2.o \
 		$(obj_dir)/dhry_port.o
@@ -103,7 +103,7 @@ FIRMWARE_LINK_SCRIPT=$(obj_dir)/firmware.lnk
 FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS) $(board_ldflags)
 
 FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
-                $(common_arch_dir)/arm_math.h \
+                $(common_arch_dir)/arch_math.h \
                 $(common_arch_dir)/arm_defines.h \
                 $(common_arch_dir)/arch_types.h \
                 $(common_arch_dir)/arm_board.h \

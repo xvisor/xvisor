@@ -24,7 +24,7 @@
  */
 
 #include <arch_io.h>
-#include <arm_math.h>
+#include <arch_math.h>
 #include <serial/imx.h>
 
 void imx_putc(u32 base, char ch)
@@ -79,7 +79,7 @@ void imx_init(u32 base, u32 baudrate, u32 input_clock)
 	 * Set UBIR = 0xF:
 	 * UBMR + 1 = input_clock / BAUD_RATE
 	 */
-	temp = arm_udiv32(input_clock, baudrate);
+	temp = arch_udiv32(input_clock, baudrate);
 	arch_writew(0xF, (void*)(base + UBIR));
 	arch_writew(temp - 1, (void*)(base + UBMR));
 

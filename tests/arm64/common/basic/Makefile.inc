@@ -53,7 +53,7 @@ FIRMWARE_LINK_SCRIPT=$(obj_dir)/firmware.lnk
 FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS)
 
 FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
-                $(common_arch_dir)/arm_math.h \
+                $(common_arch_dir)/arch_math.h \
                 $(common_arch_dir)/arm_defines.h \
                 $(common_arch_dir)/arch_types.h \
                 $(common_arch_dir)/arm_board.h \

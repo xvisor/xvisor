@@ -24,8 +24,7 @@
 
 #include <arch_io.h>
 #include <arm_irq.h>
-#include <arm_math.h>
-
+#include <arch_math.h>
 #include <timer/imx_gpt.h>
 
 #define GPT_CR			0

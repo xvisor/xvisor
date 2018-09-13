@@ -25,7 +25,7 @@
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
-#include <arm_math.h>
+#include <arch_math.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
@@ -406,7 +406,7 @@ void arm_cmd_copy(int argc, char **argv)
 
 	/* Enable timer and get end timestamp */
 	tstamp = arm_board_timer_timestamp() - tstamp;
-	tstamp = arm_udiv64(tstamp, 1000);
+	tstamp = arch_udiv64(tstamp, 1000);
 	arm_board_timer_enable();
 
 	/* Print time taken */

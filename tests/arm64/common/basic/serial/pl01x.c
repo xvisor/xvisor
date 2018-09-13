@@ -22,7 +22,7 @@
  */
 
 #include <arch_io.h>
-#include <arm_math.h>
+#include <arch_math.h>
 #include <serial/pl01x.h>
 
 void pl01x_putc(u64 base, u32 type, char ch)
@@ -78,9 +78,9 @@ void pl01x_init(u64 base, u32 type, u32 baudrate, u32 input_clock)
 		 * 	  / (16 * BAUD_RATE))
 		 */
 		temp = 16 * baudrate;
-		divider = arm_udiv32(input_clock, temp);
-		remainder = arm_umod32(input_clock, temp);
-		temp = arm_udiv32((8 * remainder), baudrate);
+		divider = arch_udiv32(input_clock, temp);
+		remainder = arch_umod32(input_clock, temp);
+		temp = arch_udiv32((8 * remainder), baudrate);
 		fraction = (temp >> 1) + (temp & 1);
 
 		arch_writel(divider, (void*)(base + UART_PL011_IBRD));

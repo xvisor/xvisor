@@ -23,7 +23,7 @@
 
 #include <arch_types.h>
 #include <arch_io.h>
-#include <arm_math.h>
+#include <arch_math.h>
 #include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
@@ -473,7 +473,7 @@ int arm_board_timer_init(u32 usecs)
 	counter_shift = 20;
 	counter_mult = ((u64)1000000) << counter_shift;
 	counter_mult += (((u64)1000) >> 1);
-	counter_mult = arm_udiv64(counter_mult, ((u64)1000));
+	counter_mult = arch_udiv64(counter_mult, ((u64)1000));
 
 	irq = IRQ_EB11MP_TIMER0_1;
 

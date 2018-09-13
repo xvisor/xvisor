@@ -16,39 +16,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_math.h
+ * @file arch_math.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief commonly required math operations
  */
 
-#ifndef __ARM_MATH_H_
-#define __ARM_MATH_H_
+#ifndef __ARCH_MATH_H__
+#define __ARCH_MATH_H__
 
 #include <arch_types.h>
 
 #define do_abs(x)  ((x) < 0 ? -(x) : (x))
 
-static inline u64 arm_udiv64(u64 value, u64 divisor)
+static inline u64 arch_udiv64(u64 value, u64 divisor)
 {
 	return (value / divisor);
 }
 
-static inline u64 arm_umod64(u64 value, u64 divisor)
+static inline u64 arch_umod64(u64 value, u64 divisor)
 {
 	return (value % divisor);
 }
 
-static inline u32 arm_udiv32(u32 value, u32 divisor)
+static inline u32 arch_udiv32(u32 value, u32 divisor)
 {
 	return (value / divisor);
 }
 
-static inline u32 arm_umod32(u32 value, u32 divisor)
+static inline u32 arch_umod32(u32 value, u32 divisor)
 {
 	return (value % divisor);
 }
 
-static inline s32 arm_sdiv32(s32 value, s32 divisor)
+static inline s32 arch_sdiv32(s32 value, s32 divisor)
 {
 	if ((value * divisor) < 0) {
 		return -(do_abs(value) / do_abs(divisor));
@@ -57,4 +57,4 @@ static inline s32 arm_sdiv32(s32 value, s32 divisor)
 	}
 }
 
-#endif /* __ARM_MATH_H_ */
+#endif /* __ARCH_MATH_H__ */

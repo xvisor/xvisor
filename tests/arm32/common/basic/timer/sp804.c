@@ -23,8 +23,6 @@
 
 #include <arch_io.h>
 #include <arm_irq.h>
-#include <arm_math.h>
-
 #include <timer/sp804.h>
 
 #define TIMER_LOAD              0x00

@@ -16,12 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_math.c
+ * @file arch_math.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief commonly required math operations
  */
 
-#include <arm_math.h>
+#include <arch_math.h>
 
 static const unsigned char byte_reverse_table[] = 
 {
@@ -79,8 +79,56 @@ static inline u32 do_fls64(u64 value)
 
 u64 do_udiv64(u64 dividend, u64 divisor, u64 * remainder)
 {
-	*remainder = (dividend % divisor);
-	return (dividend / divisor);
+	u32 num_bits;
+	register u8 *p, *q;
+	u64 quotient, remaind;
+
+	if (divisor == 0) {
+		while (1);
+	}
+
+	if (dividend <= divisor) {
+		remaind = divisor - dividend;
+		if (remainder) {
+			*remainder = (remaind) ? dividend : 0;
+		}
+		return (remaind) ? 0 : 1;
+	}
+
+	remaind = 0;
+	num_bits = do_fls64(dividend);
+	dividend = dividend << (64 - num_bits);
+	p = (u8 *)&dividend;
+	q = (u8 *)&quotient;
+	q[7] = byte_reverse_table[p[0]]; 
+	q[6] = byte_reverse_table[p[1]]; 
+	q[5] = byte_reverse_table[p[2]]; 
+	q[4] = byte_reverse_table[p[3]];
+	q[3] = byte_reverse_table[p[4]]; 
+	q[2] = byte_reverse_table[p[5]]; 
+	q[1] = byte_reverse_table[p[6]]; 
+	q[0] = byte_reverse_table[p[7]];
+	dividend = quotient;
+	quotient = 0;
+
+	/* FIXME: Division loop has to be in arch specific assembly code */
+	while (num_bits) {
+		remaind = (remaind << 1) | (dividend & 0x1);
+		dividend = dividend >> 1;
+		if (remaind < divisor) {
+			quotient = ((quotient) << 1) | 0;
+		} else {
+			quotient = ((quotient) << 1) | 1;
+			remaind = remaind - divisor;
+		}
+		num_bits--;
+	}
+
+	if (remainder) {
+		*remainder = remaind;
+	}
+
+	return quotient;
 }
 
 static inline u32 do_fls32(u32 value) 
@@ -111,7 +159,49 @@ static inline u32 do_fls32(u32 value)
 
 u32 do_udiv32(u32 dividend, u32 divisor, u32 * remainder)
 {
-	*remainder = (dividend % divisor);
-	return (dividend / divisor);
-}
+	register u8 *p, *q;
+	u32 num_bits, quotient, remaind;
 
+	if (divisor == 0) {
+		while (1);
+	}
+
+	if (dividend <= divisor) {
+		remaind = divisor - dividend;
+		if (remainder) {
+			*remainder = (remaind) ? dividend : 0;
+		}
+		return (remaind) ? 0 : 1;
+	}
+
+	remaind = 0;
+	num_bits = do_fls32(dividend);
+	dividend = dividend << (32 - num_bits);
+	p = (u8 *)&dividend;
+	q = (u8 *)&quotient;
+	q[3] = byte_reverse_table[p[0]]; 
+	q[2] = byte_reverse_table[p[1]]; 
+	q[1] = byte_reverse_table[p[2]]; 
+	q[0] = byte_reverse_table[p[3]];
+	dividend = quotient;
+	quotient = 0;
+
+	/* FIXME: Division loop has to be in arch specific assembly code */
+	while (num_bits) {
+		remaind = (remaind << 1) | (dividend & 0x1);
+		dividend = dividend >> 1;
+		if (remaind < divisor) {
+			quotient = ((quotient) << 1) | 0;
+		} else {
+			quotient = ((quotient) << 1) | 1;
+			remaind = remaind - divisor;
+		}
+		num_bits--;
+	}
+
+	if (remainder) {
+		*remainder = remaind;
+	}
+
+	return quotient;
+}

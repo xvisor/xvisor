@@ -30,7 +30,7 @@ void * dhry_malloc(unsigned int size)
 
 TimeStamp dhry_timestamp(void)
 {
-	return arm_udiv64(arm_board_timer_timestamp(), 1000);
+	return arch_udiv64(arm_board_timer_timestamp(), 1000);
 }
 
 long dhry_to_microsecs(TimeStamp UserTime)
@@ -40,7 +40,7 @@ long dhry_to_microsecs(TimeStamp UserTime)
 
 long dhry_iter_per_sec(TimeStamp UserTime, int Number_Of_Runs)
 {
-	return arm_udiv64(((TimeStamp)Number_Of_Runs * (TimeStamp)1000000),
+	return arch_udiv64(((TimeStamp)Number_Of_Runs * (TimeStamp)1000000),
 								 UserTime);
 }
 
@@ -80,4 +80,3 @@ void dhry_printll(unsigned long long val)
 	arm_ulonglong2str(tmp, val);
 	arm_puts(tmp);
 }
-

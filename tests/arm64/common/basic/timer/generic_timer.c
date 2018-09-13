@@ -23,7 +23,6 @@
  */
 
 #include <arm_irq.h>
-#include <arm_math.h>
 #include <arm_inline_asm.h>
 #include <timer/generic_timer.h>
 

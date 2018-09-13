@@ -21,8 +21,8 @@
  * @brief source file for common string functions
  */
 
+#include <arch_math.h>
 #include <arm_string.h>
-#include <arm_math.h>
 
 void *arm_memcpy(void *dest, const void *src, unsigned int count)
 {

@@ -314,7 +314,7 @@ void dhry_main (int iterations)
     dhry_printi (Dhrystones_Per_Second);
     dhry_prints (" \n");
     dhry_prints ("Dhrystones MIPS:                            ");
-    dhry_printi (arm_sdiv32(Dhrystones_Per_Second, 1757));
+    dhry_printi (dhry_sdiv32(Dhrystones_Per_Second, 1757));
     dhry_prints (" \n");
     dhry_prints ("\n");
   }

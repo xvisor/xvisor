@@ -23,7 +23,7 @@
  */
 
 #include <arm_irq.h>
-#include <arm_math.h>
+#include <arch_math.h>
 #include <arm_stdio.h>
 #include <arm_inline_asm.h>
 #include <timer/generic_timer.h>
@@ -97,7 +97,7 @@ void generic_timer_disable(void)
 
 void generic_timer_change_period(u32 usec)
 {
-	timer_period_ticks = (arm_udiv64(timer_freq, 1000000) * usec);
+	timer_period_ticks = (arch_udiv64(timer_freq, 1000000) * usec);
 
 	write_cntv_tval(timer_period_ticks);
 }
@@ -172,7 +172,7 @@ static void calc_mult_shift(u64 *mult, u32 *shift,
         for (sft = 32; sft > 0; sft--) {
                 tmp = (u64) to << sft;
                 tmp += from / 2;
-                tmp = arm_udiv64(tmp, from);
+                tmp = arch_udiv64(tmp, from);
                 if ((tmp >> sftacc) == 0)
                         break;
         }
@@ -190,7 +190,7 @@ int generic_timer_init(u32 usecs, u32 irq)
 
 	calc_mult_shift(&timer_mult, &timer_shift, timer_freq, 1000000000, 1);
 
-	timer_period_ticks = (arm_udiv64(timer_freq, 1000000) * usecs);
+	timer_period_ticks = (arch_udiv64(timer_freq, 1000000) * usecs);
 
 	arm_irq_register(irq, &generic_timer_irqhndl);
 

@@ -21,12 +21,12 @@
  * @brief basic firmware main file
  */
 
+#include <arch_math.h>
 #include <arm_cache.h>
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
-#include <arm_math.h>
 #include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
@@ -404,7 +404,7 @@ void arm_cmd_copy(int argc, char **argv)
 
 	/* Enable timer and get end timestamp */
 	tstamp = arm_timer_timestamp() - tstamp;
-	tstamp = arm_udiv64(tstamp, 1000);
+	tstamp = arch_udiv64(tstamp, 1000);
 	arm_timer_enable();
 
 	/* Print time taken */

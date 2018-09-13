@@ -18,7 +18,7 @@
 #ifndef __DHRY_PORT_H_
 #define __DHRY_PORT_H_
 
-#include <arm_math.h>
+#include <arch_math.h>
 
 #define REG register
 
@@ -26,7 +26,7 @@ typedef unsigned long long TimeStamp;
 
 #define Too_Small_Time  (TimeStamp)1000000
 
-#define dhry_sdiv32(v, d)	arm_sdiv32((v), (d))
+#define dhry_sdiv32(v, d)	arch_sdiv32((v), (d))
 
 void * dhry_malloc(unsigned int size);
 TimeStamp dhry_timestamp(void);

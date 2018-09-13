@@ -22,8 +22,8 @@
  */
 
 #include <arm_board.h>
+#include <arch_math.h>
 #include <arm_stdio.h>
-#include <arm_math.h>
 
 void arm_stdio_init(void)
 {
