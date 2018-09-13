@@ -23,7 +23,7 @@
 #ifndef _GIC_H__
 #define _GIC_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 #include <arm_plat.h>
 
 #define GIC_CPU_CTRL			0x00

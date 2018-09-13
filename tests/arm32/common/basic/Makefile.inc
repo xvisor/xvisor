@@ -105,7 +105,7 @@ FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS) $(board_ldfl
 FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
                 $(common_arch_dir)/arm_math.h \
                 $(common_arch_dir)/arm_defines.h \
-                $(common_arch_dir)/arm_types.h \
+                $(common_arch_dir)/arch_types.h \
                 $(common_arch_dir)/arm_board.h \
                 $(common_arch_dir)/arm_heap.h \
                 $(common_arch_dir)/arm_inline_asm.h \

@@ -23,7 +23,7 @@
 #ifndef _ARM_GENERIC_TIMER_H__
 #define _ARM_GENERIC_TIMER_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void generic_timer_enable(void);
 void generic_timer_disable(void);

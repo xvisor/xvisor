@@ -24,7 +24,7 @@
 #ifndef __ARM_MATH_H_
 #define __ARM_MATH_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define do_abs(x)  ((x) < 0 ? -(x) : (x))
 

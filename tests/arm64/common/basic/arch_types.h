@@ -16,12 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_types.h
+ * @file arch_types.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief common header file for typedefs
  */
-#ifndef _ARM_TYPES_H__
-#define _ARM_TYPES_H__
+#ifndef __ARCH_TYPES_H__
+#define __ARCH_TYPES_H__
 
 typedef char s8;
 typedef short s16;
@@ -44,21 +44,21 @@ typedef unsigned int ulong;
 typedef long long s64;
 typedef unsigned long long u64;
 typedef unsigned int irq_flags_t;
-typedef unsigned int virtual_addr_t;
-typedef unsigned int virtual_size_t;
-typedef unsigned int physical_addr_t;
-typedef unsigned int physical_size_t;
+typedef unsigned long virtual_addr_t;
+typedef unsigned long virtual_size_t;
+typedef unsigned long physical_addr_t;
+typedef unsigned long physical_size_t;
 
 typedef struct {
 	volatile long counter;
 } atomic_t;
 
 struct pt_regs {
-	u32 cpsr;	// Current Program Status
-	u32 gpr[13];	// R0 - R12
-	u32 sp;
-	u32 lr;
-	u32 pc;
+	u64 gpr[30];	/* X0 - X29 */
+	u64 lr;
+	u64 sp;		/* Stack Pointer */
+	u64 pc;		/* Program Counter */
+	u64 pstate; 	/* PState/SPSR */
 } __attribute ((packed)) ;
 
 #define _swab32(x) ((u32)(				\
@@ -85,4 +85,4 @@ struct pt_regs {
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
 
-#endif /* __ARM_TYPES_H__ */
+#endif /* __ARCH_TYPES_H__ */

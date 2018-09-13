@@ -23,7 +23,7 @@
 #ifndef _ARM_IMX_GPT_H__
 #define _ARM_IMX_GPT_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void imx_gpt_enable(void);
 void imx_gpt_disable(void);

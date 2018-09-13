@@ -23,7 +23,7 @@
 #ifndef _ARM_BOARD_H__
 #define _ARM_BOARD_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void arm_board_reset(void);
 void arm_board_init(void);

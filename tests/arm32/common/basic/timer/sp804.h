@@ -23,7 +23,7 @@
 #ifndef _ARM_SP804_H__
 #define _ARM_SP804_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void sp804_enable(void);
 void sp804_disable(void);

@@ -24,7 +24,7 @@
 #ifndef __ARM_MMU_H_
 #define __ARM_MMU_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void arm_mmu_syscall(struct pt_regs *regs);
 void arm_mmu_prefetch_abort(struct pt_regs *regs);

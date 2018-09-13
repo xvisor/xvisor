@@ -23,7 +23,7 @@
 #ifndef __VMINFO_H__
 #define __VMINFO_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 u32 vminfo_magic(virtual_addr_t base);
 u32 vminfo_vendor(virtual_addr_t base);

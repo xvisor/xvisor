@@ -23,7 +23,7 @@
 #ifndef __ARM_INLINE_ASM_H__
 #define __ARM_INLINE_ASM_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define rev16(val)		({ u16 rval; asm volatile(\
 				" rev16   %0, %1\n\t" : "=r" (rval) : \

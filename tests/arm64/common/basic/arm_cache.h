@@ -23,7 +23,7 @@
 #ifndef _ARM_CACHE_H__
 #define _ARM_CACHE_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 /** Invalidate all instruction caches */
 void arm_invalidate_icache(void);

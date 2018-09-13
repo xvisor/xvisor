@@ -23,7 +23,7 @@
 #ifndef __PL190_H__
 #define __PL190_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define PL190_IRQ_STATUS                  0x00
 #define PL190_FIQ_STATUS                  0x04

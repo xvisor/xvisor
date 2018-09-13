@@ -24,7 +24,7 @@
 #ifndef __ARM_HEAP_H_
 #define __ARM_HEAP_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void * arm_malloc(size_t size);
 void arm_heap_init(void);

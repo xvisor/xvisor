@@ -21,7 +21,7 @@
  * @brief various platform specific functions
  */
 
-#include <arm_types.h>
+#include <arch_types.h>
 #include <arm_io.h>
 #include <arm_math.h>
 #include <arm_string.h>

@@ -21,7 +21,7 @@
 #ifndef _LIBFDT_ENV_H
 #define _LIBFDT_ENV_H
 
-#include <arm_types.h>
+#include <arch_types.h>
 #include <arm_stdio.h>
 #include <arm_string.h>
 

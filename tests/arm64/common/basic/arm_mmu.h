@@ -24,7 +24,7 @@
 #ifndef __ARM_MMU_H_
 #define __ARM_MMU_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void arm_sync_abort(struct pt_regs *regs);
 void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail);

@@ -24,7 +24,7 @@
 #ifndef __ARM_STDIO_H_
 #define __ARM_STDIO_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define __printf(a, b)		__attribute__((format(printf, a, b)))
 

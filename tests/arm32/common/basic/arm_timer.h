@@ -23,7 +23,7 @@
 #ifndef _ARM_TIMER_H__
 #define _ARM_TIMER_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 #include <arm_board.h>
 
 static inline void arm_timer_enable(void)

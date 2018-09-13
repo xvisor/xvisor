@@ -24,7 +24,7 @@
 #ifndef __PL01X_H_
 #define __PL01X_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define PL01X_TYPE_0			0
 #define PL01X_TYPE_1			1

@@ -26,8 +26,7 @@
 
 #include <arm_string.h>
 #include <arm_stdio.h>
-#include <ctype.h>
-#include <arm_types.h>
+#include <arch_types.h>
 #include <libfdt/fdt.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>

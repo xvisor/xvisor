@@ -23,7 +23,7 @@
 #ifndef __ARM_INLINE_ASM_H__
 #define __ARM_INLINE_ASM_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 #define read_sctlr()		({ u32 rval; asm volatile(\
 				" mrc     p15, 0, %0, c1, c0, 0\n\t" \

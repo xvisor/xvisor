@@ -25,7 +25,7 @@
 #ifndef __IMX_H_
 #define __IMX_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 /* Register definitions */
 #define URXD0 0x0  /* Receiver Register */

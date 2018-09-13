@@ -24,7 +24,7 @@
 #ifndef __ARM_STRING_H_
 #define __ARM_STRING_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 void *arm_memcpy(void *dest, const void *src, unsigned int count);
 void *arm_memmove(void *dest, const void *src, unsigned int count);

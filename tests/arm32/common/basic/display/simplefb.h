@@ -23,7 +23,7 @@
 #ifndef __SIMPLEFB_H__
 #define __SIMPLEFB_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 u32 simplefb_magic(virtual_addr_t base);
 u32 simplefb_vendor(virtual_addr_t base);

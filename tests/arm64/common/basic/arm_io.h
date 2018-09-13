@@ -24,7 +24,7 @@
 #ifndef __ARM_IO_H_
 #define __ARM_IO_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 static inline u32 arm_readl(void *addr)
 {

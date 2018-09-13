@@ -24,7 +24,7 @@
 #ifndef __VIRTIO_CONSOLE_H_
 #define __VIRTIO_CONSOLE_H_
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 /* VirtIO MMIO */
 #define VIRTIO_MMIO_DEVICE_ID		0x008

@@ -23,7 +23,7 @@
 #ifndef _ARM_IRQ_H__
 #define _ARM_IRQ_H__
 
-#include <arm_types.h>
+#include <arch_types.h>
 
 typedef int (*arm_irq_handler_t) (u32 irq_no, struct pt_regs * regs);
 
