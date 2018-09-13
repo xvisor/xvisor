@@ -46,7 +46,6 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/serial/pl01x.o \
                    $(obj_dir)/sys/vminfo.o \
                    $(obj_dir)/display/simplefb.o
-board_fdt_support = y
 board_secure_extn = y
 board_smp	  = y
 

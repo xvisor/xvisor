@@ -101,7 +101,6 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
 	arm_puts("            <initrd_size>  = initrd size (optional)\n");
 	arm_puts("\n");
-#ifdef BOARD_FDT_SUPPORT
 	arm_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
 	arm_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
 	arm_puts("            <kernel_addr>  = kernel load address\n");
@@ -112,7 +111,6 @@ void arm_cmd_help(int argc, char **argv)
 	arm_puts("fdt_override_u32 - Overrides an integer property in the device tree\n");
 	arm_puts("            Usage: fdt_override_u32 <fdt_addr> </path/to/property> <value>\n");
 	arm_puts("\n");
-#endif
 	arm_puts("linux_cmdline - Show/Update linux command line\n");
 	arm_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
 	arm_puts("            <new_linux_cmdline>  = linux command line\n");
@@ -528,7 +526,6 @@ void arm_cmd_start_linux(int argc, char **argv)
 	return;
 }
 
-#ifdef BOARD_FDT_SUPPORT
 void arm_cmd_start_linux_fdt(int argc, char **argv)
 {
 	u32 kernel_addr, fdt_addr;
@@ -656,7 +653,6 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 		return;
 	}
 }
-#endif
 
 void arm_cmd_linux_cmdline(int argc, char **argv)
 {
@@ -856,12 +852,10 @@ void arm_exec(char *line)
 			arm_cmd_copy(argc, argv);
 		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
-#ifdef BOARD_FDT_SUPPORT
 		} else if (arm_strcmp(argv[0], "start_linux_fdt") == 0) {
 			arm_cmd_start_linux_fdt(argc, argv);
                 } else if (arm_strcmp(argv[0], "fdt_override_u32") == 0) {
 			arm_cmd_fdt_override_u32(argc, argv);
-#endif
 		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
 			arm_cmd_linux_cmdline(argc, argv);
 		} else if (arm_strcmp(argv[0], "linux_memory_size") == 0) {

@@ -38,7 +38,6 @@ objdir          = $(patsubst $(basedir)/%,$(builddir)/%, $(srcdir))
 # board features
 BOARD_SMP = y
 BOARD_SECURE_EXTN = n
-BOARD_FDT_SUPPORT = n
 
 BOARD_TEXT_START     = 0x48000000
 BOARD_USR_STACK_SIZE = 16384
@@ -87,9 +86,6 @@ CPPFLAGS += -DBOARD_SMP
 endif
 ifeq ($(BOARD_SECURE_EXTN),y)
 CPPFLAGS += -DARM_SECURE_EXTN_IMPLEMENTED
-endif
-ifeq ($(BOARD_FDT_SUPPORT),y)
-CPPFLAGS += -DBOARD_FDT_SUPPORT
 endif
 
 CFLAGS  = -mtune=cortex-a9 -march=armv7-a -Wall -Werror  \

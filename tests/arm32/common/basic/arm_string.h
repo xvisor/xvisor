@@ -40,6 +40,7 @@ int arm_str2int(char * src);
 void arm_int2str(char * dst, int src);
 void arm_ulonglong2str(char * dst, unsigned long long src);
 unsigned int arm_hexstr2uint(char * src);
+unsigned long long arm_hexstr2ulonglong(char * src);
 void arm_uint2hexstr(char * dst, unsigned int src);
 void arm_ulonglong2hexstr(char * dst, unsigned long long src);
 char *arm_strrchr(const char *src, int c);

@@ -290,6 +290,29 @@ unsigned int arm_hexstr2uint(char * src)
 	return val;
 }
 
+unsigned long long arm_hexstr2ulonglong(char * src)
+{
+	unsigned long long val = 0x0;
+	int pos = 0;
+
+	if ((src[0] == '0') && (src[1] == 'x')) {
+		pos = 2;
+	}
+
+	while (src[pos]) {
+		if (('0' <= src[pos]) && (src[pos] <= '9')) {
+			val = val * 16 + (src[pos] - '0');
+		} else if (('A' <= src[pos]) && (src[pos] <= 'F')) {
+			val = val * 16 + (src[pos] - 'A' + 10);
+		} else if (('a' <= src[pos]) && (src[pos] <= 'f')) {
+			val = val * 16 + (src[pos] - 'a' + 10);
+		}
+		pos++;
+	}
+
+	return val;
+}
+
 void arm_uint2hexstr(char * dst, unsigned int src)
 {
 	int ite, pos = 0;

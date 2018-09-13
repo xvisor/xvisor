@@ -496,7 +496,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	}
 	sprintf(cfg_str, " mem=%dM", (int)(meminfo[1] >> 20));
 	arm_strcat(linux_cmdline, cfg_str);
-	if ((err = fdt_chosen((void *)fdt_addr, 1))) {
+	if ((err = fdt_chosen((void *)fdt_addr, 1, linux_cmdline))) {
 		arm_printf("%s: fdt_chosen() failed: %s\n", __func__, 
 				fdt_strerror(err));
 		return;

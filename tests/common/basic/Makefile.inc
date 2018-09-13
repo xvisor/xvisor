@@ -21,6 +21,20 @@
 # @brief common makefile to build basic firmware
 # */
 
+FIRMWARE_COMMON_DEPS+= $(common_dir)/libfdt/fdt.h \
+			$(common_dir)/libfdt/fdt_support.h \
+			$(common_dir)/libfdt/libfdt.h \
+			$(common_dir)/libfdt/libfdt_env.h \
+			$(common_dir)/libfdt/libfdt_internal.h
+
+FIRMWARE_OBJS+= $(obj_dir)/libfdt/fdt.o \
+		$(obj_dir)/libfdt/fdt_ro.o \
+		$(obj_dir)/libfdt/fdt_rw.o \
+		$(obj_dir)/libfdt/fdt_strerror.o \
+		$(obj_dir)/libfdt/fdt_support.o \
+		$(obj_dir)/libfdt/fdt_sw.o \
+		$(obj_dir)/libfdt/fdt_wip.o
+
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
 

@@ -44,14 +44,7 @@ FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/arm_string.o \
 		$(obj_dir)/dhry_1.o \
 		$(obj_dir)/dhry_2.o \
-		$(obj_dir)/dhry_port.o \
-		$(obj_dir)/libfdt/fdt.o \
-		$(obj_dir)/libfdt/fdt_ro.o \
-		$(obj_dir)/libfdt/fdt_rw.o \
-		$(obj_dir)/libfdt/fdt_strerror.o \
-		$(obj_dir)/libfdt/fdt_support.o \
-		$(obj_dir)/libfdt/fdt_sw.o \
-		$(obj_dir)/libfdt/fdt_wip.o
+		$(obj_dir)/dhry_port.o
 
 FIRMWARE_CPPFLAGS=-DFIRMWARE_BOOT
 FIRMWARE_CFLAGS=$(FIRMWARE_CPPFLAGS)
@@ -71,12 +64,7 @@ FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
                 $(common_arch_dir)/arm_irq.h \
                 $(common_arch_dir)/arm_mmu.h \
                 $(common_arch_dir)/arm_stdio.h \
-                $(common_arch_dir)/arm_string.h \
-                $(common_arch_dir)/libfdt/fdt.h \
-                $(common_arch_dir)/libfdt/fdt_support.h \
-                $(common_arch_dir)/libfdt/libfdt.h \
-                $(common_arch_dir)/libfdt/libfdt_env.h \
-                $(common_arch_dir)/libfdt/libfdt_internal.h
+                $(common_arch_dir)/arm_string.h
 
 # Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc

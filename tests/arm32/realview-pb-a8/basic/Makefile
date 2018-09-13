@@ -45,7 +45,6 @@ board_objs       = $(obj_dir)/arm_board.o \
                    $(obj_dir)/timer/sp804.o \
                    $(obj_dir)/serial/pl01x.o \
                    $(obj_dir)/sys/vminfo.o
-board_fdt_support = y
 
 board_cppflags   =
 board_cflags     = -mtune=cortex-a8
