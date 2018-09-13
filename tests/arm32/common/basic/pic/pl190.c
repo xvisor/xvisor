@@ -21,7 +21,7 @@
  * @brief PL190 Vectored Interrupt Controller source
  */
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <pic/pl190.h>
 
 #define VERSATILE_VIC_MAX_NR	1
@@ -35,12 +35,12 @@ static struct pl190_chip_data pl190_data[VERSATILE_VIC_MAX_NR];
 
 static inline void pl190_write(u32 val, virtual_addr_t addr)
 {
-	arm_writel(val, (void *)(addr));
+	arch_writel(val, (void *)(addr));
 }
 
 static inline u32 pl190_read(virtual_addr_t addr)
 {
-	return arm_readl((void *)(addr));
+	return arch_readl((void *)(addr));
 }
 
 int pl190_active_irq(u32 pl190_nr)

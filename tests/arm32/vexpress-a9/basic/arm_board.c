@@ -22,7 +22,7 @@
  */
 
 #include <arch_types.h>
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_math.h>
 #include <arm_string.h>
 #include <arm_board.h>
@@ -36,9 +36,9 @@
 
 void arm_board_reset(void)
 {
-	arm_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
-	arm_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
-	arm_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
+	arch_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
+	arch_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
+	arch_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
 }
 
 void arm_board_init(void)
@@ -449,8 +449,8 @@ int arm_board_timer_init(u32 usecs)
 
 	irq = IRQ_V2M_TIMER0;
 
-	val = arm_readl((void *)V2M_SYSCTL) | SCCTRL_TIMEREN0SEL_TIMCLK;
-	arm_writel(val, (void *)V2M_SYSCTL);
+	val = arch_readl((void *)V2M_SYSCTL) | SCCTRL_TIMEREN0SEL_TIMCLK;
+	arch_writel(val, (void *)V2M_SYSCTL);
 
 	return sp804_init(usecs, V2M_TIMER0, irq, 
 			  counter_mask, counter_mult, counter_shift);

@@ -22,7 +22,7 @@
  */
 
 #include <arch_types.h>
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_math.h>
 #include <arm_string.h>
 #include <arm_board.h>
@@ -36,16 +36,16 @@
 
 void arm_board_reset(void)
 {
-        arm_writel(0x0,
+        arch_writel(0x0,
                    (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-        arm_writel(0x08,
+        arch_writel(0x08,
                    (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
 }
 
 void arm_board_init(void)
 {
 	/* Unlock Lockable reigsters */
-	arm_writel(REALVIEW_SYS_LOCKVAL,
+	arch_writel(REALVIEW_SYS_LOCKVAL,
                    (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
 }
 
@@ -481,8 +481,8 @@ int arm_board_timer_init(u32 usecs)
 	 *      REALVIEW_REFCLK is 32KHz
 	 *      REALVIEW_TIMCLK is 1MHz
 	 */
-	val = arm_readl((void *)REALVIEW_SCTL_BASE) | (REALVIEW_TIMCLK << 1);
-	arm_writel(val, (void *)REALVIEW_SCTL_BASE);
+	val = arch_readl((void *)REALVIEW_SCTL_BASE) | (REALVIEW_TIMCLK << 1);
+	arch_writel(val, (void *)REALVIEW_SCTL_BASE);
 
 	return sp804_init(usecs, REALVIEW_TIMER0_1_BASE, irq, 
 			  counter_mask, counter_mult, counter_shift);

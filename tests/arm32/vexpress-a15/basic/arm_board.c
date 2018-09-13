@@ -22,7 +22,7 @@
  */
 
 #include <arch_types.h>
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_math.h>
 #include <arm_string.h>
 #include <arm_board.h>
@@ -36,9 +36,9 @@
 
 void arm_board_reset(void)
 {
-	arm_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
-	arm_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
-	arm_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
+	arch_writel(~0x0, (void *)(V2M_SYS_FLAGSCLR));
+	arch_writel(0x0, (void *)(V2M_SYS_FLAGSSET));
+	arch_writel(0xc0900000, (void *)(V2M_SYS_CFGCTRL));
 }
 
 void arm_board_init(void)

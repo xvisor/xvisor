@@ -21,8 +21,7 @@
  * @brief Guest/VM Info driver source
  */
 
-#include <arm_io.h>
-#include <arm_math.h>
+#include <arch_io.h>
 #include <sys/vminfo.h>
 
 #define VMINFO_MAGIC_OFFSET		0x00
@@ -48,27 +47,27 @@
 
 u32 vminfo_magic(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + VMINFO_MAGIC_OFFSET));
+	return arch_readl((void *)(base + VMINFO_MAGIC_OFFSET));
 }
 
 u32 vminfo_vendor(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + VMINFO_VENDOR_OFFSET));
+	return arch_readl((void *)(base + VMINFO_VENDOR_OFFSET));
 }
 
 u32 vminfo_version(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + VMINFO_VERSION_OFFSET));
+	return arch_readl((void *)(base + VMINFO_VERSION_OFFSET));
 }
 
 u32 vminfo_vcpu_count(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + VMINFO_VCPU_COUNT_OFFSET));
+	return arch_readl((void *)(base + VMINFO_VCPU_COUNT_OFFSET));
 }
 
 u32 vminfo_boot_delay(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + VMINFO_BOOT_DELAY_OFFSET));
+	return arch_readl((void *)(base + VMINFO_BOOT_DELAY_OFFSET));
 }
 
 physical_addr_t vminfo_ram_base(virtual_addr_t base, u32 bank)
@@ -78,8 +77,8 @@ physical_addr_t vminfo_ram_base(virtual_addr_t base, u32 bank)
 	if (4 <= bank)
 		return 0;
 
-	ms = arm_readl((void *)(base + VMINFO_RAM_BASE_MS_OFFSET(bank)));
-	ls = arm_readl((void *)(base + VMINFO_RAM_BASE_LS_OFFSET(bank)));
+	ms = arch_readl((void *)(base + VMINFO_RAM_BASE_MS_OFFSET(bank)));
+	ls = arch_readl((void *)(base + VMINFO_RAM_BASE_LS_OFFSET(bank)));
 
 	return (physical_addr_t)(((u64)ms << 32) | ((u64)ls));
 }
@@ -91,8 +90,8 @@ physical_size_t vminfo_ram_size(virtual_addr_t base, u32 bank)
 	if (4 <= bank)
 		return 0;
 
-	ms = arm_readl((void *)(base + VMINFO_RAM_SIZE_MS_OFFSET(bank)));
-	ls = arm_readl((void *)(base + VMINFO_RAM_SIZE_LS_OFFSET(bank)));
+	ms = arch_readl((void *)(base + VMINFO_RAM_SIZE_MS_OFFSET(bank)));
+	ls = arch_readl((void *)(base + VMINFO_RAM_SIZE_LS_OFFSET(bank)));
 
 	return (physical_size_t)(((u64)ms << 32) | ((u64)ls));
 }

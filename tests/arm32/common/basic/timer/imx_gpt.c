@@ -22,7 +22,7 @@
  * @brief i.MX6 GPT timer
  */
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_irq.h>
 #include <arm_math.h>
 
@@ -58,18 +58,18 @@ void imx_gpt_enable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(imx_gpt_base + GPT_CR));
+	ctrl = arch_readl((void *)(imx_gpt_base + GPT_CR));
 	ctrl |= GPT_CR_EN;
-	arm_writel(ctrl, (void *)(imx_gpt_base + GPT_CR));
+	arch_writel(ctrl, (void *)(imx_gpt_base + GPT_CR));
 }
 
 void imx_gpt_disable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(imx_gpt_base + GPT_CR));
+	ctrl = arch_readl((void *)(imx_gpt_base + GPT_CR));
 	ctrl &= ~GPT_CR_EN;
-	arm_writel(ctrl, (void *)(imx_gpt_base + GPT_CR));
+	arch_writel(ctrl, (void *)(imx_gpt_base + GPT_CR));
 }
 
 static void imx_gpt_next_event(void)
@@ -77,9 +77,9 @@ static void imx_gpt_next_event(void)
 	u32 cnt = 0;
 
 	if (imx_gpt_freerun) {
-		cnt = arm_readl((void *)(imx_gpt_base + GPT_CNT));
+		cnt = arch_readl((void *)(imx_gpt_base + GPT_CNT));
 	}
-	arm_writel(cnt + imx_gpt_period, (void *)(imx_gpt_base + GPT_OC1));
+	arch_writel(cnt + imx_gpt_period, (void *)(imx_gpt_base + GPT_OC1));
 }
 
 void imx_gpt_change_period(u32 usec)
@@ -87,7 +87,7 @@ void imx_gpt_change_period(u32 usec)
 	u32 rem;
 
 	if (!imx_gpt_freerun) {
-		imx_gpt_timestamp_sum += arm_readl((void *)(imx_gpt_base +
+		imx_gpt_timestamp_sum += arch_readl((void *)(imx_gpt_base +
 							    GPT_CNT));
 	}
 	imx_gpt_period = do_udiv32(usec, (GPT_FREQ / 1000), &rem);
@@ -111,7 +111,7 @@ u64 imx_gpt_timestamp(void)
 	u32 counter = 0;
 	u64 timestamp;
 
-	counter = arm_readl((void *)(imx_gpt_base + GPT_CNT));
+	counter = arch_readl((void *)(imx_gpt_base + GPT_CNT));
 	if (imx_gpt_freerun) {
 		/*
 		 * In freerun mode, we only have to make a 64 bit counter
@@ -149,7 +149,7 @@ int imx_gpt_irqhndl(u32 irq_no, struct pt_regs * regs)
 	}
 
 	imx_gpt_next_event();
-	arm_writel(1, (void *)(imx_gpt_base + GPT_SR));
+	arch_writel(1, (void *)(imx_gpt_base + GPT_SR));
 	imx_gpt_enable();
 
 	return 0;
@@ -166,20 +166,20 @@ int imx_gpt_init(u32 usecs, u32 base, u32 irq, u32 freerun)
 	/* Register interrupt handler */
 	arm_irq_register(imx_gpt_irq, &imx_gpt_irqhndl);
 
-	val = arm_readl((void *)(imx_gpt_base + GPT_CR));
+	val = arch_readl((void *)(imx_gpt_base + GPT_CR));
 	if (freerun) {
 		imx_gpt_freerun = 1;
 		val |= GPT_CR_FRR;
 	}
 	val |= GPT_CR_ENMOD;
-	arm_writel(val, (void *)(imx_gpt_base + GPT_CR));
+	arch_writel(val, (void *)(imx_gpt_base + GPT_CR));
 
 	imx_gpt_disable();
 	imx_gpt_change_period(usecs);
 	imx_gpt_enable();
 
 	/* Setup Timer0 for generating irq */
-	arm_writel(1, (void *)(imx_gpt_base + GPT_IR));
+	arch_writel(1, (void *)(imx_gpt_base + GPT_IR));
 
 	return 0;
 }

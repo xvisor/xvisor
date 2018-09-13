@@ -21,7 +21,7 @@
  * @brief ARM SP804 Dual-Mode Timer source
  */
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_irq.h>
 #include <arm_math.h>
 
@@ -60,23 +60,23 @@ void sp804_enable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(sp804_base + TIMER_CTRL));
+	ctrl = arch_readl((void *)(sp804_base + TIMER_CTRL));
 	ctrl |= TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(sp804_base + TIMER_CTRL));
+	arch_writel(ctrl, (void *)(sp804_base + TIMER_CTRL));
 }
 
 void sp804_disable(void)
 {
 	u32 ctrl;
 
-	ctrl = arm_readl((void *)(sp804_base + TIMER_CTRL));
+	ctrl = arch_readl((void *)(sp804_base + TIMER_CTRL));
 	ctrl &= ~TIMER_CTRL_ENABLE;
-	arm_writel(ctrl, (void *)(sp804_base + TIMER_CTRL));
+	arch_writel(ctrl, (void *)(sp804_base + TIMER_CTRL));
 }
 
 void sp804_change_period(u32 usec)
 {
-        arm_writel(usec, (void *)(sp804_base + TIMER_LOAD));
+        arch_writel(usec, (void *)(sp804_base + TIMER_LOAD));
 }
 
 u64 sp804_irqcount(void)
@@ -92,7 +92,7 @@ u64 sp804_irqdelay(void)
 u64 sp804_timestamp(void)
 {
 	u64 sp804_counter_now, sp804_counter_delta, offset;
-	sp804_counter_now = ~arm_readl((void *)(sp804_base + 0x20 + TIMER_VALUE));
+	sp804_counter_now = ~arch_readl((void *)(sp804_base + 0x20 + TIMER_VALUE));
 	sp804_counter_delta = (sp804_counter_now - sp804_counter_last) & sp804_counter_mask;
 	sp804_counter_last = sp804_counter_now;
 	offset = (sp804_counter_delta * sp804_counter_mult) >> sp804_counter_shift;
@@ -115,7 +115,7 @@ int sp804_irqhndl(u32 irq_no, struct pt_regs * regs)
 	sp804_irq_tcount++;
 	sp804_irq_count++;
 
-	arm_writel(1, (void *)(sp804_base + TIMER_INTCLR));
+	arch_writel(1, (void *)(sp804_base + TIMER_INTCLR));
 
 	return 0;
 }
@@ -143,17 +143,17 @@ int sp804_init(u32 usecs, u32 base, u32 irq,
 	arm_irq_register(sp804_irq, &sp804_irqhndl);
 
 	/* Setup Timer0 for generating irq */
-	val = arm_readl((void *)(sp804_base + TIMER_CTRL));
+	val = arch_readl((void *)(sp804_base + TIMER_CTRL));
 	val &= ~TIMER_CTRL_ENABLE;
 	val |= (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_IE);
-	arm_writel(val, (void *)(sp804_base + TIMER_CTRL));
+	arch_writel(val, (void *)(sp804_base + TIMER_CTRL));
 	sp804_change_period(usecs);
 
 	/* Setup Timer1 for free running counter */
-	arm_writel(0x0, (void *)(sp804_base + 0x20 + TIMER_CTRL));
-	arm_writel(0xFFFFFFFF, (void *)(sp804_base + 0x20 + TIMER_LOAD));
+	arch_writel(0x0, (void *)(sp804_base + 0x20 + TIMER_CTRL));
+	arch_writel(0xFFFFFFFF, (void *)(sp804_base + 0x20 + TIMER_LOAD));
 	val = (TIMER_CTRL_32BIT | TIMER_CTRL_PERIODIC | TIMER_CTRL_ENABLE);
-	arm_writel(val, (void *)(sp804_base + 0x20 + TIMER_CTRL));
+	arch_writel(val, (void *)(sp804_base + 0x20 + TIMER_CTRL));
 
 	return 0;
 }

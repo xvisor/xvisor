@@ -21,8 +21,7 @@
  * @brief ARM Generic Interrupt Controller
  */
 
-#include <arm_io.h>
-#include <arm_stdio.h>
+#include <arch_io.h>
 #include <gic_config.h>
 #include <pic/gic.h>
 
@@ -38,12 +37,12 @@ static struct gic_chip_data gic_data[GIC_MAX_NR];
 
 static inline void gic_write(u32 val, virtual_addr_t addr)
 {
-	arm_writel(val, (void *)(addr));
+	arch_writel(val, (void *)(addr));
 }
 
 static inline u32 gic_read(virtual_addr_t addr)
 {
-	return arm_readl((void *)(addr));
+	return arch_readl((void *)(addr));
 }
 
 int gic_active_irq(u32 gic_nr)

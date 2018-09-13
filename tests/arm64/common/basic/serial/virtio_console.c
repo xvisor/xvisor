@@ -21,7 +21,7 @@
  * @brief Source file for Virtio Console serial port driver.
  */
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <serial/virtio_console.h>
 
 void virtio_console_printch(physical_addr_t base, char ch)
@@ -29,24 +29,24 @@ void virtio_console_printch(physical_addr_t base, char ch)
 	u32 tmp;
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
 
-	tmp = arm_readl((void *)(base + VIRTIO_MMIO_DEVICE_ID));
+	tmp = arch_readl((void *)(base + VIRTIO_MMIO_DEVICE_ID));
 	if (tmp != VIRTIO_ID_CONSOLE) {
 		return;
 	}
 
-	tmp = arm_readl((void *)(base + VIRTIO_MMIO_HOST_FEATURES));
+	tmp = arch_readl((void *)(base + VIRTIO_MMIO_HOST_FEATURES));
 	if (!(tmp & (1 << VIRTIO_CONSOLE_F_EMERG_WRITE))) {
 		return;
 	}
 
-	arm_writel(ch, &p->emerg_wr);
+	arch_writel(ch, &p->emerg_wr);
 }
 
 bool virtio_console_can_getch(physical_addr_t base)
 {
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
 
-	return ((tmp = arm_readl(&p->emerg_wr)) & (1 << 31)) ? TRUE : FALSE;
+	return ((tmp = arch_readl(&p->emerg_wr)) & (1 << 31)) ? TRUE : FALSE;
 }
 
 char virtio_console_getch(physical_addr_t base)
@@ -54,17 +54,17 @@ char virtio_console_getch(physical_addr_t base)
 	u32 tmp;
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
 
-	tmp = arm_readl((void *)(base + VIRTIO_MMIO_DEVICE_ID));
+	tmp = arch_readl((void *)(base + VIRTIO_MMIO_DEVICE_ID));
 	if (tmp != VIRTIO_ID_CONSOLE) {
 		return 0;
 	}
 
-	tmp = arm_readl((void *)(base + VIRTIO_MMIO_HOST_FEATURES));
+	tmp = arch_readl((void *)(base + VIRTIO_MMIO_HOST_FEATURES));
 	if (!(tmp & (1 << VIRTIO_CONSOLE_F_EMERG_WRITE))) {
 		return 0;
 	}
 
-	while (!((tmp = arm_readl(&p->emerg_wr)) & (1 << 31))) ;
+	while (!((tmp = arch_readl(&p->emerg_wr)) & (1 << 31))) ;
 
 	return (char)(tmp & 0xFFU);
 }

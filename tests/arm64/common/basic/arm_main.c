@@ -21,7 +21,6 @@
  * @brief Basic firmware main file
  */
 
-#include <arm_io.h>
 #include <arm_cache.h>
 #include <arm_heap.h>
 #include <arm_mmu.h>

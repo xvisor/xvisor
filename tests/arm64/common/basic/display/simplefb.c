@@ -21,10 +21,9 @@
  * @brief SimpleFB driver source
  */
 
-#include <arm_io.h>
-#include <arm_math.h>
+#include <arch_io.h>
 #include <libfdt/fdt_support.h>
-#include <sys/vminfo.h>
+#include <display/simplefb.h>
 
 #define SIMPLEFB_MAGIC_OFFSET		0x00
 #define SIMPLEFB_VENDOR_OFFSET		0x04
@@ -38,17 +37,17 @@
 
 u32 simplefb_magic(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_MAGIC_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_MAGIC_OFFSET));
 }
 
 u32 simplefb_vendor(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_VENDOR_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_VENDOR_OFFSET));
 }
 
 u32 simplefb_version(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_VERSION_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_VERSION_OFFSET));
 }
 
 u32 simplefb_mode(virtual_addr_t base, char *mode, u32 mode_size)
@@ -64,7 +63,7 @@ u32 simplefb_mode(virtual_addr_t base, char *mode, u32 mode_size)
 
 	len = 0;
 	while (len < mode_size) {
-		mode[len] = arm_readl((void *)(mbase + len * 0x4)) & 0xff;
+		mode[len] = arch_readl((void *)(mbase + len * 0x4)) & 0xff;
 		len++;
 	}
 
@@ -75,23 +74,23 @@ u32 simplefb_mode(virtual_addr_t base, char *mode, u32 mode_size)
 
 u32 simplefb_width(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_WIDTH_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_WIDTH_OFFSET));
 }
 
 u32 simplefb_height(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_HEIGHT_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_HEIGHT_OFFSET));
 }
 
 u32 simplefb_stride(virtual_addr_t base)
 {
-	return arm_readl((void *)(base + SIMPLEFB_STRIDE_OFFSET));
+	return arch_readl((void *)(base + SIMPLEFB_STRIDE_OFFSET));
 }
 
 physical_addr_t simplefb_fb_base(virtual_addr_t base)
 {
-	u32 ms = arm_readl((void *)(base + SIMPLEFB_FB_BASE_MS_OFFSET));
-	u32 ls = arm_readl((void *)(base + SIMPLEFB_FB_BASE_LS_OFFSET));
+	u32 ms = arch_readl((void *)(base + SIMPLEFB_FB_BASE_MS_OFFSET));
+	u32 ls = arch_readl((void *)(base + SIMPLEFB_FB_BASE_LS_OFFSET));
 
 	return (physical_addr_t)(((u64)ms << 32) | ((u64)ls));
 }

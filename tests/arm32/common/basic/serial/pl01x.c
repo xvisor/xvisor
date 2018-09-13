@@ -21,22 +21,22 @@
  * @brief source file for PrimeCell PL011/PL010 serial port driver.
  */
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_math.h>
 #include <serial/pl01x.h>
 
 void pl01x_putc(u32 base, u32 type, char ch)
 {
 	/* Wait until there is space in the FIFO */
-	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
+	while (arch_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
 
 	/* Send the character */
-	arm_writel(ch, (void*)(base + UART_PL01x_DR));
+	arch_writel(ch, (void*)(base + UART_PL01x_DR));
 }
 
 bool pl01x_can_getc(u32 base, u32 type)
 {
-	return (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE)
+	return (arch_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE)
 		? FALSE : TRUE;
 }
 
@@ -45,14 +45,14 @@ char pl01x_getc(u32 base, u32 type)
 	char data;
 
 	/* Wait until there is data in the FIFO */
-	while (arm_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE);
+	while (arch_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE);
 
-	data = arm_readl((void*)(base + UART_PL01x_DR));
+	data = arch_readl((void*)(base + UART_PL01x_DR));
 
 	/* Check for an error flag */
 	if (data & 0xFFFFFF00) {
 		/* Clear the error */
-		arm_writel(0xFFFFFFFF, (void*)(base + UART_PL01x_ECR));
+		arch_writel(0xFFFFFFFF, (void*)(base + UART_PL01x_ECR));
 		return -1;
 	}
 
@@ -68,7 +68,7 @@ void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
 
 	if(type==PL01X_TYPE_1) {
 		/* First, disable everything */
-		arm_writel(0x0, (void*)(base + UART_PL011_CR));
+		arch_writel(0x0, (void*)(base + UART_PL011_CR));
 
 		/*
 		 * Set baud rate
@@ -83,23 +83,23 @@ void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
 		temp = arm_udiv32((8 * remainder), baudrate);
 		fraction = (temp >> 1) + (temp & 1);
 
-		arm_writel(divider, (void*)(base + UART_PL011_IBRD));
-		arm_writel(fraction, (void*)(base + UART_PL011_FBRD));
+		arch_writel(divider, (void*)(base + UART_PL011_IBRD));
+		arch_writel(fraction, (void*)(base + UART_PL011_FBRD));
 
 		/* Set the UART to be 8 bits, 1 stop bit, 
 		 * no parity, fifo enabled 
 		 */
-		arm_writel((UART_PL011_LCRH_WLEN_8 | UART_PL011_LCRH_FEN),
+		arch_writel((UART_PL011_LCRH_WLEN_8 | UART_PL011_LCRH_FEN),
 			(void*)(base + UART_PL011_LCRH));
 
 		/* Finally, enable the UART */
-		arm_writel((UART_PL011_CR_UARTEN | 
+		arch_writel((UART_PL011_CR_UARTEN | 
 				UART_PL011_CR_TXE | 
 				UART_PL011_CR_RXE),
 			(void*)(base + UART_PL011_CR));
 	} else {
 		/* First, disable everything */
-		arm_writel(0x0, (void*)(base + UART_PL010_CR));
+		arch_writel(0x0, (void*)(base + UART_PL010_CR));
 
 		/* Set baud rate */
 		switch (baudrate) {
@@ -127,17 +127,17 @@ void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
 			divider = UART_PL010_BAUD_38400;
 		}
 
-		arm_writel(((divider & 0xf00) >> 8), 
+		arch_writel(((divider & 0xf00) >> 8), 
 					(void*)(base + UART_PL010_LCRM));
-		arm_writel((divider & 0xff), (void*)(base + UART_PL010_LCRL));
+		arch_writel((divider & 0xff), (void*)(base + UART_PL010_LCRL));
 
 		/* Set the UART to be 8 bits, 1 stop bit, 
 		 * no parity, fifo enabled */
-		arm_writel((UART_PL010_LCRH_WLEN_8 | UART_PL010_LCRH_FEN),
+		arch_writel((UART_PL010_LCRH_WLEN_8 | UART_PL010_LCRH_FEN),
 					(void*)(base + UART_PL010_LCRH));
 
 		/* Finally, enable the UART */
-		arm_writel((UART_PL010_CR_UARTEN), 
+		arch_writel((UART_PL010_CR_UARTEN), 
 					(void*)(base + UART_PL010_CR));
 	}
 }

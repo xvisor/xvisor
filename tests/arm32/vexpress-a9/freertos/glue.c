@@ -24,7 +24,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_irq.h>
 #include <arm_plat.h>
 #include <arm_board.h>
@@ -43,7 +43,7 @@ void arm_mmu_data_abort(struct pt_regs *regs) {}
 static int timer_tick_handler(u32 irq, struct pt_regs *regs)
 {
         FreeRTOS_Tick_Handler();
-        arm_writel(1, (void *)(V2M_TIMER0 + TIMER_INTCLR));
+        arch_writel(1, (void *)(V2M_TIMER0 + TIMER_INTCLR));
         return 0;
 }
 

@@ -22,7 +22,7 @@
  */
 
 #include <arch_types.h>
-#include <arm_io.h>
+#include <arch_io.h>
 #include <arm_math.h>
 #include <arm_string.h>
 #include <arm_board.h>
