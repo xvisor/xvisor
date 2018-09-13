@@ -149,9 +149,9 @@
 #define UTS_RXFULL	 (1<<3)	 /* RxFIFO full */
 #define UTS_SOFTRST	 (1<<0)	 /* Software reset */
 
-bool imx_can_getc(u32 base);
-char imx_getc(u32 base);
-void imx_putc(u32 base, char ch);
-void imx_init(u32 base, u32 baudrate, u32 input_clock);
+bool imx_can_getc(virtual_addr_t base);
+char imx_getc(virtual_addr_t base);
+void imx_putc(virtual_addr_t base, char ch);
+void imx_init(virtual_addr_t base, u32 baudrate, u32 input_clock);
 
 #endif /* __IMX_H_ */

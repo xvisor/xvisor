@@ -50,9 +50,9 @@ struct virtio_console_config {
 	u32 emerg_wr;
 } __attribute__((packed));
 
-void virtio_console_printch(physical_addr_t base, char ch);
-bool virtio_console_can_getch(physical_addr_t base);
-char virtio_console_getch(physical_addr_t base);
-int virtio_console_init(physical_addr_t base);
+void virtio_console_printch(virtual_addr_t base, char ch);
+bool virtio_console_can_getch(virtual_addr_t base);
+char virtio_console_getch(virtual_addr_t base);
+int virtio_console_init(virtual_addr_t base);
 
 #endif /* __VIRTIO_CONSOLE_H_ */

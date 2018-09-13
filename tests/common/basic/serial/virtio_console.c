@@ -24,7 +24,7 @@
 #include <arch_io.h>
 #include <serial/virtio_console.h>
 
-void virtio_console_printch(physical_addr_t base, char ch)
+void virtio_console_printch(virtual_addr_t base, char ch)
 {
 	u32 tmp;
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
@@ -42,14 +42,14 @@ void virtio_console_printch(physical_addr_t base, char ch)
 	arch_writel(ch, &p->emerg_wr);
 }
 
-bool virtio_console_can_getch(physical_addr_t base)
+bool virtio_console_can_getch(virtual_addr_t base)
 {
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
 
 	return ((tmp = arch_readl(&p->emerg_wr)) & (1 << 31)) ? TRUE : FALSE;
 }
 
-char virtio_console_getch(physical_addr_t base)
+char virtio_console_getch(virtual_addr_t base)
 {
 	u32 tmp;
 	struct virtio_console_config *p = (void *)base + VIRTIO_MMIO_CONFIG;
@@ -69,9 +69,8 @@ char virtio_console_getch(physical_addr_t base)
 	return (char)(tmp & 0xFFU);
 }
 
-int virtio_console_init(physical_addr_t base)
+int virtio_console_init(virtual_addr_t base)
 {
 	/* Nothing to do here. */
 	return 0;
 }
-

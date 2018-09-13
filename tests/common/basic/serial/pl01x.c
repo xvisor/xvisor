@@ -25,7 +25,7 @@
 #include <arch_math.h>
 #include <serial/pl01x.h>
 
-void pl01x_putc(u32 base, u32 type, char ch)
+void pl01x_putc(virtual_addr_t base, u32 type, char ch)
 {
 	/* Wait until there is space in the FIFO */
 	while (arch_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_TXFF);
@@ -34,13 +34,13 @@ void pl01x_putc(u32 base, u32 type, char ch)
 	arch_writel(ch, (void*)(base + UART_PL01x_DR));
 }
 
-bool pl01x_can_getc(u32 base, u32 type)
+bool pl01x_can_getc(virtual_addr_t base, u32 type)
 {
 	return (arch_readl((void*)(base + UART_PL01x_FR)) & UART_PL01x_FR_RXFE)
 		? FALSE : TRUE;
 }
 
-char pl01x_getc(u32 base, u32 type)
+char pl01x_getc(virtual_addr_t base, u32 type)
 {
 	char data;
 
@@ -59,7 +59,7 @@ char pl01x_getc(u32 base, u32 type)
 	return data;
 }
 
-void pl01x_init(u32 base, u32 type, u32 baudrate, u32 input_clock)
+void pl01x_init(virtual_addr_t base, u32 type, u32 baudrate, u32 input_clock)
 {
 	unsigned int divider;
 	unsigned int temp;

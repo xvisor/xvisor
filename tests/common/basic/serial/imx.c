@@ -27,7 +27,7 @@
 #include <arch_math.h>
 #include <serial/imx.h>
 
-void imx_putc(u32 base, char ch)
+void imx_putc(virtual_addr_t base, char ch)
 {
 	/* Wait until there is space in the FIFO */
 	while (!(arch_readw((void*)(base + USR1)) & USR1_TRDY)) {
@@ -38,12 +38,12 @@ void imx_putc(u32 base, char ch)
 	arch_writeb(ch, (void*)(base + URTX0));
 }
 
-bool imx_can_getc(u32 base)
+bool imx_can_getc(virtual_addr_t base)
 {
 	return (arch_readw((void*)(base + USR2)) & USR2_RDR) ? TRUE : FALSE;
 }
 
-char imx_getc(u32 base)
+char imx_getc(virtual_addr_t base)
 {
 	u16 data;
 
@@ -64,7 +64,7 @@ char imx_getc(u32 base)
 	return data;
 }
 
-void imx_init(u32 base, u32 baudrate, u32 input_clock)
+void imx_init(virtual_addr_t base, u32 baudrate, u32 input_clock)
 {
 	unsigned int temp;
 
