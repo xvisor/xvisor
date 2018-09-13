@@ -24,7 +24,9 @@
 
 #include <arm_asm_macro.h>
 #include <gic_config.h>
-#include <arm_plat.h>
+#ifdef BOARD_SMP
+#include <arch_smp.h>
+#endif
 
 	/* 
 	 * Basic firmware could be loaded any where in memory by 
@@ -164,7 +166,7 @@ _secondary_loop:
 _gic_cpu_addr:
 	.word	GIC_CPU_BASE
 _spin_addr:
-	.word 	ARM_PLAT_SPIN_ADDR
+	.word 	ARCH_SMP_SPIN_ADDR
 #endif
 
 	.section .expvect, "ax", %progbits

@@ -25,7 +25,7 @@
 
 #include <arm_asm_macro.h>
 #include <gic_config.h>
-#include <arm_plat.h>
+#include <arch_smp.h>
 
 .extern FreeRTOS_IRQ_Handler
 .extern FreeRTOS_SWI_Handler
@@ -168,7 +168,7 @@ _secondary_loop:
 _gic_cpu_addr:
 	.word	GIC_CPU_BASE
 _sys_flags_addr:
-	.word 	ARM_PLAT_SPIN_ADDR
+	.word 	ARCH_SMP_SPIN_ADDR
 #endif
 
 	.section .expvect, "ax", %progbits

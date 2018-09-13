@@ -259,6 +259,5 @@
  * Defines required by basic firmware
  */
 #define IMX_VMINFO_BASE			0x0220b000
-#define ARM_PLAT_SPIN_ADDR		(V2M_SYS_FLAGS)
 
 #endif

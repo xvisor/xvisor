@@ -61,9 +61,4 @@
 
 #define IRQ_VIRT_TIMER			IRQ_VIRT_V7_VIRT_TIMER
 
-/*
- * Defines required by common code
- */
-#define ARM_PLAT_SPIN_ADDR		(VIRT_V7_RAM0)
-
 #endif

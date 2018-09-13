@@ -334,6 +334,5 @@
  * Defines required by basic firmware
  */
 #define REALVIEW_VMINFO_BASE		0x20000000
-#define ARM_PLAT_SPIN_ADDR		(REALVIEW_SYS_FLAGSSET)
 
 #endif

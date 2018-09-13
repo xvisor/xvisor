@@ -24,7 +24,6 @@
 #define _GIC_H__
 
 #include <arch_types.h>
-#include <arm_plat.h>
 
 #define GIC_CPU_CTRL			0x00
 #define GIC_CPU_PRIMASK			0x04
