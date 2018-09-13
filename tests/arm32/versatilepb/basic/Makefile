@@ -35,7 +35,8 @@ else
 endif
 
 obj_dir=$(build_dir)/tests/arm32/versatilepb/basic
-common_dir=$(top_dir)/tests/arm32/common/basic
+common_dir=$(top_dir)/tests/common/basic
+common_arch_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v5
 board_text_start = 0x04000000
@@ -51,6 +52,6 @@ board_cflags     =
 board_asflags    =
 board_ldflags    =
 
-# Include common makefile for basic firmware
-include $(common_dir)/Makefile.inc
+# Include common arch makefile for basic firmware
+include $(common_arch_dir)/Makefile.inc
 
