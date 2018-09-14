@@ -21,14 +21,16 @@
 # @brief common makefile to build basic firmware
 # */
 
-FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_string.h \
+FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_stdio.h \
+			$(common_dir)/basic_string.h \
 			$(common_dir)/libfdt/fdt.h \
 			$(common_dir)/libfdt/fdt_support.h \
 			$(common_dir)/libfdt/libfdt.h \
 			$(common_dir)/libfdt/libfdt_env.h \
 			$(common_dir)/libfdt/libfdt_internal.h
 
-FIRMWARE_OBJS+= $(obj_dir)/basic_string.o \
+FIRMWARE_OBJS+= $(obj_dir)/basic_stdio.o \
+		$(obj_dir)/basic_string.o \
 		$(obj_dir)/libfdt/fdt.o \
 		$(obj_dir)/libfdt/fdt_ro.o \
 		$(obj_dir)/libfdt/fdt_rw.o \

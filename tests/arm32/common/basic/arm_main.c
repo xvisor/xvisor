@@ -27,8 +27,8 @@
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arm_timer.h>
-#include <arm_stdio.h>
 #include <arm_board.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
@@ -45,7 +45,7 @@ void arm_init(void)
 
 	arm_irq_setup();
 
-	arm_stdio_init();
+	basic_stdio_init();
 
 	arm_timer_init(10000);
 
@@ -60,93 +60,93 @@ void arm_init(void)
 
 void arm_cmd_help(int argc, char **argv)
 {
-	arm_puts("help        - List commands and their usage\n");
-	arm_puts("\n");
-	arm_puts("hi          - Say hi to basic firmware\n");
-	arm_puts("\n");
-	arm_puts("hello       - Say hello to basic firmware\n");
-	arm_puts("\n");
-	arm_puts("wfi_test    - Run wait for irq instruction test for basic firmware\n");
-	arm_puts("            Usage: wfi_test [<msecs>]\n");
-	arm_puts("            <msecs>  = delay in milliseconds to wait for\n");
-	arm_puts("\n");
-	arm_puts("mmu_setup   - Setup MMU for basic firmware\n");
-	arm_puts("\n");
-	arm_puts("mmu_state   - MMU is enabled/disabled for basic firmware\n");
-	arm_puts("\n");
-	arm_puts("mmu_test    - Run MMU test suite for basic firmware\n");
-	arm_puts("\n");
-	arm_puts("mmu_cleanup - Cleanup MMU for basic firmware\n");
-	arm_puts("\n");
-	arm_puts("timer       - Display timer information\n");
-	arm_puts("\n");
-	arm_puts("dhrystone   - Dhrystone 2.1 benchmark\n");
-	arm_puts("            Usage: dhrystone [<iterations>]\n");
-	arm_puts("\n");
-	arm_puts("hexdump     - Dump memory contents in hex format\n");
-	arm_puts("            Usage: hexdump <addr> <count>\n");
-	arm_puts("            <addr>  = memory address in hex\n");
-	arm_puts("            <count> = byte count in hex\n");
-	arm_puts("\n");
-	arm_puts("copy        - Copy to target memory from source memory\n");
-	arm_puts("            Usage: copy <dest> <src> <count>\n");
-	arm_puts("            <dest>  = destination address in hex\n");
-	arm_puts("            <src>   = source address in hex\n");
-	arm_puts("            <count> = byte count in hex\n");
-	arm_puts("\n");
-	arm_puts("start_linux - Start linux kernel (atags mechanism)\n");
-	arm_puts("            Usage: start_linux <kernel_addr> [<initrd_addr>] [<initrd_size>]\n");
-	arm_puts("            <kernel_addr>  = kernel load address\n");
-	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
-	arm_puts("            <initrd_size>  = initrd size (optional)\n");
-	arm_puts("\n");
-	arm_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
-	arm_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
-	arm_puts("            <kernel_addr>  = kernel load address\n");
-	arm_puts("            <fdt_addr>     = fdt blob address\n");
-	arm_puts("            <initrd_addr>  = initrd load address (optional)\n");
-	arm_puts("            <initrd_size>  = initrd size (optional)\n");
-	arm_puts("\n");
-	arm_puts("fdt_override_u32 - Overrides an integer property in the device tree\n");
-	arm_puts("            Usage: fdt_override_u32 <fdt_addr> </path/to/property> <value>\n");
-	arm_puts("\n");
-	arm_puts("linux_cmdline - Show/Update linux command line\n");
-	arm_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
-	arm_puts("            <new_linux_cmdline>  = linux command line\n");
-	arm_puts("\n");
-	arm_puts("linux_memory_size - Show/Update linux memory size\n");
-	arm_puts("            Usage: linux_memory_size [<memory_size>]\n");
-	arm_puts("            <memory_size>  = memory size in hex\n");
-	arm_puts("\n");
-	arm_puts("autoexec    - autoexec command list from flash\n");
-	arm_puts("            Usage: autoexec\n");
-	arm_puts("\n");
-	arm_puts("go          - Jump to a given address\n");
-	arm_puts("            Usage: go <addr>\n");
-	arm_puts("            <addr>  = jump address in hex\n");
-	arm_puts("\n");
-	arm_puts("reset       - Reset the system\n");
-	arm_puts("\n");
+	basic_puts("help        - List commands and their usage\n");
+	basic_puts("\n");
+	basic_puts("hi          - Say hi to basic firmware\n");
+	basic_puts("\n");
+	basic_puts("hello       - Say hello to basic firmware\n");
+	basic_puts("\n");
+	basic_puts("wfi_test    - Run wait for irq instruction test for basic firmware\n");
+	basic_puts("            Usage: wfi_test [<msecs>]\n");
+	basic_puts("            <msecs>  = delay in milliseconds to wait for\n");
+	basic_puts("\n");
+	basic_puts("mmu_setup   - Setup MMU for basic firmware\n");
+	basic_puts("\n");
+	basic_puts("mmu_state   - MMU is enabled/disabled for basic firmware\n");
+	basic_puts("\n");
+	basic_puts("mmu_test    - Run MMU test suite for basic firmware\n");
+	basic_puts("\n");
+	basic_puts("mmu_cleanup - Cleanup MMU for basic firmware\n");
+	basic_puts("\n");
+	basic_puts("timer       - Display timer information\n");
+	basic_puts("\n");
+	basic_puts("dhrystone   - Dhrystone 2.1 benchmark\n");
+	basic_puts("            Usage: dhrystone [<iterations>]\n");
+	basic_puts("\n");
+	basic_puts("hexdump     - Dump memory contents in hex format\n");
+	basic_puts("            Usage: hexdump <addr> <count>\n");
+	basic_puts("            <addr>  = memory address in hex\n");
+	basic_puts("            <count> = byte count in hex\n");
+	basic_puts("\n");
+	basic_puts("copy        - Copy to target memory from source memory\n");
+	basic_puts("            Usage: copy <dest> <src> <count>\n");
+	basic_puts("            <dest>  = destination address in hex\n");
+	basic_puts("            <src>   = source address in hex\n");
+	basic_puts("            <count> = byte count in hex\n");
+	basic_puts("\n");
+	basic_puts("start_linux - Start linux kernel (atags mechanism)\n");
+	basic_puts("            Usage: start_linux <kernel_addr> [<initrd_addr>] [<initrd_size>]\n");
+	basic_puts("            <kernel_addr>  = kernel load address\n");
+	basic_puts("            <initrd_addr>  = initrd load address (optional)\n");
+	basic_puts("            <initrd_size>  = initrd size (optional)\n");
+	basic_puts("\n");
+	basic_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
+	basic_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
+	basic_puts("            <kernel_addr>  = kernel load address\n");
+	basic_puts("            <fdt_addr>     = fdt blob address\n");
+	basic_puts("            <initrd_addr>  = initrd load address (optional)\n");
+	basic_puts("            <initrd_size>  = initrd size (optional)\n");
+	basic_puts("\n");
+	basic_puts("fdt_override_u32 - Overrides an integer property in the device tree\n");
+	basic_puts("            Usage: fdt_override_u32 <fdt_addr> </path/to/property> <value>\n");
+	basic_puts("\n");
+	basic_puts("linux_cmdline - Show/Update linux command line\n");
+	basic_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
+	basic_puts("            <new_linux_cmdline>  = linux command line\n");
+	basic_puts("\n");
+	basic_puts("linux_memory_size - Show/Update linux memory size\n");
+	basic_puts("            Usage: linux_memory_size [<memory_size>]\n");
+	basic_puts("            <memory_size>  = memory size in hex\n");
+	basic_puts("\n");
+	basic_puts("autoexec    - autoexec command list from flash\n");
+	basic_puts("            Usage: autoexec\n");
+	basic_puts("\n");
+	basic_puts("go          - Jump to a given address\n");
+	basic_puts("            Usage: go <addr>\n");
+	basic_puts("            <addr>  = jump address in hex\n");
+	basic_puts("\n");
+	basic_puts("reset       - Reset the system\n");
+	basic_puts("\n");
 }
 
 void arm_cmd_hi(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("hi: no parameters required\n");
+		basic_puts("hi: no parameters required\n");
 		return;
 	}
 
-	arm_puts("hello\n");
+	basic_puts("hello\n");
 }
 
 void arm_cmd_hello(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("hello: no parameters required\n");
+		basic_puts("hello: no parameters required\n");
 		return;
 	}
 
-	arm_puts("hi\n");
+	basic_puts("hi\n");
 }
 
 void arm_cmd_wfi_test(int argc, char **argv)
@@ -156,13 +156,13 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	int delay = 1000;
 
 	if (argc > 2) {
-		arm_puts ("wfi_test: could provide only <delay>\n");
+		basic_puts("wfi_test: could provide only <delay>\n");
 		return;
 	} else if (argc == 2) {
 		delay = basic_str2int(argv[1]);
 	}
 
-	arm_puts("Executing WFI instruction\n");
+	basic_puts("Executing WFI instruction\n");
 	arm_timer_disable();
 	arm_timer_change_period(delay*1000);
 	arm_timer_enable();
@@ -172,17 +172,17 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	arm_timer_disable();
 	arm_timer_change_period(10000);
 	arm_timer_enable();
-	arm_puts("Resumed from WFI instruction\n");
-	arm_puts("Time spent in WFI: ");
+	basic_puts("Resumed from WFI instruction\n");
+	basic_puts("Time spent in WFI: ");
 	basic_ulonglong2str(time, tstamp);
-	arm_puts(time);
-	arm_puts(" nsecs\n");
+	basic_puts(time);
+	basic_puts(" nsecs\n");
 }
 
 void arm_cmd_mmu_setup(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("mmu_setup: no parameters required\n");
+		basic_puts("mmu_setup: no parameters required\n");
 		return;
 	}
 
@@ -192,14 +192,14 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 void arm_cmd_mmu_state(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("mmu_state: no parameters required\n");
+		basic_puts("mmu_state: no parameters required\n");
 		return;
 	}
 
 	if (arm_mmu_is_enabled()) {
-		arm_puts("MMU Enabled\n");
+		basic_puts("MMU Enabled\n");
 	} else {
-		arm_puts("MMU Disabled\n");
+		basic_puts("MMU Disabled\n");
 	}
 }
 
@@ -209,50 +209,50 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	u32 total = 0x0, pass = 0x0, fail = 0x0;
 
 	if (argc != 1) {
-		arm_puts ("mmu_test: no parameters required\n");
+		basic_puts("mmu_test: no parameters required\n");
 		return;
 	}
 
-	arm_puts("MMU Section Test Suite ...\n");
+	basic_puts("MMU Section Test Suite ...\n");
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
 	arm_mmu_section_test(&total, &pass, &fail);
-	arm_puts("  Total: ");
+	basic_puts("  Total: ");
 	basic_int2str(str, total);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  Pass : ");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("  Pass : ");
 	basic_int2str(str, pass);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  Fail : ");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("  Fail : ");
 	basic_int2str(str, fail);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("MMU Page Test Suite ...\n");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("MMU Page Test Suite ...\n");
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
 	arm_mmu_page_test(&total, &pass, &fail);
-	arm_puts("  Total: ");
+	basic_puts("  Total: ");
 	basic_int2str(str, total);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  Pass : ");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("  Pass : ");
 	basic_int2str(str, pass);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  Fail : ");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("  Fail : ");
 	basic_int2str(str, fail);
-	arm_puts(str);
-	arm_puts("\n");
+	basic_puts(str);
+	basic_puts("\n");
 }
 
 void arm_cmd_mmu_cleanup(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("mmu_cleanup: no parameters required\n");
+		basic_puts("mmu_cleanup: no parameters required\n");
 		return;
 	}
 
@@ -265,26 +265,26 @@ void arm_cmd_timer(int argc, char **argv)
 	u64 irq_count, irq_delay, tstamp;
 
 	if (argc != 1) {
-		arm_puts ("timer: no parameters required\n");
+		basic_puts("timer: no parameters required\n");
 		return;
 	}
 
 	irq_count = arm_timer_irqcount();
 	irq_delay = arm_timer_irqdelay();
 	tstamp = arm_timer_timestamp();
-	arm_puts("Timer Information ...\n");
-	arm_puts("  IRQ Count:  0x");
+	basic_puts("Timer Information ...\n");
+	basic_puts("  IRQ Count:  0x");
 	basic_ulonglong2hexstr(str, irq_count);
-	arm_puts(str);
-	arm_puts("\n");
-	arm_puts("  IRQ Delay:  ");
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("  IRQ Delay:  ");
 	basic_ulonglong2str(str, irq_delay);
-	arm_puts(str);
-	arm_puts(" nsecs\n");
-	arm_puts("  Time Stamp: 0x");
+	basic_puts(str);
+	basic_puts(" nsecs\n");
+	basic_puts("  Time Stamp: 0x");
 	basic_ulonglong2hexstr(str, tstamp);
-	arm_puts(str);
-	arm_puts("\n");
+	basic_puts(str);
+	basic_puts("\n");
 }
 
 void arm_cmd_dhrystone(int argc, char **argv)
@@ -292,16 +292,16 @@ void arm_cmd_dhrystone(int argc, char **argv)
 	char str[32];
 	int iters = 1000000;
 	if (argc > 2) {
-		arm_puts ("dhrystone: could provide only <iter_number>\n");
+		basic_puts("dhrystone: could provide only <iter_number>\n");
 		return;
 	} else if (argc == 2) {
 		iters = basic_str2int(argv[1]);
 	} else {
-		arm_puts ("dhrystone: number of iterations not provided\n");
-		arm_puts ("dhrystone: using default ");
+		basic_puts("dhrystone: number of iterations not provided\n");
+		basic_puts("dhrystone: using default ");
 		basic_int2str (str, iters);
-		arm_puts (str);
-		arm_puts (" iterations\n");
+		basic_puts(str);
+		basic_puts(" iterations\n");
 	}
 	arm_timer_disable();
 	dhry_main(iters);
@@ -314,7 +314,7 @@ void arm_cmd_hexdump(int argc, char **argv)
 	u32 *addr;
 	u32 i, count, len;
 	if (argc != 3) {
-		arm_puts ("hexdump: must provide <addr> and <count>\n");
+		basic_puts("hexdump: must provide <addr> and <count>\n");
 		return;
 	}
 	addr = (u32 *)basic_hexstr2uint(argv[1]);
@@ -324,26 +324,26 @@ void arm_cmd_hexdump(int argc, char **argv)
 			basic_uint2hexstr(str, (u32)&addr[i]);
 			len = basic_strlen(str);
 			while (len < 8) {
-				arm_puts("0");
+				basic_puts("0");
 				len++;
 			}
-			arm_puts(str);
-			arm_puts(": ");
+			basic_puts(str);
+			basic_puts(": ");
 		}
 		basic_uint2hexstr(str, addr[i]);
 		len = basic_strlen(str);
 		while (len < 8) {
-			arm_puts("0");
+			basic_puts("0");
 			len++;
 		}
-		arm_puts(str);
+		basic_puts(str);
 		if (i % 4 == 3) {
-			arm_puts("\n");
+			basic_puts("\n");
 		} else {
-			arm_puts(" ");
+			basic_puts(" ");
 		}
 	}
-	arm_puts("\n");
+	basic_puts("\n");
 }
 
 void arm_cmd_copy(int argc, char **argv)
@@ -356,7 +356,7 @@ void arm_cmd_copy(int argc, char **argv)
 
 	/* Determine copy args */
 	if (argc != 4) {
-		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
+		basic_puts("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
 	dst = (void *)basic_hexstr2uint(argv[1]);
@@ -409,11 +409,11 @@ void arm_cmd_copy(int argc, char **argv)
 
 	/* Print time taken */
 	basic_ulonglong2str(time, tstamp);
-	arm_puts("copy took ");
-	arm_puts(time);
-	arm_puts(" usecs for ");
-	arm_puts(argv[3]);
-	arm_puts(" bytes\n");
+	basic_puts("copy took ");
+	basic_puts(time);
+	basic_puts(" usecs for ");
+	basic_puts(argv[3]);
+	basic_puts(" bytes\n");
 }
 
 static char  cmdline[1024];
@@ -429,8 +429,8 @@ void arm_cmd_start_linux(int argc, char **argv)
 	virtual_addr_t nuke_va;
 
 	if (argc < 2) {
-		arm_puts ("start_linux: must provide <kernel_addr>\n");
-		arm_puts ("start_linux: <initrd_addr> and <initrd_size> are optional\n");
+		basic_puts("start_linux: must provide <kernel_addr>\n");
+		basic_puts("start_linux: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
@@ -495,7 +495,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	}
 
 	/* Pass memory size via kernel command line */
-	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
+	basic_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
 	basic_strcat(cmdline, cfg_str);
 
 	cmdline_size = basic_strlen(cmdline);
@@ -533,8 +533,8 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	virtual_addr_t nuke_va;
 
 	if (argc < 3) {
-		arm_puts ("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
-		arm_puts ("start_linux_fdt: <initrd_addr> and <initrd_size> are optional\n");
+		basic_puts("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
+		basic_puts("start_linux_fdt: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
@@ -576,7 +576,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	arm_mmu_cleanup();
 
 	/* Pass memory size via kernel command line */
-	arm_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
+	basic_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
 	basic_strcat(cmdline, cfg_str);
 
 	/* Increase fdt blob size by 8KB */
@@ -598,7 +598,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	/* Jump to Linux Kernel
 	 * r0 -> dtb address
 	 */
-	arm_puts("Jumping into linux ...\n");
+	basic_puts("Jumping into linux ...\n");
 	((linux_entry_t)kernel_addr)(0, -1, fdt_addr, 0);
 
 	/* We should never reach here */
@@ -618,7 +618,7 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 	const struct fdt_property *p;
 
 	if (argc < 4) {
-		arm_puts("fdt_override_u32: must provide <fdt_addr> </path/to/property> and <value>\n");
+		basic_puts("fdt_override_u32: must provide <fdt_addr> </path/to/property> and <value>\n");
 		return;
 	}
 
@@ -627,7 +627,7 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 	val = cpu_to_be32(basic_str2int(argv[3]));
 	prop = basic_strrchr(path, '/');
 	if (!prop) {
-		arm_puts("*** Failed to parse node\n");
+		basic_puts("*** Failed to parse node\n");
 		return;
 	}
 	*(prop++) = '\0';
@@ -666,9 +666,9 @@ void arm_cmd_linux_cmdline(int argc, char **argv)
 		}
 	}
 
-	arm_puts ("linux_cmdline = \"");
-	arm_puts(cmdline);
-	arm_puts ("\"\n");
+	basic_puts("linux_cmdline = \"");
+	basic_puts(cmdline);
+	basic_puts("\"\n");
 
 	return;
 }
@@ -681,10 +681,10 @@ void arm_cmd_linux_memory_size(int argc, char **argv)
 		memory_size = (u32)basic_hexstr2uint(argv[1]);
 	}
 
-	arm_puts ("linux_memory_size = 0x");
+	basic_puts("linux_memory_size = 0x");
 	basic_uint2hexstr(str, memory_size);
-	arm_puts(str);
-	arm_puts (" Bytes\n");
+	basic_puts(str);
+	basic_puts(" Bytes\n");
 
 	return;
 }
@@ -700,13 +700,13 @@ void arm_cmd_autoexec(int argc, char **argv)
 	char buffer[ARM_CMD_AUTOEXEC_BUF_SIZE];
 
 	if (argc != 1) {
-		arm_puts ("autoexec: no parameters required\n");
+		basic_puts("autoexec: no parameters required\n");
 		return;
 	}
 
 	/* autoexec is not recursive */
 	if (lock) {
-		arm_puts("ignoring autoexec calling autoexec\n");
+		basic_puts("ignoring autoexec calling autoexec\n");
 		return;
 	}
 
@@ -715,17 +715,17 @@ void arm_cmd_autoexec(int argc, char **argv)
 	/* determine length of command list */
 	len = 0;
 	while ((len < ARM_CMD_AUTOEXEC_BUF_SIZE) &&
-	       arm_isprintable(ptr[len])) {
+	       basic_isprintable(ptr[len])) {
 		len++;
 	}
 
 	/* sanity check on command list */
 	if (!len) {
-		arm_puts("command list not found !!!\n");
+		basic_puts("command list not found !!!\n");
 		goto unlock;
 	}
 	if (len >= ARM_CMD_AUTOEXEC_BUF_SIZE) {
-		arm_printf("command list len=%d too big !!!\n", len);
+		basic_printf("command list len=%d too big !!!\n", len);
 		goto unlock;
 	}
 
@@ -747,9 +747,9 @@ void arm_cmd_autoexec(int argc, char **argv)
 		pos++;
 
 		/* print the command */
-		arm_puts("autoexec(");
-		arm_puts(ptr);
-		arm_puts(")\n");
+		basic_puts("autoexec(");
+		basic_puts(ptr);
+		basic_puts(")\n");
 		/* execute it */
 		arm_exec(ptr);
 	}
@@ -766,7 +766,7 @@ void arm_cmd_go(int argc, char **argv)
 	void (* jump)(void);
 
 	if (argc != 2) {
-		arm_puts ("go: must provide destination address\n");
+		basic_puts("go: must provide destination address\n");
 		return;
 	}
 
@@ -774,9 +774,9 @@ void arm_cmd_go(int argc, char **argv)
 
 	jump = (void (*)(void))basic_hexstr2uint(argv[1]);
 	basic_uint2hexstr(str, (u32)jump);
-	arm_puts("Jumping to location 0x");
-	arm_puts(str);
-	arm_puts(" ...\n");
+	basic_puts("Jumping to location 0x");
+	basic_puts(str);
+	basic_puts(" ...\n");
 	jump ();
 
 	arm_timer_enable();
@@ -785,11 +785,11 @@ void arm_cmd_go(int argc, char **argv)
 void arm_cmd_reset(int argc, char **argv)
 {
 	if (argc != 1) {
-		arm_puts ("reset: no parameters required\n");
+		basic_puts("reset: no parameters required\n");
 		return;
 	}
 
-	arm_puts("System reset ...\n\n");
+	basic_puts("System reset ...\n\n");
 
 	arm_board_reset();
 
@@ -866,7 +866,7 @@ void arm_exec(char *line)
 		} else if (basic_strcmp(argv[0], "reset") == 0) {
 			arm_cmd_reset(argc, argv);
 		} else {
-			arm_puts("Unknown command\n");
+			basic_puts("Unknown command\n");
 		}
 	}
 }
@@ -883,26 +883,26 @@ void arm_main(void)
 	/* Setup board specific linux default cmdline */
 	arm_board_linux_default_cmdline(cmdline, sizeof(cmdline));
 
-	arm_puts(arm_board_name());
-	arm_puts(" Basic Firmware\n\n");
+	basic_puts(arm_board_name());
+	basic_puts(" Basic Firmware\n\n");
 
 	boot_delay = arm_board_boot_delay();
 	if (boot_delay == 0xffffffff) {
-		arm_puts("autoboot: disabled\n\n");
+		basic_puts("autoboot: disabled\n\n");
 	} else {
-		arm_puts("autoboot: enabled\n");
+		basic_puts("autoboot: enabled\n");
 		while (boot_delay) {
 			basic_int2str(line, (int)boot_delay);
-			arm_puts("autoboot: waiting for ");
-			arm_puts(line);
-			arm_puts(" secs (press any key)\n");
+			basic_puts("autoboot: waiting for ");
+			basic_puts(line);
+			basic_puts(" secs (press any key)\n");
 			key_pressed = 0;
 			tstamp = arm_timer_timestamp();
 			while ((arm_timer_timestamp() - tstamp)
 						< 1000000000) {
 				for (i = 0; i < 10000; i++) ;
-				if (arm_can_getc()) {
-					arm_getc();
+				if (basic_can_getc()) {
+					basic_getc();
 					key_pressed = 1;
 					break;
 				}
@@ -911,7 +911,7 @@ void arm_main(void)
 				break;
 			boot_delay--;
 		}
-		arm_puts("\n");
+		basic_puts("\n");
 		if (!boot_delay) {
 			basic_strcpy(line, "autoexec\n");
 			arm_exec(line);
@@ -919,9 +919,9 @@ void arm_main(void)
 	}
 
 	while(1) {
-		arm_puts("basic# ");
+		basic_puts("basic# ");
 
-		arm_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
+		basic_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
 
 		arm_exec(line);
 	}

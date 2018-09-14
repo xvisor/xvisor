@@ -26,6 +26,7 @@
 #include <arch_math.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
@@ -84,28 +85,28 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	poff = fdt_path_offset(fdt_addr,
 			       "/soc/interrupt-controller@1f000100");
 	if (poff < 0) {
-		arm_printf("%s: failed to find nodeoffset of %s node\n",
+		basic_printf("%s: failed to find nodeoffset of %s node\n",
 			   __func__, "/soc/interrupt-controller@1f000100");
 		return;
 	}
 
 	intc_phandle = fdt_get_phandle(fdt_addr, poff);
 	if (!intc_phandle) {
-		arm_printf("%s: failed to find phandle for %s node\n",
+		basic_printf("%s: failed to find phandle for %s node\n",
 			   __func__, "/soc/interrupt-controller@1f000100");
 		return;
 	}
 
 	poff = fdt_path_offset(fdt_addr, "/");
 	if (poff < 0) {
-		arm_printf("%s: failed to find nodeoffset of %s node\n",
+		basic_printf("%s: failed to find nodeoffset of %s node\n",
 			   __func__, "/");
 		return;
 	}
 
 	poff = fdt_add_subnode(fdt_addr, poff, "virt");
 	if (poff < 0) {
-		arm_printf("%s: failed to add %s subnode in %s node\n",
+		basic_printf("%s: failed to add %s subnode in %s node\n",
 			   __func__, "virt", "/");
 		return;
 	}
@@ -114,7 +115,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, poff, "compatible",
 			 str, basic_strlen(str)+1);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virt");
 		return;
 	}
@@ -123,7 +124,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, poff, "interrupt-parent",
 			 vals, sizeof(u32));
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupt-parent", "virt");
 		return;
 	}
@@ -132,7 +133,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, poff, "#address-cells",
 			 vals, sizeof(u32));
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "#address-cells", "virt");
 		return;
 	}
@@ -141,21 +142,21 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, poff, "#size-cells",
 			 vals, sizeof(u32));
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "#size-cells", "virt");
 		return;
 	}
 
 	rc = fdt_setprop(fdt_addr, poff, "ranges", NULL, 0);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "ranges", "virt");
 		return;
 	}
 
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_net");
 	if (poff < 0) {
-		arm_printf("%s: failed to add %s subnode in %s node\n",
+		basic_printf("%s: failed to add %s subnode in %s node\n",
 			   __func__, "virtio_net", "virt");
 		return;
 	}
@@ -164,7 +165,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
 			 str, basic_strlen(str)+1);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_net");
 		return;
 	}
@@ -174,7 +175,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "reg",
 			 vals, sizeof(u32)*2);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "reg", "virtio_net");
 		return;
 	}
@@ -185,21 +186,21 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_net");
 		return;
 	}
 
 	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "dma-coherent", "virtio_net");
 		return;
 	}
 
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_block");
 	if (poff < 0) {
-		arm_printf("%s: failed to add %s subnode in %s node\n",
+		basic_printf("%s: failed to add %s subnode in %s node\n",
 			   __func__, "virtio_block", "virt");
 		return;
 	}
@@ -208,7 +209,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
 			 str, basic_strlen(str)+1);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_block");
 		return;
 	}
@@ -218,7 +219,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "reg",
 			 vals, sizeof(u32)*2);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "reg", "virtio_block");
 		return;
 	}
@@ -229,21 +230,21 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_block");
 		return;
 	}
 
 	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "dma-coherent", "virtio_block");
 		return;
 	}
 
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_console");
 	if (poff < 0) {
-		arm_printf("%s: failed to add %s subnode in %s node\n",
+		basic_printf("%s: failed to add %s subnode in %s node\n",
 			   __func__, "virtio_console", "virt");
 		return;
 	}
@@ -252,7 +253,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
 			 str, basic_strlen(str)+1);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_console");
 		return;
 	}
@@ -262,7 +263,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "reg",
 			 vals, sizeof(u32)*2);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "reg", "virtio_console");
 		return;
 	}
@@ -273,21 +274,21 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_console");
 		return;
 	}
 
 	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "dma-coherent", "virtio_console");
 		return;
 	}
 
 	noff = fdt_add_subnode(fdt_addr, poff, "virtio_rpmsg");
 	if (poff < 0) {
-		arm_printf("%s: failed to add %s subnode in %s node\n",
+		basic_printf("%s: failed to add %s subnode in %s node\n",
 			   __func__, "virtio_rpmsg", "virt");
 		return;
 	}
@@ -296,7 +297,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
 			 str, basic_strlen(str)+1);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_rpmsg");
 		return;
 	}
@@ -306,7 +307,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "reg",
 			 vals, sizeof(u32)*2);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "reg", "virtio_rpmsg");
 		return;
 	}
@@ -317,14 +318,14 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "interrupts", "virtio_rpmsg");
 		return;
 	}
 
 	rc = fdt_setprop(fdt_addr, noff, "dma-coherent", NULL, 0);
 	if (rc < 0) {
-		arm_printf("%s: failed to setprop %s in %s node\n",
+		basic_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "dma-coherent", "virtio_rpmsg");
 		return;
 	}

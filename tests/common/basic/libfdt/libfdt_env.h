@@ -22,7 +22,7 @@
 #define _LIBFDT_ENV_H
 
 #include <arch_types.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 
 extern struct fdt_header *working_fdt;  /* Pointer to the working fdt */
@@ -42,8 +42,8 @@ extern struct fdt_header *working_fdt;  /* Pointer to the working fdt */
 #define strcmp		basic_strcmp
 #define strlen		basic_strlen
 
-#define printf		arm_printf
-#define sprintf		arm_sprintf
-#define snprintf	arm_snprintf
+#define printf		basic_printf
+#define sprintf		basic_sprintf
+#define snprintf	basic_snprintf
 
 #endif /* _LIBFDT_ENV_H */

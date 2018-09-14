@@ -24,7 +24,7 @@
 #include <arm_board.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 
 #define MAX_NR_IRQS		1024
 
@@ -35,7 +35,7 @@ arm_irq_handler_t irq_hndls[MAX_NR_IRQS];
 
 void do_bad_mode(struct pt_regs *regs)
 {
-	arm_puts("Bad exception\n");
+	basic_puts("Bad exception\n");
 	while(1);
 }
 

@@ -25,7 +25,7 @@
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
 #include <arm_mmu.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 
 #if 0
 u32 __attribute__((aligned(TTBL_L1TBL_SIZE))) l1[TTBL_L1TBL_SIZE / 4];
@@ -80,24 +80,24 @@ void arm_sync_abort(struct pt_regs *regs)
 			}
 			break;
 	}
-	arm_printf("Bad synchronous exception @ PC: 0x%lX\n",
+	basic_printf("Bad synchronous exception @ PC: 0x%lX\n",
 		   (virtual_addr_t)regs->pc);
-	arm_printf("ESR: 0x%08X (EC:0x%X, ISS:0x%X)\n",
+	basic_printf("ESR: 0x%08X (EC:0x%X, ISS:0x%X)\n",
 		   (u32)esr, (u32)ec, (u32)iss);
-	arm_printf("LR: 0x%lX, FAR: 0x%lX, PSTATE: 0x%X\n",
+	basic_printf("LR: 0x%lX, FAR: 0x%lX, PSTATE: 0x%X\n",
 		   (virtual_addr_t)regs->lr, (virtual_addr_t)far,
 		   (u32)regs->pstate);
-	arm_printf("  General Purpose Registers");
+	basic_printf("  General Purpose Registers");
 	{ 
 		int ite;
 		for (ite = 0; ite < 30; ite++) {
 			if (ite % 2 == 0)
-				arm_printf("\n");
-			arm_printf("    X%02d=0x%016lx  ",
+				basic_printf("\n");
+			basic_printf("    X%02d=0x%016lx  ",
 				   ite, (unsigned long)regs->gpr[ite]);
 		}
 	}
-	arm_printf("\n");
+	basic_printf("\n");
 	while(1);
 }
 

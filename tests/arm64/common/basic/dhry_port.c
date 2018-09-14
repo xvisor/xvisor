@@ -16,8 +16,8 @@
  */
 
 #include <arm_heap.h>
-#include <arm_stdio.h>
 #include <arm_board.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 #include "dhry_port.h"
 
@@ -59,24 +59,24 @@ void dhry_printc(char ch)
 	char tmp[2];
 	tmp[0] = ch;
 	tmp[1] = '\0';
-	arm_puts(tmp);
+	basic_puts(tmp);
 }
 
 void dhry_prints(char *str)
 {
-	arm_puts(str);
+	basic_puts(str);
 }
 
 void dhry_printi(int val)
 {
 	char tmp[128];
 	basic_int2str(tmp, val);
-	arm_puts(tmp);
+	basic_puts(tmp);
 }
 
 void dhry_printll(unsigned long long val)
 {
 	char tmp[128];
 	basic_ulonglong2str(tmp, val);
-	arm_puts(tmp);
+	basic_puts(tmp);
 }

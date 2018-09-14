@@ -30,7 +30,8 @@ basedir  = ../../../..
 builddir = $(basedir)/build
 
 srcdir          = $(basedir)/tests/arm32/vexpress-a9/freertos
-common_srcdir   = $(srcdir)/../../common/basic
+common_srcdir   = $(srcdir)/../../../common/basic
+common_arch_srcdir   = $(srcdir)/../../common/basic
 freertos_srcdir = $(srcdir)/FreeRTOS/Source
 
 objdir          = $(patsubst $(basedir)/%,$(builddir)/%, $(srcdir))
@@ -53,8 +54,10 @@ FREERTOS_GLOBS = $(addprefix $(freertos_srcdir)/, *.c)
 FREERTOS_SRCS = $(wildcard $(FREERTOS_GLOBS)) $(FREERTOS_HEAP_IMPL)
 
 # sources from the common firmware directory (relative to $common_srcdir)
-COMMON_SRCS = arch_math.c arm_stdio.c arm_irq.c basic_string.c pic/gic.c	\
-              timer/sp804.c serial/pl01x.c arm_cache_v7.S sys/vminfo.c
+COMMON_SRCS = basic_stdio.c basic_string.c pic/gic.c	\
+              serial/pl01x.c sys/vminfo.c
+COMMON_ARCH_SRCS = arch_math.c arm_irq.c 	\
+              timer/sp804.c arm_cache_v7.S
 
 # FreeRTOS specific glue and application source (relative to $srcdir)
 OTHER_SRCS = port/port.c port/portASM.S ../basic/arm_board.c	\
@@ -76,7 +79,7 @@ CPATCH32   = $(builddir)/tools/cpatch/cpatch32
 
 LINK_SCRIPT = $(common_srcdir)/firmware.ld
 
-CPPFLAGS = -I$(srcdir)/../basic -I$(common_srcdir)			\
+CPPFLAGS = -I$(srcdir)/../basic -I$(common_srcdir) -I$(common_arch_srcdir) \
            -I$(freertos_srcdir)/include -I$(srcdir) -I$(srcdir)/port	\
            -DTEXT_START=$(BOARD_TEXT_START)				\
            -DUSR_STACK_SIZE=$(BOARD_USR_STACK_SIZE)
@@ -103,6 +106,7 @@ TARGETS      = $(BIN_TARGETS) $(BIN_TARGETS:%.bin=%.elf)
 # assemble final list of source and object files
 SRCS = $(sort $(FREERTOS_SRCS)                              \
               $(addprefix $(common_srcdir)/,$(COMMON_SRCS)) \
+              $(addprefix $(common_arch_srcdir)/,$(COMMON_ARCH_SRCS)) \
               $(addprefix $(srcdir)/,$(OTHER_SRCS)))
 OBJS = $(patsubst $(basedir)/%,$(builddir)/%.o,$(basename $(SRCS)))
 

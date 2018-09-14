@@ -29,7 +29,7 @@
 #include <arm_plat.h>
 #include <arm_board.h>
 #include <arm_timer.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 
 extern void main_blinky(void);
 
@@ -97,7 +97,7 @@ void arm_init(void)
 {
         arm_irq_disable();
         arm_irq_setup();
-        arm_stdio_init();
+        basic_stdio_init();
 
         /* FreeRTOS will call vConfigureTickInterrupt and enable IRQs */
 }

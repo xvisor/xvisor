@@ -25,7 +25,7 @@
 #include "task.h"
 #include "queue.h"
 
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 
 /* priorities at which the tasks are created. */
 #define mainQUEUE_RECEIVE_TASK_PRIORITY (tskIDLE_PRIORITY + 2)

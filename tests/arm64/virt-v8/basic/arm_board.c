@@ -24,7 +24,7 @@
 #include <arch_types.h>
 #include <arm_board.h>
 #include <arm_plat.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 #include <pic/gic.h>
 #include <timer/generic_timer.h>
@@ -54,8 +54,8 @@ void arm_board_reset(void)
 	: "x0", "x1", "x2", "x3", "cc", "memory");
 
 	if (ret) {
-		arm_printf("%s: PSCI SYSTEM_RESET returned %d\n",
-			   __func__, (int)ret);
+		basic_printf("%s: PSCI SYSTEM_RESET returned %d\n",
+			     __func__, (int)ret);
 	}
 }
 

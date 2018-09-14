@@ -25,7 +25,6 @@
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
 #include <arm_mmu.h>
-#include <arm_stdio.h>
 #include <basic_string.h>
 
 static u32 __attribute__((aligned(TTBL_L1TBL_SIZE))) l1[TTBL_L1TBL_SIZE / 4];

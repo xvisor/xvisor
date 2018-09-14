@@ -16,15 +16,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_stdio.c
+ * @file basic_stdio.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for common input/output functions
  */
 
 #include <arm_board.h>
-#include <arm_stdio.h>
+#include <arch_math.h>
+#include <basic_stdio.h>
 
-void arm_stdio_init(void)
+void basic_stdio_init(void)
 {
 	int rc;
 
@@ -34,7 +35,7 @@ void arm_stdio_init(void)
 	}
 }
 
-bool arm_isprintable(char c)
+bool basic_isprintable(char c)
 {
 	if (((31 < c) && (c < 127)) ||
 	   (c == '\f') ||
@@ -46,22 +47,22 @@ bool arm_isprintable(char c)
 	return FALSE;
 }
 
-void arm_putc(char ch)
+void basic_putc(char ch)
 {
 	arm_board_serial_putc(ch);
 }
 
-bool arm_can_getc(void)
+bool basic_can_getc(void)
 {
 	return arm_board_serial_can_getc();
 }
 
-char arm_getc(void)
+char basic_getc(void)
 {
 	return arm_board_serial_getc();
 }
 
-void arm_puts(const char * str)
+void basic_puts(const char * str)
 {
 	while (*str) {
 		arm_board_serial_putc(*str);
@@ -69,7 +70,7 @@ void arm_puts(const char * str)
 	}
 }
 
-void arm_gets(char *s, int maxwidth, char endchar)
+void basic_gets(char *s, int maxwidth, char endchar)
 {
 	char *retval;
 	char ch;
@@ -155,7 +156,8 @@ static int printi(char **out, u32 *out_len, long long i, int b, int sg,
 {
 	char print_buf[PRINT_BUF_LEN];
 	char *s;
-	int t, neg = 0, pc = 0;
+	int neg = 0, pc = 0;
+	u64 t;
 	unsigned long long u = i;
 
 	if (sg && b == 10 && i < 0) {
@@ -170,11 +172,10 @@ static int printi(char **out, u32 *out_len, long long i, int b, int sg,
 		*--s = '0';
 	} else {
 		while (u) {
-			t = (u % b);
+                	u = do_udiv64(u, b, &t);
 			if (t >= 10)
 				t += letbase - '0' - 10;
 			*--s = t + '0';
-			u = (u / b);
 		}
 	}
 
@@ -355,7 +356,7 @@ out:
 	return pc;
 }
 
-int arm_sprintf(char *out, const char *format, ...)
+int basic_sprintf(char *out, const char *format, ...)
 {
 	va_list args;
 	int retval;
@@ -365,7 +366,7 @@ int arm_sprintf(char *out, const char *format, ...)
 	return retval;
 }
 
-int arm_snprintf(char *out, u32 out_sz, const char *format, ...)
+int basic_snprintf(char *out, u32 out_sz, const char *format, ...)
 {
 	va_list args;
 	int retval;
@@ -375,7 +376,7 @@ int arm_snprintf(char *out, u32 out_sz, const char *format, ...)
 	return retval;
 }
 
-int arm_printf(const char *format, ...)
+int basic_printf(const char *format, ...)
 {
 	va_list args;
 	int retval;
@@ -384,4 +385,3 @@ int arm_printf(const char *format, ...)
 	va_end(args);
 	return retval;
 }
-

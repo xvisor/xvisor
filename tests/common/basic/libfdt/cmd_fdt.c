@@ -24,8 +24,8 @@
  * MA 02111-1307 USA
  */
 
-#include <arm_stdio.h>
 #include <arch_types.h>
+#include <basic_stdio.h>
 #include <basic_string.h>
 #include <libfdt/fdt.h>
 #include <libfdt/libfdt.h>

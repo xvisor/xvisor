@@ -25,8 +25,8 @@
 #define STDIO_WRAPPER_H_INCLUDED_
 
 #include <arch_types.h>
-#include <arm_stdio.h>
+#include <basic_stdio.h>
 
-#define sprintf arm_sprintf
+#define sprintf basic_sprintf
 
 #endif /* STDIO_WRAPPER_H_INCLUDED_ */
