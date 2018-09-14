@@ -15,17 +15,17 @@
  ****************************************************************************
  */
 
-#include <arm_heap.h>
 #include <arm_board.h>
+#include <basic_heap.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
 #include "dhry_port.h"
 
 extern u8 _heap_start;
 
-void * dhry_malloc(unsigned int size)
+void *dhry_malloc(unsigned int size)
 {
-	return arm_malloc(size);
+	return basic_malloc(size);
 }
 
 TimeStamp dhry_timestamp(void)

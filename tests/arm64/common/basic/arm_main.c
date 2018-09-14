@@ -22,11 +22,11 @@
  */
 
 #include <arm_cache.h>
-#include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arch_math.h>
 #include <arm_board.h>
+#include <basic_heap.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
 #include <dhry.h>
@@ -43,7 +43,7 @@ unsigned long arm_linux_memory_size(void)
 /* Works in supervisor mode */
 void arm_init(void)
 {
-	arm_heap_init();
+	basic_heap_init();
 
 	arm_irq_disable();
 

@@ -16,17 +16,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_heap.h
+ * @file basic_heap.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Header file for heap managment
+ * @brief source file for heap managment
  */
 
-#ifndef __ARM_HEAP_H_
-#define __ARM_HEAP_H_
+#include <basic_heap.h>
 
-#include <arch_types.h>
+static void * heap_curr;
+extern u8 _heap_start;
 
-void * arm_malloc(size_t size);
-void arm_heap_init(void);
+void *basic_malloc(size_t size)
+{
+	void * retval;
+	/* Make size 8B aligned */
+	if (size & 0x7)
+		size = ((size / 8) + 1) * 8;
+	retval = heap_curr;
+	heap_curr += size;
+	return retval;
+}
 
-#endif /* __ARM_HEAP_H_ */
+void basic_heap_init(void)
+{
+	heap_curr = &_heap_start;
+}

@@ -21,7 +21,8 @@
 # @brief common makefile to build basic firmware
 # */
 
-FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_stdio.h \
+FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_heap.h \
+			$(common_dir)/basic_stdio.h \
 			$(common_dir)/basic_string.h \
 			$(common_dir)/libfdt/fdt.h \
 			$(common_dir)/libfdt/fdt_support.h \
@@ -29,7 +30,8 @@ FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_stdio.h \
 			$(common_dir)/libfdt/libfdt_env.h \
 			$(common_dir)/libfdt/libfdt_internal.h
 
-FIRMWARE_OBJS+= $(obj_dir)/basic_stdio.o \
+FIRMWARE_OBJS+= $(obj_dir)/basic_heap.o \
+		$(obj_dir)/basic_stdio.o \
 		$(obj_dir)/basic_string.o \
 		$(obj_dir)/libfdt/fdt.o \
 		$(obj_dir)/libfdt/fdt_ro.o \
@@ -128,4 +130,3 @@ clean:
 	@rm -f $(obj_dir)/firmware.bin*
 	@echo " (RM)        $(obj_dir)"
 	@rm -rf $(obj_dir)
-

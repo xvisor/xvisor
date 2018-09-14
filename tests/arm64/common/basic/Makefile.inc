@@ -38,7 +38,6 @@ FIRMWARE_OBJS=$(obj_dir)/arm_entry.o \
 FIRMWARE_OBJS+=$(board_objs)
 
 FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
-		$(obj_dir)/arm_heap.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/dhry_1.o \
 		$(obj_dir)/dhry_2.o \
@@ -55,7 +54,6 @@ FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
                 $(common_arch_dir)/arm_defines.h \
                 $(common_arch_dir)/arch_types.h \
                 $(common_arch_dir)/arm_board.h \
-                $(common_arch_dir)/arm_heap.h \
                 $(common_arch_dir)/arm_inline_asm.h \
                 $(common_arch_dir)/arm_cache.h \
                 $(common_arch_dir)/arch_io.h \
