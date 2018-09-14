@@ -33,8 +33,6 @@
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
 
-unsigned long arm_linux_memory_size(void);
-
 #define ALIGN(x, a)	(x & ~a)
 
 /**

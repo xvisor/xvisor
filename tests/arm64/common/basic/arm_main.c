@@ -35,11 +35,6 @@
 
 static unsigned long memory_size = 0x0;
 
-unsigned long arm_linux_memory_size(void)
-{
-	return memory_size;
-}
-
 /* Works in supervisor mode */
 void arm_init(void)
 {
