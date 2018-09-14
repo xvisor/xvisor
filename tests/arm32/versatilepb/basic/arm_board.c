@@ -24,9 +24,9 @@
 #include <arch_types.h>
 #include <arch_io.h>
 #include <arch_math.h>
-#include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <basic_string.h>
 #include <pic/pl190.h>
 #include <timer/sp804.h>
 #include <serial/pl01x.h>
@@ -67,7 +67,7 @@ u32 arm_board_linux_machine_type(void)
 
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
-	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
+	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
 void arm_board_fdt_fixup(void *fdt_addr)

@@ -6,25 +6,25 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_string.c
+ * @file basic_string.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for common string functions
  */
 
 #include <arch_math.h>
-#include <arm_string.h>
+#include <basic_string.h>
 
-void *arm_memcpy(void *dest, const void *src, unsigned int count)
+void *basic_memcpy(void *dest, const void *src, unsigned int count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 *src8 = (u8 *) src;
@@ -47,7 +47,7 @@ void *arm_memcpy(void *dest, const void *src, unsigned int count)
 	return dest;
 }
 
-void *arm_memmove(void *dest, const void *src, unsigned int count)
+void *basic_memmove(void *dest, const void *src, unsigned int count)
 {
 	u8 *dst8 = (u8 *) dest;
 	const u8 *src8 = (u8 *) src;
@@ -93,7 +93,7 @@ void *arm_memmove(void *dest, const void *src, unsigned int count)
 	return dest;
 }
 
-void *arm_memset(void *dest, int c, unsigned int count)
+void *basic_memset(void *dest, int c, unsigned int count)
 {
 	u8 *dst8 = (u8 *) dest;
 	u8 ch = (u8) c;
@@ -113,7 +113,7 @@ void *arm_memset(void *dest, int c, unsigned int count)
 	return dest;
 }
 
-int arm_memcmp(const void *s1, const void *s2, unsigned int count)
+int basic_memcmp(const void *s1, const void *s2, unsigned int count)
 {
 	u8 *p1 = (u8 *) s1;
 	u8 *p2 = (u8 *) s2;
@@ -126,7 +126,7 @@ int arm_memcmp(const void *s1, const void *s2, unsigned int count)
 	return (0);
 }
 
-char *arm_memchr(const char *p, int ch, int count)
+char *basic_memchr(const char *p, int ch, int count)
 {
 	int i;
 	for(i=0; i<count; i++) {
@@ -134,30 +134,30 @@ char *arm_memchr(const char *p, int ch, int count)
 			return((char *)p);
 		}
 		p++;
-	} 
+	}
 	return((char *)NULL);
 }
 
-char *arm_strchr(const char *p, int ch)
+char *basic_strchr(const char *p, int ch)
 {
 	do {
 		if ((*p)==ch) {
 			return((char *)p);
 		}
-	} while((*p++)!='\0'); 
+	} while((*p++)!='\0');
 	return((char *)NULL);
 }
 
-unsigned int arm_strlen(const char *s)
+size_t basic_strlen(const char *s)
 {
-	unsigned int ret = 0;
+	size_t ret = 0;
 	while (s[ret]) {
 		ret++;
 	}
 	return ret;
 }
 
-char *arm_strcpy(char *dest, const char *src)
+char *basic_strcpy(char *dest, const char *src)
 {
 	u32 i;
 	for (i = 0; src[i] != '\0'; ++i)
@@ -166,14 +166,14 @@ char *arm_strcpy(char *dest, const char *src)
 	return dest;
 }
 
-char *arm_strcat(char *dest, const char *src)
+char *basic_strcat(char *dest, const char *src)
 {
-	arm_strcpy(&dest[arm_strlen(dest)], src);
+	basic_strcpy(&dest[basic_strlen(dest)], src);
 
 	return dest;
 }
 
-int arm_strcmp(const char *a, const char *b)
+int basic_strcmp(const char *a, const char *b)
 {
 	while (*a == *b) {
 		if (*a == '\0' || *b == '\0') {
@@ -185,7 +185,7 @@ int arm_strcmp(const char *a, const char *b)
 	return (unsigned char)*a - (unsigned char)*b;
 }
 
-int arm_str2int(char *src)
+int basic_str2int(char * src)
 {
 	int val = 0, pos = 0, minus = 0;
 
@@ -202,7 +202,7 @@ int arm_str2int(char *src)
 	return (minus) ? -val : val;
 }
 
-void arm_int2str(char *dst, int src)
+void basic_int2str(char * dst, int src)
 {
 	int val, count = 0, pos = 0;
 	static const char intchars[] = "0123456789";
@@ -219,8 +219,8 @@ void arm_int2str(char *dst, int src)
 	val = (src < 0) ? -src : src;
 	while (val) {
 		dst[count - pos - 1] = intchars[val % 10];
-		val = val / 10;
 		pos++;
+		val = val / 10;
 	}
 	if (src < 0) {
 		dst[0] = '-';
@@ -234,25 +234,25 @@ void arm_int2str(char *dst, int src)
 	dst[count] = '\0';
 }
 
-void arm_ulonglong2str(char *dst, unsigned long long src)
+void basic_ulonglong2str(char *dst, unsigned long long src)
 {
-	unsigned long long val;
+	unsigned long long val, remainder;
         int count = 0, pos = 0;
         static const char intchars[] = "0123456789";
 
         val = src;
         while (val) {
                 count++;
-                val = val / 10;
+                val = do_udiv64(val, 10, &remainder);
         }
         if (src < 0) {
                 count++;
         }
 
         val = (src < 0) ? -src : src;
-        while (val) {		
-                dst[count - pos - 1] = intchars[val % 10];
-                val = val / 10;
+        while (val) {
+                val = do_udiv64(val, 10, &remainder);
+                dst[count - pos - 1] = intchars[remainder];
                 pos++;
         }
         if (src < 0) {
@@ -267,7 +267,7 @@ void arm_ulonglong2str(char *dst, unsigned long long src)
         dst[count] = '\0';
 }
 
-unsigned int arm_hexstr2uint(char * src)
+unsigned int basic_hexstr2uint(char * src)
 {
 	unsigned int val = 0x0;
 	int pos = 0;
@@ -290,7 +290,7 @@ unsigned int arm_hexstr2uint(char * src)
 	return val;
 }
 
-unsigned long long arm_hexstr2ulonglong(char * src)
+unsigned long long basic_hexstr2ulonglong(char * src)
 {
 	unsigned long long val = 0x0;
 	int pos = 0;
@@ -313,7 +313,7 @@ unsigned long long arm_hexstr2ulonglong(char * src)
 	return val;
 }
 
-void arm_uint2hexstr(char *dst, unsigned int src)
+void basic_uint2hexstr(char * dst, unsigned int src)
 {
 	int ite, pos = 0;
 	static const char hexchars[] = "0123456789ABCDEF";
@@ -334,7 +334,7 @@ void arm_uint2hexstr(char *dst, unsigned int src)
 	dst[pos] = '\0';
 }
 
-void arm_ulonglong2hexstr(char *dst, unsigned long long src)
+void basic_ulonglong2hexstr(char *dst, unsigned long long src)
 {
 	int ite, pos = 0;
 	static const char hexchars[] = "0123456789ABCDEF";
@@ -355,12 +355,12 @@ void arm_ulonglong2hexstr(char *dst, unsigned long long src)
 	dst[pos] = '\0';
 }
 
-char *arm_strrchr(const char *src, int c)
+char *basic_strrchr(const char *src, int c)
 {
 	size_t len;
 	char *ptr = NULL;
 
-	len = arm_strlen(src);
+	len = basic_strlen(src);
 	while ((--len) != 0) {
 		if (src[len] == c) {
 			ptr = (char *)(&(src[len]));

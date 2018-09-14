@@ -24,11 +24,11 @@
 #ifndef STRING_WRAPPER_H_INCLUDED_
 #define STRING_WRAPPER_H_INCLUDED_
 
-#include <arm_string.h>
+#include <basic_string.h>
 
-#define memcpy arm_memcpy
-#define memset arm_memset
-#define strlen arm_strlen
-#define strcpy arm_strcpy
+#define memcpy basic_memcpy
+#define memset basic_memset
+#define strlen basic_strlen
+#define strcpy basic_strcpy
 
 #endif /* STRING_WRAPPER_H_INCLUDED_ */

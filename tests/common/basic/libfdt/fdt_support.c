@@ -27,8 +27,8 @@
 #define debug_printf(...)	
 
 #include <arm_stdio.h>
-#include <arm_string.h>
 #include <arch_types.h>
+#include <basic_string.h>
 #include <libfdt/fdt.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>

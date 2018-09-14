@@ -17,8 +17,8 @@
 
 #include <arm_heap.h>
 #include <arm_stdio.h>
-#include <arm_string.h>
 #include <arm_board.h>
+#include <basic_string.h>
 #include "dhry_port.h"
 
 extern u8 _heap_start;
@@ -46,12 +46,12 @@ long dhry_iter_per_sec(TimeStamp UserTime, int Number_Of_Runs)
 
 int dhry_strcmp(char *dst, char *src)
 {
-	return arm_strcmp(dst, src);
+	return basic_strcmp(dst, src);
 }
 
 void dhry_strcpy(char *dst, char *src)
 {
-	arm_strcpy(dst, src);
+	basic_strcpy(dst, src);
 }
 
 void dhry_printc(char ch)
@@ -70,13 +70,13 @@ void dhry_prints(char *str)
 void dhry_printi(int val)
 {
 	char tmp[128];
-	arm_int2str(tmp, val);
+	basic_int2str(tmp, val);
 	arm_puts(tmp);
 }
 
 void dhry_printll(unsigned long long val)
 {
 	char tmp[128];
-	arm_ulonglong2str(tmp, val);
+	basic_ulonglong2str(tmp, val);
 	arm_puts(tmp);
 }

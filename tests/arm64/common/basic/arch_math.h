@@ -38,6 +38,13 @@ static inline u64 arch_umod64(u64 value, u64 divisor)
 	return (value % divisor);
 }
 
+static inline u64 do_udiv64(u64 value, u64 divisor, u64 *remainder)
+{
+	if (remainder)
+		*remainder = arch_umod64(value, divisor);
+	return arch_udiv64(value, divisor);
+}
+
 static inline u32 arch_udiv32(u32 value, u32 divisor)
 {
 	return (value / divisor);
@@ -46,6 +53,13 @@ static inline u32 arch_udiv32(u32 value, u32 divisor)
 static inline u32 arch_umod32(u32 value, u32 divisor)
 {
 	return (value % divisor);
+}
+
+static inline u32 do_udiv32(u32 value, u32 divisor, u32 *remainder)
+{
+	if (remainder)
+		*remainder = arch_umod32(value, divisor);
+	return arch_udiv32(value, divisor);
 }
 
 static inline s32 arch_sdiv32(s32 value, s32 divisor)

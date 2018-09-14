@@ -24,13 +24,13 @@
 #ifndef __FDT_SUPPORT_H
 #define __FDT_SUPPORT_H
 
-#include <arm_string.h>
+#include <basic_string.h>
 #include <libfdt/fdt.h>
 #include <libfdt/libfdt_env.h>
 
 static void inline strtoul(char *s, void *ptr, int ign, unsigned long *value)
 {
-	*value = arm_hexstr2ulonglong(s);
+	*value = basic_hexstr2ulonglong(s);
 }
 
 u32 fdt_getprop_u32_default(const void *fdt, const char *path,

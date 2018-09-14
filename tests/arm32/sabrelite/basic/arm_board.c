@@ -23,9 +23,9 @@
 
 #include <arch_types.h>
 #include <arch_io.h>
-#include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <basic_string.h>
 #include <pic/gic.h>
 #include <timer/imx_gpt.h>
 #include <serial/imx.h>
@@ -63,11 +63,11 @@ u32 arm_board_linux_machine_type(void)
 
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
-	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk");
+	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk");
 	/* VirtIO Network Device */
-	arm_strcat(cmdline, " virtio_mmio.device=64K@0x20100000:42");
+	basic_strcat(cmdline, " virtio_mmio.device=64K@0x20100000:42");
 	/* SabreLite/Nitrogen6X specific */
-	arm_strcat(cmdline, " enable_wait_mode=off "
+	basic_strcat(cmdline, " enable_wait_mode=off "
 		   "video=mxcfb0:dev=ldb,LDB-XGA,if=RGB666 video=mxcfb1:off "
 		   "video=mxcfb2:off video=mxcfb3:off fbmem=10M "
 		   "console=ttymxc1,115200 vmalloc=400M consoleblank=0 "

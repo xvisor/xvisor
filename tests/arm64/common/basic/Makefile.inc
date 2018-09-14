@@ -41,7 +41,6 @@ FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/arm_heap.o \
 		$(obj_dir)/arm_irq.o \
 		$(obj_dir)/arm_stdio.o \
-		$(obj_dir)/arm_string.o \
 		$(obj_dir)/dhry_1.o \
 		$(obj_dir)/dhry_2.o \
 		$(obj_dir)/dhry_port.o
@@ -63,8 +62,7 @@ FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
                 $(common_arch_dir)/arch_io.h \
                 $(common_arch_dir)/arm_irq.h \
                 $(common_arch_dir)/arm_mmu.h \
-                $(common_arch_dir)/arm_stdio.h \
-                $(common_arch_dir)/arm_string.h
+                $(common_arch_dir)/arm_stdio.h
 
 # Include common makefile for basic firmware
 include $(common_dir)/Makefile.inc

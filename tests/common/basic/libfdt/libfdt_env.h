@@ -23,7 +23,7 @@
 
 #include <arch_types.h>
 #include <arm_stdio.h>
-#include <arm_string.h>
+#include <basic_string.h>
 
 extern struct fdt_header *working_fdt;  /* Pointer to the working fdt */
 
@@ -32,15 +32,15 @@ extern struct fdt_header *working_fdt;  /* Pointer to the working fdt */
 #define fdt64_to_cpu(x)		be64_to_cpu(x)
 #define cpu_to_fdt64(x)		cpu_to_be64(x)
 
-#define memmove		arm_memmove
-#define memcpy		arm_memcpy
-#define memcmp		arm_memcmp
-#define memchr		arm_memchr
-#define memset		arm_memset
-#define strchr		arm_strchr
-#define strcpy		arm_strcpy
-#define strcmp		arm_strcmp
-#define strlen		arm_strlen
+#define memmove		basic_memmove
+#define memcpy		basic_memcpy
+#define memcmp		basic_memcmp
+#define memchr		basic_memchr
+#define memset		basic_memset
+#define strchr		basic_strchr
+#define strcpy		basic_strcpy
+#define strcmp		basic_strcmp
+#define strlen		basic_strlen
 
 #define printf		arm_printf
 #define sprintf		arm_sprintf

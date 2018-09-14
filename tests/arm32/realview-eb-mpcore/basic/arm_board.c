@@ -24,9 +24,9 @@
 #include <arch_types.h>
 #include <arch_io.h>
 #include <arch_math.h>
-#include <arm_string.h>
 #include <arm_board.h>
 #include <arm_plat.h>
+#include <basic_string.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
 #include <pic/gic.h>
@@ -71,7 +71,7 @@ u32 arm_board_linux_machine_type(void)
 
 void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
-	arm_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
+	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
 void arm_board_fdt_fixup(void *fdt_addr)
@@ -110,9 +110,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
-	arm_strcpy(str, "simple-bus");
+	basic_strcpy(str, "simple-bus");
 	rc = fdt_setprop(fdt_addr, poff, "compatible",
-			 str, arm_strlen(str)+1);
+			 str, basic_strlen(str)+1);
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virt");
@@ -160,9 +160,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
-	arm_strcpy(str, "virtio,mmio");
+	basic_strcpy(str, "virtio,mmio");
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
-			 str, arm_strlen(str)+1);
+			 str, basic_strlen(str)+1);
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_net");
@@ -204,9 +204,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
-	arm_strcpy(str, "virtio,mmio");
+	basic_strcpy(str, "virtio,mmio");
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
-			 str, arm_strlen(str)+1);
+			 str, basic_strlen(str)+1);
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_block");
@@ -248,9 +248,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
-	arm_strcpy(str, "virtio,mmio");
+	basic_strcpy(str, "virtio,mmio");
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
-			 str, arm_strlen(str)+1);
+			 str, basic_strlen(str)+1);
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_console");
@@ -292,9 +292,9 @@ void arm_board_fdt_fixup(void *fdt_addr)
 		return;
 	}
 
-	arm_strcpy(str, "virtio,mmio");
+	basic_strcpy(str, "virtio,mmio");
 	rc = fdt_setprop(fdt_addr, noff, "compatible",
-			 str, arm_strlen(str)+1);
+			 str, basic_strlen(str)+1);
 	if (rc < 0) {
 		arm_printf("%s: failed to setprop %s in %s node\n",
 			   __func__, "compatible", "virtio_rpmsg");

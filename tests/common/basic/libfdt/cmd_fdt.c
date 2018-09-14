@@ -24,9 +24,9 @@
  * MA 02111-1307 USA
  */
 
-#include <arm_string.h>
 #include <arm_stdio.h>
 #include <arch_types.h>
+#include <basic_string.h>
 #include <libfdt/fdt.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
@@ -230,7 +230,7 @@ static int fdt_parse_prop(char * const *newval, int count, char *data, int *len)
  */
 
 #define in_range(c, lo, up)  ((u8)c >= lo && (u8)c <= up)
-#define arm_isprint(c)           in_range(c, 0x20, 0x7f)
+#define isprint(c)           in_range(c, 0x20, 0x7f)
 
 static int is_printable_string(const void *data, int len)
 {
@@ -245,7 +245,7 @@ static int is_printable_string(const void *data, int len)
 		return 0;
 
 	/* printable or a null byte (concatenated strings) */
-	while (((*s == '\0') || arm_isprint(*s)) && (len > 0)) {
+	while (((*s == '\0') || isprint(*s)) && (len > 0)) {
 		/*
 		 * If we see a null, there are three possibilities:
 		 * 1) If len == 1, it is the end of the string, printable

@@ -26,9 +26,9 @@
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <arch_math.h>
-#include <arm_string.h>
 #include <arm_stdio.h>
 #include <arm_board.h>
+#include <basic_string.h>
 #include <dhry.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
@@ -157,7 +157,7 @@ void arm_cmd_wfi_test(int argc, char **argv)
 		arm_puts ("wfi_test: could provide only <delay>\n");
 		return;
 	} else if (argc == 2) {
-		delay = arm_str2int(argv[1]);
+		delay = basic_str2int(argv[1]);
 	}
 
 	arm_puts("Executing WFI instruction\n");
@@ -172,7 +172,7 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	arm_board_timer_enable();
 	arm_puts("Resumed from WFI instruction\n");
 	arm_puts("Time spent in WFI: ");
-	arm_ulonglong2str(time, tstamp);
+	basic_ulonglong2str(time, tstamp);
 	arm_puts(time);
 	arm_puts(" nsecs\n");
 }
@@ -220,15 +220,15 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	fail = 0x0;
 	arm_mmu_section_test(&total, &pass, &fail);
 	arm_puts("  Total: ");
-	arm_int2str(str, total);
+	basic_int2str(str, total);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Pass : ");
-	arm_int2str(str, pass);
+	basic_int2str(str, pass);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Fail : ");
-	arm_int2str(str, fail);
+	basic_int2str(str, fail);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("MMU Page Test Suite ...\n");
@@ -237,15 +237,15 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	fail = 0x0;
 	arm_mmu_page_test(&total, &pass, &fail);
 	arm_puts("  Total: ");
-	arm_int2str(str, total);
+	basic_int2str(str, total);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Pass : ");
-	arm_int2str(str, pass);
+	basic_int2str(str, pass);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  Fail : ");
-	arm_int2str(str, fail);
+	basic_int2str(str, fail);
 	arm_puts(str);
 	arm_puts("\n");
 }
@@ -276,15 +276,15 @@ void arm_cmd_timer(int argc, char **argv)
 	tstamp = arm_board_timer_timestamp();
 	arm_puts("Timer Information ...\n");
 	arm_puts("  IRQ Count:  0x");
-	arm_ulonglong2hexstr(str, irq_count);
+	basic_ulonglong2hexstr(str, irq_count);
 	arm_puts(str);
 	arm_puts("\n");
 	arm_puts("  IRQ Delay:  ");
-	arm_ulonglong2str(str, irq_delay);
+	basic_ulonglong2str(str, irq_delay);
 	arm_puts(str);
 	arm_puts(" nsecs\n");
 	arm_puts("  Time Stamp: 0x");
-	arm_ulonglong2hexstr(str, tstamp);
+	basic_ulonglong2hexstr(str, tstamp);
 	arm_puts(str);
 	arm_puts("\n");
 }
@@ -297,11 +297,11 @@ void arm_cmd_dhrystone(int argc, char **argv)
 		arm_puts ("dhrystone: could provide only <iter_number>\n");
 		return;
 	} else if (argc == 2) {
-		iters = arm_str2int(argv[1]);
+		iters = basic_str2int(argv[1]);
 	} else {
 		arm_puts ("dhrystone: number of iterations not provided\n");
 		arm_puts ("dhrystone: using default ");
-		arm_int2str (str, iters);
+		basic_int2str (str, iters);
 		arm_puts (str);
 		arm_puts (" iterations\n");
 	}
@@ -319,12 +319,12 @@ void arm_cmd_hexdump(int argc, char **argv)
 		arm_puts ("hexdump: must provide <addr> and <count>\n");
 		return;
 	}
-	addr = (u32 *)arm_hexstr2ulonglong(argv[1]);
-	count = arm_hexstr2uint(argv[2]);
+	addr = (u32 *)basic_hexstr2ulonglong(argv[1]);
+	count = basic_hexstr2uint(argv[2]);
 	for (i = 0; i < (count / 4); i++) {
 		if (i % 4 == 0) {
-			arm_ulonglong2hexstr(str, (u64)&addr[i]);
-			len = arm_strlen(str);
+			basic_ulonglong2hexstr(str, (u64)&addr[i]);
+			len = basic_strlen(str);
 			while (len < 8) {
 				arm_puts("0");
 				len++;
@@ -332,8 +332,8 @@ void arm_cmd_hexdump(int argc, char **argv)
 			arm_puts(str);
 			arm_puts(": ");
 		}
-		arm_uint2hexstr(str, addr[i]);
-		len = arm_strlen(str);
+		basic_uint2hexstr(str, addr[i]);
+		len = basic_strlen(str);
 		while (len < 8) {
 			arm_puts("0");
 			len++;
@@ -361,10 +361,10 @@ void arm_cmd_copy(int argc, char **argv)
 		arm_puts ("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
-	dst = (void *)arm_hexstr2ulonglong(argv[1]);
+	dst = (void *)basic_hexstr2ulonglong(argv[1]);
 	dest_va = (virtual_addr_t)dst;
-	src = (void *)arm_hexstr2ulonglong(argv[2]);
-	count = arm_hexstr2uint(argv[3]);
+	src = (void *)basic_hexstr2ulonglong(argv[2]);
+	count = basic_hexstr2uint(argv[3]);
 
 	/* Disable timer and get start timestamp */
 	arm_board_timer_disable();
@@ -410,7 +410,7 @@ void arm_cmd_copy(int argc, char **argv)
 	arm_board_timer_enable();
 
 	/* Print time taken */
-	arm_ulonglong2str(time, tstamp);
+	basic_ulonglong2str(time, tstamp);
 	arm_puts("copy took ");
 	arm_puts(time);
 	arm_puts(" usecs for ");
@@ -442,15 +442,15 @@ void arm_cmd_start_linux(int argc, char **argv)
 	}
 
 	/* Parse the arguments from command line */
-	kernel_addr = arm_hexstr2ulonglong(argv[1]);
-	fdt_addr = arm_hexstr2ulonglong(argv[2]);
+	kernel_addr = basic_hexstr2ulonglong(argv[1]);
+	fdt_addr = basic_hexstr2ulonglong(argv[2]);
 	if (argc > 3) {
-		initrd_addr = arm_hexstr2ulonglong(argv[3]);
+		initrd_addr = basic_hexstr2ulonglong(argv[3]);
 	} else {
 		initrd_addr = 0;
 	}
 	if (argc > 4) {
-		initrd_size = arm_hexstr2ulonglong(argv[4]);
+		initrd_size = basic_hexstr2ulonglong(argv[4]);
 	} else {
 		initrd_size = 0;
 	}
@@ -494,7 +494,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 		return;
 	}
 	sprintf(cfg_str, " mem=%dM", (int)(meminfo[1] >> 20));
-	arm_strcat(linux_cmdline, cfg_str);
+	basic_strcat(linux_cmdline, cfg_str);
 	if ((err = fdt_chosen((void *)fdt_addr, 1, linux_cmdline))) {
 		arm_printf("%s: fdt_chosen() failed: %s\n", __func__, 
 				fdt_strerror(err));
@@ -539,10 +539,10 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 		return;
 	}
 
-	fdt = (void *)arm_hexstr2ulonglong(argv[1]);
+	fdt = (void *)basic_hexstr2ulonglong(argv[1]);
 	path = argv[2];
-	val = cpu_to_be32(arm_str2int(argv[3]));
-	prop = arm_strrchr(path, '/');
+	val = cpu_to_be32(basic_str2int(argv[3]));
+	prop = basic_strrchr(path, '/');
 	if (!prop) {
 		arm_puts("*** Failed to parse node\n");
 		return;
@@ -577,8 +577,8 @@ void arm_cmd_linux_cmdline(int argc, char **argv)
 		linux_cmdline[0] = 0;
 
 		while (cnt < argc) {
-			arm_strcat(linux_cmdline, argv[cnt]);
-			arm_strcat(linux_cmdline, " ");
+			basic_strcat(linux_cmdline, argv[cnt]);
+			basic_strcat(linux_cmdline, " ");
 			cnt++;
 		}
 	}
@@ -595,11 +595,11 @@ void arm_cmd_linux_memory_size(int argc, char **argv)
 	char str[32];
 
 	if (argc == 2) {
-		memory_size = (u32)arm_hexstr2uint(argv[1]);
+		memory_size = (u32)basic_hexstr2uint(argv[1]);
 	}
 
 	arm_puts ("linux_memory_size = 0x");
-	arm_uint2hexstr(str, memory_size);
+	basic_uint2hexstr(str, memory_size);
 	arm_puts(str);
 	arm_puts (" Bytes\n");
 
@@ -647,7 +647,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 	}
 
 	/* copy commands from NOR flash */
-	arm_memcpy(buffer, ptr, len);
+	basic_memcpy(buffer, ptr, len);
 	buffer[len] = '\0';
 
 	/* now we process them */
@@ -689,8 +689,8 @@ void arm_cmd_go(int argc, char **argv)
 
 	arm_board_timer_disable();
 
-	jump = (void (*)(void))arm_hexstr2ulonglong(argv[1]);
-	arm_ulonglong2hexstr(str, (u64)jump);
+	jump = (void (*)(void))basic_hexstr2ulonglong(argv[1]);
+	basic_ulonglong2hexstr(str, (u64)jump);
 	arm_puts("Jumping to location 0x");
 	arm_puts(str);
 	arm_puts(" ...\n");
@@ -742,47 +742,47 @@ void arm_exec(char *line)
 	}
 
 	if (argc) {
-		if (arm_strcmp(argv[0], "help") == 0) {
+		if (basic_strcmp(argv[0], "help") == 0) {
 			arm_cmd_help(argc, argv);
-		} else if (arm_strcmp(argv[0], "hi") == 0) {
+		} else if (basic_strcmp(argv[0], "hi") == 0) {
 			arm_cmd_hi(argc, argv);
-		} else if (arm_strcmp(argv[0], "hello") == 0) {
+		} else if (basic_strcmp(argv[0], "hello") == 0) {
 			arm_cmd_hello(argc, argv);
-		} else if (arm_strcmp(argv[0], "wfi_test") == 0) {
+		} else if (basic_strcmp(argv[0], "wfi_test") == 0) {
 			arm_cmd_wfi_test(argc, argv);
 #if 0
-		} else if (arm_strcmp(argv[0], "mmu_setup") == 0) {
+		} else if (basic_strcmp(argv[0], "mmu_setup") == 0) {
 			arm_cmd_mmu_setup(argc, argv);
 #endif
-		} else if (arm_strcmp(argv[0], "mmu_state") == 0) {
+		} else if (basic_strcmp(argv[0], "mmu_state") == 0) {
 			arm_cmd_mmu_state(argc, argv);
 #if 0
-		} else if (arm_strcmp(argv[0], "mmu_test") == 0) {
+		} else if (basic_strcmp(argv[0], "mmu_test") == 0) {
 			arm_cmd_mmu_test(argc, argv);
 #endif
-		} else if (arm_strcmp(argv[0], "mmu_cleanup") == 0) {
+		} else if (basic_strcmp(argv[0], "mmu_cleanup") == 0) {
 			arm_cmd_mmu_cleanup(argc, argv);
-		} else if (arm_strcmp(argv[0], "timer") == 0) {
+		} else if (basic_strcmp(argv[0], "timer") == 0) {
 			arm_cmd_timer(argc, argv);
-		} else if (arm_strcmp(argv[0], "dhrystone") == 0) {
+		} else if (basic_strcmp(argv[0], "dhrystone") == 0) {
 			arm_cmd_dhrystone(argc, argv);
-		} else if (arm_strcmp(argv[0], "hexdump") == 0) {
+		} else if (basic_strcmp(argv[0], "hexdump") == 0) {
 			arm_cmd_hexdump(argc, argv);
-		} else if (arm_strcmp(argv[0], "copy") == 0) {
+		} else if (basic_strcmp(argv[0], "copy") == 0) {
 			arm_cmd_copy(argc, argv);
-		} else if (arm_strcmp(argv[0], "start_linux") == 0) {
+		} else if (basic_strcmp(argv[0], "start_linux") == 0) {
 			arm_cmd_start_linux(argc, argv);
-                } else if (arm_strcmp(argv[0], "fdt_override_u32") == 0) {
+                } else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {
 			arm_cmd_fdt_override_u32(argc, argv);
-		} else if (arm_strcmp(argv[0], "linux_cmdline") == 0) {
+		} else if (basic_strcmp(argv[0], "linux_cmdline") == 0) {
 			arm_cmd_linux_cmdline(argc, argv);
-		} else if (arm_strcmp(argv[0], "linux_memory_size") == 0) {
+		} else if (basic_strcmp(argv[0], "linux_memory_size") == 0) {
 			arm_cmd_linux_memory_size(argc, argv);
-		} else if (arm_strcmp(argv[0], "autoexec") == 0) {
+		} else if (basic_strcmp(argv[0], "autoexec") == 0) {
 			arm_cmd_autoexec(argc, argv);
-		} else if (arm_strcmp(argv[0], "go") == 0) {
+		} else if (basic_strcmp(argv[0], "go") == 0) {
 			arm_cmd_go(argc, argv);
-		} else if (arm_strcmp(argv[0], "reset") == 0) {
+		} else if (basic_strcmp(argv[0], "reset") == 0) {
 			arm_cmd_reset(argc, argv);
 		} else {
 			arm_puts("Unknown command\n");
@@ -812,7 +812,7 @@ void arm_main(void)
 	} else {
 		arm_puts("autoboot: enabled\n");
 		while (boot_delay) {
-			arm_int2str(line, (int)boot_delay);
+			basic_int2str(line, (int)boot_delay);
 			arm_puts("autoboot: waiting for ");
 			arm_puts(line);
 			arm_puts(" secs (press any key)\n");
@@ -833,7 +833,7 @@ void arm_main(void)
 		}
 		arm_puts("\n");
 		if (!boot_delay) {
-			arm_strcpy(line, "autoexec\n");
+			basic_strcpy(line, "autoexec\n");
 			arm_exec(line);
 		}
 	}
