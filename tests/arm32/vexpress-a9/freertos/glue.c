@@ -28,7 +28,6 @@
 #include <arm_irq.h>
 #include <arm_plat.h>
 #include <arm_board.h>
-#include <arm_timer.h>
 #include <basic_stdio.h>
 
 extern void main_blinky(void);
@@ -50,12 +49,12 @@ static int timer_tick_handler(u32 irq, struct pt_regs *regs)
 /* configure the timer for FreeRTOS */
 void vConfigureTickInterrupt()
 {
-        arm_timer_init(configTICK_RATE_HZ);
+        arm_board_timer_init(configTICK_RATE_HZ);
 
         /* 'steal' interrupt handler */
         arm_irq_register(IRQ_V2M_TIMER0, &timer_tick_handler);
 
-        arm_timer_enable();
+        arm_board_timer_enable();
 }
 
 #define MAX_IRQS 1024

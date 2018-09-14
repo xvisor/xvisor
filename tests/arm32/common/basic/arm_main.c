@@ -26,7 +26,6 @@
 #include <arm_heap.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
-#include <arm_timer.h>
 #include <arm_board.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
@@ -47,13 +46,13 @@ void arm_init(void)
 
 	basic_stdio_init();
 
-	arm_timer_init(10000);
+	arm_board_timer_init(10000);
 
 	arm_board_init();
 
 	memory_size = arm_board_ram_size();
 
-	arm_timer_enable();
+	arm_board_timer_enable();
 
 	arm_irq_enable();
 }
@@ -163,15 +162,15 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	}
 
 	basic_puts("Executing WFI instruction\n");
-	arm_timer_disable();
-	arm_timer_change_period(delay*1000);
-	arm_timer_enable();
-	tstamp = arm_timer_timestamp();
+	arm_board_timer_disable();
+	arm_board_timer_change_period(delay*1000);
+	arm_board_timer_enable();
+	tstamp = arm_board_timer_timestamp();
 	arm_irq_wfi();
-	tstamp = arm_timer_timestamp() - tstamp;
-	arm_timer_disable();
-	arm_timer_change_period(10000);
-	arm_timer_enable();
+	tstamp = arm_board_timer_timestamp() - tstamp;
+	arm_board_timer_disable();
+	arm_board_timer_change_period(10000);
+	arm_board_timer_enable();
 	basic_puts("Resumed from WFI instruction\n");
 	basic_puts("Time spent in WFI: ");
 	basic_ulonglong2str(time, tstamp);
@@ -269,9 +268,9 @@ void arm_cmd_timer(int argc, char **argv)
 		return;
 	}
 
-	irq_count = arm_timer_irqcount();
-	irq_delay = arm_timer_irqdelay();
-	tstamp = arm_timer_timestamp();
+	irq_count = arm_board_timer_irqcount();
+	irq_delay = arm_board_timer_irqdelay();
+	tstamp = arm_board_timer_timestamp();
 	basic_puts("Timer Information ...\n");
 	basic_puts("  IRQ Count:  0x");
 	basic_ulonglong2hexstr(str, irq_count);
@@ -303,9 +302,9 @@ void arm_cmd_dhrystone(int argc, char **argv)
 		basic_puts(str);
 		basic_puts(" iterations\n");
 	}
-	arm_timer_disable();
+	arm_board_timer_disable();
 	dhry_main(iters);
-	arm_timer_enable();
+	arm_board_timer_enable();
 }
 
 void arm_cmd_hexdump(int argc, char **argv)
@@ -365,8 +364,8 @@ void arm_cmd_copy(int argc, char **argv)
 	count = basic_hexstr2uint(argv[3]);
 
 	/* Disable timer and get start timestamp */
-	arm_timer_disable();
-	tstamp = arm_timer_timestamp();
+	arm_board_timer_disable();
+	tstamp = arm_board_timer_timestamp();
 
 	/* It might happen that we are running Basic firmware
 	 * after a reboot from Guest Linux in which case both
@@ -403,9 +402,9 @@ void arm_cmd_copy(int argc, char **argv)
 	}
 
 	/* Enable timer and get end timestamp */
-	tstamp = arm_timer_timestamp() - tstamp;
+	tstamp = arm_board_timer_timestamp() - tstamp;
 	tstamp = arch_udiv64(tstamp, 1000);
-	arm_timer_enable();
+	arm_board_timer_enable();
 
 	/* Print time taken */
 	basic_ulonglong2str(time, tstamp);
@@ -466,7 +465,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
-	arm_timer_disable();
+	arm_board_timer_disable();
 	arm_irq_disable();
 	arm_mmu_cleanup();
 
@@ -571,7 +570,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
-	arm_timer_disable();
+	arm_board_timer_disable();
 	arm_irq_disable();
 	arm_mmu_cleanup();
 
@@ -770,7 +769,7 @@ void arm_cmd_go(int argc, char **argv)
 		return;
 	}
 
-	arm_timer_disable();
+	arm_board_timer_disable();
 
 	jump = (void (*)(void))basic_hexstr2uint(argv[1]);
 	basic_uint2hexstr(str, (u32)jump);
@@ -779,7 +778,7 @@ void arm_cmd_go(int argc, char **argv)
 	basic_puts(" ...\n");
 	jump ();
 
-	arm_timer_enable();
+	arm_board_timer_enable();
 }
 
 void arm_cmd_reset(int argc, char **argv)
@@ -897,8 +896,8 @@ void arm_main(void)
 			basic_puts(line);
 			basic_puts(" secs (press any key)\n");
 			key_pressed = 0;
-			tstamp = arm_timer_timestamp();
-			while ((arm_timer_timestamp() - tstamp)
+			tstamp = arm_board_timer_timestamp();
+			while ((arm_board_timer_timestamp() - tstamp)
 						< 1000000000) {
 				for (i = 0; i < 10000; i++) ;
 				if (basic_can_getc()) {
