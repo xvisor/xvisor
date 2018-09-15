@@ -40,7 +40,7 @@ common_arch_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7
 board_text_start = 0x14000000
-board_objs       = $(obj_dir)/arm_board.o \
+board_objs       = $(obj_dir)/arch_board.o \
                    $(obj_dir)/pic/gic.o \
                    $(obj_dir)/timer/imx_gpt.o \
                    $(obj_dir)/serial/imx.o \

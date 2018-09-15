@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_board.c
+ * @file arch_board.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief various platform specific functions
  */
@@ -24,7 +24,7 @@
 #include <arch_types.h>
 #include <arch_io.h>
 #include <arch_math.h>
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_plat.h>
 #include <basic_string.h>
 #include <pic/pl190.h>
@@ -32,65 +32,65 @@
 #include <serial/pl01x.h>
 #include <sys/vminfo.h>
 
-void arm_board_reset(void)
+void arch_board_reset(void)
 {
 	arch_writel(0x101,
 		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_RESETCTL_OFFSET));
 }
 
-void arm_board_init(void)
+void arch_board_init(void)
 {
 	/* Unlock Lockable reigsters */
 	arch_writel(VERSATILE_SYS_LOCKVAL,
 		   (void *)(VERSATILE_SYS_BASE + VERSATILE_SYS_LOCK_OFFSET));
 }
 
-char *arm_board_name(void)
+char *arch_board_name(void)
 {
 	return "ARM VersatilePB";
 }
 
-u32 arm_board_ram_start(void)
+physical_addr_t arch_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(VERSATILE_VMINFO_BASE, 0);
+	return (physical_addr_t)vminfo_ram_base(VERSATILE_VMINFO_BASE, 0);
 }
 
-u32 arm_board_ram_size(void)
+physical_size_t arch_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(VERSATILE_VMINFO_BASE, 0);
+	return (physical_size_t)vminfo_ram_size(VERSATILE_VMINFO_BASE, 0);
 }
 
-u32 arm_board_linux_machine_type(void)
+u32 arch_board_linux_machine_type(void)
 {
 	return 0x183;
 }
 
-void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
-void arm_board_fdt_fixup(void *fdt_addr)
+void arch_board_fdt_fixup(void *fdt_addr)
 {
 	/* For now nothing to do here. */
 }
 
-u32 arm_board_autoexec_addr(void)
+physical_addr_t arch_board_autoexec_addr(void)
 {
-	return (u32)(VERSATILE_FLASH_BASE + 0xFF000);
+	return (VERSATILE_FLASH_BASE + 0xFF000);
 }
 
-u32 arm_board_boot_delay(void)
+u32 arch_board_boot_delay(void)
 {
 	return vminfo_boot_delay(VERSATILE_VMINFO_BASE);
 }
 
-u32 arm_board_iosection_count(void)
+u32 arch_board_iosection_count(void)
 {
 	return 19;
 }
 
-physical_addr_t arm_board_iosection_addr(int num)
+physical_addr_t arch_board_iosection_addr(int num)
 {
 	physical_addr_t ret = 0;
 
@@ -132,12 +132,12 @@ physical_addr_t arm_board_iosection_addr(int num)
 
 #define NR_IRQS_VERSATILE	64
 
-u32 arm_board_pic_nr_irqs(void)
+u32 arch_board_pic_nr_irqs(void)
 {
 	return NR_IRQS_VERSATILE;
 }
 
-int arm_board_pic_init(void)
+int arch_board_pic_init(void)
 {
 	int rc;
 
@@ -152,62 +152,62 @@ int arm_board_pic_init(void)
 	return 0;
 }
 
-u32 arm_board_pic_active_irq(void)
+u32 arch_board_pic_active_irq(void)
 {
 	return pl190_active_irq(0);
 }
 
-int arm_board_pic_ack_irq(u32 irq)
+int arch_board_pic_ack_irq(u32 irq)
 {
 	return 0;
 }
 
-int arm_board_pic_eoi_irq(u32 irq)
+int arch_board_pic_eoi_irq(u32 irq)
 {
 	return pl190_eoi_irq(0, irq);
 }
 
-int arm_board_pic_mask(u32 irq)
+int arch_board_pic_mask(u32 irq)
 {
 	return pl190_mask(0, irq);
 }
 
-int arm_board_pic_unmask(u32 irq)
+int arch_board_pic_unmask(u32 irq)
 {
 	return pl190_unmask(0, irq);
 }
 
-void arm_board_timer_enable(void)
+void arch_board_timer_enable(void)
 {
 	return sp804_enable();
 }
 
-void arm_board_timer_disable(void)
+void arch_board_timer_disable(void)
 {
 	return sp804_disable();
 }
 
-u64 arm_board_timer_irqcount(void)
+u64 arch_board_timer_irqcount(void)
 {
 	return sp804_irqcount();
 }
 
-u64 arm_board_timer_irqdelay(void)
+u64 arch_board_timer_irqdelay(void)
 {
 	return sp804_irqdelay();
 }
 
-u64 arm_board_timer_timestamp(void)
+u64 arch_board_timer_timestamp(void)
 {
 	return sp804_timestamp();
 }
 
-void arm_board_timer_change_period(u32 usecs)
+void arch_board_timer_change_period(u32 usecs)
 {
 	return sp804_change_period(usecs);
 }
 
-int arm_board_timer_init(u32 usecs)
+int arch_board_timer_init(u32 usecs)
 {
 	u32 val, irq;
 	u64 counter_mult, counter_shift, counter_mask;
@@ -236,7 +236,7 @@ int arm_board_timer_init(u32 usecs)
 #define	VERSATILE_UART_INCLK			24000000
 #define	VERSATILE_UART_BAUD			115200
 
-int arm_board_serial_init(void)
+int arch_board_serial_init(void)
 {
 	pl01x_init(VERSATILE_UART_BASE, 
 			VERSATILE_UART_TYPE, 
@@ -246,7 +246,7 @@ int arm_board_serial_init(void)
 	return 0;
 }
 
-void arm_board_serial_putc(char ch)
+void arch_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
 		pl01x_putc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE, '\r');
@@ -254,17 +254,17 @@ void arm_board_serial_putc(char ch)
 	pl01x_putc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE, ch);
 }
 
-bool arm_board_serial_can_getc(void)
+bool arch_board_serial_can_getc(void)
 {
 	return pl01x_can_getc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE);
 }
 
-char arm_board_serial_getc(void)
+char arch_board_serial_getc(void)
 {
 	char ch = pl01x_getc(VERSATILE_UART_BASE, VERSATILE_UART_TYPE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	arm_board_serial_putc(ch);
+	arch_board_serial_putc(ch);
 	return ch;
 }

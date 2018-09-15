@@ -16,14 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_board.c
+ * @file arch_board.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief various platform specific functions
  */
 
 #include <arch_types.h>
 #include <arch_io.h>
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_plat.h>
 #include <basic_string.h>
 #include <pic/gic.h>
@@ -31,37 +31,37 @@
 #include <serial/imx.h>
 #include <sys/vminfo.h>
 
-void arm_board_reset(void)
+void arch_board_reset(void)
 {
 	/* Nothing to do */
 }
 
-void arm_board_init(void)
+void arch_board_init(void)
 {
 	/* Nothing to do */
 }
 
-char *arm_board_name(void)
+char *arch_board_name(void)
 {
 	return "ARM SabreLite";
 }
 
-u32 arm_board_ram_start(void)
+physical_addr_t arch_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(IMX_VMINFO_BASE, 0);
+	return (physical_addr_t)vminfo_ram_base(IMX_VMINFO_BASE, 0);
 }
 
-u32 arm_board_ram_size(void)
+physical_size_t arch_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(IMX_VMINFO_BASE, 0);
+	return (physical_size_t)vminfo_ram_size(IMX_VMINFO_BASE, 0);
 }
 
-u32 arm_board_linux_machine_type(void)
+u32 arch_board_linux_machine_type(void)
 {
 	return 0x8e0;
 }
 
-void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk");
 	/* VirtIO Network Device */
@@ -74,27 +74,27 @@ void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 		   "mxc_hdmi.only_cea=1");
 }
 
-void arm_board_fdt_fixup(void *fdt_addr)
+void arch_board_fdt_fixup(void *fdt_addr)
 {
 	/* For now nothing to do here. */
 }
 
-u32 arm_board_autoexec_addr(void)
+physical_addr_t arch_board_autoexec_addr(void)
 {
-	return (u32)(IMX_NOR + 0xFF000);
+	return (IMX_NOR + 0xFF000);
 }
 
-u32 arm_board_boot_delay(void)
+u32 arch_board_boot_delay(void)
 {
 	return vminfo_boot_delay(IMX_VMINFO_BASE);
 }
 
-u32 arm_board_iosection_count(void)
+u32 arch_board_iosection_count(void)
 {
 	return 6;
 }
 
-physical_addr_t arm_board_iosection_addr(int num)
+physical_addr_t arch_board_iosection_addr(int num)
 {
 	physical_addr_t ret = 0;
 
@@ -125,12 +125,12 @@ physical_addr_t arm_board_iosection_addr(int num)
 	return ret;
 }
 
-u32 arm_board_pic_nr_irqs(void)
+u32 arch_board_pic_nr_irqs(void)
 {
 	return NR_IRQS_CA9X4;
 }
 
-int arm_board_pic_init(void)
+int arch_board_pic_init(void)
 {
 	int rc;
 
@@ -149,64 +149,64 @@ int arm_board_pic_init(void)
 	return 0;
 }
 
-u32 arm_board_pic_active_irq(void)
+u32 arch_board_pic_active_irq(void)
 {
 	return gic_active_irq(0);
 }
 
-int arm_board_pic_ack_irq(u32 irq)
+int arch_board_pic_ack_irq(u32 irq)
 {
 	return 0;
 }
 
-int arm_board_pic_eoi_irq(u32 irq)
+int arch_board_pic_eoi_irq(u32 irq)
 {
 	return gic_eoi_irq(0, irq);
 }
 
-int arm_board_pic_mask(u32 irq)
+int arch_board_pic_mask(u32 irq)
 {
 	return gic_mask(0, irq);
 }
 
-int arm_board_pic_unmask(u32 irq)
+int arch_board_pic_unmask(u32 irq)
 {
 	return gic_unmask(0, irq);
 }
 
-void arm_board_timer_enable(void)
+void arch_board_timer_enable(void)
 {
 	return imx_gpt_enable();
 }
 
-void arm_board_timer_disable(void)
+void arch_board_timer_disable(void)
 {
 	return imx_gpt_disable();
 }
 
-u64 arm_board_timer_irqcount(void)
+u64 arch_board_timer_irqcount(void)
 {
 	return imx_gpt_irqcount();
 }
 
-u64 arm_board_timer_irqdelay(void)
+u64 arch_board_timer_irqdelay(void)
 {
 	return imx_gpt_irqdelay();
 }
 
-u64 arm_board_timer_timestamp(void)
+u64 arch_board_timer_timestamp(void)
 {
 	return imx_gpt_timestamp();
 }
 
-void arm_board_timer_change_period(u32 usecs)
+void arch_board_timer_change_period(u32 usecs)
 {
 	return imx_gpt_change_period(usecs);
 }
 
-int arm_board_timer_init(u32 usecs)
+int arch_board_timer_init(u32 usecs)
 {
-	arm_board_pic_unmask(IRQ_IMX_TIMER0);
+	arch_board_pic_unmask(IRQ_IMX_TIMER0);
 
 	return imx_gpt_init(usecs, IMX_TIMER0, IRQ_IMX_TIMER0, 0);
 }
@@ -215,14 +215,14 @@ int arm_board_timer_init(u32 usecs)
 #define	IMX_UART_INCLK		80000000
 #define	IMX_UART_BAUD		115200
 
-int arm_board_serial_init(void)
+int arch_board_serial_init(void)
 {
 	imx_init(IMX_UART_BASE, IMX_UART_BAUD, IMX_UART_INCLK);
 
 	return 0;
 }
 
-void arm_board_serial_putc(char ch)
+void arch_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
 		imx_putc(IMX_UART_BASE, '\r');
@@ -231,17 +231,17 @@ void arm_board_serial_putc(char ch)
 	imx_putc(IMX_UART_BASE, ch);
 }
 
-bool arm_board_serial_can_getc(void)
+bool arch_board_serial_can_getc(void)
 {
 	return imx_can_getc(IMX_UART_BASE);
 }
 
-char arm_board_serial_getc(void)
+char arch_board_serial_getc(void)
 {
 	char ch = imx_getc(IMX_UART_BASE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	arm_board_serial_putc(ch);
+	arch_board_serial_putc(ch);
 	return ch;
 }

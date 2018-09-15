@@ -60,7 +60,7 @@ COMMON_ARCH_SRCS = arch_math.c arm_irq.c 	\
               timer/sp804.c arm_cache_v7.S
 
 # FreeRTOS specific glue and application source (relative to $srcdir)
-OTHER_SRCS = port/port.c port/portASM.S ../basic/arm_board.c	\
+OTHER_SRCS = port/port.c port/portASM.S ../basic/arch_board.c	\
              arm_entry_v7.S glue.c main.c
 
 CC	= $(CROSS_COMPILE)gcc

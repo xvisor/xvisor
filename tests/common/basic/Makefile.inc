@@ -21,7 +21,8 @@
 # @brief common makefile to build basic firmware
 # */
 
-FIRMWARE_COMMON_DEPS+= $(common_dir)/basic_heap.h \
+FIRMWARE_COMMON_DEPS+= $(common_dir)/arch_board.h \
+			$(common_dir)/basic_heap.h \
 			$(common_dir)/basic_stdio.h \
 			$(common_dir)/basic_string.h \
 			$(common_dir)/libfdt/fdt.h \

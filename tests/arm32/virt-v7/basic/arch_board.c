@@ -16,13 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_board.c
+ * @file arch_board.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief various platform specific functions
  */
 
 #include <arch_types.h>
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_plat.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
@@ -32,7 +32,7 @@
 #include <sys/vminfo.h>
 #include <display/simplefb.h>
 
-void arm_board_reset(void)
+void arch_board_reset(void)
 {
 	long ret;
 	unsigned long func, arg0, arg1, arg2;
@@ -60,58 +60,58 @@ void arm_board_reset(void)
 	}
 }
 
-void arm_board_init(void)
+void arch_board_init(void)
 {
 	/* Nothing to do */
 }
 
-char *arm_board_name(void)
+char *arch_board_name(void)
 {
 	return "Virt-v7";
 }
 
-u32 arm_board_ram_start(void)
+physical_addr_t arch_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(VIRT_V7_VMINFO, 0);
+	return (physical_addr_t)vminfo_ram_base(VIRT_V7_VMINFO, 0);
 }
 
-u32 arm_board_ram_size(void)
+physical_size_t arch_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(VIRT_V7_VMINFO, 0);
+	return (physical_size_t)vminfo_ram_size(VIRT_V7_VMINFO, 0);
 }
 
-u32 arm_board_linux_machine_type(void)
+u32 arch_board_linux_machine_type(void)
 {
 	return 0x000; /* Dummy machine type */
 }
 
-void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk "
 			      "console=ttyAMA0");
 }
 
-void arm_board_fdt_fixup(void *fdt_addr)
+void arch_board_fdt_fixup(void *fdt_addr)
 {
 	simplefb_fdt_fixup(VIRT_V7_SIMPLEFB, fdt_addr);
 }
 
-u32 arm_board_autoexec_addr(void)
+physical_addr_t arch_board_autoexec_addr(void)
 {
-	return (u32)(VIRT_V7_NOR_FLASH + 0xFF000);
+	return (VIRT_V7_NOR_FLASH + 0xFF000);
 }
 
-u32 arm_board_boot_delay(void)
+u32 arch_board_boot_delay(void)
 {
 	return vminfo_boot_delay(VIRT_V7_VMINFO);
 }
 
-u32 arm_board_iosection_count(void)
+u32 arch_board_iosection_count(void)
 {
 	return 8;
 }
 
-physical_addr_t arm_board_iosection_addr(int num)
+physical_addr_t arch_board_iosection_addr(int num)
 {
 	physical_addr_t ret = 0;
 
@@ -156,12 +156,12 @@ physical_addr_t arm_board_iosection_addr(int num)
 	return ret;
 }
 
-u32 arm_board_pic_nr_irqs(void)
+u32 arch_board_pic_nr_irqs(void)
 {
 	return NR_IRQS_VIRT_V7;
 }
 
-int arm_board_pic_init(void)
+int arch_board_pic_init(void)
 {
 	int rc;
 
@@ -180,74 +180,74 @@ int arm_board_pic_init(void)
 	return 0;
 }
 
-u32 arm_board_pic_active_irq(void)
+u32 arch_board_pic_active_irq(void)
 {
 	return gic_active_irq(0);
 }
 
-int arm_board_pic_ack_irq(u32 irq)
+int arch_board_pic_ack_irq(u32 irq)
 {
 	return 0;
 }
 
-int arm_board_pic_eoi_irq(u32 irq)
+int arch_board_pic_eoi_irq(u32 irq)
 {
 	return gic_eoi_irq(0, irq);
 }
 
-int arm_board_pic_mask(u32 irq)
+int arch_board_pic_mask(u32 irq)
 {
 	return gic_mask(0, irq);
 }
 
-int arm_board_pic_unmask(u32 irq)
+int arch_board_pic_unmask(u32 irq)
 {
 	return gic_unmask(0, irq);
 }
 
-void arm_board_timer_enable(void)
+void arch_board_timer_enable(void)
 {
 	return generic_timer_enable();
 }
 
-void arm_board_timer_disable(void)
+void arch_board_timer_disable(void)
 {
 	return generic_timer_disable();
 }
 
-u64 arm_board_timer_irqcount(void)
+u64 arch_board_timer_irqcount(void)
 {
 	return generic_timer_irqcount();
 }
 
-u64 arm_board_timer_irqdelay(void)
+u64 arch_board_timer_irqdelay(void)
 {
 	return generic_timer_irqdelay();
 }
 
-u64 arm_board_timer_timestamp(void)
+u64 arch_board_timer_timestamp(void)
 {
 	return generic_timer_timestamp();
 }
 
-void arm_board_timer_change_period(u32 usecs)
+void arch_board_timer_change_period(u32 usecs)
 {
 	return generic_timer_change_period(usecs);
 }
 
-int arm_board_timer_init(u32 usecs)
+int arch_board_timer_init(u32 usecs)
 {
 	return generic_timer_init(usecs, IRQ_VIRT_V7_VIRT_TIMER);
 }
 
-int arm_board_serial_init(void)
+int arch_board_serial_init(void)
 {
 	pl01x_init(VIRT_V7_UART0, PL01X_TYPE_1, 115200, 24000000);
 
 	return 0;
 }
 
-void arm_board_serial_putc(char ch)
+void arch_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
 		pl01x_putc(VIRT_V7_UART0, PL01X_TYPE_1, '\r');
@@ -255,17 +255,17 @@ void arm_board_serial_putc(char ch)
 	pl01x_putc(VIRT_V7_UART0, PL01X_TYPE_1, ch);
 }
 
-bool arm_board_serial_can_getc(void)
+bool arch_board_serial_can_getc(void)
 {
 	return pl01x_can_getc(VIRT_V7_UART0, PL01X_TYPE_1);
 }
 
-char arm_board_serial_getc(void)
+char arch_board_serial_getc(void)
 {
 	char ch = pl01x_getc(VIRT_V7_UART0, PL01X_TYPE_1);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	arm_board_serial_putc(ch);
+	arch_board_serial_putc(ch);
 	return ch;
 }

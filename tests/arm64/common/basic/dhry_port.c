@@ -15,7 +15,7 @@
  ****************************************************************************
  */
 
-#include <arm_board.h>
+#include <arch_board.h>
 #include <basic_heap.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
@@ -30,7 +30,7 @@ void *dhry_malloc(unsigned int size)
 
 TimeStamp dhry_timestamp(void)
 {
-	return arch_udiv64(arm_board_timer_timestamp(), 1000);
+	return arch_udiv64(arch_board_timer_timestamp(), 1000);
 }
 
 long dhry_to_microsecs(TimeStamp UserTime)

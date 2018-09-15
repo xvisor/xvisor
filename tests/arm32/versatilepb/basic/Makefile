@@ -40,7 +40,7 @@ common_arch_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v5
 board_text_start = 0x04000000
-board_objs       = $(obj_dir)/arm_board.o \
+board_objs       = $(obj_dir)/arch_board.o \
                    $(obj_dir)/pic/pl190.o \
                    $(obj_dir)/timer/sp804.o \
                    $(obj_dir)/serial/pl01x.o \

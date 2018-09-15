@@ -53,7 +53,6 @@ FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
                 $(common_arch_dir)/arch_math.h \
                 $(common_arch_dir)/arm_defines.h \
                 $(common_arch_dir)/arch_types.h \
-                $(common_arch_dir)/arm_board.h \
                 $(common_arch_dir)/arm_inline_asm.h \
                 $(common_arch_dir)/arm_cache.h \
                 $(common_arch_dir)/arch_io.h \

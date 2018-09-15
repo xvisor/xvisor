@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013 Anup Patel.
+ * Copyright (c) 2012 Jean-Christophe Dubois.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,15 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_board.c
- * @author Anup Patel (anup@brainfault.org)
+ * @file arch_board.c
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief various platform specific functions
  */
 
 #include <arch_types.h>
 #include <arch_io.h>
 #include <arch_math.h>
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_plat.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
@@ -35,65 +35,64 @@
 #include <serial/pl01x.h>
 #include <sys/vminfo.h>
 
-void arm_board_reset(void)
+void arch_board_reset(void)
 {
         arch_writel(0x0,
-                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
-        arch_writel(0x08,
-                   (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_RESETCTL_OFFSET));
+                   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
+        arch_writel(0x04,
+                   (void *)(REALVIEW_SYS_BASE+ REALVIEW_SYS_RESETCTL_OFFSET));
 }
 
-void arm_board_init(void)
+void arch_board_init(void)
 {
 	/* Unlock Lockable reigsters */
 	arch_writel(REALVIEW_SYS_LOCKVAL,
                    (void *)(REALVIEW_SYS_BASE + REALVIEW_SYS_LOCK_OFFSET));
 }
 
-char *arm_board_name(void)
+char *arch_board_name(void)
 {
-	return "ARM Realview-EB-MPCore";
+	return "ARM Realview-PB-A8";
 }
 
-u32 arm_board_ram_start(void)
+physical_addr_t arch_board_ram_start(void)
 {
-	return (u32)vminfo_ram_base(REALVIEW_VMINFO_BASE, 0);
+	return (physical_addr_t)vminfo_ram_base(REALVIEW_VMINFO_BASE, 0);
 }
 
-u32 arm_board_ram_size(void)
+physical_size_t arch_board_ram_size(void)
 {
-	return (u32)vminfo_ram_size(REALVIEW_VMINFO_BASE, 0);
+	return (physical_size_t)vminfo_ram_size(REALVIEW_VMINFO_BASE, 0);
 }
 
-u32 arm_board_linux_machine_type(void)
+u32 arch_board_linux_machine_type(void)
 {
-	return 0x33b;
+	return 0x769;
 }
 
-void arm_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
+void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
 }
 
-void arm_board_fdt_fixup(void *fdt_addr)
+void arch_board_fdt_fixup(void *fdt_addr)
 {
 	u32 vals[5];
 	char str[64];
 	u32 intc_phandle;
 	int rc, poff, noff;
 
-	poff = fdt_path_offset(fdt_addr,
-			       "/soc/interrupt-controller@1f000100");
+	poff = fdt_path_offset(fdt_addr, "/interrupt-controller@1e000000");
 	if (poff < 0) {
 		basic_printf("%s: failed to find nodeoffset of %s node\n",
-			   __func__, "/soc/interrupt-controller@1f000100");
+			   __func__, "/interrupt-controller@1e000000");
 		return;
 	}
 
 	intc_phandle = fdt_get_phandle(fdt_addr, poff);
 	if (!intc_phandle) {
 		basic_printf("%s: failed to find phandle for %s node\n",
-			   __func__, "/soc/interrupt-controller@1f000100");
+			   __func__, "/interrupt-controller@1e000000");
 		return;
 	}
 
@@ -181,7 +180,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	}
 
 	vals[0] = cpu_to_fdt32(0);
-	vals[1] = cpu_to_fdt32(16);
+	vals[1] = cpu_to_fdt32(2);
 	vals[2] = cpu_to_fdt32(4);
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
@@ -225,7 +224,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	}
 
 	vals[0] = cpu_to_fdt32(0);
-	vals[1] = cpu_to_fdt32(36);
+	vals[1] = cpu_to_fdt32(3);
 	vals[2] = cpu_to_fdt32(4);
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
@@ -269,7 +268,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	}
 
 	vals[0] = cpu_to_fdt32(0);
-	vals[1] = cpu_to_fdt32(37);
+	vals[1] = cpu_to_fdt32(9);
 	vals[2] = cpu_to_fdt32(4);
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
@@ -313,7 +312,7 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	}
 
 	vals[0] = cpu_to_fdt32(0);
-	vals[1] = cpu_to_fdt32(41);
+	vals[1] = cpu_to_fdt32(25);
 	vals[2] = cpu_to_fdt32(4);
 	rc = fdt_setprop(fdt_addr, noff, "interrupts",
 			 vals, sizeof(u32)*3);
@@ -331,22 +330,22 @@ void arm_board_fdt_fixup(void *fdt_addr)
 	}
 }
 
-u32 arm_board_autoexec_addr(void)
+physical_addr_t arch_board_autoexec_addr(void)
 {
-	return (u32)(REALVIEW_FLASH0_BASE + 0xFF000);
+	return (REALVIEW_FLASH0_BASE + 0xFF000);
 }
 
-u32 arm_board_boot_delay(void)
+u32 arch_board_boot_delay(void)
 {
 	return vminfo_boot_delay(REALVIEW_VMINFO_BASE);
 }
 
-u32 arm_board_iosection_count(void)
+u32 arch_board_iosection_count(void)
 {
 	return 19;
 }
 
-physical_addr_t arm_board_iosection_addr(int num)
+physical_addr_t arch_board_iosection_addr(int num)
 {
 	physical_addr_t ret = 0;
 
@@ -386,19 +385,19 @@ physical_addr_t arm_board_iosection_addr(int num)
 	return ret;
 }
 
-u32 arm_board_pic_nr_irqs(void)
+u32 arch_board_pic_nr_irqs(void)
 {
-	return NR_IRQS_EB;
+	return NR_IRQS_PBA8;
 }
 
-int arm_board_pic_init(void)
+int arch_board_pic_init(void)
 {
 	int rc;
 
 	/*
 	 * Initialize Generic Interrupt Controller
 	 */
-	rc = gic_dist_init(0, REALVIEW_GIC_DIST_BASE, IRQ_GIC_START);
+	rc = gic_dist_init(0, REALVIEW_GIC_DIST_BASE, IRQ_PBA8_GIC_START);
 	if (rc) {
 		return rc;
 	}
@@ -410,62 +409,62 @@ int arm_board_pic_init(void)
 	return 0;
 }
 
-u32 arm_board_pic_active_irq(void)
+u32 arch_board_pic_active_irq(void)
 {
 	return gic_active_irq(0);
 }
 
-int arm_board_pic_ack_irq(u32 irq)
+int arch_board_pic_ack_irq(u32 irq)
 {
 	return 0;
 }
 
-int arm_board_pic_eoi_irq(u32 irq)
+int arch_board_pic_eoi_irq(u32 irq)
 {
 	return gic_eoi_irq(0, irq);
 }
 
-int arm_board_pic_mask(u32 irq)
+int arch_board_pic_mask(u32 irq)
 {
 	return gic_mask(0, irq);
 }
 
-int arm_board_pic_unmask(u32 irq)
+int arch_board_pic_unmask(u32 irq)
 {
 	return gic_unmask(0, irq);
 }
 
-void arm_board_timer_enable(void)
+void arch_board_timer_enable(void)
 {
 	return sp804_enable();
 }
 
-void arm_board_timer_disable(void)
+void arch_board_timer_disable(void)
 {
 	return sp804_disable();
 }
 
-u64 arm_board_timer_irqcount(void)
+u64 arch_board_timer_irqcount(void)
 {
 	return sp804_irqcount();
 }
 
-u64 arm_board_timer_irqdelay(void)
+u64 arch_board_timer_irqdelay(void)
 {
 	return sp804_irqdelay();
 }
 
-u64 arm_board_timer_timestamp(void)
+u64 arch_board_timer_timestamp(void)
 {
 	return sp804_timestamp();
 }
 
-void arm_board_timer_change_period(u32 usecs)
+void arch_board_timer_change_period(u32 usecs)
 {
 	return sp804_change_period(usecs);
 }
 
-int arm_board_timer_init(u32 usecs)
+int arch_board_timer_init(u32 usecs)
 {
 	u32 val, irq;
 	u64 counter_mult, counter_shift, counter_mask;
@@ -476,7 +475,7 @@ int arm_board_timer_init(u32 usecs)
 	counter_mult += (((u64)1000) >> 1);
 	counter_mult = arch_udiv64(counter_mult, ((u64)1000));
 
-	irq = IRQ_EB11MP_TIMER0_1;
+	irq = IRQ_PBA8_TIMER0_1;
 
 	/* set clock frequency: 
 	 *      REALVIEW_REFCLK is 32KHz
@@ -489,40 +488,40 @@ int arm_board_timer_init(u32 usecs)
 			  counter_mask, counter_mult, counter_shift);
 }
 
-#define	EBMP_UART_BASE			0x10009000
-#define	EBMP_UART_TYPE			PL01X_TYPE_1
-#define	EBMP_UART_INCLK			24000000
-#define	EBMP_UART_BAUD			115200
+#define	PBA8_UART_BASE			0x10009000
+#define	PBA8_UART_TYPE			PL01X_TYPE_1
+#define	PBA8_UART_INCLK			24000000
+#define	PBA8_UART_BAUD			115200
 
-int arm_board_serial_init(void)
+int arch_board_serial_init(void)
 {
-	pl01x_init(EBMP_UART_BASE, 
-			EBMP_UART_TYPE, 
-			EBMP_UART_BAUD, 
-			EBMP_UART_INCLK);
+	pl01x_init(PBA8_UART_BASE, 
+			PBA8_UART_TYPE, 
+			PBA8_UART_BAUD, 
+			PBA8_UART_INCLK);
 
 	return 0;
 }
 
-void arm_board_serial_putc(char ch)
+void arch_board_serial_putc(char ch)
 {
 	if (ch == '\n') {
-		pl01x_putc(EBMP_UART_BASE, EBMP_UART_TYPE, '\r');
+		pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, '\r');
 	}
-	pl01x_putc(EBMP_UART_BASE, EBMP_UART_TYPE, ch);
+	pl01x_putc(PBA8_UART_BASE, PBA8_UART_TYPE, ch);
 }
 
-bool arm_board_serial_can_getc(void)
+bool arch_board_serial_can_getc(void)
 {
-	return pl01x_can_getc(EBMP_UART_BASE, EBMP_UART_TYPE);
+	return pl01x_can_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
 }
 
-char arm_board_serial_getc(void)
+char arch_board_serial_getc(void)
 {
-	char ch = pl01x_getc(EBMP_UART_BASE, EBMP_UART_TYPE);
+	char ch = pl01x_getc(PBA8_UART_BASE, PBA8_UART_TYPE);
 	if (ch == '\r') {
 		ch = '\n';
 	}
-	arm_board_serial_putc(ch);
+	arch_board_serial_putc(ch);
 	return ch;
 }

@@ -21,7 +21,7 @@
  * @brief source file for MMU functions
  */
 
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
 #include <arm_mmu.h>

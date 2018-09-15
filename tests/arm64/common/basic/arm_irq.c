@@ -21,7 +21,7 @@
  * @brief source code for handling ARM test code interrupts
  */
 
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_mmu.h>
 #include <arm_irq.h>
 #include <basic_stdio.h>
@@ -30,8 +30,8 @@
 
 arm_irq_handler_t irq_hndls[MAX_NR_IRQS];
 
-#define PIC_NR_IRQS		((arm_board_pic_nr_irqs() < MAX_NR_IRQS) ? \
-				  arm_board_pic_nr_irqs() : MAX_NR_IRQS)
+#define PIC_NR_IRQS		((arch_board_pic_nr_irqs() < MAX_NR_IRQS) ? \
+				  arch_board_pic_nr_irqs() : MAX_NR_IRQS)
 
 void do_bad_mode(struct pt_regs *regs)
 {
@@ -47,10 +47,10 @@ void do_sync(struct pt_regs *regs)
 void do_irq(struct pt_regs *regs)
 {
 	int rc = 0;
-	int irq = arm_board_pic_active_irq();
+	int irq = arch_board_pic_active_irq();
 
 	if (-1 < irq) {
-		rc = arm_board_pic_ack_irq(irq);
+		rc = arch_board_pic_ack_irq(irq);
 		if (rc) {
 			while (1);
 		}
@@ -60,7 +60,7 @@ void do_irq(struct pt_regs *regs)
 				while (1);
 			}
 		}
-		rc = arm_board_pic_eoi_irq(irq);
+		rc = arch_board_pic_eoi_irq(irq);
 		if (rc) {
 			while (1);
 		}
@@ -85,7 +85,7 @@ void arm_irq_setup(void)
 	/*
 	 * Initialize board PIC
 	 */
-	vec = arm_board_pic_init();
+	vec = arch_board_pic_init();
 	if (vec) {
 		while (1);
 	}
@@ -97,7 +97,7 @@ void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
 	if (irq < PIC_NR_IRQS) {
 		irq_hndls[irq] = hndl;
 		if (irq_hndls[irq]) {
-			rc = arm_board_pic_unmask(irq);
+			rc = arch_board_pic_unmask(irq);
 			if (rc) {
 				while (1);
 			}

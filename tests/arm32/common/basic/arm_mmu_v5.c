@@ -21,7 +21,7 @@
  * @brief source file for MMU functions
  */
 
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
 #include <arm_mmu.h>
@@ -1295,8 +1295,8 @@ void arm_mmu_setup(void)
 	sec_tmpl &= ~TTBL_L1TBL_TTE_C_MASK;
 
 	/* Create section entries for IO */
-	for (s = 0; s < arm_board_iosection_count(); s++) {
-		sec = arm_board_iosection_addr(s) & 
+	for (s = 0; s < arch_board_iosection_count(); s++) {
+		sec = arch_board_iosection_addr(s) & 
 				~(TTBL_L1TBL_SECTION_PAGE_SIZE - 1);
 		l1[sec / TTBL_L1TBL_SECTION_PAGE_SIZE] = sec_tmpl | sec;
 	}

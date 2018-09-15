@@ -21,7 +21,7 @@
  * @brief source file for common input/output functions
  */
 
-#include <arm_board.h>
+#include <arch_board.h>
 #include <arch_math.h>
 #include <basic_stdio.h>
 
@@ -29,7 +29,7 @@ void basic_stdio_init(void)
 {
 	int rc;
 
-	rc = arm_board_serial_init();
+	rc = arch_board_serial_init();
 	if (rc) {
 		while (1);
 	}
@@ -49,23 +49,23 @@ bool basic_isprintable(char c)
 
 void basic_putc(char ch)
 {
-	arm_board_serial_putc(ch);
+	arch_board_serial_putc(ch);
 }
 
 bool basic_can_getc(void)
 {
-	return arm_board_serial_can_getc();
+	return arch_board_serial_can_getc();
 }
 
 char basic_getc(void)
 {
-	return arm_board_serial_getc();
+	return arch_board_serial_getc();
 }
 
 void basic_puts(const char * str)
 {
 	while (*str) {
-		arm_board_serial_putc(*str);
+		arch_board_serial_putc(*str);
 		str++;
 	}
 }
@@ -75,14 +75,14 @@ void basic_gets(char *s, int maxwidth, char endchar)
 	char *retval;
 	char ch;
 	retval = s;
-	ch = arm_board_serial_getc();
+	ch = arch_board_serial_getc();
 	while (ch != endchar && maxwidth > 0) {
 		*retval = ch;
 		retval++;
 		maxwidth--;
 		if (maxwidth == 0)
 			break;
-		ch = arm_board_serial_getc();
+		ch = arch_board_serial_getc();
 	}
 	*retval = '\0';
 	return;
@@ -112,7 +112,7 @@ static void printc(char **out, u32 *out_len, char ch)
 			}
 		}
 	} else {
-		arm_board_serial_putc(ch);
+		arch_board_serial_putc(ch);
 	}
 }
 
