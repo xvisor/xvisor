@@ -73,3 +73,10 @@ void dhry_printi(int val)
 	basic_int2str(tmp, val);
 	basic_puts(tmp);
 }
+
+void dhry_printl(unsigned long val)
+{
+	char tmp[128];
+	basic_ulonglong2str(tmp, (unsigned long long)val);
+	basic_puts(tmp);
+}

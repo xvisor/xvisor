@@ -209,7 +209,7 @@ void dhry_main (int iterations)
   dhry_prints ("        should be:   Number_Of_Runs + 10\n");
   dhry_prints ("Ptr_Glob->\n");
   dhry_prints ("  Ptr_Comp:          ");
-  dhry_printll ((unsigned long long) Ptr_Glob->Ptr_Comp);
+  dhry_printl ((unsigned long) Ptr_Glob->Ptr_Comp);
   dhry_prints ("\n");
   dhry_prints ("        should be:   (implementation-dependent)\n");
   dhry_prints ("  Discr:             ");
@@ -236,7 +236,7 @@ void dhry_main (int iterations)
   dhry_prints ("        should be:   DHRYSTONE PROGRAM, SOME STRING\n");
   dhry_prints ("Next_Ptr_Glob->\n");
   dhry_prints ("  Ptr_Comp:          ");
-  dhry_printll ((unsigned long long) Next_Ptr_Glob->Ptr_Comp);
+  dhry_printl ((unsigned long) Next_Ptr_Glob->Ptr_Comp);
   dhry_prints ("\n");
   dhry_prints ("        should be:   (implementation-dependent), same as above\n");
   dhry_prints ("  Discr:             ");

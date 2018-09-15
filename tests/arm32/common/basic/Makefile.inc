@@ -81,10 +81,7 @@ FIRMWARE_OBJS+=$(board_objs)
 
 FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
 		$(obj_dir)/arm_irq.o \
-		$(obj_dir)/arch_math.o \
-		$(obj_dir)/dhry_1.o \
-		$(obj_dir)/dhry_2.o \
-		$(obj_dir)/dhry_port.o
+		$(obj_dir)/arch_math.o
 
 FIRMWARE_CPPFLAGS=-DFIRMWARE_BOOT
 ifeq ($(board_smp), y)

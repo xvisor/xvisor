@@ -38,10 +38,7 @@ FIRMWARE_OBJS=$(obj_dir)/arm_entry.o \
 FIRMWARE_OBJS+=$(board_objs)
 
 FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
-		$(obj_dir)/arm_irq.o \
-		$(obj_dir)/dhry_1.o \
-		$(obj_dir)/dhry_2.o \
-		$(obj_dir)/dhry_port.o
+		$(obj_dir)/arm_irq.o
 
 FIRMWARE_CPPFLAGS=-DFIRMWARE_BOOT
 FIRMWARE_CFLAGS=$(FIRMWARE_CPPFLAGS)

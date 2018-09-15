@@ -37,5 +37,6 @@ void dhry_strcpy(char *dst, char *src);
 void dhry_printc(char ch);
 void dhry_prints(char *str);
 void dhry_printi(int val);
+void dhry_printl(unsigned long val);
 
 #endif /* __DHRY_PORT_H_ */
