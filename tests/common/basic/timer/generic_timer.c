@@ -18,12 +18,12 @@
  *
  * @file generic_timer.c
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief ARMv8 Generic Timer driver source
- *
+ * @brief ARMv7/ARMv8 Generic Timer driver source
  */
 
+#include <arch_generic_timer.h>
+#include <arch_math.h>
 #include <basic_irq.h>
-#include <arm_inline_asm.h>
 #include <timer/generic_timer.h>
 
 #define GENERIC_TIMER_CTRL_ENABLE		(1 << 0)
@@ -43,26 +43,26 @@ void generic_timer_enable(void)
 {
 	unsigned long ctrl;
 
-	ctrl = mrs(cntv_ctl_el0);
+	ctrl = arch_read_cntv_ctl();
 	ctrl |= GENERIC_TIMER_CTRL_ENABLE;
 	ctrl &= ~GENERIC_TIMER_CTRL_IT_MASK;
-	msr(cntv_ctl_el0, ctrl);
+	arch_write_cntv_ctl(ctrl);
 }
 
 void generic_timer_disable(void)
 {
 	unsigned long ctrl;
 
-	ctrl = mrs(cntv_ctl_el0);
+	ctrl = arch_read_cntv_ctl();
 	ctrl &= ~GENERIC_TIMER_CTRL_ENABLE;
-	msr(cntv_ctl_el0, ctrl);
+	arch_write_cntv_ctl(ctrl);
 }
 
 void generic_timer_change_period(u32 usec)
 {
-	timer_period_ticks = ((timer_freq / 1000000) * usec);
+	timer_period_ticks = (arch_udiv64(timer_freq, 1000000) * usec);
 
-	msr(cntv_tval_el0, timer_period_ticks);
+	arch_write_cntv_tval(timer_period_ticks);
 }
 
 u64 generic_timer_irqcount(void)
@@ -77,7 +77,7 @@ u64 generic_timer_irqdelay(void)
 
 u64 generic_timer_timestamp(void)
 {
-	return (mrs(cntvct_el0) * timer_mult) >> timer_shift;
+	return (arch_read_cntvct() * timer_mult) >> timer_shift;
 }
 
 int generic_timer_irqhndl(u32 irq_no, struct pt_regs *regs)
@@ -85,10 +85,10 @@ int generic_timer_irqhndl(u32 irq_no, struct pt_regs *regs)
 	unsigned long ctrl;
 	u64 tstamp;
 
-	ctrl = mrs(cntv_ctl_el0);
+	ctrl = arch_read_cntv_ctl();
 	if (ctrl & GENERIC_TIMER_CTRL_IT_STAT) {
 		ctrl |= GENERIC_TIMER_CTRL_IT_MASK;
-		msr(cntv_ctl_el0, ctrl);
+		arch_write_cntv_ctl(ctrl);
 	}
 
 	timer_irq_count++;
@@ -104,12 +104,12 @@ int generic_timer_irqhndl(u32 irq_no, struct pt_regs *regs)
 		timer_irq_tstamp = tstamp;
 	}
 
-	ctrl = mrs(cntv_ctl_el0);
+	ctrl = arch_read_cntv_ctl();
 	ctrl |= GENERIC_TIMER_CTRL_ENABLE;
 	ctrl &= ~GENERIC_TIMER_CTRL_IT_MASK;
 
-	msr(cntv_tval_el0, timer_period_ticks);
-	msr(cntv_ctl_el0, GENERIC_TIMER_CTRL_ENABLE);
+	arch_write_cntv_tval(timer_period_ticks);
+	arch_write_cntv_ctl(GENERIC_TIMER_CTRL_ENABLE);
 
 	return 0;
 }
@@ -135,7 +135,7 @@ static void calc_mult_shift(u64 *mult, u32 *shift,
         for (sft = 32; sft > 0; sft--) {
                 tmp = (u64) to << sft;
                 tmp += from / 2;
-                tmp /= from;
+                tmp = arch_udiv64(tmp, from);
                 if ((tmp >> sftacc) == 0)
                         break;
         }
@@ -145,7 +145,7 @@ static void calc_mult_shift(u64 *mult, u32 *shift,
 
 int generic_timer_init(u32 usecs, u32 irq)
 {
-	timer_freq = mrs(cntfrq_el0);
+	timer_freq = arch_read_cntfrq();
 	if (timer_freq == 0) {
 		/* Assume 100 Mhz clock if cntfrq_el0 not programmed */
 		timer_freq = 100000000;
@@ -153,12 +153,12 @@ int generic_timer_init(u32 usecs, u32 irq)
 
 	calc_mult_shift(&timer_mult, &timer_shift, timer_freq, 1000000000, 1);
 
-	timer_period_ticks = ((timer_freq / 1000000) * usecs);
+	timer_period_ticks = (arch_udiv64(timer_freq, 1000000) * usecs);
 
 	basic_irq_register(irq, &generic_timer_irqhndl);
 
-	msr(cntv_tval_el0, timer_period_ticks);
-	msr(cntv_ctl_el0, GENERIC_TIMER_CTRL_IT_MASK);
+	arch_write_cntv_tval(timer_period_ticks);
+	arch_write_cntv_ctl(GENERIC_TIMER_CTRL_IT_MASK);
 
 	return 0;
 }

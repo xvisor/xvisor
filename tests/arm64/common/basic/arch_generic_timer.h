@@ -1,36 +1,46 @@
 /**
- * Copyright (c) 2013 Sukanto Ghosh.
+ * Copyright (c) 2018 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file generic_timer.h
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief ARMv8 Generic Timer Header
+ * @file arch_generic_timer.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Header file for arch specific generic timer access
  */
-#ifndef _ARM_GENERIC_TIMER_H__
-#define _ARM_GENERIC_TIMER_H__
+
+#ifndef __ARCH_GENERIC_TIMER_H__
+#define __ARCH_GENERIC_TIMER_H__
 
 #include <arch_types.h>
+#include <arm_inline_asm.h>
 
-void generic_timer_enable(void);
-void generic_timer_disable(void);
-u64 generic_timer_irqcount(void);
-u64 generic_timer_irqdelay(void);
-u64 generic_timer_timestamp(void);
-void generic_timer_change_period(u32 usecs);
-int generic_timer_init(u32 usecs, u32 irq);
+#define arch_read_cntfrq()	mrs(cntfrq_el0)
 
-#endif
+#define arch_read_cntv_ctl()	mrs(cntv_ctl_el0)
+
+#define arch_write_cntv_ctl(val) msr(cntv_ctl_el0, (val))
+
+#define arch_read_cntv_cval()	mrs(cntv_cval_el1)
+
+#define arch_write_cntv_cval(val) msr(cntv_cval_el1, (val))
+
+#define arch_read_cntv_tval()	mrs(cntv_tval_el0)
+
+#define arch_write_cntv_tval(val) msr(cntv_tval_el0, (val))
+
+#define arch_read_cntvct()	mrs(cntvct_el0)
+
+#endif /* __ARCH_GENERIC_TIMER_H__ */
