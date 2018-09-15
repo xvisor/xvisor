@@ -21,39 +21,32 @@
 # @brief common arm64 makefile to build basic firmware
 # */
 
-FW_CROSS_COMPILE=$(CROSS_COMPILE)
-FW_CPPFLAGS=-I. -I$(common_dir) -I$(common_arch_dir) -DTEXT_START=$(board_text_start)
-FW_CFLAGS=$(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -mgeneral-regs-only -mlittle-endian
-FW_ASFLAGS=$(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -mgeneral-regs-only -mlittle-endian -D__ASSEMBLY__
-FW_LDFLAGS=$(FW_CFLAGS) -Wl,--build-id=none
-FW_AS=$(FW_CROSS_COMPILE)gcc
-FW_CC=$(FW_CROSS_COMPILE)gcc
-FW_CPP=$(FW_CROSS_COMPILE)cpp
-FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
+ARCH_CPPFLAGS=$(board_cppflags) -DFIRMWARE_BOOT
+ARCH_CPPFLAGS+=-DTEXT_START=$(board_text_start)
+ARCH_CFLAGS=$(board_cflags) -mgeneral-regs-only -mlittle-endian
+ARCH_ASFLAGS=$(board_asflags) -mgeneral-regs-only -mlittle-endian
+ARCH_LDSCRIPT=$(obj_dir)/firmware.lnk
+ARCH_LDFLAGS=$(board_ldflags)
 
-FIRMWARE_OBJS=$(obj_dir)/arm_entry.o \
-		$(obj_dir)/arm_cache.o \
-		$(obj_dir)/arm_mmu.o
+ARCH_OBJ_DIR=$(obj_dir)
+ARCH_BASIC_DIR=$(basic_dir)
+ARCH_DIR=$(arch_dir)
 
-FIRMWARE_OBJS+=$(board_objs)
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry.o \
+	   $(ARCH_OBJ_DIR)/arm_cache.o \
+	   $(ARCH_OBJ_DIR)/arm_mmu.o \
+	   $(ARCH_OBJ_DIR)/arm_main.o \
+	   $(ARCH_OBJ_DIR)/arch_irq.o \
+	   $(board_objs)
 
-FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
-		$(obj_dir)/arch_irq.o
-
-FIRMWARE_CPPFLAGS=-DFIRMWARE_BOOT
-FIRMWARE_CFLAGS=$(FIRMWARE_CPPFLAGS)
-FIRMWARE_ASFLAGS=$(FIRMWARE_CPPFLAGS)
-FIRMWARE_LINK_SCRIPT=$(obj_dir)/firmware.lnk
-FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS)
-
-FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
-                $(common_arch_dir)/arch_math.h \
-                $(common_arch_dir)/arm_defines.h \
-                $(common_arch_dir)/arch_types.h \
-                $(common_arch_dir)/arm_inline_asm.h \
-                $(common_arch_dir)/arm_cache.h \
-                $(common_arch_dir)/arch_io.h \
-                $(common_arch_dir)/arm_mmu.h
+ARCH_DEPS= $(ARCH_DIR)/arm_asm_macro.h \
+           $(ARCH_DIR)/arm_defines.h \
+           $(ARCH_DIR)/arm_inline_asm.h \
+           $(ARCH_DIR)/arm_cache.h \
+           $(ARCH_DIR)/arch_math.h \
+           $(ARCH_DIR)/arch_types.h \
+           $(ARCH_DIR)/arch_io.h \
+           $(ARCH_DIR)/arm_mmu.h
 
 # Include common makefile for basic firmware
-include $(common_dir)/Makefile.inc
+include $(ARCH_BASIC_DIR)/Makefile.inc

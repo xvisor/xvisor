@@ -23,87 +23,81 @@
 
 board_usr_stack_size ?= 4096
 
-FW_CROSS_COMPILE=$(CROSS_COMPILE)
-FW_CPPFLAGS=-I. -I$(common_dir) -I$(common_arch_dir) -DTEXT_START=$(board_text_start) -DUSR_STACK_SIZE=$(board_usr_stack_size)
-FW_CFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm
-FW_ASFLAGS=-g -Wall -Werror -nostdlib -msoft-float -marm -D__ASSEMBLY__
-ifeq ($(board_arch),v5)
-FW_CPPFLAGS+=-DARM_ARCH_v5
-FW_CFLAGS+=-march=armv5te $(FW_CPPFLAGS)
-FW_ASFLAGS+=-march=armv5te $(FW_CPPFLAGS)
-endif
-ifeq ($(board_arch),v6)
-FW_CPPFLAGS+=-DARM_ARCH_v6
-FW_CFLAGS+=-march=armv6 $(FW_CPPFLAGS)
-FW_ASFLAGS+=-march=armv6 $(FW_CPPFLAGS)
-endif
-ifeq ($(board_arch),v7)
-FW_CPPFLAGS+=-DARM_ARCH_v7
-FW_CFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
-FW_ASFLAGS+=-march=armv7-a $(FW_CPPFLAGS)
-endif
-ifeq ($(board_arch),v7ve)
-FW_CPPFLAGS+=-DARM_ARCH_v7ve
-FW_CFLAGS+=-march=armv7ve $(FW_CPPFLAGS)
-FW_ASFLAGS+=-march=armv7ve $(FW_CPPFLAGS)
-endif
-FW_LDFLAGS=$(FW_CFLAGS) -Wl,--build-id=none
-FW_AS=$(FW_CROSS_COMPILE)gcc
-FW_CC=$(FW_CROSS_COMPILE)gcc
-FW_CPP=$(FW_CROSS_COMPILE)cpp
-FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
-
-ifeq ($(board_arch),v5)
-FIRMWARE_OBJS=$(obj_dir)/arm_entry_v5.o \
-		$(obj_dir)/arm_cache_v5.o \
-		$(obj_dir)/arm_mmu_v5.o
-endif
-
-ifeq ($(board_arch),v6)
-FIRMWARE_OBJS=$(obj_dir)/arm_entry_v6.o \
-		$(obj_dir)/arm_cache_v6.o \
-		$(obj_dir)/arm_mmu_v6.o
-endif
-
-ifeq ($(board_arch),v7)
-FIRMWARE_OBJS=$(obj_dir)/arm_entry_v7.o \
-		$(obj_dir)/arm_cache_v7.o \
-		$(obj_dir)/arm_mmu_v7.o
-endif
-
-ifeq ($(board_arch),v7ve)
-FIRMWARE_OBJS=$(obj_dir)/arm_entry_v7.o \
-		$(obj_dir)/arm_cache_v7.o \
-		$(obj_dir)/arm_mmu_v7.o
-endif
-
-FIRMWARE_OBJS+=$(board_objs)
-
-FIRMWARE_OBJS+=$(obj_dir)/arm_main.o \
-		$(obj_dir)/arch_irq.o \
-		$(obj_dir)/arch_math.o
-
-FIRMWARE_CPPFLAGS=-DFIRMWARE_BOOT
+ARCH_CPPFLAGS=$(board_cppflags) -DFIRMWARE_BOOT
 ifeq ($(board_smp), y)
-FIRMWARE_CPPFLAGS+=-DBOARD_SMP
+ARCH_CPPFLAGS+=-DBOARD_SMP
 endif
 ifeq ($(board_secure_extn),y)
-FIRMWARE_CPPFLAGS+=-DARM_SECURE_EXTN_IMPLEMENTED
+ARCH_CPPFLAGS+=-DARM_SECURE_EXTN_IMPLEMENTED
 endif
-FIRMWARE_CPPFLAGS+=$(board_cppflags)
-FIRMWARE_CFLAGS=$(FIRMWARE_CPPFLAGS) $(board_cflags)
-FIRMWARE_ASFLAGS=$(FIRMWARE_CPPFLAGS) $(board_asflags)
-FIRMWARE_LINK_SCRIPT=$(obj_dir)/firmware.lnk
-FIRMWARE_LDFLAGS=-Wl,-T$(FIRMWARE_LINK_SCRIPT) $(FIRMWARE_CPPFLAGS) $(board_ldflags)
+ARCH_CPPFLAGS+=-DTEXT_START=$(board_text_start) -DUSR_STACK_SIZE=$(board_usr_stack_size)
+ARCH_CFLAGS=$(board_cflags) -msoft-float -marm
+ARCH_ASFLAGS=$(board_asflags) -msoft-float -marm
+ARCH_LDSCRIPT=$(obj_dir)/firmware.lnk
+ARCH_LDFLAGS=$(board_ldflags)
 
-FIRMWARE_COMMON_DEPS=$(common_arch_dir)/arm_asm_macro.h \
-                $(common_arch_dir)/arch_math.h \
-                $(common_arch_dir)/arm_defines.h \
-                $(common_arch_dir)/arch_types.h \
-                $(common_arch_dir)/arm_inline_asm.h \
-                $(common_arch_dir)/arm_cache.h \
-                $(common_arch_dir)/arch_io.h \
-                $(common_arch_dir)/arm_mmu.h
+ifeq ($(board_arch),v5)
+ARCH_CPPFLAGS+=-DARM_ARCH_v5
+ARCH_CFLAGS+=-march=armv5te
+ARCH_ASFLAGS+=-march=armv5te
+endif
+ifeq ($(board_arch),v6)
+ARCH_CPPFLAGS+=-DARM_ARCH_v6
+ARCH_CFLAGS+=-march=armv6
+ARCH_ASFLAGS+=-march=armv6
+endif
+ifeq ($(board_arch),v7)
+ARCH_CPPFLAGS+=-DARM_ARCH_v7
+ARCH_CFLAGS+=-march=armv7-a
+ARCH_ASFLAGS+=-march=armv7-a
+endif
+ifeq ($(board_arch),v7ve)
+ARCH_CPPFLAGS+=-DARM_ARCH_v7ve
+ARCH_CFLAGS+=-march=armv7ve
+ARCH_ASFLAGS+=-march=armv7ve
+endif
+
+ARCH_OBJ_DIR=$(obj_dir)
+ARCH_BASIC_DIR=$(basic_dir)
+ARCH_DIR=$(arch_dir)
+
+ifeq ($(board_arch),v5)
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v5.o \
+	   $(ARCH_OBJ_DIR)/arm_cache_v5.o \
+	   $(ARCH_OBJ_DIR)/arm_mmu_v5.o
+endif
+
+ifeq ($(board_arch),v6)
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v6.o \
+	   $(ARCH_OBJ_DIR)/arm_cache_v6.o \
+	   $(ARCH_OBJ_DIR)/arm_mmu_v6.o
+endif
+
+ifeq ($(board_arch),v7)
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
+	   $(ARCH_OBJ_DIR)/arm_cache_v7.o \
+	   $(ARCH_OBJ_DIR)/arm_mmu_v7.o
+endif
+
+ifeq ($(board_arch),v7ve)
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
+	   $(ARCH_OBJ_DIR)/arm_cache_v7.o \
+	   $(ARCH_OBJ_DIR)/arm_mmu_v7.o
+endif
+
+ARCH_OBJS+= $(ARCH_OBJ_DIR)/arm_main.o \
+	    $(ARCH_OBJ_DIR)/arch_irq.o \
+	    $(ARCH_OBJ_DIR)/arch_math.o \
+	    $(board_objs)
+
+ARCH_DEPS= $(ARCH_DIR)/arm_asm_macro.h \
+           $(ARCH_DIR)/arm_defines.h \
+           $(ARCH_DIR)/arm_inline_asm.h \
+           $(ARCH_DIR)/arm_cache.h \
+           $(ARCH_DIR)/arch_math.h \
+           $(ARCH_DIR)/arch_types.h \
+           $(ARCH_DIR)/arch_io.h \
+           $(ARCH_DIR)/arm_mmu.h
 
 # Include common makefile for basic firmware
-include $(common_dir)/Makefile.inc
+include $(ARCH_BASIC_DIR)/Makefile.inc

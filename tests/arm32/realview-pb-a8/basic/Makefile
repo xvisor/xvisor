@@ -35,8 +35,8 @@ else
 endif
 
 obj_dir=$(build_dir)/tests/arm32/realview-pb-a8/basic
-common_dir=$(top_dir)/tests/common/basic
-common_arch_dir=$(top_dir)/tests/arm32/common/basic
+basic_dir=$(top_dir)/tests/common/basic
+arch_dir=$(top_dir)/tests/arm32/common/basic
 
 board_arch       = v7
 board_text_start = 0x74000000
@@ -52,5 +52,4 @@ board_asflags    = -mtune=cortex-a8
 board_ldflags    =
 
 # Include common arch makefile for basic firmware
-include $(common_arch_dir)/Makefile.inc
-
+include $(arch_dir)/Makefile.inc

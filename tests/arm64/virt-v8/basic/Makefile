@@ -35,8 +35,8 @@ else
 endif
 
 obj_dir=$(build_dir)/tests/arm64/virt-v8/basic
-common_dir=$(top_dir)/tests/common/basic
-common_arch_dir=$(top_dir)/tests/arm64/common/basic
+basic_dir=$(top_dir)/tests/common/basic
+arch_dir=$(top_dir)/tests/arm64/common/basic
 
 board_text_start = 0x44000000
 board_objs       = $(obj_dir)/arch_board.o \
@@ -47,5 +47,4 @@ board_objs       = $(obj_dir)/arch_board.o \
                    $(obj_dir)/display/simplefb.o
 
 # Include common makefile for basic test
-include $(common_arch_dir)/Makefile.inc
-
+include $(arch_dir)/Makefile.inc

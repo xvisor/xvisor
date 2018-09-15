@@ -21,121 +21,138 @@
 # @brief common makefile to build basic firmware
 # */
 
-FIRMWARE_COMMON_DEPS+= $(common_dir)/arch_board.h \
-			$(common_dir)/arch_irq.h \
-			$(common_dir)/basic_heap.h \
-			$(common_dir)/basic_irq.h \
-			$(common_dir)/basic_stdio.h \
-			$(common_dir)/basic_string.h \
-			$(common_dir)/dhry.h \
-			$(common_dir)/dhry_port.h \
-			$(common_dir)/libfdt/fdt.h \
-			$(common_dir)/libfdt/fdt_support.h \
-			$(common_dir)/libfdt/libfdt.h \
-			$(common_dir)/libfdt/libfdt_env.h \
-			$(common_dir)/libfdt/libfdt_internal.h
+FW_CROSS_COMPILE=$(CROSS_COMPILE)
+FW_CPPFLAGS=$(ARCH_CPPFLAGS) -I. -I$(ARCH_BASIC_DIR) -I$(ARCH_DIR)
+FW_CFLAGS=$(ARCH_CFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib 
+FW_ASFLAGS=$(ARCH_ASFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -D__ASSEMBLY__
+FW_LDFLAGS=$(ARCH_LDFLAGS) $(FW_CFLAGS) -Wl,--build-id=none -Wl,-T$(ARCH_LDSCRIPT)
 
-FIRMWARE_OBJS+= $(obj_dir)/basic_heap.o \
-		$(obj_dir)/basic_irq.o \
-		$(obj_dir)/basic_stdio.o \
-		$(obj_dir)/basic_string.o \
-		$(obj_dir)/dhry_1.o \
-		$(obj_dir)/dhry_2.o \
-		$(obj_dir)/dhry_port.o \
-		$(obj_dir)/libfdt/fdt.o \
-		$(obj_dir)/libfdt/fdt_ro.o \
-		$(obj_dir)/libfdt/fdt_rw.o \
-		$(obj_dir)/libfdt/fdt_strerror.o \
-		$(obj_dir)/libfdt/fdt_support.o \
-		$(obj_dir)/libfdt/fdt_sw.o \
-		$(obj_dir)/libfdt/fdt_wip.o
+FW_AS=$(FW_CROSS_COMPILE)gcc
+FW_CC=$(FW_CROSS_COMPILE)gcc
+FW_CPP=$(FW_CROSS_COMPILE)cpp
+FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
+
+FW_OBJ_DIR= $(ARCH_OBJ_DIR)
+FW_BASIC_DIR= $(ARCH_BASIC_DIR)
+FW_ARCH_DIR= $(ARCH_DIR)
+
+FW_DEPS+= $(ARCH_DEPS) \
+	  $(FW_BASIC_DIR)/arch_board.h \
+	  $(FW_BASIC_DIR)/arch_irq.h \
+	  $(FW_BASIC_DIR)/basic_heap.h \
+	  $(FW_BASIC_DIR)/basic_irq.h \
+	  $(FW_BASIC_DIR)/basic_stdio.h \
+	  $(FW_BASIC_DIR)/basic_string.h \
+	  $(FW_BASIC_DIR)/dhry.h \
+	  $(FW_BASIC_DIR)/dhry_port.h \
+	  $(FW_BASIC_DIR)/libfdt/fdt.h \
+	  $(FW_BASIC_DIR)/libfdt/fdt_support.h \
+	  $(FW_BASIC_DIR)/libfdt/libfdt.h \
+	  $(FW_BASIC_DIR)/libfdt/libfdt_env.h \
+	  $(FW_BASIC_DIR)/libfdt/libfdt_internal.h
+
+FW_OBJS+= $(ARCH_OBJS) \
+	  $(FW_OBJ_DIR)/basic_heap.o \
+	  $(FW_OBJ_DIR)/basic_irq.o \
+	  $(FW_OBJ_DIR)/basic_stdio.o \
+	  $(FW_OBJ_DIR)/basic_string.o \
+	  $(FW_OBJ_DIR)/dhry_1.o \
+	  $(FW_OBJ_DIR)/dhry_2.o \
+	  $(FW_OBJ_DIR)/dhry_port.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_ro.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_rw.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_strerror.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_support.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_sw.o \
+	  $(FW_OBJ_DIR)/libfdt/fdt_wip.o
 
 CPATCH32=$(build_dir)/tools/cpatch/cpatch32
 ELF2CPATCH=$(top_dir)/arch/arm/cpu/arm32/elf2cpatch.py
 
-cmd_patch_elf = CROSS_COMPILE=$(FW_CROSS_COMPILE) \
+CMD_PATCH_ELF = CROSS_COMPILE=$(FW_CROSS_COMPILE) \
 		$(ELF2CPATCH) -f $@ | $(CPATCH32) $@ 0
 
-FIRMWARE_TARGETS = $(obj_dir)/firmware.elf
-FIRMWARE_TARGETS += $(obj_dir)/firmware.bin
+FW_TARGETS = $(FW_OBJ_DIR)/firmware.elf
+FW_TARGETS += $(FW_OBJ_DIR)/firmware.bin
 
 ifeq ($(shell test -e $(CPATCH32) && echo -n yes),yes)
-FIRMWARE_TARGETS += $(obj_dir)/firmware.elf.patched
-FIRMWARE_TARGETS += $(obj_dir)/firmware.bin.patched
+FW_TARGETS += $(FW_OBJ_DIR)/firmware.elf.patched
+FW_TARGETS += $(FW_OBJ_DIR)/firmware.bin.patched
 endif
 
 .PHONY: all
-all: $(FIRMWARE_TARGETS)
+all: $(FW_TARGETS)
 
 .PHONY: install
 install: all
 	@mkdir -p $(install_dir);
-	@for f in $(FIRMWARE_TARGETS) ; do \
-	echo " (INSTALL)  " `echo $$f | sed -e "s@$(obj_dir)/@@"`; \
+	@for f in $(FW_TARGETS) ; do \
+	echo " (INSTALL)  " `echo $$f | sed -e "s@$(FW_OBJ_DIR)/@@"`; \
 	cp -f $$f $(install_dir); \
 	done
 
-$(obj_dir)/firmware.bin.patched: $(obj_dir)/firmware.elf.patched
+$(FW_OBJ_DIR)/firmware.bin.patched: $(FW_OBJ_DIR)/firmware.elf.patched
 	@mkdir -p `dirname $@`
-	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
+	@echo " (OBJCOPY)   $(subst $(FW_OBJ_DIR)/,,$@)"
 	@$(FW_OBJCOPY) -O binary $< $@
 
-$(obj_dir)/firmware.elf.patched: $(obj_dir)/firmware.elf
+$(FW_OBJ_DIR)/firmware.elf.patched: $(FW_OBJ_DIR)/firmware.elf
 	@mkdir -p `dirname $@`
 	@cp $< $@
-	@echo " (PATCH)     $(subst $(obj_dir)/,,$@)"
-	@$(call cmd_patch_elf)
+	@echo " (PATCH)     $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(call CMD_PATCH_ELF)
 
-$(obj_dir)/firmware.bin: $(obj_dir)/firmware.elf
+$(FW_OBJ_DIR)/firmware.bin: $(FW_OBJ_DIR)/firmware.elf
 	@mkdir -p `dirname $@`
-	@echo " (OBJCOPY)   $(subst $(obj_dir)/,,$@)"
+	@echo " (OBJCOPY)   $(subst $(FW_OBJ_DIR)/,,$@)"
 	@$(FW_OBJCOPY) -O binary $< $@
 
-$(obj_dir)/firmware.elf: $(FIRMWARE_OBJS) $(FIRMWARE_LINK_SCRIPT)
+$(FW_OBJ_DIR)/firmware.elf: $(FW_OBJS) $(ARCH_LDSCRIPT)
 	@mkdir -p `dirname $@`
-	@echo " (LD)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_CC) $(FIRMWARE_OBJS) $(FW_LDFLAGS) $(FIRMWARE_LDFLAGS) -o $@
+	@echo " (LD)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_CC) $(FW_OBJS) $(FW_LDFLAGS) -o $@
 
-$(obj_dir)/%.lnk: $(common_arch_dir)/%.ld
+$(FW_OBJ_DIR)/%.lnk: $(FW_ARCH_DIR)/%.ld
 	@mkdir -p `dirname $@`
-	@echo " (CPP)       $(subst $(obj_dir)/,,$@)"
-	@$(FW_CPP) $(FW_CPPFLAGS) $(FIRMWARE_CPPFLAGS) $< | grep -v "\#" > $@
+	@echo " (CPP)       $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_CPP) $(FW_CPPFLAGS) $< | grep -v "\#" > $@
 
-$(obj_dir)/%.o: %.c $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: %.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
+	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_dir)/%.c $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: $(FW_BASIC_DIR)/%.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
+	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_arch_dir)/%.c $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: $(FW_ARCH_DIR)/%.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (CC)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) $(FIRMWARE_CFLAGS) -c $< -o $@
+	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: %.S $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: %.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
+	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_dir)/%.S $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: $(FW_BASIC_DIR)/%.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
+	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
 
-$(obj_dir)/%.o: $(common_arch_dir)/%.S $(FIRMWARE_COMMON_DEPS)
+$(FW_OBJ_DIR)/%.o: $(FW_ARCH_DIR)/%.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
-	@echo " (AS)        $(subst $(obj_dir)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) $(FIRMWARE_ASFLAGS) -c $< -o $@
+	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
+	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
 	@echo " (RM)        firmware.elf*"
-	@rm -f $(obj_dir)/firmware.elf*
+	@rm -f $(FW_OBJ_DIR)/firmware.elf*
 	@echo " (RM)        firmware.bin*"
-	@rm -f $(obj_dir)/firmware.bin*
-	@echo " (RM)        $(obj_dir)"
-	@rm -rf $(obj_dir)
+	@rm -f $(FW_OBJ_DIR)/firmware.bin*
+	@echo " (RM)        $(FW_OBJ_DIR)"
+	@rm -rf $(FW_OBJ_DIR)
