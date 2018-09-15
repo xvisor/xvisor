@@ -22,9 +22,9 @@
  *
  */
 
-#include <arm_irq.h>
 #include <arch_math.h>
 #include <arm_inline_asm.h>
+#include <basic_irq.h>
 #include <timer/generic_timer.h>
 
 #define read_cntfrq()		({ u32 rval; asm volatile(\
@@ -191,7 +191,7 @@ int generic_timer_init(u32 usecs, u32 irq)
 
 	timer_period_ticks = (arch_udiv64(timer_freq, 1000000) * usecs);
 
-	arm_irq_register(irq, &generic_timer_irqhndl);
+	basic_irq_register(irq, &generic_timer_irqhndl);
 
 	write_cntv_tval(timer_period_ticks);
 	write_cntv_ctl(GENERIC_TIMER_CTRL_IT_MASK);

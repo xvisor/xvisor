@@ -22,7 +22,7 @@
  */
 
 #include <arch_io.h>
-#include <arm_irq.h>
+#include <basic_irq.h>
 #include <timer/sp804.h>
 
 #define TIMER_LOAD              0x00
@@ -138,7 +138,7 @@ int sp804_init(u32 usecs, u32 base, u32 irq,
 	sp804_irq_delay = 0;
 
 	/* Register interrupt handler */
-	arm_irq_register(sp804_irq, &sp804_irqhndl);
+	basic_irq_register(sp804_irq, &sp804_irqhndl);
 
 	/* Setup Timer0 for generating irq */
 	val = arch_readl((void *)(sp804_base + TIMER_CTRL));

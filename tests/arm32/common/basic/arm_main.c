@@ -24,9 +24,9 @@
 #include <arch_math.h>
 #include <arm_cache.h>
 #include <arm_mmu.h>
-#include <arm_irq.h>
 #include <arch_board.h>
 #include <basic_heap.h>
+#include <basic_irq.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
 #include <libfdt/libfdt.h>
@@ -40,9 +40,9 @@ void arm_init(void)
 {
 	basic_heap_init();
 
-	arm_irq_disable();
+	basic_irq_disable();
 
-	arm_irq_setup();
+	basic_irq_setup();
 
 	basic_stdio_init();
 
@@ -54,7 +54,7 @@ void arm_init(void)
 
 	arch_board_timer_enable();
 
-	arm_irq_enable();
+	basic_irq_enable();
 }
 
 void arm_cmd_help(int argc, char **argv)
@@ -166,7 +166,7 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	arch_board_timer_change_period(delay*1000);
 	arch_board_timer_enable();
 	tstamp = arch_board_timer_timestamp();
-	arm_irq_wfi();
+	basic_irq_wfi();
 	tstamp = arch_board_timer_timestamp() - tstamp;
 	arch_board_timer_disable();
 	arch_board_timer_change_period(10000);
@@ -466,7 +466,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
-	arm_irq_disable();
+	basic_irq_disable();
 	arm_mmu_cleanup();
 
 	/* Setup kernel args */
@@ -571,7 +571,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
-	arm_irq_disable();
+	basic_irq_disable();
 	arm_mmu_cleanup();
 
 	/* Pass memory size via kernel command line */

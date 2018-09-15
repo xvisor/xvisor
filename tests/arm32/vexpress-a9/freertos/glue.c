@@ -25,9 +25,9 @@
 #include "task.h"
 
 #include <arch_io.h>
-#include <arm_irq.h>
 #include <arm_plat.h>
 #include <arch_board.h>
+#include <basic_irq.h>
 #include <basic_stdio.h>
 
 extern void main_blinky(void);
@@ -52,7 +52,7 @@ void vConfigureTickInterrupt()
         arch_board_timer_init(configTICK_RATE_HZ);
 
         /* 'steal' interrupt handler */
-        arm_irq_register(IRQ_V2M_TIMER0, &timer_tick_handler);
+        basic_irq_register(IRQ_V2M_TIMER0, &timer_tick_handler);
 
         arch_board_timer_enable();
 }
@@ -61,7 +61,7 @@ void vConfigureTickInterrupt()
 
 void vApplicationIRQHandler(u32 irq)
 {
-        extern arm_irq_handler_t irq_hndls[MAX_IRQS];
+        extern irq_handler_t irq_hndls[MAX_IRQS];
         if (arch_board_pic_ack_irq(irq)) {
                 while (1)
                         ;
@@ -94,8 +94,8 @@ void vAssertCalled(const char *pcFile, unsigned long ulLine)
 
 void arm_init(void)
 {
-        arm_irq_disable();
-        arm_irq_setup();
+        basic_irq_disable();
+        basic_irq_setup();
         basic_stdio_init();
 
         /* FreeRTOS will call vConfigureTickInterrupt and enable IRQs */

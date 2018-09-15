@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010 Anup Patel.
+ * Copyright (c) 2018 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,35 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_irq.c
+ * @file basic_irq.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for handling ARM test code interrupts
+ * @brief source code for common interrupt handling
  */
 
 #include <arch_board.h>
-#include <arm_mmu.h>
-#include <arm_irq.h>
-#include <basic_stdio.h>
+#include <arch_irq.h>
+#include <basic_irq.h>
 
 #define MAX_NR_IRQS		1024
 
-arm_irq_handler_t irq_hndls[MAX_NR_IRQS];
+irq_handler_t irq_hndls[MAX_NR_IRQS];
 
 #define PIC_NR_IRQS		((arch_board_pic_nr_irqs() < MAX_NR_IRQS) ? \
 				  arch_board_pic_nr_irqs() : MAX_NR_IRQS)
 
-void do_bad_mode(struct pt_regs *regs)
-{
-	basic_puts("Bad exception\n");
-	while(1);
-}
-
-void do_sync(struct pt_regs *regs)
-{
-	arm_sync_abort(regs);
-}
-
-void do_irq(struct pt_regs *regs)
+int basic_irq_exec_handler(struct pt_regs *uregs)
 {
 	int rc = 0;
 	int irq = arch_board_pic_active_irq();
@@ -52,28 +40,31 @@ void do_irq(struct pt_regs *regs)
 	if (-1 < irq) {
 		rc = arch_board_pic_ack_irq(irq);
 		if (rc) {
-			while (1);
+			return rc;
 		}
 		if (irq_hndls[irq]) {
-			rc = irq_hndls[irq](irq, regs);
+			rc = irq_hndls[irq](irq, uregs);
 			if (rc) {
-				while (1);
+				return rc;
 			}
 		}
 		rc = arch_board_pic_eoi_irq(irq);
 		if (rc) {
-			while (1);
+			return rc;
 		}
 	}
+
+	return rc;
 }
 
-void do_fiq(struct pt_regs *regs)
-{
-}
-
-void arm_irq_setup(void)
+void basic_irq_setup(void)
 {
 	int vec;
+
+	/*
+	 * Arch specific irq setup
+	 */
+	arch_irq_setup();
 
 	/*
 	 * Reset irq handlers
@@ -91,7 +82,7 @@ void arm_irq_setup(void)
 	}
 }
 
-void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
+void basic_irq_register(u32 irq, irq_handler_t hndl)
 {
 	int rc = 0;
 	if (irq < PIC_NR_IRQS) {
@@ -105,18 +96,17 @@ void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
 	}
 }
 
-void arm_irq_enable(void)
+void basic_irq_enable(void)
 {
-	asm volatile("msr daifclr, #2":::"memory");
+	arch_irq_enable();
 }
 
-void arm_irq_disable(void)
+void basic_irq_disable(void)
 {
-	asm volatile("msr daifset, #2":::"memory");
+	arch_irq_disable();
 }
 
-void arm_irq_wfi(void)
+void basic_irq_wfi(void)
 {
-	__asm ("wfi\n");
+	arch_irq_wfi();
 }
-

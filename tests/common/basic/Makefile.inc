@@ -22,7 +22,9 @@
 # */
 
 FIRMWARE_COMMON_DEPS+= $(common_dir)/arch_board.h \
+			$(common_dir)/arch_irq.h \
 			$(common_dir)/basic_heap.h \
+			$(common_dir)/basic_irq.h \
 			$(common_dir)/basic_stdio.h \
 			$(common_dir)/basic_string.h \
 			$(common_dir)/dhry.h \
@@ -34,6 +36,7 @@ FIRMWARE_COMMON_DEPS+= $(common_dir)/arch_board.h \
 			$(common_dir)/libfdt/libfdt_internal.h
 
 FIRMWARE_OBJS+= $(obj_dir)/basic_heap.o \
+		$(obj_dir)/basic_irq.o \
 		$(obj_dir)/basic_stdio.o \
 		$(obj_dir)/basic_string.o \
 		$(obj_dir)/dhry_1.o \

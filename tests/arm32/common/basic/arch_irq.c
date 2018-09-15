@@ -16,21 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_irq.c
+ * @file arch_irq.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for handling interrupts
+ * @brief source code for arch specific interrupt handling
  */
 
-#include <arch_board.h>
 #include <arm_mmu.h>
-#include <arm_irq.h>
+#include <arch_irq.h>
+#include <basic_irq.h>
 
-#define MAX_NR_IRQS		1024
+#define CPU_IRQ_NR                                     8
 
-arm_irq_handler_t irq_hndls[MAX_NR_IRQS];
-
-#define PIC_NR_IRQS		((arch_board_pic_nr_irqs() < MAX_NR_IRQS) ? \
-				  arch_board_pic_nr_irqs() : MAX_NR_IRQS)
+/** IRQ Numbers */
+#define ARM_RESET_IRQ                                  0
+#define ARM_UNDEF_INST_IRQ                             1
+#define ARM_SOFT_IRQ                                   2
+#define ARM_PREFETCH_ABORT_IRQ                         3
+#define ARM_DATA_ABORT_IRQ                             4
+#define ARM_NOT_USED_IRQ                               5
+#define ARM_EXTERNAL_IRQ                               6
+#define ARM_EXTERNAL_FIQ                               7
 
 void do_undefined_instruction(struct pt_regs *regs)
 {
@@ -57,24 +62,8 @@ void do_not_used(struct pt_regs *regs)
 
 void do_irq(struct pt_regs *uregs)
 {
-	int rc = 0;
-	int irq = arch_board_pic_active_irq();
-
-	if (-1 < irq) {
-		rc = arch_board_pic_ack_irq(irq);
-		if (rc) {
-			while (1);
-		}
-		if (irq_hndls[irq]) {
-			rc = irq_hndls[irq](irq, uregs);
-			if (rc) {
-				while (1);
-			}
-		}
-		rc = arch_board_pic_eoi_irq(irq);
-		if (rc) {
-			while (1);
-		}
+	if (basic_irq_exec_handler(uregs)) {
+		while (1);
 	}
 }
 
@@ -82,11 +71,11 @@ void do_fiq(struct pt_regs *uregs)
 {
 }
 
-void arm_irq_setup(void)
+void arch_irq_setup(void)
 {
 	extern u32 _start_vect[];
-	int vec;
 #if	!defined(ARM_SECURE_EXTN_IMPLEMENTED)
+	int vec;
 	u32 *vectors = (u32 *)NULL;
 	u32 *vectors_data = vectors + CPU_IRQ_NR;
 
@@ -114,40 +103,11 @@ void arm_irq_setup(void)
 	/* Write VBAR */
 	asm volatile("mcr p15, 0, %0, c12, c0, 0"::"r"(_start_vect):"memory", "cc"); 
 #endif
-
-	/*
-	 * Reset irq handlers
-	 */
-	for (vec = 0; vec < PIC_NR_IRQS; vec++) {
-		irq_hndls[vec] = NULL;
-	}
-
-	/*
-	 * Initialize board PIC
-	 */
-	vec = arch_board_pic_init();
-	if (vec) {
-		while (1);
-	}
-}
-
-void arm_irq_register(u32 irq, arm_irq_handler_t hndl)
-{
-	int rc = 0;
-	if (irq < PIC_NR_IRQS) {
-		irq_hndls[irq] = hndl;
-		if (irq_hndls[irq]) {
-			rc = arch_board_pic_unmask(irq);
-			if (rc) {
-				while (1);
-			}
-		}
-	}
 }
 
 #if defined(ARM_ARCH_v5)
 
-void arm_irq_enable(void)
+void arch_irq_enable(void)
 {
 	unsigned long temp;
 
@@ -160,7 +120,7 @@ void arm_irq_enable(void)
 		: "memory", "cc");
 }
 
-void arm_irq_disable(void)
+void arch_irq_disable(void)
 {
 	unsigned long temp;
 
@@ -173,7 +133,7 @@ void arm_irq_disable(void)
 		: "memory", "cc");
 }
 
-void arm_irq_wfi()
+void arch_irq_wfi()
 {
 	unsigned long reg_r0, reg_r1, reg_r2, reg_r3, reg_ip;
 
@@ -194,17 +154,17 @@ void arm_irq_wfi()
 
 #elif defined(ARM_ARCH_v6)
 
-void arm_irq_enable(void)
+void arch_irq_enable(void)
 {
 	asm volatile ( "cpsie if" );
 }
 
-void arm_irq_disable(void)
+void arch_irq_disable(void)
 {
 	asm volatile ( "cpsid if" );
 }
 
-void arm_irq_wfi(void)
+void arch_irq_wfi(void)
 {
 	unsigned long _tr0; 
 
@@ -217,20 +177,19 @@ void arm_irq_wfi(void)
 
 #else
 
-void arm_irq_enable(void)
+void arch_irq_enable(void)
 {
 	asm volatile ( "cpsie if" );
 }
 
-void arm_irq_disable(void)
+void arch_irq_disable(void)
 {
 	asm volatile ( "cpsid if" );
 }
 
-void arm_irq_wfi(void)
+void arch_irq_wfi(void)
 {
 	asm volatile ("wfi\n");
 }
 
 #endif
-

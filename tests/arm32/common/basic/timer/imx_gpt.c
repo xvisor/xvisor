@@ -23,7 +23,7 @@
  */
 
 #include <arch_io.h>
-#include <arm_irq.h>
+#include <basic_irq.h>
 #include <arch_math.h>
 #include <timer/imx_gpt.h>
 
@@ -163,7 +163,7 @@ int imx_gpt_init(u32 usecs, u32 base, u32 irq, u32 freerun)
 	imx_gpt_irq_count = 0;
 
 	/* Register interrupt handler */
-	arm_irq_register(imx_gpt_irq, &imx_gpt_irqhndl);
+	basic_irq_register(imx_gpt_irq, &imx_gpt_irqhndl);
 
 	val = arch_readl((void *)(imx_gpt_base + GPT_CR));
 	if (freerun) {

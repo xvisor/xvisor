@@ -54,9 +54,9 @@ FREERTOS_GLOBS = $(addprefix $(freertos_srcdir)/, *.c)
 FREERTOS_SRCS = $(wildcard $(FREERTOS_GLOBS)) $(FREERTOS_HEAP_IMPL)
 
 # sources from the common firmware directory (relative to $common_srcdir)
-COMMON_SRCS = basic_stdio.c basic_string.c pic/gic.c	\
+COMMON_SRCS = basic_irq.c basic_stdio.c basic_string.c pic/gic.c	\
               serial/pl01x.c sys/vminfo.c
-COMMON_ARCH_SRCS = arch_math.c arm_irq.c 	\
+COMMON_ARCH_SRCS = arch_math.c arch_irq.c 	\
               timer/sp804.c arm_cache_v7.S
 
 # FreeRTOS specific glue and application source (relative to $srcdir)

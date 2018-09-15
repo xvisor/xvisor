@@ -22,7 +22,7 @@
  *
  */
 
-#include <arm_irq.h>
+#include <basic_irq.h>
 #include <arm_inline_asm.h>
 #include <timer/generic_timer.h>
 
@@ -155,7 +155,7 @@ int generic_timer_init(u32 usecs, u32 irq)
 
 	timer_period_ticks = ((timer_freq / 1000000) * usecs);
 
-	arm_irq_register(irq, &generic_timer_irqhndl);
+	basic_irq_register(irq, &generic_timer_irqhndl);
 
 	msr(cntv_tval_el0, timer_period_ticks);
 	msr(cntv_ctl_el0, GENERIC_TIMER_CTRL_IT_MASK);
