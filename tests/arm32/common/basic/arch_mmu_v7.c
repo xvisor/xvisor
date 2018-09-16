@@ -16,15 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_mmu_v7.c
+ * @file arch_mmu_v7.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief source file for MMU functions
  */
 
-#include <arch_board.h>
 #include <arm_inline_asm.h>
 #include <arm_defines.h>
-#include <arm_mmu.h>
+#include <arch_board.h>
+#include <arch_mmu.h>
 
 u32 __attribute__((aligned(TTBL_L1TBL_SIZE))) l1[TTBL_L1TBL_SIZE / 4];
 u32 __attribute__((aligned(TTBL_L2TBL_SIZE))) l2[TTBL_L2TBL_SIZE / 4];
@@ -1497,7 +1497,7 @@ static void arm_mmu_page_test_iter(u32 free_page0, u32 free_page1,
 
 #define TEST_SECTION_COUNT		10
 
-void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
+void arch_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 {
 	int setup_required = 0;
 	u32 ite, pos, free_sec[TEST_SECTION_COUNT];
@@ -1508,7 +1508,7 @@ void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 	}
 
 	if (setup_required) {
-		arm_mmu_setup();
+		arch_mmu_setup();
 	}
 
 	/* Initialize statistics */
@@ -1537,7 +1537,7 @@ void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 	}
 
 	if (setup_required) {
-		arm_mmu_cleanup();
+		arch_mmu_cleanup();
 	}
 
 	return;
@@ -1545,7 +1545,7 @@ void arm_mmu_section_test(u32 * total, u32 * pass, u32 * fail)
 
 #define TEST_PAGE_COUNT		10
 
-void arm_mmu_page_test(u32 * total, u32 * pass, u32 * fail)
+void arch_mmu_page_test(u32 * total, u32 * pass, u32 * fail)
 {
 	int setup_required = 0;
 	u32 ite, pos, free_page[TEST_PAGE_COUNT];
@@ -1556,7 +1556,7 @@ void arm_mmu_page_test(u32 * total, u32 * pass, u32 * fail)
 	}
 
 	if (setup_required) {
-		arm_mmu_setup();
+		arch_mmu_setup();
 	}
 
 	/* Initialize statistics */
@@ -1585,13 +1585,13 @@ void arm_mmu_page_test(u32 * total, u32 * pass, u32 * fail)
 	}
 
 	if (setup_required) {
-		arm_mmu_cleanup();
+		arch_mmu_cleanup();
 	}
 
 	return;
 }
 
-bool arm_mmu_is_enabled(void)
+bool arch_mmu_is_enabled(void)
 {
 	u32 sctlr = read_sctlr();
 
@@ -1605,7 +1605,7 @@ bool arm_mmu_is_enabled(void)
 extern u8 _code_start;
 extern u8 _code_end;
 
-void arm_mmu_setup(void)
+void arch_mmu_setup(void)
 {
 	u32 s, sec, sec_tmpl = 0x0, sec_start = 0x0, sec_end = 0x0;
 	u32 sctlr = read_sctlr();
@@ -1690,7 +1690,7 @@ void arm_mmu_setup(void)
 	return;
 }
 
-void arm_mmu_cleanup(void)
+void arch_mmu_cleanup(void)
 {
 	u32 sctlr = read_sctlr();
 
@@ -1705,4 +1705,3 @@ void arm_mmu_cleanup(void)
 
 	return;
 }
-

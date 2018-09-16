@@ -21,7 +21,6 @@
  * @brief source code for arch specific interrupt handling
  */
 
-#include <arm_mmu.h>
 #include <arch_irq.h>
 #include <basic_irq.h>
 
@@ -36,6 +35,10 @@
 #define ARM_NOT_USED_IRQ                               5
 #define ARM_EXTERNAL_IRQ                               6
 #define ARM_EXTERNAL_FIQ                               7
+
+extern void arm_mmu_syscall(struct pt_regs *regs);
+extern void arm_mmu_prefetch_abort(struct pt_regs *regs);
+extern void arm_mmu_data_abort(struct pt_regs *regs);
 
 void do_undefined_instruction(struct pt_regs *regs)
 {

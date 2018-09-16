@@ -21,10 +21,10 @@
  * @brief Basic firmware main file
  */
 
-#include <arm_mmu.h>
 #include <arch_cache.h>
 #include <arch_board.h>
 #include <arch_math.h>
+#include <arch_mmu.h>
 #include <basic_heap.h>
 #include <basic_irq.h>
 #include <basic_stdio.h>
@@ -33,7 +33,7 @@
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
 
-static unsigned long memory_size = 0x0;
+static physical_size_t memory_size = 0x0;
 
 /* Works in supervisor mode */
 void arm_init(void)
@@ -172,7 +172,6 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	basic_puts(" nsecs\n");
 }
 
-#if 0
 void arm_cmd_mmu_setup(int argc, char **argv)
 {
 	if (argc != 1) {
@@ -180,9 +179,8 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 		return;
 	}
 
-	arm_mmu_setup();
+	arch_mmu_setup();
 }
-#endif
 
 void arm_cmd_mmu_state(int argc, char **argv)
 {
@@ -191,14 +189,13 @@ void arm_cmd_mmu_state(int argc, char **argv)
 		return;
 	}
 
-	if (arm_mmu_is_enabled()) {
+	if (arch_mmu_is_enabled()) {
 		basic_puts("MMU Enabled\n");
 	} else {
 		basic_puts("MMU Disabled\n");
 	}
 }
 
-#if 0
 void arm_cmd_mmu_test(int argc, char **argv)
 {
 	char str[32];
@@ -213,7 +210,7 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
-	arm_mmu_section_test(&total, &pass, &fail);
+	arch_mmu_section_test(&total, &pass, &fail);
 	basic_puts("  Total: ");
 	basic_int2str(str, total);
 	basic_puts(str);
@@ -230,7 +227,7 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
-	arm_mmu_page_test(&total, &pass, &fail);
+	arch_mmu_page_test(&total, &pass, &fail);
 	basic_puts("  Total: ");
 	basic_int2str(str, total);
 	basic_puts(str);
@@ -244,7 +241,6 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	basic_puts(str);
 	basic_puts("\n");
 }
-#endif
 
 void arm_cmd_mmu_cleanup(int argc, char **argv)
 {
@@ -253,7 +249,7 @@ void arm_cmd_mmu_cleanup(int argc, char **argv)
 		return;
 	}
 
-	arm_mmu_cleanup();
+	arch_mmu_cleanup();
 }
 
 void arm_cmd_timer(int argc, char **argv)
@@ -471,7 +467,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	/* Disable interrupts, disable timer and cleanup MMU */
 	arch_board_timer_disable();
 	basic_irq_disable();
-	arm_mmu_cleanup();
+	arch_mmu_cleanup();
 
 	/* Increase fdt blob size by 8KB */
 	fdt_increase_size((void *)fdt_addr, 0x2000);
@@ -488,7 +484,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 			   __func__, fdt_strerror(err));
 		return;
 	}
-	sprintf(cfg_str, " mem=%dM", (int)(meminfo[1] >> 20));
+	sprintf(cfg_str, " mem=%dM", (unsigned int)(memory_size >> 20));
 	basic_strcat(linux_cmdline, cfg_str);
 	if ((err = fdt_chosen((void *)fdt_addr, 1, linux_cmdline))) {
 		basic_printf("%s: fdt_chosen() failed: %s\n", __func__, 
@@ -745,16 +741,12 @@ void arm_exec(char *line)
 			arm_cmd_hello(argc, argv);
 		} else if (basic_strcmp(argv[0], "wfi_test") == 0) {
 			arm_cmd_wfi_test(argc, argv);
-#if 0
 		} else if (basic_strcmp(argv[0], "mmu_setup") == 0) {
 			arm_cmd_mmu_setup(argc, argv);
-#endif
 		} else if (basic_strcmp(argv[0], "mmu_state") == 0) {
 			arm_cmd_mmu_state(argc, argv);
-#if 0
 		} else if (basic_strcmp(argv[0], "mmu_test") == 0) {
 			arm_cmd_mmu_test(argc, argv);
-#endif
 		} else if (basic_strcmp(argv[0], "mmu_cleanup") == 0) {
 			arm_cmd_mmu_cleanup(argc, argv);
 		} else if (basic_strcmp(argv[0], "timer") == 0) {

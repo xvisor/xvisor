@@ -21,10 +21,10 @@
  * @brief basic firmware main file
  */
 
-#include <arm_mmu.h>
 #include <arch_board.h>
 #include <arch_cache.h>
 #include <arch_math.h>
+#include <arch_mmu.h>
 #include <basic_heap.h>
 #include <basic_irq.h>
 #include <basic_stdio.h>
@@ -33,7 +33,7 @@
 #include <libfdt/fdt_support.h>
 #include <dhry.h>
 
-static int memory_size = 0x0;
+static physical_size_t memory_size = 0x0;
 
 /* Works in supervisor mode */
 void arm_init(void)
@@ -179,7 +179,7 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 		return;
 	}
 
-	arm_mmu_setup();
+	arch_mmu_setup();
 }
 
 void arm_cmd_mmu_state(int argc, char **argv)
@@ -189,7 +189,7 @@ void arm_cmd_mmu_state(int argc, char **argv)
 		return;
 	}
 
-	if (arm_mmu_is_enabled()) {
+	if (arch_mmu_is_enabled()) {
 		basic_puts("MMU Enabled\n");
 	} else {
 		basic_puts("MMU Disabled\n");
@@ -210,7 +210,7 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
-	arm_mmu_section_test(&total, &pass, &fail);
+	arch_mmu_section_test(&total, &pass, &fail);
 	basic_puts("  Total: ");
 	basic_int2str(str, total);
 	basic_puts(str);
@@ -227,7 +227,7 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	total = 0x0;
 	pass = 0x0;
 	fail = 0x0;
-	arm_mmu_page_test(&total, &pass, &fail);
+	arch_mmu_page_test(&total, &pass, &fail);
 	basic_puts("  Total: ");
 	basic_int2str(str, total);
 	basic_puts(str);
@@ -249,7 +249,7 @@ void arm_cmd_mmu_cleanup(int argc, char **argv)
 		return;
 	}
 
-	arm_mmu_cleanup();
+	arch_mmu_cleanup();
 }
 
 void arm_cmd_timer(int argc, char **argv)
@@ -461,10 +461,10 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
 	basic_irq_disable();
-	arm_mmu_cleanup();
+	arch_mmu_cleanup();
 
 	/* Pass memory size via kernel command line */
-	basic_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
+	basic_sprintf(cfg_str, " mem=%dM", (unsigned int)(memory_size >> 20));
 	basic_strcat(cmdline, cfg_str);
 
 	/* Increase fdt blob size by 8KB */

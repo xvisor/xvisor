@@ -21,9 +21,10 @@
  * @brief source code for arch specific interrupt handling
  */
 
-#include <arm_mmu.h>
 #include <arch_irq.h>
 #include <basic_irq.h>
+
+extern void arm_sync_abort(struct pt_regs *regs);
 
 void do_bad_mode(struct pt_regs *regs)
 {
