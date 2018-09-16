@@ -33,16 +33,15 @@ ARCH_BASIC_DIR=$(basic_dir)
 ARCH_DIR=$(arch_dir)
 
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry.o \
-	   $(ARCH_OBJ_DIR)/arm_cache.o \
 	   $(ARCH_OBJ_DIR)/arm_mmu.o \
 	   $(ARCH_OBJ_DIR)/arm_main.o \
+	   $(ARCH_OBJ_DIR)/arch_cache.o \
 	   $(ARCH_OBJ_DIR)/arch_irq.o \
 	   $(board_objs)
 
 ARCH_DEPS= $(ARCH_DIR)/arm_asm_macro.h \
            $(ARCH_DIR)/arm_defines.h \
            $(ARCH_DIR)/arm_inline_asm.h \
-           $(ARCH_DIR)/arm_cache.h \
            $(ARCH_DIR)/arch_math.h \
            $(ARCH_DIR)/arch_types.h \
            $(ARCH_DIR)/arch_io.h \

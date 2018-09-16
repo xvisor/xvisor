@@ -63,25 +63,25 @@ ARCH_DIR=$(arch_dir)
 
 ifeq ($(board_arch),v5)
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v5.o \
-	   $(ARCH_OBJ_DIR)/arm_cache_v5.o \
+	   $(ARCH_OBJ_DIR)/arch_cache_v5.o \
 	   $(ARCH_OBJ_DIR)/arm_mmu_v5.o
 endif
 
 ifeq ($(board_arch),v6)
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v6.o \
-	   $(ARCH_OBJ_DIR)/arm_cache_v6.o \
+	   $(ARCH_OBJ_DIR)/arch_cache_v6.o \
 	   $(ARCH_OBJ_DIR)/arm_mmu_v6.o
 endif
 
 ifeq ($(board_arch),v7)
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
-	   $(ARCH_OBJ_DIR)/arm_cache_v7.o \
+	   $(ARCH_OBJ_DIR)/arch_cache_v7.o \
 	   $(ARCH_OBJ_DIR)/arm_mmu_v7.o
 endif
 
 ifeq ($(board_arch),v7ve)
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
-	   $(ARCH_OBJ_DIR)/arm_cache_v7.o \
+	   $(ARCH_OBJ_DIR)/arch_cache_v7.o \
 	   $(ARCH_OBJ_DIR)/arm_mmu_v7.o
 endif
 
@@ -93,7 +93,6 @@ ARCH_OBJS+= $(ARCH_OBJ_DIR)/arm_main.o \
 ARCH_DEPS= $(ARCH_DIR)/arm_asm_macro.h \
            $(ARCH_DIR)/arm_defines.h \
            $(ARCH_DIR)/arm_inline_asm.h \
-           $(ARCH_DIR)/arm_cache.h \
            $(ARCH_DIR)/arch_math.h \
            $(ARCH_DIR)/arch_types.h \
            $(ARCH_DIR)/arch_io.h \

@@ -21,10 +21,10 @@
  * @brief basic firmware main file
  */
 
-#include <arch_math.h>
-#include <arm_cache.h>
 #include <arm_mmu.h>
 #include <arch_board.h>
+#include <arch_cache.h>
+#include <arch_math.h>
 #include <basic_heap.h>
 #include <basic_irq.h>
 #include <basic_stdio.h>
@@ -374,7 +374,7 @@ void arm_cmd_copy(int argc, char **argv)
 	 * we see correct contents of destination even after
 	 * MMU ON.
 	 */
-	arm_clean_invalidate_dcache_mva_range(dest_va, dest_va + count);
+	arch_clean_invalidate_dcache_mva_range(dest_va, dest_va + count);
 
 	/* Copy contents */
 	if (!((virtual_addr_t)dst & 0x7) &&
@@ -462,7 +462,7 @@ void arm_cmd_start_linux(int argc, char **argv)
 	 * 1MB area containing kernel start and boot page tables.
 	 */
 	nuke_va = kernel_addr & ~(0x100000 - 1);
-	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
+	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
@@ -567,7 +567,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	 * 1MB area containing kernel start and boot page tables.
 	 */
 	nuke_va = kernel_addr & ~(0x100000 - 1);
-	arm_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
+	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();

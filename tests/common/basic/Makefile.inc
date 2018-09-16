@@ -38,6 +38,7 @@ FW_ARCH_DIR= $(ARCH_DIR)
 
 FW_DEPS+= $(ARCH_DEPS) \
 	  $(FW_BASIC_DIR)/arch_board.h \
+	  $(FW_BASIC_DIR)/arch_cache.h \
 	  $(FW_BASIC_DIR)/arch_irq.h \
 	  $(FW_BASIC_DIR)/basic_heap.h \
 	  $(FW_BASIC_DIR)/basic_irq.h \

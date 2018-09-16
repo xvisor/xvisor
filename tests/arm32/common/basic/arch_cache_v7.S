@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_cache_v7.S
+ * @file arch_cache_v7.S
  * @author Anup Patel (anup@brainfault.org)
  * @brief ARMv7 cache operations
  */
@@ -86,16 +86,16 @@
 	ldmia   sp!, {r0-r9}		/* restore registers */;
 
 	/* clean the entire data cache */	
-	.globl arm_clean_dcache
-arm_clean_dcache:
+	.globl arch_clean_dcache
+arch_clean_dcache:
 	ARM_ENTIRE_DCACHE_OP(c10) 	/* clean all */
 	dsb
 	isb
 	bx	lr
 
 	/* clean & invalidate the entire data cache */	
-	.globl arm_clean_invalidate_dcache
-arm_clean_invalidate_dcache:
+	.globl arch_clean_invalidate_dcache
+arch_clean_invalidate_dcache:
 	ARM_ENTIRE_DCACHE_OP(c14) 	/* clean and invalidate all */
 	dsb
 	isb
@@ -105,8 +105,8 @@ arm_clean_invalidate_dcache:
 	 *  r0 - start address of region
 	 *  r1 - end address of region
 	 */
-	.globl arm_clean_dcache_mva_range
-arm_clean_dcache_mva_range:
+	.globl arch_clean_dcache_mva_range
+arch_clean_dcache_mva_range:
 	push	{r0, r1, r2, r3}
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
@@ -125,8 +125,8 @@ arm_clean_dcache_mva_range:
 	 *  r0 - start address of region
 	 *  r1 - end address of region
 	 */
-	.globl arm_clean_invalidate_dcache_mva_range
-arm_clean_invalidate_dcache_mva_range:
+	.globl arch_clean_invalidate_dcache_mva_range
+arch_clean_invalidate_dcache_mva_range:
 	push	{r0, r1, r2, r3}
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
@@ -142,13 +142,11 @@ arm_clean_invalidate_dcache_mva_range:
 	bx	lr
 
 	/* invalidate the entire i-cache */
-	.globl arm_invalidate_icache
-arm_invalidate_icache:
+	.globl arch_invalidate_icache
+arch_invalidate_icache:
 	push	{r0}
 	mov	r0, #0
 	mcr     p15, 0, r0, c7, c5, 0 	/* invalidate all */
 	isb
 	pop	{r0}
 	bx	lr
-
-
