@@ -32,7 +32,6 @@ physical_addr_t arch_board_ram_start(void);
 physical_size_t arch_board_ram_size(void);
 physical_addr_t arch_board_autoexec_addr(void);
 u32 arch_board_boot_delay(void);
-u32 arch_board_linux_machine_type(void);
 void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz);
 void arch_board_fdt_fixup(void *fdt_addr);
 

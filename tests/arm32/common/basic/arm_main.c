@@ -93,12 +93,6 @@ void arm_cmd_help(int argc, char **argv)
 	basic_puts("            <src>   = source address in hex\n");
 	basic_puts("            <count> = byte count in hex\n");
 	basic_puts("\n");
-	basic_puts("start_linux - Start linux kernel (atags mechanism)\n");
-	basic_puts("            Usage: start_linux <kernel_addr> [<initrd_addr>] [<initrd_size>]\n");
-	basic_puts("            <kernel_addr>  = kernel load address\n");
-	basic_puts("            <initrd_addr>  = initrd load address (optional)\n");
-	basic_puts("            <initrd_size>  = initrd size (optional)\n");
-	basic_puts("\n");
 	basic_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
 	basic_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
 	basic_puts("            <kernel_addr>  = kernel load address\n");
@@ -418,111 +412,6 @@ void arm_cmd_copy(int argc, char **argv)
 static char  cmdline[1024];
 
 typedef void (*linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
-
-void arm_cmd_start_linux(int argc, char **argv)
-{
-	char cfg_str[32];
-	u32 *kernel_args = (u32 *)(arch_board_ram_start() + 0x1000);
-	u32 cmdline_size, p;
-	u32 kernel_addr, initrd_addr, initrd_size;
-	virtual_addr_t nuke_va;
-
-	if (argc < 2) {
-		basic_puts("start_linux: must provide <kernel_addr>\n");
-		basic_puts("start_linux: <initrd_addr> and <initrd_size> are optional\n");
-		return;
-	}
-
-	/* Parse the arguments from command line */
-	kernel_addr = basic_hexstr2uint(argv[1]);
-	if (argc > 2) {
-		initrd_addr = basic_hexstr2uint(argv[2]);
-	} else {
-		initrd_addr = 0;
-	}
-	if (argc > 3) {
-		initrd_size = basic_hexstr2uint(argv[3]);
-	} else {
-		initrd_size = 0;
-	}
-
-	/* Linux ARM32 kernel expects us to boot from 0x8000
-	 * aligned address, perferrably RAM start + 0x8000 address.
-	 * The 0x8000 bytes above kernel start address is used by
-	 * Linux ARM32 kernel to setup boot page tables.
-	 *
-	 * It might happen that we are running Basic firmware
-	 * after a reboot from Guest Linux in which case both
-	 * I-Cache and D-Cache will have stale contents. If we
-	 * don't cleanup these stale contents then Linux kernel
-	 * will not see correct contents boot page tables after
-	 * MMU ON.
-	 *
-	 * To take care of above described issue, we nuke the
-	 * 1MB area containing kernel start and boot page tables.
-	 */
-	nuke_va = kernel_addr & ~(0x100000 - 1);
-	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x100000);
-
-	/* Disable interrupts, disable timer, and cleanup MMU */
-	arch_board_timer_disable();
-	basic_irq_disable();
-	arm_mmu_cleanup();
-
-	/* Setup kernel args */
-	for (p = 0; p < 128; p++) {
-		kernel_args[p] = 0x0;
-	}
-	p = 0;
-	/* ATAG_CORE */
-	kernel_args[p++] = 5;
-	kernel_args[p++] = 0x54410001;
-	kernel_args[p++] = 1;
-	kernel_args[p++] = 0x1000;
-	kernel_args[p++] = 0;
-	/* ATAG_MEM */
-	kernel_args[p++] = 4;
-	kernel_args[p++] = 0x54410002;
-	kernel_args[p++] = memory_size;
-	kernel_args[p++] = arch_board_ram_start();
-	/* ATAG_INITRD2 */
-	if (initrd_size) {
-		kernel_args[p++] = 4;
-		kernel_args[p++] = 0x54420005;
-		kernel_args[p++] = initrd_addr;
-		kernel_args[p++] = initrd_size;
-	}
-
-	/* Pass memory size via kernel command line */
-	basic_sprintf(cfg_str, " mem=%dM", (memory_size >> 20));
-	basic_strcat(cmdline, cfg_str);
-
-	cmdline_size = basic_strlen(cmdline);
-	if (cmdline_size) {
-		/* ATAG_CMDLINE */
-		basic_strcpy((char *)&kernel_args[p + 2], cmdline);
-		cmdline_size = (cmdline_size >> 2) + 1;
-		kernel_args[p++] = cmdline_size + 2;
-		kernel_args[p++] = 0x54410009;
-		p += cmdline_size;
-	}
-
-	/* ATAG_END */
-	kernel_args[p++] = 0;
-	kernel_args[p++] = 0;
-
-	/* Jump to Linux Kernel
-	 * r0 -> zero
-	 * r1 -> board machine type
-	 * r2 -> kernel args address 
-	 */
-	((linux_entry_t)kernel_addr)(0x0, arch_board_linux_machine_type(), (u32)kernel_args, 0);
-
-	/* We should never reach here */
-	while (1);
-
-	return;
-}
 
 void arm_cmd_start_linux_fdt(int argc, char **argv)
 {
@@ -848,8 +737,6 @@ void arm_exec(char *line)
 			arm_cmd_hexdump(argc, argv);
 		} else if (basic_strcmp(argv[0], "copy") == 0) {
 			arm_cmd_copy(argc, argv);
-		} else if (basic_strcmp(argv[0], "start_linux") == 0) {
-			arm_cmd_start_linux(argc, argv);
 		} else if (basic_strcmp(argv[0], "start_linux_fdt") == 0) {
 			arm_cmd_start_linux_fdt(argc, argv);
                 } else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {

@@ -65,11 +65,6 @@ physical_size_t arch_board_ram_size(void)
 	return (physical_size_t)vminfo_ram_size(REALVIEW_VMINFO_BASE, 0);
 }
 
-u32 arch_board_linux_machine_type(void)
-{
-	return 0x769;
-}
-
 void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");

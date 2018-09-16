@@ -93,8 +93,8 @@ void arm_cmd_help(int argc, char **argv)
 	basic_puts("            <src>   = source address in hex\n");
 	basic_puts("            <count> = byte count in hex\n");
 	basic_puts("\n");
-	basic_puts("start_linux - Start linux kernel (device-tree mechanism)\n");
-	basic_puts("            Usage: start_linux <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
+	basic_puts("start_linux_fdt - Start linux kernel (device-tree mechanism)\n");
+	basic_puts("            Usage: start_linux_fdt <kernel_addr> <fdt_addr> [<initrd_addr>] [<initrd_size>]\n");
 	basic_puts("            <kernel_addr>  = kernel load address\n");
 	basic_puts("            <fdt_addr>     = fdt blob address\n");
 	basic_puts("            <initrd_addr>  = initrd load address (optional)\n");
@@ -419,7 +419,7 @@ typedef void (* linux_entry_t) (u64 fdt_addr, u64 arg0, u64 arg1, u64 arg2);
 
 void dump_fdt(void *);
 
-void arm_cmd_start_linux(int argc, char **argv)
+void arm_cmd_start_linux_fdt(int argc, char **argv)
 {
 	u64 kernel_addr, fdt_addr;
 	u64 initrd_addr, initrd_size;
@@ -429,9 +429,9 @@ void arm_cmd_start_linux(int argc, char **argv)
 	u64 meminfo[2];
 
 	if (argc < 3) {
-		basic_puts("start_linux: must provide <kernel_addr> and "
+		basic_puts("start_linux_fdt: must provide <kernel_addr> and "
 			 "<fdt_addr>\n");
-		basic_puts("start_linux: <initrd_addr> and <initrd_size> "
+		basic_puts("start_linux_fdt: <initrd_addr> and <initrd_size> "
 			 "are optional\n");
 		return;
 	}
@@ -765,8 +765,8 @@ void arm_exec(char *line)
 			arm_cmd_hexdump(argc, argv);
 		} else if (basic_strcmp(argv[0], "copy") == 0) {
 			arm_cmd_copy(argc, argv);
-		} else if (basic_strcmp(argv[0], "start_linux") == 0) {
-			arm_cmd_start_linux(argc, argv);
+		} else if (basic_strcmp(argv[0], "start_linux_fdt") == 0) {
+			arm_cmd_start_linux_fdt(argc, argv);
                 } else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {
 			arm_cmd_fdt_override_u32(argc, argv);
 		} else if (basic_strcmp(argv[0], "linux_cmdline") == 0) {
