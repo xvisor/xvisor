@@ -18,7 +18,7 @@
  *
  * @file arm_main.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
- * @brief basic firmware main file
+ * @brief Basic firmware main file
  */
 
 #include <arch_board.h>
@@ -29,9 +29,9 @@
 #include <basic_irq.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
+#include <dhry.h>
 #include <libfdt/libfdt.h>
 #include <libfdt/fdt_support.h>
-#include <dhry.h>
 
 static physical_size_t memory_size = 0x0;
 
@@ -310,11 +310,11 @@ void arm_cmd_hexdump(int argc, char **argv)
 		basic_puts("hexdump: must provide <addr> and <count>\n");
 		return;
 	}
-	addr = (u32 *)basic_hexstr2uint(argv[1]);
+	addr = (u32 *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	count = basic_hexstr2uint(argv[2]);
 	for (i = 0; i < (count / 4); i++) {
 		if (i % 4 == 0) {
-			basic_uint2hexstr(str, (u32)&addr[i]);
+			basic_ulonglong2hexstr(str, (virtual_addr_t)&addr[i]);
 			len = basic_strlen(str);
 			while (len < 8) {
 				basic_puts("0");
@@ -352,9 +352,9 @@ void arm_cmd_copy(int argc, char **argv)
 		basic_puts("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
-	dst = (void *)basic_hexstr2uint(argv[1]);
+	dst = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	dest_va = (virtual_addr_t)dst;
-	src = (void *)basic_hexstr2uint(argv[2]);
+	src = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[2]);
 	count = basic_hexstr2uint(argv[3]);
 
 	/* Disable timer and get start timestamp */
@@ -409,16 +409,18 @@ void arm_cmd_copy(int argc, char **argv)
 	basic_puts(" bytes\n");
 }
 
-static char  cmdline[1024];
+static char linux_cmdline[1024];
 
-typedef void (*linux_entry_t) (u32 zero, u32 machine_type, u32 kernel_args, u32 zero2);
+typedef void (*linux_entry_t) (unsigned long zero, unsigned long machine_type, unsigned long kernel_args, unsigned long zero2);
 
 void arm_cmd_start_linux_fdt(int argc, char **argv)
 {
-	u32 kernel_addr, fdt_addr;
-	u32 initrd_addr, initrd_size;
-	char cfg_str[32];
+	unsigned long kernel_addr, fdt_addr;
+	unsigned long initrd_addr, initrd_size;
 	virtual_addr_t nuke_va;
+	int err;
+	char cfg_str[16];
+	u64 meminfo[2];
 
 	if (argc < 3) {
 		basic_puts("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
@@ -427,15 +429,15 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	}
 
 	/* Parse the arguments from command line */
-	kernel_addr = basic_hexstr2uint(argv[1]);
-	fdt_addr = basic_hexstr2uint(argv[2]);
+	kernel_addr = basic_hexstr2ulonglong(argv[1]);
+	fdt_addr = basic_hexstr2ulonglong(argv[2]);
 	if (argc > 3) {
-		initrd_addr = basic_hexstr2uint(argv[3]);
+		initrd_addr = basic_hexstr2ulonglong(argv[3]);
 	} else {
 		initrd_addr = 0;
 	}
 	if (argc > 4) {
-		initrd_size = basic_hexstr2uint(argv[4]);
+		initrd_size = basic_hexstr2ulonglong(argv[4]);
 	} else {
 		initrd_size = 0;
 	}
@@ -465,19 +467,36 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 
 	/* Pass memory size via kernel command line */
 	basic_sprintf(cfg_str, " mem=%dM", (unsigned int)(memory_size >> 20));
-	basic_strcat(cmdline, cfg_str);
+	basic_strcat(linux_cmdline, cfg_str);
 
 	/* Increase fdt blob size by 8KB */
 	fdt_increase_size((void *)fdt_addr, 0x2000);
 
+	meminfo[0] = arch_board_ram_start();
+	meminfo[1] = arch_board_ram_size();
 	/* Fillup/fixup the fdt blob with following:
 	 * 		- initrd start, end
 	 * 		- kernel cmd line
-	 * 		- number of cpus   */
-	fdt_chosen((void *)fdt_addr, 1, cmdline);
+	 * 		- number of cpus
+	 */
+	if ((err = fdt_fixup_memory_banks((void *)fdt_addr, (&meminfo[0]), 
+							(&meminfo[1]), 1))) {
+		basic_printf("%s: fdt_fixup_memory_banks() failed: %s\n",
+			   __func__, fdt_strerror(err));
+		return;
+	}
+	if ((err = fdt_chosen((void *)fdt_addr, 1, linux_cmdline))) {
+		basic_printf("%s: fdt_chosen() failed: %s\n", __func__, 
+				fdt_strerror(err));
+		return;
+	}
 	if (initrd_size) {
-		fdt_initrd((void *)fdt_addr,
-			   initrd_addr, initrd_addr + initrd_size, 1);
+		if ((err = fdt_initrd((void *)fdt_addr, initrd_addr, 
+					initrd_addr + initrd_size, 1))) {
+			basic_printf("%s: fdt_initrd() failed: %s\n",
+				   __func__, fdt_strerror(err));
+			return;
+		}
 	}
 
 	/* Do board specific fdt fixup */
@@ -510,7 +529,7 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 		return;
 	}
 
-	fdt = (void *)basic_hexstr2uint(argv[1]);
+	fdt = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	path = argv[2];
 	val = cpu_to_be32(basic_str2int(argv[3]));
 	prop = basic_strrchr(path, '/');
@@ -545,17 +564,17 @@ void arm_cmd_linux_cmdline(int argc, char **argv)
 {
 	if (argc >= 2) {
 		int cnt = 1;
-		cmdline[0] = 0;
+		linux_cmdline[0] = 0;
 
 		while (cnt < argc) {
-			basic_strcat(cmdline, argv[cnt]);
-			basic_strcat(cmdline, " ");
+			basic_strcat(linux_cmdline, argv[cnt]);
+			basic_strcat(linux_cmdline, " ");
 			cnt++;
 		}
 	}
 
 	basic_puts("linux_cmdline = \"");
-	basic_puts(cmdline);
+	basic_puts(linux_cmdline);
 	basic_puts("\"\n");
 
 	return;
@@ -651,7 +670,7 @@ unlock:
 void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
-	void (* jump)(void);
+	void (*jump)(void);
 
 	if (argc != 2) {
 		basic_puts("go: must provide destination address\n");
@@ -660,8 +679,8 @@ void arm_cmd_go(int argc, char **argv)
 
 	arch_board_timer_disable();
 
-	jump = (void (*)(void))basic_hexstr2uint(argv[1]);
-	basic_uint2hexstr(str, (u32)jump);
+	jump = (void (*)(void))(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
+	basic_ulonglong2hexstr(str, (virtual_addr_t)jump);
 	basic_puts("Jumping to location 0x");
 	basic_puts(str);
 	basic_puts(" ...\n");
@@ -767,7 +786,7 @@ void arm_main(void)
 	char line[ARM_MAX_CMD_STR_SIZE];
 
 	/* Setup board specific linux default cmdline */
-	arch_board_linux_default_cmdline(cmdline, sizeof(cmdline));
+	arch_board_linux_default_cmdline(linux_cmdline, sizeof(linux_cmdline));
 
 	basic_puts(arch_board_name());
 	basic_puts(" Basic Firmware\n\n");
@@ -785,7 +804,7 @@ void arm_main(void)
 			key_pressed = 0;
 			tstamp = arch_board_timer_timestamp();
 			while ((arch_board_timer_timestamp() - tstamp)
-						< 1000000000) {
+							< 1000000000) {
 				for (i = 0; i < 10000; i++) ;
 				if (basic_can_getc()) {
 					basic_getc();

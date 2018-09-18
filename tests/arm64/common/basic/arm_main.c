@@ -21,8 +21,8 @@
  * @brief Basic firmware main file
  */
 
-#include <arch_cache.h>
 #include <arch_board.h>
+#include <arch_cache.h>
 #include <arch_math.h>
 #include <arch_mmu.h>
 #include <basic_heap.h>
@@ -61,21 +61,21 @@ void arm_cmd_help(int argc, char **argv)
 {
 	basic_puts("help        - List commands and their usage\n");
 	basic_puts("\n");
-	basic_puts("hi          - Say hi to ARM test code\n");
+	basic_puts("hi          - Say hi to basic firmware\n");
 	basic_puts("\n");
-	basic_puts("hello       - Say hello to ARM test code\n");
+	basic_puts("hello       - Say hello to basic firmware\n");
 	basic_puts("\n");
-	basic_puts("wfi_test    - Run wait for irq instruction test for ARM test code\n");
+	basic_puts("wfi_test    - Run wait for irq instruction test for basic firmware\n");
 	basic_puts("            Usage: wfi_test [<msecs>]\n");
 	basic_puts("            <msecs>  = delay in milliseconds to wait for\n");
 	basic_puts("\n");
-	basic_puts("mmu_setup   - Setup MMU for ARM test code\n");
+	basic_puts("mmu_setup   - Setup MMU for basic firmware\n");
 	basic_puts("\n");
-	basic_puts("mmu_state   - MMU is enabled/disabled for ARM test code\n");
+	basic_puts("mmu_state   - MMU is enabled/disabled for basic firmware\n");
 	basic_puts("\n");
-	basic_puts("mmu_test    - Run MMU test suite for ARM test code\n");
+	basic_puts("mmu_test    - Run MMU test suite for basic firmware\n");
 	basic_puts("\n");
-	basic_puts("mmu_cleanup - Cleanup MMU for ARM test code\n");
+	basic_puts("mmu_cleanup - Cleanup MMU for basic firmware\n");
 	basic_puts("\n");
 	basic_puts("timer       - Display timer information\n");
 	basic_puts("\n");
@@ -310,11 +310,11 @@ void arm_cmd_hexdump(int argc, char **argv)
 		basic_puts("hexdump: must provide <addr> and <count>\n");
 		return;
 	}
-	addr = (u32 *)basic_hexstr2ulonglong(argv[1]);
+	addr = (u32 *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	count = basic_hexstr2uint(argv[2]);
 	for (i = 0; i < (count / 4); i++) {
 		if (i % 4 == 0) {
-			basic_ulonglong2hexstr(str, (u64)&addr[i]);
+			basic_ulonglong2hexstr(str, (virtual_addr_t)&addr[i]);
 			len = basic_strlen(str);
 			while (len < 8) {
 				basic_puts("0");
@@ -352,9 +352,9 @@ void arm_cmd_copy(int argc, char **argv)
 		basic_puts("copy: must provide <dest>, <src>, and <count>\n");
 		return;
 	}
-	dst = (void *)basic_hexstr2ulonglong(argv[1]);
+	dst = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	dest_va = (virtual_addr_t)dst;
-	src = (void *)basic_hexstr2ulonglong(argv[2]);
+	src = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[2]);
 	count = basic_hexstr2uint(argv[3]);
 
 	/* Disable timer and get start timestamp */
@@ -409,26 +409,22 @@ void arm_cmd_copy(int argc, char **argv)
 	basic_puts(" bytes\n");
 }
 
-char linux_cmdline[1024];
+static char linux_cmdline[1024];
 
-typedef void (* linux_entry_t) (u64 fdt_addr, u64 arg0, u64 arg1, u64 arg2);
-
-void dump_fdt(void *);
+typedef void (*linux_entry_t) (unsigned long fdt_addr, unsigned long arg0, unsigned long arg1, unsigned long arg2);
 
 void arm_cmd_start_linux_fdt(int argc, char **argv)
 {
-	u64 kernel_addr, fdt_addr;
-	u64 initrd_addr, initrd_size;
+	unsigned long kernel_addr, fdt_addr;
+	unsigned long initrd_addr, initrd_size;
 	virtual_addr_t nuke_va;
 	int err;
-	char cfg_str[10];
+	char cfg_str[16];
 	u64 meminfo[2];
 
 	if (argc < 3) {
-		basic_puts("start_linux_fdt: must provide <kernel_addr> and "
-			 "<fdt_addr>\n");
-		basic_puts("start_linux_fdt: <initrd_addr> and <initrd_size> "
-			 "are optional\n");
+		basic_puts("start_linux_fdt: must provide <kernel_addr> and <fdt_addr>\n");
+		basic_puts("start_linux_fdt: <initrd_addr> and <initrd_size> are optional\n");
 		return;
 	}
 
@@ -464,10 +460,14 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	nuke_va = kernel_addr & ~(0x200000 - 1);
 	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x200000);
 
-	/* Disable interrupts, disable timer and cleanup MMU */
+	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
 	basic_irq_disable();
 	arch_mmu_cleanup();
+
+	/* Pass memory size via kernel command line */
+	basic_sprintf(cfg_str, " mem=%dM", (unsigned int)(memory_size >> 20));
+	basic_strcat(linux_cmdline, cfg_str);
 
 	/* Increase fdt blob size by 8KB */
 	fdt_increase_size((void *)fdt_addr, 0x2000);
@@ -477,15 +477,14 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	/* Fillup/fixup the fdt blob with following:
 	 * 		- initrd start, end
 	 * 		- kernel cmd line
-	 * 		- number of cpus   */
+	 * 		- number of cpus
+	 */
 	if ((err = fdt_fixup_memory_banks((void *)fdt_addr, (&meminfo[0]), 
 							(&meminfo[1]), 1))) {
 		basic_printf("%s: fdt_fixup_memory_banks() failed: %s\n",
 			   __func__, fdt_strerror(err));
 		return;
 	}
-	sprintf(cfg_str, " mem=%dM", (unsigned int)(memory_size >> 20));
-	basic_strcat(linux_cmdline, cfg_str);
 	if ((err = fdt_chosen((void *)fdt_addr, 1, linux_cmdline))) {
 		basic_printf("%s: fdt_chosen() failed: %s\n", __func__, 
 				fdt_strerror(err));
@@ -530,7 +529,7 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 		return;
 	}
 
-	fdt = (void *)basic_hexstr2ulonglong(argv[1]);
+	fdt = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
 	path = argv[2];
 	val = cpu_to_be32(basic_str2int(argv[3]));
 	prop = basic_strrchr(path, '/');
@@ -671,7 +670,7 @@ unlock:
 void arm_cmd_go(int argc, char **argv)
 {
 	char str[32];
-	void (* jump)(void);
+	void (*jump)(void);
 
 	if (argc != 2) {
 		basic_puts("go: must provide destination address\n");
@@ -680,8 +679,8 @@ void arm_cmd_go(int argc, char **argv)
 
 	arch_board_timer_disable();
 
-	jump = (void (*)(void))basic_hexstr2ulonglong(argv[1]);
-	basic_ulonglong2hexstr(str, (u64)jump);
+	jump = (void (*)(void))(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
+	basic_ulonglong2hexstr(str, (virtual_addr_t)jump);
 	basic_puts("Jumping to location 0x");
 	basic_puts(str);
 	basic_puts(" ...\n");
@@ -787,8 +786,7 @@ void arm_main(void)
 	char line[ARM_MAX_CMD_STR_SIZE];
 
 	/* Setup board specific linux default cmdline */
-	arch_board_linux_default_cmdline(linux_cmdline, 
-					sizeof(linux_cmdline));
+	arch_board_linux_default_cmdline(linux_cmdline, sizeof(linux_cmdline));
 
 	basic_puts(arch_board_name());
 	basic_puts(" Basic Firmware\n\n");
