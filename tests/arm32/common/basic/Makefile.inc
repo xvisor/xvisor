@@ -62,25 +62,25 @@ ARCH_BASIC_DIR=$(basic_dir)
 ARCH_DIR=$(arch_dir)
 
 ifeq ($(board_arch),v5)
-ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v5.o \
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry_v5.o \
 	   $(ARCH_OBJ_DIR)/arch_cache_v5.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu_v5.o
 endif
 
 ifeq ($(board_arch),v6)
-ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v6.o \
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry_v6.o \
 	   $(ARCH_OBJ_DIR)/arch_cache_v6.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu_v6.o
 endif
 
 ifeq ($(board_arch),v7)
-ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry_v7.o \
 	   $(ARCH_OBJ_DIR)/arch_cache_v7.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu_v7.o
 endif
 
 ifeq ($(board_arch),v7ve)
-ARCH_OBJS= $(ARCH_OBJ_DIR)/arm_entry_v7.o \
+ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry_v7.o \
 	   $(ARCH_OBJ_DIR)/arch_cache_v7.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu_v7.o
 endif

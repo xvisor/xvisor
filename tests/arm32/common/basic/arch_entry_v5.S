@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_entry_v5.S
+ * @file arch_entry_v5.S
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @brief Entry point code for basic firmware
