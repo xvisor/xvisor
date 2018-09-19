@@ -85,8 +85,8 @@ ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry_v7.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu_v7.o
 endif
 
-ARCH_OBJS+= $(ARCH_OBJ_DIR)/arm_main.o \
-	    $(ARCH_OBJ_DIR)/arch_irq.o \
+ARCH_OBJS+= $(ARCH_OBJ_DIR)/arch_irq.o \
+	    $(ARCH_OBJ_DIR)/arch_linux.o \
 	    $(ARCH_OBJ_DIR)/arch_math.o \
 	    $(board_objs)
 

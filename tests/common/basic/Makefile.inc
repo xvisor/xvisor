@@ -40,6 +40,7 @@ FW_DEPS+= $(ARCH_DEPS) \
 	  $(FW_BASIC_DIR)/arch_board.h \
 	  $(FW_BASIC_DIR)/arch_cache.h \
 	  $(FW_BASIC_DIR)/arch_irq.h \
+	  $(FW_BASIC_DIR)/arch_linux.h \
 	  $(FW_BASIC_DIR)/arch_mmu.h \
 	  $(FW_BASIC_DIR)/basic_heap.h \
 	  $(FW_BASIC_DIR)/basic_irq.h \
@@ -56,6 +57,7 @@ FW_DEPS+= $(ARCH_DEPS) \
 FW_OBJS+= $(ARCH_OBJS) \
 	  $(FW_OBJ_DIR)/basic_heap.o \
 	  $(FW_OBJ_DIR)/basic_irq.o \
+	  $(FW_OBJ_DIR)/basic_main.o \
 	  $(FW_OBJ_DIR)/basic_stdio.o \
 	  $(FW_OBJ_DIR)/basic_string.o \
 	  $(FW_OBJ_DIR)/dhry_1.o \

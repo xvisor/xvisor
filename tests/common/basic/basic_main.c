@@ -16,13 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arm_main.c
+ * @file basic_main.c
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief Basic firmware main file
  */
 
 #include <arch_board.h>
 #include <arch_cache.h>
+#include <arch_linux.h>
 #include <arch_math.h>
 #include <arch_mmu.h>
 #include <basic_heap.h>
@@ -36,7 +37,7 @@
 static physical_size_t memory_size = 0x0;
 
 /* Works in supervisor mode */
-void arm_init(void)
+void basic_init(void)
 {
 	basic_heap_init();
 
@@ -57,7 +58,7 @@ void arm_init(void)
 	basic_irq_enable();
 }
 
-void arm_cmd_help(int argc, char **argv)
+void basic_cmd_help(int argc, char **argv)
 {
 	basic_puts("help        - List commands and their usage\n");
 	basic_puts("\n");
@@ -122,7 +123,7 @@ void arm_cmd_help(int argc, char **argv)
 	basic_puts("\n");
 }
 
-void arm_cmd_hi(int argc, char **argv)
+void basic_cmd_hi(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("hi: no parameters required\n");
@@ -132,7 +133,7 @@ void arm_cmd_hi(int argc, char **argv)
 	basic_puts("hello\n");
 }
 
-void arm_cmd_hello(int argc, char **argv)
+void basic_cmd_hello(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("hello: no parameters required\n");
@@ -142,7 +143,7 @@ void arm_cmd_hello(int argc, char **argv)
 	basic_puts("hi\n");
 }
 
-void arm_cmd_wfi_test(int argc, char **argv)
+void basic_cmd_wfi_test(int argc, char **argv)
 {
 	u64 tstamp;
 	char time[256];
@@ -172,7 +173,7 @@ void arm_cmd_wfi_test(int argc, char **argv)
 	basic_puts(" nsecs\n");
 }
 
-void arm_cmd_mmu_setup(int argc, char **argv)
+void basic_cmd_mmu_setup(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("mmu_setup: no parameters required\n");
@@ -182,7 +183,7 @@ void arm_cmd_mmu_setup(int argc, char **argv)
 	arch_mmu_setup();
 }
 
-void arm_cmd_mmu_state(int argc, char **argv)
+void basic_cmd_mmu_state(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("mmu_state: no parameters required\n");
@@ -196,7 +197,7 @@ void arm_cmd_mmu_state(int argc, char **argv)
 	}
 }
 
-void arm_cmd_mmu_test(int argc, char **argv)
+void basic_cmd_mmu_test(int argc, char **argv)
 {
 	char str[32];
 	u32 total = 0x0, pass = 0x0, fail = 0x0;
@@ -242,7 +243,7 @@ void arm_cmd_mmu_test(int argc, char **argv)
 	basic_puts("\n");
 }
 
-void arm_cmd_mmu_cleanup(int argc, char **argv)
+void basic_cmd_mmu_cleanup(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("mmu_cleanup: no parameters required\n");
@@ -252,7 +253,7 @@ void arm_cmd_mmu_cleanup(int argc, char **argv)
 	arch_mmu_cleanup();
 }
 
-void arm_cmd_timer(int argc, char **argv)
+void basic_cmd_timer(int argc, char **argv)
 {
 	char str[32];
 	u64 irq_count, irq_delay, tstamp;
@@ -280,7 +281,7 @@ void arm_cmd_timer(int argc, char **argv)
 	basic_puts("\n");
 }
 
-void arm_cmd_dhrystone(int argc, char **argv)
+void basic_cmd_dhrystone(int argc, char **argv)
 {
 	char str[32];
 	int iters = 1000000;
@@ -301,7 +302,7 @@ void arm_cmd_dhrystone(int argc, char **argv)
 	arch_board_timer_enable();
 }
 
-void arm_cmd_hexdump(int argc, char **argv)
+void basic_cmd_hexdump(int argc, char **argv)
 {
 	char str[32];
 	u32 *addr;
@@ -339,7 +340,7 @@ void arm_cmd_hexdump(int argc, char **argv)
 	basic_puts("\n");
 }
 
-void arm_cmd_copy(int argc, char **argv)
+void basic_cmd_copy(int argc, char **argv)
 {
 	u64 tstamp;
 	char time[256];
@@ -411,13 +412,10 @@ void arm_cmd_copy(int argc, char **argv)
 
 static char linux_cmdline[1024];
 
-typedef void (*linux_entry_t) (unsigned long fdt_addr, unsigned long arg0, unsigned long arg1, unsigned long arg2);
-
-void arm_cmd_start_linux_fdt(int argc, char **argv)
+void basic_cmd_start_linux_fdt(int argc, char **argv)
 {
 	unsigned long kernel_addr, fdt_addr;
 	unsigned long initrd_addr, initrd_size;
-	virtual_addr_t nuke_va;
 	int err;
 	char cfg_str[16];
 	u64 meminfo[2];
@@ -442,23 +440,9 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 		initrd_size = 0;
 	}
 
-	/* Linux ARM64 kernel expects us to boot from 0x80000
-	 * aligned address, perferrably RAM start + 0x80000 address.
-	 * The 0x80000 bytes above kernel start address is used by
-	 * Linux ARM64 kernel to setup boot page tables.
-	 *
-	 * It might happen that we are running Basic firmware
-	 * after a reboot from Guest Linux in which case both
-	 * I-Cache and D-Cache will have stale contents. If we
-	 * don't cleanup these stale contents then Linux kernel
-	 * will not see correct contents boot page tables after
-	 * MMU ON.
-	 *
-	 * To take care of above described issue, we nuke the
-	 * 2MB area containing kernel start and boot page tables.
-	 */
-	nuke_va = kernel_addr & ~(0x200000 - 1);
-	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x200000);
+	/* Do arch specific Linux prep */
+	arch_start_linux_prep(kernel_addr, fdt_addr,
+			      initrd_addr, initrd_size);
 
 	/* Disable interrupts, disable timer, and cleanup MMU */
 	arch_board_timer_disable();
@@ -502,11 +486,10 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	/* Do board specific fdt fixup */
 	arch_board_fdt_fixup((void *)fdt_addr);
 
-	/* Jump to Linux Kernel
-	 * r0 -> dtb address
-	 */
+	/* Do arch specific jump to Linux */
 	basic_puts("Jumping into linux ...\n");
-	((linux_entry_t)kernel_addr)(fdt_addr, 0x0, 0x0, 0x0);
+	arch_start_linux_jump(kernel_addr, fdt_addr,
+			      initrd_addr, initrd_size);
 
 	/* We should never reach here */
 	while (1);
@@ -514,7 +497,7 @@ void arm_cmd_start_linux_fdt(int argc, char **argv)
 	return;
 }
 
-void arm_cmd_fdt_override_u32(int argc, char **argv)
+void basic_cmd_fdt_override_u32(int argc, char **argv)
 {
 	const char *path;
 	u32 val;
@@ -560,7 +543,7 @@ void arm_cmd_fdt_override_u32(int argc, char **argv)
 	}
 }
 
-void arm_cmd_linux_cmdline(int argc, char **argv)
+void basic_cmd_linux_cmdline(int argc, char **argv)
 {
 	if (argc >= 2) {
 		int cnt = 1;
@@ -580,7 +563,7 @@ void arm_cmd_linux_cmdline(int argc, char **argv)
 	return;
 }
 
-void arm_cmd_linux_memory_size(int argc, char **argv)
+void basic_cmd_linux_memory_size(int argc, char **argv)
 {
 	char str[32];
 
@@ -596,15 +579,15 @@ void arm_cmd_linux_memory_size(int argc, char **argv)
 	return;
 }
 
-void arm_exec(char *line);
+void basic_exec(char *line);
 
-void arm_cmd_autoexec(int argc, char **argv)
+void basic_cmd_autoexec(int argc, char **argv)
 {
-#define ARM_CMD_AUTOEXEC_BUF_SIZE	4096
+#define BASIC_CMD_AUTOEXEC_BUF_SIZE	4096
 	static int lock = 0;
 	int len, pos = 0;
 	char *ptr = (char *)(arch_board_autoexec_addr());
-	char buffer[ARM_CMD_AUTOEXEC_BUF_SIZE];
+	char buffer[BASIC_CMD_AUTOEXEC_BUF_SIZE];
 
 	if (argc != 1) {
 		basic_puts("autoexec: no parameters required\n");
@@ -621,7 +604,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 
 	/* determine length of command list */
 	len = 0;
-	while ((len < ARM_CMD_AUTOEXEC_BUF_SIZE) &&
+	while ((len < BASIC_CMD_AUTOEXEC_BUF_SIZE) &&
 	       basic_isprintable(ptr[len])) {
 		len++;
 	}
@@ -631,7 +614,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 		basic_puts("command list not found !!!\n");
 		goto unlock;
 	}
-	if (len >= ARM_CMD_AUTOEXEC_BUF_SIZE) {
+	if (len >= BASIC_CMD_AUTOEXEC_BUF_SIZE) {
 		basic_printf("command list len=%d too big !!!\n", len);
 		goto unlock;
 	}
@@ -658,7 +641,7 @@ void arm_cmd_autoexec(int argc, char **argv)
 		basic_puts(ptr);
 		basic_puts(")\n");
 		/* execute it */
-		arm_exec(ptr);
+		basic_exec(ptr);
 	}
 
 unlock:
@@ -667,7 +650,7 @@ unlock:
 	return;
 }
 
-void arm_cmd_go(int argc, char **argv)
+void basic_cmd_go(int argc, char **argv)
 {
 	char str[32];
 	void (*jump)(void);
@@ -689,7 +672,7 @@ void arm_cmd_go(int argc, char **argv)
 	arch_board_timer_enable();
 }
 
-void arm_cmd_reset(int argc, char **argv)
+void basic_cmd_reset(int argc, char **argv)
 {
 	if (argc != 1) {
 		basic_puts("reset: no parameters required\n");
@@ -703,14 +686,14 @@ void arm_cmd_reset(int argc, char **argv)
 	while (1);
 }
 
-#define ARM_MAX_ARG_SIZE	32
+#define BASIC_MAX_ARG_SIZE	32
 
-void arm_exec(char *line)
+void basic_exec(char *line)
 {
 	int argc = 0, pos = 0, cnt = 0;
-	char *argv[ARM_MAX_ARG_SIZE];
+	char *argv[BASIC_MAX_ARG_SIZE];
 
-	while (line[pos] && (argc < ARM_MAX_ARG_SIZE)) {
+	while (line[pos] && (argc < BASIC_MAX_ARG_SIZE)) {
 		if ((line[pos] == '\r') ||
 		    (line[pos] == '\n')) {
 			line[pos] = '\0';
@@ -733,57 +716,57 @@ void arm_exec(char *line)
 
 	if (argc) {
 		if (basic_strcmp(argv[0], "help") == 0) {
-			arm_cmd_help(argc, argv);
+			basic_cmd_help(argc, argv);
 		} else if (basic_strcmp(argv[0], "hi") == 0) {
-			arm_cmd_hi(argc, argv);
+			basic_cmd_hi(argc, argv);
 		} else if (basic_strcmp(argv[0], "hello") == 0) {
-			arm_cmd_hello(argc, argv);
+			basic_cmd_hello(argc, argv);
 		} else if (basic_strcmp(argv[0], "wfi_test") == 0) {
-			arm_cmd_wfi_test(argc, argv);
+			basic_cmd_wfi_test(argc, argv);
 		} else if (basic_strcmp(argv[0], "mmu_setup") == 0) {
-			arm_cmd_mmu_setup(argc, argv);
+			basic_cmd_mmu_setup(argc, argv);
 		} else if (basic_strcmp(argv[0], "mmu_state") == 0) {
-			arm_cmd_mmu_state(argc, argv);
+			basic_cmd_mmu_state(argc, argv);
 		} else if (basic_strcmp(argv[0], "mmu_test") == 0) {
-			arm_cmd_mmu_test(argc, argv);
+			basic_cmd_mmu_test(argc, argv);
 		} else if (basic_strcmp(argv[0], "mmu_cleanup") == 0) {
-			arm_cmd_mmu_cleanup(argc, argv);
+			basic_cmd_mmu_cleanup(argc, argv);
 		} else if (basic_strcmp(argv[0], "timer") == 0) {
-			arm_cmd_timer(argc, argv);
+			basic_cmd_timer(argc, argv);
 		} else if (basic_strcmp(argv[0], "dhrystone") == 0) {
-			arm_cmd_dhrystone(argc, argv);
+			basic_cmd_dhrystone(argc, argv);
 		} else if (basic_strcmp(argv[0], "hexdump") == 0) {
-			arm_cmd_hexdump(argc, argv);
+			basic_cmd_hexdump(argc, argv);
 		} else if (basic_strcmp(argv[0], "copy") == 0) {
-			arm_cmd_copy(argc, argv);
+			basic_cmd_copy(argc, argv);
 		} else if (basic_strcmp(argv[0], "start_linux_fdt") == 0) {
-			arm_cmd_start_linux_fdt(argc, argv);
+			basic_cmd_start_linux_fdt(argc, argv);
                 } else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {
-			arm_cmd_fdt_override_u32(argc, argv);
+			basic_cmd_fdt_override_u32(argc, argv);
 		} else if (basic_strcmp(argv[0], "linux_cmdline") == 0) {
-			arm_cmd_linux_cmdline(argc, argv);
+			basic_cmd_linux_cmdline(argc, argv);
 		} else if (basic_strcmp(argv[0], "linux_memory_size") == 0) {
-			arm_cmd_linux_memory_size(argc, argv);
+			basic_cmd_linux_memory_size(argc, argv);
 		} else if (basic_strcmp(argv[0], "autoexec") == 0) {
-			arm_cmd_autoexec(argc, argv);
+			basic_cmd_autoexec(argc, argv);
 		} else if (basic_strcmp(argv[0], "go") == 0) {
-			arm_cmd_go(argc, argv);
+			basic_cmd_go(argc, argv);
 		} else if (basic_strcmp(argv[0], "reset") == 0) {
-			arm_cmd_reset(argc, argv);
+			basic_cmd_reset(argc, argv);
 		} else {
 			basic_puts("Unknown command\n");
 		}
 	}
 }
 
-#define ARM_MAX_CMD_STR_SIZE	256
+#define BASIC_MAX_CMD_STR_SIZE	256
 
 /* Works in user mode */
-void arm_main(void)
+void basic_main(void)
 {
 	u64 tstamp;
 	u32 i, key_pressed, boot_delay;
-	char line[ARM_MAX_CMD_STR_SIZE];
+	char line[BASIC_MAX_CMD_STR_SIZE];
 
 	/* Setup board specific linux default cmdline */
 	arch_board_linux_default_cmdline(linux_cmdline, sizeof(linux_cmdline));
@@ -819,15 +802,15 @@ void arm_main(void)
 		basic_puts("\n");
 		if (!boot_delay) {
 			basic_strcpy(line, "autoexec\n");
-			arm_exec(line);
+			basic_exec(line);
 		}
 	}
 
 	while(1) {
 		basic_puts("basic# ");
 
-		basic_gets(line, ARM_MAX_CMD_STR_SIZE, '\n');
+		basic_gets(line, BASIC_MAX_CMD_STR_SIZE, '\n');
 
-		arm_exec(line);
+		basic_exec(line);
 	}
 }

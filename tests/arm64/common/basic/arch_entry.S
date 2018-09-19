@@ -149,8 +149,8 @@ _relocated:
 	ldr	x0, __el0_stack
 	msr	sp_el0, x0
 
-	bl	arm_init
-	bl	arm_main
+	bl	basic_init
+	bl	basic_main
 
 _start_hang:
 	b	.

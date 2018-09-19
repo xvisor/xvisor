@@ -189,9 +189,9 @@ _reset:
 	/* Set to Supervisor Mode */
 	SET_CURRENT_MODE CPSR_MODE_SUPERVISOR, r8
 	/* Call init function */
-	bl	arm_init
+	bl	basic_init
 	/* Call main function */
-	bl	arm_main
+	bl	basic_main
 	/* We should never reach here */
 	b	.
 	
