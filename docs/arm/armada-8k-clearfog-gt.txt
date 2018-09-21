@@ -1,0 +1,168 @@
+	Xvisor on Armada 8K ClearFog GT board using SD Booting
+
+This section of readme explains how to build & run Xvisor on Armada 8K
+ClearFog GT board using SD booting.
+
+By default, Xvisor for Armada 8K supports Virt-v8 guest so we will show
+how to boot Linux using Basic Firmware on Virt-v8 guest.
+
+We assume that a bootable SD card for Armada 8K ClearFog GT board is
+available. If bootable SD card is not available then it can be prepared
+using buildme.sh found in gitrepo:
+https://github.com/SolidRun/clearfog-gt-8k-build
+
+Once we have bootable SD card (with ATF & u-boot installed), we add
+3 more images to the boot partition of SD card:
+ 1) U-Boot compatible Xvisor binary (uvmm.bin)
+ 2) DTB for Xvisor (armada-8040-clearfog-8k-gt.dtb)
+ 3) U-Boot compatible Xvisro disk containing guest binaries (udisk.img)
+
+Following are steps to create these images and boot Xvisor on
+Armada 8K ClearFog GT board:
+
+  [1. Build environment]
+  # export CROSS_COMPILE=aarch64-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Initialize Xvisor submodules]
+  # git submodule init
+  # git submodule update
+  (Note: This is required to be done only once in freshly cloned xvisor source)
+
+  [4. Configure Xvisor with Generic-v8 default settings]
+  # make ARCH=arm generic-v8-defconfig
+
+  [5. Build Xvisor and DTBs]
+  # make
+
+  [6. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm64 -O linux -T kernel -C none -a 0x00080000 -e 0x00080000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [7. Build Basic Firmware]
+  # make -C tests/arm64/virt-v8/basic
+
+  [8. Copy defconfig to Linux build directory]
+  # cp tests/arm64/virt-v8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+
+  [9. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [10. Configure Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm64 oldconfig
+
+  [11. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm64 Image dtbs
+
+  [12. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [13. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [14. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8x2.dtb ./tests/arm64/virt-v8/virt-v8x2.dts
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
+  # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript
+  # cp -f <linux_build_directory>/arch/arm64/boot/Image ./build/disk/images/arm64/virt-v8/Image
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
+  OR
+  [14. Create disk image for Xvisor with only Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8x2.dtb ./tests/arm64/virt-v8/virt-v8x2.dts
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
+
+  [15. Make U-boot compatible udisk.img for use with bootm command]
+  # mkimage -A arm64 -O linux -T ramdisk -a 0x00000000 -n "Xvisor Ramdisk" -d build/disk.img build/udisk.img
+
+  [16. Unplug bootable SD card from the Armada 8K ClearFog GT board and plug it on your development machine]
+
+  [17. Mount boot partition (or partition 1) of SD card on your development machine]
+
+  [18. Copy uvmm.bin, DTB, and udisk.img to boot partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/broadcom/armada-8040-clearfog-8k-gt.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
+
+  [19. Unmount boot partition (or partition 1) of SD card from your development machine]
+
+  [20. Unplug SD card from your development machine and plug it back on Armada 8K ClearFog GT board]
+
+  [21. Connect to serial port of Armada 8K ClearFog GT board using Putty or Minicom]
+
+  [22. Power-up or Reset Armada 8K ClearFog GT board and press any key when U-Boot shows auto-boot count down]
+
+  [23. Enable MMC interface from U-Boot command line]
+  U-Boot> mmc dev 0:0
+
+  [24. Copy Xvisor from SD card to SDRAM]
+  U-Boot> fatload mmc 1:1 0x200000 uvmm.bin
+
+  [25. Copy the Xvisor DTB from SD card to SDRAM]
+  U-Boot> fatload mmc 1:1 0x800000 armada-8040-clearfog-8k-gt.dtb
+
+  [26. Copy disk image from SD card to SDRAM]
+  U-Boot> fatload mmc 1:1 0x2000000 udisk.img
+
+  [27. Jump into Xvisor after disabling MMU, interrupts, etc]
+  U-Boot> bootm 0x200000 0x2000000 0x800000
+
+  (Note: If you want to "autoboot" then you need to create a boot.scr file
+   on the root of the SD card. To do so edit a boot.cmd text file and add all
+   the commmands you want to execute automatically. For example you can put
+   the following commands in the "boot.cmd" file:
+   mmc dev 0:0
+   fatload mmc 1:1 0x200000 uvmm.bin
+   fatload mmc 1:1 0x800000 armada-8040-clearfog-8k-gt.dtb
+   fatload mmc 1:1 0x2000000 udisk.img
+   bootm 0x200000 0x2000000 0x800000
+   Then you can create the boot.scr file wit the following command:
+   # mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
+   Put the boot.scr file a the root of your SD card.)
+
+  [28. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
+
+  [29. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [30. Try few commands of Basic firmware or goto next step]
+  [guest0/uart0] basic# hi
+  [guest0/uart0] basic# hello
+  [guest0/uart0] basic# help
+
+  [31. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist
+   file which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [32. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [33. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)
