@@ -46,6 +46,20 @@ S:	Able to boot Virt-v7 linux guest on Raspberry Pi3
 S:	Able to boot Virt-v8 linux guest on Raspberry Pi3
 D:	docs/arm/bcm2837-raspi3.txt
 
+M:	Armada 8K SOC (Solidrun ClearFog GT board)
+A:	ARM 64-bit (ARMv8a)
+C:	Cortex-A72
+V:	Marvell Technology Group Ltd. (http://www.marvell.com/)
+E:	---
+G:	Realview-PB-A8, VExpress-A9, VExpress-A15, Virt-v7 and Virt-v8 guests
+	supported
+S:	Able to boot Realview-PB-A8 linux guest on ClearFog GT
+S:	Able to boot VExpress-A9 linux guest on ClearFog GT
+S:	Able to boot VExpress-A15 linux guest on ClearFog GT
+S:	Able to boot Virt-v7 linux guest on ClearFog GT
+S:	Able to boot Virt-v8 linux guest on ClearFog GT
+D:	docs/arm/armada-8k-clearfog-gt.txt
+
 M:	Exynos4210 SOC (SMDKC210 and NURI evaluation boards)
 A:	ARM 32-bit (ARMv7a)
 C:	Cortex-A9
