@@ -55,9 +55,11 @@ FREERTOS_SRCS = $(wildcard $(FREERTOS_GLOBS)) $(FREERTOS_HEAP_IMPL)
 
 # sources from the common firmware directory (relative to $common_srcdir)
 COMMON_SRCS = basic_irq.c basic_stdio.c basic_string.c pic/gic.c	\
-              serial/pl01x.c sys/vminfo.c
-COMMON_ARCH_SRCS = arch_math.c arch_irq.c 	\
-              timer/sp804.c arm_cache_v7.S
+              serial/pl01x.c sys/vminfo.c timer/sp804.c \
+              libfdt/fdt.c libfdt/fdt_ro.c libfdt/fdt_rw.o \
+              libfdt/fdt_strerror.c libfdt/fdt_support.c \
+              libfdt/fdt_sw.c libfdt/fdt_wip.c
+COMMON_ARCH_SRCS = arch_math.c arch_irq.c arch_cache_v7.S
 
 # FreeRTOS specific glue and application source (relative to $srcdir)
 OTHER_SRCS = port/port.c port/portASM.S ../basic/arch_board.c	\
@@ -77,7 +79,7 @@ CPATCH32   = $(builddir)/tools/cpatch/cpatch32
 
 # --------- compiler/linker flags
 
-LINK_SCRIPT = $(common_srcdir)/firmware.ld
+LINK_SCRIPT = $(common_arch_srcdir)/firmware.ld
 
 CPPFLAGS = -I$(srcdir)/../basic -I$(common_srcdir) -I$(common_arch_srcdir) \
            -I$(freertos_srcdir)/include -I$(srcdir) -I$(srcdir)/port	\

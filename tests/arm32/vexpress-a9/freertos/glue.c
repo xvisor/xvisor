@@ -82,7 +82,7 @@ void vAssertCalled(const char *pcFile, unsigned long ulLine)
 
         taskENTER_CRITICAL();
         {
-                arm_printf("%s: file=%s, line=%d!\n", __func__, pcFile, ulLine);
+                basic_printf("%s: file=%s, line=%d!\n", __func__, pcFile, (int)ulLine);
                 /* Set ul to a non-zero value using the debugger to
                 step out of this function. */
                 while (ul == 0) {
@@ -103,7 +103,7 @@ void arm_init(void)
 
 int arm_main(void)
 {
-        arm_puts("Welcome to FreeRTOS!\n");
+        basic_puts("Welcome to FreeRTOS!\n");
 
         main_blinky();
 
