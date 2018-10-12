@@ -1,0 +1,67 @@
+			Xvisor v0.2.11
+	(Last Commit: -------------------------------)
+		(Release Date: 27-Oct-2018)
+
+In this release, we mainly have initial RISC-V port, new drivers,
+and new boards.
+
+New Features:
+ - Host aspace APIs to allocate and free hugepages
+ - Pagepool APIs to manage regular pages on top of hugepages
+ - Xref library for simple reference counting
+ - Rational fractions library
+ - IOMMU controller and related APIs
+ - Print RAM and VAPOOL details at boot-time
+
+New Commands:
+ - host memmap sub-command
+ - host pagepool sub-command
+ - iommu command
+ - clk command
+ - net switch create sub-command
+ - net switch destroy sub-command
+
+New Drivers:
+ - RISC-V timer driver
+ - RISC-V local/per-CPU interrupt controller driver
+ - ARM SMMUv2 IOMMU driver
+ - RISC-V plic global interrupt controlle driver
+ - Marvell Armada 8K clock drivers
+ - Marvell Armada 8K pinctrl driver
+ - Marvell Armada 8K/7K RTC driver
+
+New Emulators:
+ - No change
+
+New Boards:
+ - Renesas R-Car H3 Salvator-X board
+ - Marvell MACCHIATOBin Armada 8040 board
+ - SolidRun ClearFog GT 8K board
+ - RISC-V QEMU virt machine board
+
+All Ports:
+ - Common arch independent implementation of basic firmware
+
+ARM Ports:
+ - Use boot.xscript on Xvisor disk to create Guest instances
+ - Reorganized DTS files to have separate vendor directory
+ - Basic firmware using common arch independent implementation
+ - Make VCPU exception stack cache-line aligned
+ - Allow hugepage mappings
+
+ARM32 Port:
+ - No change
+
+ARM32ve Port:
+ - Set HCR.FB for Guest VCPUs
+
+ARM64 Port:
+ - Make VCPU exception stack cache-line aligned
+ - Set HCR.FB for Guest VCPUs
+
+RISC-V Port:
+ - Initial arch support which boots on QEMU RISC-V Virt machine
+ - SMP support tested on QEMU RISC-V Virt machine
+
+x86 Port:
+ - No change
