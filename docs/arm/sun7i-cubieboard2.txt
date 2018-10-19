@@ -16,7 +16,7 @@ supporting PSCI. This is not part of sunxi ou u-boot default git tree so you
 need to use https://github.com/jcdubois/u-boot as your git tree fro u-boot in
 the above link.
 
-Once we have SD card prepared for SD booting, we add 2 images to the boot 
+Once we have SD card prepared for SD booting, we add 2 images to the data 
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
  2) DTB for Xvisor (sun7i-a20-cubieboard2.dtb)
@@ -98,14 +98,14 @@ A20:
 
   [16. Unplug bootable SD card from the A20 board and plug it on your development machine]
 
-  [17. Mount boot partition (or partition 0) of SD card on your development machine]
+  [17. Mount data partition (or partition 2) of SD card on your development machine]
 
-  [18. Copy uvmm.bin, DTB, and disk.img to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/allwinner/sun7i-a20-cubieboard2.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
+  [18. Copy uvmm.bin, DTB, and disk.img to data partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/allwinner/sun7i-a20-cubieboard2.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
-  [19. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [19. Unmount data partition (or partition 2) of SD card from your development machine]
 
   [20. Unplug SD card from your development machine and plug it back on A20 board]
 
@@ -117,13 +117,13 @@ A20:
   sun7i# mmc dev 0:0
 
   [24. Copy Xvisor from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x40200000 uvmm.bin
+  sun7i# ext4load mmc 0:2 0x40200000 uvmm.bin
 
   [25. Copy the Xvisor DTB from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x40800000 sun7i-a20-cubieboard2.dtb
+  sun7i# ext4load mmc 0:2 0x40800000 sun7i-a20-cubieboard2.dtb
 
   [26. Copy disk image from SD card to SDRAM]
-  sun7i# fatload mmc 0 0x41000000 udisk.img
+  sun7i# ext4load mmc 0:2 0x41000000 udisk.img
 
   [27. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun7i# bootm 0x40200000 0x41000000 0x40800000
@@ -133,9 +133,9 @@ A20:
    the commmands you want to execute automatically. For example you can put
    the following commands in the "boot.cmd" file:
    mmc dev 0:0
-   fatload mmc 0 0x40200000 uvmm.bin
-   fatload mmc 0 0x40800000 sun7i-a20-cubieboard2.dtb
-   fatload mmc 0 0x41000000 udisk.img
+   ext4load mmc 0:2 0x40200000 uvmm.bin
+   ext4load mmc 0:2 0x40800000 sun7i-a20-cubieboard2.dtb
+   ext4load mmc 0:2 0x41000000 udisk.img
    bootm 0x40200000 0x41000000 0x40800000
    Then you can create the boot.scr file wit the following command:
    # mkimage -C none -A arm -T script -d boot.cmd boot.scr

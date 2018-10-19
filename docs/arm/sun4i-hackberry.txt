@@ -11,7 +11,7 @@ As first step of SD booting on Sun4i SOC, we need to re-partition and program
 a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for
 booting refer: http://rhombus-tech.net/allwinner_a10/a10_mmc_boot
 
-Once we have SD card prepared for SD booting, we add 3 images to the boot
+Once we have SD card prepared for SD booting, we add 3 images to the data
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
  2) DTB for Xvisor (sun4i-a10-hackberry.dtb)
@@ -102,14 +102,14 @@ A10:
 
   [18. Unplug bootable SD card from the A10 board and plug it on your development machine]
 
-  [19. Mount boot partition (or partition 0) of SD card on your development machine]
+  [19. Mount data partition (or partition 2) of SD card on your development machine]
 
-  [20. Copy uvmm.bin to boot partition of SD card]
-  # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/allwinner/sun4i-a10-hackberry.dtb <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
+  [20. Copy uvmm.bin to data partition of SD card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/allwinner/sun4i-a10-hackberry.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
-  [21. Unmount boot partition (or partition 0) of SD card from your development machine]
+  [21. Unmount data partition (or partition 2) of SD card from your development machine]
 
   [22. Unplug SD card from your development machine and plug it back on A10 board]
 
@@ -121,13 +121,13 @@ A10:
   sun4i# mmc dev 0:0
 
   [26. Copy Xvisor from SD card to SDRAM]
-  sun4i# fatload mmc 0 0x40200000 uvmm.bin
+  sun4i# ext4load mmc 0:2 0x40200000 uvmm.bin
 
   [27. Copy Xvisor DTB from SD card to SDRAM]
-  sun4i# fatload mmc 0 0x40800000 sun4i-a10-hackberry.dtb
+  sun4i# ext4load mmc 0:2 0x40800000 sun4i-a10-hackberry.dtb
 
   [28. Copy disk image from SD card to SDRAM]
-  sun4i# fatload mmc 0 0x42000000 udisk.img
+  sun4i# ext4load mmc 0:2 0x42000000 udisk.img
 
   [29. Jump into Xvisor after disabling MMU, interrupts, etc]
   sun4i# bootm 0x40200000 0x42000000 0x40800000
