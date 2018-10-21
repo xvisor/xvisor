@@ -1,6 +1,6 @@
 			Xvisor v0.2.11
 	(Last Commit: -------------------------------)
-		(Release Date: 27-Oct-2018)
+		(Release Date: 21-Oct-2018)
 
 In this release, we mainly have initial RISC-V port, new drivers,
 and new boards.
