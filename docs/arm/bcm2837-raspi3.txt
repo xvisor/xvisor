@@ -71,8 +71,9 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
   [7. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
 
-  [8. Copy defconfig to Linux build directory]
+  [8. Download a vanila kernel, create a kernel build directory and copy defconfig to Linux kernel build directory]
   # cp tests/arm64/virt-v8/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+  (Note: The kernel version must be compatible with one of the kernel configs available in test/arm64/virt-v8/linux)
 
   [9. GoTo Linux source directory]
   # cd <linux_source_directory>
@@ -157,14 +158,16 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi3:
    on the root of the SD card. To do so edit a boot.cmd text file and add all
    the commmands you want to execute automatically. For example you can put
    the following commands in the "boot.cmd" file:
+
    mmc dev 0:0
-   ext4load mmc 0 0x200000 uvmm.bin
-   ext4load mmc 0 0x800000 bcm2837-rpi-3-b.dtb
-   ext4load mmc 0 0x2000000 udisk.img
+   ext4load mmc 0:2 0x200000 uvmm.bin
+   ext4load mmc 0:2 0x800000 bcm2837-rpi-3-b.dtb
+   ext4load mmc 0:2 0x2000000 udisk.img
    bootm 0x200000 0x2000000 0x800000
+
    Then you can create the boot.scr file wit the following command:
    # mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
-   Put the boot.scr file a the root of your SD card.)
+   Put the boot.scr file a the boot partition of your SD card.)
 
   [28. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
