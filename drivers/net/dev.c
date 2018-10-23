@@ -45,13 +45,9 @@ void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
 			    "device %s\n", weight, dev->name);
 	napi->dev = dev;
 	napi->poll = poll;
-	INIT_LIST_HEAD(&napi->xfer.head);
-	napi->xfer.port = port;
-	napi->xfer.type = VMM_NETPORT_XFER_LAZY;
-	napi->xfer.mbuf = NULL;
-	napi->xfer.lazy_budget = netdev_budget;
-	napi->xfer.lazy_arg = NULL;
-	napi->xfer.lazy_xfer = lazy_xfer2napi_poll;
+	napi->xfer_port = port;
+	vmm_netport_lazy_init(&napi->xfer_lazy,
+			      netdev_budget, NULL, lazy_xfer2napi_poll);
 }
 EXPORT_SYMBOL(netif_napi_add);
 
@@ -85,12 +81,12 @@ void napi_schedule(struct napi_struct *n)
 		return;
 	}
 
-	vmm_port2switch_xfer_lazy(port, lazy_xfer2napi_poll, n, n->xfer.lazy_budget);
+	vmm_port2switch_xfer_lazy(port, &n->xfer_lazy);
 }
 
 void netif_napi_del(struct napi_struct *napi)
 {
-	list_del_init(&napi->xfer.head);
+	arch_atomic_write(&napi->xfer_lazy.sched_count, 0);
 }
 EXPORT_SYMBOL(netif_napi_del);
 

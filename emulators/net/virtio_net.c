@@ -57,6 +57,7 @@ struct virtio_net_queue {
 	int num;
 	int valid;
 	int type;
+	struct vmm_netport_lazy lazy;
 	struct vmm_virtio_queue vq;
 	struct vmm_virtio_iovec iov[VIRTIO_NET_QUEUE_SIZE];
 	struct virtio_net_dev *ndev;
@@ -200,8 +201,7 @@ static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq)
 	struct virtio_net_queue *q = &ndev->vqs[vq];
 
 	if (vmm_virtio_queue_available(&q->vq)) {
-		vmm_port2switch_xfer_lazy(ndev->port, virtio_net_tx_lazy, 
-					  q, VIRTIO_NET_TX_LAZY_BUDGET);
+		vmm_port2switch_xfer_lazy(ndev->port, &q->lazy);
 	}
 }
 
@@ -485,6 +485,10 @@ static int virtio_net_connect(struct vmm_virtio_device *dev,
 			ndev->vqs[i].type = VIRTIO_NET_CTRL_QUEUE;
 		} else {
 			if (i % 2) {
+				vmm_netport_lazy_init(&ndev->vqs[i].lazy,
+						VIRTIO_NET_TX_LAZY_BUDGET,
+						&ndev->vqs[i],
+						virtio_net_tx_lazy);
 				ndev->vqs[i].type = VIRTIO_NET_TX_QUEUE;
 			} else {
 				ndev->vqs[i].type = VIRTIO_NET_RX_QUEUE;

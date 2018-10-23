@@ -36,6 +36,7 @@
 struct vmm_netswitch_policy;
 struct vmm_netswitch;
 struct vmm_netport;
+struct vmm_netport_lazy;
 struct vmm_mbuf;
 
 struct vmm_netswitch {
@@ -85,8 +86,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src,
 
 /** Lazy transfer from port to switch */
 int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
-			 void (*lazy_xfer)(struct vmm_netport *, void *, int),
-			 void *lazy_arg, int lazy_budget);
+			      struct vmm_netport_lazy *lazy);
 
 /** Transfer packets from switch to port */
 int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,

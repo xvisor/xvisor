@@ -51,14 +51,26 @@ enum vmm_netport_xfer_type {
 	VMM_NETPORT_XFER_LAZY
 };
 
+struct vmm_netport_lazy {
+	atomic_t sched_count;
+	int budget;
+	void *arg;
+	void (*xfer)(struct vmm_netport *, void *, int);
+};
+
+#define vmm_netport_lazy_init(__lazy, __budget, __arg, __xfer)	\
+do { \
+	ARCH_ATOMIC_INIT(&(__lazy)->sched_count, 0); \
+	(__lazy)->budget = (__budget); \
+	(__lazy)->arg = (__arg); \
+	(__lazy)->xfer = (__xfer); \
+} while (0)
+
 struct vmm_netport_xfer {
 	struct dlist head;
 	struct vmm_netport *port;
 	enum vmm_netport_xfer_type type;
-	struct vmm_mbuf *mbuf;
-	int lazy_budget;
-	void *lazy_arg;
-	void (*lazy_xfer)(struct vmm_netport *, void *, int);
+	void *data;
 };
 
 struct vmm_netport {
