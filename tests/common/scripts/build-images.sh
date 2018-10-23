@@ -132,6 +132,15 @@ rm -rf ${BUILD_OUTPUT_PATH}/arm/v8
 
 rm -rf ${BUILD_OUTPUT_PATH}/arm
 
+mkdir -p ${BUILD_OUTPUT_PATH}/riscv/riscv64
+mkdir -p ${BUILD_INSTALL_PATH}/riscv/riscv64
+CROSS_COMPILE=riscv64-unknown-linux-gnu-
+make -C ${BUILD_XVISOR_SOURCE_PATH} ARCH=riscv O=${BUILD_OUTPUT_PATH}/riscv/riscv64 I=${BUILD_INSTALL_PATH}/riscv/riscv64/xvisor generic-64b-defconfig
+make -C ${BUILD_XVISOR_SOURCE_PATH} ARCH=riscv O=${BUILD_OUTPUT_PATH}/riscv/riscv64 I=${BUILD_INSTALL_PATH}/riscv/riscv64/xvisor -j ${BUILD_NUM_THREADS} install
+rm -rf ${BUILD_OUTPUT_PATH}/riscv/riscv64
+
+rm -rf ${BUILD_OUTPUT_PATH}/riscv
+
 mkdir -p ${BUILD_OUTPUT_PATH}/x86/x86_64
 mkdir -p ${BUILD_INSTALL_PATH}/x86/x86_64
 CROSS_COMPILE=
