@@ -282,6 +282,7 @@ struct vmm_mbuf *m_get(int nowait, int flags)
 	}
 
 	INIT_LIST_HEAD(&m->m_list);
+	m->m_list_priv = NULL;
 	m->m_next = NULL;
 	m->m_data = NULL;
 	m->m_len = 0;

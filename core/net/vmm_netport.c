@@ -31,50 +31,8 @@
 #include <net/vmm_netport.h>
 #include <libs/stringlib.h>
 
-struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port)
-{
-	struct vmm_netport_xfer *xfer;
-	irq_flags_t flags;
-
-	if (!port) {
-		return NULL;
-	}
-
-	vmm_spin_lock_irqsave(&port->free_list_lock, flags);
-	if (list_empty(&port->free_list)) {
-		vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
-		return NULL;
-	}
-	xfer = list_first_entry(&port->free_list,
-				struct vmm_netport_xfer, head);
-	list_del(&xfer->head);
-	port->free_count--;
-	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
-
-	return xfer;
-}
-VMM_EXPORT_SYMBOL(vmm_netport_alloc_xfer);
-
-void vmm_netport_free_xfer(struct vmm_netport *port,
-			   struct vmm_netport_xfer *xfer)
-{
-	irq_flags_t flags;
-
-	if (!port || !xfer) {
-		return;
-	}
-
-	vmm_spin_lock_irqsave(&port->free_list_lock, flags);
-	list_add_tail(&xfer->head, &port->free_list);
-	port->free_count++;
-	vmm_spin_unlock_irqrestore(&port->free_list_lock, flags);
-}
-VMM_EXPORT_SYMBOL(vmm_netport_free_xfer);
-
 struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 {
-	u32 i;
-	struct dlist *l;
 	struct vmm_netport *port;
 
 	port = vmm_zalloc(sizeof(struct vmm_netport));
@@ -92,15 +50,6 @@ struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size)
 
 	port->queue_size = (queue_size < VMM_NETPORT_MAX_QUEUE_SIZE) ?
 				queue_size : VMM_NETPORT_MAX_QUEUE_SIZE;
-
-	port->free_count = port->queue_size;
-	INIT_SPIN_LOCK(&port->free_list_lock);
-	INIT_LIST_HEAD(&port->free_list);
-
-	for(i = 0; i < port->queue_size; i++) {
-		l = &((port->xfer_pool + i)->head);
-		list_add_tail(l, &port->free_list);
-	}
 
 	INIT_SPIN_LOCK(&port->switch2port_xfer_lock);
 
@@ -255,4 +204,3 @@ int __exit vmm_netport_exit(void)
 
 	return VMM_OK;
 }
-

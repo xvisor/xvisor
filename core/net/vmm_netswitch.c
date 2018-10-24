@@ -131,7 +131,7 @@ struct vmm_netswitch_bh_ctrl {
 	struct vmm_thread *thread;
 	struct vmm_completion bh_cmpl;
 	vmm_spinlock_t bh_list_lock;
-	struct dlist xfer_list;
+	struct dlist mbuf_list;
 	struct dlist lazy_list;
 };
 
@@ -144,23 +144,23 @@ static void __init netswitch_bh_init(struct vmm_netswitch_bh_ctrl *nbp)
 {
 	INIT_COMPLETION(&nbp->bh_cmpl);
 	INIT_SPIN_LOCK(&nbp->bh_list_lock);
-	INIT_LIST_HEAD(&nbp->xfer_list);
+	INIT_LIST_HEAD(&nbp->mbuf_list);
 	INIT_LIST_HEAD(&nbp->lazy_list);
 }
 
 static int netswitch_bh_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
-				struct vmm_netport_xfer *xfer,
+				struct vmm_mbuf *mbuf,
 				struct vmm_netport_lazy *lazy)
 {
 	irq_flags_t flags;
 
-	if (!nbp || (!xfer && !lazy)) {
+	if (!nbp || (!mbuf && !lazy)) {
 		return VMM_EINVALID;
 	}
 
 	vmm_spin_lock_irqsave_lite(&nbp->bh_list_lock, flags);
-	if (xfer) {
-		list_add_tail(&xfer->head, &nbp->xfer_list);
+	if (mbuf) {
+		list_add_tail(&mbuf->m_list, &nbp->mbuf_list);
 	}
 	if (lazy) {
 		list_add_tail(&lazy->head, &nbp->lazy_list);
@@ -173,26 +173,26 @@ static int netswitch_bh_enqueue(struct vmm_netswitch_bh_ctrl *nbp,
 }
 
 static int netswitch_bh_dequeue(struct vmm_netswitch_bh_ctrl *nbp,
-				struct vmm_netport_xfer **xferp,
+				struct vmm_mbuf **mbufp,
 				struct vmm_netport_lazy **lazyp)
 {
 	irq_flags_t flags;
 
-	if (!nbp || !xferp || !lazyp) {
+	if (!nbp || !mbufp || !lazyp) {
 		return VMM_EINVALID;
 	}
 
 	vmm_spin_lock_irqsave_lite(&nbp->bh_list_lock, flags);
 
-	while (list_empty(&nbp->xfer_list) && list_empty(&nbp->lazy_list)) {
+	while (list_empty(&nbp->mbuf_list) && list_empty(&nbp->lazy_list)) {
 		vmm_spin_unlock_irqrestore_lite(&nbp->bh_list_lock, flags);
 		vmm_completion_wait(&nbp->bh_cmpl);
 		vmm_spin_lock_irqsave_lite(&nbp->bh_list_lock, flags);
 	}
 
-	if (!list_empty(&nbp->xfer_list)) {
-		*xferp = list_entry(list_pop(&nbp->xfer_list),
-				    struct vmm_netport_xfer, head);
+	if (!list_empty(&nbp->mbuf_list)) {
+		*mbufp = list_entry(list_pop(&nbp->mbuf_list),
+				    struct vmm_mbuf, m_list);
 	}
 
 	if (!list_empty(&nbp->lazy_list)) {
@@ -209,16 +209,16 @@ static void netswitch_bh_port_flush(struct vmm_netswitch_bh_ctrl *nbp,
 					 struct vmm_netport *port)
 {
 	irq_flags_t flags;
-	struct vmm_netport_xfer *xfer, *nxfer;
-	struct vmm_netport_xfer *lazy, *nlazy;
+	struct vmm_mbuf *mbuf, *nmbuf;
+	struct vmm_netport_lazy *lazy, *nlazy;
 
 	vmm_spin_lock_irqsave_lite(&nbp->bh_list_lock, flags);
 
-	list_for_each_entry_safe(xfer, nxfer, &nbp->xfer_list, head) {
-		if (xfer->port == port) {
-			list_del(&xfer->head);
-			m_freem(xfer->mbuf);
-			vmm_netport_free_xfer(xfer->port, xfer);
+	list_for_each_entry_safe(mbuf, nmbuf, &nbp->mbuf_list, m_list) {
+		if (mbuf->m_list_priv == port) {
+			list_del(&mbuf->m_list);
+			mbuf->m_list_priv = NULL;
+			m_freem(mbuf);
 		}
 	}
 
@@ -238,27 +238,23 @@ static int netswitch_bh_main(void *param)
 	struct vmm_netswitch *nsw;
 	struct vmm_mbuf *mbuf;
 	struct vmm_netport_lazy *lazy;
-	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch_bh_ctrl *nbp = param;
 
 	while (1) {
-		/* Try to get xfer request from xfer ring */
+		/* Try to get next request from list or block if empty */
 		lazy = NULL;
-		xfer = NULL;
-		rc = netswitch_bh_dequeue(nbp, &xfer, &lazy);
+		mbuf = NULL;
+		rc = netswitch_bh_dequeue(nbp, &mbuf, &lazy);
 		if (rc) {
 			continue;
 		}
 
-		/* Process xfer request */
-		if (xfer) {
-			/* Extract info from xfer request */
-			port = xfer->port;
-			nsw = xfer->port->nsw;
-
-			/* Get mbuf pointer */
-			mbuf = xfer->mbuf;
-			BUG_ON(!mbuf);
+		/* Process mbuf request */
+		if (mbuf) {
+			/* Extract port from mbuf */
+			port = mbuf->m_list_priv;
+			nsw = port->nsw;
+			mbuf->m_list_priv = NULL;
 
 			/* Port might have been removed from netswitch */
 			if (!port || !nsw) {
@@ -267,9 +263,6 @@ static int netswitch_bh_main(void *param)
 				}
 				continue;
 			}
-
-			/* Free netport xfer request */
-			vmm_netport_free_xfer(port, xfer);
 
 			/* Print debug info */
 			DPRINTF("%s: nsw=%s port=%s mbuf\n", __func__,
@@ -281,7 +274,7 @@ static int netswitch_bh_main(void *param)
 			/* Call the rx function of net switch */
 			nsw->port2switch_xfer(nsw, port, mbuf);
 
-			/* Free mbuf in xfer request */
+			/* Free mbuf */
 			m_freem(mbuf);
 		}
 
@@ -303,7 +296,7 @@ static int netswitch_bh_main(void *param)
 				/* Enqueue lazy request */
 				rc = netswitch_bh_enqueue(nbp, NULL, lazy);
 				if (rc) {
-					vmm_printf("%s: nsw=%s src=%s xfer bh "
+					vmm_printf("%s: nsw=%s src=%s lazy bh "
 					   "enqueue failed.\n", __func__,
 					   nsw->name, port->name);
 				}
@@ -317,7 +310,6 @@ static int netswitch_bh_main(void *param)
 int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 {
 	int rc;
-	struct vmm_netport_xfer *xfer;
 	struct vmm_netswitch *nsw;
 	struct vmm_netswitch_bh_ctrl *nbp;
 
@@ -335,25 +327,15 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src, struct vmm_mbuf *mbuf)
 	/* Print debug info */
 	DPRINTF("%s: nsw=%s src=%s\n", __func__, nsw->name, src->name);
 
-	/* Alloc netport xfer request */
-	xfer = vmm_netport_alloc_xfer(src);
-	if (!xfer) {
-		vmm_printf("%s: nsw=%s src=%s xfer alloc failed.\n",
-			   __func__, nsw->name, src->name);
-		m_freem(mbuf);
-		return VMM_ENOMEM;
-	}
+	/* Save port in mbuf */
+	mbuf->m_list_priv = src;
 
-	/* Fill-up xfer request */
-	xfer->port = src;
-	xfer->mbuf = mbuf;
-
-	/* Add xfer request to xfer ring */
-	rc = netswitch_bh_enqueue(nbp, xfer, NULL);
+	/* Add mbuf bh queue */
+	rc = netswitch_bh_enqueue(nbp, mbuf, NULL);
 	if (rc) {
-		vmm_printf("%s: nsw=%s src=%s xfer bh enqueue failed.\n",
+		vmm_printf("%s: nsw=%s src=%s mbuf bh enqueue failed.\n",
 			   __func__, nsw->name, src->name);
-		vmm_netport_free_xfer(xfer->port, xfer);
+		mbuf->m_list_priv = NULL;
 	}
 
 	return rc;

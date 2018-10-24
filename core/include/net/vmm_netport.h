@@ -64,12 +64,6 @@ do { \
 	(__lazy)->xfer = (__xfer); \
 } while (0)
 
-struct vmm_netport_xfer {
-	struct dlist head;
-	struct vmm_netport *port;
-	struct vmm_mbuf *mbuf;
-};
-
 struct vmm_netport {
 	struct dlist head;
 	char name[VMM_FIELD_NAME_SIZE];
@@ -79,15 +73,6 @@ struct vmm_netport {
 	u8 macaddr[6];
 	struct vmm_netswitch *nsw;
 	struct vmm_device dev;
-
-	/* Per-port pool of xfer instances
-	 * Having all these blocks contiguous eases alloc
-	 * and free operations
-	 */
-	u32 free_count;
-	struct dlist free_list;
-	vmm_spinlock_t free_list_lock;
-	struct vmm_netport_xfer xfer_pool[VMM_NETPORT_MAX_QUEUE_SIZE];
 
 	/* Link status changed */
 	void (*link_changed) (struct vmm_netport *);
@@ -101,13 +86,6 @@ struct vmm_netport {
 };
 
 #define list_port(node)		(container_of((node), struct vmm_netport, head))
-
-/** Allocate new netport xfer instance */
-struct vmm_netport_xfer *vmm_netport_alloc_xfer(struct vmm_netport *port);
-
-/** Free netport xfer instance */
-void vmm_netport_free_xfer(struct vmm_netport *port,
-			   struct vmm_netport_xfer *xfer);
 
 /** Allocate new netport */
 struct vmm_netport *vmm_netport_alloc(char *name, u32 queue_size);

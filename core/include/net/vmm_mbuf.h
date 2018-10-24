@@ -124,6 +124,7 @@ struct m_ext {
 
 struct vmm_mbuf {
 	struct dlist m_list;		/* for list of mbufs */
+	void *m_list_priv;		/* private data of mbuf list */
 	struct m_hdr m_hdr;
 	struct m_pkthdr m_pkthdr;
 	struct m_ext m_ext;
