@@ -45,9 +45,8 @@ void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
 			    "device %s\n", weight, dev->name);
 	napi->dev = dev;
 	napi->poll = poll;
-	napi->xfer_port = port;
-	vmm_netport_lazy_init(&napi->xfer_lazy,
-			      netdev_budget, NULL, lazy_xfer2napi_poll);
+	vmm_netport_lazy_init(&napi->lazy, port, netdev_budget,
+			      NULL, lazy_xfer2napi_poll);
 }
 EXPORT_SYMBOL(netif_napi_add);
 
@@ -75,18 +74,18 @@ void napi_schedule(struct napi_struct *n)
 {
 	struct vmm_netport *port = n->dev->nsw_priv;
 
-	if (!port) {
-		vmm_printf("%s Net dev %s has no switch attached\n",
+	if (!port || !port->nsw) {
+		vmm_printf("%s: Invalid netport for %s Netdev\n",
 			   __func__, n->dev->name);
 		return;
 	}
 
-	vmm_port2switch_xfer_lazy(port, &n->xfer_lazy);
+	vmm_port2switch_xfer_lazy(&n->lazy);
 }
 
 void netif_napi_del(struct napi_struct *napi)
 {
-	arch_atomic_write(&napi->xfer_lazy.sched_count, 0);
+	arch_atomic_write(&napi->lazy.sched_count, 0);
 }
 EXPORT_SYMBOL(netif_napi_del);
 

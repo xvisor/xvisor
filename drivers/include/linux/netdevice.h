@@ -180,8 +180,7 @@ struct napi_struct {
 	struct hlist_node	napi_hash_node;
 	unsigned int		napi_id;
 #else /* 0 */
-	struct vmm_netport *xfer_port;
-	struct vmm_netport_lazy xfer_lazy;
+	struct vmm_netport_lazy lazy;
 #endif /* 0 */
 };
 

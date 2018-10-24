@@ -85,8 +85,7 @@ int vmm_port2switch_xfer_mbuf(struct vmm_netport *src,
 			      struct vmm_mbuf *mbuf);
 
 /** Lazy transfer from port to switch */
-int vmm_port2switch_xfer_lazy(struct vmm_netport *src,
-			      struct vmm_netport_lazy *lazy);
+int vmm_port2switch_xfer_lazy(struct vmm_netport_lazy *lazy);
 
 /** Transfer packets from switch to port */
 int vmm_switch2port_xfer_mbuf(struct vmm_netswitch *nsw,

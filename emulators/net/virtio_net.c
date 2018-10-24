@@ -201,7 +201,7 @@ static void virtio_net_tx_poke(struct virtio_net_dev *ndev, u32 vq)
 	struct virtio_net_queue *q = &ndev->vqs[vq];
 
 	if (vmm_virtio_queue_available(&q->vq)) {
-		vmm_port2switch_xfer_lazy(ndev->port, &q->lazy);
+		vmm_port2switch_xfer_lazy(&q->lazy);
 	}
 }
 
@@ -486,6 +486,7 @@ static int virtio_net_connect(struct vmm_virtio_device *dev,
 		} else {
 			if (i % 2) {
 				vmm_netport_lazy_init(&ndev->vqs[i].lazy,
+						ndev->port,
 						VIRTIO_NET_TX_LAZY_BUDGET,
 						&ndev->vqs[i],
 						virtio_net_tx_lazy);
