@@ -44,15 +44,11 @@
 
 #include <vmm_limits.h>
 #include <vmm_types.h>
-#include <vmm_spinlocks.h>
-#include <vmm_completion.h>
 #include <vmm_mutex.h>
-#include <vmm_threads.h>
 #include <vmm_notifier.h>
 #include <arch_atomic.h>
 #include <libs/xref.h>
 #include <libs/list.h>
-#include <libs/mempool.h>
 
 #define VMM_VMSG_IPRIORITY			0
 
@@ -110,11 +106,6 @@ struct vmm_vmsg_domain {
 	struct dlist head;
 	char name[VMM_FIELD_NAME_SIZE];
 	void *priv;
-	struct mempool *work_pool;
-	struct vmm_thread *worker;
-	struct vmm_completion work_avail;
-	vmm_spinlock_t work_lock;
-	struct dlist work_list;
 	struct vmm_mutex node_lock;
 	struct dlist node_list;
 };
@@ -166,8 +157,7 @@ static inline void vmm_vmsg_free(struct vmm_vmsg *msg)
 }
 
 /** Create a virtual messaging domain */
-struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name,
-				u32 work_pool_pages, void *priv);
+struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv);
 
 /** Destroy a virtual messaging domain */
 int vmm_vmsg_domain_destroy(struct vmm_vmsg_domain *domain);

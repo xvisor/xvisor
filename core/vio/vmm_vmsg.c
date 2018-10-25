@@ -23,13 +23,18 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
+#include <vmm_percpu.h>
+#include <vmm_spinlocks.h>
+#include <vmm_completion.h>
+#include <vmm_threads.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
-#include <vmm_workqueue.h>
 #include <vio/vmm_vmsg.h>
 #include <libs/idr.h>
 #include <libs/stringlib.h>
+#include <libs/mempool.h>
 
 #undef DEBUG
 
@@ -152,8 +157,11 @@ struct vmm_vmsg *vmm_vmsg_alloc(u32 dst, u32 src, u32 local,
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_alloc);
 
+struct vmsg_worker;
+
 struct vmsg_work {
 	struct dlist head;
+	struct vmsg_worker *worker;
 	struct vmm_vmsg_domain *domain;
 	struct vmm_vmsg *msg;
 	char name[VMM_FIELD_NAME_SIZE];
@@ -164,9 +172,19 @@ struct vmsg_work {
 	void (*free) (struct vmsg_work *work);
 };
 
+struct vmsg_worker {
+	struct mempool *work_pool;
+	struct vmm_thread *thread;
+	struct vmm_completion work_avail;
+	vmm_spinlock_t work_lock;
+	struct dlist work_list;
+};
+
+static DEFINE_PER_CPU(struct vmsg_worker, vworker);
+
 static void vmsg_free_pool_work(struct vmsg_work *work)
 {
-	mempool_free(work->domain->work_pool, work);
+	mempool_free(work->worker->work_pool, work);
 }
 
 static void vmsg_free_heap_work(struct vmsg_work *work)
@@ -174,20 +192,21 @@ static void vmsg_free_heap_work(struct vmsg_work *work)
 	vmm_free(work);
 }
 
-static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
-				    struct vmm_vmsg *msg,
-				    const char *name, u32 addr,
-				    void *data, void *data1,
-				    int (*func) (struct vmsg_work *))
+static int vmsg_enqueue_work(struct vmm_vmsg_domain *domain,
+			     struct vmm_vmsg *msg,
+			     const char *name, u32 addr,
+			     void *data, void *data1,
+			     int (*func) (struct vmsg_work *))
 {
 	irq_flags_t flags;
 	struct vmsg_work *work;
+	struct vmsg_worker *worker = &this_cpu(vworker);
 
 	if (!domain) {
 		return VMM_EINVALID;
 	}
 
-	work = mempool_malloc(domain->work_pool);
+	work = mempool_malloc(worker->work_pool);
 	if (!work) {
 		work = vmm_malloc(sizeof(*work));
 		if (!work) {
@@ -199,6 +218,7 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 	}
 
 	INIT_LIST_HEAD(&work->head);
+	work->worker = worker;
 	work->domain = domain;
 	work->msg = msg;
 	strncpy(work->name, name, sizeof(work->name));
@@ -211,33 +231,60 @@ static int vmsg_domain_enqueue_work(struct vmm_vmsg_domain *domain,
 		vmm_vmsg_ref(work->msg);
 	}
 
-	vmm_spin_lock_irqsave(&domain->work_lock, flags);
-	list_add_tail(&work->head, &domain->work_list);
-	vmm_spin_unlock_irqrestore(&domain->work_lock, flags);
+	vmm_spin_lock_irqsave(&worker->work_lock, flags);
+	list_add_tail(&work->head, &worker->work_list);
+	vmm_spin_unlock_irqrestore(&worker->work_lock, flags);
 
-	vmm_completion_complete(&domain->work_avail);
+	vmm_completion_complete(&worker->work_avail);
 
 	return VMM_OK;
 }
 
-static int vmsg_domain_worker_main(void *data)
+static void vmsg_purge_work_func(struct vmm_vmsg_domain *domain, u32 addr,
+				 void *data, int (*fn) (void *))
+{
+	u32 cpu;
+	irq_flags_t flags;
+	struct vmsg_worker *worker;
+	struct vmsg_work *work, *work1;
+
+	for_each_online_cpu(cpu) {
+		worker = &per_cpu(vworker, cpu);
+
+		vmm_spin_lock_irqsave(&worker->work_lock, flags);
+
+		list_for_each_entry_safe(work, work1, &worker->work_list, head) {
+			if ((work->addr == addr) &&
+			    (work->data == data) &&
+			    (work->data1 == fn) &&
+			    (work->msg == NULL)) {
+				list_del(&work->head);
+				work->free(work);
+			}
+		}
+
+		vmm_spin_unlock_irqrestore(&worker->work_lock, flags);
+	}
+}
+
+static int vmsg_worker_main(void *data)
 {
 	int rc;
 	irq_flags_t f;
-	struct vmm_vmsg_domain *vmd = data;
 	struct vmsg_work *work;
+	struct vmsg_worker *worker = data;
 
 	while (1) {
-		vmm_completion_wait(&vmd->work_avail);
+		vmm_completion_wait(&worker->work_avail);
 
 		work = NULL;
-		vmm_spin_lock_irqsave(&vmd->work_lock, f);
-		if (!list_empty(&vmd->work_list)) {
-			work = list_first_entry(&vmd->work_list,
+		vmm_spin_lock_irqsave(&worker->work_lock, f);
+		if (!list_empty(&worker->work_list)) {
+			work = list_first_entry(&worker->work_list,
 						struct vmsg_work, head);
 			list_del(&work->head);
 		}
-		vmm_spin_unlock_irqrestore(&vmd->work_lock, f);
+		vmm_spin_unlock_irqrestore(&worker->work_lock, f);
 		if (!work) {
 			continue;
 		}
@@ -245,11 +292,11 @@ static int vmsg_domain_worker_main(void *data)
 		if (work->func) {
 			rc = work->func(work);
 			if (rc == VMM_EAGAIN) {
-				vmm_spin_lock_irqsave(&vmd->work_lock, f);
-				list_add_tail(&work->head, &vmd->work_list);
-				vmm_spin_unlock_irqrestore(&vmd->work_lock, f);
+				vmm_spin_lock_irqsave(&worker->work_lock, f);
+				list_add_tail(&work->head, &worker->work_list);
+				vmm_spin_unlock_irqrestore(&worker->work_lock, f);
 
-				vmm_completion_complete(&vmd->work_avail);
+				vmm_completion_complete(&worker->work_avail);
 
 				continue;
 			}
@@ -291,18 +338,16 @@ static int vmsg_node_peer_down_func(struct vmsg_work *work)
 
 static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 {
-	int err;
+	int err = VMM_OK;
 	struct vmm_vmsg_domain *domain = node->domain;
 
 	DPRINTF("%s: node=%s\n", __func__, node->name);
 
 	if (arch_atomic_cmpxchg(&node->is_ready, 1, 0)) {
-		/* TODO: purge all work with work->addr == node->addr */
-
-		err = vmsg_domain_enqueue_work(domain, NULL,
-					       node->name, node->addr,
-					       NULL, NULL,
-					       vmsg_node_peer_down_func);
+		err = vmsg_enqueue_work(domain, NULL,
+					node->name, node->addr,
+					NULL, NULL,
+					vmsg_node_peer_down_func);
 		if (err) {
 			vmm_printf("%s: node=%s error=%d\n",
 				   __func__, node->name, err);
@@ -310,7 +355,7 @@ static int vmsg_node_peer_down(struct vmm_vmsg_node *node)
 		}
 	}
 
-	return VMM_OK;
+	return err;
 }
 
 static int vmsg_node_peer_up_func(struct vmsg_work *work)
@@ -355,10 +400,10 @@ static int vmsg_node_peer_up(struct vmm_vmsg_node *node)
 	DPRINTF("%s: node=%s\n", __func__, node->name);
 
 	if (!arch_atomic_cmpxchg(&node->is_ready, 0, 1)) {
-		err = vmsg_domain_enqueue_work(domain, NULL,
-					       node->name, node->addr,
-					       NULL, NULL,
-					       vmsg_node_peer_up_func);
+		err = vmsg_enqueue_work(domain, NULL,
+					node->name, node->addr,
+					NULL, NULL,
+					vmsg_node_peer_up_func);
 		if (err) {
 			vmm_printf("%s: node=%s error=%d\n",
 				   __func__, node->name, err);
@@ -430,10 +475,10 @@ static int vmsg_node_send(struct vmm_vmsg_node *node,
 		return vmsg_node_send_fast_func(msg, node->domain);
 	}
 
-	return vmsg_domain_enqueue_work(node->domain, msg,
-					node->name, node->addr,
-					NULL, NULL,
-					vmsg_node_send_func);
+	return vmsg_enqueue_work(node->domain, msg,
+				 node->name, node->addr,
+				 NULL, NULL,
+				 vmsg_node_send_func);
 }
 
 static int vmsg_node_start_work_func(struct vmsg_work *work)
@@ -453,50 +498,34 @@ static int vmsg_node_start_work(struct vmm_vmsg_node *node,
 	DPRINTF("%s: node=%s data=0x%p fn=0x%p\n",
 		__func__, node->name, data, fn);
 
-	return vmsg_domain_enqueue_work(node->domain, NULL,
-					node->name, node->addr,
-					data, fn,
-					vmsg_node_start_work_func);
+	return vmsg_enqueue_work(node->domain, NULL,
+				 node->name, node->addr,
+				 data, fn,
+				 vmsg_node_start_work_func);
 }
 
 static int vmsg_node_stop_work(struct vmm_vmsg_node *node,
 			       void *data, int (*fn) (void *))
 {
-	irq_flags_t flags;
-	struct vmsg_work *work, *work1;
-	struct vmm_vmsg_domain *domain;
-
 	if (!node || !fn) {
 		return VMM_EINVALID;
 	}
-	domain = node->domain;
 
-	vmm_spin_lock_irqsave(&domain->work_lock, flags);
+	DPRINTF("%s: node=%s data=0x%p fn=0x%p\n",
+		__func__, node->name, data, fn);
 
-	list_for_each_entry_safe(work, work1, &domain->work_list, head) {
-		if ((work->addr == node->addr) &&
-		    (work->data == data) &&
-		    (work->data1 == fn) &&
-		    (work->msg == NULL)) {
-			list_del(&work->head);
-			work->free(work);
-		}
-	}
-
-	vmm_spin_unlock_irqrestore(&domain->work_lock, flags);
+	vmsg_purge_work_func(node->domain, node->addr, data, fn);
 
 	return VMM_OK;
 }
 
-struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name,
-				u32 work_pool_pages, void *priv)
+struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name, void *priv)
 {
-	int ret;
 	bool found;
 	struct vmm_vmsg_event event;
 	struct vmm_vmsg_domain *vmd, *new_vmd;
 
-	if (!name || !work_pool_pages) {
+	if (!name) {
 		return NULL;
 	}
 
@@ -523,43 +552,8 @@ struct vmm_vmsg_domain *vmm_vmsg_domain_create(const char *name,
 	INIT_LIST_HEAD(&new_vmd->head);
 	strncpy(new_vmd->name, name, sizeof(new_vmd->name));
 	new_vmd->priv = priv;
-	new_vmd->worker = NULL;
-	new_vmd->work_pool = NULL;
-	INIT_COMPLETION(&new_vmd->work_avail);
-	INIT_SPIN_LOCK(&new_vmd->work_lock);
-	INIT_LIST_HEAD(&new_vmd->work_list);
 	INIT_MUTEX(&new_vmd->node_lock);
 	INIT_LIST_HEAD(&new_vmd->node_list);
-
-	new_vmd->work_pool = mempool_ram_create(sizeof(struct vmsg_work),
-						work_pool_pages,
-						VMM_PAGEPOOL_NORMAL);
-	if (!new_vmd->work_pool) {
-		vmm_free(new_vmd);
-		vmm_mutex_unlock(&vmctrl.lock);
-		return NULL;
-	}
-
-	new_vmd->worker = vmm_threads_create(name,
-					     vmsg_domain_worker_main,
-					     new_vmd,
-					     VMM_THREAD_DEF_PRIORITY,
-					     VMM_THREAD_DEF_TIME_SLICE);
-	if (!new_vmd->worker) {
-		mempool_destroy(new_vmd->work_pool);
-		vmm_free(new_vmd);
-		vmm_mutex_unlock(&vmctrl.lock);
-		return NULL;
-	}
-
-	ret = vmm_threads_start(new_vmd->worker);
-	if (ret) {
-		vmm_threads_destroy(new_vmd->worker);
-		mempool_destroy(new_vmd->work_pool);
-		vmm_free(new_vmd);
-		vmm_mutex_unlock(&vmctrl.lock);
-		return NULL;
-	}
 
 	list_add_tail(&new_vmd->head, &vmctrl.domain_list);
 
@@ -612,8 +606,6 @@ int vmm_vmsg_domain_destroy(struct vmm_vmsg_domain *domain)
 	}
 
 	list_del(&domain->head);
-	vmm_threads_destroy(domain->worker);
-	mempool_destroy(domain->work_pool);
 	vmm_free(domain);
 
 	vmm_mutex_unlock(&vmctrl.lock);
@@ -1058,6 +1050,57 @@ struct vmm_vmsg_domain *vmm_vmsg_node_get_domain(struct vmm_vmsg_node *node)
 }
 VMM_EXPORT_SYMBOL(vmm_vmsg_node_get_domain);
 
+static void vmsg_create_workers(void *arg0, void *arg1, void *arg3)
+{
+	int ret;
+	char name[VMM_FIELD_NAME_SIZE];
+	u32 cpu = vmm_smp_processor_id();
+	struct vmsg_worker *worker = &this_cpu(vworker);
+
+	worker->thread = NULL;
+	worker->work_pool = NULL;
+	INIT_COMPLETION(&worker->work_avail);
+	INIT_SPIN_LOCK(&worker->work_lock);
+	INIT_LIST_HEAD(&worker->work_list);
+
+	worker->work_pool = mempool_ram_create(sizeof(struct vmsg_work),
+					       16, VMM_PAGEPOOL_NORMAL);
+	if (!worker->work_pool) {
+		vmm_printf("%s: cpu=%d failed to create work pool\n",
+			   __func__, cpu);
+		return;
+	}
+
+	vmm_snprintf(name, sizeof(name), "vmsg/%d", cpu);
+	worker->thread = vmm_threads_create(name, vmsg_worker_main, worker,
+					    VMM_THREAD_DEF_PRIORITY,
+					    VMM_THREAD_DEF_TIME_SLICE);
+	if (!worker->thread) {
+		vmm_printf("%s: cpu=%d failed to create thread\n",
+			   __func__, cpu);
+		mempool_destroy(worker->work_pool);
+		return;
+	}
+
+	ret = vmm_threads_set_affinity(worker->thread, vmm_cpumask_of(cpu));
+	if (ret) {
+		vmm_printf("%s: cpu=%d failed to set thread affinity\n",
+			   __func__, cpu);
+		vmm_threads_destroy(worker->thread);
+		mempool_destroy(worker->work_pool);
+		return;
+	}
+
+	ret = vmm_threads_start(worker->thread);
+	if (ret) {
+		vmm_printf("%s: cpu=%d failed to start thread\n",
+			   __func__, cpu);
+		vmm_threads_destroy(worker->thread);
+		mempool_destroy(worker->work_pool);
+		return;
+	}
+}
+
 static int __init vmm_vmsg_init(void)
 {
 	memset(&vmctrl, 0, sizeof(vmctrl));
@@ -1068,11 +1111,13 @@ static int __init vmm_vmsg_init(void)
 	INIT_IDA(&vmctrl.node_ida);
 	BLOCKING_INIT_NOTIFIER_CHAIN(&vmctrl.notifier_chain);
 
-	vmctrl.default_domain = vmm_vmsg_domain_create("vmsg_default",
-						       16, NULL);
+	vmctrl.default_domain = vmm_vmsg_domain_create("vmsg_default", NULL);
 	if (!vmctrl.default_domain) {
 		return VMM_ENOMEM;
 	}
+
+	vmm_smp_ipi_async_call(cpu_online_mask, vmsg_create_workers,
+			       NULL, NULL, NULL);
 
 	return VMM_OK;
 }
