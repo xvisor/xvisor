@@ -84,6 +84,7 @@ struct virtio_rpmsg_dev {
 	bool node_ns_name_avail;
 	char node_ns_name[VMM_VIRTIO_RPMSG_NS_NAME_SIZE];
 	struct vmm_vmsg_node *node;
+	struct vmm_vmsg_node_lazy tx_lazy;
 };
 
 static u32 virtio_rpmsg_get_host_features(struct vmm_virtio_device *dev)
@@ -182,15 +183,13 @@ static void virtio_rpmsg_free_hdr(struct vmm_vmsg *m)
 	mempool_free(rdev->tx_buf_pool, buf);
 }
 
-static int virtio_rpmsg_tx_work(void *data);
-
-static int virtio_rpmsg_tx_msgs(struct vmm_virtio_device *dev,
-				struct virtio_rpmsg_dev *rdev,
-				int budget)
+void virtio_rpmsg_tx_msgs(struct vmm_vmsg_node *node, void *data, int budget)
 {
 	int rc;
 	u16 head = 0;
 	u32 i, len, iov_cnt = 0, total_len = 0;
+	struct virtio_rpmsg_dev *rdev = data;
+	struct vmm_virtio_device *dev = rdev->vdev;
 	struct vmm_virtio_queue *vq = &rdev->vqs[VIRTIO_RPMSG_TX_QUEUE];
 	struct vmm_virtio_iovec *iov = rdev->tx_iov;
 	struct vmm_virtio_iovec tiov;
@@ -276,30 +275,14 @@ skip_msg:
 	}
 
 	if (vmm_virtio_queue_available(vq)) {
-		rc = vmm_vmsg_node_start_work(rdev->node, rdev,
-					      virtio_rpmsg_tx_work);
-		if (rc) {
-			return rc;
-		}
+		vmm_vmsg_node_start_lazy(&rdev->tx_lazy);
 	}
 
 	if (vmm_virtio_queue_should_signal(vq)) {
 		dev->tra->notify(dev, VIRTIO_RPMSG_TX_QUEUE);
 	}
 
-	return VMM_OK;
-}
-
-static int virtio_rpmsg_tx_work(void *data)
-{
-	int rc;
-	struct virtio_rpmsg_dev *rdev = data;
-
-	rc = virtio_rpmsg_tx_msgs(rdev->vdev, rdev,
-				  VIRTIO_RPMSG_QUEUE_SIZE / 16);
-	WARN_ON(rc);
-
-	return rc;
+	return;
 }
 
 static int virtio_rpmsg_notify_vq(struct vmm_virtio_device *dev, u32 vq)
@@ -309,8 +292,7 @@ static int virtio_rpmsg_notify_vq(struct vmm_virtio_device *dev, u32 vq)
 
 	switch (vq) {
 	case VIRTIO_RPMSG_TX_QUEUE:
-		rc = vmm_vmsg_node_start_work(rdev->node, rdev,
-					      virtio_rpmsg_tx_work);
+		vmm_vmsg_node_start_lazy(&rdev->tx_lazy);
 		break;
 	case VIRTIO_RPMSG_RX_QUEUE:
 		break;
@@ -498,7 +480,7 @@ static int virtio_rpmsg_reset(struct vmm_virtio_device *dev)
 	int rc;
 	struct virtio_rpmsg_dev *rdev = dev->emu_data;
 
-	vmm_vmsg_node_stop_work(rdev->node, rdev, virtio_rpmsg_tx_work);
+	vmm_vmsg_node_stop_lazy(&rdev->tx_lazy);
 
 	vmm_vmsg_node_notready(rdev->node);
 
@@ -584,6 +566,10 @@ static int virtio_rpmsg_connect(struct vmm_virtio_device *dev,
 		vmm_free(rdev);
 		return VMM_EFAIL;
 	}
+
+	INIT_VMM_VMSG_NODE_LAZY(&rdev->tx_lazy, rdev->node,
+				VIRTIO_RPMSG_QUEUE_SIZE / 16,
+				rdev, virtio_rpmsg_tx_msgs);
 
 	dev->emu_data = rdev;
 

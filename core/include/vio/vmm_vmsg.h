@@ -112,6 +112,25 @@ struct vmm_vmsg_domain {
 
 struct vmm_vmsg_node;
 
+struct vmm_vmsg_node_lazy {
+	struct vmm_vmsg_node *node;
+	atomic_t sched_count;
+	struct dlist head;
+	int budget;
+	void *arg;
+	void (*xfer)(struct vmm_vmsg_node *, void *, int);
+};
+
+#define INIT_VMM_VMSG_NODE_LAZY(__lazy, __node, __budget, __arg, __xfer)	\
+do { \
+	(__lazy)->node = (__node); \
+	ARCH_ATOMIC_INIT(&(__lazy)->sched_count, 0); \
+	INIT_LIST_HEAD(&(__lazy)->head); \
+	(__lazy)->budget = (__budget); \
+	(__lazy)->arg = (__arg); \
+	(__lazy)->xfer = (__xfer); \
+} while (0)
+
 /** Representation of a virtual messaging node operations */
 struct vmm_vmsg_node_ops {
 	void (*peer_up) (struct vmm_vmsg_node *node,
@@ -219,15 +238,11 @@ int vmm_vmsg_node_send(struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
  */
 int vmm_vmsg_node_send_fast(struct vmm_vmsg_node *node, struct vmm_vmsg *msg);
 
-/** Schedule work for virtual messaging node */
-int vmm_vmsg_node_start_work(struct vmm_vmsg_node *node,
-			     void *data, int (*fn) (void *));
+/** Schedule lazy work for virtual messaging node */
+int vmm_vmsg_node_start_lazy(struct vmm_vmsg_node_lazy *lazy);
 
-/** Stop all scheduled work for virtual messaging node with
- *  particular work function
- */
-int vmm_vmsg_node_stop_work(struct vmm_vmsg_node *node,
-			    void *data, int (*fn) (void *));
+/** Stop a scheduled lazy work for virtual messaging node */
+int vmm_vmsg_node_stop_lazy(struct vmm_vmsg_node_lazy *lazy);
 
 /** Mark virtual messaging node as ready */
 void vmm_vmsg_node_ready(struct vmm_vmsg_node *node);
