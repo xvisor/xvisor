@@ -54,7 +54,7 @@ struct vmm_netport_lazy {
 	void (*xfer)(struct vmm_netport *, void *, int);
 };
 
-#define vmm_netport_lazy_init(__lazy, __port, __budget, __arg, __xfer)	\
+#define INIT_NETPORT_LAZY(__lazy, __port, __budget, __arg, __xfer)	\
 do { \
 	(__lazy)->port = (__port); \
 	ARCH_ATOMIC_INIT(&(__lazy)->sched_count, 0); \

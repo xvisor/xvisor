@@ -45,8 +45,8 @@ void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
 			    "device %s\n", weight, dev->name);
 	napi->dev = dev;
 	napi->poll = poll;
-	vmm_netport_lazy_init(&napi->lazy, port, netdev_budget,
-			      NULL, lazy_xfer2napi_poll);
+	INIT_NETPORT_LAZY(&napi->lazy, port, netdev_budget,
+			  NULL, lazy_xfer2napi_poll);
 }
 EXPORT_SYMBOL(netif_napi_add);
 

@@ -485,11 +485,11 @@ static int virtio_net_connect(struct vmm_virtio_device *dev,
 			ndev->vqs[i].type = VIRTIO_NET_CTRL_QUEUE;
 		} else {
 			if (i % 2) {
-				vmm_netport_lazy_init(&ndev->vqs[i].lazy,
-						ndev->port,
-						VIRTIO_NET_TX_LAZY_BUDGET,
-						&ndev->vqs[i],
-						virtio_net_tx_lazy);
+				INIT_NETPORT_LAZY(&ndev->vqs[i].lazy,
+						  ndev->port,
+						  VIRTIO_NET_TX_LAZY_BUDGET,
+						  &ndev->vqs[i],
+						  virtio_net_tx_lazy);
 				ndev->vqs[i].type = VIRTIO_NET_TX_QUEUE;
 			} else {
 				ndev->vqs[i].type = VIRTIO_NET_RX_QUEUE;
