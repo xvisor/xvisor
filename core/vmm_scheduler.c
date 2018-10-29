@@ -44,10 +44,16 @@
 
 #define SAMPLE_EVENT_PERIOD	(CONFIG_IDLE_PERIOD_SECS * 1000000000ULL)
 
+enum vmm_scheduler_resched_state {
+	VMM_SCHEDULER_RESCHED_IDLE=0,
+	VMM_SCHEDULER_RESCHED_TRIGGERED
+};
+
 /** Control structure for Scheduler */
 struct vmm_scheduler_ctrl {
 	void *rq;
 	vmm_spinlock_t rq_lock;
+	atomic_t rq_resched_state;
 	u64 current_vcpu_irq_ns;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
@@ -336,6 +342,9 @@ static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
+	arch_atomic_write(&schedp->rq_resched_state,
+			  VMM_SCHEDULER_RESCHED_IDLE);
+
 	if (schedp->irq_regs && rq_prempt_needed(schedp)) {
 		vmm_scheduler_switch(schedp, schedp->irq_regs);
 	}
@@ -343,16 +352,23 @@ static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
 
 int vmm_scheduler_force_resched(u32 hcpu)
 {
+	struct vmm_scheduler_ctrl *schedp;
+
 	if (CONFIG_CPU_COUNT <= hcpu) {
 		return VMM_EINVALID;
 	}
 	if (!vmm_cpu_online(hcpu)) {
 		return VMM_ENOTAVAIL;
 	}
+	schedp = &per_cpu(sched, hcpu);
 
-	vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 0,
-			      scheduler_ipi_resched,
-			      NULL, NULL, NULL);
+	if (arch_atomic_cmpxchg(&schedp->rq_resched_state,
+	    VMM_SCHEDULER_RESCHED_IDLE, VMM_SCHEDULER_RESCHED_TRIGGERED) ==
+	    VMM_SCHEDULER_RESCHED_IDLE) {
+		vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 0,
+				      scheduler_ipi_resched,
+				      NULL, NULL, NULL);
+	}
 
 	return VMM_OK;
 }
@@ -935,6 +951,8 @@ int __cpuinit vmm_scheduler_init(void)
 		return VMM_EFAIL;
 	}
 	INIT_SPIN_LOCK(&schedp->rq_lock);
+	ARCH_ATOMIC_INIT(&schedp->rq_resched_state,
+			 VMM_SCHEDULER_RESCHED_IDLE);
 
 	/* Initialize current VCPU and IDLE VCPU. (Per Host CPU) */
 	schedp->current_vcpu_irq_ns = 0;
