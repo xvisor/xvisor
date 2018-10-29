@@ -248,7 +248,7 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 		}
 	}
 
-	if (trig_count) {
+	if (trig_count && timeout_msecs) {
 		rc = VMM_ETIMEDOUT;
 		timeout_tstamp = vmm_timer_timestamp();
 		timeout_tstamp += (u64)timeout_msecs * 1000000ULL;

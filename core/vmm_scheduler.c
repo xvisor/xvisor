@@ -334,18 +334,11 @@ void vmm_scheduler_preempt_orphan(arch_regs_t *regs)
 
 static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
 {
-	/* This async IPI is called when rescheduling
-	 * is required on given host CPU.
-	 *
-	 * The async IPIs are always called from IPI
-	 * bottom-half VCPU with highest priority hence
-	 * when IPI bottom-half VCPU is done processing
-	 * IPIs appropriate VCPU will be picked up by
-	 * scheduler.
-	 *
-	 * In other words, we don't need to do anything
-	 * here for rescheduling on given host CPU.
-	 */
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	if (schedp->irq_regs && rq_prempt_needed(schedp)) {
+		vmm_scheduler_switch(schedp, schedp->irq_regs);
+	}
 }
 
 int vmm_scheduler_force_resched(u32 hcpu)
@@ -357,9 +350,9 @@ int vmm_scheduler_force_resched(u32 hcpu)
 		return VMM_ENOTAVAIL;
 	}
 
-	vmm_smp_ipi_async_call(vmm_cpumask_of(hcpu),
-				scheduler_ipi_resched,
-				NULL, NULL, NULL);
+	vmm_smp_ipi_sync_call(vmm_cpumask_of(hcpu), 0,
+			      scheduler_ipi_resched,
+			      NULL, NULL, NULL);
 
 	return VMM_OK;
 }
