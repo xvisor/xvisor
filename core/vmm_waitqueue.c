@@ -48,6 +48,7 @@ static void waitqueue_timeout(struct vmm_timer_event *event)
 int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 {
 	int rc = VMM_OK;
+	u64 now = 0, expiry = 0;
 	struct vmm_vcpu *vcpu;
 	struct vmm_timer_event wake_event;
 	struct vmm_waitqueue_priv p = { .wq = wq, .ev = NULL };
@@ -76,8 +77,8 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
 		INIT_TIMER_EVENT(&wake_event, &waitqueue_timeout, vcpu);
-		vmm_timer_event_start(&wake_event, *timeout_nsecs);
 		p.ev = &wake_event;
+		vmm_timer_event_start2(&wake_event, *timeout_nsecs, &expiry);
 	}
 
 	/* Try to Pause VCPU */
@@ -105,8 +106,6 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 		/* VCPU Wakeup so remove from waitqueue */
 		/* If timeout was used than destroy timer event */
 		if (timeout_nsecs) {
-			u64 now, expiry;
-			expiry = wake_event.expiry_tstamp;
 			vmm_timer_event_stop(&wake_event);
 			now = vmm_timer_timestamp();
 			*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
