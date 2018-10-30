@@ -197,7 +197,8 @@ u64 vmm_timer_event_expiry_time(struct vmm_timer_event *ev)
 	return exp_time;
 }
 
-int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
+int vmm_timer_event_start2(struct vmm_timer_event *ev,
+			   u64 duration_nsecs, u64 *ret_expiry_tstamp)
 {
 	u32 hcpu;
 	u64 tstamp;
@@ -222,6 +223,10 @@ int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs)
 	ev->duration_nsecs = duration_nsecs;
 	ev->active_state = TRUE;
 	ev->active_hcpu = hcpu;
+
+	if (ret_expiry_tstamp) {
+		*ret_expiry_tstamp = ev->expiry_tstamp;
+	}
 
 	vmm_write_lock_irqsave_lite(&tlcp->event_list_lock, flags1);
 

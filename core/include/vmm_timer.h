@@ -75,8 +75,16 @@ bool vmm_timer_event_pending(struct vmm_timer_event *ev);
 /** Return the absolute timestamp at which timer event will expire */
 u64 vmm_timer_event_expiry_time(struct vmm_timer_event *ev);
 
+/** Start a timer event and return expiry time */
+int vmm_timer_event_start2(struct vmm_timer_event *ev,
+			   u64 duration_nsecs, u64 *ret_expiry_tstamp);
+
 /** Start a timer event */
-int vmm_timer_event_start(struct vmm_timer_event *ev, u64 duration_nsecs);
+static inline int vmm_timer_event_start(struct vmm_timer_event *ev,
+					u64 duration_nsecs)
+{
+	return vmm_timer_event_start2(ev, duration_nsecs, NULL);
+}
 
 /** Restart a timer event */
 int vmm_timer_event_restart(struct vmm_timer_event *ev);
