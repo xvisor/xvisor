@@ -93,7 +93,7 @@ int vmm_mutex_unlock(struct vmm_mutex *mut)
 			mut->owner = NULL;
 			vmm_manager_vcpu_resource_remove(current_vcpu,
 							 &mut->res);
-			rc = __vmm_waitqueue_wakeall(&mut->wq);
+			rc = __vmm_waitqueue_wakefirst(&mut->wq);
 			if (rc == VMM_ENOENT) {
 				rc = VMM_OK;
 			}
