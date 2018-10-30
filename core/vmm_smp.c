@@ -93,8 +93,8 @@ struct smp_ipi_call {
 struct smp_ipi_ctrl {
 	struct fifo *sync_fifo;
 	struct fifo *async_fifo;
-	struct vmm_completion ipi_avail;
-	struct vmm_vcpu *ipi_vcpu;
+	struct vmm_completion async_avail;
+	struct vmm_vcpu *async_vcpu;
 };
 
 static DEFINE_PER_CPU(struct smp_ipi_ctrl, ictl);
@@ -152,7 +152,7 @@ static void smp_ipi_main(void)
 
 	while (1) {
 		/* Wait for some IPI to be available */
-		vmm_completion_wait(&ictlp->ipi_avail);
+		vmm_completion_wait(&ictlp->async_avail);
 
 		/* Process async IPIs */
 		while (fifo_dequeue(ictlp->async_fifo, &ipic)) {
@@ -177,7 +177,7 @@ void vmm_smp_ipi_exec(void)
 
 	/* Signal IPI available event */
 	if (!fifo_isempty(ictlp->async_fifo)) {
-		vmm_completion_complete(&ictlp->ipi_avail);
+		vmm_completion_complete(&ictlp->async_avail);
 	}
 }
 
@@ -297,11 +297,11 @@ int __cpuinit vmm_smp_ipi_init(void)
 	}
 
 	/* Initialize IPI available completion event */
-	INIT_COMPLETION(&ictlp->ipi_avail);
+	INIT_COMPLETION(&ictlp->async_avail);
 
 	/* Create IPI bottom-half VCPU. (Per Host CPU) */
 	vmm_snprintf(vcpu_name, sizeof(vcpu_name), "ipi/%d", cpu);
-	ictlp->ipi_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
+	ictlp->async_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
 						(virtual_addr_t)&smp_ipi_main,
 						IPI_VCPU_STACK_SZ,
 						IPI_VCPU_PRIORITY, 
@@ -309,13 +309,13 @@ int __cpuinit vmm_smp_ipi_init(void)
 						IPI_VCPU_DEADLINE,
 						IPI_VCPU_PERIODICITY,
 						vmm_cpumask_of(cpu));
-	if (!ictlp->ipi_vcpu) {
+	if (!ictlp->async_vcpu) {
 		rc = VMM_EFAIL;
 		goto fail_free_async;
 	}
 
 	/* Kick IPI orphan VCPU */
-	if ((rc = vmm_manager_vcpu_kick(ictlp->ipi_vcpu))) {
+	if ((rc = vmm_manager_vcpu_kick(ictlp->async_vcpu))) {
 		goto fail_free_vcpu;
 	}
 
@@ -327,9 +327,9 @@ int __cpuinit vmm_smp_ipi_init(void)
 	return VMM_OK;
 
 fail_stop_vcpu:
-	vmm_manager_vcpu_halt(ictlp->ipi_vcpu);
+	vmm_manager_vcpu_halt(ictlp->async_vcpu);
 fail_free_vcpu:
-	vmm_manager_vcpu_orphan_destroy(ictlp->ipi_vcpu);
+	vmm_manager_vcpu_orphan_destroy(ictlp->async_vcpu);
 fail_free_async:
 	fifo_free(ictlp->async_fifo);
 fail_free_sync:
