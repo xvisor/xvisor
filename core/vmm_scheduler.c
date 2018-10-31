@@ -360,6 +360,9 @@ int vmm_scheduler_force_resched(u32 hcpu)
 	if (!vmm_cpu_online(hcpu)) {
 		return VMM_ENOTAVAIL;
 	}
+	if (hcpu == vmm_smp_processor_id()) {
+		return VMM_OK;
+	}
 	schedp = &per_cpu(sched, hcpu);
 
 	if (arch_atomic_cmpxchg(&schedp->rq_resched_state,
