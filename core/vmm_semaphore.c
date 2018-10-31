@@ -158,7 +158,7 @@ int vmm_semaphore_up(struct vmm_semaphore *sem)
 			}
 		}
 
-		rc = __vmm_waitqueue_wakeall(&sem->wq);
+		rc = __vmm_waitqueue_wakefirst(&sem->wq);
 		if (rc == VMM_ENOENT) {
 			rc = VMM_OK;
 		}
@@ -224,4 +224,3 @@ int vmm_semaphore_down_timeout(struct vmm_semaphore *sem, u64 *timeout)
 {
 	return semaphore_down_common(sem, timeout);
 }
-
