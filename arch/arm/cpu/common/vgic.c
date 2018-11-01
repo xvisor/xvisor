@@ -1152,6 +1152,26 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 	return VMM_OK;
 }
 
+static void vgic_vcpu_try_resume(struct vmm_vcpu *vcpu, void *data)
+{
+	irq_flags_t flags;
+	struct vgic_vcpu_state *vs;
+	struct vgic_guest_state *s = data;
+
+	if (vmm_scheduler_current_vcpu() == vcpu) {
+		vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
+
+		vs = &s->vstate[vcpu->subid];
+
+		/* Sync & Flush VGIC state changes to VGIC HW */
+		__vgic_sync_and_flush_vcpu(s, vs);
+
+		vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
+	} else {
+		vmm_vcpu_irq_wait_resume(vcpu, FALSE);
+	}
+}
+
 static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			   u32 offset, u32 src_mask, u32 src)
 {
@@ -1195,14 +1215,9 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			}
 			s->sgi_source[i][irq] |= (1 << cpu);
 			vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
-			/* TODO: We don't use async IPI to resume VCPU from
-			 * Wait-for-Interrupt here because SGIs are very
-			 * frequent on Guest Linux with heavy scheduling
-			 * work-load. Using async IPI here can reduce
-			 * performance for Guest Linux hence for now we
-			 * don't use async IPI here.
-			 */
-			vmm_vcpu_irq_wait_resume(s->vstate[i].vcpu, FALSE);
+			vmm_manager_vcpu_hcpu_func(s->vstate[i].vcpu,
+					VMM_VCPU_STATE_INTERRUPTIBLE,
+					vgic_vcpu_try_resume, s, FALSE);
 			vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 		}
 	} else {
