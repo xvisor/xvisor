@@ -337,7 +337,7 @@ int vmm_manager_vcpu_hcpu_resched(struct vmm_vcpu *vcpu);
 int vmm_manager_vcpu_hcpu_func(struct vmm_vcpu *vcpu,
 			       u32 state_mask,
 			       void (*func)(struct vmm_vcpu *, void *),
-			       void *data);
+			       void *data, bool use_async);
 
 /** Retrive host CPU affinity of given VCPU */
 const struct vmm_cpumask *vmm_manager_vcpu_get_affinity(struct vmm_vcpu *vcpu);

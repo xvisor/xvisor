@@ -152,7 +152,8 @@ static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu, bool use_async_ipi)
 		vmm_manager_vcpu_hcpu_func(vcpu,
 			VMM_VCPU_STATE_INTERRUPTIBLE,
 			vcpu_irq_wfi_try_resume,
-			(try_vcpu_resume) ? (void *)TRUE : (void *)FALSE);
+			(try_vcpu_resume) ? (void *)TRUE : (void *)FALSE,
+			TRUE);
 	} else {
 		/* Case 1: try_vcpu_resume == TRUE
 		 *   We directly resume vcpu using vmm_manager_vcpu_resume().
