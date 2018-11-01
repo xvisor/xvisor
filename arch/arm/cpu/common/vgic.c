@@ -569,6 +569,26 @@ static void __vgic_sync_and_flush_vcpu(struct vgic_guest_state *s,
 	__vgic_flush_vcpu_hwstate(s, vs);
 }
 
+static void vgic_vcpu_flush_resume(struct vmm_vcpu *vcpu, void *data)
+{
+	irq_flags_t flags;
+	struct vgic_vcpu_state *vs;
+	struct vgic_guest_state *s = data;
+
+	if (vmm_scheduler_current_vcpu() == vcpu) {
+		vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
+
+		vs = &s->vstate[vcpu->subid];
+
+		/* Sync & Flush VGIC state changes to VGIC HW */
+		__vgic_sync_and_flush_vcpu(s, vs);
+
+		vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
+	} else {
+		vmm_vcpu_irq_wait_resume(vcpu);
+	}
+}
+
 /* Process IRQ asserted by device emulation framework */
 static void __vgic_irq_handle(struct vgic_guest_state *s, u32 irq, int cpu,
 			      bool two_levels, int level0, int level1)
@@ -633,25 +653,14 @@ static void __vgic_irq_handle(struct vgic_guest_state *s, u32 irq, int cpu,
 		}
 	}
 
-	/* Directly updating VGIC HW for current VCPU */
-	if (vs->vcpu == vmm_scheduler_current_vcpu()) {
-		/* The VGIC HW state may have changed when the
-		 * VCPU was running hence, sync VGIC VCPU state.
-		 */
-		__vgic_sync_vcpu_hwstate(s, vs);
-
-		/* Flush IRQ state change to VGIC HW */
-		if (irq_pending) {
-			__vgic_flush_vcpu_hwstate(s, vs);
-		}
-	}
-
 	/* Unlock VGIC distributor state */
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 
-	/* Forcefully resume VCPU if waiting for IRQ */
+	/* Try to flush or resume VCPU */
 	if (irq_pending) {
-		vmm_vcpu_irq_wait_resume(vs->vcpu, TRUE);
+		vmm_manager_vcpu_hcpu_func(vs->vcpu,
+				VMM_VCPU_STATE_INTERRUPTIBLE,
+				vgic_vcpu_flush_resume, s, FALSE);
 	}
 }
 
@@ -1152,26 +1161,6 @@ static int vgic_dist_read(struct vgic_guest_state *s, int cpu,
 	return VMM_OK;
 }
 
-static void vgic_vcpu_try_resume(struct vmm_vcpu *vcpu, void *data)
-{
-	irq_flags_t flags;
-	struct vgic_vcpu_state *vs;
-	struct vgic_guest_state *s = data;
-
-	if (vmm_scheduler_current_vcpu() == vcpu) {
-		vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
-
-		vs = &s->vstate[vcpu->subid];
-
-		/* Sync & Flush VGIC state changes to VGIC HW */
-		__vgic_sync_and_flush_vcpu(s, vs);
-
-		vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
-	} else {
-		vmm_vcpu_irq_wait_resume(vcpu, FALSE);
-	}
-}
-
 static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			   u32 offset, u32 src_mask, u32 src)
 {
@@ -1217,7 +1206,7 @@ static int vgic_dist_write(struct vgic_guest_state *s, int cpu,
 			vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
 			vmm_manager_vcpu_hcpu_func(s->vstate[i].vcpu,
 					VMM_VCPU_STATE_INTERRUPTIBLE,
-					vgic_vcpu_try_resume, s, FALSE);
+					vgic_vcpu_flush_resume, s, FALSE);
 			vmm_spin_lock_irqsave_lite(&s->dist_lock, flags);
 		}
 	} else {
