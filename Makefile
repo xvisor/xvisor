@@ -201,7 +201,7 @@ compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	       -MM $(2) >> $(1) || rm -f $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
-	     $(cc) $(cflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
+	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1) && \
@@ -209,7 +209,7 @@ compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	       -MM $(2) >> $(1) || rm -f $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
-	     $(as) $(asflags) $(call dynamic_flags,$(1),$<) -c $(2) -o $(1)
+	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
 	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
