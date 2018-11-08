@@ -27,11 +27,9 @@
 # testing for a specific architecture or later rather impossible.
 
 ifeq ($(CONFIG_64BIT),y)
-arch-cflags-y += -D__riscv -D__riscv_xlen=64
 arch-cflags-y += -mabi=lp64
 march-y = rv64im
 else
-arch-cflags-y += -D__riscv -D__riscv_xlen=32
 arch-cflags-y += -mabi=ilp32
 march-y = rv32im
 endif
@@ -47,10 +45,10 @@ arch-cflags-y += -fno-omit-frame-pointer -fno-optimize-sibling-calls
 arch-cflags-y += -mno-save-restore -mstrict-align
 
 ifeq ($(CONFIG_CMODEL_MEDLOW),y)
-	rch-cflags-y += -mcmodel=medlow
+	arch-cflags-y += -mcmodel=medlow
 endif
 ifeq ($(CONFIG_CMODEL_MEDANY),y)
-	rch-cflags-y += -mcmodel=medany
+	arch-cflags-y += -mcmodel=medany
 endif
 
 cpu-cppflags+=-DTEXT_START=0x10000000
