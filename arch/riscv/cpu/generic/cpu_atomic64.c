@@ -70,7 +70,7 @@ u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 		: "r" (value)
 		: "memory");
 
-	return ret;
+	return ret + value;
 }
 
 u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
@@ -83,7 +83,7 @@ u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 		: "r" (-value)
 		: "memory");
 
-	return ret;
+	return ret - value;
 }
 
 #define __cmpxchg(ptr, old, new, size)					\

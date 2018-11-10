@@ -68,7 +68,7 @@ long __lock arch_atomic_add_return(atomic_t *atom, long value)
 		: "r" (value)
 		: "memory");
 
-	return ret;
+	return ret + value;
 }
 
 long __lock arch_atomic_sub_return(atomic_t *atom, long value)
@@ -81,7 +81,7 @@ long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 		: "r" (-value)
 		: "memory");
 
-	return ret;
+	return ret - value;
 }
 
 #define __cmpxchg(ptr, old, new, size)					\
