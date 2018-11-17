@@ -34,7 +34,7 @@
 #define LOCK_PREFIX ""
 #endif
 
-u64  __lock arch_atomic64_read(atomic64_t *atom)
+u64 __lock arch_atomic64_read(atomic64_t *atom)
 {
 	u64 ret;
 	ret = atom->counter;
@@ -42,7 +42,7 @@ u64  __lock arch_atomic64_read(atomic64_t *atom)
 	return ret;
 }
 
-void  __lock arch_atomic64_write(atomic64_t *atom, u64 value)
+void __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 {
 	atom->counter = value;
 	arch_wmb();
@@ -75,6 +75,15 @@ u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
 u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 {
 	return arch_atomic64_add_return(atom, -value);
+}
+
+u64 __lock arch_atomic64_xchg(atomic64_t *atom, u64 newval)
+{
+	u64 ret = newval;
+	asm volatile(LOCK_PREFIX "xchgq %0, %1\n\t"
+		     :"+r" (ret), "+m" (atom->counter)
+		     : : "memory", "cc");
+	return ret;
 }
 
 u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)

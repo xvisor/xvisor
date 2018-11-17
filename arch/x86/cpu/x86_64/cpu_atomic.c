@@ -33,14 +33,14 @@
 #define LOCK_PREFIX ""
 #endif
 
-long  __lock arch_atomic_read(atomic_t *atom)
+long __lock arch_atomic_read(atomic_t *atom)
 {
 	long ret = atom->counter;
 	arch_rmb();
 	return ret;
 }
 
-void  __lock arch_atomic_write(atomic_t *atom, long value)
+void __lock arch_atomic_write(atomic_t *atom, long value)
 {
 	atom->counter = value;
 	arch_wmb();
@@ -73,6 +73,15 @@ long __lock arch_atomic_add_return(atomic_t *atom, long value)
 long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 {
 	return arch_atomic_add_return(atom, -value);
+}
+
+long __lock arch_atomic_xchg(atomic_t *atom, long newval)
+{
+	long ret = newval;
+	asm volatile(LOCK_PREFIX "xchgl %k0, %k1\n\t"
+		     :"+r" (ret), "+m" (atom->counter)
+		     : : "memory", "cc");
+	return ret;
 }
 
 long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
