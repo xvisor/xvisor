@@ -104,6 +104,22 @@ long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 	return result;
 }
 
+long __lock arch_atomic_xchg(atomic_t *atom, long newval)
+{
+	unsigned int tmp;
+	long previous;
+
+	asm volatile("// atomic_xchg\n"
+"1:	ldaxr	%w1, [%3]\n"
+"	stlxr	%w0, %w4, [%3]\n"
+"	cbnz	%w0, 1b\n"
+	: "=&r" (tmp), "=&r" (previous), "+o" (atom->counter)
+	: "r" (&atom->counter), "Ir" (newval)
+	: "cc");
+
+	return previous;
+}
+
 long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 {
 	unsigned int tmp;

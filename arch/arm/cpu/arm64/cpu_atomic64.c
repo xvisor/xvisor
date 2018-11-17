@@ -105,6 +105,22 @@ u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 	return result;
 }
 
+u64 __lock arch_atomic64_xchg(atomic64_t *atom, u64 newval)
+{
+	u64 previous;
+	unsigned long res;
+
+	asm volatile("// atomic64_xchg\n"
+"1:	ldaxr	%1, %2\n"
+"	stlxr	%w0, %3, %2\n"
+"	cbnz	%w0, 1b\n"
+	: "=&r" (res), "=&r" (previous), "+Q" (atom->counter)
+	: "r" (newval)
+	: "cc", "memory");
+
+	return previous;
+}
+
 u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
 	u64 previous;
