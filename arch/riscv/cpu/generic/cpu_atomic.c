@@ -86,6 +86,11 @@ long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 	return ret - value;
 }
 
+long __lock arch_atomic_xchg(atomic_t *atom, long newval)
+{
+	return xchg(&atom->counter, newval);
+}
+
 long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 {
 	return cmpxchg(&atom->counter, oldval, newval);

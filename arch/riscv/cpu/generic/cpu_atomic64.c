@@ -87,6 +87,11 @@ u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
 	return ret - value;
 }
 
+u64 __lock arch_atomic64_xchg(atomic64_t *atom, u64 newval)
+{
+	return xchg(&atom->counter, newval);
+}
+
 u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
 	return cmpxchg(&atom->counter, oldval, newval);
