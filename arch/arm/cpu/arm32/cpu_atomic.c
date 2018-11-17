@@ -88,6 +88,19 @@ long __lock arch_atomic_sub_return(atomic_t *atom, long value)
 	return temp;
 }
 
+long __lock arch_atomic_xchg(atomic_t *atom, long newval)
+{
+	long previous;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	previous = atom->counter;
+	atom->counter = newval;
+	arch_cpu_irq_restore(flags);
+
+	return previous;
+}
+
 long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 {
 	long previous;
@@ -95,12 +108,12 @@ long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 
 	arch_cpu_irq_save(flags);
 	previous = atom->counter;
-        if (previous == oldval) {
-                atom->counter = newval;
+	if (previous == oldval) {
+		atom->counter = newval;
 	}
 	arch_cpu_irq_restore(flags);
 
-        return previous;
+	return previous;
 }
 
 #else
@@ -198,11 +211,26 @@ long __lock arch_atomic_sub_return(atomic_t * atom, long value)
 	return result;
 }
 
-long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
+long __lock arch_atomic_xchg(atomic_t *atom, long newval)
 {
 	long previous, res;
 
-	arch_smp_mb();
+	do {
+		__asm__ __volatile__("@ atomic_xchg\n"
+		"ldrex	%1, [%3]\n"
+		"mov	%0, #0\n"
+		"strex %0, %4, [%3]\n"
+		    : "=&r" (res), "=&r" (previous), "+Qo" (atom->counter)
+		    : "r" (&atom->counter), "r" (newval)
+		    : "cc");
+	} while (res);
+
+	return previous;
+}
+
+long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
+{
+	long previous, res;
 
 	do {
 		__asm__ __volatile__("@ atomic_cmpxchg\n"
@@ -214,8 +242,6 @@ long __lock arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval)
 		    : "r" (&atom->counter), "Ir" (oldval), "r" (newval)
 		    : "cc");
 	} while (res);
-
-	arch_smp_mb();
 
 	return previous;
 }
