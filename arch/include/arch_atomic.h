@@ -33,6 +33,7 @@ void arch_atomic_add(atomic_t *atom, long value);
 long arch_atomic_add_return(atomic_t *atom, long value);
 void arch_atomic_sub(atomic_t *atom, long value);
 long arch_atomic_sub_return(atomic_t *atom, long value);
+long arch_atomic_xchg(atomic_t *atom, long newval);
 long arch_atomic_cmpxchg(atomic_t *atom, long oldval, long newval);
 
 /** Derived Atomic operations required by VMM core 

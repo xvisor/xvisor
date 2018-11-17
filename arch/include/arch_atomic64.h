@@ -33,6 +33,7 @@ void arch_atomic64_add(atomic64_t *atom, u64 value);
 u64 arch_atomic64_add_return(atomic64_t *atom, u64 value);
 void arch_atomic64_sub(atomic64_t *atom, u64 value);
 u64 arch_atomic64_sub_return(atomic64_t *atom, u64 value);
+u64 arch_atomic64_xchg(atomic64_t *atom, u64 newval);
 u64 arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval);
 
 /** Derived Atomic64 operations required by VMM core 
