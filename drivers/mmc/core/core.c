@@ -456,6 +456,7 @@ VMM_EXPORT_SYMBOL(mmc_alloc_host);
 
 int mmc_add_host(struct mmc_host *host)
 {
+	int rc;
 	char name[32];
 
 	if (!host || host->brq) {
@@ -464,6 +465,12 @@ int mmc_add_host(struct mmc_host *host)
 
 	if (!host->b_max) {
 		host->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+	}
+
+	if (host->ops.init) {
+		rc = host->ops.init(host, 0);
+		if (rc)
+			return rc;
 	}
 
 	vmm_mutex_lock(&mmc_host_list_mutex);

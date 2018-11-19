@@ -407,6 +407,7 @@ struct mmc_card {
 struct mmc_host;
 
 struct mmc_host_ops {
+	int (*init)(struct mmc_host *mmc, int soft);
 	int (*send_cmd)(struct mmc_host *mmc,
 			struct mmc_cmd *cmd,
 			struct mmc_data *data);
@@ -468,11 +469,19 @@ struct mmc_host {
 #define MMC_CAP_MODE_HS_52MHz		0x00000010
 #define MMC_CAP_MODE_4BIT		0x00000100
 #define MMC_CAP_MODE_8BIT		0x00000200
-#define MMC_CAP_MODE_SPI		0x00000400
-#define MMC_CAP_MODE_HC			0x00000800
-#define MMC_CAP_NEEDS_POLL		0x00001000
-#define MMC_CAP_NONREMOVABLE		0x00002000	/* Nonremovable e.g. eMMC */
-#define MMC_CAP_CMD23			0x00004000	/* CMD23 supported */
+#define MMC_CAP_MODE_1BIT		0x00000800
+#define MMC_CAP_MODE_SPI		0x00001000
+#define MMC_CAP_MODE_HC			0x00002000
+#define MMC_CAP_NEEDS_POLL		0x00004000
+#define MMC_CAP_NONREMOVABLE		0x00008000	/* Nonremovable e.g. eMMC */
+#define MMC_CAP_CMD23			0x00010000	/* CMD23 supported */
+#define MMC_CAP_MODE_HS200		0x00020000
+#define MMC_CAP_MODE_HS400		0x00040000
+#define MMC_CAP_MODE_UHS_SDR12		0x00080000
+#define MMC_CAP_MODE_UHS_SDR25		0x00100000
+#define MMC_CAP_MODE_UHS_SDR50		0x00200000
+#define MMC_CAP_MODE_UHS_SDR104		0x00400000
+#define MMC_CAP_MODE_UHS_DDR50		0x00800000
 
 	u32 caps2;
 
