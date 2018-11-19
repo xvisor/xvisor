@@ -52,6 +52,79 @@
 #define DPRINTF(msg...)
 #endif
 
+static bool mmc_is_mode_ddr(enum mmc_bus_mode mode)
+{
+	if (mode == MMC_DDR_52)
+		return TRUE;
+	else if (mode == UHS_DDR50)
+		return TRUE;
+	else if (mode == MMC_HS_400)
+		return TRUE;
+	else
+		return FALSE;
+}
+
+static const char *mmc_mode_name(enum mmc_bus_mode mode)
+{
+	static const char *const names[] = {
+	      [MMC_LEGACY]	= "MMC legacy",
+	      [SD_LEGACY]	= "SD Legacy",
+	      [MMC_HS]		= "MMC High Speed (26MHz)",
+	      [SD_HS]		= "SD High Speed (50MHz)",
+	      [UHS_SDR12]	= "UHS SDR12 (25MHz)",
+	      [UHS_SDR25]	= "UHS SDR25 (50MHz)",
+	      [UHS_SDR50]	= "UHS SDR50 (100MHz)",
+	      [UHS_SDR104]	= "UHS SDR104 (208MHz)",
+	      [UHS_DDR50]	= "UHS DDR50 (50MHz)",
+	      [MMC_HS_52]	= "MMC High Speed (52MHz)",
+	      [MMC_DDR_52]	= "MMC DDR52 (52MHz)",
+	      [MMC_HS_200]	= "HS200 (200MHz)",
+	      [MMC_HS_400]	= "HS400 (200MHz)",
+	};
+
+	if (mode >= MMC_MODES_END)
+		return "Unknown mode";
+	else
+		return names[mode];
+}
+
+static u32 mmc_mode2freq(struct mmc_card *card, enum mmc_bus_mode mode)
+{
+	static const int freqs[] = {
+	      [MMC_LEGACY]	= 25000000,
+	      [SD_LEGACY]	= 25000000,
+	      [MMC_HS]		= 26000000,
+	      [SD_HS]		= 50000000,
+	      [MMC_HS_52]	= 52000000,
+	      [MMC_DDR_52]	= 52000000,
+	      [UHS_SDR12]	= 25000000,
+	      [UHS_SDR25]	= 50000000,
+	      [UHS_SDR50]	= 100000000,
+	      [UHS_DDR50]	= 50000000,
+	      [UHS_SDR104]	= 208000000,
+	      [MMC_HS_200]	= 200000000,
+	      [MMC_HS_400]	= 200000000,
+	};
+
+	if (mode == MMC_LEGACY)
+		return card->legacy_speed;
+	else if (mode >= MMC_MODES_END)
+		return 0;
+	else
+		return freqs[mode];
+}
+
+static int mmc_select_mode(struct mmc_card *card, enum mmc_bus_mode mode)
+{
+	card->selected_mode = mode;
+	card->tran_speed = mmc_mode2freq(card, mode);
+	card->ddr_mode = mmc_is_mode_ddr(mode);
+	card->mode_name = mmc_mode_name(mode);
+	DPRINTF("selecting mode %s (freq : %d MHz)\n", mmc_mode_name(mode),
+		mmc->tran_speed / 1000000);
+	return 0;
+}
+
 /* frequency bases */
 /* divided by 10 to be nice to platforms without floating point */
 static const int fbase[] = {
@@ -495,13 +568,101 @@ static int __mmc_set_capacity(struct mmc_card *card, int part_num)
 	return VMM_OK;
 }
 
+static int __mmc_startup_v4(struct mmc_host *host, struct mmc_card *card)
+{
+	int err, i;
+	u64 capacity;
+	u8 *ext_csd = &card->ext_csd[0];
+
+	if (IS_SD(card) || (card->version < MMC_VERSION_4)) {
+		return 0;
+	}
+
+	memset(card->ext_csd, 0, sizeof(card->ext_csd));
+
+	/* check  ext_csd version and capacity */
+	err = __mmc_send_ext_csd(host, ext_csd);
+	if (!err && (ext_csd[EXT_CSD_REV] >= 2)) {
+		/*
+		 * According to the JEDEC Standard, the value of
+		 * ext_csd's capacity is valid if the value is more
+		 * than 2GB
+		 */
+		capacity = ext_csd[EXT_CSD_SEC_CNT] << 0
+				| ext_csd[EXT_CSD_SEC_CNT + 1] << 8
+				| ext_csd[EXT_CSD_SEC_CNT + 2] << 16
+				| (u64)(ext_csd[EXT_CSD_SEC_CNT + 3]) << 24;
+		capacity *= 512;
+		if ((capacity >> 20) > 2 * 1024) {
+			card->capacity_user = capacity;
+		}
+	} else {
+		return err;
+	}
+
+	switch (ext_csd[EXT_CSD_REV]) {
+	case 1:
+		card->version = MMC_VERSION_4_1;
+		break;
+	case 2:
+		card->version = MMC_VERSION_4_2;
+		break;
+	case 3:
+		card->version = MMC_VERSION_4_3;
+		break;
+	case 5:
+		card->version = MMC_VERSION_4_41;
+		break;
+	case 6:
+		card->version = MMC_VERSION_4_5;
+		break;
+	};
+
+	/*
+	 * Check whether GROUP_DEF is set, if yes, read out
+	 * group size from ext_csd directly, or calculate
+	 * the group size from the csd value.
+	 */
+	if (ext_csd[EXT_CSD_ERASE_GROUP_DEF]) {
+		card->erase_grp_size =
+		      ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] * 512 * 1024;
+	} else {
+		int erase_gsz, erase_gmul;
+		erase_gsz = (card->csd[2] & 0x00007c00) >> 10;
+		erase_gmul = (card->csd[2] & 0x000003e0) >> 5;
+		card->erase_grp_size =
+				(erase_gsz + 1) * (erase_gmul + 1);
+	}
+
+	/* store the partition info of emmc */
+	if ((ext_csd[EXT_CSD_PARTITIONING_SUPPORT] & PART_SUPPORT) ||
+	    ext_csd[EXT_CSD_BOOT_MULT]) {
+		card->part_config = ext_csd[EXT_CSD_PART_CONF];
+	}
+
+	card->capacity_boot = ext_csd[EXT_CSD_BOOT_MULT] << 17;
+
+	card->capacity_rpmb = ext_csd[EXT_CSD_RPMB_MULT] << 17;
+
+	for (i = 0; i < 4; i++) {
+		int idx = EXT_CSD_GP_SIZE_MULT + i * 3;
+		card->capacity_gp[i] = (ext_csd[idx + 2] << 16) +
+			(ext_csd[idx + 1] << 8) + ext_csd[idx];
+		card->capacity_gp[i] *=
+			ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
+		card->capacity_gp[i] *= ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
+	}
+
+	return 0;
+}
+
 static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 {
 	int err, i;
 	u32 mult, freq;
-	u64 cmult, csize, capacity;
+	u64 cmult, csize;
 	struct mmc_cmd cmd;
-	u8 ext_csd[512];
+	u8 *ext_csd = &card->ext_csd[0];
 	u8 test_csd[512];
 	int timeout = 1000;
 
@@ -509,7 +670,6 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		return VMM_EFAIL;
 	}
 
-	memset(ext_csd, 0, sizeof(ext_csd));
 	memset(test_csd, 0, sizeof(test_csd));
 
 #ifdef CONFIG_MMC_SPI_CRC_ON
@@ -600,7 +760,11 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 	/* Determine card parameters */
 	freq = fbase[(cmd.response[0] & 0x7)];
 	mult = multipliers[((cmd.response[0] >> 3) & 0xf)];
-	card->tran_speed = freq * mult;
+
+	card->legacy_speed = freq * mult;
+	mmc_select_mode(card, MMC_LEGACY);
+
+	card->dsr_imp = ((cmd.response[1] >> 12) & 0x1);
 	card->read_bl_len = 1 << ((cmd.response[1] >> 16) & 0xf);
 	if (IS_SD(card)) {
 		card->write_bl_len = card->read_bl_len;
@@ -630,6 +794,14 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		card->write_bl_len = 512;
 	}
 
+	if ((card->dsr_imp) && (0xffffffff != card->dsr)) {
+		cmd.cmdidx = MMC_CMD_SET_DSR;
+		cmd.cmdarg = (card->dsr & 0xffff) << 16;
+		cmd.resp_type = MMC_RSP_NONE;
+		if (mmc_send_cmd(host, &cmd, NULL))
+			vmm_printf("MMC: SET_DSR failed\n");
+	}
+
 	/* Select the card, and put it into Transfer Mode */
 	if (!mmc_host_is_spi(host)) { /* cmd not supported in spi */
 		cmd.cmdidx = MMC_CMD_SELECT_CARD;
@@ -641,82 +813,14 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		}
 	}
 
-	/*
-	 * For SD, its erase group is always one sector
-	 */
+	/* For SD, its erase group is always one sector */
 	card->erase_grp_size = 1;
 	card->part_config = MMCPART_NOAVAILABLE;
-	if (!IS_SD(card) && (card->version >= MMC_VERSION_4)) {
-		/* check  ext_csd version and capacity */
-		err = __mmc_send_ext_csd(host, ext_csd);
-		if (!err && (ext_csd[EXT_CSD_REV] >= 2)) {
-			/*
-			 * According to the JEDEC Standard, the value of
-			 * ext_csd's capacity is valid if the value is more
-			 * than 2GB
-			 */
-			capacity = ext_csd[EXT_CSD_SEC_CNT] << 0
-					| ext_csd[EXT_CSD_SEC_CNT + 1] << 8
-					| ext_csd[EXT_CSD_SEC_CNT + 2] << 16
-					| (u64)(ext_csd[EXT_CSD_SEC_CNT + 3]) << 24;
-			capacity *= 512;
-			if ((capacity >> 20) > 2 * 1024) {
-				card->capacity_user = capacity;
-			}
-		}
 
-		switch (ext_csd[EXT_CSD_REV]) {
-		case 1:
-			card->version = MMC_VERSION_4_1;
-			break;
-		case 2:
-			card->version = MMC_VERSION_4_2;
-			break;
-		case 3:
-			card->version = MMC_VERSION_4_3;
-			break;
-		case 5:
-			card->version = MMC_VERSION_4_41;
-			break;
-		case 6:
-			card->version = MMC_VERSION_4_5;
-			break;
-		};
-
-		/*
-		 * Check whether GROUP_DEF is set, if yes, read out
-		 * group size from ext_csd directly, or calculate
-		 * the group size from the csd value.
-		 */
-		if (ext_csd[EXT_CSD_ERASE_GROUP_DEF]) {
-			card->erase_grp_size =
-			      ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] * 512 * 1024;
-		} else {
-			int erase_gsz, erase_gmul;
-			erase_gsz = (card->csd[2] & 0x00007c00) >> 10;
-			erase_gmul = (card->csd[2] & 0x000003e0) >> 5;
-			card->erase_grp_size =
-					(erase_gsz + 1) * (erase_gmul + 1);
-		}
-
-		/* store the partition info of emmc */
-		if ((ext_csd[EXT_CSD_PARTITIONING_SUPPORT] & PART_SUPPORT) ||
-		    ext_csd[EXT_CSD_BOOT_MULT]) {
-			card->part_config = ext_csd[EXT_CSD_PART_CONF];
-		}
-
-		card->capacity_boot = ext_csd[EXT_CSD_BOOT_MULT] << 17;
-
-		card->capacity_rpmb = ext_csd[EXT_CSD_RPMB_MULT] << 17;
-
-		for (i = 0; i < 4; i++) {
-			int idx = EXT_CSD_GP_SIZE_MULT + i * 3;
-			card->capacity_gp[i] = (ext_csd[idx + 2] << 16) +
-				(ext_csd[idx + 1] << 8) + ext_csd[idx];
-			card->capacity_gp[i] *=
-				ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
-			card->capacity_gp[i] *= ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
-		}
+	/* Startup MMCv4 card */
+	err = __mmc_startup_v4(host, card);
+	if (err) {
+		return err;
 	}
 
 	/* Set card capacity based on current partition */
@@ -760,9 +864,9 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 		}
 
 		if (card->caps & MMC_CAP_MODE_HS) {
-			card->tran_speed = 50000000;
+			mmc_select_mode(card, SD_HS);
 		} else {
-			card->tran_speed = 25000000;
+			mmc_select_mode(card, SD_LEGACY);
 		}
 	} else {
 		int idx;
@@ -824,14 +928,22 @@ static int __mmc_startup(struct mmc_host *host, struct mmc_card *card)
 
 		if (card->caps & MMC_CAP_MODE_HS) {
 			if (card->caps & MMC_CAP_MODE_HS_52MHz) {
-				card->tran_speed = 52000000;
+				mmc_select_mode(card, MMC_HS_52);
 			} else {
-				card->tran_speed = 26000000;
+				mmc_select_mode(card, MMC_HS);
 			}
 		}
 	}
 
 	mmc_set_clock(host, card->tran_speed);
+
+	card->best_mode = card->selected_mode;
+
+	/* Fix the block length for DDR mode */
+	if (card->ddr_mode) {
+		card->read_bl_len = 512;
+		card->write_bl_len = 512;
+	}
 
 	return VMM_OK;
 }

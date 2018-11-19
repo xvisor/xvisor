@@ -310,6 +310,23 @@ struct mmc_ios {
 	u32 clock;
 };
 
+enum mmc_bus_mode {
+	MMC_LEGACY,
+	SD_LEGACY,
+	MMC_HS,
+	SD_HS,
+	MMC_HS_52,
+	MMC_DDR_52,
+	UHS_SDR12,
+	UHS_SDR25,
+	UHS_SDR50,
+	UHS_DDR50,
+	UHS_SDR104,
+	MMC_HS_200,
+	MMC_HS_400,
+	MMC_MODES_END
+};
+
 struct mmc_card {
 	struct mmc_host		*host;		/* the host this device belongs to */
 	struct vmm_device	dev;		/* the device */
@@ -338,6 +355,8 @@ struct mmc_card {
 	u32 caps;
 
 	u32 ocr;
+	u32 dsr;
+	u32 dsr_imp;
 
 	u32 scr[2];
 #define SD_DATA_4BIT			0x00040000
@@ -345,6 +364,8 @@ struct mmc_card {
 	u32 csd[4];
 	u32 cid[4];
 	u16 rca;
+
+	u8 ext_csd[512];
 
 	unsigned int		type;		/* card type */
 #define MMC_TYPE_MMC		0		/* MMC card */
@@ -375,7 +396,17 @@ struct mmc_card {
 						/* byte mode */
 #define MMC_QUIRK_LONG_READ_TIME (1<<8)		/* Data read time > CSD says */
 
+	u32 legacy_speed;
+	enum mmc_bus_mode selected_mode; /* mode currently used */
+	enum mmc_bus_mode best_mode; /* best mode is the supported mode with the
+				  * highest bandwidth. It may not always be the
+				  * operating mode due to limitations when
+				  * accessing the boot partitions
+				  */
 	u32 tran_speed;
+	int ddr_mode;
+	const char *mode_name;
+
 	int high_capacity;
 	char part_config;
 	char part_num;
