@@ -347,8 +347,10 @@ struct sdhci_ops {
 	void	(*write_w)(struct sdhci_host *host, u16 val, int reg);
 	void	(*write_b)(struct sdhci_host *host, u8 val, int reg);
 #endif
+	void (*set_ios_post)(struct sdhci_host *host);
 	void (*set_control_reg)(struct sdhci_host *host);
 	void (*set_clock)(struct sdhci_host *host, unsigned int div);
+	void (*set_delay)(struct sdhci_host *host);
 	unsigned int (*get_wp)(struct sdhci_host *host);
 };
 
@@ -360,8 +362,9 @@ struct sdhci_host {
 	int irq; /* less than zero means no interrupt */
 	u32 quirks; /* quirks or hacks */
 	u32 quirks2; /* quirks or hacks */
-	u32 caps; /* forced mmc_host capablities */
+	u32 mmc_caps; /* forced mmc_host capablities */
 	u32 clock; /* input clock */
+	u32 clk_mul;
 	u32 max_clk; /* max output clock */
 	u32 min_clk; /* min output clock */
 	u32 voltages; /* forced mmc_host voltages */
@@ -369,6 +372,7 @@ struct sdhci_host {
 
 	u32 sdhci_version;
 	u32 sdhci_caps;
+	u32 sdhci_caps_1;
 
 	/* struct mmc_request *mrq; /\* associated request *\/ */
 	struct mmc_cmd *cmd;	/* Current command */
