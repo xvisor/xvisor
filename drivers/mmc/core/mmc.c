@@ -67,8 +67,8 @@ static bool mmc_is_mode_ddr(enum mmc_bus_mode mode)
 static const char *mmc_mode_name(enum mmc_bus_mode mode)
 {
 	static const char *const names[] = {
-	      [MMC_LEGACY]	= "MMC legacy",
-	      [SD_LEGACY]	= "SD Legacy",
+	      [MMC_LEGACY]	= "MMC legacy (25MHz)",
+	      [SD_LEGACY]	= "SD Legacy (25MHz)",
 	      [MMC_HS]		= "MMC High Speed (26MHz)",
 	      [SD_HS]		= "SD High Speed (50MHz)",
 	      [UHS_SDR12]	= "UHS SDR12 (25MHz)",
@@ -573,6 +573,17 @@ static int __mmc_startup_v4(struct mmc_host *host, struct mmc_card *card)
 	int err, i;
 	u64 capacity;
 	u8 *ext_csd = &card->ext_csd[0];
+	static const u32 mmc_versions[] = {
+		MMC_VERSION_4,
+		MMC_VERSION_4_1,
+		MMC_VERSION_4_2,
+		MMC_VERSION_4_3,
+		MMC_VERSION_4_4,
+		MMC_VERSION_4_41,
+		MMC_VERSION_4_5,
+		MMC_VERSION_5_0,
+		MMC_VERSION_5_1
+	};
 
 	if (IS_SD(card) || (card->version < MMC_VERSION_4)) {
 		return 0;
@@ -582,6 +593,14 @@ static int __mmc_startup_v4(struct mmc_host *host, struct mmc_card *card)
 
 	/* check  ext_csd version and capacity */
 	err = __mmc_send_ext_csd(host, ext_csd);
+	if (err)
+		return err;
+
+	if (ext_csd[EXT_CSD_REV] >= array_size(mmc_versions))
+		return VMM_EINVALID;
+
+	card->version = mmc_versions[ext_csd[EXT_CSD_REV]];
+
 	if (!err && (ext_csd[EXT_CSD_REV] >= 2)) {
 		/*
 		 * According to the JEDEC Standard, the value of
@@ -1117,7 +1136,8 @@ int mmc_send_if_cond(struct mmc_host *host, struct mmc_card *card)
 
 int __mmc_sd_attach(struct mmc_host *host)
 {
-	int rc = VMM_OK;
+	int i, rc = VMM_OK;
+	char str[16];
 	struct mmc_card *card;
 	struct vmm_blockdev *bdev;
 
@@ -1196,15 +1216,29 @@ int __mmc_sd_attach(struct mmc_host *host)
 	bdev = card->bdev;
 
 	/* Setup block device instance */
+	memset(str, 0, sizeof(str));
+	str[0] = (card->cid[0] & 0xff);
+	str[1] = ((card->cid[1] >> 24) & 0xff);
+	str[2] = ((card->cid[1] >> 16) & 0xff);
+	str[3] = ((card->cid[1] >> 8) & 0xff);
+	str[4] = (card->cid[1] & 0xff);
+	str[5] = ((card->cid[2] >> 24) & 0xff);
+	for (i = 0; i < 6; i++) {
+		if (!vmm_isprintable(str[i]))
+			str[i] = '\0';
+	}
 	vmm_snprintf(bdev->name, sizeof(bdev->name), "mmc%d", host->host_num);
 	vmm_snprintf(bdev->desc, sizeof(bdev->desc),
-		     "Manufacturer=%06x Serial=%04x%04x "
+		     "%s-%d.%d Manufacturer=%06x Serial=%04x%04x "
 		     "Product=%c%c%c%c%c%c Rev=%d.%d",
-		     (card->cid[0] >> 24), (card->cid[2] & 0xffff),
-		     ((card->cid[3] >> 16) & 0xffff), (card->cid[0] & 0xff),
-		     (card->cid[1] >> 24), ((card->cid[1] >> 16) & 0xff),
-		     ((card->cid[1] >> 8) & 0xff), (card->cid[1] & 0xff),
-		     ((card->cid[2] >> 24) & 0xff), ((card->cid[2] >> 20) & 0xf),
+		     IS_SD(host->card) ? "SD" : "MMC",
+		     EXTRACT_SDMMC_MAJOR_VERSION(host->card->version),
+		     EXTRACT_SDMMC_MINOR_VERSION(host->card->version),
+		     (card->cid[0] >> 24),
+		     (card->cid[2] & 0xffff),
+		     ((card->cid[3] >> 16) & 0xffff),
+		     str[0], str[1], str[2], str[3], str[4], str[5],
+		     ((card->cid[2] >> 20) & 0xf),
 		     ((card->cid[2] >> 16) & 0xf));
 	bdev->dev.parent = host->dev;
 	bdev->flags = VMM_BLOCKDEV_RW;
