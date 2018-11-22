@@ -948,11 +948,6 @@ int sdhci_add_host(struct sdhci_host *host)
 		host->quirks |= SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 	}
 
-	rc = mmc_add_host(mmc);
-	if (rc) {
-		goto free_host_irq;
-	}
-
 	switch (SDHCI_GET_VERSION(host)) {
 	case SDHCI_SPEC_100:
 		ver = "v1";
@@ -969,20 +964,24 @@ int sdhci_add_host(struct sdhci_host *host)
 	};
 
 	if ((rc = vmm_host_va2pa((virtual_addr_t)host->ioaddr, &iopaddr))) {
-		goto remove_host;
+		goto free_host_irq;
 	}
 
-	vmm_printf("%s: SDHCI controller %s at 0x%llx irq %d [%s]\n",
-		   mmc_hostname(mmc), ver,
-		   (unsigned long long)iopaddr, host->irq,
-		   (host->sdhci_caps & SDHCI_CAN_DO_SDMA) ? "DMA" : "PIO");
+	vmm_linfo(mmc_hostname(mmc),
+		  "SDHCI controller %s at 0x%llx irq %d [%s]\n",
+		  ver, (unsigned long long)iopaddr, host->irq,
+		  (host->sdhci_caps & SDHCI_CAN_DO_SDMA) ? "DMA" : "PIO");
+
+	rc = mmc_add_host(mmc);
+	if (rc) {
+		vmm_lerror(mmc_hostname(mmc),
+			   "MMC add host failed (error %d)\n", rc);
+		goto free_host_irq;
+	}
 
 	sdhci_enable_card_detection(host);
 
 	return VMM_OK;
-
-remove_host:
-	mmc_remove_host(mmc);
 
 free_host_irq:
 	if (host->irq > 0) {

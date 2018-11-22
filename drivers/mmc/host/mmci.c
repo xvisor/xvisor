@@ -495,18 +495,21 @@ static int mmci_driver_probe(struct vmm_device *dev)
 	mmc->ops.get_cd = NULL;
 	mmc->ops.get_wp = NULL;
 
+	/* Print mmc host banner */
+	vmm_devtree_regaddr(dev->of_node, &basepa, 0);
+	vmm_linfo(dev->name,
+		  "PL%03x manf %x rev%u at 0x%08llx irq %d,%d (pio)\n",
+		  amba_part(dev), amba_manf(dev), amba_rev(dev),
+		  (unsigned long long)basepa, host->irq0, host->irq1);
+
+	/* Add mmc host */
 	rc = mmc_add_host(mmc);
 	if (rc) {
+		vmm_lerror(dev->name, "MMC add host failed (error %d)\n", rc);
 		goto free_irq1;
 	}
 
 	dev->priv = mmc;
-
-	vmm_devtree_regaddr(dev->of_node, &basepa, 0);
-	vmm_printf("%s: PL%03x manf %x rev%u at 0x%08llx irq %d,%d (pio)\n",
-		   dev->name, amba_part(dev), amba_manf(dev),
-		   amba_rev(dev), (unsigned long long)basepa,
-		   host->irq0, host->irq1);
 
 	return VMM_OK;
 

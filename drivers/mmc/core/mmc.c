@@ -1259,6 +1259,12 @@ int __mmc_sd_attach(struct mmc_host *host)
 		goto detect_freebdev_fail;
 	}
 
+	/* Print banner */
+	vmm_linfo(bdev->name, "using %s mode\n", host->card->mode_name);
+	vmm_linfo(bdev->name, "capacity %"PRIu64" blocks of %d bytes\n",
+		  bdev->num_blocks, bdev->block_size);
+	vmm_linfo(bdev->name, "%s\n", bdev->desc);
+
 	rc = VMM_OK;
 	goto detect_done;
 
