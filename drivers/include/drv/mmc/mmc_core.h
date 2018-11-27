@@ -60,7 +60,7 @@
 #define MMC_TIMING_UHS_DDR50	7
 #define MMC_TIMING_MMC_HS200	8
 
-
+#define MMC_MAX_BLOCK_LEN		512
 #define MMC_DATA_READ			1
 #define MMC_DATA_WRITE			2
 
@@ -79,6 +79,8 @@
 #define MMC_CMD_SET_BLOCKLEN		16
 #define MMC_CMD_READ_SINGLE_BLOCK	17
 #define MMC_CMD_READ_MULTIPLE_BLOCK	18
+#define MMC_CMD_SEND_TUNING_BLOCK	19
+#define MMC_CMD_SEND_TUNING_BLOCK_HS200	21
 #define MMC_CMD_SET_BLOCK_COUNT		23   /* adtc [31:0] data addr   R1  */
 #define MMC_CMD_WRITE_SINGLE_BLOCK	24
 #define MMC_CMD_WRITE_MULTIPLE_BLOCK	25
@@ -94,6 +96,7 @@
 #define SD_CMD_SEND_IF_COND		8
 
 #define SD_CMD_APP_SET_BUS_WIDTH	6
+#define SD_CMD_APP_SD_STATUS		13
 #define SD_CMD_ERASE_WR_BLK_START	32
 #define SD_CMD_ERASE_WR_BLK_END		33
 #define SD_CMD_APP_SEND_OP_COND		41
@@ -108,6 +111,7 @@
 
 #define OCR_BUSY			0x80000000
 #define OCR_HCS				0x40000000
+#define OCR_S18R			0x1000000
 #define OCR_VOLTAGE_MASK		0x007FFF80
 #define OCR_ACCESS_MODE			0x60000000
 
@@ -135,9 +139,17 @@
 /*
  * EXT_CSD fields
  */
+#define EXT_CSD_ENH_START_ADDR		136	/* R/W */
+#define EXT_CSD_ENH_SIZE_MULT		140	/* R/W */
 #define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
+#define EXT_CSD_PARTITION_SETTING	155	/* R/W */
 #define EXT_CSD_PARTITIONS_ATTRIBUTE	156	/* R/W */
+#define EXT_CSD_MAX_ENH_SIZE_MULT	157	/* R */
 #define EXT_CSD_PARTITIONING_SUPPORT	160	/* RO */
+#define EXT_CSD_RST_N_FUNCTION		162	/* R/W */
+#define EXT_CSD_BKOPS_EN		163	/* R/W & R/W/E */
+#define EXT_CSD_WR_REL_PARAM		166	/* R */
+#define EXT_CSD_WR_REL_SET		167	/* R/W */
 #define EXT_CSD_RPMB_MULT		168	/* RO */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
 #define EXT_CSD_BOOT_BUS_WIDTH		177
@@ -150,6 +162,7 @@
 #define EXT_CSD_HC_WP_GRP_SIZE		221	/* RO */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224	/* RO */
 #define EXT_CSD_BOOT_MULT		226	/* RO */
+#define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
 
 /*
  * EXT_CSD field definitions
@@ -161,10 +174,33 @@
 
 #define EXT_CSD_CARD_TYPE_26		(1 << 0)	/* Card can run at 26MHz */
 #define EXT_CSD_CARD_TYPE_52		(1 << 1)	/* Card can run at 52MHz */
+#define EXT_CSD_CARD_TYPE_DDR_1_8V	(1 << 2)
+#define EXT_CSD_CARD_TYPE_DDR_1_2V	(1 << 3)
+#define EXT_CSD_CARD_TYPE_DDR_52	(EXT_CSD_CARD_TYPE_DDR_1_8V \
+					| EXT_CSD_CARD_TYPE_DDR_1_2V)
+
+#define EXT_CSD_CARD_TYPE_HS200_1_8V	BIT(4)		/* Card can run at 200MHz */
+							/* SDR mode @1.8V I/O */
+#define EXT_CSD_CARD_TYPE_HS200_1_2V	BIT(5)		/* Card can run at 200MHz */
+							/* SDR mode @1.2V I/O */
+#define EXT_CSD_CARD_TYPE_HS200		(EXT_CSD_CARD_TYPE_HS200_1_8V | \
+					 EXT_CSD_CARD_TYPE_HS200_1_2V)
+#define EXT_CSD_CARD_TYPE_HS400_1_8V	BIT(6)
+#define EXT_CSD_CARD_TYPE_HS400_1_2V	BIT(7)
+#define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V | \
+					 EXT_CSD_CARD_TYPE_HS400_1_2V)
 
 #define EXT_CSD_BUS_WIDTH_1		0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4		1	/* Card is in 4 bit mode */
 #define EXT_CSD_BUS_WIDTH_8		2	/* Card is in 8 bit mode */
+#define EXT_CSD_DDR_BUS_WIDTH_4		5	/* Card is in 4 bit DDR mode */
+#define EXT_CSD_DDR_BUS_WIDTH_8		6	/* Card is in 8 bit DDR mode */
+#define EXT_CSD_DDR_FLAG		BIT(2)	/* Flag for DDR mode */
+
+#define EXT_CSD_TIMING_LEGACY	0	/* no high speed */
+#define EXT_CSD_TIMING_HS	1	/* HS */
+#define EXT_CSD_TIMING_HS200	2	/* HS200 */
+#define EXT_CSD_TIMING_HS400	3	/* HS400 */
 
 #define EXT_CSD_BOOT_ACK_ENABLE			(1 << 6)
 #define EXT_CSD_BOOT_PARTITION_ENABLE		(1 << 3)
@@ -174,6 +210,8 @@
 #define EXT_CSD_BOOT_ACK(x)		(x << 6)
 #define EXT_CSD_BOOT_PART_NUM(x)	(x << 3)
 #define EXT_CSD_PARTITION_ACCESS(x)	(x << 0)
+
+#define EXT_CSD_PARTITION_SETTING_COMPLETED	(1 << 0)
 
 #define R1_ILLEGAL_COMMAND		(1 << 22)
 #define R1_APP_CMD			(1 << 5)
@@ -204,6 +242,8 @@
 #define MMCPART_NOAVAILABLE		(0xff)
 #define PART_ACCESS_MASK		(0x7)
 #define PART_SUPPORT			(0x1)
+#define ENHNCD_SUPPORT			(0x2)
+#define PART_ENH_ATTRIB			(0x1f)
 
 #define SDIO_MAX_FUNCS		7
 
@@ -269,6 +309,17 @@ struct sdio_cis {
 	unsigned int		max_dtr;
 };
 
+enum mmc_voltage {
+	MMC_SIGNAL_VOLTAGE_000 = 0,
+	MMC_SIGNAL_VOLTAGE_120 = 1,
+	MMC_SIGNAL_VOLTAGE_180 = 2,
+	MMC_SIGNAL_VOLTAGE_330 = 4,
+};
+
+#define MMC_ALL_SIGNAL_VOLTAGE (MMC_SIGNAL_VOLTAGE_120 |\
+				MMC_SIGNAL_VOLTAGE_180 |\
+				MMC_SIGNAL_VOLTAGE_330)
+
 struct mmc_cid {
 	unsigned long psn;
 	unsigned short oid;
@@ -308,6 +359,14 @@ struct mmc_request {
 struct mmc_ios {
 	u32 bus_width;
 	u32 clock;
+	bool clk_disable;
+	enum mmc_voltage signal_voltage;
+};
+
+struct sd_ssr {
+	unsigned int au;		/* In sectors */
+	unsigned int erase_timeout;	/* In milliseconds */
+	unsigned int erase_offset;	/* In milliseconds */
 };
 
 enum mmc_bus_mode {
@@ -326,6 +385,8 @@ enum mmc_bus_mode {
 	MMC_HS_400,
 	MMC_MODES_END
 };
+
+#define MMC_CAP_MODE(mode)		(1 << mode)
 
 struct mmc_card {
 	struct mmc_host		*host;		/* the host this device belongs to */
@@ -385,7 +446,10 @@ struct mmc_card {
 	u32 cid[4];
 	u16 rca;
 
-	u8 ext_csd[512];
+	struct sd_ssr ssr;			/* SD status register */
+
+	u8 ext_csd[MMC_MAX_BLOCK_LEN];
+	u32 ext_csd_cardtype;			/* cardtype read from the MMC */
 
 	unsigned int		type;		/* card type */
 #define MMC_TYPE_MMC		0		/* MMC card */
@@ -428,16 +492,23 @@ struct mmc_card {
 	const char *mode_name;
 
 	int high_capacity;
-	char part_config;
+
 	char part_num;
+	u8 part_config;
+	u8 part_support;
+	u8 part_attr;
+	u8 wr_rel_set;
 	u32 read_bl_len;
 	u32 write_bl_len;
 	u32 erase_grp_size;
+	u32 hc_wp_grp_size;
 	u64 capacity;
 	u64 capacity_user;
 	u64 capacity_boot;
 	u64 capacity_rpmb;
 	u64 capacity_gp[4];
+	u64 enh_user_start;
+	u64 enh_user_size;
 
 	struct sd_switch_caps	sw_caps;	/* switch (CMD6) caps */
 
@@ -462,13 +533,14 @@ struct mmc_host_ops {
 	int (*send_cmd)(struct mmc_host *mmc,
 			struct mmc_cmd *cmd,
 			struct mmc_data *data);
-	void (*set_ios)(struct mmc_host *mmc,
-			struct mmc_ios *ios);
+	int (*set_ios)(struct mmc_host *mmc,
+		       struct mmc_ios *ios);
 	int (*init_card)(struct mmc_host *mmc, struct mmc_card *card);
 	int (*get_cd)(struct mmc_host *mmc); /* Returns
 						0: No Card
 						1: Card Present */
 	int (*get_wp)(struct mmc_host *mmc);
+	int (*execute_tuning)(struct mmc_host *mmc, u32 opcode);
 };
 
 /**
@@ -516,23 +588,31 @@ struct mmc_host {
 
 	u32 caps;
 
-#define MMC_CAP_MODE_HS			0x00000001
-#define MMC_CAP_MODE_HS_52MHz		0x00000010
-#define MMC_CAP_MODE_4BIT		0x00000100
-#define MMC_CAP_MODE_8BIT		0x00000200
-#define MMC_CAP_MODE_1BIT		0x00000800
-#define MMC_CAP_MODE_SPI		0x00001000
-#define MMC_CAP_MODE_HC			0x00002000
-#define MMC_CAP_NEEDS_POLL		0x00004000
-#define MMC_CAP_NONREMOVABLE		0x00008000	/* Nonremovable e.g. eMMC */
-#define MMC_CAP_CMD23			0x00010000	/* CMD23 supported */
-#define MMC_CAP_MODE_HS200		0x00020000
-#define MMC_CAP_MODE_HS400		0x00040000
-#define MMC_CAP_MODE_UHS_SDR12		0x00080000
-#define MMC_CAP_MODE_UHS_SDR25		0x00100000
-#define MMC_CAP_MODE_UHS_SDR50		0x00200000
-#define MMC_CAP_MODE_UHS_SDR104		0x00400000
-#define MMC_CAP_MODE_UHS_DDR50		0x00800000
+#define MMC_CAP_MODE_LEGACY		(MMC_CAP_MODE(MMC_LEGACY) | MMC_CAP_MODE(SD_LEGACY))
+#define MMC_CAP_MODE_HS			(MMC_CAP_MODE(MMC_HS) | MMC_CAP_MODE(SD_HS))
+#define MMC_CAP_MODE_HS_52MHz		MMC_CAP_MODE(MMC_HS_52)
+#define MMC_CAP_MODE_HS200		MMC_CAP_MODE(MMC_HS_200)
+#define MMC_CAP_MODE_HS400		MMC_CAP_MODE(MMC_HS_400)
+#define MMC_CAP_MODE_DDR_52		MMC_CAP_MODE(MMC_DDR_52)
+#define MMC_CAP_MODE_UHS_SDR12		MMC_CAP_MODE(UHS_SDR12)
+#define MMC_CAP_MODE_UHS_SDR25		MMC_CAP_MODE(UHS_SDR25)
+#define MMC_CAP_MODE_UHS_SDR50		MMC_CAP_MODE(UHS_SDR50)
+#define MMC_CAP_MODE_UHS_SDR104		MMC_CAP_MODE(UHS_SDR104)
+#define MMC_CAP_MODE_UHS_DDR50		MMC_CAP_MODE(UHS_DDR50)
+#define MMC_CAP_MODE_1BIT		0x00010000
+#define MMC_CAP_MODE_4BIT		0x00020000
+#define MMC_CAP_MODE_8BIT		0x00040000
+#define MMC_CAP_MODE_SPI		0x00080000
+#define MMC_CAP_MODE_HC			0x00100000
+#define MMC_CAP_NEEDS_POLL		0x00200000
+#define MMC_CAP_NONREMOVABLE		0x00400000	/* Nonremovable e.g. eMMC */
+#define MMC_CAP_CMD23			0x00800000	/* CMD23 supported */
+
+#define MMC_CAP_MODE_UHS		(MMC_CAP_MODE(UHS_SDR12) | \
+					 MMC_CAP_MODE(UHS_SDR25) | \
+					 MMC_CAP_MODE(UHS_SDR50) | \
+					 MMC_CAP_MODE(UHS_SDR104) | \
+					 MMC_CAP_MODE(UHS_DDR50))
 
 	u32 caps2;
 

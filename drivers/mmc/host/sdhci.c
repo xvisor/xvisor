@@ -556,7 +556,7 @@ static void sdhci_set_power(struct sdhci_host *host, u16 power)
 	sdhci_writeb(host, pwr, SDHCI_POWER_CONTROL);
 }
 
-static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+static int sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	u32 ctrl;
 	struct sdhci_host *host = mmc_priv(mmc);
@@ -602,6 +602,8 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	/* If available, call the driver specific "post" set_ios() function */
 	if (host->ops.set_ios_post)
 		host->ops.set_ios_post(host);
+
+	return 0;
 }
 
 static int sdhci_get_cd(struct mmc_host *mmc)

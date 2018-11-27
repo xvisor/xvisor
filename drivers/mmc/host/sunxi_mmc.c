@@ -304,7 +304,7 @@ static int sunxi_mmc_config_clock(struct sunxi_mmc_host *host, u32 div)
 	return VMM_OK;
 }
 
-static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+static int sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	u32 clkdiv = 0;
 	struct sunxi_mmc_host* host = mmc_priv(mmc);
@@ -318,7 +318,7 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 				(ios->clock / 2));
 		if (sunxi_mmc_config_clock(host, clkdiv)) {
 			host->fatal_err = 1;
-			return;
+			return VMM_EIO;
 		}
 	}
 
@@ -330,6 +330,8 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	} else {
 		vmm_writel(0, &host->reg->width);
 	}
+
+	return 0;
 }
 
 static int sunxi_mmc_init_card(struct mmc_host *mmc, struct mmc_card *card)

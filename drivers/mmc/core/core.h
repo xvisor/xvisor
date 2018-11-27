@@ -45,11 +45,15 @@ int mmc_send_cmd(struct mmc_host *host,
 unsigned int mmc_align_data_size(struct mmc_card *card,
 				 unsigned int sz);
 
-void mmc_set_clock(struct mmc_host *host, u32 clock);
-void mmc_set_bus_width(struct mmc_host *host, u32 width);
+int mmc_set_clock(struct mmc_host *host, u32 clock, bool disable);
+int mmc_set_bus_width(struct mmc_host *host, u32 width);
+int mmc_set_signal_voltage(struct mmc_host *host, enum mmc_voltage voltage);
+int mmc_signal_voltage_to_mv(enum mmc_voltage voltage);
+int mmc_set_initial_state(struct mmc_host *host);
 
 int mmc_init_card(struct mmc_host *host, struct mmc_card *card);
 int mmc_getcd(struct mmc_host *host);
+int mmc_execute_tuning(struct mmc_host *host, u32 opcode);
 int mmc_send_status(struct mmc_host *host,
 		    struct mmc_card *card,
 		    int timeout);

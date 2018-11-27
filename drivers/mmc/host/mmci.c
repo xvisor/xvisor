@@ -326,7 +326,7 @@ static int mmci_request(struct mmc_host *mmc,
 	}
 }
 
-static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+static int mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct mmci_host *host = mmc_priv(mmc);
 	u32 sdi_clkcr;
@@ -385,6 +385,8 @@ static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	vmm_writel(sdi_clkcr, &host->base->clock);
 	vmm_udelay(CLK_CHANGE_DELAY);
+
+	return 0;
 }
 
 static int mmci_init_card(struct mmc_host *mmc, struct mmc_card *card)

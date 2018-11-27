@@ -105,29 +105,72 @@ unsigned int mmc_align_data_size(struct mmc_card *card,
 	return sz;
 }
 
-static void __mmc_set_ios(struct mmc_host *host)
+static int __mmc_set_ios(struct mmc_host *host)
 {
 	if (host->ops.set_ios) {
-		host->ops.set_ios(host, &host->ios);
+		return host->ops.set_ios(host, &host->ios);
 	}
+	return VMM_ENOTSUPP;
 }
 
-void mmc_set_clock(struct mmc_host *host, u32 clock)
+int mmc_set_clock(struct mmc_host *host, u32 clock, bool disable)
 {
-	if (clock > host->f_max)
-		clock = host->f_max;
+	if (!disable) {
+		if (clock > host->f_max)
+			clock = host->f_max;
 
-	if (clock < host->f_min)
-		clock = host->f_min;
+		if (clock < host->f_min)
+			clock = host->f_min;
+	}
 
 	host->ios.clock = clock;
-	__mmc_set_ios(host);
+	host->ios.clk_disable = disable;
+	return __mmc_set_ios(host);
 }
 
-void mmc_set_bus_width(struct mmc_host *host, u32 width)
+int mmc_set_bus_width(struct mmc_host *host, u32 width)
 {
 	host->ios.bus_width = width;
-	__mmc_set_ios(host);
+	return __mmc_set_ios(host);
+}
+
+int mmc_set_signal_voltage(struct mmc_host *host, enum mmc_voltage voltage)
+{
+	host->ios.signal_voltage = voltage;
+	return __mmc_set_ios(host);
+}
+
+int mmc_signal_voltage_to_mv(enum mmc_voltage voltage)
+{
+	switch (voltage) {
+	case MMC_SIGNAL_VOLTAGE_000: return 0;
+	case MMC_SIGNAL_VOLTAGE_330: return 3300;
+	case MMC_SIGNAL_VOLTAGE_180: return 1800;
+	case MMC_SIGNAL_VOLTAGE_120: return 1200;
+	}
+	return VMM_EINVALID;
+}
+
+/*
+ * put the host in the initial state:
+ * - turn on Vdd (card power supply)
+ * - configure the bus width and clock to minimal values
+ */
+int mmc_set_initial_state(struct mmc_host *host)
+{
+	int err;
+
+	/* First try to set 3.3V. If it fails set to 1.8V */
+	err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);
+	if (err != 0)
+		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
+	if (err != 0)
+		return err;
+
+	mmc_set_bus_width(host, 1);
+	mmc_set_clock(host, 1, TRUE);
+
+	return 0;
 }
 
 int mmc_init_card(struct mmc_host *host, struct mmc_card *card)
@@ -143,6 +186,15 @@ int mmc_getcd(struct mmc_host *host)
 {
 	if (host->ops.get_cd) {
 		return host->ops.get_cd(host);
+	}
+
+	return VMM_ENOTSUPP;
+}
+
+int mmc_execute_tuning(struct mmc_host *host, u32 opcode)
+{
+	if (host->ops.execute_tuning) {
+		return host->ops.execute_tuning(host, opcode);
 	}
 
 	return VMM_ENOTSUPP;
@@ -465,6 +517,20 @@ int mmc_add_host(struct mmc_host *host)
 
 	if (!host->b_max) {
 		host->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+	}
+
+	/* We assume that MMC host always supports SD/MMC legacy modes */
+	host->caps |= MMC_CAP_MODE_LEGACY;
+	if (host->caps & MMC_CAP_MODE_8BIT) {
+		/* 8-bit mode imply 4-bit and 1-bit modes are available. */
+		host->caps |= MMC_CAP_MODE_4BIT;
+		host->caps |= MMC_CAP_MODE_1BIT;
+	} else if (host->caps & MMC_CAP_MODE_4BIT) {
+		/* 4-bit mode imply 1-bit mode is available. */
+		host->caps |= MMC_CAP_MODE_1BIT;
+	} else if (!(host->caps & MMC_CAP_MODE_1BIT)) {
+		/* MMC host must atleast provide 1-bit mode */
+		return VMM_EINVALID;
 	}
 
 	if (host->ops.init) {

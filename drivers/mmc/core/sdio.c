@@ -741,7 +741,7 @@ int __sdio_attach(struct mmc_host *host)
 
 	/* Set minimum bus_width and minimum clock */
 	mmc_set_bus_width(host, 1);
-	mmc_set_clock(host, 1);
+	mmc_set_clock(host, 1, TRUE);
 
 	if (!(card->ocr & R4_MEMORY_PRESENT)) {
 		card->type = MMC_TYPE_SDIO;
@@ -816,7 +816,7 @@ int __sdio_attach(struct mmc_host *host)
 	/*
 	 * Change to the card's maximum speed.
 	 */
-	mmc_set_clock(host, sdio_get_max_clock(card));
+	mmc_set_clock(host, sdio_get_max_clock(card), TRUE);
 
 	/*
 	 * Switch to wider bus (if supported).
