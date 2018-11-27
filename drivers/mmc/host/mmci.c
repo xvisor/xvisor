@@ -558,7 +558,7 @@ static u32 mmci_v1[]= {
 	INIT_PWR, /* pwr_init */
 	SDI_CLKCR_CLKDIV_INIT_V1 | SDI_CLKCR_CLKEN, /* clkdiv_init */
 	VOLTAGE_WINDOW_MMC, /* voltages */
-	0, /* caps */
+	MMC_CAP_MODE_4BIT, /* caps */
 	ARM_MCLK, /* clock_in */
 	ARM_MCLK / (2 * (SDI_CLKCR_CLKDIV_INIT_V1 + 1)), /* clock_min */
 	6250000, /* clock_max */
