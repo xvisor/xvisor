@@ -51,7 +51,6 @@
 #define MIN_FREQ 400000
 
 struct bcm2835_sdhci_host {
-	struct sdhci_host host;
 	struct clk *clk;
 	u32 irq;
 	u32 clock_freq;
