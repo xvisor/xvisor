@@ -28,8 +28,133 @@
 		device_type = "memory";
 		reg = <0x0 0x0 0x0 0x80000000>;
 	};
+
+	v_3_3: regulator-3-3v {
+		compatible = "regulator-fixed";
+		regulator-name = "v_3_3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		status = "okay";
+	};
 };
 
 &uart0 {
 	status = "okay";
+};
+
+&ap_sdhci0 {
+	bus-width = <8>;
+	no-1-8-v;
+	no-sd;
+	no-sdio;
+	non-removable;
+	status = "okay";
+	vqmmc-supply = <&v_3_3>;
+};
+
+&cp0_pinctrl {
+	/*
+	 * MPP Bus:
+	 * [0-31] = 0xff: Keep default CP0_shared_pins:
+	 * [11] CLKOUT_MPP_11 (out)
+	 * [23] LINK_RD_IN_CP2CP (in)
+	 * [25] CLKOUT_MPP_25 (out)
+	 * [29] AVS_FB_IN_CP2CP (in)
+	 * [32, 33, 34] pci0/1/2 reset
+	 * [35-38] CP0 I2C1 and I2C0
+	 * [39] GPIO reset button
+	 * [40,41] LED0 and LED1
+	 * [43] 1512 phy reset
+	 * [47] USB VBUS EN (active low)
+	 * [48] FAN PWM
+	 * [49] SFP+ present signal
+	 * [50] TPM interrupt
+	 * [51] WLAN0 disable
+	 * [52] WLAN1 disable
+	 * [53] LTE disable
+	 * [54] NFC reset
+	 * [55] Micro SD card detect
+	 * [56-61] Micro SD
+	 */
+
+	cp0_pci0_reset_pins: pci0-reset-pins {
+		marvell,pins = "mpp32";
+		marvell,function = "gpio";
+	};
+
+	cp0_pci1_reset_pins: pci1-reset-pins {
+		marvell,pins = "mpp33";
+		marvell,function = "gpio";
+	};
+
+	cp0_pci2_reset_pins: pci2-reset-pins {
+		marvell,pins = "mpp34";
+		marvell,function = "gpio";
+	};
+
+	cp0_i2c1_pins: i2c1-pins {
+		marvell,pins = "mpp35", "mpp36";
+		marvell,function = "i2c1";
+	};
+
+	cp0_i2c0_pins: i2c0-pins {
+		marvell,pins = "mpp37", "mpp38";
+		marvell,function = "i2c0";
+	};
+
+	cp0_gpio_reset_pins: gpio-reset-pins {
+		marvell,pins = "mpp39";
+		marvell,function = "gpio";
+	};
+
+	cp0_led0_pins: led0-pins {
+		marvell,pins = "mpp40";
+		marvell,function = "gpio";
+	};
+
+	cp0_led1_pins: led1-pins {
+		marvell,pins = "mpp41";
+		marvell,function = "gpio";
+	};
+
+	cp0_copper_eth_phy_reset: copper-eth-phy-reset {
+		marvell,pins = "mpp43";
+		marvell,function = "gpio";
+	};
+
+	cp0_xhci_vbus_pins: xhci0-vbus-pins {
+		marvell,pins = "mpp47";
+		marvell,function = "gpio";
+	};
+
+	cp0_fan_pwm_pins: fan-pwm-pins {
+		marvell,pins = "mpp48";
+		marvell,function = "gpio";
+	};
+
+	cp0_sfp_present_pins: sfp-present-pins {
+		marvell,pins = "mpp49";
+		marvell,function = "gpio";
+	};
+
+	cp0_tpm_irq_pins: tpm-irq-pins {
+		marvell,pins = "mpp50";
+		marvell,function = "gpio";
+	};
+
+	cp0_sdhci_pins: sdhci-pins {
+		marvell,pins = "mpp55", "mpp56", "mpp57", "mpp58", "mpp59",
+			       "mpp60", "mpp61";
+		marvell,function = "sdio";
+	};
+};
+
+&cp0_sdhci0 {
+	broken-cd;
+	bus-width = <4>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&cp0_sdhci_pins>;
+	status = "okay";
+	vqmmc-supply = <&v_3_3>;
 };
