@@ -25,6 +25,7 @@
 #include <libs/stringlib.h>
 #include <libs/libfdt.h>
 #include <arch_devtree.h>
+#include <arch_sections.h>
 
 /* Note: dt_blob_start is start of flattend device tree
  * that is linked directly with hypervisor binary
@@ -34,6 +35,10 @@ extern u32 dt_blob_start;
 static u32 bank_nr;
 static physical_addr_t bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 static physical_addr_t dt_bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
+
+static u32 load_bank_nr;
+static physical_addr_t load_bank_resv_pa;
+static physical_size_t load_bank_resv_sz;
 
 struct match_info {
 	struct fdt_fileinfo *fdt;
@@ -153,7 +158,7 @@ int arch_devtree_ram_bank_setup(void)
 			break;
 		}
 	}
-	if (bank_nr < 2) {
+	if (!bank_nr) {
 		return VMM_OK;
 	}
 
@@ -168,6 +173,27 @@ int arch_devtree_ram_bank_setup(void)
 				bank_data[(2*i)+1] = bank_data[(2*j)+1];
 				bank_data[(2*j)+1] = tmp;
 			}
+		}
+	}
+
+	/*
+	 * For quite a few RISC-V systems, the RUNTIME M-mode firmware
+	 * is located at start of a RAM bank. Unfortunately in most cases,
+	 * the DTB passed to Xvisor (or Linux) does not have memreserve
+	 * entry for the RUNTIME M-mode firmware. To be safe, we reserve
+	 * RAM from start of the RAM bank to location where Xvisor is
+	 * loaded in the RAM bank.
+	 */
+	load_bank_nr = 0;
+	load_bank_resv_pa = 0;
+	load_bank_resv_sz = 0;
+	for (i = 0; i < bank_nr; i++) {
+		if (bank_data[2*i] <= arch_code_paddr_start() &&
+		    arch_code_paddr_start() < (bank_data[2*i] + bank_data[2*i + 1])) {
+			load_bank_nr = i;
+			load_bank_resv_pa = bank_data[2*i];
+			load_bank_resv_sz = arch_code_paddr_start() - bank_data[2*i];
+			break;
 		}
 	}
 
@@ -215,6 +241,10 @@ int arch_devtree_reserve_count(u32 *count)
 
 	*count = libfdt_reserve_count(&fdt);
 
+	if (load_bank_resv_sz) {
+		*count += 1;
+	}
+
 	return VMM_OK;
 }
 
@@ -223,6 +253,15 @@ int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 	u64 tmp;
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
+
+	if (load_bank_resv_sz) {
+		if (index == 0) {
+			*addr = load_bank_resv_pa;
+			return VMM_OK;
+		} else {
+			index -= 1;
+		}
+	}
 
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
@@ -244,6 +283,15 @@ int arch_devtree_reserve_size(u32 index, physical_size_t *size)
 	u64 tmp;
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
+
+	if (load_bank_resv_sz) {
+		if (index == 0) {
+			*size = load_bank_resv_sz;
+			return VMM_OK;
+		} else {
+			index -= 1;
+		}
+	}
 
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
