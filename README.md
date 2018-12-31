@@ -15,8 +15,8 @@ Xvisor is an open-source type-1 hypervisor, which aims at providing
 a monolithic, light-weight, portable, and flexible virtualization solution.
 
 It provides a high performance and low memory foot print virtualization
-solution for ARMv5, ARMv6, ARMv7a, ARMv7a-ve, ARMv8a, x86_64, and other CPU
-architectures.
+solution for ARMv5, ARMv6, ARMv7a, ARMv7a-ve, ARMv8a, x86_64, RISC-V, and
+other CPU architectures.
 
 Xvisor primarily supports Full virtualization hence, supports a wide
 range of unmodified Guest operating systems. Paravirtualization is optional
@@ -93,7 +93,7 @@ to new questions.
 To configure hypervisor use one the following command:
 
 	make <configuration_command>
-	
+
 or
 
 	make O=<output_dir> <configuration_command>
@@ -104,8 +104,8 @@ Various configuration commands (`<configuration_command>`) are:
 - `menuconfig` - Text based color menus, radiolists & dialogs.
 - `oldconfig` - Default all questions based on the contents of your existing
 	`./.config` file and asking about new config symbols.
-- `defconfig` - Create a `./.config` file by using the default values from
-	`arch/$ARCH/board/$BOARD/defconfig`.
+- `<xyz>_defconfig` - Create a `./.config` file by using the default values from
+	`arch/$ARCH/configs/<xyz>_defconfig`.
 
 For configuration Xvisor uses Openconf, which is a modified version of Linux Kconfig.
 The motivation behing Openconf is to get Xvisor specific information from
@@ -160,4 +160,3 @@ And finally remember
 >  It's all JUST FOR FUN....
 
 	.:: HAPPY HACKING ::.
-
