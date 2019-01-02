@@ -29,7 +29,7 @@ typedef int s32;
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
-typedef unsigned int size_t;
+typedef unsigned long size_t;
 typedef unsigned int bool;
 typedef unsigned long ulong;
 
@@ -84,5 +84,7 @@ struct pt_regs {
 #define be32_to_cpup(x)		_swab32(*(x))
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
+
+#define PRu64	"%llx"
 
 #endif /* __ARCH_TYPES_H__ */

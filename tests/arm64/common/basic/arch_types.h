@@ -29,9 +29,9 @@ typedef int s32;
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
-typedef unsigned int size_t;
+typedef unsigned long size_t;
 typedef unsigned int bool;
-typedef unsigned int ulong;
+typedef unsigned long ulong;
 
 /** Boolean macros */
 #define TRUE		1
@@ -41,8 +41,8 @@ typedef unsigned int ulong;
 #define stringify(s)	tostring(s)
 #define tostring(s)	#s
 
-typedef long long s64;
-typedef unsigned long long u64;
+typedef long s64;
+typedef unsigned long u64;
 typedef unsigned int irq_flags_t;
 typedef unsigned long virtual_addr_t;
 typedef unsigned long virtual_size_t;
@@ -84,5 +84,7 @@ struct pt_regs {
 #define be32_to_cpup(x)		_swab32(*(x))
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
+
+#define PRu64	"%lx"
 
 #endif /* __ARCH_TYPES_H__ */

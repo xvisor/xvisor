@@ -236,35 +236,38 @@ void basic_int2str(char * dst, int src)
 
 void basic_ulonglong2str(char *dst, unsigned long long src)
 {
+	u64 r;
 	unsigned long long val, remainder;
-        int count = 0, pos = 0;
-        static const char intchars[] = "0123456789";
+	int count = 0, pos = 0;
+	static const char intchars[] = "0123456789";
 
-        val = src;
-        while (val) {
-                count++;
-                val = do_udiv64(val, 10, &remainder);
-        }
-        if (src < 0) {
-                count++;
-        }
+	val = src;
+	while (val) {
+		count++;
+		val = do_udiv64(val, 10, &r);
+		remainder = r;
+	}
+	if (src < 0) {
+		count++;
+	}
 
-        val = (src < 0) ? -src : src;
-        while (val) {
-                val = do_udiv64(val, 10, &remainder);
-                dst[count - pos - 1] = intchars[remainder];
-                pos++;
-        }
-        if (src < 0) {
-                dst[0] = '-';
-        }
+	val = (src < 0) ? -src : src;
+	while (val) {
+		val = do_udiv64(val, 10, &r);
+		remainder = r;
+		dst[count - pos - 1] = intchars[remainder];
+		pos++;
+	}
+	if (src < 0) {
+		dst[0] = '-';
+	}
 
-        if (count == 0) {
-                dst[count] = '0';
-                count++;
-        }
+	if (count == 0) {
+		dst[count] = '0';
+		count++;
+	}
 
-        dst[count] = '\0';
+	dst[count] = '\0';
 }
 
 unsigned int basic_hexstr2uint(char * src)

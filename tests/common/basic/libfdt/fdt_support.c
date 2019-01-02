@@ -811,8 +811,6 @@ static inline u64 of_read_number(const u32 *cell, int size)
 	return r;
 }
 
-#define PRu64	"%llx"
-
 /* Max address size we deal with */
 #define OF_MAX_ADDR_CELLS	4
 #define OF_BAD_ADDR	((u64)-1)
@@ -1282,8 +1280,8 @@ int fdt_verify_alias_address(void *fdt, int anode, const char *alias, u64 addr)
 
 	dt_addr = fdt_translate_address(fdt, node, reg);
 	if (addr != dt_addr) {
-		printf("Warning: U-Boot configured device %s at address %llx,\n"
-		       " but the device tree has it address %llx.\n",
+		printf("Warning: U-Boot configured device %s at address "PRu64",\n"
+		       " but the device tree has it address "PRu64".\n",
 		       alias, addr, dt_addr);
 		return 0;
 	}
