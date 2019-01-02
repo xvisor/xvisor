@@ -29,7 +29,7 @@
 	 * The _start function ensures that it exectues from intended
 	 * base address provided at compile time.
 	 */
-	.section .text, "ax", %progbits
+	.section .entry, "ax", %progbits
 	.globl _start
 _start:
 	/*
@@ -75,10 +75,13 @@ _start:
 	b	.
 
 	.align 3
+	.section .entry, "ax", %progbits
 __gic_cpu_base:
 	.dword	GIC_CPU_BASE
 
 	/* Primary core boot-up sequence */
+	.align 3
+	.section .entry, "ax", %progbits
 primary_cpu_boot:
 	/* Check if relocation required */
 	cmp	x4, x6
@@ -156,9 +159,12 @@ _start_hang:
 	b	.
 
 	.align 3
+	.section .entry, "ax", %progbits
 __relocated:
 	.dword	_relocated
 
+	.align 3
+	.section .entry, "ax", %progbits
 	.globl _switch_to_user_mode
 _switch_to_user_mode:
 	msr	tpidr_el1, x0
@@ -170,6 +176,7 @@ _switch_to_user_mode:
 	eret
 
 	.align 3
+	.section .entry, "ax", %progbits
 __sctlr_mmu_clear:
 	.dword ~(SCTLR_A_MASK)
 __sctlr_mmu_set:
@@ -182,10 +189,6 @@ __zero_region_start:
 	.dword _zero_region_start
 __zero_region_end:
 	.dword _zero_region_end
-
-	/* 
-	 * Stacks.
-	 */
 __el0_stack:
 	.dword _usr_stack_end
 __el1_stack:
@@ -193,6 +196,7 @@ __el1_stack:
 
 
 	.align	11
+	.section .entry, "ax", %progbits
 ENTRY(vectors)
 	ventry	svc_sync_invalid	/* Synchronous EL1t */
 	ventry	svc_irq_invalid		/* IRQ EL1t */
@@ -310,5 +314,3 @@ EXCEPTION_HANDLER usr_error_a32
 	mov	x1, EXC_USR_SERROR_A32
 	CALL_EXCEPTION_CFUNC do_bad_mode
 	PULL_REGS
-
-

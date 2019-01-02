@@ -34,7 +34,7 @@ SECTIONS
 
 	.text :
  	{
-		*(.expvect)
+		*(.entry)
 		*(.text)
 		_etext = .;
 	}
