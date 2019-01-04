@@ -26,6 +26,7 @@
 #include <basic_stdio.h>
 #include <basic_string.h>
 #include <riscv_plat.h>
+#include <riscv_timer.h>
 #include <serial/uart8250.h>
 #include <sys/vminfo.h>
 #include <display/simplefb.h>
@@ -59,7 +60,7 @@ void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
 	basic_strcpy(cmdline, "root=/dev/ram rw "
 			      "earlycon=sbi "
-			      "console=ttyAMA0");
+			      "console=ttyS0,115200");
 }
 
 void arch_board_fdt_fixup(void *fdt_addr)
@@ -129,7 +130,8 @@ physical_addr_t arch_board_iosection_addr(int num)
 
 u32 arch_board_pic_nr_irqs(void)
 {
-	return VIRT_PLIC_NUM_SOURCES;
+	/* TODO: */
+	return __riscv_xlen;
 }
 
 int arch_board_pic_init(void)
@@ -170,44 +172,38 @@ int arch_board_pic_unmask(u32 irq)
 
 void arch_board_timer_enable(void)
 {
-	/* TODO: */
-	return;
+	riscv_timer_enable();
 }
 
 void arch_board_timer_disable(void)
 {
-	/* TODO: */
-	return;
+	riscv_timer_disable();
 }
 
 u64 arch_board_timer_irqcount(void)
 {
-	/* TODO: */
-	return 0;
+	return riscv_timer_irqcount();
 }
 
 u64 arch_board_timer_irqdelay(void)
 {
-	/* TODO: */
-	return 0;
+	return riscv_timer_irqdelay();
 }
 
 u64 arch_board_timer_timestamp(void)
 {
-	/* TODO: */
-	return 0;
+	return riscv_timer_timestamp();
 }
 
 void arch_board_timer_change_period(u32 usecs)
 {
-	/* TODO: */
-	return;
+	riscv_timer_change_period(usecs);
 }
 
 int arch_board_timer_init(u32 usecs)
 {
 	/* TODO: */
-	return 0;
+	return riscv_timer_init(usecs, 10000000);
 }
 
 int arch_board_serial_init(void)
