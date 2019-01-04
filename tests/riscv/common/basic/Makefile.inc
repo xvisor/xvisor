@@ -42,10 +42,13 @@ ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry.o \
 	   $(ARCH_OBJ_DIR)/arch_irq.o \
 	   $(ARCH_OBJ_DIR)/arch_linux.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu.o \
+	   $(ARCH_OBJ_DIR)/riscv_timer.o \
 	   $(board_objs)
 
 ARCH_DEPS= $(ARCH_DIR)/riscv_asm.h \
            $(ARCH_DIR)/riscv_defines.h \
+           $(ARCH_DIR)/riscv_timer.h \
+           $(ARCH_DIR)/riscv_sbi.h \
            $(ARCH_DIR)/arch_io.h \
            $(ARCH_DIR)/arch_types.h \
            $(ARCH_DIR)/arch_math.h

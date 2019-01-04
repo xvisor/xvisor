@@ -6,60 +6,32 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_irq.c
+ * @file riscv_timer.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for arch specific interrupt handling
+ * @brief RISC-V Timer Header
  */
+#ifndef __RISCV_TIMER_H__
+#define __RISCV_TIMER_H__
 
-#include <riscv_asm.h>
-#include <riscv_defines.h>
-#include <riscv_timer.h>
-#include <arch_irq.h>
-#include <basic_irq.h>
+#include <arch_types.h>
 
-void do_exec(struct pt_regs *regs)
-{
-	unsigned long scause = csr_read(scause);
+void riscv_timer_enable(void);
+void riscv_timer_disable(void);
+u64 riscv_timer_irqcount(void);
+u64 riscv_timer_irqdelay(void);
+u64 riscv_timer_timestamp(void);
+int riscv_timer_irqhndl(u32 irq_no, struct pt_regs *regs);
+void riscv_timer_change_period(u32 usecs);
+int riscv_timer_init(u32 usecs, u64 freq);
 
-	if (scause & SCAUSE_INTERRUPT_MASK) {
-		if ((scause & SCAUSE_CAUSE_MASK) == IRQ_S_TIMER)
-			riscv_timer_irqhndl(IRQ_S_TIMER, regs);
-		if (basic_irq_exec_handler(regs)) {
-			while (1);
-		}
-	} else {
-		while (1);
-	}
-}
-
-void arch_irq_setup(void)
-{
-	/*
-	 * Nothing to do here.
-	 */
-}
-
-void arch_irq_enable(void)
-{
-	csr_set(sstatus, SR_SIE);
-}
-
-void arch_irq_disable(void)
-{
-	csr_clear(sstatus, SR_SIE);
-}
-
-void arch_irq_wfi(void)
-{
-	wfi();
-}
+#endif

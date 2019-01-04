@@ -80,13 +80,25 @@
 #define SATP_MODE			SATP_MODE_39
 #endif
 
+#define IRQ_S_SOFT			1
+#define IRQ_H_SOFT			2
+#define IRQ_M_SOFT			3
+#define IRQ_S_TIMER			5
+#define IRQ_H_TIMER			6
+#define IRQ_M_TIMER			7
+#define IRQ_S_EXT			9
+#define IRQ_H_EXT			10
+#define IRQ_M_EXT			11
+#define IRQ_COP				12
+#define IRQ_HOST			13
+
 /* Interrupt Enable and Interrupt Pending flags */
 /* Software Interrupt Enable */
-#define SIE_SSIE			_AC(0x00000002, UL)
+#define SIE_SSIE			(1 << IRQ_S_SOFT)
 /* Timer Interrupt Enable */
-#define SIE_STIE			_AC(0x00000020, UL)
+#define SIE_STIE			(1 << IRQ_S_TIMER)
 /* External Interrupt Enable */
-#define SIE_SEIE			_AC(0x000000200, UL)
+#define SIE_SEIE			(1 << IRQ_S_EXT)
 
 /* SCAUSE */
 #if __riscv_xlen == 32
