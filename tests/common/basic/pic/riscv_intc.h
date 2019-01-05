@@ -16,40 +16,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_cache.S
+ * @file riscv_intc.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Cache operations
+ * @brief RISC-V local interrupt controller driver
  */
+#ifndef __RISCV_INTC_H__
+#define __RISCV_INTC_H__
 
-#include <arch_asm.h>
+#include <arch_types.h>
 
-	/* TODO: clean the entire data cache */	
-	.globl arch_clean_dcache
-arch_clean_dcache:
-	ret
+u32 riscv_intc_nr_irqs(void);
+u32 riscv_intc_active_irq(void);
+int riscv_intc_ack_irq(u32 irq);
+int riscv_intc_eoi_irq(u32 irq);
+int riscv_intc_mask(u32 irq);
+int riscv_intc_unmask(u32 irq);
+int riscv_intc_init(void);
 
-	/* TODO: clean & invalidate the entire data cache */	
-	.globl arch_clean_invalidate_dcache
-arch_clean_invalidate_dcache:
-	ret
-
-	/* TODO: clean by memory region by mva range 
-	 * a0 - start address of region
-	 * a1 - end address of region
-	 */
-	.globl arch_clean_dcache_mva_range
-arch_clean_dcache_mva_range:
-	ret
-
-	/* TODO: clean and invalidate a memory region by mva
-	 * a0 - start address of region
-	 * a1 - end address of region
-	 */
-	.globl arch_clean_invalidate_dcache_mva_range
-arch_clean_invalidate_dcache_mva_range:
-	ret
-
-	/* TODO: invalidate the entire i-cache */
-	.globl arch_invalidate_icache
-arch_invalidate_icache:
-	ret
+#endif

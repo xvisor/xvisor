@@ -16,14 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file riscv_asm.h
+ * @file arch_asm.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief common assembly macros for RISC-V code
  */
-#ifndef __RISCV_ASM_H__
-#define __RISCV_ASM_H__
+#ifndef __ARCH_ASM_H__
+#define __ARCH_ASM_H__
 
-#include <riscv_defines.h>
+#include <arch_defines.h>
 
 #ifdef __ASSEMBLY__
 #define __ASM_STR(x)	x

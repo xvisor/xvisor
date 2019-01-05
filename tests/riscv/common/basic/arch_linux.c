@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Anup Patel.
+ * Copyright (c) 2019 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
  * @brief source for arch specific linux booting
  */
 
-#include <arch_cache.h>
 #include <arch_linux.h>
 
 extern unsigned long boot_arg0;
@@ -34,23 +33,7 @@ void arch_start_linux_prep(unsigned long kernel_addr,
 			   unsigned long initrd_addr,
 			   unsigned long initrd_size)
 {
-	virtual_addr_t nuke_va;
-
-	/* Linux RISC-V kernel expects us to boot from 0x200000
-	 * aligned address, perferrably RAM start + 0x200000 address.
-	 *
-	 * It might happen that we are running Basic firmware
-	 * after a reboot from Guest Linux in which case both
-	 * I-Cache and D-Cache will have stale contents. If we
-	 * don't cleanup these stale contents then Linux kernel
-	 * will not see correct contents boot page tables after
-	 * MMU ON.
-	 *
-	 * To take care of above described issue, we nuke the
-	 * 2MB area containing kernel start and boot page tables.
-	 */
-	nuke_va = kernel_addr & ~(0x200000 - 1);
-	arch_clean_invalidate_dcache_mva_range(nuke_va, nuke_va + 0x200000);
+	/* For now nothing to do here. */
 }
 
 void arch_start_linux_jump(unsigned long kernel_addr,
@@ -59,7 +42,9 @@ void arch_start_linux_jump(unsigned long kernel_addr,
 			   unsigned long initrd_size)
 {
 	/* Jump to Linux Kernel
-	 * x0 -> dtb address
+	 * a0 -> hart ID
+	 * a1 -> dtb address
 	 */
-	((linux_entry_t)kernel_addr)(boot_arg0, fdt_addr);
+	((linux_entry_t)kernel_addr)(boot_arg0,
+				     (fdt_addr) ? fdt_addr : boot_arg1);
 }

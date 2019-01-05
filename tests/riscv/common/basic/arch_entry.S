@@ -21,7 +21,7 @@
  * @brief Entry point code for basic firmware
  */
 
-#include <riscv_asm.h>
+#include <arch_asm.h>
 
 	/* 
 	 * Basic firmware could be loaded any where in memory.

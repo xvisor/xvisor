@@ -40,9 +40,11 @@ arch_dir=$(top_dir)/tests/riscv/common/basic
 
 board_text_start = 0x81000000
 board_objs       = $(obj_dir)/arch_board.o \
+                   $(obj_dir)/display/simplefb.o \
+		   $(obj_dir)/pic/riscv_intc.o \
                    $(obj_dir)/serial/uart8250.o \
                    $(obj_dir)/sys/vminfo.o \
-                   $(obj_dir)/display/simplefb.o
+		   $(obj_dir)/timer/riscv_timer.o
 
 # Include common makefile for basic test
 include $(arch_dir)/Makefile.inc

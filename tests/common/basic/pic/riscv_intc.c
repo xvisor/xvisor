@@ -16,47 +16,68 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file arch_irq.c
+ * @file riscv_intc.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for arch specific interrupt handling
+ * @brief RISC-V local interrupt controller driver
  */
 
 #include <arch_asm.h>
 #include <arch_defines.h>
-#include <arch_irq.h>
-#include <basic_irq.h>
+#include <pic/riscv_intc.h>
 
-void do_exec(struct pt_regs *regs)
+u32 riscv_intc_nr_irqs(void)
+{
+	return __riscv_xlen;
+}
+
+u32 riscv_intc_active_irq(void)
 {
 	unsigned long scause = csr_read(scause);
 
-	if (scause & SCAUSE_INTERRUPT_MASK) {
-		if (basic_irq_exec_handler(regs)) {
-			while (1);
-		}
-	} else {
-		while (1);
-	}
+	if (scause & SCAUSE_INTERRUPT_MASK)
+		return scause & SCAUSE_CAUSE_MASK;
+
+	return -1;
 }
 
-void arch_irq_setup(void)
+int riscv_intc_ack_irq(u32 irq)
 {
-	/*
-	 * Nothing to do here.
-	 */
+	if (irq >= __riscv_xlen)
+		return -1;
+
+	return 0;
 }
 
-void arch_irq_enable(void)
+int riscv_intc_eoi_irq(u32 irq)
 {
-	csr_set(sstatus, SR_SIE);
+	if (irq >= __riscv_xlen)
+		return -1;
+
+	csr_clear(sip, (1UL << irq));
+	return 0;
 }
 
-void arch_irq_disable(void)
+int riscv_intc_mask(u32 irq)
 {
-	csr_clear(sstatus, SR_SIE);
+	if (irq >= __riscv_xlen)
+		return -1;
+
+	csr_clear(sie, (1UL << irq));
+	return 0;
 }
 
-void arch_irq_wfi(void)
+int riscv_intc_unmask(u32 irq)
 {
-	wfi();
+	if (irq >= __riscv_xlen)
+		return -1;
+
+	csr_set(sie, (1UL << irq));
+	return 0;
+}
+
+int riscv_intc_init(void)
+{
+	csr_write(sie, 0);
+	csr_write(sip, 0);
+	return 0;
 }

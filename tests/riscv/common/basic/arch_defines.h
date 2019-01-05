@@ -16,12 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file riscv_defines.h
+ * @file arch_defines.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief register related macros & defines for RISC-V code
  */
-#ifndef __RISCV_DEFINES_H__
-#define __RISCV_DEFINES_H__
+#ifndef __ARCH_DEFINES_H__
+#define __ARCH_DEFINES_H__
 
 #ifdef __ASSEMBLY__
 #define _AC(X,Y)	X

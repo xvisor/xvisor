@@ -25,11 +25,40 @@
 #include <arch_board.h>
 #include <basic_stdio.h>
 #include <basic_string.h>
-#include <riscv_plat.h>
-#include <riscv_timer.h>
+#include <display/simplefb.h>
+#include <pic/riscv_intc.h>
 #include <serial/uart8250.h>
 #include <sys/vminfo.h>
-#include <display/simplefb.h>
+#include <timer/riscv_timer.h>
+
+#define VIRT_NOR_FLASH			(0x00000000)
+#define VIRT_NOR_FLASH_SIZE		(0x02000000)
+#define VIRT_PLIC			(0x0c000000)
+#define VIRT_PLIC_SIZE			(0x04000000)
+#define VIRT_UART0			(0x10000000)
+#define VIRT_VMINFO			(0x10001000)
+#define VIRT_SIMPLEFB			(0x10002000)
+#define VIRT_VIRTIO_NET			(0x20000000)
+#define VIRT_VIRTIO_NET_SIZE		(0x00001000)
+#define VIRT_VIRTIO_BLK			(0x20001000)
+#define VIRT_VIRTIO_BLK_SIZE		(0x00001000)
+#define VIRT_VIRTIO_CON			(0x20002000)
+#define VIRT_VIRTIO_CON_SIZE		(0x00001000)
+#define VIRT_PCI			(0x30000000)
+#define VIRT_PCI_SIZE			(0x20000000)
+#define VIRT_RAM0			(0x80000000)
+#define VIRT_RAM0_SIZE			(0x06000000)
+
+/*
+ * Interrupts.
+ */
+#define IRQ_VIRT_UART0			10
+#define IRQ_VIRT_VIRTIO_NET		1
+#define IRQ_VIRT_VIRTIO_BLK		2
+#define IRQ_VIRT_VIRTIO_CON		3
+
+#define VIRT_PLIC_NUM_SOURCES		127
+#define VIRT_PLIC_NUM_PRIORITIES	7
 
 void arch_board_reset(void)
 {
@@ -130,44 +159,37 @@ physical_addr_t arch_board_iosection_addr(int num)
 
 u32 arch_board_pic_nr_irqs(void)
 {
-	/* TODO: */
-	return __riscv_xlen;
+	return riscv_intc_nr_irqs();
 }
 
 int arch_board_pic_init(void)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_init();
 }
 
 u32 arch_board_pic_active_irq(void)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_active_irq();
 }
 
 int arch_board_pic_ack_irq(u32 irq)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_ack_irq(irq);
 }
 
 int arch_board_pic_eoi_irq(u32 irq)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_eoi_irq(irq);
 }
 
 int arch_board_pic_mask(u32 irq)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_mask(irq);
 }
 
 int arch_board_pic_unmask(u32 irq)
 {
-	/* TODO: */
-	return 0;
+	return riscv_intc_unmask(irq);
 }
 
 void arch_board_timer_enable(void)
@@ -202,7 +224,11 @@ void arch_board_timer_change_period(u32 usecs)
 
 int arch_board_timer_init(u32 usecs)
 {
-	/* TODO: */
+	/*
+	 * TODO: RISC-V timer frequency should be same
+	 * as underlying host timer frequency. Instead
+	 * of hard-coding figure-out a better way.
+	 */
 	return riscv_timer_init(usecs, 10000000);
 }
 

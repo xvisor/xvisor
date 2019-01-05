@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Anup Patel.
+ * Copyright (c) 2019 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file riscv_sbi.h
+ * @file arch_sbi.h
  * @author Anup Patel (anup@brainfault.org)
  * @brief Supervisor binary interface (SBI)
  *
@@ -28,8 +28,8 @@
  * The original code is licensed under the GPL.
  */
 
-#ifndef __RISCV_SBI_H__
-#define __RISCV_SBI_H__
+#ifndef __ARCH_SBI_H__
+#define __ARCH_SBI_H__
 
 #include <arch_types.h>
 

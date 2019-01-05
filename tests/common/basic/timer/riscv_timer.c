@@ -21,11 +21,11 @@
  * @brief RISC-V Timer Source
  */
 
-#include <riscv_asm.h>
-#include <riscv_sbi.h>
-#include <riscv_timer.h>
+#include <arch_asm.h>
 #include <arch_math.h>
+#include <arch_sbi.h>
 #include <basic_irq.h>
+#include <timer/riscv_timer.h>
 
 static u64 timer_irq_count;
 static u64 timer_irq_tcount;
