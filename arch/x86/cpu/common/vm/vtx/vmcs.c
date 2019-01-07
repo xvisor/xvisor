@@ -345,19 +345,276 @@ static void vmcs_init_host_env(void)
 
 }
 
+void set_pin_based_exec_controls(void)
+{
+	u32 pin_controls[] = {PIN_BASED_EXT_INTR_MASK,
+			      PIN_BASED_NMI_EXITING,
+			      PIN_BASED_VIRTUAL_NMIS,
+			      PIN_BASED_PREEMPTION_TIMER,
+			      PIN_BASED_PROCESS_INTRS};
+	u32 pin_controls_processed = (PIN_BASED_EXT_INTR_MASK |
+				      PIN_BASED_NMI_EXITING |
+				      PIN_BASED_VIRTUAL_NMIS |
+				      PIN_BASED_PREEMPTION_TIMER |
+				      PIN_BASED_PROCESS_INTRS);
+	u32 vmx_pin_based_control = 0;
+	u32 i = 0;
+	u32 nr_pin_controls = sizeof(pin_controls)/sizeof(u32);
+
+	/* Set the single settings */
+	vmx_pin_based_control |= (vmx_pin_based_exec_default1 &
+				  vmx_pin_based_exec_default0);
+	pin_controls_processed &= ~(vmx_pin_based_exec_default1 &
+				    vmx_pin_based_exec_default0);
+
+	for (i = 0; i < nr_pin_controls; i++) {
+		if (!(pin_controls[i] & pin_controls_processed))
+			/* one of the single settings. Already set
+			 * in the previous step so skip */
+			continue;
+
+		/* controls that allow 0 or 1 settings */
+		switch(pin_controls[i]) {
+		case PIN_BASED_EXT_INTR_MASK:
+			/* we want to support this, set 1 for external
+			 * interrupts to cause VM exits */
+			vmx_pin_based_control |= PIN_BASED_EXT_INTR_MASK;
+			break;
+
+		default:
+			/* we don't want to enable them by default so
+			 * consider the default settings. */
+			if (vmx_pin_based_exec_default1 & pin_controls[i])
+				vmx_pin_based_control |= pin_controls[i];
+			break;
+		}
+	}
+
+	/* Initialize pin based control */
+	__vmwrite(PIN_BASED_VM_EXEC_CONTROL, vmx_pin_based_control);
+}
+
+void set_proc_based_exec_controls(void)
+{
+	u32 proc_controls[] = {CPU_BASED_VIRTUAL_INTR_PENDING,
+			       CPU_BASED_USE_TSC_OFFSETING,
+			       CPU_BASED_HLT_EXITING,
+			       CPU_BASED_INVLPG_EXITING,
+			       CPU_BASED_MWAIT_EXITING,
+			       CPU_BASED_RDPMC_EXITING,
+			       CPU_BASED_RDTSC_EXITING,
+			       CPU_BASED_CR3_LOAD_EXITING,
+			       CPU_BASED_CR3_STORE_EXITING,
+			       CPU_BASED_CR8_LOAD_EXITING,
+			       CPU_BASED_CR8_STORE_EXITING,
+			       CPU_BASED_TPR_SHADOW,
+			       CPU_BASED_VIRTUAL_NMI_PENDING,
+			       CPU_BASED_MOV_DR_EXITING,
+			       CPU_BASED_UNCOND_IO_EXITING,
+			       CPU_BASED_ACTIVATE_IO_BITMAP,
+			       CPU_BASED_MONITOR_TRAP_FLAG,
+			       CPU_BASED_ACTIVATE_MSR_BITMAP,
+			       CPU_BASED_MONITOR_EXITING,
+			       CPU_BASED_PAUSE_EXITING,
+			       CPU_BASED_ACTIVATE_SECONDARY_CONTROLS};
+	u32 proc_controls_processed = (CPU_BASED_VIRTUAL_INTR_PENDING |
+				       CPU_BASED_USE_TSC_OFFSETING |
+				       CPU_BASED_HLT_EXITING |
+				       CPU_BASED_INVLPG_EXITING |
+				       CPU_BASED_MWAIT_EXITING |
+				       CPU_BASED_RDPMC_EXITING |
+				       CPU_BASED_RDTSC_EXITING |
+				       CPU_BASED_CR3_LOAD_EXITING |
+				       CPU_BASED_CR3_STORE_EXITING |
+				       CPU_BASED_CR8_LOAD_EXITING |
+				       CPU_BASED_CR8_STORE_EXITING |
+				       CPU_BASED_TPR_SHADOW |
+				       CPU_BASED_VIRTUAL_NMI_PENDING |
+				       CPU_BASED_MOV_DR_EXITING |
+				       CPU_BASED_UNCOND_IO_EXITING |
+				       CPU_BASED_ACTIVATE_IO_BITMAP |
+				       CPU_BASED_MONITOR_TRAP_FLAG |
+				       CPU_BASED_ACTIVATE_MSR_BITMAP |
+				       CPU_BASED_MONITOR_EXITING |
+				       CPU_BASED_PAUSE_EXITING |
+				       CPU_BASED_ACTIVATE_SECONDARY_CONTROLS);
+	u32 vmx_proc_based_control = 0;
+	u32 vmx_proc_secondary_control = 0;
+	u32 i = 0;
+	u32 nr_proc_controls = sizeof(proc_controls)/sizeof(u32);
+
+	/* Set the single settings */
+	vmx_proc_based_control |= (vmx_cpu_based_exec_default1 &
+				   vmx_cpu_based_exec_default0);
+	proc_controls_processed &= ~(vmx_cpu_based_exec_default1 &
+				     vmx_cpu_based_exec_default0);
+
+	for (i = 0; i < nr_proc_controls; i++) {
+		if (!(proc_controls[i] & proc_controls_processed))
+			/* one of the single settings. Already set
+			 * in the previous step so skip */
+			continue;
+
+		/* controls that allow 0 or 1 settings */
+		switch(proc_controls[i]) {
+		case CPU_BASED_HLT_EXITING:
+		case CPU_BASED_INVLPG_EXITING:
+		case CPU_BASED_CR3_LOAD_EXITING:
+		case CPU_BASED_CR3_STORE_EXITING:
+		case CPU_BASED_ACTIVATE_IO_BITMAP:
+		case CPU_BASED_ACTIVATE_MSR_BITMAP:
+		case CPU_BASED_ACTIVATE_SECONDARY_CONTROLS:
+		case CPU_BASED_MONITOR_EXITING:
+		case CPU_BASED_PAUSE_EXITING:
+			/* we want to support this, set 1 for external
+			 * interrupts to cause VM exits */
+			vmx_proc_based_control |= proc_controls[i];
+
+			if (proc_controls[i] == CPU_BASED_ACTIVATE_SECONDARY_CONTROLS) {
+				vmx_proc_secondary_control = (SECONDARY_EXEC_ENABLE_EPT |
+							      SECONDARY_EXEC_ENABLE_VPID |
+							      SECONDARY_EXEC_UNRESTRICTED_GUEST);
+				__vmwrite(SECONDARY_VM_EXEC_CONTROL, vmx_proc_secondary_control);
+			}
+			break;
+
+		default:
+			/* Others we don't want to enable them by default so
+			 * consider the default settings. */
+			if (vmx_cpu_based_exec_default1 & proc_controls[i])
+				vmx_proc_based_control |= proc_controls[i];
+			break;
+		}
+	}
+
+	/* Initialize proc based control */
+	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_proc_based_control);
+}
+
+void set_vmx_entry_exec_controls(void)
+{
+	u32 entry_controls[] = {VM_ENTRY_LOAD_DEBUG_CONTROLS,
+				VM_ENTRY_IA32E_MODE,
+				VM_ENTRY_SMM,
+				VM_ENTRY_DEACT_DUAL_MONITOR,
+				VM_ENTRY_LOAD_PERF_GLOBAL_CTRL,
+				VM_ENTRY_LOAD_GUEST_PAT,
+				VM_ENTRY_LOAD_GUEST_EFER,
+				VM_ENTRY_LOAD_GUEST_BNDCFGS,
+				VM_ENTRY_CONCEAL_VMX_PT};
+	u32 entry_controls_processed = (VM_ENTRY_LOAD_DEBUG_CONTROLS |
+					VM_ENTRY_IA32E_MODE |
+					VM_ENTRY_SMM |
+					VM_ENTRY_DEACT_DUAL_MONITOR |
+					VM_ENTRY_LOAD_PERF_GLOBAL_CTRL |
+					VM_ENTRY_LOAD_GUEST_PAT |
+					VM_ENTRY_LOAD_GUEST_EFER |
+					VM_ENTRY_LOAD_GUEST_BNDCFGS |
+					VM_ENTRY_CONCEAL_VMX_PT);
+	u32 vmx_entry_control = 0;
+	u32 i = 0;
+	u32 nr_entry_controls = sizeof(entry_controls)/sizeof(u32);
+
+	/* Set the single settings */
+	vmx_entry_control |= (vmx_vmentry_default1 &
+			      vmx_vmentry_default0);
+	entry_controls_processed &= ~(vmx_vmentry_default1 &
+				      vmx_vmentry_default0);
+
+	for (i = 0; i < nr_entry_controls; i++) {
+		if (!(entry_controls[i] & entry_controls_processed))
+			/* one of the single settings. Already set
+			 * in the previous step so skip */
+			continue;
+
+		/* controls that allow 0 or 1 settings */
+		switch(entry_controls[i]) {
+		default:
+			/* we don't want to enable them by default so
+			 * consider the default settings. */
+			if (vmx_vmentry_default1 & entry_controls[i])
+				vmx_entry_control |= entry_controls[i];
+			break;
+		}
+	}
+
+	/* Initialize VMEntry control */
+	__vmwrite(VM_ENTRY_CONTROLS, vmx_entry_control);
+}
+
+void set_vmx_exit_exec_controls(void)
+{
+	u32 exit_controls[] = {VM_EXIT_SAVE_DBG_CTRL,
+			       VM_EXIT_IA32E_MODE,
+			       VM_EXIT_LOAD_PERF_GLOBAL_CTRL,
+			       VM_EXIT_ACK_INTR_ON_EXIT,
+			       VM_EXIT_SAVE_GUEST_PAT,
+			       VM_EXIT_LOAD_HOST_PAT,
+			       VM_EXIT_SAVE_GUEST_EFER,
+			       VM_EXIT_LOAD_HOST_EFER,
+			       VM_EXIT_SAVE_PREEMPT_TIMER,
+			       VM_EXIT_CLEAR_BNDCFGS,
+			       VM_EXIT_CONCEAL_VMX_PT};
+	u32 exit_controls_processed = (VM_EXIT_SAVE_DBG_CTRL |
+				       VM_EXIT_IA32E_MODE |
+				       VM_EXIT_LOAD_PERF_GLOBAL_CTRL |
+				       VM_EXIT_ACK_INTR_ON_EXIT |
+				       VM_EXIT_SAVE_GUEST_PAT |
+				       VM_EXIT_LOAD_HOST_PAT |
+				       VM_EXIT_SAVE_GUEST_EFER |
+				       VM_EXIT_LOAD_HOST_EFER |
+				       VM_EXIT_SAVE_PREEMPT_TIMER |
+				       VM_EXIT_CLEAR_BNDCFGS |
+				       VM_EXIT_CONCEAL_VMX_PT);
+	u32 vmx_exit_control = 0;
+	u32 i = 0;
+	u32 nr_exit_controls = sizeof(exit_controls)/sizeof(u32);
+
+	/* Set the single settings */
+	vmx_exit_control |= (vmx_vmexit_default1 &
+			     vmx_vmexit_default0);
+	exit_controls_processed &= ~(vmx_vmexit_default1 &
+				     vmx_vmexit_default0);
+
+	for (i = 0; i < nr_exit_controls; i++) {
+		if (!(exit_controls[i] & exit_controls_processed))
+			/* one of the single settings. Already set
+			 * in the previous step so skip */
+			continue;
+
+		/* controls that allow 0 or 1 settings */
+		switch(exit_controls[i]) {
+		case VM_EXIT_IA32E_MODE:
+		case VM_EXIT_SAVE_GUEST_PAT:
+		case VM_EXIT_LOAD_HOST_PAT:
+		case VM_EXIT_SAVE_GUEST_EFER:
+		case VM_EXIT_LOAD_HOST_EFER:
+		case VM_EXIT_ACK_INTR_ON_EXIT:
+			vmx_exit_control |= exit_controls[i];
+			break;
+		default:
+			/* we don't want to enable them by default so
+			 * consider the default settings. */
+			if (vmx_vmexit_default1 & exit_controls[i])
+				vmx_exit_control |= exit_controls[i];
+			break;
+		}
+	}
+
+	/* Initialize VMEntry control */
+	__vmwrite(VM_EXIT_CONTROLS, vmx_exit_control);
+
+}
+
 int vmx_set_control_params(struct vcpu_hw_context *context)
 {
 	int rc = VMM_OK;
-	u32 vcpu_id = context->assoc_vcpu->subid;
+	u32 vcpu_id = context->assoc_vcpu->subid = 1;
 
-	/* Initialize pin based control */
-	__vmwrite(PIN_BASED_VM_EXEC_CONTROL, vmx_pin_based_exec_control);
-
-	/* Initialize cpu based control */
-	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_SECONDARY_CONTROLS;
-
-	/* IO bitmap */
-	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_IO_BITMAP;
+	set_pin_based_exec_controls();
+	set_proc_based_exec_controls();
+	set_vmx_entry_exec_controls();
+	set_vmx_exit_exec_controls();
 
         /* A and B - 4K each */
 	context->icept_table.io_table_phys =
@@ -367,16 +624,11 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 	__vmwrite(IO_BITMAP_A, context->icept_table.io_table_virt);
 	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_virt + VMM_PAGE_SIZE);
 
-	/* MSR bitmap */
-	vmx_cpu_based_exec_control |= CPU_BASED_ACTIVATE_MSR_BITMAP;
-
 	context->icept_table.msr_table_phys =
 		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(4 << 10),
 						&context->icept_table.msr_table_virt);
 
 	__vmwrite(MSR_BITMAP, context->icept_table.msr_table_virt);
-
-	__vmwrite(CPU_BASED_VM_EXEC_CONTROL, vmx_cpu_based_exec_control);
 
 	/* Set up the VCPU's guest extended page tables */
 	if ((rc = setup_ept(context)) != VMM_OK) {
@@ -384,26 +636,8 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 		return rc;
 	}
 
-	/* Enable Extended Page Table (nested paging) */
-	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_EPT;
-
 	__vmwrite(EPT_POINTER, context->eptp);
-
-	/* Enable Virtual-Processor Identification (asid) */
-	vmx_secondary_exec_control |= SECONDARY_EXEC_ENABLE_VPID;
-
 	__vmwrite(VIRTUAL_PROCESSOR_ID, vcpu_id);
-
-	/* Initialize vm exit controls */
-	vmx_vmexit_control |= (VM_EXIT_IA32E_MODE | VM_EXIT_ACK_INTR_ON_EXIT);
-	vmx_vmexit_control |= (VM_EXIT_SAVE_GUEST_PAT | VM_EXIT_LOAD_HOST_PAT);
-
-	__vmwrite(VM_EXIT_CONTROLS, vmx_vmexit_control);
-
-	/* Initialize vm entry controls */
-	vmx_vmentry_control |= VM_ENTRY_LOAD_GUEST_PAT;
-
-	__vmwrite(VM_ENTRY_CONTROLS, vmx_vmentry_control);
 
 	/* Initialize host save area */
 	vmcs_init_host_env();
@@ -755,7 +989,7 @@ static unsigned long vmr(unsigned long field)
 	return rc ? 0 : val;
 }
 
-static void vmx_dump_sel(char *name, u32 selector)
+static void __unused vmx_dump_sel(char *name, u32 selector)
 {
 	u32 sel, attr, limit;
 	u64 base;
@@ -768,7 +1002,7 @@ static void vmx_dump_sel(char *name, u32 selector)
 		   name, sel, attr, limit, base);
 }
 
-static void vmx_dump_sel2(char *name, u32 lim)
+static void __unused vmx_dump_sel2(char *name, u32 lim)
 {
 	u32 limit;
 	u64 base;
@@ -781,6 +1015,7 @@ static void vmx_dump_sel2(char *name, u32 lim)
 
 void vmcs_dump(struct vcpu_hw_context *context)
 {
+	#if 0
 	unsigned long long x;
 
 	vmm_printf("*** Guest State ***\n");
@@ -863,7 +1098,7 @@ void vmcs_dump(struct vcpu_hw_context *context)
 		   (unsigned long long)vmr(HOST_SYSENTER_EIP));
 	vmm_printf("Host PAT = 0x%08x%08x\n",
 		   (u32)vmr(HOST_PAT_HIGH), (u32)vmr(HOST_PAT));
-
+#endif
 	vmm_printf("*** Control State ***\n");
 	vmm_printf("PinBased=%08x CPUBased=%08x SecondaryExec=%08x\n",
 		   (u32)vmr(PIN_BASED_VM_EXEC_CONTROL),

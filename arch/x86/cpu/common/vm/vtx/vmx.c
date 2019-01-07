@@ -386,10 +386,11 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	if (rc == -1) {
 		if ((rc = __vmread(VM_INSTRUCTION_ERROR, &ins_err)) == VMM_OK) {
 			vmm_printf("Instruction Error: (%s:%ld)\n", ins_err_str[ins_err], ins_err);
-			vmcs_dump(context);
+			//vmcs_dump(context);
 		} else
 			vmm_printf("Failed to read instruction error (%d)\n", rc);
-		BUG();
+		while(1);
+		//BUG();
 	} else if (rc == -2) {
 		/* Invalid error: which probably means there is not current VMCS: Problem! */
 		if (context->vcpu_emergency_shutdown)
@@ -451,13 +452,20 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 		goto _fail;
 	}
 
+	if ((ret = __vmpclear(context->vmcs_pa)) != VMM_OK) {
+	  vmm_printf("VMCS clear failed with error: %d\n", ret);
+	  ret = VMM_EACCESS;
+	  goto _fail;
+	}
+
 	if ((ret = __vmptrld(context->vmcs_pa)) != VMM_OK) {
 		vmm_printf("VMCS load failed with error: %d\n", ret);
 		ret = VMM_EACCESS;
 		goto _fail;
 	}
 
-	context->vmcs_state &= ~(VMCS_STATE_LAUNCHED  | VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
+	context->vmcs_state &= ~(VMCS_STATE_LAUNCHED);
+	context->vmcs_state |= (VMCS_STATE_ACTIVE | VMCS_STATE_CURRENT);
 
 	if ((ret = vmx_set_control_params(context)) != VMM_OK) {
 		vmm_printf("Failed to set control parameters of VCPU.\n");
