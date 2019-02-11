@@ -45,8 +45,6 @@
 #define	MODULE_INIT			ns16550_emulator_init
 #define	MODULE_EXIT			ns16550_emulator_exit
 
-//#define DEBUG_SERIAL
-
 #define UART_LCR_DLAB	0x80	/* Divisor latch access bit */
 
 #define UART_IER_MSI	0x08	/* Enable Modem status interrupt */
@@ -95,21 +93,25 @@
 #define UART_LSR_PE	0x04	/* Parity error indicator */
 #define UART_LSR_OE	0x02	/* Overrun error indicator */
 #define UART_LSR_DR	0x01	/* Receiver data ready */
-#define UART_LSR_INT_ANY 0x1E	/* Any of the lsr-interrupt-triggering status bits */
+#define UART_LSR_INT_ANY 0x1E	/* Any of the lsr-interrupt-triggering
+				 * status bits
+				 */
 
-/* Interrupt trigger levels. The byte-counts are for 16550A - in newer UARTs the byte-count for each ITL is higher. */
+/* Interrupt trigger levels. The byte-counts are for
+ * 16550A - in newer UARTs the byte-count for each ITL is higher.
+ */
 
-#define UART_FCR_ITL_1      0x00 /* 1 byte ITL */
-#define UART_FCR_ITL_2      0x40 /* 4 bytes ITL */
-#define UART_FCR_ITL_3      0x80 /* 8 bytes ITL */
-#define UART_FCR_ITL_4      0xC0 /* 14 bytes ITL */
+#define UART_FCR_ITL_1	0x00	/* 1 byte ITL */
+#define UART_FCR_ITL_2	0x40	/* 4 bytes ITL */
+#define UART_FCR_ITL_3	0x80	/* 8 bytes ITL */
+#define UART_FCR_ITL_4	0xC0	/* 14 bytes ITL */
 
-#define UART_FCR_DMS        0x08    /* DMA Mode Select */
-#define UART_FCR_XFR        0x04    /* XMIT Fifo Reset */
-#define UART_FCR_RFR        0x02    /* RCVR Fifo Reset */
-#define UART_FCR_FE         0x01    /* FIFO Enable */
+#define UART_FCR_DMS	0x08	/* DMA Mode Select */
+#define UART_FCR_XFR	0x04	/* XMIT Fifo Reset */
+#define UART_FCR_RFR	0x02	/* RCVR Fifo Reset */
+#define UART_FCR_FE	0x01	/* FIFO Enable */
 
-#define MAX_XMIT_RETRY      4
+#define MAX_XMIT_RETRY	4
 
 enum {
 	SERIAL_LOG_LVL_ERR,
@@ -126,7 +128,7 @@ static int serial_default_log_lvl = SERIAL_LOG_LVL_INFO;
 			vmm_printf("(%s:%d) " fmt, __func__,		\
 				   __LINE__, ##args);			\
 		}							\
-	}while(0);
+	} while(0);
 
 struct serial_set_params{
 	int speed;
@@ -139,6 +141,9 @@ struct ns16550_state {
 	struct vmm_guest *guest;
 	struct vmm_vserial *vser;
 	vmm_spinlock_t lock;
+
+	u32 reg_shift;
+	u32 reg_io_width;
 
 	u16 divider;
 	u8 rbr; /* receive register */
@@ -153,9 +158,11 @@ struct ns16550_state {
 	u8 scr;
 	u8 fcr;
 	u8 fcr_vmstate; /* we can't write directly this value
-				it has side effects */
-	/* NOTE: this hidden state is necessary for tx irq generation as
-	   it can be reset while reading iir */
+			 * it has side effects
+			 */
+	/* NOTE: this hidden state is necessary for tx irq
+	 * generation as it can be reset while reading iir
+	 */
 	int thr_ipending;
 	u32 irq;
 	int last_break_enable;
@@ -175,9 +182,9 @@ struct ns16550_state {
 	u8 recv_fifo_itl;
 
 	struct vmm_timer_event fifo_timeout_timer;
-	int timeout_ipending;           /* timeout interrupt pending state */
+	int timeout_ipending;	/* timeout interrupt pending state */
 
-	u64 char_transmit_time;    /* time to transmit a char in ticks */
+	u64 char_transmit_time;	/* time to transmit a char in ticks */
 	int poll_msl;
 
 	struct vmm_timer_event modem_status_poll;
@@ -228,30 +235,15 @@ static void ns16550_update_irq(struct ns16550_state *s)
 static void ns16550_update_parameters(struct ns16550_state *s)
 {
 	int speed, data_bits, stop_bits, frame_size;
-#if 0
-	int parity;
-	struct serial_set_param ssp;
-#endif
 
 	if (s->divider == 0)
 		return;
 
 	/* Start bit. */
 	frame_size = 1;
-	if (s->lcr & 0x08) {
+	if (s->lcr & 0x08)
 		/* Parity bit. */
 		frame_size++;
-#if 0
-		if (s->lcr & 0x10)
-			parity = 'E';
-		else
-			parity = 'O';
-#endif
-	} else {
-#if 0
-		parity = 'N';
-#endif
-	}
 	if (s->lcr & 0x04)
 		stop_bits = 2;
 	else
@@ -260,44 +252,18 @@ static void ns16550_update_parameters(struct ns16550_state *s)
 	data_bits = (s->lcr & 0x03) + 5;
 	frame_size += data_bits + stop_bits;
 	speed = s->baudbase / s->divider;
-#if 0
-	ssp.speed = speed;
-	ssp.parity = parity;
-	ssp.data_bits = data_bits;
-	ssp.stop_bits = stop_bits;
-#endif
-	s->char_transmit_time =  (1000000000ULL / speed) * frame_size;
 
-	/* TODO: If backed by a real serial port, set the param as below */
-#if 0
-	qemu_chr_fe_ioctl(s->chr, CHR_IOCTL_SERIAL_SET_PARAMS, &ssp);
-#endif
+	s->char_transmit_time = (1000000000ULL / speed) * frame_size;
 }
 
 static void ns16550_update_msl(struct vmm_timer_event *event)
 {
 	u8 omsr;
-#if 0
-	int flags;
-#endif
 	struct ns16550_state *s = event->priv;
 
 	vmm_timer_event_stop(&s->modem_status_poll);
 
-#if 0
-	if (qemu_chr_fe_ioctl(s->chr,CHR_IOCTL_SERIAL_GET_TIOCM, &flags) == -ENOTSUP) {
-		s->poll_msl = -1;
-		return;
-	}
-#endif
 	omsr = s->msr;
-
-#if 0
-	s->msr = (flags & CHR_TIOCM_CTS) ? s->msr | UART_MSR_CTS : s->msr & ~UART_MSR_CTS;
-	s->msr = (flags & CHR_TIOCM_DSR) ? s->msr | UART_MSR_DSR : s->msr & ~UART_MSR_DSR;
-	s->msr = (flags & CHR_TIOCM_CAR) ? s->msr | UART_MSR_DCD : s->msr & ~UART_MSR_DCD;
-	s->msr = (flags & CHR_TIOCM_RI) ? s->msr | UART_MSR_RI : s->msr & ~UART_MSR_RI;
-#endif
 
 	if (s->msr != omsr) {
 		/* Set delta bits */
@@ -308,12 +274,15 @@ static void ns16550_update_msl(struct vmm_timer_event *event)
 		ns16550_update_irq(s);
 	}
 
-	/* The real 16550A apparently has a 250ns response latency to line status changes.
-	   We'll be lazy and poll only every 10ms, and only poll it at all if MSI interrupts are turned on */
+	/* The real 16550A apparently has a 250ns response latency to
+	 * line status changes. We'll be lazy and poll only every 10ms,
+	 * and only poll it at all if MSI interrupts are turned on
+	 */
 
 	if (s->poll_msl) {
 		vmm_timer_event_stop(&s->modem_status_poll);
-		vmm_timer_event_start(&s->modem_status_poll, 1000000000ULL / 100);
+		vmm_timer_event_start(&s->modem_status_poll,
+				      1000000000ULL / 100);
 	}
 }
 
@@ -359,11 +328,15 @@ static bool ns16550_xmit(struct ns16550_state *s)
 	return FALSE;
 }
 
-static int ns16550_reg_write(struct ns16550_state *s, u32 addr, 
-			     u32 src_mask, u32 val)
+static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
+			     u32 src_mask, u32 val, u32 io_width)
 {
 	u8 temp;
 
+	if (s->reg_io_width != io_width)
+		return VMM_EINVALID;
+
+	addr >>= s->reg_shift;
 	addr &= 7;
 
 	SERIAL_LOG(LVL_DEBUG, "Reg: 0x%x Value: 0x%x\n", addr, val);
@@ -377,7 +350,9 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 		} else {
 			s->thr = (u8) val;
 			if(s->fcr & UART_FCR_FE) {
-				/* xmit overruns overwrite data, so make space if needed */
+				/* Xmit overruns overwrite data, so
+				 * make space if needed
+				 */
 				if (fifo_isfull(s->xmit_fifo)) {
 					fifo_dequeue(s->xmit_fifo, &temp);
 				}
@@ -396,14 +371,19 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 			ns16550_update_parameters(s);
 		} else {
 			s->ier = val & 0x0f;
-			/* If the backend device is a real serial port, turn polling of the modem
-			   status lines on physical port on or off depending on UART_IER_MSI state */
+			/* If the backend device is a real serial port,
+			 * turn polling of the modem status lines on
+			 * physical port on or off depending on
+			 * UART_IER_MSI state
+			 */
 			if (s->poll_msl >= 0) {
 				if (s->ier & UART_IER_MSI) {
 					s->poll_msl = 1;
-					ns16550_update_msl(&s->modem_status_poll);
+					ns16550_update_msl(
+						&s->modem_status_poll);
 				} else {
-					vmm_timer_event_stop(&s->modem_status_poll);
+					vmm_timer_event_stop(
+						&s->modem_status_poll);
 					s->poll_msl = 0;
 				}
 			}
@@ -419,12 +399,13 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 		if (s->fcr == val)
 			break;
 
-		/* Did the enable/disable flag change? If so, make sure FIFOs get flushed */
+		/* Did the enable/disable flag change?
+		 * If so, make sure FIFOs get flushed
+		 */
 		if ((val ^ s->fcr) & UART_FCR_FE)
 			val |= UART_FCR_XFR | UART_FCR_RFR;
 
 		/* FIFO clear */
-
 		if (val & UART_FCR_RFR) {
 			vmm_timer_event_stop(&s->fifo_timeout_timer);
 			s->timeout_ipending=0;
@@ -455,52 +436,38 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 		} else
 			s->iir &= ~UART_IIR_FE;
 
-		/* Set fcr - or at least the bits in it that are supposed to "stick" */
+		/* Set fcr - or at least the bits in it
+		 * that are supposed to "stick"
+		 */
 		s->fcr = val & 0xC9;
 		ns16550_update_irq(s);
 		break;
-	case 3:
-		{
+	case 3: {
 			int break_enable;
 			s->lcr = val;
 			ns16550_update_parameters(s);
 			break_enable = (val >> 6) & 1;
 			if (break_enable != s->last_break_enable) {
 				s->last_break_enable = break_enable;
-#if 0 /* When hardware backed, enable break on it */
-				qemu_chr_fe_ioctl(s->chr, CHR_IOCTL_SERIAL_SET_BREAK,
-						  &break_enable);
-#endif
 			}
 		}
 		break;
-	case 4:
-		{
-#if 0
-			int flags;
-#endif
+	case 4: {
 			int old_mcr = s->mcr;
 			s->mcr = val & 0x1f;
 			if (val & UART_MCR_LOOP)
 				break;
 
 			if (s->poll_msl >= 0 && old_mcr != s->mcr) {
-#if 0
-				qemu_chr_fe_ioctl(s->chr,CHR_IOCTL_SERIAL_GET_TIOCM, &flags);
-
-				flags &= ~(CHR_TIOCM_RTS | CHR_TIOCM_DTR);
-
-				if (val & UART_MCR_RTS)
-					flags |= CHR_TIOCM_RTS;
-				if (val & UART_MCR_DTR)
-					flags |= CHR_TIOCM_DTR;
-
-				qemu_chr_fe_ioctl(s->chr,CHR_IOCTL_SERIAL_SET_TIOCM, &flags);
-#endif
-				/* Update the modem status after a one-character-send wait-time, since there may be a response
-				   from the device/computer at the other end of the serial line */
+				/* Update the modem status after a
+				 * one-character-send wait-time, since
+				 * there may be a response from the
+				 * device/computer at the other end of
+				 * the serial line
+				 */
 				vmm_timer_event_stop(&s->modem_status_poll);
-				vmm_timer_event_start(&s->modem_status_poll, s->char_transmit_time);
+				vmm_timer_event_start(&s->modem_status_poll,
+						      s->char_transmit_time);
 			}
 		}
 		break;
@@ -516,12 +483,18 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 	return VMM_OK;
 }
 
-static int ns16550_reg_read(struct ns16550_state *s, u32 addr, u32 *dst)
+static int ns16550_reg_read(struct ns16550_state *s,
+			    u32 addr, u32 *dst, u32 io_width)
 {
 	u32 ret;
 
+	if (s->reg_io_width != io_width)
+		return VMM_EINVALID;
+
+	addr >>= s->reg_shift;
 	addr &= 7;
-	switch(addr) {
+
+	switch (addr) {
 	default:
 	case 0:
 		if (s->lcr & UART_LCR_DLAB) {
@@ -534,8 +507,11 @@ static int ns16550_reg_read(struct ns16550_state *s, u32 addr, u32 *dst)
 				if (s->recv_fifo->avail_count == 0) {
 					s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
 				} else {
-					vmm_timer_event_stop(&s->fifo_timeout_timer);
-					vmm_timer_event_start(&s->fifo_timeout_timer, s->char_transmit_time * 4);
+					vmm_timer_event_stop(
+						&s->fifo_timeout_timer);
+					vmm_timer_event_start(
+						&s->fifo_timeout_timer,
+						s->char_transmit_time * 4);
 				}
 				s->timeout_ipending = 0;
 			} else {
@@ -543,12 +519,6 @@ static int ns16550_reg_read(struct ns16550_state *s, u32 addr, u32 *dst)
 				s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
 			}
 			ns16550_update_irq(s);
-#if 0 /* TODO: ??? */
-			if (!(s->mcr & UART_MCR_LOOP)) {
-				/* in loopback mode, don't receive any data */
-				qemu_chr_accept_input(s->chr);
-			}
-#endif
 		}
 		break;
 	case 1:
@@ -581,8 +551,9 @@ static int ns16550_reg_read(struct ns16550_state *s, u32 addr, u32 *dst)
 		break;
 	case 6:
 		if (s->mcr & UART_MCR_LOOP) {
-			/* in loopback, the modem output pins are connected to the
-			   inputs */
+			/* In loopback, the modem output pins
+			 * are connected to the inputs
+			 */
 			ret = (s->mcr & 0x0c) << 4;
 			ret |= (s->mcr & 0x02) << 3;
 			ret |= (s->mcr & 0x01) << 5;
@@ -590,7 +561,9 @@ static int ns16550_reg_read(struct ns16550_state *s, u32 addr, u32 *dst)
 			if (s->poll_msl >= 0)
 				ns16550_update_msl(&s->modem_status_poll);
 			ret = s->msr;
-			/* Clear delta bits & msr int after read, if they were set */
+			/* Clear delta bits & msr int after read,
+			 * if they were set
+			 */
 			if (s->msr & UART_MSR_ANY_DELTA) {
 				s->msr &= 0xF0;
 				ns16550_update_irq(s);
@@ -614,14 +587,17 @@ static bool ns16550_can_send(struct vmm_vserial *vser)
 	if(s->fcr & UART_FCR_FE) {
 		if (s->recv_fifo->avail_count < s->fifo_sz) {
 			/*
-			 * Advertise (fifo.itl - fifo.count) bytes when count < ITL, and 1
-			 * if above. If UART_FIFO_LENGTH - fifo.count is advertised the
-			 * effect will be to almost always fill the fifo completely before
-			 * the guest has a chance to respond, effectively overriding the ITL
-			 * that the guest has set.
+			 * Advertise (fifo.itl - fifo.count) bytes when
+			 * count < ITL, and 1 if above.
+			 *
+			 * If UART_FIFO_LENGTH - fifo.count is advertised
+			 * then the effect will be to almost always fill
+			 * the fifo completely before the guest has a chance
+			 * to respond, effectively overriding the ITL that
+			 * the guest has set.
 			 */
-			return (s->recv_fifo->avail_count <= s->recv_fifo_itl) ?
-				s->recv_fifo_itl - s->recv_fifo->avail_count : 1;
+			return (fifo_avail(s->recv_fifo) <= s->recv_fifo_itl) ?
+			 s->recv_fifo_itl - fifo_avail(s->recv_fifo) : 1;
 		} else {
 			return 0;
 		}
@@ -632,21 +608,11 @@ static bool ns16550_can_send(struct vmm_vserial *vser)
 	return 0;
 }
 
-#if 0
-static void ns16550_receive_break(struct ns16550_state *s)
-{
-	s->rbr = 0;
-	/* When the LSR_DR is set a null byte is pushed into the fifo */
-	recv_fifo_put(s, '\0');
-	s->lsr |= UART_LSR_BI | UART_LSR_DR;
-	serial_update_irq(s);
-}
-#endif
-
 /* There's data in recv_fifo and s->rbr has not been read for 4 char transmit times */
 static void ns16550_fifo_timeout_int(struct vmm_timer_event *event)
 {
 	struct ns16550_state *s = event->priv;
+
 	if (s->recv_fifo->avail_count) {
 		s->timeout_ipending = 1;
 		ns16550_update_irq(s);
@@ -671,9 +637,12 @@ static int ns16550_send(struct vmm_vserial *vser, u8 data)
 		ns16550_recv_fifo_put(s, data);
 		s->lsr |= UART_LSR_DR;
 
-		/* call the timeout receive callback in 4 char transmit time */
-		vmm_timer_event_stop(&s->fifo_timeout_timer); 
-		vmm_timer_event_start(&s->fifo_timeout_timer, (s->char_transmit_time * 4));
+		/* Call the timeout receive callback in
+		 * 4 char transmit time
+		 */
+		vmm_timer_event_stop(&s->fifo_timeout_timer);
+		vmm_timer_event_start(&s->fifo_timeout_timer,
+				      (s->char_transmit_time * 4));
 	} else {
 		if (s->lsr & UART_LSR_DR)
 			s->lsr |= UART_LSR_OE;
@@ -684,15 +653,6 @@ static int ns16550_send(struct vmm_vserial *vser, u8 data)
 
 	return VMM_OK;
 }
-
-#if 0
-static void ns16550_event(void *opaque, int event)
-{
-	struct ns16550_state *s = opaque;
-	if (event == CHR_EVENT_BREAK)
-		serial_receive_break(s);
-}
-#endif
 
 static int ns16550_emulator_reset(struct vmm_emudev *edev)
 {
@@ -706,7 +666,9 @@ static int ns16550_emulator_reset(struct vmm_emudev *edev)
 	s->lcr = 0;
 	s->lsr = UART_LSR_TEMT | UART_LSR_THRE;
 	s->msr = UART_MSR_DCD | UART_MSR_DSR | UART_MSR_CTS;
-	/* Default to 9600 baud, 1 start bit, 8 data bits, 1 stop bit, no parity. */
+	/* Default to 9600 baud, 1 start bit,
+	 * 8 data bits, 1 stop bit, no parity.
+	 */
 	s->divider = 0x0C;
 	s->mcr = UART_MCR_OUT2;
 	s->scr = 0;
@@ -736,13 +698,13 @@ void ns16550_set_frequency(struct ns16550_state *s, u32 frequency)
 }
 
 static int ns16550_emulator_read8(struct vmm_emudev *edev,
-				  physical_addr_t offset, 
+				  physical_addr_t offset,
 				  u8 *dst)
 {
 	int rc;
 	u32 regval = 0x0;
 
-	rc = ns16550_reg_read(edev->priv, offset, &regval);
+	rc = ns16550_reg_read(edev->priv, offset, &regval, 1);
 	if (!rc) {
 		*dst = regval & 0xFF;
 	}
@@ -751,13 +713,13 @@ static int ns16550_emulator_read8(struct vmm_emudev *edev,
 }
 
 static int ns16550_emulator_read16(struct vmm_emudev *edev,
-				   physical_addr_t offset, 
+				   physical_addr_t offset,
 				   u16 *dst)
 {
 	int rc;
 	u32 regval = 0x0;
 
-	rc = ns16550_reg_read(edev->priv, offset, &regval);
+	rc = ns16550_reg_read(edev->priv, offset, &regval, 2);
 	if (!rc) {
 		*dst = regval & 0xFFFF;
 	}
@@ -766,31 +728,31 @@ static int ns16550_emulator_read16(struct vmm_emudev *edev,
 }
 
 static int ns16550_emulator_read32(struct vmm_emudev *edev,
-				   physical_addr_t offset, 
+				   physical_addr_t offset,
 				   u32 *dst)
 {
-	return ns16550_reg_read(edev->priv, offset, dst);
+	return ns16550_reg_read(edev->priv, offset, dst, 4);
 }
 
 static int ns16550_emulator_write8(struct vmm_emudev *edev,
-				   physical_addr_t offset, 
+				   physical_addr_t offset,
 				   u8 src)
 {
-	return ns16550_reg_write(edev->priv, offset, 0xFFFFFF00, src);
+	return ns16550_reg_write(edev->priv, offset, 0xFFFFFF00, src, 1);
 }
 
 static int ns16550_emulator_write16(struct vmm_emudev *edev,
-				    physical_addr_t offset, 
+				    physical_addr_t offset,
 				    u16 src)
 {
-	return ns16550_reg_write(edev->priv, offset, 0xFFFF0000, src);
+	return ns16550_reg_write(edev->priv, offset, 0xFFFF0000, src, 2);
 }
 
 static int ns16550_emulator_write32(struct vmm_emudev *edev,
-				    physical_addr_t offset, 
+				    physical_addr_t offset,
 				    u32 src)
 {
-	return ns16550_reg_write(edev->priv, offset, 0x00000000, src);
+	return ns16550_reg_write(edev->priv, offset, 0x00000000, src, 4);
 }
 
 static int ns16550_emulator_probe(struct vmm_guest *guest,
@@ -817,16 +779,27 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
 					  &s->irq, 0);
 	if (rc) {
-		SERIAL_LOG(LVL_ERR, "Failed to get serial IRQ entry in guest DTS.\n");
+		SERIAL_LOG(LVL_ERR,
+			   "Failed to get serial IRQ entry in guest DTS.\n");
 		goto uart16550a_emulator_probe_freestate_fail;
+	}
+
+	if (vmm_devtree_read_u32(edev->node, "reg_shift", &s->reg_shift)) {
+		s->reg_shift = 0;
+	}
+	if (vmm_devtree_read_u32(edev->node, "reg_io_width",
+				 &s->reg_io_width)) {
+		s->reg_io_width = 1;
 	}
 
 	rc = vmm_devtree_read_u32(edev->node, "fifo_size", &s->fifo_sz);
 	if (rc) {
-		SERIAL_LOG(LVL_ERR, "Failed to get fifo size in guest DTS.\n");
+		SERIAL_LOG(LVL_ERR,
+			   "Failed to get fifo size in guest DTS.\n");
 		goto uart16550a_emulator_probe_freestate_fail;
 	} else {
-		SERIAL_LOG(LVL_VERBOSE, "Serial FIFO size is %d bytes.\n", s->fifo_sz);
+		SERIAL_LOG(LVL_VERBOSE,
+			   "Serial FIFO size is %d bytes.\n", s->fifo_sz);
 	}
 
 	if (vmm_devtree_read_u32(edev->node, "baudbase", &s->baudbase)) {
@@ -837,14 +810,16 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 
 	s->recv_fifo = fifo_alloc(1, s->fifo_sz);
 	if (!s->recv_fifo) {
-		SERIAL_LOG(LVL_ERR, "Failed to allocate uart receive fifo.\n");
+		SERIAL_LOG(LVL_ERR,
+			   "Failed to allocate uart receive fifo.\n");
 		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
 
 	s->xmit_fifo = fifo_alloc(1, s->fifo_sz);
 	if (!s->xmit_fifo) {
-		SERIAL_LOG(LVL_ERR, "Failed to allocate uart transmit fifo.\n");
+		SERIAL_LOG(LVL_ERR,
+			   "Failed to allocate uart transmit fifo.\n");
 		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
@@ -858,9 +833,9 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 		rc = VMM_EOVERFLOW;
 		goto uart16550a_emulator_probe_freerbuf_fail;
 	}
-	s->vser = vmm_vserial_create(name, 
-				     &ns16550_can_send, 
-				     &ns16550_send, 
+	s->vser = vmm_vserial_create(name,
+				     &ns16550_can_send,
+				     &ns16550_send,
 				     2048, s);
 	if (!(s->vser)) {
 		SERIAL_LOG(LVL_ERR, "Failed to create vserial instance.\n");
@@ -876,8 +851,10 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 	goto uart16550a_emulator_probe_done;
 
 uart16550a_emulator_probe_freerbuf_fail:
-	if (s->recv_fifo) fifo_free(s->recv_fifo);
-	if (s->xmit_fifo) fifo_free(s->xmit_fifo);
+	if (s->recv_fifo)
+		fifo_free(s->recv_fifo);
+	if (s->xmit_fifo)
+		fifo_free(s->xmit_fifo);
 uart16550a_emulator_probe_freestate_fail:
 	vmm_free(s);
 uart16550a_emulator_probe_done:
@@ -902,15 +879,9 @@ static int ns16550_emulator_remove(struct vmm_emudev *edev)
 }
 
 static struct vmm_devtree_nodeid ns16550_emuid_table[] = {
-	{ .type = "serial", 
-	  .compatible = "ns16550a", 
-	},
-	{ .type = "serial", 
-	  .compatible = "8250", 
-	},
-	{ .type = "serial", 
-	  .compatible = "ns16550d", 
-	},
+	{ .type = "serial", .compatible = "ns16550a", },
+	{ .type = "serial", .compatible = "ns16550d", },
+	{ .type = "serial", .compatible = "8250", },
 	{ /* end of list */ },
 };
 
@@ -939,9 +910,9 @@ static void __exit ns16550_emulator_exit(void)
 	vmm_devemu_unregister_emulator(&ns16550_emulator);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-		   MODULE_AUTHOR, 
-		   MODULE_LICENSE, 
-		   MODULE_IPRIORITY, 
-		   MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+		   MODULE_AUTHOR,
+		   MODULE_LICENSE,
+		   MODULE_IPRIORITY,
+		   MODULE_INIT,
 		   MODULE_EXIT);
