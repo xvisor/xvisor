@@ -1,0 +1,120 @@
+
+/dts-v1/;
+
+/ {
+	model = "Virt";
+	compatible = "linux,dummy-virt";
+	interrupt-parent = <&plic>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <10000000>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "riscv";
+			reg = <0x0>;
+			mmu-type = "riscv,sv48";
+			riscv,isa = "rv64imacfd";
+			status = "okay";
+			cpu0_intc: interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		SHMEM0: shmem@58000000 {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0x0 0x58000000 0x0 0x01000000>;
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x00000000 0x80000000 0 0x06000000>;
+	};
+
+	plic: interrupt-controller@0c000000 {
+		compatible = "riscv,plic0";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		riscv,max-priority = <7>;
+		riscv,ndev = <32>;
+		reg = <0x0 0x0c000000 0 0x04000000>;
+		interrupts-extended = <&cpu0_intc 0xffffffff>, <&cpu0_intc 9>;
+	};
+
+	smb {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		uart@10000000 {
+			compatible = "ns16550a";
+			reg = <0x0 0x10000000 0x0 0x100>;
+			interrupts = <10>;
+			clock-frequency = <3686400>;
+		};
+
+		virtio_net@0A000000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x20000000 0x0 0x1000>;
+			interrupts = <1>;
+			dma-coherent;
+		};
+
+		virtio_block@0A001000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x20001000 0x0 0x1000>;
+			interrupts = <2>;
+			dma-coherent;
+		};
+
+		virtio_console@0A002000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x20002000 0x0 0x1000>;
+			interrupts = <3>;
+			dma-coherent;
+		};
+
+		virtio_rpmsg@0A003000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x20003000 0x0 0x1000>;
+			interrupts = <4>;
+			dma-coherent;
+		};
+
+		simplefb@30000000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x50000000 0x0 0x1000000>;
+			width = <1024>;
+			height = <768>;
+			stride = <2048>;
+			format = "r5g6b5";
+		};
+
+		shmem0 {
+			compatible = "ikwzm,udmabuf-0.10.a";
+			device-name = "shmem0";
+			minor-number = <0>;
+			size = <0x01000000>;
+			memory-region = <&SHMEM0>;
+			dma-coherent;
+		};
+	};
+};

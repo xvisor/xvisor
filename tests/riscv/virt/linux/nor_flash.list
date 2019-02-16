@@ -1,0 +1,5 @@
+0x00000000 /images/riscv/virt/firmware.bin
+0x000FF000 /images/riscv/virt/cmdlist
+0x00100000 /images/riscv/virt/Image
+0x00FF0000 /images/riscv/virt/virt.dtb
+0x01000000 /images/riscv/rootfs.img
