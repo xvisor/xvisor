@@ -94,6 +94,18 @@ void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arch_board_fdt_fixup(void *fdt_addr)
 {
+	/* TODO: Update timebase-frequency DT property in
+	 * /cpus DT node based on timer frequency in VMINFO
+	 */
+
+	/* TODO: Create more CPU DT nodes under /cpus based
+	 * on VCPU count in VMINFO
+	 */
+
+	/* TODO: Update interrupts-extended DT property for
+	 * PLIC DT node based on VCPU count in VMINFO
+	 */
+
 	simplefb_fdt_fixup(VIRT_SIMPLEFB, fdt_addr);
 }
 
