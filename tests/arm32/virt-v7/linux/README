@@ -67,7 +67,7 @@ ARM Fast Models Host:
   # cp -f ./tests/arm32/virt-v7/xscript/one_guest_virt-v7.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/virt-v7/Image
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7/virt-v7.dtb ./tests/arm32/virt-v7/linux/virt-v7.dts
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/virt-v7/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Create fast_model_boot.axf for running it on ARM Fast Models]

@@ -1,1 +1,1 @@
-0x40000000 /images/arm32/realview-eb-mpcore/firmware.bin
+0x40000000 ./firmware.bin

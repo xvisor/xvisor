@@ -1,5 +1,5 @@
-0x34000000 /images/arm32/versatilepb/firmware.bin
-0x340FF000 /images/arm32/versatilepb/cmdlist
-0x34100000 /images/arm32/versatilepb/Image
-0x34FF0000 /images/arm32/versatilepb/versatile-pb.dtb
-0x35000000 /images/arm32/rootfs.img
+0x34000000 ./firmware.bin
+0x340FF000 ./cmdlist
+0x34100000 ./Image
+0x34FF0000 ./versatile-pb.dtb
+0x35000000 ./rootfs.img

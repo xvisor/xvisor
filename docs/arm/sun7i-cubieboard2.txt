@@ -79,7 +79,7 @@ A20:
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca15-tc1.dtb ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/vexpress-a15/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
   OR
   [14. Create disk image for Xvisor with only Guest Basic Firmware]

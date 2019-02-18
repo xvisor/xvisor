@@ -67,7 +67,7 @@ QEMU model (v3.1.50 or higher):
   # cp -f ./tests/riscv/virt/xscript/one_guest_virt.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt/Image
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt/virt.dtb ./tests/riscv/virt/linux/virt.dts
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]

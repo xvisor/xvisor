@@ -69,7 +69,7 @@ guest with Xvisor running on QEMU Vexpress-A15 Host:
   # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/realview-pb-a8/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/arm-realview-pba8.dtb ./build/disk/images/arm32/realview-pb-a8/arm-realview-pba8.dtb
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/realview-pb-a8/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
   OR
   [15. Create disk image for Xvisor with only Guest Basic Firmware]

@@ -89,7 +89,7 @@ Model (v11.xx or higher) and also boot ARM64 Linux as Guest OS:
   # cp -f ./tests/arm64/virt-v8/xscript/one_guest_virt-v8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm64/virt-v8/Image
   # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/virt-v8/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch Foundation v8 Model]
@@ -186,7 +186,7 @@ Model (v11.xx or higher) and also boot ARM32 Linux as Guest OS:
   # cp -f ./tests/arm32/vexpress-a15/xscript/one_guest_vexpress-a15.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/vexpress-a15/Image
   # cp -f <linux_build_directory>/arch/arm/boot/dts/vexpress-v2p-ca15-tc1.dtb ./build/disk/images/arm32/vexpress-a15/vexpress-v2p-ca15-tc1.dtb
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/rootfs.img
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/vexpress-a15/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [15. Change build environment for Foundation v8 boot-wrapper]
