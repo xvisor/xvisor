@@ -31,6 +31,7 @@
 #include <serial/pl01x.h>
 #include <sys/vminfo.h>
 #include <display/simplefb.h>
+#include <libfdt/libfdt.h>
 
 void arch_board_reset(void)
 {
@@ -88,6 +89,60 @@ void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arch_board_fdt_fixup(void *fdt_addr)
 {
+	char name[64];
+	u32 vals[1];
+	int ret, cpus_offset, cpu_offset;
+	u32 i, vcpu_count = vminfo_vcpu_count(VIRT_V7_VMINFO);
+
+	cpus_offset = fdt_path_offset(fdt_addr, "/cpus");
+	if (cpus_offset < 0) {
+		basic_printf("Failed to find /cpus DT node\n");
+		return;
+	}
+
+	for (i = 0; i < vcpu_count; i++) {
+		basic_sprintf(name, "cpu@%d", i);
+
+		cpu_offset = fdt_add_subnode(fdt_addr, cpus_offset, name);
+		if (cpu_offset < 0) {
+			basic_printf("Failed to add /cpus/%s DT node\n", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "device_type", "cpu");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "device_type", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "compatible", "arm,arm-v7");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "compatible", name);
+			return;
+		}
+
+		vals[0] = cpu_to_fdt32(i);
+		ret = fdt_setprop(fdt_addr, cpu_offset,
+				  "reg", vals, sizeof(vals));
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "reg", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "enable-method", "psci");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "enable-method", name);
+			return;
+		}
+	}
+
 	simplefb_fdt_fixup(VIRT_V7_SIMPLEFB, fdt_addr);
 }
 
