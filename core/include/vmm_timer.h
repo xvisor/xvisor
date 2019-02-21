@@ -69,6 +69,12 @@ struct vmm_timer_event {
 #define DECLARE_TIMER_EVENT(ev, _hndl, _priv)		\
 	struct vmm_timer_event ev = __TIMER_EVENT_INITIALIZER(ev, _hndl, _priv)
 
+/** Get timer clocksource frequency */
+u32 vmm_timer_clocksource_frequency(void);
+
+/** Get timer clockchip frequency */
+u32 vmm_timer_clockchip_frequency(void);
+
 /** Check if timer event is pending */
 bool vmm_timer_event_pending(struct vmm_timer_event *ev);
 

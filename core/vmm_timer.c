@@ -46,6 +46,16 @@ struct vmm_timer_local_ctrl {
 
 static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
 
+u32 vmm_timer_clocksource_frequency(void)
+{
+	return vmm_timecounter_clocksource_frequency(&this_cpu(tlc).tc);
+}
+
+u32 vmm_timer_clockchip_frequency(void)
+{
+	return vmm_clockchip_frequency(this_cpu(tlc).cc);
+}
+
 #if defined(CONFIG_PROFILE)
 u64 __notrace vmm_timer_timestamp_for_profile(void)
 {

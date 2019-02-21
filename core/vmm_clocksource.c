@@ -38,6 +38,11 @@ struct vmm_clocksource_ctrl {
 
 static struct vmm_clocksource_ctrl csctrl;
 
+u32 vmm_timecounter_clocksource_frequency(struct vmm_timecounter *tc)
+{
+	return (tc && tc->cs) ? tc->cs->freq : 0;
+}
+
 #if defined(CONFIG_PROFILE)
 /**
  * We need to have a special version of vmm_timecounter_read() for

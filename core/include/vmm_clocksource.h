@@ -57,6 +57,7 @@ struct vmm_clocksource;
  * @disable:		optional function to disable the clocksource
  * @mask:		bitmask for two's complement
  *			subtraction of non 64 bit counters
+ * @freq:		frequency at which counter is running
  * @mult:		cycle to nanosecond multiplier
  * @shift:		cycle to nanosecond divisor (power of two)
  * @suspend:		suspend function for the clocksource, if necessary
@@ -67,6 +68,7 @@ struct vmm_clocksource {
 	const char *name;
 	int rating;
 	u64 mask;
+	u32 freq;
 	u32 mult;
 	u32 shift;
 	u64 (*read) (struct vmm_clocksource *cs);
@@ -129,6 +131,9 @@ static inline u32 vmm_clocksource_hz2mult(u32 hz, u32 shift)
 /** Convert delta cycles to nsecs */
 #define vmm_clocksource_delta2nsecs(cycles, mult, shift) \
 		(((cycles) * (mult)) >> (shift)) 
+
+/** Get clocksource frequency of nanosecond counter */
+u32 vmm_timecounter_clocksource_frequency(struct vmm_timecounter *tc);
 
 /** Get current value from nanosecond counter (nanoseconds elapsed) */
 u64 vmm_timecounter_read(struct vmm_timecounter *tc);

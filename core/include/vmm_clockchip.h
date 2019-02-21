@@ -53,6 +53,7 @@ struct vmm_clockchip;
  * @rating:		variable to rate clock event devices
  * @cpumask:		cpumask to indicate for which CPUs this device works
  * @features:		features
+ * @freq:		frequency at which clock event device is running
  * @mult:		nanosecond to cycles multiplier
  * @shift:		nanoseconds to cycles divisor (power of two)
  * @max_delta_ns:	maximum delta value in ns
@@ -72,6 +73,7 @@ struct vmm_clockchip {
 	int rating;
 	const struct vmm_cpumask *cpumask;
 	unsigned int features;
+	u32 freq;
 	u32 mult;
 	u32 shift;
 	u64 max_delta_ns;
@@ -96,11 +98,11 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "clockchip", "", "", compat, fn)
 
 /**
  * clocks_calc_mult_shift - calculate mult/shift factors for scaled math of clocks
- * @mult:       pointer to mult variable
- * @shift:      pointer to shift variable
- * @from:       frequency to convert from
- * @to:         frequency to convert to
- * @maxsec:     guaranteed runtime conversion range in seconds
+ * @mult:	pointer to mult variable
+ * @shift:	pointer to shift variable
+ * @from:	frequency to convert from
+ * @to:		frequency to convert to
+ * @maxsec:	guaranteed runtime conversion range in seconds
  *
  * The function evaluates the shift/mult pair for the scaled math
  * operations of clocksources and clockevents.
@@ -120,32 +122,32 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "clockchip", "", "", compat, fn)
 static inline void vmm_clocks_calc_mult_shift(u32 *mult, u32 *shift,
 					      u32 from, u32 to, u32 maxsec)
 {
-        u64 tmp;
-        u32 sft, sftacc= 32;
+	u64 tmp;
+	u32 sft, sftacc= 32;
 
-        /* 
+	/*
 	 * Calculate the shift factor which is limiting the conversion
-         * range:
-         */
-        tmp = ((u64)maxsec * from) >> 32;
-        while (tmp) {
-                tmp >>=1;
-                sftacc--;
-        }
+	 * range:
+	 */
+	tmp = ((u64)maxsec * from) >> 32;
+	while (tmp) {
+		tmp >>=1;
+		sftacc--;
+	}
 
-        /*
-         * Find the conversion shift/mult pair which has the best
-         * accuracy and fits the maxsec conversion range:
-         */
-        for (sft = 32; sft > 0; sft--) {
-                tmp = (u64) to << sft;
-                tmp += from / 2;
-                tmp = udiv64(tmp, from);
-                if ((tmp >> sftacc) == 0)
-                        break;
-        }
-        *mult = tmp;
-        *shift = sft;
+	/*
+	 * Find the conversion shift/mult pair which has the best
+	 * accuracy and fits the maxsec conversion range:
+	 */
+	for (sft = 32; sft > 0; sft--) {
+		tmp = (u64) to << sft;
+		tmp += from / 2;
+		tmp = udiv64(tmp, from);
+		if ((tmp >> sftacc) == 0)
+			break;
+	}
+	*mult = tmp;
+	*shift = sft;
 }
 
 /** Convert kHz clockchip to clockchip mult */
@@ -162,6 +164,12 @@ static inline u32 vmm_clockchip_hz2mult(u32 hz, u32 shift)
 	u64 tmp = ((u64)hz) << shift;
 	tmp = udiv64(tmp, (u64)1000000000);
 	return (u32)tmp;
+}
+
+/** Get frequency of clockchip */
+static inline u32 vmm_clockchip_frequency(struct vmm_clockchip *cc)
+{
+	return (cc) ? cc->freq : 0;
 }
 
 /** Convert tick delta to nanoseconds */
