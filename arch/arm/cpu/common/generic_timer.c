@@ -102,6 +102,7 @@ static int __init generic_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->rating = 400;
 	cs->read = &generic_counter_read;
 	cs->mask = VMM_CLOCKSOURCE_MASK(56);
+	cs->freq = generic_timer_hz;
 	vmm_clocks_calc_mult_shift(&cs->mult, &cs->shift,
 				   generic_timer_hz, VMM_NSEC_PER_SEC, 10);
 	generic_timer_mult = cs->mult;
@@ -346,6 +347,7 @@ static int __cpuinit generic_timer_clockchip_init(struct vmm_devtree_node *node)
 	cc->rating = 400;
 	cc->cpumask = vmm_cpumask_of(vmm_smp_processor_id());
 	cc->features = VMM_CLOCKCHIP_FEAT_ONESHOT;
+	cc->freq = generic_timer_hz;
 	vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift,
 				   VMM_NSEC_PER_SEC, generic_timer_hz, 10);
 	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, cc);

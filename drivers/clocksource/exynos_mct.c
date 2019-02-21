@@ -175,6 +175,7 @@ static int __init exynos4_clocksource_init(struct vmm_devtree_node *node)
 	mct_frc.rating = 300;
 	mct_frc.read = exynos4_frc_read;
 	mct_frc.mask = VMM_CLOCKSOURCE_MASK(64);
+	mct_frc.freq = clock;
 	vmm_clocks_calc_mult_shift(&mct_frc.mult,
 				   &mct_frc.shift, clock, NSEC_PER_SEC, 5);
 	mct_frc.priv = NULL;
@@ -314,6 +315,7 @@ static int __cpuinit exynos4_clockchip_init(struct vmm_devtree_node *node)
 #endif
 		mct_comp_device.features =
 		    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
+		mct_comp_device.freq = clock;
 		vmm_clocks_calc_mult_shift(&mct_comp_device.mult,
 					   &mct_comp_device.shift,
 					   NSEC_PER_SEC, clock, 5);
@@ -536,6 +538,7 @@ static int __cpuinit exynos4_local_timer_init(struct vmm_devtree_node *node)
 	evt->features =
 	    VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	evt->rating = 450;
+	evt->freq = clock / (MCT_L_BASE_CNT + 1);
 	vmm_clocks_calc_mult_shift(&evt->mult,
 				   &evt->shift,
 				   NSEC_PER_SEC,

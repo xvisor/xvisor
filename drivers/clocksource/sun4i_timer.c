@@ -157,6 +157,7 @@ static int __init aw_timer_clocksource_init(struct vmm_devtree_node *node)
 	acs->clksrc.rating = 350;
 	acs->clksrc.read = aw_clksrc_read;
 	acs->clksrc.mask = VMM_CLOCKSOURCE_MASK(64);
+	acs->clksrc.freq = rate;
 	acs->clksrc.shift = 10;
 	acs->clksrc.mult = vmm_clocksource_hz2mult(rate, acs->clksrc.shift);
 	acs->clksrc.priv = acs;
@@ -323,6 +324,7 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	acc->clkchip.cpumask = vmm_cpumask_of(0);
 	acc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
+	acc->clkchip.freq = rate;
 	acc->clkchip.mult = vmm_clockchip_hz2mult(rate, 32);
 	acc->clkchip.shift = 32;
 	acc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(1, &acc->clkchip) + 100000;

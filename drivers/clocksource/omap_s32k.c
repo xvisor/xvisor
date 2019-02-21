@@ -60,6 +60,7 @@ int __init s32k_clocksource_init(struct vmm_devtree_node *node)
 	s32k_clksrc.priv = (void *)base;
 
 	/* Compute mult for clocksource */
+	s32k_clksrc.freq = S32K_FREQ_HZ;
 	vmm_clocks_calc_mult_shift(&s32k_clksrc.mult, &s32k_clksrc.shift, 
 				   S32K_FREQ_HZ, VMM_NSEC_PER_SEC, 10);
 

@@ -186,6 +186,7 @@ static int __init epit_clocksource_init(struct vmm_devtree_node *node)
 	ecs->clksrc.rating = 200;
 	ecs->clksrc.read = epit_clksrc_read;
 	ecs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
+	ecs->clksrc.freq = clock;
 	vmm_clocks_calc_mult_shift(&ecs->clksrc.mult,
 				   &ecs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
@@ -402,6 +403,7 @@ static int __cpuinit epit_clockchip_init(struct vmm_devtree_node *node)
 	ecc->clkchip.cpumask = cpu_all_mask;
 #endif
 	ecc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
+	ecc->clkchip.freq = clock;
 	vmm_clocks_calc_mult_shift(&ecc->clkchip.mult,
 				   &ecc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, clock, 10);

@@ -147,6 +147,7 @@ static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 	cs->clksrc.rating = 300;
 	cs->clksrc.read = &sp804_clocksource_read;
 	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
+	cs->clksrc.freq = freq_hz;
 	vmm_clocks_calc_mult_shift(&cs->clksrc.mult, &cs->clksrc.shift, 
 				   freq_hz, VMM_NSEC_PER_SEC, 10);
 	cs->clksrc.priv = cs;
@@ -273,6 +274,7 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	cc->clkchip.cpumask = cpu_all_mask;
 	cc->clkchip.features = 
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
+	cc->clkchip.freq = freq_hz;
 	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
 				   VMM_NSEC_PER_SEC, freq_hz, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);

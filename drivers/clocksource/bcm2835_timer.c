@@ -84,6 +84,7 @@ static int __init bcm2835_clocksource_init(struct vmm_devtree_node *node)
 	bcs->clksrc.rating = 300;
 	bcs->clksrc.read = bcm2835_clksrc_read;
 	bcs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
+	bcs->clksrc.freq = clock;
 	vmm_clocks_calc_mult_shift(&bcs->clksrc.mult, 
 				   &bcs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
@@ -195,6 +196,7 @@ static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
 	bcc->clkchip.rating = 300;
 	bcc->clkchip.cpumask = vmm_cpumask_of(0);
 	bcc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
+	bcc->clkchip.freq = clock;
 	vmm_clocks_calc_mult_shift(&bcc->clkchip.mult, 
 				   &bcc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, clock, 10);
@@ -237,4 +239,3 @@ static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
 VMM_CLOCKCHIP_INIT_DECLARE(bcm2835clkchip,
 			   "brcm,bcm2835-system-timer",
 			   bcm2835_clockchip_init);
-

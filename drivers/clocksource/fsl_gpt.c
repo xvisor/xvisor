@@ -146,6 +146,7 @@ static int __init gpt_clocksource_init(struct vmm_devtree_node *node)
 	gcs->clksrc.rating = 300;
 	gcs->clksrc.read = gpt_clksrc_read;
 	gcs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
+	gcs->clksrc.freq = clock;
 	vmm_clocks_calc_mult_shift(&gcs->clksrc.mult,
 				   &gcs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
