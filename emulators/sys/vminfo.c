@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_modules.h>
+#include <vmm_timer.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
 
@@ -48,7 +49,8 @@ struct vminfo_state {
 	u32 version;
 	u32 vcpu_count;
 	u32 boot_delay;
-	u32 reserved[11];
+	u32 reserved1;
+	u32 reserved2[6];
 	u32 ram0_base_ms;
 	u32 ram0_base_ls;
 	u32 ram0_size_ms;
@@ -94,17 +96,27 @@ static int vminfo_emulator_read(struct vmm_emudev *edev,
 		*dst = s->boot_delay;
 		break;
 	case 0x14: /* RESERVED */
-	case 0x18: /* RESERVED */
-	case 0x1c: /* RESERVED */
-	case 0x20: /* RESERVED */
-	case 0x24: /* RESERVED */
+		*dst = s->reserved1;
+		break;
+	case 0x18: /* CLOCKSOURCE_FREQ_MS */
+		*dst = 0;
+		break;
+	case 0x1c: /* CLOCKSOURCE_FREQ_LS */
+		*dst = vmm_timer_clocksource_frequency();
+		break;
+	case 0x20: /* CLOCKCHIP_FREQ_MS */
+		*dst = 0;
+		break;
+	case 0x24: /* CLOCKCHIP_FREQ_LS */
+		*dst = vmm_timer_clockchip_frequency();
+		break;
 	case 0x28: /* RESERVED */
 	case 0x2c: /* RESERVED */
 	case 0x30: /* RESERVED */
 	case 0x34: /* RESERVED */
 	case 0x38: /* RESERVED */
 	case 0x3c: /* RESERVED */
-		*dst = s->reserved[(offset - 0x14) >> 2];
+		*dst = s->reserved2[(offset - 0x28) >> 2];
 		break;
 	case 0x40: /* RAM0_BASE_MS */
 		*dst = s->ram0_base_ms;
