@@ -43,7 +43,14 @@ void __attribute__ ((section(".entry")))
 		while (1); /* Hang !!! */
 	}
 
-	for (i = 0; i < fdt_size / sizeof(u32); i++) {
-		dst[i] = src[i];
+	i = 0;
+	while (i < fdt_size) {
+		if (4 < (fdt_size - i)) {
+			dst[i/4] = src[i/4];
+			i += 4;
+		} else {
+			((u8 *)dst)[i] = ((u8 *)src)[i];
+			i += 1;
+		}
 	}
 }
