@@ -24,12 +24,14 @@
 #include <arch_types.h>
 #include <arch_board.h>
 #include <basic_stdio.h>
+#include <basic_heap.h>
 #include <basic_string.h>
 #include <display/simplefb.h>
 #include <pic/riscv_intc.h>
 #include <serial/uart8250.h>
 #include <sys/vminfo.h>
 #include <timer/riscv_timer.h>
+#include <libfdt/libfdt.h>
 
 #define VIRT_NOR_FLASH			(0x00000000)
 #define VIRT_NOR_FLASH_SIZE		(0x02000000)
@@ -94,17 +96,173 @@ void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arch_board_fdt_fixup(void *fdt_addr)
 {
-	/* TODO: Update timebase-frequency DT property in
-	 * /cpus DT node based on timer frequency in VMINFO
-	 */
+	char name[64];
+	u32 i, *vals;
+	int ret, cpus_offset, cpu_offset, intc_offset, plic_offset;
+	u32 timebase_freq = (u32)vminfo_clocksource_freq(VIRT_VMINFO);
+	u32 vcpu_count = vminfo_vcpu_count(VIRT_VMINFO);
 
-	/* TODO: Create more CPU DT nodes under /cpus based
-	 * on VCPU count in VMINFO
-	 */
+	vals = basic_malloc(sizeof(u32) * 4 * vcpu_count);
+	if (!vals) {
+		basic_printf("Failed to allocate cells\n");
+		return;
+	}
 
-	/* TODO: Update interrupts-extended DT property for
-	 * PLIC DT node based on VCPU count in VMINFO
-	 */
+	cpus_offset = fdt_path_offset(fdt_addr, "/cpus");
+	if (cpus_offset < 0) {
+		basic_printf("Failed to find /cpus DT node\n");
+		return;
+	}
+
+	vals[0] = cpu_to_fdt32(timebase_freq);
+	ret = fdt_setprop(fdt_addr, cpus_offset,
+			  "timebase-frequency", vals, sizeof(u32));
+	if (ret < 0) {
+		basic_printf("Failed to set %s property of /cpus "
+			     "DT node\n", "timebase-frequency");
+		return;
+	}
+
+	for (i = 0; i < vcpu_count; i++) {
+		basic_sprintf(name, "cpu@%d", i);
+
+		cpu_offset = fdt_add_subnode(fdt_addr, cpus_offset, name);
+		if (cpu_offset < 0) {
+			basic_printf("Failed to add /cpus/%s DT node\n", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "device_type", "cpu");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "device_type", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "compatible", "riscv");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "compatible", name);
+			return;
+		}
+
+		vals[0] = cpu_to_fdt32(i);
+		ret = fdt_setprop(fdt_addr, cpu_offset,
+				  "reg", vals, sizeof(u32));
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "reg", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+#if __riscv_xlen == 64
+					 "mmu-type", "riscv,sv48");
+#elif __riscv_xlen == 32
+					 "mmu-type", "riscv,sv32");
+#else
+#error "Unexpected __riscv_xlen"
+#endif
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "mmu-type", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "riscv,isa", "rv64imacfd");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "riscv,isa", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, cpu_offset,
+					 "status", "okay");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of /cpus/%s "
+				     "DT node\n", "status", name);
+			return;
+		}
+
+		intc_offset = fdt_add_subnode(fdt_addr, cpu_offset,
+					      "interrupt-controller");
+		if (intc_offset < 0) {
+			basic_printf("Failed to add "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", name);
+			return;
+		}
+
+		ret = fdt_setprop_string(fdt_addr, intc_offset,
+					 "compatible", "riscv,cpu-intc");
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", "compatible", name);
+			return;
+		}
+
+		ret = fdt_setprop(fdt_addr, intc_offset,
+				  "interrupt-controller", NULL, 0);
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", "interrupt-controller", name);
+			return;
+		}
+
+		vals[0] = cpu_to_fdt32(1);
+		ret = fdt_setprop(fdt_addr, intc_offset,
+				  "#interrupt-cells", vals, sizeof(u32));
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", "#interrupt-cells", name);
+			return;
+		}
+
+		vals[0] = cpu_to_fdt32(100 + i);
+		ret = fdt_setprop(fdt_addr, intc_offset,
+				  "phandle", vals, sizeof(u32));
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", "phandle", name);
+			return;
+		}
+
+		vals[0] = cpu_to_fdt32(100 + i);
+		ret = fdt_setprop(fdt_addr, intc_offset,
+				  "linux,phandle", vals, sizeof(u32));
+		if (ret < 0) {
+			basic_printf("Failed to set %s property of "
+				     "/cpus/%s/interrupt-controller "
+				     "DT node\n", "linux,phandle", name);
+			return;
+		}
+	}
+
+	for (i = 0; i < vcpu_count; i++) {
+		vals[i*4 + 0] = cpu_to_fdt32(100 + i);
+		vals[i*4 + 1] = cpu_to_fdt32(0xffffffff);
+		vals[i*4 + 2] = cpu_to_fdt32(100 + i);
+		vals[i*4 + 3] = cpu_to_fdt32(9);
+	}
+	plic_offset = fdt_node_offset_by_compatible(fdt_addr, -1,
+						    "riscv,plic0");
+	if (plic_offset < 0) {
+		return;
+	}
+	ret = fdt_setprop(fdt_addr, plic_offset, "interrupts-extended",
+			  vals, sizeof(u32) * 4 * vcpu_count);
+	if (ret < 0) {
+		basic_printf("Failed to set %s property of PLIC "
+			     "DT node\n", "interrupts-extended");
+		return;
+	}
 
 	simplefb_fdt_fixup(VIRT_SIMPLEFB, fdt_addr);
 }
