@@ -18,7 +18,7 @@
  *
  * @file plic.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief RISC-V Platform Level Interrupt Controller Emulator.
+ * @brief SiFive Platform Level Interrupt Controller (PLIC) Emulator.
  */
 
 #include <vmm_error.h>
