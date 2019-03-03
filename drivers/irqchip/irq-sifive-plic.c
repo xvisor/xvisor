@@ -16,10 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file irq-riscv-plic.c
+ * @file irq-sifive-plic.c
  * @author Oza Pawandeep (oza.pawandeep@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
- * @brief riscv PLIC driver
+ * @brief SiFive Platform Interrupt Controller (PLIC) driver
  */
 
 #include <vmm_error.h>
