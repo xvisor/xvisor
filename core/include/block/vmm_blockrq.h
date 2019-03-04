@@ -37,8 +37,12 @@ struct vmm_blockrq;
 struct vmm_blockrq_ops {
 	int (*read)(struct vmm_blockrq *brq,
 		    struct vmm_request *r, void *priv);
+	int (*read_cache)(struct vmm_blockrq *brq,
+			  struct vmm_request *r, void *priv);
 	int (*write)(struct vmm_blockrq *brq,
 		     struct vmm_request *r, void *priv);
+	int (*write_cache)(struct vmm_blockrq *brq,
+			   struct vmm_request *r, void *priv);
 	int (*abort)(struct vmm_blockrq *brq,
 		     struct vmm_request *r, void *priv);
 	void (*flush)(struct vmm_blockrq *brq, void *priv);

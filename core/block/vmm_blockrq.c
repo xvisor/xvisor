@@ -49,6 +49,29 @@ struct blockrq_work {
 	bool is_free;
 };
 
+static int blockrq_cache_rw(struct vmm_blockrq *brq,
+			    struct vmm_request *r)
+{
+	int rc = VMM_ENOTAVAIL;
+
+	switch (r->type) {
+	case VMM_REQUEST_READ:
+		if (brq->ops->read_cache) {
+			rc = brq->ops->read_cache(brq, r, brq->priv);
+		}
+		break;
+	case VMM_REQUEST_WRITE:
+		if (brq->ops->write_cache) {
+			rc = brq->ops->write_cache(brq, r, brq->priv);
+		}
+		break;
+	default:
+		break;
+	};
+
+	return rc;
+}
+
 static int blockrq_queue_rw(struct vmm_blockrq *brq,
 			    struct vmm_request *r)
 {
@@ -239,13 +262,19 @@ static void blockrq_flush_work(struct vmm_blockrq *brq, void *priv)
 	}
 }
 
-static int blockrq_make_request(struct vmm_request_queue *rq, 
+static int blockrq_peek_cache(struct vmm_request_queue *rq,
+			      struct vmm_request *r)
+{
+	return blockrq_cache_rw(vmm_blockrq_from_rq(rq), r);
+}
+
+static int blockrq_make_request(struct vmm_request_queue *rq,
 				struct vmm_request *r)
 {
 	return blockrq_queue_rw(vmm_blockrq_from_rq(rq), r);
 }
 
-static int blockrq_abort_request(struct vmm_request_queue *rq, 
+static int blockrq_abort_request(struct vmm_request_queue *rq,
 				 struct vmm_request *r)
 {
 	return blockrq_abort_rw(vmm_blockrq_from_rq(rq), r);
@@ -373,6 +402,7 @@ struct vmm_blockrq *vmm_blockrq_create(
 
 	INIT_REQUEST_QUEUE(&brq->rq,
 			   max_pending,
+			   blockrq_peek_cache,
 			   blockrq_make_request,
 			   blockrq_abort_request,
 			   blockrq_flush_cache,

@@ -53,6 +53,17 @@ int vmm_blockdev_unregister_client(struct vmm_notifier_block *nb)
 }
 VMM_EXPORT_SYMBOL(vmm_blockdev_unregister_client);
 
+static int __blockdev_peek_cache(struct vmm_blockdev *bdev,
+				 struct vmm_request *r)
+{
+	struct vmm_request_queue *rq = bdev->rq;
+
+	if (!rq->peek_cache)
+		return VMM_ENOTAVAIL;
+
+	return rq->peek_cache(rq, r);
+}
+
 static int __blockdev_make_request(struct vmm_blockdev *bdev,
 				   struct vmm_request *r,
 				   bool append_backlog)
@@ -186,6 +197,25 @@ int vmm_blockdev_submit_request(struct vmm_blockdev *bdev,
 	if ((bdev->start_lba + bdev->num_blocks) < (r->lba + r->bcnt)) {
 		rc = VMM_ERANGE;
 		goto failed;
+	}
+
+	if (rq->peek_cache) {
+		vmm_spin_lock_irqsave(&rq->lock, flags);
+		rc = __blockdev_peek_cache(bdev, r);
+		vmm_spin_unlock_irqrestore(&rq->lock, flags);
+		if (rc == VMM_OK) {
+			if (r->completed) {
+				r->completed(r);
+			}
+			return VMM_OK;
+		} else if (rc != VMM_ENOTAVAIL) {
+			if (r->failed) {
+				r->failed(r);
+			}
+			return rc;
+		} else {
+			rc = VMM_OK;
+		}
 	}
 
 	if (rq->make_request) {

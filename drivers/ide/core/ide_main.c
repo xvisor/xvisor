@@ -107,7 +107,7 @@ static int __init_ide_drive(struct ide_drive *drive)
 		goto detect_freebdev_fail;
 	}
 	INIT_REQUEST_QUEUE(bdev->rq,
-			   U32_MAX,
+			   U32_MAX, NULL,
 			   ide_make_request,
 			   ide_abort_request,
 			   NULL, drive);
