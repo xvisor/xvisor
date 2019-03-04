@@ -480,6 +480,12 @@ static int virtio_host_blk_name_format(char *prefix, int index,
 	return 0;
 }
 
+static struct vmm_blockrq_ops virtio_host_blk_rq_ops = {
+	.read = virtio_host_blk_read,
+	.write = virtio_host_blk_write,
+	.flush = virtio_host_blk_flush
+};
+
 static int virtio_host_blk_probe(struct virtio_host_device *vdev)
 {
 	int rc = VMM_OK;
@@ -587,10 +593,7 @@ static int virtio_host_blk_probe(struct virtio_host_device *vdev)
 	/* Setup request queue for block device instance */
 	vblk->brq = vmm_blockrq_create(vblk->bdev->name,
 				       vblk->max_reqs, TRUE,
-				       virtio_host_blk_read,
-				       virtio_host_blk_write,
-				       NULL,
-				       virtio_host_blk_flush,
+				       &virtio_host_blk_rq_ops,
 				       vblk);
 	if (!vblk->brq) {
 		vmm_lerror(vdev->dev.name,

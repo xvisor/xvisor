@@ -506,6 +506,13 @@ struct mmc_host *mmc_alloc_host(int extra, struct vmm_device *dev)
 }
 VMM_EXPORT_SYMBOL(mmc_alloc_host);
 
+static struct vmm_blockrq_ops mmc_rq_ops = {
+	.read = mmc_blockrq_read,
+	.write = mmc_blockrq_write,
+	.abort = mmc_blockrq_abort,
+	.flush = mmc_blockrq_flush
+};
+
 int mmc_add_host(struct mmc_host *host)
 {
 	int rc;
@@ -543,11 +550,7 @@ int mmc_add_host(struct mmc_host *host)
 
 	vmm_snprintf(name, 32, "mmc%d", mmc_host_count);
 	host->brq = vmm_blockrq_create(name, 128, FALSE,
-				       mmc_blockrq_read,
-				       mmc_blockrq_write,
-				       mmc_blockrq_abort,
-				       mmc_blockrq_flush,
-				       host);
+				       &mmc_rq_ops, host);
 	if (!host->brq) {
 		vmm_mutex_unlock(&mmc_host_list_mutex);
 		return VMM_EFAIL;

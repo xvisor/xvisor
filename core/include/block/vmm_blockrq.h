@@ -31,12 +31,10 @@
 #include <block/vmm_blockdev.h>
 #include <libs/list.h>
 
-/** Representation of generic request queue */
-struct vmm_blockrq {
-	char name[VMM_FIELD_NAME_SIZE];
-	u32 max_pending;
-	bool async_rw;
+struct vmm_blockrq;
 
+/** Representation of generic request queue operations */
+struct vmm_blockrq_ops {
 	int (*read)(struct vmm_blockrq *brq,
 		    struct vmm_request *r, void *priv);
 	int (*write)(struct vmm_blockrq *brq,
@@ -44,6 +42,14 @@ struct vmm_blockrq {
 	int (*abort)(struct vmm_blockrq *brq,
 		     struct vmm_request *r, void *priv);
 	void (*flush)(struct vmm_blockrq *brq, void *priv);
+};
+
+/** Representation of generic request queue */
+struct vmm_blockrq {
+	char name[VMM_FIELD_NAME_SIZE];
+	u32 max_pending;
+	bool async_rw;
+	const struct vmm_blockrq_ops *ops;
 	void *priv;
 
 	u32 wq_page_count;
@@ -93,10 +99,6 @@ int vmm_blockrq_destroy(struct vmm_blockrq *brq);
  */
 struct vmm_blockrq *vmm_blockrq_create(
 	const char *name, u32 max_pending, bool async_rw,
-	int (*read)(struct vmm_blockrq *,struct vmm_request *, void *),
-	int (*write)(struct vmm_blockrq *,struct vmm_request *, void *),
-	int (*abort)(struct vmm_blockrq *,struct vmm_request *, void *),
-	void (*flush)(struct vmm_blockrq *,void *),
-	void *priv);
+	const struct vmm_blockrq_ops *ops, void *priv);
 
 #endif

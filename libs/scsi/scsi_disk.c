@@ -157,6 +157,12 @@ static void scsi_disk_rq_flush(struct vmm_blockrq *brq, void *priv)
 	/* Nothing to do here. */
 }
 
+static struct vmm_blockrq_ops scsi_rq_ops = {
+	.read = scsi_disk_rq_read,
+	.write = scsi_disk_rq_write,
+	.flush = scsi_disk_rq_flush
+};
+
 struct scsi_disk *scsi_create_disk(const char *name,
 				   unsigned int lun,
 				   unsigned int max_pending,
@@ -214,9 +220,7 @@ struct scsi_disk *scsi_create_disk(const char *name,
 
 	/* Setup request queue for block device instance */
 	disk->brq = vmm_blockrq_create(name, max_pending, FALSE,
-				       scsi_disk_rq_read,
-				       scsi_disk_rq_write, NULL,
-				       scsi_disk_rq_flush, disk);
+				       &scsi_rq_ops, disk);
 	if (!disk->brq) {
 		vmm_blockdev_free(disk->bdev);
 		vmm_free(disk);

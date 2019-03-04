@@ -73,6 +73,11 @@ static int rbd_write_request(struct vmm_blockrq *brq,
 	return VMM_OK;
 }
 
+static struct vmm_blockrq_ops rbd_rq_ops = {
+	.read = rbd_read_request,
+	.write = rbd_write_request
+};
+
 static struct rbd *__rbd_create(struct vmm_device *dev,
 				const char *name,
 				physical_addr_t pa,
@@ -111,10 +116,7 @@ static struct rbd *__rbd_create(struct vmm_device *dev,
 	d->bdev->block_size = RBD_BLOCK_SIZE;
 
 	/* Setup request queue for block device instance */
-	brq = vmm_blockrq_create(name, 8, FALSE,
-				 rbd_read_request,
-				 rbd_write_request,
-				 NULL, NULL, d);
+	brq = vmm_blockrq_create(name, 8, FALSE, &rbd_rq_ops, d);
 	if (!brq) {
 		goto free_bdev;
 	}

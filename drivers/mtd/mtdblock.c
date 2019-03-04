@@ -103,6 +103,12 @@ void mtd_blockdev_flush(struct vmm_blockrq *brq, void *priv)
 	/* Nothing to do here. */
 }
 
+static struct vmm_blockrq_ops mtd_blockdev_rq_ops = {
+	.read = mtd_blockdev_read,
+	.write = mtd_blockdev_write,
+	.flush = mtd_blockdev_flush
+};
+
 void mtdblock_add(struct mtd_info *mtd)
 {
 	int			err = 0;
@@ -126,11 +132,7 @@ void mtdblock_add(struct mtd_info *mtd)
 
 	/* Setup request queue for block device instance */
 	brq = vmm_blockrq_create(mtd->name, 128, FALSE,
-				 mtd_blockdev_read,
-				 mtd_blockdev_write,
-				 NULL,
-				 mtd_blockdev_flush,
-				 mtd);
+				 &mtd_blockdev_rq_ops, mtd);
 	if (!brq) {
 		vmm_blockdev_free(bdev);
 		return;
