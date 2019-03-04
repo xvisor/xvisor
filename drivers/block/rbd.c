@@ -43,8 +43,8 @@
 static LIST_HEAD(rbd_list);
 static DEFINE_SPINLOCK(rbd_list_lock);
 
-static int rbd_read_request(struct vmm_blockrq *brq,
-			    struct vmm_request *r, void *priv)
+static int rbd_read_cache(struct vmm_blockrq *brq,
+			  struct vmm_request *r, void *priv)
 {
 	struct rbd *d = priv;
 	physical_addr_t pa;
@@ -58,8 +58,8 @@ static int rbd_read_request(struct vmm_blockrq *brq,
 	return VMM_OK;
 }
 
-static int rbd_write_request(struct vmm_blockrq *brq,
-			     struct vmm_request *r, void *priv)
+static int rbd_write_cache(struct vmm_blockrq *brq,
+			   struct vmm_request *r, void *priv)
 {
 	struct rbd *d = priv;
 	physical_addr_t pa;
@@ -74,8 +74,8 @@ static int rbd_write_request(struct vmm_blockrq *brq,
 }
 
 static struct vmm_blockrq_ops rbd_rq_ops = {
-	.read = rbd_read_request,
-	.write = rbd_write_request
+	.read_cache = rbd_read_cache,
+	.write_cache = rbd_write_cache
 };
 
 static struct rbd *__rbd_create(struct vmm_device *dev,
