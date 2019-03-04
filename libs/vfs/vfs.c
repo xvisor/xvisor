@@ -805,6 +805,11 @@ int vfs_unmount(const char *path)
 		vfs_vnode_release(m->m_covered);
 	}
 
+	/* flush underlying blockdev */
+	if (m->m_dev) {
+		vmm_blockdev_flush_cache(m->m_dev);
+	}
+
 	vmm_free(m);
 
 	return err;
