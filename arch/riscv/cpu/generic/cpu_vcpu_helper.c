@@ -72,7 +72,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* For both Orphan & Normal VCPUs */
 	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
 	riscv_regs(vcpu)->sepc = vcpu->start_pc;
-	riscv_regs(vcpu)->sstatus = SR_SPP|SR_SPIE; /* TODO: */
+	riscv_regs(vcpu)->sstatus = SSTATUS_SPP | SSTATUS_SPIE; /* TODO: */
 	riscv_regs(vcpu)->sp = vcpu->stack_va +
 			     (vcpu->stack_sz - ARCH_CACHE_LINE_SIZE);
 	riscv_regs(vcpu)->sp = riscv_regs(vcpu)->sp & ~0x7;

@@ -24,7 +24,11 @@
 #define _ARCH_TYPES_H__
 
 /** cpu specific types */
-#if __riscv_xlen == 64
+#ifdef CONFIG_64BIT
+#if __riscv_xlen != 64
+#error "Need 64bit toolchain for 64bit system"
+#endif
+
 typedef unsigned int irq_flags_t;
 typedef unsigned long virtual_addr_t;
 typedef unsigned long virtual_size_t;
@@ -42,7 +46,11 @@ typedef unsigned long physical_size_t;
 #define ARCH_BITS_PER_LONG		64
 #define ARCH_BITS_PER_LONG_LONG		64
 
-#elif __riscv_xlen == 32
+#else /* assume 32bit system */
+#if __riscv_xlen != 32
+#error "Need 32bit toolchain for 32bit system"
+#endif
+
 typedef unsigned int irq_flags_t;
 typedef unsigned int virtual_addr_t;
 typedef unsigned int virtual_size_t;
@@ -59,9 +67,6 @@ typedef unsigned long long physical_size_t;
 
 #define ARCH_BITS_PER_LONG		32
 #define ARCH_BITS_PER_LONG_LONG		64
-
-#else
-#error "Unexpected __riscv_xlen"
 #endif
 
 typedef struct {

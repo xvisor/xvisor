@@ -37,6 +37,16 @@
 #define __ASM_STR(x)	#x
 #endif
 
+#ifdef CONFIG_64BIT
+#if __riscv_xlen != 64
+#error "Need 64bit toolchain for 64bit system"
+#endif
+#else
+#if __riscv_xlen != 32
+#error "Need 32bit toolchain for 32bit system"
+#endif
+#endif
+
 #if __riscv_xlen == 64
 #define __REG_SEL(a, b)	__ASM_STR(a)
 #elif __riscv_xlen == 32

@@ -48,8 +48,8 @@ void do_handle_async(arch_regs_t *regs,
 void do_handle_sync(arch_regs_t *regs,
 		    unsigned long exc, unsigned long baddr)
 {
-	if ((exc == EXC_STORE_AMO_PAGE_FAULT) &&
-	    (regs->sstatus & SR_SPP) &&
+	if ((exc == CAUSE_STORE_PAGE_FAULT) &&
+	    (regs->sstatus & SSTATUS_SPP) &&
 	    (regs->sepc == preempt_orphan_pc)) {
 		regs->sepc += 4;
 		vmm_scheduler_preempt_orphan(regs);
@@ -65,8 +65,8 @@ void do_handle_sync(arch_regs_t *regs,
 
 void do_handle_exception(arch_regs_t *regs)
 {
-	unsigned long baddr = csr_read(sbadaddr);
-	unsigned long scause = csr_read(scause);
+	unsigned long baddr = csr_read(CSR_STVAL);
+	unsigned long scause = csr_read(CSR_SCAUSE);
 
 	if (scause & SCAUSE_INTERRUPT_MASK) {
 		do_handle_async(regs, scause & SCAUSE_EXC_MASK, baddr);
@@ -80,7 +80,7 @@ int __cpuinit arch_cpu_irq_setup(void)
 	extern unsigned long _handle_exception[];
 
 	/* Setup final exception handler */
-	csr_write(stvec, (virtual_addr_t)&_handle_exception);
+	csr_write(CSR_STVEC, (virtual_addr_t)&_handle_exception);
 
 	return VMM_OK;
 }

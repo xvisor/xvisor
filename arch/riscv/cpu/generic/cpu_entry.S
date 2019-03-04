@@ -39,14 +39,14 @@
 	.globl _start_secondary_nopen
 _start:
 	/* Mask all interrupts */
-	csrw sie, zero
+	csrw CSR_SIE, zero
 
 	/*
 	 * Disable FPU to detect illegal usage of
 	 * floating point in kernel space
 	 */
-	li t0, SR_FS
-	csrc sstatus, t0
+	li t0, SSTATUS_FS
+	csrc CSR_SSTATUS, t0
 
 #ifdef CONFIG_SMP
 	/* Pick one HART to run the main boot sequence */
@@ -164,7 +164,7 @@ _start_secondary_wait:
 _start_secondary_nopen:
 	/* Set trap vector to spin forever to help debug */
 	la	a6, _start_hang
-	csrw	stvec, a6
+	csrw	CSR_STVEC, a6
 
 	/* Enable MMU */
 	la	a6, _load_start
@@ -179,7 +179,7 @@ _start_secondary_nopen:
 	li	a1, SATP_MODE
 	or	a0, a0, a1
 	sfence.vma
-	csrw	sptbr, a0
+	csrw	CSR_SATP, a0
 
 	/* Jump to final execution address */
 	la	a6, __cpu_init
@@ -245,7 +245,7 @@ __hvc_stack_end:
 _cpu_init:
 	/* Re-setup exception handler */
 	la	a6, _start_hang
-	csrw	stvec, a6
+	csrw	CSR_STVEC, a6
 
 	/* Setup scratch space */
 	la	a6, __hvc_stack_end
@@ -262,10 +262,10 @@ _cpu_init:
 	sub	a5, a5, a4
 	li	a3, RISCV_SCRATCH_SIZE
 	sub	a5, a5, a3
-	csrw	sscratch, a5
+	csrw	CSR_SSCRATCH, a5
 
 	/* Setup Hypervisor Exception Stack */
-	csrr	tp, sscratch
+	csrr	tp, CSR_SSCRATCH
 	REG_S	tp, RISCV_SCRATCH_EXCE_STACK_OFFSET(tp)
 	add	sp, tp, zero
 
@@ -290,7 +290,7 @@ _cpu_init:
 	.global _handle_exception
 _handle_exception:
 	/* Swap TP and SSCRATCH */
-	csrrw	tp, sscratch, tp
+	csrrw	tp, CSR_SSCRATCH, tp
 
 	/* Save S0 in scratch space */
 	REG_S	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
@@ -310,7 +310,7 @@ _handle_exception:
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(s0)(sp)
 
 	/* Swap TP and SSCRATCH */
-	csrrw	tp, sscratch, tp
+	csrrw	tp, CSR_SSCRATCH, tp
 
 	/* Save all general regisers except ZERO, SP & S0 */
 	REG_S	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
@@ -344,9 +344,9 @@ _handle_exception:
 	REG_S	t6, RISCV_ARCH_REGS_OFFSET(t6)(sp)
 
 	/* Save SEPC and SSTATUS CSRs */
-	csrr	s0, sepc
+	csrr	s0, CSR_SEPC
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
-	csrr	s1, sstatus
+	csrr	s1, CSR_SSTATUS
 	REG_S	s1, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
 
 	/* Save exception SP */
@@ -359,14 +359,14 @@ _handle_exception:
 
 	/* Restore exception SP in scratch space */
 	REG_L	s0, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
-	csrr	s1, sscratch
+	csrr	s1, CSR_SSCRATCH
 	REG_S	s0, RISCV_SCRATCH_EXCE_STACK_OFFSET(s1)
 
 	/* Restore SEPC and SSTATUS CSRs */
 	REG_L	s2, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
-	csrw	sepc, s2
+	csrw	CSR_SEPC, s2
 	REG_L	s3, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
-	csrw	sstatus, s3
+	csrw	CSR_SSTATUS, s3
 
 	/* Restore all general regisers except SP */
 	REG_L	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)

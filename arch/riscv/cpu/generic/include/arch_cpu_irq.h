@@ -32,19 +32,19 @@ int arch_cpu_irq_setup(void);
 /** Enable IRQ
  *  Prototype: void arch_cpu_irq_enable(void); 
  */
-#define arch_cpu_irq_enable()	csr_set(sstatus, SR_SIE);
+#define arch_cpu_irq_enable()	csr_set(CSR_SSTATUS, SSTATUS_SIE);
 
 /** Disable IRQ
  *  Prototype: void arch_cpu_irq_disable(void); 
  */
-#define arch_cpu_irq_disable()	csr_clear(sstatus, SR_SIE)
+#define arch_cpu_irq_disable()	csr_clear(CSR_SSTATUS, SSTATUS_SIE)
 
 /** Check whether IRQs are disabled
  *  Prototype: bool arch_cpu_irq_disabled(void); 
  */
 #define arch_cpu_irq_disabled()		\
-({	unsigned long __flgs = csr_read(sstatus); \
-	(__flgs & SR_SIE) ? TRUE : FALSE; \
+({	unsigned long __flgs = csr_read(CSR_SSTATUS); \
+	(__flgs & SSTATUS_SIE) ? TRUE : FALSE; \
 })
 
 
@@ -53,7 +53,7 @@ int arch_cpu_irq_setup(void);
  */
 #define arch_cpu_irq_save(flags)	\
 do { \
-	(flags) = csr_read_clear(sstatus, SR_SIE); \
+	(flags) = csr_read_clear(CSR_SSTATUS, SSTATUS_SIE); \
 } while(0)
 
 /** Restore IRQ flags
@@ -61,7 +61,7 @@ do { \
  */
 #define arch_cpu_irq_restore(flags)	\
 do { \
-	csr_set(sstatus, (flags) & SR_SIE); \
+	csr_set(CSR_SSTATUS, (flags) & SSTATUS_SIE); \
 } while(0)
 
 /** Wait for IRQ
