@@ -66,6 +66,28 @@ struct arch_regs {
 
 typedef struct arch_regs arch_regs_t;
 
+struct riscv_priv {
+	unsigned long bstatus;
+	unsigned long bsie;
+	unsigned long bstvec;
+	unsigned long bsscratch;
+	unsigned long bsepc;
+	unsigned long bscause;
+	unsigned long bstval;
+	unsigned long bsip;
+	unsigned long bstap;
+	unsigned long hstatus;
+	unsigned long hedeleg;
+	unsigned long hideleg;
+} __packed;
+
+struct riscv_guest_priv {
+	/* Stage2 pagetable */
+	struct cpu_pgtbl *pgtbl;
+};
+
 #define riscv_regs(vcpu)	(&((vcpu)->regs))
+#define riscv_priv(vcpu)	((struct riscv_priv *)((vcpu)->arch_priv))
+#define riscv_guest_priv(guest)	((struct riscv_guest_priv *)((guest)->arch_priv))
 
 #endif
