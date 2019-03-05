@@ -29,7 +29,7 @@ struct cpu_mmu_entry_ctrl {
 	int num_levels;
 	u32 pgtbl_count;
 	int *pgtbl_tree;
-	u64 *next_pgtbl;
+	cpu_pte_t *next_pgtbl;
 	virtual_addr_t pgtbl_base;
 };
 
@@ -47,7 +47,7 @@ void __attribute__ ((section(".entry")))
 			  bool writeable)
 {
 	u32 i, index;
-	u64 *pgtbl;
+	cpu_pte_t *pgtbl;
 	virtual_addr_t page_addr;
 
 	/* align start addresses */
@@ -56,7 +56,7 @@ void __attribute__ ((section(".entry")))
 
 	page_addr = map_start;
 	while (page_addr < map_end) {
-		pgtbl = (u64 *)entry->pgtbl_base;
+		pgtbl = (cpu_pte_t *)entry->pgtbl_base;
 
 		/* Setup level3 table */
 		if (entry->num_levels < 4) {
@@ -65,7 +65,7 @@ void __attribute__ ((section(".entry")))
 		index = (page_addr & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
 		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
 			/* Find level2 table */
-			pgtbl = (u64 *)(u64)
+			pgtbl = (cpu_pte_t *)(unsigned long)
 				(((pgtbl[index] & PGTBL_PTE_ADDR_MASK)
 				  >> PGTBL_PTE_ADDR_SHIFT)
 				 << PGTBL_PAGE_SIZE_SHIFT);
@@ -97,7 +97,7 @@ skip_level3:
 		index = (page_addr & PGTBL_L2_INDEX_MASK) >> PGTBL_L2_INDEX_SHIFT;
 		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
 			/* Find level1 table */
-			pgtbl = (u64 *)(u64)
+			pgtbl = (cpu_pte_t *)(unsigned long)
 				(((pgtbl[index] & PGTBL_PTE_ADDR_MASK)
 				  >> PGTBL_PTE_ADDR_SHIFT)
 				 << PGTBL_PAGE_SIZE_SHIFT);
@@ -129,7 +129,7 @@ skip_level2:
 		index = (page_addr & PGTBL_L1_INDEX_MASK) >> PGTBL_L1_INDEX_SHIFT;
 		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
 			/* Find level0 table */
-			pgtbl = (u64 *)(u64)
+			pgtbl = (cpu_pte_t *)(unsigned long)
 				(((pgtbl[index] & PGTBL_PTE_ADDR_MASK)
 				  >> PGTBL_PTE_ADDR_SHIFT)
 				 << PGTBL_PAGE_SIZE_SHIFT);
@@ -226,18 +226,20 @@ void __attribute__ ((section(".entry")))
 	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, NULL, 0 };
 
 	/* For now assume 3-level page table */
+#ifdef CONFIG_64BIT
 	entry.num_levels = 3;
+#else
+	entry.num_levels = 2;
+#endif
 
 	/* Init pgtbl_base, pgtbl_tree, and next_pgtbl */
 	entry.pgtbl_tree =
 		(int *)to_load_pa((virtual_addr_t)&def_pgtbl_tree);
-
 	for (i = 0; i < PGTBL_INITIAL_TABLE_COUNT; i++) {
 		entry.pgtbl_tree[i] = -1;
 	}
-
 	entry.pgtbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
-	entry.next_pgtbl = (u64 *)entry.pgtbl_base;
+	entry.next_pgtbl = (cpu_pte_t *)entry.pgtbl_base;
 
 	/* Init first pgtbl */
 	for (i = 0; i < PGTBL_TABLE_ENTCNT; i++) {
