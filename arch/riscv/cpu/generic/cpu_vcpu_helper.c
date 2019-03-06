@@ -2,7 +2,7 @@
  * Copyright (c) 2018 Anup Patel.
  * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modifycpu_vcpu_helper.c
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
@@ -30,16 +30,38 @@
 #include <arch_barrier.h>
 #include <arch_guest.h>
 #include <arch_vcpu.h>
+#include <cpu_mmu.h>
 
 int arch_guest_init(struct vmm_guest *guest)
 {
-	/* TODO: For now, nothing to do here. */
+	if (!guest->reset_count) {
+		guest->arch_priv = vmm_malloc(sizeof(struct riscv_guest_priv));
+		if (!guest->arch_priv) {
+			return VMM_ENOMEM;
+		}
+
+		riscv_guest_priv(guest)->pgtbl = cpu_mmu_pgtbl_alloc(PGTBL_STAGE2);
+		if (!riscv_guest_priv(guest)->pgtbl) {
+			vmm_free(guest->arch_priv);
+			guest->arch_priv = NULL;
+			return VMM_ENOMEM;
+		}
+	}
+
 	return VMM_OK;
 }
 
 int arch_guest_deinit(struct vmm_guest *guest)
 {
-	/* TODO: For now, nothing to do here. */
+	int rc;
+
+	if (guest->arch_priv) {
+		if ((rc = cpu_mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl))) {
+			return rc;
+		}
+		vmm_free(guest->arch_priv);
+	}
+
 	return VMM_OK;
 }
 
@@ -55,6 +77,8 @@ int arch_guest_del_region(struct vmm_guest *guest, struct vmm_region *region)
 
 int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
+	int rc = VMM_OK;
+	const char *attr;
 	virtual_addr_t sp_exec;
 
 	/* First time allocate exception stack */
@@ -77,9 +101,66 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			     (vcpu->stack_sz - ARCH_CACHE_LINE_SIZE);
 	riscv_regs(vcpu)->sp = riscv_regs(vcpu)->sp & ~0x7;
 	riscv_regs(vcpu)->sp_exec = sp_exec;
+	riscv_regs(vcpu)->hstatus = 0;
 
-	/* TODO: For Normal VCPUs */
+	/* For Orphan VCPUs we are done */
+	if (!vcpu->is_normal) {
+		return VMM_OK;
+	}
 
+	/* Following initialization for normal VCPUs only */
+	rc = vmm_devtree_read_string(vcpu->node,
+			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
+	if (rc) {
+		goto done;
+	}
+	if (strcmp(attr, "riscv,generic") != 0) {
+		rc = VMM_EINVALID;
+		goto done;
+	}
+
+	/* Update HSTATUS */
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2V;
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2P;
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
+
+	/* First time initialization of private context */
+	if (!vcpu->reset_count) {
+		/* Alloc private context */
+		vcpu->arch_priv = vmm_zalloc(sizeof(struct riscv_priv));
+		if (!vcpu->arch_priv) {
+			rc = VMM_ENOMEM;
+			goto done;
+		}
+	}
+
+	/* Update BS<xyz> */
+	riscv_priv(vcpu)->bsstatus = 0; /* TODO: ??? */
+	riscv_priv(vcpu)->bsie = 0;
+	riscv_priv(vcpu)->bstvec = 0;
+	riscv_priv(vcpu)->bsscratch = 0;
+	riscv_priv(vcpu)->bsepc = 0;
+	riscv_priv(vcpu)->bscause = 0;
+	riscv_priv(vcpu)->bstval = 0;
+	riscv_priv(vcpu)->bsip = 0;
+	riscv_priv(vcpu)->bsatp = 0;
+
+	/* Update HIDELEG */
+	riscv_priv(vcpu)->hideleg = 0;
+	riscv_priv(vcpu)->hideleg |= SIP_SSIP;
+	riscv_priv(vcpu)->hideleg |= SIP_STIP;
+	riscv_priv(vcpu)->hideleg |= SIP_SEIP;
+
+	/* Update HEDELEG */
+	riscv_priv(vcpu)->hedeleg = 0;
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_MISALIGNED_FETCH);
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_BREAKPOINT);
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_USER_ECALL);
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_FETCH_PAGE_FAULT);
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_LOAD_PAGE_FAULT);
+	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
+
+done:
 	return VMM_OK;
 }
 
@@ -87,8 +168,6 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
 	virtual_addr_t sp_exec =
 			riscv_regs(vcpu)->sp_exec - CONFIG_IRQ_STACK_SIZE;
-
-	/* TODO: For Normal VCPUs */
 
 	/* For both Orphan & Normal VCPUs */
 
@@ -99,6 +178,15 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	/* Clear arch registers */
 	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
 
+	/* For Orphan VCPUs do nothing else */
+	if (!vcpu->is_normal) {
+		return VMM_OK;
+	}
+
+	/* Free private context */
+	vmm_free(vcpu->arch_priv);
+	vcpu->arch_priv = NULL;
+
 	return VMM_OK;
 }
 
@@ -108,8 +196,38 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 {
 	if (tvcpu) {
 		memcpy(riscv_regs(tvcpu), regs, sizeof(*regs));
+		if (tvcpu->is_normal) {
+			riscv_priv(tvcpu)->hideleg = csr_read(CSR_HIDELEG);
+			riscv_priv(tvcpu)->hedeleg = csr_read(CSR_HEDELEG);
+			riscv_priv(tvcpu)->bsstatus = csr_read(CSR_BSSTATUS);
+			riscv_priv(tvcpu)->bsie = csr_read(CSR_BSIE);
+			riscv_priv(tvcpu)->bstvec = csr_read(CSR_BSTVEC);
+			riscv_priv(tvcpu)->bsscratch = csr_read(CSR_BSSCRATCH);
+			riscv_priv(tvcpu)->bsepc = csr_read(CSR_BSEPC);
+			riscv_priv(tvcpu)->bscause = csr_read(CSR_BSCAUSE);
+			riscv_priv(tvcpu)->bstval = csr_read(CSR_BSTVAL);
+			riscv_priv(tvcpu)->bsip = csr_read(CSR_BSIP);
+			riscv_priv(tvcpu)->bsatp = csr_read(CSR_BSATP);
+		}
+
 	}
+
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
+	if (vcpu->is_normal) {
+		csr_write(CSR_HIDELEG, riscv_priv(tvcpu)->hideleg);
+		csr_write(CSR_HEDELEG, riscv_priv(tvcpu)->hedeleg);
+		csr_write(CSR_BSSTATUS, riscv_priv(vcpu)->bsstatus);
+		csr_write(CSR_BSIE, riscv_priv(vcpu)->bsie);
+		csr_write(CSR_BSTVEC, riscv_priv(vcpu)->bstvec);
+		csr_write(CSR_BSSCRATCH, riscv_priv(vcpu)->bsscratch);
+		csr_write(CSR_BSEPC, riscv_priv(vcpu)->bsepc);
+		csr_write(CSR_BSCAUSE, riscv_priv(vcpu)->bscause);
+		csr_write(CSR_BSTVAL, riscv_priv(vcpu)->bstval);
+		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
+		csr_write(CSR_BSATP, riscv_priv(vcpu)->bsatp);
+		cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
+					    riscv_guest_priv(vcpu->guest)->pgtbl);
+	}
 }
 
 void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
@@ -120,7 +238,62 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	/* TODO: */
+	arch_regs_t *regs = riscv_regs(vcpu);
+	struct riscv_priv *priv = riscv_priv(vcpu);
+
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "     zero", regs->zero, "       ra", regs->ra);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       sp", regs->sp, "       gp", regs->gp);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       tp", regs->tp, "       s0", regs->s0);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       s1", regs->s1, "       a0", regs->a0);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       a1", regs->a1, "       a2", regs->a2);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       a3", regs->a3, "       a4", regs->a4);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       a5", regs->a5, "       a6", regs->a6);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       a7", regs->a7, "       s2", regs->s2);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       s3", regs->s3, "       s4", regs->s4);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       s5", regs->s5, "       s6", regs->s6);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       s7", regs->s7, "       s8", regs->s8);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       s9", regs->s9, "      s10", regs->s10);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "      s11", regs->s11, "       t0", regs->t0);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       t1", regs->t1, "       t2", regs->t2);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       t3", regs->t3, "       t4", regs->t4);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "       t5", regs->t5, "       t6", regs->t6);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "     sepc", regs->sepc, "  sstatus", regs->sstatus);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "  hstatus", regs->hstatus, "  sp_exec", regs->sp_exec);
+
+	if (!vcpu->is_normal) {
+		return;
+	}
+
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "  hedeleg", priv->hedeleg, "  hideleg", priv->hideleg);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    " bsstatus", priv->bsstatus, "     bsie", priv->bsie);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "   bstvec", priv->bstvec, "bsscratch", priv->bsscratch);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "    bsepc", priv->bsepc, "  bscause", priv->bscause);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "   bstval", priv->bstval, "     bsip", priv->bsip);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
+		    "    bsatp", priv->bsatp);
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

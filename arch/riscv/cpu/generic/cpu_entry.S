@@ -343,15 +343,17 @@ _handle_exception:
 	REG_S	t5, RISCV_ARCH_REGS_OFFSET(t5)(sp)
 	REG_S	t6, RISCV_ARCH_REGS_OFFSET(t6)(sp)
 
-	/* Save SEPC and SSTATUS CSRs */
+	/* Save SEPC, SSTATUS and HSTATUS CSRs */
 	csrr	s0, CSR_SEPC
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrr	s1, CSR_SSTATUS
 	REG_S	s1, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
+	/* TODO: csrr	s2, CSR_HSTATUS */
+	/* TODO: REG_S	s2, RISCV_ARCH_REGS_OFFSET(hstatus)(sp) */
 
 	/* Save exception SP */
-	add	s2, sp, RISCV_ARCH_REGS_SIZE
-	REG_S	s2, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
+	add	s3, sp, RISCV_ARCH_REGS_SIZE
+	REG_S	s3, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
 
 	/* Call C routine */
 	add	a0, sp, zero
@@ -362,11 +364,13 @@ _handle_exception:
 	csrr	s1, CSR_SSCRATCH
 	REG_S	s0, RISCV_SCRATCH_EXCE_STACK_OFFSET(s1)
 
-	/* Restore SEPC and SSTATUS CSRs */
+	/* Restore SEPC, SSTATUS and HSTATUS CSRs */
 	REG_L	s2, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrw	CSR_SEPC, s2
 	REG_L	s3, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
 	csrw	CSR_SSTATUS, s3
+	/* TODO: REG_L	s4, RISCV_ARCH_REGS_OFFSET(hstatus)(sp) */
+	/* TODO: csrw	CSR_HSTATUS, s4 */
 
 	/* Restore all general regisers except SP */
 	REG_L	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)

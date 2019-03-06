@@ -61,13 +61,16 @@ struct arch_regs {
 	unsigned long t6;
 	unsigned long sepc;
 	unsigned long sstatus;
+	unsigned long hstatus;
 	unsigned long sp_exec;
 } __packed;
 
 typedef struct arch_regs arch_regs_t;
 
 struct riscv_priv {
-	unsigned long bstatus;
+	unsigned long hedeleg;
+	unsigned long hideleg;
+	unsigned long bsstatus;
 	unsigned long bsie;
 	unsigned long bstvec;
 	unsigned long bsscratch;
@@ -75,10 +78,7 @@ struct riscv_priv {
 	unsigned long bscause;
 	unsigned long bstval;
 	unsigned long bsip;
-	unsigned long bstap;
-	unsigned long hstatus;
-	unsigned long hedeleg;
-	unsigned long hideleg;
+	unsigned long bsatp;
 } __packed;
 
 struct riscv_guest_priv {

@@ -140,8 +140,9 @@
 #define RISCV_ARCH_REGS_t6		31
 #define RISCV_ARCH_REGS_sepc		32
 #define RISCV_ARCH_REGS_sstatus		33
-#define RISCV_ARCH_REGS_sp_exec		34
-#define RISCV_ARCH_REGS_last		35
+#define RISCV_ARCH_REGS_hstatus		34
+#define RISCV_ARCH_REGS_sp_exec		35
+#define RISCV_ARCH_REGS_last		36
 
 #define RISCV_ARCH_REGS_OFFSET(x)	((RISCV_ARCH_REGS_##x) * __SIZEOF_POINTER__)
 #define RISCV_ARCH_REGS_SIZE		RISCV_ARCH_REGS_OFFSET(last)

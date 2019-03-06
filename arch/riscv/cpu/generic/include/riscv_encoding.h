@@ -99,6 +99,14 @@
 #define SSTATUS_SD			SSTATUS32_SD
 #endif
 
+#define HSTATUS_VTSR			_AC(0x00400000, UL)
+#define HSTATUS_VTVM			_AC(0x00100000, UL)
+#define HSTATUS_SP2V			_AC(0x00000200, UL)
+#define HSTATUS_SP2P			_AC(0x00000100, UL)
+#define HSTATUS_SPV			_AC(0x00000080, UL)
+#define HSTATUS_STL			_AC(0x00000040, UL)
+#define HSTATUS_SPRV			_AC(0x00000001, UL)
+
 #define DCSR_XDEBUGVER			(3U<<30)
 #define DCSR_NDRESET			(1<<29)
 #define DCSR_FULLRESET			(1<<28)
@@ -178,6 +186,7 @@
 
 #define SIP_SSIP			MIP_SSIP
 #define SIP_STIP			MIP_STIP
+#define SIP_SEIP			MIP_SEIP
 
 /* Interrupt Enable and Interrupt Pending flags */
 #define SIE_SSIE			MIP_SSIP
