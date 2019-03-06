@@ -695,7 +695,7 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 done:
 	msr(cptr_el2, saved_cptr_el2);
 	msr(hstr_el2, saved_hstr_el2);
-	return VMM_OK;
+	return rc;
 }
 
 void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
