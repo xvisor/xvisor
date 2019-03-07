@@ -142,6 +142,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->bsepc = 0;
 	riscv_priv(vcpu)->bscause = 0;
 	riscv_priv(vcpu)->bstval = 0;
+	INIT_SPIN_LOCK(&riscv_priv(vcpu)->bsip_lock);
 	riscv_priv(vcpu)->bsip = 0;
 	riscv_priv(vcpu)->bsatp = 0;
 
@@ -194,37 +195,46 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		      struct vmm_vcpu *vcpu,
 		      arch_regs_t *regs)
 {
+	irq_flags_t f;
+	struct riscv_priv *priv;
+
 	if (tvcpu) {
 		memcpy(riscv_regs(tvcpu), regs, sizeof(*regs));
 		if (tvcpu->is_normal) {
-			riscv_priv(tvcpu)->hideleg = csr_read(CSR_HIDELEG);
-			riscv_priv(tvcpu)->hedeleg = csr_read(CSR_HEDELEG);
-			riscv_priv(tvcpu)->bsstatus = csr_read(CSR_BSSTATUS);
-			riscv_priv(tvcpu)->bsie = csr_read(CSR_BSIE);
-			riscv_priv(tvcpu)->bstvec = csr_read(CSR_BSTVEC);
-			riscv_priv(tvcpu)->bsscratch = csr_read(CSR_BSSCRATCH);
-			riscv_priv(tvcpu)->bsepc = csr_read(CSR_BSEPC);
-			riscv_priv(tvcpu)->bscause = csr_read(CSR_BSCAUSE);
-			riscv_priv(tvcpu)->bstval = csr_read(CSR_BSTVAL);
-			riscv_priv(tvcpu)->bsip = csr_read(CSR_BSIP);
-			riscv_priv(tvcpu)->bsatp = csr_read(CSR_BSATP);
+			priv = riscv_priv(tvcpu);
+			priv->hideleg = csr_read(CSR_HIDELEG);
+			priv->hedeleg = csr_read(CSR_HEDELEG);
+			priv->bsstatus = csr_read(CSR_BSSTATUS);
+			priv->bsie = csr_read(CSR_BSIE);
+			priv->bstvec = csr_read(CSR_BSTVEC);
+			priv->bsscratch = csr_read(CSR_BSSCRATCH);
+			priv->bsepc = csr_read(CSR_BSEPC);
+			priv->bscause = csr_read(CSR_BSCAUSE);
+			priv->bstval = csr_read(CSR_BSTVAL);
+			vmm_spin_lock_irqsave(&priv->bsip_lock, f);
+			priv->bsip = csr_read(CSR_BSIP);
+			vmm_spin_unlock_irqrestore(&priv->bsip_lock, f);
+			priv->bsatp = csr_read(CSR_BSATP);
 		}
 
 	}
 
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
 	if (vcpu->is_normal) {
-		csr_write(CSR_HIDELEG, riscv_priv(tvcpu)->hideleg);
-		csr_write(CSR_HEDELEG, riscv_priv(tvcpu)->hedeleg);
-		csr_write(CSR_BSSTATUS, riscv_priv(vcpu)->bsstatus);
-		csr_write(CSR_BSIE, riscv_priv(vcpu)->bsie);
-		csr_write(CSR_BSTVEC, riscv_priv(vcpu)->bstvec);
-		csr_write(CSR_BSSCRATCH, riscv_priv(vcpu)->bsscratch);
-		csr_write(CSR_BSEPC, riscv_priv(vcpu)->bsepc);
-		csr_write(CSR_BSCAUSE, riscv_priv(vcpu)->bscause);
-		csr_write(CSR_BSTVAL, riscv_priv(vcpu)->bstval);
-		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
-		csr_write(CSR_BSATP, riscv_priv(vcpu)->bsatp);
+		priv = riscv_priv(vcpu);
+		csr_write(CSR_HIDELEG, priv->hideleg);
+		csr_write(CSR_HEDELEG, priv->hedeleg);
+		csr_write(CSR_BSSTATUS, priv->bsstatus);
+		csr_write(CSR_BSIE, priv->bsie);
+		csr_write(CSR_BSTVEC, priv->bstvec);
+		csr_write(CSR_BSSCRATCH, priv->bsscratch);
+		csr_write(CSR_BSEPC, priv->bsepc);
+		csr_write(CSR_BSCAUSE, priv->bscause);
+		csr_write(CSR_BSTVAL, priv->bstval);
+		vmm_spin_lock_irqsave(&priv->bsip_lock, f);
+		csr_write(CSR_BSIP, priv->bsip);
+		vmm_spin_unlock_irqrestore(&priv->bsip_lock, f);
+		csr_write(CSR_BSATP, priv->bsatp);
 		cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
 					    riscv_guest_priv(vcpu->guest)->pgtbl);
 	}
@@ -238,6 +248,8 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
+	irq_flags_t f;
+	unsigned long bsip;
 	arch_regs_t *regs = riscv_regs(vcpu);
 	struct riscv_priv *priv = riscv_priv(vcpu);
 
@@ -282,6 +294,10 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		return;
 	}
 
+	vmm_spin_lock_irqsave(&priv->bsip_lock, f);
+	bsip = priv->bsip;
+	vmm_spin_unlock_irqrestore(&priv->bsip_lock, f);
+
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "  hedeleg", priv->hedeleg, "  hideleg", priv->hideleg);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
@@ -291,7 +307,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "    bsepc", priv->bsepc, "  bscause", priv->bscause);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   bstval", priv->bstval, "     bsip", priv->bsip);
+		    "   bstval", priv->bstval, "     bsip", bsip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
 		    "    bsatp", priv->bsatp);
 }
