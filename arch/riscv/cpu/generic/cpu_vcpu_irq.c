@@ -25,22 +25,41 @@
 #include <vmm_vcpu_irq.h>
 #include <vmm_stdio.h>
 #include <arch_vcpu.h>
+#include <riscv_csr.h>
 
 u32 arch_vcpu_irq_count(struct vmm_vcpu *vcpu)
 {
-	/* TODO: */
-	return 1;
+	return ARCH_BITS_PER_LONG;
 }
 
 u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 {
-	/* TODO: */
-	return 0;
+	/* Same priority for all VCPU interrupts */
+	return 2;
 }
 
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
-	/* TODO: */
+	irq_flags_t f;
+	unsigned long irq_mask;
+
+	if (irq_no >= ARCH_BITS_PER_LONG) {
+		return VMM_EINVALID;
+	}
+	irq_mask = 1UL << irq_no;
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
+		return VMM_OK;
+	}
+
+	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
+
+	riscv_priv(vcpu)->bsip |= irq_mask;
+	if (vcpu == vmm_scheduler_current_vcpu()) {
+		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
+	}
+
+	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
+
 	return VMM_OK;
 }
 
@@ -49,18 +68,57 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs, 
 			  u32 irq_no, u64 reason)
 {
-	/* TODO: */
+	irq_flags_t f;
+	unsigned long irq_mask;
+
+	if (irq_no >= ARCH_BITS_PER_LONG) {
+		return VMM_EINVALID;
+	}
+	irq_mask = 1UL << irq_no;
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
+		return VMM_OK;
+	}
+
+	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
+	csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
+	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
+
 	return VMM_OK;
 }
 
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
-	/* TODO: */
+	irq_flags_t f;
+	unsigned long irq_mask;
+
+	if (irq_no >= ARCH_BITS_PER_LONG) {
+		return VMM_EINVALID;
+	}
+	irq_mask = 1UL << irq_no;
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
+		return VMM_OK;
+	}
+
+	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
+
+	riscv_priv(vcpu)->bsip &= ~irq_mask;
+	if (vcpu == vmm_scheduler_current_vcpu()) {
+		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
+	}
+
+	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
+
 	return VMM_OK;
 }
 
 bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu)
 {
-	/* TODO: */
-	return FALSE;
+	bool ret;
+	irq_flags_t f;
+
+	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
+	ret = (riscv_priv(vcpu)->bsip) ? TRUE : FALSE;
+	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
+
+	return ret;
 }

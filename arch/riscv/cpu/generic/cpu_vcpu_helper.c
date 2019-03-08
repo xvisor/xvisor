@@ -31,6 +31,7 @@
 #include <arch_guest.h>
 #include <arch_vcpu.h>
 #include <cpu_mmu.h>
+#include <riscv_csr.h>
 
 int arch_guest_init(struct vmm_guest *guest)
 {
