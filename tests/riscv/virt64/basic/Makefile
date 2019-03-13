@@ -34,7 +34,7 @@ else
  install_dir=$(top_dir)/install
 endif
 
-obj_dir=$(build_dir)/tests/riscv/virt/basic
+obj_dir=$(build_dir)/tests/riscv/virt64/basic
 basic_dir=$(top_dir)/tests/common/basic
 arch_dir=$(top_dir)/tests/riscv/common/basic
 

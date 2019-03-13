@@ -1,9 +1,9 @@
-		Basic Firmware on Virt Guest
+		Basic Firmware on Virt64 Guest
 
 The basic firmware currently sets up PIC, Timer, and UART and emulates
 a dummy terminal which reponds to various commands.
 
-Please follow the steps below to build & run Basic Firmware on Virt
+Please follow the steps below to build & run Basic Firmware on Virt64
 Guest with Xvisor running on QEMU (v3.1.50 or higher):
 
   [1. Build environment for Xvisor]
@@ -24,22 +24,22 @@ Guest with Xvisor running on QEMU (v3.1.50 or higher):
   # make
 
   [6. Build Basic Firmware]
-  # make -C tests/riscv/virt/basic
+  # make -C tests/riscv/virt64/basic
 
   [7. Create disk image for Xvisor]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
-  # mkdir -p ./build/disk/images/riscv/virt
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt-x2.dtb ./tests/riscv/virt/virt-x2.dts
-  # cp -f ./build/tests/riscv/virt/basic/firmware.bin ./build/disk/images/riscv/virt/firmware.bin
-  # cp -f ./tests/riscv/virt/basic/nor_flash.list ./build/disk/images/riscv/virt/nor_flash.list
-  # cp -f ./tests/riscv/virt/xscript/one_guest_virt.xscript ./build/disk/boot.xscript
+  # mkdir -p ./build/disk/images/riscv/virt64
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64-x2.dtb ./tests/riscv/virt64/virt64-x2.dts
+  # cp -f ./build/tests/riscv/virt64/basic/firmware.bin ./build/disk/images/riscv/virt64/firmware.bin
+  # cp -f ./tests/riscv/virt64/basic/nor_flash.list ./build/disk/images/riscv/virt64/nor_flash.list
+  # cp -f ./tests/riscv/virt64/xscript/one_guest_virt64.xscript ./build/disk/boot.xscript
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [8. Launch QEMU]
-  # qemu-system-riscv64 -M virt -m 512M -display none -serial stdio -kernel <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.elf -device loader,file=./build/vmm.bin,addr=0x80200000 -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  # qemu-system-riscv64 -M virt -m 512M -display none -serial stdio -kernel <opensbi_build_directory>/platform/qemu/virt64/firmware/fw_jump.elf -device loader,file=./build/vmm.bin,addr=0x80200000 -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
   [9. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

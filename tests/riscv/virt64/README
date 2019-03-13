@@ -1,11 +1,11 @@
-			Virt Guest
+			Virt64 Guest
 
-The Virt is a fully para-virtualized guest with RISC-V CPUs.
+The Virt64 is a fully para-virtualized guest with RISC-V 64bit CPUs.
 
 We only have memory mapped VirtIO devices for IO and this makes the 
 Guest as fully para-virtualized. 
 
-The memory map and irqs in Virt guest are as follows:
+The memory map and irqs in Virt64 guest are as follows:
 0x0000000000000000-0x000000000BFFFFFF (192M)        (NOR Flash)
 0x000000000C000000–0x000000000FFFFFFF (64M)         (PLIC)
 0x0000000010000000–0x00000000100000FF (4K) (IRQ=10) (UART-8250)
@@ -25,7 +25,7 @@ The memory map and irqs in Virt guest are as follows:
 0x0000000080000000-0xFFFFFFFFFFFFFFFF (---)         (RAM)
 
 
-			Virt Guest OSes
+			Virt64 Guest OSes
 
 We have tested following guest OSes for this guest:
 

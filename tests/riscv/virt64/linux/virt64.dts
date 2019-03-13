@@ -2,7 +2,7 @@
 /dts-v1/;
 
 / {
-	model = "Virt";
+	model = "Virt64";
 	compatible = "linux,dummy-virt";
 	interrupt-parent = <&plic>;
 	#address-cells = <2>;

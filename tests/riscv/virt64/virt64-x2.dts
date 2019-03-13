@@ -2,7 +2,7 @@
 /dts-v1/;
 
 / {
-	model = "virt";
+	model = "virt64";
 	device_type = "guest";
 	sbi_version = <2>;
 
@@ -16,13 +16,13 @@
 	vcpus {
 		vcpu0 {
 			device_type = "vcpu";
-			compatible = "riscv,generic";
+			compatible = "riscv64,generic";
 			start_pc = <0x80000000>;
 		};
 
 		vcpu1 {
 			device_type = "vcpu";
-			compatible = "riscv,generic";
+			compatible = "riscv64,generic";
 			start_pc = <0x80000000>;
 			poweroff;
 		};

@@ -74,7 +74,7 @@ void arch_board_init(void)
 
 char *arch_board_name(void)
 {
-	return "Virt";
+	return "RISC-V Virt64";
 }
 
 physical_addr_t arch_board_ram_start(void)

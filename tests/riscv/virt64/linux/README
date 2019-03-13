@@ -1,4 +1,4 @@
-		Linux on Xvisor RISC-V Virt SMP Guest
+		Linux on Xvisor RISC-V Virt64 SMP Guest
 
 Linux is a computer operating system which is based on free and open source
 software. the underlying source code can be used, freely modified, and
@@ -7,13 +7,13 @@ licenses such as the GNU General Public License. For more information on
 Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
 Linux already contains a support for device-tree based boards. We can use
-linux kernel unmodified to run it as a RISC-V Virt guest. We also provide
+linux kernel unmodified to run it as a RISC-V Virt64 guest. We also provide
 a defconfig for building kernel. To obtain Linux kernel sources visit the
 following url: http://www.kernel.org
 
 Please follow the steps below to build & run Linux kernel with Busybox
-RootFS on Virt (paravirtualized RISC-V) Guest with Xvisor running on
-QEMU model (v3.1.50 or higher):
+RootFS on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor running
+on QEMU model (v3.1.50 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -33,10 +33,10 @@ QEMU model (v3.1.50 or higher):
   # make
 
   [6. Build Basic Firmware]
-  # make -C tests/riscv/virt/basic
+  # make -C tests/riscv/virt64/basic
 
   [7. Copy Linux defconfig to Linux build directory]
-  # cp tests/riscv/virt/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
+  # cp tests/riscv/virt64/linux/linux-<linux_version>_defconfig <linux_build_directory>/.config
 
   [8. GoTo Linux source directory]
   # cd <linux_source_directory>
@@ -59,19 +59,19 @@ QEMU model (v3.1.50 or higher):
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
-  # mkdir -p ./build/disk/images/riscv/virt
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt-x2.dtb ./tests/riscv/virt/virt-x2.dts
-  # cp -f ./build/tests/riscv/virt/basic/firmware.bin ./build/disk/images/riscv/virt/firmware.bin
-  # cp -f ./tests/riscv/virt/linux/nor_flash.list ./build/disk/images/riscv/virt/nor_flash.list
-  # cp -f ./tests/riscv/virt/linux/cmdlist ./build/disk/images/riscv/virt/cmdlist
-  # cp -f ./tests/riscv/virt/xscript/one_guest_virt.xscript ./build/disk/boot.xscript
-  # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt/Image
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt/virt.dtb ./tests/riscv/virt/linux/virt.dts
-  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt/rootfs.img
+  # mkdir -p ./build/disk/images/riscv/virt64
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64-x2.dtb ./tests/riscv/virt64/virt64-x2.dts
+  # cp -f ./build/tests/riscv/virt64/basic/firmware.bin ./build/disk/images/riscv/virt64/firmware.bin
+  # cp -f ./tests/riscv/virt64/linux/nor_flash.list ./build/disk/images/riscv/virt64/nor_flash.list
+  # cp -f ./tests/riscv/virt64/linux/cmdlist ./build/disk/images/riscv/virt64/cmdlist
+  # cp -f ./tests/riscv/virt64/xscript/one_guest_virt64.xscript ./build/disk/boot.xscript
+  # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt64/Image
+  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]
-  # qemu-system-riscv64 -M virt -m 512M -display none -serial stdio -kernel <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.elf -device loader,file=./build/vmm.bin,addr=0x80200000 -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  # qemu-system-riscv64 -M virt -m 512M -display none -serial stdio -kernel <opensbi_build_directory>/platform/qemu/virt64/firmware/fw_jump.elf -device loader,file=./build/vmm.bin,addr=0x80200000 -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
   [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
@@ -82,7 +82,7 @@ QEMU model (v3.1.50 or higher):
   [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
-  (Note: The <xvisor_source_directory>/tests/riscv/virt/linux/cmdlist file
+  (Note: The <xvisor_source_directory>/tests/riscv/virt64/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
