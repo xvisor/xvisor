@@ -115,7 +115,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (rc) {
 		goto done;
 	}
-	if (strcmp(attr, "riscv,generic") != 0) {
+	if (strcmp(attr, "riscv64,generic") != 0) {
 		rc = VMM_EINVALID;
 		goto done;
 	}
@@ -163,7 +163,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
 
 done:
-	return VMM_OK;
+	return rc;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
