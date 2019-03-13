@@ -67,7 +67,7 @@ void arch_board_init(void)
 
 char *arch_board_name(void)
 {
-	return "Virt-v8";
+	return "ARM Virt-v8";
 }
 
 physical_addr_t arch_board_ram_start(void)
