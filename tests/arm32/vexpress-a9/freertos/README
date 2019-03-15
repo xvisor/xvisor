@@ -135,7 +135,7 @@ have been successfully tested.
      | 
      | cp -f ./docs/banner/roman.txt $system_dir/banner.txt
      | cp -f ./docs/logo/xvisor_logo_name.ppm $system_dir/logo.ppm
-     | $dtc -I dts -O dtb -o $img_dir/vexpress-a9x2.dtb $srcdir/vexpress-a9x2.dts
+     | $dtc -I dts -O dtb -o $img_dir/vexpress-a9-guest.dtb $srcdir/vexpress-a9-guest.dts
      | cp -f ./build/$srcdir/freertos/freertos.patched.bin $bindir/freertos.bin
      | cp -f $srcdir/freertos/nor_flash.list $bindir/nor_flash.list
      | cp -f $srcdir/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript

@@ -195,7 +195,7 @@ realview-eb-mpcore)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-eb-mpcore
+	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-eb-mpcore-guest
 	BUILD_LINUX_DTB_NAME=arm-realview-eb-11mp-ctrevb.dtb
 	;;
 realview-pb-a8)
@@ -208,7 +208,7 @@ realview-pb-a8)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-pb-a8
+	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-pb-a8-guest
 	BUILD_LINUX_DTB_NAME=arm-realview-pba8.dtb
 	;;
 versatilepb)
@@ -217,7 +217,7 @@ versatilepb)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=versatilepb
+	BUILD_XVISOR_GUEST_DTS_BASENAME=versatilepb-guest
 	BUILD_LINUX_DTB_NAME=versatile-pb.dtb
 	;;
 vexpress-a9)
@@ -230,7 +230,7 @@ vexpress-a9)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a9x2
+	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a9-guest
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca9.dtb
 	;;
 vexpress-a15)
@@ -247,7 +247,7 @@ vexpress-a15)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a15x2
+	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a15-guest
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca15-tc1.dtb
 	;;
 virt-v7)
@@ -264,7 +264,7 @@ virt-v7)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm32
-	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v7x2
+	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v7-guest
 	BUILD_LINUX_DTB_NAME=virt-v7.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/virt-v7/linux/virt-v7.dts
 	;;
@@ -274,7 +274,7 @@ virt-v8)
 		usage
 	fi
 	BUILD_XVISOR_TESTS_DIR=arm64
-	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v8x2
+	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v8-guest
 	BUILD_LINUX_DTB_NAME=virt-v8.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm64/virt-v8/linux/virt-v8.dts
 	;;
