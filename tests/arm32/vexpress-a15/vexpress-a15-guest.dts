@@ -13,24 +13,14 @@
 		disk0 = &DISK0;
 	};
 
-	vcpus {
-		vcpu0 {
-			device_type = "vcpu";
-			compatible = "armv7a,cortex-a15";
-			start_pc = <0x00000000>;
-			gentimer_virt_irq = <27>;
-			gentimer_phys_irq = <30>;
-		};
-
-		vcpu1 {
-			device_type = "vcpu";
-			compatible = "armv7a,cortex-a15";
-			start_pc = <0x00000000>;
-			gentimer_virt_irq = <27>;
-			gentimer_phys_irq = <30>;
-		};
+	vcpu_template {
+		device_type = "vcpu";
+		compatible = "armv7a,cortex-a15";
+		start_pc = <0x00000000>;
+		gentimer_virt_irq = <27>;
+		gentimer_phys_irq = <30>;
 	};
-	
+
 	aspace {
 		guest_irq_count = <2048>;
 

@@ -13,25 +13,15 @@
 		shmem0 = &SHMEM0;
 	};
 
-	vcpus {
-		vcpu0 {
-			device_type = "vcpu";
-			compatible = "armv8,generic";
-			start_pc = <0x00000000>;
-			gentimer_virt_irq = <27>;
-			gentimer_phys_irq = <30>;
-		};
-
-		vcpu1 {
-			device_type = "vcpu";
-			compatible = "armv8,generic";
-			start_pc = <0x00000000>;
-			gentimer_virt_irq = <27>;
-			gentimer_phys_irq = <30>;
-			poweroff;
-		};
+	vcpu_template {
+		device_type = "vcpu";
+		compatible = "armv8,generic";
+		start_pc = <0x00000000>;
+		gentimer_virt_irq = <27>;
+		gentimer_phys_irq = <30>;
+		poweroff;
 	};
-	
+
 	aspace {
 		guest_irq_count = <1024>;
 

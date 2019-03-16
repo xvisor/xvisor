@@ -1,5 +1,5 @@
 # Load guest0 device tree from file
-vfs fdt_load /guests guest0 /images/arm32/vexpress-a15-guest.dtb mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0
+vfs guest_fdt_load guest0 /images/arm32/vexpress-a15-guest.dtb 2 mem0,physical_size,physsize,0x06000000 net0,switch,string,br0 net1,switch,string,br0
 
 # Replace guest0 vGIC emulator with GIC emulator
 devtree attr set /guests/guest0/aspace/gic_dist compatible string vexpress-v2,gic

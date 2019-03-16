@@ -11,14 +11,12 @@
 		net0 = &NET0;
 	};
 
-	vcpus {
-		vcpu0 {
-			device_type = "vcpu";
-			compatible = "armv5te,arm926ej";
-			start_pc = <0x34000000>;
-		};
+	vcpu_template {
+		device_type = "vcpu";
+		compatible = "armv5te,arm926ej";
+		start_pc = <0x34000000>;
 	};
-	
+
 	aspace {
 		guest_irq_count = <2048>;
 
