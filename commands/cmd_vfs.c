@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -81,6 +81,10 @@ static void cmd_vfs_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   vfs module_load <path_to_module_file>\n");
 	vmm_cprintf(cdev, "   vfs fdt_load <devtree_path> "
 			  "<devtree_root_name> <path_to_fdt_file> "
+			  "[<alias0>,<attr_name>,<attr_type>,<value>] "
+			  "[<alias1>,<attr_name>,<attr_type>,<value>] ...\n");
+	vmm_cprintf(cdev, "   vfs guest_fdt_load <guest_name> "
+			  "<path_to_fdt_file> <vcpu_count> "
 			  "[<alias0>,<attr_name>,<attr_type>,<value>] "
 			  "[<alias1>,<attr_name>,<attr_type>,<value>] ...\n");
 	vmm_cprintf(cdev, "   vfs host_load <host_phys_addr> "
@@ -1062,6 +1066,102 @@ fail:
 	return rc;
 }
 
+static int cmd_vfs_guest_fdt_load(struct vmm_chardev *cdev,
+				  const char *guest_name,
+				  const char *path,
+				  u32 vcpu_count,
+				  int aliasc, char **aliasv)
+{
+	int rc;
+	u32 i;
+	char name[VMM_FIELD_SHORT_NAME_SIZE];
+	struct vmm_devtree_node *guests_node, *guest_node;
+	struct vmm_devtree_node *vcpu_tmpl_node, *vcpus_node, *vcpu_node;
+
+	if (!vcpu_count) {
+		vmm_cprintf(cdev, "VCPU count should be non-zero\n");
+		return VMM_EINVALID;
+	}
+
+	guests_node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+					  VMM_DEVTREE_GUESTINFO_NODE_NAME);
+	if (!guests_node) {
+		vmm_cprintf(cdev, "%s DT node not found\n",
+			    VMM_DEVTREE_GUESTINFO_NODE_NAME);
+		return VMM_ENOTAVAIL;
+	}
+
+	rc = cmd_vfs_fdt_load(cdev, VMM_DEVTREE_PATH_SEPARATOR_STRING
+			      VMM_DEVTREE_GUESTINFO_NODE_NAME, guest_name,
+			      path, aliasc, aliasv);
+	if (VMM_OK != rc) {
+		vmm_cprintf(cdev, "Failed to load fdt (error %d)\n", rc);
+		vmm_devtree_dref_node(guests_node);
+		return rc;
+	}
+
+	guest_node = vmm_devtree_getchild(guests_node, guest_name);
+	vmm_devtree_dref_node(guests_node);
+	if (!guest_node) {
+		vmm_cprintf(cdev, "Failed to get guest DT node\n");
+		return VMM_ENOTAVAIL;
+	}
+
+	vcpu_tmpl_node = vmm_devtree_getchild(guest_node,
+					  VMM_DEVTREE_VCPU_TEMPLATE_NODE_NAME);
+	if (!vcpu_tmpl_node) {
+		vmm_cprintf(cdev, "Failed to get vcpu template DT node\n");
+		vmm_devtree_dref_node(guest_node);
+		vmm_devtree_delnode(guest_node);
+		return VMM_ENOTAVAIL;
+	}
+
+	vcpus_node = vmm_devtree_addnode(guest_node,
+					 VMM_DEVTREE_VCPUS_NODE_NAME);
+	if (!vcpus_node) {
+		return VMM_EFAIL;
+		vmm_cprintf(cdev, "Failed to add vcpus DT node\n");
+		vmm_devtree_dref_node(vcpu_tmpl_node);
+		vmm_devtree_dref_node(guest_node);
+		vmm_devtree_delnode(guest_node);
+	}
+
+	for (i = 0; i < vcpu_count; i++) {
+		vmm_snprintf(name, sizeof(name), "vcpu%d", i);
+		rc  = vmm_devtree_copynode(vcpus_node, name, vcpu_tmpl_node);
+		if (rc) {
+			vmm_cprintf(cdev, "Failed to add %s DT node\n", name);
+			vmm_devtree_dref_node(vcpu_tmpl_node);
+			vmm_devtree_dref_node(guest_node);
+			vmm_devtree_delnode(guest_node);
+			return rc;
+		}
+
+		if (i) {
+			continue;
+		}
+
+		vcpu_node = vmm_devtree_getchild(vcpus_node, name);
+		if (!vcpu_node) {
+			vmm_cprintf(cdev, "Failed to find %s DT node\n", name);
+			vmm_devtree_dref_node(vcpu_tmpl_node);
+			vmm_devtree_dref_node(guest_node);
+			vmm_devtree_delnode(guest_node);
+			return rc;
+		}
+
+		/* Remove "poweroff" DT prop (if present) for first VCPU */
+		vmm_devtree_delattr(vcpu_node,
+				    VMM_DEVTREE_VCPU_POWEROFF_ATTR_NAME);
+		vmm_devtree_dref_node(vcpu_node);
+	}
+
+	vmm_devtree_dref_node(vcpu_tmpl_node);
+	vmm_devtree_dref_node(guest_node);
+
+	return VMM_OK;
+}
+
 static int cmd_vfs_load(struct vmm_chardev *cdev,
 			struct vmm_guest *guest,
 			physical_addr_t pa,
@@ -1323,6 +1423,10 @@ static int cmd_vfs_exec(struct vmm_chardev *cdev, int argc, char **argv)
 		return cmd_vfs_module_load(cdev, argv[2]);
 	} else if ((strcmp(argv[1], "fdt_load") == 0) && (argc >= 5)) {
 		return cmd_vfs_fdt_load(cdev, argv[2], argv[3], argv[4],
+					argc-5, (argc-5) ? &argv[5] : NULL);
+	} else if ((strcmp(argv[1], "guest_fdt_load") == 0) && (argc >= 5)) {
+		off = (argc > 4) ? strtoul(argv[4], NULL, 0) : 0;
+		return cmd_vfs_guest_fdt_load(cdev, argv[2], argv[3], off,
 					argc-5, (argc-5) ? &argv[5] : NULL);
 	} else if ((strcmp(argv[1], "host_load") == 0) && (argc > 3)) {
 		pa = (physical_addr_t)strtoull(argv[2], NULL, 0);
