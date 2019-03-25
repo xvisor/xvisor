@@ -47,8 +47,8 @@
 		};
 	};
 
-	memory { 
-		device_type = "memory"; 
+	memory {
+		device_type = "memory";
 		reg = <0x0 0x00000000 0x0 0x40000000>; /* 1 GB */
 	};
 
@@ -162,6 +162,7 @@
 			compatible = "brcm,bcm2836-usb";
 			reg = <0x3f980000 0x10000>;
 			interrupts = <1 9>;
+			status = "disabled";
 		};
 	};
 
@@ -191,4 +192,3 @@
 		};
 	};
 };
-
