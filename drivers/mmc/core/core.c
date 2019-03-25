@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -64,7 +64,7 @@
 #define DPRINTF(msg...)
 #endif
 
-/* 
+/*
  * Set block count limit because of 16 bit register limit on some hardware
  */
 #ifndef CONFIG_SYS_MMC_MAX_BLK_COUNT
@@ -168,7 +168,7 @@ int mmc_set_initial_state(struct mmc_host *host)
 		return err;
 
 	mmc_set_bus_width(host, 1);
-	mmc_set_clock(host, 1, TRUE);
+	mmc_set_clock(host, 1, FALSE);
 
 	return 0;
 }
@@ -200,7 +200,7 @@ int mmc_execute_tuning(struct mmc_host *host, u32 opcode)
 	return VMM_ENOTSUPP;
 }
 
-int mmc_send_cmd(struct mmc_host *host, 
+int mmc_send_cmd(struct mmc_host *host,
 		 struct mmc_cmd *cmd,
 		 struct mmc_data *data)
 {
@@ -562,7 +562,7 @@ int mmc_add_host(struct mmc_host *host)
 
 	vmm_mutex_unlock(&mmc_host_list_mutex);
 
-	/* Make an attempt to detect mmc card 
+	/* Make an attempt to detect mmc card
 	 * Note: If it fails then it means there is not card connected so
 	 * we ignore failures.
 	 */

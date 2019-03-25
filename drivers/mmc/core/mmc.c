@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -192,7 +192,8 @@ static u32 __mmc_write_blocks(struct mmc_host *host, struct mmc_card *card,
 	struct mmc_data data;
 	int timeout = 1000;
 
-	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__,
+		(unsigned long long)start, blkcnt);
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
@@ -266,7 +267,8 @@ static u32 __mmc_read_blocks(struct mmc_host *host, struct mmc_card *card,
 	struct mmc_cmd cmd;
 	struct mmc_data data;
 
-	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__, start, blkcnt);
+	DPRINTF("%s: start=0x%llx blkcnt=%d\n", __func__,
+		(unsigned long long)start, blkcnt);
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;
@@ -686,7 +688,7 @@ static int __sd_select_mode_and_width(struct mmc_host *host,
 
 			/* configure the bus mode (host) */
 			mmc_select_mode(card, mwt->mode);
-			mmc_set_clock(host, card->tran_speed, TRUE);
+			mmc_set_clock(host, card->tran_speed, FALSE);
 
 			/* execute tuning if needed */
 			if (mwt->tuning && !mmc_host_is_spi(host)) {
@@ -706,7 +708,7 @@ static int __sd_select_mode_and_width(struct mmc_host *host,
 error:
 			/* revert to a safer bus speed */
 			mmc_select_mode(card, SD_LEGACY);
-			mmc_set_clock(host, card->tran_speed, TRUE);
+			mmc_set_clock(host, card->tran_speed, FALSE);
 		}
 	}
 
@@ -1052,7 +1054,7 @@ static int __mmc_select_mode_and_width(struct mmc_host *host,
 		return VMM_ENOTSUPP;
 	}
 
-	mmc_set_clock(host, card->legacy_speed, TRUE);
+	mmc_set_clock(host, card->legacy_speed, FALSE);
 
 	for_each_mmc_mode_by_pref(card_caps, mwt) {
 		for_each_supported_width(card_caps & mwt->widths,
@@ -1107,7 +1109,7 @@ static int __mmc_select_mode_and_width(struct mmc_host *host,
 
 				/* configure the bus mode (host) */
 				mmc_select_mode(card, mwt->mode);
-				mmc_set_clock(host, card->tran_speed, TRUE);
+				mmc_set_clock(host, card->tran_speed, FALSE);
 
 				/* execute tuning if needed */
 				if (mwt->tuning) {
@@ -1713,6 +1715,7 @@ int __mmc_sd_attach(struct mmc_host *host)
 	}
 	card = host->card;
 	card->version = MMC_VERSION_UNKNOWN;
+	card->legacy_speed = host->f_min;
 
 	/* Attempt to detect mmc card */
 	if (!mmc_getcd(host)) {
