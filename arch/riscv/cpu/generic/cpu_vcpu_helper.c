@@ -115,7 +115,13 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	if (rc) {
 		goto done;
 	}
+#if __riscv_xlen == 64
 	if (strcmp(attr, "riscv64,generic") != 0) {
+#elif __riscv_xlen == 32
+	if (strcmp(attr, "riscv32,generic") != 0) {
+#else
+#error "Unexpected __riscv_xlen"
+#endif
 		rc = VMM_EINVALID;
 		goto done;
 	}
