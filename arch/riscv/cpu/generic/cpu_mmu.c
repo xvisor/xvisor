@@ -114,8 +114,11 @@ static inline bool cpu_mmu_pgtbl_isattached(struct cpu_pgtbl *child)
 
 static inline bool cpu_mmu_valid_block_size(physical_size_t sz)
 {
-	if ((sz == PGTBL_L3_BLOCK_SIZE) ||
+	if (
+#ifdef CONFIG_64BIT
+	    (sz == PGTBL_L3_BLOCK_SIZE) ||
 	    (sz == PGTBL_L2_BLOCK_SIZE) ||
+#endif
 	    (sz == PGTBL_L1_BLOCK_SIZE) ||
 	    (sz == PGTBL_L0_BLOCK_SIZE)) {
 		return TRUE;
@@ -130,10 +133,12 @@ static inline physical_size_t cpu_mmu_level_block_size(int level)
 		return PGTBL_L0_BLOCK_SIZE;
 	case 1:
 		return PGTBL_L1_BLOCK_SIZE;
+#ifdef CONFIG_64BIT
 	case 2:
 		return PGTBL_L2_BLOCK_SIZE;
 	case 3:
 		return PGTBL_L3_BLOCK_SIZE;
+#endif
 	default:
 		break;
 	};
@@ -147,10 +152,12 @@ static inline physical_addr_t cpu_mmu_level_map_mask(int level)
 		return PGTBL_L0_MAP_MASK;
 	case 1:
 		return PGTBL_L1_MAP_MASK;
+#ifdef CONFIG_64BIT
 	case 2:
 		return PGTBL_L2_MAP_MASK;
 	case 3:
 		return PGTBL_L3_MAP_MASK;
+#endif
 	default:
 		break;
 	};
@@ -164,10 +171,12 @@ static inline int cpu_mmu_level_index(physical_addr_t ia, int level)
 		return (ia & PGTBL_L0_INDEX_MASK) >> PGTBL_L0_INDEX_SHIFT;
 	case 1:
 		return (ia & PGTBL_L1_INDEX_MASK) >> PGTBL_L1_INDEX_SHIFT;
+#ifdef CONFIG_64BIT
 	case 2:
 		return (ia & PGTBL_L2_INDEX_MASK) >> PGTBL_L2_INDEX_SHIFT;
 	case 3:
 		return (ia & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
+#endif
 	default:
 		break;
 	};
@@ -181,10 +190,12 @@ static inline int cpu_mmu_level_index_shift(int level)
 		return PGTBL_L0_INDEX_SHIFT;
 	case 1:
 		return PGTBL_L1_INDEX_SHIFT;
+#ifdef CONFIG_64BIT
 	case 2:
 		return PGTBL_L2_INDEX_SHIFT;
 	case 3:
 		return PGTBL_L3_INDEX_SHIFT;
+#endif
 	default:
 		break;
 	};
@@ -405,6 +416,7 @@ u64 cpu_mmu_best_page_size(physical_addr_t ia,
 			   physical_addr_t oa,
 			   u32 availsz)
 {
+#ifdef CONFIG_64BIT
 	if (!(ia & (PGTBL_L3_BLOCK_SIZE - 1)) &&
 	    !(oa & (PGTBL_L3_BLOCK_SIZE - 1)) &&
 	    (PGTBL_L3_BLOCK_SIZE <= availsz)) {
@@ -416,7 +428,7 @@ u64 cpu_mmu_best_page_size(physical_addr_t ia,
 	    (PGTBL_L2_BLOCK_SIZE <= availsz)) {
 		return PGTBL_L2_BLOCK_SIZE;
 	}
-
+#endif
 	if (!(ia & (PGTBL_L1_BLOCK_SIZE - 1)) &&
 	    !(oa & (PGTBL_L1_BLOCK_SIZE - 1)) &&
 	    (PGTBL_L1_BLOCK_SIZE <= availsz)) {

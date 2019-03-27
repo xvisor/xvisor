@@ -62,6 +62,7 @@ void __attribute__ ((section(".entry")))
 		if (entry->num_levels < 4) {
 			goto skip_level3;
 		}
+#if CONFIG_64BIT
 		index = (page_addr & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
 		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
 			/* Find level2 table */
@@ -88,12 +89,14 @@ void __attribute__ ((section(".entry")))
 			pgtbl = entry->next_pgtbl;
 			entry->next_pgtbl += PGTBL_TABLE_ENTCNT;
 		}
+#endif
 skip_level3:
 
 		/* Setup level2 table */
 		if (entry->num_levels < 3) {
 			goto skip_level2;
 		}
+#if CONFIG_64BIT
 		index = (page_addr & PGTBL_L2_INDEX_MASK) >> PGTBL_L2_INDEX_SHIFT;
 		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
 			/* Find level1 table */
@@ -120,6 +123,7 @@ skip_level3:
 			pgtbl = entry->next_pgtbl;
 			entry->next_pgtbl += PGTBL_TABLE_ENTCNT;
 		}
+#endif
 skip_level2:
 
 		/* Setup level1 table */
