@@ -43,6 +43,80 @@ void __lock arch_atomic64_write(atomic64_t *atom, u64 value)
 	arch_wmb();
 }
 
+#if __riscv_xlen == 32
+void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
+{
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter += value;
+	arch_cpu_irq_restore(flags);
+}
+
+void __lock arch_atomic64_sub(atomic64_t *atom, u64 value)
+{
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	arch_cpu_irq_restore(flags);
+}
+
+u64 __lock arch_atomic64_add_return(atomic64_t *atom, u64 value)
+{
+	u64 temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter += value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+u64 __lock arch_atomic64_sub_return(atomic64_t *atom, u64 value)
+{
+	u64 temp;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	atom->counter -= value;
+	temp = atom->counter;
+	arch_cpu_irq_restore(flags);
+
+	return temp;
+}
+
+u64 __lock arch_atomic64_xchg(atomic64_t *atom, u64 newval)
+{
+	u64 previous;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	previous = atom->counter;
+	atom->counter = newval;
+	arch_cpu_irq_restore(flags);
+
+	return previous;
+}
+
+u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
+{
+	u64 previous;
+	irq_flags_t flags;
+
+	arch_cpu_irq_save(flags);
+	previous = atom->counter;
+	if (previous == oldval) {
+		atom->counter = newval;
+	}
+	arch_cpu_irq_restore(flags);
+
+	return previous;
+}
+#else
+
 void __lock arch_atomic64_add(atomic64_t *atom, u64 value)
 {
 	__asm__ __volatile__ (
@@ -96,3 +170,4 @@ u64 __lock arch_atomic64_cmpxchg(atomic64_t *atom, u64 oldval, u64 newval)
 {
 	return cmpxchg(&atom->counter, oldval, newval);
 }
+#endif
