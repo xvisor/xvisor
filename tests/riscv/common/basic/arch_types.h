@@ -44,9 +44,11 @@ typedef unsigned long ulong;
 #if __riscv_xlen == 32
 typedef long long s64;
 typedef unsigned long long u64;
+#define PRu64	"%llx"
 #else
 typedef long s64;
 typedef unsigned long u64;
+#define PRu64	"%lx"
 #endif
 typedef unsigned long irq_flags_t;
 typedef unsigned long virtual_addr_t;
@@ -119,6 +121,5 @@ struct pt_regs {
 
 #define max(a,b)	((a) < (b) ? (b) : (a))
 
-#define PRu64	"%lx"
 
 #endif /* __ARCH_TYPES_H__ */

@@ -52,17 +52,17 @@ typedef unsigned long physical_size_t;
 #endif
 
 typedef unsigned int irq_flags_t;
-typedef unsigned int virtual_addr_t;
-typedef unsigned int virtual_size_t;
-typedef unsigned long long physical_addr_t;
-typedef unsigned long long physical_size_t;
+typedef unsigned long virtual_addr_t;
+typedef unsigned long virtual_size_t;
+typedef unsigned long physical_addr_t;
+typedef unsigned long physical_size_t;
 
-#define __ARCH_PRIADDR_PREFIX	""
+#define __ARCH_PRIADDR_PREFIX	"l"
 #define __ARCH_PRIADDR_DIGITS	"8"
-#define __ARCH_PRISIZE_PREFIX	""
-#define __ARCH_PRIPADDR_PREFIX	"ll"
-#define __ARCH_PRIPADDR_DIGITS	"16"
-#define __ARCH_PRIPSIZE_PREFIX	"ll"
+#define __ARCH_PRISIZE_PREFIX	"l"
+#define __ARCH_PRIPADDR_PREFIX	"l"
+#define __ARCH_PRIPADDR_DIGITS	"8"
+#define __ARCH_PRIPSIZE_PREFIX	"l"
 #define __ARCH_PRI64_PREFIX	"ll"
 
 #define ARCH_BITS_PER_LONG		32
