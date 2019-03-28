@@ -217,7 +217,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			vmm_spin_unlock_irqrestore(&priv->bsip_lock, f);
 			priv->bsatp = csr_read(CSR_BSATP);
 		}
-
 	}
 
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
