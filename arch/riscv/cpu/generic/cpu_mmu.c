@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -664,19 +664,25 @@ int cpu_mmu_map_hypervisor_page(struct cpu_page *pg)
 
 struct cpu_pgtbl *cpu_mmu_stage2_current_pgtbl(void)
 {
-	/* TODO: */
-	return NULL;
+	unsigned long pgtbl_ppn = csr_read(CSR_HGATP) & HGATP_PPN;
+	return cpu_mmu_pgtbl_find(pgtbl_ppn << PGTBL_PAGE_SIZE_SHIFT);
 }
 
 u32 cpu_mmu_stage2_current_vmid(void)
 {
-	/* TODO: */
-	return 0;
+	return (csr_read(CSR_HGATP) & HGATP_VMID_MASK) >> HGATP_VMID_SHIFT;
 }
 
 int cpu_mmu_stage2_change_pgtbl(u32 vmid, struct cpu_pgtbl *pgtbl)
 {
-	/* TODO: */
+	unsigned long hgatp;
+
+	hgatp = HGATP_MODE;
+	hgatp |= ((unsigned long)vmid << HGATP_VMID_SHIFT) & HGATP_VMID_MASK;
+	hgatp |= (pgtbl->tbl_pa >> PGTBL_PAGE_SIZE_SHIFT) & HGATP_PPN;
+
+	csr_write(CSR_HGATP, hgatp);
+
 	return VMM_OK;
 }
 
