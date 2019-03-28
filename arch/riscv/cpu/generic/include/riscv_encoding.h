@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -198,42 +198,63 @@
 #define PRV_H				2
 #define PRV_M				3
 
-#define SATP32_MODE			0x80000000
-#define SATP32_ASID			0x7FC00000
+#define SATP32_MODE			_AC(0x80000000, UL)
+#define SATP32_MODE_SHIFT		31
+#define SATP32_ASID			_AC(0x7FC00000, UL)
+#define SATP32_ASID_SHIFT		22
 #define SATP32_PPN			_AC(0x003FFFFF, UL)
-#define SATP64_MODE			0xF000000000000000
-#define SATP64_ASID			0x0FFFF00000000000
-#define SATP64_PPN			0x00000FFFFFFFFFFF
 
-#define SATP_MODE_OFF			0
-#define SATP_MODE_SV32			1
-#define SATP_MODE_SV39			8
-#define SATP_MODE_SV48			9
-#define SATP_MODE_SV57			10
-#define SATP_MODE_SV64			11
+#define SATP64_MODE			_AC(0xF000000000000000, UL)
+#define SATP64_MODE_SHIFT		60
+#define SATP64_ASID			_AC(0x0FFFF00000000000, UL)
+#define SATP64_ASID_SHIFT		44
+#define SATP64_PPN			_AC(0x00000FFFFFFFFFFF, UL)
 
-#define HGATP_MODE_OFF			0
-#define HGATP_MODE_SV32X4		1
-#define HGATP_MODE_SV39X4		8
-#define HGATP_MODE_SV48X4		9
+#define SATP_MODE_OFF			_AC(0, UL)
+#define SATP_MODE_SV32			_AC(1, UL)
+#define SATP_MODE_SV39			_AC(8, UL)
+#define SATP_MODE_SV48			_AC(9, UL)
+#define SATP_MODE_SV57			_AC(10, UL)
+#define SATP_MODE_SV64			_AC(11, UL)
+
+#define HGATP_MODE_OFF			_AC(0, UL)
+#define HGATP_MODE_SV32X4		_AC(1, UL)
+#define HGATP_MODE_SV39X4		_AC(8, UL)
+#define HGATP_MODE_SV48X4		_AC(9, UL)
+
+#define HGATP32_MODE_SHIFT		31
+#define HGATP32_VMID_SHIFT		22
+#define HGATP32_VMID_MASK		_AC(0x1FC00000, UL)
+#define HGATP32_PPN			_AC(0x003FFFFF, UL)
+
+#define HGATP64_MODE_SHIFT		60
+#define HGATP64_VMID_SHIFT		44
+#define HGATP64_VMID_MASK		_AC(0x03FFF00000000000, UL)
+#define HGATP64_PPN			_AC(0x00000FFFFFFFFFFF, UL)
 
 /* SATP flags */
 #ifdef CONFIG_64BIT
 #define SATP_PPN			_AC(0x00000FFFFFFFFFFF, UL)
-#define SATP_MODE_39			_AC(0x8000000000000000, UL)
-#define SATP_MODE			SATP_MODE_39
+#define SATP_ASID_SHIFT			SATP64_ASID_SHIFT
+#define SATP_ASID_MASK			SATP64_ASID_MASK
+#define SATP_MODE			(SATP_MODE_SV39 << SATP64_MODE_SHIFT)
+#define SATP_MODE_SHIFT			SATP64_MODE_SHIFT
 
-#define HGATP_VMID_SHIFT		44
-#define HGATP_VMID_MASK		0x3FFF00000000000
-#define HGATP_MODE			(HGATP_MODE_SV39X4 << 60)
+#define HGATP_PPN			HGATP64_PPN
+#define HGATP_VMID_SHIFT		HGATP64_VMID_SHIFT
+#define HGATP_VMID_MASK			HGATP64_VMID_MASK
+#define HGATP_MODE			(HGATP_MODE_SV39X4 << HGATP64_MODE_SHIFT)
 #else
 #define SATP_PPN			SATP32_PPN
-#define SATP_MODE_32			_AC(0x80000000, UL)
-#define SATP_MODE			SATP_MODE_32
+#define SATP_ASID_SHIFT			SATP32_ASID_SHIFT
+#define SATP_ASID_MASK			SATP32_ASID_MASK
+#define SATP_MODE			(SATP_MODE_SV32 << SATP32_MODE_SHIFT)
+#define SATP_MODE_SHIFT			SATP32_MODE_SHIFT
 
-#define HGATP_VMID_SHIFT		22
-#define HGATP_VMID_MASK		0x1FC00000
-#define HGATP_MODE			(HGATP_MODE_SV32X4 << 31)
+#define HGATP_PPN			HGATP32_PPN
+#define HGATP_VMID_SHIFT		HGATP32_VMID_SHIFT
+#define HGATP_VMID_MASK			HGATP32_VMID_MASK
+#define HGATP_MODE			(HGATP_MODE_SV32X4 << HGATP32_MODE_SHIFT)
 #endif
 
 /* SCAUSE */
