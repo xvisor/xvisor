@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -26,16 +26,24 @@
 #include <vmm_modules.h>
 #include <libs/elf.h>
 
+#if __riscv_xlen == 64
 int arch_elf_check_hdr(const struct elf64_hdr *x)
+#elif __riscv_xlen == 32
+int arch_elf_check_hdr(const struct elf32_hdr *x)
+#endif
 {
 	/* TODO: */
 	return 0;
 }
 
-int arch_elf_apply_relocate(struct elf64_shdr *sechdrs, 
-			    const char *strtab, 
+#if __riscv_xlen == 64
+int arch_elf_apply_relocate(struct elf64_shdr *sechdrs,
+#elif __riscv_xlen == 32
+int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
+#endif
+			    const char *strtab,
 			    unsigned int symindex,
-			    unsigned int relindex, 
+			    unsigned int relindex,
 			    struct vmm_module *mod)
 {
 	/* TODO: */
@@ -43,14 +51,17 @@ int arch_elf_apply_relocate(struct elf64_shdr *sechdrs,
 	return 0;
 }
 
-int arch_elf_apply_relocate_add(struct elf64_shdr *sechdrs, 
+#if __riscv_xlen == 64
+int arch_elf_apply_relocate_add(struct elf64_shdr *sechdrs,
+#elif __riscv_xlen == 32
+int arch_elf_apply_relocate_add(struct elf32_shdr *sechdrs,
+#endif
 				const char *strtab,
-				unsigned int symindex, 
-				unsigned int relsec, 
+				unsigned int symindex,
+				unsigned int relsec,
 				struct vmm_module *mod)
 {
 	/* TODO: */
 	vmm_printf("module %s: ADD RELOCATION unsupported\n", mod->name);
 	return VMM_ENOEXEC;
 }
-
