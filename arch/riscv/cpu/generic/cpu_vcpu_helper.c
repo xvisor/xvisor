@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -31,6 +31,7 @@
 #include <arch_guest.h>
 #include <arch_vcpu.h>
 #include <cpu_mmu.h>
+#include <cpu_vcpu_helper.h>
 #include <riscv_csr.h>
 
 int arch_guest_init(struct vmm_guest *guest)
@@ -252,13 +253,9 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 	/* Nothing to do here */
 }
 
-void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
+void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
+				arch_regs_t *regs)
 {
-	irq_flags_t f;
-	unsigned long bsip;
-	arch_regs_t *regs = riscv_regs(vcpu);
-	struct riscv_priv *priv = riscv_priv(vcpu);
-
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "     zero", regs->zero, "       ra", regs->ra);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
@@ -295,10 +292,13 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		    "     sepc", regs->sepc, "  sstatus", regs->sstatus);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "  hstatus", regs->hstatus, "  sp_exec", regs->sp_exec);
+}
 
-	if (!vcpu->is_normal) {
-		return;
-	}
+void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
+				struct riscv_priv *priv)
+{
+	irq_flags_t f;
+	unsigned long bsip;
 
 	vmm_spin_lock_irqsave(&priv->bsip_lock, f);
 	bsip = priv->bsip;
@@ -316,6 +316,23 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		    "   bstval", priv->bstval, "     bsip", bsip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
 		    "    bsatp", priv->bsatp);
+}
+
+void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
+				  unsigned long scause,
+				  unsigned long stval)
+{
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "   scause", scause, "    stval", stval);
+}
+
+void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
+{
+	cpu_vcpu_dump_general_regs(cdev, riscv_regs(vcpu));
+
+	if (vcpu->is_normal) {
+		cpu_vcpu_dump_private_regs(cdev, riscv_priv(vcpu));
+	}
 }
 
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
