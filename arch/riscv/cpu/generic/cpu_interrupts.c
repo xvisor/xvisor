@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,33 +23,61 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_smp.h>
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
 #include <arch_vcpu.h>
+#include <cpu_vcpu_helper.h>
 
 #include <riscv_csr.h>
 
 static virtual_addr_t preempt_orphan_pc =
 			(virtual_addr_t)&arch_vcpu_preempt_orphan;
 
-void do_handle_async(arch_regs_t *regs,
-		     unsigned long exc, unsigned long baddr)
+void do_error(arch_regs_t *regs, unsigned long cause,
+	      const char *msg, int err, bool panic)
 {
+	u32 cpu = vmm_smp_processor_id();
+	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
+
+	vmm_printf("%s: CPU%d: VCPU=%s %s (error %d)\n",
+		   __func__, cpu, (vcpu) ? vcpu->name : "(NULL)", msg, err);
+	cpu_vcpu_dump_general_regs(NULL, regs);
+	cpu_vcpu_dump_exception_regs(NULL, cause | SCAUSE_INTERRUPT_MASK,
+				     csr_read(CSR_STVAL));
+	if (panic) {
+		vmm_panic("%s: please reboot ...\n", __func__);
+	}
+}
+
+void do_handle_irq(arch_regs_t *regs, unsigned long cause)
+{
+	int rc = VMM_OK;
+
 	vmm_scheduler_irq_enter(regs, FALSE);
 
 	/* NOTE: Only exec <= 0xFFFFFFFFUL will be handled */
-	if (exc <= 0xFFFFFFFFUL) {
-		vmm_host_active_irq_exec(exc);
+	if (cause <= 0xFFFFFFFFUL) {
+		rc = vmm_host_active_irq_exec(cause);
+	} else {
+		rc = VMM_EINVALID;
 	}
 
 	vmm_scheduler_irq_exit(regs);
+
+	if (rc) {
+		do_error(regs, cause, "interrupt handling failed", rc, TRUE);
+	}
 }
 
-void do_handle_sync(arch_regs_t *regs,
-		    unsigned long exc, unsigned long baddr)
+void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 {
-	if ((exc == CAUSE_STORE_PAGE_FAULT) &&
-	    (regs->sstatus & SSTATUS_SPP) &&
+	int rc = VMM_OK;
+	bool panic = FALSE;
+	const char *msg = "trap handling failed";
+
+	if ((cause == CAUSE_STORE_PAGE_FAULT) &&
+	    !(regs->hstatus & HSTATUS_SPV) &&
 	    (regs->sepc == preempt_orphan_pc)) {
 		regs->sepc += 4;
 		vmm_scheduler_preempt_orphan(regs);
@@ -61,17 +89,20 @@ void do_handle_sync(arch_regs_t *regs,
 	/* TODO: */
 
 	vmm_scheduler_irq_exit(regs);
+
+	if (rc) {
+		do_error(regs, cause, msg, rc, panic);
+	}
 }
 
 void do_handle_exception(arch_regs_t *regs)
 {
-	unsigned long baddr = csr_read(CSR_STVAL);
 	unsigned long scause = csr_read(CSR_SCAUSE);
 
 	if (scause & SCAUSE_INTERRUPT_MASK) {
-		do_handle_async(regs, scause & SCAUSE_EXC_MASK, baddr);
+		do_handle_irq(regs, scause & ~SCAUSE_INTERRUPT_MASK);
 	} else {
-		do_handle_sync(regs, scause & SCAUSE_EXC_MASK, baddr);
+		do_handle_trap(regs, scause & ~SCAUSE_INTERRUPT_MASK);
 	}
 }
 
@@ -84,4 +115,3 @@ int __cpuinit arch_cpu_irq_setup(void)
 
 	return VMM_OK;
 }
-
