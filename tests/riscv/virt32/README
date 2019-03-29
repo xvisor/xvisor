@@ -1,0 +1,36 @@
+			Virt32 Guest
+
+The Virt32 is a fully para-virtualized guest with RISC-V 32bit CPUs.
+
+We only have memory mapped VirtIO devices for IO and this makes the
+Guest as fully para-virtualized.
+
+The memory map and irqs in Virt32 guest are as follows:
+0x00000000-0x0BFFFFFF (192M)        (NOR Flash)
+0x0C000000–0x0FFFFFFF (64M)         (PLIC)
+0x10000000–0x100000FF (4K) (IRQ=10) (UART-8250)
+0x10001000–0x10001FFF (4K)          (Guest/VM Info Device)
+0x10002000–0x10002FFF (4K)          (SimpleFB Device)
+0x10003000–0x1FFFFFFF (256M-12K)    (Reserved)
+0x20000000–0x20000FFF (4K) (IRQ=1)  (VirtIO Network Device)
+0x20001000–0x20001FFF (4K) (IRQ=2)  (VirtIO Block Device)
+0x20002000–0x20002FFF (4K) (IRQ=3)  (VirtIO Console Device)
+0x20003000–0x20003FFF (4K) (IRQ=4)  (VirtIO RPMSG Device)
+0x20004000–0x2FFFFFFF (256M-16K)    (Reserved)
+0x30000000-0x4FFFFFFF (512M)        (Reserved for PCI memory)
+0x50000000-0x50FFFFFF (16M)         (SimpleFB Video RAM)
+0x51000000-0x57FFFFFF (128M-16M)    (Reserved)
+0x58000000-0x58FFFFFF (16M)         (Shared memory)
+0x59000000-0x7FFFFFFF (768M-16M)    (Reserved)
+0x80000000-0xFFFFFFFF (---)         (RAM)
+
+
+			Virt32 Guest OSes
+
+We have tested following guest OSes for this guest:
+
+  1. basic - Basic firmware/bootloader
+  2. linux - Linux Kernel
+
+Please follow the README under specific guest OS directory for detailed
+steps to configure, compile and run.

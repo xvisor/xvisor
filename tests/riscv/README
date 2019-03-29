@@ -4,6 +4,7 @@ This directory contains the following sub-directories:
 
   1. common - Common code for all RISC-V guests
   2. virt64 - RISC-V Virt64 guest directory
+  2. virt32 - RISC-V Virt32 guest directory
 
 Please follow the README under specific directory for detailed
 steps to configure, compile and run.

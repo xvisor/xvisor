@@ -1,0 +1,164 @@
+
+/dts-v1/;
+
+/ {
+	model = "virt32";
+	device_type = "guest";
+	sbi_version = <2>;
+
+	aliases {
+		mem0 = &MEM0;
+		net0 = &NET0;
+		disk0 = &DISK0;
+		shmem0 = &SHMEM0;
+	};
+
+	vcpus {
+		vcpu0 {
+			device_type = "vcpu";
+			compatible = "riscv32,generic";
+			start_pc = <0x80000000>;
+		};
+
+		vcpu1 {
+			device_type = "vcpu";
+			compatible = "riscv32,generic";
+			start_pc = <0x80000000>;
+			poweroff;
+		};
+	};
+
+	aspace {
+		guest_irq_count = <1024>;
+
+		nor_flash0 {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x00000000>;
+			physical_size = <0x02000000>;
+			device_type = "alloced_rom";
+			align_order = <21>; /* Align alloced memory to 2MB */
+		};
+
+		plic {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x0c000000>;
+			physical_size = <0x4000000>;
+			device_type = "pic";
+			compatible = "sifive,plic0";
+			parent_irq = <9>;
+			num_irq = <32>;
+			max_priority = <7>;
+		};
+
+		uart0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			guest_physical_addr = <0x10000000>;
+			physical_size = <0x1000>;
+			device_type = "serial";
+			compatible = "ns16550a";
+			fifo_size = <1024>;
+			interrupts = <10>;
+		};
+
+		vminfo {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "sys";
+			compatible = "vminfo-0.1";
+			guest_physical_addr = <0x10001000>;
+			physical_size = <0x1000>;
+			ram0_base = <0x80000000>;
+		};
+
+		simplefb {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "display";
+			compatible = "simplefb-0.1";
+			guest_physical_addr = <0x10002000>;
+			physical_size = <0x1000>;
+			width = <1024>; /* Override this if required */
+			height = <768>; /* Override this if required */
+			mode = "r5g6b5"; /* Override this if required */
+			base = <0x50000000>; /* Override this if required */
+		};
+
+		NET0: virtio-net0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <1>;
+			guest_physical_addr = <0x20000000>;
+			physical_size = <0x1000>;
+			switch = ""; /* Override this before guest creation */
+			interrupts = <1>;
+		};
+
+		DISK0: virtio-blk0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <2>;
+			guest_physical_addr = <0x20001000>;
+			physical_size = <0x1000>;
+			blkdev = ""; /* Override this before guest creation */
+			interrupts = <2>;
+		};
+
+		virtio-con0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <3>;
+			guest_physical_addr = <0x20002000>;
+			physical_size = <0x1000>;
+			interrupts = <3>;
+		};
+
+		virtio-rpmsg0 {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "virtio";
+			compatible = "virtio,mmio";
+			virtio_type = <7>;
+			guest_physical_addr = <0x20003000>;
+			physical_size = <0x1000>;
+			interrupts = <4>;
+			node_ns_name = "rpmsg_chrdev";
+		};
+
+		videomem {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x50000000>;
+			physical_size = <0x01000000>;
+			align_order = <21>; /* Align alloced memory to 2MB */
+			map_order = <24>; /* Allocate memory in-terms of 16MB mappings */
+			device_type = "alloced_ram";
+		};
+
+		SHMEM0: shmem {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x58000000>;
+			physical_size = <0x01000000>;
+			device_type = "shared_ram";
+			shared_mem = ""; /* Override this before guest creation */
+		};
+
+		MEM0: mem0 {
+			manifest_type = "real";
+			address_type = "memory";
+			guest_physical_addr = <0x80000000>;
+			physical_size = <0x00000000>; /* Override this before guest creation */
+			align_order = <21>; /* Align alloced memory to 2MB */
+			device_type = "alloced_ram";
+		};
+	};
+};
