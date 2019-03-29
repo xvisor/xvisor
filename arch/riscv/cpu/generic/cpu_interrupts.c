@@ -27,6 +27,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
 #include <arch_vcpu.h>
+#include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_helper.h>
 
 #include <riscv_csr.h>
@@ -34,11 +35,10 @@
 static virtual_addr_t preempt_orphan_pc =
 			(virtual_addr_t)&arch_vcpu_preempt_orphan;
 
-void do_error(arch_regs_t *regs, unsigned long cause,
-	      const char *msg, int err, bool panic)
+void do_error(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+	      unsigned long cause, const char *msg, int err, bool panic)
 {
 	u32 cpu = vmm_smp_processor_id();
-	struct vmm_vcpu *vcpu = vmm_scheduler_current_vcpu();
 
 	vmm_printf("%s: CPU%d: VCPU=%s %s (error %d)\n",
 		   __func__, cpu, (vcpu) ? vcpu->name : "(NULL)", msg, err);
@@ -66,15 +66,17 @@ void do_handle_irq(arch_regs_t *regs, unsigned long cause)
 	vmm_scheduler_irq_exit(regs);
 
 	if (rc) {
-		do_error(regs, cause, "interrupt handling failed", rc, TRUE);
+		do_error(vmm_scheduler_current_vcpu(), regs,
+			 cause, "interrupt handling failed", rc, TRUE);
 	}
 }
 
 void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 {
 	int rc = VMM_OK;
-	bool panic = FALSE;
+	bool panic = TRUE;
 	const char *msg = "trap handling failed";
+	struct vmm_vcpu *vcpu;
 
 	if ((cause == CAUSE_STORE_PAGE_FAULT) &&
 	    !(regs->hstatus & HSTATUS_SPV) &&
@@ -84,14 +86,48 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		return;
 	}
 
+	vcpu = vmm_scheduler_current_vcpu();
+
 	vmm_scheduler_irq_enter(regs, TRUE);
 
-	/* TODO: */
+	switch (cause) {
+	case CAUSE_LOAD_ACCESS:
+	case CAUSE_STORE_ACCESS:
+		msg = "load/store access failed";
+		if ((regs->hstatus & HSTATUS_SPV) &&
+		    (regs->hstatus & HSTATUS_STL)) {
+			rc = cpu_vcpu_access_fault(vcpu, regs,
+						   cause, csr_read(stval));
+			panic = FALSE;
+		} else {
+			rc = VMM_EINVALID;
+		}
+		break;
+	case CAUSE_FETCH_PAGE_FAULT:
+	case CAUSE_LOAD_PAGE_FAULT:
+	case CAUSE_STORE_PAGE_FAULT:
+		msg = "page fault failed";
+		if ((regs->hstatus & HSTATUS_SPV) &&
+		    (regs->hstatus & HSTATUS_STL)) {
+			rc = cpu_vcpu_page_fault(vcpu, regs,
+						 cause, csr_read(stval));
+			panic = FALSE;
+		} else {
+			rc = VMM_EINVALID;
+		}
+		break;
+	default:
+		rc = VMM_EFAIL;
+		break;
+	};
 
 	vmm_scheduler_irq_exit(regs);
 
 	if (rc) {
-		do_error(regs, cause, msg, rc, panic);
+		if (panic && vcpu) {
+			vmm_manager_vcpu_halt(vcpu);
+		}
+		do_error(vcpu, regs, cause, msg, rc, panic);
 	}
 }
 
