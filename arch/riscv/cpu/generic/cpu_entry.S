@@ -348,8 +348,10 @@ _handle_exception:
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrr	s1, CSR_SSTATUS
 	REG_S	s1, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
-	/* TODO: csrr	s2, CSR_HSTATUS */
-	/* TODO: REG_S	s2, RISCV_ARCH_REGS_OFFSET(hstatus)(sp) */
+#ifdef CONFIG_RISCV_TEST_HYPERVISOR_EXT
+	csrr	s2, CSR_HSTATUS
+	REG_S	s2, RISCV_ARCH_REGS_OFFSET(hstatus)(sp)
+#endif
 
 	/* Save exception SP */
 	add	s3, sp, RISCV_ARCH_REGS_SIZE
@@ -369,8 +371,10 @@ _handle_exception:
 	csrw	CSR_SEPC, s2
 	REG_L	s3, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
 	csrw	CSR_SSTATUS, s3
-	/* TODO: REG_L	s4, RISCV_ARCH_REGS_OFFSET(hstatus)(sp) */
-	/* TODO: csrw	CSR_HSTATUS, s4 */
+#ifdef CONFIG_RISCV_TEST_HYPERVISOR_EXT
+	REG_L	s4, RISCV_ARCH_REGS_OFFSET(hstatus)(sp)
+	csrw	CSR_HSTATUS, s4
+#endif
 
 	/* Restore all general regisers except SP */
 	REG_L	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
