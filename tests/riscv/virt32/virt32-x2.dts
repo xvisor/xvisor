@@ -37,7 +37,7 @@
 			guest_physical_addr = <0x00000000>;
 			physical_size = <0x02000000>;
 			device_type = "alloced_rom";
-			align_order = <21>; /* Align alloced memory to 2MB */
+			align_order = <22>; /* Align alloced memory to 4MB */
 		};
 
 		plic {
@@ -138,7 +138,7 @@
 			address_type = "memory";
 			guest_physical_addr = <0x50000000>;
 			physical_size = <0x01000000>;
-			align_order = <21>; /* Align alloced memory to 2MB */
+			align_order = <22>; /* Align alloced memory to 4MB */
 			map_order = <24>; /* Allocate memory in-terms of 16MB mappings */
 			device_type = "alloced_ram";
 		};
@@ -157,7 +157,7 @@
 			address_type = "memory";
 			guest_physical_addr = <0x80000000>;
 			physical_size = <0x00000000>; /* Override this before guest creation */
-			align_order = <21>; /* Align alloced memory to 2MB */
+			align_order = <22>; /* Align alloced memory to 4MB */
 			device_type = "alloced_ram";
 		};
 	};
