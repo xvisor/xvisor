@@ -13,19 +13,11 @@
 		shmem0 = &SHMEM0;
 	};
 
-	vcpus {
-		vcpu0 {
-			device_type = "vcpu";
-			compatible = "riscv32,generic";
-			start_pc = <0x80000000>;
-		};
-
-		vcpu1 {
-			device_type = "vcpu";
-			compatible = "riscv32,generic";
-			start_pc = <0x80000000>;
-			poweroff;
-		};
+	vcpu_template {
+		device_type = "vcpu";
+		compatible = "riscv32,generic";
+		start_pc = <0x80000000>;
+		poweroff;
 	};
 
 	aspace {
