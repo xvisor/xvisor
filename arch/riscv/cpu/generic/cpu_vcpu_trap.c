@@ -29,6 +29,8 @@
 #include <cpu_mmu.h>
 #include <cpu_vcpu_trap.h>
 
+#include <riscv_unpriv.h>
+
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			unsigned long cause,
@@ -133,6 +135,11 @@ int cpu_vcpu_access_fault(struct vmm_vcpu *vcpu,
 			  unsigned long cause,
 			  unsigned long fault_addr)
 {
+	ulong insn = get_insn(regs->sepc, NULL, NULL);
+
+	vmm_printf("%s: insn=0x%lx\n", __func__, insn);
+
 	/* TODO: */
+
 	return VMM_EFAIL;
 }
