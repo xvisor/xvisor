@@ -92,12 +92,24 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 
 	switch (cause) {
 	case CAUSE_LOAD_ACCESS:
-	case CAUSE_STORE_ACCESS:
-		msg = "load/store access failed";
+		msg = "load access fault failed";
 		if ((regs->hstatus & HSTATUS_SPV) &&
 		    (regs->hstatus & HSTATUS_STL)) {
-			rc = cpu_vcpu_access_fault(vcpu, regs,
-						   cause, csr_read(stval));
+			rc = cpu_vcpu_load_access_fault(vcpu, regs,
+							csr_read(stval));
+			vmm_manager_vcpu_halt(vcpu);
+			panic = FALSE;
+		} else {
+			rc = VMM_EINVALID;
+		}
+		break;
+	case CAUSE_STORE_ACCESS:
+		msg = "store access fault failed";
+		if ((regs->hstatus & HSTATUS_SPV) &&
+		    (regs->hstatus & HSTATUS_STL)) {
+			rc = cpu_vcpu_store_access_fault(vcpu, regs,
+							 csr_read(stval));
+			vmm_manager_vcpu_halt(vcpu);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
@@ -111,6 +123,7 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		    (regs->hstatus & HSTATUS_STL)) {
 			rc = cpu_vcpu_page_fault(vcpu, regs,
 						 cause, csr_read(stval));
+			vmm_manager_vcpu_halt(vcpu);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
@@ -124,9 +137,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 	vmm_scheduler_irq_exit(regs);
 
 	if (rc) {
-		if (panic && vcpu) {
-			vmm_manager_vcpu_halt(vcpu);
-		}
 		do_error(vcpu, regs, cause, msg, rc, panic);
 	}
 }
