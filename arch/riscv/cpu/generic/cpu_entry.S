@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -24,7 +24,7 @@
 #include <riscv_asm.h>
 #include <riscv_csr.h>
 
-	/* 
+	/*
 	 * _start: Primary CPU startup code
 	 * _start_secondary: Secondary CPU startup code
 	 * _start_secondary_nopen: Secondary CPU startup code without holding pen
@@ -220,21 +220,21 @@ _bootcpu_reg0:
 _bootcpu_reg1:
 	RISCV_PTR 0x0
 
-	/* 
+	/*
 	 * Load start address storage
 	 */
 	.globl _load_start
 _load_start:
 	RISCV_PTR 0x0
 
-	/* 
+	/*
 	 * Load end address storage
 	 */
 	.globl _load_end
 _load_end:
 	RISCV_PTR 0x0
 
-	/* 
+	/*
 	 * Exception stacks.
 	 */
 __hvc_stack_end:
@@ -312,7 +312,8 @@ _handle_exception:
 	/* Swap TP and SSCRATCH */
 	csrrw	tp, CSR_SSCRATCH, tp
 
-	/* Save all general regisers except ZERO, SP & S0 */
+	/* Save all general regisers except SP & S0 */
+	REG_S	zero, RISCV_ARCH_REGS_OFFSET(zero)(sp)
 	REG_S	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
 	REG_S	gp, RISCV_ARCH_REGS_OFFSET(gp)(sp)
 	REG_S	tp, RISCV_ARCH_REGS_OFFSET(tp)(sp)
