@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -218,7 +218,7 @@ static void gic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 		/* In case of SGIs */
 		cm = GIC_ALL_CPU_MASK(s);
 		target = GIC_TARGET(s, irq);
-	}	
+	}
 
 	vmm_write_lock_irqsave(&s->dist_lock, flags);
 
@@ -734,6 +734,9 @@ static int gic_cpu_read(struct gic_state *s, u32 cpu, u32 offset, u32 *dst)
 	case 0x18: /* Highest Pending Interrupt */
 		*dst = s->cpu_state[cpu].current_pending;
 		break;
+	case 0xfc: /* Identify Register */
+		*dst = 0x01043B; /* Always show GICv1 CPU interface */
+		break;
 	default:
 		rc = VMM_EFAIL;
 		break;
@@ -940,7 +943,7 @@ VMM_EXPORT_SYMBOL(gic_state_reset);
 static int gic_emulator_reset(struct vmm_emudev *edev)
 {
 	struct gic_state *s = edev->priv;
-	
+
 	return gic_state_reset(s);
 }
 
@@ -1132,20 +1135,20 @@ static int gic_emulator_probe(struct vmm_guest *guest,
 	if (rc) {
 		return rc;
 	}
-	
+
 	type = (enum gic_type)(eid->data);
 
 	if (vmm_devtree_read_u32(edev->node, "base_irq", &base_irq)) {
 		base_irq = gic_configs[type][1];
 	}
-	
+
 	if (vmm_devtree_read_u32(edev->node, "num_irq", &num_irq)) {
 		num_irq = gic_configs[type][0];
 	}
 	if (num_irq > GIC_MAX_NIRQ) {
 		num_irq = GIC_MAX_NIRQ;
 	}
-	
+
 	s = gic_state_alloc(edev->node->name, guest, type,
 			    guest->vcpu_count, is_child_pic,
 			    base_irq, num_irq, parent_irq);
