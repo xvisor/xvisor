@@ -96,6 +96,16 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 	vmm_scheduler_irq_enter(regs, TRUE);
 
 	switch (cause) {
+	case CAUSE_ILLEGAL_INSTRUCTION:
+		msg = "illegal instruction fault failed";
+		if (regs->hstatus & HSTATUS_SPV) {
+			rc = cpu_vcpu_illegal_insn_fault(vcpu, regs,
+							 csr_read(stval));
+			panic = FALSE;
+		} else {
+			rc = VMM_EINVALID;
+		}
+		break;
 	case CAUSE_LOAD_ACCESS:
 		msg = "load access fault failed";
 		if ((regs->hstatus & HSTATUS_SPV) &&

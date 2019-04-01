@@ -39,4 +39,8 @@ int cpu_vcpu_store_access_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long fault_addr);
 
+int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				unsigned long stval);
+
 #endif
