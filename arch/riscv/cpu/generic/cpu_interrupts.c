@@ -87,6 +87,11 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 	}
 
 	vcpu = vmm_scheduler_current_vcpu();
+	if (!vcpu || !vcpu->is_normal) {
+		rc = VMM_EFAIL;
+		msg = "unexpected trap";
+		goto done;
+	}
 
 	vmm_scheduler_irq_enter(regs, TRUE);
 
@@ -136,6 +141,7 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 
 	vmm_scheduler_irq_exit(regs);
 
+done:
 	if (rc) {
 		do_error(vcpu, regs, cause, msg, rc, panic);
 	}
