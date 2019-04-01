@@ -26,6 +26,7 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_devemu.h>
+#include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_csr.h>
@@ -327,10 +328,18 @@ static int system_opcode_insn(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs,
 			      ulong insn)
 {
-	int rc, do_write, rs1_num = (insn >> 15) & 0x1f;
-	ulong rs1_val = GET_RS1(insn, regs);
-	ulong csr_num = insn >> 20;
-	ulong csr_val, new_csr_val;
+	int rc = VMM_OK, do_write, rs1_num;
+	ulong rs1_val, csr_num, csr_val, new_csr_val;
+
+	if ((insn & INSN_MASK_WFI) == INSN_MATCH_WFI) {
+		/* Wait for irq with default timeout */
+		vmm_vcpu_irq_wait_timeout(vcpu, 0);
+		goto done;
+	}
+
+	rs1_num = (insn >> 15) & 0x1f;
+	rs1_val = GET_RS1(insn, regs);
+	csr_num = insn >> 20;
 
 	rc = cpu_vcpu_csr_read(vcpu, csr_num, &csr_val);
 	if (rc == VMM_EINVALID) {
@@ -377,9 +386,10 @@ static int system_opcode_insn(struct vmm_vcpu *vcpu,
 
 	SET_RD(insn, regs, csr_val);
 
+done:
 	regs->sepc += 4;
 
-	return VMM_OK;
+	return rc;
 }
 
 static illegal_insn_func illegal_insn_table[32] = {
