@@ -72,5 +72,6 @@ cpu-objs-y+= cpu_atomic.o
 cpu-objs-y+= cpu_atomic64.o
 cpu-objs-y+= cpu_exception.o
 cpu-objs-y+= cpu_vcpu_helper.o
+cpu-objs-y+= cpu_vcpu_csr.o
 cpu-objs-y+= cpu_vcpu_trap.o
 cpu-objs-y+= cpu_vcpu_irq.o

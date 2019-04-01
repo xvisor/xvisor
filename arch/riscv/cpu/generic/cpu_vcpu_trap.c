@@ -28,6 +28,7 @@
 #include <vmm_devemu.h>
 #include <libs/stringlib.h>
 #include <cpu_mmu.h>
+#include <cpu_vcpu_csr.h>
 #include <cpu_vcpu_trap.h>
 
 #include <riscv_unpriv.h>
@@ -322,6 +323,65 @@ static int truly_illegal_insn(struct vmm_vcpu *vcpu,
 	return VMM_ENOTSUPP;
 }
 
+static int system_opcode_insn(struct vmm_vcpu *vcpu,
+			      arch_regs_t *regs,
+			      ulong insn)
+{
+	int rc, do_write, rs1_num = (insn >> 15) & 0x1f;
+	ulong rs1_val = GET_RS1(insn, regs);
+	ulong csr_num = insn >> 20;
+	ulong csr_val, new_csr_val;
+
+	rc = cpu_vcpu_csr_read(vcpu, csr_num, &csr_val);
+	if (rc == VMM_EINVALID) {
+		return truly_illegal_insn(vcpu, regs, insn);
+	}
+	if (rc) {
+		return rc;
+	}
+
+	do_write = rs1_num;
+	switch (GET_RM(insn)) {
+	case 1:
+		new_csr_val = rs1_val;
+		do_write = 1;
+		break;
+	case 2:
+		new_csr_val = csr_val | rs1_val;
+		break;
+	case 3: new_csr_val = csr_val & ~rs1_val;
+		break;
+	case 5:
+		new_csr_val = rs1_num;
+		do_write = 1;
+		break;
+	case 6:
+		new_csr_val = csr_val | rs1_num;
+		break;
+	case 7:
+		new_csr_val = csr_val & ~rs1_num;
+		break;
+	default:
+		return truly_illegal_insn(vcpu, regs, insn);
+	};
+
+	if (do_write) {
+		rc = cpu_vcpu_csr_write(vcpu, csr_num, new_csr_val);
+		if (rc == VMM_EINVALID) {
+			return truly_illegal_insn(vcpu, regs, insn);
+		}
+		if (rc) {
+			return rc;
+		}
+	}
+
+	SET_RD(insn, regs, csr_val);
+
+	regs->sepc += 4;
+
+	return VMM_OK;
+}
+
 static illegal_insn_func illegal_insn_table[32] = {
 	truly_illegal_insn, /* 0 */
 	truly_illegal_insn, /* 1 */
@@ -351,7 +411,7 @@ static illegal_insn_func illegal_insn_table[32] = {
 	truly_illegal_insn, /* 25 */
 	truly_illegal_insn, /* 26 */
 	truly_illegal_insn, /* 27 */
-	truly_illegal_insn, /* 28 */
+	system_opcode_insn, /* 28 */
 	truly_illegal_insn, /* 29 */
 	truly_illegal_insn, /* 30 */
 	truly_illegal_insn  /* 31 */

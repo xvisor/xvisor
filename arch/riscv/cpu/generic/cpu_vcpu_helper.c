@@ -26,7 +26,9 @@
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_pagepool.h>
+#include <vmm_timer.h>
 #include <vmm_host_aspace.h>
+#include <libs/mathlib.h>
 #include <arch_barrier.h>
 #include <arch_guest.h>
 #include <arch_vcpu.h>
@@ -36,14 +38,22 @@
 
 int arch_guest_init(struct vmm_guest *guest)
 {
+	struct riscv_guest_priv *priv;
+
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(struct riscv_guest_priv));
 		if (!guest->arch_priv) {
 			return VMM_ENOMEM;
 		}
+		priv = riscv_guest_priv(guest);
 
-		riscv_guest_priv(guest)->pgtbl = cpu_mmu_pgtbl_alloc(PGTBL_STAGE2);
-		if (!riscv_guest_priv(guest)->pgtbl) {
+		priv->time_offset = vmm_manager_guest_reset_timestamp(guest);
+		priv->time_offset =
+			priv->time_offset * vmm_timer_clocksource_frequency();
+		priv->time_offset = udiv64(priv->time_offset, 1000000000ULL);
+
+		priv->pgtbl = cpu_mmu_pgtbl_alloc(PGTBL_STAGE2);
+		if (!priv->pgtbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
 			return VMM_ENOMEM;
