@@ -102,7 +102,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		    (regs->hstatus & HSTATUS_STL)) {
 			rc = cpu_vcpu_load_access_fault(vcpu, regs,
 							csr_read(stval));
-			vmm_manager_vcpu_halt(vcpu);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
@@ -114,7 +113,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		    (regs->hstatus & HSTATUS_STL)) {
 			rc = cpu_vcpu_store_access_fault(vcpu, regs,
 							 csr_read(stval));
-			vmm_manager_vcpu_halt(vcpu);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
@@ -128,7 +126,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		    (regs->hstatus & HSTATUS_STL)) {
 			rc = cpu_vcpu_page_fault(vcpu, regs,
 						 cause, csr_read(stval));
-			vmm_manager_vcpu_halt(vcpu);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
@@ -138,6 +135,10 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		rc = VMM_EFAIL;
 		break;
 	};
+
+	if (rc) {
+		vmm_manager_vcpu_halt(vcpu);
+	}
 
 	vmm_scheduler_irq_exit(regs);
 
