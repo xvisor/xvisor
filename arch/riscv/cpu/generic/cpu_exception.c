@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_interrupts.c
+ * @file cpu_exception.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief source code for handling cpu interrupts
+ * @brief source code for handling cpu exceptions
  */
 
 #include <vmm_error.h>
