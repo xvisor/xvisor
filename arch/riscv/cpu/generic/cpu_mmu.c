@@ -850,7 +850,7 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 	p.rsw = 0;
 	p.accessed = 0;
 	p.dirty = 0;
-	p.global = 0;
+	p.global = 1;
 	p.user = 0;
 	p.execute = 1;
 	p.write = 1;
@@ -899,7 +899,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	p.rsw = 0;
 	p.accessed = 0;
 	p.dirty = 0;
-	p.global = 0;
+	p.global = 1;
 	p.user = 0;
 	p.execute = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
 	p.write = (mem_flags & VMM_MEMORY_WRITEABLE) ? 1 : 0;
