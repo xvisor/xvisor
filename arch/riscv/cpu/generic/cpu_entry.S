@@ -285,6 +285,18 @@ _cpu_init:
 
 	ret
 
+	/* HFENCE.GVMA by GPA instruction */
+	.align 3
+	.global __hfence_gvma_gpa
+__hfence_gvma_gpa:
+	/*
+	 * Instruction encoding of hfence.gvma is:
+	 * 1010001 rs2(5) rs1(5) 000 00000 1110011
+	 */
+	/* hfence.gvma a0, zero */
+	.word 0xa2050073
+	ret
+
 	/* Exception handling */
 	.align 3
 	.global _handle_exception

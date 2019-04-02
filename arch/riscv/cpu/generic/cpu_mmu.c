@@ -69,10 +69,11 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 	arch_smp_mb();
 }
 
-static inline void cpu_invalid_ipa_guest_tlb(physical_addr_t ipa)
+extern void __hfence_gvma_gpa(unsigned long gpa);
+
+static inline void cpu_invalid_gpa_guest_tlb(physical_addr_t gpa)
 {
-	/* TODO: */
-	__asm__ __volatile__ ("sfence.vma" : : : "memory");
+	__hfence_gvma_gpa(gpa);
 }
 
 static inline void cpu_invalid_va_hypervisor_tlb(virtual_addr_t va)
@@ -562,7 +563,7 @@ int cpu_mmu_unmap_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_invalid_ipa_guest_tlb((pg->ia));
+		cpu_invalid_gpa_guest_tlb((pg->ia));
 		start_level = mmuctrl.stage2_start_level;
 	} else {
 		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
@@ -647,7 +648,7 @@ int cpu_mmu_map_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_invalid_ipa_guest_tlb((pg->ia));
+		cpu_invalid_gpa_guest_tlb((pg->ia));
 	} else {
 		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
 	}
