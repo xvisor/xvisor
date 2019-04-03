@@ -36,15 +36,14 @@ static virtual_addr_t preempt_orphan_pc =
 			(virtual_addr_t)&arch_vcpu_preempt_orphan;
 
 void do_error(struct vmm_vcpu *vcpu, arch_regs_t *regs,
-	      unsigned long cause, const char *msg, int err, bool panic)
+	      unsigned long scause, const char *msg, int err, bool panic)
 {
 	u32 cpu = vmm_smp_processor_id();
 
 	vmm_printf("%s: CPU%d: VCPU=%s %s (error %d)\n",
 		   __func__, cpu, (vcpu) ? vcpu->name : "(NULL)", msg, err);
 	cpu_vcpu_dump_general_regs(NULL, regs);
-	cpu_vcpu_dump_exception_regs(NULL, cause | SCAUSE_INTERRUPT_MASK,
-				     csr_read(CSR_STVAL));
+	cpu_vcpu_dump_exception_regs(NULL, scause, csr_read(CSR_STVAL));
 	if (panic) {
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
@@ -63,12 +62,13 @@ void do_handle_irq(arch_regs_t *regs, unsigned long cause)
 		rc = VMM_EINVALID;
 	}
 
-	vmm_scheduler_irq_exit(regs);
-
 	if (rc) {
 		do_error(vmm_scheduler_current_vcpu(), regs,
-			 cause, "interrupt handling failed", rc, TRUE);
+			 cause | SCAUSE_INTERRUPT_MASK,
+			 "interrupt handling failed", rc, TRUE);
 	}
+
+	vmm_scheduler_irq_exit(regs);
 }
 
 void do_handle_trap(arch_regs_t *regs, unsigned long cause)
@@ -86,14 +86,14 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		return;
 	}
 
+	vmm_scheduler_irq_enter(regs, TRUE);
+
 	vcpu = vmm_scheduler_current_vcpu();
 	if (!vcpu || !vcpu->is_normal) {
 		rc = VMM_EFAIL;
 		msg = "unexpected trap";
 		goto done;
 	}
-
-	vmm_scheduler_irq_enter(regs, TRUE);
 
 	switch (cause) {
 	case CAUSE_ILLEGAL_INSTRUCTION:
@@ -150,12 +150,12 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		vmm_manager_vcpu_halt(vcpu);
 	}
 
-	vmm_scheduler_irq_exit(regs);
-
 done:
 	if (rc) {
 		do_error(vcpu, regs, cause, msg, rc, panic);
 	}
+
+	vmm_scheduler_irq_exit(regs);
 }
 
 void do_handle_exception(arch_regs_t *regs)
