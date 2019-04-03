@@ -16,7 +16,7 @@
 	vcpu_template {
 		device_type = "vcpu";
 		compatible = "riscv64,generic";
-		start_pc = <0x80000000>;
+		start_pc = <0x00000000>;
 		poweroff;
 	};
 
