@@ -34,10 +34,9 @@
 
 #include <riscv_unpriv.h>
 
-int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
-			arch_regs_t *regs,
-			unsigned long cause,
-			unsigned long fault_addr)
+static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
+				arch_regs_t *regs,
+				unsigned long fault_addr)
 {
 	int rc, rc1;
 	u32 reg_flags = 0x0, pg_reg_flags = 0x0;
@@ -133,9 +132,9 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_load_access_fault(struct vmm_vcpu *vcpu,
-			       arch_regs_t *regs,
-			       unsigned long fault_addr)
+static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
+				 arch_regs_t *regs,
+				 unsigned long fault_addr)
 {
 	u8 data8;
 	u16 data16;
@@ -231,9 +230,9 @@ int cpu_vcpu_load_access_fault(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
-int cpu_vcpu_store_access_fault(struct vmm_vcpu *vcpu,
-				arch_regs_t *regs,
-				unsigned long fault_addr)
+static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
+				  arch_regs_t *regs,
+				  unsigned long fault_addr)
 {
 	u8 data8;
 	u16 data16;
@@ -311,10 +310,45 @@ int cpu_vcpu_store_access_fault(struct vmm_vcpu *vcpu,
 	return rc;
 }
 
+int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
+			arch_regs_t *regs,
+			unsigned long cause,
+			unsigned long fault_addr)
+{
+	int rc;
+	struct cpu_page pg;
+
+	/* Check if mapping already exist */
+	rc = cpu_mmu_get_page(riscv_guest_priv(vcpu->guest)->pgtbl,
+			      fault_addr, &pg);
+	if (rc == VMM_OK) {
+		/*
+		 * The mapping already existed which means we got page fault
+		 * for a virtual device so we first check page permissions to
+		 * ensure that it was indeed a virtual device.
+		 */
+		if (pg.user && (pg.read || pg.write || pg.execute)) {
+			return VMM_ENOTSUPP;
+		}
+
+		/* Emulate load/store instructions for virtual device */
+		switch (cause) {
+		case CAUSE_LOAD_PAGE_FAULT:
+			return cpu_vcpu_emulate_load(vcpu, regs, fault_addr);
+		case CAUSE_STORE_PAGE_FAULT:
+			return cpu_vcpu_emulate_store(vcpu, regs, fault_addr);
+		default:
+			return VMM_ENOTSUPP;
+		};
+	}
+
+	/* Mapping does not exist hence create one */
+	return cpu_vcpu_stage2_map(vcpu, regs, fault_addr);
+}
+
 typedef int (*illegal_insn_func)(struct vmm_vcpu *vcpu,
 				 arch_regs_t *regs,
 				 ulong insn);
-
 
 static int truly_illegal_insn(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs,

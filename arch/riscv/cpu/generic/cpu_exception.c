@@ -106,28 +106,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 			rc = VMM_EINVALID;
 		}
 		break;
-	case CAUSE_LOAD_ACCESS:
-		msg = "load access fault failed";
-		if ((regs->hstatus & HSTATUS_SPV) &&
-		    (regs->hstatus & HSTATUS_STL)) {
-			rc = cpu_vcpu_load_access_fault(vcpu, regs,
-							csr_read(stval));
-			panic = FALSE;
-		} else {
-			rc = VMM_EINVALID;
-		}
-		break;
-	case CAUSE_STORE_ACCESS:
-		msg = "store access fault failed";
-		if ((regs->hstatus & HSTATUS_SPV) &&
-		    (regs->hstatus & HSTATUS_STL)) {
-			rc = cpu_vcpu_store_access_fault(vcpu, regs,
-							 csr_read(stval));
-			panic = FALSE;
-		} else {
-			rc = VMM_EINVALID;
-		}
-		break;
 	case CAUSE_FETCH_PAGE_FAULT:
 	case CAUSE_LOAD_PAGE_FAULT:
 	case CAUSE_STORE_PAGE_FAULT:
