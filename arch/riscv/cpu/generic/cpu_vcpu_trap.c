@@ -98,7 +98,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
 		pg.read = 0;
 		pg.write = 0;
-		pg.execute = 0;
+		pg.execute = 1;
 	} else if (pg_reg_flags & VMM_REGION_READONLY) {
 		pg.read = 1;
 		pg.write = 0;
@@ -332,7 +332,7 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 		 * for a virtual device so we first check page permissions to
 		 * ensure that it was indeed a virtual device.
 		 */
-		if (pg.user && (pg.read || pg.write || pg.execute)) {
+		if (pg.user && (pg.read || pg.write)) {
 			return VMM_ENOTSUPP;
 		}
 
