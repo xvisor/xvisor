@@ -25,86 +25,30 @@
 #include <vmm_stdio.h>
 #include <cpu_vcpu_csr.h>
 
-#include <riscv_csr.h>
-#include <riscv_timex.h>
-
 int cpu_vcpu_csr_read(struct vmm_vcpu *vcpu,
 			unsigned long csr_num,
 			unsigned long *csr_val)
 {
-	ulong cen = -1UL;
-	struct riscv_guest_priv *priv = riscv_guest_priv(vcpu->guest);
+	/*
+	 * We don't have any CSRs to emulate because runtime
+	 * M-mode firmware (i.e. OpenSBI) takes care of it
+	 */
+	vmm_printf("%s: vcpu=%s invalid csr_num=0x%lx\n",
+		   __func__, (vcpu) ? vcpu->name : "(null)", csr_num);
 
-	/* TODO: Emulate CSR_SCOUNTEREN */
-
-	switch (csr_num) {
-	case CSR_CYCLE:
-		if (!((cen >> (CSR_CYCLE - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = csr_read(CSR_CYCLE);
-		break;
-	case CSR_TIME:
-		if (!((cen >> (CSR_TIME - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = get_cycles64() - priv->time_offset;
-		break;
-	case CSR_INSTRET:
-		if (!((cen >> (CSR_INSTRET - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = csr_read(CSR_INSTRET);
-		break;
-#if !defined(CONFIG_64BIT)
-	case CSR_CYCLEH:
-		if (!((cen >> (CSR_CYCLE - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = csr_read(CSR_CYCLEH);
-		break;
-	case CSR_TIMEH:
-		if (!((cen >> (CSR_TIME - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = (get_cycles64() - priv->time_offset) >> 32;
-		break;
-	case CSR_INSTRETH:
-		if (!((cen >> (CSR_INSTRET - CSR_CYCLE)) & 1))
-			return -1;
-		*csr_val = csr_read(CSR_INSTRETH);
-		break;
-#endif
-	default:
-		vmm_printf("%s: vcpu=%s invalid csr_num=0x%lx\n",
-			   __func__, (vcpu) ? vcpu->name : "(null)", csr_num);
-		return VMM_ENOTSUPP;
-	};
-
-	return VMM_OK;
+	return VMM_ENOTSUPP;
 }
 
 int cpu_vcpu_csr_write(struct vmm_vcpu *vcpu,
 			unsigned long csr_num,
 			unsigned long csr_val)
 {
-	/* TODO: Emulate CSR_SCOUNTEREN */
+	/*
+	 * We don't have any CSRs to emulate because runtime
+	 * M-mode firmware (i.e. OpenSBI) takes care of it
+	 */
+	vmm_printf("%s: vcpu=%s invalid csr_num=0x%lx\n",
+		   __func__, (vcpu) ? vcpu->name : "(null)", csr_num);
 
-	switch (csr_num) {
-	case CSR_CYCLE:
-		csr_write(CSR_CYCLE, csr_val);
-		break;
-	case CSR_INSTRET:
-		csr_write(CSR_INSTRET, csr_val);
-		break;
-#if !defined(CONFIG_64BIT)
-	case CSR_CYCLEH:
-		csr_write(CSR_CYCLEH, csr_val);
-		break;
-	case CSR_INSTRETH:
-		csr_write(CSR_INSTRETH, csr_val);
-		break;
-#endif
-	default:
-		vmm_printf("%s: vcpu=%s invalid csr_num=0x%lx\n",
-			   __func__, (vcpu) ? vcpu->name : "(null)", csr_num);
-		return VMM_ENOTSUPP;
-	};
-
-	return VMM_OK;
+	return VMM_ENOTSUPP;
 }
