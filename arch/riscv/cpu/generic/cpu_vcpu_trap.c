@@ -149,6 +149,9 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	} else if ((insn & INSN_MASK_LB) == INSN_MATCH_LB) {
 		len = 1;
 		shift = 8 * (sizeof(ulong) - len);
+	} else if ((insn & INSN_MASK_LBU) == INSN_MATCH_LBU) {
+		len = 1;
+		shift = 8 * (sizeof(ulong) - len);
 #if defined(CONFIG_64BIT)
 	} else if ((insn & INSN_MASK_LD) == INSN_MATCH_LD) {
 		len = 8;
