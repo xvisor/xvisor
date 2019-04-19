@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -21,7 +21,7 @@
  * @brief 16550A UART Emulator
  *
  * The source has been largely adapted from QEMU 1.7.50 hw/char/serial.c
- * 
+ *
  * QEMU 16550A UART emulation
  *
  * Copyright (c) 2003-2004 Fabrice Bellard
@@ -33,7 +33,6 @@
 #include <vmm_modules.h>
 #include <vmm_devtree.h>
 #include <vmm_devemu.h>
-#include <vmm_timer.h>
 #include <vio/vmm_vserial.h>
 #include <libs/fifo.h>
 #include <libs/stringlib.h>
@@ -45,97 +44,242 @@
 #define	MODULE_INIT			ns16550_emulator_init
 #define	MODULE_EXIT			ns16550_emulator_exit
 
-#define UART_LCR_DLAB	0x80	/* Divisor latch access bit */
+/*
+ * This fakes a U6_16550A. The fifo len needs to be 64 as the kernel
+ * expects that for autodetection.
+ */
+#define FIFO_LEN		64
+#define FIFO_MASK		(FIFO_LEN - 1)
 
-#define UART_IER_MSI	0x08	/* Enable Modem status interrupt */
-#define UART_IER_RLSI	0x04	/* Enable receiver line status interrupt */
-#define UART_IER_THRI	0x02	/* Enable Transmitter holding register int. */
-#define UART_IER_RDI	0x01	/* Enable receiver data interrupt */
-
-#define UART_IIR_NO_INT	0x01	/* No interrupts pending */
-#define UART_IIR_ID	0x06	/* Mask for the interrupt ID */
-
-#define UART_IIR_MSI	0x00	/* Modem status interrupt */
-#define UART_IIR_THRI	0x02	/* Transmitter holding register empty */
-#define UART_IIR_RDI	0x04	/* Receiver data interrupt */
-#define UART_IIR_RLSI	0x06	/* Receiver line status interrupt */
-#define UART_IIR_CTI    0x0C    /* Character Timeout Indication */
-
-#define UART_IIR_FENF   0x80    /* Fifo enabled, but not functionning */
-#define UART_IIR_FE     0xC0    /* Fifo enabled */
+#define UART_IIR_TYPE_BITS	0xc0
 
 /*
- * These are the definitions for the Modem Control Register
+ * DLAB=0
  */
-#define UART_MCR_LOOP	0x10	/* Enable loopback test mode */
-#define UART_MCR_OUT2	0x08	/* Out2 complement */
-#define UART_MCR_OUT1	0x04	/* Out1 complement */
-#define UART_MCR_RTS	0x02	/* RTS complement */
-#define UART_MCR_DTR	0x01	/* DTR complement */
+#define UART_RX		0	/* In:  Receive buffer */
+#define UART_TX		0	/* Out: Transmit buffer */
+
+#define UART_IER	1	/* Out: Interrupt Enable Register */
+#define UART_IER_MSI		0x08 /* Enable Modem status interrupt */
+#define UART_IER_RLSI		0x04 /* Enable receiver line status interrupt */
+#define UART_IER_THRI		0x02 /* Enable Transmitter holding register int. */
+#define UART_IER_RDI		0x01 /* Enable receiver data interrupt */
+/*
+ * Sleep mode for ST16650 and TI16750.  For the ST16650, EFR[4]=1
+ */
+#define UART_IERX_SLEEP		0x10 /* Enable sleep mode */
+
+#define UART_IIR	2	/* In:  Interrupt ID Register */
+#define UART_IIR_NO_INT		0x01 /* No interrupts pending */
+#define UART_IIR_ID		0x0e /* Mask for the interrupt ID */
+#define UART_IIR_MSI		0x00 /* Modem status interrupt */
+#define UART_IIR_THRI		0x02 /* Transmitter holding register empty */
+#define UART_IIR_RDI		0x04 /* Receiver data interrupt */
+#define UART_IIR_RLSI		0x06 /* Receiver line status interrupt */
+
+#define UART_IIR_BUSY		0x07 /* DesignWare APB Busy Detect */
+
+#define UART_IIR_RX_TIMEOUT	0x0c /* OMAP RX Timeout interrupt */
+#define UART_IIR_XOFF		0x10 /* OMAP XOFF/Special Character */
+#define UART_IIR_CTS_RTS_DSR	0x20 /* OMAP CTS/RTS/DSR Change */
+
+#define UART_FCR	2	/* Out: FIFO Control Register */
+#define UART_FCR_ENABLE_FIFO	0x01 /* Enable the FIFO */
+#define UART_FCR_CLEAR_RCVR	0x02 /* Clear the RCVR FIFO */
+#define UART_FCR_CLEAR_XMIT	0x04 /* Clear the XMIT FIFO */
+#define UART_FCR_DMA_SELECT	0x08 /* For DMA applications */
+/*
+ * Note: The FIFO trigger levels are chip specific:
+ *	RX:76 = 00  01  10  11	TX:54 = 00  01  10  11
+ * PC16550D:	 1   4   8  14		xx  xx  xx  xx
+ * TI16C550A:	 1   4   8  14          xx  xx  xx  xx
+ * TI16C550C:	 1   4   8  14          xx  xx  xx  xx
+ * ST16C550:	 1   4   8  14		xx  xx  xx  xx
+ * ST16C650:	 8  16  24  28		16   8  24  30	PORT_16650V2
+ * NS16C552:	 1   4   8  14		xx  xx  xx  xx
+ * ST16C654:	 8  16  56  60		 8  16  32  56	PORT_16654
+ * TI16C750:	 1  16  32  56		xx  xx  xx  xx	PORT_16750
+ * TI16C752:	 8  16  56  60		 8  16  32  56
+ * Tegra:	 1   4   8  14		16   8   4   1	PORT_TEGRA
+ */
+#define UART_FCR_R_TRIG_00	0x00
+#define UART_FCR_R_TRIG_01	0x40
+#define UART_FCR_R_TRIG_10	0x80
+#define UART_FCR_R_TRIG_11	0xc0
+#define UART_FCR_T_TRIG_00	0x00
+#define UART_FCR_T_TRIG_01	0x10
+#define UART_FCR_T_TRIG_10	0x20
+#define UART_FCR_T_TRIG_11	0x30
+
+#define UART_FCR_TRIGGER_MASK	0xC0 /* Mask for the FIFO trigger range */
+#define UART_FCR_TRIGGER_1	0x00 /* Mask for trigger set at 1 */
+#define UART_FCR_TRIGGER_4	0x40 /* Mask for trigger set at 4 */
+#define UART_FCR_TRIGGER_8	0x80 /* Mask for trigger set at 8 */
+#define UART_FCR_TRIGGER_14	0xC0 /* Mask for trigger set at 14 */
+/* 16650 definitions */
+#define UART_FCR6_R_TRIGGER_8	0x00 /* Mask for receive trigger set at 1 */
+#define UART_FCR6_R_TRIGGER_16	0x40 /* Mask for receive trigger set at 4 */
+#define UART_FCR6_R_TRIGGER_24  0x80 /* Mask for receive trigger set at 8 */
+#define UART_FCR6_R_TRIGGER_28	0xC0 /* Mask for receive trigger set at 14 */
+#define UART_FCR6_T_TRIGGER_16	0x00 /* Mask for transmit trigger set at 16 */
+#define UART_FCR6_T_TRIGGER_8	0x10 /* Mask for transmit trigger set at 8 */
+#define UART_FCR6_T_TRIGGER_24  0x20 /* Mask for transmit trigger set at 24 */
+#define UART_FCR6_T_TRIGGER_30	0x30 /* Mask for transmit trigger set at 30 */
+#define UART_FCR7_64BYTE	0x20 /* Go into 64 byte mode (TI16C750 and
+					some Freescale UARTs) */
+
+#define UART_FCR_R_TRIG_SHIFT		6
+#define UART_FCR_R_TRIG_BITS(x)		\
+	(((x) & UART_FCR_TRIGGER_MASK) >> UART_FCR_R_TRIG_SHIFT)
+#define UART_FCR_R_TRIG_MAX_STATE	4
+
+#define UART_LCR	3	/* Out: Line Control Register */
+/*
+ * Note: if the word length is 5 bits (UART_LCR_WLEN5), then setting
+ * UART_LCR_STOP will select 1.5 stop bits, not 2 stop bits.
+ */
+#define UART_LCR_DLAB		0x80 /* Divisor latch access bit */
+#define UART_LCR_SBC		0x40 /* Set break control */
+#define UART_LCR_SPAR		0x20 /* Stick parity (?) */
+#define UART_LCR_EPAR		0x10 /* Even parity select */
+#define UART_LCR_PARITY		0x08 /* Parity Enable */
+#define UART_LCR_STOP		0x04 /* Stop bits: 0=1 bit, 1=2 bits */
+#define UART_LCR_WLEN5		0x00 /* Wordlength: 5 bits */
+#define UART_LCR_WLEN6		0x01 /* Wordlength: 6 bits */
+#define UART_LCR_WLEN7		0x02 /* Wordlength: 7 bits */
+#define UART_LCR_WLEN8		0x03 /* Wordlength: 8 bits */
 
 /*
- * These are the definitions for the Modem Status Register
+ * Access to some registers depends on register access / configuration
+ * mode.
  */
-#define UART_MSR_DCD	0x80	/* Data Carrier Detect */
-#define UART_MSR_RI	0x40	/* Ring Indicator */
-#define UART_MSR_DSR	0x20	/* Data Set Ready */
-#define UART_MSR_CTS	0x10	/* Clear to Send */
-#define UART_MSR_DDCD	0x08	/* Delta DCD */
-#define UART_MSR_TERI	0x04	/* Trailing edge ring indicator */
-#define UART_MSR_DDSR	0x02	/* Delta DSR */
-#define UART_MSR_DCTS	0x01	/* Delta CTS */
-#define UART_MSR_ANY_DELTA 0x0F	/* Any of the delta bits! */
+#define UART_LCR_CONF_MODE_A	UART_LCR_DLAB	/* Configutation mode A */
+#define UART_LCR_CONF_MODE_B	0xBF		/* Configutation mode B */
 
-#define UART_LSR_TEMT	0x40	/* Transmitter empty */
-#define UART_LSR_THRE	0x20	/* Transmit-hold-register empty */
-#define UART_LSR_BI	0x10	/* Break interrupt indicator */
-#define UART_LSR_FE	0x08	/* Frame error indicator */
-#define UART_LSR_PE	0x04	/* Parity error indicator */
-#define UART_LSR_OE	0x02	/* Overrun error indicator */
-#define UART_LSR_DR	0x01	/* Receiver data ready */
-#define UART_LSR_INT_ANY 0x1E	/* Any of the lsr-interrupt-triggering
-				 * status bits
-				 */
+#define UART_MCR	4	/* Out: Modem Control Register */
+#define UART_MCR_CLKSEL		0x80 /* Divide clock by 4 (TI16C752, EFR[4]=1) */
+#define UART_MCR_TCRTLR		0x40 /* Access TCR/TLR (TI16C752, EFR[4]=1) */
+#define UART_MCR_XONANY		0x20 /* Enable Xon Any (TI16C752, EFR[4]=1) */
+#define UART_MCR_AFE		0x20 /* Enable auto-RTS/CTS (TI16C550C/TI16C750) */
+#define UART_MCR_LOOP		0x10 /* Enable loopback test mode */
+#define UART_MCR_OUT2		0x08 /* Out2 complement */
+#define UART_MCR_OUT1		0x04 /* Out1 complement */
+#define UART_MCR_RTS		0x02 /* RTS complement */
+#define UART_MCR_DTR		0x01 /* DTR complement */
 
-/* Interrupt trigger levels. The byte-counts are for
- * 16550A - in newer UARTs the byte-count for each ITL is higher.
+#define UART_LSR	5	/* In:  Line Status Register */
+#define UART_LSR_FIFOE		0x80 /* Fifo error */
+#define UART_LSR_TEMT		0x40 /* Transmitter empty */
+#define UART_LSR_THRE		0x20 /* Transmit-hold-register empty */
+#define UART_LSR_BI		0x10 /* Break interrupt indicator */
+#define UART_LSR_FE		0x08 /* Frame error indicator */
+#define UART_LSR_PE		0x04 /* Parity error indicator */
+#define UART_LSR_OE		0x02 /* Overrun error indicator */
+#define UART_LSR_DR		0x01 /* Receiver data ready */
+#define UART_LSR_BRK_ERROR_BITS	0x1E /* BI, FE, PE, OE bits */
+
+#define UART_MSR	6	/* In:  Modem Status Register */
+#define UART_MSR_DCD		0x80 /* Data Carrier Detect */
+#define UART_MSR_RI		0x40 /* Ring Indicator */
+#define UART_MSR_DSR		0x20 /* Data Set Ready */
+#define UART_MSR_CTS		0x10 /* Clear to Send */
+#define UART_MSR_DDCD		0x08 /* Delta DCD */
+#define UART_MSR_TERI		0x04 /* Trailing edge ring indicator */
+#define UART_MSR_DDSR		0x02 /* Delta DSR */
+#define UART_MSR_DCTS		0x01 /* Delta CTS */
+#define UART_MSR_ANY_DELTA	0x0F /* Any of the delta bits! */
+
+#define UART_SCR	7	/* I/O: Scratch Register */
+
+/*
+ * DLAB=1
+ */
+#define UART_DLL	0	/* Out: Divisor Latch Low */
+#define UART_DLM	1	/* Out: Divisor Latch High */
+#define UART_DIV_MAX	0xFFFF	/* Max divisor value */
+
+/*
+ * LCR=0xBF (or DLAB=1 for 16C660)
+ */
+#define UART_EFR	2	/* I/O: Extended Features Register */
+#define UART_XR_EFR	9	/* I/O: Extended Features Register (XR17D15x) */
+#define UART_EFR_CTS		0x80 /* CTS flow control */
+#define UART_EFR_RTS		0x40 /* RTS flow control */
+#define UART_EFR_SCD		0x20 /* Special character detect */
+#define UART_EFR_ECB		0x10 /* Enhanced control bit */
+/*
+ * the low four bits control software flow control
  */
 
-#define UART_FCR_ITL_1	0x00	/* 1 byte ITL */
-#define UART_FCR_ITL_2	0x40	/* 4 bytes ITL */
-#define UART_FCR_ITL_3	0x80	/* 8 bytes ITL */
-#define UART_FCR_ITL_4	0xC0	/* 14 bytes ITL */
+/*
+ * LCR=0xBF, TI16C752, ST16650, ST16650A, ST16654
+ */
+#define UART_XON1	4	/* I/O: Xon character 1 */
+#define UART_XON2	5	/* I/O: Xon character 2 */
+#define UART_XOFF1	6	/* I/O: Xoff character 1 */
+#define UART_XOFF2	7	/* I/O: Xoff character 2 */
 
-#define UART_FCR_DMS	0x08	/* DMA Mode Select */
-#define UART_FCR_XFR	0x04	/* XMIT Fifo Reset */
-#define UART_FCR_RFR	0x02	/* RCVR Fifo Reset */
-#define UART_FCR_FE	0x01	/* FIFO Enable */
+/*
+ * EFR[4]=1 MCR[6]=1, TI16C752
+ */
+#define UART_TI752_TCR	6	/* I/O: transmission control register */
+#define UART_TI752_TLR	7	/* I/O: trigger level register */
 
-#define MAX_XMIT_RETRY	4
+/*
+ * LCR=0xBF, XR16C85x
+ */
+#define UART_TRG	0	/* FCTR bit 7 selects Rx or Tx
+				 * In: Fifo count
+				 * Out: Fifo custom trigger levels */
+/*
+ * These are the definitions for the Programmable Trigger Register
+ */
+#define UART_TRG_1		0x01
+#define UART_TRG_4		0x04
+#define UART_TRG_8		0x08
+#define UART_TRG_16		0x10
+#define UART_TRG_32		0x20
+#define UART_TRG_64		0x40
+#define UART_TRG_96		0x60
+#define UART_TRG_120		0x78
+#define UART_TRG_128		0x80
 
-enum {
-	SERIAL_LOG_LVL_ERR,
-	SERIAL_LOG_LVL_INFO,
-	SERIAL_LOG_LVL_DEBUG,
-	SERIAL_LOG_LVL_VERBOSE
-};
+#define UART_FCTR	1	/* Feature Control Register */
+#define UART_FCTR_RTS_NODELAY	0x00  /* RTS flow control delay */
+#define UART_FCTR_RTS_4DELAY	0x01
+#define UART_FCTR_RTS_6DELAY	0x02
+#define UART_FCTR_RTS_8DELAY	0x03
+#define UART_FCTR_IRDA		0x04  /* IrDa data encode select */
+#define UART_FCTR_TX_INT	0x08  /* Tx interrupt type select */
+#define UART_FCTR_TRGA		0x00  /* Tx/Rx 550 trigger table select */
+#define UART_FCTR_TRGB		0x10  /* Tx/Rx 650 trigger table select */
+#define UART_FCTR_TRGC		0x20  /* Tx/Rx 654 trigger table select */
+#define UART_FCTR_TRGD		0x30  /* Tx/Rx 850 programmable trigger select */
+#define UART_FCTR_SCR_SWAP	0x40  /* Scratch pad register swap */
+#define UART_FCTR_RX		0x00  /* Programmable trigger mode select */
+#define UART_FCTR_TX		0x80  /* Programmable trigger mode select */
 
-static int serial_default_log_lvl = SERIAL_LOG_LVL_INFO;
+/*
+ * LCR=0xBF, FCTR[6]=1
+ */
+#define UART_EMSR	7	/* Extended Mode Select Register */
+#define UART_EMSR_FIFO_COUNT	0x01  /* Rx/Tx select */
+#define UART_EMSR_ALT_COUNT	0x02  /* Alternating count select */
 
-#define SERIAL_LOG(lvl, fmt, args...)					\
-	do {								\
-		if (SERIAL_LOG_##lvl <= serial_default_log_lvl) {	\
-			vmm_printf("(%s:%d) " fmt, __func__,		\
-				   __LINE__, ##args);			\
-		}							\
-	} while(0);
+/*
+ * The Intel XScale on-chip UARTs define these bits
+ */
+#define UART_IER_DMAE	0x80	/* DMA Requests Enable */
+#define UART_IER_UUE	0x40	/* UART Unit Enable */
+#define UART_IER_NRZE	0x20	/* NRZ coding Enable */
+#define UART_IER_RTOIE	0x10	/* Receiver Time Out Interrupt Enable */
 
-struct serial_set_params{
-	int speed;
-	int parity;
-	int data_bits;
-	int stop_bits;
-};
+#define UART_IIR_TOD	0x08	/* Character Timeout Indication Detected */
+
+#define UART_FCR_PXAR1	0x00	/* receive FIFO threshold = 1 */
+#define UART_FCR_PXAR8	0x40	/* receive FIFO threshold = 8 */
+#define UART_FCR_PXAR16	0x80	/* receive FIFO threshold = 16 */
+#define UART_FCR_PXAR32	0xc0	/* receive FIFO threshold = 32 */
 
 struct ns16550_state {
 	struct vmm_guest *guest;
@@ -145,193 +289,98 @@ struct ns16550_state {
 	u32 reg_shift;
 	u32 reg_io_width;
 
-	u16 divider;
-	u8 rbr; /* receive register */
-	u8 thr; /* transmit holding register */
-	u8 tsr; /* transmit shift register */
+	u8 dll;
+	u8 dlm;
+	u8 iir;
 	u8 ier;
-	u8 iir; /* read only */
+	u8 fcr;
 	u8 lcr;
 	u8 mcr;
-	u8 lsr; /* read only */
-	u8 msr; /* read only */
+	u8 lsr;
+	u8 msr;
 	u8 scr;
-	u8 fcr;
-	u8 fcr_vmstate; /* we can't write directly this value
-			 * it has side effects
-			 */
-	/* NOTE: this hidden state is necessary for tx irq
-	 * generation as it can be reset while reading iir
-	 */
-	int thr_ipending;
-	u32 irq;
-	int last_break_enable;
-	int it_shift;
-	u32 baudbase;
-	int tsr_retry;
-	u32 wakeup;
 
-	/* Time when the last byte was successfully sent out of the tsr */
-	u64 last_xmit_ts;
+	u32 irq;
+	u8 irq_state;
+
 	struct fifo *recv_fifo;
 	struct fifo *xmit_fifo;
-
-	u32 fifo_sz;
-
-	/* Interrupt trigger level for recv_fifo */
-	u8 recv_fifo_itl;
-
-	struct vmm_timer_event fifo_timeout_timer;
-	int timeout_ipending;	/* timeout interrupt pending state */
-
-	u64 char_transmit_time;	/* time to transmit a char in ticks */
-	int poll_msl;
-
-	struct vmm_timer_event modem_status_poll;
 };
 
-static int ns16550_send(struct vmm_vserial *vser, u8 data);
-
-static void ns16550_irq_raise(struct ns16550_state *s)
+static void __ns16550_irq_raise(struct ns16550_state *s)
 {
 	vmm_devemu_emulate_irq(s->guest, s->irq, 1);
 }
 
-static void ns16550_irq_lower(struct ns16550_state *s)
+static void __ns16550_irq_lower(struct ns16550_state *s)
 {
 	vmm_devemu_emulate_irq(s->guest, s->irq, 0);
 }
 
-static void ns16550_update_irq(struct ns16550_state *s)
+static void __ns16550_flush_tx(struct ns16550_state *s)
 {
-	u8 tmp_iir = UART_IIR_NO_INT;
+	u8 data;
 
-	if ((s->ier & UART_IER_RLSI) && (s->lsr & UART_LSR_INT_ANY)) {
-		tmp_iir = UART_IIR_RLSI;
-	} else if ((s->ier & UART_IER_RDI) && s->timeout_ipending) {
-		/* Note that(s->ier & UART_IER_RDI) can mask this interrupt,
-		 * this is not in the specification but is observed on existing
-		 * hardware.  */
-		tmp_iir = UART_IIR_CTI;
-	} else if ((s->ier & UART_IER_RDI) && (s->lsr & UART_LSR_DR) &&
-		   (!(s->fcr & UART_FCR_FE) ||
-		    s->recv_fifo->avail_count >= s->recv_fifo_itl)) {
-		tmp_iir = UART_IIR_RDI;
-	} else if ((s->ier & UART_IER_THRI) && s->thr_ipending) {
-		tmp_iir = UART_IIR_THRI;
-	} else if ((s->ier & UART_IER_MSI) && (s->msr & UART_MSR_ANY_DELTA)) {
-		tmp_iir = UART_IIR_MSI;
+	s->lsr |= UART_LSR_TEMT | UART_LSR_THRE;
+
+	while (!fifo_isempty(s->xmit_fifo)) {
+		fifo_dequeue(s->xmit_fifo, &data);
+		vmm_vserial_receive(s->vser, &data, 1);
+	}
+}
+
+static void __ns16550_update_irq(struct ns16550_state *s)
+{
+	u8 iir = 0;
+
+	/* Handle clear rx */
+	if (s->lcr & UART_FCR_CLEAR_RCVR) {
+		s->lcr &= ~UART_FCR_CLEAR_RCVR;
+		fifo_clear(s->recv_fifo);
+		s->lsr &= ~UART_LSR_DR;
 	}
 
-	s->iir = tmp_iir | (s->iir & 0xF0);
+	/* Handle clear tx */
+	if (s->lcr & UART_FCR_CLEAR_XMIT) {
+		s->lcr &= ~UART_FCR_CLEAR_XMIT;
+		fifo_clear(s->xmit_fifo);
+		s->lsr |= UART_LSR_TEMT | UART_LSR_THRE;
+	}
 
-	if (tmp_iir != UART_IIR_NO_INT) {
-		ns16550_irq_raise(s);
+	/* Data ready and rcv interrupt enabled ? */
+	if ((s->ier & UART_IER_RDI) && (s->lsr & UART_LSR_DR))
+		iir |= UART_IIR_RDI;
+
+	/* Transmitter empty and interrupt enabled ? */
+	if ((s->ier & UART_IER_THRI) && (s->lsr & UART_LSR_TEMT))
+		iir |= UART_IIR_THRI;
+
+	/* Now update the irq line, if necessary */
+	if (!iir) {
+		s->iir = UART_IIR_NO_INT;
+		if (s->irq_state)
+			__ns16550_irq_lower(s);
 	} else {
-		ns16550_irq_lower(s);
+		s->iir = iir;
+		if (!s->irq_state)
+			__ns16550_irq_raise(s);
 	}
-}
+	s->irq_state = iir;
 
-static void ns16550_update_parameters(struct ns16550_state *s)
-{
-	int speed, data_bits, stop_bits, frame_size;
-
-	if (s->divider == 0)
-		return;
-
-	/* Start bit. */
-	frame_size = 1;
-	if (s->lcr & 0x08)
-		/* Parity bit. */
-		frame_size++;
-	if (s->lcr & 0x04)
-		stop_bits = 2;
-	else
-		stop_bits = 1;
-
-	data_bits = (s->lcr & 0x03) + 5;
-	frame_size += data_bits + stop_bits;
-	speed = s->baudbase / s->divider;
-
-	s->char_transmit_time = (1000000000ULL / speed) * frame_size;
-}
-
-static void ns16550_update_msl(struct vmm_timer_event *event)
-{
-	u8 omsr;
-	struct ns16550_state *s = event->priv;
-
-	vmm_timer_event_stop(&s->modem_status_poll);
-
-	omsr = s->msr;
-
-	if (s->msr != omsr) {
-		/* Set delta bits */
-		s->msr = s->msr | ((s->msr >> 4) ^ (omsr >> 4));
-		/* UART_MSR_TERI only if change was from 1 -> 0 */
-		if ((s->msr & UART_MSR_TERI) && !(omsr & UART_MSR_RI))
-			s->msr &= ~UART_MSR_TERI;
-		ns16550_update_irq(s);
-	}
-
-	/* The real 16550A apparently has a 250ns response latency to
-	 * line status changes. We'll be lazy and poll only every 10ms,
-	 * and only poll it at all if MSI interrupts are turned on
+	/*
+	 * If the kernel disabled the tx interrupt, we know that there
+	 * is nothing more to transmit, so we can reset our tx logic
+	 * here.
 	 */
-
-	if (s->poll_msl) {
-		vmm_timer_event_stop(&s->modem_status_poll);
-		vmm_timer_event_start(&s->modem_status_poll,
-				      1000000000ULL / 100);
-	}
-}
-
-static bool ns16550_xmit(struct ns16550_state *s)
-{
-	if (s->tsr_retry <= 0) {
-		if (s->fcr & UART_FCR_FE) {
-			s->tsr = 0;
-			if (!fifo_isfull(s->xmit_fifo))
-				fifo_dequeue(s->xmit_fifo, &s->tsr);
-			if (!s->xmit_fifo->avail_count) {
-				s->lsr |= UART_LSR_THRE;
-			}
-		} else if ((s->lsr & UART_LSR_THRE)) {
-			return FALSE;
-		} else {
-			s->tsr = s->thr;
-			s->lsr |= UART_LSR_THRE;
-			s->lsr &= ~UART_LSR_TEMT;
-		}
-	}
-
-	if (s->mcr & UART_MCR_LOOP) {
-		/* in loopback mode, say that we just received a char */
-		ns16550_send(s->vser, s->tsr);
-	} else {
-		/* vmm_vserial_receive: guest => console (guest output)
-		 * vmm_vserial_send: console => guest (guest input)
-		 */
-		/* assuming vmm_vserial_receive will never fail */
-		vmm_vserial_receive(s->vser, &s->tsr, 1);
-		s->tsr_retry = 0;
-	}
-
-	s->last_xmit_ts = vmm_timer_timestamp();
-
-	if (s->lsr & UART_LSR_THRE) {
-		s->lsr |= UART_LSR_TEMT;
-		s->thr_ipending = 1;
-		ns16550_update_irq(s);
-	}
-
-	return FALSE;
+	if (!(s->ier & UART_IER_THRI))
+		__ns16550_flush_tx(s);
 }
 
 static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 			     u32 src_mask, u32 val, u32 io_width)
 {
-	u8 temp;
+	u8 data8;
+	int ret = VMM_OK;
 
 	if (s->reg_io_width != io_width)
 		return VMM_EINVALID;
@@ -339,154 +388,102 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 	addr >>= s->reg_shift;
 	addr &= 7;
 
-	SERIAL_LOG(LVL_DEBUG, "Reg: 0x%x Value: 0x%x\n", addr, val);
+	vmm_spin_lock(&s->lock);
 
-	switch(addr) {
-	default:
-	case 0:
+	switch (addr) {
+	case UART_TX:
 		if (s->lcr & UART_LCR_DLAB) {
-			s->divider = (s->divider & 0xff00) | val;
-			ns16550_update_parameters(s);
-		} else {
-			s->thr = (u8) val;
-			if(s->fcr & UART_FCR_FE) {
-				/* Xmit overruns overwrite data, so
-				 * make space if needed
-				 */
-				if (fifo_isfull(s->xmit_fifo)) {
-					fifo_dequeue(s->xmit_fifo, &temp);
-				}
-				fifo_enqueue(s->xmit_fifo, &s->thr, 1);
-				s->lsr &= ~UART_LSR_TEMT;
-			}
-			s->thr_ipending = 0;
-			s->lsr &= ~UART_LSR_THRE;
-			ns16550_update_irq(s);
-			ns16550_xmit(s);
-		}
-		break;
-	case 1:
-		if (s->lcr & UART_LCR_DLAB) {
-			s->divider = (s->divider & 0x00ff) | (val << 8);
-			ns16550_update_parameters(s);
-		} else {
-			s->ier = val & 0x0f;
-			/* If the backend device is a real serial port,
-			 * turn polling of the modem status lines on
-			 * physical port on or off depending on
-			 * UART_IER_MSI state
-			 */
-			if (s->poll_msl >= 0) {
-				if (s->ier & UART_IER_MSI) {
-					s->poll_msl = 1;
-					ns16550_update_msl(
-						&s->modem_status_poll);
-				} else {
-					vmm_timer_event_stop(
-						&s->modem_status_poll);
-					s->poll_msl = 0;
-				}
-			}
-			if (s->lsr & UART_LSR_THRE) {
-				s->thr_ipending = 1;
-				ns16550_update_irq(s);
-			}
-		}
-		break;
-	case 2:
-		val = val & 0xFF;
-
-		if (s->fcr == val)
+			s->dll = val;
 			break;
-
-		/* Did the enable/disable flag change?
-		 * If so, make sure FIFOs get flushed
-		 */
-		if ((val ^ s->fcr) & UART_FCR_FE)
-			val |= UART_FCR_XFR | UART_FCR_RFR;
-
-		/* FIFO clear */
-		if (val & UART_FCR_RFR) {
-			vmm_timer_event_stop(&s->fifo_timeout_timer);
-			s->timeout_ipending=0;
-			fifo_clear(s->recv_fifo);
 		}
 
-		if (val & UART_FCR_XFR) {
-			fifo_clear(s->xmit_fifo);
-		}
-
-		if (val & UART_FCR_FE) {
-			s->iir |= UART_IIR_FE;
-			/* Set recv_fifo trigger Level */
-			switch (val & 0xC0) {
-			case UART_FCR_ITL_1:
-				s->recv_fifo_itl = 1;
-				break;
-			case UART_FCR_ITL_2:
-				s->recv_fifo_itl = 4;
-				break;
-			case UART_FCR_ITL_3:
-				s->recv_fifo_itl = 8;
-				break;
-			case UART_FCR_ITL_4:
-				s->recv_fifo_itl = 14;
-				break;
+		/* Loopback mode */
+		if (s->mcr & UART_MCR_LOOP) {
+			if (!fifo_isfull(s->recv_fifo)) {
+				data8 = val;
+				fifo_enqueue(s->recv_fifo, &data8, FALSE);
+				s->lsr |= UART_LSR_DR;
 			}
-		} else
-			s->iir &= ~UART_IIR_FE;
+			break;
+		}
 
-		/* Set fcr - or at least the bits in it
-		 * that are supposed to "stick"
-		 */
-		s->fcr = val & 0xC9;
-		ns16550_update_irq(s);
-		break;
-	case 3: {
-			int break_enable;
-			s->lcr = val;
-			ns16550_update_parameters(s);
-			break_enable = (val >> 6) & 1;
-			if (break_enable != s->last_break_enable) {
-				s->last_break_enable = break_enable;
-			}
+		if (!fifo_isfull(s->xmit_fifo)) {
+			data8 = val;
+			fifo_enqueue(s->xmit_fifo, &data8, FALSE);
+			s->lsr &= ~UART_LSR_TEMT;
+			if (fifo_avail(s->xmit_fifo) == FIFO_LEN / 2)
+				s->lsr &= ~UART_LSR_THRE;
+			__ns16550_flush_tx(s);
+		} else {
+			/* Should never happpen */
+			s->lsr &= ~(UART_LSR_TEMT | UART_LSR_THRE);
 		}
 		break;
-	case 4: {
-			int old_mcr = s->mcr;
-			s->mcr = val & 0x1f;
-			if (val & UART_MCR_LOOP)
-				break;
-
-			if (s->poll_msl >= 0 && old_mcr != s->mcr) {
-				/* Update the modem status after a
-				 * one-character-send wait-time, since
-				 * there may be a response from the
-				 * device/computer at the other end of
-				 * the serial line
-				 */
-				vmm_timer_event_stop(&s->modem_status_poll);
-				vmm_timer_event_start(&s->modem_status_poll,
-						      s->char_transmit_time);
-			}
-		}
+	case UART_IER:
+		if (!(s->lcr & UART_LCR_DLAB))
+			s->ier = val & 0x0f;
+		else
+			s->dlm = val;
 		break;
-	case 5:
+	case UART_FCR:
+		s->fcr = val;
 		break;
-	case 6:
+	case UART_LCR:
+		s->lcr = val;
 		break;
-	case 7:
+	case UART_MCR:
+		s->mcr = val;
+		break;
+	case UART_LSR:
+		/* Factory test */
+		break;
+	case UART_MSR:
+		/* Not used */
+		break;
+	case UART_SCR:
 		s->scr = val;
+		break;
+	default:
+		ret = VMM_EINVALID;
 		break;
 	}
 
-	return VMM_OK;
+	if (ret != VMM_OK)
+		__ns16550_update_irq(s);
+
+	vmm_spin_unlock(&s->lock);
+
+	return ret;
+}
+
+static void __ns16550_recv(struct ns16550_state *s, u32 *dst)
+{
+	u8 data8 = 0;
+
+	*dst = 0;
+
+	if (fifo_isempty(s->recv_fifo)) {
+		return;
+	}
+
+	/* Break issued ? */
+	if (s->lsr & UART_LSR_BI) {
+		s->lsr &= ~UART_LSR_BI;
+		return;
+	}
+
+	fifo_dequeue(s->recv_fifo, &data8);
+	*dst = data8;
+
+	if (fifo_isempty(s->recv_fifo)) {
+		s->lsr &= ~UART_LSR_DR;
+	}
 }
 
 static int ns16550_reg_read(struct ns16550_state *s,
 			    u32 addr, u32 *dst, u32 io_width)
 {
-	u32 ret;
+	int ret = VMM_OK;
 
 	if (s->reg_io_width != io_width)
 		return VMM_EINVALID;
@@ -494,162 +491,88 @@ static int ns16550_reg_read(struct ns16550_state *s,
 	addr >>= s->reg_shift;
 	addr &= 7;
 
+	vmm_spin_lock(&s->lock);
+
 	switch (addr) {
+	case UART_RX:
+		if (s->lcr & UART_LCR_DLAB)
+			*dst = s->dll;
+		else
+			__ns16550_recv(s, dst);
+		break;
+	case UART_IER:
+		if (s->lcr & UART_LCR_DLAB)
+			*dst = s->dlm;
+		else
+			*dst = s->ier;
+		break;
+	case UART_IIR:
+		*dst = s->iir | UART_IIR_TYPE_BITS;
+		break;
+	case UART_LCR:
+		*dst = s->lcr;
+		break;
+	case UART_MCR:
+		*dst = s->mcr;
+		break;
+	case UART_LSR:
+		*dst = s->lsr;
+		break;
+	case UART_MSR:
+		*dst = s->msr;
+		break;
+	case UART_SCR:
+		*dst = s->scr;
+		break;
 	default:
-	case 0:
-		if (s->lcr & UART_LCR_DLAB) {
-			ret = s->divider & 0xff;
-		} else {
-			if(s->fcr & UART_FCR_FE) {
-				ret = 0;
-				if (!fifo_isempty(s->recv_fifo))
-					fifo_dequeue(s->recv_fifo, &ret);
-				if (s->recv_fifo->avail_count == 0) {
-					s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
-				} else {
-					vmm_timer_event_stop(
-						&s->fifo_timeout_timer);
-					vmm_timer_event_start(
-						&s->fifo_timeout_timer,
-						s->char_transmit_time * 4);
-				}
-				s->timeout_ipending = 0;
-			} else {
-				ret = s->rbr;
-				s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
-			}
-			ns16550_update_irq(s);
-		}
-		break;
-	case 1:
-		if (s->lcr & UART_LCR_DLAB) {
-			ret = (s->divider >> 8) & 0xff;
-		} else {
-			ret = s->ier;
-		}
-		break;
-	case 2:
-		ret = s->iir;
-		if ((ret & UART_IIR_ID) == UART_IIR_THRI) {
-			s->thr_ipending = 0;
-			ns16550_update_irq(s);
-		}
-		break;
-	case 3:
-		ret = s->lcr;
-		break;
-	case 4:
-		ret = s->mcr;
-		break;
-	case 5:
-		ret = s->lsr;
-		/* Clear break and overrun interrupts */
-		if (s->lsr & (UART_LSR_BI|UART_LSR_OE)) {
-			s->lsr &= ~(UART_LSR_BI|UART_LSR_OE);
-			ns16550_update_irq(s);
-		}
-		break;
-	case 6:
-		if (s->mcr & UART_MCR_LOOP) {
-			/* In loopback, the modem output pins
-			 * are connected to the inputs
-			 */
-			ret = (s->mcr & 0x0c) << 4;
-			ret |= (s->mcr & 0x02) << 3;
-			ret |= (s->mcr & 0x01) << 5;
-		} else {
-			if (s->poll_msl >= 0)
-				ns16550_update_msl(&s->modem_status_poll);
-			ret = s->msr;
-			/* Clear delta bits & msr int after read,
-			 * if they were set
-			 */
-			if (s->msr & UART_MSR_ANY_DELTA) {
-				s->msr &= 0xF0;
-				ns16550_update_irq(s);
-			}
-		}
-		break;
-	case 7:
-		ret = s->scr;
+		ret = VMM_EINVALID;
 		break;
 	}
 
-	*dst = ret;
+	if (ret != VMM_OK)
+		__ns16550_update_irq(s);
 
-	return VMM_OK;
+	vmm_spin_unlock(&s->lock);
+
+	return ret;
 }
 
 static bool ns16550_can_send(struct vmm_vserial *vser)
 {
+	bool ret;
 	struct ns16550_state *s = vmm_vserial_priv(vser);
 
-	if(s->fcr & UART_FCR_FE) {
-		if (s->recv_fifo->avail_count < s->fifo_sz) {
-			/*
-			 * Advertise (fifo.itl - fifo.count) bytes when
-			 * count < ITL, and 1 if above.
-			 *
-			 * If UART_FIFO_LENGTH - fifo.count is advertised
-			 * then the effect will be to almost always fill
-			 * the fifo completely before the guest has a chance
-			 * to respond, effectively overriding the ITL that
-			 * the guest has set.
-			 */
-			return (fifo_avail(s->recv_fifo) <= s->recv_fifo_itl) ?
-			 s->recv_fifo_itl - fifo_avail(s->recv_fifo) : 1;
-		} else {
-			return 0;
-		}
-	} else {
-		return !(s->lsr & UART_LSR_DR);
-	}
+	vmm_spin_lock(&s->lock);
 
-	return 0;
-}
+	if (s->mcr & UART_MCR_LOOP)
+		ret = FALSE;
+	else
+		ret = fifo_isfull(s->recv_fifo) ? FALSE : TRUE;
 
-/* There's data in recv_fifo and s->rbr has not been read for 4 char transmit times */
-static void ns16550_fifo_timeout_int(struct vmm_timer_event *event)
-{
-	struct ns16550_state *s = event->priv;
+	vmm_spin_unlock(&s->lock);
 
-	if (s->recv_fifo->avail_count) {
-		s->timeout_ipending = 1;
-		ns16550_update_irq(s);
-	}
-}
-
-static inline void ns16550_recv_fifo_put(struct ns16550_state *s, u8 chr)
-{
-	/* Receive overruns do not overwrite FIFO contents. */
-	if (!fifo_isfull(s->recv_fifo)) {
-		fifo_enqueue(s->recv_fifo, &chr, TRUE);
-	} else {
-		s->lsr |= UART_LSR_OE;
-	}
+	return ret;
 }
 
 static int ns16550_send(struct vmm_vserial *vser, u8 data)
 {
 	struct ns16550_state *s = vmm_vserial_priv(vser);
 
-	if(s->fcr & UART_FCR_FE) {
-		ns16550_recv_fifo_put(s, data);
-		s->lsr |= UART_LSR_DR;
+	vmm_spin_lock(&s->lock);
 
-		/* Call the timeout receive callback in
-		 * 4 char transmit time
-		 */
-		vmm_timer_event_stop(&s->fifo_timeout_timer);
-		vmm_timer_event_start(&s->fifo_timeout_timer,
-				      (s->char_transmit_time * 4));
-	} else {
-		if (s->lsr & UART_LSR_DR)
-			s->lsr |= UART_LSR_OE;
-		s->rbr = data;
-		s->lsr |= UART_LSR_DR;
+	if (s->mcr & UART_MCR_LOOP) {
+		vmm_spin_unlock(&s->lock);
+		return VMM_OK;
 	}
-	ns16550_update_irq(s);
+
+	fifo_enqueue(s->recv_fifo, &data, FALSE);
+
+	s->lsr |= UART_LSR_DR;
+
+	__ns16550_update_irq(s);
+
+	vmm_spin_unlock(&s->lock);
+
 
 	return VMM_OK;
 }
@@ -660,41 +583,23 @@ static int ns16550_emulator_reset(struct vmm_emudev *edev)
 
 	vmm_spin_lock(&s->lock);
 
-	s->rbr = 0;
 	s->ier = 0;
 	s->iir = UART_IIR_NO_INT;
 	s->lcr = 0;
 	s->lsr = UART_LSR_TEMT | UART_LSR_THRE;
 	s->msr = UART_MSR_DCD | UART_MSR_DSR | UART_MSR_CTS;
-	/* Default to 9600 baud, 1 start bit,
-	 * 8 data bits, 1 stop bit, no parity.
-	 */
-	s->divider = 0x0C;
+	s->dll = 0x0C;
 	s->mcr = UART_MCR_OUT2;
 	s->scr = 0;
-	s->tsr_retry = 0;
-	s->char_transmit_time = (1000000000ULL / 9600) * 10;
-	s->poll_msl = 0;
 
 	fifo_clear(s->recv_fifo);
 	fifo_clear(s->xmit_fifo);
 
-	s->last_xmit_ts = vmm_timer_timestamp();
-
-	s->thr_ipending = 0;
-	s->last_break_enable = 0;
-	ns16550_irq_lower(s);
+	__ns16550_irq_lower(s);
 
 	vmm_spin_unlock(&s->lock);
 
 	return VMM_OK;
-}
-
-/* Change the main reference oscillator frequency. */
-void ns16550_set_frequency(struct ns16550_state *s, u32 frequency)
-{
-	s->baudbase = frequency;
-	ns16550_update_parameters(s);
 }
 
 static int ns16550_emulator_read8(struct vmm_emudev *edev,
@@ -763,11 +668,10 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 	char name[64];
 	struct ns16550_state *s;
 
-	SERIAL_LOG(LVL_VERBOSE, "enter\n");
-
 	s = vmm_zalloc(sizeof(struct ns16550_state));
 	if (!s) {
-		SERIAL_LOG(LVL_ERR, "Failed to allocate serial emulator's state.\n");
+		vmm_lerror(edev->node->name,
+			   "Failed to allocate serial emulator's state.\n");
 		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_done;
 	}
@@ -779,7 +683,7 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 					  VMM_DEVTREE_INTERRUPTS_ATTR_NAME,
 					  &s->irq, 0);
 	if (rc) {
-		SERIAL_LOG(LVL_ERR,
+		vmm_lerror(edev->node->name,
 			   "Failed to get serial IRQ entry in guest DTS.\n");
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
@@ -792,40 +696,21 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 		s->reg_io_width = 1;
 	}
 
-	rc = vmm_devtree_read_u32(edev->node, "fifo_size", &s->fifo_sz);
-	if (rc) {
-		SERIAL_LOG(LVL_ERR,
-			   "Failed to get fifo size in guest DTS.\n");
-		goto uart16550a_emulator_probe_freestate_fail;
-	} else {
-		SERIAL_LOG(LVL_VERBOSE,
-			   "Serial FIFO size is %d bytes.\n", s->fifo_sz);
-	}
-
-	if (vmm_devtree_read_u32(edev->node, "baudbase", &s->baudbase)) {
-		s->baudbase = 9600;
-	}
-
-	SERIAL_LOG(LVL_VERBOSE, "Serial baudrate: %d\n", s->baudbase);
-
-	s->recv_fifo = fifo_alloc(1, s->fifo_sz);
+	s->recv_fifo = fifo_alloc(1, FIFO_LEN);
 	if (!s->recv_fifo) {
-		SERIAL_LOG(LVL_ERR,
+		vmm_lerror(edev->node->name,
 			   "Failed to allocate uart receive fifo.\n");
 		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
 
-	s->xmit_fifo = fifo_alloc(1, s->fifo_sz);
+	s->xmit_fifo = fifo_alloc(1, FIFO_LEN);
 	if (!s->xmit_fifo) {
-		SERIAL_LOG(LVL_ERR,
+		vmm_lerror(edev->node->name,
 			   "Failed to allocate uart transmit fifo.\n");
 		rc = VMM_EFAIL;
 		goto uart16550a_emulator_probe_freestate_fail;
 	}
-
-	INIT_TIMER_EVENT(&s->modem_status_poll, ns16550_update_msl, s);
-	INIT_TIMER_EVENT(&s->fifo_timeout_timer, ns16550_fifo_timeout_int, s);
 
 	strlcpy(name, guest->name, sizeof(name));
 	strlcat(name, "/", sizeof(name));
@@ -838,15 +723,12 @@ static int ns16550_emulator_probe(struct vmm_guest *guest,
 				     &ns16550_send,
 				     2048, s);
 	if (!(s->vser)) {
-		SERIAL_LOG(LVL_ERR, "Failed to create vserial instance.\n");
+		vmm_lerror(edev->node->name,
+			   "Failed to create vserial instance.\n");
 		goto uart16550a_emulator_probe_freerbuf_fail;
 	}
 
-	s->it_shift = 2;
-
 	edev->priv = s;
-
-	SERIAL_LOG(LVL_VERBOSE, "Success.\n");
 
 	goto uart16550a_emulator_probe_done;
 
@@ -866,8 +748,6 @@ static int ns16550_emulator_remove(struct vmm_emudev *edev)
 	struct ns16550_state *s = edev->priv;
 
 	if (s) {
-		vmm_timer_event_stop(&s->modem_status_poll);
-		vmm_timer_event_stop(&s->fifo_timeout_timer);
 		vmm_vserial_destroy(s->vser);
 		fifo_free(s->recv_fifo);
 		fifo_free(s->xmit_fifo);
