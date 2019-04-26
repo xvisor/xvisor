@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -40,32 +40,12 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no)
 
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
-	irq_flags_t f;
-	unsigned long irq_mask;
-
-	if (irq_no >= ARCH_BITS_PER_LONG) {
-		return VMM_EINVALID;
-	}
-	irq_mask = 1UL << irq_no;
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
-		return VMM_OK;
-	}
-
-	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
-
-	riscv_priv(vcpu)->bsip |= irq_mask;
-	if (vcpu == vmm_scheduler_current_vcpu()) {
-		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
-	}
-
-	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
-
+	/* Nothing to do here. */
 	return VMM_OK;
 }
 
-
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
-			  arch_regs_t *regs, 
+			  arch_regs_t *regs,
 			  u32 irq_no, u64 reason)
 {
 	irq_flags_t f;
@@ -75,12 +55,14 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 		return VMM_EINVALID;
 	}
 	irq_mask = 1UL << irq_no;
+
 	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
 		return VMM_OK;
 	}
 
 	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
-	csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
+	csr_set(CSR_BSIP, irq_mask);
+	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
 	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
 
 	return VMM_OK;
@@ -88,26 +70,7 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
-	irq_flags_t f;
-	unsigned long irq_mask;
-
-	if (irq_no >= ARCH_BITS_PER_LONG) {
-		return VMM_EINVALID;
-	}
-	irq_mask = 1UL << irq_no;
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
-		return VMM_OK;
-	}
-
-	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
-
-	riscv_priv(vcpu)->bsip &= ~irq_mask;
-	if (vcpu == vmm_scheduler_current_vcpu()) {
-		csr_write(CSR_BSIP, riscv_priv(vcpu)->bsip);
-	}
-
-	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
-
+	/* Nothing to do here. */
 	return VMM_OK;
 }
 
