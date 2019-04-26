@@ -44,6 +44,12 @@ int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	return VMM_OK;
 }
 
+bool arch_vcpu_irq_can_execute_multiple(struct vmm_vcpu *vcpu,
+					arch_regs_t *regs)
+{
+	return TRUE;
+}
+
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 irq_no, u64 reason)

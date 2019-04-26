@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -78,22 +78,32 @@ u32 arch_vcpu_irq_priority(struct vmm_vcpu *vcpu, u32 irq_no);
  *  NOTE: This function is called asynchronusly in any context.
  *  NOTE: This function is usually useful to architectures having
  *  hardware virtualization support.
- *  NOTE: This function needs to take action to protect any
- *  common ressource that could be used concurently by
- *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
- *  arch_vcpu_irq_deassert().
+ *  NOTE: This function needs to protect any common ressource that could
+ *  be used concurently by arch_vcpu_irq_assert(), arch_vcpu_irq_execute()
+ *  arch_vcpu_irq_can_execute_multiple(), and arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
+
+/** Check if we can execute multiple VCPU interrupts
+ *  NOTE: This function is always called in context of the VCPU (i.e.
+ *  in Normal context).
+ *  NOTE: This function is usually useful to architectures not having
+ *  hardware virtualization support.
+ *  NOTE: This function needs to protect any common ressource that could
+ *  be used concurently by arch_vcpu_irq_assert(), arch_vcpu_irq_execute()
+ *  arch_vcpu_irq_can_execute_multiple(), and arch_vcpu_irq_deassert().
+ */
+bool arch_vcpu_irq_can_execute_multiple(struct vmm_vcpu *vcpu,
+					arch_regs_t *regs);
 
 /** Execute VCPU interrupt
  *  NOTE: This function is always called in context of the VCPU (i.e.
  *  in Normal context).
  *  NOTE: This function is usually useful to architectures not having
  *  hardware virtualization support.
- *  NOTE: This function needs to take action to protect any
- *  common ressource that could be used concurently by
- *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
- *  arch_vcpu_irq_deassert().
+ *  NOTE: This function needs to protect any common ressource that could
+ *  be used concurently by arch_vcpu_irq_assert(), arch_vcpu_irq_execute()
+ *  arch_vcpu_irq_can_execute_multiple(), and arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
@@ -103,10 +113,9 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
  *  NOTE: This function is called asynchronusly in any context.
  *  NOTE: This function is usually useful to architectures having
  *  hardware virtualization support.
- *  NOTE: This function needs to take action to protect any
- *  common ressource that could be used concurently by
- *  arch_vcpu_irq_assert(), arch_vcpu_irq_execute() and
- *  arch_vcpu_irq_deassert().
+ *  NOTE: This function needs to protect any common ressource that could
+ *  be used concurently by arch_vcpu_irq_assert(), arch_vcpu_irq_execute()
+ *  arch_vcpu_irq_can_execute_multiple(), and arch_vcpu_irq_deassert().
  */
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason);
 

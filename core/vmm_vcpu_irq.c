@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -35,19 +35,8 @@
 #define ASSERTED	1
 #define PENDING		2
 
-void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+static bool vcpu_irq_process_one(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
-	/* For non-normal vcpu dont do anything */
-	if (!vcpu || !vcpu->is_normal) {
-		return;
-	}
-
-	/* If vcpu is not in interruptible state then dont do anything */
-	if (!(vmm_manager_vcpu_get_state(vcpu) & 
-					VMM_VCPU_STATE_INTERRUPTIBLE)) {
-		return;
-	}
-
 	/* Proceed only if we have pending execute */
 	if (arch_atomic_dec_if_positive(&vcpu->irqs.execute_pending) >= 0) {
 		int irq_no = -1;
@@ -66,7 +55,7 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 			}
 		}
 		if (irq_no == -1) {
-			return;
+			return FALSE;
 		}
 
 		/* If irq number found then execute it */
@@ -92,6 +81,31 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 						  ASSERTED);
 			}
 		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+{
+	/* For non-normal vcpu dont do anything */
+	if (!vcpu || !vcpu->is_normal) {
+		return;
+	}
+
+	/* If vcpu is not in interruptible state then dont do anything */
+	if (!(vmm_manager_vcpu_get_state(vcpu) &
+					VMM_VCPU_STATE_INTERRUPTIBLE)) {
+		return;
+	}
+
+	/* Process VCPU interrupts */
+	if (arch_vcpu_irq_can_execute_multiple(vcpu, regs)) {
+		while (vcpu_irq_process_one(vcpu, regs)) ;
+	} else {
+		vcpu_irq_process_one(vcpu, regs);
 	}
 }
 
@@ -162,7 +176,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	}
 
 	/* Assert the irq */
-	if (arch_atomic_cmpxchg(&vcpu->irqs.irq[irq_no].assert, 
+	if (arch_atomic_cmpxchg(&vcpu->irqs.irq[irq_no].assert,
 				DEASSERTED, ASSERTED) == DEASSERTED) {
 		if (arch_vcpu_irq_assert(vcpu, irq_no, reason) == VMM_OK) {
 			vcpu->irqs.irq[irq_no].reason = reason;
