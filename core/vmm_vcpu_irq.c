@@ -109,15 +109,10 @@ void vmm_vcpu_irq_process(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 	}
 }
 
-static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
+static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu, void *data)
 {
-	int rc;
 	irq_flags_t flags;
 	bool try_vcpu_resume = FALSE;
-
-	if (!vcpu) {
-		return VMM_EINVALID;
-	}
 
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
@@ -131,10 +126,6 @@ static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 
 		/* Stop wait for irq timeout event */
 		vmm_timer_event_stop(vcpu->irqs.wfi.priv);
-
-		rc = VMM_OK;
-	} else {
-		rc = VMM_ENOTAVAIL;
 	}
 
 	/* Unlock VCPU WFI */
@@ -149,13 +140,13 @@ static int vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu)
 	if (try_vcpu_resume) {
 		vmm_manager_vcpu_resume(vcpu);
 	}
-
-	return rc;
 }
 
 static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 {
-	vcpu_irq_wfi_resume(ev->priv);
+	vmm_manager_vcpu_hcpu_func(ev->priv,
+				   VMM_VCPU_STATE_INTERRUPTIBLE,
+				   vcpu_irq_wfi_resume, NULL, FALSE);
 }
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
@@ -189,7 +180,9 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	}
 
 	/* Resume VCPU from wfi */
-	vcpu_irq_wfi_resume(vcpu);
+	vmm_manager_vcpu_hcpu_func(vcpu,
+				   VMM_VCPU_STATE_INTERRUPTIBLE,
+				   vcpu_irq_wfi_resume, NULL, FALSE);
 }
 
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
@@ -225,7 +218,9 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 	}
 
 	/* Resume VCPU from wfi */
-	return vcpu_irq_wfi_resume(vcpu);
+	return vmm_manager_vcpu_hcpu_func(vcpu,
+					  VMM_VCPU_STATE_INTERRUPTIBLE,
+					  vcpu_irq_wfi_resume, NULL, FALSE);
 }
 
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
