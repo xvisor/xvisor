@@ -25,7 +25,6 @@
 
 #include <vmm_types.h>
 #include <vmm_compiler.h>
-#include <vmm_spinlocks.h>
 
 struct arch_regs {
 	unsigned long zero;
@@ -78,7 +77,6 @@ struct riscv_priv {
 	unsigned long bsepc;
 	unsigned long bscause;
 	unsigned long bstval;
-	vmm_spinlock_t bsip_lock;
 	unsigned long bsip;
 	unsigned long bsatp;
 };

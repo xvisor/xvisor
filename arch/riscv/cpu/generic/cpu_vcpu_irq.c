@@ -54,7 +54,6 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 			  arch_regs_t *regs,
 			  u32 irq_no, u64 reason)
 {
-	irq_flags_t f;
 	unsigned long irq_mask;
 
 	if (irq_no >= ARCH_BITS_PER_LONG) {
@@ -62,14 +61,16 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	}
 	irq_mask = 1UL << irq_no;
 
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
+	riscv_priv(vcpu)->bsie = csr_read(CSR_BSIE);
+	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
+
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask) ||
+	    !(riscv_priv(vcpu)->bsie & irq_mask)) {
 		return VMM_OK;
 	}
 
-	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
 	csr_set(CSR_BSIP, irq_mask);
 	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
-	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
 
 	return VMM_OK;
 }
@@ -82,12 +83,7 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 
 bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu)
 {
-	bool ret;
-	irq_flags_t f;
+	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
 
-	vmm_spin_lock_irqsave(&riscv_priv(vcpu)->bsip_lock, f);
-	ret = (riscv_priv(vcpu)->bsip) ? TRUE : FALSE;
-	vmm_spin_unlock_irqrestore(&riscv_priv(vcpu)->bsip_lock, f);
-
-	return ret;
+	return (riscv_priv(vcpu)->bsip) ? TRUE : FALSE;
 }
