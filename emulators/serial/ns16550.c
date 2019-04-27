@@ -16,16 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file 16550a.c
+ * @file ns16550.c
  * @author Himanshu Chauhan (hschauhan@nulltrace.org)
+ * @author Anup Patel (anup@brainfault.org)
  * @brief 16550A UART Emulator
  *
- * The source has been largely adapted from QEMU 1.7.50 hw/char/serial.c
+ * This source has been largely adapted from KVMTOOL hw/serial.c
  *
- * QEMU 16550A UART emulation
- *
- * Copyright (c) 2003-2004 Fabrice Bellard
- * Copyright (c) 2008 Citrix Systems, Inc.
+ * The original source is licensed under GPLv2.
  */
 
 #include <vmm_error.h>
@@ -286,6 +284,7 @@ struct ns16550_state {
 	struct vmm_vserial *vser;
 	vmm_spinlock_t lock;
 
+	u32 irq;
 	u32 reg_shift;
 	u32 reg_io_width;
 
@@ -299,8 +298,6 @@ struct ns16550_state {
 	u8 lsr;
 	u8 msr;
 	u8 scr;
-
-	u32 irq;
 	u8 irq_state;
 
 	struct fifo *recv_fifo;
@@ -381,6 +378,7 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 {
 	u8 data8;
 	int ret = VMM_OK;
+	bool update_irq = FALSE;
 
 	if (s->reg_io_width != io_width)
 		return VMM_EINVALID;
@@ -392,6 +390,8 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 
 	switch (addr) {
 	case UART_TX:
+		update_irq = TRUE;
+
 		if (s->lcr & UART_LCR_DLAB) {
 			s->dll = val;
 			break;
@@ -424,15 +424,19 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 			s->ier = val & 0x0f;
 		else
 			s->dlm = val;
+		update_irq = TRUE;
 		break;
 	case UART_FCR:
 		s->fcr = val;
+		update_irq = TRUE;
 		break;
 	case UART_LCR:
 		s->lcr = val;
+		update_irq = TRUE;
 		break;
 	case UART_MCR:
 		s->mcr = val;
+		update_irq = TRUE;
 		break;
 	case UART_LSR:
 		/* Factory test */
@@ -448,7 +452,7 @@ static int ns16550_reg_write(struct ns16550_state *s, u32 addr,
 		break;
 	}
 
-	if (ret != VMM_OK)
+	if (update_irq)
 		__ns16550_update_irq(s);
 
 	vmm_spin_unlock(&s->lock);
@@ -463,6 +467,7 @@ static void __ns16550_recv(struct ns16550_state *s, u32 *dst)
 	*dst = 0;
 
 	if (fifo_isempty(s->recv_fifo)) {
+		s->lsr &= ~UART_LSR_DR;
 		return;
 	}
 
@@ -484,6 +489,7 @@ static int ns16550_reg_read(struct ns16550_state *s,
 			    u32 addr, u32 *dst, u32 io_width)
 {
 	int ret = VMM_OK;
+	bool update_irq = FALSE;
 
 	if (s->reg_io_width != io_width)
 		return VMM_EINVALID;
@@ -499,6 +505,7 @@ static int ns16550_reg_read(struct ns16550_state *s,
 			*dst = s->dll;
 		else
 			__ns16550_recv(s, dst);
+		update_irq = TRUE;
 		break;
 	case UART_IER:
 		if (s->lcr & UART_LCR_DLAB)
@@ -529,7 +536,7 @@ static int ns16550_reg_read(struct ns16550_state *s,
 		break;
 	}
 
-	if (ret != VMM_OK)
+	if (update_irq)
 		__ns16550_update_irq(s);
 
 	vmm_spin_unlock(&s->lock);
@@ -591,6 +598,7 @@ static int ns16550_emulator_reset(struct vmm_emudev *edev)
 	s->dll = 0x0C;
 	s->mcr = UART_MCR_OUT2;
 	s->scr = 0;
+	s->irq_state = 0;
 
 	fifo_clear(s->recv_fifo);
 	fifo_clear(s->xmit_fifo);
