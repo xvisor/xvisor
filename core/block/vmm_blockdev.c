@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -131,6 +131,7 @@ int vmm_blockdev_complete_request(struct vmm_request *r)
 		return VMM_EINVALID;
 	}
 	rq = r->bdev->rq;
+	r->bdev = NULL;
 
 	if (r->completed) {
 		r->completed(r);
@@ -138,7 +139,6 @@ int vmm_blockdev_complete_request(struct vmm_request *r)
 	vmm_spin_lock_irqsave(&rq->lock, flags);
 	__blockdev_done_request(rq);
 	vmm_spin_unlock_irqrestore(&rq->lock, flags);
-	r->bdev = NULL;
 
 	return VMM_OK;
 }
@@ -153,6 +153,7 @@ int vmm_blockdev_fail_request(struct vmm_request *r)
 		return VMM_EINVALID;
 	}
 	rq = r->bdev->rq;
+	r->bdev = NULL;
 
 	if (r->failed) {
 		r->failed(r);
@@ -160,7 +161,6 @@ int vmm_blockdev_fail_request(struct vmm_request *r)
 	vmm_spin_lock_irqsave(&rq->lock, flags);
 	__blockdev_done_request(rq);
 	vmm_spin_unlock_irqrestore(&rq->lock, flags);
-	r->bdev = NULL;
 
 	return VMM_OK;
 }
