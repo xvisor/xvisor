@@ -190,7 +190,7 @@ static void __plic_context_irq_update(struct plic_state *s,
 				      struct plic_context *c)
 {
 	u32 best_irq = __plic_context_best_pending_irq(s, c);
-	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, 0);
+	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, c->num / 2);
 
 	if (best_irq) {
 		vmm_vcpu_irq_assert(vcpu, s->parent_irq, 0x0);
@@ -204,6 +204,9 @@ static u32 __plic_context_irq_claim(struct plic_state *s,
 				    struct plic_context *c)
 {
 	u32 best_irq = __plic_context_best_pending_irq(s, c);
+	struct vmm_vcpu *vcpu = vmm_manager_guest_vcpu(s->guest, c->num / 2);
+
+	vmm_vcpu_irq_clear(vcpu, s->parent_irq);
 
 	if (best_irq) {
 		c->irq_claimed[best_irq / 32] |= (1 << (best_irq % 32));
