@@ -51,3 +51,4 @@ drivers-objs-$(CONFIG_FB_MXC_LDB) += video/mxcldb.o
 drivers-objs-$(CONFIG_FB_MXC_HDMI) += video/mxc_hdmi_i2c.o
 drivers-objs-$(CONFIG_FB_MXC_HDMI) += video/mxc_hdmi.o
 drivers-objs-$(CONFIG_FB_MXC_HDMI) += video/mxc_edid.o
+drivers-objs-$(CONFIG_FB_SIMPLE) += video/simple_fb.o
