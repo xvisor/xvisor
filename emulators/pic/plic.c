@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -128,9 +128,10 @@ struct plic_context {
 	/* Local IRQ state */
 	vmm_spinlock_t irq_lock;
 	u8 irq_priority_threshold;
-	u32 irq_enable[MAX_DEVICES/4];
-	u32 irq_pending[MAX_DEVICES/4];
+	u32 irq_enable[MAX_DEVICES/32];
+	u32 irq_pending[MAX_DEVICES/32];
 	u8 irq_pending_priority[MAX_DEVICES];
+	u32 irq_claimed[MAX_DEVICES/32];
 };
 
 struct plic_state {
@@ -151,7 +152,7 @@ struct plic_state {
 	/* Global IRQ state */
 	vmm_spinlock_t irq_lock;
 	u8 irq_priority[MAX_DEVICES];
-	u32 irq_level[MAX_DEVICES/4];
+	u32 irq_level[MAX_DEVICES/32];
 };
 
 /* Note: Must be called with c->irq_lock held */
@@ -169,7 +170,8 @@ static u32 __plic_context_best_pending_irq(struct plic_state *s,
 		for (j = 0; j < 32; j++) {
 			irq = i * 32 + j;
 			if ((s->num_irq <= irq) ||
-			    !(c->irq_pending[i] & (1 << j))) {
+			    !(c->irq_pending[i] & (1 << j)) ||
+			    (c->irq_claimed[i] & (1 << j))) {
 				continue;
 			}
 			if (!best_irq ||
@@ -195,6 +197,21 @@ static void __plic_context_irq_update(struct plic_state *s,
 	} else {
 		vmm_vcpu_irq_deassert(vcpu, s->parent_irq);
 	}
+}
+
+/* Note: Must be called with c->irq_lock held */
+static u32 __plic_context_irq_claim(struct plic_state *s,
+				    struct plic_context *c)
+{
+	u32 best_irq = __plic_context_best_pending_irq(s, c);
+
+	if (best_irq) {
+		c->irq_claimed[best_irq / 32] |= (1 << (best_irq % 32));
+	}
+
+	__plic_context_irq_update(s, c);
+
+	return best_irq;
 }
 
 static void plic_irq_handle(u32 irq, int cpu, int level, void *opaque)
@@ -239,6 +256,7 @@ static void plic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 			} else {
 				c->irq_pending[irq_word] &= ~irq_mask;
 				c->irq_pending_priority[irq] = 0;
+				c->irq_claimed[irq_word] &= ~irq_mask;
 			}
 			__plic_context_irq_update(s, c);
 			irq_marked = TRUE;
@@ -348,6 +366,7 @@ static int plic_context_enable_write(struct plic_state *s,
 		} else if (!(new_val & irq_mask)) {
 			c->irq_pending[irq_word] &= ~irq_mask;
 			c->irq_pending_priority[irq] = 0;
+			c->irq_claimed[irq_word] &= ~irq_mask;
 		}
 	}
 
@@ -375,16 +394,12 @@ static int plic_context_read(struct plic_state *s,
 		*dst = c->irq_priority_threshold;
 		break;
 	case CONTEXT_CLAIM:
-		*dst = __plic_context_best_pending_irq(s, c);
+		*dst = __plic_context_irq_claim(s, c);
 		break;
 	default:
 		rc = VMM_EINVALID;
 		break;
 	};
-
-	if (rc == VMM_OK) {
-		__plic_context_irq_update(s, c);
-	}
 
 	vmm_spin_unlock_irqrestore(&c->irq_lock, flags);
 
@@ -501,7 +516,7 @@ static int plic_emulator_reset(struct vmm_emudev *edev)
 	for (i = 0; i < MAX_DEVICES; i++) {
 		s->irq_priority[i] = 0;
 	}
-	for (i = 0; i < MAX_DEVICES/4; i++) {
+	for (i = 0; i < MAX_DEVICES/32; i++) {
 		s->irq_level[i] = 0;
 	}
 
@@ -511,9 +526,10 @@ static int plic_emulator_reset(struct vmm_emudev *edev)
 		vmm_spin_lock_irqsave(&c->irq_lock, flags);
 
 		c->irq_priority_threshold = 0;
-		for (j = 0; j < MAX_DEVICES/4; j++) {
+		for (j = 0; j < MAX_DEVICES/32; j++) {
 			c->irq_enable[i] = 0;
 			c->irq_pending[i] = 0;
+			c->irq_claimed[i] = 0;
 		}
 		for (j = 0; j < MAX_DEVICES; j++) {
 			c->irq_pending_priority[i] = 0;
