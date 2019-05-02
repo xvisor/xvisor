@@ -172,6 +172,12 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	return VMM_OK;
 }
 
+int arch_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
+{
+	/* We don't implement this. */
+	return VMM_OK;
+}
+
 int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
 	/* We don't implement this. */

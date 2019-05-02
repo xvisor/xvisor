@@ -185,6 +185,34 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 				   vcpu_irq_wfi_resume, NULL, FALSE);
 }
 
+void vmm_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no)
+{
+	/* For non-normal vcpu dont do anything */
+	if (!vcpu || !vcpu->is_normal) {
+		return;
+	}
+
+	/* Check irq number */
+	if (irq_no > vcpu->irqs.irq_count) {
+		return;
+	}
+
+	/* Ensure given VCPU is current VCPU */
+	BUG_ON(vmm_scheduler_current_vcpu() != vcpu);
+
+	/* Call arch specific deassert */
+	if (arch_vcpu_irq_clear(vcpu, irq_no,
+				vcpu->irqs.irq[irq_no].reason) == VMM_OK) {
+		arch_atomic64_inc(&vcpu->irqs.clear_count);
+	}
+
+	/* Reset VCPU irq assert state */
+	arch_atomic_write(&vcpu->irqs.irq[irq_no].assert, DEASSERTED);
+
+	/* Ensure irq reason is zeroed */
+	vcpu->irqs.irq[irq_no].reason = 0x0;
+}
+
 void vmm_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no)
 {
 	/* For non-normal vcpu dont do anything */
@@ -232,6 +260,9 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	if (!vcpu || !vcpu->is_normal) {
 		return VMM_EFAIL;
 	}
+
+	/* Ensure given VCPU is current VCPU */
+	BUG_ON(vmm_scheduler_current_vcpu() != vcpu);
 
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
@@ -340,6 +371,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	/* Set default assert & deassert counts */
 	arch_atomic64_write(&vcpu->irqs.assert_count, 0);
 	arch_atomic64_write(&vcpu->irqs.execute_count, 0);
+	arch_atomic64_write(&vcpu->irqs.clear_count, 0);
 	arch_atomic64_write(&vcpu->irqs.deassert_count, 0);
 
 	/* Reset irq processing data structures for VCPU */

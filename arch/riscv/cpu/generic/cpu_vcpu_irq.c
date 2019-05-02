@@ -61,15 +61,30 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	}
 	irq_mask = 1UL << irq_no;
 
-	riscv_priv(vcpu)->bsie = csr_read(CSR_BSIE);
-	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
-
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask) ||
-	    !(riscv_priv(vcpu)->bsie & irq_mask)) {
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
 		return VMM_OK;
 	}
 
 	csr_set(CSR_BSIP, irq_mask);
+	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
+
+	return VMM_OK;
+}
+
+int arch_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
+{
+	unsigned long irq_mask;
+
+	if (irq_no >= ARCH_BITS_PER_LONG) {
+		return VMM_EINVALID;
+	}
+	irq_mask = 1UL << irq_no;
+
+	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
+		return VMM_OK;
+	}
+
+	csr_clear(CSR_BSIP, irq_mask);
 	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
 
 	return VMM_OK;
