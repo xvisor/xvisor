@@ -221,7 +221,8 @@ static void plic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
 	bool irq_marked = FALSE;
 	irq_flags_t flags, flags1;
-	u8 i, irq_prio, irq_word, irq_mask;
+	u8 i, irq_prio, irq_word;
+	u32 irq_mask;
 	struct plic_context *c = NULL;
 	struct plic_state *s = opaque;
 
