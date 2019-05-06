@@ -432,6 +432,8 @@ static int plic_context_write(struct plic_state *s,
 			rc = VMM_EINVALID;
 		}
 		break;
+	case CONTEXT_CLAIM:
+		break;
 	default:
 		rc = VMM_EINVALID;
 		break;
