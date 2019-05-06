@@ -219,7 +219,7 @@ static u32 __plic_context_irq_claim(struct plic_state *s,
 
 static void plic_irq_handle(u32 irq, int cpu, int level, void *opaque)
 {
-	bool irq_marked;
+	bool irq_marked = FALSE;
 	irq_flags_t flags, flags1;
 	u8 i, irq_prio, irq_word, irq_mask;
 	struct plic_context *c = NULL;
