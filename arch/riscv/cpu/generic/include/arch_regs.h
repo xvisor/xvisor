@@ -79,6 +79,8 @@ struct riscv_priv {
 	unsigned long bstval;
 	unsigned long bsip;
 	unsigned long bsatp;
+	/* Opaque pointer to timer data */
+	void *timer_priv;
 };
 
 struct riscv_guest_priv {
@@ -88,6 +90,7 @@ struct riscv_guest_priv {
 	struct cpu_pgtbl *pgtbl;
 };
 
+#define riscv_timer_priv(vcpu)	(riscv_priv(vcpu)->timer_priv)
 #define riscv_regs(vcpu)	(&((vcpu)->regs))
 #define riscv_priv(vcpu)	((struct riscv_priv *)((vcpu)->arch_priv))
 #define riscv_guest_priv(guest)	((struct riscv_guest_priv *)((guest)->arch_priv))

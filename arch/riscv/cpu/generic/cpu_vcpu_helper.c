@@ -34,6 +34,7 @@
 #include <arch_vcpu.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_helper.h>
+#include <cpu_vcpu_timer.h>
 #include <riscv_csr.h>
 
 int arch_guest_init(struct vmm_guest *guest)
@@ -178,12 +179,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_LOAD_PAGE_FAULT);
 	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
 
+	riscv_timer_event_init(vcpu, &riscv_timer_priv(vcpu));
 done:
 	return rc;
 }
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
+	int rc;
+
 	virtual_addr_t sp_exec =
 			riscv_regs(vcpu)->sp_exec - CONFIG_IRQ_STACK_SIZE;
 
@@ -200,6 +204,10 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
+
+	rc = riscv_timer_event_deinit(vcpu, &riscv_timer_priv(vcpu));
+	if (rc)
+		return rc;
 
 	/* Free private context */
 	vmm_free(vcpu->arch_priv);

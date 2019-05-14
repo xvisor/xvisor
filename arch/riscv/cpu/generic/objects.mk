@@ -75,3 +75,4 @@ cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_csr.o
 cpu-objs-y+= cpu_vcpu_trap.o
 cpu-objs-y+= cpu_vcpu_irq.o
+cpu-objs-y+= cpu_vcpu_timer.o
