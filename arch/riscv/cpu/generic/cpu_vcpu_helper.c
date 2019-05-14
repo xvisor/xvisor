@@ -208,6 +208,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		goto done;
 	}
 
+	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
+	riscv_regs(vcpu)->a0 = vcpu->subid;
+
 	/* Update HSTATUS */
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2V;
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2P;
