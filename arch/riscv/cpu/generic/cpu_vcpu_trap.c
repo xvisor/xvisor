@@ -323,22 +323,12 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			unsigned long cause,
 			unsigned long fault_addr)
 {
-	int rc;
-	struct cpu_page pg;
+	struct vmm_region *reg;
 
-	/* Check if mapping already exist */
-	rc = cpu_mmu_get_page(riscv_guest_priv(vcpu->guest)->pgtbl,
-			      fault_addr, &pg);
-	if (rc == VMM_OK) {
-		/*
-		 * The mapping already existed which means we got page fault
-		 * for a virtual device so we first check page permissions to
-		 * ensure that it was indeed a virtual device.
-		 */
-		if (pg.user && (pg.read || pg.write)) {
-			return VMM_ENOTSUPP;
-		}
-
+	reg = vmm_guest_find_region(vcpu->guest, fault_addr,
+				    VMM_REGION_VIRTUAL | VMM_REGION_MEMORY,
+				    FALSE);
+	if (reg) {
 		/* Emulate load/store instructions for virtual device */
 		switch (cause) {
 		case CAUSE_LOAD_PAGE_FAULT:
