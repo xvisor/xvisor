@@ -89,8 +89,7 @@ physical_size_t arch_board_ram_size(void)
 
 void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
-	basic_strcpy(cmdline, "root=/dev/ram rw "
-			      "earlycon=uart8250,mmio,0x10000000 "
+	basic_strcpy(cmdline, "root=/dev/ram rw earlycon=sbi "
 			      "console=ttyS0,115200");
 }
 
