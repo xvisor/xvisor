@@ -21,6 +21,7 @@
  * @brief source for arch specific linux booting
  */
 
+#include <arch_asm.h>
 #include <arch_linux.h>
 
 extern unsigned long boot_arg0;
@@ -41,6 +42,7 @@ void arch_start_linux_jump(unsigned long kernel_addr,
 			   unsigned long initrd_addr,
 			   unsigned long initrd_size)
 {
+	csr_write(sip, 0);
 	/* Jump to Linux Kernel
 	 * a0 -> hart ID
 	 * a1 -> dtb address
