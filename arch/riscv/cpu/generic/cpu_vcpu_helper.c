@@ -162,27 +162,34 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 {
 	int rc = VMM_OK;
 	const char *attr;
-	virtual_addr_t sp_exec;
+	virtual_addr_t sp, sp_exec;
 
-	/* First time allocate exception stack */
-	if (!vcpu->reset_count) {
-		sp_exec = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
-				VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
-		if (!sp_exec) {
-			return VMM_ENOMEM;
-		}
-		sp_exec += CONFIG_IRQ_STACK_SIZE;
+	/* Determine stack location */
+	if (vcpu->is_normal) {
+		sp = 0;
+		sp_exec = vcpu->stack_va + vcpu->stack_sz;
+		sp_exec = sp_exec & ~(__SIZEOF_POINTER__ - 1);
 	} else {
-		sp_exec = riscv_regs(vcpu)->sp_exec;
+		sp = vcpu->stack_va + vcpu->stack_sz;
+		sp = sp & ~(__SIZEOF_POINTER__ - 1);
+		if (!vcpu->reset_count) {
+			/* First time allocate exception stack */
+			sp_exec = vmm_pagepool_alloc(VMM_PAGEPOOL_NORMAL,
+				VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
+			if (!sp_exec) {
+				return VMM_ENOMEM;
+			}
+			sp_exec += CONFIG_IRQ_STACK_SIZE;
+		} else {
+			sp_exec = riscv_regs(vcpu)->sp_exec;
+		}
 	}
 
 	/* For both Orphan & Normal VCPUs */
 	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
 	riscv_regs(vcpu)->sepc = vcpu->start_pc;
-	riscv_regs(vcpu)->sstatus = SSTATUS_SPP | SSTATUS_SPIE; /* TODO: */
-	riscv_regs(vcpu)->sp = vcpu->stack_va +
-			     (vcpu->stack_sz - ARCH_CACHE_LINE_SIZE);
-	riscv_regs(vcpu)->sp = riscv_regs(vcpu)->sp & ~0x7;
+	riscv_regs(vcpu)->sstatus = SSTATUS_SPP | SSTATUS_SPIE;
+	riscv_regs(vcpu)->sp = sp;
 	riscv_regs(vcpu)->sp_exec = sp_exec;
 	riscv_regs(vcpu)->hstatus = 0;
 
@@ -260,15 +267,16 @@ done:
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
 	int rc;
+	virtual_addr_t sp_exec;
 
-	virtual_addr_t sp_exec =
-			riscv_regs(vcpu)->sp_exec - CONFIG_IRQ_STACK_SIZE;
+	/* Free-up exception stack for Orphan VCPU */
+	if (!vcpu->is_normal) {
+		sp_exec = riscv_regs(vcpu)->sp_exec - CONFIG_IRQ_STACK_SIZE;
+		vmm_pagepool_free(VMM_PAGEPOOL_NORMAL, sp_exec,
+				  VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
+	}
 
 	/* For both Orphan & Normal VCPUs */
-
-	/* Free-up excepiton stack */
-	vmm_pagepool_free(VMM_PAGEPOOL_NORMAL, sp_exec,
-			  VMM_SIZE_TO_PAGE(CONFIG_IRQ_STACK_SIZE));
 
 	/* Clear arch registers */
 	memset(riscv_regs(vcpu), 0, sizeof(arch_regs_t));
