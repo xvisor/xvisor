@@ -62,7 +62,7 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	irq_mask = 1UL << irq_no;
 
 	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
-		return VMM_OK;
+		return VMM_EFAIL;
 	}
 
 	csr_set(CSR_BSIP, irq_mask);
@@ -99,6 +99,6 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu)
 {
 	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
-
-	return (riscv_priv(vcpu)->bsip) ? TRUE : FALSE;
+	riscv_priv(vcpu)->bsie = csr_read(CSR_BSIE);
+	return (riscv_priv(vcpu)->bsip & riscv_priv(vcpu)->bsie) ? TRUE : FALSE;
 }
