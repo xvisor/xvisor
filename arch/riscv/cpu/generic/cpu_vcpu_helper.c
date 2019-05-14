@@ -21,6 +21,7 @@
  * @brief source of VCPU helper functions
  */
 
+#include <vmm_devtree.h>
 #include <vmm_error.h>
 #include <vmm_heap.h>
 #include <vmm_smp.h>
@@ -28,18 +29,67 @@
 #include <vmm_pagepool.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
+#include <vio/vmm_vserial.h>
 #include <libs/mathlib.h>
 #include <arch_barrier.h>
 #include <arch_guest.h>
+#include <cpu_guest_serial.h>
 #include <arch_vcpu.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
 #include <riscv_csr.h>
 
+static char *guest_fdt_find_serial_node(char *guest_name)
+{
+	char *serial = NULL;
+	char chosen_node_path[VMM_FIELD_NAME_SIZE];
+	struct vmm_devtree_node *chosen_node;
+
+	/* Process attributes in chosen node */
+	vmm_snprintf(chosen_node_path, sizeof(chosen_node_path), "/%s/%s/%s",
+		     VMM_DEVTREE_GUESTINFO_NODE_NAME, guest_name,
+		     VMM_DEVTREE_CHOSEN_NODE_NAME);
+	chosen_node = vmm_devtree_getnode(chosen_node_path);
+	if (chosen_node) {
+		/* Process console device passed via chosen node */
+		if (vmm_devtree_read_string(chosen_node,
+			VMM_DEVTREE_STDOUT_ATTR_NAME, (const char** )&serial) == VMM_OK) {
+			vmm_printf("%s: Found serial node [%s]\n",
+				   __func__, serial);
+		}
+	}
+	vmm_devtree_dref_node(chosen_node);
+
+	return serial;
+}
+
+static int guest_vserial_notification(struct vmm_notifier_block *nb,
+					unsigned long evt, void *data)
+{
+	int ret = NOTIFY_OK;
+	struct vmm_vserial_event *e = data;
+	struct riscv_guest_serial *gserial = container_of(nb,
+						struct riscv_guest_serial,
+						vser_client);
+	if (evt ==  VMM_VSERIAL_EVENT_CREATE) {
+		if (!strcmp(e->vser->name, gserial->name)) {
+			gserial->vserial = e->vser;
+		}
+	} else if (evt == VMM_VSERIAL_EVENT_DESTROY) {
+		if (!strcmp(e->vser->name, gserial->name))
+			gserial->vserial = NULL;
+	} else
+		ret = NOTIFY_DONE;
+	return ret;
+}
+
 int arch_guest_init(struct vmm_guest *guest)
 {
 	struct riscv_guest_priv *priv;
+	struct riscv_guest_serial *gserial;
+	char *sname;
+	int rc;
 
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(struct riscv_guest_priv));
@@ -59,6 +109,23 @@ int arch_guest_init(struct vmm_guest *guest)
 			guest->arch_priv = NULL;
 			return VMM_ENOMEM;
 		}
+		priv->guest_serial = vmm_malloc(sizeof(struct riscv_guest_serial));
+		if (!priv->guest_serial)
+			return VMM_ENOMEM;
+
+		gserial = riscv_guest_serial(guest);
+		sname = guest_fdt_find_serial_node(guest->name);
+		if (sname) {
+			strlcpy(gserial->name, guest->name,
+				sizeof(gserial->name));
+			strlcat(gserial->name, "/", sizeof(gserial->name));
+			strlcat(gserial->name, sname, sizeof(gserial->name));
+		}
+		gserial->vser_client.notifier_call = &guest_vserial_notification;
+		gserial->vser_client.priority = 0;
+		rc = vmm_vserial_register_client(&gserial->vser_client);
+		if (rc)
+			return rc;
 	}
 
 	return VMM_OK;
@@ -67,10 +134,15 @@ int arch_guest_init(struct vmm_guest *guest)
 int arch_guest_deinit(struct vmm_guest *guest)
 {
 	int rc;
+	struct riscv_guest_serial *gs = riscv_guest_serial(guest);
 
 	if (guest->arch_priv) {
 		if ((rc = cpu_mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl))) {
 			return rc;
+		}
+		if (gs) {
+			vmm_vserial_unregister_client(&gs->vser_client);
+			vmm_free(gs);
 		}
 		vmm_free(guest->arch_priv);
 	}

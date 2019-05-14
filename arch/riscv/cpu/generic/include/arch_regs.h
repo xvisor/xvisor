@@ -88,11 +88,14 @@ struct riscv_guest_priv {
 	u64 time_offset;
 	/* Stage2 pagetable */
 	struct cpu_pgtbl *pgtbl;
+	/* Opaque pointer to vserial data */
+	void *guest_serial;
 };
 
 #define riscv_timer_priv(vcpu)	(riscv_priv(vcpu)->timer_priv)
 #define riscv_regs(vcpu)	(&((vcpu)->regs))
 #define riscv_priv(vcpu)	((struct riscv_priv *)((vcpu)->arch_priv))
 #define riscv_guest_priv(guest)	((struct riscv_guest_priv *)((guest)->arch_priv))
+#define riscv_guest_serial(guest)	(riscv_guest_priv(guest)->guest_serial)
 
 #endif
