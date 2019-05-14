@@ -613,7 +613,7 @@ static int plic_emulator_probe(struct vmm_guest *guest,
 		c = &s->contexts[i];
 		c->s = s;
 		c->num = i;
-		INIT_SPIN_LOCK(&s->irq_lock);
+		INIT_SPIN_LOCK(&c->irq_lock);
 	}
 
 	INIT_SPIN_LOCK(&s->irq_lock);
