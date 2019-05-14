@@ -53,11 +53,9 @@ static char *guest_fdt_find_serial_node(char *guest_name)
 	chosen_node = vmm_devtree_getnode(chosen_node_path);
 	if (chosen_node) {
 		/* Process console device passed via chosen node */
-		if (vmm_devtree_read_string(chosen_node,
-			VMM_DEVTREE_STDOUT_ATTR_NAME, (const char** )&serial) == VMM_OK) {
-			vmm_printf("%s: Found serial node [%s]\n",
-				   __func__, serial);
-		}
+		vmm_devtree_read_string(chosen_node,
+					VMM_DEVTREE_STDOUT_ATTR_NAME,
+					(const char **)&serial);
 	}
 	vmm_devtree_dref_node(chosen_node);
 
