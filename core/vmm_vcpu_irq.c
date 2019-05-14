@@ -151,6 +151,8 @@ static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 {
+	bool asserted = FALSE;
+
 	/* For non-normal VCPU dont do anything */
 	if (!vcpu || !vcpu->is_normal) {
 		return;
@@ -173,6 +175,7 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 			vcpu->irqs.irq[irq_no].reason = reason;
 			arch_atomic_inc(&vcpu->irqs.execute_pending);
 			arch_atomic64_inc(&vcpu->irqs.assert_count);
+			asserted = TRUE;
 		} else {
 			arch_atomic_write(&vcpu->irqs.irq[irq_no].assert,
 					  DEASSERTED);
@@ -180,9 +183,11 @@ void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	}
 
 	/* Resume VCPU from wfi */
-	vmm_manager_vcpu_hcpu_func(vcpu,
-				   VMM_VCPU_STATE_INTERRUPTIBLE,
-				   vcpu_irq_wfi_resume, NULL, FALSE);
+	if (asserted) {
+		vmm_manager_vcpu_hcpu_func(vcpu,
+					   VMM_VCPU_STATE_INTERRUPTIBLE,
+					   vcpu_irq_wfi_resume, NULL, FALSE);
+	}
 }
 
 void vmm_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no)
