@@ -63,6 +63,39 @@ u64 __notrace vmm_timer_timestamp_for_profile(void)
 }
 #endif
 
+u64 vmm_timer_cycles_to_ns(u64 cycles)
+{
+	irq_flags_t flags;
+	u64 nanosecs;
+	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
+
+	arch_cpu_irq_save(flags);
+	nanosecs = vmm_clocksource_delta2nsecs(cycles & tc->cs->mask,
+					       tc->cs->mult, tc->cs->shift);
+	arch_cpu_irq_restore(flags);
+
+	return nanosecs;
+}
+
+u64 vmm_timer_delta_cycles_to_ns(u64 cycles)
+{
+	irq_flags_t flags;
+	u64 ns_delta, cycles_now, cycles_delta;
+	struct vmm_timecounter *tc = &this_cpu(tlc).tc;
+
+	arch_cpu_irq_save(flags);
+	cycles_now = tc->cs->read(tc->cs);
+	if (cycles > cycles_now)
+		cycles_delta = (cycles - cycles_now) & tc->cs->mask;
+	else
+		cycles_delta = 0;
+	ns_delta = vmm_clocksource_delta2nsecs(cycles_delta,
+						tc->cs->mult, tc->cs->shift);
+	arch_cpu_irq_restore(flags);
+
+	return ns_delta;
+}
+
 u64 vmm_timer_timestamp(void)
 {
 	u64 ret;

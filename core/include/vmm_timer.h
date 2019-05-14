@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -97,6 +97,12 @@ int vmm_timer_event_restart(struct vmm_timer_event *ev);
 
 /** Stop a timer event */
 int vmm_timer_event_stop(struct vmm_timer_event *ev);
+
+/** Convert given cycles to nanoseconds */
+u64 vmm_timer_cycles_to_ns(u64 cycles);
+
+/** Compute delta of given cycles and current cycles in-terms of nanoseconds */
+u64 vmm_timer_delta_cycles_to_ns(u64 cycles);
 
 /** Current global timestamp (nanoseconds elapsed) */
 u64 vmm_timer_timestamp(void);
