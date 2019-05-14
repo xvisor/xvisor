@@ -28,6 +28,7 @@
 #include <vmm_scheduler.h>
 #include <arch_vcpu.h>
 #include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_helper.h>
 
 #include <riscv_csr.h>
@@ -118,6 +119,10 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		} else {
 			rc = VMM_EINVALID;
 		}
+		break;
+	case CAUSE_SUPERVISOR_ECALL:
+		rc = cpu_vcpu_sbi_ecall(vcpu, cause, regs);
+		msg = "ecall handled";
 		break;
 	default:
 		rc = VMM_EFAIL;
