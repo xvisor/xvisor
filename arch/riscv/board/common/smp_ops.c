@@ -124,7 +124,7 @@ int __init arch_smp_init_cpus(void)
 {
 	int rc;
 	const char *str;
-	unsigned int i, cpus_count = 0, cpu = 1;
+	unsigned int i, cpu = 1;
 	bool bootcpu_valid = false;
 	physical_addr_t hwid;
 	struct vmm_devtree_node *dn, *cpus;
@@ -149,25 +149,10 @@ int __init arch_smp_init_cpus(void)
 		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
 			continue;
 		}
-		cpus_count++;
-	}
-
-	dn = NULL;
-	vmm_devtree_for_each_child(dn, cpus) {
-		str = NULL;
-		rc = vmm_devtree_read_string(dn,
-				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
-		if (rc || !str) {
-			continue;
-		}
-		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
-			continue;
-		}
 		rc = vmm_devtree_read_physaddr(dn,
 			VMM_DEVTREE_REG_ATTR_NAME, &hwid);
 		if ((rc == VMM_OK) &&
-		    ((cpus_count < 2) ||
-		     (hwid == _bootcpu_reg0))) {
+		     (hwid == _bootcpu_reg0)) {
 			smp_logical_map(0) = hwid;
 			break;
 		}
