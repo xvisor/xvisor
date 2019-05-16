@@ -88,59 +88,10 @@ unsigned long smp_read_logical_id(void)
 	return start_secondary_smp_id;
 }
 
-static const struct smp_operations *__init smp_get_ops(const char *name)
-{
-	u32 i, count;
-	const struct smp_operations *ops;
-	struct vmm_devtree_nidtbl_entry *nide;
-
-	count = vmm_devtree_nidtbl_count();
-	for (i = 0; i < count; i++) {
-		nide = vmm_devtree_nidtbl_get(i);
-		if (strcmp(nide->subsys, "smp_ops")) {
-			continue;
-		}
-		ops = nide->nodeid.data;
-		if (!strcmp(name, ops->name)) {
-			return ops;
-		}
-	}
-	
-	return NULL;
-}
-
-/*
- * Read a cpu's enable method from the device tree and 
- * record it in smp_cpu_ops.
- */
 static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 {
-	int rc;
-	const char *enable_method;
-
-	rc = vmm_devtree_read_string(dn,
-		VMM_DEVTREE_ENABLE_METHOD_ATTR_NAME, &enable_method);
-	if (rc) {
-		/*
-		 * The boot CPU may not have an enable method (e.g. when
-		 * spin-table is used for secondaries). Don't warn spuriously.
-		 */
-		if (cpu != 0) {
-			vmm_printf("%s: missing enable-method DT property\n",
-				   dn->name);
-			vmm_printf("%s: falling back to default SMP ops\n",
-				   dn->name);
-		}
-		smp_cpu_ops[cpu] = &smp_default_ops;
-		return 0;
-	}
-
-	smp_cpu_ops[cpu] = smp_get_ops(enable_method);
-	if (!smp_cpu_ops[cpu]) {
-		vmm_printf("%s: unsupported enable-method property: %s\n",
-			   dn->name, enable_method);
-		return VMM_ENOTAVAIL;
-	}
+	/* Unlike ARM, we don't have a enable-method property in RISC-V */
+	smp_cpu_ops[cpu] = &smp_default_ops;
 
 	return 0;
 }
