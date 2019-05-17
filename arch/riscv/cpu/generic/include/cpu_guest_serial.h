@@ -21,7 +21,7 @@
  * @brief RISC-V guest serial header
  */
 
-#ifndef _CPU_GUEST_REGS_H__
+#ifndef _CPU_GUEST_SERIAL_H__
 #define _CPU_GUEST_SERIAL_H__
 
 #include <vio/vmm_vserial.h>
@@ -32,4 +32,5 @@ struct riscv_guest_serial {
 	struct vmm_notifier_block vser_client;
 	struct vmm_vserial *vserial;
 };
+
 #endif
