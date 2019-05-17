@@ -202,7 +202,7 @@ copy_file =  $(V)mkdir -p `dirname $(1)`; \
 	     cp -f $(2) $(1)
 compile_cpp = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cpp)       $(subst $(build_dir)/,,$(1))"; \
-	     $(CPP) $(cppflags) $(2) | grep -v "\#" > $(1)
+	     $(CPP) $(cppflags) -x c $(2) | grep -v "\#" > $(1)
 compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1) && \
