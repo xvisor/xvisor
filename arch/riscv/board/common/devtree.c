@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -26,6 +26,7 @@
 #include <libs/libfdt.h>
 #include <arch_devtree.h>
 #include <arch_sections.h>
+#include <cpu_init.h>
 
 /* Note: dt_blob_start is start of flattend device tree
  * that is linked directly with hypervisor binary
@@ -312,11 +313,16 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
-	
+
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
 		return rc;
 	}
 
-	return libfdt_parse_devtree(&fdt, root, "\0", NULL);
+	rc = libfdt_parse_devtree(&fdt, root, "\0", NULL);
+	if (rc) {
+		return rc;
+	}
+
+	return cpu_parse_devtree_hwcap();
 }
