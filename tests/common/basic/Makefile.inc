@@ -127,7 +127,7 @@ $(FW_OBJ_DIR)/firmware.elf: $(FW_OBJS) $(ARCH_LDSCRIPT)
 $(FW_OBJ_DIR)/%.lnk: $(FW_ARCH_DIR)/%.ld
 	@mkdir -p `dirname $@`
 	@echo " (CPP)       $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(CPP) $(FW_CPPFLAGS) $< | grep -v "\#" > $@
+	@$(CPP) $(FW_CPPFLAGS) -x c $< | grep -v "\#" > $@
 
 $(FW_OBJ_DIR)/%.o: %.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
