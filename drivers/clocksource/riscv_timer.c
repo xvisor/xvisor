@@ -30,8 +30,8 @@
 #include <vmm_clocksource.h>
 #include <vmm_smp.h>
 #include <libs/mathlib.h>
-#include <drv/irqchip/riscv-intc.h> 
 
+#include <riscv_encoding.h>
 #include <riscv_timex.h>
 #include <riscv_csr.h>
 #include <riscv_sbi.h>
@@ -204,7 +204,7 @@ static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 		return VMM_EFAIL;
 	}
 	cc->name = "riscv-timer";
-	cc->hirq = RISCV_IRQ_SUPERVISOR_TIMER;
+	cc->hirq = IRQ_S_TIMER;
 	cc->rating = 400;
 	cc->cpumask = vmm_cpumask_of(vmm_smp_processor_id());
 	cc->features = VMM_CLOCKCHIP_FEAT_ONESHOT;
@@ -224,8 +224,7 @@ static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 	}
 
 	/* Register irq handler for riscv timer */
-	rc = vmm_host_irq_register(RISCV_IRQ_SUPERVISOR_TIMER,
-				   "riscv-timer",
+	rc = vmm_host_irq_register(IRQ_S_TIMER, "riscv-timer",
 				   &riscv_timer_handler, cc);
 	if (rc) {
 		goto fail_unreg_cc;

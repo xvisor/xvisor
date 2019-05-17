@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -37,9 +37,11 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
-#include <drv/irqchip/riscv-intc.h>
+#include <riscv_encoding.h>
 #include <riscv_csr.h>
 #include <riscv_sbi.h>
+
+#define RISCV_IRQ_COUNT __riscv_xlen
 
 struct riscv_irqchip_intc {
 	struct vmm_host_irqdomain *domain;
@@ -71,7 +73,7 @@ static void riscv_irqchip_raise(struct vmm_host_irq *d,
 	unsigned long hart;
 	struct vmm_cpumask tmask;
 
-	if (d->hwirq != RISCV_IRQ_SUPERVISOR_SOFTWARE)
+	if (d->hwirq != IRQ_S_SOFT)
 		return;
 
 	vmm_cpumask_clear(&tmask);
@@ -176,9 +178,8 @@ static int __cpuinit riscv_intc_init(struct vmm_devtree_node *node)
 
 	/* Setup up per-CPU interrupts */
 	for (i = 0; i < RISCV_IRQ_COUNT; i++) {
-		riscv_irqchip_register_irq(i,
-			(i == RISCV_IRQ_SUPERVISOR_SOFTWARE) ? TRUE : FALSE,
-			&riscv_irqchip);
+		riscv_irqchip_register_irq(i, (i == IRQ_S_SOFT) ? TRUE : FALSE,
+					   &riscv_irqchip);
 	}
 
 	vmm_host_irq_set_active_callback(riscv_intc_active_irq);

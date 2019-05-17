@@ -26,7 +26,8 @@
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_vcpu_timer.h>
-#include <drv/irqchip/riscv-intc.h>
+
+#include <riscv_encoding.h>
 
 static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 {
@@ -34,7 +35,7 @@ static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);
 
 	BUG_ON(!tevent);
-	vmm_vcpu_irq_assert(vcpu, RISCV_IRQ_SUPERVISOR_TIMER, 0x0);
+	vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
 }
 
 int riscv_timer_event_init(struct vmm_vcpu *vcpu, void **timer_event)

@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -35,7 +35,6 @@
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
-#include <drv/irqchip/riscv-intc.h>
 
 /*
  * From the RISC-V Privlidged Spec v1.10:
@@ -230,7 +229,7 @@ static void plic_irq_disable(struct vmm_host_irq *d)
 }
 
 static int plic_irq_set_affinity(struct vmm_host_irq *d,
-				 const struct vmm_cpumask *mask, 
+				 const struct vmm_cpumask *mask,
 				 bool force)
 {
 	int rc = VMM_OK;
@@ -383,7 +382,7 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 					   "mapped to target_hart=%ld so "
 					   "context=%d not present\n",
 					   j, cntx->target_hart, i);
-				cntx->present = FALSE;				
+				cntx->present = FALSE;
 			}
 		}
 
@@ -393,7 +392,7 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 	}
 
 	/* Create IRQ domain */
-	plic.domain = vmm_host_irqdomain_add(node, (int)RISCV_IRQ_COUNT,
+	plic.domain = vmm_host_irqdomain_add(node, __riscv_xlen,
 					     plic.ndev, &plic_ops, NULL);
 	if (!plic.domain) {
 		vmm_lerror("plic", "Failed to add irqdomain\n");

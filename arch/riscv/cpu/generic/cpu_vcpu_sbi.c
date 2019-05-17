@@ -21,7 +21,6 @@
  * @brief source of SBI call handling
  */
 
-#include <riscv_sbi.h>
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <arch_vcpu.h>
@@ -32,7 +31,9 @@
 #include <vmm_timer.h>
 #include <vmm_vcpu_irq.h>
 #include <vio/vmm_vserial.h>
-#include <drv/irqchip/riscv-intc.h>
+
+#include <riscv_encoding.h>
+#include <riscv_sbi.h>
 #include <riscv_unpriv.h>
 
 u16 cpu_vcpu_sbi_version_major(void)
@@ -70,11 +71,10 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		/* In RISC-V, we should clear the timer pending bit before
 		 * programming next one.
 		 */
-		vmm_vcpu_irq_clear(vcpu, RISCV_IRQ_SUPERVISOR_TIMER);
+		vmm_vcpu_irq_clear(vcpu, IRQ_S_TIMER);
 		/* No point in programming a timer for 1us */
 		if (delta_ns <= TIMER_EVENT_THRESHOLD_NS)
-			vmm_vcpu_irq_assert(vcpu,
-					    RISCV_IRQ_SUPERVISOR_TIMER, 0x0);
+			vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
 		else
 			vmm_timer_event_start(&tevent->time_ev, delta_ns);
 		break;
@@ -87,22 +87,22 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		regs->a0 = VMM_ENOTSUPP;
 		break;
 	case SBI_CLEAR_IPI:
-		vmm_vcpu_irq_clear(vcpu, RISCV_IRQ_SUPERVISOR_SOFTWARE);
+		vmm_vcpu_irq_clear(vcpu, IRQ_S_SOFT);
 		break;
 	case SBI_SEND_IPI:
 		dhart_mask = load_ulong(&regs->a0);
 		for_each_set_bit(vcpuid, &dhart_mask, BITS_PER_LONG) {
 			remote_vcpu = vmm_manager_guest_vcpu(vcpu->guest,
 							     vcpuid);
-			vmm_vcpu_irq_assert(remote_vcpu,
-					    RISCV_IRQ_SUPERVISOR_SOFTWARE, 0x0);
+			vmm_vcpu_irq_assert(remote_vcpu, IRQ_S_SOFT, 0x0);
 		}
 		break;
 	case SBI_SHUTDOWN:
 		ret = vmm_manager_guest_shutdown_request(vcpu->guest);
 		if (ret)
-			vmm_printf("%s: guest %s shutdown request failed with error = %d\n",
-				   __func__, vcpu->guest->name, ret);
+			vmm_printf("%s: guest %s shutdown request failed "
+				   "with error = %d\n", __func__,
+				   vcpu->guest->name, ret);
 		break;
 	case SBI_REMOTE_FENCE_I:
 		__asm__ __volatile("fence.i");
