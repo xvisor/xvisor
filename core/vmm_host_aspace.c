@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -787,7 +787,29 @@ u32 vmm_host_free_initmem(void)
 	return (init_size >> VMM_PAGE_SHIFT) * VMM_PAGE_SIZE / 1024;
 }
 
-int __cpuinit vmm_host_aspace_init(void)
+static int __cpuinit host_aspace_init_secondary(void)
+{
+	int rc;
+
+	/* For Non-Boot CPU just call arch code and return */
+	rc = arch_cpu_aspace_secondary_init();
+	if (rc) {
+		return rc;
+	}
+
+#if defined(ARCH_HAS_MEMORY_READWRITE)
+	/* Initialize memory read/write for Non-Boot CPU */
+	rc = arch_cpu_aspace_memory_rwinit(
+			host_mem_rw_va[vmm_smp_processor_id()]);
+	if (rc) {
+		return rc;
+	}
+#endif
+
+	return VMM_OK;
+}
+
+static int __init host_aspace_init_primary(void)
 {
 	int rc, cpu, bank_found = 0;
 	u32 resv, resv_count, bank, bank_count = 0x0;
@@ -798,25 +820,6 @@ int __cpuinit vmm_host_aspace_init(void)
 	virtual_size_t hk_total_size = 0x0;
 	virtual_addr_t core_resv_va = 0x0, arch_resv_va = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
-
-	/* For Non-Boot CPU just call arch code and return */
-	if (!vmm_smp_is_bootcpu()) {
-		rc = arch_cpu_aspace_secondary_init();
-		if (rc) {
-			return rc;
-		}
-
-#if defined(ARCH_HAS_MEMORY_READWRITE)
-		/* Initialize memory read/write for Non-Boot CPU */
-		rc = arch_cpu_aspace_memory_rwinit(
-				host_mem_rw_va[vmm_smp_processor_id()]);
-		if (rc) {
-			return rc;
-		}
-#endif
-
-		return VMM_OK;
-	}
 
 	/* Determine VAPOOL start and size */
 	vapool_start = arch_code_vaddr_start();
@@ -1038,4 +1041,13 @@ int __cpuinit vmm_host_aspace_init(void)
 #endif
 
 	return VMM_OK;
+}
+
+int __cpuinit vmm_host_aspace_init(void)
+{
+	if (!vmm_smp_is_bootcpu()) {
+		return host_aspace_init_secondary();
+	}
+
+	return host_aspace_init_primary();
 }
