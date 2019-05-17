@@ -1,3 +1,0 @@
-[submodule "tools/dtc"]
-	path = tools/dtc
-	url = https://git.kernel.org/pub/scm/utils/dtc/dtc.git

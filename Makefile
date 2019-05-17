@@ -439,7 +439,6 @@ ifeq ($(build_dir),$(CURDIR)/build)
 	! -name '$(shell basename $(build_dir))' -exec rm -rf {} +
 	$(V)find $(build_dir) -maxdepth 1 -type f -exec rm -rf {} +
 endif
-	$(V)$(MAKE) -C $(src_dir)/tools/dtc clean
 
 # Rule for "make distclean"
 .PHONY: distclean
