@@ -15,7 +15,7 @@
 
 	chosen {
 		stdout-path="uart0";
-	}
+	};
 
 	vcpu_template {
 		device_type = "vcpu";
