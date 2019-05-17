@@ -27,10 +27,17 @@ FW_CFLAGS=$(ARCH_CFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib
 FW_ASFLAGS=$(ARCH_ASFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -D__ASSEMBLY__
 FW_LDFLAGS=$(ARCH_LDFLAGS) $(FW_CFLAGS) -Wl,--build-id=none -Wl,-T$(ARCH_LDSCRIPT)
 
-FW_AS=$(FW_CROSS_COMPILE)gcc
-FW_CC=$(FW_CROSS_COMPILE)gcc
-FW_CPP=$(FW_CROSS_COMPILE)cpp
-FW_OBJCOPY=$(FW_CROSS_COMPILE)objcopy
+ifdef CROSS_COMPILE
+CC		=	$(CROSS_COMPILE)gcc
+CPP		=	$(CROSS_COMPILE)cpp
+OBJCOPY		=	$(CROSS_COMPILE)objcopy
+else
+CC		?=	gcc
+CPP		?=	cpp
+OBJCOPY		?=	objcopy
+endif
+AS		=	$(CC)
+DTC		=	dtc
 
 FW_OBJ_DIR= $(ARCH_OBJ_DIR)
 FW_BASIC_DIR= $(ARCH_BASIC_DIR)
@@ -99,7 +106,7 @@ install: all
 $(FW_OBJ_DIR)/firmware.bin.patched: $(FW_OBJ_DIR)/firmware.elf.patched
 	@mkdir -p `dirname $@`
 	@echo " (OBJCOPY)   $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_OBJCOPY) -O binary $< $@
+	@$(OBJCOPY) -O binary $< $@
 
 $(FW_OBJ_DIR)/firmware.elf.patched: $(FW_OBJ_DIR)/firmware.elf
 	@mkdir -p `dirname $@`
@@ -110,47 +117,47 @@ $(FW_OBJ_DIR)/firmware.elf.patched: $(FW_OBJ_DIR)/firmware.elf
 $(FW_OBJ_DIR)/firmware.bin: $(FW_OBJ_DIR)/firmware.elf
 	@mkdir -p `dirname $@`
 	@echo " (OBJCOPY)   $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_OBJCOPY) -O binary $< $@
+	@$(OBJCOPY) -O binary $< $@
 
 $(FW_OBJ_DIR)/firmware.elf: $(FW_OBJS) $(ARCH_LDSCRIPT)
 	@mkdir -p `dirname $@`
 	@echo " (LD)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_CC) $(FW_OBJS) $(FW_LDFLAGS) -o $@
+	@$(CC) $(FW_OBJS) $(FW_LDFLAGS) -o $@
 
 $(FW_OBJ_DIR)/%.lnk: $(FW_ARCH_DIR)/%.ld
 	@mkdir -p `dirname $@`
 	@echo " (CPP)       $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_CPP) $(FW_CPPFLAGS) $< | grep -v "\#" > $@
+	@$(CPP) $(FW_CPPFLAGS) $< | grep -v "\#" > $@
 
 $(FW_OBJ_DIR)/%.o: %.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
+	@$(CC) $(FW_CFLAGS) -c $< -o $@
 
 $(FW_OBJ_DIR)/%.o: $(FW_BASIC_DIR)/%.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
+	@$(CC) $(FW_CFLAGS) -c $< -o $@
 
 $(FW_OBJ_DIR)/%.o: $(FW_ARCH_DIR)/%.c $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (CC)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_CC) $(FW_CFLAGS) -c $< -o $@
+	@$(CC) $(FW_CFLAGS) -c $< -o $@
 
 $(FW_OBJ_DIR)/%.o: %.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
+	@$(AS) $(FW_ASFLAGS) -c $< -o $@
 
 $(FW_OBJ_DIR)/%.o: $(FW_BASIC_DIR)/%.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
+	@$(AS) $(FW_ASFLAGS) -c $< -o $@
 
 $(FW_OBJ_DIR)/%.o: $(FW_ARCH_DIR)/%.S $(FW_DEPS)
 	@mkdir -p `dirname $@`
 	@echo " (AS)        $(subst $(FW_OBJ_DIR)/,,$@)"
-	@$(FW_AS) $(FW_ASFLAGS) -c $< -o $@
+	@$(AS) $(FW_ASFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:
