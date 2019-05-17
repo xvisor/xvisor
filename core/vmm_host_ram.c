@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -393,7 +393,7 @@ u32 vmm_host_ram_bank_free_frames(u32 bank)
 	return ret;
 }
 
-virtual_size_t vmm_host_ram_estimate_hksize(void)
+virtual_size_t __init vmm_host_ram_estimate_hksize(void)
 {
 	int rc;
 	u32 bn, count;
@@ -486,4 +486,3 @@ int __init vmm_host_ram_init(virtual_addr_t hkbase)
 
 	return VMM_OK;
 }
-

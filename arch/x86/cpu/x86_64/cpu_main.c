@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -46,32 +46,32 @@ u8 boot_cmd_line[MAX_CMD_LINE];
 extern u32 dt_blob_start;
 volatile int wait_for_gdb = 0;
 
-int arch_devtree_ram_bank_setup(void)
+int __init arch_devtree_ram_bank_setup(void)
 {
 	/* For now nothing to do here. */
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_count(u32 *bank_count)
+int __init arch_devtree_ram_bank_count(u32 *bank_count)
 {
 	*bank_count = 1;
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
+int __init arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
 {
 #if 0
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 	struct fdt_node_header *fdt_node;
 	physical_addr_t data[2];
-	
+
 	rc = libfdt_parse_fileinfo((virtual_addr_t)&dt_blob_start, &fdt);
 	if (rc) {
 		return rc;
 	}
 
-	fdt_node = libfdt_find_node(&fdt, 
+	fdt_node = libfdt_find_node(&fdt,
 				    VMM_DEVTREE_PATH_SEPARATOR_STRING
 				    VMM_DEVTREE_MEMORY_NODE_NAME);
 	if (!fdt_node) {
@@ -94,7 +94,7 @@ int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
+int __init arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
 {
 	if (bank > 0) {
 		return VMM_EINVALID;
@@ -103,25 +103,25 @@ int arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
 	return VMM_OK;
 }
 
-int arch_devtree_reserve_count(u32 *count)
+int __init arch_devtree_reserve_count(u32 *count)
 {
 	*count = 0;
 	return VMM_OK;
 }
 
-int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
+int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 {
 	*addr = 0x0;
 	return VMM_OK;
 }
 
-int arch_devtree_reserve_size(u32 index, physical_size_t *size)
+int __init arch_devtree_reserve_size(u32 index, physical_size_t *size)
 {
 	*size = 0x0;
 	return VMM_OK;
 }
 
-int arch_devtree_populate(struct vmm_devtree_node **root)
+int __init arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -138,7 +138,7 @@ int arch_devtree_populate(struct vmm_devtree_node **root)
 		return rc;
 	}
 
-	/* FIXME: Populate device tree from ACPI table */	
+	/* FIXME: Populate device tree from ACPI table */
 #if CONFIG_ACPI
 	/*
 	 * Initialize the ACPI table to help initialize

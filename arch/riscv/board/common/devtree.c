@@ -47,8 +47,8 @@ struct match_info {
 	u32 size_cells;
 };
 
-static int match_memory_node(struct fdt_node_header *fdt_node,
-			     int level, void *priv)
+static int __init match_memory_node(struct fdt_node_header *fdt_node,
+				    int level, void *priv)
 {
 	int rc;
 	char dev_type[16];
@@ -71,7 +71,7 @@ static int match_memory_node(struct fdt_node_header *fdt_node,
 	return 0;
 }
 
-int arch_devtree_ram_bank_setup(void)
+int __init arch_devtree_ram_bank_setup(void)
 {
 	int rc = VMM_OK;
 	physical_addr_t tmp;
@@ -201,14 +201,14 @@ int arch_devtree_ram_bank_setup(void)
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_count(u32 *bank_count)
+int __init arch_devtree_ram_bank_count(u32 *bank_count)
 {
 	*bank_count = bank_nr;
 
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
+int __init arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
 {
 	if (bank >= bank_nr) {
 		return VMM_EINVALID;
@@ -219,7 +219,7 @@ int arch_devtree_ram_bank_start(u32 bank, physical_addr_t *addr)
 	return VMM_OK;
 }
 
-int arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
+int __init arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
 {
 	if (bank >= bank_nr) {
 		return VMM_EINVALID;
@@ -249,7 +249,7 @@ int arch_devtree_reserve_count(u32 *count)
 	return VMM_OK;
 }
 
-int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
+int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 {
 	u64 tmp;
 	int rc = VMM_OK;
@@ -279,7 +279,7 @@ int arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 	return VMM_OK;
 }
 
-int arch_devtree_reserve_size(u32 index, physical_size_t *size)
+int __init arch_devtree_reserve_size(u32 index, physical_size_t *size)
 {
 	u64 tmp;
 	int rc = VMM_OK;
@@ -309,7 +309,7 @@ int arch_devtree_reserve_size(u32 index, physical_size_t *size)
 	return VMM_OK;
 }
 
-int arch_devtree_populate(struct vmm_devtree_node **root)
+int __init arch_devtree_populate(struct vmm_devtree_node **root)
 {
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
