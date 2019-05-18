@@ -116,7 +116,24 @@ targets-y+=$(build_dir)/vmm.bin
 targets-y+=$(build_dir)/system.map
 
 # Setup compilation environment
-cpp=$(CROSS_COMPILE)cpp
+ifdef CROSS_COMPILE
+CC		=	$(CROSS_COMPILE)gcc
+CPP		=	$(CROSS_COMPILE)cpp
+AR		=	$(CROSS_COMPILE)ar
+LD		=	$(CROSS_COMPILE)ld
+NM		=	$(CROSS_COMPILE)nm
+OBJCOPY		=	$(CROSS_COMPILE)objcopy
+else
+CC		?=	gcc
+CPP		?=	cpp
+AR		?=	ar
+LD		?=	ld
+NM		?=	nm
+OBJCOPY		?=	objcopy
+endif
+AS		=	$(CC)
+DTC		=	dtc
+
 cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
 cppflags+=-include $(core_dir)/include/vmm_openconf.h
 cppflags+=-DCONFIG_MAJOR=$(MAJOR)
@@ -136,34 +153,26 @@ cppflags+=-I$(arch_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
-cc=$(CROSS_COMPILE)gcc
 cflags=-g -Wall -nostdlib --sysroot=$(drivers_dir)/include -fno-builtin -D__VMM__
-cflags+=$(board-cflags) 
-cflags+=$(cpu-cflags) 
-cflags+=$(libs-cflags-y) 
+cflags+=$(board-cflags)
+cflags+=$(cpu-cflags)
+cflags+=$(libs-cflags-y)
 cflags+=$(cppflags)
 ifdef CONFIG_PROFILE
 cflags+=-finstrument-functions
 endif
-as=$(CROSS_COMPILE)gcc
-asflags=-g -Wall -nostdlib -D__ASSEMBLY__ 
-asflags+=$(board-asflags) 
-asflags+=$(cpu-asflags) 
-asflags+=$(libs-asflags-y) 
+asflags=-g -Wall -nostdlib -D__ASSEMBLY__
+asflags+=$(board-asflags)
+asflags+=$(cpu-asflags)
+asflags+=$(libs-asflags-y)
 asflags+=$(cppflags)
-ar=$(CROSS_COMPILE)ar
 arflags=rcs
-ld=$(CROSS_COMPILE)gcc
 ldflags=-g -Wall -nostdlib -Wl,--build-id=none
-ldflags+=$(board-ldflags) 
-ldflags+=$(cpu-ldflags) 
-ldflags+=$(libs-ldflags-y) 
-merge=$(CROSS_COMPILE)ld
+ldflags+=$(board-ldflags)
+ldflags+=$(cpu-ldflags)
+ldflags+=$(libs-ldflags-y)
 mergeflags=-r
-data=$(CROSS_COMPILE)ld
 dataflags=-r -b binary
-objcopy=$(CROSS_COMPILE)objcopy
-nm=$(CROSS_COMPILE)nm
 
 # If only "modules" is specified as make goals then
 # define __VMM_MODULES__ in cflags.
@@ -184,7 +193,7 @@ endef
 # Setup functions for compilation
 merge_objs = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (merge)     $(subst $(build_dir)/,,$(1))"; \
-	     $(merge) $(mergeflags) $(2) -o $(1)
+	     $(LD) $(mergeflags) $(2) -o $(1)
 merge_deps = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (merge-dep) $(subst $(build_dir)/,,$(1))"; \
 	     cat $(2) > $(1)
@@ -193,32 +202,32 @@ copy_file =  $(V)mkdir -p `dirname $(1)`; \
 	     cp -f $(2) $(1)
 compile_cpp = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cpp)       $(subst $(build_dir)/,,$(1))"; \
-	     $(cpp) $(cppflags) $(2) | grep -v "\#" > $(1)
+	     $(CPP) $(cppflags) $(2) | grep -v "\#" > $(1)
 compile_cc_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1) && \
-	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2))   \
+	     $(CC) $(cflags) $(call dynamic_flags,$(1),$(2))   \
 	       -MM $(2) >> $(1) || rm -f $(1)
 compile_cc = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (cc)        $(subst $(build_dir)/,,$(1))"; \
-	     $(cc) $(cflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
+	     $(CC) $(cflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
 compile_as_dep = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as-dep)    $(subst $(build_dir)/,,$(1))"; \
 	     echo -n `dirname $(1)`/ > $(1) && \
-	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2))  \
+	     $(AS) $(asflags) $(call dynamic_flags,$(1),$(2))  \
 	       -MM $(2) >> $(1) || rm -f $(1)
 compile_as = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (as)        $(subst $(build_dir)/,,$(1))"; \
-	     $(as) $(asflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
+	     $(AS) $(asflags) $(call dynamic_flags,$(1),$(2)) -c $(2) -o $(1)
 compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (ld)        $(subst $(build_dir)/,,$(1))"; \
-	     $(ld) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
+	     $(CC) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
 compile_nm = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (nm)        $(subst $(build_dir)/,,$(1))"; \
-	     $(nm) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $(1)
+	     $(NM) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $(1)
 compile_objcopy = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (objcopy)   $(subst $(build_dir)/,,$(1))"; \
-	     $(objcopy) -O binary $(2) $(1)
+	     $(OBJCOPY) -O binary $(2) $(1)
 inst_file =  $(V)mkdir -p `dirname $(1)`; \
 	     echo " (install)   $(subst $(install_dir)/,,$(1))"; \
 	     cp -f $(2) $(1)
@@ -245,13 +254,13 @@ emulators-object-mks=$(shell if [ -d $(emulators_dir) ]; then find $(emulators_d
 all:
 
 # Include all object.mk files
-include $(cpu-object-mks) 
-include $(cpu-common-object-mks) 
-include $(board-object-mks) 
-include $(board-common-object-mks) 
-include $(core-object-mks) 
-include $(libs-object-mks) 
-include $(commands-object-mks) 
+include $(cpu-object-mks)
+include $(cpu-common-object-mks)
+include $(board-object-mks)
+include $(board-common-object-mks)
+include $(core-object-mks)
+include $(libs-object-mks)
+include $(commands-object-mks)
 include $(daemons-object-mks)
 include $(drivers-object-mks)
 include $(emulators-object-mks)
@@ -471,4 +480,3 @@ savedefconfig:
 	$(V)$(MAKE) -C tools/openconf defconfig
 	./tools/openconf/conf -D $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_INPUT)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
-
