@@ -31,7 +31,7 @@ dtsflags = $(cppflags) -nostdinc -nostdlib -fno-builtin -D__DTS__ -x assembler-w
 $(build_dir)/%.dep: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc-dep)   $(subst $(build_dir)/,,$@)")
-	$(V)$(CPP) $(dtsflags) $< | $(DTC) -Wno-unit_address_vs_reg -d $@ -I dts -O dtb -i `dirname $<` -o /dev/null
+	$(V)$(CPP) $(dtsflags) $< | $(DTC) -q -d $@ -I dts -O dtb -i `dirname $<` -o /dev/null
 	$(V)sed -i "s|/dev/null|$(subst .dep,.dtb,$@)|g" $@
 	$(V)sed -i "s|<stdin>|$<|g" $@
 	$(V)$(CC) $(dtsflags) -MT $(subst .dep,.dtb,$@) -MM $< >> $@
@@ -39,13 +39,13 @@ $(build_dir)/%.dep: $(src_dir)/%.dts
 $(build_dir)/%.dtb: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
-	$(V)$(CPP) $(dtsflags) $< | $(DTC) -Wno-unit_address_vs_reg -p 0x100 -I dts -O dtb -i `dirname $<` -o $@
+	$(V)$(CPP) $(dtsflags) $< | $(DTC) -q -p 0x100 -I dts -O dtb -i `dirname $<` -o $@
 
 $(build_dir)/%.S: $(src_dir)/%.dts
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (dtc)       $(subst $(build_dir)/,,$@)")
 	$(V)echo '.section ".devtree"' > $@
-	$(V)$(CPP) $(dtsflags) $< | $(DTC) -Wno-unit_address_vs_reg -I dts -O asm -i `dirname $<` >> $@
+	$(V)$(CPP) $(dtsflags) $< | $(DTC) -q -I dts -O asm -i `dirname $<` >> $@
 
 $(build_dir)/%.dep: $(src_dir)/%.data
 	$(V)mkdir -p `dirname $@`
