@@ -1,18 +1,18 @@
 		Linux on Xvisor VersatilePB Guest
 
-Linux is a computer operating system which is based on free and open source 
-software. the underlying source code can be used, freely modified, and 
-redistributed, both commercially and non-commercially, by anyone under 
-licenses such as the GNU General Public License. For more information on 
+Linux is a computer operating system which is based on free and open source
+software. the underlying source code can be used, freely modified, and
+redistributed, both commercially and non-commercially, by anyone under
+licenses such as the GNU General Public License. For more information on
 Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
-Linux already contains a support for VersatilePB Board. We can use 
-this kernel unmodified to run it as a xvisor guest. We have also provide 
-VersatilePB defconfig for various linux kernel versions for ease in 
-building kernel. To obtain Linux kernel sources visit the following 
+Linux already contains a support for VersatilePB Board. We can use
+this kernel unmodified to run it as a xvisor guest. We have also provide
+VersatilePB defconfig for various linux kernel versions for ease in
+building kernel. To obtain Linux kernel sources visit the following
 url: http://www.kernel.org
 
-Please follow the steps below to build & run Linux kernel with Busybox 
+Please follow the steps below to build & run Linux kernel with Busybox
 RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
 
   [1. Build environment for Xvisor]
@@ -67,7 +67,7 @@ RootFS on VersatilePB Guest with Xvisor running on QEMU VersatilePB Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/versatilepb
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb-guest.dtb ./tests/arm32/versatilepb/versatilepb-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/versatilepb-guest.dtb ./tests/arm32/versatilepb/versatilepb-guest.dts
   # cp -f ./build/tests/arm32/versatilepb/basic/firmware.bin.patched ./build/disk/images/arm32/versatilepb/firmware.bin
   # cp -f ./tests/arm32/versatilepb/linux/nor_flash.list ./build/disk/images/arm32/versatilepb/nor_flash.list
   # cp -f ./tests/arm32/versatilepb/linux/cmdlist ./build/disk/images/arm32/versatilepb/cmdlist

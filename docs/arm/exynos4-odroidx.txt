@@ -36,7 +36,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [6. Make U-Boot compatible uvmm.bin, for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x40008000 -e 0x40008000 -n "Xvisor" -d build/vmm.bin build/uvmm.bin
- 
+
   [7. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic
 
@@ -72,7 +72,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
@@ -88,7 +88,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
@@ -96,7 +96,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
 
   [17. Make U-boot compatible initrd for use with bootm command]
   # mkimage -A arm -O linux -T ramdisk -a 0x41000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
- 
+
   [18. Unplug SD card from ODroid-X and plug it on your development machine]
 
   [19. Mount boot partition (or partition 0) of SD card on your development machine]

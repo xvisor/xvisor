@@ -9,7 +9,7 @@ We need to add 2 images in boot partition of SD card that is shipped with
 Sabre LITE:
  1) U-Boot compatible Xvisor binary (uvmm.bin).
  2) U-Boot compatible Xvisor dtb (imx6dl-sabrelite.dtb)
- 3) U-Boot compatible Xvisor disk (udisk.img) 
+ 3) U-Boot compatible Xvisor disk (udisk.img)
  4) Boot script used by Boundary's U-Boot configuration (6x_bootscript)
 
 Follow the following steps to create these images and then boot Xvisor on Sabre LITE:
@@ -33,7 +33,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
 
   [6. Make U-Boot compatible uvmm.bin, for use with bootm command]
   # mkimage -A arm -O linux -T kernel -C none -a 0x17800000 -e 0x17800000 -n "Xvisor" -d build/vmm.bin build/uvmm.bin
- 
+
   [7. Build Basic Firmware]
   # make -C tests/arm32/vexpress-a9/basic
 
@@ -69,7 +69,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
@@ -85,7 +85,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
@@ -93,7 +93,7 @@ Follow the following steps to create these images and then boot Xvisor on Sabre 
 
   [17. Make U-boot compatible initrd for use with bootm command]
   # mkimage -A arm -O linux -T ramdisk -a 0x14000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
- 
+
   [18. Make the script to boot the card as preconfigured U-Boot expect]
   # mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d docs/arm/imx6-sabrelite-bootscript build/6x_bootscript
 
@@ -201,7 +201,7 @@ guest with Xvisor running on QEMU Sabre LITE Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
@@ -217,7 +217,7 @@ guest with Xvisor running on QEMU Sabre LITE Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript

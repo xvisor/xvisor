@@ -1,6 +1,6 @@
-	Xvisor on BeagleBoard-xM (or OMAP3) using SD Booting 
+	Xvisor on BeagleBoard-xM (or OMAP3) using SD Booting
 
-This section of readme explains how to build & run Xvisor on real hardware 
+This section of readme explains how to build & run Xvisor on real hardware
 BeagleBoard-xM using SD booting feature of OMAP3 SOC.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
@@ -69,7 +69,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
@@ -85,7 +85,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
@@ -158,10 +158,10 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
    on your workspace)
 
 
-	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting 
+	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting
 
 This section of readme explains how to build & run Xvisor from nand-flash on
-BeagleBoard emulated by QEMU Linaro. 
+BeagleBoard emulated by QEMU Linaro.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
@@ -238,7 +238,7 @@ follows:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/linux/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/linux/cmdlist ./build/disk/images/arm32/realview-pb-a8/cmdlist
@@ -254,7 +254,7 @@ follows:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-pb-a8
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-pb-a8-guest.dtb ./tests/arm32/realview-pb-a8/realview-pb-a8-guest.dts
   # cp -f ./build/tests/arm32/realview-pb-a8/basic/firmware.bin.patched ./build/disk/images/arm32/realview-pb-a8/firmware.bin
   # cp -f ./tests/arm32/realview-pb-a8/basic/nor_flash.list ./build/disk/images/arm32/realview-pb-a8/nor_flash.list
   # cp -f ./tests/arm32/realview-pb-a8/xscript/one_guest_pb-a8.xscript ./build/disk/boot.xscript
@@ -267,7 +267,7 @@ follows:
   # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/ti/omap3-beagle.dtb@0x680000 build/udisk.img@0x700000
 
   [20. Build the beagleboard nand-flash image from the flat binary created]
-  # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc 
+  # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc
 
   [21. Launch QEMU Linaro]
   # qemu-system-arm -M beagle -m 512M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s

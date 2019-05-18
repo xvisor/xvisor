@@ -1,18 +1,18 @@
 		Linux on Xvisor VExpress-A15 SMP Guest
 
-Linux is a computer operating system which is based on free and open source 
-software. the underlying source code can be used, freely modified, and 
-redistributed, both commercially and non-commercially, by anyone under 
-licenses such as the GNU General Public License. For more information on 
+Linux is a computer operating system which is based on free and open source
+software. the underlying source code can be used, freely modified, and
+redistributed, both commercially and non-commercially, by anyone under
+licenses such as the GNU General Public License. For more information on
 Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
-Linux already contains a support for VExpress-A15 Board. We can use 
-this kernel unmodified to run it as a xvisor guest. We also provide 
-VExpress-A15 defconfig for various linux kernel versions for ease in 
-building kernel. To obtain Linux kernel sources visit the following 
+Linux already contains a support for VExpress-A15 Board. We can use
+this kernel unmodified to run it as a xvisor guest. We also provide
+VExpress-A15 defconfig for various linux kernel versions for ease in
+building kernel. To obtain Linux kernel sources visit the following
 url: http://www.kernel.org
 
-Please follow the steps below to build & run Linux kernel with Busybox 
+Please follow the steps below to build & run Linux kernel with Busybox
 RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
 
   [1. Build environment for Xvisor]
@@ -60,7 +60,7 @@ RootFS on VExpress-A15 Guest with Xvisor running on ARM Fast Models Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist

@@ -27,7 +27,7 @@ on QEMU model (v3.1.50 or higher):
   (Note: This is required to be done only once in freshly cloned xvisor source)
 
   [4. Configure Xvisor with Generic-64bit default settings]
-  # make ARCH=riscv generic-64b-defconfig 
+  # make ARCH=riscv generic-64b-defconfig
 
   [5. Build Xvisor & DTBs]
   # make
@@ -60,13 +60,13 @@ on QEMU model (v3.1.50 or higher):
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/riscv/virt64
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64-guest.dtb ./tests/riscv/virt64/virt64-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64-guest.dtb ./tests/riscv/virt64/virt64-guest.dts
   # cp -f ./build/tests/riscv/virt64/basic/firmware.bin ./build/disk/images/riscv/virt64/firmware.bin
   # cp -f ./tests/riscv/virt64/linux/nor_flash.list ./build/disk/images/riscv/virt64/nor_flash.list
   # cp -f ./tests/riscv/virt64/linux/cmdlist ./build/disk/images/riscv/virt64/cmdlist
   # cp -f ./tests/riscv/virt64/xscript/one_guest_virt64.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt64/Image
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 

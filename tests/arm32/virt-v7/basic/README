@@ -8,7 +8,7 @@ Hardware features tested by Basic Firmware:
   - Sensitive non-priviledged instructions
   - Virtual IRQs
   - Generic Interrupt Controller (GIC)
-  - Serial Port (PL011)  
+  - Serial Port (PL011)
 
 Please follow the steps below to build & run Basic Firmware on Virt-v7
 Guest with Xvisor running on ARM Fast Model VExpress-A15 Host:
@@ -39,7 +39,7 @@ Guest with Xvisor running on ARM Fast Model VExpress-A15 Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/virt-v7
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7-guest.dtb ./tests/arm32/virt-v7/virt-v7-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7-guest.dtb ./tests/arm32/virt-v7/virt-v7-guest.dts
   # cp -f ./build/tests/arm32/virt-v7/basic/firmware.bin ./build/disk/images/arm32/virt-v7/firmware.bin
   # cp -f ./tests/arm32/virt-v7/basic/nor_flash.list ./build/disk/images/arm32/virt-v7/nor_flash.list
   # cp -f ./tests/arm32/virt-v7/xscript/one_guest_virt-v7.xscript ./build/disk/boot.xscript
@@ -69,7 +69,7 @@ Guest with Xvisor running on ARM Fast Model VExpress-A15 Host:
   [guest0/uart0] basic# help
 
   [15. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] basic# 
+  [guest0/uart0] basic#
 
   (Note: replace all <> brackets based on your workspace)
   (Note: some of the above steps will need to be adapted for other

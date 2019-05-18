@@ -3,7 +3,7 @@
 This section of readme explains how to build & run Xvisor on actual Renesas
 R-Car H2 Lager board using SD card.
 
-By default, Xvisor for R-Car H2 supports Vexpress-A15 guest so we will show 
+By default, Xvisor for R-Car H2 supports Vexpress-A15 guest so we will show
 how to run Basic Firmware on Vexpress-A15 guest. For more info refer,
 <xvisor_source>/tests/arm32/vexpress-a15/basic/README.
 
@@ -19,7 +19,7 @@ writeback control after setting bit of DMA descriptor"
 # make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
 
 Once we have build u-boot with HYP-mode booting, flash the u-boot to QSPI
-as described in Start-Up Guide fot Renesas Lager board. 
+as described in Start-Up Guide fot Renesas Lager board.
 
 Following are steps to create these images and then boot Xvisor on R-Car H2
 using SD card:
@@ -67,7 +67,7 @@ using SD card:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
@@ -83,7 +83,7 @@ using SD card:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/xscript/one_guest_vexpress-a15.xscript ./build/disk/boot.xscript

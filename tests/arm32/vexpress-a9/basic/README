@@ -9,7 +9,7 @@ Hardware features tested by Basic Firmware:
   - Virtual IRQs
   - Generic Interrupt Controller (GIC)
   - PrimeCell Dual-Mode Timer (SP804)
-  - Serial Port (PL011)  
+  - Serial Port (PL011)
 
 Please follow the steps below to build & run Basic Firmware on VExpress-A9
 Guest with Xvisor running on QEMU VExpress-A9 Host:
@@ -40,7 +40,7 @@ Guest with Xvisor running on QEMU VExpress-A9 Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript
@@ -65,7 +65,7 @@ Guest with Xvisor running on QEMU VExpress-A9 Host:
   [guest0/uart0] basic# help
 
   [14. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
-  [guest0/uart0] basic# 
+  [guest0/uart0] basic#
 
   (Note: replace all <> brackets based on your workspace)
   (Note: some of the above steps will need to be adapted for other

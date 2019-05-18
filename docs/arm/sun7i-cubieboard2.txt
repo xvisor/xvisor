@@ -1,14 +1,14 @@
-	Xvisor on Allwinner A20 board (or Sun7i) using SD Booting 
+	Xvisor on Allwinner A20 board (or Sun7i) using SD Booting
 
 This section of readme explains how to build & run Xvisor on actual Allwinner
 A20 boards (cubieboard2 for example) using SD booting feature of Sun7i SOC.
 
-By default, Xvisor for Sun7i supports Vexpress-A15 guest so we will show 
+By default, Xvisor for Sun7i supports Vexpress-A15 guest so we will show
 how to run Basic Firmware on Vexpress-A15 guest. For more info refer,
 <xvisor_source>/tests/arm32/vexpress-a15/basic/README.
 
 As first step of SD booting on Sun7i SOC, we need to re-partition and program
-a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for 
+a SD card (> 4GB card) with Uboot. For detailed info on preparing SD card for
 booting refer: https://github.com/linux-sunxi/u-boot-sunxi/wiki
 
 However, to enable both Core on the Allwinner A20 you need a u-boot version
@@ -16,7 +16,7 @@ supporting PSCI. This is not part of sunxi ou u-boot default git tree so you
 need to use https://github.com/jcdubois/u-boot as your git tree fro u-boot in
 the above link.
 
-Once we have SD card prepared for SD booting, we add 2 images to the data 
+Once we have SD card prepared for SD booting, we add 2 images to the data
 partition of SD card:
  1) U-Boot compatible Xvisor binary (uvmm.bin)
  2) DTB for Xvisor (sun7i-a20-cubieboard2.dtb)
@@ -73,7 +73,7 @@ A20:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a15/linux/cmdlist ./build/disk/images/arm32/vexpress-a15/cmdlist
@@ -88,7 +88,7 @@ A20:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a15
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a15-guest.dtb ./tests/arm32/vexpress-a15/vexpress-a15-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a15/basic/firmware.bin ./build/disk/images/arm32/vexpress-a15/firmware.bin
   # cp -f ./tests/arm32/vexpress-a15/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a15/nor_flash.list
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img

@@ -1,9 +1,9 @@
-	Xvisor on Raspberry-Pi (or BCM2835 SOC) using SD Booting 
+	Xvisor on Raspberry-Pi (or BCM2835 SOC) using SD Booting
 
-This section of readme explains how to build & run Xvisor on actual 
+This section of readme explains how to build & run Xvisor on actual
 Raspberry Pi board using SD booting feature of Raspberry Pi (or BCM2835 SOC).
 
-By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
+By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will
 show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
 
 The Raspberry Pi usually comes with and SD card containig the GPU firmware
@@ -101,7 +101,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
@@ -117,7 +117,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript
@@ -196,10 +196,10 @@ This section of readme explains how to build & run Xvisor on Raspberry-Pi QEMU
 (Raspberry-Pi QEMU source, https://github.com/Torlus/qemu.git, and use the
 rpi branch).
 
-By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will 
+By default, Xvisor for BCM2835 supports Realview-EB-MPCore guest so we will
 show how to run Basic Firmware (and/or Linux) on Realview-EB-MPCore guest.
 
-Please follow the steps below to build & run Basic Firmware on 
+Please follow the steps below to build & run Basic Firmware on
 Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
 
   [1. Build environment for Xvisor]
@@ -254,7 +254,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/linux/cmdlist ./build/disk/images/arm32/realview-eb-mpcore/cmdlist
@@ -270,7 +270,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/realview-eb-mpcore
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/realview-eb-mpcore-guest.dtb ./tests/arm32/realview-eb-mpcore/realview-eb-mpcore-guest.dts
   # cp -f ./build/tests/arm32/realview-eb-mpcore/basic/firmware.bin.patched ./build/disk/images/arm32/realview-eb-mpcore/firmware.bin
   # cp -f ./tests/arm32/realview-eb-mpcore/basic/nor_flash.list ./build/disk/images/arm32/realview-eb-mpcore/nor_flash.list
   # cp -f ./tests/arm32/realview-eb-mpcore/xscript/one_guest_ebmp.xscript ./build/disk/boot.xscript

@@ -1,13 +1,13 @@
 		Xvisor on Linaro QEMU Vexpress-A9 Host
 
-This section of readme explains how to build & run Xvisor for Vexpress-A9 
-emulated by QEMU. 
+This section of readme explains how to build & run Xvisor for Vexpress-A9
+emulated by QEMU.
 
 By default, Xvisor for Vexpress-A9 supports Vexpress-A9 guest so we will
 show how to run Basic Firmware on Vexpress-A9 guest. For more info refer,
 <xvisor_source>/tests/arm32/vexpress-a9/basic/README.
 
-Please follow the steps below to build & run Basic Firmware on Vexpress-A9 
+Please follow the steps below to build & run Basic Firmware on Vexpress-A9
 guest with Xvisor running on QEMU Vexpress-A9 Host:
 
   [1. Build environment for Xvisor]
@@ -62,7 +62,7 @@ guest with Xvisor running on QEMU Vexpress-A9 Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/linux/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/linux/cmdlist ./build/disk/images/arm32/vexpress-a9/cmdlist
@@ -78,7 +78,7 @@ guest with Xvisor running on QEMU Vexpress-A9 Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/vexpress-a9
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/vexpress-a9-guest.dtb ./tests/arm32/vexpress-a9/vexpress-a9-guest.dts
   # cp -f ./build/tests/arm32/vexpress-a9/basic/firmware.bin.patched ./build/disk/images/arm32/vexpress-a9/firmware.bin
   # cp -f ./tests/arm32/vexpress-a9/basic/nor_flash.list ./build/disk/images/arm32/vexpress-a9/nor_flash.list
   # cp -f ./tests/arm32/vexpress-a9/xscript/one_guest_vexpress-a9.xscript ./build/disk/boot.xscript

@@ -1,9 +1,9 @@
 		Linux on Xvisor Virt-v7 SMP Guest
 
-Linux is a computer operating system which is based on free and open source 
-software. the underlying source code can be used, freely modified, and 
-redistributed, both commercially and non-commercially, by anyone under 
-licenses such as the GNU General Public License. For more information on 
+Linux is a computer operating system which is based on free and open source
+software. the underlying source code can be used, freely modified, and
+redistributed, both commercially and non-commercially, by anyone under
+licenses such as the GNU General Public License. For more information on
 Linux read the wiki page http://en.wikipedia.org/wiki/Linux
 
 Linux already contains a support for device-tree based boards. We can use
@@ -60,13 +60,13 @@ ARM Fast Models Host:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm32/virt-v7
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7-guest.dtb ./tests/arm32/virt-v7/virt-v7-guest.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7-guest.dtb ./tests/arm32/virt-v7/virt-v7-guest.dts
   # cp -f ./build/tests/arm32/virt-v7/basic/firmware.bin ./build/disk/images/arm32/virt-v7/firmware.bin
   # cp -f ./tests/arm32/virt-v7/linux/nor_flash.list ./build/disk/images/arm32/virt-v7/nor_flash.list
   # cp -f ./tests/arm32/virt-v7/linux/cmdlist ./build/disk/images/arm32/virt-v7/cmdlist
   # cp -f ./tests/arm32/virt-v7/xscript/one_guest_virt-v7.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm/boot/Image ./build/disk/images/arm32/virt-v7/Image
-  # ./build/tools/dtc/bin/dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7/virt-v7.dtb ./tests/arm32/virt-v7/linux/virt-v7.dts
+  # dtc -I dts -O dtb -o ./build/disk/images/arm32/virt-v7/virt-v7.dtb ./tests/arm32/virt-v7/linux/virt-v7.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm32/virt-v7/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
