@@ -19,7 +19,7 @@
 		initrd-end = <0x0 0x83000000>;
 	};
 	aliases { };
-		
+
 	cpus {
 		#address-cells = <2>;
 		#size-cells = <0>;
@@ -62,11 +62,11 @@
 	};
 
 	memory {
-		device_type = "memory"; 
+		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x40000000>; /* 1 GB */
 	};
 
-	gen-timer { /* Generic Timer */
+	timer { /* Generic Timer */
 		compatible = "arm,armv8-timer";
 		clock-frequency = <100000000>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
@@ -80,26 +80,26 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		eth0 { /* SMSC 91C111 ethernet */
+		eth@1a000000 { /* SMSC 91C111 ethernet */
 			compatible = "smc91x";
 			reg = <0x1a000000 0x10000>;
 			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		gpio-leds { /* LEDs */
+		gpio-leds@1c010008 { /* LEDs */
 			compatible = "bgpio,generic";
 			reg-names = "dat";
 			reg = <0x1c010008 0x4>;
 		};
 
-		SERIAL0: uart0 { /* PL011 serial port */
+		SERIAL0: uart@1c090000 { /* PL011 serial port */
 			compatible = "arm,pl011";
 			reg = <0x1c090000 0x1000>;
 			clock-frequency = <24000000>;
 			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		SERIAL1: uart1 { /* PL011 serial port */
+		SERIAL1: uart@1c0a0000 { /* PL011 serial port */
 			compatible = "arm,pl011";
 			reg = <0x1c0a0000 0x1000>;
 			clock-frequency = <24000000>;
@@ -107,7 +107,7 @@
 			status = "disabled";
 		};
 
-		SERIAL2: uart2 { /* PL011 serial port */
+		SERIAL2: uart@1c0b0000 { /* PL011 serial port */
 			compatible = "arm,pl011";
 			reg = <0x1c0b0000 0x1000>;
 			clock-frequency = <24000000>;
@@ -115,7 +115,7 @@
 			status = "disabled";
 		};
 
-		SERIAL3: uart3 { /* PL011 serial port */
+		SERIAL3: uart@1c0c0000 { /* PL011 serial port */
 			compatible = "arm,pl011";
 			reg = <0x1c0c0000 0x1000>;
 			clock-frequency = <24000000>;
@@ -123,13 +123,13 @@
 			status = "disabled";
 		};
 
-		virtio_block {
+		virtio_blk@1c130000 {
 			compatible = "virtio,mmio";
 			reg = <0x1c130000 0x200>;
 			interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		RTC0: rtc { /* PL031 real-time clock */
+		RTC0: rtc@1c170000 { /* PL031 real-time clock */
 			compatible = "arm,pl031";
 			reg = <0x1c170000 0x1000>;
 			clocks = <&v2m_clk24mhz>;
@@ -137,7 +137,7 @@
 			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		clcd {
+		clcd@1c1f0000 {
 			compatible = "arm,pl111";
 			reg = <0x1c1f0000 0x1000>;
 			clocks = <&v2m_clk24mhz>, <&v2m_clk24mhz>;

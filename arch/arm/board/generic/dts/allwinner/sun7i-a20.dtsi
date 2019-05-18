@@ -33,7 +33,7 @@
 	};
 
 	memory {
-		device_type = "memory"; 
+		device_type = "memory";
 		reg = <0x0 0x40000000 0x0 0x40000000>; /* 1 GB */
 	};
 
@@ -41,7 +41,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		osc24M: clk@01c20050 {
+		osc24M: clk@1c20050 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-osc-clk";
 			reg = <0x01c20050 0x4>;
@@ -56,7 +56,7 @@
 			clock-output-names = "osc32k";
 		};
 
-		pll1: clk@01c20000 {
+		pll1: clk@1c20000 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-pll1-clk";
 			reg = <0x01c20000 0x4>;
@@ -64,7 +64,7 @@
 			clock-output-names = "pll1";
 		};
 
-		pll4: clk@01c20018 {
+		pll4: clk@1c20018 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-pll1-clk";
 			reg = <0x01c20018 0x4>;
@@ -72,7 +72,7 @@
 			clock-output-names = "pll4";
 		};
 
-		pll5: clk@01c20020 {
+		pll5: clk@1c20020 {
 			#clock-cells = <1>;
 			compatible = "allwinner,sun4i-a10-pll5-clk";
 			reg = <0x01c20020 0x4>;
@@ -80,7 +80,7 @@
 			clock-output-names = "pll5_ddr", "pll5_other";
 		};
 
-		pll6: clk@01c20028 {
+		pll6: clk@1c20028 {
 			#clock-cells = <1>;
 			compatible = "allwinner,sun4i-a10-pll6-clk";
 			reg = <0x01c20028 0x4>;
@@ -88,7 +88,7 @@
 			clock-output-names = "pll6_sata", "pll6_other", "pll6";
 		};
 
-		cpu: cpu@01c20054 {
+		cpu: cpu@1c20054 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-cpu-clk";
 			reg = <0x01c20054 0x4>;
@@ -96,7 +96,7 @@
 			clock-output-names = "cpu";
 		};
 
-		axi: axi@01c20054 {
+		axi: axi@1c20054 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-axi-clk";
 			reg = <0x01c20054 0x4>;
@@ -104,7 +104,7 @@
 			clock-output-names = "axi";
 		};
 
-		ahb: ahb@01c20054 {
+		ahb: ahb@1c20054 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-ahb-clk";
 			reg = <0x01c20054 0x4>;
@@ -112,7 +112,7 @@
 			clock-output-names = "ahb";
 		};
 
-		ahb_gates: clk@01c20060 {
+		ahb_gates: clk@1c20060 {
 			#clock-cells = <1>;
 			compatible = "allwinner,sun7i-a20-ahb-gates-clk";
 			reg = <0x01c20060 0x8>;
@@ -132,7 +132,7 @@
 				"ahb_mali";
 		};
 
-		apb0: apb0@01c20054 {
+		apb0: apb0@1c20054 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-apb0-clk";
 			reg = <0x01c20054 0x4>;
@@ -140,7 +140,7 @@
 			clock-output-names = "apb0";
 		};
 
-		apb0_gates: clk@01c20068 {
+		apb0_gates: clk@1c20068 {
 			#clock-cells = <1>;
 			compatible = "allwinner,sun7i-a20-apb0-gates-clk";
 			reg = <0x01c20068 0x4>;
@@ -151,7 +151,7 @@
 				"apb0_iis2", "apb0_keypad";
 		};
 
-		apb1_mux: apb1_mux@01c20058 {
+		apb1_mux: apb1_mux@1c20058 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-apb1-mux-clk";
 			reg = <0x01c20058 0x4>;
@@ -159,7 +159,7 @@
 			clock-output-names = "apb1_mux";
 		};
 
-		apb1: apb1@01c20058 {
+		apb1: apb1@1c20058 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-apb1-clk";
 			reg = <0x01c20058 0x4>;
@@ -167,7 +167,7 @@
 			clock-output-names = "apb1";
 		};
 
-		apb1_gates: clk@01c2006c {
+		apb1_gates: clk@1c2006c {
 			#clock-cells = <1>;
 			compatible = "allwinner,sun7i-a20-apb1-gates-clk";
 			reg = <0x01c2006c 0x4>;
@@ -180,7 +180,7 @@
 				"apb1_uart5", "apb1_uart6", "apb1_uart7";
 		};
 
-		nand_clk: clk@01c20080 {
+		nand_clk: clk@1c20080 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20080 0x4>;
@@ -188,7 +188,7 @@
 			clock-output-names = "nand";
 		};
 
-		ms_clk: clk@01c20084 {
+		ms_clk: clk@1c20084 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20084 0x4>;
@@ -196,7 +196,7 @@
 			clock-output-names = "ms";
 		};
 
-		mmc0_clk: clk@01c20088 {
+		mmc0_clk: clk@1c20088 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20088 0x4>;
@@ -204,7 +204,7 @@
 			clock-output-names = "mmc0";
 		};
 
-		mmc1_clk: clk@01c2008c {
+		mmc1_clk: clk@1c2008c {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c2008c 0x4>;
@@ -212,7 +212,7 @@
 			clock-output-names = "mmc1";
 		};
 
-		mmc2_clk: clk@01c20090 {
+		mmc2_clk: clk@1c20090 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20090 0x4>;
@@ -220,7 +220,7 @@
 			clock-output-names = "mmc2";
 		};
 
-		mmc3_clk: clk@01c20094 {
+		mmc3_clk: clk@1c20094 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20094 0x4>;
@@ -228,7 +228,7 @@
 			clock-output-names = "mmc3";
 		};
 
-		ts_clk: clk@01c20098 {
+		ts_clk: clk@1c20098 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c20098 0x4>;
@@ -236,7 +236,7 @@
 			clock-output-names = "ts";
 		};
 
-		ss_clk: clk@01c2009c {
+		ss_clk: clk@1c2009c {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c2009c 0x4>;
@@ -244,7 +244,7 @@
 			clock-output-names = "ss";
 		};
 
-		spi0_clk: clk@01c200a0 {
+		spi0_clk: clk@1c200a0 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200a0 0x4>;
@@ -252,7 +252,7 @@
 			clock-output-names = "spi0";
 		};
 
-		spi1_clk: clk@01c200a4 {
+		spi1_clk: clk@1c200a4 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200a4 0x4>;
@@ -260,7 +260,7 @@
 			clock-output-names = "spi1";
 		};
 
-		spi2_clk: clk@01c200a8 {
+		spi2_clk: clk@1c200a8 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200a8 0x4>;
@@ -268,7 +268,7 @@
 			clock-output-names = "spi2";
 		};
 
-		pata_clk: clk@01c200ac {
+		pata_clk: clk@1c200ac {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200ac 0x4>;
@@ -276,7 +276,7 @@
 			clock-output-names = "pata";
 		};
 
-		ir0_clk: clk@01c200b0 {
+		ir0_clk: clk@1c200b0 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200b0 0x4>;
@@ -284,7 +284,7 @@
 			clock-output-names = "ir0";
 		};
 
-		ir1_clk: clk@01c200b4 {
+		ir1_clk: clk@1c200b4 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200b4 0x4>;
@@ -292,7 +292,7 @@
 			clock-output-names = "ir1";
 		};
 
-		usb_clk: clk@01c200cc {
+		usb_clk: clk@1c200cc {
 			#clock-cells = <1>;
 		        #reset-cells = <1>;
 			compatible = "allwinner,sun4i-a10-usb-clk";
@@ -301,7 +301,7 @@
 			clock-output-names = "usb_ohci0", "usb_ohci1", "usb_phy";
 		};
 
-		spi3_clk: clk@01c200d4 {
+		spi3_clk: clk@1c200d4 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c200d4 0x4>;
@@ -309,7 +309,7 @@
 			clock-output-names = "spi3";
 		};
 
-		mbus_clk: clk@01c2015c {
+		mbus_clk: clk@1c2015c {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun4i-a10-mod0-clk";
 			reg = <0x01c2015c 0x4>;
@@ -337,7 +337,7 @@
 			clock-output-names = "gmac_int_tx";
 		};
 
-		gmac_tx_clk: clk@01c20164 {
+		gmac_tx_clk: clk@1c20164 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun7i-a20-gmac-clk";
 			reg = <0x01c20164 0x4>;
@@ -357,7 +357,7 @@
 			clock-output-names = "osc24M_32k";
 		};
 
-		clk_out_a: clk@01c201f0 {
+		clk_out_a: clk@1c201f0 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun7i-a20-out-clk";
 			reg = <0x01c201f0 0x4>;
@@ -365,7 +365,7 @@
 			clock-output-names = "clk_out_a";
 		};
 
-		clk_out_b: clk@01c201f4 {
+		clk_out_b: clk@1c201f4 {
 			#clock-cells = <0>;
 			compatible = "allwinner,sun7i-a20-out-clk";
 			reg = <0x01c201f4 0x4>;
@@ -374,12 +374,21 @@
 		};
 	};
 
-	soc@01c00000 {
+	timer { /* Generic Timer */
+		compatible = "arm,armv7-timer";
+		clock-frequency = <24000000>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>;
+	};
+
+	soc@1c00000 {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		gic: gic { /* Generic Interrupt Controller */
+		gic: gic@1c81000 { /* Generic Interrupt Controller */
 			compatible = "arm,cortex-a15-gic";
 			reg = <0x01c81000 0x1000	/* GIC Dist */
 			       0x01c82000 0x2000	/* GIC CPU */
@@ -390,16 +399,7 @@
 			interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_HIGH)>;
 		};
 
-		gen-timer { /* Generic Timer */
-			compatible = "arm,armv7-timer";
-			clock-frequency = <24000000>;
-			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(6) | IRQ_TYPE_LEVEL_LOW)>;
-		};
-
-		timer@01c20c00 {
+		timer@1c20c00 {
 			compatible = "allwinner,sun4i-timer";
 			reg = <0x01c20c00 0x90>;
 			timer_num = <1>; /* Timer1 */
@@ -407,12 +407,12 @@
 			clocks = <&osc24M>;
 		};
 
-		reboot@01c20c90 {
+		reboot@1c20c90 {
 			compatible = "allwinner,sun4i-reboot";
 			reg = <0x01c20c90 0x10>;
 		};
 
-		uart0: serial@01c28000 {
+		uart0: serial@1c28000 {
 			compatible = "snps,dw-apb-uart";
 			reg = <0x01c28000 0x400>;
 			interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>;
@@ -424,7 +424,7 @@
 			clock-frequency = <24000000>;
 		};
 
-		uart1: serial@01c28400 {
+		uart1: serial@1c28400 {
 			compatible = "snps,dw-apb-uart";
 			reg = <0x01c28400 0x400>;
 			interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
@@ -436,7 +436,7 @@
 			clock-frequency = <24000000>;
 		};
 
-		mmc0: mmc@01c0f000 {
+		mmc0: mmc@1c0f000 {
 			compatible = "allwinner,sun4i-a10-mmc";
 			reg =  <0x01C0F000 0x1000	/* registers */
 				0x01C20088 0x1000	/* mclkbase */
@@ -451,4 +451,3 @@
 		};
 	};
 };
-

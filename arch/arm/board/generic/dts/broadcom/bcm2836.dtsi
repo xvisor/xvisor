@@ -52,8 +52,8 @@
 		};
 	};
 
-	memory { 
-		device_type = "memory"; 
+	memory {
+		device_type = "memory";
 		reg = <0x00000000 0x40000000>; /* 1 GB */
 	};
 
@@ -68,14 +68,14 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		timer {
+		timer@3f003000 {
 			compatible = "brcm,bcm2835-system-timer";
 			reg = <0x3f003000 0x1000>;
 			clock-frequency = <1000000>;
 			interrupts = <1 0>, <1 1>, <1 2>, <1 3>;
 		};
 
-		local_intc: local_intc {
+		local_intc: local_intc@40000000 {
 			compatible = "brcm,bcm2836-l1-intc";
 			reg = <0x40000000 0x100>;
 			irq_start = <96>;
@@ -83,7 +83,7 @@
 			#interrupt-cells = <1>;
 		};
 
-		intc: intc {
+		intc: intc@3f00b200 {
 			compatible = "brcm,bcm2836-armctrl-ic";
 			reg = <0x3f00b200 0x200>;
 			irq_start = <0>;
@@ -93,14 +93,14 @@
 			interrupt-parent = <&local_intc>;
 		};
 
-		mailbox: mailbox@3f00b800 {
+		mailbox: mailbox@3f00b880 {
 			compatible = "brcm,bcm2835-mbox";
 			reg = <0x3f00b880 0x40>;
 			interrupts = <0 1>;
 			#mbox-cells = <0>;
 		};
 
-		poweroff {
+		poweroff@3f100000 {
 			compatible = "brcm,bcm2835-poweroff";
 			reg = <0x3f100000 0x28>;
 		};
@@ -118,7 +118,7 @@
 				     <2 20>;
 		};
 
-		SERIAL0: uart0 {
+		SERIAL0: uart@3f201000 {
 			compatible = "brcm,bcm2835-pl011", "arm,pl011";
 			reg = <0x3f201000 0x1000>;
 			interrupts = <2 25>;
@@ -195,4 +195,3 @@
 		};
 	};
 };
-

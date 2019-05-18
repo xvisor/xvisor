@@ -20,15 +20,15 @@
 			  "vfs cat /system/banner.txt";
 	};
 
-	soc@01c00000 {
-		emac: ethernet@01c0b000 {
+	soc@1c00000 {
+		emac: ethernet@1c0b000 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&emac_pins_a>;
 			phy = <&phy0>;
 			status = "okay";
 		};
 
-		mdio@01c0b080 {
+		mdio@1c0b080 {
 			status = "okay";
 
 			phy0: ethernet-phy@0 {
@@ -36,7 +36,7 @@
 			};
 		};
 
-		pio: pinctrl@01c20800 {
+		pio: pinctrl@1c20800 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&hackberry_hogs>;
 
@@ -48,13 +48,13 @@
 			};
 		};
 
-		uart0: serial@01c28000 {
+		uart0: serial@1c28000 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart0_pins_a>;
 			status = "okay";
 		};
 
-		mmc0: mmc@01c0f000 {
+		mmc0: mmc@1c0f000 {
 			status = "okay";
 		};
 	};

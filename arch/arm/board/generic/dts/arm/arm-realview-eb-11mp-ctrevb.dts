@@ -67,7 +67,7 @@
 	};
 
 	memory {
-		device_type = "memory"; 
+		device_type = "memory";
 		reg = <0x00000000 0x10000000>; /* 256 MB */
 	};
 
@@ -76,13 +76,13 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		clcd {
+		clcd@10020000 {
 	      		compatible = "arm,pl111";
 	      		reg = <0x10020000 0x1000>;
 			use_dma = <1>;
 		};
 
-		eth0 {
+		eth@4e000000 {
 			compatible = "smc91x";
 			reg = <0x4E000000 0x1000>;
 			smsc,irq-active-high;
@@ -196,4 +196,3 @@
 		clock-output-names = "refclk32khz";
 	};
 };
-

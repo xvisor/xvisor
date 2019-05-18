@@ -59,12 +59,12 @@
 		};
 	};
 
-	memory { 
-		device_type = "memory"; 
+	memory {
+		device_type = "memory";
 		reg = <0x80000000 0x10000000>; /* 256 MB */
 	};
 
-	avic: avic@0x68000000 {
+	avic: avic@68000000 {
 		compatible = "freescale,avic";
 		interrupt-controller;
 		#interrupt-cells = <1>;
@@ -96,7 +96,7 @@
 			reg = <0x43f00000 0x100000>;
 			ranges;
 
-			i2c1: i2c@0x43f80000 {
+			i2c1: i2c@43f80000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-i2c", "fsl,imx21-i2c";
@@ -107,7 +107,7 @@
 				status = "disabled";
 			};
 
-			i2c3: i2c@0x43f84000 {
+			i2c3: i2c@43f84000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-i2c", "fsl,imx21-i2c";
@@ -118,7 +118,7 @@
 				status = "disabled";
 			};
 
-			uart1: serial@0x43f90000 {
+			uart1: serial@43f90000 {
 				compatible = "freescale,imx-uart";
 				reg = <0x43f90000 0x4000>;
 				interrupts = <45>;
@@ -128,7 +128,7 @@
 				status = "disabled";
 			};
 
-			uart2: serial@0x43f94000 {
+			uart2: serial@43f94000 {
 				compatible = "freescale,imx-uart";
 				reg = <0x43f94000 0x4000>;
 				interrupts = <32>;
@@ -138,7 +138,7 @@
 				status = "disabled";
 			};
 
-			i2c2: i2c@0x43f98000 {
+			i2c2: i2c@43f98000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-i2c", "fsl,imx21-i2c";
@@ -149,7 +149,7 @@
 				status = "disabled";
 			};
 
-			spi1: spi@0x43fa4000 {
+			spi1: spi@43fa4000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-ecspi", "fsl,imx51-ecspi";
@@ -173,7 +173,7 @@
 			reg = <0x50000000 0x40000>;
 			ranges;
 
-			spi3: spi@0x50004000 {
+			spi3: spi@50004000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-ecspi", "fsl,imx51-ecspi";
@@ -184,7 +184,7 @@
 				status = "disabled";
 			};
 
-			uart4: serial@0x50008000 {
+			uart4: serial@50008000 {
 				compatible = "freescale,imx-uart";
 				reg = <0x50008000 0x4000>;
 				interrupts = <5>;
@@ -194,7 +194,7 @@
 				status = "disabled";
 			};
 
-			uart3: serial@0x5000c000 {
+			uart3: serial@5000c000 {
 				compatible = "freescale,imx-uart";
 				reg = <0x5000c000 0x4000>;
 				interrupts = <18>;
@@ -204,7 +204,7 @@
 				status = "disabled";
 			};
 
-			spi2: spi@0x50010000 {
+			spi2: spi@50010000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx25-ecspi", "fsl,imx51-ecspi";
@@ -215,7 +215,7 @@
 				status = "disabled";
 			};
 
-			uart5: serial@0x5002c000 {
+			uart5: serial@5002c000 {
 				compatible = "freescale,imx-uart";
 				reg = <0x5002c000 0x4000>;
 				interrupts = <40>;
@@ -225,7 +225,7 @@
 				status = "disabled";
 			};
 
-			fec: ethernet@0x50038000 {
+			fec: ethernet@50038000 {
 				compatible = "fsl,imx25-fec";
 				reg = <0x50038000 0x4000>;
 				interrupts = <57>;
@@ -242,14 +242,14 @@
 			reg = <0x53f00000 0x100000>;
 			ranges;
 
-			clks: ccm@0x53f80000 {
+			clks: ccm@53f80000 {
 				compatible = "fsl,imx25-ccm";
 				reg = <0x53f80000 0x4000>;
 				interrupts = <31>;
 				#clock-cells = <1>;
 			};
 
-			gpt4: timer@0x53f84000 {
+			gpt4: timer@53f84000 {
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f84000 0x4000>;
 				clocks = <&clks 95>, <&clks 47>;
@@ -259,7 +259,7 @@
 				interrupts = <1>;
 			};
 
-			gpt3: timer@0x53f88000 {
+			gpt3: timer@53f88000 {
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f88000 0x4000>;
 				clocks = <&clks 94>, <&clks 47>;
@@ -269,7 +269,7 @@
 				interrupts = <29>;
 			};
 
-			gpt2: timer@0x53f8c000 {
+			gpt2: timer@53f8c000 {
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f8c000 0x4000>;
 				clocks = <&clks 93>, <&clks 47>;
@@ -279,7 +279,7 @@
 				interrupts = <53>;
 			};
 
-			gpt1: timer@0x53f90000 {
+			gpt1: timer@53f90000 {
 				compatible = "freescale,gpt-timer";
 				reg = <0x53f90000 0x4000>;
 				clocks = <&clks 93>, <&clks 47>;
@@ -289,7 +289,7 @@
 				interrupts = <54>;
 			};
 
-			epit1: timer@0x53f94000 {
+			epit1: timer@53f94000 {
 				compatible = "freescale,epit-timer";
 				reg = <0x53f94000 0x4000>;
 				clock-frequency = <38999040>;
@@ -297,7 +297,7 @@
 				interrupts = <28>;
 			};
 
-			epit2: timer@0x53f98000 {
+			epit2: timer@53f98000 {
 				compatible = "freescale,epit-timer";
 				reg = <0x53f98000 0x4000>;
 				clock-frequency = <38999040>;

@@ -69,7 +69,7 @@
 	};
 
 	memory {
-		device_type = "memory"; 
+		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x20000000>; /* 512 MB */
 	};
 
@@ -162,7 +162,7 @@
 			#size-cells = <1>;
 			compatible = "simple-bus";
 
-			eth0 {
+			eth@1a000000 {
 				compatible = "smc91x";
 				reg = <0x1A000000 0x1000>;
 				interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
@@ -172,12 +172,12 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				v2m_sysreg: sysreg@010000 { /* System Registers */
+				v2m_sysreg: sysreg@10000 { /* System Registers */
 			      		compatible = "arm,vexpress-sysreg";
 			      		reg = <0x1C010000 0x1000>;
 				};
 
-				v2m_sysctl: sysctl@020000 { /* System Controller */
+				v2m_sysctl: sysctl@20000 { /* System Controller */
 			      		compatible = "arm,sp810";
 			      		reg = <0x1C020000 0x1000>;
 					clocks = <&v2m_refclk32khz>, <&v2m_refclk1mhz>, <&smbclk>;
@@ -186,7 +186,7 @@
 					clock-output-names = "timerclken0", "timerclken1", "timerclken2", "timerclken3";
 				};
 
-				mmci@050000 { /* Multimedia Card Interface */
+				mmci@50000 { /* Multimedia Card Interface */
 			      		compatible = "arm,pl180";
 			      		reg = <0x1C050000 0x1000>;
 					interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>,
@@ -195,7 +195,7 @@
 					clock-names = "mclk", "apb_pclk";
 				};
 
-				kmi@060000 { /* Keyboard */
+				kmi@60000 { /* Keyboard */
 			      		compatible = "ambakmi";
 			      		reg = <0x1C060000 0x1000>;
 					interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
@@ -203,7 +203,7 @@
 					clock-names = "KMIREFCLK", "apb_pclk";
 				};
 
-				kmi@070000 { /* Mouse */
+				kmi@70000 { /* Mouse */
 			      		compatible = "ambakmi";
 			      		reg = <0x1C070000 0x1000>;
 					interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
@@ -211,7 +211,7 @@
 					clock-names = "KMIREFCLK", "apb_pclk";
 				};
 
-				SERIAL0: v2m_serial0: uart@090000 {
+				SERIAL0: v2m_serial0: uart@90000 {
 			      		compatible = "arm,pl011";
 			      		reg = <0x1C090000 0x1000>;
 					clock-frequency = <24000000>;
@@ -350,4 +350,3 @@
 		};
 	};
 };
-

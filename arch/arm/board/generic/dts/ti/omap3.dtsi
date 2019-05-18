@@ -5,7 +5,7 @@
 	interrupt-parent = <&intc>;
 	#address-cells = <1>;
 	#size-cells = <1>;
-		
+
 	chosen { };
 	aliases { };
 
@@ -21,7 +21,7 @@
 	};
 
 	memory {
-		device_type = "memory"; 
+		device_type = "memory";
 		reg = <0x80000000 0x10000000>; /* 256 MB */
 	};
 
@@ -65,7 +65,7 @@
 			ti,hwmods = "timer2";
 		};
 
-		SERIAL0: uart0 {
+		SERIAL0: uart@49020000 {
 			compatible = "st16654";
 			reg = <0x49020000 0x1000>;
 			clock-frequency = <48000000>;
@@ -74,4 +74,3 @@
 		};
 	};
 };
-

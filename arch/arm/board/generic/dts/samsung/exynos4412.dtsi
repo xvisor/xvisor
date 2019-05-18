@@ -79,44 +79,44 @@
 		#size-cells = <1>;
 		compatible = "simple-bus";
 
-		RTC0: s3c-rtc {
+		RTC0: s3c-rtc@10070000 {
 			compatible = "samsung,s3c6410-rtc";
 			reg = <0x10070000 0x100>;
 			interrupts = <GIC_SPI 44 IRQ_TYPE_NONE>,
 				     <GIC_SPI 45 IRQ_TYPE_NONE>;
 		};
 
-		SERIAL0: exynos4210-uart.0 {
+		SERIAL0: exynos4210-uart@13800000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13800000 0x100>;
 			interrupts = <GIC_SPI 52 IRQ_TYPE_NONE>;
 		};
 
-		SERIAL1: exynos4210-uart.1 {
+		SERIAL1: exynos4210-uart@13810000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13810000 0x100>;
 			interrupts = <GIC_SPI 53 IRQ_TYPE_NONE>;
 		};
 
-		SERIAL2: exynos4210-uart.2 {
+		SERIAL2: exynos4210-uart@13820000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13820000 0x100>;
 			interrupts = <GIC_SPI 54 IRQ_TYPE_NONE>;
 		};
 
-		SERIAL3: exynos4210-uart.3 {
+		SERIAL3: exynos4210-uart@13830000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13830000 0x100>;
 			interrupts = <GIC_SPI 55 IRQ_TYPE_NONE>;
 		};
 
-		SERIAL4: exynos4210-uart.4 {
+		SERIAL4: exynos4210-uart@13840000 {
 			compatible = "samsung,exynos4210-uart";
 			reg = <0x13840000 0x100>;
 			interrupts = <GIC_SPI 56 IRQ_TYPE_NONE>;
 		};
 
-		timer0 {
+		timer@139d0000 {
 			compatible = "samsung,exynos4210-PWMtimer";
 			reg = <0x139d0000 0x1000>;
 			interrupts = <GIC_SPI 37 IRQ_TYPE_NONE>,

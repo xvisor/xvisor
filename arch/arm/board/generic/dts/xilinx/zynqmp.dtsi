@@ -90,7 +90,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		uart0: uart0 {
+		uart0: uart@ff000000 {
 			compatible = "cdns,uart-r1p12", "xlnx,xuartps";
 			reg = <0xff000000 0x1000>;
 			clock-frequency = <100000000>;

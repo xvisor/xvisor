@@ -192,7 +192,7 @@
 	phy_int {
 		reg = <0x6>;
 		interrupt-parent = <&gpio1>;
-		interrupts = <28 /* IRQ_TYPE_LEVEL_LOW */>;
+		interrupts = <28 IRQ_TYPE_LEVEL_LOW>;
 	};
 };
 
