@@ -29,6 +29,7 @@
 #include <arch_sections.h>
 #include <arch_barrier.h>
 
+#include <cpu_tlb.h>
 #include <cpu_mmu.h>
 
 /* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool.
@@ -68,8 +69,6 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 {
 	arch_smp_mb();
 }
-
-extern void __hfence_gvma_gpa(unsigned long gpa);
 
 static inline void cpu_invalid_gpa_guest_tlb(physical_addr_t gpa)
 {

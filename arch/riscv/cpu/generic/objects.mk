@@ -61,6 +61,7 @@ cpu-ldflags += $(arch-ldflags-y)
 cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_entry_helper.o
 cpu-objs-y+= cpu_proc.o
+cpu-objs-y+= cpu_tlb.o
 cpu-objs-y+= cpu_init.o
 cpu-objs-y+= cpu_mmu_initial_pgtbl.o
 cpu-objs-y+= cpu_mmu.o
