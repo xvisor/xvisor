@@ -32,7 +32,7 @@ Guest with Xvisor running on QEMU (v3.1.50 or higher):
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/riscv/virt32
-  # dtc -I dts -O dtb -o ./build/disk/images/riscv/virt32-guest.dtb ./tests/riscv/virt32/virt32-guest.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt32-guest.dtb ./tests/riscv/virt32/virt32-guest.dts
   # cp -f ./build/tests/riscv/virt32/basic/firmware.bin ./build/disk/images/riscv/virt32/firmware.bin
   # cp -f ./tests/riscv/virt32/basic/nor_flash.list ./build/disk/images/riscv/virt32/nor_flash.list
   # cp -f ./tests/riscv/virt32/xscript/one_guest_virt32.xscript ./build/disk/boot.xscript

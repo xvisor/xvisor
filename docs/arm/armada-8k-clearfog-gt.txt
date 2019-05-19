@@ -68,13 +68,13 @@ Armada 8K ClearFog GT board:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm64/virt-v8
-  # dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
   # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
   # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
   # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
   # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/arm64/boot/Image ./build/disk/images/arm64/virt-v8/Image
-  # dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/virt-v8/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
   OR
@@ -84,7 +84,7 @@ Armada 8K ClearFog GT board:
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/arm64/virt-v8
-  # dtc -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
   # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
   # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
   # cp -f ./tests/arm64/virt-v8/xscript/one_novgic_guest_virt-v8.xscript ./build/disk/boot.xscript

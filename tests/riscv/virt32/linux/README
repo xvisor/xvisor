@@ -60,13 +60,13 @@ on QEMU model (v3.1.50 or higher):
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
   # mkdir -p ./build/disk/images/riscv/virt32
-  # dtc -I dts -O dtb -o ./build/disk/images/riscv/virt32-guest.dtb ./tests/riscv/virt32/virt32-guest.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt32-guest.dtb ./tests/riscv/virt32/virt32-guest.dts
   # cp -f ./build/tests/riscv/virt32/basic/firmware.bin ./build/disk/images/riscv/virt32/firmware.bin
   # cp -f ./tests/riscv/virt32/linux/nor_flash.list ./build/disk/images/riscv/virt32/nor_flash.list
   # cp -f ./tests/riscv/virt32/linux/cmdlist ./build/disk/images/riscv/virt32/cmdlist
   # cp -f ./tests/riscv/virt32/xscript/one_guest_virt32.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt32/Image
-  # dtc -I dts -O dtb -o ./build/disk/images/riscv/virt32/virt32.dtb ./tests/riscv/virt32/linux/virt.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt32/virt32.dtb ./tests/riscv/virt32/linux/virt.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt32/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
