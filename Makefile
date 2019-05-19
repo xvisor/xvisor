@@ -31,9 +31,9 @@ MINOR = 2
 RELEASE = 11
 
 # Select Make Options:
-# o  Do not use make's built-in rules and variables
+# o  Do not use make's built-in rules
 # o  Do not print "Entering directory ...";
-MAKEFLAGS += -rR --no-print-directory
+MAKEFLAGS += -r --no-print-directory
 
 # Find out source, build and install directories
 src_dir=$(CURDIR)
