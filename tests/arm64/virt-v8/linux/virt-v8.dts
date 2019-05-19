@@ -28,12 +28,12 @@
 		};
 	};
 
-	memory@80000000 {
+	memory@40000000 {
 		device_type = "memory";
 		reg = <0x00000000 0x40000000 0 0x06000000>;
 	};
 
-	gic: interrupt-controller@08000000 {
+	gic: interrupt-controller@8000000 {
 		compatible = "arm,cortex-a15-gic";
 		#interrupt-cells = <3>;
 		#address-cells = <0>;
@@ -79,7 +79,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		pl011@09000000 {
+		pl011@9000000 {
 			compatible = "arm,pl011", "arm,primecell";
 			reg = <0x0 0x09000000 0x0 0x1000>;
 			interrupts = <0 1 4>;
@@ -87,7 +87,7 @@
 			clock-names = "uartclk", "apb_pclk";
 		};
 
-		rtc@09003000 {
+		rtc@9003000 {
 			compatible = "arm,pl031", "arm,primecell";
 			reg = <0x0 0x09003000 0x0 0x1000>;
 			interrupts = <0 2 4>;
@@ -95,7 +95,7 @@
 			clock-names = "apb_pclk";
 		};
 
-		wdt@09004000 {
+		wdt@9004000 {
 			compatible = "arm,sp805", "arm,primecell";
 			reg = <0x0 0x09004000 0x0 0x1000>;
 			interrupts = <0 3 4>;
@@ -103,28 +103,28 @@
 			clock-names = "wdogclk", "apb_pclk";
 		};
 
-		virtio_net@0A000000 {
+		virtio_net@a000000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A000000 0x0 0x1000>;
 			interrupts = <0 16 4>;
 			dma-coherent;
 		};
 
-		virtio_block@0A001000 {
+		virtio_block@a001000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A001000 0x0 0x1000>;
 			interrupts = <0 17 4>;
 			dma-coherent;
 		};
 
-		virtio_console@0A002000 {
+		virtio_console@a002000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A002000 0x0 0x1000>;
 			interrupts = <0 18 4>;
 			dma-coherent;
 		};
 
-		virtio_rpmsg@0A003000 {
+		virtio_rpmsg@a003000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x0A003000 0x0 0x1000>;
 			interrupts = <0 19 4>;
