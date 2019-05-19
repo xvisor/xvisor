@@ -29,15 +29,18 @@
 #include <vmm_pagepool.h>
 #include <vmm_timer.h>
 #include <vmm_host_aspace.h>
-#include <vio/vmm_vserial.h>
-#include <libs/mathlib.h>
 #include <arch_barrier.h>
 #include <arch_guest.h>
-#include <cpu_guest_serial.h>
 #include <arch_vcpu.h>
+#include <vio/vmm_vserial.h>
+#include <libs/mathlib.h>
+
+#include <cpu_hwcap.h>
+#include <cpu_tlb.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
+#include <cpu_guest_serial.h>
 #include <riscv_csr.h>
 
 static char *guest_fdt_find_serial_node(char *guest_name)
@@ -380,8 +383,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_BSTVAL, priv->bstval);
 		csr_write(CSR_BSIP, priv->bsip);
 		csr_write(CSR_BSATP, priv->bsatp);
-		cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
-					    riscv_guest_priv(vcpu->guest)->pgtbl);
+		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_vmid_bits)) {
+			cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
+					riscv_guest_priv(vcpu->guest)->pgtbl);
+		} else {
+			cpu_mmu_stage2_change_pgtbl(0,
+					riscv_guest_priv(vcpu->guest)->pgtbl);
+			__hfence_gvma_all();
+		}
 	}
 }
 
