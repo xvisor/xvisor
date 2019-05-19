@@ -26,6 +26,12 @@
 #include <vmm_params.h>
 #include <vmm_devtree.h>
 #include <arch_cpu.h>
+#include <libs/bitops.h>
+
+#include <cpu_hwcap.h>
+#include <cpu_tlb.h>
+#include <riscv_csr.h>
+#include <riscv_encoding.h>
 
 extern u8 _code_start;
 extern u8 _code_end;
@@ -86,9 +92,23 @@ int __init arch_cpu_final_init(void)
 	return VMM_OK;
 }
 
+unsigned long riscv_isa = 0;
+unsigned long riscv_vmid_bits = 0;
+
 int __init cpu_parse_devtree_hwcap(void)
 {
+	unsigned long val;
+
 	/* TODO: Setup riscv_isa flags */
+
+	/* Setup riscv_vmid_bits */
+	if (riscv_isa & (1UL << ('H' - 'A'))) {
+		csr_write(CSR_HGATP, HGATP_VMID_MASK);
+		val = csr_read(CSR_HGATP);
+		csr_write(CSR_HGATP, 0);
+		__hfence_gvma_all();
+		riscv_vmid_bits = fls_long(val >> HGATP_VMID_SHIFT);
+	}
 
 	return VMM_OK;
 }
