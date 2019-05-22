@@ -28,6 +28,7 @@
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_sbi.h>
+#include <cpu_tlb.h>
 #include <vmm_timer.h>
 #include <vmm_vcpu_irq.h>
 #include <vio/vmm_vserial.h>
@@ -108,10 +109,12 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		__asm__ __volatile("fence.i");
 		break;
 	case SBI_REMOTE_SFENCE_VMA:
-		 __asm__ __volatile("sfence.vma");
+		/*TODO: Parse vma range */
+		__hfence_bvma_all();
 		break;
 	case SBI_REMOTE_SFENCE_VMA_ASID:
-		 __asm__ __volatile("sfence.vma");
+		/*TODO: Parse vma range for given ASID */
+		__hfence_bvma_asid(regs->a3);
 		break;
 	default:
 		regs->a0 = VMM_ENOTSUPP;
