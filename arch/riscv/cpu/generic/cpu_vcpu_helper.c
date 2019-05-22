@@ -38,6 +38,7 @@
 #include <cpu_hwcap.h>
 #include <cpu_tlb.h>
 #include <cpu_mmu.h>
+#include <cpu_vcpu_fp.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
 #include <cpu_guest_serial.h>
@@ -307,6 +308,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_LOAD_PAGE_FAULT);
 	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
 
+	/* Initialize FP state */
+	cpu_vcpu_fp_init(vcpu);
+
 	riscv_timer_event_init(vcpu, &riscv_timer_priv(vcpu));
 done:
 	return rc;
@@ -366,6 +370,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv->bstval = csr_read(CSR_BSTVAL);
 			priv->bsip = csr_read(CSR_BSIP);
 			priv->bsatp = csr_read(CSR_BSATP);
+			cpu_vcpu_fp_save(tvcpu, regs);
 		}
 	}
 
@@ -383,6 +388,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_BSTVAL, priv->bstval);
 		csr_write(CSR_BSIP, priv->bsip);
 		csr_write(CSR_BSATP, priv->bsatp);
+		cpu_vcpu_fp_restore(vcpu, regs);
 		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_vmid_bits)) {
 			cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
 					riscv_guest_priv(vcpu->guest)->pgtbl);
@@ -442,8 +448,11 @@ void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
 }
 
 void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
-				struct riscv_priv *priv)
+				struct vmm_vcpu *vcpu)
 {
+	struct riscv_priv *priv = riscv_priv(vcpu);
+
+	vmm_cprintf(cdev, "\n");
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "  hedeleg", priv->hedeleg, "  hideleg", priv->hideleg);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
@@ -456,6 +465,8 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 		    "   bstval", priv->bstval, "     bsip", priv->bsip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
 		    "    bsatp", priv->bsatp);
+
+	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }
 
 void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
@@ -471,7 +482,7 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	cpu_vcpu_dump_general_regs(cdev, riscv_regs(vcpu));
 
 	if (vcpu->is_normal) {
-		cpu_vcpu_dump_private_regs(cdev, riscv_priv(vcpu));
+		cpu_vcpu_dump_private_regs(cdev, vcpu);
 	}
 }
 

@@ -16,27 +16,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_helper.h
- * @author Anup Patel (anup@brainfault.org)
- * @brief header of VCPU helper functions
+ * @file cpu_vcpu_fp.h
+ * @author Anup Patel (anup.patel@wdc.com)
+ * @brief header of VCPU FP functions
  */
+
 #ifndef _CPU_VCPU_HELPER_H__
 #define _CPU_VCPU_HELPER_H__
 
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Function to dump general registers */
-void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
-				arch_regs_t *regs);
+/** Function to initialize FP state */
+void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu);
 
-/** Function to dump private registers */
-void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
-				struct vmm_vcpu *vcpu);
+/** Function to save FP registers */
+void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
-/** Function to dump exception registers */
-void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
-				  unsigned long scause,
-				  unsigned long stval);
+/** Function to restore FP registers */
+void cpu_vcpu_fp_restore(struct vmm_vcpu *vcpu, arch_regs_t *regs);
+
+/** Function to dump FP registers */
+void cpu_vcpu_fp_dump_regs(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu);
 
 #endif
