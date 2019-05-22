@@ -55,3 +55,36 @@ __hfence_gvma_all:
 	/* hfence.gvma */
 	.word 0xa2000073
 	ret
+
+	/*
+	 * Instruction encoding of hfence.bvma is:
+	 * 0010001 rs2(5) rs1(5) 000 00000 1110011
+	 */
+
+	.align 3
+	.global __hfence_bvma_asid_va
+__hfence_bvma_asid_va:
+	/* hfence.bvma a1, a0 */
+	.word 0x22a60073
+	ret
+
+	.align 3
+	.global __hfence_bvma_asid
+__hfence_bvma_asid:
+	/* hfence.bvma zero, a0 */
+	.word 0x22a00073
+	ret
+
+	.align 3
+	.global __hfence_bvma_va
+__hfence_bvma_va:
+	/* hfence.bvma a0 */
+	.word 0x22050073
+	ret
+
+	.align 3
+	.global __hfence_bvma_all
+__hfence_bvma_all:
+	/* hfence.bvma */
+	.word 0x22000073
+	ret

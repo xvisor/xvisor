@@ -51,6 +51,18 @@ void __hfence_gvma_gpa(unsigned long gpa);
 /** Invalidate all possible Stage2 TLBs */
 void __hfence_gvma_all(void);
 
+/** Invalidate unified TLB entries for given asid and guest virtual address */
+void __hfence_bvma_asid_va(unsigned long asid, unsigned long va);
+
+/** Invalidate unified TLB entries for given ASID for a guest*/
+void __hfence_bvma_asid(unsigned long asid);
+
+/** Invalidate unified TLB entries for a given guest virtual address */
+void __hfence_bvma_va(unsigned long va);
+
+/** Invalidate all possible Stage2 TLBs */
+void __hfence_bvma_all(void);
+
 inline void __sfence_vma_asid_va(unsigned long asid, unsigned long va)
 {
 	__asm__ __volatile__("sfence.vma %0 %1"
