@@ -66,7 +66,7 @@ on QEMU model (v3.1.50 or higher):
   # cp -f ./tests/riscv/virt64/linux/cmdlist ./build/disk/images/riscv/virt64/cmdlist
   # cp -f ./tests/riscv/virt64/xscript/one_guest_virt64.xscript ./build/disk/boot.xscript
   # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt64/Image
-  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt.dts
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt64.dts
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
