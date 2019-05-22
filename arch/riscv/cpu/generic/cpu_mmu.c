@@ -70,14 +70,41 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 	arch_smp_mb();
 }
 
-static inline void cpu_invalid_gpa_guest_tlb(physical_addr_t gpa)
+static inline void cpu_local_va_hyp_tlbflush(virtual_addr_t va)
 {
-	__hfence_gvma_gpa(gpa);
+	__sfence_vma_va(va);
 }
 
-static inline void cpu_invalid_va_hypervisor_tlb(virtual_addr_t va)
+static void cpu_tlbflush_ipi_handler(void *tinfo, void *a2, void *a3)
 {
-	__asm__ __volatile__ ("sfence.vma %0" : : "r" (va) : "memory");
+	struct tlbinfo	*info = tinfo;
+
+	if (info->type == TLBFLUSH_SFENCE_VMA)
+		__sfence_vma_va(info->addr);
+	else if (info->type == TLBFLUSH_HFENCE_GVMA)
+		__hfence_gvma_gpa(info->addr);
+}
+
+static inline void cpu_remote_gpa_guest_tlbflush(physical_addr_t gpa)
+{
+	struct tlbinfo info;
+
+	info.addr = gpa;
+	info.type = TLBFLUSH_HFENCE_GVMA;
+	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
+			      cpu_tlbflush_ipi_handler,
+			      &info, NULL, NULL);
+}
+
+static inline void cpu_remote_va_hyp_tlb_flush(virtual_addr_t va)
+{
+	struct tlbinfo info;
+
+	info.addr = va;
+	info.type = TLBFLUSH_SFENCE_VMA;
+	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
+			      cpu_tlbflush_ipi_handler,
+			      &info, NULL, NULL);
 }
 
 static struct cpu_pgtbl *cpu_mmu_pgtbl_find(physical_addr_t tbl_pa)
@@ -562,10 +589,10 @@ int cpu_mmu_unmap_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_invalid_gpa_guest_tlb((pg->ia));
+		cpu_remote_gpa_guest_tlbflush(pg->ia);
 		start_level = mmuctrl.stage2_start_level;
 	} else {
-		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
+		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia);
 		start_level = mmuctrl.stage1_start_level;
 	}
 
@@ -647,9 +674,9 @@ int cpu_mmu_map_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_invalid_gpa_guest_tlb((pg->ia));
+		cpu_remote_gpa_guest_tlbflush(pg->ia);
 	} else {
-		cpu_invalid_va_hypervisor_tlb(((virtual_addr_t)pg->ia));
+		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia);
 	}
 
 	pgtbl->pte_cnt++;
@@ -720,7 +747,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	*pte |= PHYS_RW_PTE;
 
 	cpu_mmu_sync_pte(pte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
+	cpu_local_va_hyp_tlbflush(tmp_va);
 
 	switch (len) {
 	case 1:
@@ -763,7 +790,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	*pte |= PHYS_RW_PTE;
 
 	cpu_mmu_sync_pte(pte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
+	cpu_local_va_hyp_tlbflush(tmp_va);
 
 	switch (len) {
 	case 1:

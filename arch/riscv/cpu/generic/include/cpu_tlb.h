@@ -26,6 +26,19 @@
 
 #include <vmm_types.h>
 
+#define TLBFLUSH_SFENCE_VMA  1
+#define TLBFLUSH_HFENCE_GVMA 2
+#define TLBFLUSH_HFENCE_BVMA 3
+
+struct tlbinfo {
+	unsigned long addr;
+	u32 type;
+	/* Only valid if type is TLBFLUSH_HFENCE_GVMA */
+	u32 vmid;
+	/* Only valid if type is TLBFLUSH_HFENCE_BVMA or SFENCE_VMA*/
+	u32 asid;
+};
+
 /** Invalidate Stage2 TLBs for given VMID and guest physical address */
 void __hfence_gvma_vmid_gpa(unsigned long vmid, unsigned long gpa);
 
@@ -38,4 +51,30 @@ void __hfence_gvma_gpa(unsigned long gpa);
 /** Invalidate all possible Stage2 TLBs */
 void __hfence_gvma_all(void);
 
+inline void __sfence_vma_asid_va(unsigned long asid, unsigned long va)
+{
+	__asm__ __volatile__("sfence.vma %0 %1"
+			      :
+			      : "r"(va),"r"(asid)
+			      : "memory");
+}
+
+inline void __sfence_vma_asid(unsigned long asid)
+{
+	__asm__ __volatile__("sfence.vma x0 %1"
+			     :
+			     : "r"(asid)
+			     : "memory");
+
+}
+
+inline void __sfence_vma_all(void)
+{
+	 __asm__ __volatile("sfence.vma");
+}
+
+inline void __sfence_vma_va(virtual_addr_t va)
+{
+	__asm__ __volatile__ ("sfence.vma %0" : : "r" (va) : "memory");
+}
 #endif
