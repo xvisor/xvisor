@@ -97,12 +97,64 @@ unsigned long riscv_vmid_bits = 0;
 
 int __init cpu_parse_devtree_hwcap(void)
 {
+	struct vmm_devtree_node *dn, *cpus;
+	const char *isa;
 	unsigned long val;
+	int rc = VMM_OK;
+	size_t i, isa_len;
 
-	/* TODO: Setup riscv_isa flags */
+	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
+	if (!cpus) {
+		vmm_printf("%s: Failed to find cpus node\n",
+			   __func__);
+		return VMM_ENOTAVAIL;
+	}
+
+	dn = NULL;
+	vmm_devtree_for_each_child(dn, cpus) {
+		unsigned long this_isa = 0;
+		isa = NULL;
+		rc = vmm_devtree_read_string(dn,
+				"riscv,isa", &isa);
+		if (rc || !isa) {
+			vmm_devtree_dref_node(dn);
+			rc = VMM_ENOTAVAIL;
+			break;
+		}
+		i = 0;
+		isa_len = strlen(isa);
+
+		if (isa[i] == 'r' || isa[i] == 'R')
+			i++;
+
+		if (isa[i] == 'v' || isa[i] == 'V')
+			i++;
+
+		if (isa[i] == '3' || isa[i+1] == '2')
+			i += 2;
+
+		if (isa[i] == '6' || isa[i+1] == '4')
+			i += 2;
+
+		for (; i < isa_len; ++i) {
+			if ('a' <= isa[i] && isa[i] <= 'z')
+				this_isa |= (1UL << (isa[i] - 'a'));
+			if ('A' <= isa[i] && isa[i] <= 'Z')
+				this_isa |= (1UL << (isa[i] - 'A'));
+		}
+		if (riscv_isa)
+			riscv_isa &= this_isa;
+		else
+			riscv_isa = this_isa;
+		/*
+		 * TODO: What should be done if a single hart doesn't have hyp enabled.
+		 * Keep a mask and not let guests boot on those.
+		 */
+	}
+	vmm_devtree_dref_node(cpus);
 
 	/* Setup riscv_vmid_bits */
-	if (riscv_isa & (1UL << ('H' - 'A'))) {
+	if (riscv_hyp_ext_enabled) {
 		csr_write(CSR_HGATP, HGATP_VMID_MASK);
 		val = csr_read(CSR_HGATP);
 		csr_write(CSR_HGATP, 0);
