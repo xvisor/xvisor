@@ -432,20 +432,33 @@ all-deps-2 = $(if $(findstring clean,$(MAKECMDGOALS)),,$(all-deps-1))
 # Rule for "make clean"
 .PHONY: clean
 clean:
-ifeq ($(build_dir),$(CURDIR)/build)
 	$(V)mkdir -p $(build_dir)
-	$(if $(V), @echo " (clean)     $(build_dir)")
-	$(V)find $(build_dir) -type d ! -name '$(shell basename $(CONFIG_DIR))' -a \
-	! -name '$(shell basename $(build_dir))' -exec rm -rf {} +
-	$(V)find $(build_dir) -maxdepth 1 -type f -exec rm -rf {} +
-endif
+	$(if $(V), @echo " (rm)        $(build_dir)/*.c")
+	$(V)find $(build_dir) -type f -name "*.c" -exec rm -rf {} +
+	$(if $(V), @echo " (rm)        $(build_dir)/*.s")
+	$(V)find $(build_dir) -type f -name "*.s" -exec rm -rf {} +
+	$(if $(V), @echo " (rm)        $(build_dir)/*.S")
+	$(V)find $(build_dir) -type f -name "*.S" -exec rm -rf {} +
+	$(if $(V), @echo " (rm)        $(build_dir)/*.o")
+	$(V)find $(build_dir) -type f -name "*.o" -exec rm -rf {} +
+	$(if $(V), @echo " (rm)        $(build_dir)/*.elf")
+	$(V)find $(build_dir) -type f -name "*.elf" -exec rm -rf {} +
+	$(if $(V), @echo " (rm)        $(build_dir)/*.bin")
+	$(V)find $(build_dir) -type f -name "*.bin" -exec rm -rf {} +
 
 # Rule for "make distclean"
 .PHONY: distclean
 distclean:
+	$(V)mkdir -p $(build_dir)
+	$(if $(V), @echo " (rm)        $(build_dir)/*.dep")
+	$(V)find $(build_dir) -type f -name "*.dep" -exec rm -rf {} +
 ifeq ($(build_dir),$(CURDIR)/build)
-	$(if $(V), @echo " (rm)       $(build_dir)")
+	$(if $(V), @echo " (rm)        $(build_dir)")
 	$(V)rm -rf $(build_dir)
+endif
+ifeq ($(install_dir),$(CURDIR)/install)
+	$(if $(V), @echo " (rm)        $(install_dir)")
+	$(V)rm -rf $(install_dir)
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/openconf clean
 
