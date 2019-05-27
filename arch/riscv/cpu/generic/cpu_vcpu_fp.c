@@ -29,6 +29,7 @@
 
 void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu)
 {
+	riscv_regs(vcpu)->sstatus &= ~SSTATUS_FS;
 	riscv_regs(vcpu)->sstatus |= SSTATUS_FS_INITIAL;
 	memset(&riscv_priv(vcpu)->fp, 0, sizeof(riscv_priv(vcpu)->fp));
 }
