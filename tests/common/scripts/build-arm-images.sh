@@ -421,7 +421,7 @@ export ARCH=${BUILD_XVISOR_ARCH}
 export CROSS_COMPILE=${BUILD_LINUX_CROSS_COMPILE}
 make -C ${BUILD_XVISOR_BASIC_FIRMWARE_SOURCE_PATH} O=${BUILD_XVISOR_OUTPUT_PATH} -j ${BUILD_NUM_THREADS}
 
-echo "=== Create Xvisor Disk Image for Linux Guest ==="
+echo "=== Create Xvisor Disk Image for Basic Guest ==="
 if [ ! -d ${BUILD_XVISOR_DISK_BASIC_PATH} ]; then
 	mkdir -p ${BUILD_XVISOR_DISK_BASIC_PATH}
 	mkdir -p ${BUILD_XVISOR_DISK_BASIC_PATH}/tmp
