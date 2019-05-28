@@ -27,6 +27,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_scheduler.h>
 #include <arch_vcpu.h>
+#include <cpu_hwcap.h>
 #include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_helper.h>
@@ -160,9 +161,14 @@ void do_handle_exception(arch_regs_t *regs)
 int __cpuinit arch_cpu_irq_setup(void)
 {
 	extern unsigned long _handle_exception[];
+	extern unsigned long _handle_hyp_exception[];
 
-	/* Setup final exception handler */
-	csr_write(CSR_STVEC, (virtual_addr_t)&_handle_exception);
+	if (riscv_hyp_ext_enabled)
+		/* Setup final exception handler with hypervisor enabled */
+		csr_write(CSR_STVEC, (virtual_addr_t)&_handle_hyp_exception);
+	else
+		/* Setup final exception handler */
+		csr_write(CSR_STVEC, (virtual_addr_t)&_handle_exception);
 
 	return VMM_OK;
 }

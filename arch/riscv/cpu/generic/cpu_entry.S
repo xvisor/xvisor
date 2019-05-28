@@ -285,10 +285,7 @@ _cpu_init:
 
 	ret
 
-	/* Exception handling */
-	.align 3
-	.global _handle_exception
-_handle_exception:
+.macro SAVE_ALL
 	/* Swap TP and SSCRATCH */
 	csrrw	tp, CSR_SSCRATCH, tp
 
@@ -349,11 +346,14 @@ _handle_exception:
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrr	s1, CSR_SSTATUS
 	REG_S	s1, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
-#ifdef CONFIG_RISCV_TEST_HYPERVISOR_EXT
+.endm
+
+.macro SAVE_HSTATUS
 	csrr	s2, CSR_HSTATUS
 	REG_S	s2, RISCV_ARCH_REGS_OFFSET(hstatus)(sp)
-#endif
+.endm
 
+.macro HANDLE_EXCEPTION
 	/* Save exception SP */
 	add	s3, sp, RISCV_ARCH_REGS_SIZE
 	REG_S	s3, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
@@ -361,21 +361,25 @@ _handle_exception:
 	/* Call C routine */
 	add	a0, sp, zero
 	call	do_handle_exception
+.endm
 
+.macro RESTORE_HSTATUS
+	/* Restore HSSTATUS */
+	REG_L	s4, RISCV_ARCH_REGS_OFFSET(hstatus)(sp)
+	csrw	CSR_HSTATUS, s4
+.endm
+
+.macro RESTORE_ALL
 	/* Restore exception SP in scratch space */
 	REG_L	s0, RISCV_ARCH_REGS_OFFSET(sp_exec)(sp)
 	csrr	s1, CSR_SSCRATCH
 	REG_S	s0, RISCV_SCRATCH_EXCE_STACK_OFFSET(s1)
 
-	/* Restore SEPC, SSTATUS and HSTATUS CSRs */
+	/* Restore SEPC, SSTATUS */
 	REG_L	s2, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrw	CSR_SEPC, s2
 	REG_L	s3, RISCV_ARCH_REGS_OFFSET(sstatus)(sp)
 	csrw	CSR_SSTATUS, s3
-#ifdef CONFIG_RISCV_TEST_HYPERVISOR_EXT
-	REG_L	s4, RISCV_ARCH_REGS_OFFSET(hstatus)(sp)
-	csrw	CSR_HSTATUS, s4
-#endif
 
 	/* Restore all general regisers except SP */
 	REG_L	ra, RISCV_ARCH_REGS_OFFSET(ra)(sp)
@@ -411,5 +415,31 @@ _handle_exception:
 
 	/* Restore SP */
 	REG_L	sp, RISCV_ARCH_REGS_OFFSET(sp)(sp)
+.endm
+
+	/* Exception handling */
+	.align 3
+	.global _handle_exception
+_handle_exception:
+	SAVE_ALL
+
+	HANDLE_EXCEPTION
+
+	RESTORE_ALL
+
+	sret
+
+	.align 3
+	.global _handle_hyp_exception
+_handle_hyp_exception:
+	SAVE_ALL
+
+	SAVE_HSTATUS
+
+	HANDLE_EXCEPTION
+
+	RESTORE_HSTATUS
+
+	RESTORE_ALL
 
 	sret
