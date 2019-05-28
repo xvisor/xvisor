@@ -80,6 +80,10 @@ int __init arch_cpu_early_init(void)
 	return VMM_OK;
 }
 
+unsigned long riscv_isa = 0;
+unsigned long riscv_vmid_bits = 0;
+unsigned long riscv_timer_hz = 0;
+
 void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
 {
 	/* FIXME: To be implemented. */
@@ -87,7 +91,23 @@ void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
 
 void arch_cpu_print_summary(struct vmm_chardev *cdev)
 {
-	/* FIXME: To be implemented. */
+	int i, pos;
+	char isa[128];
+
+#ifdef CONFIG_64BIT
+	vmm_snprintf(isa, sizeof(isa), "rv%d", 64);
+#else
+	vmm_snprintf(isa, sizeof(isa), "rv%d", 32);
+#endif
+	pos = strlen(isa);
+	for (i = 0; i < BITS_PER_LONG; i++)
+		if (riscv_isa & (1UL << i))
+			isa[pos++] = 'a' + i;
+	isa[pos] = '\0';
+
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
+	vmm_cprintf(cdev, "%-25s: %ld\n", "CPU VMID Bits", riscv_vmid_bits);
+	vmm_cprintf(cdev, "%-25s: %ld Hz\n", "CPU Time Base", riscv_timer_hz);
 }
 
 int __init arch_cpu_final_init(void)
@@ -96,10 +116,6 @@ int __init arch_cpu_final_init(void)
 	/* We can register a CPU specific resources here */
 	return VMM_OK;
 }
-
-unsigned long riscv_isa = 0;
-unsigned long riscv_vmid_bits = 0;
-unsigned long riscv_timer_hz = 0;
 
 int __init cpu_parse_devtree_hwcap(void)
 {
