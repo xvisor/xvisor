@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -20,7 +20,7 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief Supervisor binary interface (SBI)
  *
- * The source has been largely adapted from Linux 4.x or higher:
+ * The source has been largely adapted from Linux 5.2 or higher:
  * arch/riscv/include/asm/sbi.h
  *
  * Copyright (C) 2015 Regents of the University of California
@@ -43,22 +43,27 @@
 #define SBI_REMOTE_SFENCE_VMA_ASID 7
 #define SBI_SHUTDOWN 8
 
-#define SBI_CALL(which, arg0, arg1, arg2) ({				\
-	register unsigned long a0 asm ("a0") = (unsigned long)(arg0);	\
-	register unsigned long a1 asm ("a1") = (unsigned long)(arg1);	\
-	register unsigned long a2 asm ("a2") = (unsigned long)(arg2);	\
-	register unsigned long a7 asm ("a7") = (unsigned long)(which);	\
-	asm volatile ("ecall"						\
-		      : "+r" (a0)					\
-		      : "r" (a1), "r" (a2), "r" (a7)			\
-		      : "memory");					\
-	a0;								\
+#define SBI_CALL(which, arg0, arg1, arg2, arg3) ({		\
+	register ulong a0 asm ("a0") = (ulong)(arg0);		\
+	register ulong a1 asm ("a1") = (ulong)(arg1);		\
+	register ulong a2 asm ("a2") = (ulong)(arg2);		\
+	register ulong a3 asm ("a3") = (ulong)(arg3);		\
+	register ulong a7 asm ("a7") = (ulong)(which);		\
+	asm volatile ("ecall"					\
+		      : "+r" (a0)				\
+		      : "r" (a1), "r" (a2), "r" (a3), "r" (a7)	\
+		      : "memory");				\
+	a0;							\
 })
 
 /* Lazy implementations until SBI is finalized */
-#define SBI_CALL_0(which) SBI_CALL(which, 0, 0, 0)
-#define SBI_CALL_1(which, arg0) SBI_CALL(which, arg0, 0, 0)
-#define SBI_CALL_2(which, arg0, arg1) SBI_CALL(which, arg0, arg1, 0)
+#define SBI_CALL_0(which) SBI_CALL(which, 0, 0, 0, 0)
+#define SBI_CALL_1(which, arg0) SBI_CALL(which, arg0, 0, 0, 0)
+#define SBI_CALL_2(which, arg0, arg1) SBI_CALL(which, arg0, arg1, 0, 0)
+#define SBI_CALL_3(which, arg0, arg1, arg2) \
+		SBI_CALL(which, arg0, arg1, arg2, 0)
+#define SBI_CALL_4(which, arg0, arg1, arg2, arg3) \
+		SBI_CALL(which, arg0, arg1, arg2, arg3)
 
 static inline void sbi_console_putchar(int ch)
 {
@@ -103,7 +108,7 @@ static inline void sbi_remote_sfence_vma(const unsigned long *hart_mask,
 					 unsigned long start,
 					 unsigned long size)
 {
-	SBI_CALL_1(SBI_REMOTE_SFENCE_VMA, hart_mask);
+	SBI_CALL_3(SBI_REMOTE_SFENCE_VMA, hart_mask, start, size);
 }
 
 static inline void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
@@ -111,7 +116,7 @@ static inline void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 					      unsigned long size,
 					      unsigned long asid)
 {
-	SBI_CALL_1(SBI_REMOTE_SFENCE_VMA_ASID, hart_mask);
+	SBI_CALL_4(SBI_REMOTE_SFENCE_VMA_ASID, hart_mask, start, size, asid);
 }
 
 #endif
