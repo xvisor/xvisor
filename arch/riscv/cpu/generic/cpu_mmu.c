@@ -71,23 +71,20 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 	arch_smp_mb();
 }
 
-static void cpu_tlbflush_ipi_handler(void *tinfo, void *a2, void *a3)
+static void cpu_tlbflush_hfence_gvma_ipi_handler(void *a1, void *a2, void *a3)
 {
-	struct tlbinfo	*info = tinfo;
-
-	if (info->type == TLBFLUSH_HFENCE_GVMA)
-		__hfence_gvma_gpa(info->addr);
+	__hfence_gvma_gpa((unsigned long)a1);
 }
 
 static inline void cpu_remote_gpa_guest_tlbflush(physical_addr_t gpa)
 {
-	struct tlbinfo info;
-
-	info.addr = gpa;
-	info.type = TLBFLUSH_HFENCE_GVMA;
+	/*
+	 * TODO: Ideally, we should have SBI call for remote HFENCE.GVMA
+	 * but it's not available currently hence we use IPIs.
+	 */
 	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
-			      cpu_tlbflush_ipi_handler,
-			      &info, NULL, NULL);
+			      cpu_tlbflush_hfence_gvma_ipi_handler,
+			      (void *)(unsigned long)gpa, NULL, NULL);
 }
 
 static inline void cpu_remote_va_hyp_tlb_flush(virtual_addr_t va)

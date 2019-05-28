@@ -26,19 +26,6 @@
 
 #include <vmm_types.h>
 
-#define TLBFLUSH_SFENCE_VMA  1
-#define TLBFLUSH_HFENCE_GVMA 2
-#define TLBFLUSH_HFENCE_BVMA 3
-
-struct tlbinfo {
-	unsigned long addr;
-	u32 type;
-	/* Only valid if type is TLBFLUSH_HFENCE_GVMA */
-	u32 vmid;
-	/* Only valid if type is TLBFLUSH_HFENCE_BVMA or SFENCE_VMA*/
-	u32 asid;
-};
-
 /** Invalidate Stage2 TLBs for given VMID and guest physical address */
 void __hfence_gvma_vmid_gpa(unsigned long vmid, unsigned long gpa);
 
