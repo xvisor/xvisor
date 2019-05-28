@@ -194,7 +194,12 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t)(&_code_end - &_code_start);
 }
 
-void arch_cpu_print_info(struct vmm_chardev *cdev)
+void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
+{
+	/* FIXME: To be implemented. */
+}
+
+void arch_cpu_print_summary(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Name",
 		cpu_info.name_string);

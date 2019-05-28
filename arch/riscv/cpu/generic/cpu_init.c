@@ -80,7 +80,12 @@ int __init arch_cpu_early_init(void)
 	return VMM_OK;
 }
 
-void arch_cpu_print_info(struct vmm_chardev *cdev)
+void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
+{
+	/* FIXME: To be implemented. */
+}
+
+void arch_cpu_print_summary(struct vmm_chardev *cdev)
 {
 	/* FIXME: To be implemented. */
 }
