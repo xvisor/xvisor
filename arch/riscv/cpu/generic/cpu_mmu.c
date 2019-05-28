@@ -31,6 +31,7 @@
 
 #include <cpu_tlb.h>
 #include <cpu_mmu.h>
+#include <riscv_sbi.h>
 
 /* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool.
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB
@@ -70,18 +71,11 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 	arch_smp_mb();
 }
 
-static inline void cpu_local_va_hyp_tlbflush(virtual_addr_t va)
-{
-	__sfence_vma_va(va);
-}
-
 static void cpu_tlbflush_ipi_handler(void *tinfo, void *a2, void *a3)
 {
 	struct tlbinfo	*info = tinfo;
 
-	if (info->type == TLBFLUSH_SFENCE_VMA)
-		__sfence_vma_va(info->addr);
-	else if (info->type == TLBFLUSH_HFENCE_GVMA)
+	if (info->type == TLBFLUSH_HFENCE_GVMA)
 		__hfence_gvma_gpa(info->addr);
 }
 
@@ -98,13 +92,8 @@ static inline void cpu_remote_gpa_guest_tlbflush(physical_addr_t gpa)
 
 static inline void cpu_remote_va_hyp_tlb_flush(virtual_addr_t va)
 {
-	struct tlbinfo info;
-
-	info.addr = va;
-	info.type = TLBFLUSH_SFENCE_VMA;
-	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
-			      cpu_tlbflush_ipi_handler,
-			      &info, NULL, NULL);
+	sbi_remote_sfence_vma(NULL,
+			va & ~(PGTBL_PAGE_SIZE - 1), PGTBL_PAGE_SIZE);
 }
 
 static struct cpu_pgtbl *cpu_mmu_pgtbl_find(physical_addr_t tbl_pa)
@@ -747,7 +736,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 	*pte |= PHYS_RW_PTE;
 
 	cpu_mmu_sync_pte(pte);
-	cpu_local_va_hyp_tlbflush(tmp_va);
+	__sfence_vma_va(tmp_va);
 
 	switch (len) {
 	case 1:
@@ -790,7 +779,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 	*pte |= PHYS_RW_PTE;
 
 	cpu_mmu_sync_pte(pte);
-	cpu_local_va_hyp_tlbflush(tmp_va);
+	__sfence_vma_va(tmp_va);
 
 	switch (len) {
 	case 1:
