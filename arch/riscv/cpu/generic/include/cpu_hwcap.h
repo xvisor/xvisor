@@ -53,7 +53,11 @@ extern unsigned long riscv_isa;
 
 #define riscv_hyp_ext_enabled (riscv_isa_extension_available(H) || \
 				riscv_isa_extension_available(h))
+
 /** Available RISC-V VMID bits */
 extern unsigned long riscv_vmid_bits;
+
+/** RISC-V Time Base Frequency */
+extern unsigned long riscv_timer_hz;
 
 #endif

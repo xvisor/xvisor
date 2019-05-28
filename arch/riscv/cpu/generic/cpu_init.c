@@ -99,6 +99,7 @@ int __init arch_cpu_final_init(void)
 
 unsigned long riscv_isa = 0;
 unsigned long riscv_vmid_bits = 0;
+unsigned long riscv_timer_hz = 0;
 
 int __init cpu_parse_devtree_hwcap(void)
 {
@@ -107,6 +108,7 @@ int __init cpu_parse_devtree_hwcap(void)
 	unsigned long val;
 	int rc = VMM_OK;
 	size_t i, isa_len;
+	u32 tmp;
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
 	if (!cpus) {
@@ -114,6 +116,15 @@ int __init cpu_parse_devtree_hwcap(void)
 			   __func__);
 		return VMM_ENOTAVAIL;
 	}
+
+	rc = vmm_devtree_read_u32(cpus, "timebase-frequency", &tmp);
+	if (rc) {
+		vmm_devtree_dref_node(cpus);
+		vmm_printf("%s: Failed to read timebase-frequency from "
+			   "cpus node\n", __func__);
+		return rc;
+	}
+	riscv_timer_hz = tmp;
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {

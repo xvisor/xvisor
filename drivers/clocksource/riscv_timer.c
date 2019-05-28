@@ -31,6 +31,7 @@
 #include <vmm_smp.h>
 #include <libs/mathlib.h>
 
+#include <cpu_hwcap.h>
 #include <riscv_encoding.h>
 #include <riscv_timex.h>
 #include <riscv_csr.h>
@@ -43,34 +44,6 @@
 #else
 #define DPRINTF(msg...)
 #endif
-
-static u32 riscv_timer_hz = 0;
-
-static int riscv_timer_get_freq(struct vmm_devtree_node *node)
-{
-	int rc;
-	struct vmm_devtree_node *np;
-
-	if (riscv_timer_hz == 0) {
-		np = vmm_devtree_getnode("/cpus");
-		if (np) {
-			rc = vmm_devtree_read_u32(np, "timebase-frequency",
-						  &riscv_timer_hz);
-			vmm_devtree_dref_node(np);
-			return rc;
-		}
-		np = vmm_devtree_getnode("/cpus/cpu@0");
-		if (np) {
-			rc = vmm_devtree_read_u32(np, "timebase-frequency",
-						  &riscv_timer_hz);
-			vmm_devtree_dref_node(np);
-			return rc;
-		}
-		return VMM_ENOTAVAIL;
-	}
-
-	return VMM_OK;
-}
 
 static int riscv_hart_of_timer(struct vmm_devtree_node *node, u32 *hart_id)
 {
@@ -114,11 +87,6 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 
 	if (hwid != hart_id) {
 		return VMM_OK;
-	}
-
-	rc = riscv_timer_get_freq(node);
-	if (rc) {
-		return rc;
 	}
 
 	/* Create riscv timer clocksource */
@@ -191,11 +159,6 @@ static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 
 	if (hwid != hart_id) {
 		return VMM_OK;
-	}
-
-	rc = riscv_timer_get_freq(node);
-	if (rc) {
-		return rc;
 	}
 
 	/* Create riscv timer clockchip */
