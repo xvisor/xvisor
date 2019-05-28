@@ -24,13 +24,18 @@
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
+#include <cpu_hwcap.h>
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_fp.h>
 
 void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu)
 {
 	riscv_regs(vcpu)->sstatus &= ~SSTATUS_FS;
-	riscv_regs(vcpu)->sstatus |= SSTATUS_FS_INITIAL;
+	if (riscv_isa_extension_available(F) ||
+	    riscv_isa_extension_available(D))
+		riscv_regs(vcpu)->sstatus |= SSTATUS_FS_INITIAL;
+	else
+		riscv_regs(vcpu)->sstatus |= SSTATUS_FS_OFF;
 	memset(&riscv_priv(vcpu)->fp, 0, sizeof(riscv_priv(vcpu)->fp));
 }
 
@@ -43,7 +48,10 @@ static inline void cpu_vcpu_fp_clean(arch_regs_t *regs)
 void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if ((regs->sstatus & SSTATUS_FS) == SSTATUS_FS_DIRTY) {
-		__cpu_vcpu_fp_d_save(&riscv_priv(vcpu)->fp.d);
+		if (riscv_isa_extension_available(D))
+			__cpu_vcpu_fp_d_save(&riscv_priv(vcpu)->fp.d);
+		else if (riscv_isa_extension_available(F))
+			__cpu_vcpu_fp_f_save(&riscv_priv(vcpu)->fp.f);
 		cpu_vcpu_fp_clean(regs);
 	}
 }
@@ -51,7 +59,10 @@ void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 void cpu_vcpu_fp_restore(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if ((regs->sstatus & SSTATUS_FS) != SSTATUS_FS_OFF) {
-		__cpu_vcpu_fp_d_restore(&riscv_priv(vcpu)->fp.d);
+		if (riscv_isa_extension_available(D))
+			__cpu_vcpu_fp_d_restore(&riscv_priv(vcpu)->fp.d);
+		else if (riscv_isa_extension_available(F))
+			__cpu_vcpu_fp_f_restore(&riscv_priv(vcpu)->fp.f);
 		cpu_vcpu_fp_clean(regs);
 	}
 }
