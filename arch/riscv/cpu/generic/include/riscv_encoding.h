@@ -347,6 +347,8 @@
 #define CSR_HPMCOUNTER30		0xc1e
 #define CSR_HPMCOUNTER31		0xc1f
 #define CSR_SSTATUS			0x100
+#define CSR_SEDELEG			0x102
+#define CSR_SIDELEG			0x103
 #define CSR_SIE				0x104
 #define CSR_STVEC			0x105
 #define CSR_SCOUNTEREN			0x106
