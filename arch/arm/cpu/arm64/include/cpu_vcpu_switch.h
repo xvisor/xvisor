@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -36,5 +36,11 @@ void cpu_vcpu_vfp_regs_save(struct arm_priv_vfp *vfp);
 
 /** Restore VFP registers for given VCPU */
 void cpu_vcpu_vfp_regs_restore(struct arm_priv_vfp *vfp);
+
+/** Save PTRAUTH registers for given VCPU */
+void cpu_vcpu_ptrauth_regs_save(struct arm_priv_ptrauth *ptrauth);
+
+/** Restore PTRAUTH registers for given VCPU */
+void cpu_vcpu_ptrauth_regs_restore(struct arm_priv_ptrauth *ptrauth);
 
 #endif /* _CPU_VCPU_SWITCH_H */

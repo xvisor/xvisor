@@ -49,22 +49,6 @@
 #define clrex()			asm volatile("clrex\n\t")
 
 /* Sysreg access */
-
-asm(
-"	.irp	num,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30\n"
-"	.equ	.L__reg_num_x\\num, \\num\n"
-"	.endr\n"
-"	.equ	.L__reg_num_xzr, 31\n"
-"\n"
-"	.macro	mrs_s, rt, sreg\n"
-"	.inst	0xd5200000|(\\sreg)|(.L__reg_num_\\rt)\n"
-"	.endm\n"
-"\n"
-"	.macro	msr_s, sreg, rt\n"
-"	.inst	0xd5000000|(\\sreg)|(.L__reg_num_\\rt)\n"
-"	.endm\n"
-);
-
 #define read_sysreg(__r) ({					\
 	u64 __v;						\
 	asm volatile("mrs_s %0, " stringify(__r) : "=r" (__v));	\

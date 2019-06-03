@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -43,6 +43,23 @@ struct arch_regs {
 } __packed;
 
 typedef struct arch_regs arch_regs_t;
+
+/* Note: This structure is accessed from assembly code
+ * hence any change in this structure should be reflected
+ * in relevant defines in cpu_defines.h
+ */
+struct arm_priv_ptrauth {
+	u64 apiakeylo_el1;			/* 0x0 */
+	u64 apiakeyhi_el1;			/* 0x8 */
+	u64 apibkeylo_el1;			/* 0x10 */
+	u64 apibkeyhi_el1;			/* 0x18 */
+	u64 apdakeylo_el1;			/* 0x20 */
+	u64 apdakeyhi_el1;			/* 0x28 */
+	u64 apdbkeylo_el1;			/* 0x30 */
+	u64 apdbkeyhi_el1;			/* 0x38 */
+	u64 apgakeylo_el1;			/* 0x40 */
+	u64 apgakeyhi_el1;			/* 0x48 */
+};
 
 /* Note: This structure is accessed from assembly code
  * hence any change in this structure should be reflected
@@ -131,6 +148,8 @@ struct arm_priv {
 	vmm_cpumask_t dflush_needed;
 	/* VFP & SMID context */
 	struct arm_priv_vfp vfp;
+	/* Pointer Authentication context */
+	struct arm_priv_ptrauth ptrauth;
 	/* Last host CPU on which this VCPU ran */
 	u32 last_hcpu;
 	/* Generic timer context */

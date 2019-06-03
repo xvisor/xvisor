@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -223,6 +223,52 @@ cpu_vcpu_vfp_regs_restore:
 	ldr	x1, [sp], #8
 	ret
 
+	.globl cpu_vcpu_ptrauth_regs_save
+cpu_vcpu_ptrauth_regs_save:
+	str	x1, [sp, #-8]!
+	str	x2, [sp, #-8]!
+	mrs_s	x1, SYS_APIAKEYLO_EL1
+	mrs_s	x2, SYS_APIAKEYHI_EL1
+	stp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apiakeylo_el1]
+	mrs_s	x1, SYS_APIBKEYLO_EL1
+	mrs_s	x2, SYS_APIBKEYHI_EL1
+	stp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apibkeylo_el1]
+	mrs_s	x1, SYS_APDAKEYLO_EL1
+	mrs_s	x2, SYS_APDAKEYHI_EL1
+	stp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apdakeylo_el1]
+	mrs_s	x1, SYS_APDBKEYLO_EL1
+	mrs_s	x2, SYS_APDBKEYHI_EL1
+	stp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apdbkeylo_el1]
+	mrs_s	x1, SYS_APGAKEYLO_EL1
+	mrs_s	x2, SYS_APGAKEYHI_EL1
+	stp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apgakeylo_el1]
+	ldr	x2, [sp], #8
+	ldr	x1, [sp], #8
+	ret
+
+	.globl cpu_vcpu_ptrauth_regs_restore
+cpu_vcpu_ptrauth_regs_restore:
+	str	x1, [sp, #-8]!
+	str	x2, [sp, #-8]!
+	ldp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apiakeylo_el1]
+	msr_s	SYS_APIAKEYLO_EL1, x1
+	msr_s	SYS_APIAKEYHI_EL1, x2
+	ldp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apibkeylo_el1]
+	msr_s	SYS_APIBKEYLO_EL1, x1
+	msr_s	SYS_APIBKEYHI_EL1, x2
+	ldp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apdakeylo_el1]
+	msr_s	SYS_APDAKEYLO_EL1, x1
+	msr_s	SYS_APDAKEYHI_EL1, x2
+	ldp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apdbkeylo_el1]
+	msr_s	SYS_APDBKEYLO_EL1, x1
+	msr_s	SYS_APDBKEYHI_EL1, x2
+	ldp	x1, x2, [x0, #ARM_PRIV_PTRAUTH_apgakeylo_el1]
+	msr_s	SYS_APGAKEYLO_EL1, x1
+	msr_s	SYS_APGAKEYHI_EL1, x2
+	ldr	x2, [sp], #8
+	ldr	x1, [sp], #8
+	ret
+
 	.globl generic_timer_regs_save
 generic_timer_regs_save:
 	str	x1, [sp, #-8]!
@@ -259,4 +305,3 @@ generic_timer_regs_restore:
 	msr	cntv_ctl_el0, x1	/* cntvctl */
 	ldr	x1, [sp], #8
 	ret
-
