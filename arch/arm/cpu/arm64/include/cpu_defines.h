@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -22,6 +22,8 @@
  */
 #ifndef __CPU_DEFINES_H__
 #define __CPU_DEFINES_H__
+
+#include <vmm_const.h>
 
 /*
  * ARMv8 ARM reserves the following encoding for system registers:
@@ -72,6 +74,19 @@
 #define SYS_ID_AA64MMFR0_EL1		sys_reg(3, 0, 0, 7, 0)
 #define SYS_ID_AA64MMFR1_EL1		sys_reg(3, 0, 0, 7, 1)
 #define SYS_ID_AA64MMFR2_EL1		sys_reg(3, 0, 0, 7, 2)
+
+#define SYS_APIAKEYLO_EL1		sys_reg(3, 0, 2, 1, 0)
+#define SYS_APIAKEYHI_EL1		sys_reg(3, 0, 2, 1, 1)
+#define SYS_APIBKEYLO_EL1		sys_reg(3, 0, 2, 1, 2)
+#define SYS_APIBKEYHI_EL1		sys_reg(3, 0, 2, 1, 3)
+
+#define SYS_APDAKEYLO_EL1		sys_reg(3, 0, 2, 2, 0)
+#define SYS_APDAKEYHI_EL1		sys_reg(3, 0, 2, 2, 1)
+#define SYS_APDBKEYLO_EL1		sys_reg(3, 0, 2, 2, 2)
+#define SYS_APDBKEYHI_EL1		sys_reg(3, 0, 2, 2, 3)
+
+#define SYS_APGAKEYLO_EL1		sys_reg(3, 0, 2, 3, 0)
+#define SYS_APGAKEYHI_EL1		sys_reg(3, 0, 2, 3, 1)
 
 #define SYS_CNTFRQ_EL0			sys_reg(3, 3, 14, 0, 0)
 #define SYS_CTR_EL0			sys_reg(3, 3, 0, 0, 1)
@@ -190,7 +205,7 @@
 #define PSR_PRIVBITS_MASK			(~PSR_USERBITS_MASK)
 #define PSR_ALLBITS_MASK			0xFFFFFFFF
 
-#define CPSR_MODE_MASK				PSR_MODE32_MASK	
+#define CPSR_MODE_MASK				PSR_MODE32_MASK
 #define CPSR_MODE_USER				PSR_MODE32_USER
 #define CPSR_MODE_FIQ				PSR_MODE32_FIQ
 #define CPSR_MODE_IRQ				PSR_MODE32_IRQ
@@ -205,26 +220,26 @@
 #define CPSR_IRQ_DISABLED			PSR_IRQ_DISABLED
 #define CPSR_ASYNC_ABORT_DISABLED		PSR_ASYNC_ABORT_DISABLED
 #define CPSR_BE_ENABLED				PSR_MODE32_BE_ENABLED
-#define CPSR_IT2_MASK				PSR_IT2_MASK		
-#define CPSR_IT2_SHIFT			        PSR_IT2_SHIFT		
-#define CPSR_GE_MASK			        PSR_GE_MASK		
-#define CPSR_GE_SHIFT			        PSR_GE_SHIFT		
-#define CPSR_JAZZLE_ENABLED		        PSR_JAZZLE_ENABLED	
-#define CPSR_IT1_MASK			        PSR_IT1_MASK		
-#define CPSR_IT1_SHIFT			        PSR_IT1_SHIFT		
-#define CPSR_CUMMULATE_MASK		        PSR_CUMMULATE_MASK	
-#define CPSR_CUMMULATE_SHIFT		        PSR_CUMMULATE_SHIFT	
-#define CPSR_OVERFLOW_MASK		        PSR_OVERFLOW_MASK	
-#define CPSR_OVERFLOW_SHIFT		        PSR_OVERFLOW_SHIFT	
-#define CPSR_CARRY_MASK			        PSR_CARRY_MASK		
-#define CPSR_CARRY_SHIFT		        PSR_CARRY_SHIFT	
-#define CPSR_ZERO_MASK			        PSR_ZERO_MASK		
-#define CPSR_ZERO_SHIFT			        PSR_ZERO_SHIFT		
-#define CPSR_NEGATIVE_MASK		        PSR_NEGATIVE_MASK	
-#define CPSR_NEGATIVE_SHIFT		        PSR_NEGATIVE_SHIFT	
+#define CPSR_IT2_MASK				PSR_IT2_MASK
+#define CPSR_IT2_SHIFT			        PSR_IT2_SHIFT
+#define CPSR_GE_MASK			        PSR_GE_MASK
+#define CPSR_GE_SHIFT			        PSR_GE_SHIFT
+#define CPSR_JAZZLE_ENABLED		        PSR_JAZZLE_ENABLED
+#define CPSR_IT1_MASK			        PSR_IT1_MASK
+#define CPSR_IT1_SHIFT			        PSR_IT1_SHIFT
+#define CPSR_CUMMULATE_MASK		        PSR_CUMMULATE_MASK
+#define CPSR_CUMMULATE_SHIFT		        PSR_CUMMULATE_SHIFT
+#define CPSR_OVERFLOW_MASK		        PSR_OVERFLOW_MASK
+#define CPSR_OVERFLOW_SHIFT		        PSR_OVERFLOW_SHIFT
+#define CPSR_CARRY_MASK			        PSR_CARRY_MASK
+#define CPSR_CARRY_SHIFT		        PSR_CARRY_SHIFT
+#define CPSR_ZERO_MASK			        PSR_ZERO_MASK
+#define CPSR_ZERO_SHIFT			        PSR_ZERO_SHIFT
+#define CPSR_NEGATIVE_MASK		        PSR_NEGATIVE_MASK
+#define CPSR_NEGATIVE_SHIFT		        PSR_NEGATIVE_SHIFT
 
 #define CPSR_NZCV_MASK				PSR_NZCV_MASK
-#define CPSR_IT_MASK				PSR_IT_MASK	
+#define CPSR_IT_MASK				PSR_IT_MASK
 #define CPSR_USERBITS_MASK			PSR_USERBITS_MASK
 #define CPSR_PRIVBITS_MASK			PSR_PRIVBITS_MASK
 #define CPSR_ALLBITS_MASK			PSR_ALLBITS_MASK
@@ -340,9 +355,23 @@
 
 /* HCR_EL2 */
 #define HCR_INITVAL					0x000000000
-#define HCR_ID_MASK					0x200000000
+#define HCR_FWB_MASK					_AC(0x400000000000, UL)
+#define HCR_FWB_SHIFT					46
+#define HCR_APL_MASK					_AC(0x20000000000, UL)
+#define HCR_APL_SHIFT					41
+#define HCR_APK_MASK					_AC(0x10000000000, UL)
+#define HCR_APK_SHIFT					40
+#define HCR_TEA_MASK					_AC(0x2000000000, UL)
+#define HCR_TEA_SHIFT					37
+#define HCR_TERR_MASK					_AC(0x1000000000, UL)
+#define HCR_TERR_SHIFT					36
+#define HCR_TLOR_MASK					_AC(0x800000000, UL)
+#define HCR_TLOR_SHIFT					35
+#define HCR_E2H_MASK					_AC(0x400000000, UL)
+#define HCR_E2H_SHIFT					34
+#define HCR_ID_MASK					_AC(0x200000000, UL)
 #define HCR_ID_SHIFT					33
-#define HCR_CD_MASK					0x100000000
+#define HCR_CD_MASK					_AC(0x100000000, UL)
 #define HCR_CD_SHIFT					32
 #define HCR_RW_MASK					0x080000000
 #define HCR_RW_SHIFT					31
@@ -776,6 +805,42 @@
 #define MIDR_PARTNUM_SHIFT				4
 #define MIDR_REVISON_MASK				0x0000000F
 #define MIDR_REVISON_SHIFT				0
+
+/* ID_AA64ISAR0_EL1 */
+#define ID_AA64ISAR0_TS_SHIFT				52
+#define ID_AA64ISAR0_FHM_SHIFT				48
+#define ID_AA64ISAR0_DP_SHIFT				44
+#define ID_AA64ISAR0_SM4_SHIFT				40
+#define ID_AA64ISAR0_SM3_SHIFT				36
+#define ID_AA64ISAR0_SHA3_SHIFT				32
+#define ID_AA64ISAR0_RDM_SHIFT				28
+#define ID_AA64ISAR0_ATOMICS_SHIFT			20
+#define ID_AA64ISAR0_CRC32_SHIFT			16
+#define ID_AA64ISAR0_SHA2_SHIFT				12
+#define ID_AA64ISAR0_SHA1_SHIFT				8
+#define ID_AA64ISAR0_AES_SHIFT				4
+
+/* ID_AA64ISAR1_EL1 */
+#define ID_AA64ISAR1_SB_SHIFT				36
+#define ID_AA64ISAR1_GPI_SHIFT				28
+#define ID_AA64ISAR1_GPA_SHIFT				24
+#define ID_AA64ISAR1_LRCPC_SHIFT			20
+#define ID_AA64ISAR1_FCMA_SHIFT				16
+#define ID_AA64ISAR1_JSCVT_SHIFT			12
+#define ID_AA64ISAR1_API_SHIFT				8
+#define ID_AA64ISAR1_API_MASK		(0xfUL << ID_AA64ISAR1_API_SHIFT)
+#define ID_AA64ISAR1_APA_SHIFT				4
+#define ID_AA64ISAR1_APA_MASK		(0xfUL << ID_AA64ISAR1_APA_SHIFT)
+#define ID_AA64ISAR1_DPB_SHIFT				0
+
+#define ID_AA64ISAR1_APA_NI				0x0
+#define ID_AA64ISAR1_APA_ARCHITECTED			0x1
+#define ID_AA64ISAR1_API_NI				0x0
+#define ID_AA64ISAR1_API_IMP_DEF			0x1
+#define ID_AA64ISAR1_GPA_NI				0x0
+#define ID_AA64ISAR1_GPA_ARCHITECTED			0x1
+#define ID_AA64ISAR1_GPI_NI				0x0
+#define ID_AA64ISAR1_GPI_IMP_DEF			0x1
 
 /* ID_PFR0_EL1 */
 #define ID_PFR0_THUMBEE_MASK				0x0000f000

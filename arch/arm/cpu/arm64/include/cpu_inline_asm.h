@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -143,6 +143,18 @@ asm(
 					: : "r"(va) : "memory", "cc");
 
 /* CPU feature checking macros */
+
+#define cpu_supports_address_auth_arch() ({ u64 isar1; \
+				   asm volatile("mrs %0, id_aa64isar1_el1" \
+						: "=r"(isar1)); \
+				   (isar1 & ID_AA64ISAR1_APA_MASK); \
+				})
+
+#define cpu_supports_address_auth_imp() ({ u64 isar1; \
+				   asm volatile("mrs %0, id_aa64isar1_el1" \
+						: "=r"(isar1)); \
+				   (isar1 & ID_AA64ISAR1_API_MASK); \
+				})
 
 #define cpu_supports_thumbee()	({ u64 pfr0; \
 				   asm volatile("mrs %0, id_pfr0_el1" \
