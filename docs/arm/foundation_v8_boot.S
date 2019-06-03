@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -208,6 +208,8 @@ _reloc_done:
 	orr	x0, x0, #(1 << 0)		/* Non-secure EL1 */
 	orr	x0, x0, #(1 << 8)		/* HVC enable */
 	orr	x0, x0, #(1 << 10)		/* 64-bit EL2 */
+	orr	x0, x0, #(1 << 16)		/* APK */
+	orr	x0, x0, #(1 << 17)		/* API */
 	msr	scr_el3, x0
 
 	/* Disable copro. traps to EL3 */
@@ -314,7 +316,7 @@ _gic_init_done:
 	and	x4, x4, x5			/* CPU affinity */
 _gic_dist_init:
 	ldr	x0, __gic_dist_base		/* Dist GIC base */
-	mov	x1, #0				/* non-0 cpus should at least */						
+	mov	x1, #0				/* non-0 cpus should at least */
 	cmp	x4, xzr				/* program IGROUP0 */
 	bne	1f
 	mov	x1, #3				/* Enable group0 & group1 */
