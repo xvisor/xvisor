@@ -38,7 +38,7 @@ obj_dir=$(build_dir)/tests/riscv/virt64/basic
 basic_dir=$(top_dir)/tests/common/basic
 arch_dir=$(top_dir)/tests/riscv/common/basic
 
-board_text_start = 0x81000000
+board_text_start = 0x80000000
 board_objs       = $(obj_dir)/arch_board.o \
                    $(obj_dir)/display/simplefb.o \
 		   $(obj_dir)/pic/riscv_intc.o \
