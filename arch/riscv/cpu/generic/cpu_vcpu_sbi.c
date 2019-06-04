@@ -106,15 +106,20 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 				   vcpu->guest->name, ret);
 		break;
 	case SBI_REMOTE_FENCE_I:
-		__asm__ __volatile("fence.i");
+		sbi_remote_fence_i(NULL);
 		break;
+
+	/*TODO:There should be a way to call remote hfence.bvma.
+	 * Prefered method is now a SBI call. Until then, just flush
+	 * all tlbs.
+	 */
 	case SBI_REMOTE_SFENCE_VMA:
-		/*TODO: Parse vma range */
-		__hfence_bvma_all();
+		/*TODO: Parse vma range.*/
+		sbi_remote_sfence_vma(NULL, 0, 0);
 		break;
 	case SBI_REMOTE_SFENCE_VMA_ASID:
 		/*TODO: Parse vma range for given ASID */
-		__hfence_bvma_asid(regs->a3);
+		sbi_remote_sfence_vma(NULL, 0, 0);
 		break;
 	default:
 		regs->a0 = VMM_ENOTSUPP;
