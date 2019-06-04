@@ -35,36 +35,36 @@
 	__asm__ __volatile__ ("fence " #p "," #s : : : "memory")
 
 /* Read & Write Memory barrier */
-#define arch_mb()			RISCV_FENCE(iorw,iorw)
+#define arch_mb()			RISCV_FENCE(iorw, iorw)
 
 /* Read Memory barrier */
-#define arch_rmb()			RISCV_FENCE(ir,ir)
+#define arch_rmb()			RISCV_FENCE(ir, ir)
 
 /* Write Memory barrier */
-#define arch_wmb()			RISCV_FENCE(ow,ow)
+#define arch_wmb()			RISCV_FENCE(ow, ow)
 
 /* SMP Read & Write Memory barrier */
-#define arch_smp_mb()			RISCV_FENCE(rw,rw)
+#define arch_smp_mb()			RISCV_FENCE(rw, rw)
 
 /* SMP Read Memory barrier */
-#define arch_smp_rmb()			RISCV_FENCE(r,r)
+#define arch_smp_rmb()			RISCV_FENCE(r, r)
 
 /* SMP Write Memory barrier */
-#define arch_smp_wmb()			RISCV_FENCE(w,w)
+#define arch_smp_wmb()			RISCV_FENCE(w, w)
 
 /* CPU relax for busy loop */
 #define arch_cpu_relax()		asm volatile ("" : : : "memory")
 
 #define __smp_store_release(p, v)				\
 do {								\
-	RISCV_FENCE(rw,w);					\
+	RISCV_FENCE(rw, w);					\
 	*(p) = (v);						\
 } while (0)
 
 #define __smp_load_acquire(p)					\
 ({								\
 	typeof(*p) ___p1 = *(p);				\
-	RISCV_FENCE(r,rw);					\
+	RISCV_FENCE(r, rw);					\
 	___p1;							\
 })
 
