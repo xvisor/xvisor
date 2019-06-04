@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,7 +23,7 @@
 
 #include <arch_asm.h>
 
-	/* 
+	/*
 	 * Basic firmware could be loaded any where in memory.
 	 * The _start function ensures that it exectues from intended
 	 * base address provided at compile time.
@@ -32,8 +32,8 @@
 	.section .entry, "ax", %progbits
 	.globl _start
 _start:
-	/* Hang if hartid != 0 */
-	blt	zero, a0, _start_hang
+	/* Wait if hartid != 0 */
+	blt	zero, a0, _secondary_wait
 
 	/* Relocate if required */
 	la	a4, exec_start
@@ -87,12 +87,39 @@ _bss_zero:
 	la	tp, _trap_handler
 	csrw	stvec, tp
 
+	/* clear tp */
+	li	tp, 0
+
 	/* Jump to C code */
 	call	basic_init
 	call	basic_main
 
 	/* We don't expect to reach here hence just hang */
 	j	_start_hang
+
+	.align 3
+	.section .entry, "ax", %progbits
+	.globl _secondary_wait
+_secondary_wait:
+	la	t1, _jump_linux_addr
+	REG_L	t1, 0(t1)
+	REG_L	t4, 0(t1)
+	nop
+	nop
+	nop
+	nop
+	beqz	t4, _secondary_wait
+
+	/* Disable and clear all interrupts */
+	csrw	sie, zero
+	csrw	sip, zero
+
+	/* Clear sp & tp */
+	li	sp, 0
+	li	tp, 0
+
+	/* Jump to kernel address directly as a0 & a1 are already set */
+	jr	t4
 
 	.align 3
 	.section .entry, "ax", %progbits
@@ -112,6 +139,18 @@ exec_end:
 	.globl boot_arg0
 	.section .entry, "ax", %progbits
 boot_arg0:
+	RISCV_PTR	0
+
+	.align	3
+	.globl _jump_linux_addr
+	.section .data
+_jump_linux_addr:
+	RISCV_PTR	jump_linux_addr
+
+	.align	3
+	.globl jump_linux_addr
+	.section .data
+jump_linux_addr:
 	RISCV_PTR	0
 
 	.align	3

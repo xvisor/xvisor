@@ -23,9 +23,11 @@
 
 #include <arch_asm.h>
 #include <arch_linux.h>
+#include <arch_barrier.h>
 
 extern unsigned long boot_arg0;
 extern unsigned long boot_arg1;
+extern unsigned long jump_linux_addr;
 
 typedef void (*linux_entry_t) (unsigned long arg0, unsigned long fdt_addr);
 
@@ -43,6 +45,10 @@ void arch_start_linux_jump(unsigned long kernel_addr,
 			   unsigned long initrd_size)
 {
 	csr_write(sip, 0);
+
+	/* Release all other harts */
+	jump_linux_addr = kernel_addr;
+	arch_smp_mb();
 	/* Jump to Linux Kernel
 	 * a0 -> hart ID
 	 * a1 -> dtb address
