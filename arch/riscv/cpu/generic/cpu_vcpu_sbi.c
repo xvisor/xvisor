@@ -91,7 +91,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		vmm_vcpu_irq_clear(vcpu, IRQ_S_SOFT);
 		break;
 	case SBI_SEND_IPI:
-		dhart_mask = load_ulong(&regs->a0);
+		dhart_mask = load_ulong((unsigned long *)regs->a0);
 		for_each_set_bit(vcpuid, &dhart_mask, BITS_PER_LONG) {
 			remote_vcpu = vmm_manager_guest_vcpu(vcpu->guest,
 							     vcpuid);
