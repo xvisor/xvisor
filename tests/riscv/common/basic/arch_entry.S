@@ -103,12 +103,15 @@ _bss_zero:
 _secondary_wait:
 	la	t1, _jump_linux_addr
 	REG_L	t1, 0(t1)
+	REG_S	zero, 0(t1)
+
+_secondary_loop:
 	REG_L	t4, 0(t1)
 	nop
 	nop
 	nop
 	nop
-	beqz	t4, _secondary_wait
+	beqz	t4, _secondary_loop
 
 	/* Disable and clear all interrupts */
 	csrw	sie, zero
