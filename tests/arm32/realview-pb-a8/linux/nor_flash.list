@@ -1,5 +1,5 @@
 0x40000000 ./firmware.bin
 0x400FF000 ./cmdlist
 0x40100000 ./Image
-0x40FF0000 ./arm-realview-pba8.dtb
-0x41000000 ./rootfs.img
+0x417F0000 ./arm-realview-pba8.dtb
+0x41800000 ./rootfs.img
