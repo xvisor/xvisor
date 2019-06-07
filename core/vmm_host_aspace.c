@@ -813,6 +813,7 @@ static int __init host_aspace_init_primary(void)
 {
 	int rc, cpu, bank_found = 0;
 	u32 resv, resv_count, bank, bank_count = 0x0;
+	u64 ram_end;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
 	physical_size_t ram_size;
 	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart, mhash_hkstart;
@@ -855,8 +856,10 @@ static int __init host_aspace_init_primary(void)
 		if (ram_size & VMM_PAGE_MASK) {
 			return VMM_EINVALID;
 		}
+		/* Ensure this doesn't overflow for 32-bit */
+		ram_end = (u64)ram_start + (u64)ram_size;
 		if ((ram_start <= arch_code_paddr_start()) &&
-		    (arch_code_paddr_start() < (ram_start + ram_size))) {
+		    (arch_code_paddr_start() < ram_end)) {
 			bank_found = 1;
 			break;
 		}

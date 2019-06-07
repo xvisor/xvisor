@@ -203,14 +203,16 @@ int vmm_host_ram_reserve(physical_addr_t pa, physical_size_t sz)
 {
 	int rc = VMM_EINVALID;
 	u32 i, bn, bcnt, bpos, bfree;
+	u64 bank_end, pa_end;
 	irq_flags_t flags;
 	struct vmm_host_ram_bank *bank;
 
 	for (bn = 0; bn < rctrl.bank_count; bn++) {
 		bank = &rctrl.banks[bn];
 
-		if ((pa < bank->start) ||
-		    ((bank->start + bank->size) < (pa + sz))) {
+		bank_end = (u64)bank->start + (u64)bank->size;
+		pa_end = (u64)pa + (u64)sz;
+		if ((pa < bank->start) || (bank_end < pa_end)) {
 			continue;
 		}
 
@@ -255,14 +257,16 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 {
 	int rc = VMM_EINVALID;
 	u32 bn, bcnt, bpos;
+	u64 bank_end, pa_end;
 	irq_flags_t flags;
 	struct vmm_host_ram_bank *bank;
 
 	for (bn = 0; bn < rctrl.bank_count; bn++) {
 		bank = &rctrl.banks[bn];
 
-		if ((pa < bank->start) ||
-		    ((bank->start + bank->size) < (pa + sz))) {
+		bank_end = (u64)bank->start + (u64)bank->size;
+		pa_end = (u64)pa + (u64)sz;
+		if ((pa < bank->start) || (bank_end < pa_end)) {
 			continue;
 		}
 
@@ -286,6 +290,7 @@ int vmm_host_ram_free(physical_addr_t pa, physical_size_t sz)
 bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 {
 	u32 bn, bpos;
+	u64 bank_end;
 	bool ret = FALSE;
 	irq_flags_t flags;
 	struct vmm_host_ram_bank *bank;
@@ -293,8 +298,8 @@ bool vmm_host_ram_frame_isfree(physical_addr_t pa)
 	for (bn = 0; bn < rctrl.bank_count; bn++) {
 		bank = &rctrl.banks[bn];
 
-		if ((pa < bank->start) ||
-		    ((bank->start + bank->size) <= pa)) {
+		bank_end = (u64)bank->start + (u64)bank->size;
+		if ((pa < bank->start) || (bank_end <= pa)) {
 			continue;
 		}
 
