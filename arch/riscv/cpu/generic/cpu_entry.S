@@ -155,6 +155,10 @@ _start_secondary:
 _start_secondary_wait:
 	/* FIXME: We should use WFI to save some energy here. */
 	REG_L	a7, (a6)
+	nop
+	nop
+	nop
+	nop
 	bne	a7, a0, _start_secondary_wait
 #endif
 
