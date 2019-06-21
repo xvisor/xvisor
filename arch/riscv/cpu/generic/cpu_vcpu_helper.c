@@ -43,6 +43,7 @@
 #include <cpu_vcpu_timer.h>
 #include <cpu_guest_serial.h>
 #include <riscv_csr.h>
+#include <riscv_lrsc.h>
 
 static char *guest_fdt_find_serial_node(char *guest_name)
 {
@@ -332,6 +333,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv->bsatp = csr_read(CSR_BSATP);
 			cpu_vcpu_fp_save(tvcpu, regs);
 		}
+		clrx();
 	}
 
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));

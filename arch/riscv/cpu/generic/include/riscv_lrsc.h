@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -108,6 +108,25 @@
 	__typeof__(*(ptr)) _n_ = (n);					\
 	(__typeof__(*(ptr))) __cmpxchg((ptr),				\
 				       _o_, _n_, sizeof(*(ptr)));	\
+})
+
+#define clrx()								\
+({									\
+	volatile unsigned long __tmp = 0;				\
+	switch (sizeof(__tmp)) {					\
+	case 4:								\
+		__asm__ __volatile__ (					\
+			"	sc.w zero, zero, %0\n"			\
+			: "+A" (__tmp) : : "memory");			\
+		break;							\
+	case 8:								\
+		__asm__ __volatile__ (					\
+			"	sc.d zero, zero, %0\n"			\
+			: "+A" (__tmp) : : "memory");			\
+		break;							\
+	default:							\
+		break;							\
+	}								\
 })
 
 #endif /* __ASSEMBLY__ */
