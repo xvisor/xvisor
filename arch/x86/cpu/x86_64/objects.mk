@@ -21,9 +21,16 @@
 # @author Himanshu Chauhan (hschauhan@nulltrace.org)
 # @brief list of x86_64 object files.
 # */
-cpu-cflags +=-finline-functions -O0 -mcmodel=large -no-pie
-cpu-cppflags +=-DCPU_TEXT_LMA=${CONFIG_VAPOOL_ALIGN_MB} -no-pie
+GCCMAJ=$(shell if [ `gcc --version | grep ^gcc | sed 's/^.* //g' | cut -f1 -d '.'`  -gt 4 ]; then echo true; fi)
+
+cpu-cflags +=-finline-functions -O0 -mcmodel=large
+cpu-cppflags +=-DCPU_TEXT_LMA=${CONFIG_VAPOOL_ALIGN_MB}
+
+ifeq ($(GCCMAJ),true)
 cpu-ldflags += -no-pie
+cpu-cflags += -no-pie
+cpu-cppflags += -no-pie
+endif
 
 cpu-objs-y+= start.o
 
