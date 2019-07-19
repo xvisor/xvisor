@@ -28,6 +28,7 @@
 	.align 3
 	.global __cpu_vcpu_fp_f_save
 __cpu_vcpu_fp_f_save:
+	csrr t2, CSR_SSTATUS
 	li t1, SSTATUS_FS
 	csrs CSR_SSTATUS, t1
 	frcsr t0
@@ -64,12 +65,13 @@ __cpu_vcpu_fp_f_save:
 	fsw f30, RISCV_PRIV_FP_F_F30(a0)
 	fsw f31, RISCV_PRIV_FP_F_F31(a0)
 	sw t0, RISCV_PRIV_FP_F_FCSR(a0)
-	csrc CSR_SSTATUS, t1
+	csrw CSR_SSTATUS, t2
 	ret
 
 	.align 3
 	.global __cpu_vcpu_fp_d_save
 __cpu_vcpu_fp_d_save:
+	csrr t2, CSR_SSTATUS
 	li t1, SSTATUS_FS
 	csrs CSR_SSTATUS, t1
 	frcsr t0
@@ -106,12 +108,13 @@ __cpu_vcpu_fp_d_save:
 	fsd f30, RISCV_PRIV_FP_D_F30(a0)
 	fsd f31, RISCV_PRIV_FP_D_F31(a0)
 	sw t0, RISCV_PRIV_FP_D_FCSR(a0)
-	csrc CSR_SSTATUS, t1
+	csrw CSR_SSTATUS, t2
 	ret
 
 	.align 3
 	.global __cpu_vcpu_fp_f_restore
 __cpu_vcpu_fp_f_restore:
+	csrr t2, CSR_SSTATUS
 	li t1, SSTATUS_FS
 	lw t0, RISCV_PRIV_FP_F_FCSR(a0)
 	csrs CSR_SSTATUS, t1
@@ -148,12 +151,13 @@ __cpu_vcpu_fp_f_restore:
 	flw f30, RISCV_PRIV_FP_F_F30(a0)
 	flw f31, RISCV_PRIV_FP_F_F31(a0)
 	fscsr t0
-	csrc CSR_SSTATUS, t1
+	csrw CSR_SSTATUS, t2
 	ret
 
 	.align 3
 	.global __cpu_vcpu_fp_d_restore
 __cpu_vcpu_fp_d_restore:
+	csrr t2, CSR_SSTATUS
 	li t1, SSTATUS_FS
 	lw t0, RISCV_PRIV_FP_D_FCSR(a0)
 	csrs CSR_SSTATUS, t1
@@ -190,5 +194,5 @@ __cpu_vcpu_fp_d_restore:
 	fld f30, RISCV_PRIV_FP_D_F30(a0)
 	fld f31, RISCV_PRIV_FP_D_F31(a0)
 	fscsr t0
-	csrc CSR_SSTATUS, t1
+	csrw CSR_SSTATUS, t2
 	ret
