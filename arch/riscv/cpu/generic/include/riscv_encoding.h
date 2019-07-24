@@ -359,15 +359,21 @@
 #define CSR_SIP				0x144
 #define CSR_SATP			0x180
 
-#define CSR_BSSTATUS			0x200
-#define CSR_BSIE			0x204
-#define CSR_BSTVEC			0x205
-#define CSR_BSSCRATCH			0x240
-#define CSR_BSEPC			0x241
-#define CSR_BSCAUSE			0x242
-#define CSR_BSTVAL			0x243
-#define CSR_BSIP			0x244
-#define CSR_BSATP			0x280
+#define CSR_HSTATUS			0x600
+#define CSR_HEDELEG			0x602
+#define CSR_HIDELEG			0x603
+#define CSR_HCOUNTERNEN		0x606
+#define CSR_HGATP			0x680
+
+#define CSR_VSSTATUS			0x200
+#define CSR_VSIE			0x204
+#define CSR_VSTVEC			0x205
+#define CSR_VSSCRATCH			0x240
+#define CSR_VSEPC			0x241
+#define CSR_VSCAUSE			0x242
+#define CSR_VSTVAL			0x243
+#define CSR_VSIP			0x244
+#define CSR_VSATP			0x280
 
 #define CSR_MSTATUS			0x300
 #define CSR_MISA			0x301
@@ -408,11 +414,6 @@
 #define CSR_DCSR			0x7b0
 #define CSR_DPC				0x7b1
 #define CSR_DSCRATCH			0x7b2
-
-#define CSR_HSTATUS			0xa00
-#define CSR_HEDELEG			0xa02
-#define CSR_HIDELEG			0xa03
-#define CSR_HGATP			0xa80
 
 #define CSR_MCYCLE			0xb00
 #define CSR_MINSTRET			0xb02

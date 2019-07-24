@@ -97,34 +97,34 @@ static inline void store_u64(u64 *addr, u64 val)
 }
 #endif
 
-static inline ulong get_insn(ulong sepc, ulong *hstatus, ulong *bsstatus)
+static inline ulong get_insn(ulong sepc, ulong *hstatus, ulong *vsstatus)
 {
 	register ulong __sepc asm ("a2") = sepc;
 	register ulong __hstatus asm ("a3");
 	register ulong __sstatus asm ("a4");
-	register ulong __bsstatus asm ("a5");
+	register ulong __vsstatus asm ("a5");
 	ulong val;
 #ifndef __riscv_compressed
 	asm ("csrrs %[hstatus], "STR(CSR_HSTATUS)", %[hprv]\n"
 		"csrrs %[sstatus], "STR(CSR_SSTATUS)", %[smxr]\n"
-		"csrrs %[bsstatus], "STR(CSR_BSSTATUS)", %[smxr]\n"
+		"csrrs %[vsstatus], "STR(CSR_VSSTATUS)", %[smxr]\n"
 #ifdef CONFIG_64BIT
 		STR(LWU) " %[insn], (%[addr])\n"
 #else
 		STR(LW) " %[insn], (%[addr])\n"
 #endif
-		"csrw "STR(CSR_BSSTATUS)", %[bsstatus]"
+		"csrw "STR(CSR_VSSTATUS)", %[vsstatus]"
 		"csrw "STR(CSR_SSTATUS)", %[sstatus]"
 		"csrw "STR(CSR_HSTATUS)", %[hstatus]"
 		: [hstatus] "+&r" (__hstatus), [sstatus] "+&r" (__sstatus),
-		  [bsstatus] "+&r" (__bsstatus), [insn] "=&r" (val)
+		  [vsstatus] "+&r" (__vsstatus), [insn] "=&r" (val)
 		: [hprv] "r" (HSTATUS_SPRV), [smxr] "r" (SSTATUS_MXR),
 		  [addr] "r" (__sepc));
 #else
 	ulong rvc_mask = 3, tmp;
 	asm ("csrrs %[hstatus], "STR(CSR_HSTATUS)", %[hprv]\n"
 		"csrrs %[sstatus], "STR(CSR_SSTATUS)", %[smxr]\n"
-		"csrrs %[bsstatus], "STR(CSR_BSSTATUS)", %[smxr]\n"
+		"csrrs %[vsstatus], "STR(CSR_VSSTATUS)", %[smxr]\n"
 		"and %[tmp], %[addr], 2\n"
 		"bnez %[tmp], 1f\n"
 #ifdef CONFIG_64BIT
@@ -144,11 +144,11 @@ static inline ulong get_insn(ulong sepc, ulong *hstatus, ulong *bsstatus)
 		"lhu %[tmp], 2(%[addr])\n"
 		"sll %[tmp], %[tmp], 16\n"
 		"add %[insn], %[insn], %[tmp]\n"
-		"2: csrw "STR(CSR_BSSTATUS)", %[bsstatus]\n"
+		"2: csrw "STR(CSR_VSSTATUS)", %[vsstatus]\n"
 		"csrw "STR(CSR_SSTATUS)", %[sstatus]\n"
 		"csrw "STR(CSR_HSTATUS)", %[hstatus]"
 	: [hstatus] "+&r" (__hstatus), [sstatus] "+&r" (__sstatus),
-	  [bsstatus] "+&r" (__bsstatus), [insn] "=&r" (val),
+	  [vsstatus] "+&r" (__vsstatus), [insn] "=&r" (val),
 	  [tmp] "=&r" (tmp)
 	: [hprv] "r" (HSTATUS_SPRV), [smxr] "r" (SSTATUS_MXR),
 	  [addr] "r" (__sepc), [rvc_mask] "r" (rvc_mask),
@@ -156,8 +156,8 @@ static inline ulong get_insn(ulong sepc, ulong *hstatus, ulong *bsstatus)
 #endif
 	if (hstatus)
 		*hstatus = __hstatus;
-	if (bsstatus)
-		*bsstatus = __bsstatus;
+	if (vsstatus)
+		*vsstatus = __vsstatus;
 	return val;
 }
 

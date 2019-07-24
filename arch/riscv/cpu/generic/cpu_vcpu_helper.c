@@ -244,15 +244,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Update BS<xyz> */
-	riscv_priv(vcpu)->bsstatus = 0; /* TODO: ??? */
-	riscv_priv(vcpu)->bsie = 0;
-	riscv_priv(vcpu)->bstvec = 0;
-	riscv_priv(vcpu)->bsscratch = 0;
-	riscv_priv(vcpu)->bsepc = 0;
-	riscv_priv(vcpu)->bscause = 0;
-	riscv_priv(vcpu)->bstval = 0;
-	riscv_priv(vcpu)->bsip = 0;
-	riscv_priv(vcpu)->bsatp = 0;
+	riscv_priv(vcpu)->vsstatus = 0; /* TODO: ??? */
+	riscv_priv(vcpu)->vsie = 0;
+	riscv_priv(vcpu)->vstvec = 0;
+	riscv_priv(vcpu)->vsscratch = 0;
+	riscv_priv(vcpu)->vsepc = 0;
+	riscv_priv(vcpu)->vscause = 0;
+	riscv_priv(vcpu)->vstval = 0;
+	riscv_priv(vcpu)->vsip = 0;
+	riscv_priv(vcpu)->vsatp = 0;
 
 	/* Update HIDELEG */
 	riscv_priv(vcpu)->hideleg = 0;
@@ -322,15 +322,15 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv = riscv_priv(tvcpu);
 			priv->hideleg = csr_read(CSR_HIDELEG);
 			priv->hedeleg = csr_read(CSR_HEDELEG);
-			priv->bsstatus = csr_read(CSR_BSSTATUS);
-			priv->bsie = csr_read(CSR_BSIE);
-			priv->bstvec = csr_read(CSR_BSTVEC);
-			priv->bsscratch = csr_read(CSR_BSSCRATCH);
-			priv->bsepc = csr_read(CSR_BSEPC);
-			priv->bscause = csr_read(CSR_BSCAUSE);
-			priv->bstval = csr_read(CSR_BSTVAL);
-			priv->bsip = csr_read(CSR_BSIP);
-			priv->bsatp = csr_read(CSR_BSATP);
+			priv->vsstatus = csr_read(CSR_VSSTATUS);
+			priv->vsie = csr_read(CSR_VSIE);
+			priv->vstvec = csr_read(CSR_VSTVEC);
+			priv->vsscratch = csr_read(CSR_VSSCRATCH);
+			priv->vsepc = csr_read(CSR_VSEPC);
+			priv->vscause = csr_read(CSR_VSCAUSE);
+			priv->vstval = csr_read(CSR_VSTVAL);
+			priv->vsip = csr_read(CSR_VSIP);
+			priv->vsatp = csr_read(CSR_VSATP);
 			cpu_vcpu_fp_save(tvcpu, regs);
 		}
 		clrx();
@@ -341,15 +341,15 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		priv = riscv_priv(vcpu);
 		csr_write(CSR_HIDELEG, priv->hideleg);
 		csr_write(CSR_HEDELEG, priv->hedeleg);
-		csr_write(CSR_BSSTATUS, priv->bsstatus);
-		csr_write(CSR_BSIE, priv->bsie);
-		csr_write(CSR_BSTVEC, priv->bstvec);
-		csr_write(CSR_BSSCRATCH, priv->bsscratch);
-		csr_write(CSR_BSEPC, priv->bsepc);
-		csr_write(CSR_BSCAUSE, priv->bscause);
-		csr_write(CSR_BSTVAL, priv->bstval);
-		csr_write(CSR_BSIP, priv->bsip);
-		csr_write(CSR_BSATP, priv->bsatp);
+		csr_write(CSR_VSSTATUS, priv->vsstatus);
+		csr_write(CSR_VSIE, priv->vsie);
+		csr_write(CSR_VSTVEC, priv->vstvec);
+		csr_write(CSR_VSSCRATCH, priv->vsscratch);
+		csr_write(CSR_VSEPC, priv->vsepc);
+		csr_write(CSR_VSCAUSE, priv->vscause);
+		csr_write(CSR_VSTVAL, priv->vstval);
+		csr_write(CSR_VSIP, priv->vsip);
+		csr_write(CSR_VSATP, priv->vsatp);
 		cpu_vcpu_fp_restore(vcpu, regs);
 		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_vmid_bits)) {
 			cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
@@ -418,15 +418,15 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "  hedeleg", priv->hedeleg, "  hideleg", priv->hideleg);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    " bsstatus", priv->bsstatus, "     bsie", priv->bsie);
+		    " vsstatus", priv->vsstatus, "     vsie", priv->vsie);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   bstvec", priv->bstvec, "bsscratch", priv->bsscratch);
+		    "   vstvec", priv->vstvec, "vsscratch", priv->vsscratch);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "    bsepc", priv->bsepc, "  bscause", priv->bscause);
+		    "    vsepc", priv->vsepc, "  vscause", priv->vscause);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   bstval", priv->bstval, "     bsip", priv->bsip);
+		    "   vstval", priv->vstval, "     vsip", priv->vsip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
-		    "    bsatp", priv->bsatp);
+		    "    vsatp", priv->vsatp);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }

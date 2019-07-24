@@ -157,15 +157,15 @@ union riscv_priv_fp {
 struct riscv_priv {
 	unsigned long hedeleg;
 	unsigned long hideleg;
-	unsigned long bsstatus;
-	unsigned long bsie;
-	unsigned long bstvec;
-	unsigned long bsscratch;
-	unsigned long bsepc;
-	unsigned long bscause;
-	unsigned long bstval;
-	unsigned long bsip;
-	unsigned long bsatp;
+	unsigned long vsstatus;
+	unsigned long vsie;
+	unsigned long vstvec;
+	unsigned long vsscratch;
+	unsigned long vsepc;
+	unsigned long vscause;
+	unsigned long vstval;
+	unsigned long vsip;
+	unsigned long vsatp;
 	/* FP state */
 	union riscv_priv_fp fp;
 	/* Opaque pointer to timer data */

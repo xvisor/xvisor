@@ -65,8 +65,8 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 		return VMM_EFAIL;
 	}
 
-	csr_set(CSR_BSIP, irq_mask);
-	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
+	csr_set(CSR_VSIP, irq_mask);
+	riscv_priv(vcpu)->vsip = csr_read(CSR_VSIP);
 
 	return VMM_OK;
 }
@@ -84,8 +84,8 @@ int arch_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 		return VMM_OK;
 	}
 
-	csr_clear(CSR_BSIP, irq_mask);
-	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
+	csr_clear(CSR_VSIP, irq_mask);
+	riscv_priv(vcpu)->vsip = csr_read(CSR_VSIP);
 
 	return VMM_OK;
 }
@@ -98,7 +98,7 @@ int arch_vcpu_irq_deassert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 
 bool arch_vcpu_irq_pending(struct vmm_vcpu *vcpu)
 {
-	riscv_priv(vcpu)->bsip = csr_read(CSR_BSIP);
-	riscv_priv(vcpu)->bsie = csr_read(CSR_BSIE);
-	return (riscv_priv(vcpu)->bsip & riscv_priv(vcpu)->bsie) ? TRUE : FALSE;
+	riscv_priv(vcpu)->vsip = csr_read(CSR_VSIP);
+	riscv_priv(vcpu)->vsie = csr_read(CSR_VSIE);
+	return (riscv_priv(vcpu)->vsip & riscv_priv(vcpu)->vsie) ? TRUE : FALSE;
 }
