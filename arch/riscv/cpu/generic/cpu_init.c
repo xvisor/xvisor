@@ -149,6 +149,10 @@ int __init cpu_parse_devtree_hwcap(void)
 		rc = vmm_devtree_read_string(dn,
 				"riscv,isa", &isa);
 		if (rc || !isa) {
+			if (!strcmp(dn->name, "cpu-map")) {
+				/* Skip the "cpu-map" node */
+				continue;
+			}
 			vmm_devtree_dref_node(dn);
 			rc = VMM_ENOTAVAIL;
 			break;
