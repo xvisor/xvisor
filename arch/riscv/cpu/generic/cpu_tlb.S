@@ -25,35 +25,35 @@
 
 	/*
 	 * Instruction encoding of hfence.gvma is:
-	 * 1010001 rs2(5) rs1(5) 000 00000 1110011
+	 * 0110001 rs2(5) rs1(5) 000 00000 1110011
 	 */
 
 	.align 3
 	.global __hfence_gvma_vmid_gpa
 __hfence_gvma_vmid_gpa:
 	/* hfence.gvma a1, a0 */
-	.word 0xa2a60073
+	.word 0x62a60073
 	ret
 
 	.align 3
 	.global __hfence_gvma_vmid
 __hfence_gvma_vmid:
 	/* hfence.gvma zero, a0 */
-	.word 0xa2a00073
+	.word 0x62a00073
 	ret
 
 	.align 3
 	.global __hfence_gvma_gpa
 __hfence_gvma_gpa:
 	/* hfence.gvma a0 */
-	.word 0xa2050073
+	.word 0x62050073
 	ret
 
 	.align 3
 	.global __hfence_gvma_all
 __hfence_gvma_all:
 	/* hfence.gvma */
-	.word 0xa2000073
+	.word 0x62000073
 	ret
 
 	/*
