@@ -169,6 +169,16 @@ int __init arch_smp_init_cpus(void)
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
+		str = NULL;
+		rc = vmm_devtree_read_string(dn,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
+		if (rc || !str) {
+			continue;
+		}
+		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
+			continue;
+		}
+
 		/*
 		 * A cpu node with missing "reg" property is
 		 * considered invalid to build a smp_logical_map

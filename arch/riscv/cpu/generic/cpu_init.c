@@ -120,7 +120,7 @@ int __init arch_cpu_final_init(void)
 int __init cpu_parse_devtree_hwcap(void)
 {
 	struct vmm_devtree_node *dn, *cpus;
-	const char *isa;
+	const char *isa, *str;
 	unsigned long val;
 	int rc = VMM_OK;
 	size_t i, isa_len;
@@ -145,14 +145,21 @@ int __init cpu_parse_devtree_hwcap(void)
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
 		unsigned long this_isa = 0;
+
+		str = NULL;
+		rc = vmm_devtree_read_string(dn,
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
+		if (rc || !str) {
+			continue;
+		}
+		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
+			continue;
+		}
+
 		isa = NULL;
 		rc = vmm_devtree_read_string(dn,
 				"riscv,isa", &isa);
 		if (rc || !isa) {
-			if (!strcmp(dn->name, "cpu-map")) {
-				/* Skip the "cpu-map" node */
-				continue;
-			}
 			vmm_devtree_dref_node(dn);
 			rc = VMM_ENOTAVAIL;
 			break;
@@ -198,7 +205,7 @@ int __init cpu_parse_devtree_hwcap(void)
 		riscv_vmid_bits = fls_long(val >> HGATP_VMID_SHIFT);
 	}
 
-	return VMM_OK;
+	return rc;
 }
 
 void __init cpu_init(void)
