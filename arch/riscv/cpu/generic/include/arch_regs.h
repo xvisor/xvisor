@@ -173,8 +173,8 @@ struct riscv_priv {
 };
 
 struct riscv_guest_priv {
-	/* Time offset */
-	u64 time_offset;
+	/* Time delta */
+	u64 time_delta;
 	/* Stage2 pagetable */
 	struct cpu_pgtbl *pgtbl;
 	/* Opaque pointer to vserial data */

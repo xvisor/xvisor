@@ -29,6 +29,8 @@
 
 #include <riscv_encoding.h>
 
+#define TIMER_EVENT_THRESHOLD_NS		1000
+
 static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 {
 	struct vmm_vcpu *vcpu = ev->priv;
@@ -36,6 +38,27 @@ static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 
 	BUG_ON(!tevent);
 	vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
+}
+
+void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
+{
+	u64 delta_ns;
+	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);;
+
+	next_cycle -= riscv_guest_priv(vcpu->guest)->time_delta;
+	delta_ns = vmm_timer_delta_cycles_to_ns(next_cycle);
+
+	/*
+	 * In RISC-V, we should clear the timer pending bit before
+	 * programming next one.
+	 */
+	vmm_vcpu_irq_clear(vcpu, IRQ_S_TIMER);
+
+	/* No point in programming a timer for 1us */
+	if (delta_ns <= TIMER_EVENT_THRESHOLD_NS)
+		vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
+	else
+		vmm_timer_event_start(&tevent->time_ev, delta_ns);
 }
 
 int riscv_timer_event_init(struct vmm_vcpu *vcpu, void **timer_event)

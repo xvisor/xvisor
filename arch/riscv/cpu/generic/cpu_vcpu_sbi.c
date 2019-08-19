@@ -23,16 +23,14 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_vcpu_irq.h>
+#include <vio/vmm_vserial.h>
 #include <arch_vcpu.h>
+
 #include <cpu_guest_serial.h>
-#include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_tlb.h>
-#include <vmm_timer.h>
-#include <vmm_vcpu_irq.h>
-#include <vio/vmm_vserial.h>
-
 #include <riscv_encoding.h>
 #include <riscv_sbi.h>
 #include <riscv_unpriv.h>
@@ -50,34 +48,21 @@ u16 cpu_vcpu_sbi_version_minor(void)
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs)
 {
-	struct riscv_timer_event *tevent;
 	struct riscv_guest_serial *gs = riscv_guest_serial(vcpu->guest);
 	int ret = 0;
 	u8 send;
-	u64 next_cycle, delta_ns;
 	int vcpuid;
 	struct vmm_vcpu *remote_vcpu;
 	ulong dhart_mask;
 
 	switch (regs->a7) {
 	case SBI_SET_TIMER:
-		tevent = riscv_timer_priv(vcpu);
 #if __riscv_xlen == 32
-		next_cycle = ((u64)regs->a1 << 32) | (u64)regs->a0;
+		riscv_timer_event_start(vcpu,
+				((u64)regs->a1 << 32) | (u64)regs->a0);
 #else
-		next_cycle = (u64)regs->a0;
+		riscv_timer_event_start(vcpu, (u64)regs->a0);
 #endif
-		delta_ns = vmm_timer_delta_cycles_to_ns(next_cycle);
-
-		/* In RISC-V, we should clear the timer pending bit before
-		 * programming next one.
-		 */
-		vmm_vcpu_irq_clear(vcpu, IRQ_S_TIMER);
-		/* No point in programming a timer for 1us */
-		if (delta_ns <= TIMER_EVENT_THRESHOLD_NS)
-			vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
-		else
-			vmm_timer_event_start(&tevent->time_ev, delta_ns);
 		break;
 	case SBI_CONSOLE_PUTCHAR:
 		send = (u8) regs->a0;

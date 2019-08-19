@@ -29,10 +29,7 @@
 #define SBI_VERSION_MAJOR			0
 #define SBI_VERSION_MINOR			1
 
-#define TIMER_EVENT_THRESHOLD_NS		1000
-
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs);
 
 #endif
-

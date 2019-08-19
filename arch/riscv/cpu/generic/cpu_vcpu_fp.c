@@ -73,10 +73,10 @@ void cpu_vcpu_fp_dump_regs(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	struct riscv_priv *priv = riscv_priv(vcpu);
 
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, "     fcsr=0x%08x\n", priv->fp.d.fcsr);
+	vmm_cprintf(cdev, "       fcsr=0x%08x\n", priv->fp.d.fcsr);
 	for (i = 0; i < array_size(priv->fp.d.f) / 2; i++) {
-		vmm_cprintf(cdev, "      f%02d=0x%016"PRIx64
-				  "      f%02d=0x%016"PRIx64"\n",
+		vmm_cprintf(cdev, "        f%02d=0x%016"PRIx64
+				  "         f%02d=0x%016"PRIx64"\n",
 				(2*i), priv->fp.d.f[2*i],
 				(2*i + 1), priv->fp.d.f[2*i + 1]);
 	}

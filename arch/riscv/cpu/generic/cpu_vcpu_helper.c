@@ -104,10 +104,9 @@ int arch_guest_init(struct vmm_guest *guest)
 		}
 		priv = riscv_guest_priv(guest);
 
-		priv->time_offset = vmm_manager_guest_reset_timestamp(guest);
-		priv->time_offset =
-			priv->time_offset * vmm_timer_clocksource_frequency();
-		priv->time_offset = udiv64(priv->time_offset, 1000000000ULL);
+		priv->time_delta = vmm_manager_guest_reset_timestamp(guest);
+		priv->time_delta *= vmm_timer_clocksource_frequency();
+		priv->time_delta = -udiv64(priv->time_delta, 1000000000ULL);
 
 		priv->pgtbl = cpu_mmu_pgtbl_alloc(PGTBL_STAGE2);
 		if (!priv->pgtbl) {
@@ -243,8 +242,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	/* Update BS<xyz> */
-	riscv_priv(vcpu)->vsstatus = 0; /* TODO: ??? */
+	/* Update VS<xyz> */
+	riscv_priv(vcpu)->vsstatus = 0;
 	riscv_priv(vcpu)->vsie = 0;
 	riscv_priv(vcpu)->vstvec = 0;
 	riscv_priv(vcpu)->vsscratch = 0;
@@ -341,6 +340,15 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		priv = riscv_priv(vcpu);
 		csr_write(CSR_HIDELEG, priv->hideleg);
 		csr_write(CSR_HEDELEG, priv->hedeleg);
+#if __riscv_xlen == 32
+		csr_write(CSR_HTIMEDELTA,
+			(u32)(riscv_guest_priv(vcpu->guest)->time_delta));
+		csr_write(CSR_HTIMEDELTAH,
+			(u32)(riscv_guest_priv(vcpu->guest)->time_delta >> 32));
+#else
+		csr_write(CSR_HTIMEDELTA,
+			riscv_guest_priv(vcpu->guest)->time_delta);
+#endif
 		csr_write(CSR_VSSTATUS, priv->vsstatus);
 		csr_write(CSR_VSIE, priv->vsie);
 		csr_write(CSR_VSTVEC, priv->vstvec);
@@ -372,61 +380,70 @@ void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
 				arch_regs_t *regs)
 {
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "     zero", regs->zero, "       ra", regs->ra);
+		    "       zero", regs->zero, "         ra", regs->ra);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       sp", regs->sp, "       gp", regs->gp);
+		    "         sp", regs->sp, "         gp", regs->gp);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       tp", regs->tp, "       s0", regs->s0);
+		    "         tp", regs->tp, "         s0", regs->s0);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       s1", regs->s1, "       a0", regs->a0);
+		    "         s1", regs->s1, "         a0", regs->a0);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       a1", regs->a1, "       a2", regs->a2);
+		    "         a1", regs->a1, "         a2", regs->a2);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       a3", regs->a3, "       a4", regs->a4);
+		    "         a3", regs->a3, "         a4", regs->a4);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       a5", regs->a5, "       a6", regs->a6);
+		    "         a5", regs->a5, "         a6", regs->a6);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       a7", regs->a7, "       s2", regs->s2);
+		    "         a7", regs->a7, "         s2", regs->s2);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       s3", regs->s3, "       s4", regs->s4);
+		    "         s3", regs->s3, "         s4", regs->s4);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       s5", regs->s5, "       s6", regs->s6);
+		    "         s5", regs->s5, "         s6", regs->s6);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       s7", regs->s7, "       s8", regs->s8);
+		    "         s7", regs->s7, "         s8", regs->s8);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       s9", regs->s9, "      s10", regs->s10);
+		    "         s9", regs->s9, "        s10", regs->s10);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "      s11", regs->s11, "       t0", regs->t0);
+		    "        s11", regs->s11, "         t0", regs->t0);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       t1", regs->t1, "       t2", regs->t2);
+		    "         t1", regs->t1, "         t2", regs->t2);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       t3", regs->t3, "       t4", regs->t4);
+		    "         t3", regs->t3, "         t4", regs->t4);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "       t5", regs->t5, "       t6", regs->t6);
+		    "         t5", regs->t5, "         t6", regs->t6);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "     sepc", regs->sepc, "  sstatus", regs->sstatus);
+		    "       sepc", regs->sepc, "    sstatus", regs->sstatus);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "  hstatus", regs->hstatus, "  sp_exec", regs->sp_exec);
+		    "    hstatus", regs->hstatus, "    sp_exec", regs->sp_exec);
 }
 
 void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 				struct vmm_vcpu *vcpu)
 {
 	struct riscv_priv *priv = riscv_priv(vcpu);
+	struct riscv_guest_priv *gpriv = riscv_guest_priv(vcpu->guest);
 
 	vmm_cprintf(cdev, "\n");
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "  hedeleg", priv->hedeleg, "  hideleg", priv->hideleg);
+		    "    hedeleg", priv->hedeleg, "    hideleg", priv->hideleg);
+#if __riscv_xlen == 32
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    " vsstatus", priv->vsstatus, "     vsie", priv->vsie);
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   vstvec", priv->vstvec, "vsscratch", priv->vsscratch);
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "    vsepc", priv->vsepc, "  vscause", priv->vscause);
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   vstval", priv->vstval, "     vsip", priv->vsip);
+		    " htimedelta", (ulong)(gpriv->time_delta),
+		    "htimedeltah", (ulong)(gpriv->time_delta >> 32));
+#else
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
-		    "    vsatp", priv->vsatp);
+		    " htimedelta", (ulong)gpriv->time_delta);
+#endif
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "   vsstatus", priv->vsstatus, "       vsie", priv->vsie);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "     vstvec", priv->vstvec, "  vsscratch", priv->vsscratch);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "      vsepc", priv->vsepc, "    vscause", priv->vscause);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "     vstval", priv->vstval, "       vsip", priv->vsip);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
+		    "      vsatp", priv->vsatp);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }
