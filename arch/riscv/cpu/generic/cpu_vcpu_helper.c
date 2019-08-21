@@ -253,21 +253,6 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->vsip = 0;
 	riscv_priv(vcpu)->vsatp = 0;
 
-	/* Update HIDELEG */
-	riscv_priv(vcpu)->hideleg = 0;
-	riscv_priv(vcpu)->hideleg |= SIP_SSIP;
-	riscv_priv(vcpu)->hideleg |= SIP_STIP;
-	riscv_priv(vcpu)->hideleg |= SIP_SEIP;
-
-	/* Update HEDELEG */
-	riscv_priv(vcpu)->hedeleg = 0;
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_MISALIGNED_FETCH);
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_BREAKPOINT);
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_USER_ECALL);
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_FETCH_PAGE_FAULT);
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_LOAD_PAGE_FAULT);
-	riscv_priv(vcpu)->hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
-
 	/* Initialize FP state */
 	cpu_vcpu_fp_init(vcpu);
 
@@ -319,8 +304,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		memcpy(riscv_regs(tvcpu), regs, sizeof(*regs));
 		if (tvcpu->is_normal) {
 			priv = riscv_priv(tvcpu);
-			priv->hideleg = csr_read(CSR_HIDELEG);
-			priv->hedeleg = csr_read(CSR_HEDELEG);
 			priv->vsstatus = csr_read(CSR_VSSTATUS);
 			priv->vsie = csr_read(CSR_VSIE);
 			priv->vstvec = csr_read(CSR_VSTVEC);
@@ -338,8 +321,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
 	if (vcpu->is_normal) {
 		priv = riscv_priv(vcpu);
-		csr_write(CSR_HIDELEG, priv->hideleg);
-		csr_write(CSR_HEDELEG, priv->hedeleg);
 #if __riscv_xlen == 32
 		csr_write(CSR_HTIMEDELTA,
 			(u32)(riscv_guest_priv(vcpu->guest)->time_delta));
@@ -424,8 +405,6 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 	struct riscv_guest_priv *gpriv = riscv_guest_priv(vcpu->guest);
 
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "    hedeleg", priv->hedeleg, "    hideleg", priv->hideleg);
 #if __riscv_xlen == 32
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    " htimedelta", (ulong)(gpriv->time_delta),

@@ -155,8 +155,6 @@ union riscv_priv_fp {
 };
 
 struct riscv_priv {
-	unsigned long hedeleg;
-	unsigned long hideleg;
 	unsigned long vsstatus;
 	unsigned long vsie;
 	unsigned long vstvec;

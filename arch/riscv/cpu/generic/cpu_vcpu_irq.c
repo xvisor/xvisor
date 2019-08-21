@@ -61,10 +61,6 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	}
 	irq_mask = 1UL << irq_no;
 
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
-		return VMM_EFAIL;
-	}
-
 	csr_set(CSR_VSIP, irq_mask);
 	riscv_priv(vcpu)->vsip = csr_read(CSR_VSIP);
 
@@ -79,10 +75,6 @@ int arch_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 		return VMM_EINVALID;
 	}
 	irq_mask = 1UL << irq_no;
-
-	if (!(riscv_priv(vcpu)->hideleg & irq_mask)) {
-		return VMM_OK;
-	}
 
 	csr_clear(CSR_VSIP, irq_mask);
 	riscv_priv(vcpu)->vsip = csr_read(CSR_VSIP);
