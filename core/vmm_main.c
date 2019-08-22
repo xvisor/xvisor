@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -33,6 +33,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
+#include <vmm_cpuhp.h>
 #include <vmm_clocksource.h>
 #include <vmm_clockchip.h>
 #include <vmm_timer.h>
@@ -492,6 +493,19 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
+	/* Initialize per-cpu area */
+	vmm_init_printf("CPU hotplug\n");
+	ret = vmm_cpuhp_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Set CPU hotplug to online state */
+	ret = vmm_cpuhp_set_state(VMM_CPUHP_STATE_ONLINE);
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
 	/* Make sure /guests and /vmm nodes are present */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_GUESTINFO_NODE_NAME);
@@ -660,6 +674,12 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
+	/* Set CPU hotplug to online state */
+	ret = vmm_cpuhp_set_state(VMM_CPUHP_STATE_ONLINE);
+	if (ret) {
+		vmm_hang();
+	}
+
 	/* Initialize host interrupts */
 	ret = vmm_host_irq_init();
 	if (ret) {
@@ -716,14 +736,16 @@ static void __cpuinit init_secondary(void)
 void __cpuinit vmm_init(void)
 {
 #if defined(CONFIG_SMP)
-	/* Mark this CPU as Boot CPU
+	/* Try to mark current CPU as Boot CPU
 	 * Note: This will only work on first CPU.
 	 */
 	vmm_smp_set_bootcpu();
 
-	if (vmm_smp_is_bootcpu()) { /* Boot CPU */
+	if (!vmm_init_done() && vmm_smp_is_bootcpu()) {
+		/* Boot CPU */
 		init_bootcpu();
-	} else { /* Secondary CPUs */
+	} else {
+		/* Secondary CPUs */
 		init_secondary();
 	}
 #else
