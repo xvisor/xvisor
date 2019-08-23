@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -142,7 +142,7 @@ static void __init fpga_cascade_irq(struct fpga_irq_data *f,
 				    const char *name,
 				    u32 parent_irq)
 {
-	if (vmm_host_irq_register(parent_irq, name, 
+	if (vmm_host_irq_register(parent_irq, name,
 				  fpga_handle_cascade_irq, f)) {
 		BUG();
 	}
@@ -218,8 +218,6 @@ static int __init fpga_init(struct vmm_devtree_node *node)
 	u32 picen_mask;
 	u32 irq_start;
 	u32 parent_irq;
-
-	BUG_ON(!vmm_smp_is_bootcpu());
 
 	rc = vmm_devtree_request_regmap(node, &base, 0, "Versatile SIC");
 	WARN(rc, "unable to map fpga irq registers\n");

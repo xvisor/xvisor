@@ -255,10 +255,6 @@ static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
 	int rc, i;
 	u32 irq_start = 0;
 
-	if (!vmm_smp_is_bootcpu()) {
-		return VMM_OK;
-	}
-
 	if (vmm_devtree_read_u32(node, "irq_start", &irq_start)) {
 		irq_start = 0;
 	}

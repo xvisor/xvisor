@@ -214,8 +214,6 @@ static int __init vic_devtree_init(struct vmm_devtree_node *node,
 
 static int __init vic_init(struct vmm_devtree_node *node)
 {
-	BUG_ON(!vmm_smp_is_bootcpu());
-
 	return vic_devtree_init(node, NULL);
 }
 VMM_HOST_IRQ_INIT_DECLARE(vvic, "arm,versatile-vic", vic_init);

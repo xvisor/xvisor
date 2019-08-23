@@ -202,10 +202,6 @@ static int __init bcm283x_intc_init(struct vmm_devtree_node *node,
 	int rc, irq;
 	u32 b, i = 0, irq_start = 0;
 
-	if (!vmm_smp_is_bootcpu()) {
-		return VMM_OK;
-	}
-
 	intc.parent_irq = vmm_devtree_irq_parse_map(node, 0);
 	if (!intc.parent_irq) {
 		intc.parent_irq = UINT_MAX;
