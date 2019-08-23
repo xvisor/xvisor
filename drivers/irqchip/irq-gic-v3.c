@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -34,6 +34,7 @@
 #include <vmm_macros.h>
 #include <vmm_smp.h>
 #include <vmm_cpumask.h>
+#include <vmm_cpuhp.h>
 #include <vmm_delay.h>
 #include <vmm_timer.h>
 #include <vmm_heap.h>
@@ -900,6 +901,19 @@ static int __init gic_init_bases(void *dist_base,
 	return VMM_OK;
 }
 
+static int gic_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+{
+	gic_cpu_init();
+
+	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify gic_cpuhp = {
+	.name = "GICv3",
+	.state = VMM_CPUHP_STATE_HOST_IRQ,
+	.startup = gic_startup,
+};
+
 static int __init gic_validate_dist_version(void *dist_base)
 {
 	u32 reg = gic_readl(dist_base + GICD_PIDR2) & GIC_PIDR2_ARCH_MASK;
@@ -910,7 +924,7 @@ static int __init gic_validate_dist_version(void *dist_base)
 	return 0;
 }
 
-static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
+static int __init gic_of_init(struct vmm_devtree_node *node)
 {
 	virtual_addr_t va;
 	void *dist_base;
@@ -918,11 +932,6 @@ static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
 	u64 redist_stride;
 	u32 nr_redist_regions;
 	int err, i;
-
-	if (!vmm_smp_is_bootcpu()) {
-		gic_cpu_init();
-		return VMM_OK;
-	}
 
 	if (WARN_ON(!node)) {
 		return VMM_ENODEV;
@@ -987,7 +996,7 @@ static int __cpuinit gic_of_init(struct vmm_devtree_node *node)
 	if (err)
 		goto out_unmap_rdist;
 
-	return VMM_OK;
+	return vmm_cpuhp_register(&gic_cpuhp, FALSE);
 
 out_unmap_rdist:
 	for (i = 0; i < nr_redist_regions; i++) {

@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -194,8 +194,8 @@ static u32 aw_intc_irq_active(u32 cpu_irq_no)
 		return vmm_host_irqdomain_find_mapping(awvic.domain, i);
 	}
 
-	/* Did not find any pending irq 
-	 * so return invalid irq number 
+	/* Did not find any pending irq
+	 * so return invalid irq number
 	 */
 	return UINT_MAX;
 }
@@ -224,7 +224,7 @@ static struct vmm_host_irqdomain_ops aw_intc_ops = {
 	.xlate = aw_intc_xlate,
 };
 
-static int __cpuinit aw_intc_devtree_init(struct vmm_devtree_node *node)
+static int __init aw_intc_devtree_init(struct vmm_devtree_node *node)
 {
 	int hirq, rc;
 	u32 hwirq, irq_start = 0;

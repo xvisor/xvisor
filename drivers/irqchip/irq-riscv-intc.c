@@ -34,6 +34,7 @@
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
@@ -152,7 +153,22 @@ static int riscv_hart_of_timer(struct vmm_devtree_node *node, u32 *hart_id)
 	return VMM_OK;
 }
 
-static int __cpuinit riscv_intc_init(struct vmm_devtree_node *node)
+static int riscv_intc_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+{
+	/* Disable and clear all per-CPU interupts */
+	csr_write(sie, 0UL);
+	csr_write(sip, 0UL);
+
+	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify riscv_intc_cpuhp = {
+	.name = "RISCV_INTC",
+	.state = VMM_CPUHP_STATE_HOST_IRQ,
+	.startup = riscv_intc_startup,
+};
+
+static int __init riscv_intc_init(struct vmm_devtree_node *node)
 {
 	int i, rc;
 	u32 hart_id = 0;
@@ -164,10 +180,6 @@ static int __cpuinit riscv_intc_init(struct vmm_devtree_node *node)
 
 	if (vmm_smp_processor_id() != hart_id) {
 		return VMM_OK;
-	}
-
-	if (!vmm_smp_is_bootcpu()) {
-		goto disable_irqs;
 	}
 
 	intc.domain = vmm_host_irqdomain_add(node, 0, RISCV_IRQ_COUNT,
@@ -184,12 +196,7 @@ static int __cpuinit riscv_intc_init(struct vmm_devtree_node *node)
 
 	vmm_host_irq_set_active_callback(riscv_intc_active_irq);
 
-disable_irqs:
-	/* Disable and clear all per-CPU interupts */
-	csr_write(sie, 0UL);
-	csr_write(sip, 0UL);
-
-	return VMM_OK;
+	return vmm_cpuhp_register(&riscv_intc_cpuhp, TRUE);
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(riscvintc, "riscv,cpu-intc", riscv_intc_init);

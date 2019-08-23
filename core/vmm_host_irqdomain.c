@@ -444,7 +444,7 @@ void vmm_host_irqdomain_remove(struct vmm_host_irqdomain *domain)
 	vmm_free(domain);
 }
 
-int __cpuinit vmm_host_irqdomain_init(void)
+int __init vmm_host_irqdomain_init(void)
 {
 	memset(&idctrl, 0, sizeof(struct vmm_host_irqdomain_ctrl));
 	INIT_RW_LOCK(&idctrl.lock);

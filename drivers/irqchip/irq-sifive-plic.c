@@ -27,6 +27,7 @@
 #include <vmm_compiler.h>
 #include <vmm_stdio.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_heap.h>
 #include <vmm_spinlocks.h>
 #include <vmm_resource.h>
@@ -279,8 +280,7 @@ static struct vmm_host_irqdomain_ops plic_ops = {
 	.xlate = vmm_host_irqdomain_xlate_onecell,
 };
 
-static void __cpuinit plic_context_init(struct plic_context *cntx,
-					struct vmm_devtree_node *node)
+static void plic_context_init(struct plic_context *cntx)
 {
 	/* Check if context is present */
 	if (!cntx->present) {
@@ -297,13 +297,13 @@ static void __cpuinit plic_context_init(struct plic_context *cntx,
 	vmm_writel(0, cntx->reg_base + CONTEXT_THRESHOLD);
 }
 
-static int __cpuinit plic_cpu_init(struct vmm_devtree_node *node)
+static int plic_cpu_init(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int i, rc;
 	struct plic_context *cntx;
 	unsigned long hart;
 
-	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hart);
+	rc = vmm_smp_map_hwid(cpu, &hart);
 	if (rc)
 		return rc;
 
@@ -311,22 +311,24 @@ static int __cpuinit plic_cpu_init(struct vmm_devtree_node *node)
 		cntx = &plic.contexts[i];
 		if (cntx->target_hart != hart)
 			continue;
-		plic_context_init(cntx, node);
+		plic_context_init(cntx);
 	}
 
 	return VMM_OK;
 }
 
-static int __cpuinit plic_init(struct vmm_devtree_node *node)
+static struct vmm_cpuhp_notify plic_cpuhp = {
+	.name = "PLIC",
+	.state = VMM_CPUHP_STATE_HOST_IRQ,
+	.startup = plic_cpu_init,
+};
+
+static int __init plic_init(struct vmm_devtree_node *node)
 {
 	int i, j, rc, hwirq, hirq;
 	physical_addr_t hart_id;
 	struct plic_context *cntx;
 	struct vmm_devtree_phandle_args oirq;
-
-	if (!vmm_smp_is_bootcpu()) {
-		goto cpu_init;
-	}
 
 	/* Find number of devices */
 	if (vmm_devtree_read_u32(node, "riscv,ndev", &plic.ndev)) {
@@ -451,8 +453,7 @@ static int __cpuinit plic_init(struct vmm_devtree_node *node)
 	vmm_init_printf("plic: devices=%d contexts=%d/%d\n",
 			plic.ndev, plic.ncontexts_avail, plic.ncontexts);
 
-cpu_init:
-	return plic_cpu_init(node);
+	return vmm_cpuhp_register(&plic_cpuhp, TRUE);
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(riscvplic, "riscv,plic0", plic_init);

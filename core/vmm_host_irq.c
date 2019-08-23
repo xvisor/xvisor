@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <vmm_host_irq.h>
@@ -36,7 +37,6 @@ struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
 	struct vmm_host_irq *irq;
 	u32 (*active)(u32);
-	const struct vmm_devtree_nodeid *matches;
 	struct vmm_cpumask default_affinity;
 };
 
@@ -290,8 +290,8 @@ void *vmm_host_irq_get_handler_data(u32 hirq)
 	return irq->handler_data;
 }
 
-int vmm_host_irq_set_affinity(u32 hirq, 
-			      const struct vmm_cpumask *dest, 
+int vmm_host_irq_set_affinity(u32 hirq,
+			      const struct vmm_cpumask *dest,
 			      bool force)
 {
 	int rc = VMM_OK;
@@ -596,7 +596,7 @@ static int host_irq_register(struct vmm_host_irq *irq,
 	return VMM_OK;
 }
 
-int vmm_host_irq_register(u32 hirq, 
+int vmm_host_irq_register(u32 hirq,
 			  const char *name,
 			  vmm_host_irq_function_t func,
 			  void *dev)
@@ -691,36 +691,13 @@ int vmm_host_irq_unregister(u32 hirq, void *dev)
 	return VMM_OK;
 }
 
-int __cpuinit __weak arch_host_irq_init(void)
+int __weak arch_host_irq_init(void)
 {
 	/* Default weak implementation in-case
 	 * architecture does not provide one.
 	 */
 	return VMM_OK;
 }
-
-static void __cpuinit host_irq_nidtbl_found(struct vmm_devtree_node *node,
-					const struct vmm_devtree_nodeid *match,
-					void *data)
-{
-	int err;
-	vmm_host_irq_init_t init_fn = match->data;
-
-	if (!init_fn) {
-		return;
-	}
-
-	err = init_fn(node);
-#ifdef CONFIG_VERBOSE_MODE
-	if (err) {
-		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n", 
-			   __func__, vmm_smp_processor_id(), node->name, err);
-	}
-#else
-	(void)err;
-#endif
-}
-
 
 /**
  * Initialize a vmm_host_irq structure
@@ -754,65 +731,13 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 	}
 }
 
-int __cpuinit vmm_host_irq_init(void)
+static int host_irq_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int ret;
-	u32 ite;
-
-	if (vmm_smp_is_bootcpu()) {
-		/* Clear the memory of control structure */
-		memset(&hirqctrl, 0, sizeof(hirqctrl));
-
-		/* Initialize spin lock */
-		INIT_SPIN_LOCK(&hirqctrl.lock);
-		
-		/* Setup default host IRQ affinity */
-		vmm_cpumask_setall(&hirqctrl.default_affinity);
-
-		/* Allocate memory for irq array */
-		hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) * 
-					  CONFIG_HOST_IRQ_COUNT);
-
-		if (!hirqctrl.irq) {
-			return VMM_ENOMEM;
-		}
-
-		/* Reset the handler array */
-		for (ite = 0; ite < CONFIG_HOST_IRQ_COUNT; ite++) {
-			__vmm_host_irq_init_desc(&hirqctrl.irq[ite],
-						 ite, ite, 0);
-		}
-
-		/* Determine clockchip matches from nodeid table */
-		hirqctrl.matches = 
-			vmm_devtree_nidtbl_create_matches("host_irq");
-
-		/* Initialize extended host IRQs */
-		ret = vmm_host_irqext_init();
-		if (ret != VMM_OK) {
-			return ret;
-		}
-
-		/* Initialize host IRQ Domains */
-		ret = vmm_host_irqdomain_init();
-		if (ret != VMM_OK) {
-			return ret;
-		}
-	}
 
 	/* Initialize board specific PIC */
 	if ((ret = arch_host_irq_init())) {
 		return ret;
-	}
-
-	/* Probe all device tree nodes matching 
-	 * host irq nodeid table enteries.
-	 */
-	if (hirqctrl.matches) {
-		vmm_devtree_iterate_matching(NULL,
-					     hirqctrl.matches,
-					     host_irq_nidtbl_found,
-					     NULL);
 	}
 
 	/* Setup interrupts in CPU */
@@ -824,4 +749,87 @@ int __cpuinit vmm_host_irq_init(void)
 	arch_cpu_irq_enable();
 
 	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify host_irq_cpuhp = {
+	.name = "HOST_IRQ",
+	.state = VMM_CPUHP_STATE_HOST_IRQ,
+	.startup = host_irq_startup,
+};
+
+static void __init host_irq_nidtbl_found(struct vmm_devtree_node *node,
+					const struct vmm_devtree_nodeid *match,
+					void *data)
+{
+	int err;
+	vmm_host_irq_init_t init_fn = match->data;
+
+	if (!init_fn) {
+		return;
+	}
+
+	err = init_fn(node);
+#ifdef CONFIG_VERBOSE_MODE
+	if (err) {
+		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n",
+			   __func__, vmm_smp_processor_id(), node->name, err);
+	}
+#else
+	(void)err;
+#endif
+}
+
+int __init vmm_host_irq_init(void)
+{
+	int ret;
+	u32 ite;
+	const struct vmm_devtree_nodeid *matches;
+
+	/* Clear the memory of control structure */
+	memset(&hirqctrl, 0, sizeof(hirqctrl));
+
+	/* Initialize spin lock */
+	INIT_SPIN_LOCK(&hirqctrl.lock);
+
+	/* Setup default host IRQ affinity */
+	vmm_cpumask_setall(&hirqctrl.default_affinity);
+
+	/* Allocate memory for irq array */
+	hirqctrl.irq = vmm_malloc(sizeof(struct vmm_host_irq) *
+				  CONFIG_HOST_IRQ_COUNT);
+
+	if (!hirqctrl.irq) {
+		return VMM_ENOMEM;
+	}
+
+	/* Reset the handler array */
+	for (ite = 0; ite < CONFIG_HOST_IRQ_COUNT; ite++) {
+		__vmm_host_irq_init_desc(&hirqctrl.irq[ite],
+					 ite, ite, 0);
+	}
+
+	/* Initialize extended host IRQs */
+	ret = vmm_host_irqext_init();
+	if (ret != VMM_OK) {
+		return ret;
+	}
+
+	/* Initialize host IRQ Domains */
+	ret = vmm_host_irqdomain_init();
+	if (ret != VMM_OK) {
+		return ret;
+	}
+
+	/* Probe all device tree nodes matching
+	 * host irq nodeid table enteries.
+	 */
+	matches = vmm_devtree_nidtbl_create_matches("host_irq");
+	if (matches) {
+		vmm_devtree_iterate_matching(NULL, matches,
+					     host_irq_nidtbl_found,
+					     NULL);
+	}
+
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&host_irq_cpuhp, TRUE);
 }

@@ -287,7 +287,7 @@ done:
 	return rc;
 }
 
-int __cpuinit vmm_host_irqext_init(void)
+int __init vmm_host_irqext_init(void)
 {
 	memset(&iectrl, 0, sizeof (struct vmm_host_irqext_ctrl));
 	INIT_RW_LOCK(&iectrl.lock);

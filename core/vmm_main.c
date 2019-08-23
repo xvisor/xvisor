@@ -680,12 +680,6 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
-	/* Initialize host interrupts */
-	ret = vmm_host_irq_init();
-	if (ret) {
-		vmm_hang();
-	}
-
 	/* Initialize clockchip manager */
 	ret = vmm_clockchip_init();
 	if (ret) {

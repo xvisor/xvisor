@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -52,6 +52,7 @@
 #include <vmm_macros.h>
 #include <vmm_smp.h>
 #include <vmm_cpumask.h>
+#include <vmm_cpuhp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
@@ -142,7 +143,7 @@ static int gic_set_type(struct vmm_host_irq *d, u32 type)
 		return VMM_EINVALID;
 	}
 
-	if (type != VMM_IRQ_TYPE_LEVEL_HIGH && 
+	if (type != VMM_IRQ_TYPE_LEVEL_HIGH &&
 	    type != VMM_IRQ_TYPE_EDGE_RISING) {
 		return VMM_EINVALID;
 	}
@@ -283,8 +284,8 @@ static void __init gic_cascade_irq(u32 gic_nr, u32 irq)
 {
 	if (gic_nr >= GIC_MAX_NR)
 		BUG();
-	if (vmm_host_irq_register(irq, "GIC-CHILD", 
-				  gic_handle_cascade_irq, 
+	if (vmm_host_irq_register(irq, "GIC-CHILD",
+				  gic_handle_cascade_irq,
 				  &gic_data[gic_nr])) {
 		BUG();
 	}
@@ -335,7 +336,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	/*
 	 * Setup the Host IRQ subsystem.
 	 * Note: We handle all interrupts including SGIs and PPIs via C code.
-	 * The Linux kernel handles pheripheral interrupts via C code and 
+	 * The Linux kernel handles pheripheral interrupts via C code and
 	 * SGI/PPI via assembly code.
 	 */
 	for (i = 0; i < gic->max_irqs; i++) {
@@ -360,7 +361,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	gic_write(1, base + GICD_CTRL);
 }
 
-static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
+static void gic_cpu_init(struct gic_chip_data *gic)
 {
 	int i;
 
@@ -374,7 +375,7 @@ static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
 	 * Set priority on PPI and SGI interrupts
 	 */
 	for (i = 0; i < 32; i += 4) {
-		gic_write(0xa0a0a0a0, 
+		gic_write(0xa0a0a0a0,
 			  gic->dist_base + GICD_PRI + i * 4 / 4);
 	}
 
@@ -410,6 +411,19 @@ static int gic_of_xlate(struct vmm_host_irqdomain *d,
 
 static struct vmm_host_irqdomain_ops gic_ops = {
 	.xlate = gic_of_xlate,
+};
+
+static int gic_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+{
+	gic_cpu_init(&gic_data[0]);
+
+	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify gic_cpuhp = {
+	.name = "GIC",
+	.state = VMM_CPUHP_STATE_HOST_IRQ,
+	.startup = gic_startup,
 };
 
 static int __init gic_init_bases(struct vmm_devtree_node *node,
@@ -457,13 +471,6 @@ static int __init gic_init_bases(struct vmm_devtree_node *node,
 	gic_cpu_init(gic);
 
 	return VMM_OK;
-}
-
-static void __cpuinit gic_secondary_init(u32 gic_nr)
-{
-	BUG_ON(gic_nr >= GIC_MAX_NR);
-
-	gic_cpu_init(&gic_data[gic_nr]);
 }
 
 static int __init gic_devtree_init(struct vmm_devtree_node *node,
@@ -523,35 +530,17 @@ static int __init gic_devtree_init(struct vmm_devtree_node *node,
 
 	gic_cnt++;
 
-	return VMM_OK;
+	return vmm_cpuhp_register(&gic_cpuhp, FALSE);
 }
 
-static int __cpuinit gic_init(struct vmm_devtree_node *node)
+static int __init gic_init(struct vmm_devtree_node *node)
 {
-	int rc;
-
-	if (vmm_smp_is_bootcpu()) {
-		rc = gic_devtree_init(node, NULL, FALSE);
-	} else {
-		gic_secondary_init(0);
-		rc = VMM_OK;
-	}
-
-	return rc;
+	return gic_devtree_init(node, NULL, FALSE);
 }
 
-static int __cpuinit gic_eoimode_init(struct vmm_devtree_node *node)
+static int __init gic_eoimode_init(struct vmm_devtree_node *node)
 {
-	int rc;
-
-	if (vmm_smp_is_bootcpu()) {
-		rc = gic_devtree_init(node, NULL, TRUE);
-	} else {
-		gic_secondary_init(0);
-		rc = VMM_OK;
-	}
-
-	return rc;
+	return gic_devtree_init(node, NULL, TRUE);
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(rvgic, "arm,realview-gic", gic_init);

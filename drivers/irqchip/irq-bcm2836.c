@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -250,7 +250,7 @@ static struct vmm_host_irqdomain_ops bcm2836_intc_ops = {
 	.xlate = vmm_host_irqdomain_xlate_onecell,
 };
 
-static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
+static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
 {
 	int rc, i;
 	u32 irq_start = 0;

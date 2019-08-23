@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -196,8 +196,8 @@ static struct vmm_host_irqdomain_ops bcm283x_intc_ops = {
 	.xlate = bcm283x_intc_xlate,
 };
 
-static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
-					bool is_bcm2836)
+static int __init bcm283x_intc_init(struct vmm_devtree_node *node,
+				    bool is_bcm2836)
 {
 	int rc, irq;
 	u32 b, i = 0, irq_start = 0;
@@ -256,7 +256,7 @@ static int __cpuinit bcm283x_intc_init(struct vmm_devtree_node *node,
 	return 0;
 }
 
-static int __cpuinit bcm2835_intc_init(struct vmm_devtree_node *node)
+static int __init bcm2835_intc_init(struct vmm_devtree_node *node)
 {
 	return bcm283x_intc_init(node, FALSE);
 }
@@ -265,7 +265,7 @@ VMM_HOST_IRQ_INIT_DECLARE(bcm2835intc,
 			  "brcm,bcm2835-armctrl-ic",
 			  bcm2835_intc_init);
 
-static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
+static int __init bcm2836_intc_init(struct vmm_devtree_node *node)
 {
 	return bcm283x_intc_init(node, TRUE);
 }
@@ -273,4 +273,3 @@ static int __cpuinit bcm2836_intc_init(struct vmm_devtree_node *node)
 VMM_HOST_IRQ_INIT_DECLARE(bcm2836intc,
 			  "brcm,bcm2836-armctrl-ic",
 			  bcm2836_intc_init);
-
