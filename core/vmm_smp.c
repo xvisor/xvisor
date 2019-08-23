@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -25,6 +25,7 @@
 #include <vmm_limits.h>
 #include <vmm_percpu.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_delay.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
@@ -59,15 +60,15 @@ bool vmm_smp_is_bootcpu(void)
 	return (smp_bootcpu_id == vmm_smp_processor_id()) ? TRUE : FALSE;
 }
 
-/* Theoretically, number of host CPUs making Sync IPI 
- * simultaneously to a host CPU should not be more than 
+/* Theoretically, number of host CPUs making Sync IPI
+ * simultaneously to a host CPU should not be more than
  * maximum possible hardware CPUs but, we keep minimum
  * Sync IPIs per host CPU to max possible VCPUs.
  */
 #define SMP_IPI_MAX_SYNC_PER_CPU	(CONFIG_MAX_VCPU_COUNT)
 
 /* Various trials show that having minimum of 64 Async IPI
- * per host CPU is good enough. If we require to increase 
+ * per host CPU is good enough. If we require to increase
  * this limit then we should have a config option.
  */
 #define SMP_IPI_MAX_ASYNC_PER_CPU	(64)
@@ -99,7 +100,7 @@ struct smp_ipi_ctrl {
 
 static DEFINE_PER_CPU(struct smp_ipi_ctrl, ictl);
 
-static void smp_ipi_sync_submit(struct smp_ipi_ctrl *ictlp, 
+static void smp_ipi_sync_submit(struct smp_ipi_ctrl *ictlp,
 				struct smp_ipi_call *ipic)
 {
 	int try;
@@ -122,7 +123,7 @@ static void smp_ipi_sync_submit(struct smp_ipi_ctrl *ictlp,
 	arch_smp_ipi_trigger(vmm_cpumask_of(ipic->dst_cpu));
 }
 
-static void smp_ipi_async_submit(struct smp_ipi_ctrl *ictlp, 
+static void smp_ipi_async_submit(struct smp_ipi_ctrl *ictlp,
 				 struct smp_ipi_call *ipic)
 {
 	int try;
@@ -273,15 +274,14 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 	return rc;
 }
 
-int __cpuinit vmm_smp_ipi_init(void)
+static int smp_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int rc;
 	char vcpu_name[VMM_FIELD_NAME_SIZE];
-	u32 cpu = vmm_smp_processor_id();
-	struct smp_ipi_ctrl *ictlp = &this_cpu(ictl);
+	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
 
 	/* Initialize Sync IPI FIFO */
-	ictlp->sync_fifo = fifo_alloc(sizeof(struct smp_ipi_call), 
+	ictlp->sync_fifo = fifo_alloc(sizeof(struct smp_ipi_call),
 					   SMP_IPI_MAX_SYNC_PER_CPU);
 	if (!ictlp->sync_fifo) {
 		rc = VMM_ENOMEM;
@@ -289,7 +289,7 @@ int __cpuinit vmm_smp_ipi_init(void)
 	}
 
 	/* Initialize Async IPI FIFO */
-	ictlp->async_fifo = fifo_alloc(sizeof(struct smp_ipi_call), 
+	ictlp->async_fifo = fifo_alloc(sizeof(struct smp_ipi_call),
 					   SMP_IPI_MAX_ASYNC_PER_CPU);
 	if (!ictlp->async_fifo) {
 		rc = VMM_ENOMEM;
@@ -304,7 +304,7 @@ int __cpuinit vmm_smp_ipi_init(void)
 	ictlp->async_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
 						(virtual_addr_t)&smp_ipi_main,
 						IPI_VCPU_STACK_SZ,
-						IPI_VCPU_PRIORITY, 
+						IPI_VCPU_PRIORITY,
 						IPI_VCPU_TIMESLICE,
 						IPI_VCPU_DEADLINE,
 						IPI_VCPU_PERIODICITY,
@@ -338,3 +338,14 @@ fail:
 	return rc;
 }
 
+static struct vmm_cpuhp_notify smp_ipi_cpuhp = {
+	.name = "SMP_IPI",
+	.state = VMM_CPUHP_STATE_SMP_IPI,
+	.startup = smp_ipi_startup,
+};
+
+int __init vmm_smp_ipi_init(void)
+{
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&smp_ipi_cpuhp, TRUE);
+}
