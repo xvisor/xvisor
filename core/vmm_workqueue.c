@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_heap.h>
 #include <vmm_delay.h>
 #include <vmm_stdio.h>
@@ -230,7 +231,7 @@ int vmm_workqueue_flush(struct vmm_workqueue *wq)
 	return VMM_OK;
 }
 
-int vmm_workqueue_schedule_work(struct vmm_workqueue *wq, 
+int vmm_workqueue_schedule_work(struct vmm_workqueue *wq,
 				struct vmm_work *work)
 {
 	irq_flags_t flags, flags1;
@@ -272,7 +273,7 @@ static void delayed_work_timer_event(struct vmm_timer_event *ev)
 	vmm_workqueue_schedule_work(work->work.wq, &work->work);
 }
 
-int vmm_workqueue_schedule_delayed_work(struct vmm_workqueue *wq, 
+int vmm_workqueue_schedule_delayed_work(struct vmm_workqueue *wq,
 					struct vmm_delayed_work *work,
 					u64 nsecs)
 {
@@ -309,7 +310,7 @@ static int workqueue_main(void *data)
 		vmm_completion_wait(&wq->work_avail);
 
 		vmm_spin_lock_irqsave(&wq->lock, flags);
-		
+
 		while (!list_empty(&wq->work_list)) {
 			work = list_first_entry(&wq->work_list,
 						struct vmm_work, head);
@@ -360,7 +361,7 @@ struct vmm_workqueue *vmm_workqueue_create(const char *name, u8 priority)
 	INIT_LIST_HEAD(&wq->work_list);
 	INIT_COMPLETION(&wq->work_avail);
 
-	wq->thread = vmm_threads_create(name, workqueue_main, wq, 
+	wq->thread = vmm_threads_create(name, workqueue_main, wq,
 					priority, VMM_THREAD_DEF_TIME_SLICE);
 	if (!wq->thread) {
 		vmm_free(wq);
@@ -412,24 +413,9 @@ int vmm_workqueue_destroy(struct vmm_workqueue *wq)
 	return VMM_OK;
 }
 
-int __cpuinit vmm_workqueue_init(void)
+static int workqueue_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	char syswq_name[VMM_FIELD_NAME_SIZE];
-	u32 cpu = vmm_smp_processor_id();
-
-	if (vmm_smp_is_bootcpu()) {
-		/* Reset control structure */
-		memset(&wqctrl, 0, sizeof(wqctrl));
-
-		/* Initialize lock in control structure */
-		INIT_SPIN_LOCK(&wqctrl.lock);
-
-		/* Initialize workqueue list */
-		INIT_LIST_HEAD(&wqctrl.wq_list);
-
-		/* Initialize workqueue count */
-		wqctrl.wq_count = 0;
-	}
 
 	/* Create one system workqueue with thread priority
 	 * as default priority.
@@ -443,4 +429,28 @@ int __cpuinit vmm_workqueue_init(void)
 
 	return vmm_threads_set_affinity(wqctrl.syswq[cpu]->thread,
 					vmm_cpumask_of(cpu));
+}
+
+static struct vmm_cpuhp_notify workqueue_cpuhp = {
+	.name = "WORKQUEUE",
+	.state = VMM_CPUHP_STATE_WORKQUEUE,
+	.startup = workqueue_startup,
+};
+
+int __init vmm_workqueue_init(void)
+{
+	/* Reset control structure */
+	memset(&wqctrl, 0, sizeof(wqctrl));
+
+	/* Initialize lock in control structure */
+	INIT_SPIN_LOCK(&wqctrl.lock);
+
+	/* Initialize workqueue list */
+	INIT_LIST_HEAD(&wqctrl.wq_list);
+
+	/* Initialize workqueue count */
+	wqctrl.wq_count = 0;
+
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&workqueue_cpuhp, TRUE);
 }
