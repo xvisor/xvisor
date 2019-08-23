@@ -663,11 +663,6 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
-	/* This function should not be called by Boot CPU */
-	if (vmm_smp_is_bootcpu()) {
-		vmm_hang();
-	}
-
 	/* Initialize host virtual address space */
 	ret = vmm_host_aspace_init();
 	if (ret) {
