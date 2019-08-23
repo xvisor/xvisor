@@ -680,12 +680,6 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
-	/* Initialize hypervisor timer */
-	ret = vmm_timer_init();
-	if (ret) {
-		vmm_hang();
-	}
-
 	/* Initialize soft delay */
 	ret = vmm_delay_init();
 	if (ret) {

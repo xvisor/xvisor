@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_percpu.h>
 #include <vmm_heap.h>
 #include <vmm_stdio.h>
@@ -45,6 +46,8 @@ struct vmm_timer_local_ctrl {
 };
 
 static DEFINE_PER_CPU(struct vmm_timer_local_ctrl, tlc);
+
+static struct vmm_timecounter ref_tc;
 
 u32 vmm_timer_clocksource_frequency(void)
 {
@@ -125,7 +128,7 @@ static void __timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 	}
 
 	/* Retrieve first event from list of active events */
-	e = list_entry(list_first(&tlcp->event_list), 
+	e = list_entry(list_first(&tlcp->event_list),
 		       struct vmm_timer_event,
 		       active_head);
 
@@ -134,7 +137,7 @@ static void __timer_schedule_next_event(struct vmm_timer_local_ctrl *tlcp)
 	tstamp = vmm_timer_timestamp();
 	if (tstamp < e->expiry_tstamp) {
 		tlcp->next_event = e->expiry_tstamp;
-		vmm_clockchip_program_event(tlcp->cc, 
+		vmm_clockchip_program_event(tlcp->cc,
 				    tstamp, e->expiry_tstamp);
 	} else {
 		tlcp->next_event = tstamp;
@@ -163,7 +166,7 @@ static void __timer_event_stop(struct vmm_timer_event *ev)
 	vmm_write_unlock_irqrestore_lite(&tlcp->event_list_lock, flags);
 }
 
-/* This is called from interrupt context. We need to protect the 
+/* This is called from interrupt context. We need to protect the
  * event list when manipulating it.
  */
 static void timer_clockchip_event_handler(struct vmm_clockchip *cc)
@@ -351,12 +354,10 @@ void vmm_timer_stop(void)
 	tlcp->started = FALSE;
 }
 
-int __cpuinit vmm_timer_init(void)
+static int timer_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int rc;
-	u32 cpu = vmm_smp_processor_id();
-	struct vmm_clocksource *cs;
-	struct vmm_timer_local_ctrl *tlcp = &this_cpu(tlc);
+	struct vmm_timer_local_ctrl *tlcp = &per_cpu(tlc, cpu);
 
 	/* Clear timer control structure */
 	memset(tlcp, 0, sizeof(*tlcp));
@@ -380,35 +381,47 @@ int __cpuinit vmm_timer_init(void)
 	}
 
 	/* Update event handler of clockchip */
-	vmm_clockchip_set_event_handler(tlcp->cc, 
+	vmm_clockchip_set_event_handler(tlcp->cc,
 					&timer_clockchip_event_handler);
 
-	if (vmm_smp_is_bootcpu()) {
-		/* Find suitable clocksource */
-		if (!(cs = vmm_clocksource_best())) {
-			vmm_printf("%s: No clocksource found\n", __func__);
-			return VMM_ENODEV;
-		}
-
-		/* Initialize timecounter wrapper */
-		if ((rc = vmm_timecounter_init(&tlcp->tc, cs, 0))) {
-			return rc;
-		}
-
-		/* Start timecounter */
-		if ((rc = vmm_timecounter_start(&tlcp->tc))) {
-			return rc;
-		}
-	} else {
-		/* Initialize timecounter wrapper of secondary CPUs
-		 * such that time stamps visible on all CPUs is same;
-		 */
-		if ((rc = vmm_timecounter_init(&tlcp->tc, 
-			per_cpu(tlc, 0).tc.cs, 
-			vmm_timecounter_read(&per_cpu(tlc, 0).tc)))) {
-			return rc;
-		}
+	/* Initialize timecounter wrapper of secondary CPUs
+	 * such that time stamps visible on all CPUs is same;
+	 */
+	if ((rc = vmm_timecounter_init(&tlcp->tc,
+			ref_tc.cs, vmm_timecounter_read(&ref_tc)))) {
+		return rc;
 	}
 
 	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify timer_cpuhp = {
+	.name = "TIMER",
+	.state = VMM_CPUHP_STATE_TIMER,
+	.startup = timer_startup,
+};
+
+int __init vmm_timer_init(void)
+{
+	int rc;
+	struct vmm_clocksource *cs;
+
+	/* Find suitable clocksource */
+	if (!(cs = vmm_clocksource_best())) {
+		vmm_printf("%s: No clocksource found\n", __func__);
+		return VMM_ENODEV;
+	}
+
+	/* Initialize reference timecounter wrapper */
+	if ((rc = vmm_timecounter_init(&ref_tc, cs, 0))) {
+		return rc;
+	}
+
+	/* Start reference timecounter */
+	if ((rc = vmm_timecounter_start(&ref_tc))) {
+		return rc;
+	}
+
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&timer_cpuhp, TRUE);
 }
