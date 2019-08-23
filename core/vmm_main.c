@@ -680,12 +680,6 @@ static void __cpuinit init_secondary(void)
 		vmm_hang();
 	}
 
-	/* Initialize hypervisor scheduler */
-	ret = vmm_scheduler_init();
-	if (ret) {
-		vmm_hang();
-	}
-
 	/* Initialize inter-processor interrupts */
 	ret = vmm_smp_ipi_init();
 	if (ret) {

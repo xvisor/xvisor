@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -25,6 +25,7 @@
 #include <vmm_smp.h>
 #include <vmm_percpu.h>
 #include <vmm_cpumask.h>
+#include <vmm_cpuhp.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <vmm_timer.h>
@@ -938,12 +939,11 @@ static void idle_orphan(void)
 	}
 }
 
-int __cpuinit vmm_scheduler_init(void)
+static int scheduler_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int rc;
 	char vcpu_name[VMM_FIELD_NAME_SIZE];
-	u32 cpu = vmm_smp_processor_id();
-	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+	struct vmm_scheduler_ctrl *schedp = &per_cpu(sched, cpu);
 
 	/* Reset the scheduler control structure */
 	memset(schedp, 0, sizeof(struct vmm_scheduler_ctrl));
@@ -1014,4 +1014,16 @@ int __cpuinit vmm_scheduler_init(void)
 	vmm_timer_event_start(&schedp->sample_ev, SAMPLE_EVENT_PERIOD);
 
 	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify scheduler_cpuhp = {
+	.name = "SCHEDULER",
+	.state = VMM_CPUHP_STATE_SCHEDULER,
+	.startup = scheduler_startup,
+};
+
+int __init vmm_scheduler_init(void)
+{
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&scheduler_cpuhp, TRUE);
 }
