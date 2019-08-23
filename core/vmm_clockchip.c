@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -25,6 +25,7 @@
 #include <vmm_limits.h>
 #include <vmm_spinlocks.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_irq.h>
 #include <vmm_clockchip.h>
@@ -34,7 +35,6 @@
 struct vmm_clockchip_ctrl {
 	vmm_spinlock_t lock;
 	struct dlist clkchip_list;
-	const struct vmm_devtree_nodeid *clkchip_matches;
 };
 
 static struct vmm_clockchip_ctrl ccctrl;
@@ -44,7 +44,7 @@ static void default_event_handler(struct vmm_clockchip *cc)
 	/* Just ignore. Do nothing. */
 }
 
-void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc, 
+void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc,
 		void (*event_handler) (struct vmm_clockchip *))
 {
 	if (cc && event_handler) {
@@ -52,7 +52,7 @@ void vmm_clockchip_set_event_handler(struct vmm_clockchip *cc,
 	}
 }
 
-int vmm_clockchip_program_event(struct vmm_clockchip *cc, 
+int vmm_clockchip_program_event(struct vmm_clockchip *cc,
 				u64 now_ns, u64 expires_ns)
 {
 	unsigned long long clc;
@@ -79,7 +79,7 @@ int vmm_clockchip_program_event(struct vmm_clockchip *cc,
 	return cc->set_next_event((unsigned long) clc, cc);
 }
 
-void vmm_clockchip_set_mode(struct vmm_clockchip *cc, 
+void vmm_clockchip_set_mode(struct vmm_clockchip *cc,
 			    enum vmm_clockchip_mode mode)
 {
 	if (cc && cc->mode != mode) {
@@ -272,7 +272,7 @@ u32 vmm_clockchip_count(void)
 	return retval;
 }
 
-int __cpuinit __weak arch_clockchip_init(void)
+int __weak arch_clockchip_init(void)
 {
 	/* Default weak implementation in-case
 	 * architecture does not provide one.
@@ -280,7 +280,7 @@ int __cpuinit __weak arch_clockchip_init(void)
 	return VMM_OK;
 }
 
-static void __cpuinit clockchip_nidtbl_found(struct vmm_devtree_node *node,
+static void __init clockchip_nidtbl_found(struct vmm_devtree_node *node,
 					const struct vmm_devtree_nodeid *match,
 					void *data)
 {
@@ -294,7 +294,7 @@ static void __cpuinit clockchip_nidtbl_found(struct vmm_devtree_node *node,
 	err = init_fn(node);
 #ifdef CONFIG_VERBOSE_MODE
 	if (err) {
-		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n", 
+		vmm_printf("%s: CPU%d Init %s node failed (error %d)\n",
 			   __func__, vmm_smp_processor_id(), node->name, err);
 	}
 #else
@@ -302,36 +302,43 @@ static void __cpuinit clockchip_nidtbl_found(struct vmm_devtree_node *node,
 #endif
 }
 
-int __cpuinit vmm_clockchip_init(void)
+static int clockchip_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int rc;
-
-	if (vmm_smp_is_bootcpu()) {
-		/* Initialize clockchip list lock */
-		INIT_SPIN_LOCK(&ccctrl.lock);
-
-		/* Initialize clockchip list */
-		INIT_LIST_HEAD(&ccctrl.clkchip_list);
-
-		/* Determine clockchip matches from nodeid table */
-		ccctrl.clkchip_matches = 
-			vmm_devtree_nidtbl_create_matches("clockchip");
-	}
 
 	/* Initialize arch specific clockchips */
 	if ((rc = arch_clockchip_init())) {
 		return rc;
 	}
 
-	/* Probe all device tree nodes matching 
+	return VMM_OK;
+}
+
+static struct vmm_cpuhp_notify clockchip_cpuhp = {
+	.name = "CLOCKCHIP",
+	.state = VMM_CPUHP_STATE_CLOCKCHIP,
+	.startup = clockchip_startup,
+};
+
+int __init vmm_clockchip_init(void)
+{
+	const struct vmm_devtree_nodeid *clkchip_matches;
+
+	/* Initialize clockchip list lock */
+	INIT_SPIN_LOCK(&ccctrl.lock);
+
+	/* Initialize clockchip list */
+	INIT_LIST_HEAD(&ccctrl.clkchip_list);
+
+	/* Probe all device tree nodes matching
 	 * clockchip nodeid table enteries.
 	 */
-	if (ccctrl.clkchip_matches) {
-		vmm_devtree_iterate_matching(NULL,
-					     ccctrl.clkchip_matches,
-					     clockchip_nidtbl_found,
-					     NULL);
+	clkchip_matches = vmm_devtree_nidtbl_create_matches("clockchip");
+	if (clkchip_matches) {
+		vmm_devtree_iterate_matching(NULL, clkchip_matches,
+					     clockchip_nidtbl_found, NULL);
 	}
 
-	return VMM_OK;
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&clockchip_cpuhp, TRUE);
 }

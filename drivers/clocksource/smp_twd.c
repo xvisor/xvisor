@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_percpu.h>
 #include <vmm_devtree.h>
 #include <vmm_stdio.h>
@@ -117,9 +118,59 @@ static int twd_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static void __cpuinit twd_caliberate_freq(virtual_addr_t base, 
-					  virtual_addr_t ref_counter_addr,
-					  u32 ref_counter_freq)
+static int twd_clockchip_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+{
+	int rc;
+	struct twd_clockchip *cc = &this_cpu(twd_cc);
+
+	memset(cc, 0, sizeof(struct twd_clockchip));
+
+	vmm_sprintf(cc->name, "twd/%d", cpu);
+
+	cc->clkchip.name = cc->name;
+	cc->clkchip.hirq = twd_ppi_irq;
+	cc->clkchip.rating = 350;
+	cc->clkchip.cpumask = vmm_cpumask_of(cpu);
+	cc->clkchip.features =
+		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
+	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift,
+				   VMM_NSEC_PER_SEC, twd_freq_hz, 10);
+	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
+	cc->clkchip.max_delta_ns =
+			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
+	cc->clkchip.set_mode = &twd_clockchip_set_mode;
+	cc->clkchip.set_next_event = &twd_clockchip_set_next_event;
+	cc->clkchip.priv = cc;
+
+	/* Register interrupt handler */
+	if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
+					&twd_clockchip_irq_handler,
+					cc))) {
+		goto fail;
+	}
+
+	rc = vmm_clockchip_register(&cc->clkchip);
+	if (rc) {
+		goto fail_unreg_irq;
+	}
+
+	return VMM_OK;
+
+fail_unreg_irq:
+	vmm_host_irq_unregister(twd_ppi_irq, cc);
+fail:
+	return rc;
+}
+
+static struct vmm_cpuhp_notify twd_clockchip_cpuhp = {
+	.name = "SMP_TWD",
+	.state = VMM_CPUHP_STATE_CLOCKCHIP,
+	.startup = twd_clockchip_startup,
+};
+
+static void __init twd_caliberate_freq(virtual_addr_t base,
+					virtual_addr_t ref_counter_addr,
+					u32 ref_counter_freq)
 {
 	u32 i, count, ref_count;
 	u64 tmp;
@@ -151,13 +202,11 @@ static void __cpuinit twd_caliberate_freq(virtual_addr_t base,
 	twd_freq_hz = udiv64(tmp, ref_count);
 }
 
-static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
+static int __init twd_clockchip_init(struct vmm_devtree_node *node)
 {
-	int rc;
+	int rc = VMM_OK;
 	u32 ref_cnt_freq;
 	virtual_addr_t ref_cnt_addr;
-	u32 cpu = vmm_smp_processor_id();
-	struct twd_clockchip *cc = &this_cpu(twd_cc);
 
 	if (!twd_base) {
 		rc = vmm_devtree_request_regmap(node, &twd_base, 0,
@@ -203,47 +252,19 @@ static int __cpuinit twd_clockchip_init(struct vmm_devtree_node *node)
 				vmm_devtree_regunmap(node, ref_cnt_addr, 1);
 				goto fail_regunmap;
 			}
-			twd_caliberate_freq(twd_base, 
+			twd_caliberate_freq(twd_base,
 					ref_cnt_addr, ref_cnt_freq);
 			vmm_devtree_regunmap(node, ref_cnt_addr, 1);
 		}
 	}
 
-	memset(cc, 0, sizeof(struct twd_clockchip));
-
-	vmm_sprintf(cc->name, "twd/%d", cpu);
-
-	cc->clkchip.name = cc->name;
-	cc->clkchip.hirq = twd_ppi_irq;
-	cc->clkchip.rating = 350;
-	cc->clkchip.cpumask = vmm_cpumask_of(cpu);
-	cc->clkchip.features = 
-		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
-	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
-				   VMM_NSEC_PER_SEC, twd_freq_hz, 10);
-	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
-	cc->clkchip.max_delta_ns = 
-			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
-	cc->clkchip.set_mode = &twd_clockchip_set_mode;
-	cc->clkchip.set_next_event = &twd_clockchip_set_next_event;
-	cc->clkchip.priv = cc;
-
-	/* Register interrupt handler */
-	if ((rc = vmm_host_irq_register(twd_ppi_irq, "twd",
-					&twd_clockchip_irq_handler, 
-					cc))) {
-		goto fail_regunmap;
-	}
-
-	rc = vmm_clockchip_register(&cc->clkchip);
+	rc = vmm_cpuhp_register(&twd_clockchip_cpuhp, TRUE);
 	if (rc) {
-		goto fail_unreg_irq;
+		goto fail_regunmap;
 	}
 
 	return VMM_OK;
 
-fail_unreg_irq:
-	vmm_host_irq_unregister(twd_ppi_irq, cc);
 fail_regunmap:
 	vmm_devtree_regunmap_release(node, twd_base, 0);
 fail:
@@ -252,4 +273,3 @@ fail:
 VMM_CLOCKCHIP_INIT_DECLARE(ca9twd, "arm,cortex-a9-twd-timer", twd_clockchip_init);
 VMM_CLOCKCHIP_INIT_DECLARE(ca5twd, "arm,cortex-a5-twd-timer", twd_clockchip_init);
 VMM_CLOCKCHIP_INIT_DECLARE(arm11mptwd, "arm,arm11mp-twd-timer", twd_clockchip_init);
-

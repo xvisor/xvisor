@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -134,7 +134,7 @@ static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 	}
 	freq_hz = (u32)hz;
 
-	DPRINTF("%s: name=%s base=0x%08x freq_hz=%d\n", 
+	DPRINTF("%s: name=%s base=0x%08x freq_hz=%d\n",
 		__func__, node->name, base, freq_hz);
 
 	cs = vmm_zalloc(sizeof(struct sp804_clocksource));
@@ -148,7 +148,7 @@ static int __init sp804_clocksource_init(struct vmm_devtree_node *node)
 	cs->clksrc.read = &sp804_clocksource_read;
 	cs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	cs->clksrc.freq = freq_hz;
-	vmm_clocks_calc_mult_shift(&cs->clksrc.mult, &cs->clksrc.shift, 
+	vmm_clocks_calc_mult_shift(&cs->clksrc.mult, &cs->clksrc.shift,
 				   freq_hz, VMM_NSEC_PER_SEC, 10);
 	cs->clksrc.priv = cs;
 
@@ -216,7 +216,7 @@ static int sp804_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
+static int __init sp804_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	long hz;
@@ -224,10 +224,6 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	virtual_addr_t base;
 	struct clk *clk;
 	struct sp804_clockchip *cc;
-
-	if (!vmm_smp_is_bootcpu()) {
-		return VMM_ENODEV;
-	}
 
 	hirq = vmm_devtree_irq_parse_map(node, 0);
 	if (!hirq) {
@@ -272,13 +268,13 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	cc->clkchip.hirq = hirq;
 	cc->clkchip.rating = 300;
 	cc->clkchip.cpumask = cpu_all_mask;
-	cc->clkchip.features = 
+	cc->clkchip.features =
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	cc->clkchip.freq = freq_hz;
-	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift, 
+	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, freq_hz, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xF, &cc->clkchip);
-	cc->clkchip.max_delta_ns = 
+	cc->clkchip.max_delta_ns =
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &sp804_clockchip_set_mode;
 	cc->clkchip.set_next_event = &sp804_clockchip_set_next_event;
@@ -303,4 +299,3 @@ static int __cpuinit sp804_clockchip_init(struct vmm_devtree_node *node)
 	return VMM_OK;
 }
 VMM_CLOCKCHIP_INIT_DECLARE(sp804clkchip, "arm,sp804", sp804_clockchip_init);
-

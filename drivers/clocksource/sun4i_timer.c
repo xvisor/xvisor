@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -230,7 +230,7 @@ static void aw_clockchip_set_mode(enum vmm_clockchip_mode mode,
 	writel(ctrl, acc->base + AW_TMR_REG_CTL(acc->off));
 }
 
-static int aw_clockchip_set_next_event(unsigned long next, 
+static int aw_clockchip_set_next_event(unsigned long next,
 					struct vmm_clockchip *cc)
 {
 	u32 ctrl;
@@ -253,7 +253,7 @@ static int aw_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
+static int __init aw_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hirq, tmp;
@@ -321,8 +321,8 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 	acc->clkchip.name = "aw-clkchip";
 	acc->clkchip.hirq = hirq;
 	acc->clkchip.rating = 350;
-	acc->clkchip.cpumask = vmm_cpumask_of(0);
-	acc->clkchip.features = 
+	acc->clkchip.cpumask = cpu_all_mask;
+	acc->clkchip.features =
 		VMM_CLOCKCHIP_FEAT_PERIODIC | VMM_CLOCKCHIP_FEAT_ONESHOT;
 	acc->clkchip.freq = rate;
 	acc->clkchip.mult = vmm_clockchip_hz2mult(rate, 32);
@@ -357,4 +357,3 @@ static int __cpuinit aw_timer_clockchip_init(struct vmm_devtree_node *node)
 VMM_CLOCKCHIP_INIT_DECLARE(sun4iclkchip,
 			   "allwinner,sun4i-timer",
 			   aw_timer_clockchip_init);
-

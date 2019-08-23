@@ -23,12 +23,13 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_host_irq.h>
 #include <vmm_clockchip.h>
 #include <vmm_clocksource.h>
-#include <vmm_smp.h>
 #include <libs/mathlib.h>
 
 #include <cpu_hwcap.h>
@@ -140,26 +141,10 @@ static vmm_irq_return_t riscv_timer_handler(int irq, void *dev)
 	return VMM_IRQ_HANDLED;
 }
 
-static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
+static int riscv_timer_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	int rc;
-	u32 hart_id;
-	unsigned long hwid;
 	struct vmm_clockchip *cc;
-
-	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
-	if (rc) {
-		return rc;
-	}
-
-	rc = riscv_hart_of_timer(node, &hart_id);
-	if (rc) {
-		return rc;
-	}
-
-	if (hwid != hart_id) {
-		return VMM_OK;
-	}
 
 	/* Create riscv timer clockchip */
 	cc = vmm_zalloc(sizeof(struct vmm_clockchip));
@@ -169,7 +154,7 @@ static int __cpuinit riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 	cc->name = "riscv-timer";
 	cc->hirq = IRQ_S_TIMER;
 	cc->rating = 400;
-	cc->cpumask = vmm_cpumask_of(vmm_smp_processor_id());
+	cc->cpumask = vmm_cpumask_of(cpu);
 	cc->features = VMM_CLOCKCHIP_FEAT_ONESHOT;
 	cc->freq = riscv_timer_hz;
 	vmm_clocks_calc_mult_shift(&cc->mult, &cc->shift,
@@ -200,6 +185,35 @@ fail_unreg_cc:
 fail_free_cc:
 	vmm_free(cc);
 	return rc;
+}
+
+static struct vmm_cpuhp_notify riscv_timer_cpuhp = {
+	.name = "RISCV_TIMER",
+	.state = VMM_CPUHP_STATE_CLOCKCHIP,
+	.startup = riscv_timer_startup,
+};
+
+static int __init riscv_timer_clockchip_init(struct vmm_devtree_node *node)
+{
+	int rc;
+	u32 hart_id;
+	unsigned long hwid;
+
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
+	if (rc) {
+		return rc;
+	}
+
+	rc = riscv_hart_of_timer(node, &hart_id);
+	if (rc) {
+		return rc;
+	}
+
+	if (hwid != hart_id) {
+		return VMM_OK;
+	}
+
+	return vmm_cpuhp_register(&riscv_timer_cpuhp, TRUE);
 }
 VMM_CLOCKCHIP_INIT_DECLARE(riscvclkchip, "riscv",
 			   riscv_timer_clockchip_init);

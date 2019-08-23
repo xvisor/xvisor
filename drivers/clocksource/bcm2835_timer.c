@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -85,7 +85,7 @@ static int __init bcm2835_clocksource_init(struct vmm_devtree_node *node)
 	bcs->clksrc.read = bcm2835_clksrc_read;
 	bcs->clksrc.mask = VMM_CLOCKSOURCE_MASK(32);
 	bcs->clksrc.freq = clock;
-	vmm_clocks_calc_mult_shift(&bcs->clksrc.mult, 
+	vmm_clocks_calc_mult_shift(&bcs->clksrc.mult,
 				   &bcs->clksrc.shift,
 				   clock, VMM_NSEC_PER_SEC, 10);
 	bcs->clksrc.priv = bcs;
@@ -145,7 +145,7 @@ static void bcm2835_clockchip_set_mode(enum vmm_clockchip_mode mode,
 	}
 }
 
-static int bcm2835_clockchip_set_next_event(unsigned long next, 
+static int bcm2835_clockchip_set_next_event(unsigned long next,
 					    struct vmm_clockchip *cc)
 {
 	struct bcm2835_clockchip *bcc = cc->priv;
@@ -156,7 +156,7 @@ static int bcm2835_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
+static int __init bcm2835_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 clock, hirq;
@@ -194,15 +194,15 @@ static int __cpuinit bcm2835_clockchip_init(struct vmm_devtree_node *node)
 	bcc->clkchip.name = "bcm2835-clkchip";
 	bcc->clkchip.hirq = hirq;
 	bcc->clkchip.rating = 300;
-	bcc->clkchip.cpumask = vmm_cpumask_of(0);
+	bcc->clkchip.cpumask = cpu_all_mask;
 	bcc->clkchip.features = VMM_CLOCKCHIP_FEAT_ONESHOT;
 	bcc->clkchip.freq = clock;
-	vmm_clocks_calc_mult_shift(&bcc->clkchip.mult, 
+	vmm_clocks_calc_mult_shift(&bcc->clkchip.mult,
 				   &bcc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, clock, 10);
-	bcc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(MIN_REG_COMPARE, 
+	bcc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(MIN_REG_COMPARE,
 							   &bcc->clkchip);
-	bcc->clkchip.max_delta_ns = vmm_clockchip_delta2ns(MAX_REG_COMPARE, 
+	bcc->clkchip.max_delta_ns = vmm_clockchip_delta2ns(MAX_REG_COMPARE,
 							   &bcc->clkchip);
 	bcc->clkchip.set_mode = &bcm2835_clockchip_set_mode;
 	bcc->clkchip.set_next_event = &bcm2835_clockchip_set_next_event;

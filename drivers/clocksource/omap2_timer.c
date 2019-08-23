@@ -7,12 +7,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -279,7 +279,7 @@ static int gpt_clockchip_set_next_event(unsigned long next,
 	return VMM_OK;
 }
 
-static int __cpuinit gpt_clockchip_init(struct vmm_devtree_node *node)
+static int __init gpt_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 clock, hirq;
@@ -327,7 +327,7 @@ static int __cpuinit gpt_clockchip_init(struct vmm_devtree_node *node)
 	vmm_clocks_calc_mult_shift(&cc->clkchip.mult, &cc->clkchip.shift,
 				   VMM_NSEC_PER_SEC, clock, 10);
 	cc->clkchip.min_delta_ns = vmm_clockchip_delta2ns(0xFF, &cc->clkchip);
-	cc->clkchip.max_delta_ns = 
+	cc->clkchip.max_delta_ns =
 			vmm_clockchip_delta2ns(0xFFFFFFFF, &cc->clkchip);
 	cc->clkchip.set_mode = &gpt_clockchip_set_mode;
 	cc->clkchip.set_next_event = &gpt_clockchip_set_next_event;
