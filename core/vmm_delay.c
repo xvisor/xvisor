@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_smp.h>
+#include <vmm_cpuhp.h>
 #include <vmm_stdio.h>
 #include <vmm_timer.h>
 #include <vmm_waitqueue.h>
@@ -147,19 +148,29 @@ void vmm_delay_recaliberate(void)
 	arch_cpu_irq_restore(flags);
 }
 
-int __cpuinit vmm_delay_init(void)
+static int delay_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
-	u32 i;
-
-	if (vmm_smp_is_bootcpu()) {
-		for (i = 0; i < CONFIG_CPU_COUNT; i++) {
-			loops_per_msec[i] = 0;
-			loops_per_usec[i] = 0;
-		}
-	}
-
 	vmm_delay_recaliberate();
 
 	return VMM_OK;
 }
 
+static struct vmm_cpuhp_notify delay_cpuhp = {
+	.name = "DELAY",
+	.state = VMM_CPUHP_STATE_DELAY,
+	.startup = delay_startup,
+};
+
+int __init vmm_delay_init(void)
+{
+	u32 i;
+
+	/* Clear everything */
+	for (i = 0; i < CONFIG_CPU_COUNT; i++) {
+		loops_per_msec[i] = 0;
+		loops_per_usec[i] = 0;
+	}
+
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&delay_cpuhp, TRUE);
+}
