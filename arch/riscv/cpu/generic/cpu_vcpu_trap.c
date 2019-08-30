@@ -28,11 +28,45 @@
 #include <vmm_devemu.h>
 #include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
+
 #include <cpu_mmu.h>
 #include <cpu_vcpu_csr.h>
 #include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_unpriv.h>
 
-#include <riscv_unpriv.h>
+int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
+			   unsigned long scause,
+			   unsigned long stval)
+{
+	unsigned long vsstatus = csr_read(CSR_VSSTATUS);
+
+	/* Change Guest SSTATUS.SPP bit */
+	vsstatus &= ~SSTATUS_SPP;
+	if (regs->sstatus & SSTATUS_SPP)
+		vsstatus |= SSTATUS_SPP;
+
+	/* Change Guest SSTATUS.SPIE bit */
+	vsstatus &= ~SSTATUS_SPIE;
+	if (vsstatus & SSTATUS_SIE)
+		vsstatus |= SSTATUS_SPIE;
+
+	/* Clear Guest SSTATUS.SIE bit */
+	vsstatus &= ~SSTATUS_SIE;
+
+	/* Update Guest SSTATUS */
+	csr_write(CSR_VSSTATUS, vsstatus);
+
+	/* Update Guest SCAUSE, STVAL, and SEPC */
+	csr_write(CSR_VSCAUSE, scause);
+	csr_write(CSR_VSTVAL, stval);
+	csr_write(CSR_VSEPC, regs->sepc);
+
+	/* Set Guest PC to Guest exception vector */
+	regs->sepc = csr_read(CSR_VSTVEC);
+
+	return 0;
+}
 
 static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
@@ -140,8 +174,16 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u16 data16;
 	u32 data32;
 	u64 data64;
+	unsigned long ut_scause = 0;
 	int rc = VMM_OK, shift = 0, len = 0;
-	ulong insn = get_insn(regs->sepc, NULL, NULL);
+	unsigned long insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
+							 &ut_scause);
+
+	if (ut_scause) {
+		if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
+			ut_scause = CAUSE_FETCH_PAGE_FAULT;
+		return cpu_vcpu_redirect_trap(vcpu, regs, ut_scause, regs->sepc);
+	}
 
 	if ((insn & INSN_MASK_LW) == INSN_MATCH_LW) {
 		len = 4;
@@ -244,9 +286,17 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	u16 data16;
 	u32 data32;
 	u64 data64;
-	ulong data;
 	int rc = VMM_OK, len = 0;
-	ulong insn = get_insn(regs->sepc, NULL, NULL);
+	unsigned long data, ut_scause = 0;
+	unsigned long insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
+							 &ut_scause);
+
+	if (ut_scause) {
+		if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
+			ut_scause = CAUSE_FETCH_PAGE_FAULT;
+		return cpu_vcpu_redirect_trap(vcpu, regs,
+					      ut_scause, regs->sepc);
+	}
 
 	data8 = data16 = data32 = data64 = data = GET_RS2(insn, regs);
 
@@ -352,8 +402,9 @@ static int truly_illegal_insn(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs,
 			      ulong insn)
 {
-	/* TODO: Redirect trap to Guest VCPU */
-	return VMM_ENOTSUPP;
+	/* Redirect trap to Guest VCPU */
+	return cpu_vcpu_redirect_trap(vcpu, regs,
+				      CAUSE_ILLEGAL_INSTRUCTION, insn);
 }
 
 static int system_opcode_insn(struct vmm_vcpu *vcpu,
@@ -463,11 +514,21 @@ int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval)
 {
-	ulong insn = stval;
+	unsigned long insn = stval;
+	unsigned long ut_scause = 0;
 
 	if (unlikely((insn & 3) != 3)) {
-		if (insn == 0)
-			insn = get_insn(regs->sepc, NULL, NULL);
+		if (insn == 0) {
+			insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
+							   &ut_scause);
+			if (ut_scause) {
+				if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
+					ut_scause = CAUSE_FETCH_PAGE_FAULT;
+				return cpu_vcpu_redirect_trap(vcpu, regs,
+							      ut_scause,
+							      regs->sepc);
+			}
+		}
 		if ((insn & 3) != 3)
 			return truly_illegal_insn(vcpu, regs, insn);
 	}

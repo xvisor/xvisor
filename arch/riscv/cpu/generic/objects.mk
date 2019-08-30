@@ -80,3 +80,4 @@ cpu-objs-y+= cpu_vcpu_sbi.o
 cpu-objs-y+= cpu_vcpu_switch.o
 cpu-objs-y+= cpu_vcpu_timer.o
 cpu-objs-y+= cpu_vcpu_trap.o
+cpu-objs-y+= cpu_vcpu_unpriv.o

@@ -28,12 +28,13 @@
 #include <arch_vcpu.h>
 
 #include <cpu_guest_serial.h>
-#include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_sbi.h>
+#include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_timer.h>
+#include <cpu_vcpu_unpriv.h>
 #include <cpu_tlb.h>
 #include <riscv_encoding.h>
 #include <riscv_sbi.h>
-#include <riscv_unpriv.h>
 
 u16 cpu_vcpu_sbi_version_major(void)
 {
@@ -48,12 +49,11 @@ u16 cpu_vcpu_sbi_version_minor(void)
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs)
 {
-	struct riscv_guest_serial *gs = riscv_guest_serial(vcpu->guest);
-	int ret = 0;
 	u8 send;
-	int vcpuid;
-	struct vmm_vcpu *remote_vcpu;
-	ulong dhart_mask;
+	int i, ret = 0;
+	struct vmm_vcpu *rvcpu;
+	unsigned long hmask, ut_scause, ut_stval;
+	struct riscv_guest_serial *gs = riscv_guest_serial(vcpu->guest);
 
 	switch (regs->a7) {
 	case SBI_SET_TIMER:
@@ -76,11 +76,16 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		vmm_vcpu_irq_clear(vcpu, IRQ_S_SOFT);
 		break;
 	case SBI_SEND_IPI:
-		dhart_mask = load_ulong((unsigned long *)regs->a0);
-		for_each_set_bit(vcpuid, &dhart_mask, BITS_PER_LONG) {
-			remote_vcpu = vmm_manager_guest_vcpu(vcpu->guest,
-							     vcpuid);
-			vmm_vcpu_irq_assert(remote_vcpu, IRQ_S_SOFT, 0x0);
+		ut_scause = ut_stval = 0;
+		hmask = __cpu_vcpu_unpriv_read_ulong(regs->a0, &ut_scause);
+		if (ut_scause) {
+			return cpu_vcpu_redirect_trap(vcpu, regs,
+						      ut_scause, regs->a0);
+		} else {
+			for_each_set_bit(i, &hmask, BITS_PER_LONG) {
+				rvcpu = vmm_manager_guest_vcpu(vcpu->guest, i);
+				vmm_vcpu_irq_assert(rvcpu, IRQ_S_SOFT, 0x0);
+			}
 		}
 		break;
 	case SBI_SHUTDOWN:

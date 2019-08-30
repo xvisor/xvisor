@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Anup Patel.
+ * Copyright (c) 2019 Western Digital Corporation or its affiliates.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,28 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_vcpu_trap.h
- * @author Anup Patel (anup@brainfault.org)
- * @brief header of VCPU trap handling
+ * @file cpu_vcpu_unpriv.h
+ * @author Anup Patel (anup.patel@wdc.com)
+ * @brief RISC-V hypervisor unprivileged access routines
  */
-#ifndef _CPU_VCPU_TRAP_H__
-#define _CPU_VCPU_TRAP_H__
+
+#ifndef __CPU_VCPU_UNPRIV_H__
+#define __CPU_VCPU_UNPRIV_H__
 
 #include <vmm_types.h>
-#include <vmm_manager.h>
 
-int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
-			   arch_regs_t *regs,
-			   unsigned long scause,
-			   unsigned long stval);
+/* Read instruction from Guest memory
+ * Note: This function should only be called from normal context
+ */
+unsigned long __cpu_vcpu_unpriv_read_insn(unsigned long guest_addr,
+					  unsigned long *trap_scause);
 
-int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
-			arch_regs_t *regs,
-			unsigned long cause,
-			unsigned long fault_addr);
-
-int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
-				arch_regs_t *regs,
-				unsigned long stval);
+/* Read unsigned long from Guest memory
+ * Note: This function should only be called from normal context
+ */
+unsigned long __cpu_vcpu_unpriv_read_ulong(unsigned long guest_addr,
+					   unsigned long *trap_scause);
 
 #endif
