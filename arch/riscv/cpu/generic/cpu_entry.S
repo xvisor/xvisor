@@ -345,7 +345,7 @@ _cpu_init:
 	REG_S	t5, RISCV_ARCH_REGS_OFFSET(t5)(sp)
 	REG_S	t6, RISCV_ARCH_REGS_OFFSET(t6)(sp)
 
-	/* Save SEPC, SSTATUS and HSTATUS CSRs */
+	/* Save SEPC and SSTATUS CSRs */
 	csrr	s0, CSR_SEPC
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sepc)(sp)
 	csrr	s1, CSR_SSTATUS
