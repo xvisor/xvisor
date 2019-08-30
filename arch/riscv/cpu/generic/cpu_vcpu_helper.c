@@ -45,6 +45,15 @@
 #include <riscv_csr.h>
 #include <riscv_lrsc.h>
 
+#define RISCV_ISA_ALLOWED	(riscv_isa_extension_mask(a) | \
+				 riscv_isa_extension_mask(c) | \
+				 riscv_isa_extension_mask(d) | \
+				 riscv_isa_extension_mask(f) | \
+				 riscv_isa_extension_mask(i) | \
+				 riscv_isa_extension_mask(m) | \
+				 riscv_isa_extension_mask(s) | \
+				 riscv_isa_extension_mask(u))
+
 static char *guest_fdt_find_serial_node(char *guest_name)
 {
 	char *serial = NULL;
@@ -95,7 +104,7 @@ int arch_guest_init(struct vmm_guest *guest)
 	int rc;
 
 	if (!guest->reset_count) {
-		if (!riscv_hyp_ext_enabled)
+		if (!riscv_isa_extension_available(NULL, h))
 			return VMM_EINVALID;
 
 		guest->arch_priv = vmm_malloc(sizeof(struct riscv_guest_priv));

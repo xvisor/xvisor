@@ -26,7 +26,7 @@
 #include <vmm_params.h>
 #include <vmm_devtree.h>
 #include <arch_cpu.h>
-#include <libs/bitops.h>
+#include <libs/bitmap.h>
 
 #include <cpu_hwcap.h>
 #include <cpu_tlb.h>
@@ -80,7 +80,26 @@ int __init arch_cpu_early_init(void)
 	return VMM_OK;
 }
 
-unsigned long riscv_isa = 0;
+/* Host ISA bitmap */
+static DECLARE_BITMAP(riscv_isa, RISCV_ISA_EXT_MAX) = { 0 };
+
+unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap)
+{
+	if (!isa_bitmap)
+		return riscv_isa[0];
+	return isa_bitmap[0];
+}
+
+bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit)
+{
+	const unsigned long *bmap = (isa_bitmap) ? isa_bitmap : riscv_isa;
+
+	if (bit >= RISCV_ISA_EXT_MAX)
+		return false;
+
+	return test_bit(bit, bmap) ? true : false;
+}
+
 unsigned long riscv_vmid_bits = 0;
 unsigned long riscv_timer_hz = 0;
 
@@ -101,7 +120,7 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 #endif
 	pos = strlen(isa);
 	for (i = 0; i < BITS_PER_LONG; i++)
-		if (riscv_isa & (1UL << i))
+		if (riscv_isa[0] & BIT_MASK(i))
 			isa[pos++] = 'a' + i;
 	isa[pos] = '\0';
 
@@ -185,19 +204,19 @@ int __init cpu_parse_devtree_hwcap(void)
 			if ('A' <= isa[i] && isa[i] <= 'Z')
 				this_isa |= (1UL << (isa[i] - 'A'));
 		}
-		if (riscv_isa)
-			riscv_isa &= this_isa;
+		if (riscv_isa[0])
+			riscv_isa[0] &= this_isa;
 		else
-			riscv_isa = this_isa;
+			riscv_isa[0] = this_isa;
 		/*
-		 * TODO: What should be done if a single hart doesn't have hyp enabled.
-		 * Keep a mask and not let guests boot on those.
+		 * TODO: What should be done if a single hart doesn't have
+		 * hyp enabled. Keep a mask and not let guests boot on those.
 		 */
 	}
 	vmm_devtree_dref_node(cpus);
 
 	/* Setup riscv_vmid_bits */
-	if (riscv_hyp_ext_enabled) {
+	if (riscv_isa_extension_available(NULL, h)) {
 		csr_write(CSR_HGATP, HGATP_VMID_MASK);
 		val = csr_read(CSR_HGATP);
 		csr_write(CSR_HGATP, 0);

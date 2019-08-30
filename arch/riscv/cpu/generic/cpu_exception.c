@@ -164,7 +164,7 @@ int __cpuinit arch_cpu_irq_setup(void)
 	extern unsigned long _handle_exception[];
 	extern unsigned long _handle_hyp_exception[];
 
-	if (riscv_hyp_ext_enabled) {
+	if (riscv_isa_extension_available(NULL, h)) {
 		/* Update HIDELEG */
 		hideleg = 0;
 		hideleg |= SIP_SSIP;

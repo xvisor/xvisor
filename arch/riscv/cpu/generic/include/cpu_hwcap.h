@@ -25,34 +25,50 @@
 #define _CPU_HWCAP_H__
 
 #include <vmm_types.h>
+#include <libs/bitops.h>
 
-#define RISCV_ISA_EXT_A		(1UL << ('A' - 'A'))
-#define RISCV_ISA_EXT_a		RISCV_ISA_EXT_A
-#define RISCV_ISA_EXT_C		(1UL << ('C' - 'A'))
-#define RISCV_ISA_EXT_c		RISCV_ISA_EXT_C
-#define RISCV_ISA_EXT_D		(1UL << ('D' - 'A'))
-#define RISCV_ISA_EXT_d		RISCV_ISA_EXT_D
-#define RISCV_ISA_EXT_F		(1UL << ('F' - 'A'))
-#define RISCV_ISA_EXT_f		RISCV_ISA_EXT_F
-#define RISCV_ISA_EXT_H		(1UL << ('H' - 'A'))
-#define RISCV_ISA_EXT_h		RISCV_ISA_EXT_H
-#define RISCV_ISA_EXT_I		(1UL << ('I' - 'A'))
-#define RISCV_ISA_EXT_i		RISCV_ISA_EXT_I
-#define RISCV_ISA_EXT_M		(1UL << ('M' - 'A'))
-#define RISCV_ISA_EXT_m		RISCV_ISA_EXT_M
-#define RISCV_ISA_EXT_S		(1UL << ('S' - 'A'))
-#define RISCV_ISA_EXT_s		RISCV_ISA_EXT_S
-#define RISCV_ISA_EXT_U		(1UL << ('U' - 'A'))
-#define RISCV_ISA_EXT_u		RISCV_ISA_EXT_U
+#define RISCV_ISA_EXT_a		('a' - 'a')
+#define RISCV_ISA_EXT_c		('c' - 'a')
+#define RISCV_ISA_EXT_d		('d' - 'a')
+#define RISCV_ISA_EXT_f		('f' - 'a')
+#define RISCV_ISA_EXT_h		('h' - 'a')
+#define RISCV_ISA_EXT_i		('i' - 'a')
+#define RISCV_ISA_EXT_m		('m' - 'a')
+#define RISCV_ISA_EXT_s		('s' - 'a')
+#define RISCV_ISA_EXT_u		('u' - 'a')
 
-/** Available RISC-V ISA flags */
-extern unsigned long riscv_isa;
+#define RISCV_ISA_EXT_zicsr	(('z' - 'a') + 1)
+#define RISCV_ISA_EXT_zifencei	(('z' - 'a') + 2)
+#define RISCV_ISA_EXT_zam	(('z' - 'a') + 3)
+#define RISCV_ISA_EXT_ztso	(('z' - 'a') + 4)
 
-#define riscv_isa_extension_available(ext_char)	\
-		(riscv_isa & RISCV_ISA_EXT_##ext_char)
+#define RISCV_ISA_EXT_MAX	256
 
-#define riscv_hyp_ext_enabled (riscv_isa_extension_available(H) || \
-				riscv_isa_extension_available(h))
+/**
+ * Get base extension word
+ *
+ * @isa_bitmap ISA bitmap to use
+ * @returns base extension word as unsigned long value
+ *
+ * NOTE: If isa_bitmap is NULL then Host ISA bitmap will be used.
+ */
+unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap);
+
+#define riscv_isa_extension_mask(ext) BIT_MASK(RISCV_ISA_EXT_##ext)
+
+/**
+ * Check whether given extension is available or not
+ *
+ * @isa_bitmap ISA bitmap to use
+ * @bit bit position of the desired extension
+ * @returns true or false
+ *
+ * NOTE: If isa_bitmap is NULL then Host ISA bitmap will be used.
+ */
+bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit);
+
+#define riscv_isa_extension_available(isa_bitmap, ext)	\
+	__riscv_isa_extension_available(isa_bitmap, RISCV_ISA_EXT_##ext)
 
 /** Available RISC-V VMID bits */
 extern unsigned long riscv_vmid_bits;

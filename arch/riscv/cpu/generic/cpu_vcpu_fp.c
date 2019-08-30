@@ -31,8 +31,8 @@
 void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu)
 {
 	riscv_regs(vcpu)->sstatus &= ~SSTATUS_FS;
-	if (riscv_isa_extension_available(F) ||
-	    riscv_isa_extension_available(D))
+	if (riscv_isa_extension_available(NULL, f) ||
+	    riscv_isa_extension_available(NULL, d))
 		riscv_regs(vcpu)->sstatus |= SSTATUS_FS_INITIAL;
 	else
 		riscv_regs(vcpu)->sstatus |= SSTATUS_FS_OFF;
@@ -48,9 +48,9 @@ static inline void cpu_vcpu_fp_clean(arch_regs_t *regs)
 void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if ((regs->sstatus & SSTATUS_FS) == SSTATUS_FS_DIRTY) {
-		if (riscv_isa_extension_available(D))
+		if (riscv_isa_extension_available(NULL, d))
 			__cpu_vcpu_fp_d_save(&riscv_priv(vcpu)->fp.d);
-		else if (riscv_isa_extension_available(F))
+		else if (riscv_isa_extension_available(NULL, f))
 			__cpu_vcpu_fp_f_save(&riscv_priv(vcpu)->fp.f);
 		cpu_vcpu_fp_clean(regs);
 	}
@@ -59,9 +59,9 @@ void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 void cpu_vcpu_fp_restore(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	if ((regs->sstatus & SSTATUS_FS) != SSTATUS_FS_OFF) {
-		if (riscv_isa_extension_available(D))
+		if (riscv_isa_extension_available(NULL, d))
 			__cpu_vcpu_fp_d_restore(&riscv_priv(vcpu)->fp.d);
-		else if (riscv_isa_extension_available(F))
+		else if (riscv_isa_extension_available(NULL, f))
 			__cpu_vcpu_fp_f_restore(&riscv_priv(vcpu)->fp.f);
 		cpu_vcpu_fp_clean(regs);
 	}
