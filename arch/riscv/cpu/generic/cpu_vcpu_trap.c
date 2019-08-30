@@ -394,10 +394,6 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 	return cpu_vcpu_stage2_map(vcpu, regs, fault_addr);
 }
 
-typedef int (*illegal_insn_func)(struct vmm_vcpu *vcpu,
-				 arch_regs_t *regs,
-				 ulong insn);
-
 static int truly_illegal_insn(struct vmm_vcpu *vcpu,
 			      arch_regs_t *regs,
 			      ulong insn)
@@ -475,41 +471,6 @@ done:
 	return rc;
 }
 
-static illegal_insn_func illegal_insn_table[32] = {
-	truly_illegal_insn, /* 0 */
-	truly_illegal_insn, /* 1 */
-	truly_illegal_insn, /* 2 */
-	truly_illegal_insn, /* 3 */
-	truly_illegal_insn, /* 4 */
-	truly_illegal_insn, /* 5 */
-	truly_illegal_insn, /* 6 */
-	truly_illegal_insn, /* 7 */
-	truly_illegal_insn, /* 8 */
-	truly_illegal_insn, /* 9 */
-	truly_illegal_insn, /* 10 */
-	truly_illegal_insn, /* 11 */
-	truly_illegal_insn, /* 12 */
-	truly_illegal_insn, /* 13 */
-	truly_illegal_insn, /* 14 */
-	truly_illegal_insn, /* 15 */
-	truly_illegal_insn, /* 16 */
-	truly_illegal_insn, /* 17 */
-	truly_illegal_insn, /* 18 */
-	truly_illegal_insn, /* 19 */
-	truly_illegal_insn, /* 20 */
-	truly_illegal_insn, /* 21 */
-	truly_illegal_insn, /* 22 */
-	truly_illegal_insn, /* 23 */
-	truly_illegal_insn, /* 24 */
-	truly_illegal_insn, /* 25 */
-	truly_illegal_insn, /* 26 */
-	truly_illegal_insn, /* 27 */
-	system_opcode_insn, /* 28 */
-	truly_illegal_insn, /* 29 */
-	truly_illegal_insn, /* 30 */
-	truly_illegal_insn  /* 31 */
-};
-
 int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval)
@@ -533,5 +494,10 @@ int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 			return truly_illegal_insn(vcpu, regs, insn);
 	}
 
-	return illegal_insn_table[(insn & 0x7c) >> 2](vcpu, regs, insn);
+	switch ((insn & INSN_OPCODE_MASK) >> INSN_OPCODE_SHIFT) {
+	case INSN_OPCODE_SYSTEM:
+		return system_opcode_insn(vcpu, regs, insn);
+	default:
+		return truly_illegal_insn(vcpu, regs, insn);
+	};
 }

@@ -561,6 +561,10 @@
 #define CAUSE_LOAD_PAGE_FAULT		0xd
 #define CAUSE_STORE_PAGE_FAULT		0xf
 
+#define INSN_OPCODE_MASK		0x007c
+#define INSN_OPCODE_SHIFT		2
+#define INSN_OPCODE_SYSTEM		28
+
 #define INSN_MATCH_LB			0x3
 #define INSN_MASK_LB			0x707f
 #define INSN_MATCH_LH			0x1003
