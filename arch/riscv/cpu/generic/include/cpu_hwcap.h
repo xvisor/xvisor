@@ -70,6 +70,37 @@ bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit);
 #define riscv_isa_extension_available(isa_bitmap, ext)	\
 	__riscv_isa_extension_available(isa_bitmap, RISCV_ISA_EXT_##ext)
 
+/**
+ * Populate string representation of ISA features
+ *
+ * @xlen register length
+ * @isa_bitmap ISA bitmap to use
+ * @out output string buffer
+ * @out_sz output string buffer size
+ *
+ * NOTE: output string buffer has to be atleast 16 bytes
+ * NOTE: If isa_bitmap is NULL then Host ISA bitmap will be used.
+ */
+int riscv_isa_populate_string(unsigned long xlen,
+			      const unsigned long *isa_bitmap,
+			      char *out, size_t out_sz);
+
+/**
+ * Parse string representation of ISA features
+ *
+ * @isa input ISA feature string
+ * @out_xlen output register length
+ * @out_bitmap output ISA bitmap
+ * @out_bitmap_sz output ISA bitmap size
+ */
+int riscv_isa_parse_string(const char *isa,
+			   unsigned long *out_xlen,
+			   unsigned long *out_bitmap,
+			   size_t out_bitmap_sz);
+
+/** RISC-V XLEN */
+extern unsigned long riscv_xlen;
+
 /** Available RISC-V VMID bits */
 extern unsigned long riscv_vmid_bits;
 

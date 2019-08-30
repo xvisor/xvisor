@@ -83,6 +83,83 @@ int __init arch_cpu_early_init(void)
 /* Host ISA bitmap */
 static DECLARE_BITMAP(riscv_isa, RISCV_ISA_EXT_MAX) = { 0 };
 
+int riscv_isa_populate_string(unsigned long xlen,
+			      const unsigned long *isa_bitmap,
+			      char *out, size_t out_sz)
+{
+	size_t i, pos, index, valid_isa_len;
+	const char *valid_isa_order = "IEMAFDQCLBJTPVNSUHKORWXYZG";
+	const unsigned long *bmap = (isa_bitmap) ? isa_bitmap : riscv_isa;
+
+	if (!out || (out_sz < 16))
+		return VMM_EINVALID;
+
+	if (xlen == 32)
+		vmm_snprintf(out, sizeof(out_sz), "rv%d", 32);
+	else if (xlen == 64)
+		vmm_snprintf(out, sizeof(out_sz), "rv%d", 64);
+	else
+		return VMM_EINVALID;
+
+	pos = strlen(out);
+	valid_isa_len = strlen(valid_isa_order);
+	for (i = 0; i < valid_isa_len; i++) {
+		index = valid_isa_order[i] - 'A';
+		if ((bmap[0] & BIT_MASK(index)) && (pos < (out_sz - 1)))
+			out[pos++] = 'a' + index;
+	}
+	out[pos] = '\0';
+
+	return VMM_OK;
+}
+
+int riscv_isa_parse_string(const char *isa,
+			   unsigned long *out_xlen,
+			   unsigned long *out_bitmap,
+			   size_t out_bitmap_sz)
+{
+	size_t i, isa_len;
+
+	if (!isa || !out_xlen || !out_bitmap ||
+	    (out_bitmap_sz < __riscv_xlen))
+		return VMM_EINVALID;
+
+	*out_xlen = 0;
+	bitmap_zero(out_bitmap, out_bitmap_sz);
+
+	i = 0;
+	isa_len = strlen(isa);
+
+	if (isa[i] == 'r' || isa[i] == 'R')
+		i++;
+	else
+		return VMM_EINVALID;
+
+	if (isa[i] == 'v' || isa[i] == 'V')
+		i++;
+	else
+		return VMM_EINVALID;
+
+	if (isa[i] == '3' || isa[i+1] == '2') {
+		*out_xlen = 32;
+		i += 2;
+	} else if (isa[i] == '6' || isa[i+1] == '4') {
+		*out_xlen = 64;
+		i += 2;
+	} else {
+		return VMM_EINVALID;
+	}
+
+	for (; i < isa_len; ++i) {
+		if ('a' <= isa[i] && isa[i] <= 'z')
+			__set_bit(isa[i] - 'a', out_bitmap);
+		if ('A' <= isa[i] && isa[i] <= 'Z')
+			__set_bit(isa[i] - 'A', out_bitmap);
+	}
+
+	return VMM_OK;
+}
+
 unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap)
 {
 	if (!isa_bitmap)
@@ -100,6 +177,7 @@ bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit)
 	return test_bit(bit, bmap) ? true : false;
 }
 
+unsigned long riscv_xlen = 0;
 unsigned long riscv_vmid_bits = 0;
 unsigned long riscv_timer_hz = 0;
 
@@ -110,19 +188,13 @@ void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
 
 void arch_cpu_print_summary(struct vmm_chardev *cdev)
 {
-	int i, pos;
 	char isa[128];
 
 #ifdef CONFIG_64BIT
-	vmm_snprintf(isa, sizeof(isa), "rv%d", 64);
+	riscv_isa_populate_string(64, NULL, isa, sizeof(isa));
 #else
-	vmm_snprintf(isa, sizeof(isa), "rv%d", 32);
+	riscv_isa_populate_string(32, NULL, isa, sizeof(isa));
 #endif
-	pos = strlen(isa);
-	for (i = 0; i < BITS_PER_LONG; i++)
-		if (riscv_isa[0] & BIT_MASK(i))
-			isa[pos++] = 'a' + i;
-	isa[pos] = '\0';
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
 	vmm_cprintf(cdev, "%-25s: %ld\n", "CPU VMID Bits", riscv_vmid_bits);
@@ -138,11 +210,11 @@ int __init arch_cpu_final_init(void)
 
 int __init cpu_parse_devtree_hwcap(void)
 {
+	DECLARE_BITMAP(this_isa, RISCV_ISA_EXT_MAX);
 	struct vmm_devtree_node *dn, *cpus;
 	const char *isa, *str;
-	unsigned long val;
+	unsigned long val, this_xlen;
 	int rc = VMM_OK;
-	size_t i, isa_len;
 	u32 tmp;
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
@@ -163,7 +235,8 @@ int __init cpu_parse_devtree_hwcap(void)
 
 	dn = NULL;
 	vmm_devtree_for_each_child(dn, cpus) {
-		unsigned long this_isa = 0;
+		this_xlen = 0;
+		bitmap_zero(this_isa, RISCV_ISA_EXT_MAX);
 
 		str = NULL;
 		rc = vmm_devtree_read_string(dn,
@@ -176,38 +249,34 @@ int __init cpu_parse_devtree_hwcap(void)
 		}
 
 		isa = NULL;
-		rc = vmm_devtree_read_string(dn,
-				"riscv,isa", &isa);
+		rc = vmm_devtree_read_string(dn, "riscv,isa", &isa);
 		if (rc || !isa) {
 			vmm_devtree_dref_node(dn);
 			rc = VMM_ENOTAVAIL;
 			break;
 		}
-		i = 0;
-		isa_len = strlen(isa);
 
-		if (isa[i] == 'r' || isa[i] == 'R')
-			i++;
-
-		if (isa[i] == 'v' || isa[i] == 'V')
-			i++;
-
-		if (isa[i] == '3' || isa[i+1] == '2')
-			i += 2;
-
-		if (isa[i] == '6' || isa[i+1] == '4')
-			i += 2;
-
-		for (; i < isa_len; ++i) {
-			if ('a' <= isa[i] && isa[i] <= 'z')
-				this_isa |= (1UL << (isa[i] - 'a'));
-			if ('A' <= isa[i] && isa[i] <= 'Z')
-				this_isa |= (1UL << (isa[i] - 'A'));
+		rc = riscv_isa_parse_string(isa, &this_xlen, this_isa,
+					    RISCV_ISA_EXT_MAX);
+		if (rc) {
+			vmm_devtree_dref_node(dn);
+			break;
 		}
-		if (riscv_isa[0])
-			riscv_isa[0] &= this_isa;
-		else
-			riscv_isa[0] = this_isa;
+
+		if (riscv_xlen) {
+			if (riscv_xlen != this_xlen ||
+			    riscv_xlen != __riscv_xlen) {
+				vmm_devtree_dref_node(dn);
+				rc = VMM_EINVALID;
+				break;
+			}
+			bitmap_and(riscv_isa, riscv_isa, this_isa,
+				   RISCV_ISA_EXT_MAX);
+		} else {
+			riscv_xlen = this_xlen;
+			bitmap_copy(riscv_isa, this_isa, RISCV_ISA_EXT_MAX);
+		}
+
 		/*
 		 * TODO: What should be done if a single hart doesn't have
 		 * hyp enabled. Keep a mask and not let guests boot on those.
