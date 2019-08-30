@@ -155,6 +155,11 @@ union riscv_priv_fp {
 };
 
 struct riscv_priv {
+	/* Register width */
+	unsigned long xlen;
+	/* ISA feature bitmap */
+	unsigned long *isa;
+	/* CSR state */
 	unsigned long vsstatus;
 	unsigned long vsie;
 	unsigned long vstvec;

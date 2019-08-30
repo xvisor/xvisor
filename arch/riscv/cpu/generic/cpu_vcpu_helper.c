@@ -249,6 +249,23 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			rc = VMM_ENOMEM;
 			goto done;
 		}
+
+		/* Set register width */
+		riscv_priv(vcpu)->xlen = riscv_xlen;
+
+		/* Allocate ISA feature bitmap */
+		riscv_priv(vcpu)->isa =
+			vmm_zalloc(bitmap_estimate_size(RISCV_ISA_EXT_MAX));
+		if (!riscv_priv(vcpu)->isa) {
+			vmm_free(vcpu->arch_priv);
+			vcpu->arch_priv = NULL;
+			rc = VMM_ENOMEM;
+			goto done;
+		}
+
+		/* Set base ISA feature bitmap */
+		riscv_priv(vcpu)->isa[0] = riscv_isa_extension_base(NULL);
+		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
 	}
 
 	/* Update VS<xyz> */
@@ -295,6 +312,10 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	rc = riscv_timer_event_deinit(vcpu, &riscv_timer_priv(vcpu));
 	if (rc)
 		return rc;
+
+	/* Free ISA bitmap */
+	vmm_free(riscv_priv(vcpu)->isa);
+	riscv_priv(vcpu)->isa = NULL;
 
 	/* Free private context */
 	vmm_free(vcpu->arch_priv);
@@ -410,9 +431,21 @@ void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
 void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 				struct vmm_vcpu *vcpu)
 {
+	int rc;
+	char isa[128];
 	struct riscv_priv *priv = riscv_priv(vcpu);
 	struct riscv_guest_priv *gpriv = riscv_guest_priv(vcpu->guest);
 
+	rc = riscv_isa_populate_string(priv->xlen, priv->isa,
+					isa, sizeof(isa));
+	if (rc) {
+		vmm_cprintf(cdev, "Failed to populate ISA string\n");
+		return;
+	}
+
+	vmm_cprintf(cdev, "\n");
+	vmm_cprintf(cdev, " %s=%s\n",
+		    "        isa", isa);
 	vmm_cprintf(cdev, "\n");
 #if __riscv_xlen == 32
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",

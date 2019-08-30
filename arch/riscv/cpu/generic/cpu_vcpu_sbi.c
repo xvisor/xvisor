@@ -57,12 +57,11 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 
 	switch (regs->a7) {
 	case SBI_SET_TIMER:
-#if __riscv_xlen == 32
-		riscv_timer_event_start(vcpu,
+		if (riscv_priv(vcpu)->xlen == 32)
+			riscv_timer_event_start(vcpu,
 				((u64)regs->a1 << 32) | (u64)regs->a0);
-#else
-		riscv_timer_event_start(vcpu, (u64)regs->a0);
-#endif
+		else
+			riscv_timer_event_start(vcpu, (u64)regs->a0);
 		break;
 	case SBI_CONSOLE_PUTCHAR:
 		send = (u8) regs->a0;
