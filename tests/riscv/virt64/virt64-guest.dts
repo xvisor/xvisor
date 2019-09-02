@@ -19,7 +19,8 @@
 
 	vcpu_template {
 		device_type = "vcpu";
-		compatible = "riscv64,generic";
+		compatible = "riscv,generic";
+		riscv,isa = "rv64imafdcsu";
 		start_pc = <0x00000000>;
 		poweroff;
 	};

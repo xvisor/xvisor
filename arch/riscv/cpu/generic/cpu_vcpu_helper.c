@@ -217,32 +217,20 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Following initialization for normal VCPUs only */
-	rc = vmm_devtree_read_string(vcpu->node,
-			VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
-	if (rc) {
-		goto done;
-	}
-#if __riscv_xlen == 64
-	if (strcmp(attr, "riscv64,generic") != 0) {
-#elif __riscv_xlen == 32
-	if (strcmp(attr, "riscv32,generic") != 0) {
-#else
-#error "Unexpected __riscv_xlen"
-#endif
-		rc = VMM_EINVALID;
-		goto done;
-	}
-
-	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
-	riscv_regs(vcpu)->a0 = vcpu->subid;
-
-	/* Update HSTATUS */
-	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2V;
-	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2P;
-	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
 
 	/* First time initialization of private context */
 	if (!vcpu->reset_count) {
+		/* Check allowed compatible string */
+		rc = vmm_devtree_read_string(vcpu->node,
+				VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
+		if (rc) {
+			goto done;
+		}
+		if (strcmp(attr, "riscv,generic") != 0) {
+			rc = VMM_EINVALID;
+			goto done;
+		}
+
 		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(struct riscv_priv));
 		if (!vcpu->arch_priv) {
@@ -263,10 +251,35 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			goto done;
 		}
 
-		/* Set base ISA feature bitmap */
-		riscv_priv(vcpu)->isa[0] = riscv_isa_extension_base(NULL);
+		/* Parse VCPU ISA string */
+		attr = NULL;
+		rc = vmm_devtree_read_string(vcpu->node, "riscv,isa", &attr);
+		if (rc || !attr) {
+			rc = VMM_EINVALID;
+			goto done;
+		}
+		rc = riscv_isa_parse_string(attr, &riscv_priv(vcpu)->xlen,
+					    riscv_priv(vcpu)->isa,
+					    RISCV_ISA_EXT_MAX);
+		if (rc) {
+			goto done;
+		}
+		if (riscv_priv(vcpu)->xlen > riscv_xlen) {
+			rc = VMM_EINVALID;
+			goto done;
+		}
 		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
 	}
+
+	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
+	riscv_regs(vcpu)->a0 = vcpu->subid;
+
+	/* Update HSTATUS */
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2V;
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2P;
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
+
+	/* TODO: Update HSTATUS.VSXL on non-32bit Host */
 
 	/* Update VS<xyz> */
 	riscv_priv(vcpu)->vsstatus = 0;
