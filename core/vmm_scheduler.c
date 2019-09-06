@@ -56,12 +56,14 @@ struct vmm_scheduler_ctrl {
 	vmm_spinlock_t rq_lock;
 	atomic_t rq_resched_state;
 	u64 current_vcpu_irq_ns;
+	u64 current_vcpu_exp_ns;
 	struct vmm_vcpu *current_vcpu;
 	struct vmm_vcpu *idle_vcpu;
 	bool irq_context;
 	arch_regs_t *irq_regs;
 	u64 irq_enter_tstamp;
 	u64 irq_process_ns;
+	u64 exp_process_ns;
 	bool yield_on_irq_exit;
 	struct vmm_timer_event ev;
 	struct vmm_timer_event sample_ev;
@@ -166,11 +168,25 @@ static struct vmm_vcpu *__vmm_scheduler_next1(struct vmm_scheduler_ctrl *schedp,
 	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
+	schedp->current_vcpu_exp_ns = schedp->exp_process_ns;
 	vmm_timer_event_start(&schedp->ev, next_time_slice);
 
 	vmm_write_unlock_irqrestore_lite(&next->sched_lock, nf);
 
 	return next;
+}
+
+/* Must be called with write lock held on current->sched_lock */
+static void __vmm_scheduler_sync_system_time(struct vmm_scheduler_ctrl *schedp,
+					     struct vmm_vcpu *current)
+{
+	u64 system_nsecs;
+
+	system_nsecs = schedp->irq_process_ns - schedp->current_vcpu_irq_ns;
+	system_nsecs += schedp->exp_process_ns - schedp->current_vcpu_exp_ns;
+	current->system_nsecs += system_nsecs;
+	schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
+	schedp->current_vcpu_exp_ns = schedp->exp_process_ns;
 }
 
 /* Must be called with write lock held on current->sched_lock */
@@ -191,11 +207,9 @@ static struct vmm_vcpu *__vmm_scheduler_next2(struct vmm_scheduler_ctrl *schedp,
 
 	if (current_state & VMM_VCPU_STATE_SAVEABLE) {
 		if (current_state == VMM_VCPU_STATE_RUNNING) {
+			__vmm_scheduler_sync_system_time(schedp, current);
 			current->state_running_nsecs +=
 				tstamp - current->state_tstamp;
-			current->state_running_nsecs -=
-			  schedp->irq_process_ns - schedp->current_vcpu_irq_ns;
-			schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
 			arch_atomic_write(&current->state, VMM_VCPU_STATE_READY);
 			current->state_tstamp = tstamp;
 			rq_enqueue(schedp, current);
@@ -234,6 +248,7 @@ dequeue_again:
 	next->state_tstamp = tstamp;
 	schedp->current_vcpu = next;
 	schedp->current_vcpu_irq_ns = schedp->irq_process_ns;
+	schedp->current_vcpu_exp_ns = schedp->exp_process_ns;
 	vmm_timer_event_start(&schedp->ev, next_time_slice);
 
 	if (next != current) {
@@ -339,7 +354,7 @@ void vmm_scheduler_preempt_orphan(arch_regs_t *regs)
 	vmm_scheduler_switch(schedp, regs);
 }
 
-static void scheduler_ipi_resched(void *dummy0, void *dummy1, void *dummy2)
+static void scheduler_ipi_resched(void *arg0, void *arg1, void *arg2)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
@@ -373,6 +388,129 @@ int vmm_scheduler_force_resched(u32 hcpu)
 				      scheduler_ipi_resched,
 				      NULL, NULL, NULL);
 	}
+
+	return VMM_OK;
+}
+
+static void scheduler_system_time_sync(void *arg0, void *arg1, void *arg2)
+{
+	irq_flags_t flags, flags1;
+	struct vmm_vcpu *current;
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	arch_cpu_irq_save(flags);
+
+	current = schedp->current_vcpu;
+	if (current) {
+		vmm_write_lock_irqsave_lite(&current->sched_lock, flags1);
+		__vmm_scheduler_sync_system_time(schedp, current);
+		vmm_write_unlock_irqrestore_lite(&current->sched_lock, flags1);
+	}
+
+	arch_cpu_irq_restore(flags);
+}
+
+int vmm_scheduler_stats(struct vmm_vcpu *vcpu,
+			u32 *state, u8 *priority, u32 *hcpu,
+			u32 *reset_count, u64 *last_reset_nsecs,
+			u64 *ready_nsecs, u64 *running_nsecs,
+			u64 *paused_nsecs, u64 *halted_nsecs,
+			u64 *system_nsecs)
+{
+	int rc;
+	irq_flags_t flags;
+	u64 current_tstamp;
+	u32 vcpu_hcpu, current_state;
+
+	if (!vcpu) {
+		return VMM_EFAIL;
+	}
+
+	/* Get host CPU assigned to given VCPU */
+	rc = vmm_scheduler_get_hcpu(vcpu, &vcpu_hcpu);
+	if (rc) {
+		return rc;
+	}
+
+	/* Syncup system time on assigned host CPU */
+	rc = vmm_smp_ipi_sync_call(vmm_cpumask_of(vcpu_hcpu), 0,
+				   scheduler_system_time_sync,
+				   NULL, NULL, NULL);
+	if (rc) {
+		return rc;
+	}
+
+	/* Current timestamp */
+	current_tstamp = vmm_timer_timestamp();
+
+	/* Acquire scheduling lock */
+	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
+
+	/* Current state */
+	current_state = arch_atomic_read(&vcpu->state);
+
+	/* Retrive current state and current hcpu */
+	if (state) {
+		*state = current_state;
+	}
+	if (priority) {
+		*priority = vcpu->priority;
+	}
+	if (hcpu) {
+		*hcpu = vcpu->hcpu;
+	}
+
+	/* Syncup statistics based on current timestamp */
+	switch (current_state) {
+	case VMM_VCPU_STATE_READY:
+		vcpu->state_ready_nsecs +=
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_RUNNING:
+		vcpu->state_running_nsecs +=
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_PAUSED:
+		vcpu->state_paused_nsecs +=
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	case VMM_VCPU_STATE_HALTED:
+		vcpu->state_halted_nsecs +=
+				current_tstamp - vcpu->state_tstamp;
+		vcpu->state_tstamp = current_tstamp;
+		break;
+	default:
+		break;
+	}
+
+	/* Retrive statistics */
+	if (reset_count) {
+		*reset_count = vcpu->reset_count;
+	}
+	if (last_reset_nsecs) {
+		*last_reset_nsecs = current_tstamp - vcpu->reset_tstamp;
+	}
+	if (ready_nsecs) {
+		*ready_nsecs = vcpu->state_ready_nsecs;
+	}
+	if (running_nsecs) {
+		*running_nsecs = vcpu->state_running_nsecs;
+	}
+	if (paused_nsecs) {
+		*paused_nsecs = vcpu->state_paused_nsecs;
+	}
+	if (halted_nsecs) {
+		*halted_nsecs = vcpu->state_halted_nsecs;
+	}
+	if (system_nsecs) {
+		*system_nsecs = vcpu->system_nsecs;
+	}
+
+	/* Release scheduling lock */
+	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
 
 	return VMM_OK;
 }
@@ -515,6 +653,7 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			vcpu->state_running_nsecs = 0;
 			vcpu->state_paused_nsecs = 0;
 			vcpu->state_halted_nsecs = 0;
+			vcpu->system_nsecs = 0;
 			vcpu->reset_tstamp = tstamp;
 		}
 		arch_atomic_write(&vcpu->state, new_state);
@@ -672,11 +811,11 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	/* Indicate that we have entered in IRQ */
+	schedp->irq_enter_tstamp = vmm_timer_timestamp();
 	if (vcpu_context) {
 		schedp->irq_context = FALSE;
 	} else {
 		schedp->irq_context = TRUE;
-		schedp->irq_enter_tstamp = vmm_timer_timestamp();
 	}
 
 	/* Save pointer to IRQ registers */
@@ -712,6 +851,9 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	/* Indicate that we have exited IRQ */
 	if (schedp->irq_context) {
 		schedp->irq_process_ns +=
+			vmm_timer_timestamp() - schedp->irq_enter_tstamp;
+	} else {
+		schedp->exp_process_ns +=
 			vmm_timer_timestamp() - schedp->irq_enter_tstamp;
 	}
 	schedp->irq_context = FALSE;
@@ -778,10 +920,9 @@ static void scheduler_sample_event(struct vmm_timer_event *ev)
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
 
 	idle_ns = 0;
-	vmm_manager_vcpu_stats(schedp->idle_vcpu,
-			       NULL, NULL, NULL,
-			       NULL, NULL, NULL,
-			       &idle_ns, NULL, NULL);
+	vmm_scheduler_stats(schedp->idle_vcpu,
+			    NULL, NULL, NULL, NULL, NULL, NULL,
+			    &idle_ns, NULL, NULL, NULL);
 
 	irq_ns = 0;
 	arch_cpu_irq_save(flags);
@@ -959,6 +1100,7 @@ static int scheduler_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 
 	/* Initialize current VCPU and IDLE VCPU. (Per Host CPU) */
 	schedp->current_vcpu_irq_ns = 0;
+	schedp->current_vcpu_exp_ns = 0;
 	schedp->current_vcpu = NULL;
 	schedp->idle_vcpu = NULL;
 
@@ -967,6 +1109,7 @@ static int scheduler_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	schedp->irq_regs = NULL;
 	schedp->irq_enter_tstamp = 0;
 	schedp->irq_process_ns = 0;
+	schedp->exp_process_ns = 0;
 
 	/* Initialize yield on exit (Per Host CPU) */
 	schedp->yield_on_irq_exit = FALSE;

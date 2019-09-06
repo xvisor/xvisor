@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -188,96 +188,6 @@ static u32 __vmm_manager_good_hcpu(u8 priority,
 	}
 
 	return hcpu;
-}
-
-int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
-			   u32 *state,
-			   u8  *priority,
-			   u32 *hcpu,
-			   u32 *reset_count,
-			   u64 *last_reset_nsecs,
-			   u64 *ready_nsecs,
-			   u64 *running_nsecs,
-			   u64 *paused_nsecs,
-			   u64 *halted_nsecs)
-{
-	irq_flags_t flags;
-	u64 current_tstamp;
-	u32 current_state;
-
-	if (!vcpu) {
-		return VMM_EFAIL;
-	}
-
-	/* Current timestamp */
-	current_tstamp = vmm_timer_timestamp();
-
-	/* Acquire scheduling lock */
-	vmm_write_lock_irqsave_lite(&vcpu->sched_lock, flags);
-
-	current_state = arch_atomic_read(&vcpu->state);
-
-	/* Retrive current state and current hcpu */
-	if (state) {
-		*state = current_state;
-	}
-	if (priority) {
-		*priority = vcpu->priority;
-	}
-	if (hcpu) {
-		*hcpu = vcpu->hcpu;
-	}
-
-	/* Syncup statistics based on current timestamp */
-	switch (current_state) {
-	case VMM_VCPU_STATE_READY:
-		vcpu->state_ready_nsecs +=
-				current_tstamp - vcpu->state_tstamp;
-		vcpu->state_tstamp = current_tstamp;
-		break;
-	case VMM_VCPU_STATE_RUNNING:
-		vcpu->state_running_nsecs +=
-				current_tstamp - vcpu->state_tstamp;
-		vcpu->state_tstamp = current_tstamp;
-		break;
-	case VMM_VCPU_STATE_PAUSED:
-		vcpu->state_paused_nsecs +=
-				current_tstamp - vcpu->state_tstamp;
-		vcpu->state_tstamp = current_tstamp;
-		break;
-	case VMM_VCPU_STATE_HALTED:
-		vcpu->state_halted_nsecs +=
-				current_tstamp - vcpu->state_tstamp;
-		vcpu->state_tstamp = current_tstamp;
-		break;
-	default:
-		break;
-	}
-
-	/* Retrive statistics */
-	if (reset_count) {
-		*reset_count = vcpu->reset_count;
-	}
-	if (last_reset_nsecs) {
-		*last_reset_nsecs = current_tstamp - vcpu->reset_tstamp;
-	}
-	if (ready_nsecs) {
-		*ready_nsecs = vcpu->state_ready_nsecs;
-	}
-	if (running_nsecs) {
-		*running_nsecs = vcpu->state_running_nsecs;
-	}
-	if (paused_nsecs) {
-		*paused_nsecs = vcpu->state_paused_nsecs;
-	}
-	if (halted_nsecs) {
-		*halted_nsecs = vcpu->state_halted_nsecs;
-	}
-
-	/* Release scheduling lock */
-	vmm_write_unlock_irqrestore_lite(&vcpu->sched_lock, flags);
-
-	return VMM_OK;
 }
 
 u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu)
@@ -637,6 +547,7 @@ struct vmm_vcpu *vmm_manager_vcpu_orphan_create(const char *name,
 	vcpu->state_running_nsecs = 0;
 	vcpu->state_paused_nsecs = 0;
 	vcpu->state_halted_nsecs = 0;
+	vcpu->system_nsecs = 0;
 	vcpu->reset_count = 0;
 	vcpu->reset_tstamp = 0;
 	vcpu->preempt_count = 0;
@@ -1467,6 +1378,7 @@ struct vmm_guest *vmm_manager_guest_create(struct vmm_devtree_node *gnode)
 		vcpu->state_running_nsecs = 0;
 		vcpu->state_paused_nsecs = 0;
 		vcpu->state_halted_nsecs = 0;
+		vcpu->system_nsecs = 0;
 		vcpu->reset_count = 0;
 		vcpu->reset_tstamp = 0;
 		vcpu->preempt_count = 0;
@@ -1811,6 +1723,7 @@ int __init vmm_manager_init(void)
 		mngr.vcpu_array[vnum].state_running_nsecs = 0;
 		mngr.vcpu_array[vnum].state_paused_nsecs = 0;
 		mngr.vcpu_array[vnum].state_halted_nsecs = 0;
+		mngr.vcpu_array[vnum].system_nsecs = 0;
 		mngr.vcpu_array[vnum].reset_count = 0;
 		mngr.vcpu_array[vnum].reset_tstamp = 0;
 		INIT_RW_LOCK(&mngr.vcpu_array[vnum].sched_lock);

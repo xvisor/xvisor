@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -37,6 +37,14 @@ void vmm_scheduler_preempt_orphan(arch_regs_t *regs);
 
 /** Force re-scheduling on given host CPU */
 int vmm_scheduler_force_resched(u32 hcpu);
+
+/** Retrive general VCPU statistics */
+int vmm_scheduler_stats(struct vmm_vcpu *vcpu,
+			u32 *state, u8 *priority, u32 *hcpu,
+			u32 *reset_count, u64 *last_reset_nsecs,
+			u64 *ready_nsecs, u64 *running_nsecs,
+			u64 *paused_nsecs, u64 *halted_nsecs,
+			u64 *system_nsecs);
 
 /** Change the vcpu state
  *  (Do not call this function directly.)

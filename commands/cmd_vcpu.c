@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -535,7 +535,8 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 	u32 h, m, s, ms;
 	u32 state, hcpu, reset_count;
 	u64 last_reset_nsecs, total_nsecs;
-	u64 ready_nsecs, running_nsecs, paused_nsecs, halted_nsecs;
+	u64 ready_nsecs, running_nsecs, paused_nsecs;
+	u64 halted_nsecs, system_nsecs;
 	struct vmm_vcpu *vcpu;
 
 	if (!argc) {
@@ -552,10 +553,11 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 	}
 
 	/* Retrive general statistics*/
-	ret = vmm_manager_vcpu_stats(vcpu, &state, &priority, &hcpu,
-					&reset_count, &last_reset_nsecs,
-					&ready_nsecs, &running_nsecs,
-					&paused_nsecs, &halted_nsecs);
+	ret = vmm_scheduler_stats(vcpu, &state, &priority, &hcpu,
+				  &reset_count, &last_reset_nsecs,
+				  &ready_nsecs, &running_nsecs,
+				  &paused_nsecs, &halted_nsecs,
+				  &system_nsecs);
 	if (ret) {
 		vmm_cprintf(cdev, "%s: Failed to get stats\n",
 				  vcpu->name);
@@ -612,6 +614,9 @@ static int cmd_vcpu_dumpstat(struct vmm_chardev *cdev,
 	nsecs_to_hhmmsstt(total_nsecs, &h, &m, &s, &ms);
 	vmm_cprintf(cdev, "Total Time       : %d:%02d:%02d:%03d\n",
 			  h, m, s, ms);
+	nsecs_to_hhmmsstt(system_nsecs, &h, &m, &s, &ms);
+	vmm_cprintf(cdev, "System Time      : %d:%02d:%02d:%03d\n",
+			  h, m, s, ms);
 	vmm_cprintf(cdev, "\n");
 	vmm_cprintf(cdev, "Reset Count      : %d\n", reset_count);
 	nsecs_to_hhmmsstt(last_reset_nsecs, &h, &m, &s, &ms);
@@ -646,7 +651,7 @@ static const struct {
 	{"dumpstat", cmd_vcpu_dumpstat, 1},
 	{NULL, NULL, 0},
 };
-	
+
 static int cmd_vcpu_exec(struct vmm_chardev *cdev,
 			 int argc, char **argv)
 {

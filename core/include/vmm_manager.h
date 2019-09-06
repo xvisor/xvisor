@@ -230,6 +230,7 @@ struct vmm_vcpu {
 	u64 state_running_nsecs;
 	u64 state_paused_nsecs;
 	u64 state_halted_nsecs;
+	u64 system_nsecs;
 	u32 reset_count;
 	u64 reset_tstamp;
 	u32 preempt_count;
@@ -279,18 +280,6 @@ struct vmm_vcpu *vmm_manager_vcpu(u32 vcpu_id);
 /** Iterate over each VCPU with manager lock held */
 int vmm_manager_vcpu_iterate(int (*iter)(struct vmm_vcpu *, void *),
 			     void *priv);
-
-/** Retrive general VCPU statistics */
-int vmm_manager_vcpu_stats(struct vmm_vcpu *vcpu,
-			   u32 *state,
-			   u8  *priority,
-			   u32 *hcpu,
-			   u32 *reset_count,
-			   u64 *last_reset_nsecs,
-			   u64 *ready_nsecs,
-			   u64 *running_nsecs,
-			   u64 *paused_nsecs,
-			   u64 *halted_nsecs);
 
 /** Retriver VCPU state */
 u32 vmm_manager_vcpu_get_state(struct vmm_vcpu *vcpu);
