@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -62,7 +62,8 @@ physical_size_t arch_board_ram_size(void)
 
 void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 {
-	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk console=ttyAMA0");
+	basic_strcpy(cmdline, "root=/dev/ram rw earlyprintk "
+			      "earlycon=pl011,0x101f1000 console=ttyAMA0");
 }
 
 void arch_board_fdt_fixup(void *fdt_addr)
@@ -215,14 +216,14 @@ int arch_board_timer_init(u32 usecs)
 
 	irq = INT_TIMERINT0_1;
 
-	/* set clock frequency: 
+	/* set clock frequency:
 	 *      VERSATILE_REFCLK is 32KHz
 	 *      VERSATILE_TIMCLK is 1MHz
 	 */
 	val = arch_readl((void *)VERSATILE_SCTL_BASE) | (VERSATILE_TIMCLK << 1);
 	arch_writel(val, (void *)VERSATILE_SCTL_BASE);
 
-	return sp804_init(usecs, VERSATILE_TIMER0_1_BASE, irq, 
+	return sp804_init(usecs, VERSATILE_TIMER0_1_BASE, irq,
 			  counter_mask, counter_mult, counter_shift);
 }
 
@@ -233,9 +234,9 @@ int arch_board_timer_init(u32 usecs)
 
 int arch_board_serial_init(void)
 {
-	pl01x_init(VERSATILE_UART_BASE, 
-			VERSATILE_UART_TYPE, 
-			VERSATILE_UART_BAUD, 
+	pl01x_init(VERSATILE_UART_BASE,
+			VERSATILE_UART_TYPE,
+			VERSATILE_UART_BAUD,
 			VERSATILE_UART_INCLK);
 
 	return 0;
