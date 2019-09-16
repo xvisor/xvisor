@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -105,6 +105,7 @@ struct vgic_ops {
 	void (*enable_underflow)(void);
 	void (*disable_underflow)(void);
 	void (*read_elrsr)(u32 *elrsr0, u32 *elrsr1);
+	void (*read_eisr)(u32 *eisr0, u32 *eisr1);
 	void (*set_lr)(u32 lr, struct vgic_lr *lrv, enum vgic_model_type model);
 	void (*get_lr)(u32 lr, struct vgic_lr *lrv, enum vgic_model_type model);
 	void (*clear_lr)(u32 lr);

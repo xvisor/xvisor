@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -305,6 +305,12 @@ static void vgic_v3_read_elrsr(u32 *elrsr0, u32 *elrsr1)
 	*elrsr1 = 0x0;
 }
 
+static void vgic_v3_read_eisr(u32 *eisr0, u32 *eisr1)
+{
+	*eisr0 = arch_gic_read_sysreg(ICH_EISR_EL2);
+	*eisr1 = 0x0;
+}
+
 static void vgic_v3_set_lr(u32 lr, struct vgic_lr *lrv,
 			   enum vgic_model_type model)
 {
@@ -457,6 +463,7 @@ int vgic_v3_probe(struct vgic_ops *ops, struct vgic_params *params)
 	ops->enable_underflow = vgic_v3_enable_underflow;
 	ops->disable_underflow = vgic_v3_disable_underflow;
 	ops->read_elrsr = vgic_v3_read_elrsr;
+	ops->read_eisr = vgic_v3_read_eisr;
 	ops->set_lr = vgic_v3_set_lr;
 	ops->get_lr = vgic_v3_get_lr;
 	ops->clear_lr = vgic_v3_clear_lr;
