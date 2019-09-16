@@ -159,8 +159,6 @@ static void vgic_v2_set_lr(u32 lr, struct vgic_lr *lrv,
 		if (lrv->flags & VGIC_LR_EOI_INT) {
 			lrval |= GICH_LR_PHYSID_EOI;
 		}
-		lrval |= (lrv->cpuid << GICH_LR_PHYSID_CPUID_SHIFT) &
-							GICH_LR_PHYSID_CPUID;
 	}
 
 	DPRINTF("%s: LR%d = 0x%08x\n", __func__, lr, lrval);
@@ -179,7 +177,6 @@ static void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv,
 
 	lrv->virtid = lrval & GICH_LR_VIRTUALID;
 	lrv->physid = 0;
-	lrv->cpuid = 0;
 	lrv->prio = (lrval & GICH_LR_PRIO) >> GICH_LR_PRIO_SHIFT;
 	lrv->flags = 0;
 
@@ -197,8 +194,6 @@ static void vgic_v2_get_lr(u32 lr, struct vgic_lr *lrv,
 		if (lrval & GICH_LR_PHYSID_EOI) {
 			lrv->flags |= VGIC_LR_EOI_INT;
 		}
-		lrv->cpuid = (lrval & GICH_LR_PHYSID_CPUID) >>
-						GICH_LR_PHYSID_CPUID_SHIFT;
 	}
 }
 

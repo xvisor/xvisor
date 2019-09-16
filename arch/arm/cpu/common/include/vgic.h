@@ -55,7 +55,6 @@ enum vgic_model_type {
 struct vgic_lr {
 	u16 virtid;
 	u16 physid;
-	u16 cpuid;
 	u8 prio;
 	u8 flags;
 };

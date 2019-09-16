@@ -338,10 +338,6 @@ static void vgic_v3_set_lr(u32 lr, struct vgic_lr *lrv,
 		if (lrv->flags & VGIC_LR_EOI_INT) {
 			lrval |= ICH_LR_EOI;
 		}
-		if (model == VGIC_MODEL_V2) {
-			lrval |= ((u64)lrv->cpuid << GICH_LR_PHYSID_CPUID_SHIFT) &
-							GICH_LR_PHYSID_CPUID;
-		}
 	}
 
 	/*
@@ -370,7 +366,6 @@ static void vgic_v3_get_lr(u32 lr, struct vgic_lr *lrv,
 		lrv->virtid = lrval & ICH_LR_VIRTUAL_ID_MASK;
 	}
 	lrv->physid = 0;
-	lrv->cpuid = 0;
 	lrv->prio = (lrval >> ICH_LR_PRIORITY_SHIFT) & 0xFF;
 	lrv->flags = 0;
 
@@ -387,10 +382,6 @@ static void vgic_v3_get_lr(u32 lr, struct vgic_lr *lrv,
 	} else {
 		if (lrval & ICH_LR_EOI) {
 			lrv->flags |= VGIC_LR_EOI_INT;
-		}
-		if (model == VGIC_MODEL_V2) {
-			lrv->cpuid = (lrval & GICH_LR_PHYSID_CPUID) >>
-						GICH_LR_PHYSID_CPUID_SHIFT;
 		}
 	}
 }
