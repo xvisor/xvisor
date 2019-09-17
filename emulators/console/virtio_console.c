@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -64,7 +64,8 @@ struct virtio_console_dev {
 static u32 virtio_console_get_host_features(struct vmm_virtio_device *dev)
 {
 	/* We support emergency write. */
-	return 1UL << VMM_VIRTIO_CONSOLE_F_EMERG_WRITE;
+	return 1UL << VMM_VIRTIO_RING_F_EVENT_IDX
+		| 1UL << VMM_VIRTIO_CONSOLE_F_EMERG_WRITE;
 }
 
 static void virtio_console_set_guest_features(struct vmm_virtio_device *dev,
@@ -82,7 +83,7 @@ static int virtio_console_init_vq(struct vmm_virtio_device *dev,
 	switch (vq) {
 	case VIRTIO_CONSOLE_RX_QUEUE:
 	case VIRTIO_CONSOLE_TX_QUEUE:
-		rc = vmm_virtio_queue_setup(&cdev->vqs[vq], dev->guest, 
+		rc = vmm_virtio_queue_setup(&cdev->vqs[vq], dev->guest,
 			pfn, page_size, VIRTIO_CONSOLE_QUEUE_SIZE, align);
 		break;
 	default:
@@ -169,6 +170,10 @@ static int virtio_console_do_tx(struct vmm_virtio_device *dev,
 		vmm_virtio_queue_set_used_elem(vq, head, total_len);
 	}
 
+	if (vmm_virtio_queue_should_signal(vq)) {
+		dev->tra->notify(dev, VIRTIO_CONSOLE_TX_QUEUE);
+	}
+
 	return VMM_OK;
 }
 
@@ -243,7 +248,7 @@ static int virtio_console_vserial_send(struct vmm_vserial *vser, u8 data)
 	return VMM_OK;
 }
 
-static int virtio_console_read_config(struct vmm_virtio_device *dev, 
+static int virtio_console_read_config(struct vmm_virtio_device *dev,
 				      u32 offset, void *dst, u32 dst_len)
 {
 	struct virtio_console_dev *cdev = dev->emu_data;
@@ -330,7 +335,7 @@ static int virtio_console_reset(struct vmm_virtio_device *dev)
 	return VMM_OK;
 }
 
-static int virtio_console_connect(struct vmm_virtio_device *dev, 
+static int virtio_console_connect(struct vmm_virtio_device *dev,
 				  struct vmm_virtio_emulator *emu)
 {
 	struct virtio_console_dev *cdev;
@@ -344,7 +349,7 @@ static int virtio_console_connect(struct vmm_virtio_device *dev,
 
 	vmm_snprintf(cdev->name, VMM_VIRTIO_DEVICE_MAX_NAME_LEN,
 		     "%s", dev->name);
-	cdev->vser = vmm_vserial_create(cdev->name, 
+	cdev->vser = vmm_vserial_create(cdev->name,
 					&virtio_console_vserial_can_send,
 					&virtio_console_vserial_send,
 					VIRTIO_CONSOLE_VSERIAL_FIFO_SZ, cdev);
@@ -357,7 +362,7 @@ static int virtio_console_connect(struct vmm_virtio_device *dev,
 		vmm_vserial_destroy(cdev->vser);
 		return VMM_ENOMEM;
 	}
-	
+
 	cdev->config.cols = 80;
 	cdev->config.rows = 24;
 	cdev->config.max_nr_ports = 1;
