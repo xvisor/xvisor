@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -336,6 +336,7 @@ int vmm_virtio_queue_setup(struct vmm_virtio_queue *vq,
 	}
 
 	if ((rc = vmm_virtio_queue_cleanup(vq))) {
+		vmm_printf("%s: cleanup failed\n", __func__);
 		return rc;
 	}
 
@@ -345,15 +346,18 @@ int vmm_virtio_queue_setup(struct vmm_virtio_queue *vq,
 	if ((rc = vmm_guest_physical_map(guest, gphys_addr, gphys_size,
 					 &hphys_addr, &avail_size,
 					 &reg_flags))) {
-		vmm_printf("Failed vmm_guest_physical_map\n");
+		vmm_printf("%s: vmm_guest_physical_map() failed\n", __func__);
 		return VMM_EFAIL;
 	}
 
 	if (!(reg_flags & VMM_REGION_ISRAM)) {
+		vmm_printf("%s: region is not backed by RAM\n", __func__);
 		return VMM_EINVALID;
 	}
 
 	if (avail_size < gphys_size) {
+		vmm_printf("%s: available size less than required size\n",
+			   __func__);
 		return VMM_EINVALID;
 	}
 
@@ -390,7 +394,7 @@ static unsigned next_desc(struct vmm_virtio_queue *vq,
 	}
 
 	next = desc->next;
-	
+
 	rc = vmm_virtio_queue_get_desc(vq, next, desc);
 	if (rc) {
 		vmm_printf("%s: failed to get descriptor next=%d error=%d\n",
@@ -495,7 +499,7 @@ int vmm_virtio_queue_get_iovec(struct vmm_virtio_queue *vq,
 {
 	u16 head = vmm_virtio_queue_pop(vq);
 
-	return vmm_virtio_queue_get_head_iovec(vq, head, iov, 
+	return vmm_virtio_queue_get_head_iovec(vq, head, iov,
 					       ret_iov_cnt, ret_total_len,
 					       ret_head);
 }
@@ -804,9 +808,9 @@ static void __exit vmm_virtio_core_exit(void)
 	/* Nothing to be done */
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
