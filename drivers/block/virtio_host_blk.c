@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -206,7 +206,7 @@ static void virtio_host_blk_flush(struct vmm_blockrq *brq, void *priv)
 static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 {
 	int err;
-	unsigned int i, len, exp1, exp2;
+	unsigned int i, len, exp0, exp1, exp2;
 	struct virtio_host_blk *vblk = priv;
 	struct virtio_host_blk_req *req;
 
@@ -222,6 +222,8 @@ static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 				"bcnt=%d data=0x%p\n", __func__,
 				req, req->r->lba, req->r->bcnt, req->r->data);
 
+			exp0 = sizeof(req->status);
+
 			exp1 = sizeof(req->hdr);
 			exp1 += req->r->bcnt * vblk->block_size;
 			exp1 += sizeof(req->status);
@@ -229,11 +231,11 @@ static void virtio_host_blk_done_work(struct vmm_blockrq *brq, void *priv)
 			exp2 = req->r->bcnt * vblk->block_size;
 			exp2 += sizeof(req->status);
 
-			DPRINTF(vblk, "%s: req=0x%p exp1=%d exp2=%d "
+			DPRINTF(vblk, "%s: req=0x%p exp0=%d exp1=%d exp2=%d "
 				"len=%d status=%d\n", __func__,
-				req, exp1, exp2, len, req->status);
+				req, exp0, exp1, exp2, len, req->status);
 
-			if ((len == exp1) || (len == exp2)) {
+			if ((len == exp0) || (len == exp1) || (len == exp2)) {
 				switch (req->status) {
 				case VMM_VIRTIO_BLK_S_OK:
 					err = VMM_OK;
