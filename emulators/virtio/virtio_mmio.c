@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -76,7 +76,10 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 		*(u32 *)dst = *((u32 *)((void *)&m->config.interrupt_state));
 		break;
 	case VMM_VIRTIO_MMIO_HOST_FEATURES:
-		*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
+		if (m->config.host_features_sel == 0)
+			*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
+		else
+			*(u32 *)dst = 0;
 		break;
 	case VMM_VIRTIO_MMIO_QUEUE_PFN:
 		*(u32 *)dst = m->dev.emu->get_pfn_vq(&m->dev,
@@ -137,7 +140,7 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		break;
 	case VMM_VIRTIO_MMIO_QUEUE_NUM:
 		m->config.queue_num = val;
-		m->dev.emu->set_size_vq(&m->dev, 
+		m->dev.emu->set_size_vq(&m->dev,
 					m->config.queue_sel,
 					m->config.queue_num);
 		break;
@@ -145,7 +148,7 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		m->config.queue_align = val;
 		break;
 	case VMM_VIRTIO_MMIO_QUEUE_PFN:
-		m->dev.emu->init_vq(&m->dev, 
+		m->dev.emu->init_vq(&m->dev,
 				    m->config.queue_sel,
 				    m->config.guest_page_size,
 				    m->config.queue_align,
@@ -189,7 +192,7 @@ static int virtio_mmio_write(struct virtio_mmio_dev *m,
 }
 
 static int virtio_mmio_read8(struct vmm_emudev *edev,
-			     physical_addr_t offset, 
+			     physical_addr_t offset,
 			     u8 *dst)
 {
 	int rc;
@@ -204,7 +207,7 @@ static int virtio_mmio_read8(struct vmm_emudev *edev,
 }
 
 static int virtio_mmio_read16(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
+			      physical_addr_t offset,
 			      u16 *dst)
 {
 	int rc;
@@ -219,28 +222,28 @@ static int virtio_mmio_read16(struct vmm_emudev *edev,
 }
 
 static int virtio_mmio_read32(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
+			      physical_addr_t offset,
 			      u32 *dst)
 {
 	return virtio_mmio_read(edev->priv, offset, dst);
 }
 
 static int virtio_mmio_write8(struct vmm_emudev *edev,
-			      physical_addr_t offset, 
+			      physical_addr_t offset,
 			      u8 src)
 {
 	return virtio_mmio_write(edev->priv, offset, 0xFFFFFF00, src);
 }
 
 static int virtio_mmio_write16(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
+			       physical_addr_t offset,
 			       u16 src)
 {
 	return virtio_mmio_write(edev->priv, offset, 0xFFFF0000, src);
 }
 
 static int virtio_mmio_write32(struct vmm_emudev *edev,
-			       physical_addr_t offset, 
+			       physical_addr_t offset,
 			       u32 src)
 {
 	return virtio_mmio_write(edev->priv, offset, 0x00000000, src);
@@ -280,8 +283,8 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 
 	m->guest = guest;
 
-	vmm_snprintf(m->dev.name, VMM_VIRTIO_DEVICE_MAX_NAME_LEN, 
-		     "%s/%s", guest->name, edev->node->name); 
+	vmm_snprintf(m->dev.name, VMM_VIRTIO_DEVICE_MAX_NAME_LEN,
+		     "%s/%s", guest->name, edev->node->name);
 	m->dev.edev = edev;
 	m->dev.tra = &mmio_tra;
 	m->dev.tra_data = m;
@@ -337,8 +340,8 @@ static int virtio_mmio_remove(struct vmm_emudev *edev)
 }
 
 static struct vmm_devtree_nodeid virtio_mmio_emuid_table[] = {
-	{ .type = "virtio", 
-	  .compatible = "virtio,mmio", 
+	{ .type = "virtio",
+	  .compatible = "virtio,mmio",
 	},
 	{ /* end of list */ },
 };
@@ -368,9 +371,9 @@ static void __exit virtio_mmio_exit(void)
 	vmm_devemu_unregister_emulator(&virtio_mmio);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
