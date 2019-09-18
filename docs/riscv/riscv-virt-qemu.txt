@@ -3,10 +3,9 @@
 This section of readme explains how to build & run Xvisor for RISC-V VirtIO
 board emulated by QEMU.
 
-To achieve this, we will require RISC-V BBL (Berkley Bootloader) which can
-be found at: https://github.com/riscv/riscv-pk.git
-
-Please follow the steps below to build & run Xvisor on RISC-V VirtIO board:
+Please follow the steps below to build & run Linux kernel with Busybox
+RootFS on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor running
+on QEMU model (v4.2 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -14,39 +13,70 @@ Please follow the steps below to build & run Xvisor on RISC-V VirtIO board:
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [3. Initialize Xvisor submodules]
-  # git submodule init
-  # git submodule update
-  (Note: This is required to be done only once in freshly cloned xvisor source)
-
-  [4. Configure Xvisor with Generic 64bit default settings]
+  [3. Configure Xvisor with Generic-64bit default settings]
   # make ARCH=riscv generic-64b-defconfig
 
-  [5. Build Xvisor & DTBs]
+  [4. Build Xvisor & DTBs]
   # make
 
-  [6. Build RISC-V BBL with Xvisor payload]
-  # mkdir -p ./build/build-riscv-pk
-  # cd ./build/build-riscv-pk
-  # <riscv_pk_source_directory>/configure --host=riscv64-unknown-linux-gnu --with-payload=../vmm.elf
-  # make
-  # cd ../..
+  [5. Build Basic Firmware]
+  # make -C tests/riscv/virt64/basic
 
-  [7. Create disk image for Xvisor]
+  [6. GoTo Linux source directory]
+  # cd <linux_source_directory>
+
+  [7. Configure Linux in build directory]
+  # cp arch/riscv/configs/defconfig arch/riscv/configs/tmp-virt64_defconfig
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/riscv/configs/tmp-virt64_defconfig -e "CONFIG_HIGH_RES_TIMERS=y CONFIG_NO_HZ_IDLE=y"
+  # make O=<linux_build_directory> ARCH=riscv tmp-virt64_defconfig
+
+  [8. Build Linux in build directory to reflect changes in kernel image]
+  # make O=<linux_build_directory> ARCH=riscv Image dtbs
+
+  [9. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [10. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [11. Create disk image for Xvisor]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
   # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
-  # cp -f ./tests/riscv/virt/xscript/zero_guest.xscript ./build/disk/boot.xscript
+  # mkdir -p ./build/disk/images/riscv/virt64
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt64-guest.dtb ./tests/riscv/virt64/virt64-guest.dts
+  # cp -f ./build/tests/riscv/virt64/basic/firmware.bin ./build/disk/images/riscv/virt64/firmware.bin
+  # cp -f ./tests/riscv/virt64/linux/nor_flash.list ./build/disk/images/riscv/virt64/nor_flash.list
+  # cp -f ./tests/riscv/virt64/linux/cmdlist ./build/disk/images/riscv/virt64/cmdlist
+  # cp -f ./tests/riscv/virt64/xscript/one_guest_virt64.xscript ./build/disk/boot.xscript
+  # cp -f <linux_build_directory>/arch/riscv/boot/Image ./build/disk/images/riscv/virt64/Image
+  # dtc -q -I dts -O dtb -o ./build/disk/images/riscv/virt64/virt64.dtb ./tests/riscv/virt64/linux/virt64.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
-  [8. Launch QEMU]
-  # qemu-system-riscv64 -M virt -m 256M -display none -serial stdio -kernel ./build/build-riscv-pk/bbl -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /; vfs run /boot.xscript; vfs cat /system/banner.txt\""
+  [12. Launch QEMU]
+  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt64/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
-  [9. Try few commands of Xvisor]
-  XVisor# help
-  XVisor# host info
-  XVisor# host irq stats
+  [13. Kick Guest0 to start Basic Firmware]
+  XVisor# guest kick guest0
+
+  [14. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [15. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/riscv/virt64/linux/cmdlist file
+   which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [16. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [17. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
   (Note: some of the above steps will need to be adapted for other

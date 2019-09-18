@@ -13,24 +13,19 @@ B. Steps to build a bootable image of Xvisor
    1. Clone xvisor-x86_64 repo
       # git clone git://github.com/hschauhan/xvisor-x86_64.git
 
-   2. Initialize Xvisor submodules
-      # git submodule init
-      # git submodule update
-      (Note: This is required to be done only once in freshly cloned xvisor source)
-
-   3. Build Xvisor with following command:
+   2. Build Xvisor with following command:
       # make ARCH=x86 x86_64_generic-defconfig
       # make
 
-   4. Create a directory xvisor-iso _somewhere_.
+   3. Create a directory xvisor-iso _somewhere_.
       # mkdir -p xvisor-iso/boot/grub
 
-   5. Copy the xvisor image in the ISO directory:
+   4. Copy the xvisor image in the ISO directory:
       # cp XVISOR_BASE/build/vmm.bin xvisor-iso/boot/
       (NOTE: Here XVISOR_BASE is base directory where you pulled
        the xvisor tree.)
 
-   6. Create a grub configuration file under ISO directory
+   5. Create a grub configuration file under ISO directory
       # <your editor> xvisor-iso/boot/grub/grub.cfg
          CUT AND PASTE FOLLOWING IN IT
          -------8<----CUT-START--8<---------------
@@ -45,10 +40,10 @@ B. Steps to build a bootable image of Xvisor
          Please copy paste above. A slight mistake won't
          boot your system.
 
-   7. Create a ISO to boot
+   6. Create a ISO to boot
       # grub-mkrescue -o bootable.iso xvisor-iso/
 
-   8. Boot the image
+   7. Boot the image
       # qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-x86.disk -m 1024M -boot d -s -serial stdio
 
 C. Preparing to Boot Guest:
@@ -66,7 +61,7 @@ C. Preparing to Boot Guest:
       i.   Create a raw QEMU disk image: qemu-img create -f raw xvisor-hd.disk 32M
       ii.  Boot a slackware or any other small linux distro to partition the dist and create filesystem on it
            # qemu-system-i386 -cdrom slackware_i486-14.0-mini-install.iso -hda xvisor-hd.disk -m 128 -boot d
-           (NOTE: In Linux, use fdisk and mkfs.vfat to partition and create filesystem on the partition.)    
+           (NOTE: In Linux, use fdisk and mkfs.vfat to partition and create filesystem on the partition.)
       iii. Mount the new partition in disk in host Linux (where you are compiling xvisor and seabios)
            # mkdir xmount
            # sudo mount -o loop,offset=1048576 xvisor-hd.disk xmount/
@@ -82,10 +77,10 @@ C. Preparing to Boot Guest:
       i.  First check if the correct block device and its partition are seen by Xvisor. You should see something like this:
           XVisor# blockdev list
           --------------------------------------------------------------------------------
-           Name             Parent           Start LBA        Blk Sz      Blk Cnt         
+           Name             Parent           Start LBA        Blk Sz      Blk Cnt
           --------------------------------------------------------------------------------
-           hda0             ---              0                512         9840176         
-           hda0p0           hda0             2048             512         9840176         
+           hda0             ---              0                512         9840176
+           hda0p0           hda0             2048             512         9840176
           --------------------------------------------------------------------------------
       ii.  Mount the partition hda0p0 in xvisor:
            XVisor# vfs mount hda0p0 /
@@ -100,6 +95,5 @@ C. Preparing to Boot Guest:
            [guest0/uart0] Changing serial settings was 0/0 now 3/0
            [guest0/uart0] Start Seabios (version -20140215_004145-hchauhan-vmplayer)
            [guest0/uart0] CPUID Signature "XvisorXvisor" at 80000000
-           [guest0/uart0] Booting on CPU: Xvisor Virtual CPU version 0.1  
-           [guest0/uart0] 
-
+           [guest0/uart0] Booting on CPU: Xvisor Virtual CPU version 0.1
+           [guest0/uart0]
