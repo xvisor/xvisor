@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,7 +23,7 @@
  * This header has been derived from linux kernel source:
  * <linux_source>/include/uapi/linux/virtio_blk.h
  *
- * The original header is BSD licensed. 
+ * The original header is BSD licensed.
  */
 
 /* This header is BSD licensed so anyone can use the definitions to implement
@@ -66,6 +66,8 @@
 #define VMM_VIRTIO_BLK_F_BLK_SIZE	6	/* Block size of disk is available*/
 #define VMM_VIRTIO_BLK_F_TOPOLOGY	10	/* Topology information is available */
 #define VMM_VIRTIO_BLK_F_MQ		12	/* support more than one vq */
+#define VMM_VIRTIO_BLK_F_DISCARD	13	/* DISCARD is supported */
+#define VMM_VIRTIO_BLK_F_WRITE_ZEROES	14	/* WRITE ZEROES is supported */
 
 /* Legacy feature bits */
 #ifndef VMM_VIRTIO_BLK_NO_LEGACY
@@ -112,6 +114,39 @@ struct vmm_virtio_blk_config {
 
 	/* number of vqs, only available when VMM_VIRTIO_BLK_F_MQ is set */
 	u16 num_queues;
+
+	/* the next 3 entries are guarded by VMM_VIRTIO_BLK_F_DISCARD */
+	/*
+	 * The maximum discard sectors (in 512-byte sectors) for
+	 * one segment.
+	 */
+	u32 max_discard_sectors;
+	/*
+	 * The maximum number of discard segments in a
+	 * discard command.
+	 */
+	u32 max_discard_seg;
+	/* Discard commands must be aligned to this number of sectors. */
+	u32 discard_sector_alignment;
+
+	/* the next 3 entries are guarded by VMM_VIRTIO_BLK_F_WRITE_ZEROES */
+	/*
+	 * The maximum number of write zeroes sectors (in 512-byte sectors) in
+	 * one segment.
+	 */
+	u32 max_write_zeroes_sectors;
+	/*
+	 * The maximum number of segments in a write zeroes
+	 * command.
+	 */
+	u32 max_write_zeroes_seg;
+	/*
+	 * Set if a VMM_VIRTIO_BLK_T_WRITE_ZEROES request may result in the
+	 * deallocation of one or more of the sectors.
+	 */
+	u8 write_zeroes_may_unmap;
+
+	u8 unused1[3];
 } __attribute__((packed));
 
 /*
@@ -138,6 +173,12 @@ struct vmm_virtio_blk_config {
 /* Get device ID command */
 #define VMM_VIRTIO_BLK_T_GET_ID		8
 
+/* Discard command */
+#define VMM_VIRTIO_BLK_T_DISCARD	11
+
+/* Write zeroes command */
+#define VMM_VIRTIO_BLK_T_WRITE_ZEROES	13
+
 /* Barrier before this op. */
 #define VMM_VIRTIO_BLK_T_BARRIER	0x80000000
 
@@ -149,6 +190,19 @@ struct vmm_virtio_blk_outhdr {
 	u32 ioprio;
 	/* Sector (ie. 512 byte offset) */
 	u64 sector;
+} __attribute__((packed));
+
+/* Unmap this range (only valid for write zeroes command) */
+#define VMM_VIRTIO_BLK_WRITE_ZEROES_FLAG_UNMAP	0x00000001
+
+/* Discard/write zeroes range for each request. */
+struct virtio_blk_discard_write_zeroes {
+	/* discard/write zeroes start sector */
+	u64 sector;
+	/* number of discard/write zeroes sectors */
+	u32 num_sectors;
+	/* flags for this range */
+	u32 flags;
 } __attribute__((packed));
 
 struct vmm_virtio_scsi_inhdr {
