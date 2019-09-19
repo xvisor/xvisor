@@ -425,9 +425,7 @@ static void __init init_bootcpu(void)
 
 	/* Print version string */
 	vmm_printf("\n");
-	vmm_printf("%s v%d.%d.%d (%s %s)\n", VMM_NAME,
-		   VMM_VERSION_MAJOR, VMM_VERSION_MINOR, VMM_VERSION_RELEASE,
-		   __DATE__, __TIME__);
+	vmm_printver();
 	vmm_printf("\n");
 
 	/* Initialize host address space */

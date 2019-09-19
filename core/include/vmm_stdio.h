@@ -81,7 +81,7 @@ struct vmm_history {
 			(h)->table[iter][0] = '\0';			\
 		}							\
 		(h)->tail = 0;						\
-	}								
+	}
 
 /** Cleanup vmm_history pointer */
 #define CLEANUP_HISTORY(h)						\
@@ -141,6 +141,12 @@ int __printf(1, 2) vmm_init_printf(const char *format, ...);
 /** Print contents of some data in hex format */
 void vmm_chexdump(struct vmm_chardev *cdev,
 		  u64 print_base_addr, void *data, u64 len);
+
+/** Print version string to character device */
+void vmm_cprintver(struct vmm_chardev *cdev);
+
+/** Print version string to default device */
+#define vmm_printver()	vmm_cprintver(NULL)
 
 /** Predefined log levels */
 enum vmm_print_level {

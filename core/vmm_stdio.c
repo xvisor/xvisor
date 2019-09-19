@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_version.h>
 #include <vmm_compiler.h>
 #include <vmm_main.h>
 #include <vmm_chardev.h>
@@ -531,6 +532,18 @@ void vmm_chexdump(struct vmm_chardev *cdev,
 	}
 }
 
+void vmm_cprintver(struct vmm_chardev *cdev)
+{
+#ifdef VMM_VERSION_GITDESC
+	vmm_cprintf(cdev, "%s %s (%s %s)\n", VMM_NAME, VMM_VERSION_GITDESC,
+		    __DATE__, __TIME__);
+#else
+	vmm_cprintf(cdev, "%s v%d.%d.%d (%s %s)\n", VMM_NAME,
+		    VMM_VERSION_MAJOR, VMM_VERSION_MINOR, VMM_VERSION_RELEASE,
+		    __DATE__, __TIME__);
+#endif
+}
+
 static int vmm_lvprintf(enum vmm_print_level level,
 			const char *prefix, const char *format, va_list args)
 {
@@ -892,4 +905,3 @@ int __init vmm_stdio_init(void)
 
 	return VMM_OK;
 }
-

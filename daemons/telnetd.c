@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -117,7 +117,7 @@ static void telnetd_clear_disconnected(void)
 	vmm_spin_lock_irqsave(&tdctrl.lock, flags);
 
 	tdctrl.disconnected = FALSE;
-	
+
 	/* Clear Tx buffer */
 	tdctrl.tx_buf_head = tdctrl.tx_buf_tail = tdctrl.tx_buf_count = 0;
 
@@ -198,7 +198,7 @@ static void telnetd_flush_tx_buffer(void)
 
 		/* Transmit the pending Tx data */
 		if (tx_count) {
-			rc = netstack_socket_write(tdctrl.active_sk, 
+			rc = netstack_socket_write(tdctrl.active_sk,
 						   &tx_buf[0], tx_count);
 			if (rc) {
 				telnetd_set_disconnected();
@@ -400,16 +400,14 @@ static int telnetd_main(void *data)
 		telnetd_clear_disconnected();
 
 		/* Telnetd Banner */
-		vmm_cprintf(&tdctrl.cdev, 
+		vmm_cprintf(&tdctrl.cdev,
 				"Connected to Xvisor Telnet daemon\n");
 
 		/* Flush Tx buffer */
 		telnetd_flush_tx_buffer();
 
 		/* Print version string */
-		vmm_cprintf(&tdctrl.cdev, "%s v%d.%d.%d (%s %s)\n\n",
-			    VMM_NAME, VMM_VERSION_MAJOR, VMM_VERSION_MINOR,
-			    VMM_VERSION_RELEASE, __DATE__, __TIME__);
+		vmm_cprintver(&tdctrl.cdev);
 
 		/* Flush Tx buffer */
 		telnetd_flush_tx_buffer();
@@ -449,7 +447,7 @@ static int telnetd_main(void *data)
 					cmds[cmds_len - 1] = '\0';
 
 				tdctrl.cdev_incmdexec = TRUE;
-				vmm_cmdmgr_execute_cmdstr(&tdctrl.cdev, cmds, 
+				vmm_cmdmgr_execute_cmdstr(&tdctrl.cdev, cmds,
 							  telnetd_cmd_filter);
 				tdctrl.cdev_incmdexec = FALSE;
 			}
@@ -489,7 +487,7 @@ static int __init daemon_telnetd_init(void)
 	memset(&tdctrl, 0, sizeof(tdctrl));
 
 #ifdef CONFIG_TELNETD_HISTORY
-	INIT_HISTORY(&tdctrl.history, 
+	INIT_HISTORY(&tdctrl.history,
 			CONFIG_TELNETD_HISTORY_SIZE, CONFIG_TELNETD_CMD_WIDTH);
 #endif
 
@@ -547,9 +545,9 @@ static int __init daemon_telnetd_init(void)
 	 */
 
 	/* Create telnetd main thread */
-	tdctrl.main_thread = vmm_threads_create("telnetd", 
-						&telnetd_main, 
-						NULL, 
+	tdctrl.main_thread = vmm_threads_create("telnetd",
+						&telnetd_main,
+						NULL,
 						telnetd_priority,
 						telnetd_time_slice);
 	if (!tdctrl.main_thread) {
@@ -569,9 +567,9 @@ static void __exit daemon_telnetd_exit(void)
 	vmm_threads_destroy(tdctrl.main_thread);
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

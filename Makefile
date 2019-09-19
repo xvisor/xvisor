@@ -78,6 +78,9 @@ export PROJECT_VERSION = $(MAJOR).$(MINOR).$(RELEASE)
 export CONFIG_DIR=$(build_dir)/openconf
 export CONFIG_FILE=$(CONFIG_DIR)/.config
 
+# GIT describe
+export GITDESC=$(shell if [ -d $(src_dir)/.git ]; then git describe 2> /dev/null; fi)
+
 # Openconf settings
 export OPENCONF_PROJECT = $(PROJECT_NAME)
 export OPENCONF_VERSION = $(PROJECT_VERSION)
@@ -139,6 +142,9 @@ cppflags+=-include $(core_dir)/include/vmm_openconf.h
 cppflags+=-DCONFIG_MAJOR=$(MAJOR)
 cppflags+=-DCONFIG_MINOR=$(MINOR)
 cppflags+=-DCONFIG_RELEASE=$(RELEASE)
+ifneq ($(GITDESC),)
+cppflags+=-DCONFIG_GITDESC="\"$(GITDESC)\""
+endif
 cppflags+=-I$(cpu_dir)/include
 cppflags+=-I$(cpu_common_dir)/include
 cppflags+=-I$(board_dir)/include
