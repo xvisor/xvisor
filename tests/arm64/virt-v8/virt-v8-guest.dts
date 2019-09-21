@@ -83,9 +83,7 @@
 			compatible = "simplefb-0.1";
 			guest_physical_addr = <0x09002000>;
 			physical_size = <0x1000>;
-			width = <1024>; /* Override this if required */
-			height = <768>; /* Override this if required */
-			mode = "r5g6b5"; /* Override this if required */
+			match_fbdev = "fb0"; /* Override this if required */
 			base = <0x30000000>; /* Override this if required */
 		};
 
