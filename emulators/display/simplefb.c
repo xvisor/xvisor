@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -30,6 +30,7 @@
 #include <vio/vmm_pixel_ops.h>
 #include <vio/vmm_vdisplay.h>
 #include <libs/stringlib.h>
+#include <drv/fb.h>
 
 #include "drawfn.h"
 
@@ -315,7 +316,13 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 {
 	int rc = VMM_OK;
 	char name[64];
-	const char *str;
+	const char *str = NULL;
+#if defined(CONFIG_FB)
+	const char *tmp = NULL;
+	struct fb_info *info;
+	const struct fb_videomode *info_mode;
+	struct fb_var_screeninfo info_var;
+#endif
 	struct simplefb_state *s;
 
 	s = vmm_zalloc(sizeof(struct simplefb_state));
@@ -332,18 +339,66 @@ static int simplefb_emulator_probe(struct vmm_guest *guest,
 	s->vendor = SIMPLEFB_VENDOR;
 	s->version = (u32)((unsigned long)eid->data);
 
-	rc = vmm_devtree_read_u32(edev->node, "width", &s->width);
-	if (rc) {
-		goto simplefb_emulator_probe_freestate_fail;
+#if defined(CONFIG_FB)
+	rc = vmm_devtree_read_string(edev->node, "match_fbdev", &tmp);
+	if (rc == VMM_OK) {
+		info = fb_find(tmp);
+		if (!info) {
+			goto skip_match;
+		}
+
+		info_mode = fb_find_best_mode(&info->var,
+					      &info->modelist);
+		if (!info_mode) {
+			goto skip_match;
+		}
+
+		fb_videomode_to_var(&info_var, info_mode);
+
+		s->width = info_var.xres_virtual;
+		s->height = info_var.yres_virtual;
+
+		str = NULL;
+		switch (info->var.bits_per_pixel) {
+		case 16:
+			str = "r5g6b5";
+			break;
+		case 24:
+			str = "r8g8b8";
+			break;
+		case 32:
+			str = "a8r8g8b8";
+			break;
+		default:
+			break;
+		};
+	}
+skip_match:
+#endif
+
+	if (!str) {
+		rc = vmm_devtree_read_u32(edev->node, "width", &s->width);
+		if (rc) {
+			/* Default width 1600 pixels */
+			s->width = 1600;
+		}
+
+		rc = vmm_devtree_read_u32(edev->node, "height", &s->height);
+		if (rc) {
+			/* Default height 900 pixels */
+			s->height = 900;
+		}
+
+		str = NULL;
+		rc = vmm_devtree_read_string(edev->node, "mode", &str);
+		if (rc) {
+			/* Default video mode 32bit */
+			str = "a8r8g8b8";
+		}
 	}
 
-	rc = vmm_devtree_read_u32(edev->node, "height", &s->height);
-	if (rc) {
-		goto simplefb_emulator_probe_freestate_fail;
-	}
-
-	rc = vmm_devtree_read_string(edev->node, "mode", &str);
-	if (rc) {
+	if (!str) {
+		rc = VMM_EINVALID;
 		goto simplefb_emulator_probe_freestate_fail;
 	}
 
