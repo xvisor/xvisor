@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -35,6 +35,7 @@
 #include <libs/list.h>
 #include <libs/mathlib.h>
 #include <libs/vscreen.h>
+#include <vmm_host_aspace.h>
 
 #define MODULE_DESC			"vscreen library"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -568,7 +569,7 @@ static void vscreen_keyboard_event(struct vscreen_context *cntx,
 			break;
 		};
 	}
-	if (cntx->esc_key_state == 
+	if (cntx->esc_key_state ==
 			((1 << array_size(cntx->esc_key_code)) - 1)) {
 		/* All escape keys pressed hence signal exit */
 		vscreen_enqueue_work(cntx, VSCREEN_WORK_EXIT);
@@ -751,6 +752,12 @@ done:
 
 static int vscreen_soft_refresh(struct vscreen_context *cntx)
 {
+	int rc;
+	u32 rows, cols;
+	u32 screen_size;
+	physical_addr_t pa;
+	struct vmm_pixelformat pf;
+
 	/* Do nothing if freezed */
 	if (cntx->freeze) {
 		return VMM_OK;
@@ -761,8 +768,31 @@ static int vscreen_soft_refresh(struct vscreen_context *cntx)
 		return VMM_OK;
 	}
 
-	/* TODO: work in progress */
-	vmm_printf("%s: not available\n", __func__);
+	/* Try to get current pixeldata of virtual display */
+	rc = vmm_vdisplay_get_pixeldata(cntx->vdis,
+					&pf, &rows, &cols, &pa);
+	if (rc != VMM_OK) {
+		return rc;
+	}
+
+	/* If we are already using appropriate settings then do nothing */
+	if (!cntx->hard_vdis &&
+	    (cntx->info->var.xres_virtual == cols) &&
+	    (cntx->info->var.yres_virtual == rows) &&
+	    (cntx->info->var.bits_per_pixel == pf.bits_per_pixel)) {
+		screen_size = (cols*rows*pf.bits_per_pixel) >> 3;
+		vmm_host_memory_read(pa, cntx->info->screen_base,
+				     screen_size, TRUE);
+		return VMM_OK;
+	}
+
+	/*
+	 * TODO: If modes are not identical then we have to scale down
+	 * the image for smaller host framebuffer.
+	 *
+	 * To achieve this, we will have to create vmm_surface instance,
+	 * and update it over here using vmm_vdisplay_one_update() API.
+	 */
 
 	return VMM_EFAIL;
 }
@@ -815,7 +845,7 @@ static int vscreen_hard_refresh(struct vscreen_context *cntx)
 	}
 
 	/* If we are already using appropriate settings then do nothing */
-	if (cntx->hard_vdis && 
+	if (cntx->hard_vdis &&
 	    (cntx->info->var.xres_virtual == cols) &&
 	    (cntx->info->var.yres_virtual == rows) &&
 	    (cntx->info->var.bits_per_pixel == pf.bits_per_pixel) &&
@@ -879,7 +909,7 @@ static int vscreen_hard_refresh(struct vscreen_context *cntx)
 	return VMM_OK;
 
 hard_bind_error:
-	vmm_printf("vscreen: %s: rows=%d\n", 
+	vmm_printf("vscreen: %s: rows=%d\n",
 		   cntx->info->name, cntx->info->var.yres_virtual);
 	vmm_printf("vscreen: %s: cols=%d\n",
 		   cntx->info->name, cntx->info->var.xres_virtual);
@@ -1271,7 +1301,7 @@ static int vscreen_cleanup(struct vscreen_context *cntx)
 
 static void vscreen_cleanup_work(struct vmm_work *work)
 {
-	struct vscreen_list_elt *velt = 
+	struct vscreen_list_elt *velt =
 		container_of(work, struct vscreen_list_elt, cleanup_work);
 	irq_flags_t flags;
 
