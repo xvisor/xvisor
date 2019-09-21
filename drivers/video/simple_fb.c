@@ -299,8 +299,17 @@ static int simple_fb_setcolreg(unsigned int regno, unsigned int red,
 
 static int simple_fb_blank(int blank_mode, struct fb_info *info)
 {
-	DPRINTF("%s: not supported\n", __func__);
-	return -ENOTSUPP;
+	u32 i, screen_size;
+
+	/*
+	 * We cannot change FB hardware state so just clear
+	 * the screen by writing zeros.
+	 */
+	screen_size = info->screen_size * (info->var.bits_per_pixel >> 3);
+	for(i = 0; i < screen_size; i++)
+		info->screen_base[i] = 0;
+
+	return VMM_OK;
 }
 
 static struct fb_ops simple_fb_ops = {
