@@ -2,8 +2,8 @@
 
 The Virt64 is a fully para-virtualized guest with RISC-V 64bit CPUs.
 
-We only have memory mapped VirtIO devices for IO and this makes the 
-Guest as fully para-virtualized. 
+We only have memory mapped VirtIO devices for IO and this makes the
+Guest as fully para-virtualized.
 
 The memory map and irqs in Virt64 guest are as follows:
 0x0000000000000000-0x000000000BFFFFFF (192M)        (NOR Flash)
@@ -11,7 +11,8 @@ The memory map and irqs in Virt64 guest are as follows:
 0x0000000010000000–0x00000000100000FF (4K) (IRQ=10) (UART-8250)
 0x0000000010001000–0x0000000010001FFF (4K)          (Guest/VM Info Device)
 0x0000000010002000–0x0000000010002FFF (4K)          (SimpleFB Device)
-0x0000000010003000–0x000000001FFFFFFF (256M-12K)    (Reserved)
+0x0000000010003000–0x0000000010003FFF (4K) (IRQ=11) (Goldfish-RTC)
+0x0000000010004000–0x000000001FFFFFFF (256M-16K)    (Reserved)
 0x0000000020000000–0x0000000020000FFF (4K) (IRQ=1)  (VirtIO Network Device)
 0x0000000020001000–0x0000000020001FFF (4K) (IRQ=2)  (VirtIO Block Device)
 0x0000000020002000–0x0000000020002FFF (4K) (IRQ=3)  (VirtIO Console Device)
@@ -30,7 +31,7 @@ The memory map and irqs in Virt64 guest are as follows:
 We have tested following guest OSes for this guest:
 
   1. basic - Basic firmware/bootloader
-  2. linux - Linux Kernel 
+  2. linux - Linux Kernel
 
 Please follow the README under specific guest OS directory for detailed
 steps to configure, compile and run.

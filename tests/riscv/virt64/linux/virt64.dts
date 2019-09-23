@@ -55,6 +55,12 @@
 			clock-frequency = <3686400>;
 		};
 
+		rtc@10003000 {
+			compatible = "google,goldfish-rtc";
+			reg = <0x0 0x10003000 0x0 0x1000>;
+			interrupts = <11>;
+		};
+
 		virtio_net@20000000 {
 			compatible = "virtio,mmio";
 			reg = <0x0 0x20000000 0x0 0x1000>;

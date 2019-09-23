@@ -81,6 +81,16 @@
 			base = <0x50000000>; /* Override this if required */
 		};
 
+		rtc {
+			manifest_type = "virtual";
+			address_type = "memory";
+			device_type = "rtc";
+			compatible = "google,goldfish-rtc";
+			guest_physical_addr = <0x10003000>;
+			physical_size = <0x1000>;
+			interrupts = <11>;
+		};
+
 		NET0: virtio-net0 {
 			manifest_type = "virtual";
 			address_type = "memory";
