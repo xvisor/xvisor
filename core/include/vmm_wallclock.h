@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -26,8 +26,8 @@
 #include <vmm_types.h>
 
 struct vmm_timeval {
-	s64	tv_sec;		/* seconds */
-	s64	tv_nsec;	/* nanoseconds */
+	time64_t tv_sec;	/* seconds */
+	time64_t tv_nsec;	/* nanoseconds */
 };
 
 struct vmm_timezone {
@@ -66,11 +66,11 @@ struct vmm_timeinfo {
 #define NSEC_PER_SEC	1000000000L
 #define FSEC_PER_SEC	1000000000000000LL
 
-#define VMM_TIMEVAL_SEC_MAX	((1ULL << ((sizeof(s64) << 3) - 1)) - 1)
+#define VMM_TIMEVAL_SEC_MAX	((1ULL << ((sizeof(time64_t) << 3) - 1)) - 1)
 #define VMM_TIMEVAL_NSEC_MAX	NSEC_PER_SEC
 
 /** Compare two vmm_timeval instances */
-static inline int vmm_timeval_compare(const struct vmm_timeval *lhs, 
+static inline int vmm_timeval_compare(const struct vmm_timeval *lhs,
 					const struct vmm_timeval *rhs)
 {
 	if (lhs->tv_sec < rhs->tv_sec)
@@ -85,7 +85,8 @@ static inline int vmm_timeval_compare(const struct vmm_timeval *lhs,
 (((tv)->tv_sec >= 0) && (((unsigned long) (tv)->tv_nsec) < NSEC_PER_SEC))
 
 /** Set normalized values to vmm_timeval instance */
-void vmm_timeval_set_normalized(struct vmm_timeval *tv, s64 sec, s64 nsec);
+void vmm_timeval_set_normalized(struct vmm_timeval *tv,
+				time64_t sec, time64_t nsec);
 
 /** Add vmm_timeval intances. add = lhs - rhs, in normalized form */
 struct vmm_timeval vmm_timeval_add(struct vmm_timeval lhs,
@@ -96,33 +97,33 @@ struct vmm_timeval vmm_timeval_sub(struct vmm_timeval lhs,
 				   struct vmm_timeval rhs);
 
 /** Convert vmm_timeval to nanoseconds */
-static inline s64 vmm_timeval_to_ns(const struct vmm_timeval *tv)
+static inline time64_t vmm_timeval_to_ns(const struct vmm_timeval *tv)
 {
-	return ((s64) tv->tv_sec * NSEC_PER_SEC) + tv->tv_nsec;
+	return ((time64_t) tv->tv_sec * NSEC_PER_SEC) + tv->tv_nsec;
 }
 
 /** Convert nanoseconds to vmm_timeval */
-struct vmm_timeval vmm_ns_to_timeval(const s64 nsec);
+struct vmm_timeval vmm_ns_to_timeval(const time64_t nsec);
 
-/** Convert seconds elapsed Gregorian date to vmm_timeinfo 
+/** Convert seconds elapsed Gregorian date to vmm_timeinfo
  *  @totalsecs	number of seconds elapsed since 00:00:00 on January 1, 1970,
  *		Coordinated Universal Time (UTC).
  *  @offset	offset seconds adding to totalsecs.
  *  @result	pointer to struct vmm_timeinfo variable for broken-down time
  */
-void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
+void vmm_wallclock_mkinfo(time64_t totalsecs, int offset,
 			  struct vmm_timeinfo *result);
 
 /** Converts Gregorian date to seconds since 1970-01-01 00:00:00.
  *  Assumes input in normal date format, i.e. 1980-12-31 23:59:59
  *  => year=1980, mon=12, day=31, hour=23, min=59, sec=59.
  */
-s64 vmm_wallclock_mktime(const unsigned int year0, 
-			 const unsigned int mon0,
-			 const unsigned int day, 
-			 const unsigned int hour,
-			 const unsigned int min, 
-			 const unsigned int sec);
+time64_t vmm_wallclock_mktime(const unsigned int year0,
+			      const unsigned int mon0,
+			      const unsigned int day,
+			      const unsigned int hour,
+			      const unsigned int min,
+			      const unsigned int sec);
 
 /** Set local time */
 int vmm_wallclock_set_local_time(struct vmm_timeval *tv);
@@ -137,11 +138,11 @@ int vmm_wallclock_set_timezone(struct vmm_timezone *tz);
 int vmm_wallclock_get_timezone(struct vmm_timezone *tz);
 
 /** Set current time and timezone */
-int vmm_wallclock_set_timeofday(struct vmm_timeval *tv, 
+int vmm_wallclock_set_timeofday(struct vmm_timeval *tv,
 				struct vmm_timezone *tz);
 
 /** Get current time and timezone */
-int vmm_wallclock_get_timeofday(struct vmm_timeval *tv, 
+int vmm_wallclock_get_timeofday(struct vmm_timeval *tv,
 				struct vmm_timezone *tz);
 
 /** Initialize wall-clock subsystem */

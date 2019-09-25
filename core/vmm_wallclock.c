@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -47,7 +47,8 @@ struct vmm_wallclock_ctrl {
 
 static struct vmm_wallclock_ctrl wclk;
 
-void vmm_timeval_set_normalized(struct vmm_timeval *tv, s64 sec, s64 nsec)
+void vmm_timeval_set_normalized(struct vmm_timeval *tv,
+				time64_t sec, time64_t nsec)
 {
 	while (nsec >= NSEC_PER_SEC) {
 		/*
@@ -90,7 +91,7 @@ struct vmm_timeval vmm_timeval_sub(struct vmm_timeval lhs,
 	return tv_delta;
 }
 
-struct vmm_timeval vmm_ns_to_timeval(const s64 nsec)
+struct vmm_timeval vmm_ns_to_timeval(const time64_t nsec)
 {
 	struct vmm_timeval tv;
 
@@ -146,7 +147,7 @@ static const unsigned short __mon_yday[2][13] = {
 #define SECS_PER_HOUR	(60 * 60)
 #define SECS_PER_DAY	(SECS_PER_HOUR * 24)
 
-void vmm_wallclock_mkinfo(s64 totalsecs, int offset, 
+void vmm_wallclock_mkinfo(time64_t totalsecs, int offset,
 			  struct vmm_timeinfo *result)
 {
 	long days, rem, y;
@@ -205,16 +206,16 @@ void vmm_wallclock_mkinfo(s64 totalsecs, int offset,
  *
  * This algorithm was first published by Gauss (I think).
  *
- * NOTE: the original function mktime() in linux will overflow on 
- * 2106-02-07 06:28:16 on machines where long is 32-bit! To take 
- * care of this issue we return s64 try to avoid overflow.
+ * NOTE: the original function mktime() in linux will overflow on
+ * 2106-02-07 06:28:16 on machines where long is 32-bit! To take
+ * care of this issue we return time64_t try to avoid overflow.
  */
-s64 vmm_wallclock_mktime(const unsigned int year0, 
-			 const unsigned int mon0,
-			 const unsigned int day, 
-			 const unsigned int hour,
-			 const unsigned int min, 
-			 const unsigned int sec)
+time64_t vmm_wallclock_mktime(const unsigned int year0,
+			      const unsigned int mon0,
+			      const unsigned int day,
+			      const unsigned int hour,
+			      const unsigned int min,
+			      const unsigned int sec)
 {
 	unsigned int year = year0, mon = mon0;
 	u64 ret;
@@ -232,7 +233,7 @@ s64 vmm_wallclock_mktime(const unsigned int year0,
 	/* no. of hours */
 	ret *= (u64)24;
 	ret += hour;
-	
+
 	/* no. of mins */
 	ret *= (u64)60;
 	ret += min;
@@ -241,7 +242,7 @@ s64 vmm_wallclock_mktime(const unsigned int year0,
 	ret *= (u64)60;
 	ret += sec;
 
-	return (s64)ret;
+	return (time64_t)ret;
 }
 
 int vmm_wallclock_set_local_time(struct vmm_timeval *tv)
@@ -331,7 +332,7 @@ int vmm_wallclock_get_timezone(struct vmm_timezone *tz)
 	return VMM_OK;
 }
 
-int vmm_wallclock_set_timeofday(struct vmm_timeval *tv, 
+int vmm_wallclock_set_timeofday(struct vmm_timeval *tv,
 				struct vmm_timezone *tz)
 {
 	int rc;
@@ -351,7 +352,7 @@ int vmm_wallclock_set_timeofday(struct vmm_timeval *tv,
 	return VMM_OK;
 }
 
-int vmm_wallclock_get_timeofday(struct vmm_timeval *tv, 
+int vmm_wallclock_get_timeofday(struct vmm_timeval *tv,
 				struct vmm_timezone *tz)
 {
 	int rc;
@@ -387,4 +388,3 @@ int vmm_wallclock_init(void)
 
 	return VMM_OK;
 }
-
