@@ -65,7 +65,7 @@ on QEMU model (v4.2 or higher):
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [12. Launch QEMU]
-  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.rtcdev=rtc@101000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
   [13. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0

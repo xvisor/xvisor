@@ -34,7 +34,7 @@ Guest with Xvisor running on QEMU (v3.1.50 or higher):
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [7. Launch QEMU]
-  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.console=uart@10000000 vmm.rtcdev=rtc@101000 vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
   [8. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
