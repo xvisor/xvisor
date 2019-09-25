@@ -24,6 +24,7 @@
 #define _VMM_WALLCLOCK_H__
 
 #include <vmm_types.h>
+#include <vmm_limits.h>
 
 struct vmm_timeval {
 	time64_t tv_sec;	/* seconds */
@@ -58,14 +59,6 @@ struct vmm_timeinfo {
 };
 
 /** Parameters used to convert the timeval values: */
-#define MSEC_PER_SEC	1000L
-#define USEC_PER_MSEC	1000L
-#define NSEC_PER_USEC	1000L
-#define NSEC_PER_MSEC	1000000L
-#define USEC_PER_SEC	1000000L
-#define NSEC_PER_SEC	1000000000L
-#define FSEC_PER_SEC	1000000000000000LL
-
 #define VMM_TIMEVAL_SEC_MAX	((1ULL << ((sizeof(time64_t) << 3) - 1)) - 1)
 #define VMM_TIMEVAL_NSEC_MAX	NSEC_PER_SEC
 
