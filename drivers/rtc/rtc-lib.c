@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -21,7 +21,7 @@
  * @brief Real-Time Clock Library source
  *
  * This source has been adapted from Linux 3.xx.xx drivers/rtc/rtc-lib.c
- * 
+ *
  * rtc and date/time utility functions
  *
  * Copyright (C) 2005-06 Tower Technologies
@@ -56,12 +56,12 @@ VMM_EXPORT_SYMBOL(rtc_is_leap_year);
 
 unsigned int rtc_month_days(unsigned int month, unsigned int year)
 {
-	return rtc_days_in_month[month] + 
+	return rtc_days_in_month[month] +
 		(rtc_is_leap_year(year) && month == 1);
 }
 VMM_EXPORT_SYMBOL(rtc_month_days);
 
-unsigned int rtc_year_days(unsigned int day, 
+unsigned int rtc_year_days(unsigned int day,
 				unsigned int month, unsigned int year)
 {
 	return rtc_ydays[rtc_is_leap_year(year)][month] + day-1;
@@ -92,18 +92,33 @@ int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time)
 		return VMM_EFAIL;
 	}
 
-	*time = (unsigned long)vmm_wallclock_mktime(tm->tm_year + 1900, 
-						    tm->tm_mon + 1, 
-						    tm->tm_mday, 
-						    tm->tm_hour, 
-						    tm->tm_min, 
+	*time = (unsigned long)vmm_wallclock_mktime(tm->tm_year + 1900,
+						    tm->tm_mon + 1,
+						    tm->tm_mday,
+						    tm->tm_hour,
+						    tm->tm_min,
 						    tm->tm_sec);
 
 	return VMM_OK;
 }
 VMM_EXPORT_SYMBOL(rtc_tm_to_time);
 
-void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
+time64_t rtc_tm_to_time64(struct rtc_time *tm)
+{
+	if (!tm) {
+		return VMM_EINVALID;
+	}
+
+	return (time64_t)vmm_wallclock_mktime(tm->tm_year + 1900,
+						tm->tm_mon + 1,
+						tm->tm_mday,
+						tm->tm_hour,
+						tm->tm_min,
+						tm->tm_sec);
+}
+VMM_EXPORT_SYMBOL(rtc_tm_to_time64);
+
+static void __rtc_time_to_tm(u64 time, struct rtc_time *tm)
 {
 	unsigned int month, year;
 	int days;
@@ -141,5 +156,15 @@ void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
 	tm->tm_min = time / 60;
 	tm->tm_sec = time - tm->tm_min * 60;
 }
+
+void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
+{
+	__rtc_time_to_tm(time, tm);
+}
 VMM_EXPORT_SYMBOL(rtc_time_to_tm);
 
+void rtc_time64_to_tm(time64_t time, struct rtc_time *tm)
+{
+	__rtc_time_to_tm(time, tm);
+}
+VMM_EXPORT_SYMBOL(rtc_time64_to_tm);

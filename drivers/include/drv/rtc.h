@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -55,7 +55,7 @@ unsigned int rtc_month_days(unsigned int month, unsigned int year);
 /**
  * The number of days since January 1. (0 to 365)
  */
-unsigned int rtc_year_days(unsigned int day, 
+unsigned int rtc_year_days(unsigned int day,
 				unsigned int month, unsigned int year);
 
 /**
@@ -72,6 +72,16 @@ int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time);
  * Convert seconds since 01-01-1970 00:00:00 to Gregorian date.
  */
 void rtc_time_to_tm(unsigned long time, struct rtc_time *tm);
+
+/**
+ * Convert Gregorian date to seconds since 01-01-1970 00:00:00.
+ */
+time64_t rtc_tm_to_time64(struct rtc_time *tm);
+
+/**
+ * Convert seconds since 01-01-1970 00:00:00 to Gregorian date.
+ */
+void rtc_time64_to_tm(time64_t time, struct rtc_time *tm);
 
 /* Interrupt event flags */
 #define RTC_IRQF 0x80	/* Any of the following is active */
