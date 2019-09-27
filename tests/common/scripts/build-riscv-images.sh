@@ -23,6 +23,9 @@ function usage()
 	echo "     -b <busybox_version>     Guest Busybox version (Optional)"
 	echo "     -v                       Only print build configuration (Optional)"
 	echo "     -x                       Only build Xvisor (Optional)"
+	echo "     -q <xvisor_cross_compile>  Cross compile prefix for Xvisor (Optional)"
+	echo "     -y <linux_cross_compile>   Cross compile prefix for Linux (Optional)"
+	echo "     -z <busybox_cross_compile> Cross compile prefix for Busybox (Optional)"
 	exit 1;
 }
 
@@ -38,7 +41,7 @@ BUILD_XVISOR_ONLY="no"
 BUILD_XVISOR_OUTPUT_PATH=`pwd`/build/xvisor
 BUILD_TARBALL_PATH=`pwd`/tarball
 BUILD_GUEST_OUTPUT_PATH=`pwd`/build/guest
-BUILD_LINUX_VERSION="5.1.5"
+BUILD_LINUX_VERSION="5.2.14"
 BUILD_BUSYBOX_VERSION="1.27.2"
 BUILD_PRINT_CONFIG_ONLY="no"
 
@@ -58,6 +61,7 @@ BUILD_LINUX_TARBALL=
 BUILD_LINUX_TARBALL_PATH=
 BUILD_LINUX_TARBALL_URL=
 BUILD_LINUX_DEFCONFIG=
+BUILD_LINUX_DEFCONFIG_EXTRA=
 BUILD_LINUX_SOURCE_PATH=
 BUILD_LINUX_OUTPUT_PATH=
 BUILD_LINUX_DTB_NAME=
@@ -70,13 +74,16 @@ BUILD_BUSYBOX_OUTPUT_PATH=
 BUILD_BUSYBOX_ROOTFS_CPIO_PATH=
 BUILD_BUSYBOX_ROOTFS_EXT2_PATH=
 
-while getopts ":a:b:d:g:s:h:vj:l:i:o:p:x" o; do
+while getopts ":a:b:d:g:s:h:vj:l:i:o:p:q:xy:z:" o; do
 	case "${o}" in
 	a)
 		BUILD_RISCV_XLEN=${OPTARG}
 		;;
 	b)
 		BUILD_BUSYBOX_VERSION=${OPTARG}
+		;;
+	z)
+		BUILD_BUSYBOX_CROSS_COMPILE=${OPTARG}
 		;;
 	d)
 		BUILD_TARBALL_PATH=${OPTARG}
@@ -99,6 +106,9 @@ while getopts ":a:b:d:g:s:h:vj:l:i:o:p:x" o; do
 	l)
 		BUILD_LINUX_VERSION=${OPTARG}
 		;;
+	y)
+		BUILD_LINUX_CROSS_COMPILE=${OPTARG}
+		;;
 	i)
 		BUILD_INSTALL_PATH=${OPTARG}
 		;;
@@ -107,6 +117,9 @@ while getopts ":a:b:d:g:s:h:vj:l:i:o:p:x" o; do
 		;;
 	p)
 		BUILD_XVISOR_SOURCE_PATH=${OPTARG}
+		;;
+	q)
+		BUILD_XVISOR_CROSS_COMPILE=${OPTARG}
 		;;
 	x)
 		BUILD_XVISOR_ONLY="yes"
@@ -126,25 +139,40 @@ fi
 case "${BUILD_RISCV_XLEN}" in
 32b)
 	BUILD_XVISOR_ARCH="riscv"
-	BUILD_XVISOR_CROSS_COMPILE=riscv32-unknown-linux-gnu-
+	BUILD_XVISOR_CROSS_COMPILE_PREFERRED=riscv32-unknown-linux-gnu-
 	BUILD_LINUX_ARCH="riscv"
-	BUILD_LINUX_CROSS_COMPILE=riscv32-unknown-linux-gnu-
-	BUILD_LINUX_DEFCONFIG=rv32_defconfig
-	BUILD_BUSYBOX_CROSS_COMPILE=riscv32-unknown-linux-gnu-
+	BUILD_LINUX_CROSS_COMPILE_PREFERRED=riscv32-unknown-linux-gnu-
+	BUILD_BUSYBOX_CROSS_COMPILE_PREFERRED=riscv32-unknown-linux-gnu-
 	;;
 64b)
 	BUILD_XVISOR_ARCH="riscv"
-	BUILD_XVISOR_CROSS_COMPILE=riscv64-linux-
+	BUILD_XVISOR_CROSS_COMPILE_PREFERRED=riscv64-linux-
 	BUILD_LINUX_ARCH="riscv"
-	BUILD_LINUX_CROSS_COMPILE=riscv64-linux-
-	BUILD_LINUX_DEFCONFIG=defconfig
-	BUILD_BUSYBOX_CROSS_COMPILE=riscv64-linux-
+	if [ "${BUILD_GUEST_TYPE}" == "virt32" ]; then
+		BUILD_LINUX_CROSS_COMPILE_PREFERRED=riscv32-unknown-linux-gnu-
+		BUILD_BUSYBOX_CROSS_COMPILE_PREFERRED=riscv32-unknown-linux-gnu-
+	else
+		BUILD_LINUX_CROSS_COMPILE_PREFERRED=riscv64-linux-
+		BUILD_BUSYBOX_CROSS_COMPILE_PREFERRED=riscv64-linux-
+	fi
 	;;
 *)
 	echo "Invalid RISC-V XLEN"
 	usage
 	;;
 esac
+
+if [ -z "${BUILD_XVISOR_CROSS_COMPILE}" ]; then
+	BUILD_XVISOR_CROSS_COMPILE=${BUILD_XVISOR_CROSS_COMPILE_PREFERRED}
+fi
+
+if [ -z "${BUILD_LINUX_CROSS_COMPILE}" ]; then
+	BUILD_LINUX_CROSS_COMPILE=${BUILD_LINUX_CROSS_COMPILE_PREFERRED}
+fi
+
+if [ -z "${BUILD_BUSYBOX_CROSS_COMPILE}" ]; then
+	BUILD_BUSYBOX_CROSS_COMPILE=${BUILD_BUSYBOX_CROSS_COMPILE_PREFERRED}
+fi
 
 if [ -z "${BUILD_GUEST_TYPE}" ]; then
 	echo "Must specify Guest type"
@@ -153,12 +181,9 @@ fi
 
 case "${BUILD_GUEST_TYPE}" in
 virt32)
-	if [ "${BUILD_RISCV_XLEN}" != "32b" ]; then
-		echo "RISC-V XLEN should be 32b for ${BUILD_GUEST_TYPE}"
-		usage
-	fi
 	BUILD_XVISOR_TESTS_DIR=riscv
 	BUILD_XVISOR_GUEST_DTS_BASENAME=virt32-guest
+	BUILD_LINUX_DEFCONFIG=rv32_defconfig
 	BUILD_LINUX_DTB_NAME=virt32.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/riscv/virt32/linux/virt32.dts
 	;;
@@ -169,6 +194,7 @@ virt64)
 	fi
 	BUILD_XVISOR_TESTS_DIR=riscv
 	BUILD_XVISOR_GUEST_DTS_BASENAME=virt64-guest
+	BUILD_LINUX_DEFCONFIG=defconfig
 	BUILD_LINUX_DTB_NAME=virt64.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/riscv/virt64/linux/virt64.dts
 	;;
@@ -280,6 +306,7 @@ echo "linux_tarball = ${BUILD_LINUX_TARBALL}"
 echo "linux_tarball_path = ${BUILD_LINUX_TARBALL_PATH}"
 echo "linux_tarball_url = ${BUILD_LINUX_TARBALL_URL}"
 echo "linux_defconfig = ${BUILD_LINUX_DEFCONFIG}"
+echo "linux_defconfig_extra = ${BUILD_LINUX_DEFCONFIG_EXTRA}"
 echo "linux_source_path = ${BUILD_LINUX_SOURCE_PATH}"
 echo "linux_output_path = ${BUILD_LINUX_OUTPUT_PATH}"
 echo "linux_dtb_name = ${BUILD_LINUX_DTB_NAME}"
@@ -360,7 +387,9 @@ export ARCH=${BUILD_LINUX_ARCH}
 export CROSS_COMPILE=${BUILD_LINUX_CROSS_COMPILE}
 mkdir -p ${BUILD_LINUX_OUTPUT_PATH}
 if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/.config ]; then
-	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} ${BUILD_LINUX_DEFCONFIG}
+	cp -f ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/${BUILD_LINUX_DEFCONFIG} ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/tmp-${BUILD_GUEST_TYPE}_defconfig
+	${BUILD_XVISOR_SOURCE_PATH}/tests/common/scripts/update-linux-defconfig.sh -p ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/tmp-${BUILD_GUEST_TYPE}_defconfig -e "${BUILD_LINUX_DEFCONFIG_EXTRA}"
+	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} tmp-${BUILD_GUEST_TYPE}_defconfig
 fi
 if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/vmlinux ]; then
 	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} -j ${BUILD_NUM_THREADS} Image dtbs
