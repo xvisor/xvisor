@@ -24,26 +24,20 @@
 #include <riscv_asm.h>
 #include <riscv_encoding.h>
 
-.macro SETUP_CSR __sstatus, __hstatus, __vsstatus
+.macro SETUP_CSR __sstatus, __hstatus
 	/* Load MXR bit value */
-	li	\__vsstatus, SSTATUS_MXR
+	li	\__hstatus, SSTATUS_MXR
 
 	/* Save SSTATUS and set MXR bit */
-	csrrs	\__sstatus, CSR_SSTATUS, \__vsstatus
-
-	/* Save VSSTATUS and set MXR bit */
-	csrrs	\__vsstatus, CSR_VSSTATUS, \__vsstatus
+	csrrs	\__sstatus, CSR_SSTATUS, \__hstatus
 
 	/* Save HSTATUS and set SPRV bit */
 	csrrsi	\__hstatus, CSR_HSTATUS, HSTATUS_SPRV
 .endm
 
-.macro RESTORE_CSR __sstatus, __hstatus, __vsstatus
+.macro RESTORE_CSR __sstatus, __hstatus
 	/* Restore HSTATUS */
 	csrw	CSR_HSTATUS, \__hstatus
-
-	/* Restore VSSTATUS */
-	csrw	CSR_VSSTATUS, \__vsstatus
 
 	/* Restore SSTATUS */
 	csrw	CSR_SSTATUS, \__sstatus
@@ -74,30 +68,29 @@
 	csrw	CSR_STVEC, \__stvec
 .endm
 
-.macro SETUP_UNPRIV __insn_len, __sstatus, __hstatus, __vsstatus, \
-		    __stvec, __tscause
+.macro SETUP_UNPRIV __insn_len, __sstatus, __hstatus, __stvec, __tscause
 	/* Setup CSRs */
-	SETUP_CSR \__sstatus, \__hstatus, \__vsstatus
+	SETUP_CSR \__sstatus, \__hstatus
 
 	/* Setup Trap */
 	SETUP_TRAP \__insn_len, \__stvec, \__tscause
 .endm
 
-.macro CLEANUP_UNPRIV __sstatus, __hstatus, __vsstatus, __stvec
+.macro CLEANUP_UNPRIV __sstatus, __hstatus, __stvec
 	/* Restore Trap */
 	RESTORE_TRAP \__stvec
 
 	/* Restore CSRs */
-	RESTORE_CSR \__sstatus, \__hstatus, \__vsstatus
+	RESTORE_CSR \__sstatus, \__hstatus
 .endm
 
 	.align 3
 	.global __cpu_vcpu_unpriv_read_insn
 __cpu_vcpu_unpriv_read_insn:
 	/* Setup unprivilege access */
-	SETUP_UNPRIV 4, t0, t1, t2, t3, t4
+	SETUP_UNPRIV 4, t0, t1, t2, t3
 
-	/* Read instruction (only t5 and t6 registers available) */
+	/* Read instruction (only t4, t5 and t6 registers available) */
 	add	t5, a0, zero
 	lhu	a0, (t5)
 	andi	t6, a0, 3
@@ -109,10 +102,10 @@ __cpu_vcpu_unpriv_read_insn:
 2:
 
 	/* Cleanup unprivilege access */
-	CLEANUP_UNPRIV t0, t1, t2, t3
+	CLEANUP_UNPRIV t0, t1, t2
 
 	/* Return trap details */
-	REG_S	t4, (a1)
+	REG_S	t3, (a1)
 
 	/* Return to C code */
 	ret
@@ -121,16 +114,16 @@ __cpu_vcpu_unpriv_read_insn:
 	.global __cpu_vcpu_unpriv_read_ulong
 __cpu_vcpu_unpriv_read_ulong:
 	/* Setup unprivilege access */
-	SETUP_UNPRIV 2, t0, t1, t2, t3, t4
+	SETUP_UNPRIV 2, t0, t1, t2, t3
 
-	/* Read unsigned long (only t5 and t6 registers available) */
+	/* Read unsigned long (only t4, t5 and t6 registers available) */
 	REG_L	a0, (a0)
 
 	/* Cleanup unprivilege access */
-	CLEANUP_UNPRIV t0, t1, t2, t3
+	CLEANUP_UNPRIV t0, t1, t2
 
 	/* Return trap details */
-	REG_S	t4, (a1)
+	REG_S	t3, (a1)
 
 	/* Return to C code */
 	ret
