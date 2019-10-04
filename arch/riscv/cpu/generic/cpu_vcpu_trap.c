@@ -206,7 +206,6 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		shift = 8 * (sizeof(ulong) - len);
 	} else if ((insn & INSN_MASK_LHU) == INSN_MATCH_LHU) {
 		len = 2;
-#ifdef __riscv_compressed
 # if defined(CONFIG_64BIT)
 	} else if ((insn & INSN_MASK_C_LD) == INSN_MATCH_C_LD) {
 		len = 8;
@@ -225,7 +224,6 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		   ((insn >> SH_RD) & 0x1f)) {
 		len = 4;
 		shift = 8 * (sizeof(ulong) - len);
-#endif
 	} else {
 		return VMM_ENOTSUPP;
 	}
@@ -310,7 +308,6 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 #endif
 	} else if ((insn & INSN_MASK_SH) == INSN_MATCH_SH) {
 		len = 2;
-#ifdef __riscv_compressed
 # if defined(CONFIG_64BIT)
 	} else if ((insn & INSN_MASK_C_SD) == INSN_MATCH_C_SD) {
 		len = 8;
@@ -327,7 +324,6 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 		   ((insn >> SH_RD) & 0x1f)) {
 		len = 4;
 		data32 = GET_RS2C(insn, regs);
-#endif
 	} else {
 		return VMM_ENOTSUPP;
 	}
