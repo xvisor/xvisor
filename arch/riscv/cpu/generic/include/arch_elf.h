@@ -27,7 +27,7 @@
 
 /* RISC-V elf specific declarations */
 
-#if __riscv_xlen == 64
+#ifdef CONFIG_64BIT
 struct elf64_hdr;
 struct elf64_shdr;
 
@@ -45,7 +45,7 @@ int arch_elf_apply_relocate_add(struct elf64_shdr *sechdrs,
 				unsigned int relsec,
 				struct vmm_module *mod);
 
-#elif __riscv_xlen == 32
+#else
 struct elf32_hdr;
 struct elf32_shdr;
 

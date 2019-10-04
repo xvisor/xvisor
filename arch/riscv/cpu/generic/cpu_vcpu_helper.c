@@ -364,14 +364,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
 	if (vcpu->is_normal) {
 		priv = riscv_priv(vcpu);
-#if __riscv_xlen == 32
+#ifdef CONFIG_64BIT
+		csr_write(CSR_HTIMEDELTA,
+			riscv_guest_priv(vcpu->guest)->time_delta);
+#else
 		csr_write(CSR_HTIMEDELTA,
 			(u32)(riscv_guest_priv(vcpu->guest)->time_delta));
 		csr_write(CSR_HTIMEDELTAH,
 			(u32)(riscv_guest_priv(vcpu->guest)->time_delta >> 32));
-#else
-		csr_write(CSR_HTIMEDELTA,
-			riscv_guest_priv(vcpu->guest)->time_delta);
 #endif
 		csr_write(CSR_VSSTATUS, priv->vsstatus);
 		csr_write(CSR_VSIE, priv->vsie);
@@ -460,13 +460,13 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, " %s=%s\n",
 		    "        isa", isa);
 	vmm_cprintf(cdev, "\n");
-#if __riscv_xlen == 32
+#ifdef CONFIG_64BIT
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
+		    " htimedelta", (ulong)gpriv->time_delta);
+#else
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    " htimedelta", (ulong)(gpriv->time_delta),
 		    "htimedeltah", (ulong)(gpriv->time_delta >> 32));
-#else
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
-		    " htimedelta", (ulong)gpriv->time_delta);
 #endif
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "   vsstatus", priv->vsstatus, "       vsie", priv->vsie);

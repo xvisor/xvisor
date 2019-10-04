@@ -26,9 +26,9 @@
 #include <vmm_modules.h>
 #include <libs/elf.h>
 
-#if __riscv_xlen == 64
+#ifdef CONFIG_64BIT
 int arch_elf_check_hdr(const struct elf64_hdr *x)
-#elif __riscv_xlen == 32
+#else
 int arch_elf_check_hdr(const struct elf32_hdr *x)
 #endif
 {
@@ -36,9 +36,9 @@ int arch_elf_check_hdr(const struct elf32_hdr *x)
 	return 0;
 }
 
-#if __riscv_xlen == 64
+#ifdef CONFIG_64BIT
 int arch_elf_apply_relocate(struct elf64_shdr *sechdrs,
-#elif __riscv_xlen == 32
+#else
 int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
 #endif
 			    const char *strtab,
@@ -51,9 +51,9 @@ int arch_elf_apply_relocate(struct elf32_shdr *sechdrs,
 	return 0;
 }
 
-#if __riscv_xlen == 64
+#ifdef CONFIG_64BIT
 int arch_elf_apply_relocate_add(struct elf64_shdr *sechdrs,
-#elif __riscv_xlen == 32
+#else
 int arch_elf_apply_relocate_add(struct elf32_shdr *sechdrs,
 #endif
 				const char *strtab,
