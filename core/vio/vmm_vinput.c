@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -58,7 +58,7 @@ int vmm_vinput_unregister_client(struct vmm_notifier_block *nb)
 VMM_EXPORT_SYMBOL(vmm_vinput_unregister_client);
 
 struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
-			void (*kbd_event) (struct vmm_vkeyboard *, int),
+			void (*kbd_event) (struct vmm_vkeyboard *, int, int),
 			void *priv)
 {
 	bool found;
@@ -111,8 +111,8 @@ struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
 
 	/* Broadcast create event */
 	event.data = vkbd;
-	vmm_blocking_notifier_call(&victrl.notifier_chain, 
-				   VMM_VINPUT_EVENT_CREATE_KEYBOARD, 
+	vmm_blocking_notifier_call(&victrl.notifier_chain,
+				   VMM_VINPUT_EVENT_CREATE_KEYBOARD,
 				   &event);
 
 	return vkbd;
@@ -133,8 +133,8 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 
 	/* Broadcast destroy event */
 	event.data = vkbd;
-	vmm_blocking_notifier_call(&victrl.notifier_chain, 
-				   VMM_VINPUT_EVENT_DESTROY_KEYBOARD, 
+	vmm_blocking_notifier_call(&victrl.notifier_chain,
+				   VMM_VINPUT_EVENT_DESTROY_KEYBOARD,
 				   &event);
 
 	vmm_spin_lock_irqsave(&vkbd->ledstate_lock, flags);
@@ -175,13 +175,13 @@ int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd)
 }
 VMM_EXPORT_SYMBOL(vmm_vkeyboard_destroy);
 
-int vmm_vkeyboard_event(struct vmm_vkeyboard *vkbd, int keycode)
+int vmm_vkeyboard_event(struct vmm_vkeyboard *vkbd, int vkeycode, int vkey)
 {
 	if (!vkbd || !vkbd->kbd_event) {
 		return VMM_EINVALID;
 	}
 
-	vkbd->kbd_event(vkbd, keycode);
+	vkbd->kbd_event(vkbd, vkeycode, vkey);
 
 	return VMM_OK;
 }
@@ -389,7 +389,7 @@ VMM_EXPORT_SYMBOL(vmm_vkeyboard_count);
 struct vmm_vmouse *vmm_vmouse_create(const char *name,
 				     bool absolute,
 				     void (*mouse_event) (
-						   struct vmm_vmouse *vmou, 
+						   struct vmm_vmouse *vmou,
 						   int dx, int dy, int dz,
 						   int buttons_state),
 				     void *priv)
@@ -448,8 +448,8 @@ struct vmm_vmouse *vmm_vmouse_create(const char *name,
 
 	/* Broadcast create event */
 	event.data = vmou;
-	vmm_blocking_notifier_call(&victrl.notifier_chain, 
-				   VMM_VINPUT_EVENT_CREATE_MOUSE, 
+	vmm_blocking_notifier_call(&victrl.notifier_chain,
+				   VMM_VINPUT_EVENT_CREATE_MOUSE,
 				   &event);
 
 	return vmou;
@@ -468,8 +468,8 @@ int vmm_vmouse_destroy(struct vmm_vmouse *vmou)
 
 	/* Broadcast destroy event */
 	event.data = vmou;
-	vmm_blocking_notifier_call(&victrl.notifier_chain, 
-				   VMM_VINPUT_EVENT_DESTROY_MOUSE, 
+	vmm_blocking_notifier_call(&victrl.notifier_chain,
+				   VMM_VINPUT_EVENT_DESTROY_MOUSE,
 				   &event);
 
 	vmm_mutex_lock(&victrl.vmou_list_lock);
@@ -612,7 +612,7 @@ VMM_EXPORT_SYMBOL(vmm_vmouse_get_graphics_height);
 
 void vmm_vmouse_set_graphics_rotation(struct vmm_vmouse *vmou, u32 rotation)
 {
-	if (vmou && 
+	if (vmou &&
 	    ((rotation == 0) || (rotation == 90) ||
 	     (rotation == 180) || (rotation == 270))) {
 		vmou->graphics_rotation = rotation;
@@ -726,10 +726,9 @@ static void __exit vmm_vinput_exit(void)
 	/* Nothing to do here. */
 }
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);
-

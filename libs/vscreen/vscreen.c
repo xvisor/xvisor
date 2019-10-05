@@ -590,7 +590,7 @@ static void vscreen_keyboard_event(struct vscreen_context *cntx,
 	}
 
 	/* Convert virtual key to virtual key code */
-	vkeycode = vmm_vkey2keycode(vkey);
+	vkeycode = vmm_vkey2vkeycode(vkey);
 
 	DPRINTF("%s: vkey=%d vkeycode=%d\n",
 		__func__, vkey, vkeycode);
@@ -598,15 +598,15 @@ static void vscreen_keyboard_event(struct vscreen_context *cntx,
 	/* Inject virtual keyboard event */
 	if (value) {
 		if (vkeycode & SCANCODE_GREY) {
-			vmm_vkeyboard_event(cntx->vkbd, SCANCODE_EMUL0);
+			vmm_vkeyboard_event(cntx->vkbd, SCANCODE_EMUL0, -1);
 		}
 		vmm_vkeyboard_event(cntx->vkbd,
-					vkeycode & SCANCODE_KEYCODEMASK);
+				    vkeycode & SCANCODE_KEYCODEMASK, vkey);
 	} else {
 		if (vkeycode & SCANCODE_GREY) {
-			vmm_vkeyboard_event(cntx->vkbd, SCANCODE_EMUL0);
+			vmm_vkeyboard_event(cntx->vkbd, SCANCODE_EMUL0, -1);
 		}
-		vmm_vkeyboard_event(cntx->vkbd, vkeycode | SCANCODE_UP);
+		vmm_vkeyboard_event(cntx->vkbd, vkeycode | SCANCODE_UP, vkey);
 	}
 }
 

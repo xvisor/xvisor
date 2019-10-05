@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -21,7 +21,7 @@
  * @brief PS/2 Keyboard/Mouse Emulation.
  *
  * The source has been largely adapted from QEMU hw/input/ps2.c
- * 
+ *
  * QEMU PS/2 keyboard/mouse emulation
  *
  * Copyright (c) 2003 Fabrice Bellard
@@ -222,7 +222,8 @@ static void __ps2_emu_keyboard_event(struct ps2_emu_keyboard *k, int keycode)
 	ps2_emu_queue(&k->state, keycode);
 }
 
-static void ps2_emu_keyboard_event(struct vmm_vkeyboard *vkbd, int keycode)
+static void ps2_emu_keyboard_event(struct vmm_vkeyboard *vkbd,
+				   int keycode, int key)
 {
 	irq_flags_t flags;
 	struct ps2_emu_keyboard *k = vmm_vkeyboard_priv(vkbd);
@@ -764,9 +765,9 @@ int ps2_emu_mouse_fake_event(struct ps2_emu_mouse *m)
 }
 VMM_EXPORT_SYMBOL(ps2_emu_mouse_fake_event);
 
-VMM_DECLARE_MODULE(MODULE_DESC, 
-			MODULE_AUTHOR, 
-			MODULE_LICENSE, 
-			MODULE_IPRIORITY, 
-			MODULE_INIT, 
+VMM_DECLARE_MODULE(MODULE_DESC,
+			MODULE_AUTHOR,
+			MODULE_LICENSE,
+			MODULE_IPRIORITY,
+			MODULE_INIT,
 			MODULE_EXIT);

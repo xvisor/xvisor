@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -62,7 +62,7 @@ struct vmm_vkeyboard;
 /** Representation of a virtual keyboard */
 struct vmm_vkeyboard_led_handler {
 	struct dlist head;
-	void (*led_change) (struct vmm_vkeyboard *vkbd, 
+	void (*led_change) (struct vmm_vkeyboard *vkbd,
 			    int ledstate, void *priv);
 	void *priv;
 };
@@ -74,14 +74,14 @@ struct vmm_vkeyboard {
 	vmm_spinlock_t ledstate_lock;
 	int ledstate;
 	struct dlist led_handler_list;
-	void (*kbd_event) (struct vmm_vkeyboard *vkbd, int keycode);
+	void (*kbd_event) (struct vmm_vkeyboard *vkbd, int vkeycode, int vkey);
 	void *priv;
 };
 
 /** Create a virtual keyboard */
 struct vmm_vkeyboard *vmm_vkeyboard_create(const char *name,
-			void (*kbd_event) (struct vmm_vkeyboard *, int),
-			void *priv);
+		void (*kbd_event) (struct vmm_vkeyboard *, int, int),
+		void *priv);
 
 /** Destroy a virtual keyboard */
 int vmm_vkeyboard_destroy(struct vmm_vkeyboard *vkbd);
@@ -92,8 +92,14 @@ static inline void *vmm_vkeyboard_priv(struct vmm_vkeyboard *vkbd)
 	return (vkbd) ? vkbd->priv : NULL;
 }
 
-/** Trigger virtual keyboard event */
-int vmm_vkeyboard_event(struct vmm_vkeyboard *vkbd, int keycode);
+/**
+ * Trigger virtual keyboard event
+ * @param vkbd virtual keyboad instance
+ * @param vkeycode virtual keycode (Linux-style key code with additional bits)
+ * @param vkey virtual key number (Sequenial Xvisor specific key number)
+ * @return VMM_OK (on success) and VMM_Exxx (on failure)
+ */
+int vmm_vkeyboard_event(struct vmm_vkeyboard *vkbd, int vkeycode, int vkey);
 
 /** Add led handler to a virtual keyboard */
 int vmm_vkeyboard_add_led_handler(struct vmm_vkeyboard *vkbd,
@@ -137,7 +143,7 @@ struct vmm_vmouse {
 	int abs_x;
 	int abs_y;
 	int abs_z;
-	void (*mouse_event) (struct vmm_vmouse *vmou, 
+	void (*mouse_event) (struct vmm_vmouse *vmou,
 			   int dx, int dy, int dz, int buttons_state);
 	void *priv;
 };
@@ -146,7 +152,7 @@ struct vmm_vmouse {
 struct vmm_vmouse *vmm_vmouse_create(const char *name,
 				     bool absolute,
 				     void (*mouse_event) (
-						   struct vmm_vmouse *vmou, 
+						   struct vmm_vmouse *vmou,
 						   int dx, int dy, int dz,
 						   int buttons_state),
 				     void *priv);
@@ -179,22 +185,22 @@ int vmm_vmouse_absolute_z(struct vmm_vmouse *vmou);
 /** Check whether virtual mouse uses absolute positioning */
 bool vmm_vmouse_is_absolute(struct vmm_vmouse *vmou);
 
-/** Set graphics width for virtual mouse 
+/** Set graphics width for virtual mouse
  *  Note: This is required for relative virtual mouse
  */
 void vmm_vmouse_set_graphics_width(struct vmm_vmouse *vmou, u32 width);
 
-/** Get graphics width for virtual mouse 
+/** Get graphics width for virtual mouse
  *  Note: This is required for relative virtual mouse
  */
 u32 vmm_vmouse_get_graphics_width(struct vmm_vmouse *vmou);
 
-/** Set graphics height for virtual mouse 
+/** Set graphics height for virtual mouse
  *  Note: This is required for relative virtual mouse
  */
 void vmm_vmouse_set_graphics_height(struct vmm_vmouse *vmou, u32 height);
 
-/** Get graphics height for virtual mouse 
+/** Get graphics height for virtual mouse
  *  Note: This is required for relative virtual mouse
  */
 u32 vmm_vmouse_get_graphics_height(struct vmm_vmouse *vmou);
@@ -216,4 +222,3 @@ int vmm_vmouse_iterate(struct vmm_vmouse *start, void *data,
 u32 vmm_vmouse_count(void);
 
 #endif /* __VMM_VINPUT_H_ */
-

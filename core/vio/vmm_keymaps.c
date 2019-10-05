@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -843,7 +843,7 @@ static const char *vmm_vkey_lookup[] = {
 	NULL,
 };
 
-int vmm_keyname2vkey(const char *key)
+int vmm_vkeyname2vkey(const char *key)
 {
 	int i;
 
@@ -856,14 +856,14 @@ int vmm_keyname2vkey(const char *key)
 	/* Return VMM_VKEY_MAX if the key is invalid */
 	return i;
 }
-VMM_EXPORT_SYMBOL(vmm_keyname2vkey);
+VMM_EXPORT_SYMBOL(vmm_vkeyname2vkey);
 
-int vmm_keycode2vkey(int keycode)
+int vmm_vkeycode2vkey(int vkeycode)
 {
 	int i;
 
 	for (i = 0; i < VMM_VKEY_MAX; i++) {
-		if (vmm_vkey_defs[i] == keycode) {
+		if (vmm_vkey_defs[i] == vkeycode) {
 			break;
 		}
 	}
@@ -871,13 +871,13 @@ int vmm_keycode2vkey(int keycode)
 	/* Return VMM_VKEY_MAX if the code is invalid */
 	return i;
 }
-VMM_EXPORT_SYMBOL(vmm_keycode2vkey);
+VMM_EXPORT_SYMBOL(vmm_vkeycode2vkey);
 
-int vmm_vkey2keycode(int vkey)
+int vmm_vkey2vkeycode(int vkey)
 {
 	if ((-1 < vkey) && (vkey < VMM_VKEY_MAX)) {
 		return vmm_vkey_defs[vkey];
 	}
 	return 0;
 }
-VMM_EXPORT_SYMBOL(vmm_vkey2keycode);
+VMM_EXPORT_SYMBOL(vmm_vkey2vkeycode);

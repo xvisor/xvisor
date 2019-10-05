@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -79,7 +79,7 @@ struct vmm_keymap_layout {
 	u16 keysym2keycode[VMM_MAX_NORMAL_KEYCODE];
 	struct {
 		int keysym;
-	u16 keycode;
+		u16 keycode;
 	} keysym2keycode_extra[VMM_MAX_EXTRA_COUNT];
 	int extra_count;
 	struct vmm_key_range *keypad_range;
@@ -237,10 +237,8 @@ enum vmm_vkey {
 	VMM_VKEY_MAX = 121,
 };
 
-int vmm_keyname2vkey(const char *key);
-int vmm_keycode2vkey(int keycode);
-int vmm_vkey2keycode(int vkey);
+int vmm_vkeyname2vkey(const char *key);
+int vmm_vkeycode2vkey(int vkeycode);
+int vmm_vkey2vkeycode(int vkey);
 
 #endif /* __VMM_KEYMAPS_H_ */
-
-
