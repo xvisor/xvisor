@@ -158,7 +158,7 @@ u32 arch_board_boot_delay(void)
 
 u32 arch_board_iosection_count(void)
 {
-	return 8;
+	return 10;
 }
 
 physical_addr_t arch_board_iosection_addr(int num)
@@ -197,6 +197,14 @@ physical_addr_t arch_board_iosection_addr(int num)
 	case 7:
 		/* virtio-con */
 		ret = VIRT_V8_VIRTIO_CON;
+		break;
+	case 8:
+		/* virtio-rpmsg */
+		ret = VIRT_V8_VIRTIO_RPMSG;
+		break;
+	case 9:
+		/* virtio-input */
+		ret = VIRT_V8_VIRTIO_INPUT;
 		break;
 	default:
 		while (1);

@@ -131,6 +131,13 @@
 			dma-coherent;
 		};
 
+		virtio_input@a004000 {
+			compatible = "virtio,mmio";
+			reg = <0x0 0x0A004000 0x0 0x1000>;
+			interrupts = <0 20 4>;
+			dma-coherent;
+		};
+
 		simplefb@30000000 {
 			compatible = "simple-framebuffer";
 			reg = <0x0 0x30000000 0x0 0x1000000>;

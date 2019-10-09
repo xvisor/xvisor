@@ -47,6 +47,10 @@
 #define VIRT_VIRTIO_BLK_SIZE		(0x00001000)
 #define VIRT_VIRTIO_CON			(0x20002000)
 #define VIRT_VIRTIO_CON_SIZE		(0x00001000)
+#define VIRT_VIRTIO_RPMSG		(0x20003000)
+#define VIRT_VIRTIO_RPMSG_SIZE		(0x00001000)
+#define VIRT_VIRTIO_INPUT		(0x20004000)
+#define VIRT_VIRTIO_INPUT_SIZE		(0x00001000)
 #define VIRT_PCI			(0x30000000)
 #define VIRT_PCI_SIZE			(0x20000000)
 #define VIRT_RAM0			(0x80000000)
@@ -60,6 +64,8 @@
 #define IRQ_VIRT_VIRTIO_NET		1
 #define IRQ_VIRT_VIRTIO_BLK		2
 #define IRQ_VIRT_VIRTIO_CON		3
+#define IRQ_VIRT_VIRTIO_RPMSG		4
+#define IRQ_VIRT_VIRTIO_INPUT		5
 
 #define VIRT_PLIC_NUM_SOURCES		127
 #define VIRT_PLIC_NUM_PRIORITIES	7
@@ -280,7 +286,7 @@ u32 arch_board_boot_delay(void)
 
 u32 arch_board_iosection_count(void)
 {
-	return 8;
+	return 10;
 }
 
 physical_addr_t arch_board_iosection_addr(int num)
@@ -319,6 +325,14 @@ physical_addr_t arch_board_iosection_addr(int num)
 	case 7:
 		/* virtio-con */
 		ret = VIRT_VIRTIO_CON;
+		break;
+	case 8:
+		/* virtio-rpmsg */
+		ret = VIRT_VIRTIO_RPMSG;
+		break;
+	case 9:
+		/* virtio-input */
+		ret = VIRT_VIRTIO_INPUT;
 		break;
 	default:
 		while (1);
