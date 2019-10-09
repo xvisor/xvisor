@@ -33,6 +33,7 @@
 #include <vmm_error.h>
 #include <vmm_wallclock.h>
 #include <vmm_modules.h>
+#include <libs/mathlib.h>
 #include <drv/rtc.h>
 
 static const unsigned char rtc_days_in_month[] = {
@@ -123,7 +124,7 @@ static void __rtc_time_to_tm(u64 time, struct rtc_time *tm)
 	unsigned int month, year;
 	int days;
 
-	days = time / 86400;
+	days = udiv64(time, 86400);
 	time -= (unsigned int) days * 86400;
 
 	/* day of the week, 1970-01-01 was a Thursday */
@@ -151,9 +152,9 @@ static void __rtc_time_to_tm(u64 time, struct rtc_time *tm)
 	tm->tm_mon = month;
 	tm->tm_mday = days + 1;
 
-	tm->tm_hour = time / 3600;
+	tm->tm_hour = udiv64(time, 3600);
 	time -= tm->tm_hour * 3600;
-	tm->tm_min = time / 60;
+	tm->tm_min = udiv64(time, 60);
 	tm->tm_sec = time - tm->tm_min * 60;
 }
 
