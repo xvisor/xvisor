@@ -93,7 +93,7 @@ int virtio_pci_config_read(struct virtio_pci_dev *m,
 		vmm_devemu_emulate_irq(m->guest, m->irq, 0);
 		break;
 	default:
-		vmm_printf("%s: guest=%s offset=0x%x\n",
+		vmm_printf("%s: guest=%s invalid offset=0x%x\n",
 			   __func__, m->guest->name, offset);
 		rc = VMM_EINVALID;
 		break;
@@ -103,15 +103,15 @@ int virtio_pci_config_read(struct virtio_pci_dev *m,
 }
 
 static int virtio_pci_read(struct virtio_pci_dev *m,
-			   u32 offset, u32 *dst)
+			   u32 offset, u32 *dst, u32 dst_len)
 {
 	/* Device specific config write */
 	if (offset >= VMM_VIRTIO_PCI_CONFIG) {
 		offset -= VMM_VIRTIO_PCI_CONFIG;
-		return vmm_virtio_config_read(&m->dev, offset, dst, 4);
+		return vmm_virtio_config_read(&m->dev, offset, dst, dst_len);
 	}
 
-	return virtio_pci_config_read(m, offset, dst, 4);
+	return virtio_pci_config_read(m, offset, dst, dst_len);
 }
 
 static int virtio_pci_config_write(struct virtio_pci_dev *m,
@@ -149,7 +149,7 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 		break;
 
 	default:
-		vmm_printf("%s: guest=%s offset=0x%x\n",
+		vmm_printf("%s: guest=%s invalid offset=0x%x\n",
 			   __func__, m->guest->name, offset);
 		rc = VMM_EINVALID;
 		break;
@@ -159,17 +159,17 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 }
 
 static int virtio_pci_write(struct virtio_pci_dev *m,
-			    u32 offset, u32 src_mask, u32 src)
+			    u32 offset, u32 src_mask, u32 src, u32 src_len)
 {
 	src = src & ~src_mask;
 
 	/* Device specific config write */
 	if (offset >= VMM_VIRTIO_PCI_CONFIG) {
 		offset -= VMM_VIRTIO_PCI_CONFIG;
-		return vmm_virtio_config_write(&m->dev, offset, &src, 4);
+		return vmm_virtio_config_write(&m->dev, offset, &src, src_len);
 	}
 
-	return virtio_pci_config_write(m, offset, &src, 4);
+	return virtio_pci_config_write(m, offset, &src, src_len);
 }
 
 static struct vmm_virtio_transport pci_tra = {
@@ -216,7 +216,7 @@ static int virtio_pci_bar_read8(struct vmm_emudev *edev,
 	int rc;
 	u32 regval = 0x0;
 
-	rc = virtio_pci_read(edev->priv, offset, &regval);
+	rc = virtio_pci_read(edev->priv, offset, &regval, 1);
 	if (!rc) {
 		*dst = regval & 0xFF;
 	}
@@ -231,7 +231,7 @@ static int virtio_pci_bar_read16(struct vmm_emudev *edev,
 	int rc;
 	u32 regval = 0x0;
 
-	rc = virtio_pci_read(edev->priv, offset, &regval);
+	rc = virtio_pci_read(edev->priv, offset, &regval, 2);
 	if (!rc) {
 		*dst = regval & 0xFFFF;
 	}
@@ -243,28 +243,28 @@ static int virtio_pci_bar_read32(struct vmm_emudev *edev,
 				 physical_addr_t offset,
 				 u32 *dst)
 {
-	return virtio_pci_read(edev->priv, offset, dst);
+	return virtio_pci_read(edev->priv, offset, dst, 4);
 }
 
 static int virtio_pci_bar_write8(struct vmm_emudev *edev,
 				 physical_addr_t offset,
 				 u8 src)
 {
-	return virtio_pci_write(edev->priv, offset, 0xFFFFFF00, src);
+	return virtio_pci_write(edev->priv, offset, 0xFFFFFF00, src, 1);
 }
 
 static int virtio_pci_bar_write16(struct vmm_emudev *edev,
 				  physical_addr_t offset,
 				  u16 src)
 {
-	return virtio_pci_write(edev->priv, offset, 0xFFFF0000, src);
+	return virtio_pci_write(edev->priv, offset, 0xFFFF0000, src, 2);
 }
 
 static int virtio_pci_bar_write32(struct vmm_emudev *edev,
 				  physical_addr_t offset,
 				  u32 src)
 {
-	return virtio_pci_write(edev->priv, offset, 0x00000000, src);
+	return virtio_pci_write(edev->priv, offset, 0x00000000, src, 4);
 }
 
 static int virtio_pci_bar_reset(struct vmm_emudev *edev)
