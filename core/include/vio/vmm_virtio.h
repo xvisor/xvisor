@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -98,9 +98,9 @@ struct vmm_virtio_emulator {
 	const struct vmm_virtio_device_id *id_table;
 
 	/* VirtIO operations */
-	u32 (*get_host_features) (struct vmm_virtio_device *dev);
+	u64 (*get_host_features) (struct vmm_virtio_device *dev);
 	void (*set_guest_features) (struct vmm_virtio_device *dev,
-				    u32 features);
+				    u32 select, u32 features);
 	int (*init_vq) (struct vmm_virtio_device *dev, u32 vq, u32 page_size,
 			u32 align, u32 pfn);
 	int (*get_pfn_vq) (struct vmm_virtio_device *dev, u32 vq);
@@ -203,12 +203,12 @@ void vmm_virtio_queue_set_used_elem(struct vmm_virtio_queue *vq,
 /** Check whether queue setup is done by guest or not */
 bool vmm_virtio_queue_setup_done(struct vmm_virtio_queue *vq);
 
-/** Cleanup or reset the queue 
+/** Cleanup or reset the queue
  *  Note: After cleanup we need to setup queue before reusing it.
  */
 int vmm_virtio_queue_cleanup(struct vmm_virtio_queue *vq);
 
-/** Setup or initialize the queue 
+/** Setup or initialize the queue
  *  Note: If queue was already setup then it will cleanup first.
  */
 int vmm_virtio_queue_setup(struct vmm_virtio_queue *vq,

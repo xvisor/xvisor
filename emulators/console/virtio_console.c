@@ -54,14 +54,14 @@ struct virtio_console_dev {
 	struct vmm_virtio_iovec rx_iov[VIRTIO_CONSOLE_QUEUE_SIZE];
 	struct vmm_virtio_iovec tx_iov[VIRTIO_CONSOLE_QUEUE_SIZE];
 	struct vmm_virtio_console_config config;
-	u32 features;
+	u64 features;
 
 	char name[VMM_VIRTIO_DEVICE_MAX_NAME_LEN];
 	struct vmm_vserial *vser;
 	struct fifo *emerg_rd;
 };
 
-static u32 virtio_console_get_host_features(struct vmm_virtio_device *dev)
+static u64 virtio_console_get_host_features(struct vmm_virtio_device *dev)
 {
 	/* We support emergency write. */
 	return 1UL << VMM_VIRTIO_RING_F_EVENT_IDX
@@ -69,7 +69,7 @@ static u32 virtio_console_get_host_features(struct vmm_virtio_device *dev)
 }
 
 static void virtio_console_set_guest_features(struct vmm_virtio_device *dev,
-					      u32 features)
+					      u32 select, u32 features)
 {
 	/* No host features so, ignore it. */
 }

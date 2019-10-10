@@ -77,9 +77,11 @@ int virtio_mmio_config_read(struct virtio_mmio_dev *m,
 		break;
 	case VMM_VIRTIO_MMIO_HOST_FEATURES:
 		if (m->config.host_features_sel == 0)
-			*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
+			*(u32 *)dst =
+			(u32)m->dev.emu->get_host_features(&m->dev);
 		else
-			*(u32 *)dst = 0;
+			*(u32 *)dst =
+			(u32)(m->dev.emu->get_host_features(&m->dev) >> 32);
 		break;
 	case VMM_VIRTIO_MMIO_QUEUE_PFN:
 		*(u32 *)dst = m->dev.emu->get_pfn_vq(&m->dev,
@@ -128,9 +130,8 @@ static int virtio_mmio_config_write(struct virtio_mmio_dev *m,
 		m->config.guest_features_sel = val;
 		break;
 	case VMM_VIRTIO_MMIO_GUEST_FEATURES:
-		if (m->config.guest_features_sel == 0)  {
-			m->dev.emu->set_guest_features(&m->dev, val);
-		}
+		m->dev.emu->set_guest_features(&m->dev,
+					m->config.guest_features_sel, val);
 		break;
 	case VMM_VIRTIO_MMIO_GUEST_PAGE_SIZE:
 		m->config.guest_page_size = val;

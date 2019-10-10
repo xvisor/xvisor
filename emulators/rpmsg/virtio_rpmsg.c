@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -78,7 +78,7 @@ struct virtio_rpmsg_dev {
 
 	struct mempool *tx_buf_pool;
 
-	u32 features;
+	u64 features;
 
 	char name[VMM_VIRTIO_DEVICE_MAX_NAME_LEN];
 	bool node_ns_name_avail;
@@ -87,17 +87,21 @@ struct virtio_rpmsg_dev {
 	struct vmm_vmsg_node_lazy tx_lazy;
 };
 
-static u32 virtio_rpmsg_get_host_features(struct vmm_virtio_device *dev)
+static u64 virtio_rpmsg_get_host_features(struct vmm_virtio_device *dev)
 {
 	return 1UL << VMM_VIRTIO_RPMSG_F_NS;
 }
 
 static void virtio_rpmsg_set_guest_features(struct vmm_virtio_device *dev,
-					    u32 features)
+					    u32 select, u32 features)
 {
 	struct virtio_rpmsg_dev *rdev = dev->emu_data;
 
-	rdev->features = features;
+	if (1 < select)
+		return;
+
+	rdev->features &= ~((u64)UINT_MAX << (select * 32));
+	rdev->features |= ((u64)features << (select * 32));
 }
 
 static int virtio_rpmsg_init_vq(struct vmm_virtio_device *dev,

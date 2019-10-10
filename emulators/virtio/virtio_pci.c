@@ -73,7 +73,7 @@ int virtio_pci_config_read(struct virtio_pci_dev *m,
 
 	switch (offset) {
 	case VMM_VIRTIO_PCI_HOST_FEATURES:
-		*(u32 *)dst = m->dev.emu->get_host_features(&m->dev);
+		*(u32 *)dst = (u32)m->dev.emu->get_host_features(&m->dev);
 		break;
 	case VMM_VIRTIO_PCI_QUEUE_PFN:
 		*(u32 *)dst = m->dev.emu->get_pfn_vq(&m->dev,
@@ -122,7 +122,7 @@ static int virtio_pci_config_write(struct virtio_pci_dev *m,
 
 	switch (offset) {
 	case VMM_VIRTIO_PCI_GUEST_FEATURES:
-		m->dev.emu->set_guest_features(&m->dev, val);
+		m->dev.emu->set_guest_features(&m->dev, 0, val);
 		break;
 	case VMM_VIRTIO_PCI_QUEUE_PFN:
 		m->dev.emu->init_vq(&m->dev,
