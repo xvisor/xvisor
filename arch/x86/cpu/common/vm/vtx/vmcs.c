@@ -621,14 +621,14 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(8 << 10),
 						&context->icept_table.io_table_virt);
 
-	__vmwrite(IO_BITMAP_A, context->icept_table.io_table_virt);
-	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_virt + VMM_PAGE_SIZE);
+	__vmwrite(IO_BITMAP_A, context->icept_table.io_table_phys);
+	__vmwrite(IO_BITMAP_B, context->icept_table.io_table_phys + VMM_PAGE_SIZE);
 
 	context->icept_table.msr_table_phys =
 		cpu_create_vcpu_intercept_table(VMM_SIZE_TO_PAGE(4 << 10),
 						&context->icept_table.msr_table_virt);
 
-	__vmwrite(MSR_BITMAP, context->icept_table.msr_table_virt);
+	__vmwrite(MSR_BITMAP, context->icept_table.msr_table_phys);
 
 	/* Set up the VCPU's guest extended page tables */
 	if ((rc = setup_ept(context)) != VMM_OK) {

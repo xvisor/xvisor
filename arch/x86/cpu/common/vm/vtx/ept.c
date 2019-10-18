@@ -159,7 +159,7 @@ int setup_ept(struct vcpu_hw_context *context)
 	}
 
 	eptp->bits.mt = 6; /* Write back */
-	eptp->bits.pgwl = 4; /* 4 page levels */
+	eptp->bits.pgwl = 3; /* 4 page levels */
 	eptp->bits.en_ad = 0;
 	eptp->bits.pml4 = pml4_phys;
 
