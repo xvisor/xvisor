@@ -36,205 +36,171 @@
 
 #include <vmm_const.h>
 
-/* TODO: Make constants usable in assembly with _AC() macro */
-
-#define MSTATUS_UIE			0x00000001
-#define MSTATUS_SIE			0x00000002
-#define MSTATUS_HIE			0x00000004
-#define MSTATUS_MIE			0x00000008
-#define MSTATUS_UPIE			0x00000010
-#define MSTATUS_SPIE_SHIFT		5
-#define MSTATUS_SPIE			(1UL << MSTATUS_SPIE_SHIFT)
-#define MSTATUS_HPIE			0x00000040
-#define MSTATUS_MPIE			0x00000080
-#define MSTATUS_SPP_SHIFT		8
-#define MSTATUS_SPP			(1UL << MSTATUS_SPP_SHIFT)
-#define MSTATUS_HPP			0x00000600
-#define MSTATUS_MPP_SHIFT		11
-#define MSTATUS_MPP			(3UL << MSTATUS_MPP_SHIFT)
-#define MSTATUS_FS			0x00006000
-#define MSTATUS_XS			0x00018000
-#define MSTATUS_MPRV			0x00020000
-#define MSTATUS_SUM			0x00040000
-#define MSTATUS_MXR			0x00080000
-#define MSTATUS_TVM			0x00100000
-#define MSTATUS_TW			0x00200000
-#define MSTATUS_TSR			0x00400000
-#define MSTATUS32_SD			0x80000000
-#define MSTATUS_UXL			0x0000000300000000
-#define MSTATUS_SXL			0x0000000C00000000
-#define MSTATUS64_SD			0x8000000000000000
-
 /* Status register flags */
-#define SSTATUS_UIE			_AC(0x00000001, UL)
-#define SSTATUS_SIE			_AC(0x00000002, UL)
-#define SSTATUS_UPIE			_AC(0x00000010, UL)
-#define SSTATUS_SPIE			_AC(0x00000020, UL)
-#define SSTATUS_SPP			_AC(0x00000100, UL)
-#define SSTATUS_SUM			_AC(0x00040000, UL)
-#define SSTATUS_MXR			_AC(0x00080000, UL)
-
-#define SSTATUS_FS			_AC(0x00006000, UL)
-#define SSTATUS_FS_OFF			_AC(0x00000000, UL)
-#define SSTATUS_FS_INITIAL		_AC(0x00002000, UL)
-#define SSTATUS_FS_CLEAN		_AC(0x00004000, UL)
-#define SSTATUS_FS_DIRTY		_AC(0x00006000, UL)
-
-#define SSTATUS_XS			_AC(0x00018000, UL)
-#define SSTATUS_XS_OFF			_AC(0x00000000, UL)
-#define SSTATUS_XS_INITIAL		_AC(0x00008000, UL)
-#define SSTATUS_XS_CLEAN		_AC(0x00010000, UL)
-#define SSTATUS_XS_DIRTY		_AC(0x00018000, UL)
-
-#define SSTATUS32_SD			_AC(0x80000000, UL)
-#define SSTATUS64_SD			_AC(0x8000000000000000, UL)
-
-#define SSTATUS64_UXL			_AC(0x0000000300000000, UL)
+#define MSTATUS_SIE			_UL(0x00000002)
+#define MSTATUS_MIE			_UL(0x00000008)
+#define MSTATUS_SPIE_SHIFT		5
+#define MSTATUS_SPIE			(_UL(1) << MSTATUS_SPIE_SHIFT)
+#define MSTATUS_UBE			_UL(0x00000040)
+#define MSTATUS_MPIE			_UL(0x00000080)
+#define MSTATUS_SPP_SHIFT		8
+#define MSTATUS_SPP			(_UL(1) << MSTATUS_SPP_SHIFT)
+#define MSTATUS_MPP_SHIFT		11
+#define MSTATUS_MPP			(_UL(3) << MSTATUS_MPP_SHIFT)
+#define MSTATUS_FS			_UL(0x00006000)
+#define MSTATUS_XS			_UL(0x00018000)
+#define MSTATUS_MPRV			_UL(0x00020000)
+#define MSTATUS_SUM			_UL(0x00040000)
+#define MSTATUS_MXR			_UL(0x00080000)
+#define MSTATUS_TVM			_UL(0x00100000)
+#define MSTATUS_TW			_UL(0x00200000)
+#define MSTATUS_TSR			_UL(0x00400000)
+#define MSTATUS32_SD			_UL(0x80000000)
+#ifdef CONFIG_64BIT
+#define MSTATUS_UXL			_ULL(0x0000000300000000)
+#define MSTATUS_SXL			_ULL(0x0000000C00000000)
+#define MSTATUS_SBE			_ULL(0x0000001000000000)
+#define MSTATUS_MBE			_ULL(0x0000002000000000)
+#define MSTATUS_MTL			_ULL(0x0000004000000000)
+#define MSTATUS_MPV			_ULL(0x0000008000000000)
+#else
+#define MSTATUSH_SBE			_UL(0x00000010)
+#define MSTATUSH_MBE			_UL(0x00000020)
+#define MSTATUSH_MTL			_UL(0x00000040)
+#define MSTATUSH_MPV			_UL(0x00000080)
+#endif
+#define MSTATUS32_SD			_UL(0x80000000)
+#define MSTATUS64_SD			_ULL(0x8000000000000000)
 
 #ifdef CONFIG_64BIT
 #define MSTATUS_SD			MSTATUS64_SD
-#define SSTATUS_SD			SSTATUS64_SD
 #else
 #define MSTATUS_SD			MSTATUS32_SD
+#endif
+
+#define MSTATUS_FS_OFF			_UL(0x00000000)
+#define MSTATUS_FS_INITIAL		_UL(0x00002000)
+#define MSTATUS_FS_CLEAN		_UL(0x00004000)
+#define MSTATUS_FS_DIRTY		_UL(0x00006000)
+
+#define MSTATUS_XS_OFF			_UL(0x00000000)
+#define MSTATUS_XS_INITIAL		_UL(0x00008000)
+#define MSTATUS_XS_CLEAN		_UL(0x00010000)
+#define MSTATUS_XS_DIRTY		_UL(0x00018000)
+
+#define SSTATUS_SIE			MSTATUS_SIE
+#define SSTATUS_SPIE_SHIFT		MSTATUS_SPIE_SHIFT
+#define SSTATUS_SPIE			MSTATUS_SPIE
+#define SSTATUS_SPP_SHIFT		MSTATUS_SPP_SHIFT
+#define SSTATUS_SPP			MSTATUS_SPP
+#define SSTATUS_SUM			MSTATUS_SUM
+#define SSTATUS_MXR			MSTATUS_MXR
+#define SSTATUS32_SD			MSTATUS32_SD
+#define SSTATUS64_UXL			MSTATUS_UXL
+#define SSTATUS64_SD			MSTATUS64_SD
+
+#ifdef CONFIG_64BIT
+#define SSTATUS_SD			SSTATUS64_SD
+#else
 #define SSTATUS_SD			SSTATUS32_SD
 #endif
 
-#define HSTATUS_VTSR			_AC(0x00400000, UL)
-#define HSTATUS_VTVM			_AC(0x00100000, UL)
-#define HSTATUS_SP2V			_AC(0x00000200, UL)
-#define HSTATUS_SP2P			_AC(0x00000100, UL)
-#define HSTATUS_SPV			_AC(0x00000080, UL)
-#define HSTATUS_STL			_AC(0x00000040, UL)
-#define HSTATUS_SPRV			_AC(0x00000001, UL)
+#define SSTATUS_FS			MSTATUS_FS
+#define SSTATUS_FS_OFF			MSTATUS_FS_OFF
+#define SSTATUS_FS_INITIAL		MSTATUS_FS_INITIAL
+#define SSTATUS_FS_CLEAN		MSTATUS_FS_CLEAN
+#define SSTATUS_FS_DIRTY		MSTATUS_FS_DIRTY
 
-#define DCSR_XDEBUGVER			(3U<<30)
-#define DCSR_NDRESET			(1<<29)
-#define DCSR_FULLRESET			(1<<28)
-#define DCSR_EBREAKM			(1<<15)
-#define DCSR_EBREAKH			(1<<14)
-#define DCSR_EBREAKS			(1<<13)
-#define DCSR_EBREAKU			(1<<12)
-#define DCSR_STOPCYCLE			(1<<10)
-#define DCSR_STOPTIME			(1<<9)
-#define DCSR_CAUSE			(7<<6)
-#define DCSR_DEBUGINT			(1<<5)
-#define DCSR_HALT			(1<<3)
-#define DCSR_STEP			(1<<2)
-#define DCSR_PRV			(3<<0)
+#define SSTATUS_XS			MSTATUS_XS
+#define SSTATUS_XS_OFF			MSTATUS_XS_OFF
+#define SSTATUS_XS_INITIAL		MSTATUS_XS_INITIAL
+#define SSTATUS_XS_CLEAN		MSTATUS_XS_CLEAN
+#define SSTATUS_XS_DIRTY		MSTATUS_XS_DIRTY
 
-#define DCSR_CAUSE_NONE			0
-#define DCSR_CAUSE_SWBP			1
-#define DCSR_CAUSE_HWBP			2
-#define DCSR_CAUSE_DEBUGINT		3
-#define DCSR_CAUSE_STEP			4
-#define DCSR_CAUSE_HALT			5
+#define HSTATUS_VTSR			_UL(0x00400000)
+#define HSTATUS_VTVM			_UL(0x00100000)
+#define HSTATUS_SP2V			_UL(0x00000200)
+#define HSTATUS_SP2P			_UL(0x00000100)
+#define HSTATUS_SPV			_UL(0x00000080)
+#define HSTATUS_STL			_UL(0x00000040)
+#define HSTATUS_SPRV			_UL(0x00000001)
 
-#define MCONTROL_TYPE(xlen)		(0xfULL<<((xlen)-4))
-#define MCONTROL_DMODE(xlen)		(1ULL<<((xlen)-5))
-#define MCONTROL_MASKMAX(xlen)		(0x3fULL<<((xlen)-11))
 
-#define MCONTROL_SELECT			(1<<19)
-#define MCONTROL_TIMING			(1<<18)
-#define MCONTROL_ACTION			(0x3f<<12)
-#define MCONTROL_CHAIN			(1<<11)
-#define MCONTROL_MATCH			(0xf<<7)
-#define MCONTROL_M			(1<<6)
-#define MCONTROL_H			(1<<5)
-#define MCONTROL_S			(1<<4)
-#define MCONTROL_U			(1<<3)
-#define MCONTROL_EXECUTE		(1<<2)
-#define MCONTROL_STORE			(1<<1)
-#define MCONTROL_LOAD			(1<<0)
-
-#define MCONTROL_TYPE_NONE		0
-#define MCONTROL_TYPE_MATCH		2
-
-#define MCONTROL_ACTION_DEBUG_EXCEPTION	0
-#define MCONTROL_ACTION_DEBUG_MODE	1
-#define MCONTROL_ACTION_TRACE_START	2
-#define MCONTROL_ACTION_TRACE_STOP	3
-#define MCONTROL_ACTION_TRACE_EMIT	4
-
-#define MCONTROL_MATCH_EQUAL		0
-#define MCONTROL_MATCH_NAPOT		1
-#define MCONTROL_MATCH_GE		2
-#define MCONTROL_MATCH_LT		3
-#define MCONTROL_MATCH_MASK_LOW		4
-#define MCONTROL_MATCH_MASK_HIGH	5
-
+/* Interrupt Numbers */
 #define IRQ_S_SOFT			1
-#define IRQ_H_SOFT			2
+#define IRQ_VS_SOFT			2
 #define IRQ_M_SOFT			3
 #define IRQ_S_TIMER			5
-#define IRQ_H_TIMER			6
+#define IRQ_VS_TIMER			6
 #define IRQ_M_TIMER			7
 #define IRQ_S_EXT			9
-#define IRQ_H_EXT			10
+#define IRQ_VS_EXT			10
 #define IRQ_M_EXT			11
-#define IRQ_COP				12
-#define IRQ_HOST			13
 
-#define MIP_SSIP			(1 << IRQ_S_SOFT)
-#define MIP_HSIP			(1 << IRQ_H_SOFT)
-#define MIP_MSIP			(1 << IRQ_M_SOFT)
-#define MIP_STIP			(1 << IRQ_S_TIMER)
-#define MIP_HTIP			(1 << IRQ_H_TIMER)
-#define MIP_MTIP			(1 << IRQ_M_TIMER)
-#define MIP_SEIP			(1 << IRQ_S_EXT)
-#define MIP_HEIP			(1 << IRQ_H_EXT)
-#define MIP_MEIP			(1 << IRQ_M_EXT)
+
+/* Interrupt Enable and Interrupt Pending flags */
+#define MIP_SSIP			(_UL(1) << IRQ_S_SOFT)
+#define MIP_VSSIP			(_UL(1) << IRQ_VS_SOFT)
+#define MIP_MSIP			(_UL(1) << IRQ_M_SOFT)
+#define MIP_STIP			(_UL(1) << IRQ_S_TIMER)
+#define MIP_VSTIP			(_UL(1) << IRQ_VS_TIMER)
+#define MIP_MTIP			(_UL(1) << IRQ_M_TIMER)
+#define MIP_SEIP			(_UL(1) << IRQ_S_EXT)
+#define MIP_VSEIP			(_UL(1) << IRQ_VS_EXT)
+#define MIP_MEIP			(_UL(1) << IRQ_M_EXT)
 
 #define SIP_SSIP			MIP_SSIP
 #define SIP_STIP			MIP_STIP
 #define SIP_SEIP			MIP_SEIP
 
-/* Interrupt Enable and Interrupt Pending flags */
 #define SIE_SSIE			MIP_SSIP
 #define SIE_STIE			MIP_STIP
 #define SIE_SEIE			MIP_SEIP
 
-#define PRV_U				0
-#define PRV_S				1
-#define PRV_H				2
-#define PRV_M				3
 
-#define SATP32_MODE			_AC(0x80000000, UL)
+/* Privilege Modes */
+#define PRV_U				_UL(0)
+#define PRV_S				_UL(1)
+#define PRV_M				_UL(3)
+
+
+/* Address Translation and Protection */
+#define SATP32_MODE			_UL(0x80000000)
 #define SATP32_MODE_SHIFT		31
-#define SATP32_ASID			_AC(0x7FC00000, UL)
+#define SATP32_ASID			_UL(0x7FC00000)
 #define SATP32_ASID_SHIFT		22
-#define SATP32_PPN			_AC(0x003FFFFF, UL)
+#define SATP32_PPN			_UL(0x003FFFFF)
 
-#define SATP64_MODE			_AC(0xF000000000000000, UL)
+#define SATP64_MODE			_ULL(0xF000000000000000)
 #define SATP64_MODE_SHIFT		60
-#define SATP64_ASID			_AC(0x0FFFF00000000000, UL)
+#define SATP64_ASID			_ULL(0x0FFFF00000000000)
 #define SATP64_ASID_SHIFT		44
-#define SATP64_PPN			_AC(0x00000FFFFFFFFFFF, UL)
+#define SATP64_PPN			_ULL(0x00000FFFFFFFFFFF)
 
-#define SATP_MODE_OFF			_AC(0, UL)
-#define SATP_MODE_SV32			_AC(1, UL)
-#define SATP_MODE_SV39			_AC(8, UL)
-#define SATP_MODE_SV48			_AC(9, UL)
-#define SATP_MODE_SV57			_AC(10, UL)
-#define SATP_MODE_SV64			_AC(11, UL)
+#define SATP_MODE_OFF			_UL(0)
+#define SATP_MODE_SV32			_UL(1)
+#define SATP_MODE_SV39			_UL(8)
+#define SATP_MODE_SV48			_UL(9)
+#define SATP_MODE_SV57			_UL(10)
+#define SATP_MODE_SV64			_UL(11)
 
-#define HGATP_MODE_OFF			_AC(0, UL)
-#define HGATP_MODE_SV32X4		_AC(1, UL)
-#define HGATP_MODE_SV39X4		_AC(8, UL)
-#define HGATP_MODE_SV48X4		_AC(9, UL)
+#define HGATP_MODE_OFF			_UL(0)
+#define HGATP_MODE_SV32X4		_UL(1)
+#define HGATP_MODE_SV39X4		_UL(8)
+#define HGATP_MODE_SV48X4		_UL(9)
 
 #define HGATP32_MODE_SHIFT		31
 #define HGATP32_VMID_SHIFT		22
-#define HGATP32_VMID_MASK		_AC(0x1FC00000, UL)
-#define HGATP32_PPN			_AC(0x003FFFFF, UL)
+#define HGATP32_VMID_MASK		_UL(0x1FC00000)
+#define HGATP32_PPN			_UL(0x003FFFFF)
 
 #define HGATP64_MODE_SHIFT		60
 #define HGATP64_VMID_SHIFT		44
-#define HGATP64_VMID_MASK		_AC(0x03FFF00000000000, UL)
-#define HGATP64_PPN			_AC(0x00000FFFFFFFFFFF, UL)
+#define HGATP64_VMID_MASK		_ULL(0x03FFF00000000000)
+#define HGATP64_PPN			_ULL(0x00000FFFFFFFFFFF)
 
-/* SATP flags */
 #ifdef CONFIG_64BIT
-#define SATP_PPN			_AC(0x00000FFFFFFFFFFF, UL)
+#define SATP_PPN			SATP64_PPN
 #define SATP_ASID_SHIFT			SATP64_ASID_SHIFT
 #define SATP_ASID_MASK			SATP64_ASID_MASK
 #define SATP_MODE			(SATP_MODE_SV39 << SATP64_MODE_SHIFT)
@@ -257,37 +223,41 @@
 #define HGATP_MODE			(HGATP_MODE_SV32X4 << HGATP32_MODE_SHIFT)
 #endif
 
-/* SCAUSE */
+
+/* Exception Cause */
 #ifdef CONFIG_64BIT
-#define SCAUSE_INTERRUPT_MASK   _AC(0x8000000000000000, UL)
-#define SCAUSE_EXC_MASK		_AC(0x7FFFFFFFFFFFFFFF, UL)
+#define SCAUSE_INTERRUPT_MASK		_ULL(0x8000000000000000)
+#define SCAUSE_EXC_MASK			_ULL(0x7FFFFFFFFFFFFFFF)
 #else
-#define SCAUSE_INTERRUPT_MASK   _AC(0x80000000, UL)
-#define SCAUSE_EXC_MASK		_AC(0x7FFFFFFF, UL)
+#define SCAUSE_INTERRUPT_MASK   	_UL(0x80000000)
+#define SCAUSE_EXC_MASK			_UL(0x7FFFFFFF)
 #endif
 
-#define PMP_R				0x01
-#define PMP_W				0x02
-#define PMP_X				0x04
-#define PMP_A				0x18
-#define PMP_A_TOR			0x08
-#define PMP_A_NA4			0x10
-#define PMP_A_NAPOT			0x18
-#define PMP_L				0x80
+
+/* Physical Memory Protection */
+#define PMP_R				_UL(0x01)
+#define PMP_W				_UL(0x02)
+#define PMP_X				_UL(0x04)
+#define PMP_A				_UL(0x18)
+#define PMP_A_TOR			_UL(0x08)
+#define PMP_A_NA4			_UL(0x10)
+#define PMP_A_NAPOT			_UL(0x18)
+#define PMP_L				_UL(0x80)
 
 #define PMP_SHIFT			2
 #define PMP_COUNT			16
 
-/* page table entry (PTE) fields */
-#define PTE_V				0x001 /* Valid */
-#define PTE_R				0x002 /* Read */
-#define PTE_W				0x004 /* Write */
-#define PTE_X				0x008 /* Execute */
-#define PTE_U				0x010 /* User */
-#define PTE_G				0x020 /* Global */
-#define PTE_A				0x040 /* Accessed */
-#define PTE_D				0x080 /* Dirty */
-#define PTE_SOFT			0x300 /* Reserved for Software */
+
+/* Page table entry (PTE) fields */
+#define PTE_V				_UL(0x001) /* Valid */
+#define PTE_R				_UL(0x002) /* Read */
+#define PTE_W				_UL(0x004) /* Write */
+#define PTE_X				_UL(0x008) /* Execute */
+#define PTE_U				_UL(0x010) /* User */
+#define PTE_G				_UL(0x020) /* Global */
+#define PTE_A				_UL(0x040) /* Accessed */
+#define PTE_D				_UL(0x080) /* Dirty */
+#define PTE_SOFT			_UL(0x300) /* Reserved for Software */
 
 #define PTE_PPN_SHIFT			10
 
@@ -362,9 +332,13 @@
 #define CSR_HSTATUS			0x600
 #define CSR_HEDELEG			0x602
 #define CSR_HIDELEG			0x603
+#define CSR_HIE				0x604
 #define CSR_HTIMEDELTA			0x605
 #define CSR_HTIMEDELTAH			0x615
 #define CSR_HCOUNTERNEN			0x606
+#define CSR_HTVAL			0x643
+#define CSR_HIP				0x644
+#define CSR_HTINST			0x64a
 #define CSR_HGATP			0x680
 
 #define CSR_VSSTATUS			0x200
@@ -384,11 +358,14 @@
 #define CSR_MIE				0x304
 #define CSR_MTVEC			0x305
 #define CSR_MCOUNTEREN			0x306
+#define CSR_MSTATUSH			0x310
 #define CSR_MSCRATCH			0x340
 #define CSR_MEPC			0x341
 #define CSR_MCAUSE			0x342
 #define CSR_MTVAL			0x343
 #define CSR_MIP				0x344
+#define CSR_MTINST			0x34a
+#define CSR_MTVAL2			0x34b
 #define CSR_PMPCFG0			0x3a0
 #define CSR_PMPCFG1			0x3a1
 #define CSR_PMPCFG2			0x3a2
@@ -560,6 +537,9 @@
 #define CAUSE_FETCH_PAGE_FAULT		0xc
 #define CAUSE_LOAD_PAGE_FAULT		0xd
 #define CAUSE_STORE_PAGE_FAULT		0xf
+#define CAUSE_FETCH_GUEST_PAGE_FAULT	0x14
+#define CAUSE_LOAD_GUEST_PAGE_FAULT	0x15
+#define CAUSE_STORE_GUEST_PAGE_FAULT	0x17
 
 #define INSN_OPCODE_MASK		0x007c
 #define INSN_OPCODE_SHIFT		2
@@ -638,7 +618,16 @@
 #define INSN_MASK_WFI			0xffffff00
 #define INSN_MATCH_WFI			0x10500000
 
-#define INSN_LEN(insn)			((((insn) & 0x3) < 0x3) ? 2 : 4)
+#define INSN_16BIT_MASK			0x3
+#define INSN_32BIT_MASK			0x1c
+
+#define INSN_IS_16BIT(insn)		\
+	(((insn) & INSN_16BIT_MASK) != INSN_16BIT_MASK)
+#define INSN_IS_32BIT(insn)		\
+	(((insn) & INSN_16BIT_MASK) == INSN_16BIT_MASK && \
+	 ((insn) & INSN_32BIT_MASK) != INSN_32BIT_MASK)
+
+#define INSN_LEN(insn)			(INSN_IS_16BIT(insn) ? 2 : 4)
 
 #ifdef CONFIG_64BIT
 #define LOG_REGBYTES			3
