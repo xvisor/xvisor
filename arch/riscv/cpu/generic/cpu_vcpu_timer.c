@@ -37,7 +37,7 @@ static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);
 
 	BUG_ON(!tevent);
-	vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
+	vmm_vcpu_irq_assert(vcpu, IRQ_VS_TIMER, 0x0);
 }
 
 void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
@@ -52,11 +52,11 @@ void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 	 * In RISC-V, we should clear the timer pending bit before
 	 * programming next one.
 	 */
-	vmm_vcpu_irq_clear(vcpu, IRQ_S_TIMER);
+	vmm_vcpu_irq_clear(vcpu, IRQ_VS_TIMER);
 
 	/* No point in programming a timer for 1us */
 	if (delta_ns <= TIMER_EVENT_THRESHOLD_NS)
-		vmm_vcpu_irq_assert(vcpu, IRQ_S_TIMER, 0x0);
+		vmm_vcpu_irq_assert(vcpu, IRQ_VS_TIMER, 0x0);
 	else
 		vmm_timer_event_start(&tevent->time_ev, delta_ns);
 }

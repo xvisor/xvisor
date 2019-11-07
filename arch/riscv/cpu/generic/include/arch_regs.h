@@ -160,14 +160,14 @@ struct riscv_priv {
 	/* ISA feature bitmap */
 	unsigned long *isa;
 	/* CSR state */
+	unsigned long hie;
+	unsigned long hip;
 	unsigned long vsstatus;
-	unsigned long vsie;
 	unsigned long vstvec;
 	unsigned long vsscratch;
 	unsigned long vsepc;
 	unsigned long vscause;
 	unsigned long vstval;
-	unsigned long vsip;
 	unsigned long vsatp;
 	/* FP state */
 	union riscv_priv_fp fp;

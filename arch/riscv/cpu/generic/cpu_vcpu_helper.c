@@ -281,15 +281,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* TODO: Update HSTATUS.VSXL on non-32bit Host */
 
-	/* Update VS<xyz> */
+	/* Update VCPU CSRs */
+	riscv_priv(vcpu)->hie = 0;
+	riscv_priv(vcpu)->hip = 0;
 	riscv_priv(vcpu)->vsstatus = 0;
-	riscv_priv(vcpu)->vsie = 0;
 	riscv_priv(vcpu)->vstvec = 0;
 	riscv_priv(vcpu)->vsscratch = 0;
 	riscv_priv(vcpu)->vsepc = 0;
 	riscv_priv(vcpu)->vscause = 0;
 	riscv_priv(vcpu)->vstval = 0;
-	riscv_priv(vcpu)->vsip = 0;
 	riscv_priv(vcpu)->vsatp = 0;
 
 	/* Initialize FP state */
@@ -347,14 +347,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		memcpy(riscv_regs(tvcpu), regs, sizeof(*regs));
 		if (tvcpu->is_normal) {
 			priv = riscv_priv(tvcpu);
+			priv->hie = csr_read(CSR_HIE);
+			priv->hip = csr_read(CSR_HIP);
 			priv->vsstatus = csr_read(CSR_VSSTATUS);
-			priv->vsie = csr_read(CSR_VSIE);
 			priv->vstvec = csr_read(CSR_VSTVEC);
 			priv->vsscratch = csr_read(CSR_VSSCRATCH);
 			priv->vsepc = csr_read(CSR_VSEPC);
 			priv->vscause = csr_read(CSR_VSCAUSE);
 			priv->vstval = csr_read(CSR_VSTVAL);
-			priv->vsip = csr_read(CSR_VSIP);
 			priv->vsatp = csr_read(CSR_VSATP);
 			cpu_vcpu_fp_save(tvcpu, regs);
 		}
@@ -373,14 +373,14 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_HTIMEDELTAH,
 			(u32)(riscv_guest_priv(vcpu->guest)->time_delta >> 32));
 #endif
+		csr_write(CSR_HIE, priv->hie);
+		csr_write(CSR_HIP, priv->hip);
 		csr_write(CSR_VSSTATUS, priv->vsstatus);
-		csr_write(CSR_VSIE, priv->vsie);
 		csr_write(CSR_VSTVEC, priv->vstvec);
 		csr_write(CSR_VSSCRATCH, priv->vsscratch);
 		csr_write(CSR_VSEPC, priv->vsepc);
 		csr_write(CSR_VSCAUSE, priv->vscause);
 		csr_write(CSR_VSTVAL, priv->vstval);
-		csr_write(CSR_VSIP, priv->vsip);
 		csr_write(CSR_VSATP, priv->vsatp);
 		cpu_vcpu_fp_restore(vcpu, regs);
 		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_vmid_bits)) {
@@ -469,13 +469,13 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 		    "htimedeltah", (ulong)(gpriv->time_delta >> 32));
 #endif
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   vsstatus", priv->vsstatus, "       vsie", priv->vsie);
+		    "        hie", priv->hie, "        hip", priv->hip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "     vstvec", priv->vstvec, "  vsscratch", priv->vsscratch);
+		    "   vsstatus", priv->vsstatus, "     vstvec", priv->vstvec);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "      vsepc", priv->vsepc, "    vscause", priv->vscause);
+		    "  vsscratch", priv->vsscratch, "      vsepc", priv->vsepc);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "     vstval", priv->vstval, "       vsip", priv->vsip);
+		    "    vscause", priv->vscause, "     vstval", priv->vstval);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
 		    "      vsatp", priv->vsatp);
 

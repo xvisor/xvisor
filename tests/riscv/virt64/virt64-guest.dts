@@ -44,7 +44,7 @@
 			physical_size = <0x4000000>;
 			device_type = "pic";
 			compatible = "sifive,plic0";
-			parent_irq = <9>;
+			parent_irq = <10>;
 			num_irq = <32>;
 			max_priority = <7>;
 		};

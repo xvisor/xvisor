@@ -72,7 +72,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		regs->a0 = VMM_ENOTSUPP;
 		break;
 	case SBI_CLEAR_IPI:
-		vmm_vcpu_irq_clear(vcpu, IRQ_S_SOFT);
+		vmm_vcpu_irq_clear(vcpu, IRQ_VS_SOFT);
 		break;
 	case SBI_SEND_IPI:
 		ut_scause = ut_stval = 0;
@@ -83,7 +83,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		} else {
 			for_each_set_bit(i, &hmask, BITS_PER_LONG) {
 				rvcpu = vmm_manager_guest_vcpu(vcpu->guest, i);
-				vmm_vcpu_irq_assert(rvcpu, IRQ_S_SOFT, 0x0);
+				vmm_vcpu_irq_assert(rvcpu, IRQ_VS_SOFT, 0x0);
 			}
 		}
 		break;
