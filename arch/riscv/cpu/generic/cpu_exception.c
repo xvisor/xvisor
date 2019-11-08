@@ -102,20 +102,21 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 		msg = "illegal instruction fault failed";
 		if (regs->hstatus & HSTATUS_SPV) {
 			rc = cpu_vcpu_illegal_insn_fault(vcpu, regs,
-							 csr_read(stval));
+							 csr_read(CSR_STVAL));
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;
 		}
 		break;
-	case CAUSE_FETCH_PAGE_FAULT:
-	case CAUSE_LOAD_PAGE_FAULT:
-	case CAUSE_STORE_PAGE_FAULT:
+	case CAUSE_FETCH_GUEST_PAGE_FAULT:
+	case CAUSE_LOAD_GUEST_PAGE_FAULT:
+	case CAUSE_STORE_GUEST_PAGE_FAULT:
 		msg = "page fault failed";
-		if ((regs->hstatus & HSTATUS_SPV) &&
-		    (regs->hstatus & HSTATUS_STL)) {
+		if (regs->hstatus & HSTATUS_SPV) {
 			rc = cpu_vcpu_page_fault(vcpu, regs,
-						 cause, csr_read(stval));
+						 cause, csr_read(CSR_STVAL),
+						 csr_read(CSR_HTVAL),
+						 csr_read(CSR_HTINST));
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;

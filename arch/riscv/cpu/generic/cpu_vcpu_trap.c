@@ -70,7 +70,7 @@ int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
 
 static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
-				unsigned long fault_addr)
+				physical_addr_t fault_addr)
 {
 	int rc, rc1;
 	u32 reg_flags = 0x0, pg_reg_flags = 0x0;
@@ -168,7 +168,8 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 
 static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 				 arch_regs_t *regs,
-				 unsigned long fault_addr)
+				 physical_addr_t fault_addr,
+				 unsigned long htinst)
 {
 	u8 data8;
 	u16 data16;
@@ -176,13 +177,26 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u64 data64;
 	unsigned long ut_scause = 0;
 	int rc = VMM_OK, shift = 0, len = 0;
-	unsigned long insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
-							 &ut_scause);
+	unsigned long insn;
 
-	if (ut_scause) {
-		if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
-			ut_scause = CAUSE_FETCH_PAGE_FAULT;
-		return cpu_vcpu_redirect_trap(vcpu, regs, ut_scause, regs->sepc);
+	if (htinst & 0x1) {
+		/*
+		 * Bit[0] == 1 implies trapped instruction value is
+		 * transformed instruction or custom instruction.
+		 */
+		insn = htinst | INSN_16BIT_MASK;
+	} else {
+		/*
+		 * Bit[0] == 0 implies trapped instruction value is
+		 * zero or special value.
+		 */
+		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &ut_scause);
+		if (ut_scause) {
+			if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
+				ut_scause = CAUSE_FETCH_PAGE_FAULT;
+			return cpu_vcpu_redirect_trap(vcpu, regs,
+						      ut_scause, regs->sepc);
+		}
 	}
 
 	if ((insn & INSN_MASK_LW) == INSN_MATCH_LW) {
@@ -278,7 +292,8 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 
 static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 				  arch_regs_t *regs,
-				  unsigned long fault_addr)
+				  physical_addr_t fault_addr,
+				  unsigned long htinst)
 {
 	u8 data8;
 	u16 data16;
@@ -286,15 +301,28 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	u64 data64;
 	int rc = VMM_OK, len = 0;
 	unsigned long data, ut_scause = 0;
-	unsigned long insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
-							 &ut_scause);
+	unsigned long insn;
 
-	if (ut_scause) {
-		if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
-			ut_scause = CAUSE_FETCH_PAGE_FAULT;
-		return cpu_vcpu_redirect_trap(vcpu, regs,
-					      ut_scause, regs->sepc);
+	if (htinst & 0x1) {
+		/*
+		 * Bit[0] == 1 implies trapped instruction value is
+		 * transformed instruction or custom instruction.
+		 */
+		insn = htinst | INSN_16BIT_MASK;
+	} else {
+		/*
+		 * Bit[0] == 0 implies trapped instruction value is
+		 * zero or special value.
+		 */
+		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &ut_scause);
+		if (ut_scause) {
+			if (ut_scause == CAUSE_LOAD_PAGE_FAULT)
+				ut_scause = CAUSE_FETCH_PAGE_FAULT;
+			return cpu_vcpu_redirect_trap(vcpu, regs,
+						      ut_scause, regs->sepc);
+		}
 	}
+
 
 	data8 = data16 = data32 = data64 = data = GET_RS2(insn, regs);
 
@@ -367,9 +395,15 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			unsigned long cause,
-			unsigned long fault_addr)
+			unsigned long stval,
+			unsigned long htval,
+			unsigned long htinst)
 {
 	struct vmm_region *reg;
+	physical_addr_t fault_addr;
+
+	fault_addr = ((physical_addr_t)htval << 2);
+	fault_addr |= ((physical_addr_t)stval & 0x3);
 
 	reg = vmm_guest_find_region(vcpu->guest, fault_addr,
 				    VMM_REGION_VIRTUAL | VMM_REGION_MEMORY,
@@ -378,9 +412,11 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 		/* Emulate load/store instructions for virtual device */
 		switch (cause) {
 		case CAUSE_LOAD_PAGE_FAULT:
-			return cpu_vcpu_emulate_load(vcpu, regs, fault_addr);
+			return cpu_vcpu_emulate_load(vcpu, regs,
+						     fault_addr, htinst);
 		case CAUSE_STORE_PAGE_FAULT:
-			return cpu_vcpu_emulate_store(vcpu, regs, fault_addr);
+			return cpu_vcpu_emulate_store(vcpu, regs,
+						      fault_addr, htinst);
 		default:
 			return VMM_ENOTSUPP;
 		};

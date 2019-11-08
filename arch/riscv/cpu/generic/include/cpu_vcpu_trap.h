@@ -34,7 +34,9 @@ int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			unsigned long cause,
-			unsigned long fault_addr);
+			unsigned long stval,
+			unsigned long htval,
+			unsigned long htinst);
 
 int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
