@@ -137,7 +137,7 @@ cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
 cc=$(CROSS_COMPILE)gcc
-cflags=-g -Wall -nostdlib --sysroot=$(drivers_dir)/include -fno-builtin -D__VMM__
+cflags=-g -Wall -nostdlib --sysroot=$(drivers_dir)/include -fno-builtin -D__VMM__ -fno-stack-protector
 cflags+=$(board-cflags) 
 cflags+=$(cpu-cflags) 
 cflags+=$(libs-cflags-y) 
