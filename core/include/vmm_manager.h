@@ -254,10 +254,13 @@ struct vmm_vcpu {
 	vmm_spinlock_t res_lock;
 	struct dlist res_head;
 
-	/* Waitqueue parameters */
+	/* Waitqueue context */
 	struct dlist wq_head;
 	vmm_spinlock_t *wq_lock;
 	void *wq_priv;
+
+	/* Waitqueue cleanup callback */
+	void (*wq_cleanup)(struct vmm_vcpu *);
 };
 
 /** Acquire manager lock */

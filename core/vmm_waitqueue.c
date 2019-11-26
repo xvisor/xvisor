@@ -45,6 +45,37 @@ static void waitqueue_timeout(struct vmm_timer_event *event)
 	vmm_waitqueue_wake(vcpu);
 }
 
+/* NOTE: Must be called with wq->lock held */
+static void waitqueue_cleanup(struct vmm_vcpu *vcpu)
+{
+	struct vmm_waitqueue *wq;
+	struct vmm_timer_event *ev;
+	struct vmm_waitqueue_priv *p = vcpu->wq_priv;
+
+	/* Sanity checks */
+	if (!p || !p->wq)
+		return;
+	wq = p->wq;
+	ev = p->ev;
+
+	/* Stop timer event if started */
+	if (ev) {
+		vmm_timer_event_stop(ev);
+	}
+
+	/* Remove VCPU from waitqueue */
+	list_del_init(&vcpu->wq_head);
+
+	/* Decrement VCPU count in waitqueue */
+	if (wq->vcpu_count) {
+		wq->vcpu_count--;
+	}
+
+	/* Clear waitqueue cleanup callback so that it's called only once */
+	vcpu->wq_cleanup = NULL;
+}
+
+/* NOTE: Must be called with wq->lock held */
 int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 {
 	int rc = VMM_OK;
@@ -64,15 +95,15 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 	/* Get current VCPU */
 	vcpu = vmm_scheduler_current_vcpu();
 
+	/* Update VCPU waitqueue context */
+	vcpu->wq_lock = &wq->lock;
+	vcpu->wq_priv = &p;
+
 	/* Add VCPU to waitqueue */
 	list_add_tail(&vcpu->wq_head, &wq->vcpu_list);
 
 	/* Increment VCPU count in waitqueue */
 	wq->vcpu_count++;
-
-	/* Update VCPU waitqueue context */
-	vcpu->wq_lock = &wq->lock;
-	vcpu->wq_priv = &p;
 
 	/* If timeout is required then create timer event */
 	if (timeout_nsecs) {
@@ -81,32 +112,20 @@ int __vmm_waitqueue_sleep(struct vmm_waitqueue *wq, u64 *timeout_nsecs)
 		vmm_timer_event_start2(&wake_event, *timeout_nsecs, &expiry);
 	}
 
+	/* Update waitqueue cleanup callback */
+	vcpu->wq_cleanup = waitqueue_cleanup;
+
 	/* Try to Pause VCPU */
 	rc = vmm_scheduler_state_change(vcpu, VMM_VCPU_STATE_PAUSED);
-
-	/* Remove VCPU from waitqueue */
-	list_del(&vcpu->wq_head);
-
-	/* Decrement VCPU count in waitqueue */
-	if (wq->vcpu_count) {
-		wq->vcpu_count--;
-	}
 
 	/* Set VCPU waitqueue context to NULL */
 	vcpu->wq_lock = NULL;
 	vcpu->wq_priv = NULL;
 
-	if (rc) {
-		/* Failed to pause VCPU so remove from waitqueue */
-		/* Destroy timeout event */
+	/* VCPU Wokeup successfully */
+	if (rc == VMM_OK) {
+		/* If timeout was used then update error code */
 		if (timeout_nsecs) {
-			vmm_timer_event_stop(&wake_event);
-		}
-	} else {
-		/* VCPU Wakeup so remove from waitqueue */
-		/* If timeout was used than destroy timer event */
-		if (timeout_nsecs) {
-			vmm_timer_event_stop(&wake_event);
 			now = vmm_timer_timestamp();
 			*timeout_nsecs = (now > expiry) ? 0 : (expiry - now);
 			if (*timeout_nsecs == 0) {
@@ -160,7 +179,6 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 {
 	irq_flags_t flags;
 	struct vmm_waitqueue *wq;
-	struct vmm_timer_event *ev;
 	struct vmm_waitqueue_priv *p = vcpu->wq_priv;
 
 	/* Sanity check */
@@ -168,23 +186,13 @@ int vmm_waitqueue_forced_remove(struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 	wq = p->wq;
-	ev = p->ev;
 
 	/* Lock waitqueue */
 	vmm_spin_lock_irqsave(&wq->lock, flags);
 
-	/* Stop timer event if started */
-	if (ev) {
-		vmm_timer_event_stop(ev);
-	}
-
-	/* Remove VCPU from waitqueue */
-	list_del(&vcpu->wq_head);
-
-	/* Decrement VCPU count in waitqueue */
-	if (wq->vcpu_count) {
-		wq->vcpu_count--;
-	}
+	/* Cleanup waitqueue */
+	if (vcpu->wq_cleanup)
+		vcpu->wq_cleanup(vcpu);
 
 	/* Set VCPU waitqueue context to NULL */
 	vcpu->wq_lock = NULL;
@@ -235,7 +243,7 @@ int __vmm_waitqueue_wakefirst(struct vmm_waitqueue *wq)
 	BUG_ON(!wq);
 
 	/* We should have atleast one VCPU in waitqueue list */
-	if (!wq->vcpu_count) {
+	if (list_empty(&wq->vcpu_list)) {
 		return VMM_ENOENT;
 	}
 
@@ -276,7 +284,7 @@ int __vmm_waitqueue_wakeall(struct vmm_waitqueue *wq)
 	BUG_ON(!wq);
 
 	/* We should have atleast one VCPU in waitqueue list */
-	if (!wq->vcpu_count) {
+	if (list_empty(&wq->vcpu_list)) {
 		return VMM_ENOENT;
 	}
 

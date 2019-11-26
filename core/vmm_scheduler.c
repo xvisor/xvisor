@@ -582,6 +582,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			if (!rc && (schedp->current_vcpu != vcpu)) {
 				preempt = rq_prempt_needed(schedp);
 			}
+			if (vcpu->wq_cleanup)
+				vcpu->wq_cleanup(vcpu);
 		} else if (current_state == VMM_VCPU_STATE_RUNNING) {
 			/* Set resumed flag. This means we catch
 			 * resume event while VCPU is RUNNING.
@@ -612,6 +614,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 			resumed = vcpu->resumed;
 			vcpu->resumed = FALSE;
 			if (resumed && (new_state == VMM_VCPU_STATE_PAUSED)) {
+				if (vcpu->wq_cleanup)
+					vcpu->wq_cleanup(vcpu);
 				goto skip_state_change;
 			} else if (schedp->current_vcpu == vcpu) {
 				/* Preempt current VCPU if paused or halted */
@@ -621,6 +625,8 @@ int vmm_scheduler_state_change(struct vmm_vcpu *vcpu, u32 new_state)
 				rc = rq_detach(schedp, vcpu);
 			}
 		} else {
+			if (vcpu->wq_cleanup)
+				vcpu->wq_cleanup(vcpu);
 			rc = VMM_EINVALID;
 		}
 		break;
