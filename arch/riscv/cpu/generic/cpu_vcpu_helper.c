@@ -484,10 +484,13 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 
 void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
 				  unsigned long scause,
-				  unsigned long stval)
+				  unsigned long stval,
+				  unsigned long htval)
 {
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "   scause", scause, "    stval", stval);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
+		    "    htval", htval);
 }
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

@@ -37,6 +37,7 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 /** Function to dump exception registers */
 void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
 				  unsigned long scause,
-				  unsigned long stval);
+				  unsigned long stval,
+				  unsigned long htval);
 
 #endif

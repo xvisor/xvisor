@@ -45,7 +45,7 @@ void do_error(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	vmm_printf("%s: CPU%d: VCPU=%s %s (error %d)\n",
 		   __func__, cpu, (vcpu) ? vcpu->name : "(NULL)", msg, err);
 	cpu_vcpu_dump_general_regs(NULL, regs);
-	cpu_vcpu_dump_exception_regs(NULL, scause, csr_read(CSR_STVAL));
+	cpu_vcpu_dump_exception_regs(NULL, scause, csr_read(CSR_STVAL), csr_read(CSR_HTVAL));
 	if (panic) {
 		vmm_panic("%s: please reboot ...\n", __func__);
 	}
