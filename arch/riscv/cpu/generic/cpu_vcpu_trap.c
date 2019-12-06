@@ -411,10 +411,10 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 	if (reg) {
 		/* Emulate load/store instructions for virtual device */
 		switch (cause) {
-		case CAUSE_LOAD_PAGE_FAULT:
+		case CAUSE_LOAD_GUEST_PAGE_FAULT:
 			return cpu_vcpu_emulate_load(vcpu, regs,
 						     fault_addr, htinst);
-		case CAUSE_STORE_PAGE_FAULT:
+		case CAUSE_STORE_GUEST_PAGE_FAULT:
 			return cpu_vcpu_emulate_store(vcpu, regs,
 						      fault_addr, htinst);
 		default:
