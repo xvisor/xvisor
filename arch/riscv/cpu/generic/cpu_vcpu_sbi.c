@@ -32,6 +32,7 @@
 #include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_unpriv.h>
+#include <cpu_sbi.h>
 #include <cpu_tlb.h>
 #include <riscv_encoding.h>
 #include <riscv_sbi.h>

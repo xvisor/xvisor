@@ -31,7 +31,7 @@
 
 #include <cpu_tlb.h>
 #include <cpu_mmu.h>
-#include <riscv_sbi.h>
+#include <cpu_sbi.h>
 
 /* Note: we use 1/8th or 12.5% of VAPOOL memory as translation table pool.
  * For example if VAPOOL is 8 MB then translation table pool will be 1 MB

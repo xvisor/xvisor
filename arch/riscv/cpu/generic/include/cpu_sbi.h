@@ -16,24 +16,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file riscv_sbi.h
+ * @file cpu_sbi.h
  * @author Anup Patel (anup.patel@wdc.com)
- * @brief Supervisor binary interface (SBI) defines
+ * @brief Supervisor binary interface (SBI) helper functions header
  */
 
-#ifndef __RISCV_SBI_H__
-#define __RISCV_SBI_H__
+#ifndef __CPU_SBI_H__
+#define __CPU_SBI_H__
 
-#include <vmm_const.h>
+#include <vmm_types.h>
 
-#define SBI_SET_TIMER 0
-#define SBI_CONSOLE_PUTCHAR 1
-#define SBI_CONSOLE_GETCHAR 2
-#define SBI_CLEAR_IPI 3
-#define SBI_SEND_IPI 4
-#define SBI_REMOTE_FENCE_I 5
-#define SBI_REMOTE_SFENCE_VMA 6
-#define SBI_REMOTE_SFENCE_VMA_ASID 7
-#define SBI_SHUTDOWN 8
+void sbi_console_putchar(int ch);
+
+int sbi_console_getchar(void);
+
+void sbi_set_timer(u64 stime_value);
+
+void sbi_shutdown(void);
+
+void sbi_clear_ipi(void);
+
+void sbi_send_ipi(const unsigned long *hart_mask);
+
+void sbi_remote_fence_i(const unsigned long *hart_mask);
+
+void sbi_remote_sfence_vma(const unsigned long *hart_mask,
+			   unsigned long start,
+			   unsigned long size);
+
+void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
+				unsigned long start,
+				unsigned long size,
+				unsigned long asid);
 
 #endif

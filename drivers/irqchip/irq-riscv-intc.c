@@ -38,9 +38,10 @@
 #include <vmm_host_io.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
+
+#include <cpu_sbi.h>
 #include <riscv_encoding.h>
 #include <riscv_csr.h>
-#include <riscv_sbi.h>
 
 #define RISCV_IRQ_COUNT __riscv_xlen
 

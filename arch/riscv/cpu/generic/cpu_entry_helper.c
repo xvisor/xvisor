@@ -25,8 +25,6 @@
 #include <arch_io.h>
 #include <libs/libfdt.h>
 
-#include <riscv_sbi.h>
-
 void __attribute__ ((section(".entry")))
     _copy_fdt(virtual_addr_t fdt_src, virtual_addr_t fdt_dst)
 {

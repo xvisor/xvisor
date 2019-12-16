@@ -32,7 +32,7 @@ void *early_base = &defterm_early_base;
 
 #if defined(CONFIG_RISCV_DEFTERM_EARLY_SBI)
 
-#include <riscv_sbi.h>
+#include <cpu_sbi.h>
 
 /*
  * SBI based single character TX.

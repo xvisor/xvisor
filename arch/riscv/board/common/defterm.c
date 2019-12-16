@@ -28,7 +28,7 @@
 #include <vmm_host_aspace.h>
 #include <arch_defterm.h>
 
-#include <riscv_sbi.h>
+#include <cpu_sbi.h>
 
 struct defterm_ops {
 	int (*putc)(u8 ch);

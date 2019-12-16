@@ -33,10 +33,10 @@
 #include <libs/mathlib.h>
 
 #include <cpu_hwcap.h>
+#include <cpu_sbi.h>
 #include <riscv_encoding.h>
 #include <riscv_timex.h>
 #include <riscv_csr.h>
-#include <riscv_sbi.h>
 
 #undef DEBUG
 

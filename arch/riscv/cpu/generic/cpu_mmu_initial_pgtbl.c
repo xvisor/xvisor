@@ -23,7 +23,6 @@
 
 #include <vmm_types.h>
 #include <cpu_mmu.h>
-#include <riscv_sbi.h>
 
 struct cpu_mmu_entry_ctrl {
 	int num_levels;
