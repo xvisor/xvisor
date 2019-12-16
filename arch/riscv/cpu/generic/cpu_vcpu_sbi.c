@@ -37,16 +37,6 @@
 #include <riscv_encoding.h>
 #include <riscv_sbi.h>
 
-u16 cpu_vcpu_sbi_version_major(void)
-{
-	return SBI_VERSION_MAJOR;
-}
-
-u16 cpu_vcpu_sbi_version_minor(void)
-{
-	return SBI_VERSION_MINOR;
-}
-
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs)
 {
@@ -57,25 +47,25 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 	struct riscv_guest_serial *gs = riscv_guest_serial(vcpu->guest);
 
 	switch (regs->a7) {
-	case SBI_SET_TIMER:
+	case SBI_EXT_0_1_SET_TIMER:
 		if (riscv_priv(vcpu)->xlen == 32)
 			riscv_timer_event_start(vcpu,
 				((u64)regs->a1 << 32) | (u64)regs->a0);
 		else
 			riscv_timer_event_start(vcpu, (u64)regs->a0);
 		break;
-	case SBI_CONSOLE_PUTCHAR:
+	case SBI_EXT_0_1_CONSOLE_PUTCHAR:
 		send = (u8) regs->a0;
 		vmm_vserial_receive(gs->vserial, &send, 1);
 		break;
-	case SBI_CONSOLE_GETCHAR:
+	case SBI_EXT_0_1_CONSOLE_GETCHAR:
 		/* TODO: Implement get function if required */
 		regs->a0 = VMM_ENOTSUPP;
 		break;
-	case SBI_CLEAR_IPI:
+	case SBI_EXT_0_1_CLEAR_IPI:
 		vmm_vcpu_irq_clear(vcpu, IRQ_VS_SOFT);
 		break;
-	case SBI_SEND_IPI:
+	case SBI_EXT_0_1_SEND_IPI:
 		ut_scause = ut_stval = 0;
 		hmask = __cpu_vcpu_unpriv_read_ulong(regs->a0, &ut_scause);
 		if (ut_scause) {
@@ -88,14 +78,14 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 			}
 		}
 		break;
-	case SBI_SHUTDOWN:
+	case SBI_EXT_0_1_SHUTDOWN:
 		ret = vmm_manager_guest_shutdown_request(vcpu->guest);
 		if (ret)
 			vmm_printf("%s: guest %s shutdown request failed "
 				   "with error = %d\n", __func__,
 				   vcpu->guest->name, ret);
 		break;
-	case SBI_REMOTE_FENCE_I:
+	case SBI_EXT_0_1_REMOTE_FENCE_I:
 		sbi_remote_fence_i(NULL);
 		break;
 
@@ -103,11 +93,11 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 	 * Prefered method is now a SBI call. Until then, just flush
 	 * all tlbs.
 	 */
-	case SBI_REMOTE_SFENCE_VMA:
+	case SBI_EXT_0_1_REMOTE_SFENCE_VMA:
 		/*TODO: Parse vma range.*/
 		sbi_remote_sfence_vma(NULL, 0, 0);
 		break;
-	case SBI_REMOTE_SFENCE_VMA_ASID:
+	case SBI_EXT_0_1_REMOTE_SFENCE_VMA_ASID:
 		/*TODO: Parse vma range for given ASID */
 		sbi_remote_sfence_vma(NULL, 0, 0);
 		break;

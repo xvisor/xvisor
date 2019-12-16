@@ -26,9 +26,6 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-#define SBI_VERSION_MAJOR			0
-#define SBI_VERSION_MINOR			1
-
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs);
 
