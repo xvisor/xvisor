@@ -29,6 +29,7 @@
 #include <libs/bitmap.h>
 
 #include <cpu_hwcap.h>
+#include <cpu_sbi.h>
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
 #include <riscv_encoding.h>
@@ -216,6 +217,13 @@ int __init cpu_parse_devtree_hwcap(void)
 	unsigned long val, this_xlen;
 	int rc = VMM_OK;
 	u32 tmp;
+
+	rc = sbi_init();
+	if (rc) {
+		vmm_printf("%s: SBI init failed (error %d)\n",
+			   __func__, rc);
+		return rc;
+	}
 
 	cpus = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "cpus");
 	if (!cpus) {

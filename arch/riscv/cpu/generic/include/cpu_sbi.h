@@ -26,27 +26,128 @@
 
 #include <vmm_types.h>
 
+#define SBI_SPEC_VERSION_DEFAULT	0x1
+
+struct sbiret {
+	long error;
+	long value;
+};
+
+struct sbiret sbi_ecall(int ext, int fid, unsigned long arg0,
+			unsigned long arg1, unsigned long arg2,
+			unsigned long arg3, unsigned long arg4,
+			unsigned long arg5);
+
+/**
+ * Convert SBI spec error code into Xvisor error code
+ *
+ * @return VMM_Exxx error code OR VMM_OK
+ */
+int sbi_err_map_xvisor_errno(int err);
+
+/**
+ * Writes given character to the console device.
+ *
+ * @param ch The data to be written to the console.
+ */
 void sbi_console_putchar(int ch);
 
+/**
+ * Reads a character from console device.
+ *
+ * @return the character read from console
+ */
 int sbi_console_getchar(void);
 
-void sbi_set_timer(u64 stime_value);
-
+/**
+ * Remove all the harts from executing supervisor code.
+ */
 void sbi_shutdown(void);
 
+/**
+ * Clear any pending IPIs for the calling HART.
+ */
 void sbi_clear_ipi(void);
 
+/**
+ * Send IPIs to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ */
 void sbi_send_ipi(const unsigned long *hart_mask);
 
+/**
+ * Program the timer for next timer event.
+ *
+ * @param stime_value Timer value after which next timer event should fire.
+ */
+void sbi_set_timer(u64 stime_value);
+
+/**
+ * Send FENCE_I to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ */
 void sbi_remote_fence_i(const unsigned long *hart_mask);
 
+/**
+ * Send SFENCE_VMA to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start virtual address start
+ * @param size virtual address size
+ */
 void sbi_remote_sfence_vma(const unsigned long *hart_mask,
 			   unsigned long start,
 			   unsigned long size);
 
+/**
+ * Send SFENCE_VMA_ASID to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start virtual address start
+ * @param size virtual address size
+ * @param asid address space ID
+ */
 void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 				unsigned long start,
 				unsigned long size,
 				unsigned long asid);
+
+/**
+ * Check given SBI extension is supported or not.
+ *
+ * @param ext extension ID
+ * @return >= 0 for supported AND VMM_ENOTSUPP for not-supported
+ */
+int sbi_probe_extension(long ext);
+
+/**
+ * Check underlying SBI implementation is v0.1 only
+ *
+ * @return 1 for SBI v0.1 AND 0 for higer version
+ */
+int sbi_spec_is_0_1(void);
+
+/**
+ * Get SBI spec major version
+ *
+ * @return major version number
+ */
+unsigned long sbi_major_version(void);
+
+/**
+ * Get SBI spec minor version
+ *
+ * @return minor version number
+ */
+unsigned long sbi_minor_version(void);
+
+/**
+ * Initialize SBI library
+ *
+ * @return VMM_OK on success AND VMM_Exxx error code on failure
+ */
+int sbi_init(void);
 
 #endif
