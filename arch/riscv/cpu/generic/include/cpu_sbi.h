@@ -126,6 +126,54 @@ void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 				unsigned long asid);
 
 /**
+ * Send HFENCE_GVMA to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start guest physical address start
+ * @param size guest physical address size
+ */
+void sbi_remote_hfence_gvma(const unsigned long *hart_mask,
+			    unsigned long start,
+			    unsigned long size);
+
+/**
+ * Send HFENCE_GVMA_VMID to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start guest physical address start
+ * @param size guest physical address size
+ * @param vmid virtual machine ID
+ */
+void sbi_remote_hfence_gvma_vmid(const unsigned long *hart_mask,
+				 unsigned long start,
+				 unsigned long size,
+				 unsigned long vmid);
+
+/**
+ * Send HFENCE_VVMA to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start virtual address start
+ * @param size virtual address size
+ */
+void sbi_remote_hfence_vvma(const unsigned long *hart_mask,
+			    unsigned long start,
+			    unsigned long size);
+
+/**
+ * Send HFENCE_VVMA_ASID to a set of target HARTs.
+ *
+ * @param hart_mask mask representing set of target HARTs
+ * @param start virtual address start
+ * @param size virtual address size
+ * @param asid address space ID
+ */
+void sbi_remote_hfence_vvma_asid(const unsigned long *hart_mask,
+				 unsigned long start,
+				 unsigned long size,
+				 unsigned long asid);
+
+/**
  * Check given SBI extension is supported or not.
  *
  * @param ext extension ID
@@ -139,6 +187,13 @@ int sbi_probe_extension(long ext);
  * @return 1 for SBI v0.1 AND 0 for higer version
  */
 int sbi_spec_is_0_1(void);
+
+/**
+ * Check underlying SBI implementation has v0.2 RFENCE
+ *
+ * @return 1 for supported AND 0 for not-supported
+ */
+int sbi_has_0_2_rfence(void);
 
 /**
  * Get SBI spec major version
