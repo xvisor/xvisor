@@ -26,6 +26,7 @@
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_host_aspace.h>
+#include <libs/stringlib.h>
 #include <arch_sections.h>
 #include <arch_barrier.h>
 
@@ -71,26 +72,16 @@ static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 	arch_smp_mb();
 }
 
-static void cpu_tlbflush_hfence_gvma_ipi_handler(void *a1, void *a2, void *a3)
+static inline void cpu_remote_gpa_guest_tlbflush(physical_addr_t gpa,
+						 physical_size_t gsz)
 {
-	__hfence_gvma_gpa((unsigned long)a1);
+	sbi_remote_hfence_gvma(NULL, gpa & ~(gsz - 1), gsz);
 }
 
-static inline void cpu_remote_gpa_guest_tlbflush(physical_addr_t gpa)
+static inline void cpu_remote_va_hyp_tlb_flush(virtual_addr_t va,
+					       virtual_size_t sz)
 {
-	/*
-	 * TODO: Ideally, we should have SBI call for remote HFENCE.GVMA
-	 * but it's not available currently hence we use IPIs.
-	 */
-	vmm_smp_ipi_sync_call(cpu_online_mask, 1000,
-			      cpu_tlbflush_hfence_gvma_ipi_handler,
-			      (void *)(unsigned long)gpa, NULL, NULL);
-}
-
-static inline void cpu_remote_va_hyp_tlb_flush(virtual_addr_t va)
-{
-	sbi_remote_sfence_vma(NULL,
-			va & ~(PGTBL_PAGE_SIZE - 1), PGTBL_PAGE_SIZE);
+	sbi_remote_sfence_vma(NULL, va & ~(sz - 1), sz);
 }
 
 static struct cpu_pgtbl *cpu_mmu_pgtbl_find(physical_addr_t tbl_pa)
@@ -575,10 +566,11 @@ int cpu_mmu_unmap_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_remote_gpa_guest_tlbflush(pg->ia);
+		cpu_remote_gpa_guest_tlbflush(pg->ia, blksz);
 		start_level = mmuctrl.stage2_start_level;
 	} else {
-		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia);
+		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia,
+					    (virtual_size_t)blksz);
 		start_level = mmuctrl.stage1_start_level;
 	}
 
@@ -660,9 +652,10 @@ int cpu_mmu_map_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 	cpu_mmu_sync_pte(&pte[index]);
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
-		cpu_remote_gpa_guest_tlbflush(pg->ia);
+		cpu_remote_gpa_guest_tlbflush(pg->ia, blksz);
 	} else {
-		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia);
+		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia,
+					    (virtual_size_t)blksz);
 	}
 
 	pgtbl->pte_cnt++;
