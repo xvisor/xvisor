@@ -473,5 +473,9 @@ int __init sbi_init(void)
 		}
 	}
 
+	if (!sbi_has_0_2_rfence()) {
+		vmm_init_printf("WARNING: SBI v0.2 RFENCE not available !\n");
+	}
+
 	return 0;
 }

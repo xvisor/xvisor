@@ -37,6 +37,7 @@
 
 #include <cpu_hwcap.h>
 #include <cpu_tlb.h>
+#include <cpu_sbi.h>
 #include <cpu_mmu.h>
 #include <cpu_vcpu_fp.h>
 #include <cpu_vcpu_helper.h>
@@ -104,7 +105,8 @@ int arch_guest_init(struct vmm_guest *guest)
 	int rc;
 
 	if (!guest->reset_count) {
-		if (!riscv_isa_extension_available(NULL, h))
+		if (!riscv_isa_extension_available(NULL, h) ||
+		    !sbi_has_0_2_rfence())
 			return VMM_EINVALID;
 
 		guest->arch_priv = vmm_malloc(sizeof(struct riscv_guest_priv));
