@@ -23,6 +23,8 @@
 
 #include <vmm_error.h>
 #include <vmm_compiler.h>
+#include <vmm_cpumask.h>
+#include <vmm_smp.h>
 #include <vmm_stdio.h>
 
 #include <cpu_sbi.h>
@@ -71,6 +73,28 @@ int sbi_err_map_xvisor_errno(int err)
 	default:
 		return VMM_ENOTSUPP;
 	};
+}
+
+void sbi_cpumask_to_hartmask(const struct vmm_cpumask *cmask,
+			     struct vmm_cpumask *hmask)
+{
+	int rc;
+	u32 cpu;
+	unsigned long hart;
+
+	if (!cmask || !hmask)
+		return;
+
+	vmm_cpumask_clear(hmask);
+	for_each_cpu(cpu, cmask) {
+		rc = vmm_smp_map_hwid(cpu, &hart);
+		if (rc || (CONFIG_CPU_COUNT <= hart)) {
+			vmm_lwarning("SBI", "invalid hart=%lu for cpu=%d\n",
+				     hart, cpu);
+			continue;
+		}
+		vmm_cpumask_set_cpu(hart, hmask);
+	}
 }
 
 void sbi_console_putchar(int ch)

@@ -28,6 +28,8 @@
 
 #define SBI_SPEC_VERSION_DEFAULT	0x1
 
+struct vmm_cpumask;
+
 struct sbiret {
 	long error;
 	long value;
@@ -44,6 +46,15 @@ struct sbiret sbi_ecall(int ext, int fid, unsigned long arg0,
  * @return VMM_Exxx error code OR VMM_OK
  */
 int sbi_err_map_xvisor_errno(int err);
+
+/**
+ * Convert logical CPU mask to hardware HART mask
+ *
+ * @param cmask input logical CPU mask
+ * @param hmask output hardware HART mask
+ */
+void sbi_cpumask_to_hartmask(const struct vmm_cpumask *cmask,
+			     struct vmm_cpumask *hmask);
 
 /**
  * Writes given character to the console device.

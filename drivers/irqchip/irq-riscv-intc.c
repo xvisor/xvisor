@@ -70,26 +70,12 @@ static void riscv_irqchip_ack_irq(struct vmm_host_irq *d)
 static void riscv_irqchip_raise(struct vmm_host_irq *d,
 				const struct vmm_cpumask *mask)
 {
-	int rc;
-	u32 cpu;
-	unsigned long hart;
 	struct vmm_cpumask tmask;
 
 	if (d->hwirq != IRQ_S_SOFT)
 		return;
 
-	vmm_cpumask_clear(&tmask);
-	for_each_cpu(cpu, mask) {
-		rc = vmm_smp_map_hwid(cpu, &hart);
-		if (rc || (CONFIG_CPU_COUNT <= hart)) {
-			vmm_lwarning("riscv-intc",
-				     "ignoring IPI to cpu=%d (hard=0x%lx)\n",
-				     cpu, hart);
-			continue;
-		}
-		vmm_cpumask_set_cpu(hart, &tmask);
-	}
-
+	sbi_cpumask_to_hartmask(mask, &tmask);
 	sbi_send_ipi(vmm_cpumask_bits(&tmask));
 }
 #endif
