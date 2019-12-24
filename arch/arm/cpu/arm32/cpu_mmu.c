@@ -795,6 +795,9 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			ret = VMM_OK;
 		}
 		break;
+	case TTBL_L2TBL_TTE_TYPE_FAULT:
+		ret = VMM_OK;
+		break;
 	default:
 		break;
 	}
@@ -829,6 +832,9 @@ int cpu_mmu_unmap_l2tbl_page(struct cpu_l2tbl *l2,
 			ret = VMM_OK;
 		}
 		break;
+	case TTBL_L2TBL_TTE_TYPE_FAULT:
+		ret = VMM_OK;
+		break;
 	default:
 		break;
 	}
@@ -855,7 +861,7 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 	u32 ite, l1_tte_type;
 	virtual_addr_t pgva;
 	virtual_size_t pgsz, minpgsz;
-	physical_addr_t l2base;
+	physical_addr_t l2base, pgpa;
 	struct cpu_page upg;
 	struct cpu_l2tbl *l2;
 
@@ -889,13 +895,20 @@ int cpu_mmu_map_page(struct cpu_l1tbl *l1, struct cpu_page *pg)
 		}
 		pgva = pg->va & ~(pg->sz - 1);
 		pgva = pgva & ~(minpgsz - 1);
+		pgpa = pg->pa & ~(pg->sz - 1);
+		pgpa = pgpa & ~(minpgsz - 1);
 		pgsz = pg->sz;
 		while (pgsz) {
 			if (!cpu_mmu_get_page(l1, pgva, &upg)) {
-				rc = VMM_EFAIL;
-				goto mmu_map_return;
+				if (pgva != upg.va ||
+				    pgpa != upg.pa ||
+				    minpgsz != upg.sz) {
+					rc = VMM_EFAIL;
+					goto mmu_map_return;
+				}
 			}
 			pgva += minpgsz;
+			pgpa += minpgsz;
 			pgsz = (pgsz < minpgsz) ? 0 : (pgsz - minpgsz);
 		}
 	}
