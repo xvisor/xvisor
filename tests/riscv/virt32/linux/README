@@ -35,7 +35,7 @@ on QEMU model (v4.2 or higher):
 
   [7. Configure Linux in build directory]
   # cp arch/riscv/configs/rv32_defconfig arch/riscv/configs/tmp-virt32_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/riscv/configs/tmp-virt32_defconfig -e "CONFIG_HIGH_RES_TIMERS=y CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/riscv/configs/tmp-virt32_defconfig -f <xvisor_source_directory>/tests/riscv/virt32/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=riscv tmp-virt32_defconfig
 
   [8. Build Linux in build directory to reflect changes in kernel image]

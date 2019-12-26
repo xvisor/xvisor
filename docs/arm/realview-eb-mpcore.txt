@@ -31,7 +31,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   [7. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # cp arch/arm/configs/realview_defconfig arch/arm/configs/tmp-realview-eb-mpcore_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-eb-mpcore_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-eb-mpcore_defconfig -f <xvisor_source_directory>/tests/arm32/realview-eb-mpcore/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-realview-eb-mpcore_defconfig
 
   [8. Build Linux in build directory]

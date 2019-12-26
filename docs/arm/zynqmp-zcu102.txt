@@ -38,7 +38,7 @@ Following are steps to create these images and boot Xvisor on ZynqMP:
 
   [8. Configure Linux in build directory]
   # cp arch/arm64/configs/defconfig arch/arm64/configs/tmp-virt-v8_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm64/configs/tmp-virt-v8_defconfig
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm64/configs/tmp-virt-v8_defconfig -f <xvisor_source_directory>/tests/arm64/virt-v8/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm64 tmp-virt-v8_defconfig
 
   [9. Build Linux in build directory]

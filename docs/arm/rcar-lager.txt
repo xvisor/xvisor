@@ -47,7 +47,7 @@ using SD card:
 
   [8. Configure Linux in build directory]
   # cp arch/arm/configs/vexpress_defconfig arch/arm/configs/tmp-vexpress-a15_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-vexpress-a15_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-vexpress-a15_defconfig -f <xvisor_source_directory>/tests/arm32/vexpress-a15/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-vexpress-a15_defconfig
 
   [9. Build Linux in build directory]

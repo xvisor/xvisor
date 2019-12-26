@@ -38,7 +38,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
   [8. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # cp arch/arm/configs/realview_defconfig arch/arm/configs/tmp-realview-pb-a8_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-pb-a8_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-pb-a8_defconfig -f <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-realview-pb-a8_defconfig
 
   [9. Build Linux in build directory]
@@ -201,7 +201,7 @@ follows:
   [9. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # cp arch/arm/configs/realview_defconfig arch/arm/configs/tmp-realview-pb-a8_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-pb-a8_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-realview-pb-a8_defconfig -f <xvisor_source_directory>/tests/arm32/realview-pb-a8/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-realview-pb-a8_defconfig
 
   [10. Build Linux in build directory]

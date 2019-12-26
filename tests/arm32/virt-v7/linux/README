@@ -35,7 +35,7 @@ ARM Fast Models Host:
 
   [7. Configure Linux in build directory]
   # cp arch/arm/configs/vexpress_defconfig arch/arm/configs/tmp-virt-v7_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-vexpress-a15_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-virt-v7_defconfig -f <xvisor_source_directory>/tests/arm32/virt-v7/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-virt-v7_defconfig
 
   [8. Build Linux in build directory]

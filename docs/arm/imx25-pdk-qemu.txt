@@ -32,7 +32,7 @@ guest with Xvisor running on QEMU i.MX25 PDK Host:
   [7. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # cp arch/arm/configs/versatile_defconfig arch/arm/configs/tmp-versatilepb_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-versatilepb_defconfig -e "CONFIG_VFP=n"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-versatilepb_defconfig -f <xvisor_source_directory>/tests/arm32/versatilepb/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-versatilepb_defconfig
 
   [8. Build Linux in build directory]

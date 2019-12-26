@@ -41,7 +41,7 @@ Following steps to create these images and then boot Xvisor on ODroid-X:
   [8. Configure Linux in build directory]
   # sed -i 's/0xff800000UL/0xff000000UL/' arch/arm/include/asm/pgtable.h
   # cp arch/arm/configs/vexpress_defconfig arch/arm/configs/tmp-vexpress-a9_defconfig
-  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-vexpress-a9_defconfig -e "CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm/configs/tmp-vexpress-a9_defconfig -f <xvisor_source_directory>/tests/arm32/vexpress-a9/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=arm tmp-vexpress-a9_defconfig
 
   [9. Build Linux in build directory]
