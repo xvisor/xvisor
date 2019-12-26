@@ -46,8 +46,8 @@ BUILD_XVISOR_ONLY="no"
 BUILD_XVISOR_OUTPUT_PATH=`pwd`/build/xvisor
 BUILD_TARBALL_PATH=`pwd`/tarball
 BUILD_GUEST_OUTPUT_PATH=`pwd`/build/guest
-BUILD_LINUX_VERSION="5.2.14"
-BUILD_BUSYBOX_VERSION="1.27.2"
+BUILD_LINUX_VERSION="5.4.6"
+BUILD_BUSYBOX_VERSION="1.31.1"
 BUILD_PRINT_CONFIG_ONLY="no"
 
 # Derived options
@@ -222,7 +222,7 @@ realview-eb-mpcore)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-eb-mpcore-guest
 	BUILD_LINUX_DEFCONFIG=realview_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y CONFIG_DRM=n"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/realview-eb-mpcore/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=arm-realview-eb-11mp-ctrevb.dtb
 	;;
 realview-pb-a8)
@@ -237,7 +237,7 @@ realview-pb-a8)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=realview-pb-a8-guest
 	BUILD_LINUX_DEFCONFIG=realview_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y CONFIG_DRM=n"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/realview-pb-a8/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=arm-realview-pba8.dtb
 	;;
 versatilepb)
@@ -248,7 +248,7 @@ versatilepb)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=versatilepb-guest
 	BUILD_LINUX_DEFCONFIG=versatile_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_VFP=n"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/versatilepb/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=versatile-pb.dtb
 	;;
 vexpress-a9)
@@ -263,7 +263,7 @@ vexpress-a9)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a9-guest
 	BUILD_LINUX_DEFCONFIG=vexpress_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y CONFIG_DRM=n"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/vexpress-a9/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca9.dtb
 	;;
 vexpress-a15)
@@ -282,7 +282,7 @@ vexpress-a15)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=vexpress-a15-guest
 	BUILD_LINUX_DEFCONFIG=vexpress_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y CONFIG_DRM=n"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/vexpress-a15/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=vexpress-v2p-ca15-tc1.dtb
 	;;
 virt-v7)
@@ -301,7 +301,7 @@ virt-v7)
 	BUILD_XVISOR_TESTS_DIR=arm32
 	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v7-guest
 	BUILD_LINUX_DEFCONFIG=vexpress_defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA="CONFIG_NO_HZ_FULL=n CONFIG_NO_HZ_IDLE=y"
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/virt-v7/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=virt-v7.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm32/virt-v7/linux/virt-v7.dts
 	;;
@@ -313,7 +313,7 @@ virt-v8)
 	BUILD_XVISOR_TESTS_DIR=arm64
 	BUILD_XVISOR_GUEST_DTS_BASENAME=virt-v8-guest
 	BUILD_LINUX_DEFCONFIG=defconfig
-	BUILD_LINUX_DEFCONFIG_EXTRA=""
+	BUILD_LINUX_DEFCONFIG_EXTRA=${BUILD_XVISOR_SOURCE_PATH}/tests/arm64/virt-v8/linux/linux_extra.config
 	BUILD_LINUX_DTB_NAME=virt-v8.dtb
 	BUILD_XVISOR_LINUX_DTS_PATH=${BUILD_XVISOR_SOURCE_PATH}/tests/arm64/virt-v8/linux/virt-v8.dts
 	;;
@@ -516,7 +516,7 @@ if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/.config ]; then
 		sed -i 's/0xff800000UL/0xff000000UL/' ${BUILD_LINUX_SOURCE_PATH}/arch/arm/include/asm/pgtable.h
 	fi
 	cp -f ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/${BUILD_LINUX_DEFCONFIG} ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/tmp-${BUILD_GUEST_TYPE}_defconfig
-	${BUILD_XVISOR_SOURCE_PATH}/tests/common/scripts/update-linux-defconfig.sh -p ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/tmp-${BUILD_GUEST_TYPE}_defconfig -e "${BUILD_LINUX_DEFCONFIG_EXTRA}"
+	${BUILD_XVISOR_SOURCE_PATH}/tests/common/scripts/update-linux-defconfig.sh -p ${BUILD_LINUX_SOURCE_PATH}/arch/${BUILD_LINUX_ARCH}/configs/tmp-${BUILD_GUEST_TYPE}_defconfig -f ${BUILD_LINUX_DEFCONFIG_EXTRA}
 	make ARCH=${BUILD_LINUX_ARCH} -C ${BUILD_LINUX_SOURCE_PATH} O=${BUILD_LINUX_OUTPUT_PATH} tmp-${BUILD_GUEST_TYPE}_defconfig
 fi
 if [ ! -f ${BUILD_LINUX_OUTPUT_PATH}/vmlinux ]; then
