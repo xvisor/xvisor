@@ -7,23 +7,29 @@ function usage()
 	echo "Options:"
 	echo "     -h                        Display help or usage (Optional)"
 	echo "     -p <linux_defconfig_path> Path to Linux defconfig file"
-	echo "     -e <list_of_options>      Extra options (Optional)"
+	echo "     -f <extra_config_file>    Additional Linux config options from file (Optional)"
+	echo "     -e <extra_options>        Additional Linux config options from command line (Optional)"
 	echo "     -d                        Display options and do nothing (Optional)"
 	exit 1;
 }
 
 # Command line options
 LINUX_DEFCONFIG_PATH=`pwd`/defconfig
+LINUX_EXTRA_CONFIG_FILE=""
+LINUX_EXTRA_CONFIG_FILE_OPTIONS=""
 LINUX_EXTRA_OPTIONS=""
 DISPLAY_OPTIONS="0"
 
-while getopts "de:hp:" o; do
+while getopts "de:f:hp:" o; do
 	case "${o}" in
 	d)
 		DISPLAY_OPTIONS="1"
 		;;
 	e)
 		LINUX_EXTRA_OPTIONS=${OPTARG}
+		;;
+	f)
+		LINUX_EXTRA_CONFIG_FILE=${OPTARG}
 		;;
 	h)
 		usage
@@ -37,6 +43,24 @@ while getopts "de:hp:" o; do
 	esac
 done
 shift $((OPTIND-1))
+
+if [ -z "${LINUX_DEFCONFIG_PATH}" ]; then
+	echo "Must specify Linux defconfig file"
+	usage
+fi
+
+if [ ! -f ${LINUX_DEFCONFIG_PATH} ]; then
+	echo "Linux defconfig file does not exist"
+	usage
+fi
+
+if [ ! -z "${LINUX_EXTRA_CONFIG_FILE}" ]; then
+	if [ ! -f ${LINUX_EXTRA_CONFIG_FILE} ]; then
+		echo "Linux extra config file does not exist"
+		usage
+	fi
+	LINUX_EXTRA_CONFIG_FILE_OPTIONS=`cat ${LINUX_EXTRA_CONFIG_FILE}`
+fi
 
 LINUX_OPTIONS=""
 
@@ -114,6 +138,8 @@ LINUX_OPTIONS+=" CONFIG_OPROFILE=n"
 LINUX_OPTIONS+=" CONFIG_MTD=n"
 LINUX_OPTIONS+=" CONFIG_SOUND=n"
 
+LINUX_OPTIONS+=" ${LINUX_EXTRA_CONFIG_FILE_OPTIONS}"
+
 LINUX_OPTIONS+=" ${LINUX_EXTRA_OPTIONS}"
 
 if [ "${DISPLAY_OPTIONS}" -eq "1" ]; then
@@ -122,16 +148,6 @@ if [ "${DISPLAY_OPTIONS}" -eq "1" ]; then
 		echo ${OPTION}
 	done
 	exit 1
-fi
-
-if [ -z "${LINUX_DEFCONFIG_PATH}" ]; then
-	echo "Must specify Linux defconfig file"
-	usage
-fi
-
-if [ ! -f ${LINUX_DEFCONFIG_PATH} ]; then
-	echo "Linux defconfig file does not exist"
-	usage
 fi
 
 for OPTION in ${LINUX_OPTIONS}
