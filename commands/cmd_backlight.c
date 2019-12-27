@@ -131,7 +131,7 @@ static int cmd_backlight_brightness(struct vmm_chardev *cdev,
 static const struct {
 	char *name;
 	int (*function) (struct vmm_chardev *, int, char **);
-} const command[] = {
+} command[] = {
 	{"help", cmd_backlight_help},
 	{"list", cmd_backlight_list},
 	{"brightness", cmd_backlight_brightness},

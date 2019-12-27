@@ -351,7 +351,7 @@ static int cmd_flash_help(struct vmm_chardev *cdev,
 static const struct {
 	char *name;
 	int (*function) (struct vmm_chardev *, int, char **);
-} const command[] = {
+} command[] = {
 	{"help", cmd_flash_help},
 	{"list", cmd_flash_list},
 	{"read", cmd_flash_read},

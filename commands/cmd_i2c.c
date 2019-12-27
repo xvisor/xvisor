@@ -333,7 +333,7 @@ static int cmd_i2c_funcs(struct vmm_chardev *cdev,
 static const struct {
 	char *name;
 	int (*function) (struct vmm_chardev *, int, char **);
-} const command[] = {
+} command[] = {
 	{"help", cmd_i2c_help},
 	{"list", cmd_i2c_list},
 	{"detect", cmd_i2c_detect},
