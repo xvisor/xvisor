@@ -1,0 +1,73 @@
+			Xvisor v0.3.0
+	(Last Commit: -----------------------------)
+		(Release Date: 01-Jan-2020)
+
+In this release, we mainly have new features and lots of improvements
+in RISC-V and x86_64 ports.
+
+New Features:
+ - Lazy xfer API for VMSG framework
+ - Arch specific arch_atomic_xchg() and arch_atomic64_xchg() APIs
+ - Arch specific arch_vcpu_irq_can_execute_multiple() API
+ - Arch specific arch_cpu_print() API
+ - CPU hotplug notifier framework
+ - System time accounting for each VCPU
+ - Print version string using git describe
+ - Vscreen soft bind for Guest with framebuffer matching to Host
+
+New Commands:
+ - sleep sub-commands such as secs, msecs, usecs, test_secs,
+   test_msecs, and test_usecs
+
+New Drivers:
+ - Simple framebuffer (aka SimpleFB) driver
+ - Goldfish RTC driver
+
+New Emulators:
+ - ns16550 serial port emulator
+ - SiFive PLIC emulator
+ - Goldfish RTC emulator
+ - VirtIO input device emulator
+
+New Boards:
+ - No change
+
+All Ports:
+ - Use vfs guest_fdt_load to populate Guest device tree
+ - Defconfig update script to build Guest Linux image
+ - Fragmented extra Linux config for each Guest type
+ - Removed Linux configs for each Guest type
+
+ARM Ports:
+ - No change
+
+ARM32 Port:
+ - No change
+
+ARM32ve Port:
+ - No change
+
+ARM64 Port:
+ - Added pointer authentication virtualization
+ - Updated Foundation v8 boot-wrapper for pointer authentication
+
+RISC-V Port:
+ - Basic firmware RISC-V support for RV32 and RV64
+ - Basic firmware RISC-V virt machine support for RV32 and RV64
+ - Complete implementation of all arch_vcpu_xyz() functions
+ - Complete implementation of all arch_guest_xyz() functions
+ - Emulate SBI v0.1 for RISC-V Guest
+ - Lazy FP save/restore
+ - SBI v0.2 base extension for RV32 and RV64 host
+ - SBI v0.2 replacement extensions for RV32 and RV64 host
+ - Map Guest SBI v0.1 SFENCE calls to Host SBI v0.2 HFENCE calls
+ - Compliant with RISC-V Hypervisor v0.5 draft spec
+ - Able to create multiple SMP Guests on RV64 host
+ - Able to boot Xvisor on RV32 host
+
+x86 Port:
+ - Mandate unrestricted guest for Intel
+ - LAPIC timer as system timer
+ - Intel extended page table support
+ - Intel VMCS run support
+ - Able to boot Xvisor on Intel host with VTx support
