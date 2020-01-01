@@ -8,8 +8,8 @@ how to boot Linux using Basic Firmware on Virt-v8 guest.
 
 We assume that a bootable SD card for Armada 8K ClearFog GT board is
 available. If bootable SD card is not available then it can be prepared
-using buildme.sh found in gitrepo:
-https://github.com/SolidRun/clearfog-gt-8k-build
+using following documentation:
+https://developer.solid-run.com/knowledge-base/armada-8040-machiatobin-u-boot-and-atf/
 
 Once we have bootable SD card (with ATF & u-boot installed), we add
 3 more images to the boot partition of SD card:
@@ -33,7 +33,7 @@ Armada 8K ClearFog GT board:
   # make
 
   [5. Make U-Boot compatible uvmm.bin for use with bootm command]
-  # mkimage -A arm64 -O linux -T kernel -C none -a 0x00080000 -e 0x00080000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+  # mkimage -A arm64 -O linux -T kernel -C none -a 0x20080000 -e 0x20080000 -n Xvisor -d build/vmm.bin build/uvmm.bin
 
   [6. Build Basic Firmware]
   # make -C tests/arm64/virt-v8/basic
@@ -105,32 +105,19 @@ Armada 8K ClearFog GT board:
   [20. Power-up or Reset Armada 8K ClearFog GT board and press any key when U-Boot shows auto-boot count down]
 
   [21. Enable MMC interface from U-Boot command line]
-  U-Boot> mmc dev 0:0
+  U-Boot> mmc dev 1
 
   [22. Copy Xvisor from SD card to SDRAM]
-  U-Boot> fatload mmc 1:1 0x200000 uvmm.bin
+  U-Boot> ext4load mmc 1:1 0x20000000 uvmm.bin
 
   [23. Copy the Xvisor DTB from SD card to SDRAM]
-  U-Boot> fatload mmc 1:1 0x800000 armada-8040-clearfog-8k-gt.dtb
+  U-Boot> ext4load mmc 1:1 0x20800000 armada-8040-clearfog-8k-gt.dtb
 
   [24. Copy disk image from SD card to SDRAM]
-  U-Boot> fatload mmc 1:1 0x2000000 udisk.img
+  U-Boot> ext4load mmc 1:1 0x28000000 udisk.img
 
   [25. Jump into Xvisor after disabling MMU, interrupts, etc]
-  U-Boot> bootm 0x200000 0x2000000 0x800000
-
-  (Note: If you want to "autoboot" then you need to create a boot.scr file
-   on the root of the SD card. To do so edit a boot.cmd text file and add all
-   the commmands you want to execute automatically. For example you can put
-   the following commands in the "boot.cmd" file:
-   mmc dev 0:0
-   fatload mmc 1:1 0x200000 uvmm.bin
-   fatload mmc 1:1 0x800000 armada-8040-clearfog-8k-gt.dtb
-   fatload mmc 1:1 0x2000000 udisk.img
-   bootm 0x200000 0x2000000 0x800000
-   Then you can create the boot.scr file wit the following command:
-   # mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
-   Put the boot.scr file a the root of your SD card.)
+  U-Boot> bootm 0x20000000 0x28000000 0x20800000
 
   [26. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
