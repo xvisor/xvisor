@@ -29,10 +29,12 @@
 ifeq ($(CONFIG_64BIT),y)
 arch-cflags-y += -mabi=lp64
 march-y = rv64im
+cpu-mergeflags += -melf64lriscv_lp64
 else
 arch-ldflags-y += -static-libgcc -lgcc
 arch-cflags-y += -mabi=ilp32
 march-y = rv32im
+cpu-mergeflags += -melf32lriscv_ilp32
 endif
 
 ifeq ($(CONFIG_RISCV_ISA_A),y)
@@ -56,7 +58,7 @@ cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-cflags-y) -march=$(march-y)$(arch-a-y)$(arch-c-y)
 cpu-cflags += -fno-strict-aliasing -O2
 cpu-asflags += $(arch-cflags-y) -march=$(march-y)$(arch-a-y)fd$(arch-c-y)
-cpu-ldflags += $(arch-ldflags-y)
+cpu-ldflags += $(arch-ldflags-y) -march=$(march-y)$(arch-a-y)$(arch-c-y)
 
 cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_entry_helper.o

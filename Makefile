@@ -178,6 +178,7 @@ ldflags+=$(board-ldflags)
 ldflags+=$(cpu-ldflags)
 ldflags+=$(libs-ldflags-y)
 mergeflags=-r
+mergeflags+=$(cpu-mergeflags)
 dataflags=-r -b binary
 
 # If only "modules" is specified as make goals then
