@@ -138,7 +138,7 @@ int vmm_schedalgo_rq_dequeue(void *rq,
 	p = p - 1;
 	rq_entry = list_first_entry(&rqi->list[p],
 				struct vmm_schedalgo_rq_entry, head);
-	list_del(&rq_entry->head);
+	list_del_init(&rq_entry->head);
 
 	if (next) {
 		*next = rq_entry->vcpu;
@@ -164,7 +164,7 @@ int vmm_schedalgo_rq_detach(void *rq, struct vmm_vcpu *vcpu)
 		return VMM_EFAIL;
 	}
 
-	list_del(&rq_entry->head);
+	list_del_init(&rq_entry->head);
 
 	return VMM_OK;
 }
