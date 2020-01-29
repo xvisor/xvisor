@@ -5,12 +5,19 @@
 
 AARCH64_CROSS_COMPILE_LIST="aarch64-linux-gnu-"
 
-ARM32_CROSS_COMPILE_LIST=" arm-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST="arm-linux-gnueabi-"
 ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
 
 X86_64_CROSS_COMPILE_LIST="x86_64-linux-x86_64-linux-"
 X86_64_CROSS_COMPILE_LIST+=" x86_64-linux-gnu-"
-X86_64_CROSS_COMPILE_LIST+=" "
+
+RISCV64_CROSS_COMPILE_LIST="riscv64-linux-gnu-"
+RISCV64_CROSS_COMPILE_LIST+=" riscv64-unknown-linux-gnu-"
+
+RISCV32_CROSS_COMPILE_LIST="riscv32-linux-gnu-"
+RISCV32_CROSS_COMPILE_LIST+=" riscv32-unknown-linux-gnu-"
+RISCV32_CROSS_COMPILE_LIST+=" riscv64-linux-gnu-"
+RISCV32_CROSS_COMPILE_LIST+=" riscv64-unknown-linux-gnu-"
 
 get_cross_compiler() {
 	FOUND=0
@@ -61,12 +68,36 @@ get_cross_compiler() {
 		# if not found we try the native gcc
 		if test $FOUND -eq 0
 		then
-			if test `gcc-4.9 -dumpmachine` = "x86_64-linux-gnu"
+			if test `gcc -dumpmachine` = "x86_64-linux-gnu"
 			then
 				FOUND=1
 				echo
 			fi
 		fi
+		;;
+	"riscv")
+		if [ "$2" = "generic-64b-defconfig" ]
+		then
+			CROSS_COMPILE_LIST=$RISCV64_CROSS_COMPILE_LIST
+		else
+			CROSS_COMPILE_LIST=$RISCV32_CROSS_COMPILE_LIST
+		fi
+
+		# Try to find a reasonable CROSS_COMPILE for riscv
+		for i in $CROSS_COMPILE_LIST
+		do
+			${i}gcc -dumpmachine > /dev/null 2>&1
+			if test $? -eq 0
+			then
+				${i}ld -v > /dev/null 2>&1
+				if test $? -eq 0
+				then
+					FOUND=1
+					echo $i
+					break
+				fi
+			fi
+		done
 		;;
 	*)
 		;;
@@ -84,7 +115,7 @@ get_cross_compiler() {
 set -e
 
 # Build for all architecture
-for ARCH in arm x86
+for ARCH in riscv arm x86
 do
 	# Build for all supported targets
 	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
