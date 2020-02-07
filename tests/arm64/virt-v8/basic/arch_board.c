@@ -315,7 +315,7 @@ void arch_board_serial_putc(char ch)
 
 bool arch_board_serial_can_getc(void)
 {
-	return pl01x_getc(VIRT_V8_UART0, PL01X_TYPE_1);
+	return pl01x_can_getc(VIRT_V8_UART0, PL01X_TYPE_1);
 }
 
 char arch_board_serial_getc(void)
