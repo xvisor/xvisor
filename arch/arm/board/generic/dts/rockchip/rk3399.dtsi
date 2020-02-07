@@ -1,0 +1,143 @@
+/**
+ * Copyright (c) 2019 PT Switch.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @file rk3399.dtsi
+ * @author Andy Dean (acd@kynesim.co.uk)
+ * @brief RK3399 SOC device tree
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "rockchip,rk3399";
+	model = "RK3399";
+	interrupt-parent = <&gic>;
+
+	chosen { };
+	aliases { };
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0>;
+			enable-method = "psci";
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <1>;
+			enable-method = "psci";
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <2>;
+			enable-method = "psci";
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <3>;
+			enable-method = "psci";
+		};
+
+		cpu@4 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a72";
+			reg = <0x100>;
+			enable-method = "psci";
+		};
+
+		cpu@5 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a72";
+			reg = <0x101>;
+			enable-method = "psci";
+		};
+
+	};
+
+	psci {
+		 compatible = "arm,psci-0.2";
+		 method = "smc";
+	};
+
+	memory {
+		device_type = "memory";
+		/* 4 GB, less 2MB at start reserved for Arm Trusted
+		 * Firmware, and 130MB at end used for I/O address space.
+		 */
+		reg = <0x0 0x00200000 0x0 0xf7e00000>;
+	};
+
+	gic: interrupt-controller@fee00000 {
+		compatible = "arm,gic-v3";
+		#interrupt-cells = <4>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		interrupt-controller;
+
+		reg = <0x0 0xfee00000 0 0x10000>, /* GICD */
+			<0x0 0xfef00000 0 0xc0000>, /* GICR */
+			<0x0 0xfff00000 0 0x10000>, /* GICC */
+			<0x0 0xfff10000 0 0x10000>, /* GICH */
+			<0x0 0xfff20000 0 0x10000>; /* GICV */
+			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
+	gen-timer { /* Generic Timer */
+		compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_LOW 0>, // PHYS_SECURE_PPI
+				<GIC_PPI 14 IRQ_TYPE_LEVEL_LOW 0>, // PHYS_NONSECURE_PPI
+				<GIC_PPI 11 IRQ_TYPE_LEVEL_LOW 0>, // VIRT_PPI
+				<GIC_PPI 10 IRQ_TYPE_LEVEL_LOW 0>; // HYP_PPI
+	};
+
+	soc: soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+
+		SERIAL2: uart2 {
+			compatible = "snps,dw-apb-uart";
+			reg = <0x0 0xff1a0000 0x0 0x100>;
+			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH 0>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			baudrate = <1500000>;
+			clock-frequency = <24000000>;
+		};
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+	};
+};

@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2013 Sukanto Ghosh.
+# Copyright (c) 2019 PT Switch.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,18 +17,8 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Sukanto Ghosh (sukantoghosh@gmail.com)
-# @brief list of Generic board objects.
+# @author Andy Dean (acd@kynesim.co.uk)
+# @brief list of Rockchip DTBs.
 # */
 
-board-objs-y+= brd_main.o
-board-objs-y+= dts/skeleton.o
-board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
-board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
-board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o
-board-objs-$(CONFIG_GENERIC_OMAP3)+= omap3.o
-board-objs-$(CONFIG_GENERIC_SABRELITE)+= sabrelite.o
-board-objs-$(CONFIG_GENERIC_EXYNOS4)+= exynos4.o
-board-objs-$(CONFIG_GENERIC_BCM2836)+= bcm2836.o
-board-objs-$(CONFIG_GENERIC_FOUNDATION_V8)+= foundation-v8.o
-board-objs-$(CONFIG_GENERIC_RK3399)+= rk3399.o
+board-dtbs-$(CONFIG_ARMV8)+=dts/rockchip/rk3399-rockpro64.dtb
