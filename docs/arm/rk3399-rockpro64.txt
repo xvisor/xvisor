@@ -1,0 +1,187 @@
+	Xvisor on the RockPro64 board (or RK3399) using SD or eMMC Booting
+
+This section of readme explains how to build & run Xvisor on RockPro64
+boards with an RK3399 SOC, using SD or eMMC booting.
+
+By default, Xvisor for RK3399 supports Virt-v8 guest so we will show how
+to boot Linux using Basic Firmware on Virt-v8 guest.
+
+The RockPro64 can boot from either an eMMC card or microSD card. Xvisor
+is launched from U-Boot, so we need an eMMC or SD card with a bootloader
+and U-Boot installed. The easiest way to do this is to download one
+of the Linux Software Releases for the RockPro64 found at:
+
+https://wiki.pine64.org/index.php/ROCKPro64_Software_Release
+
+
+This document assumes the Ubuntu 18.04 Minimal 64-bit distribution:
+
+https://github.com/ayufan-rock64/linux-build/releases/download/0.8.3/bionic-minimal-rockpro64-0.8.3-1141-arm64.img.xz
+
+has been downloaded, decompressed and programmed onto the card using
+Etcher, or equivalent USB flash burner.
+
+
+Once we have U-Boot installed on the eMMC or SD card, we can add 3 more
+images to the linux-root partition of the card:
+ 1) U-Boot compatible Xvisor binary (uvmm.bin)
+ 2) DTB for Xvisor (rk3399-rockpro64.dtb)
+ 3) U-Boot compatible Xvisor disk containing guest binaries (udisk.img)
+
+Following are steps to create these images and boot Xvisor on the RockPro64:
+
+  [1. Build environment]
+  # export CROSS_COMPILE=aarch64-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-v8 default settings]
+  # make ARCH=arm generic-v8-defconfig
+
+  [4. Build Xvisor and DTBs]
+  # make
+
+  [5. Make U-Boot compatible uvmm.bin for use with bootm command]
+  # mkimage -A arm64 -O linux -T kernel -C none -a 0x02080000 -e 0x02080000 -n Xvisor -d build/vmm.bin build/uvmm.bin
+
+  [6. Build Basic Firmware]
+  # make -C tests/arm64/virt-v8/basic
+
+  [7. GoTo Linux source directory]
+  First, download and extract a Linux kernel, for example a stable 4.19 release will suffice.
+  # cd <linux_source_directory>
+
+  [8. Configure Linux in build directory]
+  # cp arch/arm64/configs/defconfig arch/arm64/configs/tmp-virt-v8_defconfig
+  # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/arm64/configs/tmp-virt-v8_defconfig -f <xvisor_source_directory>/tests/arm64/virt-v8/linux/linux_extra.config
+  # make O=<linux_build_directory> ARCH=arm64 tmp-virt-v8_defconfig
+
+  [9. Build Linux in build directory]
+  # make O=<linux_build_directory> ARCH=arm64 Image dtbs
+
+  [10. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
+  (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
+
+  [11. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [12. Create disk image for Xvisor with Guest Linux and Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/linux/cmdlist ./build/disk/images/arm64/virt-v8/cmdlist
+  # cp -f ./tests/arm64/virt-v8/xscript/one_guest_virt-v8.xscript ./build/disk/boot.xscript
+  # cp -f <linux_build_directory>/arch/arm64/boot/Image ./build/disk/images/arm64/virt-v8/Image
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8/virt-v8.dtb ./tests/arm64/virt-v8/linux/virt-v8.dts
+  # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/arm64/virt-v8/rootfs.img
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
+  OR
+  [12. Create disk image for Xvisor with only Guest Basic Firmware]
+  # mkdir -p ./build/disk/tmp
+  # mkdir -p ./build/disk/system
+  # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
+  # cp -f ./docs/logo/xvisor_logo_name.ppm ./build/disk/system/logo.ppm
+  # mkdir -p ./build/disk/images/arm64/virt-v8
+  # dtc -q -I dts -O dtb -o ./build/disk/images/arm64/virt-v8-guest.dtb ./tests/arm64/virt-v8/virt-v8-guest.dts
+  # cp -f ./build/tests/arm64/virt-v8/basic/firmware.bin ./build/disk/images/arm64/virt-v8/firmware.bin
+  # cp -f ./tests/arm64/virt-v8/linux/nor_flash.list ./build/disk/images/arm64/virt-v8/nor_flash.list
+  # cp -f ./tests/arm64/virt-v8/xscript/one_guest_virt-v8.xscript ./build/disk/boot.xscript
+  # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
+
+  [13. Make U-Boot compatible udisk.img for use with bootm command]
+  # mkimage -A arm64 -O linux -T ramdisk -a 0x00000000 -n "Xvisor Ramdisk" -d build/disk.img build/udisk.img
+
+  [14. Unplug bootable eMMC/SD card from the RockPro64 board and plug it on your development machine]
+
+  [15. Mount linux-root partition (usually partition 7) of SD/eMMC card on your development machine]
+
+  [16. Copy uvmm.bin, DTB, and udisk.img to the linux-root partition of the card]
+  # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/board/generic/dts/rockchip/rk3399-rockpro64.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
+
+  [17. Unmount linux-root partition (or partition 7) of SD card from your development machine]
+
+  [18. Unplug SD/eMMC card from your development machine and plug it back in to the RockPro64 board]
+
+  [19. Connect to serial port of the RockPro64 board using Putty or Minicom]
+
+  [20. Power-up or Reset the RockPro64 board and hold a key down to stop autoboot and enter the the U-Boot console]
+
+  [21. Enable eMMC interface from U-Boot command line]
+  => mmc dev 0:0
+  (for microSD use 'mmc dev 1:0')
+  
+  [22. Copy Xvisor from eMMC card to SDRAM]
+  => ext4load mmc 0:7 0x200000 uvmm.bin
+  (for microSD use 'ext4load mmc 1:7 0x200000 uvmm.bin')
+
+  [23. Copy the Xvisor DTB from eMMC card to SDRAM]
+  => ext4load mmc 0:7 0x800000 rk3399-rockpro64.dtb
+  (for microSD use 'ext4load mmc 1:7 0x800000 rk3399-rockpro64.dtb')
+
+  [24. Copy disk image from eMMC card to SDRAM]
+  => ext4load mmc 0:7 0x2800000 udisk.img
+  (for microSD use 'ext4load mmc 1:7 0x2800000 udisk.img')
+
+  [25. Jump into Xvisor after disabling MMU, interrupts, etc]
+  => bootm 0x200000 0x2800000 0x800000
+
+  (Note: If you want to "autoboot" then you need to create a boot.scr file
+   on the root of the eMMC card. To do so edit a boot.cmd text file and add all
+   the commmands you want to execute automatically. For example you can put
+   the following commands in the "boot.cmd" file:
+
+   mmc dev 0:0
+   ext4load mmc 0:7 0x200000 uvmm.bin
+   ext4load mmc 0:7 0x800000 rk3399-rockpro64.dtb
+   ext4load mmc 0:7 0x2800000 udisk.img
+   bootm 0x200000 0x2800000 0x800000
+
+   Then you can create the boot.scr file wit the following command:
+   # mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
+   Put the boot.scr file in the linux-root partition (or partition 7) of your eMMC card.)
+
+  (For a microSD card the script is:
+   mmc dev 1:0
+   ext4load mmc 1:7 0x200000 uvmm.bin
+   ext4load mmc 1:7 0x800000 rk3399-rockpro64.dtb
+   ext4load mmc 1:7 0x2800000 udisk.img
+   bootm 0x200000 0x2800000 0x800000
+  )
+  
+  [26. Kick Guest0 for starting Basic Firmware]
+  XVisor# guest kick guest0
+
+  [27. Bind to virtual UART]
+  XVisor# vserial bind guest0/uart0
+
+  [28. Try few commands of Basic firmware or goto next step]
+  [guest0/uart0] basic# hi
+  [guest0/uart0] basic# hello
+  [guest0/uart0] basic# help
+
+  [29. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [guest0/uart0] basic# autoexec
+  (Note: "autoexec" is a short-cut command)
+  (Note: The <xvisor_source_directory>/tests/arm64/virt-v8/linux/cmdlist
+   file which we have added to guest NOR flash contains set of commands for booting
+   linux from NOR flash)
+
+  [30. Wait for Linux prompt to come-up and then try out some commands]
+  [guest0/uart0] / # ls
+
+  [31. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [guest0/uart0] / #
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: for more info on your desired ARM host refer docs/arm/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)
