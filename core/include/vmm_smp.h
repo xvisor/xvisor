@@ -130,9 +130,14 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 			   void *arg0, void *arg1, void *arg2);
 #endif
 
-/** Initialize SMP inter-processor interrupts 
+/** Initialize SMP synchronus inter-processor interrupts
  *  Note: This has to be done only for SMP systems.
  */
-int vmm_smp_ipi_init(void);
+int vmm_smp_sync_ipi_init(void);
+
+/** Initialize SMP asynchronus inter-processor interrupts
+ *  Note: This has to be done only for SMP systems.
+ */
+int vmm_smp_async_ipi_init(void);
 
 #endif /* __VMM_SMP_H__ */

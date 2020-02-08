@@ -597,12 +597,30 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
+#if defined(CONFIG_SMP)
+	/* Initialize synchronus inter-processor interrupts */
+	vmm_init_printf("synchronus inter-processor interrupts\n");
+	ret = vmm_smp_sync_ipi_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+#endif
+
 	/* Initialize hypervisor scheduler */
 	vmm_init_printf("hypervisor scheduler\n");
 	ret = vmm_scheduler_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
+
+#if defined(CONFIG_SMP)
+	/* Initialize asynchronus inter-processor interrupts */
+	vmm_init_printf("asynchronus inter-processor interrupts\n");
+	ret = vmm_smp_async_ipi_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+#endif
 
 	/* Initialize hypervisor threads */
 	vmm_init_printf("hypervisor threads\n");
@@ -615,15 +633,6 @@ static void __init init_bootcpu(void)
 	/* Initialize hypervisor profiler */
 	vmm_init_printf("hypervisor profiler\n");
 	ret = vmm_profiler_init();
-	if (ret) {
-		goto init_bootcpu_fail;
-	}
-#endif
-
-#if defined(CONFIG_SMP)
-	/* Initialize inter-processor interrupts */
-	vmm_init_printf("inter-processor interrupts\n");
-	ret = vmm_smp_ipi_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}

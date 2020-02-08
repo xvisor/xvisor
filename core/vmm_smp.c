@@ -274,10 +274,9 @@ int vmm_smp_ipi_sync_call(const struct vmm_cpumask *dest,
 	return rc;
 }
 
-static int smp_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+static int smp_sync_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
-	int rc;
-	char vcpu_name[VMM_FIELD_NAME_SIZE];
+	int rc = VMM_EFAIL;
 	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
 
 	/* Initialize Sync IPI FIFO */
@@ -299,6 +298,42 @@ static int smp_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	/* Initialize IPI available completion event */
 	INIT_COMPLETION(&ictlp->async_avail);
 
+	/* Clear async VCPU pointer */
+	ictlp->async_vcpu = NULL;
+
+	/* Arch specific IPI initialization */
+	if ((rc = arch_smp_ipi_init())) {
+		goto fail_free_async;
+	}
+
+	return VMM_OK;
+
+fail_free_async:
+	fifo_free(ictlp->async_fifo);
+fail_free_sync:
+	fifo_free(ictlp->sync_fifo);
+fail:
+	return rc;
+}
+
+static struct vmm_cpuhp_notify smp_sync_ipi_cpuhp = {
+	.name = "SMP_SYNC_IPI",
+	.state = VMM_CPUHP_STATE_SMP_SYNC_IPI,
+	.startup = smp_sync_ipi_startup,
+};
+
+int __init vmm_smp_sync_ipi_init(void)
+{
+	/* Setup hotplug notifier */
+	return vmm_cpuhp_register(&smp_sync_ipi_cpuhp, TRUE);
+}
+
+static int smp_async_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
+{
+	int rc = VMM_EFAIL;
+	char vcpu_name[VMM_FIELD_NAME_SIZE];
+	struct smp_ipi_ctrl *ictlp = &per_cpu(ictl, cpu);
+
 	/* Create IPI bottom-half VCPU. (Per Host CPU) */
 	vmm_snprintf(vcpu_name, sizeof(vcpu_name), "ipi/%d", cpu);
 	ictlp->async_vcpu = vmm_manager_vcpu_orphan_create(vcpu_name,
@@ -311,7 +346,7 @@ static int smp_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 						vmm_cpumask_of(cpu));
 	if (!ictlp->async_vcpu) {
 		rc = VMM_EFAIL;
-		goto fail_free_async;
+		goto fail;
 	}
 
 	/* Kick IPI orphan VCPU */
@@ -319,33 +354,22 @@ static int smp_ipi_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 		goto fail_free_vcpu;
 	}
 
-	/* Arch specific IPI initialization */
-	if ((rc = arch_smp_ipi_init())) {
-		goto fail_stop_vcpu;
-	}
-
 	return VMM_OK;
 
-fail_stop_vcpu:
-	vmm_manager_vcpu_halt(ictlp->async_vcpu);
 fail_free_vcpu:
 	vmm_manager_vcpu_orphan_destroy(ictlp->async_vcpu);
-fail_free_async:
-	fifo_free(ictlp->async_fifo);
-fail_free_sync:
-	fifo_free(ictlp->sync_fifo);
 fail:
 	return rc;
 }
 
-static struct vmm_cpuhp_notify smp_ipi_cpuhp = {
-	.name = "SMP_IPI",
-	.state = VMM_CPUHP_STATE_SMP_IPI,
-	.startup = smp_ipi_startup,
+static struct vmm_cpuhp_notify smp_async_ipi_cpuhp = {
+	.name = "SMP_ASYNC_IPI",
+	.state = VMM_CPUHP_STATE_SMP_ASYNC_IPI,
+	.startup = smp_async_ipi_startup,
 };
 
-int __init vmm_smp_ipi_init(void)
+int __init vmm_smp_async_ipi_init(void)
 {
 	/* Setup hotplug notifier */
-	return vmm_cpuhp_register(&smp_ipi_cpuhp, TRUE);
+	return vmm_cpuhp_register(&smp_async_ipi_cpuhp, TRUE);
 }
