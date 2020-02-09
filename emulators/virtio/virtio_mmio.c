@@ -285,6 +285,7 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 			     struct vmm_emudev *edev,
 			     const struct vmm_devtree_nodeid *eid)
 {
+	u32 val = 0;
 	int rc = VMM_OK;
 	struct virtio_mmio_dev *m;
 
@@ -310,12 +311,12 @@ static int virtio_mmio_probe(struct vmm_guest *guest,
 		     .queue_num_max  = 256,
 	};
 
-	rc = vmm_devtree_read_u32(edev->node, "virtio_type",
-				  &m->config.device_id);
+	rc = vmm_devtree_read_u32(edev->node, "virtio_type", &val);
 	if (rc) {
 		goto virtio_mmio_probe_freestate_fail;
 	}
 
+	m->config.device_id = val;
 	m->dev.id.type = m->config.device_id;
 
 	rc = vmm_devtree_read_u32_atindex(edev->node,
