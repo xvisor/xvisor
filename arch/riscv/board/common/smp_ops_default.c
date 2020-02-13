@@ -79,4 +79,3 @@ struct smp_operations smp_default_ops = {
 	.cpu_boot = smp_default_cpu_boot,
 	.cpu_postboot = smp_default_cpu_postboot,
 };
-SMP_OPS_DECLARE(smp_default, &smp_default_ops);

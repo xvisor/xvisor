@@ -34,8 +34,7 @@ extern physical_addr_t __smp_logical_map[];
 /**
  * Callback operations for SMP CPUs.
  *
- * @name:	Name of the property as appears in a devicetree cpu node's
- *		enable-method property.
+ * @name:	Name of the SMP operations.
  * @ops_init:	Initialization for SMP OPS.
  * @cpu_init:	Reads any data necessary for a specific enable-method from the
  *		devicetree, for a given cpu node and proposed logical id.
@@ -54,9 +53,6 @@ struct smp_operations {
 	int		(*cpu_boot)(unsigned int);
 	void		(*cpu_postboot)(void);
 };
-
-#define SMP_OPS_DECLARE(name, ops) \
-VMM_DEVTREE_NIDTBL_ENTRY(name, "smp_ops", "", "", "", ops)
 
 extern struct smp_operations smp_default_ops;
 extern struct smp_operations smp_sbi_ops;

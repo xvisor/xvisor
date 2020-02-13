@@ -119,4 +119,3 @@ struct smp_operations smp_sbi_ops = {
 	.cpu_boot = smp_sbi_cpu_boot,
 	.cpu_postboot = smp_sbi_cpu_postboot,
 };
-SMP_OPS_DECLARE(smp_sbi, &smp_sbi_ops);
