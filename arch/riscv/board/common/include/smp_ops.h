@@ -59,6 +59,9 @@ struct smp_operations {
 VMM_DEVTREE_NIDTBL_ENTRY(name, "smp_ops", "", "", "", ops)
 
 extern struct smp_operations smp_default_ops;
+extern struct smp_operations smp_sbi_ops;
+
+bool smp_sbi_ops_available(void);
 
 void smp_write_pen_release(unsigned long val);
 unsigned long smp_read_pen_release(void);

@@ -91,7 +91,15 @@ unsigned long smp_read_logical_id(void)
 static int __init smp_read_ops(struct vmm_devtree_node *dn, int cpu)
 {
 	/* Unlike ARM, we don't have a enable-method property in RISC-V */
-	smp_cpu_ops[cpu] = &smp_default_ops;
+	if (smp_sbi_ops_available()) {
+		if (!cpu)
+			vmm_init_printf("using SBI SMP operations\n");
+		smp_cpu_ops[cpu] = &smp_sbi_ops;
+	} else {
+		if (!cpu)
+			vmm_init_printf("using default SMP operations\n");
+		smp_cpu_ops[cpu] = &smp_default_ops;
+	}
 
 	return 0;
 }
