@@ -180,30 +180,39 @@ static void __sbi_set_timer_v02(u64 stime_value)
 #endif
 }
 
-static int __sbi_send_ipi_v02(const unsigned long *hart_mask)
+static int __sbi_send_ipi_v02_real(unsigned long hmask, unsigned long hbase)
 {
-	struct vmm_cpumask tmask;
-	unsigned long hart, hmask, hbase;
 	struct sbiret ret = {0};
 	int result;
 
+	ret = sbi_ecall(SBI_EXT_IPI, SBI_EXT_IPI_SEND_IPI,
+			hmask, hbase, 0, 0, 0, 0);
+	if (ret.error) {
+		result = sbi_err_map_xvisor_errno(ret.error);
+		vmm_printf("%s: hmask=0x%lx hbase=%lu failed "
+			   "(error %d)\n", __func__, hmask,
+			   hbase, result);
+		return result;
+	}
+
+	return 0;
+}
+
+static int __sbi_send_ipi_v02(const unsigned long *hart_mask)
+{
+	unsigned long hart, hmask, hbase;
+	int result;
+
 	if (!hart_mask) {
-		sbi_cpumask_to_hartmask(cpu_online_mask, &tmask);
-		hart_mask = vmm_cpumask_bits(&tmask);
+		return __sbi_send_ipi_v02_real(0UL, -1UL);
 	}
 
 	hmask = hbase = 0;
 	for_each_set_bit(hart, hart_mask, CONFIG_CPU_COUNT) {
 		if (hmask && ((hbase + BITS_PER_LONG) <= hart)) {
-			ret = sbi_ecall(SBI_EXT_IPI, SBI_EXT_IPI_SEND_IPI,
-					hmask, hbase, 0, 0, 0, 0);
-			if (ret.error) {
-				result = sbi_err_map_xvisor_errno(ret.error);
-				vmm_printf("%s: hmask=0x%lx hbase=%lu failed "
-					   "(error %d)\n", __func__, hmask,
-					   hbase, result);
+			result = __sbi_send_ipi_v02_real(hmask, hbase);
+			if (result)
 				return result;
-			}
 			hmask = hbase = 0;
 		}
 		if (!hmask) {
@@ -212,15 +221,9 @@ static int __sbi_send_ipi_v02(const unsigned long *hart_mask)
 		hmask |= 1UL << (hart - hbase);
 	}
 	if (hmask) {
-		ret = sbi_ecall(SBI_EXT_IPI, SBI_EXT_IPI_SEND_IPI,
-				hmask, hbase, 0, 0, 0, 0);
-		if (ret.error) {
-			result = sbi_err_map_xvisor_errno(ret.error);
-			vmm_printf("%s: hmask=0x%lx hbase=%lu failed "
-				   "(error %d)\n", __func__, hmask,
-				   hbase, result);
+		result = __sbi_send_ipi_v02_real(hmask, hbase);
+		if (result)
 			return result;
-		}
 	}
 
 	return 0;
@@ -284,13 +287,12 @@ static int __sbi_rfence_v02(unsigned long fid,
 			    unsigned long start, unsigned long size,
 			    unsigned long arg4, unsigned long arg5)
 {
-	struct vmm_cpumask tmask;
 	unsigned long hart, hmask, hbase;
 	int result;
 
 	if (!hart_mask) {
-		sbi_cpumask_to_hartmask(cpu_online_mask, &tmask);
-		hart_mask = vmm_cpumask_bits(&tmask);
+		return __sbi_rfence_v02_real(fid, 0UL, -1UL,
+					     start, size, arg4);
 	}
 
 	hmask = hbase = 0;
