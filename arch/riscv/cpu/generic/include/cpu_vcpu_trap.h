@@ -26,10 +26,15 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+struct cpu_vcpu_trap {
+	unsigned long cause;
+	unsigned long tval;
+	unsigned long epc;
+};
+
 int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs,
-			   unsigned long scause,
-			   unsigned long stval);
+			   struct cpu_vcpu_trap *trap);
 
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,

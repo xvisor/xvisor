@@ -22,124 +22,78 @@
  */
 
 #include <vmm_error.h>
-#include <vmm_stdio.h>
-#include <vmm_cpumask.h>
-#include <vmm_vcpu_irq.h>
-#include <vio/vmm_vserial.h>
-#include <arch_vcpu.h>
-
-#include <cpu_guest_serial.h>
+#include <vmm_macros.h>
+#include <vmm_manager.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_trap.h>
-#include <cpu_vcpu_timer.h>
-#include <cpu_vcpu_unpriv.h>
-#include <cpu_sbi.h>
-#include <cpu_tlb.h>
-#include <riscv_encoding.h>
 #include <riscv_sbi.h>
+
+extern const struct cpu_vcpu_sbi_extension vcpu_sbi_legacy;
+
+static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
+	&vcpu_sbi_legacy,
+};
+
+const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
+						unsigned long ext_id)
+{
+	int i;
+
+	for (i = 0; i < array_size(vcpu_sbi); i++) {
+		if (ext_id >= vcpu_sbi[i]->extid_start &&
+		    ext_id <= vcpu_sbi[i]->extid_end)
+			return vcpu_sbi[i];
+	}
+
+	return NULL;
+}
 
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 		       arch_regs_t *regs)
 {
-	u8 send;
-	u32 hcpu;
-	int i, ret = 0;
-	bool next_sepc = TRUE;
-	struct vmm_vcpu *rvcpu;
-	struct vmm_cpumask cm, hm;
-	unsigned long hmask, ut_scause = 0;
-	struct vmm_guest *guest = vcpu->guest;
-	struct riscv_guest_serial *gs = riscv_guest_serial(guest);
+	int ret = 0;
+	const struct cpu_vcpu_sbi_extension *ext;
+	unsigned long extension_id = regs->a7;
+	unsigned long func_id = regs->a6;
+	struct cpu_vcpu_trap trap = { 0 };
+	unsigned long out_val = 0;
+	bool is_0_1_spec = FALSE;
+	unsigned long args[6];
 
-	switch (regs->a7) {
-	case SBI_EXT_0_1_SET_TIMER:
-		if (riscv_priv(vcpu)->xlen == 32)
-			riscv_timer_event_start(vcpu,
-				((u64)regs->a1 << 32) | (u64)regs->a0);
-		else
-			riscv_timer_event_start(vcpu, (u64)regs->a0);
-		break;
-	case SBI_EXT_0_1_CONSOLE_PUTCHAR:
-		send = (u8)regs->a0;
-		vmm_vserial_receive(gs->vserial, &send, 1);
-		break;
-	case SBI_EXT_0_1_CONSOLE_GETCHAR:
-		/* TODO: Implement get function if required */
-		regs->a0 = SBI_ERR_NOT_SUPPORTED;
-		break;
-	case SBI_EXT_0_1_CLEAR_IPI:
-		vmm_vcpu_irq_clear(vcpu, IRQ_VS_SOFT);
-		break;
-	case SBI_EXT_0_1_SEND_IPI:
-		if (regs->a0)
-			hmask = __cpu_vcpu_unpriv_read_ulong(regs->a0,
-							     &ut_scause);
-		else
-			hmask = (1UL << guest->vcpu_count) - 1;
-		if (ut_scause) {
-			next_sepc = FALSE;
-			ret = cpu_vcpu_redirect_trap(vcpu, regs,
-						     ut_scause, regs->a0);
-			break;
-		}
-		for_each_set_bit(i, &hmask, BITS_PER_LONG) {
-			rvcpu = vmm_manager_guest_vcpu(guest, i);
-			if (!(vmm_manager_vcpu_get_state(rvcpu) &
-			      VMM_VCPU_STATE_INTERRUPTIBLE))
-				continue;
-			vmm_vcpu_irq_assert(rvcpu, IRQ_VS_SOFT, 0x0);
-		}
-		break;
-	case SBI_EXT_0_1_SHUTDOWN:
-		ret = vmm_manager_guest_shutdown_request(guest);
-		if (ret)
-			vmm_printf("%s: guest %s shutdown request failed "
-				   "with error = %d\n", __func__,
-				   guest->name, ret);
-		break;
-	case SBI_EXT_0_1_REMOTE_FENCE_I:
-	case SBI_EXT_0_1_REMOTE_SFENCE_VMA:
-	case SBI_EXT_0_1_REMOTE_SFENCE_VMA_ASID:
-		if (regs->a0)
-			hmask = __cpu_vcpu_unpriv_read_ulong(regs->a0,
-							     &ut_scause);
-		else
-			hmask = (1UL << guest->vcpu_count) - 1;
-		if (ut_scause) {
-			next_sepc = FALSE;
-			ret = cpu_vcpu_redirect_trap(vcpu, regs,
-						     ut_scause, regs->a0);
-			break;
-		}
-		vmm_cpumask_clear(&cm);
-		for_each_set_bit(i, &hmask, BITS_PER_LONG) {
-			rvcpu = vmm_manager_guest_vcpu(guest, i);
-			if (!(vmm_manager_vcpu_get_state(rvcpu) &
-			      VMM_VCPU_STATE_INTERRUPTIBLE))
-				continue;
-			if (vmm_manager_vcpu_get_hcpu(rvcpu, &hcpu))
-				continue;
-			vmm_cpumask_set_cpu(hcpu, &cm);
-		}
-		sbi_cpumask_to_hartmask(&cm, &hm);
-		if (regs->a7 == SBI_EXT_0_1_REMOTE_FENCE_I) {
-			sbi_remote_fence_i(vmm_cpumask_bits(&hm));
-		} else if (regs->a7 == SBI_EXT_0_1_REMOTE_SFENCE_VMA) {
-			sbi_remote_hfence_vvma(vmm_cpumask_bits(&hm),
-					       regs->a1, regs->a2);
-		} else if (regs->a7 == SBI_EXT_0_1_REMOTE_SFENCE_VMA_ASID) {
-			sbi_remote_hfence_vvma_asid(vmm_cpumask_bits(&hm),
-						    regs->a1, regs->a2,
-						    regs->a3);
-		}
-		break;
-	default:
-		regs->a0 = SBI_ERR_NOT_SUPPORTED;
-		break;
-	};
+	args[0] = regs->a0;
+	args[1] = regs->a1;
+	args[2] = regs->a2;
+	args[3] = regs->a3;
+	args[4] = regs->a4;
+	args[5] = regs->a5;
 
-	if (next_sepc)
+	ext = cpu_vcpu_sbi_find_extension(extension_id);
+	if (ext && ext->handle) {
+		ret = ext->handle(vcpu, extension_id, func_id,
+				  args, &out_val, &trap);
+		if (extension_id >= SBI_EXT_0_1_SET_TIMER &&
+		    extension_id <= SBI_EXT_0_1_SHUTDOWN)
+			is_0_1_spec = TRUE;
+	} else {
+		ret = SBI_ERR_NOT_SUPPORTED;
+	}
+
+	if (trap.cause) {
+		trap.epc = regs->sepc;
+		cpu_vcpu_redirect_trap(vcpu, regs, &trap);
+	} else {
+		/* This function should return non-zero value only in case of
+		 * fatal error. However, there is no good way to distinguish
+		 * between a fatal and non-fatal errors yet. That's why we treat
+		 * every return value except trap as non-fatal and just return
+		 * accordingly for now. Once fatal errors are defined, that
+		 * case should be handled differently.
+		 */
 		regs->sepc += 4;
+		regs->a0 = ret;
+		if (!is_0_1_spec)
+			regs->a1 = out_val;
+	}
 
-	return ret;
+	return 0;
 }
