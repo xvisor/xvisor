@@ -28,6 +28,10 @@
 struct vmm_vcpu;
 struct cpu_vcpu_trap;
 
+#define CPU_VCPU_SBI_VERSION_MAJOR		0
+#define CPU_VCPU_SBI_VERSION_MINOR		2
+#define CPU_VCPU_SBI_IMPID			2
+
 struct cpu_vcpu_sbi_extension {
 	unsigned long extid_start;
 	unsigned long extid_end;

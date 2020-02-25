@@ -28,9 +28,11 @@
 #include <cpu_vcpu_trap.h>
 #include <riscv_sbi.h>
 
+extern const struct cpu_vcpu_sbi_extension vcpu_sbi_base;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_legacy;
 
 static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
+	&vcpu_sbi_base,
 	&vcpu_sbi_legacy,
 };
 

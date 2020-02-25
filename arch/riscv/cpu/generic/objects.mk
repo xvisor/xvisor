@@ -80,6 +80,7 @@ cpu-objs-y+= cpu_vcpu_csr.o
 cpu-objs-y+= cpu_vcpu_fp.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_sbi.o
+cpu-objs-y+= cpu_vcpu_sbi_base.o
 cpu-objs-y+= cpu_vcpu_sbi_legacy.o
 cpu-objs-y+= cpu_vcpu_switch.o
 cpu-objs-y+= cpu_vcpu_timer.o
