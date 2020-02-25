@@ -69,7 +69,7 @@ int sbi_err_map_xvisor_errno(int err)
 	case SBI_ERR_INVALID_ADDRESS:
 		return VMM_EFAULT;
 	case SBI_ERR_NOT_SUPPORTED:
-	case SBI_ERR_FAILURE:
+	case SBI_ERR_FAILED:
 	default:
 		return VMM_ENOTSUPP;
 	};

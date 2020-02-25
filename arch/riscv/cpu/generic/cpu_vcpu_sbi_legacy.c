@@ -92,7 +92,7 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
 			vmm_printf("%s: guest %s shutdown request failed "
 				   "with error = %d\n", __func__,
 				   guest->name, ret);
-			ret = SBI_ERR_FAILURE;
+			ret = SBI_ERR_FAILED;
 		}
 		break;
 	case SBI_EXT_0_1_REMOTE_FENCE_I:
