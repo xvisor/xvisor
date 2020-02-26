@@ -68,6 +68,11 @@ SECTIONS
 		*(.init.data)
 		. = ALIGN(8);
 		PROVIDE(_initdata_end = .);
+
+		PROVIDE(_initconst_start = .);
+		*(.init.rodata)
+		. = ALIGN(8);
+		PROVIDE(_initconst_end = .);
 	}
 
 	. = ALIGN(0x1000); /* Ensure next section is page aligned */
