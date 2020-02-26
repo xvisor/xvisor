@@ -25,6 +25,7 @@
 #include <vmm_macros.h>
 #include <vmm_manager.h>
 #include <vmm_vcpu_irq.h>
+#include <cpu_sbi.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_timer.h>
 #include <riscv_sbi.h>
@@ -52,10 +53,71 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_time = {
 	.handle = vcpu_sbi_time_ecall,
 };
 
+static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu,
+				 unsigned long ext_id, unsigned long func_id,
+				 unsigned long *args, unsigned long *out_val,
+				 struct cpu_vcpu_trap *out_trap)
+{
+	u32 hcpu;
+	struct vmm_vcpu *rvcpu;
+	struct vmm_cpumask cm, hm;
+	struct vmm_guest *guest = vcpu->guest;
+	unsigned long hmask = args[0], hbase = args[1];
+
+	vmm_cpumask_clear(&cm);
+	vmm_manager_for_each_guest_vcpu(rvcpu, guest) {
+		if (!(vmm_manager_vcpu_get_state(rvcpu) &
+		      VMM_VCPU_STATE_INTERRUPTIBLE))
+			continue;
+		if (hbase != -1UL) {
+			if (rvcpu->subid < hbase)
+				continue;
+			if (!(hmask & (1UL << (rvcpu->subid - hbase))))
+				continue;
+		}
+		if (vmm_manager_vcpu_get_hcpu(rvcpu, &hcpu))
+			continue;
+		vmm_cpumask_set_cpu(hcpu, &cm);
+	}
+	sbi_cpumask_to_hartmask(&cm, &hm);
+
+	switch (func_id) {
+	case SBI_EXT_RFENCE_REMOTE_FENCE_I:
+		sbi_remote_fence_i(vmm_cpumask_bits(&hm));
+		break;
+	case SBI_EXT_RFENCE_REMOTE_SFENCE_VMA:
+		sbi_remote_hfence_vvma(vmm_cpumask_bits(&hm),
+					args[2], args[3]);
+		break;
+	case SBI_EXT_RFENCE_REMOTE_SFENCE_VMA_ASID:
+		sbi_remote_hfence_vvma_asid(vmm_cpumask_bits(&hm),
+					    args[2], args[3], args[4]);
+		break;
+	case SBI_EXT_RFENCE_REMOTE_HFENCE_GVMA:
+	case SBI_EXT_RFENCE_REMOTE_HFENCE_GVMA_VMID:
+	case SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA:
+	case SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA_ASID:
+		/*
+		 * TODO: these SBI calls will be implemented as part
+		 * of nested virtualization support.
+		 */
+	default:
+		return SBI_ERR_NOT_SUPPORTED;
+	};
+
+	return 0;
+}
+
+const struct cpu_vcpu_sbi_extension vcpu_sbi_rfence = {
+	.extid_start = SBI_EXT_RFENCE,
+	.extid_end = SBI_EXT_RFENCE,
+	.handle = vcpu_sbi_rfence_ecall,
+};
+
 static int vcpu_sbi_ipi_ecall(struct vmm_vcpu *vcpu,
-			       unsigned long ext_id, unsigned long func_id,
-			       unsigned long *args, unsigned long *out_val,
-			       struct cpu_vcpu_trap *out_trap)
+			      unsigned long ext_id, unsigned long func_id,
+			      unsigned long *args, unsigned long *out_val,
+			      struct cpu_vcpu_trap *out_trap)
 {
 	struct vmm_vcpu *rvcpu;
 	struct vmm_guest *guest = vcpu->guest;
