@@ -26,7 +26,31 @@
 #include <vmm_manager.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_vcpu_sbi.h>
+#include <cpu_vcpu_timer.h>
 #include <riscv_sbi.h>
+
+static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu,
+			       unsigned long ext_id, unsigned long func_id,
+			       unsigned long *args, unsigned long *out_val,
+			       struct cpu_vcpu_trap *out_trap)
+{
+	if (func_id != SBI_EXT_TIME_SET_TIMER)
+		return SBI_ERR_NOT_SUPPORTED;
+
+	if (riscv_priv(vcpu)->xlen == 32)
+		riscv_timer_event_start(vcpu,
+				((u64)args[1] << 32) | (u64)args[0]);
+	else
+		riscv_timer_event_start(vcpu, (u64)args[0]);
+
+	return 0;
+}
+
+const struct cpu_vcpu_sbi_extension vcpu_sbi_time = {
+	.extid_start = SBI_EXT_TIME,
+	.extid_end = SBI_EXT_TIME,
+	.handle = vcpu_sbi_time_ecall,
+};
 
 static int vcpu_sbi_ipi_ecall(struct vmm_vcpu *vcpu,
 			       unsigned long ext_id, unsigned long func_id,
