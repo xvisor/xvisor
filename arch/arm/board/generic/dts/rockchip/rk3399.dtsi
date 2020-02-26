@@ -22,6 +22,7 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/rk3399-cru.h>
 
 
 / {
@@ -117,6 +118,99 @@
 				<GIC_PPI 14 IRQ_TYPE_LEVEL_LOW 0>, // PHYS_NONSECURE_PPI
 				<GIC_PPI 11 IRQ_TYPE_LEVEL_LOW 0>, // VIRT_PPI
 				<GIC_PPI 10 IRQ_TYPE_LEVEL_LOW 0>; // HYP_PPI
+	};
+
+	xin24m: xin24m {
+		compatible = "fixed-clock";
+		clock-frequency = <24000000>;
+		clock-output-names = "xin24m";
+		#clock-cells = <0>;
+	};
+
+	pmucru: pmu-clock-controller@ff750000 {
+		compatible = "rockchip,rk3399-pmucru";
+		reg = <0x0 0xff750000 0x0 0x1000>;
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+		assigned-clocks = <&pmucru PLL_PPLL>, <&pmucru FCLK_CM0S_SRC_PMU>;
+		assigned-clock-rates = <676000000>, <97000000>;
+	};
+
+	cru: clock-controller@ff760000 {
+		compatible = "rockchip,rk3399-cru";
+		reg = <0x0 0xff760000 0x0 0x1000>;
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+		assigned-clocks =
+			<&cru ARMCLKL>, <&cru ARMCLKB>,
+			<&cru ACLK_PERIHP>, <&cru ACLK_PERILP0>,
+			<&cru HCLK_PERILP1>, <&cru SCLK_SDMMC>,
+			<&cru ACLK_EMMC>, <&cru ACLK_CENTER>,
+			<&cru HCLK_SD>, <&cru SCLK_VDU_CA>,
+			<&cru SCLK_VDU_CORE>, <&cru ACLK_USB3>,
+			<&cru FCLK_CM0S>, <&cru ACLK_CCI>,
+			<&cru PCLK_ALIVE>, <&cru ACLK_GMAC>,
+			<&cru SCLK_CS>, <&cru SCLK_CCI_TRACE>,
+			<&cru PLL_NPLL>, <&cru ACLK_GPU>,
+			<&cru PLL_GPLL>, <&cru ACLK_PERIHP>,
+			<&cru HCLK_PERIHP>, <&cru PCLK_PERIHP>,
+			<&cru ACLK_PERILP0>, <&cru HCLK_PERILP0>,
+			<&cru PCLK_PERILP0>, <&cru HCLK_PERILP1>,
+			<&cru PCLK_PERILP1>, <&cru SCLK_I2C1>,
+			<&cru SCLK_I2C2>, <&cru SCLK_I2C3>,
+			<&cru SCLK_I2C5>, <&cru SCLK_I2C6>,
+			<&cru SCLK_I2C7>, <&cru SCLK_SPI0>,
+			<&cru SCLK_SPI1>, <&cru SCLK_SPI2>,
+			<&cru SCLK_SPI4>, <&cru SCLK_SPI5>,
+			<&cru ACLK_GIC>, <&cru ACLK_ISP0>,
+			<&cru ACLK_ISP1>, <&cru SCLK_VOP0_PWM>,
+			<&cru SCLK_VOP1_PWM>, <&cru PCLK_EDP>,
+			<&cru ACLK_HDCP>, <&cru ACLK_VIO>,
+			<&cru SCLK_CRYPTO0>,
+			<&cru SCLK_CRYPTO1>, <&cru SCLK_EMMC>,
+			<&cru ACLK_IEP>, <&cru ACLK_RGA>,
+			<&cru SCLK_RGA_CORE>, <&cru ACLK_VDU>,
+			<&cru ACLK_VCODEC>,
+			<&cru ACLK_VOP0>,
+			<&cru HCLK_VOP0>, <&cru ACLK_VOP1>,
+			<&cru HCLK_VOP1>,
+			<&cru SCLK_DP_CORE>, <&cru SCLK_SPDIF_REC_DPTX>,
+			<&cru SCLK_TSADC>;
+		assigned-clock-rates =
+			<816000000>, <816000000>,
+			 <75000000>, <50000000>,
+			 <50000000>, <50000000>,
+			 <50000000>, <100000000>,
+			 <50000000>, <150000000>,
+			 <150000000>, <150000000>,
+			 <50000000>, <600000000>,
+			 <50000000>, <100000000>,
+			 <75000000>, <75000000>,
+			 <600000000>, <200000000>,
+			 <800000000>, <150000000>,
+			 <75000000>, <37500000>,
+			 <300000000>, <100000000>,
+			 <50000000>, <100000000>,
+			 <50000000>, <100000000>,
+			 <100000000>, <100000000>,
+			 <100000000>, <100000000>,
+			 <100000000>, <50000000>,
+			 <50000000>, <50000000>,
+			 <50000000>, <50000000>,
+			 <200000000>, <400000000>,
+			 <400000000>, <100000000>,
+			 <100000000>, <100000000>,
+			 <400000000>, <400000000>,
+			 <100000000>,
+			 <200000000>, <200000000>,
+			 <400000000>, <400000000>,
+			 <400000000>, <300000000>,
+			 <400000000>,
+			 <400000000>,
+			 <100000000>, <400000000>,
+			 <100000000>,
+			 <100000000>, <200000000>,
+			 <750000>;
 	};
 
 	soc: soc {
