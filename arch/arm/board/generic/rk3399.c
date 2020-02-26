@@ -32,6 +32,8 @@
 
 #include <generic_board.h>
 
+#include <linux/clk-provider.h>
+
 /*
  * Initialization functions
  */
@@ -45,7 +47,9 @@ static int __init rk3399_early_init(struct vmm_devtree_node *node)
 
 static int __init rk3399_final_init(struct vmm_devtree_node *node)
 {
-	/* Nothing to do here. */
+	/* Turn off unused clocks */
+	clk_disable_unused();
+
 	return VMM_OK;
 }
 
