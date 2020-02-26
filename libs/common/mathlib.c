@@ -231,3 +231,21 @@ unsigned long int_sqrt(unsigned long x)
 	return res;
 }
 
+/* Greatest common divisor */
+unsigned long gcd(unsigned long a, unsigned long b)
+{
+	unsigned long r;
+
+	if (a < b) {
+		unsigned long t = a;
+		a = b;
+		b = t;
+	}
+	if (!b)
+		return a;
+	while ((r = umod64(a, b)) != 0) {
+		a = b;
+		b = r;
+	}
+	return b;
+}

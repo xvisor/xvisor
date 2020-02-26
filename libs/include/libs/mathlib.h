@@ -191,4 +191,11 @@ static inline u64 muldiv64(u64 a, u32 b, u32 c)
 	return res.ll;
 }
 
+/**
+ * Compute the Greatest Common Divisor of two numbers.
+ *
+ */
+
+unsigned long gcd(unsigned long a, unsigned long b);
+
 #endif /* __MATHLIB_H__ */
