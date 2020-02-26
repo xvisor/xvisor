@@ -83,6 +83,7 @@ cpu-objs-y+= cpu_vcpu_sbi.o
 cpu-objs-y+= cpu_vcpu_sbi_base.o
 cpu-objs-y+= cpu_vcpu_sbi_legacy.o
 cpu-objs-y+= cpu_vcpu_sbi_replace.o
+cpu-objs-y+= cpu_vcpu_sbi_hsm.o
 cpu-objs-y+= cpu_vcpu_switch.o
 cpu-objs-y+= cpu_vcpu_timer.o
 cpu-objs-y+= cpu_vcpu_trap.o
