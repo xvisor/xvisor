@@ -33,6 +33,7 @@
 #include <libs/mathlib.h>
 #include <drv/serial.h>
 #include <drv/serial/8250-uart.h>
+#include <drv/clk.h>
 
 #define MODULE_DESC			"8250 UART Driver"
 #define MODULE_AUTHOR			"Anup Patel"
@@ -217,6 +218,7 @@ static int uart_8250_driver_probe(struct vmm_device *dev)
 	struct uart_8250_port *port;
 	physical_addr_t ioport;
 	const char *aval;
+	struct clk *uartclk;
 
 	port = vmm_zalloc(sizeof(struct uart_8250_port));
 	if(!port) {
@@ -269,6 +271,11 @@ static int uart_8250_driver_probe(struct vmm_device *dev)
 		port->skip_baudrate_config = TRUE;
 	} else {
 		port->skip_baudrate_config = FALSE;
+	}
+
+	uartclk = devm_clk_get(dev, NULL);
+	if (!VMM_IS_ERR_OR_NULL(uartclk)) {
+		clk_prepare_enable(uartclk);
 	}
 
 	/* Call low-level init function
