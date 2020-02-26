@@ -3,6 +3,13 @@
 
 #include <libs/mathlib.h>
 
-#define do_div	sdiv64
+#define do_div(n,base) ({                       \
+            u64 __d;                            \
+            u64 __rem;                          \
+                                                \
+            __d = do_udiv64(n, base, &__rem);      \
+            (n) = __d;                          \
+            __rem;                              \
+        })
 
 #endif
