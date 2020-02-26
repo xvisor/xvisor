@@ -152,10 +152,10 @@ static inline s32 smod32(s32 value, s32 divisor)
 /* Unsigned integer round-up macros */
 #define DIV_ROUND_UP(n, d)	udiv64(((n) + (d) - 1), (d))
 #define DIV_ROUND_UP_ULL(ll, d) \
-	({ unsigned long long _t = (ll) + (d) - 1; udiv64(_t, d); _t; })
+	({ unsigned long long _t = (ll) + (d) - 1; _t = udiv64(_t, d); _t; })
 #define DIV_ROUND_CLOSEST(n, d)	udiv64(((n) + (d) / 2), (d))
 #define DIV_ROUND_CLOSEST_ULL(ll, d) \
-	({ unsigned long long _t = (ll) + (d) / 2; udiv64(_t, d); _t; })
+	({ unsigned long long _t = (ll) + (d) / 2; _t = udiv64(_t, d); _t; })
 
 /**
  * Rough approximation to sqrt
