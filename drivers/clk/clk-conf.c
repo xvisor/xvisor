@@ -29,7 +29,7 @@ static int __set_clk_parents(struct vmm_devtree_node *node, bool clk_supplier)
 	int index, rc, num_parents;
 	struct clk *clk, *pclk;
 	const char *list_name = "assigned-clock-parents";
-	const char *cells_name = "assigned-clock-parents";
+	const char *cells_name = "#clock-cells";
 
 	num_parents = vmm_devtree_count_phandle_with_args(node, list_name,
 							  cells_name);
