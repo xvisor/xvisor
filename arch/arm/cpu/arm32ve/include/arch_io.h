@@ -172,9 +172,9 @@ static inline void arch_outsl(unsigned long p, const void *b, int c)
 #define arch_out_le32(a, v)	{__iowmb(); __raw_write32(a, v); }
 #define arch_in_be32(a)		({u32 v = __raw_read32(a); __iormb(); rev32(v); })
 #define arch_out_be32(a, v)	{__iowmb(); __raw_write32(a, rev32(v)); }
-#define arch_in_le64(a)		({u32 v = __raw_read64(a); __iormb(); v; })
+#define arch_in_le64(a)		({u64 v = __raw_read64(a); __iormb(); v; })
 #define arch_out_le64(a, v)	{__iowmb(); __raw_write64(a, v); }
-#define arch_in_be64(a)		({u32 v = __raw_read64(a); __iormb(); rev64(v); })
+#define arch_in_be64(a)		({u64 v = __raw_read64(a); __iormb(); rev64(v); })
 #define arch_out_be64(a, v)	{__iowmb(); __raw_write64(a, rev64(v)); }
 
 #define arch_in_8_relax(a)		({u8 v = __raw_read8(a); v; })
@@ -187,9 +187,9 @@ static inline void arch_outsl(unsigned long p, const void *b, int c)
 #define arch_out_le32_relax(a, v)	{__iowmb(); __raw_write32(a, v); }
 #define arch_in_be32_relax(a)		({u32 v = __raw_read32(a); rev32(v); })
 #define arch_out_be32_relax(a, v)	{ __raw_write32(a, rev32(v)); }
-#define arch_in_le64_relax(a)		({u32 v = __raw_read64(a); v; })
+#define arch_in_le64_relax(a)		({u64 v = __raw_read64(a); v; })
 #define arch_out_le64_relax(a, v)	{ __raw_write64(a, v); }
-#define arch_in_be64_relax(a)		({u32 v = __raw_read64(a); rev64(v); })
+#define arch_in_be64_relax(a)		({u64 v = __raw_read64(a); rev64(v); })
 #define arch_out_be64_relax(a, v)	{ __raw_write64(a, rev64(v)); }
 
 #endif
