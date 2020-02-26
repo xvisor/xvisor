@@ -226,6 +226,10 @@
 			reg-io-width = <4>;
 			baudrate = <1500000>;
 			clock-frequency = <24000000>;
+			clocks = <&cru PCLK_UART2>;
+			clock-names = "uart";
+			assigned-clocks = <&cru SCLK_UART_SRC>;
+			assigned-clock-parents = <&cru PLL_GPLL>;
 		};
 	};
 
