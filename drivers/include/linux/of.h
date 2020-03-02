@@ -142,6 +142,17 @@ static inline int of_modalias_node(struct device_node *node,
 #define of_device_is_available(device)			\
 		vmm_devtree_is_available(device)
 
+static inline int of_get_child_count(const struct device_node *np)
+{
+	struct device_node *child;
+	int num = 0;
+
+	for_each_child_of_node(np, child)
+		num++;
+
+	return num;
+}
+
 #define of_match_node			vmm_devtree_match_node
 
 #define of_prop_next_u32		vmm_devtree_next_u32
