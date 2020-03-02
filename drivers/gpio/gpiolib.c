@@ -635,6 +635,28 @@ static void gpiochip_irqchip_remove(struct gpio_chip *gpiochip) {}
 
 #endif /* CONFIG_GPIOLIB_IRQCHIP */
 
+/**
+ * gpiochip_generic_request() - request the gpio function for a pin
+ * @chip: the gpiochip owning the GPIO
+ * @offset: the offset of the GPIO to request for GPIO function
+ */
+int gpiochip_generic_request(struct gpio_chip *chip, unsigned offset)
+{
+	return pinctrl_gpio_request(chip->base + offset);
+}
+EXPORT_SYMBOL_GPL(gpiochip_generic_request);
+
+/**
+ * gpiochip_generic_free() - free the gpio function from a pin
+ * @chip: the gpiochip to request the gpio function for
+ * @offset: the offset of the GPIO to free from GPIO function
+ */
+void gpiochip_generic_free(struct gpio_chip *chip, unsigned offset)
+{
+	pinctrl_gpio_free(chip->base + offset);
+}
+EXPORT_SYMBOL_GPL(gpiochip_generic_free);
+
 #ifdef CONFIG_PINCTRL
 
 /**

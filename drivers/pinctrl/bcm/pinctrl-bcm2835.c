@@ -418,35 +418,25 @@ static int bcm2835_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
 }
 
 /**
- * gpiochip_generic_request() - request the gpio function for a pin
- * @chip: the gpiochip owning the GPIO
- * @offset: the offset of the GPIO to request for GPIO function
- */
-/*Copied from raspbian gpiolib*/
-int gpiochip_generic_request(struct gpio_chip *chip, unsigned offset)
-{
-	return pinctrl_gpio_request(chip->base + offset);
-}
-/**
- * gpiochip_generic_free() - free the gpio function from a pin
+ * bcm2835_gpiochip_generic_free() - free the gpio function from a pin
  * @chip: the gpiochip to request the gpio function for
  * @offset: the offset of the GPIO to free from GPIO function
  */
 /*Copied from raspbian gpiolib*/
-void gpiochip_generic_free(struct gpio_chip *chip, unsigned offset)
+static void bcm2835_gpiochip_generic_free(struct gpio_chip *chip, unsigned offset)
 {
 	struct bcm2835_pinctrl *port =
 			container_of(chip, struct bcm2835_pinctrl, gpio_chip);
 	BUG_ON(offset >= BCM2835_NUM_GPIOS);
 	gpiochip_free_own_desc(port->gpio_desc[offset]);
-	pinctrl_gpio_free(chip->base + offset);
+	gpiochip_generic_free(chip, offset);
 }
 
 static struct gpio_chip bcm2835_gpio_chip = {
 	.label = MODULE_NAME,
 	.owner = THIS_MODULE,
 	.request = gpiochip_generic_request,
-	.free = gpiochip_generic_free,
+	.free = bcm2835_gpiochip_generic_free,
 	.direction_input = bcm2835_gpio_direction_input,
 	.direction_output = bcm2835_gpio_direction_output,
 	.get_direction = bcm2835_gpio_get_direction,

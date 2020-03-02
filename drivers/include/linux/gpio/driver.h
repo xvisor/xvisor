@@ -223,6 +223,9 @@ int gpiochip_irqchip_add(struct gpio_chip *gpiochip,
 
 #endif /* CONFIG_GPIOLIB_IRQCHIP */
 
+int gpiochip_generic_request(struct gpio_chip *chip, unsigned offset);
+void gpiochip_generic_free(struct gpio_chip *chip, unsigned offset);
+
 struct gpio_desc *gpiochip_request_own_desc(struct gpio_chip *chip, u16 hwnum,
 					    const char *label);
 void gpiochip_free_own_desc(struct gpio_desc *desc);
