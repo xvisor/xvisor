@@ -28,3 +28,4 @@ drivers-objs-$(CONFIG_PINMUX)		+= pinctrl/pinmux.o
 drivers-objs-$(CONFIG_PINCONF)		+= pinctrl/pinconf.o
 drivers-objs-$(CONFIG_GENERIC_PINCONF)	+= pinctrl/pinconf-generic.o
 drivers-objs-$(CONFIG_PINCTRL_SUNXI)	+= pinctrl/pinctrl-sunxi.o
+drivers-objs-$(CONFIG_PINCTRL_ROCKCHIP)	+= pinctrl/pinctrl-rockchip.o
