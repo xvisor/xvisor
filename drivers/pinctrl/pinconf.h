@@ -67,13 +67,15 @@ static inline int pinconf_set_config(struct pinctrl_dev *pctldev, unsigned pin,
 
 #endif
 
-#if defined(CONFIG_PINCONF) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_PINCONF)
 
 void pinconf_show_map(struct seq_file *s, const struct pinctrl_map *map);
 void pinconf_show_setting(struct seq_file *s,
 			  const struct pinctrl_setting *setting);
+#if defined(CONFIG_DEBUG_FS)
 void pinconf_init_device_debugfs(struct dentry *devroot,
 				 struct pinctrl_dev *pctldev);
+#endif
 
 #else
 
@@ -87,10 +89,12 @@ static inline void pinconf_show_setting(struct seq_file *s,
 {
 }
 
+#if defined(CONFIG_DEBUG_FS)
 static inline void pinconf_init_device_debugfs(struct dentry *devroot,
 					       struct pinctrl_dev *pctldev)
 {
 }
+#endif
 
 #endif
 
