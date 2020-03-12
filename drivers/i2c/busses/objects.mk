@@ -23,3 +23,4 @@
 
 drivers-objs-$(CONFIG_I2C_IMX) += i2c/busses/i2c-imx.o
 drivers-objs-$(CONFIG_I2C_BCM2835) += i2c/busses/i2c-bcm2835.o
+drivers-objs-$(CONFIG_I2C_RK3X) += i2c/busses/i2c-rk3x.o
