@@ -135,6 +135,7 @@
 #define IRQ_S_EXT			9
 #define IRQ_VS_EXT			10
 #define IRQ_M_EXT			11
+#define IRQ_S_GUEST_EXT			12
 
 
 /* Interrupt Enable and Interrupt Pending flags */
@@ -147,6 +148,7 @@
 #define MIP_SEIP			(_UL(1) << IRQ_S_EXT)
 #define MIP_VSEIP			(_UL(1) << IRQ_VS_EXT)
 #define MIP_MEIP			(_UL(1) << IRQ_M_EXT)
+#define MIP_SGEIP			(_UL(1) << IRQ_S_GUEST_EXT)
 
 #define SIP_SSIP			MIP_SSIP
 #define SIP_STIP			MIP_STIP
@@ -155,6 +157,16 @@
 #define SIE_SSIE			MIP_SSIP
 #define SIE_STIE			MIP_STIP
 #define SIE_SEIE			MIP_SEIP
+
+#define HIP_VSSIP			MIP_VSSIP
+#define HIP_VSTIP			MIP_VSTIP
+#define HIP_VSEIP			MIP_VSEIP
+#define HIP_SGEIP			MIP_SGEIP
+
+#define HIE_VSSIE			MIP_VSSIP
+#define HIE_VSTIE			MIP_VSTIP
+#define HIE_VSEIE			MIP_VSEIP
+#define HIE_SGEIE			MIP_SGEIP
 
 
 /* Privilege Modes */

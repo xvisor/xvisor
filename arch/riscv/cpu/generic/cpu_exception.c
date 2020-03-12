@@ -168,19 +168,19 @@ int __cpuinit arch_cpu_irq_setup(void)
 	if (riscv_isa_extension_available(NULL, h)) {
 		/* Update HIDELEG */
 		hideleg = 0;
-		hideleg |= SIP_SSIP;
-		hideleg |= SIP_STIP;
-		hideleg |= SIP_SEIP;
+		hideleg |= (1UL << IRQ_VS_SOFT);
+		hideleg |= (1UL << IRQ_VS_TIMER);
+		hideleg |= (1UL << IRQ_VS_EXT);
 		csr_write(CSR_HIDELEG, hideleg);
 
 		/* Update HEDELEG */
 		hedeleg = 0;
-		hedeleg |= (1U << CAUSE_MISALIGNED_FETCH);
-		hedeleg |= (1U << CAUSE_BREAKPOINT);
-		hedeleg |= (1U << CAUSE_USER_ECALL);
-		hedeleg |= (1U << CAUSE_FETCH_PAGE_FAULT);
-		hedeleg |= (1U << CAUSE_LOAD_PAGE_FAULT);
-		hedeleg |= (1U << CAUSE_STORE_PAGE_FAULT);
+		hedeleg |= (1UL << CAUSE_MISALIGNED_FETCH);
+		hedeleg |= (1UL << CAUSE_BREAKPOINT);
+		hedeleg |= (1UL << CAUSE_USER_ECALL);
+		hedeleg |= (1UL << CAUSE_FETCH_PAGE_FAULT);
+		hedeleg |= (1UL << CAUSE_LOAD_PAGE_FAULT);
+		hedeleg |= (1UL << CAUSE_STORE_PAGE_FAULT);
 		csr_write(CSR_HEDELEG, hedeleg);
 
 		/* Setup final exception handler with hypervisor enabled */
