@@ -44,3 +44,22 @@
 			"vfs cat /system/banner.txt";
 	};
 };
+
+&i2c0 {
+	status = "okay";
+	i2c-scl-rising-time-ns = <168>;
+	i2c-scl-falling-time-ns = <4>;
+	clock-frequency = <400000>;
+
+};
+
+&i2c1 {
+	status = "okay";
+	i2c-scl-rising-time-ns = <168>;
+	i2c-scl-falling-time-ns = <4>;
+};
+
+&i2c4 {
+	status = "okay";
+};
+
