@@ -518,7 +518,7 @@ int vmm_devtree_regunmap_release(struct vmm_devtree_node *node,
 
 int __init vmm_devtree_reserved_memory_init(void)
 {
-	int pos,ret;
+	int pos, ret;
 	physical_addr_t pa;
 	physical_size_t sz;
 	struct vmm_devtree_node *child, *node;
@@ -536,14 +536,10 @@ int __init vmm_devtree_reserved_memory_init(void)
 			if (vmm_devtree_regsize(child, &sz, pos) != VMM_OK)
 				break;
 			pos++;
-			vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR
-					" size=%"PRIPSIZE"\n", pa, sz);
 			ret = vmm_host_ram_reserve(pa, sz);
-			if (ret) {
-				vmm_devtree_dref_node(child);
-				vmm_devtree_dref_node(node);
-				return ret;
-			}
+			vmm_init_printf("ram_reserve: phys=0x%"PRIPADDR
+					" size=%"PRIPSIZE"%s\n",
+					pa, sz, (ret) ? " (ignored)" : "");
 		}
 	}
 
