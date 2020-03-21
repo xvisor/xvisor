@@ -34,7 +34,7 @@ struct cpu_mmu_entry_ctrl {
 
 extern u8 def_pgtbl[];
 extern int def_pgtbl_tree[];
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
 #endif
 
@@ -223,7 +223,7 @@ void __attribute__ ((section(".entry")))
 			 virtual_addr_t exec_start, virtual_addr_t exec_end)
 {
 	u32 i;
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 	virtual_addr_t defterm_early_va;
 #endif
 	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, NULL, 0 };
@@ -252,7 +252,7 @@ void __attribute__ ((section(".entry")))
 	entry.pgtbl_count++;
 	entry.next_pgtbl += PGTBL_TABLE_ENTCNT;
 
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 	/* Map UART for early defterm
 	 * Note: This is for early debug purpose
 	 */
@@ -260,7 +260,7 @@ void __attribute__ ((section(".entry")))
 	__setup_initial_pgtbl(&entry,
 			      defterm_early_va,
 			      defterm_early_va + PGTBL_L0_BLOCK_SIZE,
-			      (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
+			      CONFIG_RISCV_DEFTERM_EARLY_BASE_PA,
 			      TRUE);
 #endif
 
