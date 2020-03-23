@@ -31,7 +31,7 @@ arch-cflags-y += -mabi=lp64
 march-y = rv64im
 cpu-mergeflags += -melf64lriscv
 else
-arch-ldflags-y += -static-libgcc -lgcc
+arch-ldflags-y += -mabi=ilp32 -lgcc
 arch-cflags-y += -mabi=ilp32
 march-y = rv32im
 cpu-mergeflags += -melf32lriscv
