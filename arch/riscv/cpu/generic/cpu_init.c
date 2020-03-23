@@ -29,6 +29,7 @@
 #include <libs/bitmap.h>
 
 #include <cpu_hwcap.h>
+#include <cpu_mmu.h>
 #include <cpu_sbi.h>
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
@@ -198,7 +199,38 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 #endif
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
-	vmm_cprintf(cdev, "%-25s: %ld\n", "CPU VMID Bits", riscv_vmid_bits);
+	switch (cpu_mmu_hypervisor_pgtbl_mode()) {
+	case SATP_MODE_SV32:
+		strcpy(isa, "Sv32");
+		break;
+	case SATP_MODE_SV39:
+		strcpy(isa, "Sv39");
+		break;
+	case SATP_MODE_SV48:
+		strcpy(isa, "Sv48");
+		break;
+	default:
+		strcpy(isa, "Unknown");
+		break;
+	};
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Hypervisor MMU Mode", isa);
+	switch (cpu_mmu_stage2_pgtbl_mode()) {
+	case HGATP_MODE_SV32X4:
+		strcpy(isa, "Sv32");
+		break;
+	case HGATP_MODE_SV39X4:
+		strcpy(isa, "Sv39");
+		break;
+	case HGATP_MODE_SV48X4:
+		strcpy(isa, "Sv48");
+		break;
+	default:
+		strcpy(isa, "Unknown");
+		break;
+	};
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Stage2 MMU Mode", isa);
+	vmm_cprintf(cdev, "%-25s: %ld\n",
+		    "CPU Stage2 VMID Bits", riscv_vmid_bits);
 	vmm_cprintf(cdev, "%-25s: %ld Hz\n", "CPU Time Base", riscv_timer_hz);
 }
 

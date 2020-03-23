@@ -691,6 +691,16 @@ int cpu_mmu_map_hypervisor_page(struct cpu_page *pg)
 	return cpu_mmu_map_page(mmuctrl.hyp_pgtbl, pg);
 }
 
+unsigned long cpu_mmu_hypervisor_pgtbl_mode(void)
+{
+	return mmuctrl.stage1_mode >> SATP_MODE_SHIFT;
+}
+
+unsigned long cpu_mmu_stage2_pgtbl_mode(void)
+{
+	return mmuctrl.stage2_mode >> HGATP_MODE_SHIFT;
+}
+
 struct cpu_pgtbl *cpu_mmu_stage2_current_pgtbl(void)
 {
 	unsigned long pgtbl_ppn = csr_read(CSR_HGATP) & HGATP_PPN;
