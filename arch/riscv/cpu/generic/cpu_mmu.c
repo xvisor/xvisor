@@ -44,8 +44,10 @@
 #define PGTBL_INITIAL_TABLE_SIZE (PGTBL_INITIAL_TABLE_COUNT * PGTBL_TABLE_SIZE)
 
 struct cpu_mmu_ctrl {
-	int stage1_start_level;
-	int stage2_start_level;
+	unsigned long stage1_start_level;
+	unsigned long stage1_mode;
+	unsigned long stage2_start_level;
+	unsigned long stage2_mode;
 	struct cpu_pgtbl *hyp_pgtbl;
 	virtual_addr_t pgtbl_base_va;
 	physical_addr_t pgtbl_base_pa;
@@ -66,6 +68,15 @@ static struct cpu_mmu_ctrl mmuctrl;
 
 u8 __attribute__ ((aligned(PGTBL_TABLE_SIZE))) def_pgtbl[PGTBL_INITIAL_TABLE_SIZE] = { 0 };
 int def_pgtbl_tree[PGTBL_INITIAL_TABLE_COUNT];
+#ifdef CONFIG_64BIT
+/* Assume Sv39 */
+unsigned long def_pgtbl_start_level = 2;
+unsigned long def_pgtbl_mode = SATP_MODE_SV39 << SATP_MODE_SHIFT;
+#else
+/* Assume Sv32 */
+unsigned long def_pgtbl_start_level = 1;
+unsigned long def_pgtbl_mode = SATP_MODE_SV32 << SATP_MODE_SHIFT;
+#endif
 
 static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
 {
@@ -695,7 +706,7 @@ int cpu_mmu_stage2_change_pgtbl(u32 vmid, struct cpu_pgtbl *pgtbl)
 {
 	unsigned long hgatp;
 
-	hgatp = HGATP_MODE;
+	hgatp = mmuctrl.stage2_mode;
 	hgatp |= ((unsigned long)vmid << HGATP_VMID_SHIFT) & HGATP_VMID_MASK;
 	hgatp |= (pgtbl->tbl_pa >> PGTBL_PAGE_SIZE_SHIFT) & HGATP_PPN;
 
@@ -985,13 +996,18 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	 * parameters to inform host aspace about the arch reserved space.
 	 */
 	memset(&mmuctrl, 0, sizeof(mmuctrl));
+	mmuctrl.stage1_start_level = def_pgtbl_start_level;
+	mmuctrl.stage1_mode = def_pgtbl_mode;
 #ifdef CONFIG_64BIT
-	mmuctrl.stage1_start_level = 2; /* Assume Sv39 */
-	mmuctrl.stage2_start_level = 2; /* Assume Sv39 */
+	/* Assume Sv39 */
+	mmuctrl.stage2_start_level = 2;
+	mmuctrl.stage2_mode = HGATP_MODE_SV39X4 << HGATP_MODE_SHIFT;
 #else
-	mmuctrl.stage1_start_level = 1; /* Assume Sv32 */
-	mmuctrl.stage2_start_level = 1; /* Assume Sv32 */
+	/* Assume Sv32 */
+	mmuctrl.stage2_start_level = 1;
+	mmuctrl.stage2_mode = HGATP_MODE_SV32X4 << HGATP_MODE_SHIFT;
 #endif
+
 	*arch_resv_va = (resv_va + resv_sz);
 	*arch_resv_pa = (resv_pa + resv_sz);
 	*arch_resv_sz = resv_sz;

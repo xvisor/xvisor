@@ -171,16 +171,10 @@ _start_secondary_nopen:
 	csrw	CSR_STVEC, a6
 
 	/* Enable MMU */
-	la	a6, _load_start
-	REG_L	a2, (a6)
-	la	a6, __exec_start
-	REG_L	a4, (a6)
-	la	a6, __pgtbl_root
-	REG_L	a0, (a6)
-	sub	a0, a0, a4
-	add	a0, a0, a2
+	la	a0, def_pgtbl
 	srl	a0, a0, 12 /* Shift right by page size */
-	li	a1, SATP_MODE
+	la	a1, def_pgtbl_mode
+	REG_L	a1, (a1)
 	or	a0, a0, a1
 	sfence.vma
 	csrw	CSR_SATP, a0
@@ -195,8 +189,6 @@ _start_hang:
 	j	_start_hang
 
 	.align 3
-__pgtbl_root:
-	RISCV_PTR def_pgtbl
 __builtin_dtb:
 	RISCV_PTR dt_blob_start
 __exec_start:
