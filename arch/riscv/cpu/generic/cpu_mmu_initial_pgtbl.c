@@ -23,9 +23,11 @@
 
 #include <vmm_types.h>
 #include <cpu_mmu.h>
+#include <cpu_tlb.h>
+#include <riscv_csr.h>
 
 struct cpu_mmu_entry_ctrl {
-	int num_levels;
+	unsigned long num_levels;
 	u32 pgtbl_count;
 	int *pgtbl_tree;
 	cpu_pte_t *next_pgtbl;
@@ -34,6 +36,8 @@ struct cpu_mmu_entry_ctrl {
 
 extern u8 def_pgtbl[];
 extern int def_pgtbl_tree[];
+extern unsigned long def_pgtbl_start_level;
+extern unsigned long def_pgtbl_mode;
 #ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
 #endif
@@ -219,6 +223,47 @@ DECLARE_SECTION(rodata);
 			     FALSE)
 
 void __attribute__ ((section(".entry")))
+    __detect_pgtbl_mode(virtual_addr_t load_start, virtual_addr_t load_end,
+			virtual_addr_t exec_start, virtual_addr_t exec_end)
+{
+#ifdef CONFIG_64BIT
+	u32 i, index;
+	unsigned long satp;
+	cpu_pte_t *pgtbl = (cpu_pte_t *)to_load_pa((virtual_addr_t)&def_pgtbl);;
+
+	/* Clear page table memory */
+	for (i = 0; i < PGTBL_TABLE_ENTCNT; i++) {
+		pgtbl[i] = 0x0ULL;
+	}
+
+	/* Try Sv48 MMU mode */
+	index = (load_start & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
+	pgtbl[index] = load_start & PGTBL_L3_MAP_MASK;
+	pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
+	pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
+	pgtbl[index] |= PGTBL_PTE_EXECUTE_MASK;
+	pgtbl[index] |= PGTBL_PTE_WRITE_MASK;
+	pgtbl[index] |= PGTBL_PTE_READ_MASK;
+	pgtbl[index] |= PGTBL_PTE_VALID_MASK;
+	satp = (unsigned long)pgtbl >> PGTBL_PAGE_SIZE_SHIFT;
+	satp |= SATP_MODE_SV48 << SATP_MODE_SHIFT;
+	__sfence_vma_all();
+	csr_write(CSR_SATP, satp);
+	if ((csr_read(CSR_SATP) >> SATP_MODE_SHIFT) == SATP_MODE_SV48) {
+		def_pgtbl_mode = SATP_MODE_SV48 << SATP_MODE_SHIFT;
+		def_pgtbl_start_level = 3;
+	}
+
+	/* Cleanup and disable MMU */
+	for (i = 0; i < PGTBL_TABLE_ENTCNT; i++) {
+		pgtbl[i] = 0x0ULL;
+	}
+	csr_write(CSR_SATP, 0);
+	__sfence_vma_all();
+#endif
+}
+
+void __attribute__ ((section(".entry")))
     _setup_initial_pgtbl(virtual_addr_t load_start, virtual_addr_t load_end,
 			 virtual_addr_t exec_start, virtual_addr_t exec_end)
 {
@@ -228,12 +273,11 @@ void __attribute__ ((section(".entry")))
 #endif
 	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, NULL, 0 };
 
-	/* For now assume 3-level page table */
-#ifdef CONFIG_64BIT
-	entry.num_levels = 3;
-#else
-	entry.num_levels = 2;
-#endif
+	/* Detect best possible page table mode */
+	__detect_pgtbl_mode(load_start, load_end, exec_start, exec_end);
+
+	/* Number of page table levels */
+	entry.num_levels = def_pgtbl_start_level + 1;
 
 	/* Init pgtbl_base, pgtbl_tree, and next_pgtbl */
 	entry.pgtbl_tree =

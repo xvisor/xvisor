@@ -638,7 +638,8 @@ int cpu_mmu_map_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 		return VMM_EFAIL;
 	}
 
-	pte[index] = pg->oa >> PGTBL_PAGE_SIZE_SHIFT;
+	pte[index] = pg->oa & cpu_mmu_level_map_mask(pgtbl->level);
+	pte[index] = pte[index] >> PGTBL_PAGE_SIZE_SHIFT;
 	pte[index] = pte[index] << PGTBL_PTE_ADDR_SHIFT;
 
 	pte[index] |= ((cpu_pte_t)pg->rsw << PGTBL_PTE_RSW_SHIFT) &

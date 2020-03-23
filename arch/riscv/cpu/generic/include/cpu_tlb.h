@@ -69,7 +69,7 @@ inline void __sfence_vma_asid(unsigned long asid)
 
 inline void __sfence_vma_all(void)
 {
-	 __asm__ __volatile("sfence.vma");
+	 __asm__ __volatile("sfence.vma" : : : "memory");
 }
 
 inline void __sfence_vma_va(virtual_addr_t va)
