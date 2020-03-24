@@ -36,7 +36,6 @@ struct cpu_mmu_entry_ctrl {
 
 extern u8 def_pgtbl[];
 extern int def_pgtbl_tree[];
-extern unsigned long def_pgtbl_start_level;
 extern unsigned long def_pgtbl_mode;
 #ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
@@ -250,8 +249,7 @@ void __attribute__ ((section(".entry")))
 	__sfence_vma_all();
 	csr_write(CSR_SATP, satp);
 	if ((csr_read(CSR_SATP) >> SATP_MODE_SHIFT) == SATP_MODE_SV48) {
-		def_pgtbl_mode = SATP_MODE_SV48 << SATP_MODE_SHIFT;
-		def_pgtbl_start_level = 3;
+		def_pgtbl_mode = SATP_MODE_SV48;
 	}
 
 	/* Cleanup and disable MMU */
@@ -277,7 +275,19 @@ void __attribute__ ((section(".entry")))
 	__detect_pgtbl_mode(load_start, load_end, exec_start, exec_end);
 
 	/* Number of page table levels */
-	entry.num_levels = def_pgtbl_start_level + 1;
+	switch (def_pgtbl_mode) {
+	case SATP_MODE_SV32:
+		entry.num_levels = 2;
+		break;
+	case SATP_MODE_SV39:
+		entry.num_levels = 3;
+		break;
+	case SATP_MODE_SV48:
+		entry.num_levels = 4;
+		break;
+	default:
+		while (1);
+	}
 
 	/* Init pgtbl_base, pgtbl_tree, and next_pgtbl */
 	entry.pgtbl_tree =

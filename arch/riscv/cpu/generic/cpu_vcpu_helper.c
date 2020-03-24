@@ -385,7 +385,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSTVAL, priv->vstval);
 		csr_write(CSR_VSATP, priv->vsatp);
 		cpu_vcpu_fp_restore(vcpu, regs);
-		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_vmid_bits)) {
+		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_stage2_vmid_bits)) {
 			cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
 					riscv_guest_priv(vcpu->guest)->pgtbl);
 		} else {

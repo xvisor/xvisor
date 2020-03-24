@@ -175,6 +175,7 @@ _start_secondary_nopen:
 	srl	a0, a0, 12 /* Shift right by page size */
 	la	a1, def_pgtbl_mode
 	REG_L	a1, (a1)
+	sll	a1, a1, SATP_MODE_SHIFT
 	or	a0, a0, a1
 	sfence.vma
 	csrw	CSR_SATP, a0

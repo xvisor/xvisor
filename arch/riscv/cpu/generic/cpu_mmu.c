@@ -30,6 +30,7 @@
 #include <arch_sections.h>
 #include <arch_barrier.h>
 
+#include <cpu_hwcap.h>
 #include <cpu_tlb.h>
 #include <cpu_mmu.h>
 #include <cpu_sbi.h>
@@ -44,10 +45,6 @@
 #define PGTBL_INITIAL_TABLE_SIZE (PGTBL_INITIAL_TABLE_COUNT * PGTBL_TABLE_SIZE)
 
 struct cpu_mmu_ctrl {
-	unsigned long stage1_start_level;
-	unsigned long stage1_mode;
-	unsigned long stage2_start_level;
-	unsigned long stage2_mode;
 	struct cpu_pgtbl *hyp_pgtbl;
 	virtual_addr_t pgtbl_base_va;
 	physical_addr_t pgtbl_base_pa;
@@ -70,12 +67,10 @@ u8 __attribute__ ((aligned(PGTBL_TABLE_SIZE))) def_pgtbl[PGTBL_INITIAL_TABLE_SIZ
 int def_pgtbl_tree[PGTBL_INITIAL_TABLE_COUNT];
 #ifdef CONFIG_64BIT
 /* Assume Sv39 */
-unsigned long def_pgtbl_start_level = 2;
-unsigned long def_pgtbl_mode = SATP_MODE_SV39 << SATP_MODE_SHIFT;
+unsigned long def_pgtbl_mode = SATP_MODE_SV39;
 #else
 /* Assume Sv32 */
-unsigned long def_pgtbl_start_level = 1;
-unsigned long def_pgtbl_mode = SATP_MODE_SV32 << SATP_MODE_SHIFT;
+unsigned long def_pgtbl_mode = SATP_MODE_SV32;
 #endif
 
 static inline void cpu_mmu_sync_pte(cpu_pte_t *pte)
@@ -139,6 +134,38 @@ static inline bool cpu_mmu_valid_block_size(physical_size_t sz)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+static inline int cpu_mmu_stage1_start_level(void)
+{
+	switch (def_pgtbl_mode) {
+	case SATP_MODE_SV32:
+		return 1;
+#ifdef CONFIG_64BIT
+	case SATP_MODE_SV39:
+		return 2;
+	case SATP_MODE_SV48:
+		return 3;
+#endif
+	default:
+		return 0;
+	};
+}
+
+static inline int cpu_mmu_stage2_start_level(void)
+{
+	switch (riscv_stage2_mode) {
+	case HGATP_MODE_SV32X4:
+		return 1;
+#ifdef CONFIG_64BIT
+	case HGATP_MODE_SV39X4:
+		return 2;
+	case HGATP_MODE_SV48X4:
+		return 3;
+#endif
+	default:
+		return 0;
+	};
 }
 
 static inline physical_size_t cpu_mmu_level_block_size(int level)
@@ -321,7 +348,7 @@ struct cpu_pgtbl *cpu_mmu_pgtbl_alloc(int stage)
 	pgtbl->parent = NULL;
 	pgtbl->stage = stage;
 	pgtbl->level = (stage == PGTBL_STAGE2) ?
-		mmuctrl.stage2_start_level : mmuctrl.stage1_start_level;
+		cpu_mmu_stage2_start_level() : cpu_mmu_stage1_start_level();
 	pgtbl->map_ia = 0;
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->pte_cnt = 0;
@@ -365,7 +392,7 @@ int cpu_mmu_pgtbl_free(struct cpu_pgtbl *pgtbl)
 	vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
 
 	pgtbl->level = (pgtbl->stage == PGTBL_STAGE2) ?
-		mmuctrl.stage2_start_level : mmuctrl.stage1_start_level;
+		cpu_mmu_stage2_start_level() : cpu_mmu_stage1_start_level();
 	pgtbl->map_ia = 0;
 
 	vmm_spin_lock_irqsave_lite(&mmuctrl.alloc_lock, flags);
@@ -578,11 +605,11 @@ int cpu_mmu_unmap_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg)
 
 	if (pgtbl->stage == PGTBL_STAGE2) {
 		cpu_remote_gpa_guest_tlbflush(pg->ia, blksz);
-		start_level = mmuctrl.stage2_start_level;
+		start_level = cpu_mmu_stage2_start_level();
 	} else {
 		cpu_remote_va_hyp_tlb_flush((virtual_addr_t)pg->ia,
 					    (virtual_size_t)blksz);
-		start_level = mmuctrl.stage1_start_level;
+		start_level = cpu_mmu_stage1_start_level();
 	}
 
 	pgtbl->pte_cnt--;
@@ -694,12 +721,7 @@ int cpu_mmu_map_hypervisor_page(struct cpu_page *pg)
 
 unsigned long cpu_mmu_hypervisor_pgtbl_mode(void)
 {
-	return mmuctrl.stage1_mode >> SATP_MODE_SHIFT;
-}
-
-unsigned long cpu_mmu_stage2_pgtbl_mode(void)
-{
-	return mmuctrl.stage2_mode >> HGATP_MODE_SHIFT;
+	return def_pgtbl_mode;
 }
 
 struct cpu_pgtbl *cpu_mmu_stage2_current_pgtbl(void)
@@ -717,7 +739,7 @@ int cpu_mmu_stage2_change_pgtbl(u32 vmid, struct cpu_pgtbl *pgtbl)
 {
 	unsigned long hgatp;
 
-	hgatp = mmuctrl.stage2_mode;
+	hgatp = riscv_stage2_mode << HGATP_MODE_SHIFT;
 	hgatp |= ((unsigned long)vmid << HGATP_VMID_SHIFT) & HGATP_VMID_MASK;
 	hgatp |= (pgtbl->tbl_pa >> PGTBL_PAGE_SIZE_SHIFT) & HGATP_PPN;
 
@@ -1007,17 +1029,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	 * parameters to inform host aspace about the arch reserved space.
 	 */
 	memset(&mmuctrl, 0, sizeof(mmuctrl));
-	mmuctrl.stage1_start_level = def_pgtbl_start_level;
-	mmuctrl.stage1_mode = def_pgtbl_mode;
-#ifdef CONFIG_64BIT
-	/* Assume Sv39 */
-	mmuctrl.stage2_start_level = 2;
-	mmuctrl.stage2_mode = HGATP_MODE_SV39X4 << HGATP_MODE_SHIFT;
-#else
-	/* Assume Sv32 */
-	mmuctrl.stage2_start_level = 1;
-	mmuctrl.stage2_mode = HGATP_MODE_SV32X4 << HGATP_MODE_SHIFT;
-#endif
 
 	*arch_resv_va = (resv_va + resv_sz);
 	*arch_resv_pa = (resv_pa + resv_sz);
@@ -1067,7 +1078,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	INIT_LIST_HEAD(&mmuctrl.hyp_pgtbl->head);
 	mmuctrl.hyp_pgtbl->parent = NULL;
 	mmuctrl.hyp_pgtbl->stage = PGTBL_STAGE1;
-	mmuctrl.hyp_pgtbl->level = mmuctrl.stage1_start_level;
+	mmuctrl.hyp_pgtbl->level = cpu_mmu_stage1_start_level();
 	mmuctrl.hyp_pgtbl->map_ia = 0x0;
 	mmuctrl.hyp_pgtbl->tbl_pa =  mmuctrl.ipgtbl_base_pa;
 	INIT_SPIN_LOCK(&mmuctrl.hyp_pgtbl->tbl_lock);

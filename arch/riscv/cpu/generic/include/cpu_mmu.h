@@ -96,8 +96,6 @@ int cpu_mmu_map_hypervisor_page(struct cpu_page *pg);
 
 unsigned long cpu_mmu_hypervisor_pgtbl_mode(void);
 
-unsigned long cpu_mmu_stage2_pgtbl_mode(void);
-
 struct cpu_pgtbl *cpu_mmu_stage2_current_pgtbl(void);
 
 u32 cpu_mmu_stage2_current_vmid(void);
