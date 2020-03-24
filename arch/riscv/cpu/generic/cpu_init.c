@@ -332,10 +332,21 @@ int __init cpu_parse_devtree_hwcap(void)
 	/* Setup Stage2 mode and Stage2 VMID bits */
 	if (riscv_isa_extension_available(NULL, h)) {
 		csr_write(CSR_HGATP, HGATP_VMID_MASK);
-		val = csr_read(CSR_HGATP);
+		val = csr_read(CSR_HGATP) & HGATP_VMID_MASK;
+		riscv_stage2_vmid_bits = fls_long(val >> HGATP_VMID_SHIFT);
+
+#ifdef CONFIG_64BIT
+		/* Try Sv48 MMU mode */
+		csr_write(CSR_HGATP, HGATP_VMID_MASK |
+				     (HGATP_MODE_SV48X4 << HGATP_MODE_SHIFT));
+		val = csr_read(CSR_HGATP) >> HGATP_MODE_SHIFT;
+		if (val == HGATP_MODE_SV48X4) {
+			riscv_stage2_mode = HGATP_MODE_SV48X4;
+		}
+#endif
+
 		csr_write(CSR_HGATP, 0);
 		__hfence_gvma_all();
-		riscv_stage2_vmid_bits = fls_long(val >> HGATP_VMID_SHIFT);
 	}
 
 	return rc;
