@@ -24,3 +24,4 @@
 board-dtbs-$(CONFIG_ARMV6)+=dts/broadcom/bcm2835-rpi-b.dtb
 board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/broadcom/bcm2836-rpi-2-b.dtb
 board-dtbs-$(CONFIG_ARMV8)+=dts/broadcom/bcm2837-rpi-3-b.dtb
+board-dtbs-$(CONFIG_ARMV8)+=dts/broadcom/bcm2838-rpi-4-b.dtb

@@ -1,0 +1,21 @@
+
+/dts-v1/;
+
+#include "bcm2838.dtsi"
+
+/ {
+	compatible = "raspberrypi,4-model-b", "brcm,bcm2838";
+	model = "Raspberry Pi 4 Model B";
+
+	chosen {
+		console = &SERIAL_MU;
+		bootcmd = /* Mount initrd device */
+			  "vfs mount initrd /",
+
+			  /* Run boot script */
+			  "vfs run /boot.xscript",
+
+			  /* Print banner */
+			  "vfs cat /system/banner.txt";
+	};
+};
