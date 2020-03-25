@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -23,6 +23,7 @@
  */
 
 #include <vmm_types.h>
+#include <cpu_cache.h>
 #include <cpu_mmu_lpae.h>
 #include <mmu_lpae.h>
 
@@ -68,8 +69,6 @@ void __attribute__ ((section(".entry")))
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
-				cpu_mmu_clean_invalidate(
-						&lpae_entry->next_ttbl[i]);
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -97,8 +96,6 @@ void __attribute__ ((section(".entry")))
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
-				cpu_mmu_clean_invalidate(
-						&lpae_entry->next_ttbl[i]);
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -196,8 +193,9 @@ void __attribute__ ((section(".entry")))
 	lpae_entry.ttbl_tree =
 		(int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
 
+	cpu_mmu_invalidate_range((virtual_addr_t)&lpae_entry.ttbl_tree[0],
+		TTBL_INITIAL_TABLE_COUNT * sizeof(lpae_entry.ttbl_tree[0]));
 	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
-		cpu_mmu_clean_invalidate(&lpae_entry.ttbl_tree[i]);
 		lpae_entry.ttbl_tree[i] = -1;
 	}
 
@@ -205,8 +203,11 @@ void __attribute__ ((section(".entry")))
 	lpae_entry.next_ttbl = (u64 *)lpae_entry.ttbl_base;
 
 	/* Init first ttbl */
+	cpu_mmu_invalidate_range((virtual_addr_t)lpae_entry.next_ttbl,
+				 TTBL_INITIAL_TABLE_COUNT *
+				 TTBL_TABLE_ENTCNT *
+				 sizeof(*lpae_entry.next_ttbl));
 	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
-		cpu_mmu_clean_invalidate(&lpae_entry.next_ttbl[i]);
 		lpae_entry.next_ttbl[i] = 0x0ULL;
 	}
 

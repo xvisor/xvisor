@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -24,6 +24,7 @@
 #define _CPU_MMU_LPAE_H__
 
 #include <cpu_inline_asm.h>
+#include <cpu_cache.h>
 #include <arch_barrier.h>
 
 #define TTBL_FIRST_LEVEL		1
@@ -73,6 +74,12 @@ static inline void cpu_mmu_clean_invalidate(void *va)
 		     "dsb\t\n"
 		     "isb\t\n"
 		     : : "r" ((unsigned long)va));
+}
+
+static inline void cpu_mmu_invalidate_range(virtual_addr_t start,
+					    virtual_addr_t size)
+{
+	invalidate_dcache_mva_range(start, start + size);
 }
 
 #endif /* _CPU_MMU_LPAE_H */

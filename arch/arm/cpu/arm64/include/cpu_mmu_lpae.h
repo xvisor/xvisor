@@ -24,6 +24,7 @@
 #define _CPU_MMU_LPAE_H__
 
 #include <cpu_inline_asm.h>
+#include <cpu_cache.h>
 #include <arch_barrier.h>
 
 #define TTBL_FIRST_LEVEL		1
@@ -56,6 +57,12 @@ static inline void cpu_mmu_clean_invalidate(void *va)
 		     "dsb sy\t\n"
 		     "isb\t\n"
 		     : : "r" ((unsigned long)va));
+}
+
+static inline void cpu_mmu_invalidate_range(virtual_addr_t start,
+					    virtual_addr_t size)
+{
+	invalidate_dcache_mva_range(start, start + size);
 }
 
 #endif /* _CPU_MMU_LPAE_H */
