@@ -1154,15 +1154,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	}
 	resv_sz += *core_resv_sz;
 
-	/* TODO: Unmap identity mappings from hypervisor pgtbl
-	 *
-	 * The only issue in unmapping identity mapping from hypervisor pgtbl
-	 * is that secondary cores (in SMP systems) crash immediatly after
-	 * enabling MMU.
-	 *
-	 * For now as a quick fix, we keep the identity mappings.
-	 */
-
 	/* Map reserved space (core reserved + arch reserved)
 	 * We have kept our page table pool in reserved area pages
 	 * as cacheable and write-back. We will clean data cache every

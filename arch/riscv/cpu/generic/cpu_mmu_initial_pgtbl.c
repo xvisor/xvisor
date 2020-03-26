@@ -318,11 +318,6 @@ void __attribute__ ((section(".entry")))
 			      TRUE);
 #endif
 
-	/* Map physical = logical
-	 * Note: This mapping is using at boot time only
-	 */
-	__setup_initial_pgtbl(&entry, load_start, load_end, load_start, TRUE);
-
 	/* Map to logical addresses which are
 	 * covered by read-only linker sections
 	 * Note: This mapping is used at runtime

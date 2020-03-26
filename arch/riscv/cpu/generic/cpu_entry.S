@@ -166,8 +166,14 @@ _start_secondary_wait:
 	 * Note: From this point primary CPU startup is same as secondary CPU
 	 */
 _start_secondary_nopen:
-	/* Set trap vector to spin forever to help debug */
-	la	a6, _start_hang
+	/* Set trap vector to appropriate place after enabling MMU */
+	la	a6, __exec_start
+	REG_L	a4, (a6)
+	la	a6, _load_start
+	REG_L	a2, (a6)
+	la	a6, _start_secondary_nopen_mmu_on
+	sub	a6, a6, a2
+	add	a6, a6, a4
 	csrw	CSR_STVEC, a6
 
 	/* Enable MMU */
@@ -179,6 +185,13 @@ _start_secondary_nopen:
 	or	a0, a0, a1
 	sfence.vma
 	csrw	CSR_SATP, a0
+
+	/* We should not reach here so just spin forever */
+	j	_start_hang
+
+	/* MMU is ON !!! */
+	.align 2
+_start_secondary_nopen_mmu_on:
 
 	/* Jump to final execution address */
 	la	a6, __cpu_init
