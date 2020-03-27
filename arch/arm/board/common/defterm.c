@@ -174,7 +174,7 @@ static int __init uart8250_defterm_init(struct vmm_devtree_node *node)
 
 	if (vmm_devtree_read_u32(node, "reg-shift",
 				 &uart8250_port.reg_shift)) {
-		uart8250_port.reg_shift = 2;
+		uart8250_port.reg_shift = 0;
 	}
 
 	if (vmm_devtree_read_u32(node, "reg-io-width",
@@ -689,6 +689,10 @@ int __init arch_defterm_init(void)
 
 	rc = vmm_devtree_read_string(node,
 				VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
+	if (rc) {
+		rc = vmm_devtree_read_string(node,
+				VMM_DEVTREE_STDOUT_ATTR_NAME, &attr);
+	}
 	vmm_devtree_dref_node(node);
 	if (rc) {
 		return rc;
