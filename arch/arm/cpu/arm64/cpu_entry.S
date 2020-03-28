@@ -305,8 +305,8 @@ _start_secondary_nopen:
 	ldr	x0, __hcr_set
 	msr	hcr_el2, x0
 
-	/* Setup temporary vector containing branch to self for debug */
-	ldr	x0, __vbar_val
+	/* Setup init vector containing branch to self for debug */
+	ldr	x0, __init_vectors
 	msr    	vbar_el2, x0
 
 	/* Setup Hypervisor System Control Register */
@@ -315,9 +315,7 @@ _start_secondary_nopen:
 	dsb	sy
 	isb
 
-	ldr	x0, __cpu_init
-	blr	x0
-
+	/* We should never reach here */
 _start_hang:
 	b	.
 
@@ -379,10 +377,8 @@ __ttbr_set_addr:
 	.dword __ttbr_set
 __ttbr_set:
 	.dword def_ttbl
-__cpu_init:
-	.dword _cpu_init
-__vbar_val:
-	.dword vectors
+__init_vectors:
+	.dword init_vectors
 __boot_reg0:
 	.dword _boot_reg0
 
@@ -473,12 +469,10 @@ _cpu_init:
 
 	bl	cpu_init
 
-
 .macro EXCEPTION_HANDLER irqname
 	.align 6
 \irqname:
 .endm
-
 
 /* Push registers on stack */
 .macro	PUSH_REGS
@@ -544,7 +538,6 @@ _cpu_init:
 	eret
 .endm
 
-
 /*
  * Exception vectors.
  */
@@ -552,6 +545,32 @@ _cpu_init:
 	.align	7
 	b	\label
 .endm
+
+	.align	11
+	.globl init_vectors
+init_vectors:
+	ventry	hyp_init_entry		/* Synchronous EL1t */
+	ventry	hyp_init_entry		/* IRQ EL1t */
+	ventry	hyp_init_entry		/* FIQ EL1t */
+	ventry	hyp_init_entry		/* Error EL1t */
+
+	ventry	hyp_init_entry		/* Synchronous EL1h */
+	ventry	hyp_init_entry		/* IRQ EL1h */
+	ventry	hyp_init_entry		/* FIQ EL1h */
+	ventry	hyp_init_entry		/* Error EL1h */
+
+	ventry	hyp_init_entry		/* Synchronous 64-bit EL0 */
+	ventry	hyp_init_entry		/* IRQ 64-bit EL0 */
+	ventry	hyp_init_entry		/* FIQ 64-bit EL0 */
+	ventry	hyp_init_entry		/* Error 64-bit EL0 */
+
+	ventry	hyp_init_entry		/* Synchronous 32-bit EL0 */
+	ventry	hyp_init_entry		/* IRQ 32-bit EL0 */
+	ventry	hyp_init_entry		/* FIQ 32-bit EL0 */
+	ventry	hyp_init_entry		/* Error 32-bit EL0 */
+
+EXCEPTION_HANDLER hyp_init_entry
+	b	_cpu_init
 
 	.align	11
 	.globl vectors;
@@ -575,7 +594,6 @@ vectors:
 	ventry	guest_irq_a32		/* IRQ 32-bit EL0 */
 	ventry	guest_fiq_a32		/* FIQ 32-bit EL0 */
 	ventry	guest_error_a32		/* Error 32-bit EL0 */
-
 
 EXCEPTION_HANDLER hyp_sync_invalid
 	PUSH_REGS

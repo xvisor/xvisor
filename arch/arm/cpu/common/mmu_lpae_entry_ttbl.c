@@ -226,12 +226,6 @@ void __attribute__ ((section(".entry")))
 			     AINDEX_DEVICE_nGnRE, TRUE);
 #endif
 
-	/* Map physical = logical
-	 * Note: This mapping is using at boot time only
-	 */
-	__setup_initial_ttbl(&lpae_entry, load_start, load_end, load_start,
-			     AINDEX_NORMAL_WB, TRUE);
-
 	/* Map to logical addresses which are
 	 * covered by read-only linker sections
 	 * Note: This mapping is used at runtime

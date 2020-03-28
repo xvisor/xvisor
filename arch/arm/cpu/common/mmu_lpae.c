@@ -1090,33 +1090,6 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	}
 	resv_sz += *core_resv_sz;
 
-	/* TODO: Unmap identity mappings from hypervisor ttbl
-	 *
-	 * The only issue in unmapping identity mapping from hypervisor ttbl
-	 * is that secondary cores (in SMP systems) crash immediatly after
-	 * enabling MMU.
-	 *
-	 * For now as a quick fix, we keep the identity mappings.
-	 */
-#if 0
-	if (arch_code_paddr_start() != arch_code_vaddr_start()) {
-		va = arch_code_paddr_start();
-		sz = arch_code_size();
-		while (sz) {
-			memset(&hyppg, 0, sizeof(hyppg));
-			if (!(rc = mmu_lpae_get_hypervisor_page(va, &hyppg))) {
-				rc = mmu_lpae_unmap_hypervisor_page(&hyppg);
-			}
-			if (rc) {
-				goto mmu_init_error;
-			}
-			sz -= TTBL_L3_BLOCK_SIZE;
-			va += TTBL_L3_BLOCK_SIZE;
-		}
-		cpu_invalid_all_tlbs();
-	}
-#endif
-
 	/* Map reserved space (core reserved + arch reserved)
 	 * We have kept our page table pool in reserved area pages
 	 * as cacheable and write-back. We will clean data cache every

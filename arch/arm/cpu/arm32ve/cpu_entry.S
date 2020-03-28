@@ -284,6 +284,9 @@ _start_secondary_nopen:
 	and	r3, r3, r2
 	orr	r3, r3, r1
 	mcr     p15, 4, r3, c2, c1, 2
+	/* Setup inital vectors */
+	ldr	r1, __init_vect
+	mcr     p15, 4, r1, c12, c0, 0
 	/* Setup Hypervisor System Control Register */
 	bl	proc_setup
 	dsb
@@ -291,9 +294,7 @@ _start_secondary_nopen:
 	mcr     p15, 4, r0, c1, c0, 0
 	dsb
 	isb
-	/* Jump to reset code */
-	ldr	pc, __reset
-
+	/* We should never reach here */
 _start_hang:
 	b	.
 
@@ -434,8 +435,26 @@ _copy_done:
 _copy_end:
 
 	/* 
-	 * Exception vector start.
+	 * Exception vectors
 	 */
+
+	.section .entry, "ax", %progbits
+	.balign	256
+	.globl _init_vect
+_init_vect:
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+	ldr	pc, __init_reset
+__init_vect:
+	.word _init_vect
+__init_reset:
+	.word _reset
+
 	.section .entry, "ax", %progbits
 	.balign	256
 	.globl _start_vect
