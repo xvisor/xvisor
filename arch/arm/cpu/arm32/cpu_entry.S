@@ -331,7 +331,9 @@ _start_secondary_nopen:
 __fdt_magic:
 	.word FDT_MAGIC
 __builtin_dtb:
-	.word dt_blob_start
+	.word _dtb_start
+__builtin_dtb_end:
+	.word _dtb_end
 __max_dtb_size:
 	.word CONFIG_ARM_MAX_DTB_SIZE
 __mmu_section_attr:

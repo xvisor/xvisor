@@ -204,7 +204,9 @@ _start_hang:
 
 	.align 3
 __builtin_dtb:
-	RISCV_PTR dt_blob_start
+	RISCV_PTR _dtb_start
+__builtin_dtb_end:
+	RISCV_PTR _dtb_end
 __exec_start:
 	RISCV_PTR _code_start
 __exec_end:

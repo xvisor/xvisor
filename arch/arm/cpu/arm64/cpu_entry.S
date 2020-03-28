@@ -327,7 +327,9 @@ _start_hang:
 __fdt_magic:
 	.dword FDT_MAGIC
 __builtin_dtb:
-	.dword dt_blob_start
+	.dword _dtb_start
+__builtin_dtb_end:
+	.dword _dtb_end
 __max_dtb_size:
 	.dword CONFIG_ARM_MAX_DTB_SIZE
 __mair_set:

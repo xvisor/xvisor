@@ -56,13 +56,15 @@ SECTIONS
 		*(.setup.init);
 		PROVIDE(__setup_end = .);
 
-		. = ALIGN(CONFIG_RISCV_MAX_DTB_SIZE);
+		. = ALIGN(0x1000);
+		PROVIDE(_dtb_start = .);
 		*(.devtree)
-		. = ALIGN(CONFIG_RISCV_MAX_DTB_SIZE);
-
-		PROVIDE(_init_end = .);
+		. = _dtb_start + CONFIG_RISCV_MAX_DTB_SIZE;
+		PROVIDE(_dtb_end = .);
 
 		. = ALIGN(0x1000);
+
+		PROVIDE(_init_end = .);
 
 		PROVIDE(_initdata_start = .);
 		*(.init.data)
