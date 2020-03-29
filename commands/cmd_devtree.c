@@ -72,8 +72,9 @@ static void cmd_devtree_print_attribute(struct vmm_chardev *cdev,
 	for (i = 0; i < indent; i++)
 		vmm_cprintf(cdev, "\t");
 
-	if (!attr->value) {
+	if (!attr->value || !attr->len) {
 		vmm_cprintf(cdev, "\t%s;\n", attr->name);
+		return;
 	}
 
 	if (attr->type == VMM_DEVTREE_ATTRTYPE_STRING) {
