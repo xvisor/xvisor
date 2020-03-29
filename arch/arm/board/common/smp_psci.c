@@ -37,14 +37,13 @@
 
 static void __init psci_smp_ops_init(void)
 {
-	/* Call PSCI init */
-	psci_init();
+	/* Nothing to do here. */
 }
 
 static int __init psci_smp_init(struct vmm_devtree_node *node,
 				unsigned int cpu)
-	/* Nothing to do here. */
 {
+	/* Nothing to do here. */
 	return VMM_OK;
 }
 

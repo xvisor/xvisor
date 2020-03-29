@@ -26,6 +26,7 @@
 #include <vmm_params.h>
 #include <vmm_devtree.h>
 #include <arch_cpu.h>
+#include <arm_psci.h>
 #include <cpu_inline_asm.h>
 
 extern u8 _code_start;
@@ -62,7 +63,8 @@ int __init arch_cpu_nascent_init(void)
 {
 	/* Host aspace, Heap, and Device tree available. */
 
-	/* Nothing to do here. */
+	/* Do PSCI init */
+	psci_init();
 
 	return 0;
 }

@@ -27,6 +27,8 @@
 #include <vmm_types.h>
 #include <psci.h>
 
+#ifdef CONFIG_ARM_PSCI
+
 int psci_cpu_suspend(unsigned long power_state, unsigned long entry_point);
 
 int psci_cpu_off(unsigned long power_state);
@@ -40,5 +42,13 @@ u32 psci_get_version(void);
 bool psci_available(void);
 
 void psci_init(void);
+
+#else
+
+static inline bool psci_available(void) { return FALSE; }
+
+static inline void psci_init(void) { }
+
+#endif
 
 #endif
