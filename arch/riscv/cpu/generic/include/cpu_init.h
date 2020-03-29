@@ -26,9 +26,6 @@
 
 #include <vmm_types.h>
 
-/* Parse HW capabilities from device tree */
-int cpu_parse_devtree_hwcap(void);
-
 /* Init function called from low-level boot-up */
 void cpu_init(void);
 

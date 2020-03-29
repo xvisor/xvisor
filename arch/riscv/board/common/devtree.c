@@ -324,5 +324,5 @@ int __init arch_devtree_populate(struct vmm_devtree_node **root)
 		return rc;
 	}
 
-	return cpu_parse_devtree_hwcap();
+	return VMM_OK;
 }

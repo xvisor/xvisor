@@ -55,42 +55,6 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
-int __init arch_cpu_nascent_init(void)
-{
-	/* Host aspace, Heap, and Device tree available. */
-
-	/* Nothing to do here. */
-
-	return 0;
-}
-
-int __init arch_cpu_early_init(void)
-{
-	const char *options;
-	struct vmm_devtree_node *node;
-
-	/*
-	 * Host virtual memory, device tree, heap, and host irq available.
-	 * Do necessary early stuff like iomapping devices
-	 * memory or boot time memory reservation here.
-	 */
-
-	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
-				   VMM_DEVTREE_CHOSEN_NODE_NAME);
-	if (!node) {
-		return VMM_ENODEV;
-	}
-
-	if (vmm_devtree_read_string(node,
-		VMM_DEVTREE_BOOTARGS_ATTR_NAME, &options) == VMM_OK) {
-		vmm_parse_early_options(options);
-	}
-
-	vmm_devtree_dref_node(node);
-
-	return VMM_OK;
-}
-
 /* Host ISA bitmap */
 static DECLARE_BITMAP(riscv_isa, RISCV_ISA_EXT_MAX) = { 0 };
 
@@ -197,65 +161,7 @@ unsigned long riscv_stage2_mode = HGATP_MODE_SV32X4;
 unsigned long riscv_stage2_vmid_bits = 0;
 unsigned long riscv_timer_hz = 0;
 
-void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
-{
-	/* FIXME: To be implemented. */
-}
-
-void arch_cpu_print_summary(struct vmm_chardev *cdev)
-{
-	char isa[128];
-
-#ifdef CONFIG_64BIT
-	riscv_isa_populate_string(64, NULL, isa, sizeof(isa));
-#else
-	riscv_isa_populate_string(32, NULL, isa, sizeof(isa));
-#endif
-
-	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
-	switch (cpu_mmu_hypervisor_pgtbl_mode()) {
-	case SATP_MODE_SV32:
-		strcpy(isa, "Sv32");
-		break;
-	case SATP_MODE_SV39:
-		strcpy(isa, "Sv39");
-		break;
-	case SATP_MODE_SV48:
-		strcpy(isa, "Sv48");
-		break;
-	default:
-		strcpy(isa, "Unknown");
-		break;
-	};
-	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Hypervisor MMU Mode", isa);
-	switch (riscv_stage2_mode) {
-	case HGATP_MODE_SV32X4:
-		strcpy(isa, "Sv32");
-		break;
-	case HGATP_MODE_SV39X4:
-		strcpy(isa, "Sv39");
-		break;
-	case HGATP_MODE_SV48X4:
-		strcpy(isa, "Sv48");
-		break;
-	default:
-		strcpy(isa, "Unknown");
-		break;
-	};
-	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Stage2 MMU Mode", isa);
-	vmm_cprintf(cdev, "%-25s: %ld\n",
-		    "CPU Stage2 VMID Bits", riscv_stage2_vmid_bits);
-	vmm_cprintf(cdev, "%-25s: %ld Hz\n", "CPU Time Base", riscv_timer_hz);
-}
-
-int __init arch_cpu_final_init(void)
-{
-	/* All VMM API's are available here */
-	/* We can register a CPU specific resources here */
-	return VMM_OK;
-}
-
-int __init cpu_parse_devtree_hwcap(void)
+int __init arch_cpu_nascent_init(void)
 {
 	DECLARE_BITMAP(this_isa, RISCV_ISA_EXT_MAX);
 	struct vmm_devtree_node *dn, *cpus;
@@ -263,6 +169,8 @@ int __init cpu_parse_devtree_hwcap(void)
 	unsigned long val, this_xlen;
 	int rc = VMM_OK;
 	u32 tmp;
+
+	/* Host aspace, Heap, and Device tree available. */
 
 	rc = sbi_init();
 	if (rc) {
@@ -359,6 +267,91 @@ int __init cpu_parse_devtree_hwcap(void)
 	}
 
 	return rc;
+}
+
+int __init arch_cpu_early_init(void)
+{
+	const char *options;
+	struct vmm_devtree_node *node;
+
+	/*
+	 * Host virtual memory, device tree, heap, and host irq available.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
+
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   VMM_DEVTREE_CHOSEN_NODE_NAME);
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	if (vmm_devtree_read_string(node,
+		VMM_DEVTREE_BOOTARGS_ATTR_NAME, &options) == VMM_OK) {
+		vmm_parse_early_options(options);
+	}
+
+	vmm_devtree_dref_node(node);
+
+	return VMM_OK;
+}
+
+
+void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
+{
+	/* FIXME: To be implemented. */
+}
+
+void arch_cpu_print_summary(struct vmm_chardev *cdev)
+{
+	char isa[128];
+#ifdef CONFIG_64BIT
+	riscv_isa_populate_string(64, NULL, isa, sizeof(isa));
+#else
+	riscv_isa_populate_string(32, NULL, isa, sizeof(isa));
+#endif
+
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
+	switch (cpu_mmu_hypervisor_pgtbl_mode()) {
+	case SATP_MODE_SV32:
+		strcpy(isa, "Sv32");
+		break;
+	case SATP_MODE_SV39:
+		strcpy(isa, "Sv39");
+		break;
+	case SATP_MODE_SV48:
+		strcpy(isa, "Sv48");
+		break;
+	default:
+		strcpy(isa, "Unknown");
+		break;
+	};
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Hypervisor MMU Mode", isa);
+	switch (riscv_stage2_mode) {
+	case HGATP_MODE_SV32X4:
+		strcpy(isa, "Sv32");
+		break;
+	case HGATP_MODE_SV39X4:
+		strcpy(isa, "Sv39");
+		break;
+	case HGATP_MODE_SV48X4:
+		strcpy(isa, "Sv48");
+		break;
+	default:
+		strcpy(isa, "Unknown");
+		break;
+	};
+	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Stage2 MMU Mode", isa);
+	vmm_cprintf(cdev, "%-25s: %ld\n",
+		    "CPU Stage2 VMID Bits", riscv_stage2_vmid_bits);
+	vmm_cprintf(cdev, "%-25s: %ld Hz\n", "CPU Time Base", riscv_timer_hz);
+}
+
+int __init arch_cpu_final_init(void)
+{
+	/* All VMM API's are available here */
+	/* We can register a CPU specific resources here */
+	return VMM_OK;
 }
 
 void __init cpu_init(void)
