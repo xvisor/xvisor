@@ -65,6 +65,11 @@ static int initfn_do(const char *subsys)
 	return VMM_OK;
 }
 
+int __init vmm_initfn_nascent(void)
+{
+	return initfn_do("initfn_nascent");
+}
+
 int __init vmm_initfn_early(void)
 {
 	return initfn_do("initfn_early");

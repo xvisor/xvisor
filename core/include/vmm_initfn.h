@@ -38,6 +38,13 @@ VMM_DEVTREE_NIDTBL_ENTRY(name, "initfn_final", "", "", compat, fn)
 #define VMM_INITFN_DECLARE_EARLY(name, compat, fn)	\
 VMM_DEVTREE_NIDTBL_ENTRY(name, "initfn_early", "", "", compat, fn)
 
+/* Declare nascent init function */
+#define VMM_INITFN_DECLARE_NASCENT(name, compat, fn)	\
+VMM_DEVTREE_NIDTBL_ENTRY(name, "initfn_nascent", "", "", compat, fn)
+
+/** Call nascent init functions */
+int vmm_initfn_nascent(void);
+
 /** Call early init functions */
 int vmm_initfn_early(void);
 

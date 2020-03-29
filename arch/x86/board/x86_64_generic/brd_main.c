@@ -153,6 +153,15 @@ static int __init boot_modules_init(void)
 	return rc;
 }
 
+int __init arch_board_nascent_init(void)
+{
+	/* Host aspace, Heap, and Device tree available. */
+
+	/* Nothing to do here. */
+
+	return 0;
+}
+
 int __init arch_board_early_init(void)
 {
 	int rv;

@@ -469,6 +469,27 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
+	/* Initialize CPU nascent */
+	vmm_init_printf("CPU nascent\n");
+	ret = arch_cpu_nascent_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Initialize Board nascent */
+	vmm_init_printf("board nascent\n");
+	ret = arch_board_nascent_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Call nascent init functions */
+	vmm_init_printf("nascent funtions\n");
+	ret = vmm_initfn_nascent();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
 #if defined(CONFIG_SMP)
 	/* Initialize secondary CPUs */
 	vmm_init_printf("discover secondary CPUs\n");

@@ -75,6 +75,15 @@ void arch_board_print_info(struct vmm_chardev *cdev)
  * Initialization functions
  */
 
+int __init arch_board_nascent_init(void)
+{
+	/* Host aspace, Heap, and Device tree available. */
+
+	/* Nothing to do here. */
+
+	return 0;
+}
+
 static void __init generic_board_early(struct vmm_devtree_node *node,
 				       const struct vmm_devtree_nodeid *match,
 				       void *data)

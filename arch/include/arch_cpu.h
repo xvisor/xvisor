@@ -31,10 +31,27 @@ void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu);
 /** Print summary of all CPUs */
 void arch_cpu_print_summary(struct vmm_chardev *cdev);
 
-/** CPU early init */
+/**
+ * CPU nascent init
+ *
+ * Only Host aspace, Heap, and Device tree available.
+ */
+int arch_cpu_nascent_init(void);
+
+/**
+ * CPU early init
+ *
+ * Only Host aspace, Heap, Device tree, Per-CPU areas, CPU hotplug,
+ * and Host IRQ available.
+ */
 int arch_cpu_early_init(void);
 
-/** CPU final init */
+/**
+ * CPU final init
+ *
+ * Almost all initialization (including builtin module) done. Only
+ * driver probing remains.
+ */
 int arch_cpu_final_init(void);
 
 #endif

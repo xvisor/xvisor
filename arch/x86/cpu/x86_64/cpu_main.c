@@ -150,10 +150,19 @@ int __init arch_devtree_populate(struct vmm_devtree_node **root)
 	return VMM_OK;
 }
 
+int __init arch_cpu_nascent_init(void)
+{
+	/* Host aspace, Heap, and Device tree available. */
+
+	/* Nothing to do here. */
+
+	return 0;
+}
+
 int __init arch_cpu_early_init(void)
 {
 	/*
-	 * Host virtual memory, device tree, heap is up.
+	 * Host virtual memory, device tree, heap, and host irq available.
 	 * Do necessary early stuff like iomapping devices
 	 * memory or boot time memory reservation here.
 	 */
