@@ -73,7 +73,7 @@ int sbi_console_getchar(void);
 /**
  * Remove all the harts from executing supervisor code.
  */
-void sbi_shutdown(void);
+int sbi_shutdown(void);
 
 /**
  * Clear any pending IPIs for the calling HART.

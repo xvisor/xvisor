@@ -26,6 +26,7 @@
 #include <vmm_cpumask.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
+#include <vmm_main.h>
 
 #include <cpu_sbi.h>
 #include <riscv_sbi.h>
@@ -111,9 +112,11 @@ int sbi_console_getchar(void)
 	return ret.error;
 }
 
-void sbi_shutdown(void)
+int sbi_shutdown(void)
 {
 	sbi_ecall(SBI_EXT_0_1_SHUTDOWN, 0, 0, 0, 0, 0, 0, 0);
+
+	return 0;
 }
 
 void sbi_clear_ipi(void)
@@ -478,6 +481,8 @@ int __init sbi_init(void)
 	if (!sbi_has_0_2_rfence()) {
 		vmm_init_printf("WARNING: SBI v0.2 RFENCE not available !\n");
 	}
+
+	vmm_register_system_shutdown(sbi_shutdown);
 
 	return 0;
 }
