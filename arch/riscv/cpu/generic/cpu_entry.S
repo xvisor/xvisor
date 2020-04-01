@@ -100,15 +100,6 @@ _bss_zero:
 	sub	a0, a0, a4
 	add	sp, a0, a2
 
-	/* Check and copy FDT */
-	la	a6, _bootcpu_reg1
-	REG_L	a0, (a6)
-	la	a6, __builtin_dtb
-	REG_L	a1, (a6)
-	sub	a1, a1, a4
-	add	a1, a1, a2
-	call	_copy_fdt
-
 	/* Setup initial page table */
 	la	a6, _load_start
 	REG_L	a0, (a6)
@@ -116,7 +107,7 @@ _bss_zero:
 	REG_L	a1, (a6)
 	la	a6, __exec_start
 	REG_L	a2, (a6)
-	la	a6, __exec_end
+	la	a6, _bootcpu_reg1
 	REG_L	a3, (a6)
 	call	_setup_initial_pgtbl
 
@@ -203,10 +194,6 @@ _start_hang:
 	j	_start_hang
 
 	.align 3
-__builtin_dtb:
-	RISCV_PTR _dtb_start
-__builtin_dtb_end:
-	RISCV_PTR _dtb_end
 __exec_start:
 	RISCV_PTR _code_start
 __exec_end:

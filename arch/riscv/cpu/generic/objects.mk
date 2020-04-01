@@ -61,7 +61,6 @@ cpu-asflags += $(arch-cflags-y) -march=$(march-y)$(arch-a-y)fd$(arch-c-y)
 cpu-ldflags += $(arch-ldflags-y) -march=$(march-y)$(arch-a-y)$(arch-c-y)
 
 cpu-objs-y+= cpu_entry.o
-cpu-objs-y+= cpu_entry_helper.o
 cpu-objs-y+= cpu_proc.o
 cpu-objs-y+= cpu_tlb.o
 cpu-objs-y+= cpu_sbi.o

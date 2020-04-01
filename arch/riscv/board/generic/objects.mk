@@ -22,4 +22,3 @@
 # */
 
 board-objs-y+= brd_main.o
-board-objs-y+= dts/skeleton.o

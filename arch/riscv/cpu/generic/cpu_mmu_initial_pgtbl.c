@@ -22,6 +22,8 @@
  */
 
 #include <vmm_types.h>
+#include <arch_io.h>
+#include <libs/libfdt.h>
 #include <cpu_mmu.h>
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
@@ -40,6 +42,11 @@ extern unsigned long def_pgtbl_mode;
 #ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
 #endif
+
+extern virtual_addr_t devtree_virt;
+extern virtual_addr_t devtree_virt_base;
+extern physical_addr_t devtree_phys_base;
+extern virtual_size_t devtree_virt_size;
 
 void __attribute__ ((section(".entry")))
     __setup_initial_pgtbl(struct cpu_mmu_entry_ctrl *entry,
@@ -261,14 +268,35 @@ void __attribute__ ((section(".entry")))
 #endif
 }
 
+virtual_size_t __attribute__ ((section(".entry")))
+    _fdt_size(virtual_addr_t dtb_start)
+{
+	u32 *src = (u32 *)dtb_start;
+
+	if (rev32(src[0]) != FDT_MAGIC) {
+		while (1); /* Hang !!! */
+	}
+
+	return rev32(src[1]);
+}
+
 void __attribute__ ((section(".entry")))
     _setup_initial_pgtbl(virtual_addr_t load_start, virtual_addr_t load_end,
-			 virtual_addr_t exec_start, virtual_addr_t exec_end)
+			 virtual_addr_t exec_start, virtual_addr_t dtb_start)
 {
 	u32 i;
+	virtual_addr_t exec_end = exec_start + (load_end - load_start);
 #ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
 	virtual_addr_t defterm_early_va;
 #endif
+	virtual_addr_t *dt_virt =
+		(virtual_addr_t *)to_load_pa((virtual_addr_t)&devtree_virt);
+	virtual_addr_t *dt_virt_base =
+		(virtual_addr_t *)to_load_pa((virtual_addr_t)&devtree_virt_base);
+	virtual_size_t *dt_virt_size =
+		(virtual_size_t *)to_load_pa((virtual_addr_t)&devtree_virt_size);
+	physical_addr_t *dt_phys_base =
+		(physical_addr_t *)to_load_pa((virtual_addr_t)&devtree_phys_base);
 	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, NULL, 0 };
 
 	/* Detect best possible page table mode */
@@ -333,4 +361,16 @@ void __attribute__ ((section(".entry")))
 	 * Note: This mapping is used at runtime
 	 */
 	__setup_initial_pgtbl(&entry, exec_start, exec_end, load_start, TRUE);
+
+	/* Compute and save devtree addresses */
+	*dt_phys_base = dtb_start & PGTBL_L0_MAP_MASK;
+	*dt_virt_base = exec_start - _fdt_size(dtb_start);
+	*dt_virt_base &= PGTBL_L0_MAP_MASK;
+	*dt_virt_size = exec_start - *dt_virt_base;
+	*dt_virt = *dt_virt_base + (dtb_start & (PGTBL_L0_BLOCK_SIZE - 1));
+
+	/* Map device tree */
+	__setup_initial_pgtbl(&entry, *dt_virt_base,
+			      *dt_virt_base + *dt_virt_size,
+			      *dt_phys_base, TRUE);
 }
