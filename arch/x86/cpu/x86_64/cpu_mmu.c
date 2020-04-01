@@ -209,6 +209,17 @@ int arch_cpu_aspace_va2pa(virtual_addr_t va, physical_addr_t *pa)
 	return VMM_OK;
 }
 
+virtual_addr_t __init arch_cpu_aspace_vapool_start(void)
+{
+	return arch_code_vaddr_start();
+}
+
+virtual_size_t __init arch_cpu_aspace_vapool_estimate_size(
+						physical_size_t total_ram)
+{
+	return CONFIG_VAPOOL_SIZE_MB << 20;
+}
+
 int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 					virtual_addr_t *core_resv_va,
 					virtual_size_t *core_resv_sz,

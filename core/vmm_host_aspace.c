@@ -35,16 +35,6 @@
 #include <libs/stringlib.h>
 #include <libs/rbtree_augmented.h>
 
-#define VAPOOL_SIZE	(CONFIG_VAPOOL_SIZE_MB << 20)
-
-#if ((VAPOOL_SIZE / VMM_PAGE_SIZE) < CONFIG_MEMMAP_HASH_SIZE_FACTOR) || \
-    (CONFIG_MEMMAP_HASH_SIZE_FACTOR < 1)
-#error "Invalid value of CONFIG_MEMMAP_HASH_SIZE_FACTOR"
-#else
-#define MEMMAP_HASH_SIZE	\
-((VAPOOL_SIZE / VMM_PAGE_SIZE) / CONFIG_MEMMAP_HASH_SIZE_FACTOR)
-#endif
-
 static virtual_addr_t host_mem_rw_va[CONFIG_CPU_COUNT];
 
 struct host_mhash_entry {
@@ -311,9 +301,9 @@ static int host_mhash_pa2va(physical_addr_t pa,
 	return rc;
 }
 
-static virtual_size_t host_mhash_estimate_hksize(void)
+static virtual_size_t host_mhash_estimate_hksize(virtual_size_t entry_count)
 {
-	return sizeof(struct host_mhash_entry) * MEMMAP_HASH_SIZE;
+	return sizeof(struct host_mhash_entry) * entry_count;
 }
 
 static int host_mhash_init(virtual_addr_t mhash_start,
@@ -815,24 +805,20 @@ static int __init host_aspace_init_primary(void)
 	u32 resv, resv_count, bank, bank_count = 0x0;
 	u64 ram_end;
 	physical_addr_t ram_start, core_resv_pa = 0x0, arch_resv_pa = 0x0;
-	physical_size_t ram_size;
+	physical_size_t ram_size, ram_total_size;
 	virtual_addr_t vapool_start, vapool_hkstart, ram_hkstart, mhash_hkstart;
-	virtual_size_t vapool_size, vapool_hksize, ram_hksize, mhash_hksize;
+	virtual_size_t vapool_size, vapool_hksize, ram_hksize;
+	virtual_size_t mhash_entry_count, mhash_hksize;
 	virtual_size_t hk_total_size = 0x0;
 	virtual_addr_t core_resv_va = 0x0, arch_resv_va = 0x0;
 	virtual_size_t core_resv_sz = 0x0, arch_resv_sz = 0x0;
 
-	/* Determine VAPOOL start and size */
-	vapool_start = arch_code_vaddr_start();
-	vapool_size = VAPOOL_SIZE;
-
-	/* Determine VAPOOL house-keeping size based on VAPOOL size */
-	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
-
-	/* Determine RAM bank count, start and size */
+	/* Setup RAM banks */
 	if ((rc = arch_devtree_ram_bank_setup())) {
 		return rc;
 	}
+
+	/* Determine RAM bank count */
 	if ((rc = arch_devtree_ram_bank_count(&bank_count))) {
 		return rc;
 	}
@@ -842,6 +828,20 @@ static int __init host_aspace_init_primary(void)
 	if (bank_count > CONFIG_MAX_RAM_BANK_COUNT) {
 		return VMM_EINVALID;
 	}
+
+	/* Determine total RAM size */
+	ram_total_size = 0x0;
+	for (bank = 0; bank < bank_count; bank++) {
+		if ((rc = arch_devtree_ram_bank_size(bank, &ram_size))) {
+			return rc;
+		}
+		if (ram_size & VMM_PAGE_MASK) {
+			return VMM_EINVALID;
+		}
+		ram_total_size += ram_size;
+	}
+
+	/* Determine RAM bank in which we are loaded */
 	bank_found = 0;
 	for (bank = 0; bank < bank_count; bank++) {
 		if ((rc = arch_devtree_ram_bank_start(bank, &ram_start))) {
@@ -868,11 +868,22 @@ static int __init host_aspace_init_primary(void)
 		return VMM_ENODEV;
 	}
 
+	/* Determine VAPOOL start and size */
+	vapool_start = arch_cpu_aspace_vapool_start();
+	vapool_size = arch_cpu_aspace_vapool_estimate_size(ram_total_size);
+
+	/* Determine VAPOOL house-keeping size based on VAPOOL size */
+	vapool_hksize = vmm_host_vapool_estimate_hksize(vapool_size);
+
 	/* Determine RAM house-keeping size */
 	ram_hksize = vmm_host_ram_estimate_hksize();
 
 	/* Determine memmap hash house-keeping size */
-	mhash_hksize = host_mhash_estimate_hksize();
+	mhash_entry_count = (vapool_size / VMM_PAGE_SIZE) /
+				CONFIG_MEMMAP_HASH_SIZE_FACTOR;
+	if (!mhash_entry_count || (CONFIG_MEMMAP_HASH_SIZE_FACTOR < 1))
+		return VMM_EINVALID;
+	mhash_hksize = host_mhash_estimate_hksize(mhash_entry_count);
 
 	/* Calculate physical address, virtual address, and size of
 	 * core reserved space for VAPOOL, RAM, and MEMMAP HASH house-keeping
