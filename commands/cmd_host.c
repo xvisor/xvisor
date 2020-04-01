@@ -104,8 +104,8 @@ static int cmd_host_info(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "%-25s: 0x%lx\n", "Boot CPU Hardware ID", hwid);
 	vmm_cprintf(cdev, "%-25s: %u\n", "Total Online CPUs",
 		    vmm_num_online_cpus());
-	vmm_cprintf(cdev, "%-25s: %u MB\n", "Total VAPOOL",
-		    CONFIG_VAPOOL_SIZE_MB);
+	vmm_cprintf(cdev, "%-25s: %lu MB\n", "Total VAPOOL",
+		    vmm_host_vapool_size() / (1024UL * 1024UL));
 	vmm_cprintf(cdev, "%-25s: %lu MB\n", "Total RAM",
 		    ((total *VMM_PAGE_SIZE) >> 20));
 
