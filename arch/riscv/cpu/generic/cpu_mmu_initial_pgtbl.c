@@ -216,9 +216,9 @@ skip_level1:
 	extern virtual_addr_t SECTION_END(SECTION)
 
 DECLARE_SECTION(text);
+DECLARE_SECTION(init_text);
 DECLARE_SECTION(cpuinit);
 DECLARE_SECTION(spinlock);
-DECLARE_SECTION(init);
 DECLARE_SECTION(rodata);
 
 #define SETUP_RO_SECTION(ENTRY, SECTION)				\
@@ -351,7 +351,7 @@ void __attribute__ ((section(".entry")))
 	 * Note: This mapping is used at runtime
 	 */
 	SETUP_RO_SECTION(entry, text);
-	SETUP_RO_SECTION(entry, init);
+	SETUP_RO_SECTION(entry, init_text);
 	SETUP_RO_SECTION(entry, cpuinit);
 	SETUP_RO_SECTION(entry, spinlock);
 	SETUP_RO_SECTION(entry, rodata);
