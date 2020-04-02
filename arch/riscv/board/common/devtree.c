@@ -43,10 +43,6 @@ static u32 bank_nr;
 static physical_addr_t bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 static physical_addr_t dt_bank_data[CONFIG_MAX_RAM_BANK_COUNT*2];
 
-static u32 load_bank_nr;
-static physical_addr_t load_bank_resv_pa;
-static physical_size_t load_bank_resv_sz;
-
 struct match_info {
 	struct fdt_fileinfo *fdt;
 	u32 address_cells;
@@ -187,27 +183,6 @@ int __init arch_devtree_ram_bank_setup(void)
 		}
 	}
 
-	/*
-	 * For quite a few RISC-V systems, the RUNTIME M-mode firmware
-	 * is located at start of a RAM bank. Unfortunately in most cases,
-	 * the DTB passed to Xvisor (or Linux) does not have memreserve
-	 * entry for the RUNTIME M-mode firmware. To be safe, we reserve
-	 * RAM from start of the RAM bank to location where Xvisor is
-	 * loaded in the RAM bank.
-	 */
-	load_bank_nr = 0;
-	load_bank_resv_pa = 0;
-	load_bank_resv_sz = 0;
-	for (i = 0; i < bank_nr; i++) {
-		if (bank_data[2*i] <= arch_code_paddr_start() &&
-		    arch_code_paddr_start() < (bank_data[2*i] + bank_data[2*i + 1])) {
-			load_bank_nr = i;
-			load_bank_resv_pa = bank_data[2*i];
-			load_bank_resv_sz = arch_code_paddr_start() - bank_data[2*i];
-			break;
-		}
-	}
-
 	return VMM_OK;
 }
 
@@ -258,10 +233,6 @@ int __init arch_devtree_reserve_count(u32 *count)
 
 	*count += 1;
 
-	if (load_bank_resv_sz) {
-		*count += 1;
-	}
-
 	return VMM_OK;
 }
 
@@ -291,8 +262,6 @@ int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 		*addr = (physical_addr_t)tmp;
 	} else if (index == count) {
 		*addr = devtree_phys_base;
-	} else if (index == (count + 1) && load_bank_resv_sz) {
-		*addr = load_bank_resv_pa;
 	} else {
 		return VMM_EINVALID;
 	}
@@ -326,8 +295,6 @@ int __init arch_devtree_reserve_size(u32 index, physical_size_t *size)
 		*size = (physical_size_t)tmp;
 	} else if (index == count) {
 		*size = devtree_virt_size;
-	} else if (index == (count + 1) && load_bank_resv_sz) {
-		*size = load_bank_resv_sz;
 	} else {
 		return VMM_EINVALID;
 	}
