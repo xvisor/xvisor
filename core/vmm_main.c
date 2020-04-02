@@ -442,19 +442,6 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
-	vmm_init_printf("page pool\n");
-	ret = vmm_pagepool_init();
-	if (ret) {
-		goto init_bootcpu_fail;
-	}
-
-        /* Initialize exception table */
-	vmm_init_printf("exception table\n");
-	ret = vmm_extable_init();
-	if (ret) {
-		goto init_bootcpu_fail;
-	}
-
 	/* Initialize device tree */
 	vmm_init_printf("device tree\n");
 	ret = vmm_devtree_init();
@@ -486,6 +473,19 @@ static void __init init_bootcpu(void)
 	/* Call nascent init functions */
 	vmm_init_printf("nascent funtions\n");
 	ret = vmm_initfn_nascent();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	vmm_init_printf("page pool\n");
+	ret = vmm_pagepool_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+        /* Initialize exception table */
+	vmm_init_printf("exception table\n");
+	ret = vmm_extable_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}
