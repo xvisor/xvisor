@@ -435,7 +435,7 @@ static void __init init_bootcpu(void)
 		goto init_bootcpu_fail;
 	}
 
-	/* Initialize heap */
+	/* Initialize normal heap */
 	vmm_init_printf("heap management\n");
 	ret = vmm_heap_init();
 	if (ret) {
@@ -452,6 +452,13 @@ static void __init init_bootcpu(void)
 	/* Initialize device tree based reserved-memory */
 	vmm_init_printf("device tree reserved-memory\n");
 	ret = vmm_devtree_reserved_memory_init();
+	if (ret) {
+		goto init_bootcpu_fail;
+	}
+
+	/* Initialize DMA heap */
+	vmm_init_printf("DMA heap management\n");
+	ret = vmm_dma_heap_init();
 	if (ret) {
 		goto init_bootcpu_fail;
 	}

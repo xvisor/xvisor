@@ -75,6 +75,9 @@ virtual_size_t vmm_normal_heap_free_size(void);
 /** Print Normal heap state */
 int vmm_normal_heap_print_state(struct vmm_chardev *cdev);
 
+/** Initialization function for Normal heap managment */
+int vmm_heap_init(void);
+
 /** Possible DMA directions */
 enum vmm_dma_direction {
 	DMA_BIDIRECTIONAL = 0,
@@ -138,7 +141,7 @@ virtual_size_t vmm_dma_heap_free_size(void);
 /** Print DMA heap state */
 int vmm_dma_heap_print_state(struct vmm_chardev *cdev);
 
-/** Initialization function for head managment */
-int vmm_heap_init(void);
+/** Initialization function for DMA heap managment */
+int vmm_dma_heap_init(void);
 
 #endif

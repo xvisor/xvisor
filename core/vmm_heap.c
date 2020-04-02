@@ -317,6 +317,26 @@ int vmm_normal_heap_print_state(struct vmm_chardev *cdev)
 	return heap_print_state(&normal_heap, cdev, "Normal");
 }
 
+int __init vmm_heap_init(void)
+{
+	int rc;
+
+	/*
+	 * Always create normal heap first as book keeping area for other heaps
+	 * is allocated from normal heap
+	 */
+
+	/* Create Normal heap */
+	rc = heap_init(&normal_heap, TRUE, TRUE,
+			vmm_host_vapool_size() / CONFIG_HEAP_SIZE_FACTOR,
+			VMM_MEMORY_FLAGS_NORMAL);
+	if (rc) {
+		return rc;
+	}
+
+	return VMM_OK;
+}
+
 void *vmm_dma_malloc(virtual_size_t size)
 {
 	return heap_malloc(&dma_heap, size);
@@ -462,22 +482,9 @@ int vmm_dma_heap_print_state(struct vmm_chardev *cdev)
 	return heap_print_state(&dma_heap, cdev, "DMA");
 }
 
-int __init vmm_heap_init(void)
+int __init vmm_dma_heap_init(void)
 {
 	int rc;
-
-	/*
-	 * Always create normal heap first as book keeping area for other heaps
-	 * is allocated from normal heap
-	 */
-
-	/* Create Normal heap */
-	rc = heap_init(&normal_heap, TRUE, TRUE,
-			vmm_host_vapool_size() / CONFIG_HEAP_SIZE_FACTOR,
-			VMM_MEMORY_FLAGS_NORMAL);
-	if (rc) {
-		return rc;
-	}
 
 	/* Create DMA heap */
 	rc= heap_init(&dma_heap, FALSE, FALSE,
