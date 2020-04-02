@@ -50,6 +50,8 @@ SECTIONS
 	{
 		PROVIDE(_init_start = .);
 
+		PROVIDE(_init_text_start = .);
+
 		*(.init.text)
 		. = ALIGN(8);
 
@@ -58,14 +60,8 @@ SECTIONS
 		PROVIDE(__setup_end = .);
 
 		. = ALIGN(0x1000);
-		PROVIDE(_dtb_start = .);
-		*(.devtree)
-		. = _dtb_start + CONFIG_ARM_MAX_DTB_SIZE;
-		PROVIDE(_dtb_end = .);
 
-		. = ALIGN(0x1000);
-
-		PROVIDE(_init_end = .);
+		PROVIDE(_init_text_end = .);
 
 		PROVIDE(_initdata_start = .);
 		*(.init.data)
@@ -76,6 +72,8 @@ SECTIONS
 		*(.init.rodata)
 		. = ALIGN(8);
 		PROVIDE(_initconst_end = .);
+
+		PROVIDE(_init_end = .);
 	}
 
 	. = ALIGN(0x1000); /* Ensure next section is page aligned */

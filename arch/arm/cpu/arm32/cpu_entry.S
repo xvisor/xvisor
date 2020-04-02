@@ -108,52 +108,6 @@ _bss_zero:
 	cmp	r1, r2
 	blt	_bss_zero
 
-	/* Determine if a valid external dtb is provided */
-	/* Get DTB address */
-	ldr     r3, __boot_reg2
-	sub     r3, r3, r6
-	add     r3, r3, r4
-	ldr     r2, [r3]
-
-	/* First check for 4B alignment */
-	tst	r2, #0x3
-	bne	align_4k_boundary
-
-	/* Now check for FDT_MAGIC */
-	ldr	r0, [r2]
-	ldr	r1, __fdt_magic
-	cmp	r0, r1
-	bne	align_4k_boundary
-
-	/* Now get the dtb total-size */
-	ldrb	r0, [r2, #4]
-	ldrb	r1, [r2, #5]
-	add	r0, r1, r0, lsl #8
-	ldrb	r1, [r2, #6]
-	add	r0, r1, r0, lsl #8
-	ldrb	r1, [r2, #7]
-	add	r0, r1, r0, lsl #8
-
-	/* Compare with max supported dtb size */
-	ldr	r1, __max_dtb_size
-	cmp	r0, r1
-	bgt	align_4k_boundary
-
-	/* Overwrite the built-in fdt with the one passed */
-	ldr	r1, __builtin_dtb
-	sub	r1, r1, r6
-	add	r1, r1, r4
-
-	/* r0 = dtb total size */
-	/* r1 = builtin_dtb load-address */
-	/* r2 = passed dtb address */
-
-dtb_save_loop:
-	ldr	r3, [r2], #4
-	str	r3, [r1], #4
-	subs	r0, r0, #4
-	bgt	dtb_save_loop
-
 align_4k_boundary:
 	/* Relocate code if load start is not 4KB aligned */
 	mov	r0, r4
@@ -222,7 +176,10 @@ _start_mmu_init:
 	mov	r0, r4
 	mov	r1, r5
 	mov	r2, r6
-	mov	r3, r7
+	ldr     r3, __boot_reg2
+	sub     r3, r3, r6
+	add     r3, r3, r4
+	ldr     r3, [r3]
 	bl	_setup_initial_ttbl
 	b	_start_secondary_nopen
 
@@ -326,16 +283,6 @@ _start_secondary_nopen:
 			TTBL_L1TBL_TTE_ARCH_ATTR | \
 			TTBL_L1TBL_TTE_TYPE_SECTION)
 
-#define FDT_MAGIC	0xedfe0dd0	/* 0xd00dfeed in big-endian */
-
-__fdt_magic:
-	.word FDT_MAGIC
-__builtin_dtb:
-	.word _dtb_start
-__builtin_dtb_end:
-	.word _dtb_end
-__max_dtb_size:
-	.word CONFIG_ARM_MAX_DTB_SIZE
 __mmu_section_attr:
 	.word SECTION_ATTR
 __dacr_mmu_val:

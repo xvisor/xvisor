@@ -22,7 +22,6 @@
 # */
 
 board-objs-y+= brd_main.o
-board-objs-y+= dts/skeleton.o
 board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
 board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
 board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o

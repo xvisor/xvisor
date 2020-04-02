@@ -23,7 +23,8 @@
  */
 
 #include <vmm_types.h>
-#include <cpu_cache.h>
+#include <arch_io.h>
+#include <libs/libfdt.h>
 #include <cpu_mmu_lpae.h>
 #include <mmu_lpae.h>
 
@@ -39,6 +40,11 @@ extern int def_ttbl_tree[];
 #ifdef CONFIG_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
 #endif
+
+extern virtual_addr_t devtree_virt;
+extern virtual_addr_t devtree_virt_base;
+extern physical_addr_t devtree_phys_base;
+extern virtual_size_t devtree_virt_size;
 
 void __attribute__ ((section(".entry")))
     __setup_initial_ttbl(struct mmu_lpae_entry_ctrl *lpae_entry,
@@ -166,9 +172,9 @@ void __attribute__ ((section(".entry")))
 	extern virtual_addr_t SECTION_END(SECTION)
 
 DECLARE_SECTION(text);
+DECLARE_SECTION(init_text);
 DECLARE_SECTION(cpuinit);
 DECLARE_SECTION(spinlock);
-DECLARE_SECTION(init);
 DECLARE_SECTION(rodata);
 
 #define SETUP_RO_SECTION(ENTRY, SECTION)				\
@@ -179,14 +185,35 @@ DECLARE_SECTION(rodata);
 			     AINDEX_NORMAL_WB,				\
 			     FALSE)
 
+virtual_size_t __attribute__ ((section(".entry")))
+    _fdt_size(virtual_addr_t dtb_start)
+{
+	u32 *src = (u32 *)dtb_start;
+
+	if (rev32(src[0]) != FDT_MAGIC) {
+		while (1); /* Hang !!! */
+	}
+
+	return rev32(src[1]);
+}
+
 void __attribute__ ((section(".entry")))
     _setup_initial_ttbl(virtual_addr_t load_start, virtual_addr_t load_end,
-			virtual_addr_t exec_start, virtual_addr_t exec_end)
+			virtual_addr_t exec_start, virtual_addr_t dtb_start)
 {
 	u32 i;
+	virtual_addr_t exec_end = exec_start + (load_end - load_start);
 #ifdef CONFIG_DEFTERM_EARLY_PRINT
 	virtual_addr_t defterm_early_va;
 #endif
+	virtual_addr_t *dt_virt =
+		(virtual_addr_t *)to_load_pa((virtual_addr_t)&devtree_virt);
+	virtual_addr_t *dt_virt_base =
+		(virtual_addr_t *)to_load_pa((virtual_addr_t)&devtree_virt_base);
+	virtual_size_t *dt_virt_size =
+		(virtual_size_t *)to_load_pa((virtual_addr_t)&devtree_virt_size);
+	physical_addr_t *dt_phys_base =
+		(physical_addr_t *)to_load_pa((virtual_addr_t)&devtree_phys_base);
 	struct mmu_lpae_entry_ctrl lpae_entry = { 0, NULL, NULL, 0 };
 
 	/* Init ttbl_base, ttbl_tree, and next_ttbl */
@@ -231,7 +258,7 @@ void __attribute__ ((section(".entry")))
 	 * Note: This mapping is used at runtime
 	 */
 	SETUP_RO_SECTION(lpae_entry, text);
-	SETUP_RO_SECTION(lpae_entry, init);
+	SETUP_RO_SECTION(lpae_entry, init_text);
 	SETUP_RO_SECTION(lpae_entry, cpuinit);
 	SETUP_RO_SECTION(lpae_entry, spinlock);
 	SETUP_RO_SECTION(lpae_entry, rodata);
@@ -241,5 +268,17 @@ void __attribute__ ((section(".entry")))
 	 * Note: This mapping is used at runtime
 	 */
 	__setup_initial_ttbl(&lpae_entry, exec_start, exec_end, load_start,
+			     AINDEX_NORMAL_WB, TRUE);
+
+	/* Compute and save devtree addresses */
+	*dt_phys_base = dtb_start & TTBL_L3_MAP_MASK;
+	*dt_virt_base = exec_start - _fdt_size(dtb_start);
+	*dt_virt_base &= TTBL_L3_MAP_MASK;
+	*dt_virt_size = exec_start - *dt_virt_base;
+	*dt_virt = *dt_virt_base + (dtb_start & (TTBL_L3_BLOCK_SIZE - 1));
+
+	/* Map device tree */
+	__setup_initial_ttbl(&lpae_entry, *dt_virt_base,
+			     *dt_virt_base + *dt_virt_size, *dt_phys_base,
 			     AINDEX_NORMAL_WB, TRUE);
 }

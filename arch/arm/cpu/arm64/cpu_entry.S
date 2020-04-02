@@ -108,47 +108,6 @@ _bss_zero:
 	cmp	x1, x2
 	blt	_bss_zero
 
-	/* Determine if a valid external dtb is provided */
-	/* Get DTB address */
-	ldr     x3, __boot_reg0
-	sub     x3, x3, x6
-	add     x3, x3, x4
-	ldr     x2, [x3]
-
-	/* First check for 8B alignment */
-	tst	x2, #0x7
-	bne	align_4k_boundary
-
-	/* Now check for FDT_MAGIC */
-	ldr	w0, [x2]
-	ldr	x1, __fdt_magic
-	cmp	w0, w1
-	bne	align_4k_boundary
-
-	/* Now get the dtb total-size */
-	ldr	w0, [x2, #4]
-	rev	w0, w0		/* Byte-swap as FDt is in big-endian */
-
-	/* Compare with max supported dtb size */
-	ldr	x1, __max_dtb_size
-	cmp	x0, x1
-	bgt	align_4k_boundary
-
-	/* Overwrite the built-in fdt with the one passed */
-	ldr	x1, __builtin_dtb
-	sub	x1, x1, x6
-	add	x1, x1, x4
-
-	/* x0 = dtb total size */
-	/* x1 = builtin_dtb load-address */
-	/* x2 = passed dtb address */
-
-dtb_save_loop:
-	ldr	x3, [x2], #8
-	str	x3, [x1], #8
-	subs	x0, x0, #8
-	bgt	dtb_save_loop
-
 align_4k_boundary:
 	/* Relocate code if load start is not 4 KB aligned */
 	mov	x0, x4
@@ -219,7 +178,10 @@ _start_mmu_init:
 	mov	x0, x4
 	mov	x1, x5
 	mov	x2, x6
-	mov	x3, x7
+	ldr     x3, __boot_reg0
+	sub     x3, x3, x6
+	add     x3, x3, x4
+	ldr     x3, [x3]
 
 	bl	_setup_initial_ttbl
 
@@ -319,17 +281,7 @@ _start_secondary_nopen:
 _start_hang:
 	b	.
 
-#define FDT_MAGIC	0xedfe0dd0	/* 0xd00dfeed in big-endian */
-
 	.align 3
-__fdt_magic:
-	.dword FDT_MAGIC
-__builtin_dtb:
-	.dword _dtb_start
-__builtin_dtb_end:
-	.dword _dtb_end
-__max_dtb_size:
-	.dword CONFIG_ARM_MAX_DTB_SIZE
 __mair_set:
 	.dword (MAIR(0x00, AINDEX_DEVICE_nGnRnE) | \
 		MAIR(0x04, AINDEX_DEVICE_nGnRE) | \
