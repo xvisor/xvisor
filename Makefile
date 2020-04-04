@@ -98,6 +98,7 @@ CONFIG_BOARD:=$(shell echo $(CONFIG_BOARD))
 
 # Setup path of directories
 export arch_dir=$(CURDIR)/arch
+export arch_common_dir=$(CURDIR)/arch/common
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
 export cpu_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/common
 export board_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)
@@ -149,13 +150,14 @@ cppflags+=-I$(cpu_dir)/include
 cppflags+=-I$(cpu_common_dir)/include
 cppflags+=-I$(board_dir)/include
 cppflags+=-I$(board_common_dir)/include
+cppflags+=-I$(arch_dir)/include
+cppflags+=-I$(arch_common_dir)/include
 cppflags+=-I$(core_dir)/include
 cppflags+=-I$(commands_dir)/include
 cppflags+=-I$(daemons_dir)/include
 cppflags+=-I$(drivers_dir)/include
 cppflags+=-I$(emulators_dir)/include
 cppflags+=-I$(libs_dir)/include
-cppflags+=-I$(arch_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
@@ -249,6 +251,7 @@ cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "object
 cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_common_dir) -iname "objects.mk" | sort -r; fi)
 board-object-mks=$(shell if [ -d $(board_dir) ]; then find $(board_dir) -iname "objects.mk" | sort -r; fi)
 board-common-object-mks=$(shell if [ -d $(board_common_dir) ]; then find $(board_common_dir) -iname "objects.mk" | sort -r; fi)
+arch-common-object-mks=$(shell if [ -d $(arch_common_dir) ]; then find $(arch_common_dir) -iname "objects.mk" | sort -r; fi)
 core-object-mks=$(shell if [ -d $(core_dir) ]; then find $(core_dir) -iname "objects.mk" | sort -r; fi)
 libs-object-mks=$(shell if [ -d $(libs_dir) ]; then find $(libs_dir) -iname "objects.mk" | sort -r; fi)
 commands-object-mks=$(shell if [ -d $(commands_dir) ]; then find $(commands_dir) -iname "objects.mk" | sort -r; fi)
@@ -265,6 +268,7 @@ include $(cpu-object-mks)
 include $(cpu-common-object-mks)
 include $(board-object-mks)
 include $(board-common-object-mks)
+include $(arch-common-object-mks)
 include $(core-object-mks)
 include $(libs-object-mks)
 include $(commands-object-mks)
@@ -277,6 +281,7 @@ cpu-y=$(foreach obj,$(cpu-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_
 cpu-common-y=$(foreach obj,$(cpu-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/cpu/common/$(obj))
 board-y=$(foreach obj,$(board-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(obj))
 board-common-y=$(foreach obj,$(board-common-objs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/common/$(obj))
+arch-common-y=$(foreach obj,$(arch-common-objs-y),$(build_dir)/arch/common/$(obj))
 core-y=$(foreach obj,$(core-objs-y),$(build_dir)/core/$(obj))
 libs-y=$(foreach obj,$(libs-objs-y),$(build_dir)/libs/$(obj))
 commands-y=$(foreach obj,$(commands-objs-y),$(build_dir)/commands/$(obj))
@@ -298,6 +303,7 @@ deps-y=$(cpu-y:.o=.dep)
 deps-y+=$(cpu-common-y:.o=.dep)
 deps-y+=$(board-y:.o=.dep)
 deps-y+=$(board-common-y:.o=.dep)
+deps-y+=$(arch-common-y:.o=.dep)
 deps-y+=$(core-y:.o=.dep)
 deps-y+=$(libs-y:.o=.dep)
 deps-y+=$(commands-y:.o=.dep)
@@ -315,8 +321,7 @@ deps-y+=$(drivers-m:.o=.dep)
 deps-y+=$(emulators-m:.o=.dep)
 
 # Setup list of all built-in objects
-all-y=$(build_dir)/arch/$(CONFIG_ARCH)/cpu/cpu.o
-all-y+=$(build_dir)/arch/$(CONFIG_ARCH)/board/board.o
+all-y=$(build_dir)/arch/arch.o
 all-y+=$(build_dir)/core/core.o
 ifneq ($(words $(libs-y)), 0)
 all-y+=$(build_dir)/libs/libs.o
@@ -384,10 +389,7 @@ $(build_dir)/vmm_tmp1.elf: $(build_dir)/linker.ld $(all-y)
 $(build_dir)/linker.ld: $(cpu_dir)/linker.ld
 	$(call compile_cpp,$@,$<)
 
-$(build_dir)/arch/$(CONFIG_ARCH)/cpu/cpu.o: $(cpu-y) $(cpu-common-y)
-	$(call merge_objs,$@,$^)
-
-$(build_dir)/arch/$(CONFIG_ARCH)/board/board.o: $(board-y) $(board-common-y)
+$(build_dir)/arch/arch.o: $(cpu-y) $(cpu-common-y) $(board-y) $(board-common-y) $(arch-common-y)
 	$(call merge_objs,$@,$^)
 
 $(build_dir)/core/core.o: $(core-y)
