@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <arch_io.h>
 #include <libs/libfdt.h>
+#include <generic_devtree.h>
 #include <cpu_mmu.h>
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
@@ -39,14 +40,9 @@ struct cpu_mmu_entry_ctrl {
 extern u8 def_pgtbl[];
 extern int def_pgtbl_tree[];
 extern unsigned long def_pgtbl_mode;
-#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
-
-extern virtual_addr_t devtree_virt;
-extern virtual_addr_t devtree_virt_base;
-extern physical_addr_t devtree_phys_base;
-extern virtual_size_t devtree_virt_size;
 
 void __attribute__ ((section(".entry")))
     __setup_initial_pgtbl(struct cpu_mmu_entry_ctrl *entry,
@@ -286,7 +282,7 @@ void __attribute__ ((section(".entry")))
 {
 	u32 i;
 	virtual_addr_t exec_end = exec_start + (load_end - load_start);
-#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	virtual_addr_t defterm_early_va;
 #endif
 	virtual_addr_t *dt_virt =
@@ -334,7 +330,7 @@ void __attribute__ ((section(".entry")))
 	entry.pgtbl_count++;
 	entry.next_pgtbl += PGTBL_TABLE_ENTCNT;
 
-#ifdef CONFIG_RISCV_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm
 	 * Note: This is for early debug purpose
 	 */
@@ -342,7 +338,7 @@ void __attribute__ ((section(".entry")))
 	__setup_initial_pgtbl(&entry,
 			      defterm_early_va,
 			      defterm_early_va + PGTBL_L0_BLOCK_SIZE,
-			      CONFIG_RISCV_DEFTERM_EARLY_BASE_PA,
+			      CONFIG_ARCH_GENERIC_DEFTERM_EARLY_BASE_PA,
 			      TRUE);
 #endif
 

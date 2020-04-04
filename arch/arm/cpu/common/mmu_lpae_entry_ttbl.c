@@ -38,7 +38,7 @@ struct mmu_lpae_entry_ctrl {
 
 extern u8 def_ttbl[];
 extern int def_ttbl_tree[];
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
 
@@ -199,7 +199,7 @@ void __attribute__ ((section(".entry")))
 {
 	u32 i;
 	virtual_addr_t exec_end = exec_start + (load_end - load_start);
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	virtual_addr_t defterm_early_va;
 #endif
 	virtual_addr_t *dt_virt =
@@ -237,7 +237,7 @@ void __attribute__ ((section(".entry")))
 	lpae_entry.ttbl_count++;
 	lpae_entry.next_ttbl += TTBL_TABLE_ENTCNT;
 
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm
 	 * Note: This is for early debug purpose
 	 */
@@ -245,7 +245,7 @@ void __attribute__ ((section(".entry")))
 	__setup_initial_ttbl(&lpae_entry,
 			     defterm_early_va,
 			     defterm_early_va + TTBL_L3_BLOCK_SIZE,
-			     (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
+			     (virtual_addr_t)CONFIG_ARCH_GENERIC_DEFTERM_EARLY_BASE_PA,
 			     AINDEX_DEVICE_nGnRE, TRUE);
 #endif
 

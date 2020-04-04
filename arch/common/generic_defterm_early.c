@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file defterm_early.c
+ * @file generic_defterm_early.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief arch default terminal early functions
+ * @brief arch generic default terminal early functions
  */
 
 #include <vmm_error.h>
@@ -28,11 +28,23 @@
 #include <vmm_host_io.h>
 #include <arch_defterm.h>
 
-u8 __aligned(0x1000) defterm_early_base[0x1000];
-static void *early_base = &defterm_early_base[CONFIG_DEFTERM_EARLY_BASE_PA &
+u8 __aligned(VMM_PAGE_SIZE) defterm_early_base[VMM_PAGE_SIZE];
+static void *early_base = &defterm_early_base[CONFIG_ARCH_GENERIC_DEFTERM_EARLY_BASE_PA &
 					      VMM_PAGE_MASK];
 
-#if defined(CONFIG_DEFTERM_EARLY_PL011)
+#if defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_SBI)
+
+#include <cpu_sbi.h>
+
+/*
+ * SBI based single character TX.
+ */
+void __init arch_defterm_early_putc(u8 ch)
+{
+	sbi_console_putchar((int)ch);
+}
+
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_PL011)
 
 #include <drv/serial/pl011.h>
 
@@ -48,7 +60,7 @@ void __init arch_defterm_early_putc(u8 ch)
 		;
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_UART8250_8BIT)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_UART8250_8BIT)
 
 #include <drv/serial/8250-uart.h>
 
@@ -62,7 +74,7 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, early_base + UART_THR_OFFSET);
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_UART8250_8BIT_4ALIGN)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_UART8250_8BIT_4ALIGN)
 
 #include <drv/serial/8250-uart.h>
 
@@ -76,7 +88,7 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, early_base + (UART_THR_OFFSET << 2));
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_UART8250_32BIT)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_UART8250_32BIT)
 
 #include <drv/serial/8250-uart.h>
 
@@ -90,7 +102,7 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writel(ch, early_base + (UART_THR_OFFSET << 2));
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_IMX)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_IMX)
 
 #include <drv/serial/imx-uart.h>
 
@@ -106,12 +118,12 @@ void __init arch_defterm_early_putc(u8 ch)
 	while (!(vmm_readl(early_base + IMX21_UTS) & UTS_TXEMPTY)) ;
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_SCIF) || defined(CONFIG_DEFTERM_EARLY_SCIFA)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_SCIF) || defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_SCIFA)
 
-#if defined(CONFIG_DEFTERM_EARLY_SCIF)
+#if defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_SCIF)
 #define SCIF_SCFTDR    (0x0C)    /* Transmit FIFO data register    */
 #define SCIF_SCFSR     (0x10)    /* Serial status register         */
-#elif defined(CONFIG_DEFTERM_EARLY_SCIFA)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_SCIFA)
 #define SCIF_SCFTDR    (0x20)    /* Transmit FIFO data register    */
 #define SCIF_SCFSR     (0x14)    /* Serial status register         */
 #endif
@@ -134,7 +146,7 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writew(scfsr, early_base + SCIF_SCFSR);
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_BCM283X_MU)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_BCM283X_MU)
 
 #include <drv/serial/bcm283x_mu.h>
 
@@ -150,7 +162,7 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, io);
 }
 
-#elif defined(CONFIG_DEFTERM_EARLY_ZYNQ_UART)
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_ZYNQ_UART)
 
 #include <drv/serial/zynq-uart.h>
 

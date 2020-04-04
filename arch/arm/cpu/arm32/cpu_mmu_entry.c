@@ -41,7 +41,7 @@ extern u8 defl1_ttbl[];
 extern u8 defl2_ttbl[];
 extern int defl2_ttbl_used[];
 extern virtual_addr_t defl2_ttbl_mapva[];
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
 
@@ -232,7 +232,7 @@ void __attribute__ ((section(".entry")))
 {
 	u32 i;
 	virtual_addr_t exec_end = exec_start + (load_end - load_start);
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	virtual_addr_t defterm_early_va;
 #endif
 	virtual_addr_t *dt_virt =
@@ -263,7 +263,7 @@ void __attribute__ ((section(".entry")))
 		((u32 *)entry.l1_base)[i] = 0x0;
 	}
 
-#ifdef CONFIG_DEFTERM_EARLY_PRINT
+#ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm
 	 * Note: This is for early debug purpose
 	 */
@@ -271,7 +271,7 @@ void __attribute__ ((section(".entry")))
 	__setup_initial_ttbl(&entry,
 			     defterm_early_va,
 			     defterm_early_va + TTBL_L2TBL_SMALL_PAGE_SIZE,
-			     (virtual_addr_t)CONFIG_DEFTERM_EARLY_BASE_PA,
+			     (virtual_addr_t)CONFIG_ARCH_GENERIC_DEFTERM_EARLY_BASE_PA,
 			     FALSE, TRUE);
 #endif
 
