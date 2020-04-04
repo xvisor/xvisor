@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smp_ipi.c
+ * @file generic_smp_ipi.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief Common IPI implementation
+ * @brief Generic IPI implementation
  */
 
 #include <vmm_error.h>
