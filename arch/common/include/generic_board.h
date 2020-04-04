@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Anup Patel.
+ * Copyright (c) 2014 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,8 +20,8 @@
  * @author Anup Patel (anup@brainfault.org)
  * @brief Generic board interface
  */
-#ifndef __GENERIC_BOARD_H_
-#define __GENERIC_BOARD_H_
+#ifndef __GENERIC_BOARD_H__
+#define __GENERIC_BOARD_H__
 
 #include <vmm_limits.h>
 #include <vmm_devtree.h>

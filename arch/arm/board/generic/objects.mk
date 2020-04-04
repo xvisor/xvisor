@@ -21,7 +21,6 @@
 # @brief list of Generic board objects.
 # */
 
-board-objs-y+= brd_main.o
 board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
 board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
 board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o

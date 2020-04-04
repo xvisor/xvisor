@@ -2,6 +2,15 @@
  * Copyright (c) 2018 Anup Patel.
  * All rights reserved.
  *
+ * Copyright (C) 2014 Institut de Recherche Technologique SystemX and OpenWide.
+ * All rights reserved.
+ *
+ * Modified by Jimmy Durand Wesolowski <jimmy.durand-wesolowski@openwide.fr>
+ * for board information implementation.
+ *
+ * Copyright (c) 2013 Sukanto Ghosh.
+ * All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
@@ -17,8 +26,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file brd_main.c
+ * @author Sukanto Ghosh (sukantoghosh@gmail.com)
  * @author Anup Patel (anup@brainfault.org)
- * @brief main source file for board specific code
+ * @brief generic board support
  */
 
 #include <vmm_error.h>
