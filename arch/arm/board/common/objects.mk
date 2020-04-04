@@ -21,7 +21,6 @@
 # @brief list of common objects.
 # */
 
-board-common-objs-y+=devtree.o
 board-common-objs-y+=defterm.o
 board-common-objs-$(CONFIG_DEFTERM_EARLY_PRINT)+=defterm_early.o
 board-common-objs-$(CONFIG_ARM_SMP_OPS)+=smp_ops.o

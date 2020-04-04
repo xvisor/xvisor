@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2018 Anup Patel.
+# Copyright (c) 2020 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,12 +18,7 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of common objects.
+# @brief list of common architecture objects.
 # */
 
-board-common-objs-y+=defterm.o
-board-common-objs-$(CONFIG_RISCV_DEFTERM_EARLY_PRINT)+=defterm_early.o
-board-common-objs-$(CONFIG_RISCV_SMP_OPS)+=smp_ops.o
-board-common-objs-$(CONFIG_RISCV_SMP_OPS)+=smp_ops_default.o
-board-common-objs-$(CONFIG_RISCV_SMP_OPS)+=smp_ops_sbi.o
-board-common-objs-$(CONFIG_RISCV_SMP_IPI)+=smp_ipi.o
+arch-common-objs-$(CONFIG_ARCH_GENERIC_DEVTREE)+=generic_devtree.o

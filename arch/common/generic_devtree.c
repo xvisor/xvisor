@@ -16,9 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file devtree.c
+ * @file generic_devtree.c
  * @author Anup Patel (anup@brainfault.org)
- * @brief arch device tree functions using libfdt library
+ * @brief generic arch device tree functions using libfdt library
  */
 
 #include <vmm_error.h>
@@ -29,6 +29,7 @@
 #include <arch_cpu_aspace.h>
 #include <arch_devtree.h>
 #include <arch_sections.h>
+#include <generic_devtree.h>
 
 /*
  * Note: All devtree_<xyz> global variables are initialized by

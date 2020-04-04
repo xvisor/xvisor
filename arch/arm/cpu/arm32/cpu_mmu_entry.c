@@ -24,6 +24,7 @@
 #include <vmm_types.h>
 #include <arch_io.h>
 #include <libs/libfdt.h>
+#include <generic_devtree.h>
 #include <cpu_defines.h>
 #include <cpu_mmu.h>
 
@@ -43,11 +44,6 @@ extern virtual_addr_t defl2_ttbl_mapva[];
 #ifdef CONFIG_DEFTERM_EARLY_PRINT
 extern u8 defterm_early_base[];
 #endif
-
-extern virtual_addr_t devtree_virt;
-extern virtual_addr_t devtree_virt_base;
-extern physical_addr_t devtree_phys_base;
-extern virtual_size_t devtree_virt_size;
 
 void __attribute__ ((section(".entry")))
     __setup_initial_ttbl(struct mmu_entry_ctrl *entry,
