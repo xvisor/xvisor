@@ -21,5 +21,6 @@
 # @brief list of common architecture objects.
 # */
 
+arch-common-objs-$(CONFIG_ARCH_GENERIC_DEFTERM)+=generic_defterm.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_DEVTREE)+=generic_devtree.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_SMP_IPI)+=generic_smp_ipi.o

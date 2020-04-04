@@ -16,11 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file defterm.c
+ * @file generic_defterm.c
  * @author Anup Patel (anup@brainfault.org)
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief arch default terminal functions using drivers
+ * @brief generic arch default terminal functions using drivers
  */
 
 #include <vmm_error.h>
