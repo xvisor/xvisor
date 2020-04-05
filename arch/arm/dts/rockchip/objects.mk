@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2018 Anup Patel.
+# Copyright (c) 2019 PT Switch.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,9 +17,8 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Anup Patel (anup@brainfault.org)
-# @brief list of Marvell DTBs.
+# @author Andy Dean (acd@kynesim.co.uk)
+# @brief list of Rockchip DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV8)+=dts/marvell/armada-8040-mcbin.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/marvell/armada-8040-clearfog-8k-gt.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=rockchip/rk3399-rockpro64.dtb

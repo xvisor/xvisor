@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2014 Jean-Christophe Dubois.
+# Copyright (c) 2014 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -9,7 +9,7 @@
 # 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License
@@ -17,13 +17,15 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Jean-Christophe Dubois (jcd@tribudubois.net)
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of freescale DTBs.
+# @brief list of ARM Ltd DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/freescale/imx6dl-sabrelite.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/freescale/sabrelite/one_guest_sabrelite.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/freescale/sabrelite/two_guest_sabrelite.dtb
-board-dtbs-$(CONFIG_ARMV6)+=dts/freescale/imx31-kzm.dtb
-board-dtbs-$(CONFIG_ARMV5)+=dts/freescale/imx25-pdk.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=arm/foundation-v8-gicv2.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=arm/foundation-v8-gicv3.dtb
+arch-dtbs-$(CONFIG_ARMV7A_VE)+=arm/vexpress-v2p-ca15-tc1.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=arm/arm-realview-pba8.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=arm/vexpress-v2p-ca9.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=arm/vexpress-v2p-ca15-tc1-nove.dtb
+arch-dtbs-$(CONFIG_ARMV6)+=arm/arm-realview-eb-11mp-ctrevb.dtb
+arch-dtbs-$(CONFIG_ARMV5)+=arm/versatile-pb.dtb

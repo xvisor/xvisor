@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2015 Anup Patel.
+# Copyright (c) 2018 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,9 +18,10 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of Samsung DTBs.
+# @brief list of Broadcom DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4210-nuri.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4412-odroidx.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/samsung/exynos4210-smdkc210.dtb
+arch-dtbs-$(CONFIG_ARMV6)+=broadcom/bcm2835-rpi-b.dtb
+arch-dtbs-$(CONFIG_ARMV7A_VE)+=broadcom/bcm2836-rpi-2-b.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=broadcom/bcm2837-rpi-3-b.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=broadcom/bcm2838-rpi-4-b.dtb

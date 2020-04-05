@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2019 PT Switch.
+# Copyright (c) 2015 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,8 +17,10 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
-# @author Andy Dean (acd@kynesim.co.uk)
-# @brief list of Rockchip DTBs.
+# @author Anup Patel (anup@brainfault.org)
+# @brief list of Samsung DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV8)+=dts/rockchip/rk3399-rockpro64.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=samsung/exynos4210-nuri.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=samsung/exynos4412-odroidx.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=samsung/exynos4210-smdkc210.dtb

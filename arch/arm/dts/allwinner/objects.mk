@@ -22,6 +22,6 @@
 # @brief list of Allwinnner DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/allwinner/sun7i-a20-cubieboard2.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/allwinner/sun4i-a10-cubieboard.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/allwinner/sun4i-a10-hackberry.dtb
+arch-dtbs-$(CONFIG_ARMV7A_VE)+=allwinner/sun7i-a20-cubieboard2.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=allwinner/sun4i-a10-cubieboard.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=allwinner/sun4i-a10-hackberry.dtb

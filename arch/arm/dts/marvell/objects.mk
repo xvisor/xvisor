@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2015 Anup Patel.
+# Copyright (c) 2018 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,8 +18,8 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of TI DTBs.
+# @brief list of Marvell DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV7A)+=dts/ti/omap3-beagle.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/ti/omap3-beagle-xm.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=marvell/armada-8040-mcbin.dtb
+arch-dtbs-$(CONFIG_ARMV8)+=marvell/armada-8040-clearfog-8k-gt.dtb

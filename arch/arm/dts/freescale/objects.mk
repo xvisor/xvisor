@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2018 Anup Patel.
+# Copyright (c) 2014 Jean-Christophe Dubois.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -9,7 +9,7 @@
 # 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License
@@ -17,11 +17,13 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # @file objects.mk
+# @author Jean-Christophe Dubois (jcd@tribudubois.net)
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of Broadcom DTBs.
+# @brief list of freescale DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV6)+=dts/broadcom/bcm2835-rpi-b.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/broadcom/bcm2836-rpi-2-b.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/broadcom/bcm2837-rpi-3-b.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/broadcom/bcm2838-rpi-4-b.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=freescale/imx6dl-sabrelite.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=freescale/sabrelite/one_guest_sabrelite.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=freescale/sabrelite/two_guest_sabrelite.dtb
+arch-dtbs-$(CONFIG_ARMV6)+=freescale/imx31-kzm.dtb
+arch-dtbs-$(CONFIG_ARMV5)+=freescale/imx25-pdk.dtb

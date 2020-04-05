@@ -1,5 +1,5 @@
 #/**
-# Copyright (c) 2014 Anup Patel.
+# Copyright (c) 2015 Anup Patel.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,14 +18,8 @@
 #
 # @file objects.mk
 # @author Anup Patel (anup@brainfault.org)
-# @brief list of ARM Ltd DTBs.
+# @brief list of TI DTBs.
 # */
 
-board-dtbs-$(CONFIG_ARMV8)+=dts/arm/foundation-v8-gicv2.dtb
-board-dtbs-$(CONFIG_ARMV8)+=dts/arm/foundation-v8-gicv3.dtb
-board-dtbs-$(CONFIG_ARMV7A_VE)+=dts/arm/vexpress-v2p-ca15-tc1.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/arm-realview-pba8.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/vexpress-v2p-ca9.dtb
-board-dtbs-$(CONFIG_ARMV7A)+=dts/arm/vexpress-v2p-ca15-tc1-nove.dtb
-board-dtbs-$(CONFIG_ARMV6)+=dts/arm/arm-realview-eb-11mp-ctrevb.dtb
-board-dtbs-$(CONFIG_ARMV5)+=dts/arm/versatile-pb.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=ti/omap3-beagle.dtb
+arch-dtbs-$(CONFIG_ARMV7A)+=ti/omap3-beagle-xm.dtb

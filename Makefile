@@ -101,6 +101,7 @@ export arch_dir=$(CURDIR)/arch
 export arch_common_dir=$(CURDIR)/arch/common
 export cpu_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/$(CONFIG_CPU)
 export cpu_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/cpu/common
+export dts_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/dts
 export board_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)
 export board_common_dir=$(CURDIR)/arch/$(CONFIG_ARCH)/board/common
 export tools_dir=$(CURDIR)/tools
@@ -249,6 +250,7 @@ inst_file_list =  $(V)mkdir -p $(1); \
 # Setup list of objects.mk files
 cpu-object-mks=$(shell if [ -d $(cpu_dir) ]; then find $(cpu_dir) -iname "objects.mk" | sort -r; fi)
 cpu-common-object-mks=$(shell if [ -d $(cpu_common_dir) ]; then find $(cpu_common_dir) -iname "objects.mk" | sort -r; fi)
+dts-object-mks=$(shell if [ -d $(dts_dir) ]; then find $(dts_dir) -iname "objects.mk" | sort -r; fi)
 board-object-mks=$(shell if [ -d $(board_dir) ]; then find $(board_dir) -iname "objects.mk" | sort -r; fi)
 board-common-object-mks=$(shell if [ -d $(board_common_dir) ]; then find $(board_common_dir) -iname "objects.mk" | sort -r; fi)
 arch-common-object-mks=$(shell if [ -d $(arch_common_dir) ]; then find $(arch_common_dir) -iname "objects.mk" | sort -r; fi)
@@ -266,6 +268,7 @@ all:
 # Include all object.mk files
 include $(cpu-object-mks)
 include $(cpu-common-object-mks)
+include $(dts-object-mks)
 include $(board-object-mks)
 include $(board-common-object-mks)
 include $(arch-common-object-mks)
@@ -288,7 +291,7 @@ commands-y=$(foreach obj,$(commands-objs-y),$(build_dir)/commands/$(obj))
 daemons-y=$(foreach obj,$(daemons-objs-y),$(build_dir)/daemons/$(obj))
 drivers-y=$(foreach obj,$(drivers-objs-y),$(build_dir)/drivers/$(obj))
 emulators-y=$(foreach obj,$(emulators-objs-y),$(build_dir)/emulators/$(obj))
-dtbs-y=$(foreach dtb,$(board-dtbs-y),$(build_dir)/arch/$(CONFIG_ARCH)/board/$(CONFIG_BOARD)/$(dtb))
+dtbs-y=$(foreach dtb,$(arch-dtbs-y),$(build_dir)/arch/$(CONFIG_ARCH)/dts/$(dtb))
 
 # Setup list of module objects
 core-m=$(foreach obj,$(core-objs-m),$(build_dir)/core/$(obj))
