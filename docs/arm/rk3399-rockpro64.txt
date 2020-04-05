@@ -104,7 +104,7 @@ Following are steps to create these images and boot Xvisor on the RockPro64:
 
   [16. Copy uvmm.bin, DTB, and udisk.img to the linux-root partition of the card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/rockchip/rk3399-rockpro64.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/dts/rockchip/rk3399-rockpro64.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
   [17. Unmount linux-root partition (or partition 7) of SD card from your development machine]

@@ -140,7 +140,7 @@ have been successfully tested.
      ,----
      | qemu-system-arm -M vexpress-a9 -m 512M -display none -serial stdio \
      |   -kernel build/vmm.bin \
-     |   -dtb    build/arch/arm/board/generic/dts/arm/vexpress-v2p-ca9.dtb \
+     |   -dtb    build/arch/arm/dts/arm/vexpress-v2p-ca9.dtb \
      |   -initrd build/disk.img
      `----
 

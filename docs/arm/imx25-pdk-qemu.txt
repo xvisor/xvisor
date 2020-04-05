@@ -80,7 +80,7 @@ guest with Xvisor running on QEMU i.MX25 PDK Host:
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]
-  # qemu-system-arm -M imx25-pdk -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/freescale/imx25-pdk.dtb -initrd build/disk.img
+  # qemu-system-arm -M imx25-pdk -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/dts/freescale/imx25-pdk.dtb -initrd build/disk.img
 
   [15. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

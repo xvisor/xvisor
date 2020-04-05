@@ -119,7 +119,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi2:
 
   [16. Copy uvmm.bin, DTB, and udisk.img to data partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/broadcom/bcm2836-rpi-2-b.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/dts/broadcom/bcm2836-rpi-2-b.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_data_partition_of_sd_card>
 
   [17. Unmount data partition (or partition 2) of SD card from your development machine]

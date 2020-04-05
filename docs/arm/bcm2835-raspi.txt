@@ -126,7 +126,7 @@ Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [18. Copy uvmm.bin, DTB, and disk.im to data partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_data_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/broadcom/bcm2835-rpi-b.dtb <path_to_mounted_data_partition_of_sd_card>
+  # cp -f build/arch/arm/dts/broadcom/bcm2835-rpi-b.dtb <path_to_mounted_data_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_dat_partition_of_sd_card>
 
   [19. Unmount data partition (or partition 2) of SD card from your development machine]
@@ -265,7 +265,7 @@ Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]
-  # qemu-system-arm -M raspi -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/broadcom/bcm2835-rpi-b.dtb -initrd build/disk.img
+  # qemu-system-arm -M raspi -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/dts/broadcom/bcm2835-rpi-b.dtb -initrd build/disk.img
 
   [15. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0

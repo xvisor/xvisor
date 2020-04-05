@@ -94,7 +94,7 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
 
   [18. Copy uvmm.bin, DTB, and disk image to boot partition of SD card]
   # cp -f build/uvmm.bin <path_to_mounted_boot_partition_of_sd_card>
-  # cp -f build/arch/arm/board/generic/dts/ti/omap3-beagle-xm.dtb <path_to_mounted_boot_partition_of_sd_card>
+  # cp -f build/arch/arm/dts/ti/omap3-beagle-xm.dtb <path_to_mounted_boot_partition_of_sd_card>
   # cp -f build/udisk.img <path_to_mounted_boot_partition_of_sd_card>
 
   [19. Unmount boot partition (or partition 0) of SD card from your development machine]
@@ -252,7 +252,7 @@ follows:
   # mkimage -A arm -O linux -T ramdisk -a 0x81000000 -n "Xvisor ramdisk" -d build/disk.img build/udisk.img
 
   [17. Create a flat binary with all our binaries appended]
-  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/board/generic/dts/ti/omap3-beagle.dtb@0x680000 build/udisk.img@0x700000
+  # ./tools/scripts/memimg.py -a 0 -o build/beagle.img docs/arm/omap3-beagle-x-load-1.5.0.bin.ift@0x0 <path-to-u-boot-binary>/u-boot.bin@0x80000 build/uvmm.bin@0x280000 ./build/arch/arm/dts/ti/omap3-beagle.dtb@0x680000 build/udisk.img@0x700000
 
   [18. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc

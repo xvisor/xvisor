@@ -72,7 +72,7 @@ Realview-EB-MPCore Guest with Xvisor running on QEMU Realview-EB-MPCore Host:
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]
-  # qemu-system-arm -M realview-eb-mpcore -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/board/generic/dts/arm/arm-realview-eb-11mp-ctrevb.dtb -initrd build/disk.img
+  # qemu-system-arm -M realview-eb-mpcore -m 512M -display none -serial stdio -kernel build/vmm.bin -dtb build/arch/arm/dts/arm/arm-realview-eb-11mp-ctrevb.dtb -initrd build/disk.img
 
   [15. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
