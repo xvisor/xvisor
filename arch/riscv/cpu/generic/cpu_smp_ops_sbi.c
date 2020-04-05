@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smp_ops_sbi.c
+ * @file cpu_smp_ops_sbi.c
  * @author Anup Patel (anup.patel@wdc.com)
  * @brief SBI HSM based SMP operations
  */
@@ -30,8 +30,8 @@
 #include <vmm_stdio.h>
 
 #include <cpu_sbi.h>
+#include <cpu_smp_ops.h>
 #include <riscv_sbi.h>
-#include <smp_ops.h>
 
 static int sbi_hart_start(unsigned long hartid, unsigned long saddr,
 			  unsigned long priv)

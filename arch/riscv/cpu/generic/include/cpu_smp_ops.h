@@ -16,12 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smp_ops.h
+ * @file cpu_smp_ops.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Common SMP operations interface
+ * @brief Common RISC-V SMP operations interface
  */
-#ifndef __SMP_OPS_H_
-#define __SMP_OPS_H_
+#ifndef __CPU_SMP_OPS_H__
+#define __CPU_SMP_OPS_H__
 
 #include <vmm_devtree.h>
 

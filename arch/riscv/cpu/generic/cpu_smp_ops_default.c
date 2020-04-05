@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smp_ops_default.c
+ * @file cpu_smp_ops_default.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Default SMP operations
  */
@@ -29,7 +29,7 @@
 #include <vmm_host_aspace.h>
 #include <arch_barrier.h>
 
-#include <smp_ops.h>
+#include <cpu_smp_ops.h>
 
 static void __init smp_default_ops_init(void)
 {

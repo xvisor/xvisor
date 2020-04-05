@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file smp_ops.c
+ * @file cpu_smp_ops.c
  * @author Anup Patel (anup@brainfault.org)
  * @brief Common SMP operations
  */
@@ -33,7 +33,7 @@
 #include <arch_barrier.h>
 
 #include <riscv_csr.h>
-#include <smp_ops.h>
+#include <cpu_smp_ops.h>
 
 #undef DEBUG
 
