@@ -32,4 +32,8 @@ cpu-common-objs-$(CONFIG_ARM_VGIC)+=vgic_v3.o
 cpu-common-objs-$(CONFIG_ARM_GENERIC_TIMER)+=generic_timer.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae.o
 cpu-common-objs-$(CONFIG_ARM_MMU_LPAE)+=mmu_lpae_entry_ttbl.o
-
+cpu-common-objs-$(CONFIG_ARM_SMP_OPS)+=smp_ops.o
+cpu-common-objs-$(CONFIG_ARM_SMP_SPIN_TABLE)+=smp_spin_table.o
+cpu-common-objs-$(CONFIG_ARM_SMP_SCU)+=smp_scu.o
+cpu-common-objs-$(CONFIG_ARM_SMP_PSCI)+=smp_psci.o
+cpu-common-objs-$(CONFIG_ARM_SMP_IMX)+=smp_imx.o
