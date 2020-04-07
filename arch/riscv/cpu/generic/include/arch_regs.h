@@ -162,6 +162,7 @@ struct riscv_priv {
 	/* CSR state */
 	unsigned long hie;
 	unsigned long hip;
+	unsigned long hvip;
 	unsigned long vsstatus;
 	unsigned long vstvec;
 	unsigned long vsscratch;

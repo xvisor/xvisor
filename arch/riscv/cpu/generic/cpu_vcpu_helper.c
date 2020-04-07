@@ -280,11 +280,14 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SPVP;
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
 
-	/* TODO: Update HSTATUS.VSXL on non-32bit Host */
+	/* TODO: Update HSTATUS.VSXL for 32bit Guest on 64-bit Host */
+
+	/* TODO: Update HSTATUS.VSBE for big-endian Guest */
 
 	/* Update VCPU CSRs */
 	riscv_priv(vcpu)->hie = 0;
 	riscv_priv(vcpu)->hip = 0;
+	riscv_priv(vcpu)->hvip = 0;
 	riscv_priv(vcpu)->vsstatus = 0;
 	riscv_priv(vcpu)->vstvec = 0;
 	riscv_priv(vcpu)->vsscratch = 0;
@@ -350,6 +353,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv = riscv_priv(tvcpu);
 			priv->hie = csr_read(CSR_HIE);
 			priv->hip = csr_read(CSR_HIP);
+			priv->hvip = csr_read(CSR_HVIP);
 			priv->vsstatus = csr_read(CSR_VSSTATUS);
 			priv->vstvec = csr_read(CSR_VSTVEC);
 			priv->vsscratch = csr_read(CSR_VSSCRATCH);
@@ -375,7 +379,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			(u32)(riscv_guest_priv(vcpu->guest)->time_delta >> 32));
 #endif
 		csr_write(CSR_HIE, priv->hie);
-		csr_write(CSR_HIP, priv->hip);
+		csr_write(CSR_HVIP, priv->hvip);
 		csr_write(CSR_VSSTATUS, priv->vsstatus);
 		csr_write(CSR_VSTVEC, priv->vstvec);
 		csr_write(CSR_VSSCRATCH, priv->vsscratch);
@@ -472,26 +476,25 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "        hie", priv->hie, "        hip", priv->hip);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   vsstatus", priv->vsstatus, "     vstvec", priv->vstvec);
+		    "       hvip", priv->hvip, "   vsstatus", priv->vsstatus);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "      vsatp", priv->vsatp, "     vstvec", priv->vstvec);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "  vsscratch", priv->vsscratch, "      vsepc", priv->vsepc);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "    vscause", priv->vscause, "     vstval", priv->vstval);
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
-		    "      vsatp", priv->vsatp);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }
 
 void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,
-				  unsigned long scause,
-				  unsigned long stval,
-				  unsigned long htval)
+				  unsigned long scause, unsigned long stval,
+				  unsigned long htval, unsigned long htinst)
 {
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
-		    "   scause", scause, "    stval", stval);
-	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
-		    "    htval", htval);
+		    "     scause", scause, "      stval", stval);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
+		    "      htval", htval, "     htinst", htinst);
 }
 
 void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)

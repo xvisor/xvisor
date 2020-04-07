@@ -61,8 +61,8 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	}
 	irq_mask = 1UL << irq_no;
 
-	csr_set(CSR_HIP, irq_mask);
-	riscv_priv(vcpu)->hip = csr_read(CSR_HIP);
+	csr_set(CSR_HVIP, irq_mask);
+	riscv_priv(vcpu)->hvip = csr_read(CSR_HVIP);
 
 	return VMM_OK;
 }
@@ -76,8 +76,8 @@ int arch_vcpu_irq_clear(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
 	}
 	irq_mask = 1UL << irq_no;
 
-	csr_clear(CSR_HIP, irq_mask);
-	riscv_priv(vcpu)->hip = csr_read(CSR_HIP);
+	csr_clear(CSR_HVIP, irq_mask);
+	riscv_priv(vcpu)->hvip = csr_read(CSR_HVIP);
 
 	return VMM_OK;
 }
