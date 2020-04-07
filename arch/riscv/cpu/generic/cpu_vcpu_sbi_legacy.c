@@ -70,12 +70,10 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
 		break;
 	case SBI_EXT_0_1_SEND_IPI:
 		if (args[0])
-			hmask = __cpu_vcpu_unpriv_read_ulong(args[0],
-							     &out_trap->cause);
+			hmask = __cpu_vcpu_unpriv_read_ulong(args[0], out_trap);
 		else
 			hmask = (1UL << guest->vcpu_count) - 1;
-		if (out_trap->cause) {
-			out_trap->tval = args[0];
+		if (out_trap->scause) {
 			break;
 		}
 		for_each_set_bit(i, &hmask, BITS_PER_LONG) {
@@ -99,12 +97,10 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
 	case SBI_EXT_0_1_REMOTE_SFENCE_VMA:
 	case SBI_EXT_0_1_REMOTE_SFENCE_VMA_ASID:
 		if (args[0])
-			hmask = __cpu_vcpu_unpriv_read_ulong(args[0],
-							     &out_trap->cause);
+			hmask = __cpu_vcpu_unpriv_read_ulong(args[0], out_trap);
 		else
 			hmask = (1UL << guest->vcpu_count) - 1;
-		if (out_trap->cause) {
-			out_trap->tval = args[0];
+		if (out_trap->scause) {
 			break;
 		}
 		vmm_cpumask_clear(&cm);

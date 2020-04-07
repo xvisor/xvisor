@@ -79,6 +79,7 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 	int rc = VMM_OK;
 	bool panic = TRUE;
 	const char *msg = "trap handling failed";
+	struct cpu_vcpu_trap trap;
 	struct vmm_vcpu *vcpu;
 
 	if ((cause == CAUSE_STORE_PAGE_FAULT) &&
@@ -114,10 +115,12 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 	case CAUSE_STORE_GUEST_PAGE_FAULT:
 		msg = "page fault failed";
 		if (regs->hstatus & HSTATUS_SPV) {
-			rc = cpu_vcpu_page_fault(vcpu, regs,
-						 cause, csr_read(CSR_STVAL),
-						 csr_read(CSR_HTVAL),
-						 csr_read(CSR_HTINST));
+			trap.sepc = regs->sepc;
+			trap.scause = cause;
+			trap.stval = csr_read(CSR_STVAL);
+			trap.htval = csr_read(CSR_HTVAL);
+			trap.htinst = csr_read(CSR_HTINST);
+			rc = cpu_vcpu_page_fault(vcpu, regs, &trap);
 			panic = FALSE;
 		} else {
 			rc = VMM_EINVALID;

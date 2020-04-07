@@ -26,16 +26,18 @@
 
 #include <vmm_types.h>
 
+struct cpu_vcpu_trap;
+
 /* Read instruction from Guest memory
  * Note: This function should only be called from normal context
  */
 unsigned long __cpu_vcpu_unpriv_read_insn(unsigned long guest_addr,
-					  unsigned long *trap_scause);
+					  struct cpu_vcpu_trap *trap);
 
 /* Read unsigned long from Guest memory
  * Note: This function should only be called from normal context
  */
 unsigned long __cpu_vcpu_unpriv_read_ulong(unsigned long guest_addr,
-					   unsigned long *trap_scause);
+					   struct cpu_vcpu_trap *trap);
 
 #endif

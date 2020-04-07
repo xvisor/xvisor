@@ -23,13 +23,25 @@
 #ifndef _CPU_VCPU_TRAP_H__
 #define _CPU_VCPU_TRAP_H__
 
+#include <vmm_const.h>
+
+#define RISCV_VCPU_TRAP_SEPC	(0 * __SIZEOF_POINTER__)
+#define RISCV_VCPU_TRAP_SCAUSE	(1 * __SIZEOF_POINTER__)
+#define RISCV_VCPU_TRAP_STVAL	(2 * __SIZEOF_POINTER__)
+#define RISCV_VCPU_TRAP_HTVAL	(3 * __SIZEOF_POINTER__)
+#define RISCV_VCPU_TRAP_HTINST	(4 * __SIZEOF_POINTER__)
+
+#ifndef __ASSEMBLY__
+
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
 struct cpu_vcpu_trap {
-	unsigned long cause;
-	unsigned long tval;
-	unsigned long epc;
+	unsigned long sepc;
+	unsigned long scause;
+	unsigned long stval;
+	unsigned long htval;
+	unsigned long htinst;
 };
 
 int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
@@ -38,13 +50,12 @@ int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
 
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			unsigned long cause,
-			unsigned long stval,
-			unsigned long htval,
-			unsigned long htinst);
+			struct cpu_vcpu_trap *trap);
 
 int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval);
+
+#endif
 
 #endif

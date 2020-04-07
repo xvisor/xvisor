@@ -21,13 +21,11 @@
  * @brief RISC-V low-level unpriv access functions
  */
 
+#include <cpu_vcpu_trap.h>
 #include <riscv_asm.h>
 #include <riscv_encoding.h>
 
-.macro SETUP_TRAP __insn_len, __stvec, __tscause
-	/* Setup registers for unprivilege access trap handling */
-	add	\__tscause, zero, zero
-
+.macro SETUP_TRAP __insn_len, __stvec, __ttmp, __taddr
 	/* Change to Temporary exception handler */
 	la	\__stvec, 998f
 	csrrw	\__stvec, CSR_STVEC, \__stvec
@@ -36,10 +34,18 @@
 	/* Temporary exception handler */
 	.align 2
 998:
-	csrr	\__tscause, CSR_SEPC
-	addi	\__tscause, \__tscause, \__insn_len
-	csrw	CSR_SEPC, \__tscause
-	csrr	\__tscause, CSR_SCAUSE
+	csrr	\__ttmp, CSR_SEPC
+	REG_S	\__ttmp, RISCV_VCPU_TRAP_SEPC(\__taddr)
+	addi	\__ttmp, \__ttmp, \__insn_len
+	csrw	CSR_SEPC, \__ttmp
+	csrr	\__ttmp, CSR_SCAUSE
+	REG_S	\__ttmp, RISCV_VCPU_TRAP_SCAUSE(\__taddr)
+	csrr	\__ttmp, CSR_STVAL
+	REG_S	\__ttmp, RISCV_VCPU_TRAP_STVAL(\__taddr)
+	csrr	\__ttmp, CSR_HTVAL
+	REG_S	\__ttmp, RISCV_VCPU_TRAP_HTVAL(\__taddr)
+	csrr	\__ttmp, CSR_HTINST
+	REG_S	\__ttmp, RISCV_VCPU_TRAP_HTINST(\__taddr)
 	sret
 999:
 .endm
@@ -49,9 +55,9 @@
 	csrw	CSR_STVEC, \__stvec
 .endm
 
-.macro SETUP_UNPRIV __insn_len, __stvec, __tscause
+.macro SETUP_UNPRIV __insn_len, __stvec, __ttmp, __taddr
 	/* Setup Trap */
-	SETUP_TRAP \__insn_len, \__stvec, \__tscause
+	SETUP_TRAP \__insn_len, \__stvec, \__ttmp, \__taddr
 .endm
 
 .macro CLEANUP_UNPRIV __stvec
@@ -63,7 +69,7 @@
 	.global __cpu_vcpu_unpriv_read_insn
 __cpu_vcpu_unpriv_read_insn:
 	/* Setup unprivilege access */
-	SETUP_UNPRIV 4, t0, t1
+	SETUP_UNPRIV 4, t0, t1, a1
 
 	/*
 	 * Read instruction (only t2, t3, t4, t5 and t6 registers available)
@@ -87,9 +93,6 @@ __cpu_vcpu_unpriv_read_insn:
 	/* Cleanup unprivilege access */
 	CLEANUP_UNPRIV t0
 
-	/* Return trap details */
-	REG_S	t1, (a1)
-
 	/* Return to C code */
 	ret
 
@@ -97,7 +100,7 @@ __cpu_vcpu_unpriv_read_insn:
 	.global __cpu_vcpu_unpriv_read_ulong
 __cpu_vcpu_unpriv_read_ulong:
 	/* Setup unprivilege access */
-	SETUP_UNPRIV 2, t0, t1
+	SETUP_UNPRIV 2, t0, t1, a1
 
 	/*
 	 * Read instruction (only t2, t3, t4, t5 and t6 registers available)
@@ -118,9 +121,6 @@ __cpu_vcpu_unpriv_read_ulong:
 
 	/* Cleanup unprivilege access */
 	CLEANUP_UNPRIV t0
-
-	/* Return trap details */
-	REG_S	t1, (a1)
 
 	/* Return to C code */
 	ret

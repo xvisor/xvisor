@@ -57,9 +57,9 @@ int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
 	csr_write(CSR_VSSTATUS, vsstatus);
 
 	/* Update Guest SCAUSE, STVAL, and SEPC */
-	csr_write(CSR_VSCAUSE, trap->cause);
-	csr_write(CSR_VSTVAL, trap->tval);
-	csr_write(CSR_VSEPC, trap->epc);
+	csr_write(CSR_VSCAUSE, trap->scause);
+	csr_write(CSR_VSTVAL, trap->stval);
+	csr_write(CSR_VSEPC, trap->sepc);
 
 	/* Set Guest PC to Guest exception vector */
 	regs->sepc = csr_read(CSR_VSTVEC);
@@ -189,11 +189,11 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		 * Bit[0] == 0 implies trapped instruction value is
 		 * zero or special value.
 		 */
-		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &trap.cause);
-		if (trap.cause) {
-			if (trap.cause == CAUSE_LOAD_PAGE_FAULT)
-				trap.cause = CAUSE_FETCH_PAGE_FAULT;
-			trap.epc = trap.tval = regs->sepc;
+		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &trap);
+		if (trap.scause) {
+			if (trap.scause == CAUSE_LOAD_PAGE_FAULT)
+				trap.scause = CAUSE_FETCH_PAGE_FAULT;
+			trap.sepc = trap.stval = regs->sepc;
 			return cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 		}
 	}
@@ -313,11 +313,11 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 		 * Bit[0] == 0 implies trapped instruction value is
 		 * zero or special value.
 		 */
-		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &trap.cause);
-		if (trap.cause) {
-			if (trap.cause == CAUSE_LOAD_PAGE_FAULT)
-				trap.cause = CAUSE_FETCH_PAGE_FAULT;
-			trap.epc = trap.tval = regs->sepc;
+		insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &trap);
+		if (trap.scause) {
+			if (trap.scause == CAUSE_LOAD_PAGE_FAULT)
+				trap.scause = CAUSE_FETCH_PAGE_FAULT;
+			trap.sepc = trap.stval = regs->sepc;
 			return cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 		}
 	}
@@ -392,29 +392,26 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
-			unsigned long cause,
-			unsigned long stval,
-			unsigned long htval,
-			unsigned long htinst)
+			struct cpu_vcpu_trap *trap)
 {
 	struct vmm_region *reg;
 	physical_addr_t fault_addr;
 
-	fault_addr = ((physical_addr_t)htval << 2);
-	fault_addr |= ((physical_addr_t)stval & 0x3);
+	fault_addr = ((physical_addr_t)trap->htval << 2);
+	fault_addr |= ((physical_addr_t)trap->stval & 0x3);
 
 	reg = vmm_guest_find_region(vcpu->guest, fault_addr,
 				    VMM_REGION_VIRTUAL | VMM_REGION_MEMORY,
 				    FALSE);
 	if (reg) {
 		/* Emulate load/store instructions for virtual device */
-		switch (cause) {
+		switch (trap->scause) {
 		case CAUSE_LOAD_GUEST_PAGE_FAULT:
 			return cpu_vcpu_emulate_load(vcpu, regs,
-						     fault_addr, htinst);
+						     fault_addr, trap->htinst);
 		case CAUSE_STORE_GUEST_PAGE_FAULT:
 			return cpu_vcpu_emulate_store(vcpu, regs,
-						      fault_addr, htinst);
+						      fault_addr, trap->htinst);
 		default:
 			return VMM_ENOTSUPP;
 		};
@@ -431,9 +428,9 @@ static int truly_illegal_insn(struct vmm_vcpu *vcpu,
 	struct cpu_vcpu_trap trap;
 
 	/* Redirect trap to Guest VCPU */
-	trap.cause = CAUSE_ILLEGAL_INSTRUCTION;
-	trap.tval = insn;
-	trap.epc = regs->sepc;
+	trap.sepc = regs->sepc;
+	trap.scause = CAUSE_ILLEGAL_INSTRUCTION;
+	trap.stval = insn;
 	return cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 }
 
@@ -514,12 +511,11 @@ int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
 
 	if (unlikely((insn & 3) != 3)) {
 		if (insn == 0) {
-			insn = __cpu_vcpu_unpriv_read_insn(regs->sepc,
-							   &trap.cause);
-			if (trap.cause) {
-				if (trap.cause == CAUSE_LOAD_PAGE_FAULT)
-					trap.cause = CAUSE_FETCH_PAGE_FAULT;
-				trap.tval = trap.epc = regs->sepc;
+			insn = __cpu_vcpu_unpriv_read_insn(regs->sepc, &trap);
+			if (trap.scause) {
+				if (trap.scause == CAUSE_LOAD_PAGE_FAULT)
+					trap.scause = CAUSE_FETCH_PAGE_FAULT;
+				trap.stval = trap.sepc = regs->sepc;
 				return cpu_vcpu_redirect_trap(vcpu, regs,
 							      &trap);
 			}

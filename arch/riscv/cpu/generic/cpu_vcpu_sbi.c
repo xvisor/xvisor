@@ -88,8 +88,8 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 		ret = SBI_ERR_NOT_SUPPORTED;
 	}
 
-	if (trap.cause) {
-		trap.epc = regs->sepc;
+	if (trap.scause) {
+		trap.sepc = regs->sepc;
 		cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 	} else {
 		/* This function should return non-zero value only in case of
