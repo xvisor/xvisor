@@ -277,8 +277,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_regs(vcpu)->a0 = vcpu->subid;
 
 	/* Update HSTATUS */
-	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2V;
-	riscv_regs(vcpu)->hstatus |= HSTATUS_SP2P;
+	riscv_regs(vcpu)->hstatus |= HSTATUS_SPVP;
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
 
 	/* TODO: Update HSTATUS.VSXL on non-32bit Host */
