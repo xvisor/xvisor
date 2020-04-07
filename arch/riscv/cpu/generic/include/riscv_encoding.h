@@ -130,7 +130,6 @@
 #define HSTATUS_SPV			_UL(0x00000080)
 #define HSTATUS_GVA			_UL(0x00000040)
 #define HSTATUS_VSBE			_UL(0x00000020)
-#define HSTATUS_SPRV			_UL(0x00000001)
 
 
 /* Interrupt Numbers */
