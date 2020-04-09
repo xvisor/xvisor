@@ -164,7 +164,7 @@ struct arm_priv {
 
 struct arm_guest_priv {
 	/* Stage2 table */
-	struct cpu_ttbl *ttbl;
+	struct mmu_pgtbl *ttbl;
 	/* PSCI version
 	 * Bits[31:16] = Major number
 	 * Bits[15:0] = Minor number

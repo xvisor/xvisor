@@ -274,7 +274,7 @@ __htcr_set:
 	       (0x1 << HTCR_IRGN0_SHIFT) | \
 	       (0x3 << HTCR_SH0_SHIFT))
 __httbr_set:
-	.word def_ttbl
+	.word def_pgtbl
 __vtcr_clear:
 	.word ~(VTCR_T0SZ_MASK | \
 		VTCR_S_MASK | \

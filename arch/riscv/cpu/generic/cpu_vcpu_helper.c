@@ -34,11 +34,11 @@
 #include <arch_vcpu.h>
 #include <vio/vmm_vserial.h>
 #include <libs/mathlib.h>
+#include <generic_mmu.h>
 
 #include <cpu_hwcap.h>
 #include <cpu_tlb.h>
 #include <cpu_sbi.h>
-#include <cpu_mmu.h>
 #include <cpu_vcpu_fp.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
@@ -119,7 +119,7 @@ int arch_guest_init(struct vmm_guest *guest)
 		priv->time_delta *= vmm_timer_clocksource_frequency();
 		priv->time_delta = -udiv64(priv->time_delta, 1000000000ULL);
 
-		priv->pgtbl = cpu_mmu_pgtbl_alloc(PGTBL_STAGE2);
+		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2);
 		if (!priv->pgtbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
@@ -155,7 +155,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	if (guest->arch_priv) {
 		gs = riscv_guest_serial(guest);
 
-		if ((rc = cpu_mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl))) {
+		if ((rc = mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl))) {
 			return rc;
 		}
 		if (gs) {
@@ -386,10 +386,10 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSATP, priv->vsatp);
 		cpu_vcpu_fp_restore(vcpu, regs);
 		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_stage2_vmid_bits)) {
-			cpu_mmu_stage2_change_pgtbl(vcpu->guest->id,
+			mmu_stage2_change_pgtbl(vcpu->guest->id,
 					riscv_guest_priv(vcpu->guest)->pgtbl);
 		} else {
-			cpu_mmu_stage2_change_pgtbl(0,
+			mmu_stage2_change_pgtbl(0,
 					riscv_guest_priv(vcpu->guest)->pgtbl);
 			__hfence_gvma_all();
 		}

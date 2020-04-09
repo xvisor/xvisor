@@ -29,7 +29,7 @@
 #include <vmm_vcpu_irq.h>
 #include <libs/stringlib.h>
 
-#include <cpu_mmu.h>
+#include <generic_mmu.h>
 #include <cpu_vcpu_csr.h>
 #include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_unpriv.h>
@@ -73,7 +73,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 {
 	int rc, rc1;
 	u32 reg_flags = 0x0, pg_reg_flags = 0x0;
-	struct cpu_page pg;
+	struct mmu_page pg;
 	physical_addr_t inaddr, outaddr;
 	physical_size_t size, availsz;
 
@@ -127,35 +127,35 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 #endif
 	}
 
-	pg.user = 1;
+	pg.flags.user = 1;
 	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
-		pg.read = 0;
-		pg.write = 0;
-		pg.execute = 1;
+		pg.flags.read = 0;
+		pg.flags.write = 0;
+		pg.flags.execute = 1;
 	} else if (pg_reg_flags & VMM_REGION_READONLY) {
-		pg.read = 1;
-		pg.write = 0;
-		pg.execute = 1;
+		pg.flags.read = 1;
+		pg.flags.write = 0;
+		pg.flags.execute = 1;
 	} else {
-		pg.read = 1;
-		pg.write = 1;
-		pg.execute = 1;
+		pg.flags.read = 1;
+		pg.flags.write = 1;
+		pg.flags.execute = 1;
 	}
-	pg.valid = 1;
+	pg.flags.valid = 1;
 
 	/* Try to map the page in Stage2 */
-	rc = cpu_mmu_map_page(riscv_guest_priv(vcpu->guest)->pgtbl, &pg);
+	rc = mmu_map_page(riscv_guest_priv(vcpu->guest)->pgtbl, &pg);
 	if (rc) {
 		/* On SMP Guest, two different VCPUs may try to map same
 		 * Guest region in Stage2 at the same time. This may cause
-		 * cpu_mmu_map_page() to fail for one of the Guest VCPUs.
+		 * mmu_map_page() to fail for one of the Guest VCPUs.
 		 *
 		 * To take care of this situation, we recheck Stage2 mapping
-		 * when cpu_mmu_map_page() fails.
+		 * when mmu_map_page() fails.
 		 */
 		memset(&pg, 0, sizeof(pg));
-		rc1 = cpu_mmu_get_page(riscv_guest_priv(vcpu->guest)->pgtbl,
-				       fault_addr, &pg);
+		rc1 = mmu_get_page(riscv_guest_priv(vcpu->guest)->pgtbl,
+				   fault_addr, &pg);
 		if (rc1) {
 			return rc1;
 		}

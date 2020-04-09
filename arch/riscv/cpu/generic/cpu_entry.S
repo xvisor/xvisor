@@ -170,7 +170,7 @@ _start_secondary_nopen:
 	/* Enable MMU */
 	la	a0, def_pgtbl
 	srl	a0, a0, 12 /* Shift right by page size */
-	la	a1, def_pgtbl_mode
+	la	a1, riscv_stage1_mode
 	REG_L	a1, (a1)
 	sll	a1, a1, SATP_MODE_SHIFT
 	or	a0, a0, a1

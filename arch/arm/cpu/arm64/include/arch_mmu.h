@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013 Sukanto Ghosh.
+ * Copyright (c) 2020 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,19 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_mmu_lpae.h
- * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief MMU interface of LPAE enabled ARM processor
+ * @file arch_mmu.h
+ * @author Anup Patel (anup@brainfault.org)
+ * @brief Arch MMU interface header
  */
-#ifndef _CPU_MMU_LPAE_H__
-#define _CPU_MMU_LPAE_H__
+
+#ifndef __ARCH_MMU_H__
+#define __ARCH_MMU_H__
 
 #include <cpu_inline_asm.h>
 #include <cpu_cache.h>
 #include <arch_barrier.h>
-
-#define TTBL_FIRST_LEVEL		1
-#define TTBL_LAST_LEVEL			3
 
 #define cpu_invalid_ipa_guest_tlb(ipa)		inv_tlb_guest_allis()
 #define cpu_invalid_va_hypervisor_tlb(va)	inv_tlb_hyp_vais((va))
@@ -65,4 +63,6 @@ static inline void cpu_mmu_invalidate_range(virtual_addr_t start,
 	invalidate_dcache_mva_range(start, start + size);
 }
 
-#endif /* _CPU_MMU_LPAE_H */
+#include <mmu_lpae.h>
+
+#endif /* __ARCH_MMU_H__ */

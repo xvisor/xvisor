@@ -179,7 +179,7 @@ struct riscv_guest_priv {
 	/* Time delta */
 	u64 time_delta;
 	/* Stage2 pagetable */
-	struct cpu_pgtbl *pgtbl;
+	struct mmu_pgtbl *pgtbl;
 	/* Opaque pointer to vserial data */
 	void *guest_serial;
 };

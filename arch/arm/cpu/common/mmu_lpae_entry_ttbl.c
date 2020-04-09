@@ -26,8 +26,7 @@
 #include <arch_io.h>
 #include <libs/libfdt.h>
 #include <generic_devtree.h>
-#include <cpu_mmu_lpae.h>
-#include <mmu_lpae.h>
+#include <arch_mmu.h>
 
 struct mmu_lpae_entry_ctrl {
 	u32 ttbl_count;
@@ -36,8 +35,8 @@ struct mmu_lpae_entry_ctrl {
 	virtual_addr_t ttbl_base;
 };
 
-extern u8 def_ttbl[];
-extern int def_ttbl_tree[];
+extern u8 def_pgtbl[];
+extern int def_pgtbl_tree[];
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
@@ -67,22 +66,22 @@ void __attribute__ ((section(".entry")))
 						    TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level2 table */
-			if (lpae_entry->ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+			if (lpae_entry->ttbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
 			    ((virtual_addr_t) ttbl -
-			     lpae_entry->ttbl_base) >> TTBL_TABLE_SIZE_SHIFT;
+			     lpae_entry->ttbl_base) >> ARCH_MMU_PGTBL_SIZE_SHIFT;
 			lpae_entry->ttbl_count++;
 			ttbl[index] |=
 			    (((virtual_addr_t) lpae_entry->next_ttbl) &
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = lpae_entry->next_ttbl;
-			lpae_entry->next_ttbl += TTBL_TABLE_ENTCNT;
+			lpae_entry->next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
 		}
 
 		/* Setup level2 table */
@@ -94,22 +93,22 @@ void __attribute__ ((section(".entry")))
 						    TTBL_OUTADDR_MASK);
 		} else {
 			/* Allocate new level3 table */
-			if (lpae_entry->ttbl_count == TTBL_INITIAL_TABLE_COUNT) {
+			if (lpae_entry->ttbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
 			    ((virtual_addr_t) ttbl -
-			     lpae_entry->ttbl_base) >> TTBL_TABLE_SIZE_SHIFT;
+			     lpae_entry->ttbl_base) >> ARCH_MMU_PGTBL_SIZE_SHIFT;
 			lpae_entry->ttbl_count++;
 			ttbl[index] |=
 			    (((virtual_addr_t) lpae_entry->next_ttbl) &
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = lpae_entry->next_ttbl;
-			lpae_entry->next_ttbl += TTBL_TABLE_ENTCNT;
+			lpae_entry->next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
 		}
 
 		/* Setup level3 table */
@@ -214,28 +213,28 @@ void __attribute__ ((section(".entry")))
 
 	/* Init ttbl_base, ttbl_tree, and next_ttbl */
 	lpae_entry.ttbl_tree =
-		(int *)to_load_pa((virtual_addr_t)&def_ttbl_tree);
+		(int *)to_load_pa((virtual_addr_t)&def_pgtbl_tree);
 
 	cpu_mmu_invalidate_range((virtual_addr_t)&lpae_entry.ttbl_tree[0],
-		TTBL_INITIAL_TABLE_COUNT * sizeof(lpae_entry.ttbl_tree[0]));
-	for (i = 0; i < TTBL_INITIAL_TABLE_COUNT; i++) {
+		ARCH_INITIAL_PGTBL_COUNT * sizeof(lpae_entry.ttbl_tree[0]));
+	for (i = 0; i < ARCH_INITIAL_PGTBL_COUNT; i++) {
 		lpae_entry.ttbl_tree[i] = -1;
 	}
 
-	lpae_entry.ttbl_base = to_load_pa((virtual_addr_t)&def_ttbl);
+	lpae_entry.ttbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
 	lpae_entry.next_ttbl = (u64 *)lpae_entry.ttbl_base;
 
 	/* Init first ttbl */
 	cpu_mmu_invalidate_range((virtual_addr_t)lpae_entry.next_ttbl,
-				 TTBL_INITIAL_TABLE_COUNT *
-				 TTBL_TABLE_ENTCNT *
+				 ARCH_INITIAL_PGTBL_COUNT *
+				 ARCH_MMU_PGTBL_ENTCNT *
 				 sizeof(*lpae_entry.next_ttbl));
-	for (i = 0; i < TTBL_TABLE_ENTCNT; i++) {
+	for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
 		lpae_entry.next_ttbl[i] = 0x0ULL;
 	}
 
 	lpae_entry.ttbl_count++;
-	lpae_entry.next_ttbl += TTBL_TABLE_ENTCNT;
+	lpae_entry.next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
 
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm

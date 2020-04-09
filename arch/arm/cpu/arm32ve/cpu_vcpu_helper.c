@@ -30,6 +30,8 @@
 #include <arch_barrier.h>
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
+#include <generic_mmu.h>
+
 #include <cpu_inline_asm.h>
 #include <cpu_cache.h>
 #include <cpu_vcpu_vfp.h>
@@ -37,10 +39,8 @@
 #include <cpu_vcpu_cp15.h>
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_helper.h>
-
 #include <generic_timer.h>
 #include <arm_features.h>
-#include <mmu_lpae.h>
 
 void cpu_vcpu_halt(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
@@ -446,7 +446,7 @@ int arch_guest_init(struct vmm_guest *guest)
 			return VMM_ENOMEM;
 		}
 
-		arm_guest_priv(guest)->ttbl = mmu_lpae_ttbl_alloc(TTBL_STAGE2);
+		arm_guest_priv(guest)->ttbl = mmu_pgtbl_alloc(MMU_STAGE2);
 		if (!arm_guest_priv(guest)->ttbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
@@ -469,7 +469,7 @@ int arch_guest_deinit(struct vmm_guest *guest)
 	int rc;
 
 	if (guest->arch_priv) {
-		if ((rc = mmu_lpae_ttbl_free(arm_guest_priv(guest)->ttbl))) {
+		if ((rc = mmu_pgtbl_free(arm_guest_priv(guest)->ttbl))) {
 			return rc;
 		}
 
@@ -935,8 +935,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		write_hcptr(arm_priv(vcpu)->hcptr);
 		write_hstr(arm_priv(vcpu)->hstr);
 		/* Update hypervisor Stage2 MMU context */
-		mmu_lpae_stage2_chttbl(vcpu->guest->id,
-			       arm_guest_priv(vcpu->guest)->ttbl);
+		mmu_stage2_change_pgtbl(vcpu->guest->id,
+					arm_guest_priv(vcpu->guest)->ttbl);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because

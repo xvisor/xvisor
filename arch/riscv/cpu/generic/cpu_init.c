@@ -27,9 +27,9 @@
 #include <vmm_devtree.h>
 #include <arch_cpu.h>
 #include <libs/bitmap.h>
+#include <generic_mmu.h>
 
 #include <cpu_hwcap.h>
-#include <cpu_mmu.h>
 #include <cpu_sbi.h>
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
@@ -312,7 +312,7 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 #endif
 
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU ISA String", isa);
-	switch (cpu_mmu_hypervisor_pgtbl_mode()) {
+	switch (riscv_stage1_mode) {
 	case SATP_MODE_SV32:
 		strcpy(isa, "Sv32");
 		break;

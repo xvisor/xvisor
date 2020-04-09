@@ -26,12 +26,12 @@
 #include <vmm_host_aspace.h>
 #include <vmm_guest_aspace.h>
 #include <libs/stringlib.h>
+#include <generic_mmu.h>
+
 #include <cpu_inline_asm.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_emulate.h>
 #include <cpu_vcpu_excep.h>
-
-#include <mmu_lpae.h>
 #include <emulate_arm.h>
 #include <emulate_thumb.h>
 
@@ -41,7 +41,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 {
 	int rc, rc1;
 	u32 reg_flags = 0x0, pg_reg_flags = 0x0;
-	struct cpu_page pg;
+	struct mmu_page pg;
 	physical_addr_t inaddr, outaddr;
 	physical_size_t size, availsz;
 
@@ -49,7 +49,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 
 	inaddr = fipa & TTBL_L3_MAP_MASK;
 	size = TTBL_L3_BLOCK_SIZE;
-	pg.sh = 3U;
+	pg.flags.sh = 3U;
 
 	rc = vmm_guest_physical_map(vcpu->guest, inaddr, size,
 				    &outaddr, &availsz, &reg_flags);
@@ -94,14 +94,14 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	}
 
 	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
-		pg.af = 0;
-		pg.ap = TTBL_HAP_NOACCESS;
+		pg.flags.af = 0;
+		pg.flags.ap = TTBL_HAP_NOACCESS;
 	} else if (pg_reg_flags & VMM_REGION_READONLY) {
-		pg.af = 1;
-		pg.ap = TTBL_HAP_READONLY;
+		pg.flags.af = 1;
+		pg.flags.ap = TTBL_HAP_READONLY;
 	} else {
-		pg.af = 1;
-		pg.ap = TTBL_HAP_READWRITE;
+		pg.flags.af = 1;
+		pg.flags.ap = TTBL_HAP_READWRITE;
 	}
 
 	/* memattr in stage 2
@@ -113,16 +113,16 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 	 */
 	if (pg_reg_flags & VMM_REGION_CACHEABLE) {
 		if (pg_reg_flags & VMM_REGION_BUFFERABLE) {
-			pg.memattr = 0xF;
+			pg.flags.memattr = 0xF;
 		} else {
-			pg.memattr = 0xA;
+			pg.flags.memattr = 0xA;
 		}
 	} else {
-		pg.memattr = 0x0;
+		pg.flags.memattr = 0x0;
 	}
 
 	/* Try to map the page in Stage2 */
-	rc = mmu_lpae_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
+	rc = mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);
 	if (rc) {
 		/* On SMP Guest, two different VCPUs may try to map same
 		 * Guest region in Stage2 at the same time. This may cause
@@ -132,8 +132,8 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 		 * when mmu_lpae_map_page() fails.
 		 */
 		memset(&pg, 0, sizeof(pg));
-		rc1 = mmu_lpae_get_page(arm_guest_priv(vcpu->guest)->ttbl,
-					fipa, &pg);
+		rc1 = mmu_get_page(arm_guest_priv(vcpu->guest)->ttbl,
+				   fipa, &pg);
 		if (rc1) {
 			return rc1;
 		}

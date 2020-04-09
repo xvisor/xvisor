@@ -1,27 +1,28 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2020 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_mmu_lpae.h
+ * @file arch_mmu.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief MMU interface of LPAE enabled ARM processor
+ * @brief Arch MMU interface header
  */
-#ifndef _CPU_MMU_LPAE_H__
-#define _CPU_MMU_LPAE_H__
+
+#ifndef __ARCH_MMU_H__
+#define __ARCH_MMU_H__
 
 #include <cpu_inline_asm.h>
 #include <cpu_cache.h>
@@ -82,4 +83,6 @@ static inline void cpu_mmu_invalidate_range(virtual_addr_t start,
 	invalidate_dcache_mva_range(start, start + size);
 }
 
-#endif /* _CPU_MMU_LPAE_H */
+#include <mmu_lpae.h>
+
+#endif /* __ARCH_MMU_H__ */

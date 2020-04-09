@@ -328,7 +328,7 @@ __copy_end:
 __ttbr_set_addr:
 	.dword __ttbr_set
 __ttbr_set:
-	.dword def_ttbl
+	.dword def_pgtbl
 __init_vectors:
 	.dword init_vectors
 __boot_reg0:

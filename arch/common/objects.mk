@@ -25,4 +25,5 @@ arch-common-objs-$(CONFIG_ARCH_GENERIC_BOARD)+=generic_board.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_DEFTERM)+=generic_defterm.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_DEFTERM_EARLY)+=generic_defterm_early.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_DEVTREE)+=generic_devtree.o
+arch-common-objs-$(CONFIG_ARCH_GENERIC_MMU)+=generic_mmu.o
 arch-common-objs-$(CONFIG_ARCH_GENERIC_SMP_IPI)+=generic_smp_ipi.o

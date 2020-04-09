@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 Anup Patel.
+ * Copyright (c) 2020 Anup Patel.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,122 +16,40 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file cpu_mmu.h
+ * @file arch_mmu.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief RISC-V MMU interface header
+ * @brief Arch MMU interface header
  */
 
-#ifndef __CPU_MMU_H__
-#define __CPU_MMU_H__
+#ifndef __ARCH_MMU_H__
+#define __ARCH_MMU_H__
 
-#ifndef __ASSEMBLY__
+#include <vmm_const.h>
 
-#include <vmm_types.h>
-#include <vmm_spinlocks.h>
-#include <libs/list.h>
+#define ARCH_INITIAL_PGTBL_COUNT			8
 
-/** page/block */
-struct cpu_page {
-	physical_addr_t ia;
-	physical_addr_t oa;
-	physical_size_t sz;
-	u8 rsw;
-	u8 dirty;
-	u8 accessed;
-	u8 global;
-	u8 user;
-	u8 execute;
-	u8 write;
-	u8 read;
-	u8 valid;
-};
-
-/** page table */
-enum cpu_pgtbl_stages {
-	PGTBL_STAGE1=1,
-	PGTBL_STAGE2=2,
-};
-
-/** page table */
-struct cpu_pgtbl {
-	struct dlist head;
-	struct cpu_pgtbl *parent;
-	int stage;
-	int level;
-	physical_addr_t map_ia;
-	physical_addr_t tbl_pa;
-	vmm_spinlock_t tbl_lock; /*< Lock to protect table contents, 
-				      tte_cnt, child_cnt, and child_list 
-				  */
-	virtual_addr_t tbl_va;
-	u32 pte_cnt;
-	u32 child_cnt;
-	struct dlist child_list;
-};
-
-struct cpu_pgtbl *cpu_mmu_pgtbl_alloc(int stage);
-
-int cpu_mmu_pgtbl_free(struct cpu_pgtbl *pgtbl);
-
-struct cpu_pgtbl *cpu_mmu_pgtbl_get_child(struct cpu_pgtbl *parent,
-					  physical_addr_t map_ia,
-					  bool create);
-
-u64 cpu_mmu_best_page_size(physical_addr_t ia,
-			   physical_addr_t oa,
-			   u32 availsz);
-
-int cpu_mmu_get_page(struct cpu_pgtbl *pgtbl,
-		     physical_addr_t ia, struct cpu_page *pg);
-
-int cpu_mmu_unmap_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg);
-
-int cpu_mmu_map_page(struct cpu_pgtbl *pgtbl, struct cpu_page *pg);
-
-int cpu_mmu_get_hypervisor_page(virtual_addr_t va, struct cpu_page *pg);
-
-int cpu_mmu_unmap_hypervisor_page(struct cpu_page *pg);
-
-int cpu_mmu_map_hypervisor_page(struct cpu_page *pg);
-
-unsigned long cpu_mmu_hypervisor_pgtbl_mode(void);
-
-struct cpu_pgtbl *cpu_mmu_stage2_current_pgtbl(void);
-
-u32 cpu_mmu_stage2_current_vmid(void);
-
-int cpu_mmu_stage2_change_pgtbl(u32 vmid, struct cpu_pgtbl *pgtbl);
-
-#endif
-
+#define ARCH_MMU_PGTBL_ALIGN				ARCH_MMU_PGTBL_SIZE
+#define ARCH_MMU_PGTBL_SIZE				0x00001000
+#define ARCH_MMU_PGTBL_SIZE_SHIFT			12
 #ifdef CONFIG_64BIT
-typedef u64 cpu_pte_t;
+#define ARCH_MMU_PGTBL_ENTCNT				512
+#define ARCH_MMU_PGTBL_ENTSZ				8
 #else
-typedef u32 cpu_pte_t;
+#define ARCH_MMU_PGTBL_ENTCNT				1024
+#define ARCH_MMU_PGTBL_ENTSZ				4
 #endif
-
-#define PGTBL_INITIAL_TABLE_COUNT			8
-#define PGTBL_TABLE_SIZE				0x00001000
-#define PGTBL_TABLE_SIZE_SHIFT				12
-#ifdef CONFIG_64BIT
-#define PGTBL_TABLE_ENTCNT				512
-#define PGTBL_TABLE_ENTSZ				8
-#else
-#define PGTBL_TABLE_ENTCNT				1024
-#define PGTBL_TABLE_ENTSZ				4
-#endif
-#define PGTBL_PAGE_SIZE					0x00001000
-#define PGTBL_PAGE_SIZE_SHIFT				12
 
 #ifdef CONFIG_64BIT
 /* L3 index Bit[47:39] */
 #define PGTBL_L3_INDEX_MASK				0x0000FF8000000000ULL
 #define PGTBL_L3_INDEX_SHIFT				39
+#define PGTBL_L3_BLOCK_SHIFT				39
 #define PGTBL_L3_BLOCK_SIZE				0x0000008000000000ULL
 #define PGTBL_L3_MAP_MASK				(~(PGTBL_L3_BLOCK_SIZE - 1))
 /* L2 index Bit[38:30] */
 #define PGTBL_L2_INDEX_MASK				0x0000007FC0000000ULL
 #define PGTBL_L2_INDEX_SHIFT				30
+#define PGTBL_L2_BLOCK_SHIFT				30
 #define PGTBL_L2_BLOCK_SIZE				0x0000000040000000ULL
 #define PGTBL_L2_MAP_MASK				(~(PGTBL_L2_BLOCK_SIZE - 1))
 /* L1 index Bit[29:21] */
@@ -184,5 +102,87 @@ typedef u32 cpu_pte_t;
 							 PGTBL_PTE_READ_MASK)
 #define PGTBL_PTE_VALID_MASK				0x0000000000000001ULL
 #define PGTBL_PTE_VALID_SHIFT				0
+
+#define PGTBL_PAGE_SIZE					PGTBL_L0_BLOCK_SIZE
+#define PGTBL_PAGE_SIZE_SHIFT				PGTBL_L0_BLOCK_SHIFT
+
+
+#ifndef __ASSEMBLY__
+
+#include <vmm_types.h>
+
+extern unsigned long riscv_stage1_mode;
+
+#ifdef CONFIG_64BIT
+typedef u64 arch_pte_t;
+#else
+typedef u32 arch_pte_t;
+#endif
+
+struct arch_pgflags {
+	u8 rsw;
+	u8 dirty;
+	u8 accessed;
+	u8 global;
+	u8 user;
+	u8 execute;
+	u8 write;
+	u8 read;
+	u8 valid;
+};
+typedef struct arch_pgflags arch_pgflags_t;
+
+void arch_mmu_pgtbl_clear(virtual_addr_t tbl_va);
+
+void arch_mmu_stage2_tlbflush(physical_addr_t gpa, physical_size_t gsz);
+
+void arch_mmu_stage1_tlbflush(virtual_addr_t va, virtual_size_t sz);
+
+bool arch_mmu_valid_block_size(physical_size_t sz);
+
+int arch_mmu_start_level(int stage);
+
+int arch_mmu_start_level(int stage);
+
+physical_size_t arch_mmu_level_block_size(int stage, int level);
+
+int arch_mmu_level_block_shift(int stage, int level);
+
+physical_addr_t arch_mmu_level_map_mask(int stage, int level);
+
+int arch_mmu_level_index(physical_addr_t ia, int stage, int level);
+
+int arch_mmu_level_index_shift(int stage, int level);
+
+void arch_mmu_stage1_pgflags_set(arch_pgflags_t *flags, u32 mem_flags);
+
+void arch_mmu_pte_sync(arch_pte_t *pte, int stage, int level);
+
+void arch_mmu_pte_clear(arch_pte_t *pte, int stage, int level);
+
+bool arch_mmu_pte_is_valid(arch_pte_t *pte, int stage, int level);
+
+physical_addr_t arch_mmu_pte_addr(arch_pte_t *pte, int stage, int level);
+
+void arch_mmu_pte_flags(arch_pte_t *pte, int stage, int level,
+			arch_pgflags_t *out_flags);
+
+void arch_mmu_pte_set(arch_pte_t *pte, int stage, int level,
+		      physical_addr_t pa, arch_pgflags_t *flags);
+
+bool arch_mmu_pte_is_table(arch_pte_t *pte, int stage, int level);
+
+physical_addr_t arch_mmu_pte_table_addr(arch_pte_t *pte, int stage, int level);
+
+void arch_mmu_pte_set_table(arch_pte_t *pte, int stage, int level,
+			    physical_addr_t tbl_pa);
+
+physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void);
+
+u32 arch_mmu_stage2_current_vmid(void);
+
+int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys);
+
+#endif
 
 #endif
