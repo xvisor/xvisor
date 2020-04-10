@@ -24,8 +24,10 @@
 #define _ARCH_VCPU_H__
 
 #include <vmm_types.h>
-#include <vmm_chardev.h>
-#include <vmm_manager.h>
+#include <arch_regs.h>
+
+struct vmm_chardev;
+struct vmm_vcpu;
 
 /** Architecture specific VCPU Initialization */
 int arch_vcpu_init(struct vmm_vcpu *vcpu);

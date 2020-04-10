@@ -24,7 +24,9 @@
 #define _ARCH_GUEST_H__
 
 #include <vmm_types.h>
-#include <vmm_manager.h>
+
+struct vmm_guest;
+struct vmm_region;
 
 /** Architecture specific callback for guest init */
 int arch_guest_init(struct vmm_guest *guest);

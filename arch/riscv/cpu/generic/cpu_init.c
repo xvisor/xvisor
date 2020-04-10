@@ -25,6 +25,7 @@
 #include <vmm_main.h>
 #include <vmm_params.h>
 #include <vmm_devtree.h>
+#include <vmm_stdio.h>
 #include <arch_cpu.h>
 #include <libs/bitmap.h>
 #include <generic_mmu.h>

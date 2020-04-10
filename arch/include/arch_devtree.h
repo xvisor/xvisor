@@ -23,7 +23,9 @@
 #ifndef _ARCH_DEVTREE_H__
 #define _ARCH_DEVTREE_H__
 
-#include <vmm_devtree.h>
+#include <vmm_types.h>
+
+struct vmm_devtree_node;
 
 /** Setup/Configure/Parse RAM banks
  *  Note: This function will be called before populating device tree

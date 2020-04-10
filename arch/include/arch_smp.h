@@ -24,7 +24,8 @@
 #define _ARCH_SMP_H__
 
 #include <vmm_types.h>
-#include <vmm_cpumask.h>
+
+struct vmm_cpumask;
 
 /** Retrive current processor ID
  *  Note: This function is called from any CPU at runtime

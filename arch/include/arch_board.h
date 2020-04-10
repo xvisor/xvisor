@@ -23,7 +23,9 @@
 #ifndef _ARCH_BOARD_H__
 #define _ARCH_BOARD_H__
 
-#include <vmm_chardev.h>
+#include <vmm_types.h>
+
+struct vmm_chardev;
 
 /** Print board specific information */
 void arch_board_print_info(struct vmm_chardev *cdev);

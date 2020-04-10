@@ -23,7 +23,9 @@
 #ifndef _ARCH_CPU_H__
 #define _ARCH_CPU_H__
 
-#include <vmm_chardev.h>
+#include <vmm_types.h>
+
+struct vmm_chardev;
 
 /** Print details of given CPU */
 void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu);

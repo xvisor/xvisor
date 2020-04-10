@@ -33,6 +33,7 @@
 #include <vmm_waitqueue.h>
 #include <vmm_workqueue.h>
 #include <vmm_manager.h>
+#include <vmm_mutex.h>
 #include <arch_vcpu.h>
 #include <arch_guest.h>
 #include <libs/stringlib.h>
