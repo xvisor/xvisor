@@ -25,11 +25,16 @@
 
 #include <vmm_types.h>
 
+struct vmm_chardev;
+
 /** Get start (or base) address of VAPOOL */
 virtual_addr_t arch_cpu_aspace_vapool_start(void);
 
 /** Estimate size of VAPOOL */
 virtual_size_t arch_cpu_aspace_vapool_estimate_size(physical_size_t total_ram);
+
+/** Print address space details (i.e. stats or summary) */
+void arch_cpu_aspace_print_info(struct vmm_chardev *cdev);
 
 /** Initialize address space on primary cpu */
 int arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,

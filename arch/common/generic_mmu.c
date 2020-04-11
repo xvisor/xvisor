@@ -550,6 +550,11 @@ struct mmu_pgtbl *mmu_hypervisor_pgtbl(void)
 	return mmuctrl.hyp_pgtbl;
 }
 
+void arch_cpu_aspace_print_info(struct vmm_chardev *cdev)
+{
+	/* Nothing to do here. */
+}
+
 u32 arch_cpu_aspace_hugepage_log2size(void)
 {
 	return arch_mmu_level_block_shift(MMU_STAGE1, 1);

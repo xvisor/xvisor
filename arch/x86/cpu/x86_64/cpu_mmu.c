@@ -153,6 +153,11 @@ int __delete_bootstrap_pgtbl_entry(u64 va)
 	return VMM_OK;
 }
 
+void arch_cpu_aspace_print_info(struct vmm_chardev *cdev)
+{
+	/* Nothing to do here. */
+}
+
 u32 arch_cpu_aspace_hugepage_log2size(void)
 {
 	/* FIXME: hugepage support will be added in-future */

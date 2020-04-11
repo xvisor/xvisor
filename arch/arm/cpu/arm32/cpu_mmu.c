@@ -1401,6 +1401,11 @@ int cpu_mmu_sync_ttbr_va(struct cpu_l1tbl *l1, virtual_addr_t va)
 	return VMM_OK;
 }
 
+void arch_cpu_aspace_print_info(struct vmm_chardev *cdev)
+{
+	/* Nothing to do here. */
+}
+
 #if defined(CONFIG_ARMV5)
 
 int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,

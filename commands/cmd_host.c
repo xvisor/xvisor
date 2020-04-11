@@ -41,6 +41,7 @@
 #include <libs/stringlib.h>
 #include <libs/mathlib.h>
 #include <arch_board.h>
+#include <arch_cpu_aspace.h>
 #include <arch_cpu.h>
 
 #define MODULE_DESC			"Command host"
@@ -60,13 +61,13 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host irq stats\n");
 	vmm_cprintf(cdev, "   host irq set_affinity <hirq> <hcpu>\n");
 	vmm_cprintf(cdev, "   host extirq stats\n");
+	vmm_cprintf(cdev, "   host aspace info\n");
 	vmm_cprintf(cdev, "   host ram info\n");
 	vmm_cprintf(cdev, "   host ram bitmap [<column count>]\n");
 	vmm_cprintf(cdev, "   host ram reserve <physaddr> <size>\n");
 	vmm_cprintf(cdev, "   host vapool info\n");
 	vmm_cprintf(cdev, "   host vapool state\n");
 	vmm_cprintf(cdev, "   host vapool bitmap [<column count>]\n");
-	vmm_cprintf(cdev, "   host memmap info\n");
 	vmm_cprintf(cdev, "   host pagepool info\n");
 	vmm_cprintf(cdev, "   host pagepool state\n");
 	vmm_cprintf(cdev, "   host resources\n");
@@ -290,6 +291,18 @@ static void cmd_host_extirq_stats(struct vmm_chardev *cdev)
 	vmm_host_irqext_debug_dump(cdev);
 }
 
+static void cmd_host_aspace_info(struct vmm_chardev *cdev)
+{
+	u32 free = vmm_host_memmap_hash_free_count();
+	u32 total = vmm_host_memmap_hash_total_count();
+
+	vmm_cprintf(cdev, "Memmap Free Entry   : %u (0x%08x)\n", free, free);
+	vmm_cprintf(cdev, "Memmap Total Entry  : %u (0x%08x)\n", total, total);
+	vmm_cprintf(cdev, "\n");
+
+	arch_cpu_aspace_print_info(cdev);
+}
+
 static void cmd_host_ram_info(struct vmm_chardev *cdev)
 {
 	u32 bn, bank_count = vmm_host_ram_bank_count();
@@ -400,15 +413,6 @@ static void cmd_host_vapool_bitmap(struct vmm_chardev *cdev, int colcnt)
 		}
 	}
 	vmm_cprintf(cdev, "\n");
-}
-
-static void cmd_host_memmap_info(struct vmm_chardev *cdev)
-{
-	u32 free = vmm_host_memmap_hash_free_count();
-	u32 total = vmm_host_memmap_hash_total_count();
-
-	vmm_cprintf(cdev, "Free Entry   : %u (0x%08x)\n", free, free);
-	vmm_cprintf(cdev, "Total Entry  : %u (0x%08x)\n", total, total);
 }
 
 static int cmd_host_pagepool_info(struct vmm_chardev *cdev)
@@ -687,6 +691,11 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 			cmd_host_extirq_stats(cdev);
 			return VMM_OK;
 		}
+	} else if ((strcmp(argv[1], "aspace") == 0) && (2 < argc)) {
+		if (strcmp(argv[2], "info") == 0) {
+			cmd_host_aspace_info(cdev);
+			return VMM_OK;
+		}
 	} else if ((strcmp(argv[1], "ram") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "info") == 0) {
 			cmd_host_ram_info(cdev);
@@ -717,11 +726,6 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 				colcnt = 64;
 			}
 			cmd_host_vapool_bitmap(cdev, colcnt);
-			return VMM_OK;
-		}
-	} else if ((strcmp(argv[1], "memmap") == 0) && (2 < argc)) {
-		if (strcmp(argv[2], "info") == 0) {
-			cmd_host_memmap_info(cdev);
 			return VMM_OK;
 		}
 	} else if ((strcmp(argv[1], "pagepool") == 0) && (2 < argc)) {
