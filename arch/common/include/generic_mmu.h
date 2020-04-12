@@ -38,8 +38,10 @@ struct mmu_page {
 
 /** MMU stages */
 enum mmu_stage {
-	MMU_STAGE1=1,
-	MMU_STAGE2=2,
+	MMU_STAGE_UNKNOWN=0,
+	MMU_STAGE1,
+	MMU_STAGE2,
+	MMU_STAGE_MAX
 };
 
 /** MMU page table */
