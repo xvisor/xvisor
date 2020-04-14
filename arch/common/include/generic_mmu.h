@@ -61,7 +61,9 @@ struct mmu_pgtbl {
 	struct dlist child_list;
 };
 
-struct mmu_pgtbl *mmu_pgtbl_find(physical_addr_t tbl_pa);
+u64 mmu_pgtbl_count(int stage, int level);
+
+struct mmu_pgtbl *mmu_pgtbl_find(int stage, physical_addr_t tbl_pa);
 
 struct mmu_pgtbl *mmu_pgtbl_alloc(int stage);
 
@@ -92,7 +94,7 @@ struct mmu_pgtbl *mmu_hypervisor_pgtbl(void);
 static inline struct mmu_pgtbl *mmu_stage2_current_pgtbl(void)
 {
 	physical_addr_t tbl_pa = arch_mmu_stage2_current_pgtbl_addr();
-	return mmu_pgtbl_find(tbl_pa);
+	return mmu_pgtbl_find(MMU_STAGE2, tbl_pa);
 }
 
 static inline u32 mmu_stage2_current_vmid(void)
