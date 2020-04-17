@@ -29,6 +29,7 @@
 #include <vmm_host_aspace.h>
 #include <libs/stringlib.h>
 #include <libs/radix-tree.h>
+#include <arch_config.h>
 #include <arch_sections.h>
 #include <arch_barrier.h>
 
@@ -600,10 +601,9 @@ int mmu_unmap_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg)
 	arch_mmu_pte_sync(&pte[index], pgtbl->stage, pgtbl->level);
 
 	if (pgtbl->stage == MMU_STAGE1) {
-		arch_mmu_stage1_tlbflush((virtual_addr_t)pg->ia,
-					 (virtual_size_t)blksz);
+		arch_mmu_stage1_tlbflush(TRUE, pg->ia, blksz);
 	} else {
-		arch_mmu_stage2_tlbflush(pg->ia, blksz);
+		arch_mmu_stage2_tlbflush(TRUE, pg->ia, blksz);
 	}
 
 	pgtbl->pte_cnt--;
@@ -664,10 +664,9 @@ int mmu_map_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg)
 	arch_mmu_pte_sync(&pte[index], pgtbl->stage, pgtbl->level);
 
 	if (pgtbl->stage == MMU_STAGE1) {
-		arch_mmu_stage1_tlbflush((virtual_addr_t)pg->ia,
-					 (virtual_size_t)blksz);
+		arch_mmu_stage1_tlbflush(TRUE, pg->ia, blksz);
 	} else {
-		arch_mmu_stage2_tlbflush(pg->ia, blksz);
+		arch_mmu_stage2_tlbflush(TRUE, pg->ia, blksz);
 	}
 
 	pgtbl->pte_cnt++;
@@ -742,6 +741,134 @@ struct mmu_pgtbl *mmu_hypervisor_pgtbl(void)
 {
 	return mmuctrl.hyp_pgtbl;
 }
+
+#ifdef ARCH_HAS_MEMORY_READWRITE
+
+/* Initialized by memory read/write init */
+static struct mmu_pgtbl *mem_rw_pgtbl[CONFIG_CPU_COUNT];
+static arch_pte_t *mem_rw_pte[CONFIG_CPU_COUNT];
+static arch_pgflags_t mem_rw_pgflags_cache[CONFIG_CPU_COUNT];
+static arch_pgflags_t mem_rw_pgflags_nocache[CONFIG_CPU_COUNT];
+
+int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
+				physical_addr_t src,
+				void *dst, u32 len, bool cacheable)
+{
+	arch_pte_t old_pte_val;
+	u32 cpu = vmm_smp_processor_id();
+	arch_pte_t *pte = mem_rw_pte[cpu];
+	int pgtbl_level = mem_rw_pgtbl[cpu]->level;
+	arch_pgflags_t *flags = (cacheable) ?
+		&mem_rw_pgflags_cache[cpu] : &mem_rw_pgflags_nocache[cpu];
+	virtual_addr_t offset = src & VMM_PAGE_MASK;
+
+	old_pte_val = *pte;
+
+	arch_mmu_pte_set(pte , MMU_STAGE1, pgtbl_level, src, flags);
+	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
+	arch_mmu_stage1_tlbflush(FALSE, tmp_va, VMM_PAGE_SIZE);
+
+	switch (len) {
+	case 1:
+		*((u8 *)dst) = *(u8 *)(tmp_va + offset);
+		break;
+	case 2:
+		*((u16 *)dst) = *(u16 *)(tmp_va + offset);
+		break;
+	case 4:
+		*((u32 *)dst) = *(u32 *)(tmp_va + offset);
+		break;
+	case 8:
+		*((u64 *)dst) = *(u64 *)(tmp_va + offset);
+		break;
+	default:
+		memcpy(dst, (void *)(tmp_va + offset), len);
+		break;
+	};
+
+	*pte = old_pte_val;
+	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
+
+	return VMM_OK;
+}
+
+int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
+				 physical_addr_t dst,
+				 void *src, u32 len, bool cacheable)
+{
+	arch_pte_t old_pte_val;
+	u32 cpu = vmm_smp_processor_id();
+	arch_pte_t *pte = mem_rw_pte[cpu];
+	int pgtbl_level = mem_rw_pgtbl[cpu]->level;
+	arch_pgflags_t *flags = (cacheable) ?
+		&mem_rw_pgflags_cache[cpu] : &mem_rw_pgflags_nocache[cpu];
+	virtual_addr_t offset = dst & VMM_PAGE_MASK;
+
+	old_pte_val = *pte;
+
+	arch_mmu_pte_set(pte , MMU_STAGE1, pgtbl_level, dst, flags);
+	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
+	arch_mmu_stage1_tlbflush(FALSE, tmp_va, VMM_PAGE_SIZE);
+
+	switch (len) {
+	case 1:
+		*(u8 *)(tmp_va + offset) = *((u8 *)src);
+		break;
+	case 2:
+		*(u16 *)(tmp_va + offset) = *((u16 *)src);
+		break;
+	case 4:
+		*(u32 *)(tmp_va + offset) = *((u32 *)src);
+		break;
+	case 8:
+		*(u64 *)(tmp_va + offset) = *((u64 *)src);
+		break;
+	default:
+		memcpy((void *)(tmp_va + offset), src, len);
+		break;
+	};
+
+	*pte = old_pte_val;
+	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
+
+	return VMM_OK;
+}
+
+int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
+{
+	int rc;
+	u32 cpu = vmm_smp_processor_id();
+	struct mmu_page p;
+
+	memset(&p, 0, sizeof(p));
+	p.ia = tmp_va;
+	p.oa = 0x0;
+	p.sz = VMM_PAGE_SIZE;
+	arch_mmu_stage1_pgflags_set(&p.flags, VMM_MEMORY_FLAGS_NORMAL);
+
+	rc = mmu_map_hypervisor_page(&p);
+	if (rc) {
+		return rc;
+	}
+
+	mem_rw_pte[cpu] = NULL;
+	mem_rw_pgtbl[cpu] = NULL;
+
+	rc = mmu_find_pte(mmu_hypervisor_pgtbl(), tmp_va,
+			  &mem_rw_pte[cpu], &mem_rw_pgtbl[cpu]);
+	if (rc) {
+		return rc;
+	}
+
+	arch_mmu_stage1_pgflags_set(&mem_rw_pgflags_cache[cpu],
+				    VMM_MEMORY_FLAGS_NORMAL);
+	arch_mmu_stage1_pgflags_set(&mem_rw_pgflags_nocache[cpu],
+				    VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
+
+	return VMM_OK;
+}
+
+#endif
 
 void arch_cpu_aspace_print_info(struct vmm_chardev *cdev)
 {

@@ -34,12 +34,14 @@ void arch_mmu_pgtbl_clear(virtual_addr_t tbl_va)
 	memset((void *)tbl_va, 0, ARCH_MMU_PGTBL_SIZE);
 }
 
-void arch_mmu_stage2_tlbflush(physical_addr_t gpa, physical_size_t gsz)
+void arch_mmu_stage2_tlbflush(bool remote,
+			      physical_addr_t gpa, physical_size_t gsz)
 {
 	cpu_invalid_ipa_guest_tlb(gpa);
 }
 
-void arch_mmu_stage1_tlbflush(virtual_addr_t va, virtual_size_t sz)
+void arch_mmu_stage1_tlbflush(bool remote,
+			      virtual_addr_t va, virtual_size_t sz)
 {
 	cpu_invalid_va_hypervisor_tlb(va);
 }
@@ -173,7 +175,7 @@ void arch_mmu_stage1_pgflags_set(arch_pgflags_t *flags, u32 mem_flags)
 	} else if (mem_flags & VMM_MEMORY_DMA_NONCOHERENT) {
 		flags->aindex = AINDEX_NORMAL_NC;
 	} else {
-		flags->aindex = AINDEX_DEVICE_nGnRnE;
+		flags->aindex = AINDEX_NORMAL_NC;
 	}
 }
 
@@ -326,163 +328,6 @@ u32 arch_mmu_stage2_current_vmid(void)
 int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys)
 {
 	cpu_stage2_update(tbl_phys, vmid);
-
-	return VMM_OK;
-}
-
-/* Initialized by memory read/write init */
-static struct mmu_pgtbl *mem_rw_ttbl[CONFIG_CPU_COUNT];
-static arch_pte_t *mem_rw_tte[CONFIG_CPU_COUNT];
-static physical_addr_t mem_rw_outaddr_mask[CONFIG_CPU_COUNT];
-
-#define PHYS_RW_TTE							\
-	((TTBL_TABLE_MASK|TTBL_VALID_MASK)	|			\
-	 ((0x1ULL << TTBL_STAGE1_UPPER_XN_SHIFT) &			\
-	    TTBL_STAGE1_UPPER_XN_MASK)		|			\
-	 ((0x1 << TTBL_STAGE1_LOWER_AF_SHIFT) &				\
-	    TTBL_STAGE1_LOWER_AF_MASK)		|			\
-	 ((TTBL_SH_INNER_SHAREABLE << TTBL_STAGE1_LOWER_SH_SHIFT) &	\
-	    TTBL_STAGE1_LOWER_SH_MASK)		|			\
-	 ((TTBL_AP_SRW_U << TTBL_STAGE1_LOWER_AP_SHIFT) &		\
-	    TTBL_STAGE1_LOWER_AP_MASK)		|			\
-	 ((0x1 << TTBL_STAGE1_LOWER_NS_SHIFT) &				\
-	    TTBL_STAGE1_LOWER_NS_MASK))
-
-#define PHYS_RW_TTE_NOCACHE						\
-	(PHYS_RW_TTE |							\
-	 ((AINDEX_NORMAL_NC << TTBL_STAGE1_LOWER_AINDEX_SHIFT) &	\
-	    TTBL_STAGE1_LOWER_AINDEX_MASK))
-
-#define PHYS_RW_TTE_CACHE						\
-	(PHYS_RW_TTE |							\
-	 ((AINDEX_NORMAL_WB << TTBL_STAGE1_LOWER_AINDEX_SHIFT) &	\
-	    TTBL_STAGE1_LOWER_AINDEX_MASK))
-
-int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
-				physical_addr_t src,
-				void *dst, u32 len, bool cacheable)
-{
-	u64 old_tte_val;
-	u32 cpu = vmm_smp_processor_id();
-	arch_pte_t *tte = mem_rw_tte[cpu];
-	physical_addr_t outaddr_mask = mem_rw_outaddr_mask[cpu];
-	virtual_addr_t offset = (src & VMM_PAGE_MASK);
-
-	old_tte_val = *tte;
-
-	if (cacheable) {
-		*tte = PHYS_RW_TTE_CACHE;
-	} else {
-		*tte = PHYS_RW_TTE_NOCACHE;
-	}
-	*tte |= src & outaddr_mask;
-
-	cpu_mmu_sync_tte(tte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
-
-	switch (len) {
-	case 1:
-		*((u8 *)dst) = *(u8 *)(tmp_va + offset);
-		break;
-	case 2:
-		*((u16 *)dst) = *(u16 *)(tmp_va + offset);
-		break;
-	case 4:
-		*((u32 *)dst) = *(u32 *)(tmp_va + offset);
-		break;
-	case 8:
-		*((u64 *)dst) = *(u64 *)(tmp_va + offset);
-		break;
-	default:
-		memcpy(dst, (void *)(tmp_va + offset), len);
-		break;
-	};
-
-	*tte = old_tte_val;
-	cpu_mmu_sync_tte(tte);
-
-	return VMM_OK;
-}
-
-int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
-				 physical_addr_t dst,
-				 void *src, u32 len, bool cacheable)
-{
-	u64 old_tte_val;
-	u32 cpu = vmm_smp_processor_id();
-	arch_pte_t *tte = mem_rw_tte[cpu];
-	physical_addr_t outaddr_mask = mem_rw_outaddr_mask[cpu];
-	virtual_addr_t offset = (dst & VMM_PAGE_MASK);
-
-	old_tte_val = *tte;
-
-	if (cacheable) {
-		*tte = PHYS_RW_TTE_CACHE;
-	} else {
-		*tte = PHYS_RW_TTE_NOCACHE;
-	}
-	*tte |= dst & outaddr_mask;
-
-	cpu_mmu_sync_tte(tte);
-	cpu_invalid_va_hypervisor_tlb(tmp_va);
-
-	switch (len) {
-	case 1:
-		*(u8 *)(tmp_va + offset) = *((u8 *)src);
-		break;
-	case 2:
-		*(u16 *)(tmp_va + offset) = *((u16 *)src);
-		break;
-	case 4:
-		*(u32 *)(tmp_va + offset) = *((u32 *)src);
-		break;
-	case 8:
-		*(u64 *)(tmp_va + offset) = *((u64 *)src);
-		break;
-	default:
-		memcpy((void *)(tmp_va + offset), src, len);
-		break;
-	};
-
-	*tte = old_tte_val;
-	cpu_mmu_sync_tte(tte);
-
-	return VMM_OK;
-}
-
-int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
-{
-	int rc;
-	u32 cpu = vmm_smp_processor_id();
-	struct mmu_page p;
-
-	memset(&p, 0, sizeof(p));
-	p.ia = tmp_va;
-	p.oa = 0x0;
-	p.sz = VMM_PAGE_SIZE;
-	p.flags.af = 1;
-	p.flags.ap = TTBL_AP_SR_U;
-	p.flags.xn = 1;
-	p.flags.ns = 1;
-	p.flags.sh = TTBL_SH_INNER_SHAREABLE;
-	p.flags.aindex = AINDEX_NORMAL_NC;
-
-	rc = mmu_map_hypervisor_page(&p);
-	if (rc) {
-		return rc;
-	}
-
-	mem_rw_tte[cpu] = NULL;
-	mem_rw_ttbl[cpu] = NULL;
-
-	rc = mmu_find_pte(mmu_hypervisor_pgtbl(), tmp_va,
-			  &mem_rw_tte[cpu], &mem_rw_ttbl[cpu]);
-	if (rc) {
-		return rc;
-	}
-
-	mem_rw_outaddr_mask[cpu] =
-		arch_mmu_level_map_mask(MMU_STAGE1, mem_rw_ttbl[cpu]->level);
 
 	return VMM_OK;
 }
