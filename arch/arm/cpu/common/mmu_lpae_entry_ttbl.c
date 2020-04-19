@@ -41,6 +41,8 @@ extern int def_pgtbl_tree[];
 extern u8 defterm_early_base[];
 #endif
 
+#define PGTBL_ENTCNT (ARCH_MMU_PGTBL_SIZE / sizeof(arch_pte_t))
+
 void __attribute__ ((section(".entry")))
     __setup_initial_ttbl(struct mmu_lpae_entry_ctrl *lpae_entry,
 		     virtual_addr_t map_start, virtual_addr_t map_end,
@@ -69,7 +71,7 @@ void __attribute__ ((section(".entry")))
 			if (lpae_entry->ttbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -81,7 +83,7 @@ void __attribute__ ((section(".entry")))
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = lpae_entry->next_ttbl;
-			lpae_entry->next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
+			lpae_entry->next_ttbl += PGTBL_ENTCNT;
 		}
 
 		/* Setup level2 table */
@@ -96,7 +98,7 @@ void __attribute__ ((section(".entry")))
 			if (lpae_entry->ttbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
 			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
@@ -108,7 +110,7 @@ void __attribute__ ((section(".entry")))
 			     TTBL_OUTADDR_MASK);
 			ttbl[index] |= (TTBL_TABLE_MASK | TTBL_VALID_MASK);
 			ttbl = lpae_entry->next_ttbl;
-			lpae_entry->next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
+			lpae_entry->next_ttbl += PGTBL_ENTCNT;
 		}
 
 		/* Setup level3 table */
@@ -227,14 +229,13 @@ void __attribute__ ((section(".entry")))
 	/* Init first ttbl */
 	cpu_mmu_invalidate_range((virtual_addr_t)lpae_entry.next_ttbl,
 				 ARCH_INITIAL_PGTBL_COUNT *
-				 ARCH_MMU_PGTBL_ENTCNT *
-				 sizeof(*lpae_entry.next_ttbl));
-	for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+				 ARCH_MMU_PGTBL_SIZE);
+	for (i = 0; i < PGTBL_ENTCNT; i++) {
 		lpae_entry.next_ttbl[i] = 0x0ULL;
 	}
 
 	lpae_entry.ttbl_count++;
-	lpae_entry.next_ttbl += ARCH_MMU_PGTBL_ENTCNT;
+	lpae_entry.next_ttbl += PGTBL_ENTCNT;
 
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm

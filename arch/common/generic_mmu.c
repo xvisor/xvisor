@@ -1065,7 +1065,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	mmuctrl.hyp_pgtbl->child_cnt = 0x0;
 	INIT_LIST_HEAD(&mmuctrl.hyp_pgtbl->child_list);
 	/* Scan table */
-	for (t = 0; t < ARCH_MMU_PGTBL_ENTCNT; t++) {
+	for (t = 0; t < (ARCH_MMU_PGTBL_SIZE / sizeof(*pte)); t++) {
 		pte = &((arch_pte_t *)mmuctrl.hyp_pgtbl->tbl_va)[t];
 		if (arch_mmu_pte_is_valid(pte, mmuctrl.hyp_pgtbl->stage,
 					  mmuctrl.hyp_pgtbl->level)) {
@@ -1088,7 +1088,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		pgtbl->tbl_pa = mmuctrl.ipgtbl_base_pa + i * ARCH_MMU_PGTBL_SIZE;
 		INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 		pgtbl->tbl_va = mmuctrl.ipgtbl_base_va + i * ARCH_MMU_PGTBL_SIZE;
-		for (t = 0; t < ARCH_MMU_PGTBL_ENTCNT; t++) {
+		for (t = 0; t < (ARCH_MMU_PGTBL_SIZE / sizeof(*pte)); t++) {
 			pte = &(((arch_pte_t *)parent->tbl_va)[t]);
 			if (!arch_mmu_pte_is_valid(pte, parent->stage,
 						   parent->level)) {
@@ -1107,7 +1107,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		INIT_LIST_HEAD(&pgtbl->head);
 		INIT_LIST_HEAD(&pgtbl->child_list);
 		/* Scan table enteries */
-		for (t = 0; t < ARCH_MMU_PGTBL_ENTCNT; t++) {
+		for (t = 0; t < (ARCH_MMU_PGTBL_SIZE / sizeof(*pte)); t++) {
 			pte = &(((arch_pte_t *)pgtbl->tbl_va)[t]);
 			if (arch_mmu_pte_is_valid(pte, pgtbl->stage,
 						  pgtbl->level)) {

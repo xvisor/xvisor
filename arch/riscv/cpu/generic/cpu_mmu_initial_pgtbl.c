@@ -44,6 +44,8 @@ extern int def_pgtbl_tree[];
 extern u8 defterm_early_base[];
 #endif
 
+#define PGTBL_ENTCNT (ARCH_MMU_PGTBL_SIZE / sizeof(arch_pte_t))
+
 void __attribute__ ((section(".entry")))
     __setup_initial_pgtbl(struct cpu_mmu_entry_ctrl *entry,
 			  virtual_addr_t map_start,
@@ -80,7 +82,7 @@ void __attribute__ ((section(".entry")))
 			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
@@ -92,7 +94,7 @@ void __attribute__ ((section(".entry")))
 			pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
 			pgtbl[index] |= PGTBL_PTE_VALID_MASK;
 			pgtbl = entry->next_pgtbl;
-			entry->next_pgtbl += ARCH_MMU_PGTBL_ENTCNT;
+			entry->next_pgtbl += PGTBL_ENTCNT;
 		}
 #endif
 skip_level3:
@@ -114,7 +116,7 @@ skip_level3:
 			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
@@ -126,7 +128,7 @@ skip_level3:
 			pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
 			pgtbl[index] |= PGTBL_PTE_VALID_MASK;
 			pgtbl = entry->next_pgtbl;
-			entry->next_pgtbl += ARCH_MMU_PGTBL_ENTCNT;
+			entry->next_pgtbl += PGTBL_ENTCNT;
 		}
 #endif
 skip_level2:
@@ -147,7 +149,7 @@ skip_level2:
 			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
-			for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
@@ -159,7 +161,7 @@ skip_level2:
 			pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
 			pgtbl[index] |= PGTBL_PTE_VALID_MASK;
 			pgtbl = entry->next_pgtbl;
-			entry->next_pgtbl += ARCH_MMU_PGTBL_ENTCNT;
+			entry->next_pgtbl += PGTBL_ENTCNT;
 		}
 skip_level1:
 
@@ -234,7 +236,7 @@ void __attribute__ ((section(".entry")))
 	arch_pte_t *pgtbl = (arch_pte_t *)to_load_pa((virtual_addr_t)&def_pgtbl);;
 
 	/* Clear page table memory */
-	for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+	for (i = 0; i < PGTBL_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
 	}
 
@@ -256,7 +258,7 @@ void __attribute__ ((section(".entry")))
 	}
 
 	/* Cleanup and disable MMU */
-	for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+	for (i = 0; i < PGTBL_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
 	}
 	csr_write(CSR_SATP, 0);
@@ -323,12 +325,12 @@ void __attribute__ ((section(".entry")))
 	entry.next_pgtbl = (arch_pte_t *)entry.pgtbl_base;
 
 	/* Init first pgtbl */
-	for (i = 0; i < ARCH_MMU_PGTBL_ENTCNT; i++) {
+	for (i = 0; i < PGTBL_ENTCNT; i++) {
 		entry.next_pgtbl[i] = 0x0ULL;
 	}
 
 	entry.pgtbl_count++;
-	entry.next_pgtbl += ARCH_MMU_PGTBL_ENTCNT;
+	entry.next_pgtbl += PGTBL_ENTCNT;
 
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm

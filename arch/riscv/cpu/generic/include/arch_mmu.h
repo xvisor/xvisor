@@ -31,13 +31,6 @@
 #define ARCH_MMU_PGTBL_SIZE			0x00001000
 #define ARCH_MMU_PGTBL_SIZE_SHIFT		12
 #define ARCH_MMU_PGTBL_ALIGN_ORDER		ARCH_MMU_PGTBL_SIZE_SHIFT
-#ifdef CONFIG_64BIT
-#define ARCH_MMU_PGTBL_ENTCNT			512
-#define ARCH_MMU_PGTBL_ENTSZ			8
-#else
-#define ARCH_MMU_PGTBL_ENTCNT			1024
-#define ARCH_MMU_PGTBL_ENTSZ			4
-#endif
 
 #ifdef CONFIG_64BIT
 /* L3 index Bit[47:39] */
@@ -141,8 +134,6 @@ void arch_mmu_stage1_tlbflush(bool remote,
 			      virtual_addr_t va, virtual_size_t sz);
 
 bool arch_mmu_valid_block_size(physical_size_t sz);
-
-int arch_mmu_start_level(int stage);
 
 int arch_mmu_start_level(int stage);
 
