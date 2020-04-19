@@ -308,7 +308,7 @@ int arch_guest_init(struct vmm_guest *guest)
 			return VMM_ENOMEM;
 		}
 
-		arm_guest_priv(guest)->ttbl = mmu_pgtbl_alloc(MMU_STAGE2);
+		arm_guest_priv(guest)->ttbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
 		if (!arm_guest_priv(guest)->ttbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;

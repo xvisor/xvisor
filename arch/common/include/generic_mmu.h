@@ -56,6 +56,7 @@ struct mmu_pgtbl {
 				      tte_cnt, child_cnt, and child_list 
 				  */
 	virtual_addr_t tbl_va;
+	virtual_size_t tbl_sz;
 	u32 pte_cnt;
 	u32 child_cnt;
 	struct dlist child_list;
@@ -65,7 +66,7 @@ u64 mmu_pgtbl_count(int stage, int level);
 
 struct mmu_pgtbl *mmu_pgtbl_find(int stage, physical_addr_t tbl_pa);
 
-struct mmu_pgtbl *mmu_pgtbl_alloc(int stage);
+struct mmu_pgtbl *mmu_pgtbl_alloc(int stage, int level);
 
 int mmu_pgtbl_free(struct mmu_pgtbl *pgtbl);
 

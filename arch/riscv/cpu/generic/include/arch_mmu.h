@@ -26,11 +26,9 @@
 
 #include <vmm_const.h>
 
-#define ARCH_INITIAL_PGTBL_COUNT		8
-
-#define ARCH_MMU_PGTBL_SIZE			0x00001000
-#define ARCH_MMU_PGTBL_SIZE_SHIFT		12
-#define ARCH_MMU_PGTBL_ALIGN_ORDER		ARCH_MMU_PGTBL_SIZE_SHIFT
+#define ARCH_MMU_STAGE1_PGTBL_INITIAL_COUNT	8
+#define ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER	12
+#define ARCH_MMU_STAGE1_PGTBL_ALIGN_ORDER	12
 
 #ifdef CONFIG_64BIT
 /* L3 index Bit[47:39] */
@@ -125,7 +123,11 @@ struct arch_pgflags {
 };
 typedef struct arch_pgflags arch_pgflags_t;
 
-void arch_mmu_pgtbl_clear(virtual_addr_t tbl_va);
+int arch_mmu_pgtbl_min_align_order(int stage);
+
+int arch_mmu_pgtbl_align_order(int stage, int level);
+
+physical_size_t arch_mmu_pgtbl_size(int stage, int level);
 
 void arch_mmu_stage2_tlbflush(bool remote,
 			      physical_addr_t gpa, physical_size_t gsz);

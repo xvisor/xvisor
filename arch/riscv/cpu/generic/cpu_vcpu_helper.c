@@ -119,7 +119,7 @@ int arch_guest_init(struct vmm_guest *guest)
 		priv->time_delta *= vmm_timer_clocksource_frequency();
 		priv->time_delta = -udiv64(priv->time_delta, 1000000000ULL);
 
-		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2);
+		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
 		if (!priv->pgtbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;

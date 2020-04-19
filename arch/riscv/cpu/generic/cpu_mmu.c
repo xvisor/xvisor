@@ -25,7 +25,6 @@
 #include <vmm_types.h>
 #include <vmm_smp.h>
 #include <vmm_host_aspace.h>
-#include <libs/stringlib.h>
 #include <generic_mmu.h>
 #include <arch_barrier.h>
 
@@ -41,9 +40,19 @@ unsigned long riscv_stage1_mode = SATP_MODE_SV39;
 unsigned long riscv_stage1_mode = SATP_MODE_SV32;
 #endif
 
-void arch_mmu_pgtbl_clear(virtual_addr_t tbl_va)
+int arch_mmu_pgtbl_min_align_order(int stage)
 {
-	memset((void *)tbl_va, 0, ARCH_MMU_PGTBL_SIZE);
+	return PGTBL_PAGE_SIZE_SHIFT;
+}
+
+int arch_mmu_pgtbl_align_order(int stage, int level)
+{
+	return PGTBL_PAGE_SIZE_SHIFT;
+}
+
+physical_size_t arch_mmu_pgtbl_size(int stage, int level)
+{
+	return PGTBL_PAGE_SIZE;
 }
 
 void arch_mmu_stage2_tlbflush(bool remote,

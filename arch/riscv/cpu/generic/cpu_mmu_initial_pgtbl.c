@@ -44,7 +44,9 @@ extern int def_pgtbl_tree[];
 extern u8 defterm_early_base[];
 #endif
 
-#define PGTBL_ENTCNT (ARCH_MMU_PGTBL_SIZE / sizeof(arch_pte_t))
+#define PGTBL_INITIAL_COUNT	ARCH_MMU_STAGE1_PGTBL_INITIAL_COUNT
+#define PGTBL_ENTCNT	((1UL << ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER) / \
+			 sizeof(arch_pte_t))
 
 void __attribute__ ((section(".entry")))
     __setup_initial_pgtbl(struct cpu_mmu_entry_ctrl *entry,
@@ -79,7 +81,7 @@ void __attribute__ ((section(".entry")))
 				 << PGTBL_PAGE_SIZE_SHIFT);
 		} else {
 			/* Allocate new level2 table */
-			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
+			if (entry->pgtbl_count == PGTBL_INITIAL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
@@ -87,7 +89,7 @@ void __attribute__ ((section(".entry")))
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
 			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    ARCH_MMU_PGTBL_SIZE_SHIFT;
+			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -113,7 +115,7 @@ skip_level3:
 				 << PGTBL_PAGE_SIZE_SHIFT);
 		} else {
 			/* Allocate new level1 table */
-			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
+			if (entry->pgtbl_count == PGTBL_INITIAL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
@@ -121,7 +123,7 @@ skip_level3:
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
 			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    ARCH_MMU_PGTBL_SIZE_SHIFT;
+			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -146,7 +148,7 @@ skip_level2:
 				 << PGTBL_PAGE_SIZE_SHIFT);
 		} else {
 			/* Allocate new level0 table */
-			if (entry->pgtbl_count == ARCH_INITIAL_PGTBL_COUNT) {
+			if (entry->pgtbl_count == PGTBL_INITIAL_COUNT) {
 				while (1) ;	/* No initial table available */
 			}
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
@@ -154,7 +156,7 @@ skip_level2:
 			}
 			entry->pgtbl_tree[entry->pgtbl_count] =
 			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    ARCH_MMU_PGTBL_SIZE_SHIFT;
+			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -318,7 +320,7 @@ void __attribute__ ((section(".entry")))
 	/* Init pgtbl_base, pgtbl_tree, and next_pgtbl */
 	entry.pgtbl_tree =
 		(int *)to_load_pa((virtual_addr_t)&def_pgtbl_tree);
-	for (i = 0; i < ARCH_INITIAL_PGTBL_COUNT; i++) {
+	for (i = 0; i < PGTBL_INITIAL_COUNT; i++) {
 		entry.pgtbl_tree[i] = -1;
 	}
 	entry.pgtbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
