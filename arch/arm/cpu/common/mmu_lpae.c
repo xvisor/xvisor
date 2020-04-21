@@ -38,9 +38,9 @@ int arch_mmu_pgtbl_align_order(int stage, int level)
 	return TTBL_L3_BLOCK_SHIFT;
 }
 
-physical_size_t arch_mmu_pgtbl_size(int stage, int level)
+int arch_mmu_pgtbl_size_order(int stage, int level)
 {
-	return TTBL_L3_BLOCK_SIZE;
+	return TTBL_L3_BLOCK_SHIFT;
 }
 
 void arch_mmu_stage2_tlbflush(bool remote,

@@ -33,13 +33,11 @@
 struct cpu_mmu_entry_ctrl {
 	unsigned long num_levels;
 	u32 pgtbl_count;
-	int *pgtbl_tree;
 	arch_pte_t *next_pgtbl;
 	virtual_addr_t pgtbl_base;
 };
 
 extern u8 def_pgtbl[];
-extern int def_pgtbl_tree[];
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
@@ -87,9 +85,6 @@ void __attribute__ ((section(".entry")))
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
-			entry->pgtbl_tree[entry->pgtbl_count] =
-			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -121,9 +116,6 @@ skip_level3:
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
-			entry->pgtbl_tree[entry->pgtbl_count] =
-			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -154,9 +146,6 @@ skip_level2:
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				entry->next_pgtbl[i] = 0x0ULL;
 			}
-			entry->pgtbl_tree[entry->pgtbl_count] =
-			    ((virtual_addr_t)pgtbl - entry->pgtbl_base) >>
-			    PGTBL_PAGE_SIZE_SHIFT;
 			entry->pgtbl_count++;
 			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
@@ -297,7 +286,7 @@ void __attribute__ ((section(".entry")))
 		(virtual_size_t *)to_load_pa((virtual_addr_t)&devtree_virt_size);
 	physical_addr_t *dt_phys_base =
 		(physical_addr_t *)to_load_pa((virtual_addr_t)&devtree_phys_base);
-	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, NULL, 0 };
+	struct cpu_mmu_entry_ctrl entry = { 0, 0, NULL, 0 };
 
 	/* Detect best possible page table mode */
 	__detect_pgtbl_mode(load_start, load_end, exec_start, exec_end);
@@ -317,12 +306,7 @@ void __attribute__ ((section(".entry")))
 		while (1);
 	}
 
-	/* Init pgtbl_base, pgtbl_tree, and next_pgtbl */
-	entry.pgtbl_tree =
-		(int *)to_load_pa((virtual_addr_t)&def_pgtbl_tree);
-	for (i = 0; i < PGTBL_INITIAL_COUNT; i++) {
-		entry.pgtbl_tree[i] = -1;
-	}
+	/* Init pgtbl_base and next_pgtbl */
 	entry.pgtbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
 	entry.next_pgtbl = (arch_pte_t *)entry.pgtbl_base;
 

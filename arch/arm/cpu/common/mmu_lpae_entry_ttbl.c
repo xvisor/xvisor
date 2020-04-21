@@ -30,13 +30,11 @@
 
 struct mmu_lpae_entry_ctrl {
 	u32 ttbl_count;
-	int *ttbl_tree;
 	u64 *next_ttbl;
 	virtual_addr_t ttbl_base;
 };
 
 extern u8 def_pgtbl[];
-extern int def_pgtbl_tree[];
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
@@ -77,9 +75,6 @@ void __attribute__ ((section(".entry")))
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
-			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
-			    ((virtual_addr_t) ttbl -
-			     lpae_entry->ttbl_base) >> PGTBL_SIZE_SHIFT;
 			lpae_entry->ttbl_count++;
 			ttbl[index] |=
 			    (((virtual_addr_t) lpae_entry->next_ttbl) &
@@ -104,9 +99,6 @@ void __attribute__ ((section(".entry")))
 			for (i = 0; i < PGTBL_ENTCNT; i++) {
 				lpae_entry->next_ttbl[i] = 0x0ULL;
 			}
-			lpae_entry->ttbl_tree[lpae_entry->ttbl_count] =
-			    ((virtual_addr_t) ttbl -
-			     lpae_entry->ttbl_base) >> PGTBL_SIZE_SHIFT;
 			lpae_entry->ttbl_count++;
 			ttbl[index] |=
 			    (((virtual_addr_t) lpae_entry->next_ttbl) &
@@ -214,18 +206,9 @@ void __attribute__ ((section(".entry")))
 		(virtual_size_t *)to_load_pa((virtual_addr_t)&devtree_virt_size);
 	physical_addr_t *dt_phys_base =
 		(physical_addr_t *)to_load_pa((virtual_addr_t)&devtree_phys_base);
-	struct mmu_lpae_entry_ctrl lpae_entry = { 0, NULL, NULL, 0 };
+	struct mmu_lpae_entry_ctrl lpae_entry = { 0, NULL, 0 };
 
-	/* Init ttbl_base, ttbl_tree, and next_ttbl */
-	lpae_entry.ttbl_tree =
-		(int *)to_load_pa((virtual_addr_t)&def_pgtbl_tree);
-
-	cpu_mmu_invalidate_range((virtual_addr_t)&lpae_entry.ttbl_tree[0],
-		PGTBL_COUNT * sizeof(lpae_entry.ttbl_tree[0]));
-	for (i = 0; i < PGTBL_COUNT; i++) {
-		lpae_entry.ttbl_tree[i] = -1;
-	}
-
+	/* Init ttbl_base and next_ttbl */
 	lpae_entry.ttbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
 	lpae_entry.next_ttbl = (u64 *)lpae_entry.ttbl_base;
 

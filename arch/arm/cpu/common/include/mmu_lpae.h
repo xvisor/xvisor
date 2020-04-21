@@ -166,7 +166,7 @@ int arch_mmu_pgtbl_min_align_order(int stage);
 
 int arch_mmu_pgtbl_align_order(int stage, int level);
 
-physical_size_t arch_mmu_pgtbl_size(int stage, int level);
+int arch_mmu_pgtbl_size_order(int stage, int level);
 
 void arch_mmu_stage2_tlbflush(bool remote,
 			      physical_addr_t gpa, physical_size_t gsz);
