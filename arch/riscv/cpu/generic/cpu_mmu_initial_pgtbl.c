@@ -25,7 +25,7 @@
 #include <arch_io.h>
 #include <libs/libfdt.h>
 #include <generic_devtree.h>
-#include <arch_mmu.h>
+#include <generic_mmu.h>
 
 #include <cpu_tlb.h>
 #include <riscv_csr.h>
@@ -37,14 +37,16 @@ struct cpu_mmu_entry_ctrl {
 	virtual_addr_t pgtbl_base;
 };
 
-extern u8 def_pgtbl[];
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 extern u8 defterm_early_base[];
 #endif
 
-#define PGTBL_INITIAL_COUNT	ARCH_MMU_STAGE1_PGTBL_INITIAL_COUNT
-#define PGTBL_ENTCNT	((1UL << ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER) / \
-			 sizeof(arch_pte_t))
+#define PGTBL_ROOT_SIZE		(1UL << ARCH_MMU_STAGE1_ROOT_SIZE_ORDER)
+#define PGTBL_ROOT_ENTCNT	(PGTBL_ROOT_SIZE / sizeof(arch_pte_t))
+
+#define PGTBL_INITIAL_COUNT	ARCH_MMU_STAGE1_NONROOT_INITIAL_COUNT
+#define PGTBL_SIZE		(1UL << ARCH_MMU_STAGE1_NONROOT_SIZE_ORDER)
+#define PGTBL_ENTCNT		(PGTBL_SIZE / sizeof(arch_pte_t))
 
 void __attribute__ ((section(".entry")))
     __setup_initial_pgtbl(struct cpu_mmu_entry_ctrl *entry,
@@ -224,10 +226,11 @@ void __attribute__ ((section(".entry")))
 #ifdef CONFIG_64BIT
 	u32 i, index;
 	unsigned long satp;
-	arch_pte_t *pgtbl = (arch_pte_t *)to_load_pa((virtual_addr_t)&def_pgtbl);;
+	arch_pte_t *pgtbl =
+		(arch_pte_t *)to_load_pa((virtual_addr_t)&stage1_pgtbl_root);
 
 	/* Clear page table memory */
-	for (i = 0; i < PGTBL_ENTCNT; i++) {
+	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
 	}
 
@@ -249,7 +252,7 @@ void __attribute__ ((section(".entry")))
 	}
 
 	/* Cleanup and disable MMU */
-	for (i = 0; i < PGTBL_ENTCNT; i++) {
+	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
 	}
 	csr_write(CSR_SATP, 0);
@@ -274,6 +277,7 @@ void __attribute__ ((section(".entry")))
 			 virtual_addr_t exec_start, virtual_addr_t dtb_start)
 {
 	u32 i;
+	arch_pte_t *root_pgtbl;
 	virtual_addr_t exec_end = exec_start + (load_end - load_start);
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	virtual_addr_t defterm_early_va;
@@ -307,16 +311,15 @@ void __attribute__ ((section(".entry")))
 	}
 
 	/* Init pgtbl_base and next_pgtbl */
-	entry.pgtbl_base = to_load_pa((virtual_addr_t)&def_pgtbl);
-	entry.next_pgtbl = (arch_pte_t *)entry.pgtbl_base;
+	entry.pgtbl_base = to_load_pa((virtual_addr_t)&stage1_pgtbl_root);
+	entry.next_pgtbl =
+		(arch_pte_t *)to_load_pa((virtual_addr_t)&stage1_pgtbl_nonroot);
 
-	/* Init first pgtbl */
-	for (i = 0; i < PGTBL_ENTCNT; i++) {
-		entry.next_pgtbl[i] = 0x0ULL;
+	/* Init root pgtbl */
+	root_pgtbl = (arch_pte_t *)entry.pgtbl_base;
+	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
+		root_pgtbl[i] = 0x0ULL;
 	}
-
-	entry.pgtbl_count++;
-	entry.next_pgtbl += PGTBL_ENTCNT;
 
 #ifdef CONFIG_ARCH_GENERIC_DEFTERM_EARLY
 	/* Map UART for early defterm

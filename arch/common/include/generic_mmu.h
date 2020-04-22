@@ -62,6 +62,14 @@ struct mmu_pgtbl {
 	struct dlist child_list;
 };
 
+/* MMU stage1 page table symbols
+ *
+ * Note: Architecture specific initial page table setup can use this symbols
+ * as hypervisor (i.e. stage1) page table.
+ */
+extern u8 stage1_pgtbl_root[];
+extern u8 stage1_pgtbl_nonroot[];
+
 u64 mmu_pgtbl_count(int stage, int level);
 
 struct mmu_pgtbl *mmu_pgtbl_find(int stage, physical_addr_t tbl_pa);

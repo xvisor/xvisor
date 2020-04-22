@@ -328,7 +328,7 @@ __copy_end:
 __ttbr_set_addr:
 	.dword __ttbr_set
 __ttbr_set:
-	.dword def_pgtbl
+	.dword stage1_pgtbl_root
 __init_vectors:
 	.dword init_vectors
 __boot_reg0:

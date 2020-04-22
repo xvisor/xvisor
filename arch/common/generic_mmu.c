@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_compiler.h>
 #include <vmm_types.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
@@ -35,33 +36,40 @@
 
 #include <generic_mmu.h>
 
-#define STAGE1_PGTBL_ORDER	ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER
-#define STAGE1_PGTBL_SIZE	(1UL << STAGE1_PGTBL_ORDER)
-#define STAGE1_PGTBL_ALIGN_ORDER ARCH_MMU_STAGE1_PGTBL_ALIGN_ORDER
+#define STAGE1_ROOT_ORDER	ARCH_MMU_STAGE1_ROOT_SIZE_ORDER
+#define STAGE1_ROOT_SIZE	(1UL << STAGE1_ROOT_ORDER)
+#define STAGE1_ROOT_ALIGN_ORDER ARCH_MMU_STAGE1_ROOT_ALIGN_ORDER
+#define STAGE1_ROOT_ALIGN	(1UL << STAGE1_ROOT_ALIGN_ORDER)
+
+#define STAGE1_NONROOT_ORDER	ARCH_MMU_STAGE1_NONROOT_SIZE_ORDER
+#define STAGE1_NONROOT_SIZE	(1UL << STAGE1_NONROOT_ORDER)
+#define STAGE1_NONROOT_ALIGN_ORDER ARCH_MMU_STAGE1_NONROOT_ALIGN_ORDER
+#define STAGE1_NONROOT_ALIGN	(1UL << STAGE1_NONROOT_ALIGN_ORDER)
+
 /*
  * NOTE: we use 1/64th or 1.5625% of VAPOOL memory as translation table pool.
  * For example if VAPOOL is 8 MB and page table size is 4KB then page table
  * pool will be 128 KB or 32 (= 128 KB / 4 KB) page tables.
  */
 #define PGTBL_POOL_COUNT 	(CONFIG_VAPOOL_SIZE_MB << \
-				 (20 - 6 - ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER))
-#define PGTBL_POOL_SIZE		(PGTBL_POOL_COUNT * STAGE1_PGTBL_SIZE)
+				 (20 - 6 - ARCH_MMU_STAGE1_NONROOT_SIZE_ORDER))
+#define PGTBL_POOL_SIZE		(PGTBL_POOL_COUNT * STAGE1_NONROOT_SIZE)
 
-#define INITIAL_PGTBL_COUNT	ARCH_MMU_STAGE1_PGTBL_INITIAL_COUNT
-#define INITIAL_PGTBL_SIZE	(INITIAL_PGTBL_COUNT * STAGE1_PGTBL_SIZE)
+#define INIT_PGTBL_COUNT	ARCH_MMU_STAGE1_NONROOT_INITIAL_COUNT
+#define INIT_PGTBL_SIZE		(INIT_PGTBL_COUNT * STAGE1_NONROOT_SIZE)
 
-#define PGTBL_POOL_TOTAL_COUNT	(INITIAL_PGTBL_COUNT + PGTBL_POOL_COUNT)
-#define PGTBL_POOL_TOTAL_SIZE	(INITIAL_PGTBL_SIZE + PGTBL_POOL_SIZE)
+#define PGTBL_POOL_TOTAL_COUNT	(INIT_PGTBL_COUNT + PGTBL_POOL_COUNT)
+#define PGTBL_POOL_TOTAL_SIZE	(INIT_PGTBL_SIZE + PGTBL_POOL_SIZE)
 
 struct mmu_ctrl {
-	struct mmu_pgtbl *hyp_pgtbl;
+	struct mmu_pgtbl hyp_pgtbl;
 	virtual_addr_t pgtbl_base_va;
 	physical_addr_t pgtbl_base_pa;
 	virtual_addr_t ipgtbl_base_va;
 	physical_addr_t ipgtbl_base_pa;
 	vmm_rwlock_t pgtbl_pool_lock;
 	struct mmu_pgtbl pgtbl_pool_array[PGTBL_POOL_COUNT];
-	struct mmu_pgtbl ipgtbl_pool_array[INITIAL_PGTBL_COUNT];
+	struct mmu_pgtbl ipgtbl_pool_array[INIT_PGTBL_COUNT];
 	u64 pgtbl_pool_alloc_count;
 	struct dlist pgtbl_pool_free_list;
 	vmm_rwlock_t pgtbl_nonpool_lock;
@@ -71,8 +79,8 @@ struct mmu_ctrl {
 
 static struct mmu_ctrl mmuctrl;
 
-u8 __attribute__ ((aligned(1UL << ARCH_MMU_STAGE1_PGTBL_ALIGN_ORDER)))
-					def_pgtbl[INITIAL_PGTBL_SIZE] = { 0 };
+u8 __aligned(STAGE1_ROOT_ALIGN) stage1_pgtbl_root[STAGE1_ROOT_SIZE] = { 0 };
+u8 __aligned(STAGE1_NONROOT_ALIGN) stage1_pgtbl_nonroot[INIT_PGTBL_SIZE] = { 0 };
 
 static struct mmu_pgtbl *mmu_pgtbl_pool_alloc(int stage, int level)
 {
@@ -101,13 +109,13 @@ static struct mmu_pgtbl *mmu_pgtbl_pool_find(int stage,
 {
 	int index;
 
-	tbl_pa &= ~(STAGE1_PGTBL_SIZE - 1);
+	tbl_pa &= ~(STAGE1_NONROOT_SIZE - 1);
 
 	if ((mmuctrl.ipgtbl_base_pa <= tbl_pa) &&
-	    (tbl_pa <= (mmuctrl.ipgtbl_base_pa + INITIAL_PGTBL_SIZE))) {
+	    (tbl_pa <= (mmuctrl.ipgtbl_base_pa + INIT_PGTBL_SIZE))) {
 		tbl_pa = tbl_pa - mmuctrl.ipgtbl_base_pa;
-		index = tbl_pa >> ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER;
-		if (index < INITIAL_PGTBL_COUNT) {
+		index = tbl_pa >> ARCH_MMU_STAGE1_NONROOT_SIZE_ORDER;
+		if (index < INIT_PGTBL_COUNT) {
 			return &mmuctrl.ipgtbl_pool_array[index];
 		}
 	}
@@ -115,7 +123,7 @@ static struct mmu_pgtbl *mmu_pgtbl_pool_find(int stage,
 	if ((mmuctrl.pgtbl_base_pa <= tbl_pa) &&
 	    (tbl_pa <= (mmuctrl.pgtbl_base_pa + PGTBL_POOL_SIZE))) {
 		tbl_pa = tbl_pa - mmuctrl.pgtbl_base_pa;
-		index = tbl_pa >> ARCH_MMU_STAGE1_PGTBL_SIZE_ORDER;
+		index = tbl_pa >> ARCH_MMU_STAGE1_NONROOT_SIZE_ORDER;
 		if (index < PGTBL_POOL_COUNT) {
 			return &mmuctrl.pgtbl_pool_array[index];
 		}
@@ -132,7 +140,7 @@ static u64 mmu_pgtbl_pool_count(int stage, int level)
 
 	vmm_read_lock_irqsave_lite(&mmuctrl.pgtbl_pool_lock, flags);
 
-	for (i = 0; i < INITIAL_PGTBL_COUNT; i++) {
+	for (i = 0; i < INIT_PGTBL_COUNT; i++) {
 		if (mmuctrl.ipgtbl_pool_array[i].stage == stage &&
 		    mmuctrl.ipgtbl_pool_array[i].level == level)
 			count++;
@@ -281,8 +289,10 @@ static void mmu_pgtbl_nonpool_free(int stage, struct mmu_pgtbl *pgtbl)
 
 u64 mmu_pgtbl_count(int stage, int level)
 {
-	if (stage == MMU_STAGE1)
-		return mmu_pgtbl_pool_count(stage, level);
+	if (stage == MMU_STAGE1) {
+		return mmu_pgtbl_pool_count(stage, level) +
+			((level == arch_mmu_start_level(stage)) ? 1 : 0);
+	}
 	return mmu_pgtbl_nonpool_count(stage, level);
 }
 
@@ -733,22 +743,22 @@ int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 
 int mmu_get_hypervisor_page(virtual_addr_t va, struct mmu_page *pg)
 {
-	return mmu_get_page(mmuctrl.hyp_pgtbl, va, pg);
+	return mmu_get_page(&mmuctrl.hyp_pgtbl, va, pg);
 }
 
 int mmu_unmap_hypervisor_page(struct mmu_page *pg)
 {
-	return mmu_unmap_page(mmuctrl.hyp_pgtbl, pg);
+	return mmu_unmap_page(&mmuctrl.hyp_pgtbl, pg);
 }
 
 int mmu_map_hypervisor_page(struct mmu_page *pg)
 {
-	return mmu_map_page(mmuctrl.hyp_pgtbl, pg);
+	return mmu_map_page(&mmuctrl.hyp_pgtbl, pg);
 }
 
 struct mmu_pgtbl *mmu_hypervisor_pgtbl(void)
 {
-	return mmuctrl.hyp_pgtbl;
+	return &mmuctrl.hyp_pgtbl;
 }
 
 #ifdef ARCH_HAS_MEMORY_READWRITE
@@ -980,10 +990,10 @@ static void __init mmu_scan_initial_pgtbl(struct mmu_pgtbl *pgtbl)
 	struct mmu_pgtbl *child;
 	physical_addr_t child_pa;
 	physical_addr_t ipgtbl_start = mmuctrl.ipgtbl_base_pa;
-	physical_addr_t ipgtbl_end = ipgtbl_start + INITIAL_PGTBL_SIZE;
+	physical_addr_t ipgtbl_end = ipgtbl_start + INIT_PGTBL_SIZE;
 
 	/* Scan all page table entries */
-	for (i = 0; i < (STAGE1_PGTBL_SIZE / sizeof(*pte)); i++) {
+	for (i = 0; i < (STAGE1_NONROOT_SIZE / sizeof(*pte)); i++) {
 		pte = &((arch_pte_t *)pgtbl->tbl_va)[i];
 
 		/* Check for valid page table entry */
@@ -1010,8 +1020,8 @@ static void __init mmu_scan_initial_pgtbl(struct mmu_pgtbl *pgtbl)
 		}
 
 		/* Find child page table pointer */
-		child_idx = (child_pa - ipgtbl_start) >> STAGE1_PGTBL_ORDER;
-		if (INITIAL_PGTBL_COUNT <= child_idx) {
+		child_idx = (child_pa - ipgtbl_start) >> STAGE1_NONROOT_ORDER;
+		if (INIT_PGTBL_COUNT <= child_idx) {
 			while (1);
 		}
 		child = &mmuctrl.ipgtbl_pool_array[child_idx];
@@ -1057,8 +1067,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	virtual_addr_t l0_size = arch_mmu_level_block_size(MMU_STAGE1, 0);
 
 	/* Check constraints of generic MMU */
-	if (STAGE1_PGTBL_SIZE != l0_size ||
-	    STAGE1_PGTBL_ALIGN_ORDER > l0_shift)
+	if (STAGE1_NONROOT_SIZE != l0_size ||
+	    STAGE1_NONROOT_ALIGN_ORDER > l0_shift)
 		return VMM_EINVALID;
 
 	/* Initial values of resv_va, resv_pa, and resv_sz */
@@ -1091,7 +1101,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		resv_sz += l0_size - (resv_sz & (l0_size - 1));
 	}
 	*arch_resv_sz = resv_sz - *arch_resv_sz;
-	mmuctrl.ipgtbl_base_va = (virtual_addr_t)&def_pgtbl;
+	mmuctrl.ipgtbl_base_va = (virtual_addr_t)&stage1_pgtbl_nonroot;
 	mmuctrl.ipgtbl_base_pa = mmuctrl.ipgtbl_base_va -
 				arch_code_vaddr_start() +
 				arch_code_paddr_start();
@@ -1101,37 +1111,45 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	INIT_RW_LOCK(&mmuctrl.pgtbl_nonpool_lock);
 	INIT_LIST_HEAD(&mmuctrl.pgtbl_nonpool_list);
 	INIT_RADIX_TREE(&mmuctrl.pgtbl_nonpool_tree, 0);
-	for (i = 0; i < INITIAL_PGTBL_COUNT; i++) {
+	for (i = 0; i < INIT_PGTBL_COUNT; i++) {
 		pgtbl = &mmuctrl.ipgtbl_pool_array[i];
 		memset(pgtbl, 0, sizeof(struct mmu_pgtbl));
-		pgtbl->tbl_pa = mmuctrl.ipgtbl_base_pa + i * STAGE1_PGTBL_SIZE;
+		pgtbl->tbl_pa = mmuctrl.ipgtbl_base_pa + i * STAGE1_NONROOT_SIZE;
 		INIT_SPIN_LOCK(&pgtbl->tbl_lock);
-		pgtbl->tbl_va = mmuctrl.ipgtbl_base_va + i * STAGE1_PGTBL_SIZE;
-		pgtbl->tbl_sz = STAGE1_PGTBL_SIZE;
+		pgtbl->tbl_va = mmuctrl.ipgtbl_base_va + i * STAGE1_NONROOT_SIZE;
+		pgtbl->tbl_sz = STAGE1_NONROOT_SIZE;
 		INIT_LIST_HEAD(&pgtbl->head);
 		INIT_LIST_HEAD(&pgtbl->child_list);
 	}
 	for (i = 0; i < PGTBL_POOL_COUNT; i++) {
 		pgtbl = &mmuctrl.pgtbl_pool_array[i];
 		memset(pgtbl, 0, sizeof(struct mmu_pgtbl));
-		pgtbl->tbl_pa = mmuctrl.pgtbl_base_pa + i * STAGE1_PGTBL_SIZE;
+		pgtbl->tbl_pa = mmuctrl.pgtbl_base_pa + i * STAGE1_NONROOT_SIZE;
 		INIT_SPIN_LOCK(&pgtbl->tbl_lock);
-		pgtbl->tbl_va = mmuctrl.pgtbl_base_va + i * STAGE1_PGTBL_SIZE;
-		pgtbl->tbl_sz = STAGE1_PGTBL_SIZE;
+		pgtbl->tbl_va = mmuctrl.pgtbl_base_va + i * STAGE1_NONROOT_SIZE;
+		pgtbl->tbl_sz = STAGE1_NONROOT_SIZE;
 		INIT_LIST_HEAD(&pgtbl->head);
 		INIT_LIST_HEAD(&pgtbl->child_list);
 		list_add_tail(&pgtbl->head, &mmuctrl.pgtbl_pool_free_list);
 	}
 
 	/* Handcraft hypervisor page table */
-	mmuctrl.hyp_pgtbl = &mmuctrl.ipgtbl_pool_array[0];
-	mmuctrl.hyp_pgtbl->parent = NULL;
-	mmuctrl.hyp_pgtbl->stage = MMU_STAGE1;
-	mmuctrl.hyp_pgtbl->level = arch_mmu_start_level(MMU_STAGE1);
-	mmuctrl.hyp_pgtbl->map_ia = 0x0;
-	mmuctrl.pgtbl_pool_alloc_count++;
-	mmu_scan_initial_pgtbl(mmuctrl.hyp_pgtbl);
-	for (i = 0; i < INITIAL_PGTBL_COUNT; i++) {
+	pgtbl = &mmuctrl.hyp_pgtbl;
+	memset(pgtbl, 0, sizeof(struct mmu_pgtbl));
+	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
+	pgtbl->tbl_va = (virtual_addr_t)&stage1_pgtbl_root;
+	pgtbl->tbl_pa = pgtbl->tbl_va -
+			arch_code_vaddr_start() +
+			arch_code_paddr_start();
+	pgtbl->tbl_sz = STAGE1_ROOT_SIZE;
+	INIT_LIST_HEAD(&pgtbl->head);
+	INIT_LIST_HEAD(&pgtbl->child_list);
+	pgtbl->parent = NULL;
+	pgtbl->stage = MMU_STAGE1;
+	pgtbl->level = arch_mmu_start_level(MMU_STAGE1);
+	pgtbl->map_ia = 0x0;
+	mmu_scan_initial_pgtbl(pgtbl);
+	for (i = 0; i < INIT_PGTBL_COUNT; i++) {
 		pgtbl = &mmuctrl.ipgtbl_pool_array[i];
 		if (pgtbl->stage == MMU_STAGE_UNKNOWN) {
 			list_add_tail(&pgtbl->head,
@@ -1178,7 +1196,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	 * we map reserved space (core reserved + arch reserved).
 	 */
 	list_for_each_entry(pgtbl, &mmuctrl.pgtbl_pool_free_list, head) {
-		memset((void *)pgtbl->tbl_va, 0, STAGE1_PGTBL_SIZE);
+		memset((void *)pgtbl->tbl_va, 0, STAGE1_NONROOT_SIZE);
 	}
 
 	return VMM_OK;

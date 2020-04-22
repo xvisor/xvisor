@@ -168,7 +168,7 @@ _start_secondary_nopen:
 	csrw	CSR_STVEC, a6
 
 	/* Enable MMU */
-	la	a0, def_pgtbl
+	la	a0, stage1_pgtbl_root
 	srl	a0, a0, 12 /* Shift right by page size */
 	la	a1, riscv_stage1_mode
 	REG_L	a1, (a1)
