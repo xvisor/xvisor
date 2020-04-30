@@ -90,5 +90,10 @@
 			clock-frequency = <500000000>;
 			interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
 		};
+
+		poweroff@fe100000 {
+			compatible = "brcm,bcm2835-poweroff";
+			reg = <0xfe100000 0x114>;
+		};
 	};
 };
