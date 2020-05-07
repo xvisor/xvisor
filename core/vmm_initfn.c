@@ -23,6 +23,8 @@
 
 #include <vmm_error.h>
 #include <vmm_initfn.h>
+#include <vmm_stdio.h>
+#include <vmm_smp.h>
 
 static void __init initfn_nidtbl_found(struct vmm_devtree_node *node,
 					const struct vmm_devtree_nodeid *match,
