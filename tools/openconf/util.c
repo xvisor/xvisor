@@ -35,30 +35,43 @@ int file_write_dep(const char *name)
 	FILE *out;
 
 	tname = getenv(OPENCONF_TMPDIR_ENVNAME);
-	if (tname)
-		strcpy(tmppath, tname);
-	else
-		strcpy(tmppath, OPENCONF_TMPDIR_DEFAULT);
-
-	if (!name)
-		name = ".openconf.d";
-	out = fopen("..config.tmp", "w");
-	if (!out)
-		return 1;
-	fprintf(out, "deps_config := \\\n");
-	for (file = file_list; file; file = file->next) {
-		if (file->next)
-			fprintf(out, "\t%s \\\n", file->name);
-		else
-			fprintf(out, "\t%s\n", file->name);
+	if (!tname) {
+		tname = OPENCONF_TMPDIR_DEFAULT;
 	}
 
-	strcpy(path, tmppath);
-	strcat(path, "/");
+	if (snprintf(tmppath, sizeof(tmppath), "%s", tname)
+							>= sizeof(tmppath)) {
+		return 1;
+	}
+
+	if (!name) {
+		name = ".openconf.d";
+	}
+
 	tname = getenv(OPENCONF_AUTOCONFIG_ENVNAME);
-	if (!tname)
+	if (!tname) {
 		tname = OPENCONF_AUTOCONFIG_DEFAULT;
-	strcat(path, tname);
+	}
+
+	if (snprintf(path, sizeof(path), "%s/%s", tmppath, tname)
+							>= sizeof(path)) {
+		return 1;
+	}
+
+	out = fopen("..config.tmp", "w");
+	if (!out) {
+		return 1;
+	}
+
+	fprintf(out, "deps_config := \\\n");
+	for (file = file_list; file; file = file->next) {
+		if (file->next) {
+			fprintf(out, "\t%s \\\n", file->name);
+		} else {
+			fprintf(out, "\t%s\n", file->name);
+		}
+	}
+
 	fprintf(out, "\n%s: \\\n"
 		     "\t$(deps_config)\n\n", path);
 
@@ -89,9 +102,8 @@ int file_write_dep(const char *name)
 struct gstr str_new(void)
 {
 	struct gstr gs;
-	gs.s = malloc(sizeof(char) * 64);
+	gs.s = calloc(1, sizeof(char) * 64);
 	gs.len = 64;
-	strcpy(gs.s, "\0");
 	return gs;
 }
 

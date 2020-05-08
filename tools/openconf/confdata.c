@@ -77,8 +77,8 @@ char *conf_get_default_confname(void)
 
 	name = conf_expand_value(conf_defname);
 	env = getenv(OPENCONF_SRCTREE_ENVNAME);
-	if (env) {
-		sprintf(fullname, "%s/%s", env, name);
+	if (env && (snprintf(fullname, sizeof(fullname), "%s/%s", env, name)
+							< sizeof(fullname))) {
 		if (!stat(fullname, &buf))
 			return fullname;
 	}
@@ -165,8 +165,9 @@ int conf_read_simple(const char *name, int def)
 		if (in)
 			goto load;
 		sym_add_change_count(1);
-		if (!sym_defconfig_list)
+		if (!sym_defconfig_list) {
 			return 1;
+		}
 
 		for_all_defaults(sym_defconfig_list, prop) {
 			if (expr_calc_value(prop->visible.expr) == no ||
@@ -182,8 +183,10 @@ int conf_read_simple(const char *name, int def)
 			}
 		}
 	}
-	if (!in)
+
+	if (!in) {
 		return 1;
+	}
 
 load:
 	conf_filename = name;
@@ -319,8 +322,9 @@ int conf_read(const char *name)
 
 	sym_set_change_count(0);
 
-	if (conf_read_simple(name, S_DEF_USER))
+	if (conf_read_simple(name, S_DEF_USER)) {
 		return 1;
+	}
 
 	for_all_symbols(i, sym) {
 		sym_calc_value(sym);
@@ -402,8 +406,10 @@ int conf_write_defconfig(const char *filename)
 	const char *str;
 
 	out = fopen(filename, "w");
-	if (!out)
+
+	if (!out) {
 		return 1;
+	}
 
 	sym_clear_all_valid();
 
@@ -513,36 +519,61 @@ int conf_write(const char *name)
 	dirname[0] = 0;
 	if (name && name[0]) {
 		struct stat st;
-		char *slash;
 
 		if (!stat(name, &st) && S_ISDIR(st.st_mode)) {
-			strcpy(dirname, name);
-			strcat(dirname, "/");
-			basename = conf_get_configname();
-		} else if ((slash = strrchr(name, '/'))) {
-			int size = slash - name + 1;
-			memcpy(dirname, name, size);
-			dirname[size] = 0;
-			if (slash[1])
-				basename = slash + 1;
-			else
-				basename = conf_get_configname();
-		} else
-			basename = name;
-	} else
-		basename = conf_get_configname();
 
-	sprintf(newname, "%s%s", dirname, basename);
+			if (snprintf(dirname, sizeof(dirname), "%s/", name)
+							>= sizeof(dirname)) {
+				return 1;
+			}
+
+			basename = conf_get_configname();
+
+		} else if (strrchr(name, '/')) {
+			char *slash;
+
+			if (snprintf(dirname, sizeof(dirname), "%s", name)
+							>= sizeof(dirname)) {
+				return 1;
+			}
+
+			slash = strrchr(dirname, '/');
+
+			if (slash[1] == 0) {
+				basename = conf_get_configname();
+			} else {
+				slash[1] = 0;
+				basename = strrchr(name, '/');
+				basename++;
+			}
+		} else {
+			basename = name;
+		}
+	} else {
+		basename = conf_get_configname();
+	}
+
+	if (snprintf(newname, sizeof(newname), "%s%s", dirname, basename)
+							>= sizeof(newname)) {
+		return 1;
+	}
+
 	env = getenv(OPENCONF_OVERWRITECONFIG_ENVNAME);
 	if (!env || !*env) {
-		sprintf(tmpname, "%s.tmpconfig.%d", dirname, (int)getpid());
+		if (snprintf(tmpname, sizeof(tmpname), "%s.tmpconfig.%d",
+				dirname, (int)getpid()) >= sizeof(tmpname)) {
+			return 1;
+		}
+
 		out = fopen(tmpname, "w");
 	} else {
 		*tmpname = 0;
 		out = fopen(newname, "w");
 	}
-	if (!out)
+
+	if (!out) {
 		return 1;
+	}
 
 	project = getenv(OPENCONF_PROJECT_ENVNAME);
 	if (!project)
@@ -651,11 +682,24 @@ int conf_write(const char *name)
 	fclose(out);
 
 	if (*tmpname) {
-		strcat(dirname, basename);
-		strcat(dirname, ".old");
-		rename(newname, dirname);
-		if (rename(tmpname, newname))
+		struct stat st;
+
+		if (!stat(newname, &st) && S_ISREG(st.st_mode)) {
+			char tmp[256];
+
+			if (snprintf(tmp, sizeof(tmp), "%s%s.old", dirname,
+					basename) >= sizeof(tmp)) {
+				return 1;
+			}
+
+			if (rename(newname, tmp)) {
+				return 1;
+			}
+		}
+
+		if (rename(tmpname, newname)) {
 			return 1;
+		}
 	}
 
 	printf(_("#\n"
@@ -676,21 +720,30 @@ int conf_split_config(void)
 	int res, i, fd;
 
 	name = getenv(OPENCONF_TMPDIR_ENVNAME);
-	if (name)
-		strcpy(tmppath, name);
-	else
-		strcpy(tmppath, OPENCONF_TMPDIR_DEFAULT);
+
+	if (!name)
+		name = OPENCONF_TMPDIR_DEFAULT;
+
+	if (snprintf(tmppath, sizeof(tmppath), "%s", name) >= sizeof(tmppath)) {
+		return 1;
+	}
+
 	name = getenv(OPENCONF_AUTOCONFIG_ENVNAME);
+
 	if (!name)
 		name = OPENCONF_AUTOCONFIG_DEFAULT;
-	strcpy(path, tmppath);
-	strcat(path, "/");
-	strcat(path, name);
+
+	if (snprintf(path, sizeof(path), "%s/%s", tmppath, name)
+							>= sizeof(path)) {
+		return 1;
+	}
+
 	conf_read_simple(path, S_DEF_AUTO);
 
 	name = getcwd(oldpath, PATH_MAX);
-	if (chdir(tmppath))
+	if (chdir(tmppath)) {
 		return 1;
+	}
 
 	res = 0;
 	for_all_symbols(i, sym) {
@@ -783,8 +836,9 @@ int conf_split_config(void)
 		close(fd);
 	}
 out:
-	if (chdir(oldpath))
+	if (chdir(oldpath)) {
 		return 1;
+	}
 
 	return res;
 }
@@ -799,28 +853,36 @@ int conf_write_autoconf(void)
 	int i, l;
 
 	name = getenv(OPENCONF_TMPDIR_ENVNAME);
-	if (name)
-		strcpy(tmppath, name);
-	else
-		strcpy(tmppath, OPENCONF_TMPDIR_DEFAULT);
+
+	if (!name)
+		name = OPENCONF_TMPDIR_DEFAULT;
+
+	if (snprintf(tmppath, sizeof(tmppath), "%s", name) >= sizeof(tmppath)) {
+		return 1;
+	}
 
 	sym_clear_all_valid();
 
-	strcpy(path, tmppath);
-	strcat(path, "/");
 	name = getenv(OPENCONF_AUTOCONFIG_ENVNAME);
+
 	if (!name)
 		name = OPENCONF_AUTOCONFIG_DEFAULT;
-	strcat(path, name);
-	strcat(path, ".cmd");
+
+	if (snprintf(path, sizeof(path), "%s/%s.cmd", tmppath, name)
+							>= sizeof(path)) {
+		return 1;
+	}
+
 	file_write_dep(path);
 
-	if (conf_split_config())
+	if (conf_split_config()) {
 		return 1;
+	}
 
 	out = fopen(".tmpconfig", "w");
-	if (!out)
+	if (!out) {
 		return 1;
+	}
 
 	out_h = fopen(".tmpconfig.h", "w");
 	if (!out_h) {
@@ -910,26 +972,37 @@ int conf_write_autoconf(void)
 	fclose(out);
 	fclose(out_h);
 
-	strcpy(path, tmppath);
-	strcat(path, "/");
 	name = getenv(OPENCONF_AUTOHEADER_ENVNAME);
+
 	if (!name)
 		name = OPENCONF_AUTOHEADER_DEFAULT;
-	strcat(path, name);
-	if (rename(".tmpconfig.h", path))
+
+	if (snprintf(path, sizeof(path), "%s/%s", tmppath, name)
+							>= sizeof(path)) {
 		return 1;
-	strcpy(path, tmppath);
-	strcat(path, "/");
+	}
+
+	if (rename(".tmpconfig.h", path)) {
+		return 1;
+	}
+
 	name = getenv(OPENCONF_AUTOCONFIG_ENVNAME );
+
 	if (!name)
 		name = OPENCONF_AUTOCONFIG_DEFAULT;
-	strcat(path, name);
+
+	if (snprintf(path, sizeof(path), "%s/%s", tmppath, name)
+							>= sizeof(path)) {
+		return 1;
+	}
+
 	/*
 	 * This must be the last step, build will have dependency on AUTOCONFIG file
 	 * and this marks the successful completion of the previous steps.
 	 */
-	if (rename(".tmpconfig", path))
+	if (rename(".tmpconfig", path)) {
 		return 1;
+	}
 
 	return 0;
 }
