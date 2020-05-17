@@ -205,6 +205,7 @@ int __init arch_cpu_nascent_init(void)
 		rc = vmm_devtree_read_string(dn,
 				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME, &str);
 		if (rc || !str) {
+			rc = 0;
 			continue;
 		}
 		if (strcmp(str, VMM_DEVTREE_DEVICE_TYPE_VAL_CPU)) {
