@@ -505,7 +505,7 @@ _reset:
 .macro PUSH_REGS
 	push	{sp, lr}
 	push	{r0-r12}
-	mrs	r0, spsr_hyp
+	mrs	r0, spsr_all
 	mrs	r1, elr_hyp
 	push	{r0, r1}
 .endm
@@ -519,7 +519,7 @@ _reset:
 /* Pull registers from stack */
 .macro PULL_REGS
 	pop	{r0, r1}
-	msr	spsr_hyp, r0
+	msr	spsr_all, r0
 	msr	elr_hyp, r1
 	ldm	sp, {r0-r14}
 	eret
