@@ -56,7 +56,7 @@ $(build_dir)/%.dep: $(src_dir)/%.data
 $(build_dir)/%.c: $(src_dir)/%.data
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (d2c)       $(subst $(build_dir)/,,$@)")
-	$(V)$(src_dir)/tools/scripts/d2c.py $(subst $(src_dir)/,,$<) > $@
+	$(V)$(src_dir)/tools/scripts/d2c.py $< 16 $(shell echo $(subst .c,,$(subst $(build_dir)/,,$@)) | sed -e 's/[\. -\/]/_/g')_data > $@
 
 $(build_dir)/%.dep: $(build_dir)/%.data
 	$(V)mkdir -p `dirname $@`
@@ -67,7 +67,7 @@ $(build_dir)/%.dep: $(build_dir)/%.data
 $(build_dir)/%.c: $(build_dir)/%.data
 	$(V)mkdir -p `dirname $@`
 	$(if $(V), @echo " (d2c)       $(subst $(build_dir)/,,$@)")
-	$(V)(cd $(build_dir) && $(src_dir)/tools/scripts/d2c.py $(subst $(build_dir)/,,$<) > $@ && cd $(src_dir))
+	$(V)$(src_dir)/tools/scripts/d2c.py $< 16 $(shell echo $(subst .c,,$(subst $(build_dir)/,,$@)) | sed -e 's/[\. -\/]/_/g')_data > $@
 
 ifdef CONFIG_CPATCH
 

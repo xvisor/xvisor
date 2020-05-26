@@ -21,12 +21,12 @@
 # @author Anup Patel (anup@brainfault.org)
 # @brief Create C source file from binary data file
 #
-# The purpose here is to take a binary file and output it
-# as an array of bytes suitable for compiling and linking
-# with a C/C++ program.
+# The purpose here is to take a binary file and output it as an array
+# of bytes suitable for compiling and linking with a C/C++ program.
 #
-# Example usage: ./2c.py somefile.data > somefile.c
+# Example usage: ./d2c.py somefile 8 some > somefile.c
 # */
+
 
 import sys
 import re
@@ -35,17 +35,30 @@ if __name__ == "__main__":
 	try:
 		filename = sys.argv[1]
 	except IndexError:
-		print("Usage: %s <filename>" % sys.argv[0])
+		print("Input file not available")
+		print("Usage: %s <filename> <varalign> <varprefix>" % sys.argv[0])
 		raise SystemExit
 
 	contentFile = open(filename, "rb");
-	varname = filename;
 
-	varname = re.sub('[. -/]', '_', varname);
+	try:
+		varalign = sys.argv[2]
+	except IndexError:
+		print("Output C source variable alignment not available")
+		print("Usage: %s <filename> <varalign> <varprefix>" % sys.argv[0])
+		raise SystemExit
+
+	try:
+		varname = sys.argv[3]
+	except IndexError:
+		print("Output C source variable name not available")
+		print("Usage: %s <filename> <varalign> <varprefix>" % sys.argv[0])
+		raise SystemExit
+
 	varszname = varname + "_size";
 	varname = varname + "_start";
 
-	print("const char %s[] = {" % varname)
+	print("const char __attribute__((aligned(%s))) %s[] = {" % (varalign, varname))
 
 	filesize = 0;
 	while True:
