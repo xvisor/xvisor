@@ -277,6 +277,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_regs(vcpu)->a0 = vcpu->subid;
 
 	/* Update HSTATUS */
+	riscv_regs(vcpu)->hstatus |= HSTATUS_VTW;
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SPVP;
 	riscv_regs(vcpu)->hstatus |= HSTATUS_SPV;
 

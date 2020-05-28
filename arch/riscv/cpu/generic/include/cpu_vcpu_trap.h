@@ -52,7 +52,7 @@ int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			struct cpu_vcpu_trap *trap);
 
-int cpu_vcpu_illegal_insn_fault(struct vmm_vcpu *vcpu,
+int cpu_vcpu_virtual_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval);
 
