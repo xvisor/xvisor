@@ -215,6 +215,12 @@ physical_addr_t arch_mmu_pte_table_addr(arch_pte_t *pte, int stage, int level);
 void arch_mmu_pte_set_table(arch_pte_t *pte, int stage, int level,
 			    physical_addr_t tbl_pa);
 
+int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
+				bool s1_avail, physical_addr_t s1_tbl_pa,
+				u32 flags, virtual_addr_t addr,
+				physical_addr_t *out_addr,
+				u32 *out_fault_flags);
+
 physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void);
 
 u32 arch_mmu_stage2_current_vmid(void);

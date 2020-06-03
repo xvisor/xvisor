@@ -701,9 +701,18 @@ int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 	int index;
 	arch_pte_t *pte;
 	irq_flags_t flags;
+	physical_size_t map_last;
 	struct mmu_pgtbl *child;
 
 	if (!pgtbl || !ptep || !pgtblp) {
+		return VMM_EFAIL;
+	}
+
+	map_last = arch_mmu_level_block_size(pgtbl->stage, pgtbl->level);
+	map_last *= (pgtbl->tbl_sz / sizeof(arch_pte_t));
+	map_last -= 1;
+	if ((ia < pgtbl->map_ia) ||
+	    ((pgtbl->map_ia + map_last) < ia)) {
 		return VMM_EFAIL;
 	}
 
@@ -737,6 +746,298 @@ int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 	*pgtblp = pgtbl;
 
 	vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+
+	return VMM_OK;
+}
+
+void mmu_walk_address(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
+		      void (*fn)(struct mmu_pgtbl *, arch_pte_t *, void *),
+		      void *opaque)
+{
+	int index;
+	arch_pte_t *pte;
+	irq_flags_t flags;
+	physical_size_t map_last;
+	struct mmu_pgtbl *child;
+
+	if (!pgtbl || !fn) {
+		return;
+	}
+
+	map_last = arch_mmu_level_block_size(pgtbl->stage, pgtbl->level);
+	map_last *= (pgtbl->tbl_sz / sizeof(arch_pte_t));
+	map_last -= 1;
+	if ((ia < pgtbl->map_ia) ||
+	    ((pgtbl->map_ia + map_last) < ia)) {
+		return;
+	}
+
+	index = arch_mmu_level_index(ia, pgtbl->stage, pgtbl->level);
+	pte = (arch_pte_t *)pgtbl->tbl_va;
+
+	fn(pgtbl, &pte[index], opaque);
+
+	vmm_spin_lock_irqsave_lite(&pgtbl->tbl_lock, flags);
+
+	if (!arch_mmu_pte_is_valid(&pte[index], pgtbl->stage, pgtbl->level)) {
+		vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+		return;
+	}
+
+	if ((pgtbl->level == 0) &&
+	    arch_mmu_pte_is_table(&pte[index], pgtbl->stage, pgtbl->level)) {
+		vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+		return;
+	}
+
+	if ((pgtbl->level > 0) &&
+	    arch_mmu_pte_is_table(&pte[index], pgtbl->stage, pgtbl->level)) {
+		vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+		child = mmu_pgtbl_get_child(pgtbl, ia, FALSE);
+		if (!child) {
+			return;
+		}
+		mmu_walk_address(child, ia, fn, opaque);
+		return;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+}
+
+void mmu_walk_tables(struct mmu_pgtbl *pgtbl,
+		     void (*fn)(struct mmu_pgtbl *pgtbl, void *),
+		     void *opaque)
+{
+	irq_flags_t flags;
+	struct mmu_pgtbl *child;
+
+	if (!pgtbl || !fn) {
+		return;
+	}
+
+	fn(pgtbl, opaque);
+
+	vmm_spin_lock_irqsave_lite(&pgtbl->tbl_lock, flags);
+
+	list_for_each_entry(child, &pgtbl->child_list, head) {
+		vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+		mmu_walk_tables(child, fn, opaque);
+		vmm_spin_lock_irqsave_lite(&pgtbl->tbl_lock, flags);
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+}
+
+struct free_address_walk {
+	bool found;
+	int level;
+	physical_addr_t min_addr;
+	physical_addr_t *addr;
+};
+
+static void free_address_walk(struct mmu_pgtbl *pgtbl, void *opaque)
+{
+	arch_pte_t *pte;
+	irq_flags_t flags;
+	physical_addr_t ia;
+	int index, pte_count;
+	struct free_address_walk *w = opaque;
+
+	if (w->found || pgtbl->level != w->level) {
+		return;
+	}
+
+	pte = (arch_pte_t *)pgtbl->tbl_va;
+	pte_count = pgtbl->tbl_sz / sizeof(arch_pte_t);
+
+	vmm_spin_lock_irqsave_lite(&pgtbl->tbl_lock, flags);
+
+	for (index = 0; index < pte_count; index++) {
+		if (arch_mmu_pte_is_valid(&pte[index],
+					  pgtbl->stage, pgtbl->level)) {
+			continue;
+		}
+		ia = pgtbl->map_ia +
+		index * arch_mmu_level_block_size(pgtbl->stage, pgtbl->level);
+		if (ia < w->min_addr) {
+			continue;
+		}
+		vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+		w->found = TRUE;
+		*w->addr = ia;
+		return;
+	}
+
+	vmm_spin_unlock_irqrestore_lite(&pgtbl->tbl_lock, flags);
+
+	return;
+}
+
+int mmu_find_free_address(struct mmu_pgtbl *pgtbl, physical_addr_t min_addr,
+			   int page_order, physical_addr_t *addr)
+{
+	int level;
+	struct free_address_walk w;
+
+	if (!pgtbl || !addr) {
+		return VMM_EINVALID;
+	}
+
+	for (level = 0; level <= pgtbl->level; level++) {
+		if (arch_mmu_level_block_shift(pgtbl->stage, level) >=
+			page_order) {
+			break;
+		}
+	}
+	if (pgtbl->level < level) {
+		return VMM_EINVALID;
+	}
+
+	while (level <= pgtbl->level) {
+		w.found = FALSE;
+		w.level = level;
+		w.min_addr = min_addr;
+		w.addr = addr;
+
+		mmu_walk_tables(pgtbl, free_address_walk, &w);
+		if (w.found) {
+			return VMM_OK;
+		}
+
+		level++;
+	}
+
+	return VMM_ENOTAVAIL;
+}
+
+struct idmap_nested_pgtbl_walk {
+	struct mmu_pgtbl *s2_pgtbl;
+	int map_level;
+	physical_size_t map_size;
+	u32 reg_flags;
+	int error;
+};
+
+static void idmap_nested_pgtbl_walk(struct mmu_pgtbl *pgtbl, void *opaque)
+{
+	int rc;
+	physical_addr_t ta;
+	struct mmu_page pg = { 0 }, tpg;
+
+	struct idmap_nested_pgtbl_walk *iw = opaque;
+
+	if (iw->error) {
+		return;
+	}
+
+	arch_mmu_pgflags_set(&pg.flags, MMU_STAGE2, iw->reg_flags);
+	for (ta = 0; ta < pgtbl->tbl_sz; ta += iw->map_size) {
+		pg.ia = pgtbl->tbl_pa + ta;
+		pg.ia &= arch_mmu_level_map_mask(MMU_STAGE2, iw->map_level);
+		pg.oa = pgtbl->tbl_pa + ta;
+		pg.oa &= arch_mmu_level_map_mask(MMU_STAGE2, iw->map_level);
+		pg.sz = iw->map_size;
+
+		if (mmu_get_page(iw->s2_pgtbl, pg.ia, &tpg)) {
+			rc = mmu_map_page(iw->s2_pgtbl, &pg);
+			if (rc) {
+				iw->error = rc;
+				return;
+			}
+		} else {
+			if (pg.ia != tpg.ia ||
+			    pg.oa != tpg.oa ||
+			    pg.sz != tpg.sz) {
+				iw->error = VMM_EFAIL;
+				return;
+			}
+		}
+	}
+}
+
+int mmu_idmap_nested_pgtbl(struct mmu_pgtbl *s2_pgtbl,
+			   struct mmu_pgtbl *s1_pgtbl,
+			   physical_size_t map_size, u32 reg_flags)
+{
+	int level;
+	struct idmap_nested_pgtbl_walk iw;
+
+	if (!s2_pgtbl || (s2_pgtbl->stage != MMU_STAGE2)) {
+		return VMM_EINVALID;
+	}
+	if (!s1_pgtbl || (s1_pgtbl->stage != MMU_STAGE1)) {
+		return VMM_EINVALID;
+	}
+
+	for (level = 0; level <= s2_pgtbl->level; level++) {
+		if (arch_mmu_level_block_size(s2_pgtbl->stage, level) ==
+			map_size) {
+			break;
+		}
+	}
+	if (s2_pgtbl->level < level) {
+		return VMM_EINVALID;
+	}
+
+	iw.s2_pgtbl = s2_pgtbl;
+	iw.map_level = level;
+	iw.map_size = map_size;
+	iw.reg_flags = reg_flags;
+	iw.error = VMM_OK;
+
+	mmu_walk_tables(s1_pgtbl, idmap_nested_pgtbl_walk, &iw);
+
+	return iw.error;
+}
+
+int mmu_test_nested_pgtbl(struct mmu_pgtbl *s2_pgtbl,
+			  struct mmu_pgtbl *s1_pgtbl,
+			  u32 flags, virtual_addr_t addr,
+			  physical_addr_t expected_output_addr,
+			  u32 expected_fault_flags)
+{
+	int rc;
+	physical_addr_t oaddr = 0;
+	u32 offlags = 0;
+
+	if (!s2_pgtbl || (s2_pgtbl->stage != MMU_STAGE2)) {
+		return VMM_EINVALID;
+	}
+	if (s1_pgtbl && (s1_pgtbl->stage != MMU_STAGE1)) {
+		return VMM_EINVALID;
+	}
+	if (flags & ~MMU_TEST_VALID_MASK) {
+		return VMM_EINVALID;
+	}
+	if ((flags & MMU_TEST_WIDTH_16BIT) && (addr & 0x1)) {
+		return VMM_EINVALID;
+	}
+	if ((flags & MMU_TEST_WIDTH_32BIT) && (addr & 0x3)) {
+		return VMM_EINVALID;
+	}
+
+	rc = arch_mmu_test_nested_pgtbl(s2_pgtbl->tbl_pa,
+					(s1_pgtbl) ? TRUE : FALSE,
+					(s1_pgtbl) ? s1_pgtbl->tbl_pa : 0,
+					flags, addr, &oaddr, &offlags);
+	if (rc) {
+		return rc;
+	}
+
+	/* All expected fault bits should be set */
+	if ((offlags & expected_fault_flags) ^ expected_fault_flags) {
+		return VMM_EFAIL;
+	}
+
+	/* No unexpected fault bit should be set */
+	if (expected_fault_flags && (offlags & ~expected_fault_flags)) {
+		return VMM_EFAIL;
+	}
+
+	/* Output address should match */
+	if (oaddr != expected_output_addr) {
+		return VMM_EFAIL;
+	}
 
 	return VMM_OK;
 }

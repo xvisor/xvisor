@@ -53,7 +53,7 @@ struct mmu_pgtbl {
 	physical_addr_t map_ia;
 	physical_addr_t tbl_pa;
 	vmm_spinlock_t tbl_lock; /*< Lock to protect table contents, 
-				      tte_cnt, child_cnt, and child_list 
+				      pte_cnt, child_cnt, and child_list
 				  */
 	virtual_addr_t tbl_va;
 	virtual_size_t tbl_sz;
@@ -78,6 +78,42 @@ struct mmu_pgtbl *mmu_pgtbl_alloc(int stage, int level);
 
 int mmu_pgtbl_free(struct mmu_pgtbl *pgtbl);
 
+static inline enum mmu_stage mmu_pgtbl_stage(struct mmu_pgtbl *pgtbl)
+{
+	return (pgtbl) ? pgtbl->stage : MMU_STAGE_UNKNOWN;
+}
+
+static inline int mmu_pgtbl_level(struct mmu_pgtbl *pgtbl)
+{
+	return (pgtbl) ? pgtbl->level : -1;
+}
+
+static inline physical_addr_t mmu_pgtbl_map_addr(struct mmu_pgtbl *pgtbl)
+{
+	return (pgtbl) ? pgtbl->map_ia : 0;
+}
+
+static inline physical_addr_t mmu_pgtbl_map_addr_end(struct mmu_pgtbl *pgtbl)
+{
+	if (!pgtbl) {
+		return 0;
+	}
+
+	return (pgtbl->map_ia +
+		((pgtbl->tbl_sz / sizeof(arch_pte_t)) *
+		 arch_mmu_level_block_size(pgtbl->stage, pgtbl->level))) - 1;
+}
+
+static inline physical_addr_t mmu_pgtbl_physical_addr(struct mmu_pgtbl *pgtbl)
+{
+	return (pgtbl) ? pgtbl->tbl_pa : 0;
+}
+
+static inline virtual_size_t mmu_pgtbl_size(struct mmu_pgtbl *pgtbl)
+{
+	return (pgtbl) ? pgtbl->tbl_sz : 0;
+}
+
 struct mmu_pgtbl *mmu_pgtbl_get_child(struct mmu_pgtbl *parent,
 					  physical_addr_t map_ia,
 					  bool create);
@@ -91,6 +127,39 @@ int mmu_map_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg);
 
 int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 		     arch_pte_t **ptep, struct mmu_pgtbl **pgtblp);
+
+void mmu_walk_address(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
+		      void (*fn)(struct mmu_pgtbl *, arch_pte_t *, void *),
+		      void *opaque);
+
+void mmu_walk_tables(struct mmu_pgtbl *pgtbl,
+		     void (*fn)(struct mmu_pgtbl *pgtbl, void *),
+		     void *opaque);
+
+int mmu_find_free_address(struct mmu_pgtbl *pgtbl, physical_addr_t min_addr,
+			   int page_order, physical_addr_t *addr);
+
+int mmu_idmap_nested_pgtbl(struct mmu_pgtbl *s2_pgtbl,
+			   struct mmu_pgtbl *s1_pgtbl,
+			   physical_size_t map_size, u32 reg_flags);
+
+#define MMU_TEST_WIDTH_8BIT		(1UL << 0)
+#define MMU_TEST_WIDTH_16BIT		(1UL << 1)
+#define MMU_TEST_WIDTH_32BIT		(1UL << 2)
+#define MMU_TEST_WRITE			(1UL << 3)
+#define MMU_TEST_VALID_MASK		0xfUL
+
+#define MMU_TEST_FAULT_S1		(1UL << 0)
+#define MMU_TEST_FAULT_NOMAP		(1UL << 1)
+#define MMU_TEST_FAULT_READ		(1UL << 2)
+#define MMU_TEST_FAULT_WRITE		(1UL << 3)
+#define MMU_TEST_FAULT_UNKNOWN	(1UL << 4)
+
+int mmu_test_nested_pgtbl(struct mmu_pgtbl *s2_pgtbl,
+			  struct mmu_pgtbl *s1_pgtbl,
+			  u32 flags, virtual_addr_t addr,
+			  physical_addr_t expected_output_addr,
+			  u32 expected_fault_flags);
 
 int mmu_get_hypervisor_page(virtual_addr_t va, struct mmu_page *pg);
 
