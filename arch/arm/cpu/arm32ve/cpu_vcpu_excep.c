@@ -88,26 +88,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 		}
 	}
 
-	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
-		pg.flags.af = 0;
-		pg.flags.ap = TTBL_HAP_NOACCESS;
-	} else if (pg_reg_flags & VMM_REGION_READONLY) {
-		pg.flags.af = 1;
-		pg.flags.ap = TTBL_HAP_READONLY;
-	} else {
-		pg.flags.af = 1;
-		pg.flags.ap = TTBL_HAP_READWRITE;
-	}
-
-	if (pg_reg_flags & VMM_REGION_CACHEABLE) {
-		if (pg_reg_flags & VMM_REGION_BUFFERABLE) {
-			pg.flags.memattr = 0xF;
-		} else {
-			pg.flags.memattr = 0xA;
-		}
-	} else {
-		pg.flags.memattr = 0x0;
-	}
+	arch_mmu_pgflags_set(&pg.flags, MMU_STAGE2, pg_reg_flags);
 
 	/* Try to map the page in Stage2 */
 	rc = mmu_map_page(arm_guest_priv(vcpu->guest)->ttbl, &pg);

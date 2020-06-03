@@ -863,7 +863,7 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 	p.ia = tmp_va;
 	p.oa = 0x0;
 	p.sz = VMM_PAGE_SIZE;
-	arch_mmu_stage1_pgflags_set(&p.flags, VMM_MEMORY_FLAGS_NORMAL);
+	arch_mmu_pgflags_set(&p.flags, MMU_STAGE1, VMM_MEMORY_FLAGS_NORMAL);
 
 	rc = mmu_map_hypervisor_page(&p);
 	if (rc) {
@@ -879,10 +879,10 @@ int __cpuinit arch_cpu_aspace_memory_rwinit(virtual_addr_t tmp_va)
 		return rc;
 	}
 
-	arch_mmu_stage1_pgflags_set(&mem_rw_pgflags_cache[cpu],
-				    VMM_MEMORY_FLAGS_NORMAL);
-	arch_mmu_stage1_pgflags_set(&mem_rw_pgflags_nocache[cpu],
-				    VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
+	arch_mmu_pgflags_set(&mem_rw_pgflags_cache[cpu],
+			     MMU_STAGE1, VMM_MEMORY_FLAGS_NORMAL);
+	arch_mmu_pgflags_set(&mem_rw_pgflags_nocache[cpu],
+			     MMU_STAGE1, VMM_MEMORY_FLAGS_NORMAL_NOCACHE);
 
 	return VMM_OK;
 }
@@ -940,7 +940,7 @@ int arch_cpu_aspace_map(virtual_addr_t page_va,
 	p.ia = page_va;
 	p.oa = page_pa;
 	p.sz = page_sz;
-	arch_mmu_stage1_pgflags_set(&p.flags, mem_flags);
+	arch_mmu_pgflags_set(&p.flags, MMU_STAGE1, mem_flags);
 
 	return mmu_map_hypervisor_page(&p);
 }
@@ -1182,8 +1182,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		hyppg.oa = pa;
 		hyppg.ia = va;
 		hyppg.sz = l0_size;
-		arch_mmu_stage1_pgflags_set(&hyppg.flags,
-					    VMM_MEMORY_FLAGS_NORMAL);
+		arch_mmu_pgflags_set(&hyppg.flags, MMU_STAGE1,
+				     VMM_MEMORY_FLAGS_NORMAL);
 		if ((rc = mmu_map_hypervisor_page(&hyppg))) {
 			goto mmu_init_error;
 		}

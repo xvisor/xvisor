@@ -153,7 +153,7 @@ int arch_mmu_level_index(physical_addr_t ia, int stage, int level);
 
 int arch_mmu_level_index_shift(int stage, int level);
 
-void arch_mmu_stage1_pgflags_set(arch_pgflags_t *flags, u32 mem_flags);
+void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags);
 
 void arch_mmu_pte_sync(arch_pte_t *pte, int stage, int level);
 

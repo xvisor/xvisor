@@ -25,6 +25,7 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_smp.h>
+#include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
 #include <generic_mmu.h>
 
@@ -156,35 +157,66 @@ int arch_mmu_level_index_shift(int stage, int level)
 	return TTBL_L3_INDEX_SHIFT;
 }
 
-void arch_mmu_stage1_pgflags_set(arch_pgflags_t *flags, u32 mem_flags)
+void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags)
 {
-	flags->af = 1;
-	if (mem_flags & VMM_MEMORY_WRITEABLE) {
-		flags->ap = TTBL_AP_SRW_U;
-	} else if (mem_flags & VMM_MEMORY_READABLE) {
-		flags->ap = TTBL_AP_SR_U;
-	} else {
-		flags->ap = TTBL_AP_SR_U;
-	}
-	flags->xn = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
-	flags->ns = 1;
-	flags->sh = TTBL_SH_INNER_SHAREABLE;
+	if (stage == MMU_STAGE2) {
+		flags->sh = 3U;
+		if (mflags & VMM_REGION_VIRTUAL) {
+			flags->af = 0;
+			flags->ap = TTBL_HAP_NOACCESS;
+		} else if (mflags & VMM_REGION_READONLY) {
+			flags->af = 1;
+			flags->ap = TTBL_HAP_READONLY;
+		} else {
+			flags->af = 1;
+			flags->ap = TTBL_HAP_READWRITE;
+		}
 
-	if ((mem_flags & VMM_MEMORY_CACHEABLE) &&
-	    (mem_flags & VMM_MEMORY_BUFFERABLE)) {
-		flags->aindex = AINDEX_NORMAL_WB;
-	} else if (mem_flags & VMM_MEMORY_CACHEABLE) {
-		flags->aindex = AINDEX_NORMAL_WT;
-	} else if (mem_flags & VMM_MEMORY_BUFFERABLE) {
-		flags->aindex = AINDEX_NORMAL_WB;
-	} else if (mem_flags & VMM_MEMORY_IO_DEVICE) {
-		flags->aindex = AINDEX_DEVICE_nGnRE;
-	} else if (mem_flags & VMM_MEMORY_DMA_COHERENT) {
-		flags->aindex = AINDEX_NORMAL_WB;
-	} else if (mem_flags & VMM_MEMORY_DMA_NONCOHERENT) {
-		flags->aindex = AINDEX_NORMAL_NC;
+		/* memattr in stage 2
+		 * ------------------
+		 *  0x0 - strongly ordered
+		 *  0x5 - normal-memory NC
+		 *  0xA - normal-memory WT
+		 *  0xF - normal-memory WB
+		 */
+		if (mflags & VMM_REGION_CACHEABLE) {
+			if (mflags & VMM_REGION_BUFFERABLE) {
+				flags->memattr = 0xF;
+			} else {
+				flags->memattr = 0xA;
+			}
+		} else {
+			flags->memattr = 0x0;
+		}
 	} else {
-		flags->aindex = AINDEX_NORMAL_NC;
+		flags->af = 1;
+		if (mflags & VMM_MEMORY_WRITEABLE) {
+			flags->ap = TTBL_AP_SRW_U;
+		} else if (mflags & VMM_MEMORY_READABLE) {
+			flags->ap = TTBL_AP_SR_U;
+		} else {
+			flags->ap = TTBL_AP_SR_U;
+		}
+		flags->xn = (mflags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
+		flags->ns = 1;
+		flags->sh = TTBL_SH_INNER_SHAREABLE;
+
+		if ((mflags & VMM_MEMORY_CACHEABLE) &&
+		    (mflags & VMM_MEMORY_BUFFERABLE)) {
+			flags->aindex = AINDEX_NORMAL_WB;
+		} else if (mflags & VMM_MEMORY_CACHEABLE) {
+			flags->aindex = AINDEX_NORMAL_WT;
+		} else if (mflags & VMM_MEMORY_BUFFERABLE) {
+			flags->aindex = AINDEX_NORMAL_WB;
+		} else if (mflags & VMM_MEMORY_IO_DEVICE) {
+			flags->aindex = AINDEX_DEVICE_nGnRE;
+		} else if (mflags & VMM_MEMORY_DMA_COHERENT) {
+			flags->aindex = AINDEX_NORMAL_WB;
+		} else if (mflags & VMM_MEMORY_DMA_NONCOHERENT) {
+			flags->aindex = AINDEX_NORMAL_NC;
+		} else {
+			flags->aindex = AINDEX_NORMAL_NC;
+		}
 	}
 }
 

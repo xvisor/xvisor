@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_smp.h>
+#include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
 #include <generic_mmu.h>
 #include <arch_barrier.h>
@@ -221,26 +222,44 @@ int arch_mmu_level_index_shift(int stage, int level)
 	return PGTBL_L0_INDEX_SHIFT;
 }
 
-void arch_mmu_stage1_pgflags_set(arch_pgflags_t *flags, u32 mem_flags)
+void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags)
 {
-	flags->rsw = 0;
-	flags->accessed = 0;
-	flags->dirty = 0;
-	flags->global = 1;
-	flags->user = 0;
-	flags->execute = (mem_flags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
-	flags->write = (mem_flags & VMM_MEMORY_WRITEABLE) ? 1 : 0;
-	flags->read = (mem_flags & VMM_MEMORY_READABLE) ? 1 : 0;
-	flags->valid = 1;
+	if (stage == MMU_STAGE2) {
+		flags->user = 1;
+		if (mflags & VMM_REGION_VIRTUAL) {
+			flags->read = 0;
+			flags->write = 0;
+			flags->execute = 1;
+		} else if (mflags & VMM_REGION_READONLY) {
+			flags->read = 1;
+			flags->write = 0;
+			flags->execute = 1;
+		} else {
+			flags->read = 1;
+			flags->write = 1;
+			flags->execute = 1;
+		}
+		flags->valid = 1;
+	} else {
+		flags->rsw = 0;
+		flags->accessed = 0;
+		flags->dirty = 0;
+		flags->global = 1;
+		flags->user = 0;
+		flags->execute = (mflags & VMM_MEMORY_EXECUTABLE) ? 1 : 0;
+		flags->write = (mflags & VMM_MEMORY_WRITEABLE) ? 1 : 0;
+		flags->read = (mflags & VMM_MEMORY_READABLE) ? 1 : 0;
+		flags->valid = 1;
 
-	/*
-	 * We ignore following flags:
-	 * VMM_MEMORY_CACHEABLE
-	 * VMM_MEMORY_BUFFERABLE
-	 * VMM_MEMORY_IO_DEVICE
-	 * VMM_MEMORY_DMA_COHERENT
-	 * VMM_MEMORY_DMA_NONCOHERENT
-	 */
+		/*
+		 * We ignore following flags:
+		 * VMM_MEMORY_CACHEABLE
+		 * VMM_MEMORY_BUFFERABLE
+		 * VMM_MEMORY_IO_DEVICE
+		 * VMM_MEMORY_DMA_COHERENT
+		 * VMM_MEMORY_DMA_NONCOHERENT
+		 */
+	}
 }
 
 void arch_mmu_pte_sync(arch_pte_t *pte, int stage, int level)

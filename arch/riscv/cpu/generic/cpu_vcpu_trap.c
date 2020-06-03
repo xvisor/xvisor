@@ -127,21 +127,7 @@ static int cpu_vcpu_stage2_map(struct vmm_vcpu *vcpu,
 #endif
 	}
 
-	pg.flags.user = 1;
-	if (pg_reg_flags & VMM_REGION_VIRTUAL) {
-		pg.flags.read = 0;
-		pg.flags.write = 0;
-		pg.flags.execute = 1;
-	} else if (pg_reg_flags & VMM_REGION_READONLY) {
-		pg.flags.read = 1;
-		pg.flags.write = 0;
-		pg.flags.execute = 1;
-	} else {
-		pg.flags.read = 1;
-		pg.flags.write = 1;
-		pg.flags.execute = 1;
-	}
-	pg.flags.valid = 1;
+	arch_mmu_pgflags_set(&pg.flags, MMU_STAGE2, pg_reg_flags);
 
 	/* Try to map the page in Stage2 */
 	rc = mmu_map_page(riscv_guest_priv(vcpu->guest)->pgtbl, &pg);
