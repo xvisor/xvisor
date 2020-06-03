@@ -28,9 +28,6 @@
 #include <cpu_cache.h>
 #include <arch_barrier.h>
 
-#define TTBL_FIRST_LEVEL		1
-#define TTBL_LAST_LEVEL			3
-
 #define cpu_invalid_ipa_guest_tlb(ipa)			\
 	do {						\
 		inv_tlb_guest_allis();			\
