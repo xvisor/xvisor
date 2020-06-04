@@ -25,15 +25,7 @@
 #include <riscv_asm.h>
 #include <riscv_encoding.h>
 
-.macro SETUP_TRAP __insn_len, __stvec, __ttmp, __taddr
-	/* Change to Temporary exception handler */
-	la	\__stvec, 998f
-	csrrw	\__stvec, CSR_STVEC, \__stvec
-	j	999f
-
-	/* Temporary exception handler */
-	.align 2
-998:
+.macro TRAP_HANDLER __insn_len __ttmp, __taddr
 	csrr	\__ttmp, CSR_SEPC
 	REG_S	\__ttmp, RISCV_VCPU_TRAP_SEPC(\__taddr)
 	addi	\__ttmp, \__ttmp, \__insn_len
@@ -47,6 +39,18 @@
 	csrr	\__ttmp, CSR_HTINST
 	REG_S	\__ttmp, RISCV_VCPU_TRAP_HTINST(\__taddr)
 	sret
+.endm
+
+.macro SETUP_TRAP __insn_len, __stvec, __ttmp, __taddr
+	/* Change to Temporary exception handler */
+	la	\__stvec, 998f
+	csrrw	\__stvec, CSR_STVEC, \__stvec
+	j	999f
+
+	/* Temporary exception handler */
+	.align 2
+998:
+	TRAP_HANDLER \__insn_len, \__ttmp, \__taddr
 999:
 .endm
 
@@ -64,6 +68,11 @@
 	/* Restore Trap */
 	RESTORE_TRAP \__stvec
 .endm
+
+	.align 3
+	.global __cpu_vcpu_unpriv_trap_handler
+__cpu_vcpu_unpriv_trap_handler:
+	TRAP_HANDLER 4, t0, t1
 
 	.align 3
 	.global __cpu_vcpu_unpriv_read_insn

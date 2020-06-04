@@ -28,10 +28,13 @@
 #include <vmm_host_aspace.h>
 #include <generic_mmu.h>
 #include <arch_barrier.h>
+#include <arch_cpu_irq.h>
 
 #include <cpu_hwcap.h>
 #include <cpu_tlb.h>
 #include <cpu_sbi.h>
+#include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_unpriv.h>
 
 #ifdef CONFIG_64BIT
 /* Assume Sv39 */
@@ -357,8 +360,291 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 				physical_addr_t *out_addr,
 				u32 *out_fault_flags)
 {
-	/* To be implemented later. */
-	return VMM_ENOTAVAIL;
+	int rc = VMM_OK;
+	irq_flags_t f;
+	struct mmu_page pg;
+	struct mmu_pgtbl *s1_pgtbl, *s2_pgtbl;
+	struct cpu_vcpu_trap trap = { 0 };
+	struct cpu_vcpu_trap *tinfo = &trap;
+	physical_addr_t trap_gpa;
+	unsigned long tmp = -1UL, trap_gva;
+	unsigned long hstatus, stvec, vsatp, hgatp;
+
+	hgatp = riscv_stage2_mode << HGATP_MODE_SHIFT;
+	hgatp |= (s2_tbl_pa >> PGTBL_PAGE_SIZE_SHIFT) & HGATP_PPN;
+	if (s1_avail) {
+		vsatp = riscv_stage1_mode << SATP_MODE_SHIFT;
+		vsatp |= (s1_tbl_pa >> PGTBL_PAGE_SIZE_SHIFT) & SATP_PPN;
+	} else {
+		vsatp = 0;
+	}
+	stvec = (unsigned long)&__cpu_vcpu_unpriv_trap_handler;
+
+	arch_cpu_irq_save(f);
+
+	hstatus = csr_read(CSR_HSTATUS);
+	csr_clear(CSR_HSTATUS, HSTATUS_GVA);
+
+	stvec = csr_swap(CSR_STVEC, stvec);
+	vsatp = csr_swap(CSR_VSATP, vsatp);
+	hgatp = csr_swap(CSR_HGATP, hgatp);
+
+	if (flags & MMU_TEST_WRITE) {
+		/*
+		 * t0 is register 5
+		 * t1 is register 6
+		 * t2 is register 7
+		 */
+		if (flags & MMU_TEST_WIDTH_8BIT) {
+			/*
+			 * HSV.B rs2, (rs1) instruction
+			 * 0110001 rs2 rs1 100 00000 1110011
+			 */
+			asm volatile("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t0, %[tmp], zero\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+				/*
+				 * HSV.B t0, (t2)
+				 * 0110001 00101 00111 100 00000 1110011
+				 */
+				".word 0x6253c073\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo)
+			: [tmp] "r"(tmp), [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else if (flags & MMU_TEST_WIDTH_16BIT) {
+			/*
+			 * HSV.H rs2, (rs1) instruction
+			 * 0110011 rs2 rs1 100 00000 1110011
+			 */
+			asm volatile ("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t0, %[tmp], zero\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+				/*
+				 * HSV.H t0, (t2)
+				 * 0110011 00101 00111 100 00000 1110011
+				 */
+				".word 0x6653c073\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo)
+			: [tmp] "r"(tmp), [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else if (flags & MMU_TEST_WIDTH_32BIT) {
+			/*
+			 * HSV.W rs2, (rs1) instruction
+			 * 0110101 rs2 rs1 100 00000 1110011
+			 */
+			asm volatile ("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t0, %[tmp], zero\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+				/*
+				 * HSV.W t0, (t2)
+				 * 0110101 00101 00111 100 00000 1110011
+				 */
+				".word 0x6a53c073\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo)
+			: [tmp] "r"(tmp), [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else {
+			rc = VMM_EINVALID;
+		}
+	} else {
+		if (flags & MMU_TEST_WIDTH_8BIT) {
+			/*
+			 * HLV.BU rd, (rs1) instruction
+			 * 0110000 00001 rs1 100 rd 1110011
+			 */
+			asm volatile ("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+				/*
+				 * HLV.BU t0, (t2)
+				 * 0110000 00001 00111 100 00101 1110011
+				 */
+				".word 0x6013c2f3\n"
+				"add %[tmp], t0, zero\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo), [tmp] "=&r" (tmp)
+			: [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else if (flags & MMU_TEST_WIDTH_16BIT) {
+			/*
+			 * HLV.HU rd, (rs1) instruction
+			 * 0110010 00001 rs1 100 rd 1110011
+			 */
+			asm volatile ("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+				/*
+				 * HLV.HU t0, (t2)
+				 * 0110010 00001 00111 100 00101 1110011
+				 */
+				".word 0x6413c2f3\n"
+				"add %[tmp], t0, zero\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo), [tmp] "=&r" (tmp)
+			: [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else if (flags & MMU_TEST_WIDTH_32BIT) {
+			/*
+			 * HLV.WU rd, (rs1) instruction
+			 * 0110100 00001 rs1 100 rd 1110011
+			 *
+			 * HLV.W rd, (rs1) instruction
+			 * 0110100 00000 rs1 100 rd 1110011
+			 */
+			asm volatile ("\n"
+				".option push\n"
+				".option norvc\n"
+				"add t1, %[tinfo], zero\n"
+				"add t2, %[addr], zero\n"
+#ifdef CONFIG_64BIT
+				/*
+				 * HLV.WU t0, (t2)
+				 * 0110100 00001 00111 100 00101 1110011
+				 */
+				".word 0x6813c2f3\n"
+#else
+				/*
+				 * HLV.W t0, (t2)
+				 * 0110100 00000 00111 100 00101 1110011
+				 */
+				".word 0x6803c2f3\n"
+#endif
+				"add %[tmp], t0, zero\n"
+				".option pop"
+			: [tinfo] "+&r"(tinfo), [tmp] "=&r" (tmp)
+			: [addr] "r"(addr)
+			: "t0", "t1", "t2", "memory");
+		} else {
+			rc = VMM_EINVALID;
+		}
+	}
+
+	csr_write(CSR_HGATP, hgatp);
+	csr_write(CSR_VSATP, vsatp);
+	csr_write(CSR_STVEC, stvec);
+	hstatus = csr_swap(CSR_HSTATUS, hstatus);
+
+	arch_cpu_irq_restore(f);
+
+	/*
+	 * We just polluted TLB by running HSV/HLV instructions so let's
+	 * cleanup by invalidating all Guest and Host TLB entries.
+	 */
+	__hfence_gvma_all();
+	__sfence_vma_all();
+
+	if (rc) {
+		return rc;
+	}
+
+	*out_fault_flags = 0;
+	*out_addr = 0;
+
+	if (trap.scause) {
+		switch (trap.scause) {
+		case CAUSE_LOAD_PAGE_FAULT:
+			*out_fault_flags |= MMU_TEST_FAULT_S1;
+			*out_fault_flags |= MMU_TEST_FAULT_READ;
+			break;
+		case CAUSE_STORE_PAGE_FAULT:
+			*out_fault_flags |= MMU_TEST_FAULT_S1;
+			*out_fault_flags |= MMU_TEST_FAULT_WRITE;
+			break;
+		case CAUSE_LOAD_GUEST_PAGE_FAULT:
+			*out_fault_flags |= MMU_TEST_FAULT_READ;
+			break;
+		case CAUSE_STORE_GUEST_PAGE_FAULT:
+			*out_fault_flags |= MMU_TEST_FAULT_WRITE;
+			break;
+		default:
+			*out_fault_flags |= MMU_TEST_FAULT_UNKNOWN;
+			break;
+		};
+
+		if (!(*out_fault_flags & MMU_TEST_FAULT_UNKNOWN)) {
+			if (!(hstatus & HSTATUS_GVA)) {
+				return VMM_EFAIL;
+			}
+		}
+
+		trap_gva = trap.stval;
+		trap_gpa = ((physical_addr_t)trap.htval << 2);
+		trap_gpa |= ((physical_addr_t)trap.stval & 0x3);
+
+		if (*out_fault_flags & MMU_TEST_FAULT_S1) {
+			if (!s1_avail) {
+				return VMM_EFAIL;
+			}
+
+			s1_pgtbl = mmu_pgtbl_find(MMU_STAGE1, s1_tbl_pa);
+			if (!s1_pgtbl) {
+				return VMM_EFAIL;
+			}
+
+			if (mmu_get_page(s1_pgtbl, trap_gva, &pg)) {
+				*out_fault_flags |= MMU_TEST_FAULT_NOMAP;
+			}
+
+			*out_addr = trap_gva;
+		} else {
+			s2_pgtbl = mmu_pgtbl_find(MMU_STAGE2, s2_tbl_pa);
+			if (!s2_pgtbl) {
+				return VMM_EFAIL;
+			}
+
+			if (mmu_get_page(s2_pgtbl, trap_gpa, &pg)) {
+				*out_fault_flags |= MMU_TEST_FAULT_NOMAP;
+			}
+
+			*out_addr = trap_gpa;
+		}
+	} else {
+		if (s1_avail) {
+			s1_pgtbl = mmu_pgtbl_find(MMU_STAGE1, s1_tbl_pa);
+			if (!s1_pgtbl) {
+				return VMM_EFAIL;
+			}
+
+			rc = mmu_get_page(s1_pgtbl, addr, &pg);
+			if (rc) {
+				return rc;
+			}
+
+			*out_addr = pg.oa | (addr & (pg.sz - 1));
+		} else {
+			*out_addr = addr;
+		}
+
+		s2_pgtbl = mmu_pgtbl_find(MMU_STAGE2, s2_tbl_pa);
+		if (!s2_pgtbl) {
+			return VMM_EFAIL;
+		}
+
+		rc = mmu_get_page(s2_pgtbl, *out_addr, &pg);
+		if (rc) {
+			return rc;
+		}
+
+		*out_addr = pg.oa | (*out_addr & (pg.sz - 1));
+	}
+
+	return rc;
 }
 
 physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void)
