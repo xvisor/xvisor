@@ -87,63 +87,63 @@ __hfence_gvma_all:
 	ret
 
 	/*
-	 * HFENCE.BVMA rs1, rs2
-	 * HFENCE.BVMA zero, rs2
-	 * HFENCE.BVMA rs1
-	 * HFENCE.BVMA
+	 * HFENCE.VVMA rs1, rs2
+	 * HFENCE.VVMA zero, rs2
+	 * HFENCE.VVMA rs1
+	 * HFENCE.VVMA
 	 *
-	 * rs1!=zero and rs2!=zero ==> HFENCE.BVMA rs1, rs2
-	 * rs1==zero and rs2!=zero ==> HFENCE.BVMA zero, rs2
-	 * rs1!=zero and rs2==zero ==> HFENCE.BVMA rs1
-	 * rs1==zero and rs2==zero ==> HFENCE.BVMA
+	 * rs1!=zero and rs2!=zero ==> HFENCE.VVMA rs1, rs2
+	 * rs1==zero and rs2!=zero ==> HFENCE.VVMA zero, rs2
+	 * rs1!=zero and rs2==zero ==> HFENCE.VVMA rs1
+	 * rs1==zero and rs2==zero ==> HFENCE.VVMA
 	 *
-	 * Instruction encoding of HFENCE.BVMA is:
+	 * Instruction encoding of HFENCE.VVMA is:
 	 * 0010001 rs2(5) rs1(5) 000 00000 1110011
 	 */
 
 	.align 3
-	.global __hfence_bvma_asid_va
-__hfence_bvma_asid_va:
+	.global __hfence_vvma_asid_va
+__hfence_vvma_asid_va:
 	/*
 	 * rs1 = a0 (VA)
 	 * rs2 = a1 (ASID)
-	 * HFENCE.BVMA a0, a1
+	 * HFENCE.VVMA a0, a1
 	 * 0010001 01011 01010 000 00000 1110011
 	 */
 	.word 0x22b50073
 	ret
 
 	.align 3
-	.global __hfence_bvma_asid
-__hfence_bvma_asid:
+	.global __hfence_vvma_asid
+__hfence_vvma_asid:
 	/*
 	 * rs1 = zero
 	 * rs2 = a0 (ASID)
-	 * HFENCE.BVMA zero, a0
+	 * HFENCE.VVMA zero, a0
 	 * 0010001 01010 00000 000 00000 1110011
 	 */
 	.word 0x22a00073
 	ret
 
 	.align 3
-	.global __hfence_bvma_va
-__hfence_bvma_va:
+	.global __hfence_vvma_va
+__hfence_vvma_va:
 	/*
 	 * rs1 = a0 (VA)
 	 * rs2 = zero
-	 * HFENCE.BVMA zero, a0
+	 * HFENCE.VVMA zero, a0
 	 * 0010001 00000 01010 000 00000 1110011
 	 */
 	.word 0x22050073
 	ret
 
 	.align 3
-	.global __hfence_bvma_all
-__hfence_bvma_all:
+	.global __hfence_vvma_all
+__hfence_vvma_all:
 	/*
 	 * rs1 = zero
 	 * rs2 = zero
-	 * HFENCE.BVMA
+	 * HFENCE.VVMA
 	 * 0010001 00000 00000 000 00000 1110011
 	 */
 	.word 0x22000073
