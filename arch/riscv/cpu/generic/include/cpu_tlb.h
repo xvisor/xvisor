@@ -27,7 +27,7 @@
 #include <vmm_types.h>
 
 /** Invalidate Stage2 TLBs for given VMID and guest physical address */
-void __hfence_gvma_vmid_gpa(unsigned long vmid, unsigned long gpa);
+void __hfence_gvma_vmid_gpa(unsigned long gpa, unsigned long vmid);
 
 /** Invalidate Stage2 TLBs for given VMID */
 void __hfence_gvma_vmid(unsigned long vmid);
@@ -39,7 +39,7 @@ void __hfence_gvma_gpa(unsigned long gpa);
 void __hfence_gvma_all(void);
 
 /** Invalidate unified TLB entries for given asid and guest virtual address */
-void __hfence_bvma_asid_va(unsigned long asid, unsigned long va);
+void __hfence_bvma_asid_va(unsigned long va, unsigned long asid);
 
 /** Invalidate unified TLB entries for given ASID for a guest*/
 void __hfence_bvma_asid(unsigned long asid);
