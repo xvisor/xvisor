@@ -347,6 +347,38 @@ u32 vmm_host_ram_total_frame_count(void)
 	return ret;
 }
 
+physical_addr_t vmm_host_ram_start(void)
+{
+	u32 bn;
+	physical_addr_t start, ret = 0;
+
+	ret -= 1;
+	for (bn = 0; bn < rctrl.bank_count; bn++) {
+		start = rctrl.banks[bn].start;
+		if (start <= ret) {
+			ret = start;
+		}
+	}
+
+	return ret;
+}
+
+physical_addr_t vmm_host_ram_end(void)
+{
+	u32 bn;
+	physical_addr_t end, ret = 0;
+
+	for (bn = 0; bn < rctrl.bank_count; bn++) {
+		end = rctrl.banks[bn].start + rctrl.banks[bn].size;
+		end -= 1;
+		if (ret <= end) {
+			ret = end;
+		}
+	}
+
+	return ret;
+}
+
 physical_size_t vmm_host_ram_total_size(void)
 {
 	u32 bn;

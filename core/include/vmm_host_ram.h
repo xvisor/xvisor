@@ -72,6 +72,12 @@ u32 vmm_host_ram_total_free_frames(void);
 /** Total frame count of all RAM banks */
 u32 vmm_host_ram_total_frame_count(void);
 
+/** Start address of all RAM Banks */
+physical_addr_t vmm_host_ram_start(void);
+
+/** Last/end address of all RAM Banks */
+physical_addr_t vmm_host_ram_end(void);
+
 /** Total size of all RAM Banks */
 physical_size_t vmm_host_ram_total_size(void);
 
