@@ -27,7 +27,7 @@
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_main.h>
-
+#include <generic_defterm.h>
 #include <cpu_sbi.h>
 #include <riscv_sbi.h>
 
@@ -450,6 +450,36 @@ unsigned long sbi_minor_version(void)
 	return sbi_spec_version & SBI_SPEC_VERSION_MINOR_MASK;
 }
 
+static int sbi_defterm_putc(u8 ch)
+{
+	sbi_console_putchar(ch);
+	return VMM_OK;
+}
+
+static int sbi_defterm_getc(u8 *ch)
+{
+	int rch = sbi_console_getchar();
+
+	if (rch < 0) {
+		return VMM_EIO;
+	}
+	*ch = rch;
+
+	return VMM_OK;
+}
+
+static int sbi_defterm_init(struct vmm_devtree_node *node)
+{
+	/* Nothing to do here. */
+	return VMM_OK;
+}
+
+static struct defterm_ops sbi_defterm_ops = {
+	.putc = sbi_defterm_putc,
+	.getc = sbi_defterm_getc,
+	.init = sbi_defterm_init,
+};
+
 int __init sbi_init(void)
 {
 	int ret;
@@ -483,6 +513,7 @@ int __init sbi_init(void)
 	}
 
 	vmm_register_system_shutdown(sbi_shutdown);
+	defterm_set_initial_ops(&sbi_defterm_ops);
 
 	return 0;
 }
