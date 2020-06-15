@@ -16,25 +16,32 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * @file generic_devtree.h
+ * @file generic_defterm.h
  * @author Anup Patel (anup@brainfault.org)
- * @brief Common device tree interface
+ * @brief generic arch default terminal (defterm) interface
  */
-#ifndef __ARCH_GENERIC_DEVTREE_H__
-#define __ARCH_GENERIC_DEVTREE_H__
+#ifndef __ARCH_GENERIC_DEFTERM_H__
+#define __ARCH_GENERIC_DEFTERM_H__
 
 #include <vmm_types.h>
 
-/** Virtual address of FDT or DTB */
-extern virtual_addr_t devtree_virt;
+struct vmm_devtree_node;
 
-/** Virtual address of first FDT or DTB page */
-extern virtual_addr_t devtree_virt_base;
+/**
+ * Representation of defterm operations
+ * NOTE: all callbacks are mandatory
+ */
+struct defterm_ops {
+	int (*putc)(u8 ch);
+	int (*getc)(u8 *ch);
+	int (*init)(struct vmm_devtree_node *node);
+};
 
-/** Physical address of first FDT or DTB page */
-extern physical_addr_t devtree_phys_base;
-
-/** Virtual size of all FDT or DTB pages */
-extern virtual_size_t devtree_virt_size;
+/**
+ * Set the initial defterm operations.
+ * The initial defterm operations will be used when arch_defterm_init()
+ * is not able to find console device based on /chosen DT node.
+ */
+void defterm_set_initial_ops(struct defterm_ops *initial_ops);
 
 #endif

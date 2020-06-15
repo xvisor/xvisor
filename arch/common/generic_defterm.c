@@ -20,7 +20,7 @@
  * @author Anup Patel (anup@brainfault.org)
  * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @author Sukanto Ghosh (sukantoghosh@gmail.com)
- * @brief generic arch default terminal functions using drivers
+ * @brief generic arch default terminal (defterm) functions using drivers
  */
 
 #include <vmm_error.h>
@@ -28,13 +28,8 @@
 #include <vmm_compiler.h>
 #include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
+#include <generic_defterm.h>
 #include <arch_defterm.h>
-
-struct defterm_ops {
-	int (*putc)(u8 ch);
-	int (*getc)(u8 *ch);
-	int (*init)(struct vmm_devtree_node *node);
-};
 
 static int unknown_defterm_putc(u8 ch)
 {
@@ -659,6 +654,13 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 
 static const struct defterm_ops *ops = &unknown_ops;
 
+void defterm_set_initial_ops(struct defterm_ops *initial_ops)
+{
+	if (initial_ops) {
+		ops = initial_ops;
+	}
+}
+
 int arch_defterm_putc(u8 ch)
 {
 	return ops->putc(ch);
@@ -676,39 +678,45 @@ int __init arch_defterm_init(void)
 	struct vmm_devtree_node *node;
 	const struct vmm_devtree_nodeid *nodeid;
 
-	/* Find choosen console node */
+	/* Find chosen node */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
-	if (!node) {
+	if (!node || !vmm_devtree_is_available(node)) {
+		vmm_devtree_dref_node(node);
 		return VMM_ENODEV;
 	}
 
-	if (!vmm_devtree_is_available(node)) {
-		return VMM_ENODEV;
-	}
-
+	/* Find console from chosen node */
 	rc = vmm_devtree_read_string(node,
 				VMM_DEVTREE_CONSOLE_ATTR_NAME, &attr);
 	if (rc) {
 		rc = vmm_devtree_read_string(node,
 				VMM_DEVTREE_STDOUT_ATTR_NAME, &attr);
 	}
+
+	/* De-reference chosen node because we don't need it anymore. */
 	vmm_devtree_dref_node(node);
+
+	/* If we did not find console */
 	if (rc) {
-		return rc;
+		/* Use initial defterm ops */
+		return ops->init(NULL);
 	}
 
+	/* Find console node */
 	node = vmm_devtree_getnode(attr);
 	if (!node) {
-		return VMM_ENODEV;
+		/* Use initial defterm ops */
+		return ops->init(NULL);
 	}
 
-	/* Find appropriate defterm ops */
+	/* Find matching defterm ops based on console node */
 	nodeid = vmm_devtree_match_node(defterm_devid_table, node);
 	if (nodeid) {
 		ops = nodeid->data;
 	}
 
+	/* Use matching console defterm ops */
 	rc = ops->init(node);
 	vmm_devtree_dref_node(node);
 
