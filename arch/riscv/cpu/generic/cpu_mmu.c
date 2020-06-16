@@ -228,6 +228,10 @@ int arch_mmu_level_index_shift(int stage, int level)
 void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags)
 {
 	if (stage == MMU_STAGE2) {
+		flags->rsw = 0;
+		flags->accessed = 1;
+		flags->dirty = 1;
+		flags->global = 0;
 		flags->user = 1;
 		if (mflags & VMM_REGION_VIRTUAL) {
 			flags->read = 0;
@@ -245,8 +249,8 @@ void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags)
 		flags->valid = 1;
 	} else {
 		flags->rsw = 0;
-		flags->accessed = 0;
-		flags->dirty = 0;
+		flags->accessed = 1;
+		flags->dirty = 1;
 		flags->global = 1;
 		flags->user = 0;
 		flags->execute = (mflags & VMM_MEMORY_EXECUTABLE) ? 1 : 0;

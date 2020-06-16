@@ -165,6 +165,8 @@ skip_level1:
 			pgtbl[index] = (page_addr - map_start) + pa_start;
 			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
 			pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
+			pgtbl[index] |= PGTBL_PTE_ACCESSED_MASK;
+			pgtbl[index] |= PGTBL_PTE_DIRTY_MASK;
 			pgtbl[index] |= PGTBL_PTE_EXECUTE_MASK;
 			pgtbl[index] |= (writeable) ? PGTBL_PTE_WRITE_MASK : 0;
 			pgtbl[index] |= PGTBL_PTE_READ_MASK;
@@ -239,6 +241,8 @@ void __attribute__ ((section(".entry")))
 	pgtbl[index] = load_start & PGTBL_L3_MAP_MASK;
 	pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
 	pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
+	pgtbl[index] |= PGTBL_PTE_ACCESSED_MASK;
+	pgtbl[index] |= PGTBL_PTE_DIRTY_MASK;
 	pgtbl[index] |= PGTBL_PTE_EXECUTE_MASK;
 	pgtbl[index] |= PGTBL_PTE_WRITE_MASK;
 	pgtbl[index] |= PGTBL_PTE_READ_MASK;
