@@ -387,6 +387,7 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 	arch_cpu_irq_save(f);
 
 	hstatus = csr_read(CSR_HSTATUS);
+	csr_set(CSR_HSTATUS, HSTATUS_SPVP);
 	csr_clear(CSR_HSTATUS, HSTATUS_GVA);
 
 	stvec = csr_swap(CSR_STVEC, stvec);
