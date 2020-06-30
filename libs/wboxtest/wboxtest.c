@@ -36,8 +36,8 @@
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		WBOXTEST_IPRIORITY
-#define	MODULE_INIT			wboxtest_init
-#define	MODULE_EXIT			wboxtest_exit
+#define MODULE_INIT			wboxtest_init
+#define MODULE_EXIT			wboxtest_exit
 
 struct wboxtest_control {
 	struct vmm_mutex lock;
@@ -159,6 +159,7 @@ int __wboxtest_run_test(struct wboxtest *test, u32 test_hcpu,
 			struct vmm_chardev *cdev, u32 iterations)
 {
 	int rc;
+	unsigned long leak;
 	u32 iter, fail_count = 0;
 	u64 tstamp = vmm_timer_timestamp();
 	u32 vp = vmm_host_vapool_free_page_count();
@@ -189,15 +190,24 @@ int __wboxtest_run_test(struct wboxtest *test, u32 test_hcpu,
 	if (test->cleanup)
 		test->cleanup(test, cdev);
 
-	vmm_cprintf(cdev, "wboxtest: test=%s vapool leakage %lu pages\n",
-		    test->name,
-		    (unsigned long)(vp - vmm_host_vapool_free_page_count()));
-	vmm_cprintf(cdev, "wboxtest: test=%s normal heap leakage %lu bytes\n",
-		    test->name,
-		    (unsigned long)(nh - vmm_normal_heap_free_size()));
-	vmm_cprintf(cdev, "wboxtest: test=%s dma heap leakage %lu bytes\n",
-		    test->name,
-		    (unsigned long)(dh - vmm_dma_heap_free_size()));
+	leak = vp - vmm_host_vapool_free_page_count();
+	if (leak) {
+		vmm_cprintf(cdev, "wboxtest: test=%s vapool leakage %lu pages\n",
+			    test->name, leak);
+	}
+
+	leak = nh - vmm_normal_heap_free_size();
+	if (leak) {
+		vmm_cprintf(cdev, "wboxtest: test=%s normal heap leakage %lu bytes\n",
+			    test->name, leak);
+	}
+
+	leak = dh - vmm_dma_heap_free_size();
+	if (leak) {
+		vmm_cprintf(cdev, "wboxtest: test=%s dma heap leakage %lu bytes\n",
+			    test->name, leak);
+	}
+
 	vmm_cprintf(cdev, "wboxtest: test=%s time taken %"PRIu64" nanoseconds\n",
 		    test->name, vmm_timer_timestamp() - tstamp);
 	vmm_cprintf(cdev, "wboxtest: test=%s failures %d out of %d\n",
