@@ -104,6 +104,9 @@ void basic_cmd_help(int argc, char **argv)
 	basic_puts("fdt_override_u32 - Overrides an integer property in the device tree\n");
 	basic_puts("            Usage: fdt_override_u32 <fdt_addr> </path/to/property> <value>\n");
 	basic_puts("\n");
+	basic_puts("fdt_print_tree - Print device tree\n");
+	basic_puts("            Usage: fdt_print_tree <fdt_addr> </path/to/node>\n");
+	basic_puts("\n");
 	basic_puts("linux_cmdline - Show/Update linux command line\n");
 	basic_puts("            Usage: linux_cmdline [<new_linux_cmdline>]\n");
 	basic_puts("            <new_linux_cmdline>  = linux command line\n");
@@ -410,6 +413,24 @@ void basic_cmd_copy(int argc, char **argv)
 	basic_puts(" bytes\n");
 }
 
+static void basic_fdt_print_tree(void *fdt, int offset)
+{
+	int i, depth;
+	const char *name;
+
+	for (depth = 0;
+	     (offset >= 0) && (depth >= 0);
+	     offset = fdt_next_node(fdt, offset, &depth)) {
+
+		for (i = 0; i < depth; i++) {
+			basic_puts("    ");
+		}
+		name = fdt_get_name(fdt, offset, NULL);
+		basic_puts(name);
+		basic_puts("\n");
+	}
+}
+
 static char linux_cmdline[1024];
 
 void basic_cmd_start_linux_fdt(int argc, char **argv)
@@ -541,6 +562,29 @@ void basic_cmd_fdt_override_u32(int argc, char **argv)
 		       "Error: %i\n", prop, path, err);
 		return;
 	}
+}
+
+void basic_cmd_fdt_print_tree(int argc, char **argv)
+{
+	const char *path;
+	int nodeoffset;
+	void *fdt;
+
+	if (argc < 3) {
+		basic_puts("fdt_print_tree: must provide <fdt_addr> and </path/to/node>\n");
+		return;
+	}
+
+	fdt = (void *)(virtual_addr_t)basic_hexstr2ulonglong(argv[1]);
+	path = argv[2];
+
+	nodeoffset = fdt_path_offset(fdt, path);
+	if (nodeoffset < 0) {
+		printf("*** Path \"%s\" does not exist\n", path);
+		return;
+	}
+
+	basic_fdt_print_tree(fdt, nodeoffset);
 }
 
 void basic_cmd_linux_cmdline(int argc, char **argv)
@@ -741,8 +785,10 @@ void basic_exec(char *line)
 			basic_cmd_copy(argc, argv);
 		} else if (basic_strcmp(argv[0], "start_linux_fdt") == 0) {
 			basic_cmd_start_linux_fdt(argc, argv);
-                } else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {
+		} else if (basic_strcmp(argv[0], "fdt_override_u32") == 0) {
 			basic_cmd_fdt_override_u32(argc, argv);
+		} else if (basic_strcmp(argv[0], "fdt_print_tree") == 0) {
+			basic_cmd_fdt_print_tree(argc, argv);
 		} else if (basic_strcmp(argv[0], "linux_cmdline") == 0) {
 			basic_cmd_linux_cmdline(argc, argv);
 		} else if (basic_strcmp(argv[0], "linux_memory_size") == 0) {
