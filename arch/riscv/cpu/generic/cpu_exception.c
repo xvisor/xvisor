@@ -188,7 +188,7 @@ int __cpuinit arch_cpu_irq_setup(void)
 		csr_write(CSR_HEDELEG, hedeleg);
 
 		/* Update HCOUNTEREN */
-		csr_write(CSR_HCOUNTERNEN, -1UL);
+		csr_write(CSR_HCOUNTEREN, -1UL);
 
 		/* Setup final exception handler with hypervisor enabled */
 		csr_write(CSR_STVEC, (virtual_addr_t)&_handle_hyp_exception);
