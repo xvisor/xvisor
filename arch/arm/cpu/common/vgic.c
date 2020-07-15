@@ -1346,7 +1346,7 @@ static int vgic_dist_emulator_reset(struct vmm_emudev *edev)
 	for (i = 0; i < VGIC_NUM_CPU(s); i++) {
 		vgich.ops.reset_state(&s->vstate[i].hw, VGIC_MODEL_V2);
 		s->vstate[i].lr_used_count = 0x0;
-		for (j = 0; j < (vgich.params.lr_cnt / 32); j++) {
+		for (j = 0; j < ((vgich.params.lr_cnt + 31) / 32); j++) {
 			s->vstate[i].lr_used[j] = 0x0;
 		}
 		for (j = 0; j < VGIC_NUM_IRQ(s); j++) {
