@@ -151,7 +151,7 @@ int cpu_vcpu_data_abort(struct vmm_vcpu *vcpu,
 	case FSC_ACCESS_FAULT_LEVEL3:
 		if (!(iss & ISS_ABORT_ISV_MASK)) {
 			/* Determine instruction physical address */
-			va2pa_at(VA2PA_STAGE1, VA2PA_EL1, VA2PA_RD, regs->pc);
+			va2pa_at(VA2PA_STAGE12, VA2PA_EL1, VA2PA_RD, regs->pc);
 			inst_pa = mrs(par_el1);
 			inst_pa &= PAR_PA_MASK;
 			inst_pa |= (regs->pc & 0x00000FFF);
