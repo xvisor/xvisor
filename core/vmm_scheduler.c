@@ -677,8 +677,9 @@ skip_state_change:
 				vmm_scheduler_switch(schedp, schedp->irq_regs);
 			} else {
 				arch_vcpu_preempt_orphan();
-				if (vcpu->wq_lock) {
-					vmm_spin_lock(vcpu->wq_lock);
+				if (schedp->current_vcpu->wq_lock) {
+					vmm_spin_lock(
+						schedp->current_vcpu->wq_lock);
 				}
 			}
 		} else {
