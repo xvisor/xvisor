@@ -260,7 +260,7 @@ int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
 	bool found = false;
 	unsigned int i, j, hirq, hwirq, count;
 
-	if (!domain || !irq_count || (domain->count > irq_count)) {
+	if (!domain || !irq_count || (domain->count < irq_count)) {
 		return VMM_EINVALID;
 	}
 
