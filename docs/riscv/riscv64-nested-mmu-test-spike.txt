@@ -1,0 +1,44 @@
+	Xvisor RISC-V 64bit Nested MMU Test on Spike Simulator
+
+This section of readme explains how to build & run Xvisor RISC-V 64bit
+nested MMU test-suite on Spike simulator.
+
+Please follow the steps below for nested MMU test-suite on Spike:
+
+  [1. Build environment for Xvisor]
+  # CROSS_COMPILE=riscv64-unknown-linux-gnu-
+
+  [2. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [3. Configure Xvisor with Generic-64bit default settings]
+  # make ARCH=riscv generic-64b-defconfig
+
+  [4. Enable Nested MMU test-suite for Xvisor]
+  # make ARCH=riscv menuconfig
+  (Select/enable "Library Options" ==> "White-box testing library")
+
+  [5. Build Xvisor & DTBs]
+  # make
+
+  [6. GoTo OpenSBI source directory]
+  # cd <opensbi_source_directory>
+
+  [7. Build OpenSBI]
+  # make PLATFORM=generic
+
+  [8. GoTo Xvisor source directory]
+  # cd <xvisor_source_directory>
+
+  [9. Run nested MMU test-suite]
+  # spike -m512 --isa rv64gch --kernel ./build/vmm.bin --bootargs 'vmm.bootcmd="wboxtest run_groups 1 nested_mmu"' <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.elf
+  OR
+  # spike -m512 --isa rv64gch --kernel ./build/vmm.bin <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.elf
+  XVisor# wboxtest run_groups 1 nested_mmu
+
+  (Note: replace all <> brackets based on your workspace)
+  (Note: some of the above steps will need to be adapted for other
+   types of RISC-V host)
+  (Note: for more info on your desired RISC-V host refer docs/riscv/)
+  (Note: you are free to change the ordering of above steps based
+   on your workspace)

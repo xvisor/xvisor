@@ -1,19 +1,11 @@
-		Linux on Xvisor RISC-V Virt64 SMP Guest
+		Xvisor RISC-V 64bit on Spike Simulator
 
-Linux is a computer operating system which is based on free and open source
-software. the underlying source code can be used, freely modified, and
-redistributed, both commercially and non-commercially, by anyone under
-licenses such as the GNU General Public License. For more information on
-Linux read the wiki page http://en.wikipedia.org/wiki/Linux
+This section of readme explains how to build & run Xvisor RISC-V 64bit on
+Spike Simulator.
 
-Linux already contains a support for device-tree based boards. We can use
-linux kernel unmodified to run it as a RISC-V Virt64 guest. We also provide
-a defconfig for building kernel. To obtain Linux kernel sources visit the
-following url: http://www.kernel.org
-
-Please follow the steps below to build & run Linux kernel with Busybox
-RootFS on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor running
-on QEMU model (v5.1 or higher):
+Please follow the steps below to build & run Linux kernel with Busybox RootFS
+on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor RISC-V 64bit running
+on Spike:
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -70,8 +62,8 @@ on QEMU model (v5.1 or higher):
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
-  [14. Launch QEMU]
-  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/qemu/virt64/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append 'vmm.bootcmd="vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt"'
+  [14. Launch Spike]
+  # spike -m512 --isa rv64gch --kernel ./build/vmm.bin --initrd ./build/disk.img --bootargs 'vmm.bootcmd="vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt"' <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.elf
 
   [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0

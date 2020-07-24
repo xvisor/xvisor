@@ -1,11 +1,11 @@
-		Xvisor on QEMU RISC-V VirtIO Board
+		Xvisor RISC-V 64bit on QEMU Virt Machine
 
-This section of readme explains how to build & run Xvisor for RISC-V VirtIO
-board emulated by QEMU.
+This section of readme explains how to build & run Xvisor RISC-V 64bit on
+Virt machine emulated by QEMU RISC-V.
 
-Please follow the steps below to build & run Linux kernel with Busybox
-RootFS on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor running
-on QEMU model (v4.2 or higher):
+Please follow the steps below to build & run Linux kernel with Busybox RootFS
+on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor RISC-V 64bit running
+on QEMU virt machine (v5.1 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -22,25 +22,31 @@ on QEMU model (v4.2 or higher):
   [5. Build Basic Firmware]
   # make -C tests/riscv/virt64/basic
 
-  [6. GoTo Linux source directory]
+  [6. GoTo OpenSBI source directory]
+  # cd <opensbi_source_directory>
+
+  [7. Build OpenSBI]
+  # make PLATFORM=generic
+
+  [8. GoTo Linux source directory]
   # cd <linux_source_directory>
 
-  [7. Configure Linux in build directory]
+  [9. Configure Linux in build directory]
   # cp arch/riscv/configs/defconfig arch/riscv/configs/tmp-virt64_defconfig
   # <xvisor_source_directory>/tests/common/scripts/update-linux-defconfig.sh -p arch/riscv/configs/tmp-virt64_defconfig -f <xvisor_source_directory>/tests/riscv/virt64/linux/linux_extra.config
   # make O=<linux_build_directory> ARCH=riscv tmp-virt64_defconfig
 
-  [8. Build Linux in build directory to reflect changes in kernel image]
+  [10. Build Linux in build directory to reflect changes in kernel image]
   # make O=<linux_build_directory> ARCH=riscv Image dtbs
 
-  [9. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
+  [11. Create BusyBox RAMDISK to be used as RootFS for Linux kernel]
   (Note: For subsequent steps, we will assume that your RAMDISK is located at <busybox_rootfs_directory>/rootfs.img)
   (Note: Please refer tests/common/busybox/README.md for creating rootfs.img using BusyBox)
 
-  [10. GoTo Xvisor source directory]
+  [12. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
 
-  [11. Create disk image for Xvisor]
+  [13. Create disk image for Xvisor]
   # mkdir -p ./build/disk/tmp
   # mkdir -p ./build/disk/system
   # cp -f ./docs/banner/roman.txt ./build/disk/system/banner.txt
@@ -56,26 +62,26 @@ on QEMU model (v4.2 or higher):
   # cp -f <busybox_rootfs_directory>/rootfs.img ./build/disk/images/riscv/virt64/rootfs.img
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
-  [12. Launch QEMU]
-  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt64/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  [14. Launch QEMU]
+  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append 'vmm.bootcmd="vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt"'
 
-  [13. Kick Guest0 to start Basic Firmware]
+  [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0
 
-  [14. Bind to virtual UART]
+  [16. Bind to virtual UART]
   XVisor# vserial bind guest0/uart0
 
-  [15. Copy linux from NOR flash to RAM and start linux booting from RAM]
+  [17. Copy linux from NOR flash to RAM and start linux booting from RAM]
   [guest0/uart0] basic# autoexec
   (Note: "autoexec" is a short-cut command)
   (Note: The <xvisor_source_directory>/tests/riscv/virt64/linux/cmdlist file
    which we have added to guest NOR flash contains set of commands for booting
    linux from NOR flash)
 
-  [16. Wait for Linux prompt to come-up and then try out some commands]
+  [18. Wait for Linux prompt to come-up and then try out some commands]
   [guest0/uart0] / # ls
 
-  [17. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
+  [19. Enter character seqence 'ESCAPE+x+q" return to Xvisor prompt]
   [guest0/uart0] / #
 
   (Note: replace all <> brackets based on your workspace)
