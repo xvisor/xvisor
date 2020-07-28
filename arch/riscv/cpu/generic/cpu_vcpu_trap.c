@@ -160,7 +160,7 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	u16 data16;
 	u32 data32;
 	u64 data64;
-	unsigned long insn;
+	unsigned long insn, insn_len;
 	int rc = VMM_OK, shift = 0, len = 0;
 	struct cpu_vcpu_trap trap = { 0 };
 
@@ -170,6 +170,7 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 		 * transformed instruction or custom instruction.
 		 */
 		insn = htinst | INSN_16BIT_MASK;
+		insn_len = (htinst & 0x2) ? INSN_LEN(insn) : 2;
 	} else {
 		/*
 		 * Bit[0] == 0 implies trapped instruction value is
@@ -182,6 +183,7 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 			trap.sepc = trap.stval = regs->sepc;
 			return cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 		}
+		insn_len = INSN_LEN(insn);
 	}
 
 	if ((insn & INSN_MASK_LW) == INSN_MATCH_LW) {
@@ -269,7 +271,7 @@ static int cpu_vcpu_emulate_load(struct vmm_vcpu *vcpu,
 	};
 
 	if (!rc) {
-		regs->sepc += INSN_LEN(insn);
+		regs->sepc += insn_len;
 	}
 
 	return rc;
@@ -285,7 +287,7 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	u32 data32;
 	u64 data64;
 	int rc = VMM_OK, len = 0;
-	unsigned long data, insn;
+	unsigned long data, insn, insn_len;
 	struct cpu_vcpu_trap trap = { 0 };
 
 	if (htinst & 0x1) {
@@ -294,6 +296,7 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 		 * transformed instruction or custom instruction.
 		 */
 		insn = htinst | INSN_16BIT_MASK;
+		insn_len = (htinst & 0x2) ? INSN_LEN(insn) : 2;
 	} else {
 		/*
 		 * Bit[0] == 0 implies trapped instruction value is
@@ -306,6 +309,7 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 			trap.sepc = trap.stval = regs->sepc;
 			return cpu_vcpu_redirect_trap(vcpu, regs, &trap);
 		}
+		insn_len = INSN_LEN(insn);
 	}
 
 	data8 = data16 = data32 = data64 = data = GET_RS2(insn, regs);
@@ -370,7 +374,7 @@ static int cpu_vcpu_emulate_store(struct vmm_vcpu *vcpu,
 	};
 
 	if (!rc) {
-		regs->sepc += INSN_LEN(insn);
+		regs->sepc += insn_len;
 	}
 
 	return rc;
