@@ -362,6 +362,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv->vscause = csr_read(CSR_VSCAUSE);
 			priv->vstval = csr_read(CSR_VSTVAL);
 			priv->vsatp = csr_read(CSR_VSATP);
+			priv->scounteren = csr_read(CSR_SCOUNTEREN);
 			cpu_vcpu_fp_save(tvcpu, regs);
 		}
 		clrx();
@@ -388,6 +389,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSCAUSE, priv->vscause);
 		csr_write(CSR_VSTVAL, priv->vstval);
 		csr_write(CSR_VSATP, priv->vsatp);
+		csr_write(CSR_SCOUNTEREN, priv->scounteren);
 		cpu_vcpu_fp_restore(vcpu, regs);
 		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_stage2_vmid_bits)) {
 			mmu_stage2_change_pgtbl(vcpu->guest->id,
@@ -484,6 +486,8 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 		    "  vsscratch", priv->vsscratch, "      vsepc", priv->vsepc);
 	vmm_cprintf(cdev, "%s=0x%"PRIADDR" %s=0x%"PRIADDR"\n",
 		    "    vscause", priv->vscause, "     vstval", priv->vstval);
+	vmm_cprintf(cdev, "%s=0x%"PRIADDR"\n",
+		    " scounteren", priv->scounteren);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }

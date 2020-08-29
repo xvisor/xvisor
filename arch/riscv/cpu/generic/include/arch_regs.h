@@ -170,6 +170,7 @@ struct riscv_priv {
 	unsigned long vscause;
 	unsigned long vstval;
 	unsigned long vsatp;
+	unsigned long scounteren;
 	/* FP state */
 	union riscv_priv_fp fp;
 	/* Opaque pointer to timer data */
