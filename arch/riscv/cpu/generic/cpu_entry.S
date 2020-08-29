@@ -288,22 +288,19 @@ _cpu_init:
 	/* Swap TP and SSCRATCH */
 	csrrw	tp, CSR_SSCRATCH, tp
 
-	/* Save S0 in scratch space */
-	REG_S	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
-
-	/* Save SP in S0 */
-	add	s0, sp, zero
+	/* Save original SP in scratch space */
+	REG_S	sp, RISCV_SCRATCH_TMP0_OFFSET(tp)
 
 	/* Setup exception stack */
 	REG_L	sp, RISCV_SCRATCH_EXCE_STACK_OFFSET(tp)
 	addi	sp, sp, -(RISCV_ARCH_REGS_SIZE)
 
-	/* Save original SP (in S0) */
-	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sp)(sp)
-
-	/* Save original S0 */
-	REG_L	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
+	/* Save S0 */
 	REG_S	s0, RISCV_ARCH_REGS_OFFSET(s0)(sp)
+
+	/* Save original SP from scratch space */
+	REG_L	s0, RISCV_SCRATCH_TMP0_OFFSET(tp)
+	REG_S	s0, RISCV_ARCH_REGS_OFFSET(sp)(sp)
 
 	/* Swap TP and SSCRATCH */
 	csrrw	tp, CSR_SSCRATCH, tp
