@@ -1030,7 +1030,7 @@ int mmu_test_nested_pgtbl(struct mmu_pgtbl *s2_pgtbl,
 	}
 
 	/* No unexpected fault bit should be set */
-	if (expected_fault_flags && (offlags & ~expected_fault_flags)) {
+	if (offlags & ~expected_fault_flags) {
 		return VMM_EFAIL;
 	}
 
