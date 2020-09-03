@@ -195,6 +195,7 @@ void arch_mmu_pgflags_set(arch_pgflags_t *flags, int stage, u32 mflags)
 		} else if (mflags & VMM_MEMORY_READABLE) {
 			flags->ap = TTBL_AP_SR_U;
 		} else {
+			flags->af = 0;
 			flags->ap = TTBL_AP_SR_U;
 		}
 		flags->xn = (mflags & VMM_MEMORY_EXECUTABLE) ? 0 : 1;
