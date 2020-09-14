@@ -80,6 +80,32 @@ static inline void cpu_mmu_invalidate_range(virtual_addr_t start,
 	invalidate_dcache_mva_range(start, start + size);
 }
 
+struct cpu_mmu_at_test_result {
+	bool fault;
+	bool fault_s2;
+	bool fault_translation;
+	bool fault_access;
+	bool fault_permission;
+	bool fault_unknown;
+	physical_addr_t addr;
+};
+
+static inline void cpu_mmu_at_test_exec(physical_addr_t s2_tbl_pa,
+					bool s1_avail,
+					physical_addr_t s1_tbl_pa,
+					virtual_addr_t addr, bool write,
+					struct cpu_mmu_at_test_result *tp)
+{
+	/* TODO: */
+	tp->fault = FALSE;
+	tp->fault_s2 = FALSE;
+	tp->fault_translation = FALSE;
+	tp->fault_access = FALSE;
+	tp->fault_permission = FALSE;
+	tp->fault_unknown = FALSE;
+	tp->addr = 0x0;
+}
+
 #include <mmu_lpae.h>
 
 #endif /* __ARCH_MMU_H__ */

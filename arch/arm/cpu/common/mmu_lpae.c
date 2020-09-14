@@ -363,8 +363,71 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 				physical_addr_t *out_addr,
 				u32 *out_fault_flags)
 {
-	/* To be implemented later. */
-	return VMM_ENOTAVAIL;
+	irq_flags_t f;
+	struct mmu_page pg;
+	struct mmu_pgtbl *s1_pgtbl, *s2_pgtbl;
+	struct cpu_mmu_at_test_result t = { 0 };
+
+	arch_cpu_irq_save(f);
+	cpu_mmu_at_test_exec(s2_tbl_pa, s1_avail, s1_tbl_pa, addr,
+			     (flags & MMU_TEST_WRITE) ? TRUE : FALSE, &t);
+	arch_cpu_irq_restore(f);
+
+	*out_addr = 0;
+	*out_fault_flags = 0;
+	if (t.fault) {
+		*out_fault_flags |= (t.fault_s2) ? 0 : MMU_TEST_FAULT_S1;
+
+		if (t.fault_translation) {
+			*out_fault_flags |= MMU_TEST_FAULT_NOMAP;
+		} else if (t.fault_unknown) {
+			*out_fault_flags |= MMU_TEST_FAULT_UNKNOWN;
+		}
+
+		*out_fault_flags |= (flags & MMU_TEST_WRITE) ?
+				MMU_TEST_FAULT_WRITE : MMU_TEST_FAULT_READ;
+
+		*out_addr = addr;
+		if (*out_fault_flags & MMU_TEST_FAULT_NOMAP) {
+			if (s1_avail) {
+				s1_pgtbl = mmu_pgtbl_find(MMU_STAGE1, s1_tbl_pa);
+				if (!s1_pgtbl) {
+					return VMM_EFAIL;
+				}
+
+				if (!mmu_get_page(s1_pgtbl, *out_addr, &pg)) {
+					*out_addr = pg.oa | (addr & (pg.sz - 1));
+				}
+			}
+
+			s2_pgtbl = mmu_pgtbl_find(MMU_STAGE2, s2_tbl_pa);
+			if (!s2_pgtbl) {
+				return VMM_EFAIL;
+			}
+
+			if (!mmu_get_page(s2_pgtbl, *out_addr, &pg)) {
+				*out_addr = pg.oa | (*out_addr & (pg.sz - 1));
+			}
+		} else if (*out_fault_flags & (MMU_TEST_FAULT_READ |
+						MMU_TEST_FAULT_WRITE)) {
+			if (*out_fault_flags & MMU_TEST_FAULT_S1) {
+				*out_addr = addr;
+			} else if (s1_avail) {
+				s1_pgtbl = mmu_pgtbl_find(MMU_STAGE1, s1_tbl_pa);
+				if (!s1_pgtbl) {
+					return VMM_EFAIL;
+				}
+
+				if (!mmu_get_page(s1_pgtbl, *out_addr, &pg)) {
+					*out_addr = pg.oa | (addr & (pg.sz - 1));
+				}
+			}
+		}
+	} else {
+		*out_addr = t.addr;
+	}
+
+	return 0;
 }
 
 physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void)

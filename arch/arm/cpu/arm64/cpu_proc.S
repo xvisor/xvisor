@@ -58,6 +58,7 @@ proc_setup:
 	 */
 	.align	3
 	.type	v8_crval, #object
+	.globl  v8_crval
 v8_crval:
 	.dword	0x0008000A /* clear */
 	.dword	0x00001005 /* mmuset */

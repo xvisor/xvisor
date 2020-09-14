@@ -282,6 +282,8 @@ _start_hang:
 	b	.
 
 	.align 3
+	.globl __mair_set
+	.globl __tcr_set
 __mair_set:
 	.dword (MAIR(0x00, AINDEX_DEVICE_nGnRnE) | \
 		MAIR(0x04, AINDEX_DEVICE_nGnRE) | \
