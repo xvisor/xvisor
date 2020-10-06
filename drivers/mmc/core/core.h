@@ -64,7 +64,7 @@ int mmc_go_idle(struct mmc_host *host);
  * Note: Must be called with host->lock held.
  */
 extern struct vmm_bus sdio_bus_type;
-struct vmm_device_type sdio_func_type;
+extern struct vmm_device_type sdio_func_type;
 
 int __sdio_attach(struct mmc_host *host);
 

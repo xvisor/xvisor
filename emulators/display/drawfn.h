@@ -69,14 +69,14 @@ typedef void (*drawfn)(struct vmm_surface *,
 				 DRAWFN_ORDER_MAX * \
 				 DRAWFN_FORMAT_MAX)
 
-drawfn drawfn_surface_fntable_8[DRAWFN_FNTABLE_SIZE];
+extern drawfn drawfn_surface_fntable_8[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_15[DRAWFN_FNTABLE_SIZE];
+extern drawfn drawfn_surface_fntable_15[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_16[DRAWFN_FNTABLE_SIZE];
+extern drawfn drawfn_surface_fntable_16[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_24[DRAWFN_FNTABLE_SIZE];
+extern drawfn drawfn_surface_fntable_24[DRAWFN_FNTABLE_SIZE];
 
-drawfn drawfn_surface_fntable_32[DRAWFN_FNTABLE_SIZE];
+extern drawfn drawfn_surface_fntable_32[DRAWFN_FNTABLE_SIZE];
 
 #endif
