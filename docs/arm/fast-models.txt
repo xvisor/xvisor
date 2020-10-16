@@ -76,7 +76,7 @@ steps provided in previous section:
 
   [1. Build environment for boot-wrapper]
   # cd <your_test_dir>
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabi-
 
   [2. Compile boot-wrapper]
   # ${CROSS_COMPILE}gcc -nostdlib -march=armv7ve -mtune=cortex-a15 -e start_boot -Wl,--build-id=none -Wl,-Ttext=0x80000000 -DSPIN_LOCATION=0x1c010030 -DSPIN_LOOP_ADDR=0x14000000 -DUART_PL011 -DUART_PL011_BASE=0x1c090000 -DGENTIMER_FREQ=100000000 -DGICv2 -DGIC_DIST_BASE=0x2c001000 -DGIC_CPU_BASE=0x2c002000 <xvisor_source_directory>/docs/arm/fast_model_boot.S -o fast_model_boot.axf

@@ -1,4 +1,4 @@
-		Xvisor on Linaro QEMU Cubieboard Host
+		Xvisor on QEMU Cubieboard Host
 
 This section of readme explains how to build & run Xvisor for Cubieboard
 emulated by QEMU.
@@ -11,7 +11,7 @@ Please follow the steps below to build & run Basic Firmware on Realview-PB-A8
 guest with Xvisor running on QEMU Cubieboard Host:
 
   [1. Build environment for Xvisor]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

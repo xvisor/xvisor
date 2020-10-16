@@ -66,10 +66,8 @@ C:	Cortex-A9
 V:	Samsung (http://www.samsung.com)
 E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
-S:	Able to boot Realview-PB-A8 linux guest on smdkc210 emulated by
-	Linaro QEMU.
-S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by
-	Linaro QEMU
+S:	Able to boot Realview-PB-A8 linux guest on smdkc210 emulated by QEMU.
+S:	Able to boot VExpress-A9 linux guest on smdkc210 emulated by QEMU
 D:	docs/arm/exynos4-smdkc210.txt
 D:	docs/arm/exynos4-nuri.txt
 
@@ -120,9 +118,9 @@ V:	Texax Instruments (http://www.ti.com/)
 E:	QEMU Linaro (https://launchpad.net/qemu-linaro)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on BeagleBoard-xM Hardware
-	and BeagleBoard emulated by Linaro QEMU
+	and BeagleBoard emulated by QEMU
 S:	Able to boot VExpress-A9 linux guest on BeagleBoard-xM Hardware and
-	BeagleBoard emulated by Linaro QEMU
+	BeagleBoard emulated by QEMU
 D:	docs/arm/omap3-beagle.txt
 
 M:	Realview-EB-MPCore
@@ -187,7 +185,7 @@ V:	ARM Ltd. (http://www.arm.com/)
 E:	QEMU (http://qemu.org/)
 G:	Realview-PB-A8 and VExpress-A9 guests supported
 S:	Able to boot Realview-PB-A8 linux guest on VExpress-A9 emulated by
-	Linaro QEMU.
+	QEMU.
 S:	Able to boot VExpress-A9 linux guest on VExpress-A9 emulated by QEMU
 D:	docs/arm/vexpress-a9.txt
 

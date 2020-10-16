@@ -15,7 +15,7 @@ Sabre LITE:
 Follow the following steps to create these images and then boot Xvisor on Sabre LITE:
 
   [1. Build environment]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -144,7 +144,7 @@ Please follow the steps below to build & run Basic Firmware on Vexpress-A9
 guest with Xvisor running on QEMU Sabre LITE Host:
 
   [1. Build environment for Xvisor]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabi-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

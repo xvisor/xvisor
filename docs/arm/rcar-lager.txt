@@ -15,8 +15,8 @@ hash: f7ca1f76fd01f3fc7e75fb3fd801c7bef16598db "net: sh-eth: Add cache
 writeback control after setting bit of DMA descriptor"
 2) Apply patches provided in <xvisor_source>/docs/arm/rcar-lager
 3) Build u-boot as using commands
-# make lager_xvisor_defconfig ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
-# make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+# make lager_xvisor_defconfig ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabihf-
+# make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabihf-
 
 Once we have build u-boot with HYP-mode booting, flash the u-boot to QSPI
 as described in Start-Up Guide fot Renesas Lager board.
@@ -25,7 +25,7 @@ Following are steps to create these images and then boot Xvisor on R-Car H2
 using SD card:
 
   [1. Build environment]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

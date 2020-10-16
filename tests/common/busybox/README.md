@@ -22,16 +22,16 @@ Currently, we have two options from freely available toolchains:
     The cross-compile prefix is `arm-none-linux-gnueabi-`.
     It is build with default options: `-mfloat-abi=soft` and `-march=armv5te`.
 
-2. [Linaro ARM GNU/Linux Toolchains](http://releases.linaro.org)
+2. [ARM Ltd GNU/Linux Toolchains](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-a/downloads)
     - **Soft-Float Toolchain** is with software floating point for ARMv7 processors.
 
-        The cross-compile prefix is `arm-linux-gnueabi-`.
+        The cross-compile prefix is `arm-none-linux-gnueabi-`.
         It is build with default options: `-mfloat-abi=soft`,
         `-mfpu-name=vfpv3-d16` and `-march=armv7`.
 
     - **Hard-Float Toolchain** is with hardware floating point for ARMv7 processors.
 
-        The cross-compile prefix is `arm-linux-gnueabihf-`.
+        The cross-compile prefix is `arm-none-linux-gnueabihf-`.
         It is build with default options: `-mfloat-abi=hard`,
         `-mfpu-name=vfpv3-d16` and `-march=armv7`.
 
@@ -42,7 +42,8 @@ In real-world scenarios we need a hard-float toolchain for ARMv5 or
 higher processors but such toolchain is not freely available and we need to
 build this manually using cross-tool scripts.
 
-*You should use Linaro toolchains if you only care about ARMv7 processors.*
+*You should use ARM Ltd toolchains if you only care about ARMv7 and ARMv8
+processors.*
 
 
 ## RAMDISK Generation
@@ -54,7 +55,7 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
     - ARM64 GNU/Linux Toolchain
 
         ```bash
-        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-none-linux-gnu-
         ```
 
     - CodeSourcery Lite ARM GNU/Linux Toolchain
@@ -63,16 +64,16 @@ RootFS for ARM Linux guest (replace all `<>` brackets based on your workspace):
         export CROSS_COMPILE=arm-none-linux-gnueabi-
         ```
 
-    - Linaro ARM GNU/Linux Soft-Float Toolchain
+    - ARM Ltd GNU/Linux Soft-Float Toolchain
 
         ```bash
-        export CROSS_COMPILE=arm-linux-gnueabi-
+        export CROSS_COMPILE=arm-none-linux-gnueabi-
         ```
 
-    - Linaro ARM GNU/Linux Hard-Float Toolchain
+    - ARM Ltd GNU/Linux Hard-Float Toolchain
 
         ```bash
-        export CROSS_COMPILE=arm-linux-gnueabihf-
+        export CROSS_COMPILE=arm-none-linux-gnueabihf-
         ```
 
 2. Go to Xvisor source directory

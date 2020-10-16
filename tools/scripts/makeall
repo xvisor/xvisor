@@ -3,10 +3,10 @@
 # This script will build all targets for all processor families.
 #
 
-AARCH64_CROSS_COMPILE_LIST="aarch64-linux-gnu-"
+AARCH64_CROSS_COMPILE_LIST="aarch64-none-linux-gnu-"
 
-ARM32_CROSS_COMPILE_LIST="arm-linux-gnueabi-"
-ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
+ARM32_CROSS_COMPILE_LIST=" arm-none-linux-gnueabihf-"
+ARM32_CROSS_COMPILE_LIST+="arm-none-linux-gnueabi-"
 
 X86_64_CROSS_COMPILE_LIST="x86_64-linux-x86_64-linux-"
 X86_64_CROSS_COMPILE_LIST+=" x86_64-linux-gnu-"

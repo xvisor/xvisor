@@ -1,4 +1,4 @@
-		Xvisor on Linaro QEMU SMDKC210 Host
+		Xvisor on QEMU SMDKC210 Host
 
 This section of readme explains how to build & run Xvisor for SMDKC210
 emulated by QEMU.
@@ -11,7 +11,7 @@ Please follow the steps below to build & run Basic Firmware on Vexpress-A9
 guest with Xvisor running on QEMU SMDKC210 Host:
 
   [1. Build environment for Xvisor]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

@@ -24,7 +24,7 @@ As next step, we install u-boot-2017.09 on the Raspberry Pi3 SD card
 as follow:
  1) Download and build u-boot-2017.09
  # export ARCH=arm64
- # export CROSS_COMPILE=aarch64-linux-gnu-
+ # export CROSS_COMPILE=aarch64-none-linux-gnu-
  # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2017.09.tar.bz2
  # cd u-boot-2017.09
  # make rpi_3_defconfig
@@ -49,7 +49,7 @@ partition of SD card:
 Following are steps to create these images and boot Xvisor on Raspberry Pi3:
 
   [1. Build environment]
-  # export CROSS_COMPILE=aarch64-linux-gnu-
+  # export CROSS_COMPILE=aarch64-none-linux-gnu-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

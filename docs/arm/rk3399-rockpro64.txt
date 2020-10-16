@@ -31,7 +31,7 @@ images to the linux-root partition of the card:
 Following are steps to create these images and boot Xvisor on the RockPro64:
 
   [1. Build environment]
-  # export CROSS_COMPILE=aarch64-linux-gnu-
+  # export CROSS_COMPILE=aarch64-none-linux-gnu-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>

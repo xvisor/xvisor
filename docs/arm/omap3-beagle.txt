@@ -15,7 +15,7 @@ Following are the steps to create these images and then boot Xvisor on
 Beagleboard-xM using U-Boot-2011.03 or higher:
 
   [1. Build environment]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -152,10 +152,10 @@ Beagleboard-xM using U-Boot-2011.03 or higher:
    on your workspace)
 
 
-	Xvisor on Linaro QEMU BeagleBoard (or OMAP3) using NAND Booting
+	Xvisor on QEMU BeagleBoard (or OMAP3) using NAND Booting
 
 This section of readme explains how to build & run Xvisor from nand-flash on
-BeagleBoard emulated by QEMU Linaro.
+BeagleBoard emulated by QEMU.
 
 By default, Xvisor for BeagleBoard supports Realview-PB-A8 guest so we will
 show how to run Basic Firmware (and/or Linux) on Realview-PB-A8 guest.
@@ -170,7 +170,7 @@ The steps to create these images and boot Xvisor on Beagleboard QEMU are as
 follows:
 
   [1. Build environment]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. Download and build U-Boot-2011.03 from source - this creates u-boot.bin]
   # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2011.03.tar.bz2
@@ -257,7 +257,7 @@ follows:
   [18. Build the beagleboard nand-flash image from the flat binary created]
   # ./tools/bbflash/bb_nandflash.sh build/beagle.img build/beagle-nand.bin ./build/tools/bbflash/bb_nandflash_ecc
 
-  [19. Launch QEMU Linaro]
+  [19. Launch QEMU]
   # qemu-system-arm -M beagle -m 512M -drive file=build/beagle-nand.bin,if=mtd -display none -serial stdio -s
 
   [20. Copy Xvisor from nand-flash to SDRAM]

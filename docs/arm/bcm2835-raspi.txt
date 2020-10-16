@@ -24,7 +24,7 @@ As next step, we install u-boot-2017.09 on the Raspberry Pi SD card
 as follow:
  1) Download and build u-boot-2017.09
  # export ARCH=arm
- # export CROSS_COMPILE=arm-linux-gnueabi-
+ # export CROSS_COMPILE=arm-none-linux-gnueabihf-
  # wget ftp://ftp.denx.de/pub/u-boot/u-boot-2017.09.tar.bz2
  # tar -xvf u-boot-2017.09.tar.bz2
  # cd u-boot-2017.09
@@ -47,7 +47,7 @@ partition of SD card:
 Following are steps to create these images and boot Xvisor on Raspberry Pi:
 
   [1. Build environment for Xvisor]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
@@ -197,7 +197,7 @@ Please follow the steps below to build & run Basic Firmware on
 Realview-EB-MPCore guest with Xvisor running on QEMU Raspberry-Pi Host:
 
   [1. Build environment for Xvisor]
-  # export CROSS_COMPILE=arm-linux-gnueabi-
+  # export CROSS_COMPILE=arm-none-linux-gnueabihf-
 
   [2. GoTo Xvisor source directory]
   # cd <xvisor_source_directory>
