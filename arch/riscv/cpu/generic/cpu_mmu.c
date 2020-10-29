@@ -51,11 +51,15 @@ int arch_mmu_pgtbl_min_align_order(int stage)
 
 int arch_mmu_pgtbl_align_order(int stage, int level)
 {
+	if (stage != MMU_STAGE1 && level == arch_mmu_start_level(stage))
+		return PGTBL_PAGE_SIZE_SHIFT + 2;
 	return PGTBL_PAGE_SIZE_SHIFT;
 }
 
 int arch_mmu_pgtbl_size_order(int stage, int level)
 {
+	if (stage != MMU_STAGE1 && level == arch_mmu_start_level(stage))
+		return PGTBL_PAGE_SIZE_SHIFT + 2;
 	return PGTBL_PAGE_SIZE_SHIFT;
 }
 
@@ -189,21 +193,37 @@ physical_addr_t arch_mmu_level_map_mask(int stage, int level)
 
 int arch_mmu_level_index(physical_addr_t ia, int stage, int level)
 {
+	int shift = PGTBL_L0_INDEX_SHIFT;
+	physical_addr_t mask = PGTBL_L0_INDEX_MASK;
+
 	switch (level) {
 	case 0:
-		return (ia & PGTBL_L0_INDEX_MASK) >> PGTBL_L0_INDEX_SHIFT;
+		mask = PGTBL_L0_INDEX_MASK;
+		shift = PGTBL_L0_INDEX_SHIFT;
+		break;
 	case 1:
-		return (ia & PGTBL_L1_INDEX_MASK) >> PGTBL_L1_INDEX_SHIFT;
+		mask = PGTBL_L1_INDEX_MASK;
+		shift = PGTBL_L1_INDEX_SHIFT;
+		break;
 #ifdef CONFIG_64BIT
 	case 2:
-		return (ia & PGTBL_L2_INDEX_MASK) >> PGTBL_L2_INDEX_SHIFT;
+		mask = PGTBL_L2_INDEX_MASK;
+		shift = PGTBL_L2_INDEX_SHIFT;
+		break;
 	case 3:
-		return (ia & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
+		mask = PGTBL_L3_INDEX_MASK;
+		shift = PGTBL_L3_INDEX_SHIFT;
+		break;
 #endif
 	default:
 		break;
 	};
-	return (ia & PGTBL_L0_INDEX_MASK) >> PGTBL_L0_INDEX_SHIFT;
+
+	if (stage != MMU_STAGE1 && level == arch_mmu_start_level(stage)) {
+		mask = (mask << 2) | (0x3ULL << shift);
+	}
+
+	return (ia & mask) >> shift;
 }
 
 int arch_mmu_level_index_shift(int stage, int level)
