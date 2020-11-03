@@ -1,0 +1,13 @@
+language: c
+before_install:
+    - sudo apt-get -y install device-tree-compiler
+
+dist: bionic
+branches:
+    only:
+        - master
+script:
+    - make ARCH=x86 x86_64_generic-defconfig
+    - make
+os:
+    - linux
