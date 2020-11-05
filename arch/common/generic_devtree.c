@@ -216,6 +216,31 @@ int __init arch_devtree_ram_bank_size(u32 bank, physical_size_t *size)
 	return VMM_OK;
 }
 
+static bool devtree_reserve_has_fdt(struct fdt_fileinfo *fdt, u32 resv_count)
+{
+	u32 i;
+	int rc;
+	u64 adr, sz;
+
+	for (i = 0; i < resv_count; i++) {
+		rc = libfdt_reserve_address(fdt, i, &adr);
+		if (rc) {
+			continue;
+		}
+
+		rc = libfdt_reserve_size(fdt, i, &sz);
+		if (rc) {
+			continue;
+		}
+
+		if (adr == devtree_phys_base) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 int __init arch_devtree_reserve_count(u32 *count)
 {
 	int rc = VMM_OK;
@@ -231,15 +256,16 @@ int __init arch_devtree_reserve_count(u32 *count)
 	}
 
 	*count = libfdt_reserve_count(&fdt);
-
-	*count += 1;
+	if (!devtree_reserve_has_fdt(&fdt, *count)) {
+		*count += 1;
+	}
 
 	return VMM_OK;
 }
 
 int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 {
-	u64 tmp;
+	u64 adr;
 	u32 count;
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
@@ -255,13 +281,14 @@ int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 	count = libfdt_reserve_count(&fdt);
 
 	if (index < count) {
-		rc = libfdt_reserve_address(&fdt, index, &tmp);
+		rc = libfdt_reserve_address(&fdt, index, &adr);
 		if (rc) {
 			return rc;
 		}
 
-		*addr = (physical_addr_t)tmp;
-	} else if (index == count) {
+		*addr = (physical_addr_t)adr;
+	} else if (index == count &&
+		   !devtree_reserve_has_fdt(&fdt, count)) {
 		*addr = devtree_phys_base;
 	} else {
 		return VMM_EINVALID;
@@ -272,8 +299,8 @@ int __init arch_devtree_reserve_addr(u32 index, physical_addr_t *addr)
 
 int __init arch_devtree_reserve_size(u32 index, physical_size_t *size)
 {
-	u64 tmp;
 	u32 count;
+	u64 adr, sz;
 	int rc = VMM_OK;
 	struct fdt_fileinfo fdt;
 
@@ -288,13 +315,23 @@ int __init arch_devtree_reserve_size(u32 index, physical_size_t *size)
 	count = libfdt_reserve_count(&fdt);
 
 	if (index < count) {
-		rc = libfdt_reserve_size(&fdt, index, &tmp);
+		rc = libfdt_reserve_address(&fdt, index, &adr);
 		if (rc) {
 			return rc;
 		}
 
-		*size = (physical_size_t)tmp;
-	} else if (index == count) {
+		rc = libfdt_reserve_size(&fdt, index, &sz);
+		if (rc) {
+			return rc;
+		}
+
+		if (adr == devtree_phys_base) {
+			*size = devtree_virt_size;
+		} else {
+			*size = (physical_size_t)sz;
+		}
+	} else if (index == count &&
+		   !devtree_reserve_has_fdt(&fdt, count)) {
 		*size = devtree_virt_size;
 	} else {
 		return VMM_EINVALID;
