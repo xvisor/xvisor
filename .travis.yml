@@ -1,13 +1,11 @@
 language: c
 before_install:
-    - sudo apt-get -y install device-tree-compiler
-
-dist: bionic
+    - sudo apt-get install device-tree-compiler gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libncurses5-dev build-essential bison flex libssl-dev bc
+dist: focal
 branches:
     only:
         - master
 script:
-    - make ARCH=x86 x86_64_generic-defconfig
-    - make
+    - ./tools/scripts/makeall "arm x86"
 os:
     - linux
