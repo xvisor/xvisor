@@ -4,9 +4,10 @@
 #
 
 AARCH64_CROSS_COMPILE_LIST="aarch64-none-linux-gnu-"
+AARCH64_CROSS_COMPILE_LIST+=" aarch64-linux-gnu-"
 
-ARM32_CROSS_COMPILE_LIST=" arm-none-linux-gnueabihf-"
-ARM32_CROSS_COMPILE_LIST+="arm-none-linux-gnueabi-"
+ARM32_CROSS_COMPILE_LIST="arm-none-linux-gnueabihf-"
+ARM32_CROSS_COMPILE_LIST+=" arm-linux-gnueabihf-"
 
 X86_64_CROSS_COMPILE_LIST="x86_64-linux-x86_64-linux-"
 X86_64_CROSS_COMPILE_LIST+=" x86_64-linux-gnu-"
@@ -114,8 +115,16 @@ get_cross_compiler() {
 # Stop on any error
 set -e
 
+# Get ARCH list
+if [ "$1" = "" ]
+then
+	ARCH_LIST="arm riscv x86"
+else
+	ARCH_LIST=$1
+fi
+
 # Build for all architecture
-for ARCH in riscv arm x86
+for ARCH in $ARCH_LIST
 do
 	# Build for all supported targets
 	for DEFCONFIG in `cd arch/$ARCH/configs; ls`
@@ -134,4 +143,4 @@ do
 	done
 done
 
-echo "build is done for all arch and all config files"
+echo "build done for all defconfigs of $ARCH_LIST"
