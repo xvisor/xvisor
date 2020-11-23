@@ -42,11 +42,11 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 	unsigned long reason = 0;
 	int rc;
 
-	if (unlikely((rc = __vmread(VM_INSTRUCTION_ERROR, &reason)) != VMM_OK))
+	if (unlikely((rc = __vmread(VM_EXIT_REASON, &reason)) != VMM_OK))
 		if (likely(context->vcpu_emergency_shutdown))
 			context->vcpu_emergency_shutdown(context);
 
-	vmm_printf("Guest Exited with Error: 0x%ld\n", reason);
+	vmm_printf("Guest Exited with Error: 0x%lx\n", reason);
 
 	context->vcpu_emergency_shutdown(context);
 }

@@ -218,10 +218,8 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 
 	__asm__ __volatile__("cli\n\t"
 			     "pushfq\n\t" /* Save flags */
-			     "movq %%rsp, %%rax\n\t" /* Save host RSP */
-			     "vmwrite %%rax, %%rdx\n\t"
 			     "movq $vmx_return, %%rax\n\t"
-			     "vmwrite %%rax, %%rbx\n\t" /* Save host RIP */
+			     "vmwrite %%rax, %%rbx\n\t"
 			     "pushq %%rbp\n\t"
 			     "pushq %%rdi\n\t"
 			     "pushq %%rsi\n\t"
@@ -234,6 +232,8 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "pushq %%r14\n\t"
 			     "pushq %%r15\n\t"
 			     "pushq %%rcx\n\t"
+			     "movq %%rsp, %%rax\n\t"
+			     "vmwrite %%rax, %%rdx\n\t"
 			     /*
 			      * Check if vmlaunch or vmresume is needed, set the condition code
 			      * appropriately for use below.

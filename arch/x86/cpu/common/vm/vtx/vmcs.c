@@ -300,49 +300,45 @@ struct vmcs* create_vmcs(void)
 
 static void vmcs_init_host_env(void)
 {
-	unsigned long cr0, cr4;
 	struct {
 		u16 limit;
 		u64 base;
 	} __attribute__ ((packed)) xdt;
 
-	/* Host data selectors. */
-	__vmwrite(HOST_SS_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_DS_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_ES_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_FS_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_GS_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_FS_BASE, 0);
-	__vmwrite(HOST_GS_BASE, 0);
-
 	/* Host control registers. */
-	cr0 = read_cr0() | X86_CR0_TS;
-	__vmwrite(HOST_CR0, cr0);
+	__vmwrite(HOST_CR0, read_cr0());
+	__vmwrite(HOST_CR3, read_cr3());
+	__vmwrite(HOST_CR4, read_cr4());
 
-	cr4 = read_cr4() | X86_CR4_OSXSAVE;
-	__vmwrite(HOST_CR4, cr4);
+	/* Host data selectors. */
+	__vmwrite(HOST_CS_SELECTOR, (u16)VMM_CODE_SEG_SEL);
+	__vmwrite(HOST_SS_SELECTOR, 0);
+	__vmwrite(HOST_DS_SELECTOR, 0);
+	__vmwrite(HOST_ES_SELECTOR, 0);
+	__vmwrite(HOST_FS_SELECTOR, 0);
+	__vmwrite(HOST_GS_SELECTOR, 0);
+	__vmwrite(HOST_TR_SELECTOR, (u16)VMM_TSS_SEG_SEL);
 
-	/* Host CS:RIP. */
-	__vmwrite(HOST_CS_SELECTOR, VMM_CODE_SEG_SEL);
-	//__vmwrite(HOST_RIP, (unsigned long)vmx_asm_vmexit_handler);
-
-	/* Host SYSENTER CS:RIP. */
-	__vmwrite(HOST_SYSENTER_CS, 0);
-	__vmwrite(HOST_SYSENTER_EIP, 0);
-	__vmwrite(HOST_SYSENTER_ESP, 0);
+	__vmwrite(HOST_FS_BASE, 0);
+	__vmwrite(HOST_GS_BASE, read_msr(MSR_GS_BASE));
+	__vmwrite(HOST_TR_BASE, 0);
 
 	/* GDT */
 	__asm__ __volatile__ ("sgdt (%0) \n" :: "a"(&xdt) : "memory");
 	__vmwrite(HOST_GDTR_BASE, xdt.base);
 
+	vmm_printf("GDT Base: %lx limt: %u\n", xdt.base, xdt.limit);
 	/* IDT */
 	__asm__ __volatile__ ("sidt (%0) \n" :: "a"(&xdt) : "memory");
 	__vmwrite(HOST_IDTR_BASE, xdt.base);
+	vmm_printf("SIDT Base: %lx limt: %u\n", xdt.base, xdt.limit);
 
-	/* TR */
-	__vmwrite(HOST_TR_SELECTOR, VMM_DATA_SEG_SEL);
-	__vmwrite(HOST_TR_BASE, 0);
-
+	/* Host SYSENTER CS:RIP. */
+	__vmwrite(HOST_IA32_SYSENTER_CS, 0);
+	__vmwrite(HOST_IA32_SYSENTER_EIP, 0);
+	__vmwrite(HOST_IA32_SYSENTER_ESP, 0);
+	__vmwrite(HOST_IA32_PAT, read_msr(MSR_IA32_CR_PAT));
+	__vmwrite(HOST_IA32_EFER, EFER_LMA | EFER_LME);
 }
 
 void set_pin_based_exec_controls(void)
@@ -647,8 +643,8 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 
 struct xgt_desc {
 	unsigned short size;
-	unsigned long address __attribute__((packed));
-};
+	unsigned long address;
+} __attribute__((packed));
 
 void vmx_save_host_state(struct vcpu_hw_context *context)
 {
@@ -693,7 +689,7 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
 	__vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
 
-	__vmwrite(VM_ENTRY_INTR_INFO, 0);
+	__vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
 
 	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
 	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
@@ -776,13 +772,11 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_CR4, 0);
 
 	/* G_PAT */
-	u64 host_pat, guest_pat;
+	u64 guest_pat;
 
-	host_pat = cpu_read_msr(MSR_IA32_CR_PAT);
 	guest_pat = MSR_IA32_CR_PAT_RESET;
 
-	__vmwrite(HOST_PAT, host_pat);
-	__vmwrite(GUEST_PAT, guest_pat);
+	__vmwrite(GUEST_IA32_PAT, guest_pat);
 
 	/* Initial state */
 	__vmwrite(GUEST_RSP, 0x0);
@@ -802,7 +796,7 @@ void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
 	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
 	__vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
 
-	__vmwrite(VM_ENTRY_INTR_INFO, 0);
+	__vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
 
 	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
 	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
@@ -877,13 +871,11 @@ void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_CR4, 0);
 
 	/* G_PAT */
-	u64 host_pat, guest_pat;
+	u64 guest_pat;
 
-	host_pat = cpu_read_msr(MSR_IA32_CR_PAT);
 	guest_pat = MSR_IA32_CR_PAT_RESET;
 
-	__vmwrite(HOST_PAT, host_pat);
-	__vmwrite(GUEST_PAT, guest_pat);
+	__vmwrite(GUEST_IA32_PAT, guest_pat);
 
 	/* Initial state */
 	__vmwrite(GUEST_RSP, 0x3E2);
@@ -1015,7 +1007,6 @@ static void __unused vmx_dump_sel2(char *name, u32 lim)
 
 void vmcs_dump(struct vcpu_hw_context *context)
 {
-	#if 0
 	unsigned long long x;
 
 	vmm_printf("*** Guest State ***\n");
@@ -1057,7 +1048,7 @@ void vmcs_dump(struct vcpu_hw_context *context)
 	vmx_dump_sel2("IDTR", GUEST_IDTR_LIMIT);
 	vmx_dump_sel("TR", GUEST_TR_SELECTOR);
 	vmm_printf("Guest PAT = 0x%08x%08x\n",
-		   (u32)vmr(GUEST_PAT_HIGH), (u32)vmr(GUEST_PAT));
+		   (u32)vmr(GUEST_IA32_PAT_HIGH), (u32)vmr(GUEST_IA32_PAT));
 	x  = (unsigned long long)vmr(TSC_OFFSET_HIGH) << 32;
 	x |= (u32)vmr(TSC_OFFSET);
 	vmm_printf("TSC Offset = %016llx\n", x);
@@ -1093,12 +1084,12 @@ void vmcs_dump(struct vcpu_hw_context *context)
 		   (unsigned long long)vmr(HOST_CR3),
 		   (unsigned long long)vmr(HOST_CR4));
 	vmm_printf("Sysenter RSP=%016llx CS:RIP=%04x:%016llx\n",
-		   (unsigned long long)vmr(HOST_SYSENTER_ESP),
-		   (int)vmr(HOST_SYSENTER_CS),
-		   (unsigned long long)vmr(HOST_SYSENTER_EIP));
+		   (unsigned long long)vmr(HOST_IA32_SYSENTER_ESP),
+		   (int)vmr(HOST_IA32_SYSENTER_CS),
+		   (unsigned long long)vmr(HOST_IA32_SYSENTER_EIP));
 	vmm_printf("Host PAT = 0x%08x%08x\n",
-		   (u32)vmr(HOST_PAT_HIGH), (u32)vmr(HOST_PAT));
-#endif
+		   (u32)vmr(HOST_IA32_PAT_HIGH), (u32)vmr(HOST_IA32_PAT));
+
 	vmm_printf("*** Control State ***\n");
 	vmm_printf("PinBased=%08x CPUBased=%08x SecondaryExec=%08x\n",
 		   (u32)vmr(PIN_BASED_VM_EXEC_CONTROL),
@@ -1110,7 +1101,7 @@ void vmcs_dump(struct vcpu_hw_context *context)
 	vmm_printf("ExceptionBitmap=%08x\n",
 		   (u32)vmr(EXCEPTION_BITMAP));
 	vmm_printf("VMEntry: intr_info=%08x errcode=%08x ilen=%08x\n",
-		   (u32)vmr(VM_ENTRY_INTR_INFO),
+		   (u32)vmr(VM_ENTRY_INTR_INFO_FIELD),
 		   (u32)vmr(VM_ENTRY_EXCEPTION_ERROR_CODE),
 		   (u32)vmr(VM_ENTRY_INSTRUCTION_LEN));
 	vmm_printf("VMExit: intr_info=%08x errcode=%08x ilen=%08x\n",
@@ -1121,7 +1112,7 @@ void vmcs_dump(struct vcpu_hw_context *context)
 		   (u32)vmr(VM_EXIT_REASON),
 		   (u32)vmr(EXIT_QUALIFICATION));
 	vmm_printf("IDTVectoring: info=%08x errcode=%08x\n",
-		   (u32)vmr(IDT_VECTORING_INFO),
+		   (u32)vmr(IDT_VECTORING_INFO_FIELD),
 		   (u32)vmr(IDT_VECTORING_ERROR_CODE));
 	vmm_printf("TPR Threshold = 0x%02x\n",
 		   (u32)vmr(TPR_THRESHOLD));
