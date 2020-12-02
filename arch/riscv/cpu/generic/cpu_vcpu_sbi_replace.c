@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_macros.h>
 #include <vmm_manager.h>
+#include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_sbi.h>
 #include <cpu_vcpu_sbi.h>
@@ -146,4 +147,50 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_ipi = {
 	.extid_start = SBI_EXT_IPI,
 	.extid_end = SBI_EXT_IPI,
 	.handle = vcpu_sbi_ipi_ecall,
+};
+
+static int vcpu_sbi_srst_ecall(struct vmm_vcpu *vcpu,
+			      unsigned long ext_id, unsigned long func_id,
+			      unsigned long *args, unsigned long *out_val,
+			      struct cpu_vcpu_trap *out_trap)
+{
+	int ret;
+	struct vmm_guest *guest = vcpu->guest;
+
+	if (func_id != SBI_EXT_SRST_RESET)
+		return SBI_ERR_NOT_SUPPORTED;
+
+	if ((((u32)-1U) <= ((u64)args[0])) ||
+	    (((u32)-1U) <= ((u64)args[1])))
+		return SBI_ERR_INVALID_PARAM;
+
+	switch (args[0]) {
+	case SBI_SRST_RESET_TYPE_SHUTDOWN:
+		ret = vmm_manager_guest_shutdown_request(guest);
+		if (ret) {
+			vmm_printf("%s: guest %s shutdown request failed "
+				   "with error = %d\n", __func__,
+				   guest->name, ret);
+		}
+		break;
+	case SBI_SRST_RESET_TYPE_COLD_REBOOT:
+	case SBI_SRST_RESET_TYPE_WARM_REBOOT:
+		ret = vmm_manager_guest_reboot_request(guest);
+		if (ret) {
+			vmm_printf("%s: guest %s reset request failed "
+				   "with error = %d\n", __func__,
+				   guest->name, ret);
+		}
+		break;
+	default:
+		return SBI_ERR_NOT_SUPPORTED;
+	};
+
+	return 0;
+}
+
+const struct cpu_vcpu_sbi_extension vcpu_sbi_srst = {
+	.extid_start = SBI_EXT_SRST,
+	.extid_end = SBI_EXT_SRST,
+	.handle = vcpu_sbi_srst_ecall,
 };
