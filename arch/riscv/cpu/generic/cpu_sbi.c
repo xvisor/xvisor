@@ -480,6 +480,30 @@ static struct defterm_ops sbi_defterm_ops = {
 	.init = sbi_defterm_init,
 };
 
+static void __sbi_srst_reset(unsigned long type, unsigned long reason)
+{
+	sbi_ecall(SBI_EXT_SRST, SBI_EXT_SRST_RESET, type, reason,
+		  0, 0, 0, 0);
+	vmm_printf("%s: type=0x%lx reason=0x%lx failed\n",
+		   __func__, type, reason);
+}
+
+static int sbi_srst_shutdown(void)
+{
+	__sbi_srst_reset(SBI_SRST_RESET_TYPE_SHUTDOWN,
+			 SBI_SRST_RESET_REASON_NONE);
+
+	return 0;
+}
+
+static int sbi_srst_reset(void)
+{
+	__sbi_srst_reset(SBI_SRST_RESET_TYPE_COLD_REBOOT,
+			 SBI_SRST_RESET_REASON_NONE);
+
+	return 0;
+}
+
 int __init sbi_init(void)
 {
 	int ret;
@@ -506,13 +530,19 @@ int __init sbi_init(void)
 			__sbi_rfence = __sbi_rfence_v02;
 			vmm_init_printf("SBI v0.2 RFENCE extension detected\n");
 		}
+		if (sbi_probe_extension(SBI_EXT_SRST) > 0) {
+			vmm_register_system_shutdown(sbi_srst_shutdown);
+			vmm_register_system_reset(sbi_srst_reset);
+			vmm_init_printf("SBI v0.2 SRST extension detected\n");
+		}
+	} else {
+		vmm_register_system_shutdown(sbi_shutdown);
 	}
 
 	if (!sbi_has_0_2_rfence()) {
 		vmm_init_printf("WARNING: SBI v0.2 RFENCE not available !\n");
 	}
 
-	vmm_register_system_shutdown(sbi_shutdown);
 	defterm_set_initial_ops(&sbi_defterm_ops);
 
 	return 0;
