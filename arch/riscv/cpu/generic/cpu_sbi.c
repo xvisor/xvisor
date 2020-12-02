@@ -520,27 +520,27 @@ int __init sbi_init(void)
 			sbi_get_firmware_id(), sbi_get_firmware_version());
 		if (sbi_probe_extension(SBI_EXT_TIME) > 0) {
 			__sbi_set_timer = __sbi_set_timer_v02;
-			vmm_init_printf("SBI v0.2 TIME extension detected\n");
+			vmm_init_printf("SBI TIME extension detected\n");
 		}
 		if (sbi_probe_extension(SBI_EXT_IPI) > 0) {
 			__sbi_send_ipi = __sbi_send_ipi_v02;
-			vmm_init_printf("SBI v0.2 IPI extension detected\n");
+			vmm_init_printf("SBI IPI extension detected\n");
 		}
 		if (sbi_probe_extension(SBI_EXT_RFENCE) > 0) {
 			__sbi_rfence = __sbi_rfence_v02;
-			vmm_init_printf("SBI v0.2 RFENCE extension detected\n");
+			vmm_init_printf("SBI RFENCE extension detected\n");
 		}
 		if (sbi_probe_extension(SBI_EXT_SRST) > 0) {
 			vmm_register_system_shutdown(sbi_srst_shutdown);
 			vmm_register_system_reset(sbi_srst_reset);
-			vmm_init_printf("SBI v0.2 SRST extension detected\n");
+			vmm_init_printf("SBI SRST extension detected\n");
 		}
 	} else {
 		vmm_register_system_shutdown(sbi_shutdown);
 	}
 
 	if (!sbi_has_0_2_rfence()) {
-		vmm_init_printf("WARNING: SBI v0.2 RFENCE not available !\n");
+		vmm_init_printf("WARNING: SBI RFENCE not available !\n");
 	}
 
 	defterm_set_initial_ops(&sbi_defterm_ops);
