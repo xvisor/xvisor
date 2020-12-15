@@ -23,6 +23,7 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_limits.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_vcpu_timer.h>
@@ -43,7 +44,13 @@ static void riscv_timer_event_expired(struct vmm_timer_event *ev)
 void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 {
 	u64 delta_ns;
-	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);;
+	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);
+
+	if (next_cycle == U64_MAX) {
+		vmm_timer_event_stop(&tevent->time_ev);
+		vmm_vcpu_irq_clear(vcpu, IRQ_VS_TIMER);
+		return;
+	}
 
 	next_cycle -= riscv_guest_priv(vcpu->guest)->time_delta;
 	delta_ns = vmm_timer_delta_cycles_to_ns(next_cycle);
