@@ -79,6 +79,15 @@ static inline void sbi_set_timer(u64 stime_value)
 #endif
 }
 
+static inline void sbi_clear_timer(void)
+{
+#if __riscv_xlen == 32
+	SBI_CALL_2(SBI_SET_TIMER, -1UL, -1UL);
+#else
+	SBI_CALL_1(SBI_SET_TIMER, -1UL);
+#endif
+}
+
 static inline void sbi_shutdown(void)
 {
 	SBI_CALL_0(SBI_SHUTDOWN);

@@ -74,11 +74,7 @@ void riscv_timer_enable(void)
 
 void riscv_timer_disable(void)
 {
-	/*
-	 * There are no direct SBI calls to clear pending timer interrupt bit.
-	 * Disable timer interrupt to ignore pending interrupt until next
-	 * interrupt.
-	 */
+	sbi_clear_timer();
 	csr_clear(sie, SIE_STIE);
 }
 
@@ -101,7 +97,7 @@ int riscv_timer_irqhndl(u32 irq_no, struct pt_regs *regs)
 {
 	u64 tstamp;
 
-	riscv_timer_disable();
+	csr_clear(sie, SIE_STIE);
 
 	timer_irq_count++;
 	timer_irq_tcount++;
