@@ -7,7 +7,10 @@
 	#address-cells = <2>;
 	#size-cells = <2>;
 
-	chosen { };
+	chosen {
+		stdout-path = &uart0;
+	};
+
 	aliases { };
 
 	cpus {
@@ -48,7 +51,7 @@
 			reg = <0x0 0x0c000000 0 0x04000000>;
 		};
 
-		uart@10000000 {
+		uart0: uart@10000000 {
 			compatible = "ns16550a";
 			reg = <0x0 0x10000000 0x0 0x100>;
 			interrupts = <10>;
