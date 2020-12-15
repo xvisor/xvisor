@@ -111,11 +111,7 @@ static u32 riscv_intc_active_irq(u32 cpu_irq_no)
 		return UINT_MAX;
 	}
 
-	if (csr_read(sip) & (1UL << cpu_irq_no)) {
-		return cpu_irq_no;
-	}
-
-	return UINT_MAX;
+	return cpu_irq_no;
 }
 
 static struct vmm_host_irqdomain_ops riscv_intc_ops = {
