@@ -639,7 +639,7 @@ static const struct {
 	{"list", cmd_vcpu_list, 0},
 	{"orphan_list", cmd_vcpu_orphan_list, 0},
 	{"normal_list", cmd_vcpu_normal_list, 0},
-	{"monitor", cmd_vcpu_monitor, 1},
+	{"monitor", cmd_vcpu_monitor, 0},
 	{"reset", cmd_vcpu_reset, 1},
 	{"kick", cmd_vcpu_kick, 1},
 	{"pause", cmd_vcpu_pause, 1},
