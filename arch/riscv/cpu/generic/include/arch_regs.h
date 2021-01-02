@@ -186,10 +186,11 @@ struct riscv_guest_priv {
 	void *guest_serial;
 };
 
-#define riscv_timer_priv(vcpu)	(riscv_priv(vcpu)->timer_priv)
-#define riscv_regs(vcpu)	(&((vcpu)->regs))
-#define riscv_priv(vcpu)	((struct riscv_priv *)((vcpu)->arch_priv))
-#define riscv_guest_priv(guest)	((struct riscv_guest_priv *)((guest)->arch_priv))
+#define riscv_regs(vcpu)		(&((vcpu)->regs))
+#define riscv_priv(vcpu)		((struct riscv_priv *)((vcpu)->arch_priv))
+#define riscv_fp_priv(vcpu)		(&riscv_priv(vcpu)->fp)
+#define riscv_timer_priv(vcpu)		(riscv_priv(vcpu)->timer_priv)
+#define riscv_guest_priv(guest)		((struct riscv_guest_priv *)((guest)->arch_priv))
 #define riscv_guest_serial(guest)	(riscv_guest_priv(guest)->guest_serial)
 
 #endif
