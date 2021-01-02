@@ -33,7 +33,6 @@
 #include <arch_guest.h>
 #include <arch_vcpu.h>
 #include <vio/vmm_vserial.h>
-#include <libs/mathlib.h>
 #include <generic_mmu.h>
 
 #include <cpu_hwcap.h>
@@ -45,6 +44,7 @@
 #include <cpu_guest_serial.h>
 #include <riscv_csr.h>
 #include <riscv_lrsc.h>
+#include <riscv_timex.h>
 
 #define RISCV_ISA_ALLOWED	(riscv_isa_extension_mask(a) | \
 				 riscv_isa_extension_mask(c) | \
@@ -115,9 +115,7 @@ int arch_guest_init(struct vmm_guest *guest)
 		}
 		priv = riscv_guest_priv(guest);
 
-		priv->time_delta = vmm_manager_guest_reset_timestamp(guest);
-		priv->time_delta *= vmm_timer_clocksource_frequency();
-		priv->time_delta = -udiv64(priv->time_delta, 1000000000ULL);
+		priv->time_delta = -get_cycles64();
 
 		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
 		if (!priv->pgtbl) {
