@@ -52,12 +52,12 @@
 #define RISCV_PRIV_FP_F_F24	_AC(0x060, UL)
 #define RISCV_PRIV_FP_F_F25	_AC(0x064, UL)
 #define RISCV_PRIV_FP_F_F26	_AC(0x068, UL)
-#define RISCV_PRIV_FP_F_F27	_AC(0x070, UL)
-#define RISCV_PRIV_FP_F_F28	_AC(0x074, UL)
-#define RISCV_PRIV_FP_F_F29	_AC(0x078, UL)
-#define RISCV_PRIV_FP_F_F30	_AC(0x07c, UL)
-#define RISCV_PRIV_FP_F_F31	_AC(0x080, UL)
-#define RISCV_PRIV_FP_F_FCSR	_AC(0x084, UL)
+#define RISCV_PRIV_FP_F_F27	_AC(0x06c, UL)
+#define RISCV_PRIV_FP_F_F28	_AC(0x070, UL)
+#define RISCV_PRIV_FP_F_F29	_AC(0x074, UL)
+#define RISCV_PRIV_FP_F_F30	_AC(0x078, UL)
+#define RISCV_PRIV_FP_F_F31	_AC(0x07c, UL)
+#define RISCV_PRIV_FP_F_FCSR	_AC(0x080, UL)
 
 #define RISCV_PRIV_FP_D_F0	_AC(0x000, UL)
 #define RISCV_PRIV_FP_D_F1	_AC(0x008, UL)
@@ -135,19 +135,19 @@ struct arch_regs {
 	unsigned long sstatus;
 	unsigned long hstatus;
 	unsigned long sp_exec;
-} __packed;
+};
 
 typedef struct arch_regs arch_regs_t;
 
 struct riscv_priv_fp_f {
 	u32 f[32];
 	u32 fcsr;
-} __packed;
+};
 
 struct riscv_priv_fp_d {
 	u64 f[32];
 	u32 fcsr;
-} __packed;
+};
 
 union riscv_priv_fp {
 	struct riscv_priv_fp_f f;
