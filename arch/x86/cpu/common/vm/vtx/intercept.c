@@ -39,6 +39,15 @@
 
 void vmx_vcpu_exit(struct vcpu_hw_context *context)
 {
+	union _er {
+		struct _vmexit {
+			u32 reason:16;
+			u32 other:15;
+			u32 vm_entry_failure:1;
+		} bits;
+		unsigned long r;
+	} _exit_reason;
+
 	unsigned long reason = 0;
 	int rc;
 
@@ -46,7 +55,26 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 		if (likely(context->vcpu_emergency_shutdown))
 			context->vcpu_emergency_shutdown(context);
 
-	vmm_printf("Guest Exited with Error: 0x%lx\n", reason);
+	_exit_reason.r = reason;
+
+	if (_exit_reason.bits.vm_entry_failure) {
+		switch(_exit_reason.bits.reason) {
+		case 33:
+			vmm_printf("VM Entry failed due to invalid guest state.\n");
+			break;
+		case 34:
+			vmm_printf("VM Entry failed due to MSR loading.\n");
+			break;
+		case 41:
+			vmm_printf("VM Entry failed due to machine-check event.\n");
+			break;
+		default:
+			vmm_printf("VM Entry failed due to unknown reason %d.\n", _exit_reason.bits.reason);
+			break;
+		}
+	} else {
+		vmm_printf("VM Exit reason: %d\n", _exit_reason.bits.reason);
+	}
 
 	context->vcpu_emergency_shutdown(context);
 }

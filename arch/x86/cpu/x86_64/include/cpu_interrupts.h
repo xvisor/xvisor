@@ -202,6 +202,13 @@ struct tss64_desc {
 	u32 reserved;
 } __packed;
 
+struct segment {
+	u16 selector;
+	u32 access_rights;
+	u32 limit;
+	u64 base;
+};
+
 /* Interrupt handlers. */
 extern void _exception_div_error(void);
 extern void _exception_debug(void);

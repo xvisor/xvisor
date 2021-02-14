@@ -1107,3 +1107,98 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 			context->vcpu_emergency_shutdown(context);
 	}
 }
+
+void svm_dump_guest_state(struct vcpu_hw_context *context)
+{
+	int i;
+	u32 val;
+
+	vmm_printf("RAX: 0x%"PRIx64" RBX: 0x%"PRIx64
+		   " RCX: 0x%"PRIx64" RDX: 0x%"PRIx64"\n",
+		   context->vmcb->rax, context->g_regs[GUEST_REGS_RBX],
+		   context->g_regs[GUEST_REGS_RCX], context->g_regs[GUEST_REGS_RDX]);
+	vmm_printf("R08: 0x%"PRIx64" R09: 0x%"PRIx64
+		   " R10: 0x%"PRIx64" R11: 0x%"PRIx64"\n",
+		   context->g_regs[GUEST_REGS_R8], context->g_regs[GUEST_REGS_R9],
+		   context->g_regs[GUEST_REGS_R10], context->g_regs[GUEST_REGS_R10]);
+	vmm_printf("R12: 0x%"PRIx64" R13: 0x%"PRIx64
+		   " R14: 0x%"PRIx64" R15: 0x%"PRIx64"\n",
+		   context->g_regs[GUEST_REGS_R12], context->g_regs[GUEST_REGS_R13],
+		   context->g_regs[GUEST_REGS_R14], context->g_regs[GUEST_REGS_R15]);
+	vmm_printf("RSP: 0x%"PRIx64" RBP: 0x%"PRIx64
+		   " RDI: 0x%"PRIx64" RSI: 0x%"PRIx64"\n",
+		   context->vmcb->rsp, context->g_regs[GUEST_REGS_RBP],
+		   context->g_regs[GUEST_REGS_RDI], context->g_regs[GUEST_REGS_RSI]);
+	vmm_printf("RIP: 0x%"PRIx64"\n\n", context->vmcb->rip);
+	vmm_printf("CR0: 0x%"PRIx64" CR2: 0x%"PRIx64
+		   " CR3: 0x%"PRIx64" CR4: 0x%"PRIx64"\n",
+		   context->vmcb->cr0, context->vmcb->cr2,
+		   context->vmcb->cr3, context->vmcb->cr4);
+
+	dump_seg_selector("CS ", &context->vmcb->cs);
+	dump_seg_selector("DS ", &context->vmcb->ds);
+	dump_seg_selector("ES ", &context->vmcb->es);
+	dump_seg_selector("SS ", &context->vmcb->ss);
+	dump_seg_selector("FS ", &context->vmcb->fs);
+	dump_seg_selector("GS ", &context->vmcb->gs);
+	dump_seg_selector("GDT", &context->vmcb->gdtr);
+	dump_seg_selector("LDT", &context->vmcb->ldtr);
+	dump_seg_selector("IDT", &context->vmcb->idtr);
+	dump_seg_selector("TR ", &context->vmcb->tr);
+
+
+	vmm_printf("RFLAGS: 0x%"PRIx64"    [ ", context->vmcb->rflags);
+	for (i = 0; i < 32; i++) {
+		val = context->vmcb->rflags & (0x1UL << i);
+		switch(val) {
+		case X86_EFLAGS_CF:
+			vmm_printf("CF ");
+			break;
+		case X86_EFLAGS_PF:
+			vmm_printf("PF ");
+			break;
+		case X86_EFLAGS_AF:
+			vmm_printf("AF ");
+			break;
+		case X86_EFLAGS_ZF:
+			vmm_printf("ZF ");
+			break;
+		case X86_EFLAGS_SF:
+			vmm_printf("SF ");
+			break;
+		case X86_EFLAGS_TF:
+			vmm_printf("TF ");
+			break;
+		case X86_EFLAGS_IF:
+			vmm_printf("IF ");
+			break;
+		case X86_EFLAGS_DF:
+			vmm_printf("DF ");
+			break;
+		case X86_EFLAGS_OF:
+			vmm_printf("OF ");
+			break;
+		case X86_EFLAGS_NT:
+			vmm_printf("NT ");
+			break;
+		case X86_EFLAGS_RF:
+			vmm_printf("RF ");
+			break;
+		case X86_EFLAGS_VM:
+			vmm_printf("VM ");
+			break;
+		case X86_EFLAGS_AC:
+			vmm_printf("AC ");
+			break;
+		case X86_EFLAGS_VIF:
+			vmm_printf("VIF ");
+			break;
+		case X86_EFLAGS_VIP:
+			vmm_printf("VIP ");
+			break;
+		case X86_EFLAGS_ID:
+			vmm_printf("ID ");
+			break;
+		}
+	}
+}

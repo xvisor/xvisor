@@ -34,9 +34,16 @@
 #include <vm/vmx.h>
 #include <vm/vmx_intercept.h>
 
+extern void vmx_vcpu_exit(struct vcpu_hw_context *context);
+
 extern struct vmcs *alloc_vmcs(void);
 extern u32 vmxon_region_nr_pages;
 extern u32 vmcs_revision_id;
+
+u64 vmx_cr0_fixed0;
+u64 vmx_cr0_fixed1;
+u64 vmx_cr4_fixed0;
+u64 vmx_cr4_fixed1;
 
 /* IMS: Table 30-1 Section 30.4 */
 static char *ins_err_str[] = {
@@ -77,8 +84,7 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 {
 	u32 eax, edx;
 	int bios_locked;
-	u64 cr0, cr4, vmx_cr0_fixed0, vmx_cr0_fixed1;
-	u64 vmx_cr4_fixed0, vmx_cr4_fixed1;
+	u64 cr0, cr4;
 	u32 *vmxon_rev = NULL;
 	int ret = VMM_OK;
 	void *vmx_on_region;

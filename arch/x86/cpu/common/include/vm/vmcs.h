@@ -326,6 +326,9 @@ enum vmcs_field {
 
 #define VMCS_VPID_WIDTH 16
 
+#define GUEST_ACTIVITY_ACTIVE			0
+#define GUEST_ACTIVITY_HLT			1
+
 extern void vmx_detect_capability(void);
 extern struct vmcs* create_vmcs(void);
 extern struct vmcs *current_vmcs(physical_addr_t *phys);

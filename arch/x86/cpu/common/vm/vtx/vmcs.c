@@ -32,6 +32,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_manager.h>
+#include <cpu_interrupts.h>
 #include <cpu_features.h>
 #include <control_reg_access.h>
 #include <vm/vmcs.h>
@@ -525,6 +526,9 @@ void set_vmx_entry_exec_controls(void)
 
 		/* controls that allow 0 or 1 settings */
 		switch(entry_controls[i]) {
+		case VM_ENTRY_LOAD_DEBUG_CONTROLS:
+			vmx_entry_control |= entry_controls[i];
+			break;
 		default:
 			/* we don't want to enable them by default so
 			 * consider the default settings. */
@@ -682,33 +686,27 @@ void vmx_disable_intercept_for_msr(struct vcpu_hw_context *context, u32 msr)
 	}
 }
 
+#define GUEST_CRx_FILTER(x, __value)			\
+	({	u64 _v = __value;			\
+		(_v |= vmx_cr##x ##_fixed0);		\
+		(_v &= vmx_cr##x ##_fixed1);		\
+		(_v);					\
+	})
+
+#define DB_VECTOR                                       1
+#define NMI_VECTOR                                      2
+#define PF_VECTOR                                       14
+#define AC_VECTOR                                       17
+
 void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
-	/* MSR intercepts. */
-	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
-	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
-	__vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
+	struct segment invalid_segment = { .access_rights = 0x100000 };
 
-	__vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
+	/* Control registers */
+	__vmwrite(GUEST_CR0, GUEST_CRx_FILTER(0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW)));
+	__vmwrite(GUEST_CR3, 0);
+	__vmwrite(GUEST_CR4, GUEST_CRx_FILTER(4, 0));
 
-	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
-	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
-
-	__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
-	__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
-
-	__vmwrite(CR3_TARGET_COUNT, 0);
-
-	__vmwrite(GUEST_ACTIVITY_STATE, 0);
-
-	/*
-	 * Make the CS.RIP point to 0xFFFF0. The reset vector. The Bios seems
-	 * to be linked in a fashion that the reset vectors lies at0x3fff0.
-	 * The guest physical address will be 0xFFFF0 when the first page fault
-	 * happens in paged real mode. Hence, the the bios is loaded at 0xc0c0000
-	 * so that 0xc0c0000 + 0x3fff0 becomes 0xc0ffff0 => The host physical
-	 * for reset vector. Everything else then just falls in place.
-	 */
 
 	/* Guest segment bases. */
 	__vmwrite(GUEST_ES_BASE, 0);
@@ -717,8 +715,8 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_ES_SELECTOR, 0);
 
 	__vmwrite(GUEST_SS_BASE, 0);
-	__vmwrite(GUEST_SS_LIMIT, 0xFFFF);
-	__vmwrite(GUEST_SS_AR_BYTES, 0x193);
+	__vmwrite(GUEST_SS_LIMIT, 0);
+	__vmwrite(GUEST_SS_AR_BYTES, 0x10000);
 	__vmwrite(GUEST_SS_SELECTOR, 0);
 
 	__vmwrite(GUEST_DS_BASE, 0);
@@ -736,61 +734,57 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_GS_AR_BYTES, 0x93);
 	__vmwrite(GUEST_GS_SELECTOR, 0);
 
+	/*
+	 * Make the CS.RIP point to 0xFFFF0. The reset vector. The Bios seems
+	 * to be linked in a fashion that the reset vectors lies at0x3fff0.
+	 * The guest physical address will be 0xFFFF0 when the first page fault
+	 * happens in paged real mode. Hence, the the bios is loaded at 0xc0c0000
+	 * so that 0xc0c0000 + 0x3fff0 becomes 0xc0ffff0 => The host physical
+	 * for reset vector. Everything else then just falls in place.
+	 */
 	__vmwrite(GUEST_CS_BASE, 0xF0000);
 	__vmwrite(GUEST_CS_LIMIT, 0xFFFF);
-	__vmwrite(GUEST_CS_AR_BYTES, 0x19b);
+	__vmwrite(GUEST_CS_AR_BYTES, 0x9b);
 	__vmwrite(GUEST_CS_SELECTOR, 0xF000);
-
-	/* Guest IDT. */
-	__vmwrite(GUEST_IDTR_BASE, 0);
-	__vmwrite(GUEST_IDTR_LIMIT, 0);
-
-	/* Guest GDT. */
-	__vmwrite(GUEST_GDTR_BASE, 0);
-	__vmwrite(GUEST_GDTR_LIMIT, 0xFFFF);
-
-	/* Guest LDT. */
-	__vmwrite(GUEST_LDTR_AR_BYTES, 0x0082); /* LDT */
-	__vmwrite(GUEST_LDTR_SELECTOR, 0);
-	__vmwrite(GUEST_LDTR_BASE, 0);
-	__vmwrite(GUEST_LDTR_LIMIT, 0xFFFF);
-
-	/* Guest TSS. */
-	__vmwrite(GUEST_TR_AR_BYTES, 0x008b); /* 32-bit TSS (busy) */
-	__vmwrite(GUEST_TR_BASE, 0);
-	__vmwrite(GUEST_TR_LIMIT, 0xFFFF);
-
-	__vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
-	__vmwrite(GUEST_DR7, 0);
-	__vmwrite(VMCS_LINK_POINTER, ~0UL);
-
-	__vmwrite(EXCEPTION_BITMAP, 0);
-
-	/* Control registers */
-	__vmwrite(GUEST_CR0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW | X86_CR0_PG));
-	__vmwrite(GUEST_CR3, 0);
-	__vmwrite(GUEST_CR4, 0);
-
-	/* G_PAT */
-	u64 guest_pat;
-
-	guest_pat = MSR_IA32_CR_PAT_RESET;
-
-	__vmwrite(GUEST_IA32_PAT, guest_pat);
 
 	/* Initial state */
 	__vmwrite(GUEST_RSP, 0x0);
 	__vmwrite(GUEST_RFLAGS, 0x2);
 	__vmwrite(GUEST_RIP, 0xFFF0);
 
-	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
-	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
+	/* Guest IDT. */
+	__vmwrite(GUEST_IDTR_BASE, 0);
+	__vmwrite(GUEST_IDTR_LIMIT, 0xFFFF);
 
-	vmcs_dump(context);
-}
+	/* Guest GDT. */
+	__vmwrite(GUEST_GDTR_BASE, 0);
+	__vmwrite(GUEST_GDTR_LIMIT, 0xFFFF);
 
-void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
-{
+	/* Guest LDT. */
+	__vmwrite(GUEST_LDTR_AR_BYTES, 0x10000); /* LDT */
+	__vmwrite(GUEST_LDTR_SELECTOR, 0);
+	__vmwrite(GUEST_LDTR_BASE, 0);
+	__vmwrite(GUEST_LDTR_LIMIT, 0);
+
+	/* Guest TSS. */
+	__vmwrite(GUEST_TR_SELECTOR, 0);
+	__vmwrite(GUEST_TR_AR_BYTES, 0x008b); /* 32-bit TSS (busy) */
+	__vmwrite(GUEST_TR_BASE, 0);
+	__vmwrite(GUEST_TR_LIMIT, 0xFFFF);
+
+	__vmwrite(GUEST_IA32_EFER, 0);
+	__vmwrite(GUEST_SYSENTER_CS, 0);
+	__vmwrite(GUEST_SYSENTER_EIP, 0);
+	__vmwrite(GUEST_SYSENTER_ESP, 0);
+
+	__vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
+	__vmwrite(GUEST_DR7, 0x00000400);
+	__vmwrite(GUEST_IA32_DEBUGCTL, 0);
+	__vmwrite(VMCS_LINK_POINTER, ~0UL);
+
+	__vmwrite(EXCEPTION_BITMAP, (1 << DB_VECTOR) | (1 << AC_VECTOR));
+	__vmwrite(GUEST_PENDING_DBG_EXCEPTIONS, 0);
+
 	/* MSR intercepts. */
 	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
 	__vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
@@ -800,87 +794,16 @@ void vmx_set_vm_to_mbr_start_state(struct vcpu_hw_context *context)
 
 	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
 	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
-
 	__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
 	__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
-
 	__vmwrite(CR3_TARGET_COUNT, 0);
+	__vmwrite(GUEST_ACTIVITY_STATE, GUEST_ACTIVITY_ACTIVE);
+	__vmwrite(GUEST_IA32_PAT, 0);
 
-	__vmwrite(GUEST_ACTIVITY_STATE, 0);
+	context->g_cr0 = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW);
+	context->g_cr1 = context->g_cr2 = context->g_cr3 = 0;
 
-	/* Guest segment bases. */
-	__vmwrite(GUEST_ES_BASE, 0);
-	__vmwrite(GUEST_SS_BASE, 0);
-	__vmwrite(GUEST_DS_BASE, 00000400);
-	__vmwrite(GUEST_FS_BASE, 0xE7170);
-	__vmwrite(GUEST_GS_BASE, 0xF0000);
-	__vmwrite(GUEST_CS_BASE, 0);
-
-	/* Guest segment limits. */
-	__vmwrite(GUEST_ES_LIMIT, ~0u);
-	__vmwrite(GUEST_SS_LIMIT, ~0u);
-	__vmwrite(GUEST_DS_LIMIT, ~0u);
-	__vmwrite(GUEST_FS_LIMIT, ~0u);
-	__vmwrite(GUEST_GS_LIMIT, ~0u);
-	__vmwrite(GUEST_CS_LIMIT, ~0u);
-
-	/* Guest segment AR bytes. */
-	__vmwrite(GUEST_ES_AR_BYTES, 0x93);
-	__vmwrite(GUEST_SS_AR_BYTES, 0x193);
-	__vmwrite(GUEST_DS_AR_BYTES, 0x93);
-	__vmwrite(GUEST_FS_AR_BYTES, 0x93);
-	__vmwrite(GUEST_GS_AR_BYTES, 0x93);
-	__vmwrite(GUEST_CS_AR_BYTES, 0x19b);
-
-	/* Guest segment selector. */
-	__vmwrite(GUEST_ES_SELECTOR, 0);
-	__vmwrite(GUEST_SS_SELECTOR, 0);
-	__vmwrite(GUEST_DS_SELECTOR, 0x0040);
-	__vmwrite(GUEST_FS_SELECTOR, 0xE717);
-	__vmwrite(GUEST_GS_SELECTOR, 0xF000);
-	__vmwrite(GUEST_CS_SELECTOR, 0);
-
-	/* Guest IDT. */
-	__vmwrite(GUEST_IDTR_BASE, 0);
-	__vmwrite(GUEST_IDTR_LIMIT, 0);
-
-	/* Guest GDT. */
-	__vmwrite(GUEST_GDTR_BASE, 0);
-	__vmwrite(GUEST_GDTR_LIMIT, 0);
-
-	/* Guest LDT. */
-	__vmwrite(GUEST_LDTR_AR_BYTES, 0x0082); /* LDT */
-	__vmwrite(GUEST_LDTR_SELECTOR, 0);
-	__vmwrite(GUEST_LDTR_BASE, 0);
-	__vmwrite(GUEST_LDTR_LIMIT, 0);
-
-	/* Guest TSS. */
-	__vmwrite(GUEST_TR_AR_BYTES, 0x008b); /* 32-bit TSS (busy) */
-	__vmwrite(GUEST_TR_BASE, 0);
-	__vmwrite(GUEST_TR_LIMIT, 0xff);
-
-	__vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
-	__vmwrite(GUEST_DR7, 0);
-	__vmwrite(VMCS_LINK_POINTER, ~0UL);
-
-	__vmwrite(EXCEPTION_BITMAP, 0);
-
-	/* Control registers */
-	__vmwrite(GUEST_CR0, (X86_CR0_PE | X86_CR0_ET));
-	__vmwrite(GUEST_CR3, 0);
-	__vmwrite(GUEST_CR4, 0);
-
-	/* G_PAT */
-	u64 guest_pat;
-
-	guest_pat = MSR_IA32_CR_PAT_RESET;
-
-	__vmwrite(GUEST_IA32_PAT, guest_pat);
-
-	/* Initial state */
-	__vmwrite(GUEST_RSP, 0x3E2);
-	__vmwrite(GUEST_RFLAGS, 0x2206);
-	__vmwrite(GUEST_RIP, 0x7C00);
+	vmcs_dump(context);
 }
 
 int vmx_read_guest_msr(struct vcpu_hw_context *context, u32 msr, u64 *val)
@@ -1007,8 +930,6 @@ static void __unused vmx_dump_sel2(char *name, u32 lim)
 
 void vmcs_dump(struct vcpu_hw_context *context)
 {
-	unsigned long long x;
-
 	vmm_printf("*** Guest State ***\n");
 	vmm_printf("CR0: actual=0x%016llx, shadow=0x%016llx, gh_mask=%016llx\n",
 		   (unsigned long long)vmr(GUEST_CR0),
@@ -1047,6 +968,16 @@ void vmcs_dump(struct vcpu_hw_context *context)
 	vmx_dump_sel("LDTR", GUEST_LDTR_SELECTOR);
 	vmx_dump_sel2("IDTR", GUEST_IDTR_LIMIT);
 	vmx_dump_sel("TR", GUEST_TR_SELECTOR);
+	vmm_printf("Fixed CR0: Fixed0:%llx Fixed1: %llx\n",
+		   (unsigned long long)vmx_cr0_fixed0,
+		   (unsigned long long)vmx_cr0_fixed1);
+	vmm_printf("Fixed CR4: Fixed0:%llx Fixed1: %llx\n",
+		   (unsigned long long)vmx_cr4_fixed0,
+		   (unsigned long long)vmx_cr4_fixed1);
+	vmm_printf("Exit Reason=%08x Exit Qualification=%08x\n",
+		   (u32)vmr(VM_EXIT_REASON),
+		   (u32)vmr(EXIT_QUALIFICATION));
+#if 0
 	vmm_printf("Guest PAT = 0x%08x%08x\n",
 		   (u32)vmr(GUEST_IA32_PAT_HIGH), (u32)vmr(GUEST_IA32_PAT));
 	x  = (unsigned long long)vmr(TSC_OFFSET_HIGH) << 32;
@@ -1120,4 +1051,5 @@ void vmcs_dump(struct vcpu_hw_context *context)
 		   (u32)vmr(EPT_POINTER_HIGH), (u32)vmr(EPT_POINTER));
 	vmm_printf("Virtual processor ID = 0x%04x\n",
 		   (u32)vmr(VIRTUAL_PROCESSOR_ID));
+#endif
 }

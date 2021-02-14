@@ -22,6 +22,11 @@
 #include <vmm_types.h>
 #include <vm/vmcs.h>
 
+extern u64 vmx_cr0_fixed0;
+extern u64 vmx_cr0_fixed1;
+extern u64 vmx_cr4_fixed0;
+extern u64 vmx_cr4_fixed1;
+
 #define VMX_FAIL_INVALID	-1
 #define VMX_FAIL_VALID          -2
 #define VMX_FAIL_UD_GF		-3

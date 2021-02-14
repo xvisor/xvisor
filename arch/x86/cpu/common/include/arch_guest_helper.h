@@ -27,6 +27,7 @@
 #include <emu/rtc/mc146818rtc.h>
 #include <emu/i8259.h>
 #include <vmm_manager.h>
+#include <vm/svm_intercept.h>
 
 #define EPT_BOOT_PAGE	(0xFFFFF000UL)
 

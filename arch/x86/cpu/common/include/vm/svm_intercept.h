@@ -115,4 +115,6 @@ extern void handle_vmexit (struct vcpu_hw_context *context);
 /* values which would create fault when the guest make a syscall */
 #define SYSENTER_CS_FAULT		0
 
+void svm_dump_guest_state(struct vcpu_hw_context *context);
+
 #endif
