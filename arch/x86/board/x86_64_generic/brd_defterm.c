@@ -55,7 +55,7 @@ static int __init setup_early_print(char *buf)
 	if (!strncmp(buf, SERIAL_CONSOLE_NAME, strlen(SERIAL_CONSOLE_NAME)))
 		return init_early_serial_console(buf);
 
-	if(!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
+	if (!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
 		return init_early_vga_console();
 
 	return VMM_EFAIL;
