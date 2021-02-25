@@ -235,6 +235,7 @@ struct cpu_lapic {
 	u32 integrated;
 	u32 nr_lvt;
 	u32 version;
+	u32 deadline_supported;
 };
 
 union ioapic_irt_entry {
