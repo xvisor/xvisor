@@ -215,6 +215,8 @@ struct defterm_ops *get_serial_defterm_ops(void *data)
 		attr = SERIAL0_CONFIG_DTS_PATH;
 	else if (!strcmp(cmdline_console_string, "serial@1"))
 		attr = SERIAL1_CONFIG_DTS_PATH;
+	else /* if incorrectly specified, default to serial port 0 */
+		attr = SERIAL0_CONFIG_DTS_PATH;
 
 	rc = vmm_devtree_setattr(node, VMM_DEVTREE_CONSOLE_ATTR_NAME,
 				 (void *)attr, VMM_DEVTREE_ATTRTYPE_STRING,
