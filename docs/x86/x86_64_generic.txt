@@ -59,13 +59,15 @@ C. Preparing to Boot Guest:
 
    b. Creating a disk for qemu
       i.   Create a raw QEMU disk image: qemu-img create -f raw xvisor-hd.disk 32M
-      ii.  Boot a slackware or any other small linux distro to partition the dist and create filesystem on it
-           # qemu-system-i386 -cdrom slackware_i486-14.0-mini-install.iso -hda xvisor-hd.disk -m 128 -boot d
-           (NOTE: In Linux, use fdisk and mkfs.vfat to partition and create filesystem on the partition.)
-      iii. Mount the new partition in disk in host Linux (where you are compiling xvisor and seabios)
+      ii.  Find the loopback device for the disk file by running command:
+               losetup --partscan --find --show xvisor-hd.disk
+      iii. Make the filesystem on the disk:
+                sudo mkfs.vfat /dev/loop26p1
+      iv.  Mount the new partition in disk in host Linux (where you are compiling xvisor and seabios)
            # mkdir xmount
-           # sudo mount -o loop,offset=1048576 xvisor-hd.disk xmount/
-      iv.  Copy seabios binary in it.
+	   # sudo mount /dev/loop26p1 ./xmount/
+		NOTE: the loop device can different. Check the output of losetup in step ii.
+      v.   Copy seabios binary in it.
            # cp xvisor-seabios/out/bios.bin xmount/
            # sudo umount xmount
 
