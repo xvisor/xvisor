@@ -45,7 +45,7 @@
 /* Constants:                                                                   */
 /********************************************************************************/
 /* 16650 UART setup */
-COM_BASE      = 0x3f8	/* Our default COM1 base, after SuperIO init            */
+COM_BASE      = 0x2f8	/* Our default COM1 base, after SuperIO init            */
 COM_RB        = 0x00	/* Receive Buffer (R)                                   */
 COM_TB        = 0x00    /* Transmit Buffer (W)                                  */
 COM_BRD_LO    = 0x00	/* Baud Rate Divisor LSB (when bit 7 of LCR is set)     */

@@ -5,5 +5,9 @@ devtree node copy /guests guest0 /templates/x86_64_generic
 guest create guest0
 
 #Copy guest BIOS
-vfs guest_load guest0 0x80000 /coreboot.rom
-vfs guest_load guest0 0xfff80000 /coreboot.rom
+#vfs guest_load guest0 0x80000 /coreboot.rom
+#vfs guest_load guest0 0xfff80000 /coreboot.rom
+
+#Uncomment below for sample bios
+vfs guest_load guest0 0x10000 /bios.rom
+#vfs guest_load guest0 0xfff10000 /bios.rom
