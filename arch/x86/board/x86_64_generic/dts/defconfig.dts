@@ -72,7 +72,7 @@
 	chosen {
 		console = &SERIAL0;
 		bootcmd = "echo Waiting for 3 seconds to let block devices settle down...",
-			  "sleep 3", /* Let block devices settle down */
+			  "sleep secs 3", /* Let block devices settle down */
 			  "vfs mount hda0p0 /",
 
 			  /* Kick off the startup script */
