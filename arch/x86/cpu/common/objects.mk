@@ -39,3 +39,4 @@ cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/vmcs.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/vmx.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/intercept.o
 cpu-common-objs-$(CONFIG_VEXT_INTEL_VTX)+= vm/vtx/ept.o
+cpu-common-objs-$(CONFIG_ENABLE_VTX_GUEST_CONFIG_AUDIT) += vm/vtx/vmcs_auditor.o
