@@ -209,7 +209,9 @@ void vmx_detect_capability(void)
 		vmcs_revision_id = vmx_basic_msr_low;
 		vmx_pin_based_exec_control = vmx_pin_based_exec_default1;
 		vmx_cpu_based_exec_control = vmx_cpu_based_exec_default1;
-		vmx_secondary_exec_control = vmx_secondary_exec_default1;
+		vmx_secondary_exec_control &= vmx_secondary_exec_default0;
+		vmx_secondary_exec_control &= vmx_secondary_exec_default1;
+		vmx_secondary_exec_control |= vmx_secondary_exec_default1;
 		vmx_vmexit_control	   = vmx_vmexit_default1;
 		vmx_vmentry_control	   = vmx_vmentry_default1;
 		cpu_has_vmx_ins_outs_instr_info = !!(vmx_basic_msr_high & (1U<<22));
@@ -468,18 +470,31 @@ void set_proc_based_exec_controls(void)
 			vmx_proc_based_control |= proc_controls[i];
 
 			if (proc_controls[i] == CPU_BASED_ACTIVATE_SECONDARY_CONTROLS) {
-				vmx_proc_secondary_control = (SECONDARY_EXEC_ENABLE_EPT |
-							      SECONDARY_EXEC_ENABLE_VPID |
-							      SECONDARY_EXEC_UNRESTRICTED_GUEST);
+				vmx_proc_secondary_control = 0;
+				if (!(SECONDARY_EXEC_ENABLE_EPT & vmx_secondary_exec_control)) {
+						vmm_panic("EPT is not allowed in secondary exec controls\n");
+				} else {
+					vmm_printf("Enabling EPT.\n");
+					vmx_proc_secondary_control |= SECONDARY_EXEC_ENABLE_EPT;
+				}
+				if (!(SECONDARY_EXEC_ENABLE_VPID & vmx_secondary_exec_control)) {
+					vmm_panic("VPID is not allowed in secondary exec controls\n");
+				} else {
+					vmm_printf("Enabling VPID\n");
+					vmx_proc_secondary_control |= SECONDARY_EXEC_ENABLE_VPID;
+				}
+				if (!(SECONDARY_EXEC_UNRESTRICTED_GUEST & vmx_secondary_exec_control)) {
+					vmm_panic("Unrestricted guest is not allowed in seconary exec controls\n");
+				} else {
+					vmm_printf("Enabling unrestricted guest.\n");
+					vmx_proc_secondary_control |= SECONDARY_EXEC_UNRESTRICTED_GUEST;
+				}
+
 				__vmwrite(SECONDARY_VM_EXEC_CONTROL, vmx_proc_secondary_control);
 			}
 			break;
 
 		default:
-			/* Others we don't want to enable them by default so
-			 * consider the default settings. */
-			if (vmx_cpu_based_exec_default1 & proc_controls[i])
-				vmx_proc_based_control |= proc_controls[i];
 			break;
 		}
 	}
@@ -529,11 +544,12 @@ void set_vmx_entry_exec_controls(void)
 		case VM_ENTRY_LOAD_DEBUG_CONTROLS:
 			vmx_entry_control |= entry_controls[i];
 			break;
+
+		case VM_ENTRY_DEACT_DUAL_MONITOR:
+			vmx_entry_control &= ~VM_ENTRY_DEACT_DUAL_MONITOR;
+			break;
+
 		default:
-			/* we don't want to enable them by default so
-			 * consider the default settings. */
-			if (vmx_vmentry_default1 & entry_controls[i])
-				vmx_entry_control |= entry_controls[i];
 			break;
 		}
 	}
@@ -593,10 +609,6 @@ void set_vmx_exit_exec_controls(void)
 			vmx_exit_control |= exit_controls[i];
 			break;
 		default:
-			/* we don't want to enable them by default so
-			 * consider the default settings. */
-			if (vmx_vmexit_default1 & exit_controls[i])
-				vmx_exit_control |= exit_controls[i];
 			break;
 		}
 	}
@@ -698,15 +710,25 @@ void vmx_disable_intercept_for_msr(struct vcpu_hw_context *context, u32 msr)
 #define PF_VECTOR                                       14
 #define AC_VECTOR                                       17
 
+typedef union {
+	struct {
+		u32 ureserved:19;
+		u32 avl:1;
+		u32 res:4;
+		u32 present:1;
+		u32 dpl:2;
+		u32 dtype:1;
+		u32 stype:4;
+	} bits;
+	u32 val;
+} guest_ar_t;
+
 void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
-	struct segment invalid_segment = { .access_rights = 0x100000 };
-
 	/* Control registers */
 	__vmwrite(GUEST_CR0, GUEST_CRx_FILTER(0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW)));
 	__vmwrite(GUEST_CR3, 0);
 	__vmwrite(GUEST_CR4, GUEST_CRx_FILTER(4, 0));
-
 
 	/* Guest segment bases. */
 	__vmwrite(GUEST_ES_BASE, 0);
@@ -716,7 +738,7 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 
 	__vmwrite(GUEST_SS_BASE, 0);
 	__vmwrite(GUEST_SS_LIMIT, 0);
-	__vmwrite(GUEST_SS_AR_BYTES, 0x10000);
+	__vmwrite(GUEST_SS_AR_BYTES, 0x93);
 	__vmwrite(GUEST_SS_SELECTOR, 0);
 
 	__vmwrite(GUEST_DS_BASE, 0);
@@ -761,7 +783,7 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_GDTR_LIMIT, 0xFFFF);
 
 	/* Guest LDT. */
-	__vmwrite(GUEST_LDTR_AR_BYTES, 0x10000); /* LDT */
+	__vmwrite(GUEST_LDTR_AR_BYTES, 0x82); /* LDT */
 	__vmwrite(GUEST_LDTR_SELECTOR, 0);
 	__vmwrite(GUEST_LDTR_BASE, 0);
 	__vmwrite(GUEST_LDTR_LIMIT, 0);
@@ -930,6 +952,8 @@ static void __unused vmx_dump_sel2(char *name, u32 lim)
 
 void vmcs_dump(struct vcpu_hw_context *context)
 {
+	unsigned long long x;
+
 	vmm_printf("*** Guest State ***\n");
 	vmm_printf("CR0: actual=0x%016llx, shadow=0x%016llx, gh_mask=%016llx\n",
 		   (unsigned long long)vmr(GUEST_CR0),
@@ -977,7 +1001,6 @@ void vmcs_dump(struct vcpu_hw_context *context)
 	vmm_printf("Exit Reason=%08x Exit Qualification=%08x\n",
 		   (u32)vmr(VM_EXIT_REASON),
 		   (u32)vmr(EXIT_QUALIFICATION));
-#if 0
 	vmm_printf("Guest PAT = 0x%08x%08x\n",
 		   (u32)vmr(GUEST_IA32_PAT_HIGH), (u32)vmr(GUEST_IA32_PAT));
 	x  = (unsigned long long)vmr(TSC_OFFSET_HIGH) << 32;
@@ -990,7 +1013,8 @@ void vmcs_dump(struct vcpu_hw_context *context)
 	vmm_printf("Interruptibility=%04x ActivityState=%04x\n",
 		   (int)vmr(GUEST_INTERRUPTIBILITY_INFO),
 		   (int)vmr(GUEST_ACTIVITY_STATE));
-
+	vmm_printf("VMENTRY Controls: 0x%08x, VMEXIT Controls: 0x%08x\n",
+		   (u32)vmr(VM_ENTRY_CONTROLS), (u32)vmr(VM_EXIT_CONTROLS));
 	vmm_printf("*** Host State ***\n");
 	vmm_printf("RSP = 0x%016llx  RIP = 0x%016llx\n",
 		   (unsigned long long)vmr(HOST_RSP),
@@ -1051,5 +1075,16 @@ void vmcs_dump(struct vcpu_hw_context *context)
 		   (u32)vmr(EPT_POINTER_HIGH), (u32)vmr(EPT_POINTER));
 	vmm_printf("Virtual processor ID = 0x%04x\n",
 		   (u32)vmr(VIRTUAL_PROCESSOR_ID));
-#endif
+
+	vmm_printf("*** DEFAULT CONTROL SETTINGS ***\n");
+	vmm_printf("pin-based default0: 0x%x default1: 0x%x\n",
+		   vmx_pin_based_exec_default0, vmx_pin_based_exec_default1);
+	vmm_printf("cpu-based default0: 0x%x default1: 0x%x\n",
+		   vmx_cpu_based_exec_default0, vmx_cpu_based_exec_default1);
+	vmm_printf("secondary-exec default0: 0x%x default1: 0x%x\n",
+		   vmx_secondary_exec_default0, vmx_secondary_exec_default1);
+	vmm_printf("vmexit default0: 0x%x default1: 0x%x\n",
+		   vmx_vmexit_default0, vmx_vmexit_default1);
+	vmm_printf("vmentry default0: 0x%x default1: 0x%x\n",
+		   vmx_vmentry_default0, vmx_vmentry_default1);
 }

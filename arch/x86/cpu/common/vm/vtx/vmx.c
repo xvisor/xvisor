@@ -33,6 +33,7 @@
 #include <vm/vmcs.h>
 #include <vm/vmx.h>
 #include <vm/vmx_intercept.h>
+#include <vm/vmcs_auditor.h>
 
 extern void vmx_vcpu_exit(struct vcpu_hw_context *context);
 
@@ -485,6 +486,10 @@ int intel_setup_vm_control(struct vcpu_hw_context *context)
 
 	/* Monitor the coreboot's debug port output */
 	enable_ioport_intercept(context, 0x80);
+
+#ifdef CONFIG_ENABLE_VTX_GUEST_CONFIG_AUDIT
+	audit_vmcs(0, vmcs_revision_id, this_cpu(vmxon_region_pa));
+#endif
 
 	return VMM_OK;
 
