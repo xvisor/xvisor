@@ -38,6 +38,19 @@ mboot:
 
 _start_32:
         cli /* no interrupts please. */
+	/*
+	 * Mask the interrupts in PIC and re-enable the interrupts.
+	 * This is required to boot in bochs because later when
+	 * Interrupts are enabled, the latched interrupts are played
+	 * before the LAPIC is setup. This timer interrupts comes
+	 * at the vector configured by Grub which is 8. Xvisor treats
+	 * this as a Double-fault and halts.
+	 */
+	mov $0xff, %al
+	out %al, $0x21
+	out %al, $0xa1
+	sti
+	cli
 	leal	_bootstrap_stack_start, %esp	/* setup the stack (bss segment) */
 
 	movl    %ebx, %esi
