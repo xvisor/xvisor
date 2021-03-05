@@ -223,8 +223,9 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	int rc = 0;
 	u64 ins_err = 0;
 
-	__asm__ __volatile__("cli\n\t"
-			     "pushfq\n\t" /* Save flags */
+	VM_LOG(LVL_INFO, "Starting to %s guest...\n", (resume ? "resume" : "launch"));
+
+	__asm__ __volatile__("pushfq\n\t" /* Save flags */
 			     "movq $vmx_return, %%rax\n\t"
 			     "vmwrite %%rax, %%rbx\n\t"
 			     "pushq %%rbp\n\t"
@@ -365,7 +366,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "popq %%rbp\n\t"
 			     "popfq\n\t"
 			     "sub $2, %0\n\t" /* -2 invalid failure */
-			     "7:sti\n\t"
+			     "7:nop\n\t"
 			     :"=q"(rc)
 			     :[resume]"m"(resume), "d"((unsigned long)HOST_RSP),
 			      [context]"c"(context), "b"((unsigned long)HOST_RIP),
@@ -393,11 +394,10 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	if (rc == -1) {
 		if ((rc = __vmread(VM_INSTRUCTION_ERROR, &ins_err)) == VMM_OK) {
 			vmm_printf("Instruction Error: (%s:%ld)\n", ins_err_str[ins_err], ins_err);
-			//vmcs_dump(context);
-		} else
+		} else {
 			vmm_printf("Failed to read instruction error (%d)\n", rc);
-		while(1);
-		//BUG();
+			BUG();
+		}
 	} else if (rc == -2) {
 		/* Invalid error: which probably means there is not current VMCS: Problem! */
 		if (context->vcpu_emergency_shutdown)

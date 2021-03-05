@@ -35,6 +35,7 @@
 #include <cpu_interrupts.h>
 #include <cpu_features.h>
 #include <control_reg_access.h>
+#include <vmm_guest_aspace.h>
 #include <vm/vmcs.h>
 #include <vm/vmx.h>
 #include <vm/ept.h>
@@ -201,7 +202,8 @@ void vmx_detect_capability(void)
 		    & (SECONDARY_EXEC_ENABLE_EPT
 		       | SECONDARY_EXEC_ENABLE_VPID)) {
 			vmx_ept_vpid_cap = cpu_read_msr(MSR_IA32_VMX_EPT_VPID_CAP);
-		}
+		} else
+			vmx_ept_vpid_cap = 0;
 	}
 
 	if (!vmx_pin_based_exec_control) {
@@ -381,10 +383,6 @@ void set_pin_based_exec_controls(void)
 			break;
 
 		default:
-			/* we don't want to enable them by default so
-			 * consider the default settings. */
-			if (vmx_pin_based_exec_default1 & pin_controls[i])
-				vmx_pin_based_control |= pin_controls[i];
 			break;
 		}
 	}
@@ -726,7 +724,7 @@ typedef union {
 void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 {
 	/* Control registers */
-	__vmwrite(GUEST_CR0, GUEST_CRx_FILTER(0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW)));
+	__vmwrite(GUEST_CR0, (GUEST_CRx_FILTER(0, (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW)) & ~(X86_CR0_PE | X86_CR0_PG)));
 	__vmwrite(GUEST_CR3, 0);
 	__vmwrite(GUEST_CR4, GUEST_CRx_FILTER(4, 0));
 
@@ -764,10 +762,10 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	 * so that 0xc0c0000 + 0x3fff0 becomes 0xc0ffff0 => The host physical
 	 * for reset vector. Everything else then just falls in place.
 	 */
-	__vmwrite(GUEST_CS_BASE, 0xF0000);
+	__vmwrite(GUEST_CS_BASE, 0);
 	__vmwrite(GUEST_CS_LIMIT, 0xFFFF);
-	__vmwrite(GUEST_CS_AR_BYTES, 0x9b);
-	__vmwrite(GUEST_CS_SELECTOR, 0xF000);
+	__vmwrite(GUEST_CS_AR_BYTES, 0x93);
+	__vmwrite(GUEST_CS_SELECTOR, 0);
 
 	/* Initial state */
 	__vmwrite(GUEST_RSP, 0x0);
@@ -786,11 +784,11 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_LDTR_AR_BYTES, 0x82); /* LDT */
 	__vmwrite(GUEST_LDTR_SELECTOR, 0);
 	__vmwrite(GUEST_LDTR_BASE, 0);
-	__vmwrite(GUEST_LDTR_LIMIT, 0);
+	__vmwrite(GUEST_LDTR_LIMIT, 0xFFFF);
 
 	/* Guest TSS. */
 	__vmwrite(GUEST_TR_SELECTOR, 0);
-	__vmwrite(GUEST_TR_AR_BYTES, 0x008b); /* 32-bit TSS (busy) */
+	__vmwrite(GUEST_TR_AR_BYTES, 0x8b); /* 32-bit TSS (busy) */
 	__vmwrite(GUEST_TR_BASE, 0);
 	__vmwrite(GUEST_TR_LIMIT, 0xFFFF);
 
