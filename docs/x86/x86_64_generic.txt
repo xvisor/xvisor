@@ -74,6 +74,9 @@ C. Preparing to Boot Guest:
    c. Launch Qemu with this new harddrive:
       # qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-hd.disk -m 1024M -boot d -s -serial stdio
 
+	OR ON INTEL
+      #qemu-system-x86_64 -cpu SandyBridge,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+vmx -enable-kvm -cdrom bootable.iso -hda xvisor-hd.disk -m 1024m -boot d -serial stdio -vnc :2
+
    d. Load guest binary:
       When Xvisor boots, we will need to load guest binary in memory:
       i.  First check if the correct block device and its partition are seen by Xvisor. You should see something like this:
