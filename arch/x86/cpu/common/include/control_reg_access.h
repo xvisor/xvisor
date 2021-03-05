@@ -121,4 +121,16 @@ static inline void write_msr(unsigned int msr, unsigned long val)
 		: "c" (msr), "a" (val), "d" (val >> 32)
 		: "memory");
 }
+
+static inline u32 read_rflags(void)
+{
+	u32 rflags;
+
+	asm volatile("pushf\n\t"
+		     "popq %%rax\n\t"
+	     :"=a"(rflags):: "memory");
+
+	return rflags;
+}
+
 #endif /* __CONTROL_REG_ACCESS_H */
