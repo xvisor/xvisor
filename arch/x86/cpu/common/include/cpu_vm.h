@@ -3,6 +3,7 @@
 
 #include <multiboot.h>
 #include <vm/vmcb.h>
+#include <vm/vmx.h>
 #include <processor_flags.h>
 #include <cpu_features.h>
 #include <vmm_types.h>

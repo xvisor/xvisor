@@ -38,33 +38,25 @@
 
 static inline u32 ept_pml4_index(physical_addr_t gphys)
 {
-	if (gphys & (PHYS_ADDR_BIT_MASK))
-		return ((u32)-1);
-
+	gphys &= PHYS_ADDR_BIT_MASK;
 	return ((gphys >> 39) & 0x1fful);
 }
 
 static inline u32 ept_pdpt_index(physical_addr_t gphys)
 {
-	if (gphys & (PHYS_ADDR_BIT_MASK))
-		return ((u32)-1);
-
+	gphys &= PHYS_ADDR_BIT_MASK;
 	return ((gphys >> 30) & 0x1fful);
 }
 
 static inline u32 ept_pd_index(physical_addr_t gphys)
 {
-	if (gphys & (PHYS_ADDR_BIT_MASK))
-		return ((u32)-1);
-
+	gphys &= PHYS_ADDR_BIT_MASK;
 	return ((gphys >> 21) & 0x1fful);
 }
 
 static inline u32 ept_pt_index(physical_addr_t gphys)
 {
-	if (gphys & (PHYS_ADDR_BIT_MASK))
-		return ((u32)-1);
-
+	gphys &= PHYS_ADDR_BIT_MASK;
 	return ((gphys >> 12) & 0x1fful);
 }
 
@@ -84,86 +76,139 @@ int ept_create_pte(struct vcpu_hw_context *context,
 	physical_addr_t phys;
 	virtual_addr_t virt;
 
-	if (pml4_index == -1 || pdpt_index == -1
-	    || pd_index == -1 || pt_index == -1) {
-		VM_LOG(LVL_ERR,
-		       "Page table index calculation failed. (gphys: 0x%lx)\n",
-		       gphys);
-		return VMM_EFAIL;
-	}
+	VM_LOG(LVL_DEBUG, "pml4: 0x%x pdpt: 0x%x pd: 0x%x pt: 0x%x\n",
+	       pml4_index, pdpt_index, pd_index, pt_index);
 
 	pml4e = (ept_pml4e_t *)(&pml4[pml4_index]);
+	pml4e->val = 0;
 	pml4e->val &= EPT_PROT_MASK;
-	pml4e->val |= pg_prot;
+	pml4e->val |= 0x3;
 	virt = get_free_page_for_pagemap(context, &phys);
 	if (!virt) {
 		VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
 		return VMM_ENOMEM;
 	}
-	pml4e->bits.pdpt_base = phys;
+	memset((void *)virt, 0, PAGE_SIZE);
+	pml4e->bits.pdpt_base = EPT_PHYS_4KB_PFN(phys);
+	VM_LOG(LVL_DEBUG, "%s: PML4E: 0x%016lx\n", __func__, pml4e->val);
 
+	phys = 0;
 	pdpte = (ept_pdpte_t *)(&((u64 *)virt)[pdpt_index]);
+	pdpte->val = 0;
 	pdpte->val &= EPT_PROT_MASK;
-	pdpte->val |= pg_prot;
+	pdpte->val |= 0x3;
 	virt = get_free_page_for_pagemap(context, &phys);
 	if (!virt) {
 		VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
 		return VMM_ENOMEM;
 	}
 	if (pg_size == EPT_PAGE_SIZE_1G) {
-		pdpte->pe.phys = hphys;
+		pdpte->pe.phys = EPT_PHYS_1GB_PFN(hphys);
 		pdpte->pe.mt = 6; /* write-back memory type */
 		pdpte->pe.ign_pat = 1; /* ignore PAT type */
 		pdpte->pe.is_page = 1;
 		goto _done;
 	} else {
-		pdpte->te.pd_base = phys;
+		pdpte->te.pd_base = EPT_PHYS_4KB_PFN(phys);
 	}
+	VM_LOG(LVL_DEBUG, "%s: PDPTE: 0x%016lx\n", __func__, pdpte->val);
 
+	phys = 0;
 	pde = (ept_pde_t *)(&((u64 *)virt)[pd_index]);
+	pde->val = 0;
 	pde->val &= EPT_PROT_MASK;
-	pde->val |= pg_prot;
+	pde->val |= 0x3;
 	virt = get_free_page_for_pagemap(context, &phys);
 	if (!virt) {
 		VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
 		return VMM_ENOMEM;
 	}
 	if (pg_size == EPT_PAGE_SIZE_2M) {
-		pde->pe.phys = hphys;
+		pde->pe.phys = EPT_PHYS_2MB_PFN(hphys);
 		pde->pe.mt = 6;
 		pde->pe.ign_pat = 1;
 		pde->pe.is_page = 1;
 		goto _done;
 	} else {
-		pde->te.pt_base = phys;
+		pde->te.pt_base = EPT_PHYS_4KB_PFN(phys);
 	}
+	VM_LOG(LVL_DEBUG, "%s: PDE: 0x%016lx\n", __func__, pde->val);
 
 	pte = (ept_pte_t *)(&((u64 *)virt)[pt_index]);
+	pte->val = 0;
 	pte->val &= EPT_PROT_MASK;
 	pte->val |= pg_prot;
-	pte->pe.phys = hphys;
+	pte->pe.mt = 6;
+	pte->pe.phys = EPT_PHYS_4KB_PFN(hphys);
+	VM_LOG(LVL_DEBUG, "%s: PTE: 0x%016lx\n", __func__, pte->val);
 
  _done:
 	return VMM_OK;
 }
 
+static inline void
+invalidate_ept (int type, struct invept_desc *desc)
+{
+	/* Specifically not using exception table here.
+	 * if feature is not present, it will unnecessary
+	 * cause context switch. More expensive */
+	if (likely(cpu_has_vmx_invept)) {
+		/* most modern CPUs will have this */
+		if (unlikely(type == INVEPT_ALL_CONTEXT
+		    && !cpu_has_vmx_ept_invept_all_context)) {
+			    VM_LOG(LVL_INFO, "EPT all context flush not supported\n");
+			    return;
+		    }
+		if (unlikely(type == INVEPT_SINGLE_CONTEXT
+			     && !cpu_has_vmx_ept_invept_single_context)) {
+			    VM_LOG(LVL_INFO, "EPT single context flush not supported\n");
+			    return;
+		    }
+		asm volatile("invept (%0), %1\n\t"
+		     ::"D"(type), "S"(desc)
+		     :"memory", "cc");
+	} else {
+		VM_LOG(LVL_INFO, "INVEPT instruction is not supported by CPU\n");
+	}
+}
+
 int setup_ept(struct vcpu_hw_context *context)
 {
+	struct invept_desc id;
 	physical_addr_t pml4_phys;
 	eptp_t *eptp = (eptp_t *)&context->eptp;
 	virtual_addr_t pml4 = get_free_page_for_pagemap(context, &pml4_phys);
 
+	VM_LOG(LVL_INFO, "%s: PML4 vaddr: 0x%016lx paddr: 0x%016lx\n",
+	       __func__, pml4, pml4_phys);
+
 	if (!pml4) {
 		VM_LOG(LVL_ERR, "%s: Failed to allocate EPT page\n", __func__);
 		return VMM_ENOMEM;
+
 	}
 
-	eptp->bits.mt = 6; /* Write back */
+	/* most of the reserved bits want zeros */
+	memset((void *)pml4, 0, PAGE_SIZE);
+
+	eptp->val = 0;
+	eptp->bits.mt = (vmx_ept_vpid_cap & (0x01UL << 8) ? 0 /* UC */
+		 : (vmx_ept_vpid_cap & (0x1UL << 14)) ? 6 /* WB */
+		 : 6);
+
 	eptp->bits.pgwl = 3; /* 4 page levels */
 	eptp->bits.en_ad = 0;
-	eptp->bits.pml4 = pml4_phys;
+	eptp->bits.pml4 = EPT_PHYS_4KB_PFN(pml4_phys);
+
+	VM_LOG(LVL_DEBUG, "%s: EPTP: 0x%16lx (0x%16lx)\n", __func__, eptp->val, context->eptp);
 
 	context->n_cr3 = pml4;
+	ept_create_pte(context, 0xFFF0ULL, 0, 4096, 0);
+
+	VM_LOG(LVL_DEBUG, "Invalidating EPT\n");
+
+	id.eptp = eptp->val;
+	invalidate_ept(INVEPT_SINGLE_CONTEXT, &id);
 
 	return VMM_OK;
 }

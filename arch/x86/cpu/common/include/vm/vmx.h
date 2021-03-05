@@ -156,11 +156,20 @@ extern u64 vmx_ept_vpid_cap;
 	(vmx_ept_vpid_cap & VMX_EPT_MEMORY_TYPE_WB)
 #define cpu_has_vmx_ept_2MB				\
 	(vmx_ept_vpid_cap & VMX_EPT_SUPERPAGE_2MB)
+#define cpu_has_vmx_invept \
+	(vmx_ept_vpid_cap & VMX_EPT_INVEPT_INSTRUCTION)
 #define cpu_has_vmx_ept_invept_single_context		\
 	(vmx_ept_vpid_cap & VMX_EPT_INVEPT_SINGLE_CONTEXT)
+#define cpu_has_vmx_ept_invept_all_context \
+	(vmx_ept_vpid_cap & VMX_EPT_INVEPT_ALL_CONTEXT)
 
 #define INVEPT_SINGLE_CONTEXT   1
 #define INVEPT_ALL_CONTEXT      2
+
+struct invept_desc {
+        u64 eptp;
+        u64 reserved;
+} __attribute__ ((packed));
 
 #define cpu_has_vmx_vpid_invvpid_individual_addr		\
 	(vmx_ept_vpid_cap & VMX_VPID_INVVPID_INDIVIDUAL_ADDR)
@@ -402,6 +411,9 @@ static inline int __vmxon(u64 addr)
 #define EPT_GLA_FAULT               (1UL<<_EPT_GLA_FAULT)
 
 #define EPT_PAGETABLE_ENTRIES       512
+
+struct vcpu_hw_context;
+struct cpuinfo_x86;
 
 extern int __init intel_init(struct cpuinfo_x86 *cpuinfo);
 extern int intel_setup_vm_control(struct vcpu_hw_context *context);
