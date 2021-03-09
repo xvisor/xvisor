@@ -116,6 +116,8 @@ struct vcpu_hw_context {
 	u64 g_cr4;
 	u64 g_efer;
 	u64 g_cr8;
+	u64 g_rip;
+	u64 vmx_last_exit_qualification;
 
 	unsigned int asid;
 	u64 eptp;

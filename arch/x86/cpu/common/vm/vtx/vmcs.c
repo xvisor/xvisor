@@ -765,7 +765,7 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 	__vmwrite(GUEST_CS_BASE, 0);
 	__vmwrite(GUEST_CS_LIMIT, 0xFFFF);
 	__vmwrite(GUEST_CS_AR_BYTES, 0x93);
-	__vmwrite(GUEST_CS_SELECTOR, 0);
+	__vmwrite(GUEST_CS_SELECTOR, 0x0);
 
 	/* Initial state */
 	__vmwrite(GUEST_RSP, 0x0);
@@ -914,14 +914,6 @@ int vmx_add_host_load_msr(struct vcpu_hw_context *context, u32 msr)
 	__vmwrite(VM_EXIT_MSR_LOAD_COUNT, msr_count);
 
 	return 0;
-}
-
-static unsigned long vmr(unsigned long field)
-{
-	int rc;
-	unsigned long val;
-	val = __vmread_safe(field, &rc);
-	return rc ? 0 : val;
 }
 
 static void __unused vmx_dump_sel(char *name, u32 selector)

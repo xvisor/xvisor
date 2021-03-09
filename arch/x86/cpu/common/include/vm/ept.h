@@ -185,5 +185,8 @@ typedef union {
 } ept_pte_t;
 
 int setup_ept(struct vcpu_hw_context *context);
+int ept_create_pte_map(struct vcpu_hw_context *context,
+		       physical_addr_t gphys, physical_addr_t hphys,
+		       size_t pg_size, u32 pg_prot);
 
 #endif /* __EPT_H */

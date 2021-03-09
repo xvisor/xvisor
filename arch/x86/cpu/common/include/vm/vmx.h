@@ -333,6 +333,14 @@ static inline unsigned long __vmread_safe(unsigned long field, int *error)
 	return ecx;
 }
 
+static inline unsigned long vmr(unsigned long field)
+{
+	int rc;
+	unsigned long val;
+	val = __vmread_safe(field, &rc);
+	return rc ? 0 : val;
+}
+
 static inline int __vm_set_bit(unsigned long field, unsigned int bit)
 {
 	unsigned long value;
