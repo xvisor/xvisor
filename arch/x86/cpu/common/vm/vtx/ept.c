@@ -70,19 +70,19 @@ invalidate_ept (int type, struct invept_desc *desc)
 		/* most modern CPUs will have this */
 		if (unlikely(type == INVEPT_ALL_CONTEXT
 		    && !cpu_has_vmx_ept_invept_all_context)) {
-			    VM_LOG(LVL_INFO, "EPT all context flush not supported\n");
+			    VM_LOG(LVL_DEBUG, "EPT all context flush not supported\n");
 			    return;
 		    }
 		if (unlikely(type == INVEPT_SINGLE_CONTEXT
 			     && !cpu_has_vmx_ept_invept_single_context)) {
-			    VM_LOG(LVL_INFO, "EPT single context flush not supported\n");
+			    VM_LOG(LVL_DEBUG, "EPT single context flush not supported\n");
 			    return;
 		    }
 		asm volatile("invept (%0), %1\n\t"
 		     ::"D"(type), "S"(desc)
 		     :"memory", "cc");
 	} else {
-		VM_LOG(LVL_INFO, "INVEPT instruction is not supported by CPU\n");
+		VM_LOG(LVL_DEBUG, "INVEPT instruction is not supported by CPU\n");
 	}
 }
 
@@ -228,7 +228,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 		pdpte->pe.mt = 6; /* write-back memory type */
 		pdpte->pe.ign_pat = 1; /* ignore PAT type */
 		pdpte->pe.is_page = 1;
-		VM_LOG(LVL_INFO, "New PDPT Entry: 0x%"PRIx64"\n", pdpte->val);
+		VM_LOG(LVL_DEBUG, "New PDPT Entry: 0x%"PRIx64"\n", pdpte->val);
 		rc = VMM_OK;
 		/* new entry. Invalidate EPT */
 		goto _invalidate_ept;
@@ -248,7 +248,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 			pdpte->te.pd_base = EPT_PHYS_4KB_PFN(phys);
 			pdpte->val &= EPT_PROT_MASK;
 			pdpte->val |= pg_prot;
-			VM_LOG(LVL_INFO, "New PD Page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n", virt, phys);
+			VM_LOG(LVL_DEBUG, "New PD Page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n", virt, phys);
 		} else { /* page is already allocated, a mapping in locality exists */
 			if (vmm_host_pa2va(e_phys, &virt) != VMM_OK) {
 				VM_LOG(LVL_ERR, "Couldn't map PDE physical 0x%"PRIx64" to virtual\n",
@@ -267,7 +267,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 	decode_ept_entry(EPT_LEVEL_PDE, (void *)pde, &e_phys, &e_pg_prot);
 
 	if (pde->pe.is_page) {
-		VM_LOG(LVL_INFO, "PDE is a 2MB Page!\n");
+		VM_LOG(LVL_DEBUG, "PDE is a 2MB Page!\n");
 		/* this is marked as 1GB page and new mapping wants otherwise
 		 * then its a problem. Caller didn't free this mapping prior
 		 * to calling this function */
@@ -318,7 +318,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 	} else {
 		/* Ok. So this is PDE. Lets find PTE now. */
 		if (!e_pg_prot) { /* page for PTE is not currently set */
-			VM_LOG(LVL_INFO, "Page protection bits not set in PTE page. Creating new one.\n");
+			VM_LOG(LVL_DEBUG, "Page protection bits not set in PTE page. Creating new one.\n");
 			virt = get_free_page_for_pagemap(context, &phys);
 			/* allocate a new PTE page */
 			if (!virt) {
@@ -395,7 +395,7 @@ int setup_ept(struct vcpu_hw_context *context)
 	eptp_t *eptp = (eptp_t *)&context->eptp;
 	virtual_addr_t pml4 = get_free_page_for_pagemap(context, &pml4_phys);
 
-	VM_LOG(LVL_INFO, "%s: PML4 vaddr: 0x%016lx paddr: 0x%016lx\n",
+	VM_LOG(LVL_DEBUG, "%s: PML4 vaddr: 0x%016lx paddr: 0x%016lx\n",
 	       __func__, pml4, pml4_phys);
 
 	if (!pml4) {

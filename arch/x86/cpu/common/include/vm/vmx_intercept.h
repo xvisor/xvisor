@@ -39,6 +39,20 @@ typedef union _er {
 	unsigned long r;
 } exit_reason_t;
 
+typedef union vmx_crx_move_eq {
+	u64 val;
+	struct {
+		u32 cr_num:4;
+		u32 type:2;
+		u32 operand_type:1;
+		u32 res:1;
+		u32 reg:4;
+		u32 res1:4;
+		u32 lms_source:16;
+		u32 res2:32;
+	} bits;
+} vmx_crx_move_eq_t;
+
 typedef union vmx_io_exit_qualification {
 	u64 val;
 	struct {

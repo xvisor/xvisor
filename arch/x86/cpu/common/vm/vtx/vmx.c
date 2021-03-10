@@ -223,8 +223,6 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	int rc = 0;
 	u64 ins_err = 0;
 
-	VM_LOG(LVL_INFO, "Starting to %s guest...\n", (resume ? "resume" : "launch"));
-
 	__asm__ __volatile__("pushfq\n\t" /* Save flags */
 			     "movq $vmx_return, %%rax\n\t"
 			     "vmwrite %%rax, %%rbx\n\t"
