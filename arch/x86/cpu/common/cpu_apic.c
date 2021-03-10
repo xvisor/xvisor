@@ -445,6 +445,7 @@ struct lapic_timer {
 	struct vmm_clocksource clksrc;
 } lapic_sys_timer = { 0 };
 
+#ifdef CONFIG_USE_DEADLINE_TSC
 int is_tsc_deadline_supported(void)
 {
 	u32 a, b, c, d;
@@ -454,16 +455,19 @@ int is_tsc_deadline_supported(void)
 
 	return (c & CPUID_FEAT_ECS_TSCDL);
 }
+#endif
 
 static vmm_irq_return_t
 lapic_clockchip_irq_handler(int irq_no, void *dev)
 {
 	struct lapic_timer *timer = (struct lapic_timer *)dev;
 
+#ifndef CONFIG_USE_DEADLINE_TSC
 	/* when using incremental count mode, just set the count
 	 * to zero and set the mask */
 	if (!this_cpu(lapic).deadline_supported)
 		lapic_stop_timer();
+#endif
 
 	if (unlikely(!timer->clkchip.event_handler))
 		return VMM_IRQ_NONE;
@@ -523,6 +527,7 @@ lapic_disarm_timer(struct lapic_timer *timer)
 	return VMM_OK;
 }
 
+#ifdef CONFIG_USE_DEADLINE_TSC
 static int
 lapic_set_deadline(unsigned long next)
 {
@@ -543,6 +548,7 @@ _tryagain:
 
 	return VMM_OK;
 }
+#endif
 
 static int
 lapic_set_icr(unsigned long next)
@@ -567,8 +573,10 @@ lapic_clockchip_set_next_event(unsigned long next,
 		timer->armed = 1;
 	}
 
+#ifdef CONFIG_USE_DEADLINE_TSC
 	if (this_cpu(lapic).deadline_supported)
 		return lapic_set_deadline(next);
+#endif
 
 	return lapic_set_icr(next);
 }
@@ -623,12 +631,14 @@ int __cpuinit lapic_clockchip_init(void)
 
 	lvt = lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase));
 
+#ifdef CONFIG_USE_DEADLINE_TSC
 	/* AMD doesn't support deadline mode */
 	if (this_cpu(lapic).deadline_supported) {
 		/* Set the LAPIC timer in Deadline mode */
 		lvt &= ~(0x3<<17);
 		lvt |= APIC_LVT_TIMER_TSCDL;
 	}
+#endif
 
 	/* set the LAPIC timer interrupt vector */
 	lvt |= (LAPIC_TIMER_IRQ_VECTOR & 0xFF);
@@ -758,6 +768,7 @@ lapic_stop_timer(void)
 	/* Disable the local APIC timer */
 	lvt = lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase));
 
+#ifdef CONFIG_USE_DEADLINE_TSC
 	if (this_cpu(lapic).deadline_supported) {
 		/*
 		* If operating in Deadline mode MSR needs to be zeroed to
@@ -766,6 +777,7 @@ lapic_stop_timer(void)
 		if ((lvt & (0x3 << 17)) == APIC_LVT_TIMER_TSCDL)
 			cpu_write_msr(MSR_IA32_TSC_DEADLINE, 0);
 	}
+#endif
 
 	lvt |= APIC_LVT_MASKED;
 	lapic_write(LAPIC_LVTTR(this_cpu(lapic).vbase), lvt);
@@ -816,12 +828,15 @@ lapic_timer_init(void)
 
 	lapic = &this_cpu(lapic);
 
-	if (!is_tsc_deadline_supported()) {
-		vmm_printf("%s: TSC Deadline is not supported by LAPIC. Using internal counter.\n", __func__);
-		lapic->deadline_supported = 0;
-	} else {
-		vmm_printf("%s: Using TSC deadline mode\n", __func__);
+#ifdef CONFIG_USE_DEADLINE_TSC
+	if (is_tsc_deadline_supported()) {
+		vmm_printf("%s: Using TSC deadline mode.\n", __func__);
 		lapic->deadline_supported = 1;
+	} else
+#endif
+	{
+		vmm_printf("%s: Using LAPIC's internal counter as comparator.\n", __func__);
+		lapic->deadline_supported = 0;
 	}
 
 	/* save the calibrated CPU frequency */

@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.3.0
-# Fri Feb 26 15:24:54 2021
+# Wed Mar 10 15:36:13 2021
 #
 # CONFIG_ARCH_ARM is not set
 # CONFIG_ARCH_RISCV is not set
@@ -40,9 +40,11 @@ CONFIG_ACPI=y
 #
 CONFIG_X86_L1_SHIFT=6
 CONFIG_LOCAL_APIC=y
+# CONFIG_USE_DEADLINE_TSC is not set
 # CONFIG_8259A is not set
 CONFIG_VEXT_AMD_SVM=y
 CONFIG_VEXT_INTEL_VTX=y
+# CONFIG_ENABLE_VTX_GUEST_CONFIG_AUDIT is not set
 
 #
 # Board Configuration
@@ -53,7 +55,7 @@ CONFIG_X86_64_GENERIC=y
 #
 # System Timers
 #
-CONFIG_HPET=y
+# CONFIG_HPET is not set
 CONFIG_LAPIC_TIMER=y
 
 #
@@ -280,8 +282,6 @@ CONFIG_CRYPTO_HASHES=y
 CONFIG_CRYPTO_HASH_MD5=y
 CONFIG_CRYPTO_HASH_SHA256=y
 # CONFIG_LIBAUTH is not set
-# CONFIG_LIBAUTH_USE_MD5_PASSWD is not set
-# CONFIG_LIBAUTH_USE_SHA256_PASSWD is not set
 # CONFIG_GENALLOC is not set
 # CONFIG_IMAGE_LOADER is not set
 # CONFIG_SCSI is not set
