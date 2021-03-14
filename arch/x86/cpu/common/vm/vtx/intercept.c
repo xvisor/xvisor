@@ -138,6 +138,69 @@ int guest_in_real_mode(struct vcpu_hw_context *context)
 	return 1;
 }
 
+void vmx_handle_cpuid(struct vcpu_hw_context *context)
+{
+	struct x86_vcpu_priv *priv = x86_vcpu_priv(context->assoc_vcpu);
+	struct cpuid_response *func;
+
+	switch (context->g_regs[GUEST_REGS_RAX]) {
+	case CPUID_BASE_VENDORSTRING:
+		func = &priv->standard_funcs[CPUID_BASE_VENDORSTRING];
+		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;
+		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
+		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
+		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		break;
+
+	case CPUID_BASE_FEATURES:
+		func = &priv->standard_funcs[CPUID_BASE_FEATURES];
+		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;
+		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
+		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
+		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		break;
+
+	case CPUID_EXTENDED_BASE:
+	case CPUID_EXTENDED_BRANDSTRING:
+	case CPUID_EXTENDED_BRANDSTRINGMORE:
+	case CPUID_EXTENDED_BRANDSTRINGEND:
+	case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
+		func = &priv->extended_funcs[context->g_regs[GUEST_REGS_RAX]
+					     - CPUID_EXTENDED_BASE];
+		VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx64" EBX: 0x%"PRIx64" ECX: 0x%"PRIx64" EDX: 0x%"PRIx64"\n",
+		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
+		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;
+		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
+		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
+		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		break;
+
+	case CPUID_BASE_FEAT_FLAGS:
+	case CPUID_EXTENDED_FEATURES:
+	case CPUID_EXTENDED_CAPABILITIES:
+	case CPUID_BASE_PWR_MNG:
+		context->g_regs[GUEST_REGS_RAX] = 0;
+		context->g_regs[GUEST_REGS_RBX] = 0;
+		context->g_regs[GUEST_REGS_RCX] = 0;
+		context->g_regs[GUEST_REGS_RDX] = 0;
+		break;
+
+	default:
+		VM_LOG(LVL_ERR, "GCPUID/R: Func: 0x%"PRIx64"\n",
+		       context->g_regs[GUEST_REGS_RAX]);
+		goto _fail;
+	}
+
+	__vmwrite(GUEST_RIP, VMX_GUEST_NEXT_RIP(context));
+
+	return;
+
+ _fail:
+	if (context->vcpu_emergency_shutdown){
+		context->vcpu_emergency_shutdown(context);
+	}
+}
+
 static inline
 int vmx_handle_io_instruction_exit(struct vcpu_hw_context *context)
 {
@@ -149,7 +212,7 @@ int vmx_handle_io_instruction_exit(struct vcpu_hw_context *context)
 
 	if (ioe.bits.direction == 0) {
 		if (ioe.bits.port == 0x80) {
-			VM_LOG(LVL_DEBUG, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
+			VM_LOG(LVL_INFO, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
 			       VMX_GUEST_RIP(context), context->g_regs[GUEST_REGS_RAX]);
 		} else {
 			wval = (u32)context->g_regs[GUEST_REGS_RAX];
@@ -249,6 +312,8 @@ int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 
 }
 
+u64 ext_intrs = 0;
+
 int vmx_handle_vmexit(struct vcpu_hw_context *context, u32 exit_reason)
 {
 	switch (exit_reason) {
@@ -272,7 +337,21 @@ int vmx_handle_vmexit(struct vcpu_hw_context *context, u32 exit_reason)
 	case EXIT_REASON_CR_ACCESS:
 		return vmx_handle_crx_exit(context);
 
+	case EXIT_REASON_CPUID:
+		vmm_printf("Guest CPUID Request: 0x%"PRIx64"\n", context->g_regs[GUEST_REGS_RAX]);
+		vmx_handle_cpuid(context);
+		return VMM_EFAIL;
+
+	case EXIT_REASON_INVD:
+		__vmwrite(GUEST_RIP, VMX_GUEST_NEXT_RIP(context));
+		return VMM_OK;
+
+	case EXIT_REASON_EXTERNAL_INTERRUPT:
+		ext_intrs++;
+		return VMM_OK;
+
 	default:
+		VM_LOG(LVL_INFO, "Unhandled VM Exit reason: %d\n", exit_reason);
 		goto guest_bad_fault;
 	}
 
@@ -305,15 +384,13 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 			break;
 		}
 	} else {
-		VM_LOG(LVL_DEBUG, "VM Exit reason: %d\n", _exit_reason.bits.reason);
-
 		VMX_GUEST_SAVE_EQ(context);
 		VMX_GUEST_SAVE_CR0(context);
 		VMX_GUEST_SAVE_RIP(context);
 		VM_LOG(LVL_DEBUG, "Guest RIP: 0x%"PRIx64"\n", VMX_GUEST_RIP(context));
 
 		if (vmx_handle_vmexit(context, _exit_reason.bits.reason) != VMM_OK) {
-			VM_LOG(LVL_DEBUG, "Error handling VMExit (Reason: %d)\n", _exit_reason.bits.reason);
+			VM_LOG(LVL_ERR, "Error handling VMExit (Reason: %d)\n", _exit_reason.bits.reason);
 			goto unhandled_vm_exit;
 		}
 
@@ -321,6 +398,6 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 	}
 
 unhandled_vm_exit:
-	VM_LOG(LVL_DEBUG, "Unhandled vmexit\n");
+	VM_LOG(LVL_INFO, "Unhandled vmexit\n");
 	context->vcpu_emergency_shutdown(context);
 }
