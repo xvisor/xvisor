@@ -30,6 +30,8 @@ mboot:
         .int _code_end
         .int 0
 	.int _start_32
+	.int 0
+	.int 1024, 768, 32 /* width, height, depth */
 
 .code32 /* 32-bit code */
 .section .bootstrap.text, "ax"

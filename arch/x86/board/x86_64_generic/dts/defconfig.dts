@@ -41,6 +41,9 @@
 		STDOUT: vga {
 		};
 
+		STDOUTFB: fb {
+		};
+
 		SERIAL0: uart0 {
 			compatible = "ns8250";
 			reg = <0x3f8>;
