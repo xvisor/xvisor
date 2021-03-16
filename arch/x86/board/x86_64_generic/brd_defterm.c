@@ -111,7 +111,7 @@ int __init arch_defterm_init(void)
 		goto out;
 	}
 
-	if (!strcmp(cmdline_console_string, "serial")) {
+	if (strcmp(cmdline_console_string, "serial") >= 0) {
 		vmm_printf("%s: Serial as console\n", __func__);
 		ops = get_serial_defterm_ops((char *)&cmdline_console_string[0]);
 		goto out;
