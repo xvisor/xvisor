@@ -364,7 +364,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "popq %%rbp\n\t"
 			     "popfq\n\t"
 			     "sub $2, %0\n\t" /* -2 invalid failure */
-			     "7:nop\n\t"
+			     "7:sti\n\t"
 			     :"=q"(rc)
 			     :[resume]"m"(resume), "d"((unsigned long)HOST_RSP),
 			      [context]"c"(context), "b"((unsigned long)HOST_RIP),
