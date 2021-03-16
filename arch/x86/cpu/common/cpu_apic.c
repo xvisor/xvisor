@@ -651,9 +651,9 @@ int __cpuinit lapic_clockchip_init(void)
 				   NSEC_PER_SEC,
 				   (lapic_sys_timer.freq_khz*1000),
 				   5);
-	lapic_sys_timer.clkchip.min_delta_ns = 100000;
+	lapic_sys_timer.clkchip.min_delta_ns = 10000000;
 	lapic_sys_timer.clkchip.max_delta_ns =
-		vmm_clockchip_delta2ns(0x7FFFFFFFFFFFFFFULL,
+		vmm_clockchip_delta2ns(0x7FFFFFFFUL,
 				       &lapic_sys_timer.clkchip);
 
 	vmm_printf("%s: LAPIC Freq: %ukhz Max Delta NS: %lu\n",
