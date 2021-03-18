@@ -903,8 +903,8 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	struct cpuid_response *func;
 
 	switch (context->vmcb->rax) {
-	case CPUID_BASE_VENDORSTRING:
-		func = &priv->standard_funcs[CPUID_BASE_VENDORSTRING];
+	case CPUID_BASE_LFUNCSTD:
+		func = &priv->standard_funcs[CPUID_BASE_LFUNCSTD];
 		context->vmcb->rax = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;

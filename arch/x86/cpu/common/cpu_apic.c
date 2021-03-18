@@ -89,7 +89,7 @@ static u32 is_lapic_present(void)
 	cpuid(CPUID_BASE_FEATURES,
 	      &a, &b, &c, &d);
 
-	return (d & CPUID_FEAT_EDX_APIC);
+	return (d & CPUID_BASE_FEAT_BIT(FEATURES, EDX, APIC));
 }
 
 static inline u32 lapic_read(virtual_addr_t base)

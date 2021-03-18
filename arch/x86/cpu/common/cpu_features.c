@@ -207,7 +207,7 @@ void indentify_cpu(void)
 {
 	u32 tmp;
 
-	cpuid(CPUID_BASE_VENDORSTRING, (u32 *)&tmp,
+	cpuid(CPUID_BASE_LFUNCSTD, (u32 *)&tmp,
 		(u32 *)&cpu_info.vendor_string[0],
 		(u32 *)&cpu_info.vendor_string[8],
 		(u32 *)&cpu_info.vendor_string[4]);
