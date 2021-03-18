@@ -20,6 +20,13 @@ extern int vm_default_log_lvl;
 #define VM_LOG(lvl, fmt, args...)					\
 	do {								\
 		if (VM_LOG_##lvl <= vm_default_log_lvl) {		\
+			vmm_printf(fmt, ##args);			\
+		}							\
+	}while(0);
+
+#define VM_LOG_FD(lvl, fmt, args...)					\
+	do {								\
+		if (VM_LOG_##lvl <= vm_default_log_lvl) {		\
 			vmm_printf("(%s:%d) " fmt, __func__,		\
 				   __LINE__, ##args);			\
 		}							\
