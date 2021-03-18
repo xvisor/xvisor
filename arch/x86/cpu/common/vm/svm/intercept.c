@@ -936,7 +936,6 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_BASE_FEAT_FLAGS:
 	case CPUID_EXTENDED_FEATURES:
 	case AMD_CPUID_EXTENDED_ADDR_NR_PROC:
-	case CPUID_EXTENDED_CAPABILITIES:
 	case CPUID_BASE_PWR_MNG:
 	case AMD_CPUID_EXTENDED_SVM_IDENTIFIER:
 		context->vmcb->rax = 0;

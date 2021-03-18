@@ -150,6 +150,8 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		VM_LOG(LVL_DEBUG, "RAX: 0x%"PRIx32" RBX: 0x%"PRIx32" RCX: 0x%"PRIx32" RDX: 0x%"PRIx32"\n",
+		       func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
 		break;
 
 	case CPUID_BASE_FEATURES:
@@ -158,6 +160,9 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
+		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx32" RAX: 0x%"PRIx32" RBX: 0x%"PRIx32" RCX: 0x%"PRIx32" RDX: 0x%"PRIx32"\n",
+		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
+
 		break;
 
 	case CPUID_EXTENDED_LFUNCEXTD:
@@ -165,9 +170,10 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_EXTENDED_BRANDSTRINGMORE:
 	case CPUID_EXTENDED_BRANDSTRINGEND:
 	case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
+	case CPUID_EXTENDED_ADDR_BITS:
 		func = &priv->extended_funcs[context->g_regs[GUEST_REGS_RAX]
 					     - CPUID_EXTENDED_LFUNCEXTD];
-		VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx64" EBX: 0x%"PRIx64" ECX: 0x%"PRIx64" EDX: 0x%"PRIx64"\n",
+		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx64" EBX: 0x%"PRIx64" ECX: 0x%"PRIx64" EDX: 0x%"PRIx64"\n",
 		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
 		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
@@ -177,8 +183,17 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 
 	case CPUID_BASE_FEAT_FLAGS:
 	case CPUID_EXTENDED_FEATURES:
-	case CPUID_EXTENDED_CAPABILITIES:
 	case CPUID_BASE_PWR_MNG:
+		context->g_regs[GUEST_REGS_RAX] = 0;
+		context->g_regs[GUEST_REGS_RBX] = 0;
+		context->g_regs[GUEST_REGS_RCX] = 0;
+		context->g_regs[GUEST_REGS_RDX] = 0;
+		break;
+
+	/* Reserved for VM */
+	case CPUID_VM_CPUID_BASE ... CPUID_VM_CPUID_MAX:
+		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx64" will read zeros\n",
+		       context->g_regs[GUEST_REGS_RAX]);
 		context->g_regs[GUEST_REGS_RAX] = 0;
 		context->g_regs[GUEST_REGS_RBX] = 0;
 		context->g_regs[GUEST_REGS_RCX] = 0;
@@ -212,24 +227,25 @@ int vmx_handle_io_instruction_exit(struct vcpu_hw_context *context)
 
 	if (ioe.bits.direction == 0) {
 		if (ioe.bits.port == 0x80) {
-			VM_LOG(LVL_INFO, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
+			VM_LOG(LVL_DEBUG, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
 			       VMX_GUEST_RIP(context), context->g_regs[GUEST_REGS_RAX]);
 		} else {
+			VM_LOG(LVL_DEBUG, "Write on IO Port: 0x%04x\n", ioe.bits.port);
 			wval = (u32)context->g_regs[GUEST_REGS_RAX];
 
 			if (vmm_devemu_emulate_iowrite(context->assoc_vcpu, ioe.bits.port,
 						       &wval, io_sz, VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
-				vmm_printf("Failed to emulate OUT instruction in"
-					   " guest.\n");
+				VM_LOG(LVL_ERR, "Failed to emulate OUT instruction in"
+				       " guest.\n");
 				goto guest_bad_fault;
 			}
 		}
 	} else  {
-		VM_LOG(LVL_DEBUG, "Read on IO Port: %d\n", ioe.bits.port);
+		VM_LOG(LVL_DEBUG, "Read on IO Port: 0x%04x\n", ioe.bits.port);
 		if (vmm_devemu_emulate_ioread(context->assoc_vcpu, ioe.bits.port, &wval, io_sz,
 					      VMM_DEVEMU_NATIVE_ENDIAN) != VMM_OK) {
-			vmm_printf("Failed to emulate IO instruction in "
-				   "guest.\n");
+			VM_LOG(LVL_ERR, "Failed to emulate IO instruction in "
+			       "guest.\n");
 			goto guest_bad_fault;
 		}
 
@@ -338,9 +354,9 @@ int vmx_handle_vmexit(struct vcpu_hw_context *context, u32 exit_reason)
 		return vmx_handle_crx_exit(context);
 
 	case EXIT_REASON_CPUID:
-		vmm_printf("Guest CPUID Request: 0x%"PRIx64"\n", context->g_regs[GUEST_REGS_RAX]);
+		VM_LOG(LVL_DEBUG, "Guest CPUID Request: 0x%"PRIx64"\n", context->g_regs[GUEST_REGS_RAX]);
 		vmx_handle_cpuid(context);
-		return VMM_EFAIL;
+		return VMM_OK;
 
 	case EXIT_REASON_INVD:
 		__vmwrite(GUEST_RIP, VMX_GUEST_NEXT_RIP(context));
@@ -371,16 +387,16 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 	if (unlikely(_exit_reason.bits.vm_entry_failure)) {
 		switch(_exit_reason.bits.reason) {
 		case 33:
-			vmm_printf("VM Entry failed due to invalid guest state.\n");
+			VM_LOG(LVL_ERR, "VM Entry failed due to invalid guest state.\n");
 			break;
 		case 34:
-			vmm_printf("VM Entry failed due to MSR loading.\n");
+			VM_LOG(LVL_ERR, "VM Entry failed due to MSR loading.\n");
 			break;
 		case 41:
-			vmm_printf("VM Entry failed due to machine-check event.\n");
+			VM_LOG(LVL_ERR, "VM Entry failed due to machine-check event.\n");
 			break;
 		default:
-			vmm_printf("VM Entry failed due to unknown reason %d.\n", _exit_reason.bits.reason);
+			VM_LOG(LVL_ERR, "VM Entry failed due to unknown reason %d.\n", _exit_reason.bits.reason);
 			break;
 		}
 	} else {

@@ -59,7 +59,9 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 			      &func_response->resp_ecx,
 			      &func_response->resp_edx);
 
-			func_response->resp_eax = CPUID_BASE_FUNC_LIMIT;
+			/* TODO: CPUID 7 as more features. Limiting to 4 right now. */
+			func_response->resp_eax = CPUID_BASE_CACHE_CONF;
+			VM_LOG(LVL_INFO, "Guest base CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
 			break;
 
 		case CPUID_BASE_FEATURES:
@@ -93,6 +95,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 			break;
 
 		default:
+			VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
 			func_response->resp_eax = 0;
 			func_response->resp_ebx = 0;
 			func_response->resp_ecx = 0;
@@ -101,74 +104,52 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	for (funcs = CPUID_EXTENDED_LFUNCEXTD;
-	     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
-		func_response =
-			(struct cpuid_response *)
-			&priv->extended_funcs[funcs - CPUID_EXTENDED_LFUNCEXTD];
+	for (funcs = CPUID_EXTENDED_LFUNCEXTD; funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
+		func_response = (struct cpuid_response *)&priv->extended_funcs[funcs - CPUID_EXTENDED_LFUNCEXTD];
 
-		switch (funcs) {
+		switch(funcs) {
 		case CPUID_EXTENDED_LFUNCEXTD:
-			cpuid(CPUID_EXTENDED_FEATURES,
-			      &func_response->resp_eax,
-			      &func_response->resp_ebx,
-			      &func_response->resp_ecx,
+			cpuid(CPUID_EXTENDED_FEATURES, &func_response->resp_eax,
+			      &func_response->resp_ebx, &func_response->resp_ecx,
 			      &func_response->resp_edx);
 
-			func_response->resp_eax = INTEL_CPUID_EXTENDED_ADDR_BITS;
+			func_response->resp_eax = CPUID_EXTENDED_ADDR_BITS;
+			VM_LOG(LVL_INFO, "Guest extended CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
 			break;
 
 		case CPUID_EXTENDED_FEATURES: /* replica of base features */
 			cpuid(CPUID_EXTENDED_FEATURES, &func_response->resp_eax,
 			      &b, &c, &d);
 
-			/* NR cpus and apic id */
-			clear_bits(16, 31, (volatile unsigned long *)&b);
-			b |= ((vcpu->subid << 24)
-			      | (vcpu->guest->vcpu_count << 16));
 			func_response->resp_ebx = b;
-
 			func_response->resp_ecx = c;
+			clear_bit(CPUID_BASE_FEAT_BIT(FEATURES, EDX, NX), (volatile unsigned long *)&d);
 			func_response->resp_edx = d;
 			break;
-		}
-	}
 
-	switch(cpu_info.vendor) {
-	case x86_VENDOR_AMD:
-		for (funcs = CPUID_EXTENDED_LFUNCEXTD;
-		     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
-			switch(funcs) {
-			case AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
+		case AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
+			if (cpu_info.vendor == x86_VENDOR_AMD) {
 				cpuid(AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER,
 				      &func_response->resp_eax,
 				      &func_response->resp_ebx,
 				      &func_response->resp_ecx,
 				      &func_response->resp_edx);
-				break;
-
-			case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
-				cpuid(CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER,
-				      &func_response->resp_eax,
-				      &func_response->resp_ebx,
-				      &func_response->resp_ecx,
-				      &func_response->resp_edx);
-				break;
+			} else {
+				func_response->resp_eax = 0;
+				func_response->resp_ebx = 0;
+				func_response->resp_ecx = 0;
+				func_response->resp_edx = 0;
 			}
-		}
-		break;
+			break;
 
-	case x86_VENDOR_INTEL:
-		for (funcs = CPUID_BASE_LFUNCSTD;
-		     funcs < CPUID_BASE_FUNC_LIMIT; funcs++) {
-			func_response =
-				(struct cpuid_response *)
-				&priv->standard_funcs[funcs];
-
-			switch (funcs) {
-			}
+		default:
+			VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
+			cpuid(funcs, &func_response->resp_eax,
+			      &func_response->resp_ebx,
+			      &func_response->resp_ecx,
+			      &func_response->resp_edx);
+			break;
 		}
-		break;
 	}
 }
 
