@@ -162,7 +162,7 @@ struct tss_64 {
 	u32 resvd_3;
 	u32 resvd_4;
 	u32 map_base;
-} __packed;
+};
 
 union tss_desc_base_limit {
 	u32 val;

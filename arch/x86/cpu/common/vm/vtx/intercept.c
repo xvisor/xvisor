@@ -193,7 +193,7 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
-		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx32" RAX: 0x%"PRIx32" RBX: 0x%"PRIx32" RCX: 0x%"PRIx32" RDX: 0x%"PRIx32"\n",
+		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx64" RAX: 0x%"PRIx32" RBX: 0x%"PRIx32" RCX: 0x%"PRIx32" RDX: 0x%"PRIx32"\n",
 		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
 
 		break;
@@ -206,7 +206,7 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 	case CPUID_EXTENDED_ADDR_BITS:
 		func = &priv->extended_funcs[context->g_regs[GUEST_REGS_RAX]
 					     - CPUID_EXTENDED_LFUNCEXTD];
-		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx64" EBX: 0x%"PRIx64" ECX: 0x%"PRIx64" EDX: 0x%"PRIx64"\n",
+		VM_LOG(LVL_DEBUG, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx32" EBX: 0x%"PRIx32" ECX: 0x%"PRIx32" EDX: 0x%"PRIx32"\n",
 		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
 		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;

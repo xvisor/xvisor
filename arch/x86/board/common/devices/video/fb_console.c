@@ -166,7 +166,6 @@ extern struct multiboot_info boot_info;
 int fb_defterm_init(void)
 {
 	vmm_printf("%s: init\n", __func__);
-	svga_mode_info_t *svga_mode_info;
 
 	fb_fifo = fifo_alloc(sizeof(u8), 128);
 	if (!fb_fifo) {
@@ -178,12 +177,6 @@ int fb_defterm_init(void)
 	fb_key_flags = 0;
 	fb_key_handler_registered = FALSE;
 
-	svga_mode_info = svga_mode_get_info(SVGA_DEFAULT_MODE);
-	//vmm_printf("%s: svga mode: 0x%lx\n", __func__, (unsigned long)svga_mode_info);
-	//bytesPerLine = svga_mode_info->pitch;
-	//width = svga_mode_info->screen_width;
-	//height = svga_mode_info->screen_height;
-	//depth = svga_mode_info->bpp / 8;
 	bytesPerLine = boot_info.framebuffer_pitch;
 	width = boot_info.framebuffer_width;
 	height = boot_info.framebuffer_height;
@@ -191,7 +184,6 @@ int fb_defterm_init(void)
 	vmm_printf("%s: BPL: %d width: %d height: %d depth: %d\n", __func__,
 		   bytesPerLine, width, height, depth);
 
-	//video_base = (void *)svga_map_fb(svga_mode_info->physbase, svga_mode_info->pitch * svga_mode_info->screen_height);
 	video_base = (void*)svga_map_fb(boot_info.framebuffer_addr, bytesPerLine*height);
 	vmm_printf("%s: Video base: %p\n", __func__, video_base);
 	fb_console_set_font(&ter_i16n_raw, &ter_i16b_raw);

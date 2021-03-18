@@ -252,7 +252,7 @@ static int __init acpi_populate_lapic_devtree(struct acpi_madt_hdr *madt_hdr,
 	return ret;
 }
 
-static int __init process_acpi_sdt_table(char *tab_sign, u32 *tab_data)
+static int __init process_acpi_sdt_table(char *tab_sign, void *tab_data)
 {
 	struct vmm_devtree_node *node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 							VMM_DEVTREE_MOTHERBOARD_NODE_NAME);
@@ -364,7 +364,7 @@ int __init acpi_init(void)
 		memcpy(sign, hdr->signature, SDT_SIGN_LEN);
 		sign[SDT_SIGN_LEN] = 0;
 
-		if (process_acpi_sdt_table((char *)sign, (u32 *)hdr) != VMM_OK) {
+		if (process_acpi_sdt_table((char *)sign, (void *)hdr) != VMM_OK) {
 			vmm_host_iounmap((virtual_addr_t)hdr);
 			goto sdt_fail;
 		}

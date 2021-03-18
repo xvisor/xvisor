@@ -182,7 +182,7 @@ __fill_IMP_table:
         addl     $4096, -4(%ebp)
         addl     $4096, -8(%ebp)
         subl     $1, -12(%ebp)
-        cmp      $0, -12(%ebp)
+        cmpl     $0, -12(%ebp)
         ja      __fill_IMP_table
         leave
         ret
