@@ -46,36 +46,6 @@ u64 vmx_cr0_fixed1;
 u64 vmx_cr4_fixed0;
 u64 vmx_cr4_fixed1;
 
-/* IMS: Table 30-1 Section 30.4 */
-static char *ins_err_str[] = {
-	"Index zero invalid\n",
-	"VMCALL executed in VMX root operation",
-	"VMCLEAR with invalid physical address",
-	"VMCLEAR with VMXON pointer",
-	"VMLAUNCH with non-clear VMCS",
-	"VMRESUME with non-launched VMCS",
-	"VMRESUME after VMXOFF (VMXOFF and VMXON between VMLAUNCH and VMRESUME)",
-	"VM entry with invalid control field(s)",
-	"VM entry with invalid host-state field(s)",
-	"VMPTRLD with invalid physical address",
-	"VMPTRLD with VMXON pointer",
-	"VMPTRLD with incorrect VMCS revision identifier",
-	"VMREAD/VMWRITE from/to unsupported VMCS component",
-	"VMWRITE to read-only VMCS component",
-	"VMXON executed in VMX root operation",
-	"VM entry with invalid executive-VMCS pointer",
-	"VM entry with non-launched executive VMCS",
-	"VM entry with executive-VMCS pointer not VMXON pointer",
-	"VMCALL with non-clear VMCS",
-	"VMCALL with invalid VM-exit control fields",
-	"VMCALL with incorrect MSEG revision identifier",
-	"VMXOFF under dual-monitor treatment of SMIs and SMM",
-	"VMCALL with invalid SMM-monitor features",
-	"VM entry with invalid VM-execution control fields in executive VMCS",
-	"VM entry with events blocked by MOV SS",
-	"Invalid operand to INVEPT/INVVPID"
-};
-
 DEFINE_PER_CPU(physical_addr_t, vmxon_region_pa);
 DEFINE_PER_CPU(virtual_addr_t, vmxon_region);
 
@@ -221,7 +191,8 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 {
 	int rc = 0;
-	u64 ins_err = 0;
+
+	context->instruction_error = 0;
 
 	__asm__ __volatile__("pushfq\n\t" /* Save flags */
 			     "movq $vmx_return, %%rax\n\t"
@@ -389,18 +360,11 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	/* TR is not reloaded back the cpu after VM exit. */
 	reload_host_tss();
 
-	if (rc == -1) {
-		if ((rc = __vmread(VM_INSTRUCTION_ERROR, &ins_err)) == VMM_OK) {
-			vmm_printf("Instruction Error: (%s:%ld)\n", ins_err_str[ins_err], ins_err);
-		} else {
-			vmm_printf("Failed to read instruction error (%d)\n", rc);
-			BUG();
-		}
-	} else if (rc == -2) {
-		/* Invalid error: which probably means there is not current VMCS: Problem! */
-		if (context->vcpu_emergency_shutdown)
-			context->vcpu_emergency_shutdown(context);
-	}
+	if (rc < 0) {
+		vmm_printf("VM Entry failed: Error: %d\n", rc);
+		context->instruction_error = rc;
+	} else
+		context->instruction_error = 0;
 
 	arch_guest_handle_vm_exit(context);
 
