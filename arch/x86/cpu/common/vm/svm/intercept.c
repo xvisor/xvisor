@@ -919,14 +919,14 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
 		break;
 
-	case CPUID_EXTENDED_BASE:
+	case CPUID_EXTENDED_LFUNCEXTD:
 	case CPUID_EXTENDED_BRANDSTRING:
 	case CPUID_EXTENDED_BRANDSTRINGMORE:
 	case CPUID_EXTENDED_BRANDSTRINGEND:
 	case AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
 	case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
 		func = &priv->extended_funcs[context->vmcb->rax
-					     - CPUID_EXTENDED_BASE];
+					     - CPUID_EXTENDED_LFUNCEXTD];
 		context->vmcb->rax = func->resp_eax;
 		context->g_regs[GUEST_REGS_RBX] = func->resp_ebx;
 		context->g_regs[GUEST_REGS_RCX] = func->resp_ecx;

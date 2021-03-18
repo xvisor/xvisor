@@ -160,13 +160,13 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 		context->g_regs[GUEST_REGS_RDX] = func->resp_edx;
 		break;
 
-	case CPUID_EXTENDED_BASE:
+	case CPUID_EXTENDED_LFUNCEXTD:
 	case CPUID_EXTENDED_BRANDSTRING:
 	case CPUID_EXTENDED_BRANDSTRINGMORE:
 	case CPUID_EXTENDED_BRANDSTRINGEND:
 	case CPUID_EXTENDED_L2_CACHE_TLB_IDENTIFIER:
 		func = &priv->extended_funcs[context->g_regs[GUEST_REGS_RAX]
-					     - CPUID_EXTENDED_BASE];
+					     - CPUID_EXTENDED_LFUNCEXTD];
 		VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx64": EAX: 0x%"PRIx64" EBX: 0x%"PRIx64" ECX: 0x%"PRIx64" EDX: 0x%"PRIx64"\n",
 		       context->g_regs[GUEST_REGS_RAX], func->resp_eax, func->resp_ebx, func->resp_ecx, func->resp_edx);
 		context->g_regs[GUEST_REGS_RAX] = func->resp_eax;

@@ -101,14 +101,14 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 		}
 	}
 
-	for (funcs = CPUID_EXTENDED_BASE;
+	for (funcs = CPUID_EXTENDED_LFUNCEXTD;
 	     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
 		func_response =
 			(struct cpuid_response *)
-			&priv->extended_funcs[funcs - CPUID_EXTENDED_BASE];
+			&priv->extended_funcs[funcs - CPUID_EXTENDED_LFUNCEXTD];
 
 		switch (funcs) {
-		case CPUID_EXTENDED_BASE:
+		case CPUID_EXTENDED_LFUNCEXTD:
 			cpuid(CPUID_EXTENDED_FEATURES,
 			      &func_response->resp_eax,
 			      &func_response->resp_ebx,
@@ -136,7 +136,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 
 	switch(cpu_info.vendor) {
 	case x86_VENDOR_AMD:
-		for (funcs = CPUID_EXTENDED_BASE;
+		for (funcs = CPUID_EXTENDED_LFUNCEXTD;
 		     funcs < CPUID_EXTENDED_FUNC_LIMIT; funcs++) {
 			switch(funcs) {
 			case AMD_CPUID_EXTENDED_L1_CACHE_TLB_IDENTIFIER:
