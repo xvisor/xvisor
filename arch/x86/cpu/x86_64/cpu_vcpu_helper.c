@@ -188,6 +188,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 			x86_vcpu_priv(vcpu)->hw_context = vmm_zalloc(sizeof(struct vcpu_hw_context));
 			x86_vcpu_priv(vcpu)->hw_context->assoc_vcpu = vcpu;
+			x86_vcpu_priv(vcpu)->hw_context->sign = 0xdeadbeef;
 
 			x86_vcpu_priv(vcpu)->hw_context->vcpu_emergency_shutdown = arch_vcpu_emergency_shutdown;
 			cpu_init_vcpu_hw_context(&cpu_info, x86_vcpu_priv(vcpu)->hw_context);

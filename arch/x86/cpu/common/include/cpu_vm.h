@@ -111,6 +111,8 @@ struct vcpu_intercept_table {
 };
 
 struct vcpu_hw_context {
+	u32 instruction_error; /* !!NOTE!!: This has to be first variable */
+	u32 dummy; /* 8-byte align */
 	struct cpuinfo_x86 *cpuinfo;
 	struct vmcb *vmcb;
 	struct vmcs *vmcs;
@@ -125,7 +127,6 @@ struct vcpu_hw_context {
 	u64 g_cr8;
 	u64 g_rip;
 	u64 vmx_last_exit_qualification;
-	s32 instruction_error;
 
 	unsigned int asid;
 	u64 eptp;

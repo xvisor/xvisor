@@ -190,13 +190,18 @@ static int enable_vmx (struct cpuinfo_x86 *cpuinfo)
 
 static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 {
-	int rc = 0;
-
 	context->instruction_error = 0;
+	if (context->sign != 0xdeadbeef) {
+		vmm_printf("Context: 0x%p Sign: 0x%x\n", context, context->sign);
+		BUG();
+	}
 
 	__asm__ __volatile__("pushfq\n\t" /* Save flags */
+			     /* save return address in host space area */
 			     "movq $vmx_return, %%rax\n\t"
 			     "vmwrite %%rax, %%rbx\n\t"
+			     "jz 8f\n\t"
+			     "jc 8f\n\t"
 			     "pushq %%rbp\n\t"
 			     "pushq %%rdi\n\t"
 			     "pushq %%rsi\n\t"
@@ -208,9 +213,13 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "pushq %%r13\n\t"
 			     "pushq %%r14\n\t"
 			     "pushq %%r15\n\t"
+			     /* save the hardware context pointer */
 			     "pushq %%rcx\n\t"
+			     /* save host RSP in host state area */
 			     "movq %%rsp, %%rax\n\t"
 			     "vmwrite %%rax, %%rdx\n\t"
+			     "jz 9f\n\t"
+			     "jc 9f\n\t"
 			     /*
 			      * Check if vmlaunch or vmresume is needed, set the condition code
 			      * appropriately for use below.
@@ -245,7 +254,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			       */
 			     "ud2\n\t"
 			     ".section .fixup,\"ax\"\n"
-			     "2:sub $3, %0 ; jmp 7f\n" /* Return -3 if #UD or #GF */
+			     "2:movq $3, (%[context]) ; jmp 7f\n" /* Return -3 if #UD or #GF */
 			     ".previous\n"
 			     ".section __ex_table,\"a\"\n"
 			     "   "__FIXUP_ALIGN"\n"
@@ -260,13 +269,14 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			       */
 			     "ud2\n\t"
 			     ".section .fixup,\"ax\"\n"
-			     "4:sub $4, %0 ; jmp 7f\n" /* Return -4 if #UD or #GF */
+			     "4:movq $4, (%[context]) ; jmp 7f\n" /* Return -4 if #UD or #GF */
 			     ".previous\n"
 			     ".section __ex_table,\"a\"\n"
 			     "   "__FIXUP_ALIGN"\n"
 			     "   "__FIXUP_WORD" 3b,4b\n"
 			     ".previous\n"
-
+			     "8: movq $8, (%[context]); jmp 10f\n" /* vmwrite failure */
+			     "9: movq $9, (%[context]); jmp 11f\n" /* rsp vmwrite fail */
 			     /* We shall come here only on successful VMEXIT */
 			     "vmx_return: \n\t"
 			     /*
@@ -319,7 +329,7 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "popq %%rdi\n\t"
 			     "popq %%rbp\n\t"
 			     "popfq\n\t"
-			     "sub $1, %0\n\t" /* -1 valid failure */
+			     "movq $1, (%[context])\n\t" /* -1 valid failure */
 			     "jmp 7f\n\t"
 			     "6:popq %%rcx\n\t"
 			     "popq %%r15\n\t"
@@ -334,9 +344,24 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 			     "popq %%rdi\n\t"
 			     "popq %%rbp\n\t"
 			     "popfq\n\t"
-			     "sub $2, %0\n\t" /* -2 invalid failure */
+			     "movq $2, (%[context])\n\t" /* -2 invalid failure */
+			     "jmp 7f\n\t"
+			     "11:popq %%rcx\n\t"
+			     "popq %%r15\n\t"
+			     "popq %%r14\n\t"
+			     "popq %%r13\n\t"
+			     "popq %%r12\n\t"
+			     "popq %%r11\n\t"
+			     "popq %%r10\n\t"
+			     "popq %%r9\n\t"
+			     "popq %%r8\n\t"
+			     "popq %%rsi\n\t"
+			     "popq %%rdi\n\t"
+			     "popq %%rbp\n\t"
+			     "10:"
+			     "popfq\n\t"
 			     "7:sti\n\t"
-			     :"=q"(rc)
+			     :
 			     :[resume]"m"(resume), "d"((unsigned long)HOST_RSP),
 			      [context]"c"(context), "b"((unsigned long)HOST_RIP),
 			      [rax]"i"(offsetof(struct vcpu_hw_context, g_regs[GUEST_REGS_RAX])),
@@ -360,11 +385,15 @@ static int __vmcs_run(struct vcpu_hw_context *context, bool resume)
 	/* TR is not reloaded back the cpu after VM exit. */
 	reload_host_tss();
 
-	if (rc < 0) {
-		vmm_printf("VM Entry failed: Error: %d\n", rc);
-		context->instruction_error = rc;
-	} else
-		context->instruction_error = 0;
+	if (context->sign != 0xdeadbeef) {
+		vmm_printf("Context: 0x%p Sign: 0x%x\n", context, context->sign);
+		BUG();
+	}
+
+	if (context->instruction_error != 0) {
+		vmm_printf("VM Entry failed: Error: %d\n", context->instruction_error);
+		BUG();
+	}
 
 	arch_guest_handle_vm_exit(context);
 

@@ -244,7 +244,7 @@ void vmx_handle_cpuid(struct vcpu_hw_context *context)
 	return;
 
  _fail:
-	if (context->vcpu_emergency_shutdown){
+	if (context->vcpu_emergency_shutdown) {
 		context->vcpu_emergency_shutdown(context);
 	}
 }
@@ -352,6 +352,7 @@ int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 		VM_LOG(LVL_ERR, "LMSW not supported yet\n");
 		goto guest_bad_fault;
 	}
+
 	__vmwrite(GUEST_RIP, VMX_GUEST_NEXT_RIP(context));
 
 	return VMM_OK;
@@ -400,7 +401,7 @@ int vmx_handle_vmexit(struct vcpu_hw_context *context, u32 exit_reason)
 		return VMM_OK;
 
 	default:
-		VM_LOG(LVL_INFO, "Unhandled VM Exit reason: %d\n", exit_reason);
+		VM_LOG(LVL_DEBUG, "Unhandled VM Exit reason: %d\n", exit_reason);
 		goto guest_bad_fault;
 	}
 
@@ -457,7 +458,7 @@ void vmx_vcpu_exit(struct vcpu_hw_context *context)
 		VM_LOG(LVL_DEBUG, "Guest RIP: 0x%"PRIx64"\n", VMX_GUEST_RIP(context));
 
 		if (vmx_handle_vmexit(context, _exit_reason.bits.reason) != VMM_OK) {
-			VM_LOG(LVL_ERR, "Error handling VMExit (Reason: %d)\n", _exit_reason.bits.reason);
+			VM_LOG(LVL_DEBUG, "Error handling VMExit (Reason: %d)\n", _exit_reason.bits.reason);
 			goto unhandled_vm_exit;
 		}
 
