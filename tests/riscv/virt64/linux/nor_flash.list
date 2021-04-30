@@ -1,5 +1,5 @@
 0x00000000 ./firmware.bin
 0x000FF000 ./cmdlist
 0x00100000 ./Image
-0x017F0000 ./virt64.dtb
-0x01800000 ./rootfs.img
+0x01F00000 ./virt64.dtb
+0x02000000 ./rootfs.img

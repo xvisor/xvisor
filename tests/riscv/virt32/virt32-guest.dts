@@ -28,7 +28,7 @@
 			manifest_type = "real";
 			address_type = "memory";
 			guest_physical_addr = <0x00000000>;
-			physical_size = <0x02000000>;
+			physical_size = <0x03000000>;
 			device_type = "alloced_rom";
 			align_order = <22>; /* Align alloced memory to 4MB */
 		};
