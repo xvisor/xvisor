@@ -477,6 +477,8 @@ static int setup_lapic(int cpu)
 		cpu_write_msr(MSR_IA32_APICBASE, this_cpu(lapic).msr);
 	}
 
+	INIT_SPIN_LOCK(&this_cpu(lapic).lock);
+
 	this_cpu(lapic).pbase = (APIC_BASE(this_cpu(lapic).msr) << 12);
 
 	/* remap base */
@@ -587,11 +589,15 @@ static int
 lapic_arm_timer(struct lapic_timer *timer)
 {
 	u32 lvt;
+	u32 flags;
+
+	vmm_spin_lock_irqsave(&this_cpu(lapic).lock, flags);
 
 	lvt = lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase));
 	lvt &= ~APIC_LVT_MASKED;
 	lapic_write(LAPIC_LVTTR(this_cpu(lapic).vbase), lvt);
 	timer->armed = 1;
+	vmm_spin_unlock_irqrestore(&this_cpu(lapic).lock, flags);
 
 	return VMM_OK;
 }
@@ -600,11 +606,15 @@ static __unused int
 lapic_disarm_timer(struct lapic_timer *timer)
 {
 	u32 lvt;
+	u32 flags;
+
+	vmm_spin_lock_irqsave(&this_cpu(lapic).lock, flags);
 
 	lvt = lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase));
 	lvt |= APIC_LVT_MASKED;
 	lapic_write(LAPIC_LVTTR(this_cpu(lapic).vbase), lvt);
 	timer->armed = 0;
+	vmm_spin_unlock_irqrestore(&this_cpu(lapic).lock, flags);
 
 	return VMM_OK;
 }
@@ -648,43 +658,63 @@ lapic_clockchip_set_next_event(unsigned long next,
 {
 	struct lapic_timer *timer = container_of(cc, struct lapic_timer,
 						 clkchip);
+	u32 flags;
+	int rc;
+
 	BUG_ON(timer == NULL);
+
+	vmm_spin_lock_irqsave(&this_cpu(lapic).lock, flags);
 
 	if (unlikely(!timer->armed)) {
 		lapic_arm_timer(timer);
 		timer->armed = 1;
 	}
 
+	trace_timer(next, get_tsc_serialized(),
+		    lapic_read(LAPIC_TIMER_CCR(this_cpu(lapic).vbase)),
+		    lapic_read(LAPIC_ESR(this_cpu(lapic).vbase)),
+		    lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase)));
+
 #ifdef CONFIG_USE_DEADLINE_TSC
 	if (this_cpu(lapic).deadline_supported)
 		return lapic_set_deadline(next);
 #endif
 
-	return lapic_set_icr(next);
+	rc = lapic_set_icr(next);
+	vmm_spin_unlock_irqrestore(&this_cpu(lapic).lock, flags);
+
+	return rc;
 }
 
 static void
 lapic_timer_irq_mask(struct vmm_host_irq *irq)
 {
 	struct lapic_timer *timer = (struct lapic_timer *)irq->chip_data;
-	u32 lvt;
+	u32 lvt, flags;
+
+	vmm_spin_lock_irqsave(&this_cpu(lapic).lock, flags);
 
 	/* Disable the local APIC timer */
 	lvt = lapic_read(LAPIC_LVTTR(timer->lapic->vbase));
 	lvt |= APIC_LVT_MASKED;
 	lapic_write(LAPIC_LVTTR(timer->lapic->vbase), lvt);
+	vmm_spin_unlock_irqrestore(&this_cpu(lapic).lock, flags);
 }
 
 static void
 lapic_timer_irq_unmask(struct vmm_host_irq *irq)
 {
 	struct lapic_timer *timer = (struct lapic_timer *)irq->chip_data;
-	u32 lvt;
+	u32 lvt, flags;
+
+	vmm_spin_lock_irqsave(&this_cpu(lapic).lock, flags);
 
 	/* Disable the local APIC timer */
 	lvt = lapic_read(LAPIC_LVTTR(timer->lapic->vbase));
 	lvt &= ~APIC_LVT_MASKED;
 	lapic_write(LAPIC_LVTTR(timer->lapic->vbase), lvt);
+
+	vmm_spin_unlock_irqrestore(&this_cpu(lapic).lock, flags);
 }
 
 int __cpuinit lapic_clockchip_init(void)
@@ -817,6 +847,7 @@ pit_calibrate_tsc(void)
 	return (end - start)/50;
 }
 
+/* NOTE: lapic lock should be held before calling this */
 static void
 lapic_set_timer_count(u32 count, int periodic)
 {
