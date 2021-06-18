@@ -31,6 +31,7 @@
 #include <libs/stringlib.h>
 #include <arch_cpu.h>
 #include <arch_io.h>
+#include <arch_barrier.h>
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_interrupts.h>
@@ -743,9 +744,6 @@ lapic_set_timer_count(u32 count, int periodic)
 	/* Setup Divide Count Register to use the bus frequency directl. */
 	lapic_write(LAPIC_TIMER_DCR(this_cpu(lapic).vbase), LAPIC_TDR_DIV_1);
 
-	/* Program the initial count register */
-	lapic_write(LAPIC_TIMER_ICR(this_cpu(lapic).vbase), count);
-
 	/* Enable the local APIC timer */
 	lvt = lapic_read(LAPIC_LVTTR(this_cpu(lapic).vbase));
 	lvt &= ~APIC_LVT_MASKED;
@@ -755,6 +753,11 @@ lapic_set_timer_count(u32 count, int periodic)
 		lvt &= ~APIC_LVT_TIMER_PERIODIC;
 
 	lapic_write(LAPIC_LVTTR(this_cpu(lapic).vbase), lvt);
+
+	arch_wmb();
+
+	/* Program the initial count register */
+	lapic_write(LAPIC_TIMER_ICR(this_cpu(lapic).vbase), count);
 }
 
 static void
