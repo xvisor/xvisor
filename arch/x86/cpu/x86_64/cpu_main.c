@@ -230,7 +230,7 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 		(cpu_info.hw_virt_available ? "Supported" : "Unsupported"));
 }
 
-extern void __create_bootstrap_pgtbl_entry(u64 va, u64 pa);
+extern void __create_bootstrap_pgtbl_entry(u64 va, u64 pa, u32 page_size, u8 wt, u8 cd);
 extern void __delete_bootstrap_pgtbl_entry(u64 va);
 
 /*
@@ -246,7 +246,8 @@ static void __init boot_modules_move(struct multiboot_info *binfo)
 	u64 daddr, saddr;
 	int i;
 
-	__create_bootstrap_pgtbl_entry(binfo->mods_addr, binfo->mods_addr);
+	__create_bootstrap_pgtbl_entry(binfo->mods_addr, binfo->mods_addr,
+				       4096, 0, 0);
 
 	modlist = (struct multiboot_mod_list *)((u64)binfo->mods_addr);
 
@@ -299,8 +300,8 @@ static void __init boot_modules_move(struct multiboot_info *binfo)
 		mod_size = VMM_ROUNDUP2_PAGE_SIZE(mod_size);
 
 		while (mod_size) {
-			__create_bootstrap_pgtbl_entry(saddr, saddr);
-			__create_bootstrap_pgtbl_entry(daddr, daddr);
+			__create_bootstrap_pgtbl_entry(saddr, saddr, 4096, 0, 0);
+			__create_bootstrap_pgtbl_entry(daddr, daddr, 4096, 0, 0);
 			memcpy((void *)daddr, (void *)saddr, VMM_PAGE_SIZE);
 			__delete_bootstrap_pgtbl_entry(daddr);
 			__delete_bootstrap_pgtbl_entry(saddr);

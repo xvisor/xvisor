@@ -46,8 +46,25 @@ extern u64 __pml4[];
 extern u64 __pgdp[];
 extern u64 __pgdi[];
 extern u64 __pgti[];
+extern u64 __early_iodev_pages[];
 
+static char *early_iodev_pages = (char *)__early_iodev_pages;
+static early_iodev_pages_used = 0;
 struct page_table host_pgtbl_array[HOST_PGTBL_MAX_TABLE_COUNT];
+
+static
+char *alloc_iodev_page(void)
+{
+	char *iodev_page = NULL;
+
+	if (early_iodev_pages_used >= NR_IODEV_PAGES)
+		return NULL;
+
+	iodev_page = (early_iodev_pages + (early_iodev_pages_used * PAGE_SIZE));
+	early_iodev_pages_used++;
+
+	return iodev_page;
+}
 
 static void arch_preinit_pgtable_entries(void)
 {
@@ -68,12 +85,17 @@ static void arch_preinit_pgtable_entries(void)
 		__pgdi[i] = ((u64)(pgti_base + (PAGE_SIZE * i)) & PAGE_MASK) + 3;
 }
 
-int __create_bootstrap_pgtbl_entry(u64 va, u64 pa)
+int __create_bootstrap_pgtbl_entry(u64 va, u64 pa, u32 page_size,
+				   u8 wt, u8 cd)
 {
 	static int preinit_pgtables = 0;
 	union page ent;
 
 	ent._val = 0;
+
+	if ((page_size != PAGE_SIZE_2M) && (page_size != PAGE_SIZE_4K)) {
+		return VMM_EFAIL;
+	}
 
 	if (!preinit_pgtables) {
 		arch_preinit_pgtable_entries();
@@ -90,23 +112,55 @@ int __create_bootstrap_pgtbl_entry(u64 va, u64 pa)
 
 	u64 *pgdp_base = (u64 *)(((u64)__pml4[pml4_index]) & ~0xff);
 
-	if (!(pgdp_base[pgdp_index]  & 0x3))
-		return VMM_EFAIL;
+	if (pgdp_base[pgdp_index] == 0) {
+		pgdp_base[pgdp_index] = alloc_iodev_page();
+		if (pgdp_base[pgdp_index] == NULL)
+			return VMM_EFAIL;
+		pgdp_base[pgdp_index] |= 0x3;
+	} else {
+		if (!(pgdp_base[pgdp_index]  & 0x3))
+			return VMM_EFAIL;
+	}
 
 	u64 *pgdi_base = (u64 *)(((u64)pgdp_base[pgdp_index]) & ~0xff);
 
-	if (!(pgdi_base[pgdp_index] & 0x3))
-		return VMM_EFAIL;
+	if (pgdi_base[pgdi_index] == 0) {
+		if (page_size == PAGE_SIZE_2M) {
+			pgdi_base[pgdi_index] |= ((pa >> 21) << 21);
+			pgdi_base[pgdi_index] |= (0x1UL << 7);
+			pgdi_base[pgdi_index] |= (wt ? (0x1UL << 3) : 0);
+			pgdi_base[pgdi_index] |= (cd ? (0x1UL << 4) : 0);
+			pgdi_base[pgdi_index] |= 0x3;
+			return VMM_OK;
+		} else {
+			pgdi_base[pgdi_index] = alloc_iodev_page();
+			if (pgdi_base[pgdi_index] == NULL)
+				return VMM_EFAIL;
+			pgdi_base[pgdi_index] |= 0x3;
+		}
+	} else {
+		if (!(pgdi_base[pgdi_index] & 0x3))
+			return VMM_EFAIL;
+	}
 
 	u64 *pgti_base = (u64 *)(((u64)pgdi_base[pgdi_index]) & ~0xff);
 
-	if (pgti_base[pgti_index] & 0x3)
-		return VMM_EFAIL;
+	if (pgti_base[pgti_index] == 0) {
+		pgti_base[pgti_index] = alloc_iodev_page();
+		if (pgti_base[pgti_index] == NULL)
+			return VMM_EFAIL;
+		pgti_base[pgti_index] |= 0x3;
+	} else {
+		if (pgti_base[pgti_index] & 0x3)
+			return VMM_EFAIL;
+	}
 
 	ent.bits.paddr = pa >> PAGE_SHIFT;
 	ent.bits.present = 1;
 	ent.bits.rw = 1;
 	pgti_base[pgti_index] = ent._val;
+	pgti_base[pgti_index] |= (wt ? (0x1UL << 3) : 0);
+	pgti_base[pgti_index] |= (cd ? (0x1UL << 4) : 0);
 
 	invalidate_vaddr_tlb(va);
 
@@ -249,7 +303,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	 */
 	arch_preinit_pgtable_entries();
 
-	/* Check & setup core reserved space and update the 
+	/* Check & setup core reserved space and update the
 	 * core_resv_pa, core_resv_va, and core_resv_sz parameters
 	 * to inform host aspace about correct placement of the
 	 * core reserved space.
@@ -272,8 +326,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	*core_resv_va = resv_va;
 	*core_resv_sz = resv_sz;
 
-	/* Initialize MMU control and allocate arch reserved space and 
-	 * update the *arch_resv_pa, *arch_resv_va, and *arch_resv_sz 
+	/* Initialize MMU control and allocate arch reserved space and
+	 * update the *arch_resv_pa, *arch_resv_va, and *arch_resv_sz
 	 * parameters to inform host aspace about the arch reserved space.
 	 */
 	memset(&host_pgtbl_ctl, 0, sizeof(host_pgtbl_ctl));
@@ -309,8 +363,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pgtbl->stage = 0;
 	pgtbl->parent = NULL;
 	pgtbl->map_ia = 0;
-	pgtbl->tbl_pa = (virtual_addr_t)__pml4 - 
-			arch_code_vaddr_start() + 
+	pgtbl->tbl_pa = (virtual_addr_t)__pml4 -
+			arch_code_vaddr_start() +
 			arch_code_paddr_start();
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->tbl_va = (virtual_addr_t)__pml4;
@@ -331,8 +385,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pgtbl->stage = 0;
 	pgtbl->parent = &host_pgtbl_ctl.pgtbl_pml4;
 	pgtbl->map_ia = arch_code_vaddr_start() & mmu_level_map_mask(0);
-	pgtbl->tbl_pa = (virtual_addr_t)__pgdp - 
-			arch_code_vaddr_start() + 
+	pgtbl->tbl_pa = (virtual_addr_t)__pgdp -
+			arch_code_vaddr_start() +
 			arch_code_paddr_start();
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->tbl_va = (virtual_addr_t)__pgdp;
@@ -355,8 +409,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pgtbl->stage = 0;
 	pgtbl->parent = &host_pgtbl_ctl.pgtbl_pgdp;
 	pgtbl->map_ia = arch_code_vaddr_start() & mmu_level_map_mask(1);
-	pgtbl->tbl_pa = (virtual_addr_t)__pgdi - 
-			arch_code_vaddr_start() + 
+	pgtbl->tbl_pa = (virtual_addr_t)__pgdi -
+			arch_code_vaddr_start() +
 			arch_code_paddr_start();
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->tbl_va = (virtual_addr_t)__pgdi;
@@ -379,8 +433,8 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pgtbl->stage = 0;
 	pgtbl->parent = &host_pgtbl_ctl.pgtbl_pgdi;
 	pgtbl->map_ia = arch_code_vaddr_start() & mmu_level_map_mask(2);
-	pgtbl->tbl_pa = (virtual_addr_t)__pgti - 
-			arch_code_vaddr_start() + 
+	pgtbl->tbl_pa = (virtual_addr_t)__pgti -
+			arch_code_vaddr_start() +
 			arch_code_paddr_start();
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->tbl_va = (virtual_addr_t)__pgti;
@@ -412,7 +466,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 		hyppg._val = 0x0;
 		hyppg.bits.paddr = (pa >> PAGE_SHIFT);
 		hyppg.bits.present = 1;
-		hyppg.bits.rw = 1;		
+		hyppg.bits.rw = 1;
 		if ((rc = mmu_map_page(&host_pgtbl_ctl, host_pgtbl_ctl.base_pgtbl, va, &hyppg))) {
 			goto mmu_init_error;
 		}
@@ -439,4 +493,3 @@ int __cpuinit arch_cpu_aspace_secondary_init(void)
 	/* FIXME: For now nothing to do here. */
 	return VMM_OK;
 }
-

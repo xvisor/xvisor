@@ -39,6 +39,7 @@
 static char cmdline_console_string[CONSOLE_SETUP_STR_LEN];
 static struct defterm_ops *ops = NULL;
 EARLY_PUTC early_putc = NULL;
+int init_early_fb_console(void);
 
 void arch_defterm_early_putc(u8 ch)
 {
@@ -57,6 +58,9 @@ static int __init setup_early_print(char *buf)
 
 	if (!strncmp(buf, VGA_CONSOLE_NAME, strlen(VGA_CONSOLE_NAME)))
 		return init_early_vga_console();
+
+	if (!strncmp(buf, FB_CONSOLE_NAME, strlen(FB_CONSOLE_NAME)))
+		return init_early_fb_console();
 
 	return VMM_EFAIL;
 }
@@ -79,6 +83,7 @@ static int __init set_default_console(char *buf)
 
 	vmm_snprintf(cmdline_console_string, strlen(DEFAULT_CONSOLE_STR),
 		     DEFAULT_CONSOLE_STR);
+
 	return VMM_OK;
 }
 

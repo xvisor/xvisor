@@ -24,3 +24,4 @@
 board-common-objs-y+= devices/video/vga.o
 board-common-objs-y+= devices/video/svga.o
 board-common-objs-y+= devices/video/fb_console.o
+board-common-objs-y+= devices/video/fb_early_console.o

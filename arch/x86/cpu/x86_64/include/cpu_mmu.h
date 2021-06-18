@@ -27,6 +27,7 @@
 #define NR_PGDP_PAGES		4
 #define NR_PGDI_PAGES		8
 #define NR_PGTI_PAGES		32
+#define NR_IODEV_PAGES		4
 
 #define VMM_CODE_SEG_SEL	0x08
 #define VMM_DATA_SEG_SEL	0x10
@@ -80,6 +81,9 @@
 
 extern struct pgtbl_ctrl host_pgtbl_ctl;
 
+#define PAGE_SIZE_1G	(0x40000000UL)
+#define PAGE_SIZE_2M	(0x200000UL)
+#define PAGE_SIZE_4K	(0x1000UL)
 
 static inline void invalidate_vaddr_tlb(virtual_addr_t vaddr)
 {

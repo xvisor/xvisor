@@ -323,6 +323,11 @@ __pgdi:
 __pgti:
 	.zero	(PAGE_SIZE * NR_PGTI_PAGES)
 
+__early_iodev_pages:
+	.globl __early_iodev_pages
+	.align 32
+	.type __early_iodev_pages, @object
+	.zero (PAGE_SIZE * NR_IODEV_PAGES)
 
 .align 4
 	.type   _mboot_info, @object
