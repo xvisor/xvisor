@@ -36,6 +36,61 @@
 #include <vmm_main.h>
 #include <vm/ept.h>
 
+#define TRACE_EPT	1
+
+#if TRACE_EPT
+#define MAX_EPT_TRACE_ENTRIES		2048
+
+typedef struct ept_trace_entry {
+	u64 g_phys;
+	u64 h_phys;
+	u64 pml4_index:10;
+	u64 pdpt_index:10;
+	u64 pde_index:10;
+	u64 pt_index:10;
+	u64 pg_sz:24;
+	u32 pg_prot;
+} ept_trace_entry_t;
+
+typedef struct ept_trace {
+	u64 trace_index;
+	u64 wraps;
+	ept_trace_entry_t ept_trace_buf[MAX_EPT_TRACE_ENTRIES];
+} ept_trace_t;
+
+static ept_trace_t ept_trace;
+
+static void init_ept_trace(void)
+{
+	memset(&ept_trace, 0, sizeof(ept_trace));
+}
+
+static void add_ept_trace_point(u64 gphys, u64 hphys, u32 pml4, u32 pdpt,
+				u32 pde, u32 pt, u32 sz, u32 pg_prot)
+{
+	ept_trace_entry_t *te = &ept_trace.ept_trace_buf[ept_trace.trace_index];
+
+	te->g_phys = gphys;
+	te->h_phys = hphys;
+	te->pml4_index = pml4;
+	te->pdpt_index = pdpt;
+	te->pde_index = pde;
+	te->pt_index = pt;
+	te->pg_sz = sz;
+	te->pg_prot = pg_prot;
+
+	ept_trace.trace_index++;
+	ept_trace.trace_index %= MAX_EPT_TRACE_ENTRIES;
+
+	if (ept_trace.trace_index == 0)
+		ept_trace.wraps++;
+}
+#else
+static void init_ept_trace(void) {}
+static void add_ept_trace_point(u64 gphys, u64 hphys, u32 pml4, u32 pdpt,
+				u32 pde, u32 pg_prot) {}
+#endif /* EPT Trace */
+
 static inline u32 ept_pml4_index(physical_addr_t gphys)
 {
 	gphys &= PHYS_ADDR_BIT_MASK;
@@ -150,6 +205,8 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 
 	VM_LOG(LVL_DEBUG, "pml4: 0x%"PRIx32" pdpt: 0x%"PRIx32" pd: 0x%"PRIx32" pt: 0x%"PRIx32"\n",
 	       pml4_index, pdpt_index, pd_index, pt_index);
+
+	add_ept_trace_point(gphys, hphys, pml4_index, pdpt_index, pd_index, pt_index, pg_size, pg_prot);
 
 	pml4e = (ept_pml4e_t *)(&pml4[pml4_index]);
 	decode_ept_entry(EPT_LEVEL_PML4E, (void *)pml4e, &e_phys, &e_pg_prot);
@@ -403,6 +460,9 @@ int setup_ept(struct vcpu_hw_context *context)
 		return VMM_ENOMEM;
 
 	}
+
+	/* initialize tracing of EPT programming */
+	init_ept_trace();
 
 	/* most of the reserved bits want zeros */
 	memset((void *)pml4, 0, PAGE_SIZE);
