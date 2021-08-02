@@ -131,6 +131,7 @@ int arch_vcpu_irq_execute(struct vmm_vcpu *vcpu,
 	if (arm_vgic_avail(vcpu) &&
 	    ((irq_no == CPU_EXTERNAL_IRQ) ||
 	     (irq_no == CPU_EXTERNAL_FIQ))) {
+		arm_vgic_irq_pending(vcpu);
 		return VMM_OK;
 	}
 

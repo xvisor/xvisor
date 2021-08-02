@@ -44,8 +44,8 @@
 #define MODULE_AUTHOR			"Anup Patel"
 #define MODULE_LICENSE			"GPL"
 #define MODULE_IPRIORITY		0
-#define	MODULE_INIT			vgic_emulator_init
-#define	MODULE_EXIT			vgic_emulator_exit
+#define MODULE_INIT			vgic_emulator_init
+#define MODULE_EXIT			vgic_emulator_exit
 
 #undef DEBUG
 
@@ -640,6 +640,11 @@ static void __vgic_irq_handle(struct vgic_guest_state *s, u32 irq, int cpu,
 
 	/* Check for pending interrupts */
 	irq_pending = __vgic_vcpu_irq_pending(s, vs);
+
+	/* Sync & Flush VGIC state changes to VGIC HW */
+	if (vmm_scheduler_current_vcpu() == vs->vcpu) {
+		__vgic_sync_and_flush_vcpu(s, vs);
+	}
 
 	/* Unlock VGIC distributor state */
 	vmm_spin_unlock_irqrestore_lite(&s->dist_lock, flags);
