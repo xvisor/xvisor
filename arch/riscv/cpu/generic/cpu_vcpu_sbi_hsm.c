@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_macros.h>
 #include <vmm_manager.h>
+#include <vmm_vcpu_irq.h>
 #include <vmm_guest_aspace.h>
 #include <cpu_vcpu_sbi.h>
 #include <riscv_sbi.h>
@@ -70,6 +71,20 @@ static int vcpu_sbi_hsm_ecall(struct vmm_vcpu *vcpu,
 			*out_val = SBI_HSM_STATE_STARTED;
 		else
 			*out_val = SBI_HSM_STATE_STOPPED;
+		break;
+	case SBI_EXT_HSM_HART_SUSPEND:
+		if (args[0] == SBI_HSM_SUSPEND_RET_DEFAULT) {
+			/* Wait for irq with default timeout */
+			vmm_vcpu_irq_wait_timeout(vcpu, 0);
+		} else if ((args[0] == SBI_HSM_SUSPEND_NON_RET_DEFAULT) ||
+			   (SBI_HSM_SUSPEND_RET_PLATFORM <= args[0] &&
+			    args[0] <= SBI_HSM_SUSPEND_RET_LAST) ||
+			   (SBI_HSM_SUSPEND_NON_RET_PLATFORM <= args[0] &&
+			    args[0] <= SBI_HSM_SUSPEND_NON_RET_LAST)) {
+			return SBI_ERR_NOT_SUPPORTED;
+		} else {
+			return SBI_ERR_INVALID_PARAM;
+		}
 		break;
 	default:
 		return SBI_ERR_NOT_SUPPORTED;
