@@ -67,9 +67,9 @@ static int vcpu_sbi_hsm_ecall(struct vmm_vcpu *vcpu,
 		if (!rvcpu)
 			return SBI_ERR_INVALID_PARAM;
 		if (vmm_manager_vcpu_get_state(rvcpu) != VMM_VCPU_STATE_RESET)
-			*out_val = SBI_HSM_HART_STATUS_STARTED;
+			*out_val = SBI_HSM_STATE_STARTED;
 		else
-			*out_val = SBI_HSM_HART_STATUS_STOPPED;
+			*out_val = SBI_HSM_STATE_STOPPED;
 		break;
 	default:
 		return SBI_ERR_NOT_SUPPORTED;
