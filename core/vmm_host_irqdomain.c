@@ -370,7 +370,7 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 	unsigned long *bmap;
 	struct vmm_host_irqdomain *newdomain = NULL;
 
-	if (!of_node || !size || !ops) {
+	if (!size || !ops) {
 		return NULL;
 	}
 	if ((base >= 0) &&
@@ -401,14 +401,16 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 		pos = base;
 	}
 
-	vmm_devtree_ref_node(of_node);
 	INIT_LIST_HEAD(&newdomain->head);
 	newdomain->uses_irqext = (base < 0) ? TRUE : FALSE;
 	newdomain->base = pos;
 	newdomain->count = size;
 	newdomain->end = newdomain->base + size;
 	newdomain->host_data = host_data;
-	newdomain->of_node = of_node;
+	if (of_node) {
+		vmm_devtree_ref_node(of_node);
+		newdomain->of_node = of_node;
+	}
 	newdomain->ops = ops;
 	INIT_SPIN_LOCK(&newdomain->bmap_lock);
 	newdomain->bmap = bmap;
@@ -440,7 +442,9 @@ void vmm_host_irqdomain_remove(struct vmm_host_irqdomain *domain)
 		vmm_host_irqext_free_region(domain->base, domain->count);
 	}
 
-	vmm_devtree_dref_node(domain->of_node);
+	if (domain->of_node) {
+		vmm_devtree_dref_node(domain->of_node);
+	}
 	vmm_free(domain);
 }
 
