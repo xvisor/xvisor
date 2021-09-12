@@ -225,8 +225,8 @@ static void irq_stats_print(struct vmm_chardev *cdev, u32 irqno)
 	if (!chip || !chip->name) {
 		return;
 	}
-	vmm_cprintf(cdev, " %-5d %-20s %-13s",
-		    irqno, irq_name, chip->name);
+	vmm_cprintf(cdev, " %-7d %-7d %-20s %-16s",
+		    irqno, irq->hwirq, irq_name, chip->name);
 	for_each_online_cpu(cpu) {
 		stats = vmm_host_irq_get_count(irq, cpu);
 		vmm_cprintf(cdev, " %-10d", stats);
@@ -238,20 +238,22 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 {
 	u32 num, cpu, irq_count, irqext_count;
 
-	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev,
+		    "------------------------------------------------------");
 	for_each_online_cpu(cpu) {
-		vmm_cprintf(cdev, "------------");
+		vmm_cprintf(cdev, "-----------");
 	}
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, " %-5s %-20s %-13s",
-			  "IRQ#", "Name", "Chip");
+	vmm_cprintf(cdev, " %-7s %-7s %-20s %-16s",
+			  "IRQ#", "HWIRQ#", "Name", "Chip");
 	for_each_online_cpu(cpu) {
 		vmm_cprintf(cdev, " CPU%-7d", cpu);
 	}
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev,
+		    "------------------------------------------------------");
 	for_each_online_cpu(cpu) {
-		vmm_cprintf(cdev, "------------");
+		vmm_cprintf(cdev, "-----------");
 	}
 	vmm_cprintf(cdev, "\n");
 
@@ -264,9 +266,10 @@ static void cmd_host_irq_stats(struct vmm_chardev *cdev)
 		irq_stats_print(cdev, num);
 	}
 
-	vmm_cprintf(cdev, "----------------------------------------");
+	vmm_cprintf(cdev,
+		    "------------------------------------------------------");
 	for_each_online_cpu(cpu) {
-		vmm_cprintf(cdev, "------------");
+		vmm_cprintf(cdev, "-----------");
 	}
 	vmm_cprintf(cdev, "\n");
 }
