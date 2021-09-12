@@ -77,6 +77,7 @@ cpu-objs-y+= cpu_exception.o
 cpu-objs-$(CONFIG_SMP)+=cpu_smp_ops.o
 cpu-objs-$(CONFIG_SMP)+=cpu_smp_ops_default.o
 cpu-objs-$(CONFIG_SMP)+=cpu_smp_ops_sbi.o
+cpu-objs-$(CONFIG_SMP)+=cpu_sbi_ipi.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_csr.o
 cpu-objs-y+= cpu_vcpu_fp.o

@@ -39,17 +39,12 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
 
-#include <cpu_sbi.h>
 #include <riscv_encoding.h>
 #include <riscv_csr.h>
 
 #define RISCV_IRQ_COUNT __riscv_xlen
 
-struct riscv_irqchip_intc {
-	struct vmm_host_irqdomain *domain;
-};
-
-static struct riscv_irqchip_intc intc __read_mostly;
+static struct vmm_host_irqdomain *intc_domain __read_mostly;
 
 static void riscv_irqchip_mask_irq(struct vmm_host_irq *d)
 {
@@ -61,46 +56,20 @@ static void riscv_irqchip_unmask_irq(struct vmm_host_irq *d)
 	csr_set(sie, 1UL << d->hwirq);
 }
 
-static void riscv_irqchip_ack_irq(struct vmm_host_irq *d)
-{
-	csr_clear(sip, 1UL << d->hwirq);
-}
-
-#ifdef CONFIG_SMP
-static void riscv_irqchip_raise(struct vmm_host_irq *d,
-				const struct vmm_cpumask *mask)
-{
-	struct vmm_cpumask tmask;
-
-	if (d->hwirq != IRQ_S_SOFT)
-		return;
-
-	sbi_cpumask_to_hartmask(mask, &tmask);
-	sbi_send_ipi(vmm_cpumask_bits(&tmask));
-}
-#endif
-
 static struct vmm_host_irq_chip riscv_irqchip = {
 	.name = "riscv-intc",
 	.irq_mask = riscv_irqchip_mask_irq,
 	.irq_unmask = riscv_irqchip_unmask_irq,
-	.irq_ack = riscv_irqchip_ack_irq,
-#ifdef CONFIG_SMP
-	.irq_raise = riscv_irqchip_raise
-#endif
 };
 
 static void riscv_irqchip_register_irq(u32 hwirq, bool is_ipi,
 					struct vmm_host_irq_chip *chip)
 {
-	int irq = vmm_host_irqdomain_create_mapping(intc.domain, hwirq);
+	int irq = vmm_host_irqdomain_create_mapping(intc_domain, hwirq);
 
 	BUG_ON(irq < 0);
 
 	vmm_host_irq_mark_per_cpu(irq);
-	if (is_ipi) {
-		vmm_host_irq_mark_ipi(irq);
-	}
 	vmm_host_irq_set_chip(irq, chip);
 	vmm_host_irq_set_handler(irq, vmm_handle_percpu_irq);
 }
@@ -165,9 +134,9 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 		return VMM_OK;
 	}
 
-	intc.domain = vmm_host_irqdomain_add(node, 0, RISCV_IRQ_COUNT,
+	intc_domain = vmm_host_irqdomain_add(node, 0, RISCV_IRQ_COUNT,
 					     &riscv_intc_ops, NULL);
-	if (!intc.domain) {
+	if (!intc_domain) {
 		return VMM_EFAIL;
 	}
 

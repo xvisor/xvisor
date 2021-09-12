@@ -273,6 +273,7 @@ int __init arch_cpu_nascent_init(void)
 
 int __init arch_cpu_early_init(void)
 {
+	int rc;
 	const char *options;
 	struct vmm_devtree_node *node;
 
@@ -294,6 +295,13 @@ int __init arch_cpu_early_init(void)
 	}
 
 	vmm_devtree_dref_node(node);
+
+	rc = sbi_ipi_init();
+	if (rc) {
+		vmm_printf("%s: SBI IPI init failed (error %d)\n",
+			   __func__, rc);
+		return rc;
+	}
 
 	return VMM_OK;
 }

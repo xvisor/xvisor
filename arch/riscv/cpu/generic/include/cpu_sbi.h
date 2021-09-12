@@ -216,4 +216,18 @@ unsigned long sbi_minor_version(void);
  */
 int sbi_init(void);
 
+#ifdef CONFIG_SMP
+/**
+ * Initialize SBI IPI driver
+ *
+ * @return VMM_OK on success AND VMM_Exxx error code on failure
+ */
+int sbi_ipi_init(void);
+#else
+static inline int sbi_ipi_init(void)
+{
+	return 0;
+}
+#endif
+
 #endif

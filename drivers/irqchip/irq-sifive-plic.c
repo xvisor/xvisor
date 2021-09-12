@@ -394,8 +394,8 @@ static int __init plic_init(struct vmm_devtree_node *node)
 	}
 
 	/* Create IRQ domain */
-	plic.domain = vmm_host_irqdomain_add(node, __riscv_xlen,
-					     plic.ndev, &plic_ops, NULL);
+	plic.domain = vmm_host_irqdomain_add(node, -1, plic.ndev,
+					     &plic_ops, NULL);
 	if (!plic.domain) {
 		vmm_lerror("plic", "Failed to add irqdomain\n");
 		vmm_free(plic.contexts);
