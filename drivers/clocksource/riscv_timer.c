@@ -55,27 +55,33 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hart_id = 0;
-	unsigned long hwid;
+	unsigned long current_hart_id;
 	struct vmm_clocksource *cs;
 
-	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &current_hart_id);
 	if (rc) {
+		vmm_lerror("riscv-timer-clocksource",
+			   "failed to get current hart id\n");
 		return rc;
 	}
 
 	rc = riscv_node_to_hartid(node, &hart_id);
 	if (rc) {
+		vmm_lerror("riscv-timer-clocksource",
+			   "failed to get node %s hart id\n", node->name);
 		return rc;
 	}
 
-	if (hwid != hart_id) {
+	if (current_hart_id != hart_id) {
 		return VMM_OK;
 	}
 
 	/* Create riscv timer clocksource */
 	cs = vmm_zalloc(sizeof(struct vmm_clocksource));
 	if (!cs) {
-		return VMM_EFAIL;
+		vmm_lerror("riscv-timer-clocksource",
+			   "failed to allocate clocksource\n");
+		return VMM_ENOMEM;
 	}
 
 	cs->name = "riscv-timer";
@@ -88,7 +94,17 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 	cs->priv = NULL;
 
 	/* Register riscv timer clocksource */
-	return vmm_clocksource_register(cs);
+	rc = vmm_clocksource_register(cs);
+	if (rc) {
+		vmm_lerror("riscv-timer-clocksource",
+			   "failed to register clocksource\n");
+		vmm_free(cs);
+		return rc;
+	}
+
+	vmm_init_printf("riscv-timer: registered clocksource @ %ldHz\n",
+			riscv_timer_hz);
+	return VMM_OK;
 }
 VMM_CLOCKSOURCE_INIT_DECLARE(riscvclksrc, "riscv",
 			     riscv_timer_clocksource_init);
@@ -179,23 +195,34 @@ static int __init riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 {
 	int rc;
 	u32 hart_id;
-	unsigned long hwid;
+	unsigned long current_hart_id;
 
-	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &hwid);
+	rc = vmm_smp_map_hwid(vmm_smp_processor_id(), &current_hart_id);
 	if (rc) {
+		vmm_lerror("riscv-timer-clockchip",
+			   "failed to get current hart id\n");
 		return rc;
 	}
 
 	rc = riscv_node_to_hartid(node, &hart_id);
 	if (rc) {
+		vmm_lerror("riscv-timer-clockchip",
+			   "failed to get node %s hart id\n", node->name);
 		return rc;
 	}
 
-	if (hwid != hart_id) {
+	if (current_hart_id != hart_id) {
 		return VMM_OK;
 	}
 
-	return vmm_cpuhp_register(&riscv_timer_cpuhp, TRUE);
+	rc = vmm_cpuhp_register(&riscv_timer_cpuhp, TRUE);
+	if (rc) {
+		vmm_lerror("riscv-timer-clockchip",
+			   "failed to register cpuhp\n");
+		return rc;
+	}
+
+	return VMM_OK;
 }
 VMM_CLOCKCHIP_INIT_DECLARE(riscvclkchip, "riscv",
 			   riscv_timer_clockchip_init);
