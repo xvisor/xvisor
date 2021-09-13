@@ -62,25 +62,9 @@ static struct vmm_host_irq_chip riscv_irqchip = {
 	.irq_unmask = riscv_irqchip_unmask_irq,
 };
 
-static void riscv_irqchip_register_irq(u32 hwirq, bool is_ipi,
-					struct vmm_host_irq_chip *chip)
-{
-	int irq = vmm_host_irqdomain_create_mapping(intc_domain, hwirq);
-
-	BUG_ON(irq < 0);
-
-	vmm_host_irq_mark_per_cpu(irq);
-	vmm_host_irq_set_chip(irq, chip);
-	vmm_host_irq_set_handler(irq, vmm_handle_percpu_irq);
-}
-
 static u32 riscv_intc_active_irq(u32 cpu_irq_no)
 {
-	if (RISCV_IRQ_COUNT <= cpu_irq_no) {
-		return UINT_MAX;
-	}
-
-	return cpu_irq_no;
+	return (cpu_irq_no < RISCV_IRQ_COUNT) ? cpu_irq_no : UINT_MAX;
 }
 
 static struct vmm_host_irqdomain_ops riscv_intc_ops = {
@@ -122,33 +106,58 @@ static struct vmm_cpuhp_notify riscv_intc_cpuhp = {
 
 static int __init riscv_intc_init(struct vmm_devtree_node *node)
 {
-	int i, rc;
+	int i, irq, rc;
 	u32 hart_id = 0;
 
+	/* Get hart_id of associated HART */
 	rc = riscv_hart_of_timer(node->parent, &hart_id);
 	if (rc) {
+		vmm_lerror("riscv-intc",
+			   "can't find hart_id of asociated HART\n");
 		return rc;
 	}
 
+	/* Do nothing if associated HART is not boot HART */
 	if (vmm_smp_processor_id() != hart_id) {
 		return VMM_OK;
 	}
 
+	/* Register IRQ domain */
 	intc_domain = vmm_host_irqdomain_add(node, 0, RISCV_IRQ_COUNT,
 					     &riscv_intc_ops, NULL);
 	if (!intc_domain) {
+		vmm_lerror("riscv-intc", "failed to add irq domain\n");
 		return VMM_EFAIL;
 	}
 
-	/* Setup up per-CPU interrupts */
+	/* Create IRQ mappings */
 	for (i = 0; i < RISCV_IRQ_COUNT; i++) {
-		riscv_irqchip_register_irq(i, (i == IRQ_S_SOFT) ? TRUE : FALSE,
-					   &riscv_irqchip);
+		irq = vmm_host_irqdomain_create_mapping(intc_domain, i);
+		if (irq < 0) {
+			continue;
+		}
+
+		vmm_host_irq_mark_per_cpu(irq);
+		vmm_host_irq_set_chip(irq, &riscv_irqchip);
+		vmm_host_irq_set_handler(irq, vmm_handle_percpu_irq);
 	}
 
+	/* Register CPU hotplug notifier */
+	rc = vmm_cpuhp_register(&riscv_intc_cpuhp, TRUE);
+	if (rc) {
+		vmm_lerror("riscv-intc", "failed to register cpuhp\n");
+		vmm_host_irqdomain_remove(intc_domain);
+		intc_domain = NULL;
+		return rc;
+	}
+
+	/* Register active IRQ callback */
 	vmm_host_irq_set_active_callback(riscv_intc_active_irq);
 
-	return vmm_cpuhp_register(&riscv_intc_cpuhp, TRUE);
+	/* Announce RISC-V INTC */
+	vmm_init_printf("riscv-intc: registered %d local interrupts\n",
+			RISCV_IRQ_COUNT);
+	return VMM_OK;
 }
 
 VMM_HOST_IRQ_INIT_DECLARE(riscvintc, "riscv,cpu-intc", riscv_intc_init);
