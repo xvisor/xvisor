@@ -56,6 +56,24 @@ virtual_size_t arch_code_size(void)
 	return (virtual_size_t) (&_code_end - &_code_start);
 }
 
+int riscv_node_to_hartid(struct vmm_devtree_node *node, u32 *hart_id)
+{
+	int rc;
+
+	if (!node)
+		return VMM_EINVALID;
+	if (!vmm_devtree_is_compatible(node, "riscv"))
+		return VMM_ENODEV;
+
+	if (hart_id) {
+		rc = vmm_devtree_read_u32(node, "reg", hart_id);
+		if (rc)
+			return rc;
+	}
+
+	return VMM_OK;
+}
+
 /* Host ISA bitmap */
 static DECLARE_BITMAP(riscv_isa, RISCV_ISA_EXT_MAX) = { 0 };
 

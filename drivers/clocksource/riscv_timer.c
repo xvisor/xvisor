@@ -46,24 +46,6 @@
 #define DPRINTF(msg...)
 #endif
 
-static int riscv_hart_of_timer(struct vmm_devtree_node *node, u32 *hart_id)
-{
-	int rc;
-
-	if (!node)
-		return VMM_EINVALID;
-	if (!vmm_devtree_is_compatible(node, "riscv"))
-		return VMM_ENODEV;
-
-	if (hart_id) {
-		rc = vmm_devtree_read_u32(node, "reg", hart_id);
-		if (rc)
-			return rc;
-	}
-
-	return VMM_OK;
-}
-
 static u64 riscv_timer_read(struct vmm_clocksource *cs)
 {
 	return get_cycles64();
@@ -81,7 +63,7 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
-	rc = riscv_hart_of_timer(node, &hart_id);
+	rc = riscv_node_to_hartid(node, &hart_id);
 	if (rc) {
 		return rc;
 	}
@@ -204,7 +186,7 @@ static int __init riscv_timer_clockchip_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
-	rc = riscv_hart_of_timer(node, &hart_id);
+	rc = riscv_node_to_hartid(node, &hart_id);
 	if (rc) {
 		return rc;
 	}

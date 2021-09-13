@@ -44,6 +44,17 @@
 
 #define RISCV_ISA_EXT_MAX	256
 
+struct vmm_devtree_node;
+
+/**
+ * Get hart id from HART device tree node
+ *
+ * @node HART device tree node
+ * @hart_id output hart id
+ * @returns VMM_OK upon success and VMM_Exxx upon failure
+ */
+int riscv_node_to_hartid(struct vmm_devtree_node *node, u32 *hart_id);
+
 /**
  * Get base extension word
  *

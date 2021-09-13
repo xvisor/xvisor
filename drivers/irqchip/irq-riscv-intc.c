@@ -39,6 +39,7 @@
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
 
+#include <cpu_hwcap.h>
 #include <riscv_encoding.h>
 #include <riscv_csr.h>
 
@@ -71,24 +72,6 @@ static struct vmm_host_irqdomain_ops riscv_intc_ops = {
 	.xlate = vmm_host_irqdomain_xlate_onecell,
 };
 
-static int riscv_hart_of_timer(struct vmm_devtree_node *node, u32 *hart_id)
-{
-	int rc;
-
-	if (!node)
-		return VMM_EINVALID;
-	if (!vmm_devtree_is_compatible(node, "riscv"))
-		return VMM_ENODEV;
-
-	if (hart_id) {
-		rc = vmm_devtree_read_u32(node, "reg", hart_id);
-		if (rc)
-			return rc;
-	}
-
-	return VMM_OK;
-}
-
 static int riscv_intc_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 {
 	/* Disable and clear all per-CPU interupts */
@@ -110,7 +93,7 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 	u32 hart_id = 0;
 
 	/* Get hart_id of associated HART */
-	rc = riscv_hart_of_timer(node->parent, &hart_id);
+	rc = riscv_node_to_hartid(node->parent, &hart_id);
 	if (rc) {
 		vmm_lerror("riscv-intc",
 			   "can't find hart_id of asociated HART\n");
