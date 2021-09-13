@@ -48,25 +48,32 @@ struct match_info {
 	struct fdt_fileinfo *fdt;
 	u32 address_cells;
 	u32 size_cells;
+	u32 visited_count;
+	struct fdt_node_header *visited[CONFIG_MAX_RAM_BANK_COUNT];
 };
 
 static int __init match_memory_node(struct fdt_node_header *fdt_node,
 				    int level, void *priv)
 {
-	int rc;
+	int rc, i;
 	char dev_type[16];
 	struct match_info *info = priv;
 
 	if (level == 1) {
 		rc = libfdt_get_property(info->fdt, fdt_node,
 				info->address_cells, info->size_cells,
-				 VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
-				 dev_type, sizeof(dev_type));
+				VMM_DEVTREE_DEVICE_TYPE_ATTR_NAME,
+				dev_type, sizeof(dev_type));
 		if (rc) {
 			return 0;
 		}
 
 		if (!strncmp(dev_type, "memory", sizeof(dev_type))) {
+			for (i = 0; i < info->visited_count; i++) {
+				if (info->visited[i] == fdt_node) {
+					return 0;
+				}
+			}
 			return 1;
 		}
 	}
@@ -116,51 +123,63 @@ int __init arch_devtree_ram_bank_setup(void)
 		size_cells = i;
 	}
 
+	memset(&info, 0, sizeof(info));
 	info.fdt = &fdt;
 	info.address_cells = address_cells;
 	info.size_cells = size_cells;
-	fdt_node = libfdt_find_matching_node(&fdt, match_memory_node, &info);
-	if (!fdt_node) {
-		return VMM_EFAIL;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
-				 &i, sizeof(i));
-	if (!rc) {
-		address_cells = i;
-	}
-
-	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
-				 &i, sizeof(i));
-	if (!rc) {
-		size_cells = i;
-	}
-
 	memset(bank_data, 0, sizeof(bank_data));
-	memset(dt_bank_data, 0, sizeof(dt_bank_data));
+	j = 0;
 
-	rc = libfdt_get_property(&fdt, fdt_node, address_cells, size_cells,
-				 VMM_DEVTREE_REG_ATTR_NAME,
-				 dt_bank_data, sizeof(dt_bank_data));
-	if (rc) {
-		return rc;
-	}
-
-	/* Remove Zero sized banks */
-	for (i = 0, j = 0 ; i < array_size(dt_bank_data); i += 2) {
-		if (dt_bank_data[i + 1]) {
-			bank_data[j] = dt_bank_data[i];
-			bank_data[j + 1] = dt_bank_data[i + 1];
-			j += 2;
+	while ((info.visited_count < CONFIG_MAX_RAM_BANK_COUNT) &&
+	       (j < array_size(bank_data))) {
+		fdt_node = libfdt_find_matching_node(&fdt, match_memory_node,
+						     &info);
+		if (!fdt_node) {
+			break;
 		}
+
+		rc = libfdt_get_property(&fdt, fdt_node,
+					 address_cells, size_cells,
+					 VMM_DEVTREE_ADDR_CELLS_ATTR_NAME,
+					 &i, sizeof(i));
+		if (!rc) {
+			address_cells = i;
+		}
+
+		rc = libfdt_get_property(&fdt, fdt_node,
+					 address_cells, size_cells,
+					 VMM_DEVTREE_SIZE_CELLS_ATTR_NAME,
+					 &i, sizeof(i));
+		if (!rc) {
+			size_cells = i;
+		}
+
+		memset(dt_bank_data, 0, sizeof(dt_bank_data));
+		rc = libfdt_get_property(&fdt, fdt_node,
+					 address_cells, size_cells,
+					 VMM_DEVTREE_REG_ATTR_NAME,
+					 dt_bank_data, sizeof(dt_bank_data));
+		if (rc) {
+			continue;
+		}
+
+		/* Copy over DT RAM data excluding zero sized RAM banks */
+		for (i = 0; i < array_size(dt_bank_data); i += 2) {
+			if (dt_bank_data[i + 1] &&
+			    (j < array_size(bank_data))) {
+				bank_data[j] = dt_bank_data[i];
+				bank_data[j + 1] = dt_bank_data[i + 1];
+				j += 2;
+			}
+		}
+
+		info.visited[info.visited_count++] = fdt_node;
 	}
 
 	/* Count of RAM banks */
 	bank_nr = 0;
 	for (i = 0; i < array_size(bank_data); i += 2) {
-		if (bank_data[i+1]) {
+		if (bank_data[i + 1]) {
 			bank_nr++;
 		} else {
 			break;
@@ -172,14 +191,15 @@ int __init arch_devtree_ram_bank_setup(void)
 
 	/* Sort banks based on start address */
 	for (i = 0; i < (bank_nr - 1); i++) {
-		for (j = i+1; j < bank_nr; j++) {
-			if (bank_data[(2*i)] > bank_data[(2*j)]) {
-				tmp = bank_data[(2*i)];
-				bank_data[(2*i)] = bank_data[(2*j)];
-				bank_data[(2*j)] = tmp;
-				tmp = bank_data[(2*i)+1];
-				bank_data[(2*i)+1] = bank_data[(2*j)+1];
-				bank_data[(2*j)+1] = tmp;
+		for (j = i + 1; j < bank_nr; j++) {
+			if (bank_data[(2 * i)] > bank_data[(2 * j)]) {
+				tmp = bank_data[(2 * i)];
+				bank_data[(2 * i)] = bank_data[(2 * j)];
+				bank_data[(2 * j)] = tmp;
+				tmp = bank_data[(2 * i) + 1];
+				bank_data[(2 * i) + 1] =
+						bank_data[(2 * j) + 1];
+				bank_data[(2 * j) + 1] = tmp;
 			}
 		}
 	}
