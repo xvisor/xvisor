@@ -1,6 +1,0 @@
-
-The instructions for pcduino board (http://cubieboard.org/model/cb1/) are 
-same as instructions for hackbery board.
-
-Please refer docs/arm/sun4i-hackberry.txt
-
