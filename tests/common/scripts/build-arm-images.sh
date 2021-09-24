@@ -42,8 +42,8 @@ BUILD_XVISOR_ONLY="no"
 BUILD_XVISOR_OUTPUT_PATH=`pwd`/build/xvisor
 BUILD_TARBALL_PATH=`pwd`/tarball
 BUILD_GUEST_OUTPUT_PATH=`pwd`/build/guest
-BUILD_LINUX_VERSION="5.4.6"
-BUILD_BUSYBOX_VERSION="1.31.1"
+BUILD_LINUX_VERSION="5.4.68"
+BUILD_BUSYBOX_VERSION="1.32.0"
 BUILD_PRINT_CONFIG_ONLY="no"
 
 # Derived options
@@ -155,7 +155,7 @@ v8)
 	fi
 	if [ "${BUILD_GUEST_TYPE}" != "virt-v8" ]; then
 		BUILD_LINUX_ARCH="arm"
-		BUILD_LINUX_CROSS_COMPILE_PREFERRED=arm-none-linux-gnueabi-
+		BUILD_LINUX_CROSS_COMPILE_PREFERRED=arm-none-linux-gnueabihf-
 		BUILD_BUSYBOX_CROSS_COMPILE_PREFERRED=arm-none-linux-gnueabihf-
 	fi
 	;;
