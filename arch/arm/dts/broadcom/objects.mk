@@ -21,7 +21,6 @@
 # @brief list of Broadcom DTBs.
 # */
 
-arch-dtbs-$(CONFIG_ARMV6)+=broadcom/bcm2835-rpi-b.dtb
 arch-dtbs-$(CONFIG_ARMV7A_VE)+=broadcom/bcm2836-rpi-2-b.dtb
 arch-dtbs-$(CONFIG_ARMV8)+=broadcom/bcm2837-rpi-3-b.dtb
 arch-dtbs-$(CONFIG_ARMV8)+=broadcom/bcm2838-rpi-4-b.dtb

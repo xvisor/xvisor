@@ -21,12 +21,7 @@
 # @brief list of Generic board objects.
 # */
 
-board-objs-$(CONFIG_GENERIC_VERSATILE)+= versatile.o
-board-objs-$(CONFIG_GENERIC_REALVIEW)+= realview.o
 board-objs-$(CONFIG_GENERIC_VEXPRESS)+= vexpress.o
-board-objs-$(CONFIG_GENERIC_OMAP3)+= omap3.o
-board-objs-$(CONFIG_GENERIC_SABRELITE)+= sabrelite.o
-board-objs-$(CONFIG_GENERIC_EXYNOS4)+= exynos4.o
 board-objs-$(CONFIG_GENERIC_BCM2836)+= bcm2836.o
 board-objs-$(CONFIG_GENERIC_FOUNDATION_V8)+= foundation-v8.o
 board-objs-$(CONFIG_GENERIC_RK3399)+= rk3399.o
