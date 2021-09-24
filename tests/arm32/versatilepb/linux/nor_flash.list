@@ -1,5 +1,0 @@
-0x34000000 ./firmware.bin
-0x340FF000 ./cmdlist
-0x34100000 ./Image
-0x357F0000 ./versatile-pb.dtb
-0x35800000 ./rootfs.img

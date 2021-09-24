@@ -83,24 +83,6 @@ BUILD_SCRIPTS_PATH=`dirname $0`
 
 mkdir -p ${BUILD_OUTPUT_PATH}/arm
 
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v5 -g versatilepb -s one_guest_versatilepb -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v5 -i ${BUILD_INSTALL_PATH}/arm/v5 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v5 -g versatilepb -s two_guest_versatilepb -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v5 -i ${BUILD_INSTALL_PATH}/arm/v5 -j ${BUILD_NUM_THREADS}
-rm -rf ${BUILD_OUTPUT_PATH}/arm/v5
-
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v6 -g realview-eb-mpcore -s one_guest_ebmp -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v6 -i ${BUILD_INSTALL_PATH}/arm/v6 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v6 -g realview-eb-mpcore -s two_guest_ebmp -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v6 -i ${BUILD_INSTALL_PATH}/arm/v6 -j ${BUILD_NUM_THREADS}
-rm -rf ${BUILD_OUTPUT_PATH}/arm/v6
-
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7 -g realview-pb-a8 -s one_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7 -i ${BUILD_INSTALL_PATH}/arm/v7 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7 -g realview-pb-a8 -s two_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7 -i ${BUILD_INSTALL_PATH}/arm/v7 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7 -g vexpress-a9 -s one_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7 -i ${BUILD_INSTALL_PATH}/arm/v7 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7 -g vexpress-a9 -s two_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7 -i ${BUILD_INSTALL_PATH}/arm/v7 -j ${BUILD_NUM_THREADS}
-rm -rf ${BUILD_OUTPUT_PATH}/arm/v7
-
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g realview-pb-a8 -s one_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g realview-pb-a8 -s two_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g vexpress-a9 -s one_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g vexpress-a9 -s two_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g vexpress-a15 -s one_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g vexpress-a15 -s one_novgic_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g vexpress-a15 -s two_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
@@ -112,10 +94,6 @@ ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g virt-v7 -s two_guest_virt-
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v7-ve -g virt-v7 -s two_novgic_guest_virt-v7 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v7-ve -i ${BUILD_INSTALL_PATH}/arm/v7-ve -j ${BUILD_NUM_THREADS}
 rm -rf ${BUILD_OUTPUT_PATH}/arm/v7-ve
 
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g realview-pb-a8 -s one_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g realview-pb-a8 -s two_guest_pb-a8 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g vexpress-a9 -s one_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
-${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g vexpress-a9 -s two_guest_vexpress-a9 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g vexpress-a15 -s one_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g vexpress-a15 -s one_novgic_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
 ${BUILD_SCRIPTS_PATH}/build-arm-images.sh -a v8 -g vexpress-a15 -s two_guest_vexpress-a15 -d ${BUILD_TARBALL_PATH} -l ${BUILD_LINUX_VERSION} -b ${BUILD_BUSYBOX_VERSION} -p ${BUILD_XVISOR_SOURCE_PATH} -o ${BUILD_OUTPUT_PATH}/arm/v8 -i ${BUILD_INSTALL_PATH}/arm/v8 -j ${BUILD_NUM_THREADS}
