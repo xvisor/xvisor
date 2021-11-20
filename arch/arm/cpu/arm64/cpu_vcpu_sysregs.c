@@ -59,6 +59,7 @@ bool cpu_vcpu_cp15_read(struct vmm_vcpu *vcpu,
 				break;
 			case ARM_CPUID_CORTEXA7:
 			case ARM_CPUID_CORTEXA15:
+			case ARM_CPUID_ARMV7:
 				*data = 0;
 				if (arm_feature(vcpu, ARM_FEATURE_V7MP)) {
 					*data |= (1 << 6);
