@@ -91,7 +91,7 @@ struct usb_interface {
 	 * Revision 1.0 June 6th 2011
 	 */
 	struct usb_ss_ep_comp_descriptor ss_ep_comp_desc[USB_MAXENDPOINTS];
-} __attribute__ ((packed));
+};
 
 #define	to_usb_interface(_i) container_of((_i), struct usb_interface, dev)
 #define interface_set_data(_i, _p) vmm_devdrv_set_data(&(_i)->dev, (_p))
@@ -103,7 +103,7 @@ struct usb_config {
 
 	unsigned char	no_of_intf;	/* number of interfaces */
 	struct usb_interface intf[USB_MAXINTERFACES];
-} __attribute__ ((packed));
+};
 
 enum {
 	/* Maximum packet size; encoded as 0,1,2,3 = 8,16,32,64 */

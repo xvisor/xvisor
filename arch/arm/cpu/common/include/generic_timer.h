@@ -63,17 +63,19 @@ enum {
 };
 
 struct generic_timer_context {
-	u32 phys_timer_irq;
-	u32 virt_timer_irq;
-	u64 cntvoff;
-	u64 cntpcval;
-	u64 cntvcval;
-	u32 cntkctl;
-	u32 cntpctl;
-	u32 cntvctl;
+	struct {
+		u32 phys_timer_irq;
+		u32 virt_timer_irq;
+		u64 cntvoff;
+		u64 cntpcval;
+		u64 cntvcval;
+		u32 cntkctl;
+		u32 cntpctl;
+		u32 cntvctl;
+	} __packed;
 	struct vmm_timer_event virt_ev;
 	struct vmm_timer_event phys_ev;
-}__packed;
+};
 
 int generic_timer_vcpu_context_init(void *vcpu_ptr,
 				    void **context,
