@@ -17,8 +17,7 @@ Xvisor is an open-source type-1 hypervisor, which aims at providing
 a monolithic, light-weight, portable, and flexible virtualization solution.
 
 It provides a high performance and low memory foot print virtualization
-solution for ARMv5, ARMv6, ARMv7a, ARMv7a-ve, ARMv8a, x86_64, RISC-V, and
-other CPU architectures.
+solution for ARMv7a-ve, ARMv8a, x86_64, RISC-V, and other CPU architectures.
 
 Xvisor primarily supports Full virtualization hence, supports a wide
 range of unmodified Guest operating systems. Paravirtualization is optional
