@@ -542,11 +542,13 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 
 	if ((cntx->cntpctl & GENERIC_TIMER_CTRL_ENABLE) &&
 	    !(cntx->cntpctl & GENERIC_TIMER_CTRL_IT_MASK)) {
-		ev_nsecs = cntx->cntpcval - generic_timer_pcounter_read();
-		/* check if timer is expired while saving the context */
-		if (((s64)ev_nsecs) < 0) {
+		ev_nsecs = generic_timer_pcounter_read();
+		/* Check if timer already expired while saving the context */
+		if (cntx->cntpcval <= ev_nsecs) {
+			/* Immediate expiry */
 			ev_nsecs = 0;
 		} else {
+			ev_nsecs = cntx->cntpcval - ev_nsecs;
 			ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
 							generic_timer_mult,
 							generic_timer_shift);
@@ -556,12 +558,14 @@ void generic_timer_vcpu_context_save(void *vcpu_ptr, void *context)
 
 	if ((cntx->cntvctl & GENERIC_TIMER_CTRL_ENABLE) &&
 	    !(cntx->cntvctl & GENERIC_TIMER_CTRL_IT_MASK)) {
-		ev_nsecs = cntx->cntvcval + cntx->cntvoff -
-					generic_timer_pcounter_read();
-		/* check if timer is expired while saving the context */
-		if (((s64)ev_nsecs) < 0) {
+		ev_nsecs = generic_timer_pcounter_read();
+		/* Check if timer already expired while saving the context */
+		if ((cntx->cntvcval + cntx->cntvoff) <= ev_nsecs) {
+			/* Immediate expiry */
 			ev_nsecs = 0;
 		} else {
+			ev_nsecs = (cntx->cntvcval + cntx->cntvoff) -
+				   ev_nsecs;
 			ev_nsecs = vmm_clocksource_delta2nsecs(ev_nsecs,
 							generic_timer_mult,
 							generic_timer_shift);
