@@ -282,7 +282,7 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 
 		/* Start wait for irq timeout event */
 		if (!nsecs) {
-			nsecs = CONFIG_WFI_TIMEOUT_SECS * 1000000000ULL;
+			nsecs = CONFIG_WFI_TIMEOUT_MSECS * 1000000ULL;
 		}
 		vmm_timer_event_start(vcpu->irqs.wfi.priv, nsecs);
 	}
