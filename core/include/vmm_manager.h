@@ -139,6 +139,7 @@ struct vmm_vcpu_irqs {
 	atomic64_t deassert_count;
 	struct {
 		vmm_spinlock_t lock;
+		u32 yield_count;
 		bool state;
 		void *priv;
 	} wfi;

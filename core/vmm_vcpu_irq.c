@@ -35,6 +35,8 @@
 #define ASSERTED	1
 #define PENDING		2
 
+#define WFI_YIELD_THRESHOLD	100
+
 static bool vcpu_irq_process_one(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	/* Proceed only if we have pending execute */
@@ -117,6 +119,15 @@ static void vcpu_irq_wfi_resume(struct vmm_vcpu *vcpu, void *data)
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
+	/*
+	 * If this function is called with data == NULL then
+	 * it means wake-up event happened so we should clear
+	 * the yield_count.
+	 */
+	if (!data) {
+		vcpu->irqs.wfi.yield_count = 0;
+	}
+
 	/* If VCPU was in wfi state then update state. */
 	if (vcpu->irqs.wfi.state) {
 		try_vcpu_resume = TRUE;
@@ -146,7 +157,7 @@ static void vcpu_irq_wfi_timeout(struct vmm_timer_event *ev)
 {
 	vmm_manager_vcpu_hcpu_func(ev->priv,
 				   VMM_VCPU_STATE_INTERRUPTIBLE,
-				   vcpu_irq_wfi_resume, NULL, FALSE);
+				   vcpu_irq_wfi_resume, ev, FALSE);
 }
 
 void vmm_vcpu_irq_assert(struct vmm_vcpu *vcpu, u32 irq_no, u64 reason)
@@ -259,7 +270,7 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 {
 	irq_flags_t flags;
-	bool have_irq, try_vcpu_pause = FALSE;
+	bool have_irq, try_vcpu_yield = FALSE, try_vcpu_pause = FALSE;
 
 	/* Sanity Checks */
 	if (!vcpu || !vcpu->is_normal) {
@@ -276,7 +287,17 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
-	if (!vcpu->irqs.wfi.state && !have_irq) {
+	/* Try to yield few times */
+	if (have_irq) {
+		vcpu->irqs.wfi.yield_count = 0;
+		goto done;
+	} else if (vcpu->irqs.wfi.yield_count < WFI_YIELD_THRESHOLD) {
+		vcpu->irqs.wfi.yield_count++;
+		try_vcpu_yield = TRUE;
+		goto done;
+	}
+
+	if (!vcpu->irqs.wfi.state) {
 		try_vcpu_pause = TRUE;
 
 		/* Set wait for irq state */
@@ -289,8 +310,14 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 		vmm_timer_event_start(vcpu->irqs.wfi.priv, nsecs);
 	}
 
+done:
 	/* Unlock VCPU WFI */
 	vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock, flags);
+
+	/* Try to yield the VCPU */
+	if (try_vcpu_yield) {
+		vmm_scheduler_yield();
+	}
 
 	/* Try to pause the VCPU */
 	if (try_vcpu_pause) {
@@ -304,6 +331,9 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 		} else {
 			vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock,
 						   flags);
+
+			/* Clear WFI yield count */
+			vcpu->irqs.wfi.yield_count = 0;
 
 			/* Clear wait for irq state */
 			vcpu->irqs.wfi.state = FALSE;
@@ -407,6 +437,7 @@ int vmm_vcpu_irq_init(struct vmm_vcpu *vcpu)
 	}
 
 	/* Setup wait for irq context */
+	vcpu->irqs.wfi.yield_count = 0;
 	vcpu->irqs.wfi.state = FALSE;
 	rc = vmm_timer_event_stop(vcpu->irqs.wfi.priv);
 	if (rc != VMM_OK) {
