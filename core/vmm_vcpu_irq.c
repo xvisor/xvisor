@@ -259,7 +259,7 @@ int vmm_vcpu_irq_wait_resume(struct vmm_vcpu *vcpu)
 int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 {
 	irq_flags_t flags;
-	bool try_vcpu_pause = FALSE;
+	bool have_irq, try_vcpu_pause = FALSE;
 
 	/* Sanity Checks */
 	if (!vcpu || !vcpu->is_normal) {
@@ -269,12 +269,14 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 	/* Ensure given VCPU is current VCPU */
 	BUG_ON(vmm_scheduler_current_vcpu() != vcpu);
 
+	/* Check for pending interrupts */
+	have_irq = arch_atomic_read(&vcpu->irqs.execute_pending) ||
+		   arch_vcpu_irq_pending(vcpu);
+
 	/* Lock VCPU WFI */
 	vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock, flags);
 
-	if (!vcpu->irqs.wfi.state &&
-	    !(arch_atomic_read(&vcpu->irqs.execute_pending) ||
-		arch_vcpu_irq_pending(vcpu))) {
+	if (!vcpu->irqs.wfi.state && !have_irq) {
 		try_vcpu_pause = TRUE;
 
 		/* Set wait for irq state */
@@ -292,7 +294,26 @@ int vmm_vcpu_irq_wait_timeout(struct vmm_vcpu *vcpu, u64 nsecs)
 
 	/* Try to pause the VCPU */
 	if (try_vcpu_pause) {
-		vmm_manager_vcpu_pause(vcpu);
+		/* Again check for pending interrupts */
+		have_irq = arch_atomic_read(&vcpu->irqs.execute_pending) ||
+			   arch_vcpu_irq_pending(vcpu);
+
+		if (!have_irq) {
+			/* Pause VCPU on WFI */
+			vmm_manager_vcpu_pause(vcpu);
+		} else {
+			vmm_spin_lock_irqsave_lite(&vcpu->irqs.wfi.lock,
+						   flags);
+
+			/* Clear wait for irq state */
+			vcpu->irqs.wfi.state = FALSE;
+
+			/* Stop wait for irq timeout event */
+			vmm_timer_event_stop(vcpu->irqs.wfi.priv);
+
+			vmm_spin_unlock_irqrestore_lite(&vcpu->irqs.wfi.lock,
+							flags);
+		}
 	}
 
 	return VMM_OK;
