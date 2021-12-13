@@ -148,9 +148,9 @@ void basic_cmd_hello(int argc, char **argv)
 
 void basic_cmd_wfi_test(int argc, char **argv)
 {
-	u64 tstamp;
-	char time[256];
+	char str[256];
 	int delay = 1000;
+	u64 tstamp, tcount, wcount = 0;
 
 	if (argc > 2) {
 		basic_puts("wfi_test: could provide only <delay>\n");
@@ -162,17 +162,25 @@ void basic_cmd_wfi_test(int argc, char **argv)
 	basic_puts("Executing WFI instruction\n");
 	arch_board_timer_disable();
 	arch_board_timer_change_period(delay*1000);
+	tcount = arch_board_timer_irqcount();
 	arch_board_timer_enable();
 	tstamp = arch_board_timer_timestamp();
-	basic_irq_wfi();
+	while (arch_board_timer_irqcount() == tcount) {
+		basic_irq_wfi();
+		wcount++;
+	}
 	tstamp = arch_board_timer_timestamp() - tstamp;
 	arch_board_timer_disable();
 	arch_board_timer_change_period(10000);
 	arch_board_timer_enable();
 	basic_puts("Resumed from WFI instruction\n");
-	basic_puts("Time spent in WFI: ");
-	basic_ulonglong2str(time, tstamp);
-	basic_puts(time);
+	basic_puts("Number of WFIs: ");
+	basic_ulonglong2str(str, wcount);
+	basic_puts(str);
+	basic_puts("\n");
+	basic_puts("Time spent in WFIs: ");
+	basic_ulonglong2str(str, tstamp);
+	basic_puts(str);
 	basic_puts(" nsecs\n");
 }
 
