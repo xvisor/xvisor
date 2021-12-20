@@ -1,0 +1,85 @@
+			Xvisor v0.3.1
+	(Last Commit: ----------------------------------------)
+		(Release Date: 20-Dec-2021)
+
+In this release, we have lots of fixes and improved code sharing accross
+architectures ports. Along with this, we also have few new features, drivers
+and boards.
+
+New Features:
+ - Arch specific nascent initialization APIs
+ - Arch specific VAPOOl APIs
+ - Arch specific cpu aspace APIs
+ - Verbose mode compilation
+ - Nested MMU whitebox test suite
+ - Removed ARM32 port for ARM 32bit CPUs without virtualization extension
+
+New Commands:
+ - New "aspace info" sub-command for "host" command
+
+New Drivers:
+ - Rockchip RK3399 SoC clock driver
+ - Rockchip RK3399 SoC gpio pinctrl driver
+ - Rockchip RK3399 SoC i2c driver
+ - RISC-V SBI IPI irqchip driver
+ - RISC-V ACLINT SWI irqchip driver
+
+New Emulators:
+ - No change
+
+New Boards:
+ - RK3399 Rockpro64 board support
+ - Raspberry Pi 4 board support
+
+All Ports:
+ - Generic arch devtree implementation
+ - Generic arch IPI implementation
+ - Generic arch defterm implementation
+ - Generic arch defterm early implementation
+ - Generic arch board implementation
+ - Generic arch MMU implementation
+ - Map DTB early instead of copying
+ - Moved SMP operations from board to cpu sources
+ - Moved DTS files outside board directory
+ - Improved makeall script for GitHub Travis CI
+ - Parse multiple memory DT nodes
+
+ARM Ports:
+ - Removed identity mappings in intial page table
+ - Increase default VAPOOL size to 64MB
+ - Do PSCI init from arch_cpu_nascent_init()
+ - Allow to compile in non-SMP mode
+ - Updated documentation to use ARM Ltd toolchains
+ - Removed Versatile-PB Guest support
+ - Removed Realview-EB-MPCore Guest support
+ - Removed Realview-PB-A8 Guest support
+ - Removed Vexpress-A89 Guest support
+ - Emulate CP15 aux control read for generic-v7 Guest VCPUs
+ - Fixed MPIDR emulation generic v7 and v8 CPUs
+
+ARM32ve Port:
+ - Fixed access to SPSR banked register
+
+ARM64 Port:
+ - No change
+
+RISC-V Port:
+ - SBI v0.3 support for host
+ - SBI v0.3 emulation for Guest VCPU
+ - Used hardware division instruction
+ - Dynamically detect best MMU mode for Stage1 and Stage2 at boot-time
+ - Parse CPU capabilities in arch_cpu_nascent_init()
+ - Defterm using SBI console calls
+ - Set access and dirty bits in leaf PTEs
+ - Determine transformed instruction length correctly
+ - Save/restore SCOUNTEREN CSR for Guest VCPUs
+ - RISC-V H-extension v1.0 support
+
+x86 Port:
+ - Framebuffer support for initial and later console
+ - Added VMCS configuration auditor
+ - Added CPUID handling code in vmexit
+ - Updated documentation for how to run QEMU with nested VTX
+ - Enabled interrupts on VMExit
+ - Added support for Extended CPUID in guest
+ - Handled vmwrite failures during vmlaunch/vmresume
