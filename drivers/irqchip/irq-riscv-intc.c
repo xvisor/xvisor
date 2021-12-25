@@ -49,12 +49,20 @@ static struct vmm_host_irqdomain *intc_domain __read_mostly;
 
 static void riscv_irqchip_mask_irq(struct vmm_host_irq *d)
 {
-	csr_clear(sie, 1UL << d->hwirq);
+	if (d->hwirq < BITS_PER_LONG) {
+		csr_clear(CSR_SIE, BIT(d->hwirq));
+	} else {
+		csr_clear(CSR_SIEH, BIT(d->hwirq - BITS_PER_LONG));
+	}
 }
 
 static void riscv_irqchip_unmask_irq(struct vmm_host_irq *d)
 {
-	csr_set(sie, 1UL << d->hwirq);
+	if (d->hwirq < BITS_PER_LONG) {
+		csr_set(CSR_SIE, BIT(d->hwirq));
+	} else {
+		csr_set(CSR_SIEH, BIT(d->hwirq - BITS_PER_LONG));
+	}
 }
 
 static struct vmm_host_irq_chip riscv_irqchip = {
@@ -62,6 +70,12 @@ static struct vmm_host_irq_chip riscv_irqchip = {
 	.irq_mask = riscv_irqchip_mask_irq,
 	.irq_unmask = riscv_irqchip_unmask_irq,
 };
+
+static u32 riscv_intc_aia_active_irq(u32 cpu_irq_no)
+{
+	unsigned long topi = csr_read(CSR_STOPI);
+	return (topi) ? topi >> TOPI_IID_SHIFT : UINT_MAX;
+}
 
 static u32 riscv_intc_active_irq(u32 cpu_irq_no)
 {
@@ -90,7 +104,7 @@ static struct vmm_cpuhp_notify riscv_intc_cpuhp = {
 static int __init riscv_intc_init(struct vmm_devtree_node *node)
 {
 	int i, irq, rc;
-	u32 hart_id = 0;
+	u32 nr_irqs, hart_id = 0;
 
 	/* Get hart_id of associated HART */
 	rc = riscv_node_to_hartid(node->parent, &hart_id);
@@ -105,8 +119,13 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 		return VMM_OK;
 	}
 
+	/* Determine number of IRQs */
+	nr_irqs = BITS_PER_LONG;
+	if (riscv_aia_available && BITS_PER_LONG == 32)
+		nr_irqs = nr_irqs * 2;
+
 	/* Register IRQ domain */
-	intc_domain = vmm_host_irqdomain_add(node, 0, RISCV_IRQ_COUNT,
+	intc_domain = vmm_host_irqdomain_add(node, 0, nr_irqs,
 					     &riscv_intc_ops, NULL);
 	if (!intc_domain) {
 		vmm_lerror("riscv-intc", "failed to add irq domain\n");
@@ -135,11 +154,15 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 	}
 
 	/* Register active IRQ callback */
-	vmm_host_irq_set_active_callback(riscv_intc_active_irq);
+	if (riscv_aia_available) {
+		vmm_host_irq_set_active_callback(riscv_intc_aia_active_irq);
+	} else {
+		vmm_host_irq_set_active_callback(riscv_intc_active_irq);
+	}
 
 	/* Announce RISC-V INTC */
-	vmm_init_printf("riscv-intc: registered %d local interrupts\n",
-			RISCV_IRQ_COUNT);
+	vmm_init_printf("riscv-intc: registered %d local interrupts%s\n",
+			nr_irqs, (riscv_aia_available) ? " with AIA" : "");
 	return VMM_OK;
 }
 
