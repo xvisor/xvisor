@@ -94,7 +94,7 @@ int __init sbi_ipi_init(void)
 	}
 
 	/* Register IPI domain */
-	sbi_ipi_domain = vmm_host_irqdomain_add(NULL, __riscv_xlen, 1,
+	sbi_ipi_domain = vmm_host_irqdomain_add(NULL, BITS_PER_LONG * 2, 1,
 						&irqdomain_simple_ops, NULL);
 	if (!sbi_ipi_domain) {
 		vmm_lerror("riscv-sbi-ipi",

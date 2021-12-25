@@ -147,7 +147,7 @@ static int __init aclint_swi_init(struct vmm_devtree_node *node)
 	}
 
 	/* Register ACLINT_SWI domain */
-	aclint_swi_domain = vmm_host_irqdomain_add(NULL, __riscv_xlen, 1,
+	aclint_swi_domain = vmm_host_irqdomain_add(NULL, BITS_PER_LONG * 2, 1,
 						   &irqdomain_simple_ops,
 						   NULL);
 	if (!aclint_swi_domain) {
