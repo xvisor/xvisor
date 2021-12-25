@@ -179,11 +179,12 @@ unsigned long riscv_stage2_mode = HGATP_MODE_SV32X4;
 #endif
 unsigned long riscv_stage2_vmid_bits = 0;
 unsigned long riscv_timer_hz = 0;
+bool riscv_aia_available = true;
 
 int __init arch_cpu_nascent_init(void)
 {
 	DECLARE_BITMAP(this_isa, RISCV_ISA_EXT_MAX);
-	struct vmm_devtree_node *dn, *cpus;
+	struct vmm_devtree_node *dn, *in, *cpus;
 	const char *isa, *str;
 	unsigned long val, this_xlen;
 	int rc = VMM_OK;
@@ -243,6 +244,14 @@ int __init arch_cpu_nascent_init(void)
 		if (rc) {
 			vmm_devtree_dref_node(dn);
 			break;
+		}
+
+		in = vmm_devtree_find_compatible(dn, NULL,
+						 "riscv,cpu-intc-aia");
+		if (!in) {
+			riscv_aia_available = false;
+		} else {
+			vmm_devtree_dref_node(in);
 		}
 
 		if (riscv_xlen) {
