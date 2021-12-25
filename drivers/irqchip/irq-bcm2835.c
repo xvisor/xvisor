@@ -132,7 +132,7 @@ static struct vmm_host_irq_chip bcm283x_intc_chip = {
 	.irq_unmask = bcm283x_intc_irq_unmask,
 };
 
-static u32 bcm283x_intc_active_irq(u32 cpu_irq_no)
+static u32 bcm283x_intc_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
 	register u32 stat, hwirq;
 
@@ -164,7 +164,7 @@ static u32 bcm283x_intc_active_irq(u32 cpu_irq_no)
 
 static vmm_irq_return_t bcm2836_intc_cascade_irq(int irq, void *dev)
 {
-	vmm_host_generic_irq_exec(bcm283x_intc_active_irq(0));
+	vmm_host_generic_irq_exec(bcm283x_intc_active_irq(0, 0));
 
 	return VMM_IRQ_HANDLED;
 }

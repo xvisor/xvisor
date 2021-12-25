@@ -308,7 +308,7 @@ static u32 gic_irq_get_routed_state(struct vmm_host_irq *d, u32 mask)
 	return val;
 }
 
-static u32 gic_active_irq(u32 cpu_irq_nr)
+static u32 gic_active_irq(u32 cpu_irq_nr, u32 prev_irq)
 {
 	u32 irqnr = gic_read_iar();
 

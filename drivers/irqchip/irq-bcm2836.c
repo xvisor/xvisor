@@ -223,7 +223,7 @@ static void bcm2836_arm_irqchip_register_irq(u32 hwirq, bool is_ipi,
 	vmm_host_irq_set_handler(irq, vmm_handle_percpu_irq);
 }
 
-static u32 bcm2836_intc_active_irq(u32 cpu_irq_no)
+static u32 bcm2836_intc_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
 	u32 ret = UINT_MAX;
 	u32 cpu, stat, hwirq;

@@ -71,15 +71,17 @@ static struct vmm_host_irq_chip riscv_irqchip = {
 	.irq_unmask = riscv_irqchip_unmask_irq,
 };
 
-static u32 riscv_intc_aia_active_irq(u32 cpu_irq_no)
+static u32 riscv_intc_aia_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
 	unsigned long topi = csr_read(CSR_STOPI);
 	return (topi) ? topi >> TOPI_IID_SHIFT : UINT_MAX;
 }
 
-static u32 riscv_intc_active_irq(u32 cpu_irq_no)
+static u32 riscv_intc_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
-	return (cpu_irq_no < RISCV_IRQ_COUNT) ? cpu_irq_no : UINT_MAX;
+	if (cpu_irq_no != prev_irq)
+		return (cpu_irq_no < RISCV_IRQ_COUNT) ? cpu_irq_no : UINT_MAX;
+	return UINT_MAX;
 }
 
 static struct vmm_host_irqdomain_ops riscv_intc_ops = {

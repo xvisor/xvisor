@@ -144,7 +144,7 @@ static struct omap_intc intc;
 				(void *)(intc.base + (reg)))
 #define intc_read(reg)		vmm_readl((void *)(intc.base + (reg)))
 
-static u32 intc_active_irq(u32 cpu_irq)
+static u32 intc_active_irq(u32 cpu_irq, u32 prev_irq)
 {
 	u32 hwirq, ret = UINT_MAX;
 

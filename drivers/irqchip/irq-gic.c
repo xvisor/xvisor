@@ -94,7 +94,7 @@ static int gic_peek_irq(struct gic_chip_data *gic,
 	return !!(gic_read(gic->dist_base + offset + (d->hwirq / 32) * 4) & mask);
 }
 
-static u32 gic_active_irq(u32 cpu_irq_nr)
+static u32 gic_active_irq(u32 cpu_irq_nr, u32 prev_irq)
 {
 	u32 ret = gic_read(gic_data[0].cpu_base + GICC_INTACK) & 0x3FF;
 

@@ -36,7 +36,7 @@
 struct vmm_host_irqs_ctrl {
 	vmm_spinlock_t lock;
 	struct vmm_host_irq *irq;
-	u32 (*active)(u32);
+	u32 (*active)(u32, u32);
 	struct vmm_cpumask default_affinity;
 };
 
@@ -171,19 +171,19 @@ int vmm_host_active_irq_exec(u32 cpu_irq_no)
 	 * spurious interrupts on buggy hardware.
 	 */
 	exec_count = 16;
-	hirq_no = hirqctrl.active(cpu_irq_no);
+	hirq_no = hirqctrl.active(cpu_irq_no, UINT_MAX);
 	while (hirq_no < CONFIG_HOST_IRQ_COUNT) {
 		vmm_host_generic_irq_exec(hirq_no);
 
 		if (!exec_count--)
 			break;
-		hirq_no = hirqctrl.active(cpu_irq_no);
+		hirq_no = hirqctrl.active(cpu_irq_no, hirq_no);
 	}
 
 	return VMM_OK;
 }
 
-void vmm_host_irq_set_active_callback(u32 (*active)(u32))
+void vmm_host_irq_set_active_callback(u32 (*active)(u32, u32))
 {
 	hirqctrl.active = active;
 }

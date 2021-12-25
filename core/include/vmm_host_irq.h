@@ -184,7 +184,7 @@ int vmm_host_generic_irq_exec(u32 hirq_no);
 int vmm_host_active_irq_exec(u32 cpu_irq_no);
 
 /** Set callback for retriving active host irq number */
-void vmm_host_irq_set_active_callback(u32 (*active)(u32));
+void vmm_host_irq_set_active_callback(u32 (*active)(u32, u32));
 
 /** Initialize host irq instance
  *  Note: This function is for internal use only.

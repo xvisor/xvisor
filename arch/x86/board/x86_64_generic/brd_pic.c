@@ -30,7 +30,7 @@
 #include <cpu_apic.h>
 #endif
 
-static u32 x86_active_irq(u32 cpu_irq_no)
+static u32 x86_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
 	return cpu_irq_no;
 }

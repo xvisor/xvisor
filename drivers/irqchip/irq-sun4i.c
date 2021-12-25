@@ -173,7 +173,7 @@ static struct vmm_host_irq_chip aw_vic_chip = {
 	.irq_unmask = aw_irq_unmask,
 };
 
-static u32 aw_intc_irq_active(u32 cpu_irq_no)
+static u32 aw_intc_irq_active(u32 cpu_irq_no, u32 prev_irq)
 {
 	register u32 i, s;
 

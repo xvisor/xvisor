@@ -93,7 +93,7 @@ static u32 avic_pending_int(u32 status)
 	return 0;
 }
 
-static u32 avic_active_irq(u32 cpu_irq_no)
+static u32 avic_active_irq(u32 cpu_irq_no, u32 prev_irq)
 {
 	u32 ret = UINT_MAX, hwirq, status;
 

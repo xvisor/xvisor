@@ -80,7 +80,7 @@ static inline void *vic_base(struct vmm_host_irq *d)
 	return (void *)v->base;
 }
 
-static u32 vic_active_irq(u32 cpu_nr)
+static u32 vic_active_irq(u32 cpu_nr, u32 prev_irq)
 {
 	u32 hwirq, int_status, ret = UINT_MAX;
 	struct vic_chip_data *v = &vic_data[0];

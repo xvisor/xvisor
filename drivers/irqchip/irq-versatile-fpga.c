@@ -117,7 +117,7 @@ done:
 	return ret;
 }
 
-static u32 fpga_active_irq(u32 cpu_nr)
+static u32 fpga_active_irq(u32 cpu_nr, u32 prev_irq)
 {
 	u32 i, ret;
 
