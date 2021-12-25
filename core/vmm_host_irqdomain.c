@@ -143,8 +143,6 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_get(unsigned int hirq)
 
 	vmm_read_unlock_irqrestore_lite(&idctrl.lock, flags);
 
-	vmm_printf("%s: Failed to find host IRQ %d domain\n", __func__, hirq);
-
 	return NULL;
 }
 
@@ -376,6 +374,11 @@ struct vmm_host_irqdomain *vmm_host_irqdomain_add(
 	if ((base >= 0) &&
 	    ((CONFIG_HOST_IRQ_COUNT <= base) ||
 	     (CONFIG_HOST_IRQ_COUNT <= (base + size)))) {
+		return NULL;
+	}
+	if ((base >= 0) &&
+	    (vmm_host_irqdomain_get(base) ||
+	     vmm_host_irqdomain_get(base + size - 1))) {
 		return NULL;
 	}
 
