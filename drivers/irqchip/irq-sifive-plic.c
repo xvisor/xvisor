@@ -254,8 +254,21 @@ static vmm_irq_return_t plic_chained_handle_irq(int irq, void *dev)
 	return (have_irq) ? VMM_IRQ_HANDLED : VMM_IRQ_NONE;
 }
 
+static int plic_irqdomain_map(struct vmm_host_irqdomain *dom,
+			      unsigned int hirq, unsigned int hwirq)
+{
+	struct plic_hw *hw = dom->host_data;
+
+	vmm_host_irq_set_chip(hirq, &plic_chip);
+	vmm_host_irq_set_chip_data(hirq, hw);
+	vmm_host_irq_set_handler(hirq, vmm_handle_simple_irq);
+
+	return VMM_OK;
+}
+
 static struct vmm_host_irqdomain_ops plic_ops = {
 	.xlate = vmm_host_irqdomain_xlate_onecell,
+	.map = plic_irqdomain_map,
 };
 
 static void plic_context_init(struct plic_context *cntx)
@@ -297,7 +310,7 @@ static struct vmm_cpuhp_notify plic_cpuhp = {
 static int __init plic_init(struct vmm_devtree_node *node)
 {
 	u32 cpu;
-	int i, j, rc, hwirq, hirq;
+	int i, j, rc, hwirq;
 	struct plic_hw *hw = NULL;
 	struct plic_context *cntx;
 	physical_addr_t hart_id, thart_id;
@@ -430,17 +443,6 @@ static int __init plic_init(struct vmm_devtree_node *node)
 		vmm_free(hw->contexts);
 		vmm_free(hw);
 		return VMM_EFAIL;
-	}
-
-	/*
-	 * Create IRQ domain mappings
-	 * Note: Interrupt 0 is no device/interrupt.
-	 */
-	for (hwirq = 1; hwirq < hw->ndev; ++hwirq) {
-		hirq = vmm_host_irqdomain_create_mapping(hw->domain, hwirq);
-		vmm_host_irq_set_chip(hirq, &plic_chip);
-		vmm_host_irq_set_chip_data(hirq, hw);
-		vmm_host_irq_set_handler(hirq, vmm_handle_simple_irq);
 	}
 
 	/* Setup CPU hotplug notifier */
