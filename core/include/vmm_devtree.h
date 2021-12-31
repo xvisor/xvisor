@@ -682,6 +682,15 @@ int vmm_devtree_irq_parse_one(struct vmm_devtree_node *device, int index,
 			      struct vmm_devtree_phandle_args *out_irq);
 
 /**
+ * Find host irqdomain for a device node
+ * @dev: Device node of the device whose interrupt is to be mapped
+ *
+ * Returns a pointer to the host irqdomain , or NULL if not found.
+ */
+struct vmm_host_irqdomain *vmm_devtree_irqdomain_find(
+					struct vmm_devtree_node *dev);
+
+/**
  * Parse and map an interrupt into Xvisor space
  * @dev: Device node of the device whose interrupt is to be mapped
  * @index: Index of the interrupt to map
