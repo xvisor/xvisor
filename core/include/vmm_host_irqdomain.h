@@ -132,8 +132,14 @@ int vmm_host_irqdomain_xlate(struct vmm_host_irqdomain *domain,
 			     const u32 *intspec, unsigned int intsize,
 			     unsigned long *out_hwirq, unsigned int *out_type);
 
-/** Common xlate() callback to translate device tree cell */
+/** Common xlate() callback to translate one device tree cell */
 int vmm_host_irqdomain_xlate_onecell(struct vmm_host_irqdomain *domain,
+			struct vmm_devtree_node *node,
+			const u32 *intspec, unsigned int intsize,
+			unsigned long *out_hwirq, unsigned int *out_type);
+
+/** Common xlate() callback to translate two device tree cells */
+int vmm_host_irqdomain_xlate_twocells(struct vmm_host_irqdomain *domain,
 			struct vmm_devtree_node *node,
 			const u32 *intspec, unsigned int intsize,
 			unsigned long *out_hwirq, unsigned int *out_type);
