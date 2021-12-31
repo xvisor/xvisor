@@ -36,6 +36,29 @@
 /* SMP processor ID for Boot CPU */
 static u32 smp_bootcpu_id = UINT_MAX;
 
+int vmm_smp_map_cpuid(unsigned long hwid, u32 *cpu)
+{
+	u32 c;
+	int rc;
+	unsigned long thwid;
+
+	if (!cpu)
+		return VMM_EINVALID;
+
+	for_each_possible_cpu(c) {
+		rc = vmm_smp_map_hwid(c, &thwid);
+		if (rc)
+			return rc;
+
+		if (thwid == hwid) {
+			*cpu = c;
+			return VMM_OK;
+		}
+	}
+
+	return VMM_ENOENT;
+}
+
 u32 vmm_smp_bootcpu_id(void)
 {
 	return smp_bootcpu_id;

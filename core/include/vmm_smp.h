@@ -53,6 +53,19 @@ static inline int vmm_smp_map_hwid(u32 cpu, unsigned long *hwid)
 #endif
 }
 
+/** Get SMP processor ID for given Hardware ID
+ *  Note: To ease development, this function returns 0 on UP systems.
+ */
+#if !defined(CONFIG_SMP)
+static inline int vmm_smp_map_cpuid(unsigned long hwid, u32 *cpu)
+{
+	*cpu = 0;
+	return VMM_OK;
+}
+#else
+int vmm_smp_map_cpuid(unsigned long hwid, u32 *cpu);
+#endif
+
 /** Get SMP processor ID for Boot CPU
  *  Note: Boot CPU is the CPU on which we started booting.
  *  Note: To ease development, this function returns 0 on UP systems.
