@@ -198,23 +198,8 @@ static unsigned int vmm_devtree_irq_create_mapping(
 	if (irq_data->np) {
 		domain = vmm_devtree_irqdomain_find(irq_data->np);
 		if (!domain) {
-			/* If no domain found then this is static host irq.
-			 *
-			 * In this case, we call vmm_host_irq API to
-			 * find-out vmm_host_irq_chip which will have
-			 * xlate() callback similar (but not same as)
-			 * to xlate() callback of vmm_host_irqdomain.
-			 *
-			 * The xlate() callback of vmm_host_irq_chip
-			 * will translate interrupt cells into host irq
-			 * number. It will also configure the host irq
-			 * if required.
-			 */
-
-			/* Currently as a work-around we return value
-			 * of first cell from interrupt cells.
-			 */
-			return irq_data->args[0];
+			/* If no domain found then fail. */
+			return 0;
 		}
 	} else {
 		return irq_data->args[0];
