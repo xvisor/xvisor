@@ -153,10 +153,29 @@ static void platform_device_release(struct vmm_device *dev)
 	vmm_free(dev);
 }
 
+enum platform_probe_order {
+	PLATFORM_PROBE_ORDER_IRQCHIP = 0,
+	PLATFORM_PROBE_ORDER_MISC,
+	PLATFORM_PROBE_ORDER_MAX
+};
+
+static enum platform_probe_order platform_get_probe_order(
+					struct vmm_devtree_node *node)
+{
+	enum platform_probe_order ret = PLATFORM_PROBE_ORDER_MISC;
+
+	if (vmm_devtree_getattr(node,
+			        VMM_DEVTREE_INTERRUPT_CNTRL_ATTR_NAME)) {
+		ret = PLATFORM_PROBE_ORDER_IRQCHIP;
+	}
+
+	return ret;
+}
+
 static int platform_probe(struct vmm_devtree_node *node,
 			  struct vmm_device *parent)
 {
-	int rc;
+	int rc, order;
 	struct vmm_device *dev;
 	struct vmm_devtree_node *child;
 
@@ -191,8 +210,12 @@ static int platform_probe(struct vmm_devtree_node *node,
 		return rc;
 	}
 
-	vmm_devtree_for_each_child(child, node) {
-		platform_probe(child, dev);
+	for (order = 0; order < PLATFORM_PROBE_ORDER_MAX; order++) {
+		vmm_devtree_for_each_child(child, node) {
+			if (platform_get_probe_order(child) != order)
+				continue;
+			platform_probe(child, dev);
+		}
 	}
 
 	return VMM_OK;
