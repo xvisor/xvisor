@@ -122,7 +122,6 @@ struct plic_context {
 	struct plic_hw *hw;
 	int contextid;
 	unsigned long target_hart;
-	u32 parent_irq;
 	void *reg_base;
 	vmm_spinlock_t reg_enable_lock;
 	void *reg_enable_base;
@@ -143,6 +142,7 @@ struct plic_hw {
 };
 
 static bool plic_cpuhp_setup_done;
+static u32 plic_parent_irq;
 static DEFINE_PER_CPU(struct plic_context *, handlers);
 
 static void plic_context_disable_irq(struct plic_context *cntx, int hwirq)
@@ -273,13 +273,13 @@ static struct vmm_host_irqdomain_ops plic_ops = {
 
 static void plic_context_init(struct plic_context *cntx)
 {
-	/* Check if context has parent HW device */
-	if (!cntx->hw) {
+	/* Check if context has parent IRQ or parent HW device */
+	if (!plic_parent_irq || !cntx->hw) {
 		return;
 	}
 
 	/* Register parent IRQ for this context */
-	if (vmm_host_irq_register(cntx->parent_irq, "riscv-plic",
+	if (vmm_host_irq_register(plic_parent_irq, "riscv-plic",
 				  plic_chained_handle_irq, cntx)) {
 		return;
 	}
@@ -310,10 +310,10 @@ static struct vmm_cpuhp_notify plic_cpuhp = {
 static int __init plic_init(struct vmm_devtree_node *node)
 {
 	u32 cpu;
-	int i, j, rc, hwirq;
+	int i, rc, hwirq;
 	struct plic_hw *hw = NULL;
 	struct plic_context *cntx;
-	physical_addr_t hart_id, thart_id;
+	physical_addr_t hart_id;
 	struct vmm_devtree_phandle_args oirq;
 
 	/* Allocate PLIC HW */
@@ -378,6 +378,7 @@ static int __init plic_init(struct vmm_devtree_node *node)
 		cntx->reg_enable_base = hw->reg_base + ENABLE_BASE +
 					ENABLE_PER_HART * cntx->contextid;
 
+		/* Parse interrupt entry */
 		rc = vmm_devtree_irq_parse_one(node, i, &oirq);
 		if (rc || !oirq.np || !oirq.np->parent || !oirq.args_count) {
 			vmm_lerror("plic",
@@ -386,6 +387,7 @@ static int __init plic_init(struct vmm_devtree_node *node)
 			continue;
 		}
 
+		/* Find target HART id */
 		rc = vmm_devtree_regaddr(oirq.np->parent, &hart_id, 0);
 		vmm_devtree_dref_node(oirq.np);
 		if (rc) {
@@ -395,42 +397,35 @@ static int __init plic_init(struct vmm_devtree_node *node)
 		}
 		cntx->target_hart = hart_id;
 
-		cntx->parent_irq = vmm_devtree_irq_parse_map(node, i);
-		if (cntx->parent_irq) {
-			cntx->hw = hw;
+		/* Find target CPU id */
+		rc = vmm_smp_map_cpuid(hart_id, &cpu);
+		if (rc) {
+			vmm_lerror("plic", "%s: failed to get target CPU "
+				   "for context=%d\n", node->name, i);
+			continue;
 		}
 
-		for (j = 0; j < i; j++) {
-			if (hw->contexts[j].hw &&
-			    hw->contexts[j].target_hart == cntx->target_hart) {
-				vmm_lerror("plic", "%s: context=%d already "
-					   "mapped to target_hart=%ld so "
-					   "context=%d not present\n",
-					   node->name, j, hart_id, i);
-				cntx->hw = NULL;
-			}
+		/* Check parent Hardware IRQ number */
+		if (oirq.args[0] != IRQ_S_EXT) {
+			continue;
+		}
+		cntx->hw = hw;
+
+		/* Map parent IRQ if not available */
+		if (!plic_parent_irq) {
+			plic_parent_irq = vmm_devtree_irq_parse_map(node, i);
 		}
 
-		if (cntx->hw) {
-			/* Update per-CPU handler pointer */
-			for_each_possible_cpu(cpu) {
-				vmm_smp_map_hwid(cpu, &thart_id);
-				if (thart_id != hart_id) {
-					continue;
-				}
+		/* Update per-CPU handler pointer */
+		per_cpu(handlers, cpu) = cntx;
+		vmm_cpumask_set_cpu(cpu, &hw->lmask);
 
-				per_cpu(handlers, cpu) = cntx;
-				vmm_cpumask_set_cpu(cpu, &hw->lmask);
-				break;
-			}
-
-			/* Disable all interrupts */
-			for (hwirq = 1; hwirq <= cntx->hw->ndev; ++hwirq) {
-				plic_context_disable_irq(cntx, hwirq);
-			}
-
-			hw->ncontexts_avail++;
+		/* Disable all interrupts */
+		for (hwirq = 1; hwirq <= cntx->hw->ndev; ++hwirq) {
+			plic_context_disable_irq(cntx, hwirq);
 		}
+
+		hw->ncontexts_avail++;
 	}
 
 	/* Create IRQ domain */
