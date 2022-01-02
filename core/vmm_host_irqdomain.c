@@ -251,7 +251,8 @@ void vmm_host_irqdomain_dispose_mapping(unsigned int hirq)
 }
 
 int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
-			     unsigned int irq_count)
+			     unsigned int irq_count,
+			     void *arg)
 {
 	int rc;
 	irq_flags_t flags;
@@ -262,25 +263,39 @@ int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
 		return VMM_EINVALID;
 	}
 
-	vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
-	count = 0;
-	for (hwirq = 0; hwirq < domain->count; hwirq++) {
-		if (bitmap_isset(domain->bmap, hwirq))
-			count = 0;
-		else
-			count++;
-		if (count == irq_count) {
-			found = true;
-			hwirq = hwirq - (count - 1);
-			break;
+	if (domain->ops->alloc) {
+		rc = domain->ops->alloc(domain, irq_count, arg);
+		if (rc < 0) {
+			return rc;
 		}
-	}
-	if (!found) {
+		hwirq = rc;
+		vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
+		bitmap_set(domain->bmap, hwirq, irq_count);
 		vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
-		return VMM_ENOENT;
+	} else {
+		vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
+		if (!found) {
+			count = 0;
+			for (hwirq = 0; hwirq < domain->count; hwirq++) {
+				if (bitmap_isset(domain->bmap, hwirq))
+					count = 0;
+				else
+					count++;
+				if (count == irq_count) {
+					found = true;
+					hwirq = hwirq - (count - 1);
+					break;
+				}
+			}
+		}
+		if (!found) {
+			vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock,
+							flags);
+			return VMM_ENOENT;
+		}
+		bitmap_set(domain->bmap, hwirq, irq_count);
+		vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
 	}
-	bitmap_set(domain->bmap, hwirq, irq_count);
-	vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
 
 	hirq = domain->base + hwirq;
 	for (i = 0; i < irq_count; i++) {
@@ -288,6 +303,14 @@ int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
 		if (rc) {
 			for (j = 0; j < i; j++) {
 				__irqdomain_dispose_mapping(domain, hirq + j);
+			}
+			vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
+			bitmap_clear(domain->bmap, hwirq, irq_count);
+			vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock,
+							flags);
+
+			if (domain->ops->free) {
+				domain->ops->free(domain, hwirq, irq_count);
 			}
 			return rc;
 		}
@@ -310,17 +333,16 @@ void vmm_host_irqdomain_free(struct vmm_host_irqdomain *domain,
 		return;
 
 	for (i = 0; i < irq_count; i++) {
-		hwirq = hirq - domain->base + i;
+		__irqdomain_dispose_mapping(domain, hirq + i);
+	}
 
-		vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
-		if (!bitmap_isset(domain->bmap, hwirq)) {
-			vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
-			continue;
-		}
-		bitmap_clear(domain->bmap, hwirq, 1);
-		vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
+	hwirq = hirq - domain->base;
+	vmm_spin_lock_irqsave_lite(&domain->bmap_lock, flags);
+	bitmap_clear(domain->bmap, hwirq, irq_count);
+	vmm_spin_unlock_irqrestore_lite(&domain->bmap_lock, flags);
 
-		__irqdomain_dispose_mapping(domain, hirq);
+	if (domain->ops->free) {
+		domain->ops->free(domain, hwirq, irq_count);
 	}
 }
 

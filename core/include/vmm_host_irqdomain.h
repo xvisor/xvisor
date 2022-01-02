@@ -42,6 +42,8 @@ struct vmm_host_irqdomain;
  * @unmap: Dispose of such a mapping
  * @xlate: Given a device tree node and interrupt specifier, decode
  *         the hardware irq number and linux irq type value.
+ * @alloc: Allocate a specified number of hardware irqs
+ * @free: Free hardware irqs
  *
  * Functions below are provided by the driver and called whenever a new
  * mapping is created or an old mapping is disposed. The driver can then
@@ -58,6 +60,10 @@ struct vmm_host_irqdomain_ops {
 		     struct vmm_devtree_node *node,
 		     const u32 *intspec, unsigned int intsize,
 		     unsigned long *out_hwirq, unsigned int *out_type);
+	int (*alloc)(struct vmm_host_irqdomain *d,
+		     unsigned int nr_irqs, void *arg);
+	void (*free)(struct vmm_host_irqdomain *d,
+		     unsigned int hwirq, unsigned int nr_irqs);
 };
 
 /**
@@ -119,7 +125,7 @@ void vmm_host_irqdomain_dispose_mapping(unsigned int hirq);
 
 /** Allocate and map host IRQs */
 int vmm_host_irqdomain_alloc(struct vmm_host_irqdomain *domain,
-			     unsigned int irq_count);
+			     unsigned int irq_count, void *arg);
 
 /** Free and unmap host IRQs */
 void vmm_host_irqdomain_free(struct vmm_host_irqdomain *domain,

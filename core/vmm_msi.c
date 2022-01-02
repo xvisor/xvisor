@@ -232,7 +232,7 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 		ops->set_desc(&arg, desc);
 
 		hirq = vmm_host_irqdomain_alloc(domain->parent,
-						desc->nvec_used);
+						desc->nvec_used, &arg);
 		if (hirq < 0) {
 			ret = VMM_ENOSPC;
 			goto fail_handle_error;
