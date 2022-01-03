@@ -34,3 +34,4 @@ drivers-objs-$(CONFIG_RISCV_INTC)+= irqchip/irq-riscv-intc.o
 drivers-objs-$(CONFIG_RISCV_ACLINT_SWI)+= irqchip/irq-riscv-aclint-swi.o
 drivers-objs-$(CONFIG_SIFIVE_PLIC)+= irqchip/irq-sifive-plic.o
 drivers-objs-$(CONFIG_RISCV_APLIC)+= irqchip/irq-riscv-aplic.o
+drivers-objs-$(CONFIG_RISCV_IMSIC)+= irqchip/irq-riscv-imsic.o
