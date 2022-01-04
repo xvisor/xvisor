@@ -27,7 +27,6 @@
 #include <vmm_types.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
-#include <vmm_host_irqdomain.h>
 #include <libs/list.h>
 
 struct vmm_msi_msg {
@@ -147,7 +146,6 @@ typedef void (*vmm_irq_write_msi_msg_t)(struct vmm_msi_desc *desc,
  * @msi_finish:		Optional callback to finalize the allocation
  * @set_desc:		Set the msi descriptor for an interrupt
  * @handle_error:	Optional error handler if the allocation fails
- * @msi_compose_msg	Domain specific callback to compose MSI mesage
  * @msi_write_msg	Domain specific callback to write MSI message
  *
  * All of the above callbacks are used by vmm_msi_domain_alloc_irqs()
@@ -169,10 +167,6 @@ struct vmm_msi_domain_ops {
 				    struct vmm_msi_desc *desc);
 	int		(*handle_error)(struct vmm_msi_domain *domain,
 					struct vmm_msi_desc *desc, int error);
-	int		(*msi_compose_msg)(struct vmm_msi_domain *domain,
-					   struct vmm_msi_desc *desc,
-					   unsigned int hirq, unsigned int hwirq,
-					   struct vmm_msi_msg *msg);
 	void		(*msi_write_msg)(struct vmm_msi_domain *domain,
 					 struct vmm_msi_desc *desc,
 					 unsigned int hirq, unsigned int hwirq,

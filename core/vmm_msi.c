@@ -23,6 +23,8 @@
 
 #include <vmm_error.h>
 #include <vmm_heap.h>
+#include <vmm_host_irq.h>
+#include <vmm_host_irqdomain.h>
 #include <vmm_spinlocks.h>
 #include <vmm_msi.h>
 #include <libs/stringlib.h>
@@ -261,17 +263,13 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 
 	/* If everything went fine then we write MSI messages */
 	for_each_msi_entry(desc, dev) {
-		if (ops->msi_compose_msg && ops->msi_write_msg) {
-			hirq = desc->hirq;
-			hwirq = vmm_host_irqdomain_to_hwirq(domain->parent,
-							    hirq);
-			for (i = 0; i < desc->nvec_used; i++) {
-				ret = ops->msi_compose_msg(domain, desc,
-						hirq + i, hwirq + i, &msg);
-				BUG_ON(ret < 0);
-				ops->msi_write_msg(domain, desc,
-						hirq + i, hwirq + i, &msg);
-			}
+		hirq = desc->hirq;
+		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
+		for (i = 0; i < desc->nvec_used; i++) {
+			ret = vmm_host_irq_compose_msi_msg(hirq + i, &msg);
+			BUG_ON(ret < 0);
+			ops->msi_write_msg(domain, desc,
+					hirq + i, hwirq + i, &msg);
 		}
 	}
 

@@ -529,6 +529,21 @@ int vmm_host_irq_raise(u32 hirq,
 	return VMM_OK;
 }
 
+int vmm_host_irq_compose_msi_msg(u32 hirq, struct vmm_msi_msg *msg)
+{
+	struct vmm_host_irq *irq;
+
+	if (!msg)
+		return VMM_EINVALID;
+	if (NULL == (irq = vmm_host_irq_get(hirq)))
+		return VMM_ENOTAVAIL;
+	if (!irq->chip || !irq->chip->irq_compose_msi_msg)
+		return VMM_ENOSYS;
+
+	irq->chip->irq_compose_msi_msg(irq, msg);
+	return VMM_OK;
+}
+
 int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq)
 {
 	u32 ite;

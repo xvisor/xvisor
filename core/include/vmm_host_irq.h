@@ -104,6 +104,7 @@ enum vmm_irq_return {
 };
 
 struct vmm_host_irq;
+struct vmm_msi_msg;
 
 typedef enum vmm_irq_return vmm_irq_return_t;
 typedef void (*vmm_host_irq_handler_t)(struct vmm_host_irq *, u32, void *);
@@ -125,6 +126,7 @@ struct vmm_host_irq_action {
  * @irq_eoi:              end of interrupt
  * @irq_set_affinity:     set the CPU affinity on SMP machines
  * @irq_set_type:         set the flow type (VMM_IRQ_TYPE_LEVEL/etc.) of an IRQ
+ * @irq_compose_msi_msg:  compose MSI message for given interrupt source
  * @irq_get_routed_state: get the routed state of an IRQ
  * @irq_set_routed_state: set the routed state of an IRQ
  */
@@ -143,6 +145,8 @@ struct vmm_host_irq_chip {
 	int  (*irq_set_type)(struct vmm_host_irq *irq, u32 flow_type);
 	void (*irq_raise)(struct vmm_host_irq *irq,
 			  const struct vmm_cpumask *dest);
+	void (*irq_compose_msi_msg)(struct vmm_host_irq *irq,
+				    struct vmm_msi_msg *msg);
 	u32  (*irq_get_routed_state)(struct vmm_host_irq *irq, u32 mask);
 	void (*irq_set_routed_state)(struct vmm_host_irq *irq,
 				     u32 val, u32 mask);
@@ -403,6 +407,9 @@ static inline int vmm_host_irq_disable(u32 hirq)
 /** Raise a host irq from software */
 int vmm_host_irq_raise(u32 hirq,
 		       const struct vmm_cpumask *dest);
+
+/** Compose a MSI message for given host irq */
+int vmm_host_irq_compose_msi_msg(u32 hirq, struct vmm_msi_msg *msg);
 
 /** Find a host irq with matching state mask */
 int vmm_host_irq_find(u32 hirq_start, u32 state_mask, u32 *hirq);
