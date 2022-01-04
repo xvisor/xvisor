@@ -267,6 +267,27 @@ static inline unsigned fls_long(unsigned long l)
 	return fls64(l);
 }
 
+static inline int get_count_order(unsigned int count)
+{
+	if (count == 0)
+		return -1;
+
+	return fls(--count);
+}
+
+/**
+ * get_count_order_long - get order after rounding @l up to power of 2
+ * @l: parameter
+ *
+ * it is same as get_count_order() but with long type parameter
+ */
+static inline int get_count_order_long(unsigned long l)
+{
+	if (l == 0UL)
+		return -1;
+	return (int)fls_long(--l);
+}
+
 /**
  * __ffs64 - find first set bit in a 64 bit word
  * @word: The 64 bit word
@@ -314,16 +335,6 @@ static __inline__ int get_bitmask_order(unsigned int count)
 
 	order = fls(count);
 	return order;	/* We could be slightly more clever with -1 here... */
-}
-
-static __inline__ int get_count_order(unsigned int count)
-{
-	int order;
-
-	order = fls(count) - 1;
-	if (count & (count - 1))
-		order++;
-	return order;
 }
 
 /**
