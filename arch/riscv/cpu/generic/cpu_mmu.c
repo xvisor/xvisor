@@ -572,7 +572,7 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 	 * cleanup by invalidating all Guest and Host TLB entries.
 	 */
 	__hfence_gvma_all();
-	__sfence_vma_all();
+	__hfence_vvma_all();
 
 	if (rc) {
 		return rc;
