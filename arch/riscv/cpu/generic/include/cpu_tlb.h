@@ -27,13 +27,13 @@
 #include <vmm_types.h>
 
 /** Invalidate Stage2 TLBs for given VMID and guest physical address */
-void __hfence_gvma_vmid_gpa(unsigned long gpa, unsigned long vmid);
+void __hfence_gvma_vmid_gpa(unsigned long gpa_divby_4, unsigned long vmid);
 
 /** Invalidate Stage2 TLBs for given VMID */
 void __hfence_gvma_vmid(unsigned long vmid);
 
 /** Invalidate Stage2 TLBs for given guest physical address */
-void __hfence_gvma_gpa(unsigned long gpa);
+void __hfence_gvma_gpa(unsigned long gpa_divby_4);
 
 /** Invalidate all possible Stage2 TLBs */
 void __hfence_gvma_all(void);

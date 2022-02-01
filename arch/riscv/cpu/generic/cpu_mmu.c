@@ -72,7 +72,7 @@ void arch_mmu_stage2_tlbflush(bool remote,
 		sbi_remote_hfence_gvma(NULL, gpa, gsz);
 	} else {
 		for (off = 0; off < gsz; off += VMM_PAGE_SIZE)
-			__hfence_gvma_gpa(gpa + off);
+			__hfence_gvma_gpa((gpa + off) >> 2);
 	}
 }
 
