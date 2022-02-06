@@ -295,6 +295,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->vstval = 0;
 	riscv_priv(vcpu)->vsatp = 0;
 
+	/* By default, make CY, TM, and IR counters accessible in VU mode */
+	riscv_priv(vcpu)->scounteren = 7;
+
 	/* Initialize FP state */
 	cpu_vcpu_fp_init(vcpu);
 
