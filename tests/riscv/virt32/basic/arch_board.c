@@ -179,7 +179,7 @@ void arch_board_fdt_fixup(void *fdt_addr)
 		}
 
 		ret = fdt_setprop_string(fdt_addr, cpu_offset,
-					 "riscv,isa", "rv32imacfd");
+					 "riscv,isa", "rv32imacfdh");
 		if (ret < 0) {
 			basic_printf("Failed to set %s property of /cpus/%s "
 				     "DT node\n", "riscv,isa", name);
