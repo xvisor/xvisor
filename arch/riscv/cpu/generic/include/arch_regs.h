@@ -154,6 +154,36 @@ union riscv_priv_fp {
 	struct riscv_priv_fp_d d;
 };
 
+struct riscv_priv_nested {
+	/* Nested virt state */
+	bool virt;
+	/* Nested software TLB */
+	void *swtlb;
+	/* Nested shadow page table */
+	struct mmu_pgtbl *pgtbl;
+	/* Nested CSR state */
+	unsigned long hstatus;
+	unsigned long hedeleg;
+	unsigned long hideleg;
+	unsigned long hvip;
+	unsigned long hcounteren;
+	unsigned long htimedelta;
+	unsigned long htimedeltah;
+	unsigned long htval;
+	unsigned long htinst;
+	unsigned long hgatp;
+	unsigned long vsstatus;
+	unsigned long vsie;
+	unsigned long vstvec;
+	unsigned long vsscratch;
+	unsigned long vsepc;
+	unsigned long vscause;
+	unsigned long vstval;
+	unsigned long vsatp;
+	/* Nested AIA CSR state */
+	unsigned long hvictl;
+};
+
 struct riscv_priv {
 	/* Register width */
 	unsigned long xlen;
@@ -171,6 +201,8 @@ struct riscv_priv {
 	unsigned long vstval;
 	unsigned long vsatp;
 	unsigned long scounteren;
+	/* Nested state */
+	struct riscv_priv_nested nested;
 	/* FP state */
 	union riscv_priv_fp fp;
 	/* Opaque pointer to timer data */
@@ -188,6 +220,8 @@ struct riscv_guest_priv {
 
 #define riscv_regs(vcpu)		(&((vcpu)->regs))
 #define riscv_priv(vcpu)		((struct riscv_priv *)((vcpu)->arch_priv))
+#define riscv_nested_priv(vcpu)		(&riscv_priv(vcpu)->nested)
+#define riscv_nested_virt(vcpu)		(riscv_nested_priv(vcpu)->virt)
 #define riscv_fp_priv(vcpu)		(&riscv_priv(vcpu)->fp)
 #define riscv_timer_priv(vcpu)		(riscv_priv(vcpu)->timer_priv)
 #define riscv_guest_priv(guest)		((struct riscv_guest_priv *)((guest)->arch_priv))

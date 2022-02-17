@@ -123,9 +123,14 @@ int arch_guest_init(struct vmm_guest *guest)
 			guest->arch_priv = NULL;
 			return VMM_ENOMEM;
 		}
+
 		priv->guest_serial = vmm_malloc(sizeof(struct riscv_guest_serial));
-		if (!priv->guest_serial)
+		if (!priv->guest_serial) {
+			mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl);
+			vmm_free(guest->arch_priv);
+			guest->arch_priv = NULL;
 			return VMM_ENOMEM;
+		}
 
 		gserial = riscv_guest_serial(guest);
 		sname = guest_fdt_find_serial_node(guest->name);
@@ -138,8 +143,13 @@ int arch_guest_init(struct vmm_guest *guest)
 		gserial->vser_client.notifier_call = &guest_vserial_notification;
 		gserial->vser_client.priority = 0;
 		rc = vmm_vserial_register_client(&gserial->vser_client);
-		if (rc)
+		if (rc) {
+			vmm_free(gserial);
+			mmu_pgtbl_free(riscv_guest_priv(guest)->pgtbl);
+			vmm_free(guest->arch_priv);
+			guest->arch_priv = NULL;
 			return rc;
+		}
 	}
 
 	return VMM_OK;
@@ -224,18 +234,18 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		rc = vmm_devtree_read_string(vcpu->node,
 				VMM_DEVTREE_COMPATIBLE_ATTR_NAME, &attr);
 		if (rc) {
-			goto done;
+			goto fail;
 		}
 		if (strcmp(attr, "riscv,generic") != 0) {
 			rc = VMM_EINVALID;
-			goto done;
+			goto fail;
 		}
 
 		/* Alloc private context */
 		vcpu->arch_priv = vmm_zalloc(sizeof(struct riscv_priv));
 		if (!vcpu->arch_priv) {
 			rc = VMM_ENOMEM;
-			goto done;
+			goto fail;
 		}
 
 		/* Set register width */
@@ -245,10 +255,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		riscv_priv(vcpu)->isa =
 			vmm_zalloc(bitmap_estimate_size(RISCV_ISA_EXT_MAX));
 		if (!riscv_priv(vcpu)->isa) {
-			vmm_free(vcpu->arch_priv);
-			vcpu->arch_priv = NULL;
 			rc = VMM_ENOMEM;
-			goto done;
+			goto fail_free_priv;
 		}
 
 		/* Parse VCPU ISA string */
@@ -256,17 +264,17 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		rc = vmm_devtree_read_string(vcpu->node, "riscv,isa", &attr);
 		if (rc || !attr) {
 			rc = VMM_EINVALID;
-			goto done;
+			goto fail_free_isa;
 		}
 		rc = riscv_isa_parse_string(attr, &riscv_priv(vcpu)->xlen,
 					    riscv_priv(vcpu)->isa,
 					    RISCV_ISA_EXT_MAX);
 		if (rc) {
-			goto done;
+			goto fail_free_isa;
 		}
 		if (riscv_priv(vcpu)->xlen > riscv_xlen) {
 			rc = VMM_EINVALID;
-			goto done;
+			goto fail_free_isa;
 		}
 		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
 	}
@@ -302,7 +310,16 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	cpu_vcpu_fp_init(vcpu);
 
 	riscv_timer_event_init(vcpu, &riscv_timer_priv(vcpu));
-done:
+
+	return VMM_OK;
+
+fail_free_isa:
+	vmm_free(riscv_priv(vcpu)->isa);
+	riscv_priv(vcpu)->isa = NULL;
+fail_free_priv:
+	vmm_free(vcpu->arch_priv);
+	vcpu->arch_priv = NULL;
+fail:
 	return rc;
 }
 
