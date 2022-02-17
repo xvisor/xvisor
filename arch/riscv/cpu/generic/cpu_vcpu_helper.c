@@ -389,15 +389,6 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 	memcpy(regs, riscv_regs(vcpu), sizeof(*regs));
 	if (vcpu->is_normal) {
 		priv = riscv_priv(vcpu);
-#ifdef CONFIG_64BIT
-		csr_write(CSR_HTIMEDELTA,
-			riscv_guest_priv(vcpu->guest)->time_delta);
-#else
-		csr_write(CSR_HTIMEDELTA,
-			(u32)(riscv_guest_priv(vcpu->guest)->time_delta));
-		csr_write(CSR_HTIMEDELTAH,
-			(u32)(riscv_guest_priv(vcpu->guest)->time_delta >> 32));
-#endif
 		csr_write(CSR_HIE, priv->hie);
 		csr_write(CSR_HVIP, priv->hvip);
 		csr_write(CSR_VSSTATUS, priv->vsstatus);
@@ -409,14 +400,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSATP, priv->vsatp);
 		csr_write(CSR_SCOUNTEREN, priv->scounteren);
 		cpu_vcpu_fp_restore(vcpu, regs);
-		if (CONFIG_MAX_GUEST_COUNT <= (1UL << riscv_stage2_vmid_bits)) {
-			mmu_stage2_change_pgtbl(vcpu->guest->id,
-					riscv_guest_priv(vcpu->guest)->pgtbl);
-		} else {
-			mmu_stage2_change_pgtbl(0,
-					riscv_guest_priv(vcpu->guest)->pgtbl);
-			__hfence_gvma_all();
-		}
+		cpu_vcpu_time_delta_update(vcpu, riscv_nested_virt(vcpu));
+		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
+		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
 	}
 }
 
@@ -424,6 +410,81 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
 	/* Nothing to do here */
+}
+
+void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	if (nested_virt) {
+		/* Disable interrupt delegation */
+		csr_write(CSR_HIDELEG, 0);
+
+		/* Enable sip/siph and sie/sieh trapping */
+		if (riscv_aia_available) {
+			csr_set(CSR_HVICTL, HVICTL_VTI);
+		}
+	} else {
+		/* Enable interrupt delegation */
+		csr_write(CSR_HIDELEG, HIDELEG_DEFAULT);
+
+		/* Disable sip/siph and sie/sieh trapping */
+		if (riscv_aia_available) {
+			csr_clear(CSR_HVICTL, HVICTL_VTI);
+		}
+	}
+}
+
+void cpu_vcpu_time_delta_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	u64 vtdelta, tdelta = riscv_guest_priv(vcpu->guest)->time_delta;
+
+	if (nested_virt) {
+		vtdelta = riscv_nested_priv(vcpu)->htimedelta;
+#ifndef CONFIG_64BIT
+		vtdelta |= ((u64)riscv_nested_priv(vcpu)->htimedeltah) << 32;
+#endif
+		tdelta += vtdelta;
+	}
+
+#ifdef CONFIG_64BIT
+	csr_write(CSR_HTIMEDELTA, tdelta);
+#else
+	csr_write(CSR_HTIMEDELTA, (u32)tdelta);
+	csr_write(CSR_HTIMEDELTAH, (u32)(tdelta >> 32));
+#endif
+}
+
+void cpu_vcpu_gstage_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	if (riscv_stage2_vmid_available()) {
+		if (nested_virt) {
+			mmu_stage2_change_pgtbl(
+				riscv_stage2_vmid_nested + vcpu->guest->id,
+				riscv_nested_priv(vcpu)->pgtbl);
+		} else {
+			mmu_stage2_change_pgtbl(vcpu->guest->id,
+				riscv_guest_priv(vcpu->guest)->pgtbl);
+		}
+	} else {
+		if (nested_virt) {
+			mmu_stage2_change_pgtbl(0,
+				riscv_nested_priv(vcpu)->pgtbl);
+		} else {
+			mmu_stage2_change_pgtbl(0,
+				riscv_guest_priv(vcpu->guest)->pgtbl);
+		}
+
+		/*
+		 * Invalidate entries related to all guests from both
+		 * G-stage TLB and VS-stage TLB.
+		 *
+		 * NOTE: Due to absence of VMID, there is not VMID tagging
+		 * in VS-stage TLB as well so to avoid one Guest seeing
+		 * VS-stage mappings of other Guest we have to invalidate
+		 * VS-stage TLB enteries as well.
+		 */
+		__hfence_gvma_all();
+		__hfence_vvma_all();
+	}
 }
 
 void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,

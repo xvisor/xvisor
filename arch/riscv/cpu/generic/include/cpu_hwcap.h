@@ -115,8 +115,15 @@ extern unsigned long riscv_xlen;
 /** RISC-V Stage2 MMU mode */
 extern unsigned long riscv_stage2_mode;
 
-/** Available RISC-V Stage2 VMID bits */
+/** RISC-V Stage2 VMID bits */
 extern unsigned long riscv_stage2_vmid_bits;
+
+/** RISC-V Stage2 VMID nested */
+extern unsigned long riscv_stage2_vmid_nested;
+
+/** RISC-V Stage2 VMID available for Guest */
+#define riscv_stage2_vmid_available() \
+	(CONFIG_MAX_GUEST_COUNT <= riscv_stage2_vmid_nested)
 
 /** RISC-V Time Base Frequency */
 extern unsigned long riscv_timer_hz;

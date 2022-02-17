@@ -21,8 +21,8 @@
  * @brief header of VCPU FP functions
  */
 
-#ifndef _CPU_VCPU_HELPER_H__
-#define _CPU_VCPU_HELPER_H__
+#ifndef _CPU_VCPU_FP_H__
+#define _CPU_VCPU_FP_H__
 
 #include <vmm_types.h>
 #include <vmm_manager.h>

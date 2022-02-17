@@ -26,6 +26,15 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Function to update interrupt delegation */
+void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt);
+
+/** Function to update time delta */
+void cpu_vcpu_time_delta_update(struct vmm_vcpu *vcpu, bool nested_virt);
+
+/** Function to update G-stage page table */
+void cpu_vcpu_gstage_update(struct vmm_vcpu *vcpu, bool nested_virt);
+
 /** Function to dump general registers */
 void cpu_vcpu_dump_general_regs(struct vmm_chardev *cdev,
 				arch_regs_t *regs);

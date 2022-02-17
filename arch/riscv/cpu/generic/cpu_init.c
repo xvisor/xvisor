@@ -178,6 +178,8 @@ unsigned long riscv_stage2_mode = HGATP_MODE_SV39X4;
 unsigned long riscv_stage2_mode = HGATP_MODE_SV32X4;
 #endif
 unsigned long riscv_stage2_vmid_bits = 0;
+unsigned long riscv_stage2_vmid_nested = 0;
+bool riscv_stage2_use_vmid = false;
 unsigned long riscv_timer_hz = 0;
 bool riscv_aia_available = true;
 
@@ -280,6 +282,7 @@ int __init arch_cpu_nascent_init(void)
 		csr_write(CSR_HGATP, HGATP_VMID);
 		val = csr_read(CSR_HGATP) & HGATP_VMID;
 		riscv_stage2_vmid_bits = fls_long(val >> HGATP_VMID_SHIFT);
+		riscv_stage2_vmid_nested = (1UL << riscv_stage2_vmid_bits) / 2;
 
 #ifdef CONFIG_64BIT
 		/* Try Sv48 MMU mode */
