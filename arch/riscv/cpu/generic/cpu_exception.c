@@ -165,30 +165,18 @@ void do_handle_exception(arch_regs_t *regs)
 
 int __cpuinit arch_cpu_irq_setup(void)
 {
-	unsigned long hideleg, hedeleg;
 	extern unsigned long _handle_exception[];
 	extern unsigned long _handle_hyp_exception[];
 
 	if (riscv_isa_extension_available(NULL, h)) {
 		/* Update HIDELEG */
-		hideleg = 0;
-		hideleg |= (1UL << IRQ_VS_SOFT);
-		hideleg |= (1UL << IRQ_VS_TIMER);
-		hideleg |= (1UL << IRQ_VS_EXT);
-		csr_write(CSR_HIDELEG, hideleg);
+		csr_write(CSR_HIDELEG, HIDELEG_DEFAULT);
 
 		/* Update HEDELEG */
-		hedeleg = 0;
-		hedeleg |= (1UL << CAUSE_MISALIGNED_FETCH);
-		hedeleg |= (1UL << CAUSE_BREAKPOINT);
-		hedeleg |= (1UL << CAUSE_USER_ECALL);
-		hedeleg |= (1UL << CAUSE_FETCH_PAGE_FAULT);
-		hedeleg |= (1UL << CAUSE_LOAD_PAGE_FAULT);
-		hedeleg |= (1UL << CAUSE_STORE_PAGE_FAULT);
-		csr_write(CSR_HEDELEG, hedeleg);
+		csr_write(CSR_HEDELEG, HEDELEG_DEFAULT);
 
 		/* Update HCOUNTEREN */
-		csr_write(CSR_HCOUNTEREN, -1UL);
+		csr_write(CSR_HCOUNTEREN, HCOUNTEREN_DEFAULT);
 
 		/* Setup final exception handler with hypervisor enabled */
 		csr_write(CSR_STVEC, (virtual_addr_t)&_handle_hyp_exception);

@@ -680,7 +680,7 @@ physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void)
 
 u32 arch_mmu_stage2_current_vmid(void)
 {
-	return (csr_read(CSR_HGATP) & HGATP_VMID_MASK) >> HGATP_VMID_SHIFT;
+	return (csr_read(CSR_HGATP) & HGATP_VMID) >> HGATP_VMID_SHIFT;
 }
 
 int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys)
@@ -688,7 +688,7 @@ int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys)
 	unsigned long hgatp;
 
 	hgatp = riscv_stage2_mode << HGATP_MODE_SHIFT;
-	hgatp |= ((unsigned long)vmid << HGATP_VMID_SHIFT) & HGATP_VMID_MASK;
+	hgatp |= ((unsigned long)vmid << HGATP_VMID_SHIFT) & HGATP_VMID;
 	hgatp |= (tbl_phys >> PGTBL_PAGE_SIZE_SHIFT) & HGATP_PPN;
 
 	csr_write(CSR_HGATP, hgatp);

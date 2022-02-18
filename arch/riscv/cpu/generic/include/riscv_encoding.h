@@ -91,6 +91,7 @@
 #define SSTATUS_SIE			MSTATUS_SIE
 #define SSTATUS_SPIE_SHIFT		MSTATUS_SPIE_SHIFT
 #define SSTATUS_SPIE			MSTATUS_SPIE
+#define SSTATUS_UBE			MSTATUS_UBE
 #define SSTATUS_SPP_SHIFT		MSTATUS_SPP_SHIFT
 #define SSTATUS_SPP			MSTATUS_SPP
 #define SSTATUS_SUM			MSTATUS_SUM
@@ -101,8 +102,10 @@
 
 #ifdef CONFIG_64BIT
 #define SSTATUS_SD			SSTATUS64_SD
+#define SSTATUS_UXL			SSTATUS64_UXL
 #else
 #define SSTATUS_SD			SSTATUS32_SD
+#define SSTATUS_UXL			_UL(0x0)
 #endif
 
 #define SSTATUS_FS			MSTATUS_FS
@@ -120,7 +123,13 @@
 #ifdef CONFIG_64BIT
 #define HSTATUS_VSXL			_UL(0x300000000)
 #define HSTATUS_VSXL_SHIFT		32
+#else
+#define HSTATUS_VSXL			_UL(0x0)
+#define HSTATUS_VSXL_SHIFT		0
 #endif
+#define HSTATUS_VSXL_RV32		_UL(0x1)
+#define HSTATUS_VSXL_RV64		_UL(0x2)
+#define HSTATUS_VSXL_RV128		_UL(0x3)
 #define HSTATUS_VTSR			_UL(0x00400000)
 #define HSTATUS_VTW			_UL(0x00200000)
 #define HSTATUS_VTVM			_UL(0x00100000)
@@ -169,6 +178,7 @@
 #define HVIP_VSSIP			MIP_VSSIP
 #define HVIP_VSTIP			MIP_VSTIP
 #define HVIP_VSEIP			MIP_VSEIP
+#define HVIP_WRITEABLE			(HVIP_VSSIP | HVIP_VSTIP | HVIP_VSEIP)
 
 #define HIP_VSSIP			MIP_VSSIP
 #define HIP_VSTIP			MIP_VSTIP
@@ -180,6 +190,34 @@
 #define HIE_VSEIE			MIP_VSEIP
 #define HIE_SGEIE			MIP_SGEIP
 
+#define HIDELEG_WRITEABLE		HVIP_WRITEABLE
+#define HIDELEG_DEFAULT			HIDELEG_WRITEABLE
+
+#define HEDELEG_WRITEABLE		\
+	((_UL(1) << CAUSE_MISALIGNED_FETCH) | \
+	 (_UL(1) << CAUSE_FETCH_ACCESS) | \
+	 (_UL(1) << CAUSE_ILLEGAL_INSTRUCTION) | \
+	 (_UL(1) << CAUSE_BREAKPOINT) | \
+	 (_UL(1) << CAUSE_MISALIGNED_LOAD) | \
+	 (_UL(1) << CAUSE_LOAD_ACCESS) | \
+	 (_UL(1) << CAUSE_MISALIGNED_STORE) | \
+	 (_UL(1) << CAUSE_STORE_ACCESS) | \
+	 (_UL(1) << CAUSE_USER_ECALL) | \
+	 (_UL(1) << CAUSE_FETCH_PAGE_FAULT) | \
+	 (_UL(1) << CAUSE_LOAD_PAGE_FAULT) | \
+	 (_UL(1) << CAUSE_STORE_PAGE_FAULT))
+#define HEDELEG_DEFAULT			\
+	((_UL(1) << CAUSE_MISALIGNED_FETCH) | \
+	 (_UL(1) << CAUSE_BREAKPOINT) | \
+	 (_UL(1) << CAUSE_USER_ECALL) | \
+	 (_UL(1) << CAUSE_FETCH_PAGE_FAULT) | \
+	 (_UL(1) << CAUSE_LOAD_PAGE_FAULT) | \
+	 (_UL(1) << CAUSE_STORE_PAGE_FAULT))
+
+#define HCOUNTEREN_WRITEABLE		_UL(0xffffffff)
+#define HCOUNTEREN_DEFAULT		HCOUNTEREN_WRITEABLE
+
+#define VSIE_WRITEABLE			(SIE_SSIE | SIE_STIE | SIE_SEIE)
 
 /* Privilege Modes */
 #define PRV_U				_UL(0)
@@ -213,35 +251,41 @@
 #define HGATP_MODE_SV48X4		_UL(9)
 
 #define HGATP32_MODE_SHIFT		31
+#define HGATP32_MODE			_UL(0x80000000)
 #define HGATP32_VMID_SHIFT		22
-#define HGATP32_VMID_MASK		_UL(0x1FC00000)
+#define HGATP32_VMID			_UL(0x1FC00000)
 #define HGATP32_PPN			_UL(0x003FFFFF)
 
 #define HGATP64_MODE_SHIFT		60
+#define HGATP64_MODE			_ULL(0xF000000000000000)
 #define HGATP64_VMID_SHIFT		44
-#define HGATP64_VMID_MASK		_ULL(0x03FFF00000000000)
+#define HGATP64_VMID			_ULL(0x03FFF00000000000)
 #define HGATP64_PPN			_ULL(0x00000FFFFFFFFFFF)
 
 #ifdef CONFIG_64BIT
 #define SATP_PPN			SATP64_PPN
 #define SATP_ASID_SHIFT			SATP64_ASID_SHIFT
-#define SATP_ASID_MASK			SATP64_ASID_MASK
+#define SATP_ASID			SATP64_ASID
 #define SATP_MODE_SHIFT			SATP64_MODE_SHIFT
+#define SATP_MODE			SATP64_MODE
 
 #define HGATP_PPN			HGATP64_PPN
 #define HGATP_VMID_SHIFT		HGATP64_VMID_SHIFT
-#define HGATP_VMID_MASK			HGATP64_VMID_MASK
+#define HGATP_VMID			HGATP64_VMID
 #define HGATP_MODE_SHIFT		HGATP64_MODE_SHIFT
+#define HGATP_MODE			HGATP64_MODE
 #else
 #define SATP_PPN			SATP32_PPN
 #define SATP_ASID_SHIFT			SATP32_ASID_SHIFT
-#define SATP_ASID_MASK			SATP32_ASID_MASK
+#define SATP_ASID			SATP32_ASID
 #define SATP_MODE_SHIFT			SATP32_MODE_SHIFT
+#define SATP_MODE			SATP32_MODE
 
 #define HGATP_PPN			HGATP32_PPN
 #define HGATP_VMID_SHIFT		HGATP32_VMID_SHIFT
-#define HGATP_VMID_MASK			HGATP32_VMID_MASK
+#define HGATP_VMID			HGATP32_VMID
 #define HGATP_MODE_SHIFT		HGATP32_MODE_SHIFT
+#define HGATP_MODE			HGATP32_MODE
 #endif
 
 
@@ -875,8 +919,69 @@
 #define INSN_MATCH_C_FSWSP		0xe002
 #define INSN_MASK_C_FSWSP		0xe003
 
-#define INSN_MASK_WFI			0xffffff00
-#define INSN_MATCH_WFI			0x10500000
+#define INSN_MATCH_SRET			0x10200073
+#define INSN_MASK_SRET			0xffffffff
+
+#define INSN_MATCH_WFI			0x10500073
+#define INSN_MASK_WFI			0xffffffff
+
+#define INSN_MATCH_HFENCE_VVMA		0x22000073
+#define INSN_MASK_HFENCE_VVMA		0xfe007fff
+
+#define INSN_MATCH_HFENCE_GVMA		0x62000073
+#define INSN_MASK_HFENCE_GVMA		0xfe007fff
+
+#define INSN_MATCH_HLV_B		0x60004073
+#define INSN_MASK_HLV_B			0xfff0707f
+
+#define INSN_MATCH_HLV_BU		0x60104073
+#define INSN_MASK_HLV_BU		0xfff0707f
+
+#define INSN_MATCH_HLV_H		0x64004073
+#define INSN_MASK_HLV_H			0xfff0707f
+
+#define INSN_MATCH_HLV_HU		0x64104073
+#define INSN_MASK_HLV_HU		0xfff0707f
+
+#define INSN_MATCH_HLVX_HU		0x64304073
+#define INSN_MASK_HLVX_HU		0xfff0707f
+
+#define INSN_MATCH_HLV_W		0x68004073
+#define INSN_MASK_HLV_W			0xfff0707f
+
+#define INSN_MATCH_HLV_WU		0x68104073
+#define INSN_MASK_HLV_WU		0xfff0707f
+
+#define INSN_MATCH_HLVX_WU		0x68304073
+#define INSN_MASK_HLVX_WU		0xfff0707f
+
+#define INSN_MATCH_HLV_D		0x6c004073
+#define INSN_MASK_HLV_D			0xfff0707f
+
+#define INSN_MATCH_HSV_B		0x62004073
+#define INSN_MASK_HSV_B			0xfe007fff
+
+#define INSN_MATCH_HSV_H		0x66004073
+#define INSN_MASK_HSV_H			0xfe007fff
+
+#define INSN_MATCH_HSV_W		0x6a004073
+#define INSN_MASK_HSV_W			0xfe007fff
+
+#define INSN_MATCH_HSV_D		0x6e004073
+#define INSN_MASK_HSV_D			0xfe007fff
+
+#define INSN_MATCH_CSRRW		0x1073
+#define INSN_MASK_CSRRW			0x707f
+#define INSN_MATCH_CSRRS		0x2073
+#define INSN_MASK_CSRRS			0x707f
+#define INSN_MATCH_CSRRC		0x3073
+#define INSN_MASK_CSRRC			0x707f
+#define INSN_MATCH_CSRRWI		0x5073
+#define INSN_MASK_CSRRWI		0x707f
+#define INSN_MATCH_CSRRSI		0x6073
+#define INSN_MASK_CSRRSI		0x707f
+#define INSN_MATCH_CSRRCI		0x7073
+#define INSN_MASK_CSRRCI		0x707f
 
 #define INSN_16BIT_MASK			0x3
 #define INSN_32BIT_MASK			0x1c
@@ -900,6 +1005,7 @@
 #define SH_RS1				15
 #define SH_RS2				20
 #define SH_RS2C				2
+#define MASK_RX				0x1f
 
 #define RV_X(x, s, n)			(((x) >> (s)) & ((1 << (n)) - 1))
 #define RVC_LW_IMM(x)			((RV_X(x, 6, 1) << 2) | \
@@ -946,5 +1052,122 @@
 #define IMM_S(insn)			(((s32)(insn) >> 25 << 5) | \
 					 (s32)(((insn) >> 7) & 0x1f))
 #define MASK_FUNCT3			0x7000
+
+#define INSN_OPC_LOAD			0x03
+#define INSN_OPC_STORE			0x23
+
+#define INSN_OPC_FP_LOAD		0x7
+#define INSN_OPC_FP_STORE		0x27
+
+#define INSN_OPC_LB			(INSN_OPC_LOAD | (0x0 << 12))
+#define INSN_OPC_LH			(INSN_OPC_LOAD | (0x1 << 12))
+#define INSN_OPC_LW			(INSN_OPC_LOAD | (0x2 << 12))
+#define INSN_OPC_LD			(INSN_OPC_LOAD | (0x3 << 12))
+#define INSN_OPC_LBU			(INSN_OPC_LOAD | (0x4 << 12))
+#define INSN_OPC_LHU			(INSN_OPC_LOAD | (0x5 << 12))
+#define INSN_OPC_LWU			(INSN_OPC_LOAD | (0x6 << 12))
+
+#define INSN_OPC_SB			(INSN_OPC_STORE | (0x0 << 12))
+#define INSN_OPC_SH			(INSN_OPC_STORE | (0x1 << 12))
+#define INSN_OPC_SW			(INSN_OPC_STORE | (0x2 << 12))
+#define INSN_OPC_SD			(INSN_OPC_STORE | (0x3 << 12))
+
+#define INSN_OPC_FLW			(INSN_OPC_FP_LOAD | (0x2 << 12))
+#define INSN_OPC_FLD			(INSN_OPC_FP_LOAD | (0x3 << 12))
+
+#define INSN_OPC_FSW			(INSN_OPC_FP_STORE | (0x2 << 12))
+#define INSN_OPC_FSD			(INSN_OPC_FP_STORE | (0x3 << 12))
+
+#define INSN_GET_RM(insn)		(((insn) >> 12) & 0x7)
+#define INSN_GET_RS3(insn)		(((insn) >> 27) & 0x1f)
+#define INSN_GET_RS1(insn)		(((insn) >> 15) & 0x1f)
+#define INSN_GET_RS2(insn)		(((insn) >> 20) & 0x1f)
+#define INSN_GET_RD(insn)		(((insn) >> 7) & 0x1f)
+#define INSN_GET_IMM(insn)		((s64)(((insn) << 32) >> 52))
+
+#define INSN_SET_RS1(insn, val)		\
+do { \
+	(insn) &= ~(0x1fUL << 15); \
+	(insn) |= (((val) & 0x1fUL) << 15); \
+} while (0)
+#define INSN_SET_RS2(insn, val)		\
+do { \
+	(insn) &= ~(0x1fUL << 20); \
+	(insn) |= (((val) & 0x1fUL) << 20); \
+} while (0)
+#define INSN_SET_RD(insn, val)		\
+do { \
+	(insn) &= ~(0x1fUL << 7); \
+	(insn) |= (((val) & 0x1fUL) << 7); \
+} while (0)
+#define INSN_SET_I_IMM(insn, val)	\
+do { \
+	(insn) &= ~(0xfffUL << 20); \
+	(insn) |= (((val) & 0xfffUL) << 20); \
+} while (0)
+#define INSN_SET_S_IMM(insn, val)	\
+do { \
+	(insn) &= ~(0x1fUL << 7); \
+	(insn) |= (((val) & 0x1fUL) << 7); \
+	(insn) &= ~(0x7fUL << 25); \
+	(insn) |= ((((val) >> 5) & 0x7fUL) << 25); \
+} while (0)
+
+#define INSN_GET_C_RD(insn)		INSN_GET_RD(insn)
+#define INSN_GET_C_RS1(insn)		INSN_GET_RD(insn)
+#define INSN_GET_C_RS2(insn)		(((insn) >> 2) & 0x1f)
+#define INSN_GET_C_RS1S(insn)		(8 + (((insn) >> 7) & 0x7))
+#define INSN_GET_C_RS2S(insn)		(8 + (((insn) >> 2) & 0x7))
+#define INSN_GET_C_FUNC(insn)		(((insn) >> 13) & 0x7)
+#define INSN_GET_C_OP(insn)		((insn) & 0x3)
+
+#define INSN_GET_C_LWSP_IMM(insn)	\
+(((((insn) >> 4) & 0x7) << 2) | \
+ ((((insn) >> 12) & 0x1) << 5) | \
+ ((((insn) >> 2) & 0x3) << 6))
+#define INSN_GET_C_LDSP_IMM(insn)	\
+(((((insn) >> 5) & 0x3) << 3) | \
+ ((((insn) >> 12) & 0x1) << 5) | \
+ ((((insn) >> 2) & 0x7) << 6))
+#define INSN_GET_C_SWSP_IMM(insn)	\
+(((((insn) >> 9) & 0xf) << 2) | \
+ ((((insn) >> 7) & 0x3) << 6))
+#define INSN_GET_C_SDSP_IMM(insn)	\
+(((((insn) >> 10) & 0x7) << 3) | \
+ ((((insn) >> 7) & 0x7) << 6))
+
+#define INSN_GET_C_LW_IMM(inss)		\
+(((((insn) >> 6) & 0x1) << 2) | \
+ ((((insn) >> 10) & 0x7) << 3) | \
+ ((((insn) >> 5) & 0x1) << 6))
+#define INSN_GET_C_LD_IMM(insn)		\
+(((((insn) >> 10) & 0x7) << 3) | \
+ ((((insn) >> 5) & 0x3) << 6))
+#define INSN_GET_C_SW_IMM(insn)		INSN_GET_C_LW_IMM(insn)
+#define INSN_GET_C_SD_IMM(insn)		INSN_GET_C_LD_IMM(insn)
+
+/* RVC Quadrants */
+#define INSN_C_OP_QUAD0			0x0
+#define INSN_C_OP_QUAD1			0x1
+#define INSN_C_OP_QUAD2			0x2
+
+/* RVC Quadrant 0 */
+#define INSN_C_FUNC_ADDI4SPN		0x0
+#define INSN_C_FUNC_FLD_LQ		0x1
+#define INSN_C_FUNC_LW			0x2
+#define INSN_C_FUNC_FLW_LD		0x3
+#define INSN_C_FUNC_FSD_SQ		0x5
+#define INSN_C_FUNC_SW			0x6
+#define INSN_C_FUNC_FSW_SD		0x7
+
+/* RVC Quadrant 2 */
+#define INSN_C_FUNC_SLLI_SLLI64		0x0
+#define INSN_C_FUNC_FLDSP_LQSP		0x1
+#define INSN_C_FUNC_LWSP		0x2
+#define INSN_C_FUNC_FLWSP_LDSP		0x3
+#define INSN_C_FUNC_JR_MV_EBREAK_JALR_ADD	0x4
+#define INSN_C_FUNC_FSDSP_SQSP		0x5
+#define INSN_C_FUNC_SWSP		0x6
+#define INSN_C_FUNC_FSWSP_SDSP		0x7
 
 #endif
