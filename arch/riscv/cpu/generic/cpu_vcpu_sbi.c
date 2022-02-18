@@ -74,6 +74,17 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	bool is_0_1_spec = FALSE;
 	unsigned long args[6];
 
+	/* Forward SBI calls from virtual-VS mode to virtual-HS mode */
+	if (riscv_nested_virt(vcpu)) {
+		trap.sepc = regs->sepc;
+		trap.scause = CAUSE_VIRTUAL_SUPERVISOR_ECALL;
+		trap.stval = 0;
+		trap.htval = 0;
+		trap.htinst = 0;
+		cpu_vcpu_redirect_trap(vcpu, regs, &trap);
+		return VMM_OK;
+	}
+
 	args[0] = regs->a0;
 	args[1] = regs->a1;
 	args[2] = regs->a2;

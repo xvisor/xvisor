@@ -39,6 +39,8 @@
 #include <cpu_tlb.h>
 #include <cpu_sbi.h>
 #include <cpu_vcpu_fp.h>
+#include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_nested.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_timer.h>
 #include <cpu_guest_serial.h>
@@ -52,8 +54,7 @@
 				 riscv_isa_extension_mask(f) | \
 				 riscv_isa_extension_mask(i) | \
 				 riscv_isa_extension_mask(m) | \
-				 riscv_isa_extension_mask(s) | \
-				 riscv_isa_extension_mask(u))
+				 riscv_isa_extension_mask(h))
 
 static char *guest_fdt_find_serial_node(char *guest_name)
 {
@@ -277,6 +278,18 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			goto fail_free_isa;
 		}
 		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
+
+		/* H-extension only available when AIA CSRs are available */
+		if (!riscv_aia_available) {
+			riscv_priv(vcpu)->isa[0] &=
+					~riscv_isa_extension_mask(h);
+		}
+
+		/* Initialize nested state */
+		rc = cpu_vcpu_nested_init(vcpu);
+		if (rc) {
+			goto fail_free_isa;
+		}
 	}
 
 	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
@@ -305,6 +318,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* By default, make CY, TM, and IR counters accessible in VU mode */
 	riscv_priv(vcpu)->scounteren = 7;
+
+	/* Reset nested state */
+	cpu_vcpu_nested_reset(vcpu);
 
 	/* Initialize FP state */
 	cpu_vcpu_fp_init(vcpu);
@@ -345,9 +361,13 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 		return VMM_OK;
 	}
 
+	/* Cleanup timer */
 	rc = riscv_timer_event_deinit(vcpu, &riscv_timer_priv(vcpu));
 	if (rc)
 		return rc;
+
+	/* Cleanup nested state */
+	cpu_vcpu_nested_deinit(vcpu);
 
 	/* Free ISA bitmap */
 	vmm_free(riscv_priv(vcpu)->isa);
@@ -403,6 +423,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_time_delta_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
+		cpu_vcpu_take_vsirq(vcpu, regs);
 	}
 }
 
@@ -567,6 +588,8 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 		    "    vscause", priv->vscause, "     vstval", priv->vstval);
 	vmm_cprintf(cdev, "    %s=0x%"PRIADDR"\n",
 		    " scounteren", priv->scounteren);
+
+	cpu_vcpu_nested_dump_regs(cdev, vcpu);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
 }

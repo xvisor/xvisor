@@ -44,17 +44,37 @@ struct cpu_vcpu_trap {
 	unsigned long htinst;
 };
 
-int cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu,
-			   arch_regs_t *regs,
-			   struct cpu_vcpu_trap *trap);
+enum trap_return {
+	TRAP_RETURN_OK=0,
+	TRAP_RETURN_ILLEGAL_INSN,
+	TRAP_RETURN_VIRTUAL_INSN,
+	TRAP_RETURN_CONTINUE
+};
+
+void cpu_vcpu_update_trap(struct vmm_vcpu *vcpu, arch_regs_t *regs);
+
+void cpu_vcpu_redirect_smode_trap(arch_regs_t *regs,
+				  struct cpu_vcpu_trap *trap, bool prev_spp);
+
+void cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+			    struct cpu_vcpu_trap *trap);
 
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			struct cpu_vcpu_trap *trap);
 
+int cpu_vcpu_general_fault(struct vmm_vcpu *vcpu,
+			   arch_regs_t *regs,
+			   struct cpu_vcpu_trap *trap);
+
 int cpu_vcpu_virtual_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval);
+
+void cpu_vcpu_take_vsirq(struct vmm_vcpu *vcpu, arch_regs_t *regs);
+
+int cpu_vcpu_redirect_vsirq(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+			    unsigned long irq);
 
 #endif
 
