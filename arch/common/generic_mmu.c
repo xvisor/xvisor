@@ -750,6 +750,65 @@ int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 	return VMM_OK;
 }
 
+int mmu_get_guest_page(physical_addr_t pgtbl_guest_pa, int stage, int level,
+		       const struct mmu_get_guest_page_ops *ops,
+		       void *opaque, physical_addr_t guest_ia,
+		       struct mmu_page *pg)
+{
+	int idx;
+	arch_pte_t pte;
+	physical_addr_t pte_pa;
+
+	if (stage <= MMU_STAGE_UNKNOWN ||
+	    MMU_STAGE_MAX <= stage ||
+	    arch_mmu_start_level(stage) < level ||
+	    !ops || !pg)
+		return VMM_EINVALID;
+
+	if (level < 0)
+		level = arch_mmu_start_level(stage);
+
+	idx = ops->gpa2hpa(opaque, stage, level, pgtbl_guest_pa, &pte_pa);
+	if (idx) {
+		if (idx == VMM_EFAULT) {
+			ops->setfault(opaque, stage, level, guest_ia);
+		}
+		return idx;
+	}
+
+	idx = arch_mmu_level_index(guest_ia, stage, level);
+	if (vmm_host_memory_read(pte_pa + idx * sizeof(pte),
+				 &pte, sizeof(pte), TRUE) != sizeof(pte)) {
+		ops->setfault(opaque, stage, level, guest_ia);
+		return VMM_EFAULT;
+	}
+
+	if (!arch_mmu_pte_is_valid(&pte, stage, level)) {
+		ops->setfault(opaque, stage, level, guest_ia);
+		return VMM_EFAULT;
+	}
+	if ((level == 0) &&
+	    arch_mmu_pte_is_table(&pte, stage, level)) {
+		ops->setfault(opaque, stage, level, guest_ia);
+		return VMM_EFAULT;
+	}
+
+	if ((level > 0) && arch_mmu_pte_is_table(&pte, stage, level)) {
+		pte_pa = arch_mmu_pte_table_addr(&pte, stage, level);
+		return mmu_get_guest_page(pte_pa, stage, level - 1,
+					  ops, opaque, guest_ia, pg);
+	}
+
+	memset(pg, 0, sizeof(struct mmu_page));
+
+	pg->ia = guest_ia & arch_mmu_level_map_mask(stage, level);
+	pg->oa = arch_mmu_pte_addr(&pte, stage, level);
+	pg->sz = arch_mmu_level_block_size(stage, level);
+	arch_mmu_pte_flags(&pte, stage, level, &pg->flags);
+
+	return VMM_OK;
+}
+
 void mmu_walk_address(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 		      void (*fn)(struct mmu_pgtbl *, arch_pte_t *, void *),
 		      void *opaque)

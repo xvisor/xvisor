@@ -128,6 +128,24 @@ int mmu_map_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg);
 int mmu_find_pte(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 		     arch_pte_t **ptep, struct mmu_pgtbl **pgtblp);
 
+struct mmu_get_guest_page_ops {
+	void (*setfault)(void *opaque, int stage, int level,
+			 physical_addr_t guest_ia);
+	int (*gpa2hpa)(void *opaque, int stage, int level,
+		       physical_addr_t guest_pa,
+		       physical_addr_t *out_host_pa);
+};
+
+/**
+ * Get guest page table entry
+ *
+ * Returns VMM_OK on success, VMM_EFAULT on trap and VMM_Exxx on failure.
+ */
+int mmu_get_guest_page(physical_addr_t pgtbl_guest_ia, int stage, int level,
+		       const struct mmu_get_guest_page_ops *ops,
+		       void *opaque, physical_addr_t guest_ia,
+		       struct mmu_page *pg);
+
 void mmu_walk_address(struct mmu_pgtbl *pgtbl, physical_addr_t ia,
 		      void (*fn)(struct mmu_pgtbl *, arch_pte_t *, void *),
 		      void *opaque);
