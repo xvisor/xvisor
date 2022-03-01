@@ -23,6 +23,8 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_guest_aspace.h>
+#include <vmm_host_aspace.h>
 #include <generic_mmu.h>
 
 #include <cpu_hwcap.h>
@@ -30,6 +32,488 @@
 #include <cpu_vcpu_nested.h>
 #include <cpu_vcpu_trap.h>
 #include <riscv_csr.h>
+
+#ifdef CONFIG_64BIT
+#define NESTED_MMU_OFF_BLOCK_SIZE	PGTBL_L2_BLOCK_SIZE
+#else
+#define NESTED_MMU_OFF_BLOCK_SIZE	PGTBL_L1_BLOCK_SIZE
+#endif
+
+enum nested_xlate_access {
+	NESTED_XLATE_LOAD = 0,
+	NESTED_XLATE_STORE,
+	NESTED_XLATE_FETCH,
+};
+
+struct nested_xlate_context {
+	/* VCPU for which translation is being done */
+	struct vmm_vcpu *vcpu;
+
+	/* Original access type for fault generation */
+	enum nested_xlate_access original_access;
+
+	/* Details from CSR or instruction */
+	bool smode;
+	unsigned long sstatus;
+	bool hlvx;
+
+	/* Final host region details */
+	physical_addr_t host_pa;
+	physical_size_t host_sz;
+	u32 host_reg_flags;
+
+	/* Fault details */
+	physical_size_t nostage_page_sz;
+	physical_size_t gstage_page_sz;
+	physical_size_t vsstage_page_sz;
+	unsigned long scause;
+	unsigned long stval;
+	unsigned long htval;
+};
+
+#define nested_xlate_context_init(__x, __v, __a, __smode, __sstatus, __hlvx)\
+do {									\
+	(__x)->vcpu = (__v);						\
+	(__x)->original_access = (__a);					\
+	(__x)->smode = (__smode);					\
+	(__x)->sstatus = (__sstatus);					\
+	(__x)->hlvx = (__hlvx);						\
+	(__x)->host_pa = 0;						\
+	(__x)->host_sz = 0;						\
+	(__x)->host_reg_flags = 0;					\
+	(__x)->nostage_page_sz = 0;					\
+	(__x)->gstage_page_sz = 0;					\
+	(__x)->vsstage_page_sz = 0;					\
+	(__x)->scause = 0;						\
+	(__x)->stval = 0;						\
+	(__x)->htval = 0;						\
+} while (0)
+
+static int nested_nostage_perm_check(enum nested_xlate_access guest_access,
+				     u32 reg_flags)
+{
+	if ((guest_access == NESTED_XLATE_LOAD) ||
+	    (guest_access == NESTED_XLATE_FETCH)) {
+		if (!(reg_flags & (VMM_REGION_ISRAM | VMM_REGION_ISROM))) {
+			return VMM_EFAULT;
+		}
+	} else if (guest_access == NESTED_XLATE_STORE) {
+		if (!(reg_flags & VMM_REGION_ISRAM)) {
+			return VMM_EFAULT;
+		}
+	}
+
+	return VMM_OK;
+}
+
+static int nested_xlate_nostage_single(struct vmm_guest *guest,
+				       physical_addr_t guest_hpa,
+				       physical_size_t block_size,
+				       enum nested_xlate_access guest_access,
+				       physical_addr_t *out_host_pa,
+				       physical_size_t *out_host_sz,
+				       u32 *out_host_reg_flags)
+{
+	int rc;
+	u32 reg_flags = 0x0;
+	physical_size_t availsz = 0;
+	physical_addr_t inaddr, outaddr = 0;
+
+	inaddr = guest_hpa & ~(block_size - 1);
+
+	/* Map host physical address */
+	rc = vmm_guest_physical_map(guest, inaddr, block_size,
+				    &outaddr, &availsz, &reg_flags);
+	if (rc || (availsz < block_size)) {
+		return VMM_EFAULT;
+	}
+
+	/* Check region permissions */
+	rc = nested_nostage_perm_check(guest_access, reg_flags);
+	if (rc) {
+		return rc;
+	}
+
+	/* Update return values */
+	if (out_host_pa) {
+		*out_host_pa = outaddr;
+	}
+	if (out_host_sz) {
+		*out_host_sz = block_size;
+	}
+	if (out_host_reg_flags) {
+		*out_host_reg_flags = reg_flags;
+	}
+
+	return VMM_OK;
+}
+
+static void nested_gstage_write_fault(struct nested_xlate_context *xc,
+				      physical_addr_t guest_gpa)
+{
+	/* We should never have non-zero scause here. */
+	BUG_ON(xc->scause);
+
+	switch (xc->original_access) {
+	case NESTED_XLATE_LOAD:
+		xc->scause = CAUSE_LOAD_GUEST_PAGE_FAULT;
+		xc->htval = guest_gpa >> 2;
+		break;
+	case NESTED_XLATE_STORE:
+		xc->scause = CAUSE_STORE_GUEST_PAGE_FAULT;
+		xc->htval = guest_gpa >> 2;
+		break;
+	case NESTED_XLATE_FETCH:
+		xc->scause = CAUSE_FETCH_GUEST_PAGE_FAULT;
+		xc->htval = guest_gpa >> 2;
+		break;
+	default:
+		break;
+	};
+}
+
+/* Translate guest hpa to host pa */
+static int nested_xlate_nostage(struct nested_xlate_context *xc,
+				physical_addr_t guest_hpa,
+				enum nested_xlate_access guest_access)
+{
+	int rc;
+	u32 outflags = 0;
+	physical_size_t outsz = 0;
+	physical_addr_t outaddr = 0;
+
+	/* Translate host physical address with L0 block size */
+	rc = nested_xlate_nostage_single(xc->vcpu->guest, guest_hpa,
+					 PGTBL_L0_BLOCK_SIZE, guest_access,
+					 &outaddr, &outsz, &outflags);
+	if (rc) {
+		return rc;
+	}
+
+	/* Try to translate host physical address with L1 block size */
+	rc = nested_xlate_nostage_single(xc->vcpu->guest, guest_hpa,
+					 PGTBL_L1_BLOCK_SIZE, guest_access,
+					 &outaddr, &outsz, &outflags);
+	if (rc) {
+		goto done;
+	}
+
+#ifdef CONFIG_64BIT
+	/* Try to translate host physical address with L2 block size */
+	rc = nested_xlate_nostage_single(xc->vcpu->guest, guest_hpa,
+					 PGTBL_L2_BLOCK_SIZE, guest_access,
+					 &outaddr, &outsz, &outflags);
+	if (rc) {
+		goto done;
+	}
+#endif
+
+done:
+	/* Update return values */
+	xc->host_pa = outaddr;
+	xc->host_sz = outsz;
+	xc->host_reg_flags = outflags;
+
+	return VMM_OK;
+}
+
+static void nested_gstage_setfault(void *opaque, int stage, int level,
+				   physical_addr_t guest_gpa)
+{
+	struct nested_xlate_context *xc = opaque;
+
+	xc->gstage_page_sz = arch_mmu_level_block_size(stage, level);
+	nested_gstage_write_fault(xc, guest_gpa);
+}
+
+static int nested_gstage_gpa2hpa(void *opaque, int stage, int level,
+				 physical_addr_t guest_hpa,
+				 physical_addr_t *out_host_pa)
+{
+	int rc;
+	physical_size_t outsz = 0;
+	physical_addr_t outaddr = 0;
+	struct nested_xlate_context *xc = opaque;
+
+	rc = nested_xlate_nostage_single(xc->vcpu->guest, guest_hpa,
+					 PGTBL_L0_BLOCK_SIZE,
+					 NESTED_XLATE_LOAD,
+					 &outaddr, &outsz, NULL);
+	if (rc) {
+		return rc;
+	}
+
+	*out_host_pa = outaddr | (guest_hpa & (outsz - 1));
+	return VMM_OK;
+}
+
+static struct mmu_get_guest_page_ops nested_xlate_gstage_ops = {
+	.gpa2hpa = nested_gstage_gpa2hpa,
+	.setfault = nested_gstage_setfault,
+};
+
+/* Translate guest gpa to host pa */
+static int nested_xlate_gstage(struct nested_xlate_context *xc,
+			       physical_addr_t guest_gpa,
+			       enum nested_xlate_access guest_access)
+{
+	int rc;
+	unsigned long mode;
+	struct mmu_page page;
+	bool perm_fault = FALSE;
+	physical_addr_t pgtlb, guest_hpa;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(xc->vcpu);
+
+	/* Find guest G-stage page */
+	mode = (npriv->hgatp & HGATP_MODE) >> HGATP_MODE_SHIFT;
+	if (mode == HGATP_MODE_OFF) {
+		memset(&page, 0, sizeof(page));
+		page.sz = NESTED_MMU_OFF_BLOCK_SIZE;
+		page.ia = guest_gpa & ~(page.sz - 1);
+		page.oa = guest_gpa & ~(page.sz - 1);
+		page.flags.dirty = 1;
+		page.flags.accessed = 1;
+		page.flags.global = 1;
+		page.flags.user = 1;
+		page.flags.read = 1;
+		page.flags.write = 1;
+		page.flags.execute = 1;
+		page.flags.valid = 1;
+	} else {
+		switch (mode) {
+#ifdef CONFIG_64BIT
+		case HGATP_MODE_SV48X4:
+			rc = 3;
+			break;
+		case HGATP_MODE_SV39X4:
+			rc = 2;
+			break;
+#else
+		case HGATP_MODE_SV32X4:
+			rc = 1;
+			break;
+#endif
+		default:
+			return VMM_EFAIL;
+		}
+
+		pgtlb = (npriv->hgatp & HGATP_PPN) << PGTBL_PAGE_SIZE_SHIFT;
+		rc = mmu_get_guest_page(pgtlb, MMU_STAGE2, rc,
+					&nested_xlate_gstage_ops, xc,
+					guest_gpa, &page);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	/* Check guest G-stage page permissions */
+	if (!page.flags.user) {
+		perm_fault = TRUE;
+	} else if (guest_access == NESTED_XLATE_FETCH || xc->hlvx) {
+		perm_fault = !page.flags.execute;
+	} else if (guest_access == NESTED_XLATE_LOAD) {
+		perm_fault = !(page.flags.read ||
+			((xc->sstatus & SSTATUS_MXR) && page.flags.execute)) ||
+			!page.flags.accessed;
+	} else if (guest_access == NESTED_XLATE_STORE) {
+		perm_fault = !page.flags.read ||
+			     !page.flags.write ||
+			     !page.flags.accessed ||
+			     !page.flags.dirty;
+	}
+	if (perm_fault) {
+		xc->gstage_page_sz = page.sz;
+		nested_gstage_write_fault(xc, guest_gpa);
+		return VMM_EFAULT;
+	}
+
+	/* Calculate guest hpa */
+	guest_hpa = page.oa | (guest_gpa & (page.sz - 1));
+
+	/* Translate guest hpa to host pa */
+	rc = nested_xlate_nostage(xc, guest_hpa, guest_access);
+	if (rc) {
+		if (rc == VMM_EFAULT) {
+			xc->nostage_page_sz = page.sz;
+			nested_gstage_write_fault(xc, guest_gpa);
+		}
+		return rc;
+	}
+
+	/* Update output address and size */
+	if (page.sz <= xc->host_sz) {
+		xc->host_pa |= guest_hpa & (xc->host_sz - 1);
+		xc->host_sz = page.sz;
+		xc->host_pa &= ~(xc->host_sz - 1);
+	} else {
+		page.ia = guest_gpa & ~(xc->host_sz - 1);
+		page.oa = guest_hpa & ~(xc->host_sz - 1);
+		page.sz = xc->host_sz;
+	}
+
+	return VMM_OK;
+}
+
+static void nested_vsstage_write_fault(struct nested_xlate_context *xc,
+				       physical_addr_t guest_gva)
+{
+	switch (xc->original_access) {
+	case NESTED_XLATE_LOAD:
+		if (!xc->scause) {
+			xc->scause = CAUSE_LOAD_PAGE_FAULT;
+		}
+		xc->stval = guest_gva;
+		break;
+	case NESTED_XLATE_STORE:
+		if (!xc->scause) {
+			xc->scause = CAUSE_STORE_PAGE_FAULT;
+		}
+		xc->stval = guest_gva;
+		break;
+	case NESTED_XLATE_FETCH:
+		if (!xc->scause) {
+			xc->scause = CAUSE_FETCH_PAGE_FAULT;
+		}
+		xc->stval = guest_gva;
+		break;
+	default:
+		break;
+	};
+}
+
+static void nested_vsstage_setfault(void *opaque, int stage, int level,
+				    physical_addr_t guest_gva)
+{
+	struct nested_xlate_context *xc = opaque;
+
+	xc->vsstage_page_sz = arch_mmu_level_block_size(stage, level);
+	nested_vsstage_write_fault(xc, guest_gva);
+}
+
+static int nested_vsstage_gpa2hpa(void *opaque, int stage, int level,
+				  physical_addr_t guest_gpa,
+				  physical_addr_t *out_host_pa)
+{
+	int rc;
+	struct nested_xlate_context *xc = opaque;
+
+	rc = nested_xlate_gstage(xc, guest_gpa, NESTED_XLATE_LOAD);
+	if (rc) {
+		return rc;
+	}
+
+	*out_host_pa = xc->host_pa | (guest_gpa & (xc->host_sz - 1));
+	return VMM_OK;
+}
+
+static struct mmu_get_guest_page_ops nested_xlate_vsstage_ops = {
+	.setfault = nested_vsstage_setfault,
+	.gpa2hpa = nested_vsstage_gpa2hpa,
+};
+
+/* Translate guest gva to host pa */
+static int nested_xlate_vsstage(struct nested_xlate_context *xc,
+				physical_addr_t guest_gva,
+				enum nested_xlate_access guest_access)
+{
+	int rc;
+	unsigned long mode;
+	struct mmu_page page;
+	bool perm_fault = FALSE;
+	physical_addr_t pgtlb, guest_gpa;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(xc->vcpu);
+
+	/* Get guest VS-stage page */
+	mode = (npriv->vsatp & SATP_MODE) >> SATP_MODE_SHIFT;
+	if (mode == SATP_MODE_OFF) {
+		memset(&page, 0, sizeof(page));
+		page.sz = NESTED_MMU_OFF_BLOCK_SIZE;
+		page.ia = guest_gva & ~(page.sz - 1);
+		page.oa = guest_gva & ~(page.sz - 1);
+		page.flags.dirty = 1;
+		page.flags.accessed = 1;
+		page.flags.global = 1;
+		page.flags.user = 1;
+		page.flags.read = 1;
+		page.flags.write = 1;
+		page.flags.execute = 1;
+		page.flags.valid = 1;
+	} else {
+		switch (mode) {
+#ifdef CONFIG_64BIT
+		case SATP_MODE_SV48:
+			rc = 3;
+			break;
+		case SATP_MODE_SV39:
+			rc = 2;
+			break;
+#else
+		case SATP_MODE_SV32:
+			rc = 1;
+			break;
+#endif
+		default:
+			return VMM_EFAIL;
+		}
+
+		pgtlb = (npriv->vsatp & SATP_PPN) << PGTBL_PAGE_SIZE_SHIFT;
+		rc = mmu_get_guest_page(pgtlb, MMU_STAGE1, rc,
+					&nested_xlate_vsstage_ops, xc,
+					guest_gva, &page);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	/* Check guest VS-stage page permissions */
+	if (page.flags.user ?
+	    xc->smode && (guest_access == NESTED_XLATE_FETCH ||
+			  (xc->sstatus & SSTATUS_SUM)) :
+	    !xc->smode) {
+		perm_fault = TRUE;
+	} else if (guest_access == NESTED_XLATE_FETCH || xc->hlvx) {
+		perm_fault = !page.flags.execute;
+	} else if (guest_access == NESTED_XLATE_LOAD) {
+		perm_fault = !(page.flags.read ||
+			((xc->sstatus & SSTATUS_MXR) && page.flags.execute)) ||
+			!page.flags.accessed;
+	} else if (guest_access == NESTED_XLATE_STORE) {
+		perm_fault = !page.flags.read ||
+			     !page.flags.write ||
+			     !page.flags.accessed ||
+			     !page.flags.dirty;
+	}
+	if (perm_fault) {
+		xc->vsstage_page_sz = page.sz;
+		nested_vsstage_write_fault(xc, guest_gva);
+		return VMM_EFAULT;
+	}
+
+	/* Calculate guest gpa */
+	guest_gpa = page.oa | (guest_gva & (page.sz - 1));
+
+	/* Translate guest gpa to host pa */
+	rc = nested_xlate_gstage(xc, guest_gpa, guest_access);
+	if (rc) {
+		if (rc == VMM_EFAULT) {
+			nested_vsstage_write_fault(xc, guest_gva);
+		}
+		return rc;
+	}
+
+	/* Update output address and size */
+	if (page.sz <= xc->host_sz) {
+		xc->host_pa |= guest_gpa & (xc->host_sz - 1);
+		xc->host_sz = page.sz;
+		xc->host_pa &= ~(xc->host_sz - 1);
+	} else {
+		page.ia = guest_gva & ~(xc->host_sz - 1);
+		page.oa = guest_gpa & ~(xc->host_sz - 1);
+		page.sz = xc->host_sz;
+	}
+
+	return VMM_OK;
+}
 
 int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 {
@@ -462,7 +946,38 @@ int cpu_vcpu_nested_hlv(struct vmm_vcpu *vcpu, unsigned long vaddr,
 			unsigned long *out_stval,
 			unsigned long *out_htval)
 {
-	/* TODO: */
+	int rc;
+	physical_addr_t hpa;
+	struct nested_xlate_context xc;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* Don't handle misaligned HLV */
+	if (vaddr & (len - 1)) {
+		*out_scause = CAUSE_MISALIGNED_LOAD;
+		*out_stval = vaddr;
+		*out_htval = 0;
+		return VMM_OK;
+	}
+
+	nested_xlate_context_init(&xc, vcpu, NESTED_XLATE_LOAD,
+			(npriv->hstatus & HSTATUS_SPVP) ? TRUE : FALSE,
+			csr_read(CSR_VSSTATUS), hlvx);
+	rc = nested_xlate_vsstage(&xc, vaddr, NESTED_XLATE_LOAD);
+	if (rc) {
+		if (rc == VMM_EFAULT) {
+			*out_scause = xc.scause;
+			*out_stval = xc.stval;
+			*out_htval = xc.htval;
+			return 0;
+		}
+		return rc;
+	}
+
+	hpa = xc.host_pa | (vaddr & (xc.host_sz - 1));
+	if (vmm_host_memory_read(hpa, data, len, TRUE) != len) {
+		return VMM_EIO;
+	}
+
 	return VMM_OK;
 }
 
@@ -472,7 +987,38 @@ int cpu_vcpu_nested_hsv(struct vmm_vcpu *vcpu, unsigned long vaddr,
 			unsigned long *out_stval,
 			unsigned long *out_htval)
 {
-	/* TODO: */
+	int rc;
+	physical_addr_t hpa;
+	struct nested_xlate_context xc;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* Don't handle misaligned HSV */
+	if (vaddr & (len - 1)) {
+		*out_scause = CAUSE_MISALIGNED_STORE;
+		*out_stval = vaddr;
+		*out_htval = 0;
+		return VMM_OK;
+	}
+
+	nested_xlate_context_init(&xc, vcpu, NESTED_XLATE_STORE,
+			(npriv->hstatus & HSTATUS_SPVP) ? TRUE : FALSE,
+			csr_read(CSR_VSSTATUS), FALSE);
+	rc = nested_xlate_vsstage(&xc, vaddr, NESTED_XLATE_STORE);
+	if (rc) {
+		if (rc == VMM_EFAULT) {
+			*out_scause = xc.scause;
+			*out_stval = xc.stval;
+			*out_htval = xc.htval;
+			return 0;
+		}
+		return rc;
+	}
+
+	hpa = xc.host_pa | (vaddr & (xc.host_sz - 1));
+	if (vmm_host_memory_write(hpa, (void *)data, len, TRUE) != len) {
+		return VMM_EIO;
+	}
+
 	return VMM_OK;
 }
 
