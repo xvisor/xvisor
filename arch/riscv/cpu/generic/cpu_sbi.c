@@ -294,7 +294,7 @@ static int __sbi_rfence_v02(unsigned long fid,
 	int result;
 
 	if (!hart_mask) {
-		return __sbi_rfence_v02_real(fid, 0UL, -1UL,
+		return __sbi_rfence_v02_real(fid, -1UL, 0UL,
 					     start, size, arg4);
 	}
 
