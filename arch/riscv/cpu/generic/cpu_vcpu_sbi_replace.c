@@ -100,8 +100,10 @@ static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu,
 	case SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA_ASID:
 		/*
 		 * TODO: these SBI calls will be implemented as part
-		 * of nested virtualization support.
+		 * of nested virtualization support so treat these
+		 * calls as NOPs.
 		 */
+		break;
 	default:
 		return SBI_ERR_NOT_SUPPORTED;
 	};
