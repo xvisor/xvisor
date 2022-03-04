@@ -30,6 +30,11 @@ struct vmm_vcpu;
 struct cpu_vcpu_trap;
 struct arch_regs;
 
+/** Function to flush nested software TLB */
+void cpu_vcpu_nested_swtlb_flush(struct vmm_vcpu *vcpu,
+				 physical_addr_t guest_gpa,
+				 physical_size_t guest_gpa_size);
+
 /** Function to init nested state */
 int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu);
 

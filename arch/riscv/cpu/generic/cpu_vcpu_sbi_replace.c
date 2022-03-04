@@ -29,6 +29,8 @@
 #include <cpu_sbi.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_timer.h>
+#include <cpu_vcpu_nested.h>
+#include <generic_mmu.h>
 #include <riscv_sbi.h>
 
 static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu,
@@ -63,7 +65,8 @@ static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu,
 	struct vmm_vcpu *rvcpu;
 	struct vmm_cpumask cm, hm;
 	struct vmm_guest *guest = vcpu->guest;
-	unsigned long hmask = args[0], hbase = args[1];
+	unsigned long hgatp, hmask = args[0], hbase = args[1];
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
 	vmm_cpumask_clear(&cm);
 	vmm_manager_for_each_guest_vcpu(rvcpu, guest) {
@@ -96,13 +99,56 @@ static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu,
 		break;
 	case SBI_EXT_RFENCE_REMOTE_HFENCE_GVMA:
 	case SBI_EXT_RFENCE_REMOTE_HFENCE_GVMA_VMID:
+		/* Flush the nested software TLB of calling VCPU */
+		cpu_vcpu_nested_swtlb_flush(vcpu, args[2], args[3]);
+
+		if (mmu_pgtbl_has_hw_tag(npriv->pgtbl)) {
+			/*
+			 * We use two VMIDs for nested virtualization:
+			 * one for virtual-HS/U modes and another for
+			 * virtual-VS/VU modes. This means we need to
+			 * restrict guest remote HFENCE.GVMA to VMID
+			 * used for virtual-VS/VU modes.
+			 */
+			sbi_remote_hfence_gvma_vmid(vmm_cpumask_bits(&hm),
+					args[2], args[3],
+					mmu_pgtbl_has_hw_tag(npriv->pgtbl));
+		} else {
+			/*
+			 * No VMID support so we do remote HFENCE.GVMA
+			 * accross all VMIDs.
+			 */
+			sbi_remote_hfence_gvma(vmm_cpumask_bits(&hm),
+					       args[2], args[3]);
+		}
+		break;
 	case SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA:
 	case SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA_ASID:
-		/*
-		 * TODO: these SBI calls will be implemented as part
-		 * of nested virtualization support so treat these
-		 * calls as NOPs.
-		 */
+		hgatp = 0;
+		if (mmu_pgtbl_has_hw_tag(npriv->pgtbl)) {
+			/*
+			 * We use two VMIDs for nested virtualization:
+			 * one for virtual-HS/U modes and another for
+			 * virtual-VS/VU modes. This means we need to
+			 * switch hgatp.VMID before doing forwarding
+			 * SBI call to host firmware.
+			 */
+			hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+			hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+		}
+
+		if (func_id == SBI_EXT_RFENCE_REMOTE_HFENCE_VVMA) {
+			sbi_remote_hfence_vvma(vmm_cpumask_bits(&hm),
+					       args[2], args[3]);
+		} else {
+			sbi_remote_hfence_vvma_asid(
+					vmm_cpumask_bits(&hm),
+					args[2], args[3], args[4]);
+		}
+
+		if (mmu_pgtbl_has_hw_tag(npriv->pgtbl)) {
+			csr_write(CSR_HGATP, hgatp);
+		}
 		break;
 	default:
 		return SBI_ERR_NOT_SUPPORTED;

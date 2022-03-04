@@ -23,15 +23,218 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_heap.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
 #include <generic_mmu.h>
+#include <libs/list.h>
 
 #include <cpu_hwcap.h>
+#include <cpu_tlb.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_nested.h>
 #include <cpu_vcpu_trap.h>
 #include <riscv_csr.h>
+
+/*
+ * We share the same host VMID between virtual-HS/U modes and
+ * virtual-VS/VU modes. To achieve this, we flush all guest TLB
+ * entries upon:
+ * 1) Change in nested virt state (ON => OFF or OFF => ON)
+ * 2) Change in guest hgatp.VMID
+ */
+
+#define NESTED_SWTLB_ITLB_MAX_ENTRY	128
+#define NESTED_SWTLB_DTLB_MAX_ENTRY	128
+#define NESTED_SWTLB_MAX_ENTRY		(NESTED_SWTLB_ITLB_MAX_ENTRY + \
+					 NESTED_SWTLB_DTLB_MAX_ENTRY)
+
+struct nested_swtlb_entry {
+	struct dlist head;
+	struct mmu_page page;
+	struct mmu_page shadow_page;
+	u32 shadow_reg_flags;
+};
+
+struct nested_swtlb_xtlb {
+	struct dlist active_list;
+	struct dlist free_list;
+};
+
+struct nested_swtlb {
+	struct nested_swtlb_xtlb itlb;
+	struct nested_swtlb_xtlb dtlb;
+	struct nested_swtlb_entry *entries;
+};
+
+static const struct nested_swtlb_entry *nested_swtlb_lookup(
+						struct vmm_vcpu *vcpu,
+						physical_addr_t guest_gpa)
+{
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	struct nested_swtlb *swtlb = npriv->swtlb;
+	struct nested_swtlb_entry *swte;
+
+	list_for_each_entry(swte, &swtlb->itlb.active_list, head) {
+		if (swte->page.ia <= guest_gpa &&
+		    guest_gpa < (swte->page.ia + swte->page.sz)) {
+			list_del(&swte->head);
+			list_add(&swte->head, &swtlb->itlb.active_list);
+			return swte;
+		}
+	}
+
+	list_for_each_entry(swte, &swtlb->dtlb.active_list, head) {
+		if (swte->page.ia <= guest_gpa &&
+		    guest_gpa < (swte->page.ia + swte->page.sz)) {
+			list_del(&swte->head);
+			list_add(&swte->head, &swtlb->dtlb.active_list);
+			return swte;
+		}
+	}
+
+	return NULL;
+}
+
+static void nested_swtlb_update(struct vmm_vcpu *vcpu, bool itlb,
+				const struct mmu_page *page,
+				const struct mmu_page *shadow_page,
+				u32 shadow_reg_flags)
+{
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	struct nested_swtlb *swtlb = npriv->swtlb;
+	struct nested_swtlb_entry *swte;
+	struct nested_swtlb_xtlb *xtlb;
+	int rc;
+
+	xtlb = (itlb) ? &swtlb->itlb : &swtlb->dtlb;
+
+	if (!list_empty(&xtlb->free_list)) {
+		swte = list_entry(list_pop(&xtlb->free_list),
+				  struct nested_swtlb_entry, head);
+	} else if (!list_empty(&xtlb->active_list)) {
+		swte = list_entry(list_pop_tail(&xtlb->active_list),
+				  struct nested_swtlb_entry, head);
+		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
+		if (rc) {
+			vmm_panic("%s: shadow page unmap failed (error %d)\n",
+				  __func__, rc);
+		}
+	} else {
+		BUG_ON(1);
+	}
+
+	memcpy(&swte->page, page, sizeof(swte->page));
+	memcpy(&swte->shadow_page, shadow_page, sizeof(swte->shadow_page));
+	swte->shadow_reg_flags = shadow_reg_flags;
+
+	rc = mmu_map_page(npriv->pgtbl, &swte->shadow_page);
+	if (rc) {
+		vmm_panic("%s: shadow page map failed (error %d)\n",
+			  __func__, rc);
+	}
+
+	list_add(&swte->head, &xtlb->active_list);
+}
+
+void cpu_vcpu_nested_swtlb_flush(struct vmm_vcpu *vcpu,
+				 physical_addr_t guest_gpa,
+				 physical_size_t guest_gpa_size)
+{
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	struct nested_swtlb *swtlb = npriv->swtlb;
+	physical_addr_t start, end, pstart, pend;
+	struct nested_swtlb_entry *swte, *nswte;
+	int rc;
+
+	if (!guest_gpa && !guest_gpa_size) {
+		start = 0;
+		end = ~start;
+	} else {
+		start = guest_gpa;
+		end = guest_gpa + guest_gpa_size - 1;
+	}
+
+	list_for_each_entry_safe(swte, nswte, &swtlb->itlb.active_list, head) {
+		pstart = swte->page.ia;
+		pend = swte->page.ia + swte->page.sz - 1;
+		if (end < pstart || pend < start)
+			continue;
+
+		list_del(&swte->head);
+
+		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
+		if (rc) {
+			vmm_panic("%s: shadow page unmap failed (error %d)\n",
+				  __func__, rc);
+		}
+
+		list_add_tail(&swte->head, &swtlb->itlb.free_list);
+	}
+
+	list_for_each_entry_safe(swte, nswte, &swtlb->dtlb.active_list, head) {
+		pstart = swte->page.ia;
+		pend = swte->page.ia + swte->page.sz - 1;
+		if (end < pstart || pend < start)
+			continue;
+
+		list_del(&swte->head);
+
+		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
+		if (rc) {
+			vmm_panic("%s: shadow page unmap failed (error %d)\n",
+				  __func__, rc);
+		}
+
+		list_add_tail(&swte->head, &swtlb->dtlb.free_list);
+	}
+}
+
+static int nested_swtlb_init(struct vmm_vcpu *vcpu)
+{
+	int i;
+	struct nested_swtlb *swtlb;
+	struct nested_swtlb_entry *swte;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	swtlb = vmm_zalloc(sizeof(*swtlb));
+	if (!swtlb) {
+		return VMM_ENOMEM;
+	}
+	INIT_LIST_HEAD(&swtlb->itlb.active_list);
+	INIT_LIST_HEAD(&swtlb->itlb.free_list);
+	INIT_LIST_HEAD(&swtlb->dtlb.active_list);
+	INIT_LIST_HEAD(&swtlb->dtlb.free_list);
+
+	swtlb->entries = vmm_zalloc(sizeof(*swtlb->entries) *
+				    NESTED_SWTLB_MAX_ENTRY);
+	if (!swtlb->entries) {
+		vmm_free(swtlb);
+		return VMM_ENOMEM;
+	}
+
+	for (i = 0; i < NESTED_SWTLB_MAX_ENTRY; i++) {
+		swte = &swtlb->entries[i];
+		INIT_LIST_HEAD(&swte->head);
+		if (i < NESTED_SWTLB_ITLB_MAX_ENTRY) {
+			list_add_tail(&swte->head, &swtlb->itlb.free_list);
+		} else {
+			list_add_tail(&swte->head, &swtlb->dtlb.free_list);
+		}
+	}
+
+	npriv->swtlb = swtlb;
+	return VMM_OK;
+}
+
+static void nested_swtlb_deinit(struct vmm_vcpu *vcpu)
+{
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	struct nested_swtlb *swtlb = npriv->swtlb;
+
+	vmm_free(swtlb->entries);
+	vmm_free(swtlb);
+}
 
 #ifdef CONFIG_64BIT
 #define NESTED_MMU_OFF_BLOCK_SIZE	PGTBL_L2_BLOCK_SIZE
@@ -259,14 +462,17 @@ static int nested_xlate_gstage(struct nested_xlate_context *xc,
 {
 	int rc;
 	unsigned long mode;
-	struct mmu_page page;
 	bool perm_fault = FALSE;
 	physical_addr_t pgtlb, guest_hpa;
+	struct mmu_page page, shadow_page;
+	const struct nested_swtlb_entry *swte = NULL;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(xc->vcpu);
 
 	/* Find guest G-stage page */
 	mode = (npriv->hgatp & HGATP_MODE) >> HGATP_MODE_SHIFT;
-	if (mode == HGATP_MODE_OFF) {
+	if ((swte = nested_swtlb_lookup(xc->vcpu, guest_gpa))) {
+		memcpy(&page, &swte->page, sizeof(page));
+	} else if (mode == HGATP_MODE_OFF) {
 		memset(&page, 0, sizeof(page));
 		page.sz = NESTED_MMU_OFF_BLOCK_SIZE;
 		page.ia = guest_gpa & ~(page.sz - 1);
@@ -327,28 +533,94 @@ static int nested_xlate_gstage(struct nested_xlate_context *xc,
 		return VMM_EFAULT;
 	}
 
-	/* Calculate guest hpa */
-	guest_hpa = page.oa | (guest_gpa & (page.sz - 1));
+	/* Update host region details */
+	if (swte) {
+		/* Get host details from software TLB entry */
+		xc->host_pa = swte->shadow_page.oa;
+		xc->host_sz = swte->shadow_page.sz;
+		xc->host_reg_flags = swte->shadow_reg_flags;
 
-	/* Translate guest hpa to host pa */
-	rc = nested_xlate_nostage(xc, guest_hpa, guest_access);
-	if (rc) {
-		if (rc == VMM_EFAULT) {
-			xc->nostage_page_sz = page.sz;
-			nested_gstage_write_fault(xc, guest_gpa);
+		/* Check shadow page permissions */
+		rc = VMM_EFAULT;
+		switch (guest_access) {
+		case NESTED_XLATE_LOAD:
+			if (swte->shadow_page.flags.read) {
+				rc = VMM_OK;
+			}
+			break;
+		case NESTED_XLATE_STORE:
+			if (swte->shadow_page.flags.read &&
+			    swte->shadow_page.flags.write) {
+				rc = VMM_OK;
+			}
+			break;
+		case NESTED_XLATE_FETCH:
+			if (swte->shadow_page.flags.execute) {
+				rc = VMM_OK;
+			}
+			break;
+		default:
+			break;
 		}
-		return rc;
-	}
-
-	/* Update output address and size */
-	if (page.sz <= xc->host_sz) {
-		xc->host_pa |= guest_hpa & (xc->host_sz - 1);
-		xc->host_sz = page.sz;
-		xc->host_pa &= ~(xc->host_sz - 1);
+		if (rc) {
+			if (rc == VMM_EFAULT) {
+				xc->nostage_page_sz = page.sz;
+				nested_gstage_write_fault(xc, guest_gpa);
+			}
+			return rc;
+		}
 	} else {
-		page.ia = guest_gpa & ~(xc->host_sz - 1);
-		page.oa = guest_hpa & ~(xc->host_sz - 1);
-		page.sz = xc->host_sz;
+		/* Calculate guest hpa */
+		guest_hpa = page.oa | (guest_gpa & (page.sz - 1));
+
+		/* Translate guest hpa to host pa */
+		rc = nested_xlate_nostage(xc, guest_hpa, guest_access);
+		if (rc) {
+			if (rc == VMM_EFAULT) {
+				xc->nostage_page_sz = page.sz;
+				nested_gstage_write_fault(xc, guest_gpa);
+			}
+			return rc;
+		}
+
+		/* Update output address and size */
+		if (page.sz <= xc->host_sz) {
+			xc->host_pa |= guest_hpa & (xc->host_sz - 1);
+			xc->host_sz = page.sz;
+			xc->host_pa &= ~(xc->host_sz - 1);
+		} else {
+			page.ia = guest_gpa & ~(xc->host_sz - 1);
+			page.oa = guest_hpa & ~(xc->host_sz - 1);
+			page.sz = xc->host_sz;
+		}
+
+		/* Prepare shadow page */
+		memset(&shadow_page, 0, sizeof(shadow_page));
+		shadow_page.ia = page.ia;
+		shadow_page.oa = xc->host_pa;
+		shadow_page.sz = xc->host_sz;
+		shadow_page.flags.dirty = 1;
+		shadow_page.flags.accessed = 1;
+		shadow_page.flags.global = 0;
+		shadow_page.flags.user = 1;
+		shadow_page.flags.read = 0;
+		if ((xc->host_reg_flags &
+		     (VMM_REGION_ISRAM | VMM_REGION_ISROM)) &&
+		    page.flags.read) {
+			shadow_page.flags.read = 1;
+		}
+		shadow_page.flags.write = 0;
+		if ((xc->host_reg_flags & VMM_REGION_ISRAM) &&
+		    page.flags.write) {
+			shadow_page.flags.write = 1;
+		}
+		shadow_page.flags.execute = page.flags.execute;
+		shadow_page.flags.valid = 1;
+
+		/* Update software TLB */
+		nested_swtlb_update(xc->vcpu,
+			(guest_access == NESTED_XLATE_FETCH) ? TRUE : FALSE,
+			&page, &shadow_page, xc->host_reg_flags);
 	}
 
 	return VMM_OK;
@@ -517,6 +789,7 @@ static int nested_xlate_vsstage(struct nested_xlate_context *xc,
 
 int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 {
+	int rc;
 	u32 pgtbl_attr = 0, pgtbl_hw_tag = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
@@ -530,6 +803,12 @@ int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 		return VMM_ENOMEM;
 	}
 
+	rc = nested_swtlb_init(vcpu);
+	if (rc) {
+		mmu_pgtbl_free(npriv->pgtbl);
+		return rc;
+	}
+
 	return VMM_OK;
 }
 
@@ -537,6 +816,7 @@ void cpu_vcpu_nested_reset(struct vmm_vcpu *vcpu)
 {
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
+	cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
 	npriv->virt = FALSE;
 #ifdef CONFIG_64BIT
 	npriv->hstatus = HSTATUS_VSXL_RV64 << HSTATUS_VSXL_SHIFT;
@@ -566,7 +846,10 @@ void cpu_vcpu_nested_reset(struct vmm_vcpu *vcpu)
 
 void cpu_vcpu_nested_deinit(struct vmm_vcpu *vcpu)
 {
-	mmu_pgtbl_free(riscv_nested_priv(vcpu)->pgtbl);
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	nested_swtlb_deinit(vcpu);
+	mmu_pgtbl_free(npriv->pgtbl);
 }
 
 void cpu_vcpu_nested_dump_regs(struct vmm_chardev *cdev,
@@ -694,7 +977,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			unsigned long new_val, unsigned long wr_mask)
 {
 	int csr_shift = 0;
-	bool read_only = FALSE;
+	bool read_only = FALSE, nuke_swtlb = FALSE;
 	unsigned int csr_priv = (csr_num >> 8) & 0x3;
 	unsigned long *csr, mode, zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
@@ -824,6 +1107,14 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			}
 			new_val &= ~HGATP_MODE;
 			new_val |= (mode << HGATP_MODE_SHIFT) & HGATP_MODE;
+			if ((new_val ^ npriv->hgatp) & HGATP_MODE) {
+				nuke_swtlb = TRUE;
+			}
+		}
+		if (wr_mask & HGATP_VMID) {
+			if ((new_val ^ npriv->hgatp) & HGATP_VMID) {
+				nuke_swtlb = TRUE;
+			}
 		}
 		break;
 	case CSR_VSSTATUS:
@@ -922,6 +1213,10 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		*csr = (*csr & ~wr_mask) | (new_val & wr_mask);
 	}
 
+	if (nuke_swtlb) {
+		cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
+	}
+
 	return VMM_OK;
 }
 
@@ -930,20 +1225,115 @@ int cpu_vcpu_nested_page_fault(struct vmm_vcpu *vcpu,
 			       const struct cpu_vcpu_trap *trap,
 			       struct cpu_vcpu_trap *out_trap)
 {
-	/* TODO: */
-	return VMM_OK;
+	int rc = VMM_OK;
+	physical_addr_t guest_gpa;
+	struct nested_xlate_context xc;
+	enum nested_xlate_access guest_access;
+
+	/*
+	 * This function is called to handle guest page faults
+	 * from virtual-VS/VU modes.
+	 *
+	 * We perform a guest gpa to host pa translation for
+	 * the faulting guest gpa so that nested software TLB
+	 * and shadow page table is updated.
+	 */
+
+	guest_gpa = ((physical_addr_t)trap->htval << 2);
+	guest_gpa |= ((physical_addr_t)trap->stval & 0x3);
+	switch (trap->scause) {
+	case CAUSE_LOAD_GUEST_PAGE_FAULT:
+		guest_access = NESTED_XLATE_LOAD;
+		break;
+	case CAUSE_STORE_GUEST_PAGE_FAULT:
+		guest_access = NESTED_XLATE_STORE;
+		break;
+	case CAUSE_FETCH_GUEST_PAGE_FAULT:
+		guest_access = NESTED_XLATE_FETCH;
+		break;
+	default:
+		memcpy(out_trap, trap, sizeof(*out_trap));
+		return VMM_OK;
+	}
+
+	nested_xlate_context_init(&xc, vcpu, guest_access, trap_from_smode,
+				  csr_read(CSR_VSSTATUS), FALSE);
+	rc = nested_xlate_gstage(&xc, guest_gpa, guest_access);
+	if (rc == VMM_EFAULT) {
+		out_trap->sepc = trap->sepc;
+		out_trap->scause = xc.scause;
+		out_trap->stval = trap->stval;
+		out_trap->htval = xc.htval;
+		out_trap->htinst = trap->htinst;
+		rc = VMM_OK;
+	}
+
+	return rc;
 }
 
 void cpu_vcpu_nested_hfence_vvma(struct vmm_vcpu *vcpu,
 				 unsigned long *vaddr, unsigned int *asid)
 {
-	/* TODO: */
+	unsigned long hgatp;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/*
+	 * The HFENCE.VVMA instructions help virtual-HS mode flush
+	 * VS-stage TLB entries for virtual-VS/VU modes.
+	 *
+	 * When host G-stage VMID is not available, we flush all guest
+	 * TLB (both G-stage and VS-stage) entries upon nested virt
+	 * state change so the HFENCE.VVMA becomes a NOP in this case.
+	 */
+
+	if (!mmu_pgtbl_has_hw_tag(npriv->pgtbl)) {
+		return;
+	}
+
+	hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+	hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+
+	if (!vaddr && !asid) {
+		__hfence_vvma_all();
+	} else if (!vaddr && asid) {
+		__hfence_vvma_asid(*asid);
+	} else if (vaddr && !asid) {
+		__hfence_vvma_va(*vaddr);
+	} else {
+		__hfence_vvma_asid_va(*vaddr, *asid);
+	}
+
+	csr_write(CSR_HGATP, hgatp);
 }
 
 void cpu_vcpu_nested_hfence_gvma(struct vmm_vcpu *vcpu,
 				 physical_addr_t *gaddr, unsigned int *vmid)
 {
-	/* TODO: */
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	unsigned long current_vmid =
+			(npriv->hgatp & HGATP_VMID) >> HGATP_VMID_SHIFT;
+
+	/*
+	 * The HFENCE.GVMA instructions help virtual-HS mode flush
+	 * G-stage TLB entries for virtual-VS/VU modes.
+	 *
+	 * Irrespective whether host G-stage VMID is available or not,
+	 * we flush all software TLB (only G-stage) entries upon guest
+	 * hgatp.VMID change so the HFENCE.GVMA instruction becomes a
+	 * NOP for virtual-HS mode when the current guest hgatp.VMID
+	 * is different from the VMID specified in the HFENCE.GVMA
+	 * instruction.
+	 */
+
+	if (vmid && current_vmid != *vmid) {
+		return;
+	}
+
+	if (gaddr) {
+		cpu_vcpu_nested_swtlb_flush(vcpu, *gaddr, 1);
+	} else {
+		cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
+	}
 }
 
 int cpu_vcpu_nested_hlv(struct vmm_vcpu *vcpu, unsigned long vaddr,
