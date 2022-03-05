@@ -517,9 +517,15 @@ static int nested_xlate_vsstage(struct nested_xlate_context *xc,
 
 int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 {
+	u32 pgtbl_attr = 0, pgtbl_hw_tag = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
-	npriv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
+	if (riscv_stage2_vmid_available()) {
+		pgtbl_hw_tag = riscv_stage2_vmid_nested + vcpu->guest->id;
+		pgtbl_attr |= MMU_ATTR_HW_TAG_VALID;
+	}
+	npriv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1, pgtbl_attr,
+				       pgtbl_hw_tag);
 	if (!npriv->pgtbl) {
 		return VMM_ENOMEM;
 	}

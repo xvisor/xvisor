@@ -389,7 +389,7 @@ static int mmu_pgtbl_deattach(struct mmu_pgtbl *child)
 	return VMM_OK;
 }
 
-struct mmu_pgtbl *mmu_pgtbl_alloc(int stage, int level)
+struct mmu_pgtbl *mmu_pgtbl_alloc(int stage, int level, u32 attr, u32 hw_tag)
 {
 	struct mmu_pgtbl *pgtbl;
 
@@ -409,6 +409,8 @@ struct mmu_pgtbl *mmu_pgtbl_alloc(int stage, int level)
 	pgtbl->parent = NULL;
 	pgtbl->stage = stage;
 	pgtbl->level = level;
+	pgtbl->attr = attr;
+	pgtbl->hw_tag = hw_tag;
 	pgtbl->map_ia = 0;
 	INIT_SPIN_LOCK(&pgtbl->tbl_lock);
 	pgtbl->pte_cnt = 0;
@@ -454,6 +456,8 @@ int mmu_pgtbl_free(struct mmu_pgtbl *pgtbl)
 	stage = pgtbl->stage;
 	pgtbl->stage = 0;
 	pgtbl->level = 0;
+	pgtbl->attr = 0;
+	pgtbl->hw_tag = 0;
 	pgtbl->map_ia = 0;
 
 	if (stage == MMU_STAGE1)
@@ -503,7 +507,8 @@ struct mmu_pgtbl *mmu_pgtbl_get_child(struct mmu_pgtbl *parent,
 		return NULL;
 	}
 
-	child = mmu_pgtbl_alloc(parent->stage, parent->level - 1);
+	child = mmu_pgtbl_alloc(parent->stage, parent->level - 1,
+				parent->attr, parent->hw_tag);
 	if (!child) {
 		return NULL;
 	}
@@ -620,9 +625,17 @@ int mmu_unmap_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg)
 	arch_mmu_pte_sync(&pte[index], pgtbl->stage, pgtbl->level);
 
 	if (pgtbl->stage == MMU_STAGE1) {
-		arch_mmu_stage1_tlbflush(TRUE, pg->ia, blksz);
+		arch_mmu_stage1_tlbflush(
+				mmu_pgtbl_need_remote_tlbflush(pgtbl),
+				mmu_pgtbl_has_hw_tag(pgtbl),
+				mmu_pgtbl_hw_tag(pgtbl),
+				pg->ia, blksz);
 	} else {
-		arch_mmu_stage2_tlbflush(TRUE, pg->ia, blksz);
+		arch_mmu_stage2_tlbflush(
+				mmu_pgtbl_need_remote_tlbflush(pgtbl),
+				mmu_pgtbl_has_hw_tag(pgtbl),
+				mmu_pgtbl_hw_tag(pgtbl),
+				pg->ia, blksz);
 	}
 
 	pgtbl->pte_cnt--;
@@ -683,9 +696,17 @@ int mmu_map_page(struct mmu_pgtbl *pgtbl, struct mmu_page *pg)
 	arch_mmu_pte_sync(&pte[index], pgtbl->stage, pgtbl->level);
 
 	if (pgtbl->stage == MMU_STAGE1) {
-		arch_mmu_stage1_tlbflush(TRUE, pg->ia, blksz);
+		arch_mmu_stage1_tlbflush(
+				mmu_pgtbl_need_remote_tlbflush(pgtbl),
+				mmu_pgtbl_has_hw_tag(pgtbl),
+				mmu_pgtbl_hw_tag(pgtbl),
+				pg->ia, blksz);
 	} else {
-		arch_mmu_stage2_tlbflush(TRUE, pg->ia, blksz);
+		arch_mmu_stage2_tlbflush(
+				mmu_pgtbl_need_remote_tlbflush(pgtbl),
+				mmu_pgtbl_has_hw_tag(pgtbl),
+				mmu_pgtbl_hw_tag(pgtbl),
+				pg->ia, blksz);
 	}
 
 	pgtbl->pte_cnt++;
@@ -1145,7 +1166,7 @@ int arch_cpu_aspace_memory_read(virtual_addr_t tmp_va,
 
 	arch_mmu_pte_set(pte , MMU_STAGE1, pgtbl_level, src, flags);
 	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
-	arch_mmu_stage1_tlbflush(FALSE, tmp_va, VMM_PAGE_SIZE);
+	arch_mmu_stage1_tlbflush(FALSE, FALSE, 0, tmp_va, VMM_PAGE_SIZE);
 
 	switch (len) {
 	case 1:
@@ -1187,7 +1208,7 @@ int arch_cpu_aspace_memory_write(virtual_addr_t tmp_va,
 
 	arch_mmu_pte_set(pte , MMU_STAGE1, pgtbl_level, dst, flags);
 	arch_mmu_pte_sync(pte, MMU_STAGE1, pgtbl_level);
-	arch_mmu_stage1_tlbflush(FALSE, tmp_va, VMM_PAGE_SIZE);
+	arch_mmu_stage1_tlbflush(FALSE, FALSE, 0, tmp_va, VMM_PAGE_SIZE);
 
 	switch (len) {
 	case 1:

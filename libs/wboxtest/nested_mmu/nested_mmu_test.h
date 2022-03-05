@@ -122,7 +122,8 @@ do { \
 	DPRINTF((__cdev), "%s: Allocating Stage%s page table ", \
 		(__test)->name, \
 		((__stage) == MMU_STAGE2) ? "2" : "1"); \
-	*(__output_pgtbl_double_ptr) = mmu_pgtbl_alloc((__stage), -1); \
+	*(__output_pgtbl_double_ptr) = mmu_pgtbl_alloc((__stage), -1, \
+					MMU_ATTR_REMOTE_TLB_FLUSH, 0); \
 	DPRINTF((__cdev), "%s", \
 		(!*(__output_pgtbl_double_ptr)) ? "(failed)\n" : ""); \
 	if (!*(__output_pgtbl_double_ptr)) { \

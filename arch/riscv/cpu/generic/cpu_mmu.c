@@ -63,29 +63,47 @@ int arch_mmu_pgtbl_size_order(int stage, int level)
 	return PGTBL_PAGE_SIZE_SHIFT;
 }
 
-void arch_mmu_stage2_tlbflush(bool remote,
+void arch_mmu_stage2_tlbflush(bool remote, bool use_vmid, u32 vmid,
 			      physical_addr_t gpa, physical_size_t gsz)
 {
 	physical_addr_t off;
 
 	if (remote) {
-		sbi_remote_hfence_gvma(NULL, gpa, gsz);
+		if (use_vmid) {
+			sbi_remote_hfence_gvma_vmid(NULL, gpa, gsz, vmid);
+		} else {
+			sbi_remote_hfence_gvma(NULL, gpa, gsz);
+		}
 	} else {
-		for (off = 0; off < gsz; off += VMM_PAGE_SIZE)
-			__hfence_gvma_gpa((gpa + off) >> 2);
+		if (use_vmid) {
+			for (off = 0; off < gsz; off += VMM_PAGE_SIZE)
+				__hfence_gvma_vmid_gpa((gpa + off) >> 2, vmid);
+		} else {
+			for (off = 0; off < gsz; off += VMM_PAGE_SIZE)
+				__hfence_gvma_gpa((gpa + off) >> 2);
+		}
 	}
 }
 
-void arch_mmu_stage1_tlbflush(bool remote,
+void arch_mmu_stage1_tlbflush(bool remote, bool use_asid, u32 asid,
 			      virtual_addr_t va, virtual_size_t sz)
 {
 	virtual_addr_t off;
 
 	if (remote) {
-		sbi_remote_sfence_vma(NULL, va, sz);
+		if (use_asid) {
+			sbi_remote_sfence_vma_asid(NULL, va, sz, asid);
+		} else {
+			sbi_remote_sfence_vma(NULL, va, sz);
+		}
 	} else {
-		for (off = 0; off < sz; off += VMM_PAGE_SIZE)
-			__sfence_vma_va(va + off);
+		if (use_asid) {
+			for (off = 0; off < sz; off += VMM_PAGE_SIZE)
+				__sfence_vma_asid_va(asid, va + off);
+		} else {
+			for (off = 0; off < sz; off += VMM_PAGE_SIZE)
+				__sfence_vma_va(va + off);
+		}
 	}
 }
 
@@ -683,7 +701,8 @@ u32 arch_mmu_stage2_current_vmid(void)
 	return (csr_read(CSR_HGATP) & HGATP_VMID) >> HGATP_VMID_SHIFT;
 }
 
-int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys)
+int arch_mmu_stage2_change_pgtbl(bool have_vmid, u32 vmid,
+				 physical_addr_t tbl_phys)
 {
 	unsigned long hgatp;
 

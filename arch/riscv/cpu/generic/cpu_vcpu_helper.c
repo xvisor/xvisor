@@ -102,6 +102,7 @@ int arch_guest_init(struct vmm_guest *guest)
 {
 	struct riscv_guest_priv *priv;
 	struct riscv_guest_serial *gserial;
+	u32 pgtbl_attr, pgtbl_hw_tag;
 	char *sname;
 	int rc;
 
@@ -118,7 +119,14 @@ int arch_guest_init(struct vmm_guest *guest)
 
 		priv->time_delta = -get_cycles64();
 
-		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
+		pgtbl_hw_tag = 0;
+		pgtbl_attr = MMU_ATTR_REMOTE_TLB_FLUSH;
+		if (riscv_stage2_vmid_available()) {
+			pgtbl_hw_tag = guest->id;
+			pgtbl_attr |= MMU_ATTR_HW_TAG_VALID;
+		}
+		priv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1,
+					      pgtbl_attr, pgtbl_hw_tag);
 		if (!priv->pgtbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
@@ -476,24 +484,12 @@ void cpu_vcpu_time_delta_update(struct vmm_vcpu *vcpu, bool nested_virt)
 
 void cpu_vcpu_gstage_update(struct vmm_vcpu *vcpu, bool nested_virt)
 {
-	if (riscv_stage2_vmid_available()) {
-		if (nested_virt) {
-			mmu_stage2_change_pgtbl(
-				riscv_stage2_vmid_nested + vcpu->guest->id,
-				riscv_nested_priv(vcpu)->pgtbl);
-		} else {
-			mmu_stage2_change_pgtbl(vcpu->guest->id,
-				riscv_guest_priv(vcpu->guest)->pgtbl);
-		}
-	} else {
-		if (nested_virt) {
-			mmu_stage2_change_pgtbl(0,
-				riscv_nested_priv(vcpu)->pgtbl);
-		} else {
-			mmu_stage2_change_pgtbl(0,
-				riscv_guest_priv(vcpu->guest)->pgtbl);
-		}
+	struct mmu_pgtbl *pgtbl = (nested_virt) ?
+				  riscv_nested_priv(vcpu)->pgtbl :
+				  riscv_guest_priv(vcpu->guest)->pgtbl;
 
+	mmu_stage2_change_pgtbl(pgtbl);
+	if (!mmu_pgtbl_has_hw_tag(pgtbl)) {
 		/*
 		 * Invalidate entries related to all guests from both
 		 * G-stage TLB and VS-stage TLB.

@@ -44,13 +44,13 @@ int arch_mmu_pgtbl_size_order(int stage, int level)
 	return TTBL_L3_BLOCK_SHIFT;
 }
 
-void arch_mmu_stage2_tlbflush(bool remote,
+void arch_mmu_stage2_tlbflush(bool remote, bool use_vmid, u32 vmid,
 			      physical_addr_t gpa, physical_size_t gsz)
 {
 	cpu_invalid_ipa_guest_tlb(gpa);
 }
 
-void arch_mmu_stage1_tlbflush(bool remote,
+void arch_mmu_stage1_tlbflush(bool remote, bool use_asid, u32 asid,
 			      virtual_addr_t va, virtual_size_t sz)
 {
 	cpu_invalid_va_hypervisor_tlb(va);
@@ -440,7 +440,8 @@ u32 arch_mmu_stage2_current_vmid(void)
 	return cpu_stage2_vmid();
 }
 
-int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys)
+int arch_mmu_stage2_change_pgtbl(bool have_vmid, u32 vmid,
+				 physical_addr_t tbl_phys)
 {
 	cpu_stage2_update(tbl_phys, vmid);
 

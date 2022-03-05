@@ -303,13 +303,18 @@ void cpu_vcpu_reg_write(struct vmm_vcpu *vcpu,
 
 int arch_guest_init(struct vmm_guest *guest)
 {
+	u32 pgtbl_attr;
+
 	if (!guest->reset_count) {
 		guest->arch_priv = vmm_malloc(sizeof(struct arm_guest_priv));
 		if (!guest->arch_priv) {
 			return VMM_ENOMEM;
 		}
 
-		arm_guest_priv(guest)->ttbl = mmu_pgtbl_alloc(MMU_STAGE2, -1);
+		pgtbl_attr = MMU_ATTR_REMOTE_TLB_FLUSH;
+		pgtbl_attr |= MMU_ATTR_HW_TAG_VALID;
+		arm_guest_priv(guest)->ttbl = mmu_pgtbl_alloc(MMU_STAGE2, -1,
+						pgtbl_attr, guest->id);
 		if (!arm_guest_priv(guest)->ttbl) {
 			vmm_free(guest->arch_priv);
 			guest->arch_priv = NULL;
@@ -786,8 +791,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		msr(cptr_el2, arm_priv(vcpu)->cptr);
 		msr(hstr_el2, arm_priv(vcpu)->hstr);
 		/* Update hypervisor Stage2 MMU context */
-		mmu_stage2_change_pgtbl(vcpu->guest->id,
-					arm_guest_priv(vcpu->guest)->ttbl);
+		mmu_stage2_change_pgtbl(arm_guest_priv(vcpu->guest)->ttbl);
 		/* Flush TLB if moved to new host CPU */
 		if (arm_priv(vcpu)->last_hcpu != vmm_smp_processor_id()) {
 			/* Invalidate all guest TLB enteries because

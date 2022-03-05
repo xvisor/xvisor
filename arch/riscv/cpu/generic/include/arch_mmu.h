@@ -133,10 +133,10 @@ int arch_mmu_pgtbl_align_order(int stage, int level);
 
 int arch_mmu_pgtbl_size_order(int stage, int level);
 
-void arch_mmu_stage2_tlbflush(bool remote,
+void arch_mmu_stage2_tlbflush(bool remote, bool use_vmid, u32 vmid,
 			      physical_addr_t gpa, physical_size_t gsz);
 
-void arch_mmu_stage1_tlbflush(bool remote,
+void arch_mmu_stage1_tlbflush(bool remote, bool use_asid, u32 asid,
 			      virtual_addr_t va, virtual_size_t sz);
 
 bool arch_mmu_valid_block_size(physical_size_t sz);
@@ -186,7 +186,8 @@ physical_addr_t arch_mmu_stage2_current_pgtbl_addr(void);
 
 u32 arch_mmu_stage2_current_vmid(void);
 
-int arch_mmu_stage2_change_pgtbl(u32 vmid, physical_addr_t tbl_phys);
+int arch_mmu_stage2_change_pgtbl(bool have_vmid, u32 vmid,
+				 physical_addr_t tbl_phys);
 
 #endif
 
