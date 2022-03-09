@@ -49,7 +49,7 @@ extern u64 __pgti[];
 extern u64 __early_iodev_pages[];
 
 static char *early_iodev_pages = (char *)__early_iodev_pages;
-static early_iodev_pages_used = 0;
+static int early_iodev_pages_used = 0;
 struct page_table host_pgtbl_array[HOST_PGTBL_MAX_TABLE_COUNT];
 
 static
@@ -113,8 +113,8 @@ int __create_bootstrap_pgtbl_entry(u64 va, u64 pa, u32 page_size,
 	u64 *pgdp_base = (u64 *)(((u64)__pml4[pml4_index]) & ~0xff);
 
 	if (pgdp_base[pgdp_index] == 0) {
-		pgdp_base[pgdp_index] = alloc_iodev_page();
-		if (pgdp_base[pgdp_index] == NULL)
+		pgdp_base[pgdp_index] = (u64)alloc_iodev_page();
+		if ((void *)(pgdp_base[pgdp_index]) == NULL)
 			return VMM_EFAIL;
 		pgdp_base[pgdp_index] |= 0x3;
 	} else {
@@ -133,8 +133,8 @@ int __create_bootstrap_pgtbl_entry(u64 va, u64 pa, u32 page_size,
 			pgdi_base[pgdi_index] |= 0x3;
 			return VMM_OK;
 		} else {
-			pgdi_base[pgdi_index] = alloc_iodev_page();
-			if (pgdi_base[pgdi_index] == NULL)
+			pgdi_base[pgdi_index] = (u64)alloc_iodev_page();
+			if ((void *)pgdi_base[pgdi_index] == NULL)
 				return VMM_EFAIL;
 			pgdi_base[pgdi_index] |= 0x3;
 		}
@@ -146,8 +146,8 @@ int __create_bootstrap_pgtbl_entry(u64 va, u64 pa, u32 page_size,
 	u64 *pgti_base = (u64 *)(((u64)pgdi_base[pgdi_index]) & ~0xff);
 
 	if (pgti_base[pgti_index] == 0) {
-		pgti_base[pgti_index] = alloc_iodev_page();
-		if (pgti_base[pgti_index] == NULL)
+		pgti_base[pgti_index] = (u64)alloc_iodev_page();
+		if ((void *)pgti_base[pgti_index] == NULL)
 			return VMM_EFAIL;
 		pgti_base[pgti_index] |= 0x3;
 	} else {
