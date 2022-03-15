@@ -23,6 +23,7 @@
 
 #include <arch_types.h>
 #include <arch_board.h>
+#include <arch_sbi.h>
 #include <basic_stdio.h>
 #include <basic_heap.h>
 #include <basic_string.h>
@@ -72,12 +73,12 @@
 
 void arch_board_reset(void)
 {
-	/* Nothing to do */
+	sbi_reset();
 }
 
 void arch_board_init(void)
 {
-	/* Nothing to do */
+	sbi_init();
 }
 
 char *arch_board_name(void)

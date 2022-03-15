@@ -43,6 +43,7 @@ ARCH_DIR=$(arch_dir)
 ARCH_OBJS= $(ARCH_OBJ_DIR)/arch_entry.o \
 	   $(ARCH_OBJ_DIR)/arch_cache.o \
 	   $(ARCH_OBJ_DIR)/arch_irq.o \
+	   $(ARCH_OBJ_DIR)/arch_sbi.o \
 	   $(ARCH_OBJ_DIR)/arch_linux.o \
 	   $(ARCH_OBJ_DIR)/arch_mmu.o \
 	   $(board_objs)
