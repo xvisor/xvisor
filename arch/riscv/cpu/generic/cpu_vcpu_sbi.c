@@ -35,6 +35,7 @@ extern const struct cpu_vcpu_sbi_extension vcpu_sbi_base;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_hsm;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_srst;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_legacy;
+extern const struct cpu_vcpu_sbi_extension vcpu_sbi_xvisor;
 
 static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
 	&vcpu_sbi_time,
@@ -44,6 +45,7 @@ static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
 	&vcpu_sbi_hsm,
 	&vcpu_sbi_srst,
 	&vcpu_sbi_legacy,
+	&vcpu_sbi_xvisor,
 };
 
 const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
