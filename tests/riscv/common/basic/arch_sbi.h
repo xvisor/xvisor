@@ -283,8 +283,6 @@ void sbi_set_timer(u64 stime_value);
 
 void sbi_clear_timer(void);
 
-void sbi_shutdown(void);
-
 void sbi_clear_ipi(void);
 
 void sbi_send_ipi(const unsigned long *hart_mask);
@@ -298,7 +296,11 @@ void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 				unsigned long start, unsigned long size,
 				unsigned long asid);
 
+void sbi_shutdown(void);
+
 void sbi_reset(void);
+
+unsigned long sbi_xvisor_isa_string(char *out_isa, unsigned long max_len);
 
 void sbi_init(void);
 

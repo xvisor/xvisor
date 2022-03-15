@@ -104,8 +104,8 @@ void arch_board_linux_default_cmdline(char *cmdline, u32 cmdline_sz)
 
 void arch_board_fdt_fixup(void *fdt_addr)
 {
-	char name[64];
 	u32 i, *vals;
+	char name[64], isa[256];
 	int ret, cpus_offset, cpu_offset, intc_offset, plic_offset;
 	u32 timebase_freq = (u32)vminfo_clocksource_freq(VIRT_VMINFO);
 	u32 vcpu_count = vminfo_vcpu_count(VIRT_VMINFO);
@@ -179,8 +179,9 @@ void arch_board_fdt_fixup(void *fdt_addr)
 			return;
 		}
 
+		sbi_xvisor_isa_string(isa, sizeof(isa));
 		ret = fdt_setprop_string(fdt_addr, cpu_offset,
-					 "riscv,isa", "rv32imacfdh");
+					 "riscv,isa", isa);
 		if (ret < 0) {
 			basic_printf("Failed to set %s property of /cpus/%s "
 				     "DT node\n", "riscv,isa", name);

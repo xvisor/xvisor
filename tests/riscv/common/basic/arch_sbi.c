@@ -22,6 +22,7 @@
  */
 
 #include <basic_stdio.h>
+#include <basic_string.h>
 #include <arch_sbi.h>
 
 struct sbiret {
@@ -175,6 +176,51 @@ void sbi_reset(void)
 	} else {
 		sbi_ecall(SBI_EXT_0_1_SHUTDOWN, 0, 0, 0, 0, 0, 0, 0);
 	}
+}
+
+#define SBI_EXT_XVISOR			(SBI_EXT_FIRMWARE_START + 0x2)
+#define SBI_EXT_XVISOR_ISA_EXT		0x0
+
+unsigned long sbi_xvisor_isa_string(char *out_isa, unsigned long max_len)
+{
+	struct sbiret ret;
+	unsigned long pos = 0;
+	size_t i, valid_isa_len;
+	const char *valid_isa_order = "iemafdqclbjtpvnhkorwyg";
+
+	if (!out_isa || (max_len - pos) < 5)
+		return pos;
+
+#if __riscv_xlen == 64
+	basic_strcpy(&out_isa[pos], "rv64");
+#elif __riscv_xlen == 32
+	basic_strcpy(&out_isa[pos], "rv32");
+#else
+#error "Unexpected __riscv_xlen"
+#endif
+	pos += 4;
+
+	if (sbi_spec_is_0_1() || (sbi_probe_extension(SBI_EXT_XVISOR) <= 0)) {
+		if (max_len > 3) {
+			out_isa[pos++] = 'g';
+			out_isa[pos++] = 'c';
+			pos += 2;
+			return pos;
+		}
+	}
+
+	valid_isa_len = basic_strlen(valid_isa_order);
+	for (i = 0; i < valid_isa_len && pos < max_len; i++) {
+		ret = sbi_ecall(SBI_EXT_XVISOR, SBI_EXT_XVISOR_ISA_EXT,
+				valid_isa_order[i] - 'a', 0, 0, 0, 0, 0);
+		if (ret.error || !ret.value)
+			continue;
+
+		out_isa[pos++] = valid_isa_order[i];
+	}
+	out_isa[pos++] = '\0';
+
+	return pos;
 }
 
 static long sbi_ext_base_func(long fid)
