@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_smp.h>
 #include <vmm_cpuhp.h>
+#include <vmm_limits.h>
 #include <vmm_stdio.h>
 #include <vmm_devtree.h>
 #include <vmm_host_irq.h>
@@ -168,6 +169,9 @@ static int riscv_timer_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	if (rc) {
 		goto fail_free_cc;
 	}
+
+	/* Ensure that timer interrupt bit zero in the sip CSR */
+	sbi_set_timer(U64_MAX);
 
 	/* Register irq handler for riscv timer */
 	rc = vmm_host_irq_register(IRQ_S_TIMER, "riscv-timer",
