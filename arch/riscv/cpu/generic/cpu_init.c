@@ -285,13 +285,23 @@ int __init arch_cpu_nascent_init(void)
 		riscv_stage2_vmid_nested = (1UL << riscv_stage2_vmid_bits) / 2;
 
 #ifdef CONFIG_64BIT
-		/* Try Sv48 MMU mode */
+		/* Try Sv57x4 MMU mode */
+		csr_write(CSR_HGATP, HGATP_VMID |
+				     (HGATP_MODE_SV57X4 << HGATP_MODE_SHIFT));
+		val = csr_read(CSR_HGATP) >> HGATP_MODE_SHIFT;
+		if (val == HGATP_MODE_SV57X4) {
+			riscv_stage2_mode = HGATP_MODE_SV57X4;
+			goto skip_hgatp_sv48x4_test;
+		}
+
+		/* Try Sv48x4 MMU mode */
 		csr_write(CSR_HGATP, HGATP_VMID |
 				     (HGATP_MODE_SV48X4 << HGATP_MODE_SHIFT));
 		val = csr_read(CSR_HGATP) >> HGATP_MODE_SHIFT;
 		if (val == HGATP_MODE_SV48X4) {
 			riscv_stage2_mode = HGATP_MODE_SV48X4;
 		}
+skip_hgatp_sv48x4_test:
 #endif
 
 		csr_write(CSR_HGATP, 0);
@@ -372,13 +382,16 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "%-25s: %s\n", "CPU Hypervisor MMU Mode", isa);
 	switch (riscv_stage2_mode) {
 	case HGATP_MODE_SV32X4:
-		strcpy(isa, "Sv32");
+		strcpy(isa, "Sv32x4");
 		break;
 	case HGATP_MODE_SV39X4:
-		strcpy(isa, "Sv39");
+		strcpy(isa, "Sv39x4");
 		break;
 	case HGATP_MODE_SV48X4:
-		strcpy(isa, "Sv48");
+		strcpy(isa, "Sv48x4");
+		break;
+	case HGATP_MODE_SV57X4:
+		strcpy(isa, "Sv57x4");
 		break;
 	default:
 		strcpy(isa, "Unknown");

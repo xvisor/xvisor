@@ -148,6 +148,8 @@ int arch_mmu_start_level(int stage)
 			return 2;
 		case HGATP_MODE_SV48X4:
 			return 3;
+		case HGATP_MODE_SV57X4:
+			return 4;
 	#endif
 		default:
 			return 0;

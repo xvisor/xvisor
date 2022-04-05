@@ -488,6 +488,9 @@ static int nested_xlate_gstage(struct nested_xlate_context *xc,
 	} else {
 		switch (mode) {
 #ifdef CONFIG_64BIT
+		case HGATP_MODE_SV57X4:
+			rc = 4;
+			break;
 		case HGATP_MODE_SV48X4:
 			rc = 3;
 			break;
@@ -1092,7 +1095,8 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			 */
 #ifdef CONFIG_64BIT
 			case HGATP_MODE_SV39X4:
-				if (riscv_stage2_mode != HGATP_MODE_SV48X4 &&
+				if (riscv_stage2_mode != HGATP_MODE_SV57X4 &&
+				    riscv_stage2_mode != HGATP_MODE_SV48X4 &&
 				    riscv_stage2_mode != HGATP_MODE_SV39X4) {
 					mode = HGATP_MODE_OFF;
 				}
