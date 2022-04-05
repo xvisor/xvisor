@@ -362,6 +362,9 @@ void arch_cpu_print_summary(struct vmm_chardev *cdev)
 	case SATP_MODE_SV48:
 		strcpy(isa, "Sv48");
 		break;
+	case SATP_MODE_SV57:
+		strcpy(isa, "Sv57");
+		break;
 	default:
 		strcpy(isa, "Unknown");
 		break;

@@ -67,6 +67,37 @@ void __attribute__ ((section(".entry")))
 	while (page_addr < map_end) {
 		pgtbl = (arch_pte_t *)entry->pgtbl_base;
 
+		/* Setup level4 table */
+		if (entry->num_levels < 5) {
+			goto skip_level4;
+		}
+#if CONFIG_64BIT
+		index = (page_addr & PGTBL_L4_INDEX_MASK) >> PGTBL_L4_INDEX_SHIFT;
+		if (pgtbl[index] & PGTBL_PTE_VALID_MASK) {
+			/* Find level3 table */
+			pgtbl = (arch_pte_t *)(unsigned long)
+				(((pgtbl[index] & PGTBL_PTE_ADDR_MASK)
+				  >> PGTBL_PTE_ADDR_SHIFT)
+				 << PGTBL_PAGE_SIZE_SHIFT);
+		} else {
+			/* Allocate new level3 table */
+			if (entry->pgtbl_count == PGTBL_INITIAL_COUNT) {
+				while (1) ;	/* No initial table available */
+			}
+			for (i = 0; i < PGTBL_ENTCNT; i++) {
+				entry->next_pgtbl[i] = 0x0ULL;
+			}
+			entry->pgtbl_count++;
+			pgtbl[index] = (virtual_addr_t)entry->next_pgtbl;
+			pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
+			pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
+			pgtbl[index] |= PGTBL_PTE_VALID_MASK;
+			pgtbl = entry->next_pgtbl;
+			entry->next_pgtbl += PGTBL_ENTCNT;
+		}
+#endif
+skip_level4:
+
 		/* Setup level3 table */
 		if (entry->num_levels < 4) {
 			goto skip_level3;
@@ -236,6 +267,38 @@ void __attribute__ ((section(".entry")))
 		pgtbl[i] = 0x0ULL;
 	}
 
+	/* Try Sv57 MMU mode */
+	index = (load_start & PGTBL_L4_INDEX_MASK) >> PGTBL_L4_INDEX_SHIFT;
+	pgtbl[index] = load_start & PGTBL_L4_MAP_MASK;
+	pgtbl[index] = pgtbl[index] >> PGTBL_PAGE_SIZE_SHIFT;
+	pgtbl[index] = pgtbl[index] << PGTBL_PTE_ADDR_SHIFT;
+	pgtbl[index] |= PGTBL_PTE_ACCESSED_MASK;
+	pgtbl[index] |= PGTBL_PTE_DIRTY_MASK;
+	pgtbl[index] |= PGTBL_PTE_EXECUTE_MASK;
+	pgtbl[index] |= PGTBL_PTE_WRITE_MASK;
+	pgtbl[index] |= PGTBL_PTE_READ_MASK;
+	pgtbl[index] |= PGTBL_PTE_VALID_MASK;
+	satp = (unsigned long)pgtbl >> PGTBL_PAGE_SIZE_SHIFT;
+	satp |= SATP_MODE_SV57 << SATP_MODE_SHIFT;
+	__sfence_vma_all();
+	csr_write(CSR_SATP, satp);
+	if ((csr_read(CSR_SATP) >> SATP_MODE_SHIFT) == SATP_MODE_SV57) {
+		riscv_stage1_mode = SATP_MODE_SV57;
+		goto skip_sv48_test;
+	}
+
+	/* Cleanup and disable MMU */
+	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
+		pgtbl[i] = 0x0ULL;
+	}
+	csr_write(CSR_SATP, 0);
+	__sfence_vma_all();
+
+	/* Clear page table memory */
+	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
+		pgtbl[i] = 0x0ULL;
+	}
+
 	/* Try Sv48 MMU mode */
 	index = (load_start & PGTBL_L3_INDEX_MASK) >> PGTBL_L3_INDEX_SHIFT;
 	pgtbl[index] = load_start & PGTBL_L3_MAP_MASK;
@@ -255,6 +318,7 @@ void __attribute__ ((section(".entry")))
 		riscv_stage1_mode = SATP_MODE_SV48;
 	}
 
+skip_sv48_test:
 	/* Cleanup and disable MMU */
 	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
@@ -309,6 +373,9 @@ void __attribute__ ((section(".entry")))
 		break;
 	case SATP_MODE_SV48:
 		entry.num_levels = 4;
+		break;
+	case SATP_MODE_SV57:
+		entry.num_levels = 5;
 		break;
 	default:
 		while (1);

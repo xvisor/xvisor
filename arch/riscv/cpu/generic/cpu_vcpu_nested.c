@@ -713,6 +713,9 @@ static int nested_xlate_vsstage(struct nested_xlate_context *xc,
 	} else {
 		switch (mode) {
 #ifdef CONFIG_64BIT
+		case SATP_MODE_SV57:
+			rc = 4;
+			break;
 		case SATP_MODE_SV48:
 			rc = 3;
 			break;
@@ -1159,13 +1162,20 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			mode = (new_val & SATP_MODE) >> SATP_MODE_SHIFT;
 			switch (mode) {
 #ifdef CONFIG_64BIT
+			case SATP_MODE_SV57:
+				if (riscv_stage1_mode != SATP_MODE_SV57) {
+					mode = SATP_MODE_OFF;
+				}
+				break;
 			case SATP_MODE_SV48:
-				if (riscv_stage1_mode != SATP_MODE_SV48) {
+				if (riscv_stage1_mode != SATP_MODE_SV57 &&
+				    riscv_stage1_mode != SATP_MODE_SV48) {
 					mode = SATP_MODE_OFF;
 				}
 				break;
 			case SATP_MODE_SV39:
-				if (riscv_stage1_mode != SATP_MODE_SV48 &&
+				if (riscv_stage1_mode != SATP_MODE_SV57 &&
+				    riscv_stage1_mode != SATP_MODE_SV48 &&
 				    riscv_stage1_mode != SATP_MODE_SV39) {
 					mode = SATP_MODE_OFF;
 				}
