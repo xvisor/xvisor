@@ -76,8 +76,8 @@ static const struct nested_swtlb_entry *nested_swtlb_lookup(
 	struct nested_swtlb_entry *swte;
 
 	list_for_each_entry(swte, &swtlb->itlb.active_list, head) {
-		if (swte->page.ia <= guest_gpa &&
-		    guest_gpa < (swte->page.ia + swte->page.sz)) {
+		if (swte->shadow_page.ia <= guest_gpa &&
+		    guest_gpa < (swte->shadow_page.ia + swte->shadow_page.sz)) {
 			list_del(&swte->head);
 			list_add(&swte->head, &swtlb->itlb.active_list);
 			return swte;
@@ -85,8 +85,8 @@ static const struct nested_swtlb_entry *nested_swtlb_lookup(
 	}
 
 	list_for_each_entry(swte, &swtlb->dtlb.active_list, head) {
-		if (swte->page.ia <= guest_gpa &&
-		    guest_gpa < (swte->page.ia + swte->page.sz)) {
+		if (swte->shadow_page.ia <= guest_gpa &&
+		    guest_gpa < (swte->shadow_page.ia + swte->shadow_page.sz)) {
 			list_del(&swte->head);
 			list_add(&swte->head, &swtlb->dtlb.active_list);
 			return swte;
@@ -591,15 +591,12 @@ static int nested_xlate_gstage(struct nested_xlate_context *xc,
 			xc->host_pa |= guest_hpa & (xc->host_sz - 1);
 			xc->host_sz = page.sz;
 			xc->host_pa &= ~(xc->host_sz - 1);
-		} else {
-			page.ia = guest_gpa & ~(xc->host_sz - 1);
-			page.oa = guest_hpa & ~(xc->host_sz - 1);
-			page.sz = xc->host_sz;
 		}
 
 		/* Prepare shadow page */
 		memset(&shadow_page, 0, sizeof(shadow_page));
-		shadow_page.ia = page.ia;
+		shadow_page.ia = (page.sz <= xc->host_sz) ?
+				 page.ia : guest_gpa & ~(xc->host_sz - 1);
 		shadow_page.oa = xc->host_pa;
 		shadow_page.sz = xc->host_sz;
 		shadow_page.flags.dirty = 1;
