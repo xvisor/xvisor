@@ -27,6 +27,7 @@
 #include <vmm_main.h>
 #include <vmm_chardev.h>
 #include <vmm_spinlocks.h>
+#include <vmm_scheduler.h>
 #include <vmm_stdio.h>
 #include <arch_atomic.h>
 #include <arch_defterm.h>
@@ -596,7 +597,16 @@ int vmm_scanchars(struct vmm_chardev *cdev, char *ch, u32 num_ch, bool block)
 						 block) ? VMM_OK : VMM_EFAIL);
 		} else {
 			for (i = 0; i < num_ch; i++) {
-				while ((rc = arch_defterm_getc((u8 *)&ch[i])) && block);
+				if (!block) {
+					rc = arch_defterm_getc((u8 *)&ch[i]);
+					if (rc)
+						break;
+					continue;
+				}
+
+				while (arch_defterm_getc((u8 *)&ch[i])) {
+					vmm_scheduler_yield();
+				}
 			}
 		}
 	} else {
