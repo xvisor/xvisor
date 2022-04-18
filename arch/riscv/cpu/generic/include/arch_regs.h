@@ -157,6 +157,8 @@ union riscv_priv_fp {
 struct riscv_priv_nested {
 	/* Nested virt state */
 	bool virt;
+	/* Nested interrupts timer event */
+	void *timer_event;
 	/* Nested software TLB */
 	void *swtlb;
 	/* Nested shadow page table */

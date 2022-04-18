@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_stdio.h>
 #include <vmm_heap.h>
+#include <vmm_timer.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
 #include <generic_mmu.h>
@@ -790,11 +791,24 @@ static int nested_xlate_vsstage(struct nested_xlate_context *xc,
 	return VMM_OK;
 }
 
+static void nested_timer_event_expired(struct vmm_timer_event *ev)
+{
+	/* Do nothing */
+}
+
 int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 {
 	int rc;
+	struct vmm_timer_event *event;
 	u32 pgtbl_attr = 0, pgtbl_hw_tag = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	event = vmm_zalloc(sizeof(struct vmm_timer_event));
+	if (!event) {
+		return VMM_ENOMEM;
+	}
+	INIT_TIMER_EVENT(event, nested_timer_event_expired, vcpu);
+	npriv->timer_event = event;
 
 	if (riscv_stage2_vmid_available()) {
 		pgtbl_hw_tag = riscv_stage2_vmid_nested + vcpu->guest->id;
@@ -803,12 +817,14 @@ int cpu_vcpu_nested_init(struct vmm_vcpu *vcpu)
 	npriv->pgtbl = mmu_pgtbl_alloc(MMU_STAGE2, -1, pgtbl_attr,
 				       pgtbl_hw_tag);
 	if (!npriv->pgtbl) {
+		vmm_free(npriv->timer_event);
 		return VMM_ENOMEM;
 	}
 
 	rc = nested_swtlb_init(vcpu);
 	if (rc) {
 		mmu_pgtbl_free(npriv->pgtbl);
+		vmm_free(npriv->timer_event);
 		return rc;
 	}
 
@@ -819,6 +835,7 @@ void cpu_vcpu_nested_reset(struct vmm_vcpu *vcpu)
 {
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
+	vmm_timer_event_stop(npriv->timer_event);
 	cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
 	npriv->virt = FALSE;
 #ifdef CONFIG_64BIT
@@ -853,6 +870,7 @@ void cpu_vcpu_nested_deinit(struct vmm_vcpu *vcpu)
 
 	nested_swtlb_deinit(vcpu);
 	mmu_pgtbl_free(npriv->pgtbl);
+	vmm_free(npriv->timer_event);
 }
 
 void cpu_vcpu_nested_dump_regs(struct vmm_chardev *cdev,
@@ -1537,4 +1555,69 @@ skip_csr_update:
 
 	/* Update virt flag */
 	npriv->virt = virt;
+}
+
+void cpu_vcpu_nested_take_vsirq(struct vmm_vcpu *vcpu,
+				struct arch_regs *regs)
+{
+	int vsirq;
+	bool next_spp;
+	unsigned long irqs;
+	struct cpu_vcpu_trap trap;
+	struct riscv_priv_nested *npriv;
+
+	/* Do nothing for Orphan VCPUs */
+	if (!vcpu->is_normal) {
+		return;
+	}
+
+	/* Do nothing if virt state is OFF */
+	npriv = riscv_nested_priv(vcpu);
+	if (!npriv->virt) {
+		return;
+	}
+
+	/* Determine virtual-VS mode interrupt number */
+	vsirq = 0;
+	irqs = npriv->hvip;
+	irqs &= npriv->vsie << 1;
+	irqs &= npriv->hideleg;
+	if (irqs & MIP_VSEIP) {
+		vsirq = IRQ_S_EXT;
+	} else if (irqs & MIP_VSTIP) {
+		vsirq = IRQ_S_TIMER;
+	} else if (irqs & MIP_VSSIP) {
+		vsirq = IRQ_S_SOFT;
+	}
+	if (vsirq <= 0) {
+		return;
+	}
+
+	/*
+	 * Determine whether we are resuming in virtual-VS mode
+	 * or virtual-VU mode
+	 */
+	next_spp = (regs->sstatus & SSTATUS_SPP) ? TRUE : FALSE;
+
+	/*
+	 * If we going to virtual-VS mode and interrupts are disabled
+	 * then start nested timer event.
+	 */
+	if (next_spp && !(csr_read(CSR_VSSTATUS) & SSTATUS_SIE)) {
+		if (!vmm_timer_event_pending(npriv->timer_event)) {
+			vmm_timer_event_start(npriv->timer_event, 10000000);
+		}
+		return;
+	}
+	vmm_timer_event_stop(npriv->timer_event);
+
+	/* Take virtual-VS mode interrupt */
+	trap.scause = SCAUSE_INTERRUPT_MASK | vsirq;
+	trap.sepc = regs->sepc;
+	trap.stval = 0;
+	trap.htval = 0;
+	trap.htinst = 0;
+	cpu_vcpu_redirect_smode_trap(regs, &trap, next_spp);
+
+	return;
 }

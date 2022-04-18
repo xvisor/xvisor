@@ -29,6 +29,7 @@
 #include <arch_vcpu.h>
 #include <cpu_hwcap.h>
 #include <cpu_vcpu_trap.h>
+#include <cpu_vcpu_nested.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_helper.h>
 
@@ -79,7 +80,8 @@ done:
 			 cause | SCAUSE_INTERRUPT_MASK,
 			 "interrupt handling failed", rc, TRUE);
 	} else {
-		cpu_vcpu_take_vsirq(vmm_scheduler_current_vcpu(), regs);
+		cpu_vcpu_nested_take_vsirq(vmm_scheduler_current_vcpu(),
+					   regs);
 	}
 
 	vmm_scheduler_irq_exit(regs);
@@ -184,7 +186,7 @@ done:
 	if (rc) {
 		do_error(vcpu, regs, cause, msg, rc, panic);
 	} else {
-		cpu_vcpu_take_vsirq(vcpu, regs);
+		cpu_vcpu_nested_take_vsirq(vcpu, regs);
 	}
 
 	vmm_scheduler_irq_exit(regs);

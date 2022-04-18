@@ -107,4 +107,8 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 			      enum nested_set_virt_event event, bool virt,
 			      bool spvp, bool gva);
 
+/** Function to take virtual-VS mode interrupts */
+void cpu_vcpu_nested_take_vsirq(struct vmm_vcpu *vcpu,
+				struct arch_regs *regs);
+
 #endif

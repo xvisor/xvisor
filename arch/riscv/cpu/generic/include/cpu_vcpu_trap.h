@@ -71,8 +71,6 @@ int cpu_vcpu_virtual_insn_fault(struct vmm_vcpu *vcpu,
 				arch_regs_t *regs,
 				unsigned long stval);
 
-void cpu_vcpu_take_vsirq(struct vmm_vcpu *vcpu, arch_regs_t *regs);
-
 int cpu_vcpu_redirect_vsirq(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			    unsigned long irq);
 

@@ -431,14 +431,15 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_time_delta_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
-		cpu_vcpu_take_vsirq(vcpu, regs);
 	}
 }
 
 void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
-	/* Nothing to do here */
+	if (vcpu->is_normal) {
+		cpu_vcpu_nested_take_vsirq(vcpu, regs);
+	}
 }
 
 void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)

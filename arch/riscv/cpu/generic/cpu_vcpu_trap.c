@@ -1309,65 +1309,6 @@ int cpu_vcpu_virtual_insn_fault(struct vmm_vcpu *vcpu,
 	};
 }
 
-void cpu_vcpu_take_vsirq(struct vmm_vcpu *vcpu, struct arch_regs *regs)
-{
-	int vsirq;
-	bool next_spp;
-	unsigned long irqs;
-	struct cpu_vcpu_trap trap;
-	struct riscv_priv_nested *npriv;
-
-	/* Do nothing for Orphan VCPUs */
-	if (!vcpu->is_normal) {
-		return;
-	}
-
-	/* Do nothing if virt state is OFF */
-	npriv = riscv_nested_priv(vcpu);
-	if (!npriv->virt) {
-		return;
-	}
-
-	/*
-	 * Determine whether we are resuming in virtual-VS mode
-	 * or virtual-VU mode
-	 */
-	next_spp = (regs->sstatus & SSTATUS_SPP) ? TRUE : FALSE;
-
-	/*
-	 * Do nothing if we going to virtual-VS mode and
-	 * interrupts are disabled
-	 */
-	if (next_spp && !(csr_read(CSR_VSSTATUS) & SSTATUS_SIE)) {
-		return;
-	}
-
-	/* Determine virtual-VS mode interrupt number */
-	vsirq = 0;
-	irqs = npriv->hvip;
-	irqs &= npriv->vsie << 1;
-	irqs &= npriv->hideleg;
-	if (irqs & MIP_VSEIP) {
-		vsirq = IRQ_S_EXT;
-	} else if (irqs & MIP_VSTIP) {
-		vsirq = IRQ_S_TIMER;
-	} else if (irqs & MIP_VSSIP) {
-		vsirq = IRQ_S_SOFT;
-	}
-
-	/* Take virtual-VS mode interrupt */
-	if (vsirq > 0) {
-		trap.scause = SCAUSE_INTERRUPT_MASK | vsirq;
-		trap.sepc = regs->sepc;
-		trap.stval = 0;
-		trap.htval = 0;
-		trap.htinst = 0;
-		cpu_vcpu_redirect_smode_trap(regs, &trap, next_spp);
-	}
-
-	return;
-}
-
 int cpu_vcpu_redirect_vsirq(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			    unsigned long irq)
 {
