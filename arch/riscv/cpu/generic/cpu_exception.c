@@ -209,9 +209,6 @@ int __cpuinit arch_cpu_irq_setup(void)
 	extern unsigned long _handle_hyp_exception[];
 
 	if (riscv_isa_extension_available(NULL, h)) {
-		/* Update HIDELEG */
-		csr_write(CSR_HIDELEG, HIDELEG_DEFAULT);
-
 		/* Update HEDELEG */
 		csr_write(CSR_HEDELEG, HEDELEG_DEFAULT);
 
