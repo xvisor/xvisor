@@ -218,7 +218,6 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			      int nvec)
 {
 	vmm_msi_alloc_info_t arg;
-	struct vmm_msi_msg msg;
 	struct vmm_msi_desc *desc;
 	int i, ret = VMM_OK, hwirq, hirq = -1;
 	struct vmm_msi_domain_ops *ops = domain->ops;
@@ -266,10 +265,11 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 		hirq = desc->hirq;
 		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
 		for (i = 0; i < desc->nvec_used; i++) {
-			ret = vmm_host_irq_compose_msi_msg(hirq + i, &msg);
+			memset(&desc->msg, 0, sizeof(desc->msg));
+			ret = vmm_host_irq_compose_msi_msg(hirq + i, &desc->msg);
 			BUG_ON(ret < 0);
 			ops->msi_write_msg(domain, desc,
-					hirq + i, hwirq + i, &msg);
+					hirq + i, hwirq + i, &desc->msg);
 		}
 	}
 
@@ -287,15 +287,12 @@ void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev)
 {
 	unsigned int i, hirq, hwirq;
-	struct vmm_msi_msg msg;
 	struct vmm_msi_desc *desc;
 	struct vmm_msi_domain_ops *ops;
 
 	if (!domain || !dev)
 		return;
-
 	ops = domain->ops;
-	memset(&msg, 0, sizeof(msg));
 
 	for_each_msi_entry(desc, dev) {
 		/*
@@ -310,10 +307,12 @@ void vmm_msi_domain_free_irqs(struct vmm_msi_domain *domain,
 		hirq = desc->hirq;
 		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
 
+		memset(&desc->msg, 0, sizeof(desc->msg));
+
 		if (ops->msi_write_msg) {
 			for (i = 0; i < desc->nvec_used; i++) {
 				ops->msi_write_msg(domain, desc,
-						hirq + i, hwirq + i, &msg);
+						hirq + i, hwirq + i, &desc->msg);
 			}
 		}
 
