@@ -342,3 +342,57 @@ void vmm_devm_free(struct vmm_device *dev, void *p)
 	WARN_ON(rc);
 }
 
+/*
+ * Custom devres actions allow inserting a simple function call
+ * into the teardown sequence.
+ */
+
+struct action_devres {
+	void *data;
+	void (*action)(void *);
+};
+
+static int devm_action_match(struct vmm_device *dev, void *res, void *p)
+{
+	struct action_devres *devres = res;
+	struct action_devres *target = p;
+
+	return devres->action == target->action &&
+	       devres->data == target->data;
+}
+
+static void devm_action_release(struct vmm_device *dev, void *res)
+{
+	struct action_devres *devres = res;
+
+	devres->action(devres->data);
+}
+
+int vmm_devm_add_action(struct vmm_device *dev,
+			void (*action)(void *), void *data)
+{
+	struct action_devres *devres;
+
+	devres = vmm_devres_alloc(devm_action_release,
+				  sizeof(struct action_devres));
+	if (!devres)
+		return VMM_ENOMEM;
+
+	devres->data = data;
+	devres->action = action;
+
+	vmm_devres_add(dev, devres);
+	return 0;
+}
+
+void vmm_devm_remove_action(struct vmm_device *dev,
+			    void (*action)(void *), void *data)
+{
+	struct action_devres devres = {
+		.data = data,
+		.action = action,
+	};
+
+	WARN_ON(vmm_devres_destroy(dev, devm_action_release,
+				   devm_action_match, &devres));
+}

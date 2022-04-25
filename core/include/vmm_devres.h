@@ -89,4 +89,12 @@ char *vmm_devm_strdup(struct vmm_device *dev, const char *s);
 /** Resource-managed free */
 void vmm_devm_free(struct vmm_device *dev, void *p);
 
+/** Add custom resource-managed action */
+int vmm_devm_add_action(struct vmm_device *dev,
+			void (*action)(void *), void *data);
+
+/** Remove custom resource-managed action */
+void vmm_devm_remove_action(struct vmm_device *dev,
+			    void (*action)(void *), void *data);
+
 #endif /* __VMM_DEVRES_H_ */
