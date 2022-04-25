@@ -38,7 +38,6 @@ struct vmm_msi_msg {
 /**
  * Platform device specific msi descriptor data
  * @msi_priv_data:	Pointer to platform private data
- * @msi_index:		The index of the MSI descriptor for multi MSI
  */
 struct vmm_platform_msi_desc {
 	struct vmm_platform_msi_priv_data	*msi_priv_data;
@@ -53,6 +52,7 @@ struct vmm_msi_domain;
  * @list:	List head for management
  * @hirq:	The base interrupt number
  * @nvec_used:	The number of vectors used
+ * @msi_index:	The index of the MSI descriptor for multi MSI
  * @dev:	Pointer to the device which uses this descriptor
  * @domain:	Pointer to the MSI domain which uses this descriptor
  * @msg:	The last set MSI message cached for reuse
@@ -74,6 +74,7 @@ struct vmm_msi_desc {
 	struct dlist			list;
 	unsigned int			hirq;
 	unsigned int			nvec_used;
+	unsigned int			msi_index;
 	struct vmm_device		*dev;
 	struct vmm_msi_domain		*domain;
 	struct vmm_msi_msg		msg;

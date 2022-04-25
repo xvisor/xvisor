@@ -174,7 +174,7 @@ static int platform_msi_alloc_descs_with_irq(struct vmm_device *dev,
 	if (!list_empty(dev_to_msi_list(dev))) {
 		desc = list_last_entry(dev_to_msi_list(dev),
 				       struct vmm_msi_desc, list);
-		base = desc->platform.msi_index + 1;
+		base = desc->msi_index + 1;
 	}
 
 	for (i = 0; i < nvec; i++) {
@@ -183,7 +183,7 @@ static int platform_msi_alloc_descs_with_irq(struct vmm_device *dev,
 			break;
 
 		desc->platform.msi_priv_data = data;
-		desc->platform.msi_index = base + i;
+		desc->msi_index = base + i;
 		desc->nvec_used = 1;
 		desc->hirq = hirq ? hirq + i : 0;
 
