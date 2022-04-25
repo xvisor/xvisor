@@ -148,7 +148,7 @@ static int _irqext_expand(void)
 int vmm_host_irqext_alloc_region(u32 size)
 {
 	irq_flags_t flags;
-	int tries=4, size_log = 0, pos = -1;
+	int tries, size_log = 0, pos = -1;
 
 	while ((1 << size_log) < size) {
 		++size_log;
@@ -157,6 +157,7 @@ int vmm_host_irqext_alloc_region(u32 size)
 	if (!size_log || size_log > BITS_PER_LONG)
 		return VMM_ENOTAVAIL;
 
+	tries = ((1U << size_log) / HOST_IRQEXT_CHUNK) + 1;
 	vmm_write_lock_irqsave_lite(&iectrl.lock, flags);
 
 try_again:
