@@ -32,13 +32,16 @@
 #include <vmm_spinlocks.h>
 #include <vmm_resource.h>
 #include <vmm_modules.h>
+#include <vmm_msi.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_devres.h>
 #include <vmm_host_io.h>
 #include <vmm_host_aspace.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqdomain.h>
 #include <drv/irqchip/riscv-aplic.h>
+#include <drv/irqchip/riscv-imsic.h>
 #include <cpu_hwcap.h>
 
 #define MODULE_DESC			"RISC-V APLIC Driver"
@@ -143,6 +146,7 @@ static int aplic_set_affinity(struct vmm_host_irq *d,
 {
 	struct aplic_priv *priv = vmm_host_irq_get_chip_data(d);
 	struct aplic_idc *idc;
+	struct aplic_msi *msi;
 	unsigned int cpu, val;
 	struct vmm_cpumask amask;
 	void *target;
@@ -166,7 +170,9 @@ static int aplic_set_affinity(struct vmm_host_irq *d,
 		val |= APLIC_DEFAULT_PRIORITY;
 		vmm_writel(val, target);
 	} else {
-		/* TODO: Set affinity of MSI parent irq */
+		msi = &priv->msis[d->hwirq];
+		return vmm_host_irq_set_affinity(msi->parent_irq,
+						 vmm_cpumask_of(cpu), force);
 	}
 
 	return 0;
@@ -238,10 +244,188 @@ static void aplic_init_hw_global(struct aplic_priv *priv)
 			     "unable to write 0x%x in domaincfg\n", val);
 }
 
+/*
+ * To handle an APLIC MSI interrupts, we just find logical IRQ mapped to
+ * the corresponding HW IRQ line and let Linux IRQ subsystem handle the
+ * logical IRQ.
+ */
+static vmm_irq_return_t aplic_msi_handle_irq(int irq, void *dev)
+{
+	struct aplic_msi *msi = dev;
+	struct aplic_priv *priv = msi->priv;
+
+	irq = vmm_host_irqdomain_find_mapping(priv->irqdomain, msi->hw_irq);
+	if (unlikely(irq <= 0))
+		vmm_lwarning(priv->dev->name,
+			     "can't find mapping for hwirq %u\n", msi->hw_irq);
+	else
+		vmm_host_generic_irq_exec(irq);
+
+	/*
+	 * We don't need to explicitly clear APLIC IRQ pending bit
+	 * because as-per RISC-V AIA specification the APLIC hardware
+	 * state machine will auto-clear the IRQ pending bit after
+	 * MSI write has been sent-out.
+	 */
+
+	return VMM_IRQ_HANDLED;
+}
+
+static void aplic_msi_free(void *data)
+{
+	struct vmm_device *dev = data;
+
+	vmm_platform_msi_domain_free_irqs(dev);
+}
+
+static void aplic_msi_write_msg(struct vmm_msi_desc *desc,
+				struct vmm_msi_msg *msg)
+{
+	unsigned int group_index, hart_index, guest_index, val;
+	struct vmm_device *dev = msi_desc_to_dev(desc);
+	struct aplic_priv *priv = dev->priv;
+	struct aplic_msi *msi = &priv->msis[desc->msi_index + 1];
+	struct aplic_msicfg *mc = &priv->msicfg;
+	physical_addr_t tppn, tbppn;
+	void *target;
+
+	/* Save the MSI address and data */
+	msi->msg_addr = (((u64)msg->address_hi) << 32) | msg->address_lo;
+	msi->msg_data = msg->data;
+	WARN_ON(msi->msg_data > APLIC_TARGET_EIID_MASK);
+
+	/* Compute target HART PPN */
+	tppn = msi->msg_addr >> APLIC_xMSICFGADDR_PPN_SHIFT;
+
+	/* Compute target HART Base PPN */
+	tbppn = tppn;
+	tbppn &= ~APLIC_xMSICFGADDR_PPN_HART(mc->lhxs);
+	tbppn &= ~APLIC_xMSICFGADDR_PPN_LHX(mc->lhxw, mc->lhxs);
+	tbppn &= ~APLIC_xMSICFGADDR_PPN_HHX(mc->hhxw, mc->hhxs);
+	WARN_ON(tbppn != mc->base_ppn);
+
+	/* Compute target group and hart indexes */
+	group_index = (tppn >> APLIC_xMSICFGADDR_PPN_HHX_SHIFT(mc->hhxs)) &
+		     APLIC_xMSICFGADDR_PPN_HHX_MASK(mc->hhxw);
+	hart_index = (tppn >> APLIC_xMSICFGADDR_PPN_LHX_SHIFT(mc->lhxs)) &
+		     APLIC_xMSICFGADDR_PPN_LHX_MASK(mc->lhxw);
+	hart_index |= (group_index << mc->lhxw);
+	WARN_ON(hart_index > APLIC_TARGET_HART_IDX_MASK);
+
+	/* Compute target guest index */
+	guest_index = tppn & APLIC_xMSICFGADDR_PPN_HART(mc->lhxs);
+	WARN_ON(guest_index > APLIC_TARGET_GUEST_IDX_MASK);
+
+	/* Update IRQ TARGET register */
+	target = priv->regs + APLIC_TARGET_BASE;
+	target += (msi->hw_irq - 1) * sizeof(u32);
+	val = (hart_index & APLIC_TARGET_HART_IDX_MASK)
+				<< APLIC_TARGET_HART_IDX_SHIFT;
+	val |= (guest_index & APLIC_TARGET_GUEST_IDX_MASK)
+				<< APLIC_TARGET_GUEST_IDX_SHIFT;
+	val |= (msi->msg_data & APLIC_TARGET_EIID_MASK);
+	vmm_writel(val, target);
+}
+
 static int aplic_setup_lmask_msis(struct aplic_priv *priv)
 {
-	/* TODO: */
-	return VMM_ENODEV;
+	int i, rc;
+	struct aplic_msi *msi;
+	struct vmm_msi_desc *desc;
+	struct vmm_device *dev = priv->dev;
+	struct aplic_msicfg *mc = &priv->msicfg;
+	const struct imsic_global_config *imsic_global;
+
+	/*
+	 * The APLIC outgoing MSI config registers assume target MSI
+	 * controller to be RISC-V AIA IMSIC controller.
+	 */
+	imsic_global = imsic_get_global_config();
+	if (!imsic_global) {
+		vmm_lerror(dev->name,
+			   "IMSIC global config not found\n");
+		return VMM_ENODEV;
+	}
+
+	/* Find number of guest index bits (LHXS) */
+	mc->lhxs = imsic_global->guest_index_bits;
+	if (APLIC_xMSICFGADDRH_LHXS_MASK < mc->lhxs) {
+		vmm_lerror(dev->name,
+			   "IMSIC guest index bits big for APLIC LHXS\n");
+		return VMM_EINVALID;
+	}
+
+	/* Find number of HART index bits (LHXW) */
+	mc->lhxw = imsic_global->hart_index_bits;
+	if (APLIC_xMSICFGADDRH_LHXW_MASK < mc->lhxw) {
+		vmm_lerror(dev->name,
+			   "IMSIC hart index bits big for APLIC LHXW\n");
+		return VMM_EINVALID;
+	}
+
+	/* Find number of group index bits (HHXW) */
+	mc->hhxw = imsic_global->group_index_bits;
+	if (APLIC_xMSICFGADDRH_HHXW_MASK < mc->hhxw) {
+		vmm_lerror(dev->name,
+			   "IMSIC group index bits big for APLIC HHXW\n");
+		return VMM_EINVALID;
+	}
+
+	/* Find first bit position of group index (HHXS) */
+	mc->hhxs = imsic_global->group_index_shift;
+	if (mc->hhxs < (2 * APLIC_xMSICFGADDR_PPN_SHIFT)) {
+		vmm_lerror(dev->name,
+			   "IMSIC group index shift should be >= %d\n",
+			   (2 * APLIC_xMSICFGADDR_PPN_SHIFT));
+		return VMM_EINVALID;
+	}
+	mc->hhxs -= (2 * APLIC_xMSICFGADDR_PPN_SHIFT);
+	if (APLIC_xMSICFGADDRH_HHXS_MASK < mc->hhxs) {
+		vmm_lerror(dev->name,
+			   "IMSIC group index shift big for APLIC HHXS\n");
+		return VMM_EINVALID;
+	}
+
+	/* Compute PPN base */
+	mc->base_ppn = imsic_global->base_addr >> APLIC_xMSICFGADDR_PPN_SHIFT;
+	mc->base_ppn &= ~APLIC_xMSICFGADDR_PPN_HART(mc->lhxs);
+	mc->base_ppn &= ~APLIC_xMSICFGADDR_PPN_LHX(mc->lhxw, mc->lhxs);
+	mc->base_ppn &= ~APLIC_xMSICFGADDR_PPN_HHX(mc->hhxw, mc->hhxs);
+
+	/* Use all possible CPUs as lmask */
+	vmm_cpumask_copy(&priv->lmask, cpu_possible_mask);
+
+	/* Allocate one APLIC MSI for every IRQ line */
+	priv->msis = vmm_devm_calloc(dev, priv->nr_irqs + 1, sizeof(*msi));
+	if (!priv->msis)
+		return VMM_ENOMEM;
+	for (i = 0; i <= priv->nr_irqs; i++) {
+		priv->msis[i].hw_irq = i;
+		priv->msis[i].priv = priv;
+	}
+
+	/* Allocate platform MSIs from parent */
+	rc = vmm_platform_msi_domain_alloc_irqs(dev, priv->nr_irqs,
+						aplic_msi_write_msg);
+	if (rc) {
+		vmm_lerror(dev->name, "failed to allocate MSIs\n");
+		return rc;
+	}
+
+	/* Register callback to free-up MSIs */
+	vmm_devm_add_action(dev, aplic_msi_free, dev);
+
+	/* Configure chained handler for each APLIC MSI */
+	for_each_msi_entry(desc, dev) {
+		msi = &priv->msis[desc->msi_index + 1];
+		msi->parent_irq = desc->hirq;
+
+		vmm_host_irq_mark_chained(msi->parent_irq);
+		vmm_host_irq_register(msi->parent_irq, "riscv-aplic",
+				      aplic_msi_handle_irq, msi);
+	}
+
+	return VMM_OK;
 }
 
 static vmm_irq_return_t aplic_idc_handle_irq(int irq, void *dev)
