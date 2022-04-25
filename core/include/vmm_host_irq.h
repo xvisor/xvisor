@@ -60,6 +60,7 @@ enum vmm_irq_trigger_types {
  * @VMM_IRQ_STATE_ROUTED		- Interrupt is routed to some guest
  * @VMM_IRQ_STATE_IPI			- Interrupt is an inter-processor interrupt
  * @VMM_IRQ_STATE_EXTENDED		- Interrupt is an extended interrupt
+ * @VMM_IRQ_STATE_CHAINED		- Interrupt is a chained interrupt
  */
 enum vmm_irq_states {
 	VMM_IRQ_STATE_TRIGGER_MASK	= 0xf,
@@ -69,6 +70,7 @@ enum vmm_irq_states {
 	VMM_IRQ_STATE_ROUTED		= (1 << 14),
 	VMM_IRQ_STATE_IPI		= (1 << 15),
 	VMM_IRQ_STATE_EXTENDED		= (1 << 16),
+	VMM_IRQ_STATE_CHAINED		= (1 << 17),
 };
 
 /**
@@ -326,6 +328,12 @@ static inline bool vmm_host_irq_is_ipi(struct vmm_host_irq *irq)
 	return (irq->state & VMM_IRQ_STATE_IPI) ? TRUE : FALSE;
 }
 
+/** Check if a host irq is a chained interrupt */
+static inline bool vmm_host_irq_is_chained(struct vmm_host_irq *irq)
+{
+	return (irq->state & VMM_IRQ_STATE_CHAINED) ? TRUE : FALSE;
+}
+
 /** Check if a host irq is masked */
 bool vmm_host_irq_is_masked(struct vmm_host_irq *irq);
 
@@ -392,6 +400,12 @@ int vmm_host_irq_mark_ipi(u32 hirq);
 
 /** UnMark host irq as inter-processor interrupt */
 int vmm_host_irq_unmark_ipi(u32 hirq);
+
+/** Mark host irq as chained interrupt */
+int vmm_host_irq_mark_chained(u32 hirq);
+
+/** UnMark host irq as chained interrupt */
+int vmm_host_irq_unmark_chained(u32 hirq);
 
 /** Unmask a host irq (by default all irqs are masked) */
 int vmm_host_irq_unmask(u32 hirq);

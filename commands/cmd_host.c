@@ -218,7 +218,9 @@ static void irq_stats_print(struct vmm_chardev *cdev, u32 irqno)
 
 	irq = vmm_host_irq_get(irqno);
 	irq_name = vmm_host_irq_get_name(irq);
-	if (vmm_host_irq_is_disabled(irq) || !irq_name) {
+	if (!irq || !irq_name ||
+	    vmm_host_irq_is_disabled(irq) ||
+	    vmm_host_irq_is_chained(irq)) {
 		return;
 	}
 	chip = vmm_host_irq_get_chip(irq);

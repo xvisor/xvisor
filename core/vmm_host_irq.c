@@ -465,6 +465,28 @@ int vmm_host_irq_unmark_ipi(u32 hirq)
 	return VMM_OK;
 }
 
+int vmm_host_irq_mark_chained(u32 hirq)
+{
+	struct vmm_host_irq *irq;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq)))
+		return VMM_ENOTAVAIL;
+
+	irq->state |= VMM_IRQ_STATE_CHAINED;
+	return VMM_OK;
+}
+
+int vmm_host_irq_unmark_chained(u32 hirq)
+{
+	struct vmm_host_irq *irq;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq)))
+		return VMM_ENOTAVAIL;
+
+	irq->state &= ~VMM_IRQ_STATE_CHAINED;
+	return VMM_OK;
+}
+
 bool vmm_host_irq_is_masked(struct vmm_host_irq *irq)
 {
 	u32 percpu_state;
