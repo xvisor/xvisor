@@ -45,12 +45,16 @@ struct vmm_platform_msi_desc {
 	u16					msi_index;
 };
 
+struct vmm_host_irq;
+struct vmm_msi_domain;
+
 /**
  * Descriptor structure for MSI based interrupts
  * @list:	List head for management
  * @hirq:	The base interrupt number
  * @nvec_used:	The number of vectors used
  * @dev:	Pointer to the device which uses this descriptor
+ * @domain:	Pointer to the MSI domain which uses this descriptor
  * @msg:	The last set MSI message cached for reuse
  *
  * @masked:	[PCI MSI/X] Mask bits
@@ -71,6 +75,7 @@ struct vmm_msi_desc {
 	unsigned int			hirq;
 	unsigned int			nvec_used;
 	struct vmm_device		*dev;
+	struct vmm_msi_domain		*domain;
 	struct vmm_msi_msg		msg;
 
 	union {
@@ -133,7 +138,6 @@ typedef struct vmm_msi_alloc_info {
 #define for_each_msi_entry(desc, dev)	\
 	list_for_each_entry((desc), dev_to_msi_list((dev)), list)
 
-struct vmm_msi_domain;
 typedef void (*vmm_irq_write_msi_msg_t)(struct vmm_msi_desc *desc,
 					struct vmm_msi_msg *msg);
 
@@ -235,6 +239,8 @@ static inline void *vmm_msi_domain_data(struct vmm_msi_domain *domain)
 
 struct vmm_msi_domain *vmm_msi_find_domain(struct vmm_devtree_node *fwnode,
 					   enum vmm_msi_domain_types type);
+
+void vmm_msi_domain_write_msg(struct vmm_host_irq *irq);
 
 int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev,

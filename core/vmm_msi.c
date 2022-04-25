@@ -213,6 +213,25 @@ struct vmm_msi_domain *vmm_msi_find_domain(struct vmm_devtree_node *fwnode,
 	return domain;
 }
 
+void vmm_msi_domain_write_msg(struct vmm_host_irq *irq)
+{
+	struct vmm_msi_desc *desc = vmm_host_irq_get_msi_data(irq);
+	struct vmm_msi_domain_ops *ops;
+	struct vmm_msi_domain *domain;
+	int ret;
+
+	if (!desc || !desc->domain)
+		return;
+	domain = desc->domain;
+	ops = domain->ops;
+
+	memset(&desc->msg, 0, sizeof(desc->msg));
+	ret = vmm_host_irq_compose_msi_msg(irq->num, &desc->msg);
+	BUG_ON(ret < 0);
+	ops->msi_write_msg(domain, desc,
+			   irq->num, irq->hwirq, &desc->msg);
+}
+
 int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 			      struct vmm_device *dev,
 			      int nvec)
@@ -240,8 +259,10 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 		}
 		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
 		desc->hirq = hirq;
+		desc->domain = domain;
 
 		for (i = 0; i < desc->nvec_used; i++) {
+			vmm_host_irq_set_msi_data(hirq + i, desc);
 			ret = ops->msi_init(domain, hirq + i,
 					    hwirq + i, &arg);
 			if (ret < 0) {
@@ -262,14 +283,9 @@ int vmm_msi_domain_alloc_irqs(struct vmm_msi_domain *domain,
 
 	/* If everything went fine then we write MSI messages */
 	for_each_msi_entry(desc, dev) {
-		hirq = desc->hirq;
-		hwirq = vmm_host_irqdomain_to_hwirq(domain->parent, hirq);
 		for (i = 0; i < desc->nvec_used; i++) {
-			memset(&desc->msg, 0, sizeof(desc->msg));
-			ret = vmm_host_irq_compose_msi_msg(hirq + i, &desc->msg);
-			BUG_ON(ret < 0);
-			ops->msi_write_msg(domain, desc,
-					hirq + i, hwirq + i, &desc->msg);
+			vmm_msi_domain_write_msg(
+					vmm_host_irq_get(desc->hirq + i));
 		}
 	}
 

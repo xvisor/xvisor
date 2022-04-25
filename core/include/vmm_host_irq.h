@@ -163,6 +163,7 @@ struct vmm_host_irq {
 	u32 count[CONFIG_CPU_COUNT];
 	void *chip_data;
 	struct vmm_host_irq_chip *chip;
+	void *msi_data;
 	vmm_host_irq_handler_t handler;
 	void *handler_data;
 	vmm_rwlock_t action_lock[CONFIG_CPU_COUNT];
@@ -223,6 +224,12 @@ int vmm_host_irq_set_chip_data(u32 hirq, void *chip_data);
 
 /** Get host irq chip data from host irq instance */
 void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq);
+
+/** Set host irq MSI data for given host irq number */
+int vmm_host_irq_set_msi_data(u32 hirq, void *msi_data);
+
+/** Get host irq MSI data from host irq instance */
+void *vmm_host_irq_get_msi_data(struct vmm_host_irq *irq);
 
 /** Set host irq handler for given host irq number
  *  NOTE: For second argument, mention one of the

@@ -248,6 +248,22 @@ void *vmm_host_irq_get_chip_data(struct vmm_host_irq *irq)
 	return (irq) ? irq->chip_data : NULL;
 }
 
+int vmm_host_irq_set_msi_data(u32 hirq, void *msi_data)
+{
+	struct vmm_host_irq *irq = NULL;
+
+	if (NULL == (irq = vmm_host_irq_get(hirq)))
+		return VMM_EFAIL;
+
+	irq->msi_data = msi_data;
+	return VMM_OK;
+}
+
+void *vmm_host_irq_get_msi_data(struct vmm_host_irq *irq)
+{
+	return (irq) ? irq->msi_data : NULL;
+}
+
 int vmm_host_irq_set_handler(u32 hirq, vmm_host_irq_handler_t handler)
 {
 	struct vmm_host_irq *irq = NULL;
@@ -738,6 +754,7 @@ void __vmm_host_irq_init_desc(struct vmm_host_irq *irq,
 	}
 	irq->chip = NULL;
 	irq->chip_data = NULL;
+	irq->msi_data = NULL;
 	irq->handler = NULL;
 	irq->handler_data = NULL;
 	for (cpu = 0; cpu < CONFIG_CPU_COUNT; cpu++) {
