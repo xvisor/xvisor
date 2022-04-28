@@ -28,6 +28,8 @@
 #include <vmm_resource.h>
 #include <vmm_devtree.h>
 #include <vmm_devdrv.h>
+#include <vmm_timer.h>
+#include <vmm_heap.h>
 #include <vmm_host_irq.h>
 #include <vmm_host_irqext.h>
 #include <vmm_host_ram.h>
@@ -57,6 +59,7 @@ static void cmd_host_usage(struct vmm_chardev *cdev)
 	vmm_cprintf(cdev, "   host help\n");
 	vmm_cprintf(cdev, "   host info\n");
 	vmm_cprintf(cdev, "   host cpu info\n");
+	vmm_cprintf(cdev, "   host cpu poke [<hcpu>]\n");
 	vmm_cprintf(cdev, "   host cpu stats\n");
 	vmm_cprintf(cdev, "   host irq stats\n");
 	vmm_cprintf(cdev, "   host irq set_affinity <hirq> <hcpu>\n");
@@ -147,6 +150,50 @@ static int cmd_host_cpu_info(struct vmm_chardev *cdev)
 		arch_cpu_print(cdev, c);
 
 		vmm_cprintf(cdev, "\n");
+	}
+
+	return VMM_OK;
+}
+
+static void host_cpu_poke_func(void *arg0, void *arg1, void *arg2)
+{
+	*((bool *)arg0) = TRUE;
+}
+
+static int cmd_host_cpu_poke(struct vmm_chardev *cdev,
+			     const struct vmm_cpumask *cmask)
+{
+	u32 c;
+	u64 tstamp;
+	bool *poke;
+	bool free_poke = TRUE;
+
+	poke = vmm_zalloc(sizeof(*poke));
+	if (!poke) {
+		return VMM_ENOMEM;
+	}
+
+	for_each_cpu(c, cmask) {
+		vmm_cprintf(cdev, "CPU%d: Poke using async IPI ... ", c);
+
+		*poke = FALSE;
+		tstamp = vmm_timer_timestamp() + 1000000000ULL;
+		vmm_smp_ipi_async_call(vmm_cpumask_of(c), host_cpu_poke_func,
+					poke, NULL, NULL);
+		while (!(*poke)) {
+			if (tstamp < vmm_timer_timestamp()) {
+				free_poke = FALSE;
+				break;
+			}
+
+			vmm_scheduler_yield();
+		}
+
+		vmm_cprintf(cdev, "%s\n", (*poke) ? "Done" : "Timeout");
+	}
+
+	if (free_poke) {
+		vmm_free(poke);
 	}
 
 	return VMM_OK;
@@ -663,8 +710,8 @@ static int cmd_host_class_device_list(struct vmm_chardev *cdev,
 
 static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
+	const struct vmm_cpumask *cmask;
 	int hirq, hcpu, colcnt, size;
-
 	physical_addr_t physaddr;
 
 	if (argc <= 1) {
@@ -679,6 +726,14 @@ static int cmd_host_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	} else if ((strcmp(argv[1], "cpu") == 0) && (2 < argc)) {
 		if (strcmp(argv[2], "info") == 0) {
 			return cmd_host_cpu_info(cdev);
+		} else if (strcmp(argv[2], "poke") == 0) {
+			hcpu = (3 < argc) ? atoi(argv[3]) : -1;
+			if (hcpu >= 0 && vmm_cpu_online(hcpu)) {
+				cmask = vmm_cpumask_of(hcpu);
+			} else {
+				cmask = cpu_online_mask;
+			}
+			return cmd_host_cpu_poke(cdev, cmask);
 		} else if (strcmp(argv[2], "stats") == 0) {
 			return cmd_host_cpu_stats(cdev);
 		}
