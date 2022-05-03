@@ -118,8 +118,9 @@ static void nested_swtlb_update(struct vmm_vcpu *vcpu, bool itlb,
 				  struct nested_swtlb_entry, head);
 		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
 		if (rc) {
-			vmm_panic("%s: shadow page unmap failed (error %d)\n",
-				  __func__, rc);
+			vmm_panic("%s: shadow page unmap @ 0x%"PRIPADDR
+				  " failed (error %d)\n", __func__,
+				  swte->shadow_page.ia, rc);
 		}
 	} else {
 		BUG_ON(1);
@@ -131,8 +132,9 @@ static void nested_swtlb_update(struct vmm_vcpu *vcpu, bool itlb,
 
 	rc = mmu_map_page(npriv->pgtbl, &swte->shadow_page);
 	if (rc) {
-		vmm_panic("%s: shadow page map failed (error %d)\n",
-			  __func__, rc);
+		vmm_panic("%s: shadow page map @ 0x%"PRIPADDR
+			  " failed (error %d)\n", __func__,
+			  swte->shadow_page.ia, rc);
 	}
 
 	list_add(&swte->head, &xtlb->active_list);
@@ -166,8 +168,9 @@ void cpu_vcpu_nested_swtlb_flush(struct vmm_vcpu *vcpu,
 
 		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
 		if (rc) {
-			vmm_panic("%s: shadow page unmap failed (error %d)\n",
-				  __func__, rc);
+			vmm_panic("%s: shadow page unmap @ 0x%"PRIPADDR
+				  " failed (error %d)\n", __func__,
+				  swte->shadow_page.ia, rc);
 		}
 
 		list_add_tail(&swte->head, &swtlb->itlb.free_list);
@@ -183,8 +186,9 @@ void cpu_vcpu_nested_swtlb_flush(struct vmm_vcpu *vcpu,
 
 		rc = mmu_unmap_page(npriv->pgtbl, &swte->shadow_page);
 		if (rc) {
-			vmm_panic("%s: shadow page unmap failed (error %d)\n",
-				  __func__, rc);
+			vmm_panic("%s: shadow page unmap @ 0x%"PRIPADDR
+				  " failed (error %d)\n", __func__,
+				  swte->shadow_page.ia, rc);
 		}
 
 		list_add_tail(&swte->head, &swtlb->dtlb.free_list);
