@@ -490,17 +490,24 @@ struct mmu_pgtbl *mmu_pgtbl_get_child(struct mmu_pgtbl *parent,
 	vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
 
 	if (arch_mmu_pte_is_valid(&pte_val, parent->stage, parent->level)) {
+		child = NULL;
 		if ((parent->level > 0) &&
 		    arch_mmu_pte_is_table(&pte_val, parent->stage,
 					  parent->level)) {
 			tbl_pa = arch_mmu_pte_table_addr(&pte_val,
 						parent->stage, parent->level);
 			child = mmu_pgtbl_find(parent->stage, tbl_pa);
-			if (child->parent == parent) {
-				return child;
+			if (!child || child->parent != parent) {
+				vmm_printf("%s: invalid child for address "
+					   "0x%"PRIPADDR" in page table at "
+					   "0x%"PRIPADDR" stage=%d level=%d\n"
+					   , __func__, map_ia, parent->tbl_pa,
+					   parent->stage, parent->level);
+				child = NULL;
 			}
 		}
-		return NULL;
+
+		return child;
 	}
 
 	if (!create) {
@@ -510,11 +517,22 @@ struct mmu_pgtbl *mmu_pgtbl_get_child(struct mmu_pgtbl *parent,
 	child = mmu_pgtbl_alloc(parent->stage, parent->level - 1,
 				parent->attr, parent->hw_tag);
 	if (!child) {
+		vmm_printf("%s: failed to alloc child for address "
+			   "0x%"PRIPADDR" in page table at "
+			   "0x%"PRIPADDR" stage=%d level=%d\n",
+			   __func__, map_ia, parent->tbl_pa,
+			   parent->stage, parent->level);
 		return NULL;
 	}
 
 	if ((rc = mmu_pgtbl_attach(parent, map_ia, child))) {
+		vmm_printf("%s: failed to attach child for address "
+			   "0x%"PRIPADDR" in page table at "
+			   "0x%"PRIPADDR" stage=%d level=%d\n",
+			   __func__, map_ia, parent->tbl_pa,
+			   parent->stage, parent->level);
 		mmu_pgtbl_free(child);
+		child = NULL;
 	}
 
 	return child;
