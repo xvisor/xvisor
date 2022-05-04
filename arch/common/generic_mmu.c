@@ -217,7 +217,7 @@ static struct mmu_pgtbl *mmu_pgtbl_nonpool_alloc(int stage, int level)
 						 flags);
 		vmm_host_free_pages(pgtbl->tbl_va,
 				    VMM_SIZE_TO_PAGE(pgtbl->tbl_sz));
-		vmm_free(pgtbl);
+		vmm_free(npgtbl);
 		return NULL;
 	}
 
