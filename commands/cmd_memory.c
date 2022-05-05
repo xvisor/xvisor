@@ -24,6 +24,9 @@
 
 #include <vmm_error.h>
 #include <vmm_stdio.h>
+#include <vmm_smp.h>
+#include <vmm_timer.h>
+#include <vmm_heap.h>
 #include <vmm_host_aspace.h>
 #include <vmm_modules.h>
 #include <vmm_cmdmgr.h>
@@ -94,9 +97,12 @@ static void cmd_memory_usage(struct vmm_chardev *cdev)
 {
 	vmm_cprintf(cdev, "Usage: ");
 	vmm_cprintf(cdev, "   memory help\n");
-	vmm_cprintf(cdev, "   memory dump8    <phys_addr> <count>\n");
-	vmm_cprintf(cdev, "   memory dump16   <phys_addr> <count>\n");
-	vmm_cprintf(cdev, "   memory dump32   <phys_addr> <count>\n");
+	vmm_cprintf(cdev, "   memory dump8    <phys_addr> <count> [<hcpu>]\n");
+	vmm_cprintf(cdev, "   memory dump16   <phys_addr> <count> [<hcpu>]\n");
+	vmm_cprintf(cdev, "   memory dump32   <phys_addr> <count> [<hcpu>]\n");
+	vmm_cprintf(cdev, "   memory iodump8  <phys_addr> <count> [<hcpu>]\n");
+	vmm_cprintf(cdev, "   memory iodump16 <phys_addr> <count> [<hcpu>]\n");
+	vmm_cprintf(cdev, "   memory iodump32 <phys_addr> <count> [<hcpu>]\n");
 	vmm_cprintf(cdev, "   memory crc32    <phys_addr> <count>\n");
 #if CONFIG_CRYPTO_HASH_MD5
 	vmm_cprintf(cdev, "   memory md5      <phys_addr> <count>\n");
@@ -114,36 +120,66 @@ static void cmd_memory_usage(struct vmm_chardev *cdev)
 						"<byte_count>\n");
 }
 
-static int cmd_memory_dump(struct vmm_chardev *cdev,
-			   physical_addr_t addr, 
-			   u32 wsz, u32 wcnt)
+struct memory_dump_request {
+	struct vmm_chardev *cdev;
+	physical_addr_t addr;
+	u32 wsz;
+	u32 wcnt;
+	bool io;
+	bool done;
+};
+
+static void memory_dump_func(void *arg0, void *arg1, void *arg2)
 {
+	struct memory_dump_request *dreq = arg0;
+	virtual_addr_t page_va, addr_offset;
+	struct vmm_chardev *cdev = dreq->cdev;
+	physical_addr_t addr = dreq->addr;
+	physical_addr_t page_pa;
+	u32 wsz = dreq->wsz;
+	u32 wcnt = dreq->wcnt;
+	bool io = dreq->io;
+	bool page_mapped;
 	int rc;
 	u32 w;
-	bool page_mapped;
-	virtual_addr_t page_va, addr_offset;
-	physical_addr_t page_pa;
+
 	addr = addr - (addr & (wsz - 1));
 	vmm_cprintf(cdev, "Host physical memory "
-			  "0x%"PRIPADDR" - 0x%"PRIPADDR":",
-			  addr, (addr + wsz*wcnt));
+			  "0x%"PRIPADDR" - 0x%"PRIPADDR" seen by CPU%d:",
+			  addr, (addr + wsz*wcnt), vmm_smp_processor_id());
 	w = 0;
 	page_pa = addr - (addr & VMM_PAGE_MASK);
-	page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
+	if (io) {
+		page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
+	} else {
+		page_va = vmm_host_memmap(page_pa, VMM_PAGE_SIZE,
+					  VMM_MEMORY_FLAGS_NORMAL);
+	}
 	page_mapped = TRUE;
 	while (w < wcnt) {
 		if (page_pa != (addr - (addr & VMM_PAGE_MASK))) {
 			if (page_mapped) {
-				rc = vmm_host_iounmap(page_va);
-				if (rc) {
-					vmm_cprintf(cdev, 
-					"Error: Failed to unmap memory.\n");
-					return rc;
+				if (io) {
+					rc = vmm_host_iounmap(page_va);
+				} else {
+					rc = vmm_host_memunmap(page_va);
 				}
 				page_mapped = FALSE;
+				if (rc) {
+					vmm_cprintf(cdev, 
+					"Error: Failed to unmap memory "
+					"(error %d).\n", rc);
+					goto done;
+				}
 			}
 			page_pa = addr - (addr & VMM_PAGE_MASK);
-			page_va = vmm_host_iomap(page_pa, VMM_PAGE_SIZE);
+			if (io) {
+				page_va = vmm_host_iomap(page_pa,
+							 VMM_PAGE_SIZE);
+			} else {
+				page_va = vmm_host_iomap(page_pa,
+							 VMM_PAGE_SIZE);
+			}
 			page_mapped = TRUE;
 		}
 		if (!(w * wsz & 0x0000000F)) {
@@ -170,14 +206,66 @@ static int cmd_memory_dump(struct vmm_chardev *cdev,
 		w++;
 	}
 	vmm_cprintf(cdev, "\n");
+
+done:
 	if (page_mapped) {
-		rc = vmm_host_iounmap(page_va);
-		if (rc) {
-			vmm_cprintf(cdev, "Error: Failed to unmap memory.\n");
-			return rc;
+		if (io) {
+			rc = vmm_host_iounmap(page_va);
+		} else {
+			rc = vmm_host_memunmap(page_va);
 		}
 		page_mapped = FALSE;
+		if (rc) {
+			vmm_cprintf(cdev, "Error: Failed to unmap memory"
+				    " (error %d).\n", rc);
+		}
 	}
+
+	dreq->done = TRUE;
+}
+
+static int cmd_memory_dump(struct vmm_chardev *cdev,
+			   physical_addr_t addr, 
+			   u32 wsz, u32 wcnt, bool io, int hcpu)
+{
+	struct memory_dump_request *dreq;
+	const struct vmm_cpumask *cmask;
+	u64 tstamp;
+
+	if (hcpu >= 0 && vmm_cpu_online(hcpu)) {
+		cmask = vmm_cpumask_of(hcpu);
+	} else {
+		cmask = vmm_cpumask_of(vmm_smp_processor_id());
+	}
+
+	dreq = vmm_zalloc(sizeof(*dreq));
+	if (!dreq) {
+		return VMM_ENOMEM;
+	}
+
+	dreq->cdev = cdev;
+	dreq->addr = addr;
+	dreq->wsz = wsz;
+	dreq->wcnt = wcnt;
+	dreq->io = io;
+	dreq->done = FALSE;
+
+	vmm_smp_ipi_async_call(cmask, memory_dump_func, dreq, NULL, NULL);
+	tstamp = vmm_timer_timestamp() + 1000000000ULL;
+	while (!dreq->done) {
+		if (tstamp < vmm_timer_timestamp()) {
+			break;
+		}
+
+		vmm_scheduler_yield();
+	}
+
+	if (dreq->done) {
+		vmm_free(dreq);
+	} else {
+		return VMM_ETIMEDOUT;
+	}
+
 	return VMM_OK;
 }
 
@@ -447,6 +535,7 @@ static int cmd_memory_copy(struct vmm_chardev *cdev,
 static int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 {
 	u32 tmp;
+	int hcpu;
 	physical_addr_t addr, src_addr;
 	if (argc < 2) {
 		cmd_memory_usage(cdev);
@@ -468,13 +557,28 @@ static int cmd_memory_exec(struct vmm_chardev *cdev, int argc, char **argv)
 	addr = (physical_addr_t)strtoull(argv[2], NULL, 0);
 	if (strcmp(argv[1], "dump8") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
-		return cmd_memory_dump(cdev, addr, 1, (u32)tmp);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 1, (u32)tmp, FALSE, hcpu);
 	} else if (strcmp(argv[1], "dump16") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
-		return cmd_memory_dump(cdev, addr, 2, (u32)tmp);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 2, (u32)tmp, FALSE, hcpu);
 	} else if (strcmp(argv[1], "dump32") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
-		return cmd_memory_dump(cdev, addr, 4, (u32)tmp);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 4, (u32)tmp, FALSE, hcpu);
+	} else if (strcmp(argv[1], "iodump8") == 0) {
+		tmp = strtoull(argv[3], NULL, 0);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 1, (u32)tmp, TRUE, hcpu);
+	} else if (strcmp(argv[1], "iodump16") == 0) {
+		tmp = strtoull(argv[3], NULL, 0);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 2, (u32)tmp, TRUE, hcpu);
+	} else if (strcmp(argv[1], "iodump32") == 0) {
+		tmp = strtoull(argv[3], NULL, 0);
+		hcpu = (4 < argc) ? atoi(argv[4]) : -1;
+		return cmd_memory_dump(cdev, addr, 4, (u32)tmp, TRUE, hcpu);
 	} else if (strcmp(argv[1], "crc32") == 0) {
 		tmp = strtoull(argv[3], NULL, 0);
 		return cmd_memory_crc32(cdev, addr, (u32)tmp);
