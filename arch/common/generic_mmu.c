@@ -1432,6 +1432,7 @@ static void __init mmu_scan_initial_pgtbl(struct mmu_pgtbl *pgtbl)
 		child->parent = pgtbl;
 		child->stage = pgtbl->stage;
 		child->level = pgtbl->level - 1;
+		child->attr = pgtbl->attr;
 		child->map_ia = pgtbl->map_ia;
 		child->map_ia += ((arch_pte_t)i) <<
 			arch_mmu_level_index_shift(pgtbl->stage,
@@ -1546,6 +1547,7 @@ int __init arch_cpu_aspace_primary_init(physical_addr_t *core_resv_pa,
 	pgtbl->parent = NULL;
 	pgtbl->stage = MMU_STAGE1;
 	pgtbl->level = arch_mmu_start_level(MMU_STAGE1);
+	pgtbl->attr = MMU_ATTR_REMOTE_TLB_FLUSH;
 	pgtbl->map_ia = 0x0;
 	mmu_scan_initial_pgtbl(pgtbl);
 	for (i = 0; i < INIT_PGTBL_COUNT; i++) {
