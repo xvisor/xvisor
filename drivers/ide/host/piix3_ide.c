@@ -77,12 +77,14 @@ static int piix3_ide_probe(struct vmm_device *dev)
 	struct ide_host_controller *controller;
 	struct ide_drive *drive;
 	int i, j;
+	volatile int config_val;
 
 	for (j = 0; j < array_size(piix3_ide_devices); j++) {
 		/* send the parameters */
 		outl((1 << 31) | PIIX3_BDF(piix3_ide_devices[j]) | 8, 0xCF8);
+		config_val = inl(0xCFC);
 		/* If device exists class won't be 0xFFFF */
-		if ((inl(0xCFC) >> 16) != 0xFFFF) {
+		if ((config_val >> 16) != 0xFFFF) {
 			vmm_printf("PIIX3: Found PIIX3 IDE Controller.\n");
 			controller =
 				vmm_zalloc(sizeof(struct ide_host_controller));
