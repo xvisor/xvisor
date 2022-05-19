@@ -82,5 +82,3 @@
 			  "vfs run /system/init/startup";
 	};
 };
-
-/include/ "../../../guests/x86_64_guest.dtsi"

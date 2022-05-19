@@ -1,0 +1,25 @@
+
+1. Creating an initrd for Xvisor
+
+# mounting xvisor IDE disk on host
+Run the following command on the disk that was create using qemu command.
+This command should attach a loopback device to the disk and print the
+name of the loopback device.
+
+	$ sudo losetup --partscan --find --show xvisor-hd.disk
+	$ /dev/loop41 <<<< This is the loopback device attached to xvisor disk.
+
+We need to mount this on host
+	$ sudo mount /dev/<loopback device> <mountpoint>
+
+After that run the following commands:
+	$ mkdir -p <mountpoint>/system
+	$ mkdir -p <mountpoint>/guests/common
+	$ mkdir -p <mountpoint>/guests/intel
+	$ dtc -q -I dts -O dtb -o <mountpoint>/guests/intel/intel-guest.dtb ./tests/x86/intel-guest.dts
+	$ cp <seabiosdir>/out/bios.bin <mountpoint>/guests/common/bios.bin
+	$ cp tests/x86/xscripts/one_guest.xscript <mountpoint>/guests/intel/guest_create.xscript
+
+Now, the disk can be unmounted and the loopback device be detached.
+	$ umount <mountpoint>
+	$ sudo losetup -d /dev/<loopbackdevice>
