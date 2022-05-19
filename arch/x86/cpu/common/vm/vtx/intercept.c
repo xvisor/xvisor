@@ -79,39 +79,48 @@ int vmx_handle_guest_realmode_page_fault(struct vcpu_hw_context *context)
 	u32 flags;
 	physical_addr_t hphys_addr;
 	physical_size_t availsz;
-	physical_addr_t fault_gphys;
 	struct vmm_guest *guest = x86_vcpu_hw_context_guest(context);
+	u8 is_reset = 0;
 
 	physical_addr_t gla = vmr(GUEST_LINEAR_ADDRESS);
 
+	if (gla == 0xFFF0) {
+		is_reset = 1;
+		/* effective address = segment selector * 16 + offset.
+		 * we will have a region for effective address. */
+		gla = ((0xF000 << 4) | gla);
+	}
 	VM_LOG(LVL_DEBUG, "[Real Mode] Faulting Address: 0x%"PRIx64"\n", gla);
 
-	fault_gphys = (0xFFFF0000ULL + gla);
-
-	VM_LOG(LVL_DEBUG, "(Real Mode) Looking for map from guest address: 0x%08lx\n",
-	       (fault_gphys & PAGE_MASK));
-
-	rc = vmm_guest_physical_map(guest, (fault_gphys & PAGE_MASK),
+	/*
+	 * At reset, the offset of execution is 0xfff0.
+	 */
+	rc = vmm_guest_physical_map(guest, (gla & PAGE_MASK),
 				    PAGE_SIZE, &hphys_addr, &availsz, &flags);
 	if (rc) {
-		VM_LOG(LVL_ERR, "ERROR: No region mapped to guest physical 0x%"PRIx64"\n", fault_gphys);
+		VM_LOG(LVL_ERR, "ERROR: No region mapped to guest physical 0x%"PRIx64"\n", gla);
 		goto guest_bad_fault;
 	}
 
 	if (availsz < PAGE_SIZE) {
-		VM_LOG(LVL_ERR, "ERROR: Size of the available mapping less than page size (%lu)\n", availsz);
+		VM_LOG(LVL_ERR, "ERROR: Size of the available mapping less "
+		       "than page size (%lu)\n", availsz);
 		rc = VMM_EFAIL;
 		goto guest_bad_fault;
 	}
 
 	if (flags & (VMM_REGION_REAL | VMM_REGION_ALIAS)) {
-		VM_LOG(LVL_DEBUG, "GP: 0x%"PRIx64" HP: 0x%"PRIx64" Size: %lu\n", gla, hphys_addr, availsz);
+		VM_LOG(LVL_DEBUG, "GP: 0x%"PRIx64" HP: 0x%"PRIx64" Size: %lu\n",
+		       gla, hphys_addr, availsz);
 
 		gla &= PAGE_MASK;
+		/* page table entry will go only for offset. */
+		if (is_reset)
+			gla &= 0xFFFFUL;
 		hphys_addr &= PAGE_MASK;
 
 		VM_LOG(LVL_DEBUG, "Handle Page Fault: gphys: 0x%"PRIx64" hphys: 0x%"PRIx64"\n",
-		       fault_gphys, hphys_addr);
+		       gla, hphys_addr);
 
 		rc = ept_create_pte_map(context, gla, hphys_addr, PAGE_SIZE,
 					(EPT_PROT_READ | EPT_PROT_WRITE | EPT_PROT_EXEC_S));
