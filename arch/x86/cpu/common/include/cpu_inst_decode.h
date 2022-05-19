@@ -34,6 +34,7 @@ typedef enum {
 	INST_TYPE_CLR_CR, /* directly modify cR e.g. clts */
 	INT_TYPE_SET_CR,
 	INST_TYPE_CACHE, /* TLB and cache operation */
+	INST_TYPE_LJMP_ABS, /* long jump to absolute address */
 } inst_type;
 
 /* Operand type in instruction */
@@ -119,6 +120,10 @@ typedef union mod_rm {
 #define OPC_MOV_CR_TO_R		0x20
 /* move Reg to crN */
 #define OPC_MOV_R_TO_CR		0x22
+/* long jump (absolute address) */
+#define OPC_LJMP_ABS		0xEA
+/* long jump (indirect addressing) */
+#define OPC_LJMP_IND		0xFF
 
 #define OPC_ESC_OPCODE		0x0f
 #define OP_SIZE_REX_PREF	0x48
@@ -144,6 +149,11 @@ typedef struct {
 		struct {
 			u8 src_reg;
 		};
+
+		struct {
+			u32 ss; /* segment selector */
+			u32 offs; /* offset in segment */
+		} lja;
 	} inst;
 } x86_decoded_inst_t;
 

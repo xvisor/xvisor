@@ -145,6 +145,21 @@ int x86_decode_inst(struct vcpu_hw_context *context, x86_inst inst,
 		dinst->inst.crn_mov.src_reg = X86_CR0_TS;
 		break;
 
+	case OPC_LJMP_ABS:
+		/*
+		 * long jump abs is only defined in otherwise an exception
+		 * will be generated 16-bit mode(real mode).
+		 */
+		if (context->g_cr0 & (0x1UL << 31)) {
+			dinst->inst_type = INST_TYPE_LJMP_ABS;
+			dinst->inst_size = 5;
+			cinst++;
+			dinst->inst.lja.offs = *((u16 *)cinst);
+			cinst += sizeof(u16);
+			dinst->inst.lja.ss = *((u16 *)cinst);
+		} else
+			return VMM_EFAIL;
+		break;
 	default:
 		return VMM_EFAIL;
 	}
