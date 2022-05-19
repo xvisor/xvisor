@@ -53,6 +53,44 @@ enum {
 	I440FX_LOG_LVL_VERBOSE
 };
 
+enum {
+      I440FX_PMC_CS_VID0 = 0x0,
+      I440FX_PMC_CS_VID1 = 0x1,
+      I440FX_PMC_CS_DID0 = 0x2,
+      I440FX_PMC_CS_DID1 = 0x3,
+      I440FX_PMC_CS_PCICMD0 = 0x4,
+      I440FX_PMC_CS_PCICMD1 = 0x5,
+      I440FX_PMC_CS_PCISTS0 = 0x6,
+      I440FX_PMC_CS_PCISTS1 = 0x7,
+      I440FX_PMC_CS_RID = 0x8,
+      I440FX_PMC_CS_CLASSC0 = 0x9,
+      I440FX_PMC_CS_CLASSC1 = 0xa,
+      I440FX_PMC_CS_CLASSC2 = 0xb,
+      I440FX_PMC_CS_RES0 = 0xc,
+      I440FX_PMC_CS_MLT = 0xd,
+      I440FX_PMC_CS_HEADT = 0xe,
+      I440FX_PMC_CS_BIST = 0xf,
+      I440FX_PMC_CS_PMCCFG0 = 0x50,
+      I440FX_PMC_CS_PMCCFG1 = 0x51,
+      I440FX_PMC_CS_DETURBO = 0x52,
+      I440FX_PMC_CS_DBC = 0x53,
+      I440FX_PMC_CS_AXC = 0x54,
+      I440FX_PMC_CS_DRAMR0 = 0x55,
+      I440FX_PMC_CS_DRAMR1 = 0x56,
+      I440FX_PMC_CS_DRAMC = 0x57,
+      I440FX_PMC_CS_DRAMT = 0x58,
+      I440FX_PMC_CS_PAM0 = 0x59,
+      I440FX_PMC_CS_PAM1 = 0x5a,
+      I440FX_PMC_CS_PAM2 = 0x5b,
+      I440FX_PMC_CS_PAM3 = 0x5c,
+      I440FX_PMC_CS_PAM4 = 0x5d,
+      I440FX_PMC_CS_PAM5 = 0x5e,
+      I440FX_PMC_CS_PAM6 = 0x5f,
+      I440FX_PMC_CS_ERRCMD = 0x90,
+      I440FX_PMC_CS_ERRSTS = 0x91,
+      I440FX_PMC_CS_TRC = 0x93
+};
+
 static int i440fx_default_log_lvl = I440FX_LOG_LVL_VERBOSE;
 
 #define I440FX_LOG(lvl, fmt, args...)					\
@@ -73,7 +111,7 @@ struct i440fx_state {
 	struct vmm_guest *guest;
 	struct vmm_devtree_node *node;
 	struct pci_host_controller *controller;
-	i440fx_dev_registers_t *dev_regs;
+	i440fx_dev_registers_t dev_regs;
 	struct vmm_notifier_block guest_aspace_client;
 	u32 conf_add;
 	u32 conf_data;
@@ -81,11 +119,19 @@ struct i440fx_state {
 
 static u32 i440fx_config_read(struct pci_class *pci_class, u16 reg_offset)
 {
-#if 0 /* FIXME: populate this when i440fx is revisited. */
 	struct pci_host_controller *pcntrl = (struct pci_host_controller *)pci_class;
 	struct i440fx_state *s = container_of(&pcntrl, struct i440fx_state, controller);
-#endif
-	return 0;
+
+	switch(reg_offset) {
+		case I440FX_PMC_CS_PAM0 ... I440FX_PMC_CS_PAM6:
+		vmm_printf("[%s]: Read from PAM%d\n", __func__, (reg_offset-I440FX_PMC_CS_PAM0));
+		return s->dev_regs.pam_regs[reg_offset - I440FX_PMC_CS_PAM0];
+
+	default:
+		vmm_printf("[%s]: Read from register %d is not supported\n", __func__, reg_offset);
+		return -1;
+	}
+	return -1;
 }
 
 static int i440fx_config_write(struct pci_class *pci_class, u16 reg_offset, u32 data)
@@ -264,6 +310,13 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 
 	s->node = edev->node;
 	s->guest = guest;
+	s->dev_regs.pam_regs[0] = 0x33; /* BIOS read/write enable */
+	s->dev_regs.pam_regs[1] = 0x0; /* no read/write */
+	s->dev_regs.pam_regs[2] = 0x0;
+	s->dev_regs.pam_regs[3] = 0x0;
+	s->dev_regs.pam_regs[4] = 0x0;
+	s->dev_regs.pam_regs[5] = 0x33;
+	s->dev_regs.pam_regs[6] = 0x33; /* read/write enable to BIOS extension */
 	s->controller = vmm_zalloc(sizeof(struct pci_host_controller));
 	if (!s->controller) {
 		I440FX_LOG(LVL_ERR, "Failed to allocate pci host contoller for i440fx.\n");
