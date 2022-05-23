@@ -89,9 +89,9 @@ struct pci_conf_header {
 	u16 command;
 	u16 status;
 	u8 revision;
-	u8 class;
-	u8 sub_class;
 	u8 prog_if;
+	u8 sub_class;
+	u8 class;
 	u8 cache_line_sz;
 	u8 latency_timer;
 	u8 header_type;
