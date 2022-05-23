@@ -331,6 +331,8 @@ static int i440fx_emulator_probe(struct vmm_guest *guest,
 	INIT_SPIN_LOCK(&class->lock);
 	class->conf_header.vendor_id = PCI_VENDOR_ID_INTEL;
 	class->conf_header.device_id = PCI_DEVICE_ID_INTEL_82441;
+	class->conf_header.class = PCI_BASE_CLASS_BRIDGE;
+	class->conf_header.revision = 2;
 	class->config_read = i440fx_config_read;
 	class->config_write = i440fx_config_write;
 
