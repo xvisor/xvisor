@@ -36,6 +36,8 @@
 #include <vmm_main.h>
 #include <vm/ept.h>
 
+int ept_default_log_lvl = EPT_LOG_LVL_DEBUG;
+
 #define TRACE_EPT	1
 
 #if TRACE_EPT
@@ -125,19 +127,19 @@ invalidate_ept (int type, struct invept_desc *desc)
 		/* most modern CPUs will have this */
 		if (unlikely(type == INVEPT_ALL_CONTEXT
 		    && !cpu_has_vmx_ept_invept_all_context)) {
-			    VM_LOG(LVL_DEBUG, "EPT all context flush not supported\n");
+			    EPT_LOG(LVL_DEBUG, "EPT all context flush not supported\n");
 			    return;
 		    }
 		if (unlikely(type == INVEPT_SINGLE_CONTEXT
 			     && !cpu_has_vmx_ept_invept_single_context)) {
-			    VM_LOG(LVL_DEBUG, "EPT single context flush not supported\n");
+			    EPT_LOG(LVL_DEBUG, "EPT single context flush not supported\n");
 			    return;
 		    }
 		asm volatile("invept (%0), %1\n\t"
 		     ::"D"(type), "S"(desc)
 		     :"memory", "cc");
 	} else {
-		VM_LOG(LVL_DEBUG, "INVEPT instruction is not supported by CPU\n");
+		EPT_LOG(LVL_DEBUG, "INVEPT instruction is not supported by CPU\n");
 	}
 }
 
@@ -203,7 +205,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 	int rc = 0;
 	struct invept_desc id;
 
-	VM_LOG(LVL_DEBUG, "pml4: 0x%"PRIx32" pdpt: 0x%"PRIx32" pd: 0x%"PRIx32" pt: 0x%"PRIx32"\n",
+	EPT_LOG(LVL_DEBUG, "pml4: 0x%"PRIx32" pdpt: 0x%"PRIx32" pd: 0x%"PRIx32" pt: 0x%"PRIx32"\n",
 	       pml4_index, pdpt_index, pd_index, pt_index);
 
 	add_ept_trace_point(gphys, hphys, pml4_index, pdpt_index, pd_index, pt_index, pg_size, pg_prot);
@@ -216,29 +218,29 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 		pml4e->val |= pg_prot;
 		virt = get_free_page_for_pagemap(context, &phys);
 		if (!virt) {
-			VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
+			EPT_LOG(LVL_ERR, "System is out of guest page table memory\n");
 			rc =  VMM_ENOMEM;
 			goto _done;
 		}
-		VM_LOG(LVL_DEBUG, "New PDPT Page at 0x%"PRIx64" (Phys: 0x%"PRIx64") for PML4 Index %d.\n",
+		EPT_LOG(LVL_DEBUG, "New PDPT Page at 0x%"PRIx64" (Phys: 0x%"PRIx64") for PML4 Index %d.\n",
 		       virt, phys, pml4_index);
 		memset((void *)virt, 0, PAGE_SIZE);
 		pml4e->bits.pdpt_base = EPT_PHYS_4KB_PFN(phys);
 	} else {
 		if (vmm_host_pa2va(e_phys, &virt) != VMM_OK) {
-			VM_LOG(LVL_ERR, "Couldn't map PDPTE physical 0x%"PRIx64" to virtual\n",
+			EPT_LOG(LVL_ERR, "Couldn't map PDPTE physical 0x%"PRIx64" to virtual\n",
 			       e_phys);
 			rc = VMM_ENOENT;
 			goto _done;
 		}
-		VM_LOG(LVL_DEBUG, "Found PDPT Page at 0x%"PRIx64" (phys: 0x%"PRIx64") for PML4 Index: %d\n",
+		EPT_LOG(LVL_DEBUG, "Found PDPT Page at 0x%"PRIx64" (phys: 0x%"PRIx64") for PML4 Index: %d\n",
 		       virt, e_phys, pml4_index);
 	}
-	VM_LOG(LVL_DEBUG, "%s: PML4E: 0x%"PRIx64"\n", __func__, pml4e->val);
+	EPT_LOG(LVL_DEBUG, "%s: PML4E: 0x%"PRIx64"\n", __func__, pml4e->val);
 
 	phys = e_phys = e_pg_prot = 0;
 	pdpte = (ept_pdpte_t *)(&((u64 *)virt)[pdpt_index]);
-	VM_LOG(LVL_DEBUG, "%s: PDPTE: 0x%"PRIx64" (PDPT Index: %d)\n", __func__, pdpte->val, pdpt_index);
+	EPT_LOG(LVL_DEBUG, "%s: PDPTE: 0x%"PRIx64" (PDPT Index: %d)\n", __func__, pdpte->val, pdpt_index);
 	decode_ept_entry(EPT_LEVEL_PDPTE, (void *)pdpte, &e_phys, &e_pg_prot);
 
 	/*
@@ -247,12 +249,12 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 	 * up the other one.
 	 */
 	if (pdpte->pe.is_page) {
-		VM_LOG(LVL_DEBUG, "PDPTE is page\n");
+		EPT_LOG(LVL_DEBUG, "PDPTE is page\n");
 		/* this is marked as 1GB page and new mapping wants otherwise
 		 * then its a problem. Caller didn't free this mapping prior
 		 * to calling this function */
 		if (pg_size != EPT_PAGE_SIZE_1G) {
-			VM_LOG(LVL_DEBUG, "New page size is not 1G (0x%"PRIx64"). Delete existing entry first.\n", pg_size);
+			EPT_LOG(LVL_DEBUG, "New page size is not 1G (0x%"PRIx64"). Delete existing entry first.\n", pg_size);
 			rc = VMM_EBUSY;
 			goto _done;
 		}
@@ -277,7 +279,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 	}
 
 	if (pg_size == EPT_PAGE_SIZE_1G) {
-		VM_LOG(LVL_DEBUG, "Creating map of 1G page at pdpt index: %d\n", pdpt_index);
+		EPT_LOG(LVL_DEBUG, "Creating map of 1G page at pdpt index: %d\n", pdpt_index);
 		pdpte->val = 0;
 		pdpte->val &= EPT_PROT_MASK;
 		pdpte->val |= pg_prot;
@@ -285,18 +287,18 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 		pdpte->pe.mt = 6; /* write-back memory type */
 		pdpte->pe.ign_pat = 1; /* ignore PAT type */
 		pdpte->pe.is_page = 1;
-		VM_LOG(LVL_DEBUG, "New PDPT Entry: 0x%"PRIx64"\n", pdpte->val);
+		EPT_LOG(LVL_DEBUG, "New PDPT Entry: 0x%"PRIx64"\n", pdpte->val);
 		rc = VMM_OK;
 		/* new entry. Invalidate EPT */
 		goto _invalidate_ept;
 	} else { /* not a 1G page */
-		VM_LOG(LVL_DEBUG, "PDPTE doesn't point to 1G page. Looking for PDE\n");
+		EPT_LOG(LVL_DEBUG, "PDPTE doesn't point to 1G page. Looking for PDE\n");
 		if (!e_pg_prot) { /* if the page is not currently set */
-			VM_LOG(LVL_DEBUG, "PDE page protection not set. Creating new one\n");
+			EPT_LOG(LVL_DEBUG, "PDE page protection not set. Creating new one\n");
 			virt = get_free_page_for_pagemap(context, &phys);
 			/* allocate a new PDPTE page */
 			if (!virt) {
-				VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
+				EPT_LOG(LVL_ERR, "System is out of guest page table memory\n");
 				rc = VMM_ENOMEM;
 				goto _done;
 			}
@@ -305,53 +307,53 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 			pdpte->te.pd_base = EPT_PHYS_4KB_PFN(phys);
 			pdpte->val &= EPT_PROT_MASK;
 			pdpte->val |= pg_prot;
-			VM_LOG(LVL_DEBUG, "New PD Page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n", virt, phys);
+			EPT_LOG(LVL_DEBUG, "New PD Page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n", virt, phys);
 		} else { /* page is already allocated, a mapping in locality exists */
 			if (vmm_host_pa2va(e_phys, &virt) != VMM_OK) {
-				VM_LOG(LVL_ERR, "Couldn't map PDE physical 0x%"PRIx64" to virtual\n",
+				EPT_LOG(LVL_ERR, "Couldn't map PDE physical 0x%"PRIx64" to virtual\n",
 				       e_phys);
 				rc = VMM_ENOENT;
 				goto _done;
 			}
-			VM_LOG(LVL_DEBUG, "Found PDE at virtual address 0x%"PRIx64"\n", virt);
+			EPT_LOG(LVL_DEBUG, "Found PDE at virtual address 0x%"PRIx64"\n", virt);
 		}
 	}
-	VM_LOG(LVL_DEBUG, "%s: PDPTE: 0x%"PRIx64"\n", __func__, pdpte->val);
+	EPT_LOG(LVL_DEBUG, "%s: PDPTE: 0x%"PRIx64"\n", __func__, pdpte->val);
 
 	phys = e_phys = e_pg_prot = 0;
 	pde = (ept_pde_t *)(&((u64 *)virt)[pd_index]);
-	VM_LOG(LVL_DEBUG, "PDPTE Entry at index %d = 0x%"PRIx64"\n", pd_index, pde->val);
+	EPT_LOG(LVL_DEBUG, "PDPTE Entry at index %d = 0x%"PRIx64"\n", pd_index, pde->val);
 	decode_ept_entry(EPT_LEVEL_PDE, (void *)pde, &e_phys, &e_pg_prot);
 
 	if (pde->pe.is_page) {
-		VM_LOG(LVL_DEBUG, "PDE is a 2MB Page!\n");
+		EPT_LOG(LVL_DEBUG, "PDE is a 2MB Page!\n");
 		/* this is marked as 1GB page and new mapping wants otherwise
 		 * then its a problem. Caller didn't free this mapping prior
 		 * to calling this function */
 		if (pg_size != EPT_PAGE_SIZE_2M) {
-			VM_LOG(LVL_DEBUG, "New page is not 2M. Delete previous entry first.\n");
+			EPT_LOG(LVL_DEBUG, "New page is not 2M. Delete previous entry first.\n");
 			rc = VMM_EBUSY;
 			goto _done;
 		}
 
 		/* caller is trying to create same mapping? */
 		if (e_phys == hphys) {
-			VM_LOG(LVL_DEBUG, "Found same physical addres at pd index: %d\n", pd_index);
+			EPT_LOG(LVL_DEBUG, "Found same physical addres at pd index: %d\n", pd_index);
 			if (pg_prot != e_pg_prot) {
-				VM_LOG(LVL_DEBUG, "PG prot are not same. Old: 0x%"PRIx32" New: 0x%"PRIx32"\n",
+				EPT_LOG(LVL_DEBUG, "PG prot are not same. Old: 0x%"PRIx32" New: 0x%"PRIx32"\n",
 				       e_pg_prot, pg_prot);
 				pde->val |= pg_prot;
 				rc = VMM_OK;
 				/* pgprot changed, invalidate ept */
 				goto _invalidate_ept;
 			} else {
-				VM_LOG(LVL_DEBUG, "No change in page table entry.\n");
+				EPT_LOG(LVL_DEBUG, "No change in page table entry.\n");
 				/* no change, same as existing mapping */
 				rc = VMM_OK;
 				goto _done;
 			}
 		} else {
-			VM_LOG(LVL_DEBUG, "pd index %d is busy. Val: 0x%"PRIx64"\n", pd_index, pde->val);
+			EPT_LOG(LVL_DEBUG, "pd index %d is busy. Val: 0x%"PRIx64"\n", pd_index, pde->val);
 			/* existing physical is not same as new one. flag as error.
 			 * caller should have unmapped this mapping first */
 			rc = VMM_EBUSY;
@@ -361,7 +363,7 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 
 	/* not a 2MB page, is caller trying to create a 2MB page? */
 	if (pg_size == EPT_PAGE_SIZE_2M) {
-		VM_LOG(LVL_DEBUG, "Ask is to create 2MB page\n");
+		EPT_LOG(LVL_DEBUG, "Ask is to create 2MB page\n");
 		pdpte->val = 0;
 		pdpte->val &= EPT_PROT_MASK;
 		pdpte->val |= pg_prot;
@@ -369,17 +371,17 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 		pdpte->pe.mt = 6; /* write-back memory type */
 		pdpte->pe.ign_pat = 1; /* ignore PAT type */
 		pdpte->pe.is_page = 1;
-		VM_LOG(LVL_DEBUG, "New 2MB page. PDE Value: 0x%"PRIx64" at index: %d.\n", pdpte->val, pd_index);
+		EPT_LOG(LVL_DEBUG, "New 2MB page. PDE Value: 0x%"PRIx64" at index: %d.\n", pdpte->val, pd_index);
 		rc = VMM_OK;
 		goto _invalidate_ept;
 	} else {
 		/* Ok. So this is PDE. Lets find PTE now. */
 		if (!e_pg_prot) { /* page for PTE is not currently set */
-			VM_LOG(LVL_DEBUG, "Page protection bits not set in PTE page. Creating new one.\n");
+			EPT_LOG(LVL_DEBUG, "Page protection bits not set in PTE page. Creating new one.\n");
 			virt = get_free_page_for_pagemap(context, &phys);
 			/* allocate a new PTE page */
 			if (!virt) {
-				VM_LOG(LVL_ERR, "System is out of guest page table memory\n");
+				EPT_LOG(LVL_ERR, "System is out of guest page table memory\n");
 				rc = VMM_ENOMEM;
 				goto _done;
 			}
@@ -388,30 +390,30 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 			pde->te.pt_base = EPT_PHYS_4KB_PFN(phys);
 			pde->val &= EPT_PROT_MASK;
 			pde->val |= pg_prot;
-			VM_LOG(LVL_DEBUG, "New PT page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n",
+			EPT_LOG(LVL_DEBUG, "New PT page at 0x%"PRIx64" (Phys: 0x%"PRIx64")\n",
 			       virt, phys);
 		} else { /* page is already allocated, a mapping in locality exists */
 			if (vmm_host_pa2va(e_phys, &virt) != VMM_OK) {
-				VM_LOG(LVL_ERR, "Couldn't map PDE physical 0x%"PRIx64" to virtual\n",
+				EPT_LOG(LVL_ERR, "Couldn't map PDE physical 0x%"PRIx64" to virtual\n",
 				       e_phys);
 				rc = VMM_ENOENT;
 				goto _done;
 			}
-			VM_LOG(LVL_DEBUG, "Found PT at virt 0x%"PRIx64"\n", virt);
+			EPT_LOG(LVL_DEBUG, "Found PT at virt 0x%"PRIx64"\n", virt);
 		}
 	}
-	VM_LOG(LVL_DEBUG, "%s: PDE: 0x%"PRIx64"\n", __func__, pde->val);
+	EPT_LOG(LVL_DEBUG, "%s: PDE: 0x%"PRIx64"\n", __func__, pde->val);
 
 	e_phys = e_pg_prot = 0;
 	pte = (ept_pte_t *)(&((u64 *)virt)[pt_index]);
-	VM_LOG(LVL_DEBUG, "PT Entry 0x%"PRIx64" at index: %d\n", pte->val, pt_index);
+	EPT_LOG(LVL_DEBUG, "PT Entry 0x%"PRIx64" at index: %d\n", pte->val, pt_index);
 	decode_ept_entry(EPT_LEVEL_PTE, (void *)pte, &e_phys, &e_pg_prot);
 	if (e_pg_prot) { /* mapping exists */
-		VM_LOG(LVL_DEBUG, "Page mapping exists: current pgprot: 0x%"PRIx32"\n", e_pg_prot);
+		EPT_LOG(LVL_DEBUG, "Page mapping exists: current pgprot: 0x%"PRIx32"\n", e_pg_prot);
 		if (e_phys == hphys) {
-			VM_LOG(LVL_DEBUG, "Existing physical and asked are same. (e_phys: 0x%"PRIx64" h_phys: 0x%"PRIx64")\n", e_phys, hphys);
+			EPT_LOG(LVL_DEBUG, "Existing physical and asked are same. (e_phys: 0x%"PRIx64" h_phys: 0x%"PRIx64")\n", e_phys, hphys);
 			if (e_pg_prot == pg_prot) { /* same mapping */
-				VM_LOG(LVL_DEBUG, "Same PG prot: old: 0x%"PRIx32" new: 0x%"PRIx32"\n", e_pg_prot, pg_prot);
+				EPT_LOG(LVL_DEBUG, "Same PG prot: old: 0x%"PRIx32" new: 0x%"PRIx32"\n", e_pg_prot, pg_prot);
 				rc = VMM_OK;
 				goto _done; /* no change */
 			}
@@ -420,25 +422,25 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 			pte->val |= pg_prot;
 			goto _invalidate_ept;
 		} else {
-			VM_LOG(LVL_DEBUG, "Existing PTE entry found at index: %d but with phys: 0x%"PRIx64" (new: 0x%"PRIx64")\n",
+			EPT_LOG(LVL_DEBUG, "Existing PTE entry found at index: %d but with phys: 0x%"PRIx64" (new: 0x%"PRIx64")\n",
 			       pt_index, e_phys, hphys);
 			rc = VMM_EBUSY;
 			goto _done;
 		}
 	} else {
-		VM_LOG(LVL_DEBUG, "No page protection bits set in PTE. Creating new one\n");
+		EPT_LOG(LVL_DEBUG, "No page protection bits set in PTE. Creating new one\n");
 		pte->val = 0;
 		pte->val &= EPT_PROT_MASK;
 		pte->val |= pg_prot;
 		pte->pe.mt = 6;
 		pte->pe.phys = EPT_PHYS_4KB_PFN(hphys);
 		rc = VMM_OK;
-		VM_LOG(LVL_DEBUG, "%s: PTE: 0x%"PRIx64" at index %d\n", __func__, pte->val, pt_index);
+		EPT_LOG(LVL_DEBUG, "%s: PTE: 0x%"PRIx64" at index %d\n", __func__, pte->val, pt_index);
 		goto _invalidate_ept;
 	}
 
  _invalidate_ept:
-	VM_LOG(LVL_DEBUG, "Invalidating EPT\n");
+	EPT_LOG(LVL_DEBUG, "Invalidating EPT\n");
 
 	id.eptp = context->eptp;
 	invalidate_ept(INVEPT_SINGLE_CONTEXT, &id);
@@ -452,11 +454,11 @@ int setup_ept(struct vcpu_hw_context *context)
 	eptp_t *eptp = (eptp_t *)&context->eptp;
 	virtual_addr_t pml4 = get_free_page_for_pagemap(context, &pml4_phys);
 
-	VM_LOG(LVL_DEBUG, "%s: PML4 vaddr: 0x%016lx paddr: 0x%016lx\n",
+	EPT_LOG(LVL_DEBUG, "%s: PML4 vaddr: 0x%016lx paddr: 0x%016lx\n",
 	       __func__, pml4, pml4_phys);
 
 	if (!pml4) {
-		VM_LOG(LVL_ERR, "%s: Failed to allocate EPT page\n", __func__);
+		EPT_LOG(LVL_ERR, "%s: Failed to allocate EPT page\n", __func__);
 		return VMM_ENOMEM;
 
 	}
@@ -476,7 +478,7 @@ int setup_ept(struct vcpu_hw_context *context)
 	eptp->bits.en_ad = 0;
 	eptp->bits.pml4 = EPT_PHYS_4KB_PFN(pml4_phys);
 
-	VM_LOG(LVL_DEBUG, "%s: EPTP: 0x%16lx (0x%16lx)\n", __func__, eptp->val, context->eptp);
+	EPT_LOG(LVL_DEBUG, "%s: EPTP: 0x%16lx (0x%16lx)\n", __func__, eptp->val, context->eptp);
 
 	context->n_cr3 = pml4;
 
