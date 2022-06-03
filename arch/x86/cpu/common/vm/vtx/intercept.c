@@ -39,6 +39,18 @@
 #include <vm/ept.h>
 #include <vm/vmx_intercept.h>
 
+extern u64 vmx_cr0_fixed0;
+extern u64 vmx_cr0_fixed1;
+extern u64 vmx_cr4_fixed0;
+extern u64 vmx_cr4_fixed1;
+
+#define GUEST_CRx_FILTER(x, __value)			\
+	({	u64 _v = __value;			\
+		(_v |= vmx_cr##x ##_fixed0);		\
+		(_v &= vmx_cr##x ##_fixed1);		\
+		(_v);					\
+	})
+
 /* IMS: Table 30-1 Section 30.4 */
 static char *ins_err_str[] = {
 	"Index zero invalid\n",
@@ -83,7 +95,7 @@ int vmx_handle_guest_realmode_page_fault(struct vcpu_hw_context *context)
 	u8 is_reset = 0;
 
 	physical_addr_t gla = vmr(GUEST_LINEAR_ADDRESS);
-
+	VM_LOG(LVL_DEBUG, "[Real Mode] Guest Linear Address: 0x%"PRIx64"\n", gla);
 	if (gla == 0xFFF0) {
 		is_reset = 1;
 		/* effective address = segment selector * 16 + offset.
@@ -306,6 +318,7 @@ static inline
 int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 {
 	vmx_crx_move_eq_t crx_eq;
+	u64 gcr0;
 
 	crx_eq.val = VMX_GUEST_EQ(context);
 
@@ -318,9 +331,16 @@ int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 	if (crx_eq.bits.type == 0) {
 		switch(crx_eq.bits.cr_num) {
 		case 0:
-			__vmwrite(GUEST_CR0, (VMX_GUEST_CR0(context) | context->g_regs[crx_eq.bits.reg]));
+			gcr0 = GUEST_CRx_FILTER(0,
+						(context->g_regs[crx_eq.bits.reg]
+						 |X86_CR0_ET | X86_CR0_CD | X86_CR0_NW));
+			gcr0 &= ~X86_CR0_PG;
+			__vmwrite(GUEST_CR0, gcr0);
+			VMX_GUEST_CR0(context) = (X86_CR0_ET | X86_CR0_CD | X86_CR0_NW
+						  | context->g_regs[crx_eq.bits.reg]);
+			//__vmwrite(GUEST_CR0, (VMX_GUEST_CR0(context) | context->g_regs[crx_eq.bits.reg]));
 			VM_LOG(LVL_DEBUG, "Moving %d register (value: 0x%"PRIx64") to CR0\n",
-			       crx_eq.bits.reg, (VMX_GUEST_CR0(context) | context->g_regs[crx_eq.bits.reg]));
+			       crx_eq.bits.reg, gcr0);
 			break;
 		case 3:
 			__vmwrite(GUEST_CR3, context->g_regs[crx_eq.bits.reg]);
@@ -340,8 +360,9 @@ int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 		switch(crx_eq.bits.cr_num) {
 		case 0:
 			//context->g_regs[crx_eq.bits.reg] = vmr(GUEST_CR0);
-			//VM_LOG(LVL_DEBUG, "Moving CR3 to register %d\n",
-			//       crx_eq.bits.reg);
+			context->g_regs[crx_eq.bits.reg] = VMX_GUEST_CR0(context);
+			VM_LOG(LVL_DEBUG, "Moving CR3 to register %d\n",
+			       crx_eq.bits.reg);
 			break;
 		case 3:
 			context->g_regs[crx_eq.bits.reg] = vmr(GUEST_CR3);
@@ -349,7 +370,7 @@ int vmx_handle_crx_exit(struct vcpu_hw_context *context)
 			       crx_eq.bits.reg);
 			break;
 		case 4:
-			context->g_regs[crx_eq.bits.reg] = vmr(GUEST_CR3);
+			context->g_regs[crx_eq.bits.reg] = vmr(GUEST_CR4);
 			VM_LOG(LVL_DEBUG, "Moving CR4 to register %d\n",
 			       crx_eq.bits.reg);
 			break;
@@ -394,6 +415,7 @@ int vmx_handle_vmexit(struct vcpu_hw_context *context, u32 exit_reason)
 		return vmx_handle_io_instruction_exit(context);
 
 	case EXIT_REASON_CR_ACCESS:
+		VM_LOG(LVL_DEBUG, "CRx Access\n");
 		return vmx_handle_crx_exit(context);
 
 	case EXIT_REASON_CPUID:

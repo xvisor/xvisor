@@ -812,7 +812,8 @@ void vmx_set_vm_to_powerup_state(struct vcpu_hw_context *context)
 
 	__vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
 
-	__vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
+	__vmwrite(CR0_GUEST_HOST_MASK, 0UL);
+	__vmwrite(CR0_READ_SHADOW, 0UL);
 	__vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
 	__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
 	__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
