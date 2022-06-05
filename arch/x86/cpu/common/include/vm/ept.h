@@ -189,34 +189,4 @@ int ept_create_pte_map(struct vcpu_hw_context *context,
 		       physical_addr_t gphys, physical_addr_t hphys,
 		       size_t pg_size, u32 pg_prot);
 
-#define ENABLE_EPT_LOG 0
-
-enum {
-	EPT_LOG_LVL_ERR,
-	EPT_LOG_LVL_INFO,
-	EPT_LOG_LVL_DEBUG,
-	EPT_LOG_LVL_VERBOSE
-};
-extern int ept_default_log_lvl;
-
-#if ENABLE_EPT_LOG
-#define EPT_LOG(lvl, fmt, args...)					\
-	do {								\
-		if (EPT_LOG_##lvl <= ept_default_log_lvl) {		\
-			vmm_printf(fmt, ##args);			\
-		}							\
-	}while(0);
-
-#define EPT_LOG_FD(lvl, fmt, args...)					\
-	do {								\
-		if (EPT_LOG_##lvl <= ept_default_log_lvl) {		\
-			vmm_printf("(%s:%d) " fmt, __func__,		\
-				   __LINE__, ##args);			\
-		}							\
-	}while(0);
-#else
-#define EPT_LOG(lvl, fmt, args...)
-#define EPT_LOG_FD(lvl, fmt, args...)
-#endif
-
 #endif /* __EPT_H */

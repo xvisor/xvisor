@@ -28,6 +28,7 @@
 #include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
 #include <vmm_macros.h>
+#include <x86_debug_log.h>
 #include <cpu_mmu.h>
 #include <cpu_features.h>
 #include <cpu_vm.h>
@@ -35,18 +36,20 @@
 #include <libs/stringlib.h>
 #include <arch_guest_helper.h>
 
+DEFINE_X86_DEBUG_LOG_SUBSYS_LEVEL(arch_guest_helper, X86_DEBUG_LOG_LVL_INFO);
+
 int arch_guest_init(struct vmm_guest * guest)
 {
 	struct x86_guest_priv *priv = vmm_zalloc(sizeof(struct x86_guest_priv));
 
 	if (priv == NULL) {
-		VM_LOG(LVL_ERR, "ERROR: Failed to create guest private data.\n");
+		X86_DEBUG_LOG(arch_guest_helper, LVL_ERR, "ERROR: Failed to create guest private data.\n");
 		return VMM_EFAIL;
 	}
 
 	guest->arch_priv = (void *)priv;
 
-	VM_LOG(LVL_VERBOSE, "Guest init successful!\n");
+	X86_DEBUG_LOG(arch_guest_helper, LVL_VERBOSE, "Guest init successful!\n");
 	return VMM_OK;
 }
 

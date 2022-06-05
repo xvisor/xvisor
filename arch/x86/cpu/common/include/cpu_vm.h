@@ -10,28 +10,6 @@
 #include <cpu_pgtbl_helper.h>
 #include <libs/bitmap.h>
 
-enum {
-	VM_LOG_LVL_ERR,
-	VM_LOG_LVL_INFO,
-	VM_LOG_LVL_DEBUG,
-	VM_LOG_LVL_VERBOSE
-};
-extern int vm_default_log_lvl;
-#define VM_LOG(lvl, fmt, args...)					\
-	do {								\
-		if (VM_LOG_##lvl <= vm_default_log_lvl) {		\
-			vmm_printf(fmt, ##args);			\
-		}							\
-	}while(0);
-
-#define VM_LOG_FD(lvl, fmt, args...)					\
-	do {								\
-		if (VM_LOG_##lvl <= vm_default_log_lvl) {		\
-			vmm_printf("(%s:%d) " fmt, __func__,		\
-				   __LINE__, ##args);			\
-		}							\
-	}while(0);
-
 #define MOV_CRn_INST_SZ		3
 
 enum guest_regs {

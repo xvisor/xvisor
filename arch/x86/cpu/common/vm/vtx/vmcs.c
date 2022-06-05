@@ -39,6 +39,9 @@
 #include <vm/vmcs.h>
 #include <vm/vmx.h>
 #include <vm/ept.h>
+#include <x86_debug_log.h>
+
+DEFINE_X86_DEBUG_LOG_SUBSYS_LEVEL(vmcs, X86_DEBUG_LOG_LVL_INFO);
 
 #define BYTES_PER_LONG (BITS_PER_LONG/8)
 
@@ -131,12 +134,12 @@ void vmx_detect_capability(void)
 	/* save the revision_id */
 	vmcs_revision_id = vmx_basic_msr_low;
 
-	VM_LOG(LVL_VERBOSE, "%s: Basic MSR: 0x%lx\n", __func__, cpu_read_msr(MSR_IA32_VMX_BASIC));
-	VM_LOG(LVL_VERBOSE, "%s: Basic low: 0x%x\n", __func__, vmx_basic_msr_low);
+	X86_DEBUG_LOG(vmcs, LVL_VERBOSE, "%s: Basic MSR: 0x%lx\n", __func__, cpu_read_msr(MSR_IA32_VMX_BASIC));
+	X86_DEBUG_LOG(vmcs, LVL_VERBOSE, "%s: Basic low: 0x%x\n", __func__, vmx_basic_msr_low);
 
 	vmxon_region_size = VMM_ROUNDUP2_PAGE_SIZE(vmx_basic_msr_high
 						   & 0x1ffful);
-	VM_LOG(LVL_VERBOSE, "%s: VMXON Region Size: 0x%x\n", __func__, vmxon_region_size);
+	X86_DEBUG_LOG(vmcs, LVL_VERBOSE, "%s: VMXON Region Size: 0x%x\n", __func__, vmxon_region_size);
 
 	vmxon_region_nr_pages = VMM_SIZE_TO_PAGE(vmxon_region_size);
 
@@ -257,13 +260,13 @@ struct vmcs *current_vmcs(physical_addr_t *phys)
 
         /* There is not current VMCS */
         if (!vmcs_phys || vmcs_phys == 0xFFFFFFFFFFFFFFFFULL) {
-                VM_LOG(LVL_ERR, "%s: There is not active(current) VMCS on this "
+                X86_DEBUG_LOG(vmcs, LVL_ERR, "%s: There is not active(current) VMCS on this "
 		       "logical processor.\n", __func__);
                 return NULL;
         }
 
         if (vmm_host_pa2va(vmcs_phys, &vmcs_virt) != VMM_OK) {
-                VM_LOG(LVL_ERR, "%s: Could not find virtual address for current VMCS\n", __func__);
+                X86_DEBUG_LOG(vmcs, LVL_ERR, "%s: Could not find virtual address for current VMCS\n", __func__);
                 return NULL;
         }
 
@@ -279,19 +282,19 @@ struct vmcs* create_vmcs(void)
 
 	/* IA-32 SDM Vol 3B: VMCS size is never greater than 4kB. */
 	if ((vmx_basic_msr_high & 0x1fff) > PAGE_SIZE) {
-		VM_LOG(LVL_ERR, "VMCS size larger than 4K\n");
+		X86_DEBUG_LOG(vmcs, LVL_ERR, "VMCS size larger than 4K\n");
 		return NULL;
 	}
 
 	/* IA-32 SDM Vol 3B: 64-bit CPUs always have VMX_BASIC_MSR[48]==0. */
 	if (vmx_basic_msr_high & (1u<<16)) {
-		VM_LOG(LVL_ERR, "VMX_BASIC_MSR[48] = 1\n");
+		X86_DEBUG_LOG(vmcs, LVL_ERR, "VMX_BASIC_MSR[48] = 1\n");
 		return NULL;
 	}
 
 	/* Require Write-Back (WB) memory type for VMCS accesses. */
 	if (((vmx_basic_msr_high >> 18) & 15) != 6) {
-		VM_LOG(LVL_ERR, "Write-back memory required for VMCS\n");
+		X86_DEBUG_LOG(vmcs, LVL_ERR, "Write-back memory required for VMCS\n");
 		return NULL;
 	}
 
@@ -642,7 +645,7 @@ int vmx_set_control_params(struct vcpu_hw_context *context)
 
 	/* Set up the VCPU's guest extended page tables */
 	if ((rc = setup_ept(context)) != VMM_OK) {
-		VM_LOG(LVL_ERR, "EPT Setup failed with error: %d\n", rc);
+		X86_DEBUG_LOG(vmcs, LVL_ERR, "EPT Setup failed with error: %d\n", rc);
 		return rc;
 	}
 

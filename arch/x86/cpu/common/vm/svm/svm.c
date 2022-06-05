@@ -35,6 +35,9 @@
 #include <vm/svm_intercept.h>
 #include <emu/i8259.h>
 #include <arch_guest_helper.h>
+#include <x86_debug_log.h>
+
+DEFINE_X86_DEBUG_LOG_SUBSYS_LEVEL(svm, X86_DEBUG_LOG_LVL_INFO);
 
 enum svm_init_mode {
 	SVM_MODE_REAL,
@@ -396,12 +399,12 @@ static int enable_svm (struct cpuinfo_x86 *c)
 	u64 phys_hsa;
 
 	if (!c->hw_virt_available) {
-		VM_LOG(LVL_ERR, "ERROR: Hardware virtualization is not support but Xvisor needs it.\n");
+		X86_DEBUG_LOG(svm, LVL_ERR, "ERROR: Hardware virtualization is not support but Xvisor needs it.\n");
 		return VMM_EFAIL;
 	}
 
 	if (!c->hw_nested_paging)
-		VM_LOG(LVL_INFO, "Nested pagetables are not supported.\n"
+		X86_DEBUG_LOG(svm, LVL_INFO, "Nested pagetables are not supported.\n"
 		       "Enabling software walking of page tables.\n");
 
 	/*
@@ -409,19 +412,19 @@ static int enable_svm (struct cpuinfo_x86 *c)
 	 */
 	enable_svme();
 
-	VM_LOG(LVL_VERBOSE, "Allocating host save area.\n");
+	X86_DEBUG_LOG(svm, LVL_VERBOSE, "Allocating host save area.\n");
 
 	/* Initialize the Host Save Area */
 	host_save_area = alloc_host_save_area();
 	if (vmm_host_va2pa(host_save_area, (physical_addr_t *)&phys_hsa) != VMM_OK) {
-		VM_LOG(LVL_ERR, "Host va2pa for host save area failed.\n");
+		X86_DEBUG_LOG(svm, LVL_ERR, "Host va2pa for host save area failed.\n");
 		return VMM_EFAIL;
 	}
 
-	VM_LOG(LVL_VERBOSE, "Write HSAVE PA.\n");
+	X86_DEBUG_LOG(svm, LVL_VERBOSE, "Write HSAVE PA.\n");
 	cpu_write_msr(MSR_K8_VM_HSAVE_PA, phys_hsa);
 
-	VM_LOG(LVL_VERBOSE, "All fine.\n");
+	X86_DEBUG_LOG(svm, LVL_VERBOSE, "All fine.\n");
 	return VMM_OK;
 }
 
@@ -440,7 +443,7 @@ int amd_setup_vm_control(struct vcpu_hw_context *context)
 	if (context->icept_table.io_table_phys)
 		context->vmcb->iopm_base_pa = context->icept_table.io_table_phys;
 
-	VM_LOG(LVL_INFO, "IOPM Base physical address: 0x%lx\n", context->vmcb->iopm_base_pa);
+	X86_DEBUG_LOG(svm, LVL_INFO, "IOPM Base physical address: 0x%lx\n", context->vmcb->iopm_base_pa);
 
 	/*
 	 * FIXME: VM: What state to load should come from VMCB.
@@ -463,11 +466,11 @@ int amd_init(struct cpuinfo_x86 *cpuinfo)
 {
 	/* FIXME: SMP: This should be done by all CPUs? */
 	if (enable_svm (cpuinfo) != VMM_OK) {
-		VM_LOG(LVL_ERR, "ERROR: Failed to enable virtual machine.\n");
+		X86_DEBUG_LOG(svm, LVL_ERR, "ERROR: Failed to enable virtual machine.\n");
 		return VMM_EFAIL;
 	}
 
-	VM_LOG(LVL_VERBOSE, "AMD SVM enable success!\n");
+	X86_DEBUG_LOG(svm, LVL_VERBOSE, "AMD SVM enable success!\n");
 
 	return VMM_OK;
 }

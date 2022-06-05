@@ -36,6 +36,9 @@
 #include <vmm_devemu.h>
 #include <vmm_manager.h>
 #include <vmm_main.h>
+#include <x86_debug_log.h>
+
+DEFINE_X86_DEBUG_LOG_SUBSYS_LEVEL(svm_intercept, X86_DEBUG_LOG_LVL_INFO);
 
 static char *exception_names[] = {
 	"#DivError",	/* 0 */
@@ -83,7 +86,7 @@ static int guest_read_gva(struct vcpu_hw_context *context, u32 vaddr, u8 *where
 	physical_addr_t gphys;
 
 	if (gva_to_gpa(context, vaddr, &gphys)) {
-		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%x to guest "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to convert guest virtual 0x%x to guest "
 		       "physical.\n", vaddr);
 		return VMM_EFAIL;
 	}
@@ -91,7 +94,7 @@ static int guest_read_gva(struct vcpu_hw_context *context, u32 vaddr, u8 *where
 	/* FIXME: Should we always do cacheable memory access here ?? */
 	if (vmm_guest_memory_read(context->assoc_vcpu->guest, gphys,
 				  where, size, TRUE) < size) {
-		VM_LOG(LVL_ERR, "Failed to read guest pa 0x%lx\n", gphys);
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read guest pa 0x%lx\n", gphys);
 		return VMM_EFAIL;
 	}
 
@@ -105,7 +108,7 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context,
 	struct vmm_guest *guest = context->assoc_vcpu->guest;
 
 	if (gva_to_gpa(context, context->vmcb->rip, &rip_phys)) {
-		VM_LOG(LVL_ERR, "Failed to convert guest virtual 0x%"PRIADDR
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to convert guest virtual 0x%"PRIADDR
 		       " to guest physical.\n", context->vmcb->rip);
 		return VMM_EFAIL;
 	}
@@ -113,7 +116,7 @@ static int guest_read_fault_inst(struct vcpu_hw_context *context,
 	/* FIXME: Should we always do cacheable memory access here ?? */
 	if (vmm_guest_memory_read(guest, rip_phys, g_ins, sizeof(x86_inst),
 				  TRUE) < sizeof(x86_inst)) {
-		VM_LOG(LVL_ERR, "Failed to read instruction at intercepted "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read instruction at intercepted "
 		       "instruction pointer. (0x%"PRIPADDR")\n", rip_phys);
 		return VMM_EFAIL;
 	}
@@ -127,7 +130,7 @@ static inline void dump_guest_exception_insts(struct vcpu_hw_context *context)
 	int i;
 
 	if (guest_read_fault_inst(context, &ins)) {
-		VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read faulting guest instruction.\n");
 		return;
 	}
 	vmm_printf("\n");
@@ -167,14 +170,14 @@ void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 	union page32 pte, pte1, pde, pde1;
 	u32 prot, prot1, pdprot, pdprot1;
 
-	VM_LOG(LVL_DEBUG, "Resident page fault exit info 1: 0x%lx "
+	X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "Resident page fault exit info 1: 0x%lx "
 	       "2: 0x%lx rip: 0x%lx\n", context->vmcb->exitinfo1,
 	       context->vmcb->exitinfo2, context->vmcb->rip);
 
 	if (lookup_guest_pagetable(context, fault_gphys,
 				   &lookedup_gphys, &pde, &pte)) {
 		/* Lazy TLB flush by guest? */
-		VM_LOG(LVL_ERR, "ERROR: No entry in guest page table in "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: No entry in guest page table in "
 		       "protection fault! Arrrgh! (Guest virtual: 0x%lx)\n",
 		       fault_gphys);
 		goto guest_bad_fault;
@@ -182,7 +185,7 @@ void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 
 	if (lookup_shadow_pagetable(context, fault_gphys,
 				    &lookedup_gphys, &pde1, &pte1)) {
-		VM_LOG(LVL_ERR, "ERROR: No entry in shadow page table? "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: No entry in shadow page table? "
 		       "Arrrgh! (Guest virtual: 0x%lx)\n",
 		       fault_gphys);
 		goto guest_bad_fault;
@@ -203,7 +206,7 @@ void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 		if (update_guest_shadow_pgprot(context, fault_gphys,
 					       GUEST_PG_LVL_1, pdprot)
 		    != VMM_OK) {
-			VM_LOG(LVL_ERR, "ERROR: Could not update level 2 "
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: Could not update level 2 "
 			       "pgprot in shadow table(Guest virtual: 0x%lx)\n",
 			       fault_gphys);
 			goto guest_bad_fault;
@@ -214,7 +217,7 @@ void handle_guest_resident_page_fault(struct vcpu_hw_context *context)
 		if (update_guest_shadow_pgprot(context, fault_gphys,
 					       GUEST_PG_LVL_2, prot)
 		    != VMM_OK) {
-			VM_LOG(LVL_ERR, "ERROR: Could not update level 1 "
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: Could not update level 1 "
 			       "pgprot in shadow (Guest virtual: 0x%lx)\n",
 			       fault_gphys);
 			goto guest_bad_fault;
@@ -238,7 +241,7 @@ void handle_guest_realmode_page_fault(struct vcpu_hw_context *context,
 {
 	if (create_guest_shadow_map(context, fault_gphys, hphys_addr,
 				    PAGE_SIZE, 0x3, 0x3) != VMM_OK) {
-		VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: Failed to create map in"
 		       "guest's shadow page table.\n"
 		       "Fault Gphys: 0x%lx "
 		       "Host Phys: %lx\n",
@@ -265,7 +268,7 @@ void emulate_guest_mmio_io(struct vcpu_hw_context *context,
 		       dinst->inst.gen_mov.src_addr,
 		       (physical_addr_t *)
 		       &dinst->inst.gen_mov.src_addr) != VMM_OK) {
-		VM_LOG(LVL_ERR, "Failed to map guest va 0x%"PRIADDR" to pa\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to map guest va 0x%"PRIADDR" to pa\n",
 		       dinst->inst.gen_mov.src_addr);
 		goto guest_bad_fault;
 	}
@@ -287,7 +290,7 @@ void emulate_guest_mmio_io(struct vcpu_hw_context *context,
 		if (dinst->inst.gen_mov.dst_addr == RM_REG_AX)
 			context->vmcb->rax = guestrd;
 	} else {
-		VM_LOG(LVL_ERR, "Memory to memory move instruction not "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Memory to memory move instruction not "
 		       "supported.\n");
 		goto guest_bad_fault;
 	}
@@ -302,7 +305,7 @@ void emulate_guest_mmio_io(struct vcpu_hw_context *context,
 		else
 			guestrd = context->g_regs[index];
 	} else {
-		VM_LOG(LVL_ERR, "Memory to memory move instruction not "
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Memory to memory move instruction not "
 		       "supported.\n");
 		goto guest_bad_fault;
 	}
@@ -330,17 +333,17 @@ void handle_guest_mmio_fault(struct vcpu_hw_context *context)
 	x86_decoded_inst_t dinst;
 
 	if (guest_read_fault_inst(context, &ins)) {
-		VM_LOG(LVL_ERR, "Failed to read faulting guest instruction.\n");
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read faulting guest instruction.\n");
 		goto guest_bad_fault;
 	}
 
 	if (x86_decode_inst(context, ins, &dinst) != VMM_OK) {
-		VM_LOG(LVL_ERR, "Failed to decode guest instruction.\n");
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to decode guest instruction.\n");
 		goto guest_bad_fault;
 	}
 
 	if (unlikely(dinst.inst_type != INST_TYPE_MOV)) {
-		VM_LOG(LVL_ERR,
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR,
 		       "IO Fault in guest without a move instruction!\n");
 		goto guest_bad_fault;
 	}
@@ -388,11 +391,11 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	if (lookup_guest_pagetable(context, fault_gphys,
 				   &lookedup_gphys, &pde, &pte)
 	    != VMM_OK) {
-		VM_LOG(LVL_DEBUG, "ERROR: No page table entry "
+		X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "ERROR: No page table entry "
 		       "created by guest for fault address "
 		       "0x%lx (rIP: 0x%lx)\n",
 		       fault_gphys, context->vmcb->rip);
-		VM_LOG(LVL_DEBUG, "EXITINFO1: 0x%lx\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "EXITINFO1: 0x%lx\n",
 		       context->vmcb->exitinfo1);
 		inject_guest_exception(context,
 				       VM_EXCEPTION_PAGE_FAULT);
@@ -411,7 +414,7 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 	if ((PagePresent(&pte) && PageReadOnly(&pte))
 	    ||(PagePresent(&pde) && PageReadOnly(&pde))) {
 		if (!(context->vmcb->cr0 & (0x1UL << 16))) {
-			VM_LOG(LVL_ERR, "Page fault in guest "
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Page fault in guest "
 			       "on valid page and WP unset.\n");
 			goto guest_bad_fault;
 		}
@@ -433,7 +436,7 @@ void handle_guest_protected_mem_rw(struct vcpu_hw_context *context)
 		if (create_guest_shadow_map(context, lookedup_gphys,
 					    hphys_addr, PAGE_SIZE, pdprot,
 					    prot) != VMM_OK) {
-			VM_LOG(LVL_ERR, "ERROR: Failed to create map in"
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: Failed to create map in"
 			       "guest's shadow page table.\n"
 			       "Fault Gphys: 0x%lx "
 			       "Lookup Gphys: 0x%lx "
@@ -470,14 +473,14 @@ void __handle_vm_gdt_write(struct vcpu_hw_context *context)
 
 void __handle_vm_npf (struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: nested page fault.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: nested page fault.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 void __handle_vm_swint (struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: software interrupt.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: software interrupt.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
@@ -489,7 +492,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 	switch (context->vmcb->exitcode)
 	{
 	case VMEXIT_EXCEPTION_PF:
-		VM_LOG(LVL_DEBUG, "Guest fault: 0x%"PRIx64" (rIP: %"PRIADDR")\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "Guest fault: 0x%"PRIx64" (rIP: %"PRIADDR")\n",
 		       context->vmcb->exitinfo2, context->vmcb->rip);
 
 		int rc;
@@ -507,7 +510,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 			rc = vmm_guest_physical_map(guest, fault_gphys, PAGE_SIZE,
 						&hphys_addr, &availsz, &flags);
 			if (rc) {
-				VM_LOG(LVL_ERR, "ERROR: No region mapped to "
+				X86_DEBUG_LOG(svm_intercept, LVL_ERR, "ERROR: No region mapped to "
 				       "guest physical: 0x%lx\n", fault_gphys);
 				goto guest_bad_fault;
 			}
@@ -528,7 +531,7 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_ERR, "Unhandled exception %s (rIP: 0x%"PRIADDR")\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Unhandled exception %s (rIP: 0x%"PRIADDR")\n",
 		       exception_names[context->vmcb->exitcode - 0x40],
 		       context->vmcb->rip);
 		goto guest_bad_fault;
@@ -543,28 +546,28 @@ void __handle_vm_exception (struct vcpu_hw_context *context)
 
 void __handle_vm_wrmsr (struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: msr write.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: msr write.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 void __handle_popf(struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: popf.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: popf.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 void __handle_vm_vmmcall (struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: vmmcall.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: vmmcall.\n");
 	if (context->vcpu_emergency_shutdown)
 		context->vcpu_emergency_shutdown(context);
 }
 
 void __handle_vm_iret(struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "Unhandled Intercept: iret.\n");
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "Unhandled Intercept: iret.\n");
 	return;
 }
 
@@ -576,7 +579,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 	if (context->cpuinfo->decode_assist) {
 		if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
 			cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-			VM_LOG(LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg"
+			X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "Guest writing 0x%lx to Cr0 from reg"
 			       "%d.\n",
 			       context->g_regs[cr_gpr], cr_gpr);
 		}
@@ -586,13 +589,13 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 		u64 rvalue;
 
 		if (guest_read_fault_inst(context, &ins64)) {
-			VM_LOG(LVL_ERR, "Failed to read faulting guest "
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read faulting guest "
 			       "instruction.\n");
 			goto guest_bad_fault;
 		}
 
 		if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
-			VM_LOG(LVL_ERR, "Failed to decode instruction.\n");
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to decode instruction.\n");
 			goto guest_bad_fault;
 		}
 
@@ -619,7 +622,7 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 				break;
 
 			default:
-				VM_LOG(LVL_ERR,
+				X86_DEBUG_LOG(svm_intercept, LVL_ERR,
 				       "Unknown CR 0x%"PRIx64" read by guest\n",
 				       dinst.inst.crn_mov.src_reg);
 				goto guest_bad_fault;
@@ -630,10 +633,10 @@ void __handle_crN_read(struct vcpu_hw_context *context)
 
 			context->g_regs[dinst.inst.crn_mov.dst_reg] = rvalue;
 			context->vmcb->rip += dinst.inst_size;
-			VM_LOG(LVL_VERBOSE, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n",
+			X86_DEBUG_LOG(svm_intercept, LVL_VERBOSE, "GR: CR0= 0x%8lx HCR0= 0x%8lx\n",
 			       context->g_cr0, context->vmcb->cr0);
 		} else {
-			VM_LOG(LVL_ERR, "Unknown fault inst: 0x%p\n",
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Unknown fault inst: 0x%p\n",
 			       ins64);
 			goto guest_bad_fault;
 		}
@@ -659,7 +662,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 	if (context->cpuinfo->decode_assist) {
 		if (context->vmcb->exitinfo1 & VALID_CRN_TRAP) {
 			cr_gpr = (context->vmcb->exitinfo1 & 0xf);
-			VM_LOG(LVL_DEBUG,
+			X86_DEBUG_LOG(svm_intercept, LVL_DEBUG,
 			       "Guest writing 0x%lx to Cr0 from reg "
 			       "%d.\n",
 			       context->g_regs[cr_gpr], cr_gpr);
@@ -670,12 +673,12 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 		u32 sreg;
 
 		if (guest_read_fault_inst(context, &ins64)) {
-			VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read guest instruction.\n");
 			goto guest_bad_fault;
 		}
 
 		if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
-			VM_LOG(LVL_ERR, "Failed to code instruction.\n");
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to code instruction.\n");
 			goto guest_bad_fault;
 		}
 
@@ -705,7 +708,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 
 				if (bits_set & X86_CR0_PG) {
 					context->vmcb->cr0 |= X86_CR0_PG;
-					VM_LOG(LVL_DEBUG,
+					X86_DEBUG_LOG(svm_intercept, LVL_DEBUG,
 					       "Purging guest shadow page "
 					       "table.\n");
 					purge_guest_shadow_pagetable(context);
@@ -778,7 +781,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 					   flush the shadow pagetable */
 					if (likely(context->g_cr0
 						   & X86_CR0_PG)) {
-						VM_LOG(LVL_DEBUG,
+						X86_DEBUG_LOG(svm_intercept, LVL_DEBUG,
 						       "Purging guest shadow "
 						       "page table.\n");
 						purge_guest_shadow_pagetable(context);
@@ -793,12 +796,12 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 					sreg = dinst.inst.crn_mov.src_reg;
 					context->g_cr4 = context->g_regs[sreg];
 				}
-				VM_LOG(LVL_DEBUG, "Guest wrote 0x%lx to CR4\n",
+				X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "Guest wrote 0x%lx to CR4\n",
 				       context->g_cr4);
 				break;
 
 			default:
-				VM_LOG(LVL_ERR,
+				X86_DEBUG_LOG(svm_intercept, LVL_ERR,
 				       "Write to CR%d not supported.\n",
 				       (int)(dinst.inst.crn_mov.dst_reg - RM_REG_CR0));
 				goto guest_bad_fault;
@@ -812,7 +815,7 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 				break;
 			}
 		} else {
-			VM_LOG(LVL_ERR, "Unknown fault instruction\n");
+			X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Unknown fault instruction\n");
 			goto guest_bad_fault;
 		}
 
@@ -820,10 +823,10 @@ void __handle_crN_write(struct vcpu_hw_context *context)
 
 		asm volatile("str %0\n"
 			     :"=r"(htr));
-		VM_LOG(LVL_DEBUG,
+		X86_DEBUG_LOG(svm_intercept, LVL_DEBUG,
 		       "GW: CR0= 0x%"PRIx64" HCR0: 0x%"PRIx64"\n",
 		       context->g_cr0, context->vmcb->cr0);
-		VM_LOG(LVL_DEBUG,
+		X86_DEBUG_LOG(svm_intercept, LVL_DEBUG,
 		       "TR: 0x%"PRIx64" HTR: 0x%"PRIx64"\n",
 		       *((u64 *)&context->vmcb->tr), htr);
 	}
@@ -849,9 +852,9 @@ void __handle_ioio(struct vcpu_hw_context *context)
 	u32 guest_rd = 0;
 	u32 wval;
 
-	VM_LOG(LVL_VERBOSE, "RIP: 0x%"PRIx64" exitinfo1: 0x%"PRIx64"\n",
+	X86_DEBUG_LOG(svm_intercept, LVL_VERBOSE, "RIP: 0x%"PRIx64" exitinfo1: 0x%"PRIx64"\n",
 	       context->vmcb->rip, context->vmcb->exitinfo1);
-	VM_LOG(LVL_VERBOSE,
+	X86_DEBUG_LOG(svm_intercept, LVL_VERBOSE,
 	       "IOPort: 0x%x is accssed for %sput. Size is %d. Segment: %d "
 	       "String operation? %s Repeated access? %s\n",
 	       io_port, (in_inst ? "in" : "out"), op_size,
@@ -871,7 +874,7 @@ void __handle_ioio(struct vcpu_hw_context *context)
 		context->vmcb->rax = guest_rd;
 	} else {
 		if (io_port == 0x80) {
-			VM_LOG(LVL_DEBUG, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
+			X86_DEBUG_LOG(svm_intercept, LVL_DEBUG, "(0x%"PRIx64") CBDW: 0x%"PRIx64"\n",
 			       context->vmcb->rip, context->vmcb->rax);
 		} else  {
 			wval = (u32)context->vmcb->rax;
@@ -945,7 +948,7 @@ void __handle_cpuid(struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_ERR, "GCPUID/R: Func: 0x%"PRIx64"\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "GCPUID/R: Func: 0x%"PRIx64"\n",
 		       context->vmcb->rax);
 		goto _fail;
 	}
@@ -973,7 +976,7 @@ void __handle_cpuid(struct vcpu_hw_context *context)
  */
 void __handle_triple_fault(struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_ERR, "Triple fault in guest: %s!!\n",
+	X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Triple fault in guest: %s!!\n",
 	       context->assoc_vcpu->guest->name);
 
 	if (context->vcpu_emergency_shutdown)
@@ -984,7 +987,7 @@ void __handle_triple_fault(struct vcpu_hw_context *context)
 
 void __handle_halt(struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_INFO, "\n%s issued a halt instruction. Halting it.\n",
+	X86_DEBUG_LOG(svm_intercept, LVL_INFO, "\n%s issued a halt instruction. Halting it.\n",
 	       context->assoc_vcpu->guest->name);
 
 	if (context->vcpu_emergency_shutdown)
@@ -998,12 +1001,12 @@ void __handle_invalpg(struct vcpu_hw_context *context)
 	x86_decoded_inst_t dinst;
 
 	if (guest_read_fault_inst(context, &ins64)) {
-		VM_LOG(LVL_ERR, "Failed to read guest instruction.\n");
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to read guest instruction.\n");
 		goto guest_bad_fault;
 	}
 
 	if (x86_decode_inst(context, ins64, &dinst) != VMM_OK) {
-		VM_LOG(LVL_ERR, "Failed to code instruction.\n");
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "Failed to code instruction.\n");
 		goto guest_bad_fault;
 	}
 
@@ -1026,7 +1029,7 @@ void __handle_invalpg(struct vcpu_hw_context *context)
 
 void handle_vcpuexit(struct vcpu_hw_context *context)
 {
-	VM_LOG(LVL_VERBOSE, "**** #VMEXIT - exit code: %x\n",
+	X86_DEBUG_LOG(svm_intercept, LVL_VERBOSE, "**** #VMEXIT - exit code: %x\n",
 	       (u32) context->vmcb->exitcode);
 
 	switch (context->vmcb->exitcode) {
@@ -1099,7 +1102,7 @@ void handle_vcpuexit(struct vcpu_hw_context *context)
 		break;
 
 	default:
-		VM_LOG(LVL_ERR, "#VMEXIT: Unhandled exit code: (0x%x:%d)\n",
+		X86_DEBUG_LOG(svm_intercept, LVL_ERR, "#VMEXIT: Unhandled exit code: (0x%x:%d)\n",
 		       (u32)context->vmcb->exitcode,
 		       (u32)context->vmcb->exitcode);
 		if (context->vcpu_emergency_shutdown)

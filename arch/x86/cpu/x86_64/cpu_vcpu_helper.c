@@ -35,6 +35,9 @@
 #include <libs/stringlib.h>
 #include <libs/bitops.h>
 #include <arch_guest_helper.h>
+#include <x86_debug_log.h>
+
+DEFINE_X86_DEBUG_LOG_SUBSYS_LEVEL(x86_vcpu, X86_DEBUG_LOG_LVL_INFO);
 
 void arch_vcpu_emergency_shutdown(struct vcpu_hw_context *context);
 
@@ -61,7 +64,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 
 			/* TODO: CPUID 7 as more features. Limiting to 4 right now. */
 			func_response->resp_eax = CPUID_BASE_CACHE_CONF;
-			VM_LOG(LVL_INFO, "Guest base CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
+			X86_DEBUG_LOG(x86_vcpu, LVL_INFO, "Guest base CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
 			break;
 
 		case CPUID_BASE_FEATURES:
@@ -95,7 +98,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 			break;
 
 		default:
-			VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
+			X86_DEBUG_LOG(x86_vcpu, LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
 			func_response->resp_eax = 0;
 			func_response->resp_ebx = 0;
 			func_response->resp_ecx = 0;
@@ -114,7 +117,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 			      &func_response->resp_edx);
 
 			func_response->resp_eax = CPUID_EXTENDED_ADDR_BITS;
-			VM_LOG(LVL_INFO, "Guest extended CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
+			X86_DEBUG_LOG(x86_vcpu, LVL_INFO, "Guest extended CPUID Limited to 0x%"PRIx32"\n", func_response->resp_eax);
 			break;
 
 		case CPUID_EXTENDED_FEATURES: /* replica of base features */
@@ -143,7 +146,7 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 			break;
 
 		default:
-			VM_LOG(LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
+			X86_DEBUG_LOG(x86_vcpu, LVL_INFO, "CPUID: 0x%"PRIx32" defaulting to CPU reported values\n", funcs);
 			cpuid(funcs, &func_response->resp_eax,
 			      &func_response->resp_ebx,
 			      &func_response->resp_ecx,
@@ -155,9 +158,9 @@ static void init_vcpu_capabilities(struct vmm_vcpu *vcpu)
 
 static void arch_guest_vcpu_trampoline(struct vmm_vcpu *vcpu)
 {
-	VM_LOG(LVL_DEBUG, "Running VCPU %s\n", vcpu->name);
+	X86_DEBUG_LOG(x86_vcpu, LVL_DEBUG, "Running VCPU %s\n", vcpu->name);
 	cpu_boot_vcpu(x86_vcpu_priv(vcpu)->hw_context);
-	VM_LOG(LVL_ERR, "ERROR: Guest VCPU exited from run loop!\n");
+	X86_DEBUG_LOG(x86_vcpu, LVL_ERR, "ERROR: Guest VCPU exited from run loop!\n");
 	while(1); /* Should never come here! */
 }
 
