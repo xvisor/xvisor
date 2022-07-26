@@ -1143,6 +1143,12 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			}
 		}
 		break;
+	case CSR_HENVCFG:
+#ifndef CONFIG_64BIT
+	case CSR_HENVCFGH:
+#endif
+		csr = &zero;
+		break;
 	case CSR_VSSTATUS:
 		csr = &npriv->vsstatus;
 		writeable_mask = SSTATUS_SIE | SSTATUS_SPIE | SSTATUS_UBE |

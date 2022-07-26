@@ -622,6 +622,14 @@ static const struct csr_func csr_funcs[] = {
 		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
 	},
 	{
+		.csr_num  = CSR_HENVCFG,
+		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
+	},
+	{
+		.csr_num  = CSR_HENVCFGH,
+		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
+	},
+	{
 		.csr_num  = CSR_VSSTATUS,
 		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
 	},

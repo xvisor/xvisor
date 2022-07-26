@@ -359,6 +359,18 @@
 #define HVICTL_IPRIOM			0x00000100
 #define HVICTL_IPRIO			0x000000ff
 
+/* xENVCFG flags */
+#define ENVCFG_STCE			(_AC(1, ULL) << 63)
+#define ENVCFG_PBMTE			(_AC(1, ULL) << 62)
+#define ENVCFG_CBZE			(_AC(1, UL) << 7)
+#define ENVCFG_CBCFE			(_AC(1, UL) << 6)
+#define ENVCFG_CBIE_SHIFT		4
+#define ENVCFG_CBIE			(_AC(0x3, UL) << ENVCFG_CBIE_SHIFT)
+#define ENVCFG_CBIE_ILL			_AC(0x0, UL)
+#define ENVCFG_CBIE_FLUSH		_AC(0x1, UL)
+#define ENVCFG_CBIE_INV			_AC(0x3, UL)
+#define ENVCFG_FIOM			_AC(0x1, UL)
+
 /* ===== User-level CSRs ===== */
 
 /* User Trap Setup (N-extension) */
@@ -482,6 +494,12 @@
 #define CSR_SIEH			0x114
 #define CSR_SIPH			0x154
 
+/* Supervisor Configuration */
+#define CSR_SENVCFG			0x10a
+
+/* Counter Overflow CSR */
+#define CSR_SCOUNTOVF			0xda0
+
 /* ===== Hypervisor-level CSRs ===== */
 
 /* Hypervisor Trap Setup (H-extension) */
@@ -505,6 +523,10 @@
 /* Hypervisor Counter/Timer Virtualization Registers (H-extension) */
 #define CSR_HTIMEDELTA			0x605
 #define CSR_HTIMEDELTAH			0x615
+
+/* Hypervisor Configuration (H-extension) */
+#define CSR_HENVCFG			0x60a
+#define CSR_HENVCFGH			0x61a
 
 /* Virtual Supervisor Registers (H-extension) */
 #define CSR_VSSTATUS			0x200
@@ -782,8 +804,9 @@
 #define CSR_MHPMEVENT30H		0x73e
 #define CSR_MHPMEVENT31H		0x73f
 
-/* Counter Overflow CSR */
-#define CSR_SCOUNTOVF			0xda0
+/* Machine Configuration */
+#define CSR_MENVCFG			0x30a
+#define CSR_MENVCFGH			0x31a
 
 /* Debug/Trace Registers */
 #define CSR_TSELECT			0x7a0
