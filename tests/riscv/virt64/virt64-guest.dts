@@ -41,7 +41,7 @@
 			device_type = "pic";
 			compatible = "sifive,plic0";
 			parent_irq = <10>;
-			num_irq = <32>;
+			num_irq = <31>;
 			max_priority = <7>;
 		};
 

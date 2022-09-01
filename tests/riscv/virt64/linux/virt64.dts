@@ -47,7 +47,7 @@
 			interrupt-controller;
 			#interrupt-cells = <1>;
 			riscv,max-priority = <7>;
-			riscv,ndev = <32>;
+			riscv,ndev = <31>;
 			reg = <0x0 0x0c000000 0 0x04000000>;
 		};
 

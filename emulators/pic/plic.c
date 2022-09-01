@@ -575,8 +575,9 @@ static int plic_emulator_probe(struct vmm_guest *guest,
 	}
 
 	if (vmm_devtree_read_u32(edev->node, "num_irq", &s->num_irq)) {
-		s->num_irq = MAX_DEVICES;
+		s->num_irq = MAX_DEVICES - 1;
 	}
+	s->num_irq += 1; /* IRQ0 is dummy */
 	if (s->num_irq > MAX_DEVICES) {
 		rc = VMM_EINVALID;
 		goto plic_emulator_probe_freestate_fail;
