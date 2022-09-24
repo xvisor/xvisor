@@ -288,7 +288,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
 
 		/* H-extension only available when AIA CSRs are available */
-		if (!riscv_aia_available) {
+		if (!riscv_isa_extension_available(NULL, SxAIA)) {
 			riscv_priv(vcpu)->isa[0] &=
 					~riscv_isa_extension_mask(h);
 		}
@@ -451,7 +451,7 @@ void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)
 		csr_write(CSR_HIDELEG, 0);
 
 		/* Enable sip/siph and sie/sieh trapping */
-		if (riscv_aia_available) {
+		if (riscv_isa_extension_available(NULL, SxAIA)) {
 			csr_set(CSR_HVICTL, HVICTL_VTI);
 		}
 	} else {
@@ -459,7 +459,7 @@ void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)
 		csr_write(CSR_HIDELEG, HIDELEG_DEFAULT);
 
 		/* Disable sip/siph and sie/sieh trapping */
-		if (riscv_aia_available) {
+		if (riscv_isa_extension_available(NULL, SxAIA)) {
 			csr_clear(CSR_HVICTL, HVICTL_VTI);
 		}
 	}

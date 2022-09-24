@@ -775,7 +775,7 @@ static int __init imsic_init(struct vmm_devtree_node *node)
 		return VMM_ENODEV;
 	}
 
-	if (!riscv_aia_available) {
+	if (!riscv_isa_extension_available(NULL, SxAIA)) {
 		vmm_lerror(node->name, "AIA support not available\n");
 		return VMM_ENODEV;
 	}

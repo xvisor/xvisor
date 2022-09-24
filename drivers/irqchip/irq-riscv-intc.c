@@ -123,7 +123,7 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 
 	/* Determine number of IRQs */
 	nr_irqs = BITS_PER_LONG;
-	if (riscv_aia_available && BITS_PER_LONG == 32)
+	if (riscv_isa_extension_available(NULL, SxAIA) && BITS_PER_LONG == 32)
 		nr_irqs = nr_irqs * 2;
 
 	/* Register IRQ domain */
@@ -156,7 +156,7 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 	}
 
 	/* Register active IRQ callback */
-	if (riscv_aia_available) {
+	if (riscv_isa_extension_available(NULL, SxAIA)) {
 		vmm_host_irq_set_active_callback(riscv_intc_aia_active_irq);
 	} else {
 		vmm_host_irq_set_active_callback(riscv_intc_active_irq);
@@ -164,7 +164,9 @@ static int __init riscv_intc_init(struct vmm_devtree_node *node)
 
 	/* Announce RISC-V INTC */
 	vmm_init_printf("riscv-intc: registered %d local interrupts%s\n",
-			nr_irqs, (riscv_aia_available) ? " with AIA" : "");
+			nr_irqs,
+			(riscv_isa_extension_available(NULL, SxAIA)) ?
+			" with AIA" : "");
 	return VMM_OK;
 }
 

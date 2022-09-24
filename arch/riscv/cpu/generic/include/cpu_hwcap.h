@@ -146,7 +146,4 @@ extern unsigned long riscv_stage2_vmid_nested;
 /** RISC-V Time Base Frequency */
 extern unsigned long riscv_timer_hz;
 
-/** RISC-V AIA CSRs available */
-extern bool riscv_aia_available;
-
 #endif
