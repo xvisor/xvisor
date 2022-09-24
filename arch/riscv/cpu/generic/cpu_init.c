@@ -88,21 +88,34 @@ int riscv_isa_populate_string(unsigned long xlen,
 	if (!out || (out_sz < 16))
 		return VMM_EINVALID;
 
+	memset(out, 0, out_sz);
+
 	if (xlen == 32)
-		vmm_snprintf(out, sizeof(out_sz), "rv%d", 32);
+		vmm_snprintf(out, out_sz, "rv%d", 32);
 	else if (xlen == 64)
-		vmm_snprintf(out, sizeof(out_sz), "rv%d", 64);
+		vmm_snprintf(out, out_sz, "rv%d", 64);
 	else
 		return VMM_EINVALID;
 
 	pos = strlen(out);
 	valid_isa_len = strlen(valid_isa_order);
-	for (i = 0; i < valid_isa_len; i++) {
+	for (i = 0; (i < valid_isa_len) && (pos < (out_sz - 1)); i++) {
 		index = valid_isa_order[i] - 'A';
-		if ((bmap[0] & BIT_MASK(index)) && (pos < (out_sz - 1)))
+		if (test_bit(index, bmap) && (pos < (out_sz - 1)))
 			out[pos++] = 'a' + index;
 	}
-	out[pos] = '\0';
+
+#define SET_ISA_EXT_MAP(name, bit)					\
+	do {								\
+		if (test_bit(bit, bmap)) {			\
+			strncat(&out[pos], "_" name, out_sz - pos - 1);	\
+			pos += strlen("_" name);			\
+		}							\
+	} while (false)							\
+
+	SET_ISA_EXT_MAP("smaia", RISCV_ISA_EXT_SMAIA);
+	SET_ISA_EXT_MAP("ssaia", RISCV_ISA_EXT_SSAIA);
+#undef SET_ISA_EXT_MAP
 
 	return VMM_OK;
 }
@@ -112,7 +125,8 @@ int riscv_isa_parse_string(const char *isa,
 			   unsigned long *out_bitmap,
 			   size_t out_bitmap_sz)
 {
-	size_t i, isa_len;
+	size_t i, j, isa_len;
+	char mstr[RISCV_ISA_EXT_NAME_LEN_MAX];
 
 	if (!isa || !out_xlen || !out_bitmap ||
 	    (out_bitmap_sz < __riscv_xlen))
@@ -144,11 +158,47 @@ int riscv_isa_parse_string(const char *isa,
 		return VMM_EINVALID;
 	}
 
-	for (; i < isa_len; ++i) {
+	for (; i < isa_len; i++) {
+		if (isa[i] == '_')
+			break;
+
 		if ('a' <= isa[i] && isa[i] <= 'z')
 			__set_bit(isa[i] - 'a', out_bitmap);
 		if ('A' <= isa[i] && isa[i] <= 'Z')
 			__set_bit(isa[i] - 'A', out_bitmap);
+	}
+
+	while (i < isa_len) {
+		if (isa[i] != '_') {
+			i++;
+			continue;
+		}
+
+		/* Skip the '_' character */
+		i++;
+
+		/* Extract the multi-letter extension name */
+		j = 0;
+		while ((i < isa_len) && (isa[i] != '_') &&
+		       (j < (sizeof(mstr) - 1)))
+			mstr[j++] = isa[i++];
+		mstr[j] = '\0';
+
+		/* Skip empty multi-letter extension name */
+		if (!j)
+			continue;
+
+#define SET_ISA_EXT_MAP(name, bit)					\
+		do {							\
+			if (!strcmp(mstr, name)) {			\
+				__set_bit(bit, out_bitmap);		\
+				continue;				\
+			}						\
+		} while (false)						\
+
+		SET_ISA_EXT_MAP("smaia", RISCV_ISA_EXT_SMAIA);
+		SET_ISA_EXT_MAP("ssaia", RISCV_ISA_EXT_SSAIA);
+#undef SET_ISA_EXT_MAP
 	}
 
 	return VMM_OK;
@@ -354,7 +404,7 @@ void arch_cpu_print(struct vmm_chardev *cdev, u32 cpu)
 
 void arch_cpu_print_summary(struct vmm_chardev *cdev)
 {
-	char isa[128];
+	char isa[256];
 #ifdef CONFIG_64BIT
 	riscv_isa_populate_string(64, NULL, isa, sizeof(isa));
 #else
