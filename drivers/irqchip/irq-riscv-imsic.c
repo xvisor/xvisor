@@ -98,6 +98,7 @@ struct imsic_priv {
 	struct vmm_cpumask lmask;
 
 	/* IPI domain */
+	bool slow_ipi;
 	u32 ipi_id;
 	u32 ipi_lsync_id;
 	struct vmm_host_irqdomain *ipi_domain;
@@ -502,17 +503,17 @@ static void imsic_ipi_disable(struct imsic_priv *priv)
 
 static int __init imsic_ipi_domain_init(struct imsic_priv *priv)
 {
-	int rc;
+	int virq;
 
-	/* Do nothing if IPI interrupt identity not available */
-	if (!priv->ipi_id) {
+	/* Skip IPI setup if IPIs are slow */
+	if (priv->slow_ipi)
 		goto skip_ipi;
-	}
 
-	/* Sanity check on IPI interrupt identity */
-	if (priv->global.nr_ids < priv->ipi_id) {
-		return VMM_EINVALID;
-	}
+	/* Allocate interrupt identity for IPIs */
+	virq = imsic_ids_alloc(priv, priv->global.nr_ids, get_count_order(1));
+	if (virq < 0)
+		return virq;
+	priv->ipi_id = virq;
 
 	/* Reserve interrupt identity for IPI */
 	bitmap_set(priv->ids_used_bimap, priv->ipi_id, 1);
@@ -522,28 +523,28 @@ static int __init imsic_ipi_domain_init(struct imsic_priv *priv)
 						  1, &imsic_ipi_domain_ops,
 						  priv);
 	if (!priv->ipi_domain) {
-		bitmap_clear(priv->ids_used_bimap, priv->ipi_id, 1);
+		imsic_ids_free(priv, priv->ipi_id, get_count_order(1));
 		return VMM_ENOMEM;
 	}
 
 	/* Pre-create IPI mappings */
-	rc = vmm_host_irqdomain_create_mapping(priv->ipi_domain, 0);
-	if (rc < 0) {
+	virq = vmm_host_irqdomain_create_mapping(priv->ipi_domain, 0);
+	if (virq < 0) {
 		vmm_lerror("imsic", "failed to create IPI mapping\n");
 		vmm_host_irqdomain_remove(priv->ipi_domain);
-		bitmap_clear(priv->ids_used_bimap, priv->ipi_id, 1);
-		return rc;
+		imsic_ids_free(priv, priv->ipi_id, get_count_order(1));
+		return virq;
 	}
 
 skip_ipi:
 	/* Allocate interrupt identity for local enable/disable sync */
-	rc = imsic_ids_alloc(priv, priv->global.nr_ids, get_count_order(1));
-	if (rc < 0) {
+	virq = imsic_ids_alloc(priv, priv->global.nr_ids, get_count_order(1));
+	if (virq < 0) {
 		vmm_host_irqdomain_remove(priv->ipi_domain);
-		bitmap_clear(priv->ids_used_bimap, priv->ipi_id, 1);
-		return rc;
+		imsic_ids_free(priv, priv->ipi_id, get_count_order(1));
+		return virq;
 	}
-	priv->ipi_lsync_id = rc;
+	priv->ipi_lsync_id = virq;
 
 	return VMM_OK;
 }
@@ -552,7 +553,7 @@ static void __init imsic_ipi_domain_cleanup(struct imsic_priv *priv)
 {
 	imsic_ids_free(priv, priv->ipi_lsync_id, get_count_order(1));
 	vmm_host_irqdomain_remove(priv->ipi_domain);
-	bitmap_clear(priv->ids_used_bimap, priv->ipi_id, 1);
+	imsic_ids_free(priv, priv->ipi_id, get_count_order(1));
 }
 #else
 static void imsic_ipi_enable(struct imsic_priv *priv)
@@ -914,9 +915,9 @@ static int __init imsic_init(struct vmm_devtree_node *node)
 		return VMM_EINVALID;
 	}
 
-	/* Find interrupt indentity to be used for IPI */
-	if (vmm_devtree_read_u32(node, "riscv,ipi-id", &priv->ipi_id))
-		priv->ipi_id = 0;
+	/* Check if IPIs are slow */
+	priv->slow_ipi = vmm_devtree_getattr(node, "riscv,slow-ipi") ?
+			 TRUE : FALSE;
 
 	/* Compute base address */
 	rc = vmm_devtree_regaddr(node, &global->base_addr, 0);
