@@ -49,18 +49,30 @@
 #define IMSIC_ENABLE_EITHRESHOLD	0
 
 #define imsic_csr_write(__c, __v)	\
-do { \
-	csr_write(CSR_SISELECT, __c); \
-	csr_write(CSR_SIREG, __v); \
+do {					\
+	csr_write(CSR_SISELECT, __c);	\
+	csr_write(CSR_SIREG, __v);	\
 } while (0)
 
-#define imsic_csr_read(__c)	\
-({ \
-	unsigned long __v; \
-	csr_write(CSR_SISELECT, __c); \
-	__v = csr_read(CSR_SIREG); \
-	__v; \
+#define imsic_csr_read(__c)		\
+({					\
+	unsigned long __v;		\
+	csr_write(CSR_SISELECT, __c);	\
+	__v = csr_read(CSR_SIREG);	\
+	__v;				\
 })
+
+#define imsic_csr_set(__c, __v)		\
+do {					\
+	csr_write(CSR_SISELECT, __c);	\
+	csr_set(CSR_SIREG, __v);	\
+} while (0)
+
+#define imsic_csr_clear(__c, __v)	\
+do {					\
+	csr_write(CSR_SISELECT, __c);	\
+	csr_clear(CSR_SIREG, __v);	\
+} while (0)
 
 struct imsic_mmio {
 	physical_addr_t pa;
@@ -225,6 +237,45 @@ static inline void __imsic_id_disable(unsigned int id)
 {
 	csr_write(CSR_SCLREIENUM, id);
 }
+
+static void __imsic_eix_update(unsigned long base_id,
+			       unsigned long num_id, bool pend, bool val)
+{
+	irq_flags_t flags;
+	unsigned long i, isel, ireg;
+	unsigned long id = base_id, last_id = base_id + num_id;
+
+	while (id < last_id) {
+		isel = id / BITS_PER_LONG;
+		isel *= BITS_PER_LONG / IMSIC_EIPx_BITS;
+		isel += (pend) ? IMSIC_EIP0 : IMSIC_EIE0;
+
+		ireg = 0;
+		for (i = id & (__riscv_xlen - 1);
+		     (id < last_id) && (i < __riscv_xlen); i++) {
+			ireg |= BIT(i);
+			id++;
+		}
+
+		/*
+		 * The IMSIC EIEx and EIPx registers are indirectly
+		 * accessed via using ISELECT and IREG CSRs so we
+		 * save/restore local IRQ to ensure that we don't
+		 * get preempted while accessing IMSIC registers.
+		 */
+		arch_cpu_irq_save(flags);
+		if (val)
+			imsic_csr_set(isel, ireg);
+		else
+			imsic_csr_clear(isel, ireg);
+		arch_cpu_irq_restore(flags);
+	}
+}
+
+#define __imsic_id_enable(__id)		\
+	__imsic_eix_update((__id), 1, false, true)
+#define __imsic_id_disable(__id)	\
+	__imsic_eix_update((__id), 1, false, false)
 
 #ifdef CONFIG_SMP
 static void __imsic_id_smp_sync(struct imsic_priv *priv)
