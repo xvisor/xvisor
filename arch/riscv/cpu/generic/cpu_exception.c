@@ -180,6 +180,8 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 
 	if (rc) {
 		vmm_manager_vcpu_halt(vcpu);
+	} else {
+		riscv_stats_priv(vcpu)->trap[cause]++;
 	}
 
 done:

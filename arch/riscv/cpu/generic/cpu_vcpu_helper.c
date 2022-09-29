@@ -312,6 +312,9 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* TODO: Update HSTATUS.VSBE for big-endian Guest */
 
+	/* Reset stats gathering */
+	memset(riscv_stats_priv(vcpu), 0, sizeof(struct riscv_priv_stats));
+
 	/* Update VCPU CSRs */
 	riscv_priv(vcpu)->hie = 0;
 	riscv_priv(vcpu)->hip = 0;
@@ -612,7 +615,83 @@ void arch_vcpu_regs_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	}
 }
 
+static const char trap_names[][32] = {
+	[CAUSE_MISALIGNED_FETCH]		= "Misaligned Fetch Fault",
+	[CAUSE_FETCH_ACCESS]			= "Fetch Access Fault",
+	[CAUSE_ILLEGAL_INSTRUCTION]		= "Illegal Instruction Fault",
+	[CAUSE_BREAKPOINT]			= "Breakpoint Fault",
+	[CAUSE_MISALIGNED_LOAD]			= "Misaligned Load Fault",
+	[CAUSE_LOAD_ACCESS]			= "Load Access Fault",
+	[CAUSE_MISALIGNED_STORE]		= "Misaligned Store Fault",
+	[CAUSE_STORE_ACCESS]			= "Store Access Fault",
+	[CAUSE_USER_ECALL]			= "User Ecall",
+	[CAUSE_SUPERVISOR_ECALL]		= "Supervisor Ecall",
+	[CAUSE_VIRTUAL_SUPERVISOR_ECALL]	= "Virtual Supervisor Ecall",
+	[CAUSE_MACHINE_ECALL]			= "Machine Ecall",
+	[CAUSE_FETCH_PAGE_FAULT]		= "Fetch Page Fault",
+	[CAUSE_LOAD_PAGE_FAULT]			= "Load Page Fault",
+	[CAUSE_STORE_PAGE_FAULT]		= "Store Page Fault",
+	[CAUSE_FETCH_GUEST_PAGE_FAULT]		= "Fetch Guest Page Fault",
+	[CAUSE_LOAD_GUEST_PAGE_FAULT]		= "Load Guest Page Fault",
+	[CAUSE_VIRTUAL_INST_FAULT]		= "Virtual Instruction Fault",
+	[CAUSE_STORE_GUEST_PAGE_FAULT]		= "Store Guest Page Fault",
+};
+
 void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	/* For now no arch specific stats */
+	int i;
+	bool have_traps = FALSE;
+
+	for (i = 0; i < RISCV_PRIV_MAX_TRAP_CAUSE; i++) {
+		if (!riscv_stats_priv(vcpu)->trap[i]) {
+			continue;
+		}
+		vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n", trap_names[i],
+			    riscv_stats_priv(vcpu)->trap[i]);
+		have_traps = TRUE;
+	}
+
+	if (have_traps) {
+		vmm_cprintf(cdev, "\n");
+	}
+
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Enter",
+		    riscv_stats_priv(vcpu)->nested_enter);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Exit",
+		    riscv_stats_priv(vcpu)->nested_exit);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Virtual Interrupt",
+		    riscv_stats_priv(vcpu)->nested_vsirq);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested S-mode CSR Access",
+		    riscv_stats_priv(vcpu)->nested_smode_csr_rmw);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested HS-mode CSR Access",
+		    riscv_stats_priv(vcpu)->nested_hext_csr_rmw);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Load Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_load_guest_page_fault);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Store Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_store_guest_page_fault);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested Fetch Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_fetch_guest_page_fault);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested HFENCE.VVMA Instruction",
+		    riscv_stats_priv(vcpu)->nested_hfence_vvma);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested HFENCE.GVMA Instruction",
+		    riscv_stats_priv(vcpu)->nested_hfence_gvma);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested HLV Instruction",
+		    riscv_stats_priv(vcpu)->nested_hlv);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested HSV Instruction",
+		    riscv_stats_priv(vcpu)->nested_hsv);
+	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+		    "Nested SBI Ecall",
+		    riscv_stats_priv(vcpu)->nested_sbi);
 }

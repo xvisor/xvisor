@@ -927,6 +927,8 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	unsigned long *csr, zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
+	riscv_stats_priv(vcpu)->nested_smode_csr_rmw++;
+
 	/*
 	 * These CSRs should never trap for virtual-HS/U modes because
 	 * we only emulate these CSRs for virtual-VS/VU modes.
@@ -1006,6 +1008,8 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	unsigned int csr_priv = (csr_num >> 8) & 0x3;
 	unsigned long *csr, mode, zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	riscv_stats_priv(vcpu)->nested_hext_csr_rmw++;
 
 	/*
 	 * Trap from virtual-VS and virtual-VU modes should be forwarded
@@ -1282,12 +1286,15 @@ int cpu_vcpu_nested_page_fault(struct vmm_vcpu *vcpu,
 	guest_gpa |= ((physical_addr_t)trap->stval & 0x3);
 	switch (trap->scause) {
 	case CAUSE_LOAD_GUEST_PAGE_FAULT:
+		riscv_stats_priv(vcpu)->nested_load_guest_page_fault++;
 		guest_access = NESTED_XLATE_LOAD;
 		break;
 	case CAUSE_STORE_GUEST_PAGE_FAULT:
+		riscv_stats_priv(vcpu)->nested_store_guest_page_fault++;
 		guest_access = NESTED_XLATE_STORE;
 		break;
 	case CAUSE_FETCH_GUEST_PAGE_FAULT:
+		riscv_stats_priv(vcpu)->nested_fetch_guest_page_fault++;
 		guest_access = NESTED_XLATE_FETCH;
 		break;
 	default:
@@ -1315,6 +1322,8 @@ void cpu_vcpu_nested_hfence_vvma(struct vmm_vcpu *vcpu,
 {
 	unsigned long hgatp;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	riscv_stats_priv(vcpu)->nested_hfence_vvma++;
 
 	/*
 	 * The HFENCE.VVMA instructions help virtual-HS mode flush
@@ -1352,6 +1361,8 @@ void cpu_vcpu_nested_hfence_gvma(struct vmm_vcpu *vcpu,
 	unsigned long current_vmid =
 			(npriv->hgatp & HGATP_VMID) >> HGATP_VMID_SHIFT;
 
+	riscv_stats_priv(vcpu)->nested_hfence_gvma++;
+
 	/*
 	 * The HFENCE.GVMA instructions help virtual-HS mode flush
 	 * G-stage TLB entries for virtual-VS/VU modes.
@@ -1385,6 +1396,8 @@ int cpu_vcpu_nested_hlv(struct vmm_vcpu *vcpu, unsigned long vaddr,
 	physical_addr_t hpa;
 	struct nested_xlate_context xc;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	riscv_stats_priv(vcpu)->nested_hlv++;
 
 	/* Don't handle misaligned HLV */
 	if (vaddr & (len - 1)) {
@@ -1426,6 +1439,8 @@ int cpu_vcpu_nested_hsv(struct vmm_vcpu *vcpu, unsigned long vaddr,
 	physical_addr_t hpa;
 	struct nested_xlate_context xc;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	riscv_stats_priv(vcpu)->nested_hsv++;
 
 	/* Don't handle misaligned HSV */
 	if (vaddr & (len - 1)) {
@@ -1497,6 +1512,7 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 	/* Update vsstatus CSR */
 	if (virt) {
 		/* Nested virtualization state changing from OFF to ON */
+		riscv_stats_priv(vcpu)->nested_enter++;
 
 		/*
 		 * Update vsstatus in following manner:
@@ -1515,6 +1531,7 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 		npriv->vsstatus |= tmp;
 	} else {
 		/* Nested virtualization state changing from ON to OFF */
+		riscv_stats_priv(vcpu)->nested_exit++;
 
 		/*
 		 * Update vsstatus in following manner:
@@ -1620,6 +1637,8 @@ void cpu_vcpu_nested_take_vsirq(struct vmm_vcpu *vcpu,
 		return;
 	}
 	vmm_timer_event_stop(npriv->timer_event);
+
+	riscv_stats_priv(vcpu)->nested_vsirq++;
 
 	/* Take virtual-VS mode interrupt */
 	trap.scause = SCAUSE_INTERRUPT_MASK | vsirq;

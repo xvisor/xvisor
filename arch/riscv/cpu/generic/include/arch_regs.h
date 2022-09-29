@@ -186,11 +186,31 @@ struct riscv_priv_nested {
 	unsigned long hvictl;
 };
 
+#define RISCV_PRIV_MAX_TRAP_CAUSE			0x18
+struct riscv_priv_stats {
+	u64 trap[RISCV_PRIV_MAX_TRAP_CAUSE];
+	u64 nested_enter;
+	u64 nested_exit;
+	u64 nested_vsirq;
+	u64 nested_smode_csr_rmw;
+	u64 nested_hext_csr_rmw;
+	u64 nested_load_guest_page_fault;
+	u64 nested_store_guest_page_fault;
+	u64 nested_fetch_guest_page_fault;
+	u64 nested_hfence_vvma;
+	u64 nested_hfence_gvma;
+	u64 nested_hlv;
+	u64 nested_hsv;
+	u64 nested_sbi;
+};
+
 struct riscv_priv {
 	/* Register width */
 	unsigned long xlen;
 	/* ISA feature bitmap */
 	unsigned long *isa;
+	/* Statistic data */
+	struct riscv_priv_stats stats;
 	/* CSR state */
 	unsigned long hie;
 	unsigned long hip;
@@ -222,6 +242,7 @@ struct riscv_guest_priv {
 
 #define riscv_regs(vcpu)		(&((vcpu)->regs))
 #define riscv_priv(vcpu)		((struct riscv_priv *)((vcpu)->arch_priv))
+#define riscv_stats_priv(vcpu)		(&riscv_priv(vcpu)->stats)
 #define riscv_nested_priv(vcpu)		(&riscv_priv(vcpu)->nested)
 #define riscv_nested_virt(vcpu)		(riscv_nested_priv(vcpu)->virt)
 #define riscv_fp_priv(vcpu)		(&riscv_priv(vcpu)->fp)
