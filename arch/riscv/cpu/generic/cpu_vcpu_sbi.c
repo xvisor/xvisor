@@ -193,7 +193,6 @@ int cpu_vcpu_sbi_xlate_error(int xvisor_error)
 
 	case VMM_ENOTAVAIL:
 	case VMM_ENOENT:
-	case VMM_ENOSYS:
 	case VMM_ENODEV:
 	case VMM_EOPNOTSUPP:
 	case VMM_ENOTSUPP:
@@ -211,6 +210,9 @@ int cpu_vcpu_sbi_xlate_error(int xvisor_error)
 	case VMM_EALREADY:
 	case VMM_EEXIST:
 		return SBI_ERR_ALREADY_AVAILABLE;
+
+	case VMM_ENOSYS:
+		return SBI_ERR_NO_SHMEM;
 
 	default:
 		break;
