@@ -64,6 +64,9 @@ int vmm_scheduler_set_hcpu(struct vmm_vcpu *vcpu, u32 hcpu);
 /** Enter IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context);
 
+/** Retreive register pointer saved for IRQ/Normal Context */
+arch_regs_t *vmm_scheduler_irq_regs(void);
+
 /** Exit IRQ Context (Must be called from somewhere) */
 void vmm_scheduler_irq_exit(arch_regs_t *regs);
 

@@ -832,6 +832,13 @@ void vmm_scheduler_irq_enter(arch_regs_t *regs, bool vcpu_context)
 	schedp->yield_on_irq_exit = FALSE;
 }
 
+arch_regs_t *vmm_scheduler_irq_regs(void)
+{
+	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
+
+	return schedp->irq_regs;
+}
+
 void vmm_scheduler_irq_exit(arch_regs_t *regs)
 {
 	struct vmm_scheduler_ctrl *schedp = &this_cpu(sched);
