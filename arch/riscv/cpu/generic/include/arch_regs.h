@@ -161,6 +161,8 @@ struct riscv_priv_nested {
 	void *swtlb;
 	/* Nested shadow page table */
 	struct mmu_pgtbl *pgtbl;
+	/* Nested shared memory */
+	void *shmem;
 	/* Nested CSR state */
 	unsigned long hstatus;
 	unsigned long hedeleg;

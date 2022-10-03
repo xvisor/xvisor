@@ -27,6 +27,7 @@
 #include <vmm_timer.h>
 #include <vmm_guest_aspace.h>
 #include <vmm_host_aspace.h>
+#include <vmm_host_io.h>
 #include <generic_mmu.h>
 #include <libs/list.h>
 
@@ -37,6 +38,7 @@
 #include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_trap.h>
 #include <riscv_csr.h>
+#include <riscv_sbi.h>
 
 /*
  * We share the same host VMID between virtual-HS/U modes and
@@ -827,6 +829,10 @@ void cpu_vcpu_nested_reset(struct vmm_vcpu *vcpu)
 
 	cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
 	npriv->virt = FALSE;
+	if (npriv->shmem) {
+		vmm_host_memunmap((virtual_addr_t)npriv->shmem);
+		npriv->shmem = NULL;
+	}
 #ifdef CONFIG_64BIT
 	npriv->hstatus = HSTATUS_VSXL_RV64 << HSTATUS_VSXL_SHIFT;
 #else
@@ -1041,9 +1047,13 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	return VMM_OK;
 }
 
-int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
-			unsigned int csr_num, unsigned long *val,
-			unsigned long new_val, unsigned long wr_mask)
+static int __cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu,
+					  arch_regs_t *regs,
+					  bool priv_check,
+					  unsigned int csr_num,
+					  unsigned long *val,
+					  unsigned long new_val,
+					  unsigned long wr_mask)
 {
 	u64 tmp64;
 	int csr_shift = 0;
@@ -1052,8 +1062,6 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	unsigned long *csr, tmpcsr = 0, csr_rdor = 0;
 	unsigned long mode, zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
-
-	riscv_stats_priv(vcpu)->nested_hext_csr_rmw++;
 
 	/*
 	 * Trap from virtual-VS and virtual-VU modes should be forwarded
@@ -1076,7 +1084,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	 * H-extension CSRs not allowed in virtual-U mode so forward trap
 	 * as illegal instruction trap to virtual-HS mode.
 	 */
-	if (!(regs->hstatus & HSTATUS_SPVP)) {
+	if (priv_check && !(regs->hstatus & HSTATUS_SPVP)) {
 		return TRAP_RETURN_ILLEGAL_INSN;
 	}
 
@@ -1375,11 +1383,237 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		}
 	}
 
+	cpu_vcpu_nested_update_shmem(vcpu, csr_num, *csr);
+
 	if (nuke_swtlb) {
 		cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
 	}
 
 	return VMM_OK;
+}
+
+int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+				 unsigned int csr_num, unsigned long *val,
+				 unsigned long new_val, unsigned long wr_mask)
+{
+	riscv_stats_priv(vcpu)->nested_hext_csr_rmw++;
+
+	return __cpu_vcpu_nested_hext_csr_rmw(vcpu, regs, TRUE, csr_num,
+					      val, new_val, wr_mask);
+}
+
+int cpu_vcpu_nested_setup_shmem(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+				physical_addr_t addr)
+{
+	int rc;
+	u32 reg_flags;
+	physical_size_t availsz;
+	physical_addr_t shmem_hpa;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* First unmap shared memory if already available */
+	if (npriv->shmem) {
+		vmm_host_memunmap((virtual_addr_t)npriv->shmem);
+		npriv->shmem = NULL;
+	}
+
+	/* If shared memory address is all ones then do nothing */
+	if (addr == -1UL) {
+		return VMM_OK;
+	}
+	if (addr & ((1UL << SBI_NACL_SHMEM_ADDR_SHIFT) - 1)) {
+		return VMM_EINVALID;
+	}
+
+	/* Get host physical address and attributes of shared memory */
+	rc = vmm_guest_physical_map(vcpu->guest,
+				    addr, SBI_NACL_SHMEM_SIZE,
+				    &shmem_hpa, &availsz, &reg_flags);
+	if (rc || (availsz < SBI_NACL_SHMEM_SIZE) ||
+	    !(reg_flags & VMM_REGION_ISRAM)) {
+		return VMM_ERANGE;
+	}
+
+	/* Map the shared memory */
+	npriv->shmem = (void *)vmm_host_memmap(shmem_hpa, SBI_NACL_SHMEM_SIZE,
+					       VMM_MEMORY_FLAGS_NORMAL);
+	if (!npriv->shmem) {
+		return VMM_EIO;
+	}
+
+	/* Finally synchronize CSRs in newly mapped shared memory */
+	cpu_vcpu_nested_sync_csr(vcpu, regs, -1UL);
+
+	return VMM_OK;
+}
+
+void cpu_vcpu_nested_update_shmem(struct vmm_vcpu *vcpu, unsigned int csr_num,
+				  unsigned long csr_val)
+{
+	u8 *dbmap;
+	unsigned int cidx;
+	unsigned long *csrs;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* If shared memory not available then do nothing */
+	if (!npriv->shmem) {
+		return;
+	}
+	csrs = npriv->shmem + SBI_NACL_SHMEM_CSR_OFFSET;
+	dbmap = npriv->shmem + SBI_NACL_SHMEM_DBITMAP_OFFSET;
+
+	/* Write csr_val in the shared memory */
+	cidx = SBI_NACL_SHMEM_CSR_INDEX(csr_num);
+	csrs[cidx] = vmm_cpu_to_le_long(csr_val);
+
+	/* Clear bit in dirty bitmap */
+	dbmap[cidx >> 3] &= ~(((u8)1) << (cidx & 0x7));
+}
+
+static const unsigned int nested_sync_csrs[] = {
+	CSR_HSTATUS,
+	CSR_HEDELEG,
+	CSR_HIDELEG,
+	CSR_VSTIMECMP,
+	CSR_VSTIMECMPH,
+	CSR_HVIP,
+	CSR_HIE,
+	CSR_HIP,
+	CSR_HGEIP,
+	CSR_HGEIE,
+	CSR_HCOUNTEREN,
+	CSR_HTIMEDELTA,
+#ifndef CONFIG_64BIT
+	CSR_HTIMEDELTAH,
+#endif
+	CSR_HTVAL,
+	CSR_HTINST,
+	CSR_HGATP,
+	CSR_HENVCFG,
+#ifndef CONFIG_64BIT
+	CSR_HENVCFGH,
+#endif
+	CSR_HVICTL,
+	CSR_VSSTATUS,
+	CSR_VSIP,
+	CSR_VSIE,
+	CSR_VSTVEC,
+	CSR_VSSCRATCH,
+	CSR_VSEPC,
+	CSR_VSCAUSE,
+	CSR_VSTVAL,
+	CSR_VSATP,
+};
+
+bool cpu_vcpu_nested_check_shmem(struct vmm_vcpu *vcpu, unsigned int csr_num)
+{
+	u8 *dbmap;
+	unsigned int cidx;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* If shared memory not available then not dirty */
+	if (!npriv->shmem) {
+		return FALSE;
+	}
+
+	dbmap = npriv->shmem + SBI_NACL_SHMEM_DBITMAP_OFFSET;
+	cidx = SBI_NACL_SHMEM_CSR_INDEX(csr_num);
+	return (dbmap[cidx >> 3] & (1U << (cidx & 0x7))) ? TRUE : FALSE;
+}
+
+int cpu_vcpu_nested_sync_csr(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+			     unsigned long csr_num)
+{
+	unsigned int i, cidx, cnum;
+	unsigned long *csrs, new_val, wr_mask;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* Ensure CSR number is a valid HS-mode CSR or -1UL */
+	if ((csr_num != -1UL) &&
+	    (((1UL << 12) <= csr_num) || ((csr_num & 0x300) != 0x200))) {
+		return VMM_EINVALID;
+	}
+
+	/* If shared memory not available then fail */
+	if (!npriv->shmem) {
+		return VMM_ENOSYS;
+	}
+	csrs = npriv->shmem + SBI_NACL_SHMEM_CSR_OFFSET;
+
+	/* Sync-up CSRs in shared memory */
+	for (i = 0; i < array_size(nested_sync_csrs); i++) {
+		cnum = nested_sync_csrs[i];
+		if (csr_num != -1UL && csr_num != cnum) {
+			continue;
+		}
+
+		/* Get dirty value of CSR from shared memory */
+		new_val = wr_mask = 0;
+		if (cpu_vcpu_nested_check_shmem(vcpu, cnum)) {
+			wr_mask = -1UL;
+			cidx = SBI_NACL_SHMEM_CSR_INDEX(cnum);
+			new_val = vmm_le_long_to_cpu(csrs[cidx]);
+		}
+
+		/* Update the CSR and shared memory */
+		__cpu_vcpu_nested_hext_csr_rmw(vcpu, regs, FALSE, cnum,
+					       NULL, new_val, wr_mask);
+	}
+
+	return VMM_OK;
+}
+
+void cpu_vcpu_nested_prep_sret(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+{
+	int i;
+	unsigned long *src_x, *dst_x;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* If shared memory not available then do nothing */
+	if (!npriv->shmem) {
+		return;
+	}
+
+	/* Synchronize all CSRs from shared memory */
+	cpu_vcpu_nested_sync_csr(vcpu, regs, -1UL);
+
+	/* Restore GPRs from shared memory scratch space */
+	for (i = 1; i <= SBI_NACL_SHMEM_SRET_X_LAST; i++) {
+		dst_x = (void *)regs + SBI_NACL_SHMEM_SRET_X(i);
+		src_x = npriv->shmem + SBI_NACL_SHMEM_SRET_OFFSET +
+			SBI_NACL_SHMEM_SRET_X(i);
+		*dst_x = vmm_le_long_to_cpu(*src_x);
+	}
+
+	/*
+	 * We may transition virtualization state from OFF to ON
+	 * so execute nested autoswap CSR feature.
+	 */
+	cpu_vcpu_nested_autoswap(vcpu, regs);
+}
+
+void cpu_vcpu_nested_autoswap(struct vmm_vcpu *vcpu, arch_regs_t *regs)
+{
+	unsigned long tmp, *autoswap;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+
+	/* If shared memory not available then do nothing */
+	if (!npriv->shmem) {
+		return;
+	}
+
+	/* Swap CSRs based on flags */
+	autoswap = npriv->shmem + SBI_NACL_SHMEM_AUTOSWAP_OFFSET;
+	if (vmm_le_long_to_cpu(*autoswap) &
+	    SBI_NACL_SHMEM_AUTOSWAP_FLAG_HSTATUS) {
+		autoswap = npriv->shmem + SBI_NACL_SHMEM_AUTOSWAP_OFFSET +
+			   SBI_NACL_SHMEM_AUTOSWAP_HSTATUS;
+		__cpu_vcpu_nested_hext_csr_rmw(vcpu, regs,
+				FALSE, CSR_HSTATUS,
+				&tmp, vmm_le_long_to_cpu(*autoswap),
+				-1UL);
+		*autoswap = vmm_cpu_to_le_long(tmp);
+	}
 }
 
 int cpu_vcpu_nested_page_fault(struct vmm_vcpu *vcpu,
@@ -1609,6 +1843,7 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 			      bool spvp, bool gva)
 {
 	unsigned long tmp;
+	bool virt_on2off = FALSE;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
 	/* If H-extension is not available for VCPU then do nothing */
@@ -1683,6 +1918,9 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 		npriv->vsstatus &= ~SSTATUS_FS;
 		npriv->vsstatus |= tmp;
 		npriv->vsstatus = csr_swap(CSR_VSSTATUS, npriv->vsstatus);
+
+		/* Mark that we are transitioning from virt ON to OFF */
+		virt_on2off = TRUE;
 	}
 
 skip_csr_update:
@@ -1725,6 +1963,18 @@ skip_csr_update:
 
 	/* Update virt flag */
 	npriv->virt = virt;
+
+	/* Extra work post virt ON to OFF transition */
+	if (virt_on2off) {
+		/*
+		 * We transitioned virtualization state from ON to OFF
+		 * so execute nested autoswap CSR feature.
+		 */
+		cpu_vcpu_nested_autoswap(vcpu, regs);
+
+		/* Synchronize CSRs in shared memory */
+		cpu_vcpu_nested_sync_csr(vcpu, regs, -1UL);
+	}
 }
 
 void cpu_vcpu_nested_take_vsirq(struct vmm_vcpu *vcpu,

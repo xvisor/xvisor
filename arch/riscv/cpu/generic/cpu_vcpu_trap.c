@@ -96,13 +96,13 @@ void cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		break;
 	}
 
-	/* Turn-off nested virtualization for virtual-HS mode */
-	cpu_vcpu_nested_set_virt(vcpu, regs, NESTED_SET_VIRT_EVENT_TRAP,
-				 FALSE, prev_spp, gva);
-
 	/* Update Guest HTVAL and HTINST */
 	npriv->htval = trap->htval;
 	npriv->htinst = trap->htinst;
+
+	/* Turn-off nested virtualization for virtual-HS mode */
+	cpu_vcpu_nested_set_virt(vcpu, regs, NESTED_SET_VIRT_EVENT_TRAP,
+				 FALSE, prev_spp, gva);
 
 	/* Update Guest supervisor state */
 	cpu_vcpu_redirect_smode_trap(regs, trap, prev_spp);

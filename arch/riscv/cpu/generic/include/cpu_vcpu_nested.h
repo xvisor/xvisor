@@ -26,6 +26,7 @@
 
 #include <vmm_types.h>
 
+struct vmm_chardev;
 struct vmm_vcpu;
 struct cpu_vcpu_trap;
 struct arch_regs;
@@ -57,6 +58,27 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			unsigned int csr_num, unsigned long *val,
 			unsigned long new_val, unsigned long wr_mask);
+
+/** Set nested CSR shared memory address */
+int cpu_vcpu_nested_setup_shmem(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+				physical_addr_t addr);
+
+/** Check dirty state of nested CSR value in shared memory */
+bool cpu_vcpu_nested_check_shmem(struct vmm_vcpu *vcpu, unsigned int csr_num);
+
+/** Update nested CSR value in shared memory and clear dirty state */
+void cpu_vcpu_nested_update_shmem(struct vmm_vcpu *vcpu, unsigned int csr_num,
+				  unsigned long csr_val);
+
+/** Synchronize nested CSR(s) in shared memory */
+int cpu_vcpu_nested_sync_csr(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+			     unsigned long csr_num);
+
+/** Prepare synchronized SRET using shared memory */
+void cpu_vcpu_nested_prep_sret(struct vmm_vcpu *vcpu, arch_regs_t *regs);
+
+/** Autoswap CSRs using shared memory */
+void cpu_vcpu_nested_autoswap(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
 /** Function to handle nested page fault */
 int cpu_vcpu_nested_page_fault(struct vmm_vcpu *vcpu,
