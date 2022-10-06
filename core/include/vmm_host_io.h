@@ -56,6 +56,14 @@
 
 #define vmm_be64_to_cpu(data)	arch_be64_to_cpu(data)
 
+#if ARCH_BITS_PER_LONG == 32
+#define vmm_cpu_to_le_long(__val)	vmm_cpu_to_le32(__val)
+#define vmm_le_long_to_cpu(__val)	vmm_le32_to_cpu(__val)
+#else
+#define vmm_cpu_to_le_long(__val)	vmm_cpu_to_le64(__val)
+#define vmm_le_long_to_cpu(__val)	vmm_le64_to_cpu(__val)
+#endif
+
 /** I/O space access functions (Assumed to be Little Endian) */
 static inline u8 vmm_inb(unsigned long port)
 {
