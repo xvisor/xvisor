@@ -1044,10 +1044,18 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 				 HSTATUS_GVA;
 		if (wr_mask & HSTATUS_SPV) {
 			/*
-			 * Enable (or Disable) host SRET trapping for
-			 * virtual-HS mode. This will be auto-disabled
-			 * by cpu_vcpu_nested_set_virt() upon SRET trap
-			 * from virtual-HS mode.
+			 * If hstatus.SPV == 1 then enable host SRET
+			 * trapping for the virtual-HS mode which will
+			 * allow host to do nested world-switch upon
+			 * next SRET instruction executed by the
+			 * virtual-HS-mode.
+			 *
+			 * If hstatus.SPV == 0 then disable host SRET
+			 * trapping for the virtual-HS mode which will
+			 * ensure that host does not do any nested
+			 * world-switch for SRET instruction executed
+			 * virtual-HS mode for general interrupt and
+			 * trap handling.
 			 */
 			regs->hstatus &= ~HSTATUS_VTSR;
 			regs->hstatus |= (new_val & HSTATUS_SPV) ?
@@ -1570,11 +1578,19 @@ skip_csr_update:
 		}
 	}
 
-	/* Update host SRET and VM trapping */
+	/* Update host SRET trapping */
 	regs->hstatus &= ~HSTATUS_VTSR;
-	if (virt && (npriv->hstatus & HSTATUS_VTSR)) {
-		regs->hstatus |= HSTATUS_VTSR;
+	if (virt) {
+		if (npriv->hstatus & HSTATUS_VTSR) {
+			regs->hstatus |= HSTATUS_VTSR;
+		}
+	} else {
+		if (npriv->hstatus & HSTATUS_SPV) {
+			regs->hstatus |= HSTATUS_VTSR;
+		}
 	}
+
+	/* Update host VM trapping */
 	regs->hstatus &= ~HSTATUS_VTVM;
 	if (virt && (npriv->hstatus & HSTATUS_VTVM)) {
 		regs->hstatus |= HSTATUS_VTVM;
