@@ -59,6 +59,8 @@ void cpu_vcpu_redirect_smode_trap(arch_regs_t *regs,
 void cpu_vcpu_redirect_trap(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			    struct cpu_vcpu_trap *trap);
 
+int cpu_vcpu_sret_insn(struct vmm_vcpu *vcpu, arch_regs_t *regs, ulong insn);
+
 int cpu_vcpu_page_fault(struct vmm_vcpu *vcpu,
 			arch_regs_t *regs,
 			struct cpu_vcpu_trap *trap);

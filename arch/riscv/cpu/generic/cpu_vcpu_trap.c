@@ -732,7 +732,7 @@ static int csr_insn(struct vmm_vcpu *vcpu, arch_regs_t *regs, ulong insn)
 	return VMM_OK;
 }
 
-static int sret_insn(struct vmm_vcpu *vcpu, arch_regs_t *regs, ulong insn)
+int cpu_vcpu_sret_insn(struct vmm_vcpu *vcpu, arch_regs_t *regs, ulong insn)
 {
 	bool next_virt;
 	unsigned long vsstatus, next_sepc, next_spp;
@@ -1102,7 +1102,7 @@ static const struct system_opcode_func system_opcode_funcs[] = {
 	{
 		.mask  = INSN_MASK_SRET,
 		.match = INSN_MATCH_SRET,
-		.func  = sret_insn,
+		.func  = cpu_vcpu_sret_insn,
 	},
 	{
 		.mask  = INSN_MASK_WFI,
