@@ -35,15 +35,14 @@
 
 #define SBI_EXT_XVISOR_ISA_EXT		0x0
 
-static int vcpu_sbi_xvisor_ecall(struct vmm_vcpu *vcpu,
-				 unsigned long ext_id, unsigned long func_id,
-				 unsigned long *args, unsigned long *out_val,
-				 struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_xvisor_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+				 unsigned long func_id, unsigned long *args,
+				 struct cpu_vcpu_sbi_return *out)
 {
 	switch (func_id) {
 	case SBI_EXT_XVISOR_ISA_EXT:
 		if (args[0] < RISCV_ISA_EXT_MAX) {
-			*out_val = __riscv_isa_extension_available(
+			out->value = __riscv_isa_extension_available(
 						riscv_priv(vcpu)->isa,
 						args[0]);
 		} else {

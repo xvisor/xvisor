@@ -29,10 +29,9 @@
 #include <cpu_vcpu_sbi.h>
 #include <riscv_sbi.h>
 
-static int vcpu_sbi_hsm_ecall(struct vmm_vcpu *vcpu,
-			      unsigned long ext_id, unsigned long func_id,
-			      unsigned long *args, unsigned long *out_val,
-			      struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_hsm_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			      unsigned long func_id, unsigned long *args,
+			      struct cpu_vcpu_sbi_return *out)
 {
 	int rc;
 	u32 reg_flags = 0x0;
@@ -68,9 +67,9 @@ static int vcpu_sbi_hsm_ecall(struct vmm_vcpu *vcpu,
 		if (!rvcpu)
 			return SBI_ERR_INVALID_PARAM;
 		if (vmm_manager_vcpu_get_state(rvcpu) != VMM_VCPU_STATE_RESET)
-			*out_val = SBI_HSM_STATE_STARTED;
+			out->value = SBI_HSM_STATE_STARTED;
 		else
-			*out_val = SBI_HSM_STATE_STOPPED;
+			out->value = SBI_HSM_STATE_STOPPED;
 		break;
 	case SBI_EXT_HSM_HART_SUSPEND:
 		if (args[0] == SBI_HSM_SUSPEND_RET_DEFAULT) {

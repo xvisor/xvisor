@@ -33,10 +33,9 @@
 #include <generic_mmu.h>
 #include <riscv_sbi.h>
 
-static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu,
-			       unsigned long ext_id, unsigned long func_id,
-			       unsigned long *args, unsigned long *out_val,
-			       struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			       unsigned long func_id, unsigned long *args,
+			       struct cpu_vcpu_sbi_return *out)
 {
 	if (func_id != SBI_EXT_TIME_SET_TIMER)
 		return SBI_ERR_NOT_SUPPORTED;
@@ -56,10 +55,9 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_time = {
 	.handle = vcpu_sbi_time_ecall,
 };
 
-static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu,
-				 unsigned long ext_id, unsigned long func_id,
-				 unsigned long *args, unsigned long *out_val,
-				 struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+				 unsigned long func_id, unsigned long *args,
+				 struct cpu_vcpu_sbi_return *out)
 {
 	u32 hcpu;
 	struct vmm_vcpu *rvcpu;
@@ -163,10 +161,9 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_rfence = {
 	.handle = vcpu_sbi_rfence_ecall,
 };
 
-static int vcpu_sbi_ipi_ecall(struct vmm_vcpu *vcpu,
-			      unsigned long ext_id, unsigned long func_id,
-			      unsigned long *args, unsigned long *out_val,
-			      struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_ipi_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			      unsigned long func_id, unsigned long *args,
+			      struct cpu_vcpu_sbi_return *out)
 {
 	struct vmm_vcpu *rvcpu;
 	struct vmm_guest *guest = vcpu->guest;
@@ -197,10 +194,9 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_ipi = {
 	.handle = vcpu_sbi_ipi_ecall,
 };
 
-static int vcpu_sbi_srst_ecall(struct vmm_vcpu *vcpu,
-			      unsigned long ext_id, unsigned long func_id,
-			      unsigned long *args, unsigned long *out_val,
-			      struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_srst_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			       unsigned long func_id, unsigned long *args,
+			       struct cpu_vcpu_sbi_return *out)
 {
 	int ret;
 	struct vmm_guest *guest = vcpu->guest;

@@ -35,10 +35,9 @@
 #include <cpu_tlb.h>
 #include <riscv_sbi.h>
 
-static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
-				 unsigned long ext_id, unsigned long func_id,
-				 unsigned long *args, unsigned long *out_val,
-				 struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+				 unsigned long func_id, unsigned long *args,
+				 struct cpu_vcpu_sbi_return *out)
 {
 	u8 send;
 	u32 hcpu;
@@ -70,10 +69,11 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
 		break;
 	case SBI_EXT_0_1_SEND_IPI:
 		if (args[0])
-			hmask = __cpu_vcpu_unpriv_read_ulong(args[0], out_trap);
+			hmask = __cpu_vcpu_unpriv_read_ulong(args[0],
+							     out->trap);
 		else
 			hmask = (1UL << guest->vcpu_count) - 1;
-		if (out_trap->scause) {
+		if (out->trap->scause) {
 			break;
 		}
 		for_each_set_bit(i, &hmask, BITS_PER_LONG) {
@@ -97,10 +97,11 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu,
 	case SBI_EXT_0_1_REMOTE_SFENCE_VMA:
 	case SBI_EXT_0_1_REMOTE_SFENCE_VMA_ASID:
 		if (args[0])
-			hmask = __cpu_vcpu_unpriv_read_ulong(args[0], out_trap);
+			hmask = __cpu_vcpu_unpriv_read_ulong(args[0],
+							     out->trap);
 		else
 			hmask = (1UL << guest->vcpu_count) - 1;
-		if (out_trap->scause) {
+		if (out->trap->scause) {
 			break;
 		}
 		vmm_cpumask_clear(&cm);

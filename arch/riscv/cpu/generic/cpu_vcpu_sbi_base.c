@@ -29,37 +29,36 @@
 #include <cpu_vcpu_sbi.h>
 #include <riscv_sbi.h>
 
-static int vcpu_sbi_base_ecall(struct vmm_vcpu *vcpu,
-			       unsigned long ext_id, unsigned long func_id,
-			       unsigned long *args, unsigned long *out_val,
-			       struct cpu_vcpu_trap *out_trap)
+static int vcpu_sbi_base_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			       unsigned long func_id, unsigned long *args,
+			       struct cpu_vcpu_sbi_return *out)
 {
 	int ret = 0;
 	struct sbiret hret;
 
 	switch (func_id) {
 	case SBI_EXT_BASE_GET_SPEC_VERSION:
-		*out_val = (CPU_VCPU_SBI_VERSION_MAJOR <<
-			    SBI_SPEC_VERSION_MAJOR_SHIFT) |
-			   CPU_VCPU_SBI_VERSION_MINOR;
+		out->value = (CPU_VCPU_SBI_VERSION_MAJOR <<
+			      SBI_SPEC_VERSION_MAJOR_SHIFT) |
+			     CPU_VCPU_SBI_VERSION_MINOR;
 		break;
 	case SBI_EXT_BASE_GET_IMP_ID:
-		*out_val = CPU_VCPU_SBI_IMPID;
+		out->value = CPU_VCPU_SBI_IMPID;
 		break;
 	case SBI_EXT_BASE_GET_IMP_VERSION:
-		*out_val = VMM_VERSION_MAJOR << 24 |
-			   VMM_VERSION_MINOR << 12 |
-			   VMM_VERSION_RELEASE;
+		out->value = VMM_VERSION_MAJOR << 24 |
+			     VMM_VERSION_MINOR << 12 |
+			     VMM_VERSION_RELEASE;
 		break;
 	case SBI_EXT_BASE_GET_MVENDORID:
 	case SBI_EXT_BASE_GET_MARCHID:
 	case SBI_EXT_BASE_GET_MIMPID:
 		hret = sbi_ecall(SBI_EXT_BASE, func_id, 0, 0, 0, 0, 0, 0);
 		ret = hret.error;
-		*out_val = hret.value;
+		out->value = hret.value;
 		break;
 	case SBI_EXT_BASE_PROBE_EXT:
-		*out_val = (cpu_vcpu_sbi_find_extension(args[0])) ? 1 : 0;
+		out->value = (cpu_vcpu_sbi_find_extension(args[0])) ? 1 : 0;
 		break;
 	default:
 		ret = SBI_ERR_NOT_SUPPORTED;

@@ -70,7 +70,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	unsigned long extension_id = regs->a7;
 	unsigned long func_id = regs->a6;
 	struct cpu_vcpu_trap trap = { 0 };
-	unsigned long out_val = 0;
+	struct cpu_vcpu_sbi_return out = { .value = 0, .trap = &trap };
 	bool is_0_1_spec = FALSE;
 	unsigned long args[6];
 
@@ -95,8 +95,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 
 	ext = cpu_vcpu_sbi_find_extension(extension_id);
 	if (ext && ext->handle) {
-		ret = ext->handle(vcpu, extension_id, func_id,
-				  args, &out_val, &trap);
+		ret = ext->handle(vcpu, extension_id, func_id, args, &out);
 		if (extension_id >= SBI_EXT_0_1_SET_TIMER &&
 		    extension_id <= SBI_EXT_0_1_SHUTDOWN)
 			is_0_1_spec = TRUE;
@@ -118,7 +117,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 		regs->sepc += 4;
 		regs->a0 = ret;
 		if (!is_0_1_spec)
-			regs->a1 = out_val;
+			regs->a1 = out.value;
 	}
 
 	return 0;

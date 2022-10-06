@@ -32,13 +32,17 @@ struct cpu_vcpu_trap;
 #define CPU_VCPU_SBI_VERSION_MINOR		3
 #define CPU_VCPU_SBI_IMPID			2
 
+struct cpu_vcpu_sbi_return {
+	unsigned long value;
+	struct cpu_vcpu_trap *trap;
+};
+
 struct cpu_vcpu_sbi_extension {
 	unsigned long extid_start;
 	unsigned long extid_end;
-	int (*handle)(struct vmm_vcpu *vcpu,
-		      unsigned long ext_id, unsigned long func_id,
-		      unsigned long *args, unsigned long *out_val,
-		      struct cpu_vcpu_trap *out_trap);
+	int (*handle)(struct vmm_vcpu *vcpu, unsigned long ext_id,
+		      unsigned long func_id, unsigned long *args,
+		      struct cpu_vcpu_sbi_return *out);
 };
 
 const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
