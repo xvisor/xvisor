@@ -35,6 +35,7 @@ struct cpu_vcpu_trap;
 struct cpu_vcpu_sbi_return {
 	unsigned long value;
 	struct cpu_vcpu_trap *trap;
+	bool regs_updated;
 };
 
 struct cpu_vcpu_sbi_extension {

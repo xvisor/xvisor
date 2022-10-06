@@ -70,7 +70,8 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	unsigned long extension_id = regs->a7;
 	unsigned long func_id = regs->a6;
 	struct cpu_vcpu_trap trap = { 0 };
-	struct cpu_vcpu_sbi_return out = { .value = 0, .trap = &trap };
+	struct cpu_vcpu_sbi_return out = { .value = 0, .trap = &trap,
+					   .regs_updated = FALSE };
 	bool is_0_1_spec = FALSE;
 	unsigned long args[6];
 
@@ -106,7 +107,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	if (trap.scause) {
 		trap.sepc = regs->sepc;
 		cpu_vcpu_redirect_trap(vcpu, regs, &trap);
-	} else {
+	} else if (!out.regs_updated) {
 		/* This function should return non-zero value only in case of
 		 * fatal error. However, there is no good way to distinguish
 		 * between a fatal and non-fatal errors yet. That's why we treat
