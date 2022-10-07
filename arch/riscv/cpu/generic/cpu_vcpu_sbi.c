@@ -123,3 +123,37 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 
 	return 0;
 }
+
+int cpu_vcpu_sbi_xlate_error(int xvisor_error)
+{
+	switch (xvisor_error) {
+	case VMM_OK:
+		return SBI_SUCCESS;
+
+	case VMM_ENOTAVAIL:
+	case VMM_ENOENT:
+	case VMM_ENOSYS:
+	case VMM_ENODEV:
+	case VMM_EOPNOTSUPP:
+	case VMM_ENOTSUPP:
+		return SBI_ERR_NOT_SUPPORTED;
+
+	case VMM_EINVALID:
+		return SBI_ERR_INVALID_PARAM;
+
+	case VMM_EACCESS:
+		return SBI_ERR_DENIED;
+
+	case VMM_ERANGE:
+		return SBI_ERR_INVALID_ADDRESS;
+
+	case VMM_EALREADY:
+	case VMM_EEXIST:
+		return SBI_ERR_ALREADY_AVAILABLE;
+
+	default:
+		break;
+	}
+
+	return SBI_ERR_FAILED;
+}

@@ -52,4 +52,6 @@ const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs);
 
+int cpu_vcpu_sbi_xlate_error(int xvisor_error);
+
 #endif
