@@ -103,8 +103,10 @@ static int __init riscv_timer_clocksource_init(struct vmm_devtree_node *node)
 		return rc;
 	}
 
-	vmm_init_printf("riscv-timer: registered clocksource @ %ldHz\n",
-			riscv_timer_hz);
+	vmm_init_printf("riscv-timer: registered clocksource @ %ldHz%s\n",
+			riscv_timer_hz,
+			(riscv_isa_extension_available(NULL, SSTC)) ?
+			" using Sstc" : "");
 	return VMM_OK;
 }
 VMM_CLOCKSOURCE_INIT_DECLARE(riscvclksrc, "riscv",
@@ -121,6 +123,22 @@ static int riscv_timer_set_next_event(unsigned long evt,
 {
 	csr_set(sie, SIE_STIE);
 	sbi_set_timer(get_cycles64() + evt);
+
+	return VMM_OK;
+}
+
+static int riscv_timer_sstc_set_next_event(unsigned long evt,
+					   struct vmm_clockchip *unused)
+{
+	u64 next = get_cycles64() + evt;
+
+	csr_set(sie, SIE_STIE);
+#ifdef CONFIG_32BIT
+	csr_write(CSR_STIMECMP, (u32)next);
+	csr_write(CSR_STIMECMPH, (u32)(next >> 32));
+#else
+	csr_write(CSR_STIMECMP, next);
+#endif
 
 	return VMM_OK;
 }
@@ -161,7 +179,11 @@ static int riscv_timer_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	cc->min_delta_ns = vmm_clockchip_delta2ns(0xF, cc);
 	cc->max_delta_ns = vmm_clockchip_delta2ns(0x7FFFFFFF, cc);
 	cc->set_mode = &riscv_timer_set_mode;
-	cc->set_next_event = &riscv_timer_set_next_event;
+	if (riscv_isa_extension_available(NULL, SSTC)) {
+		cc->set_next_event = &riscv_timer_sstc_set_next_event;
+	} else {
+		cc->set_next_event = &riscv_timer_set_next_event;
+	}
 	cc->priv = NULL;
 
 	/* Register riscv timer clockchip */
@@ -171,7 +193,14 @@ static int riscv_timer_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	}
 
 	/* Ensure that timer interrupt bit zero in the sip CSR */
-	sbi_set_timer(U64_MAX);
+	if (riscv_isa_extension_available(NULL, SSTC)) {
+		csr_write(CSR_STIMECMP, -1UL);
+#ifdef CONFIG_32BIT
+		csr_write(CSR_STIMECMPH, -1UL);
+#endif
+	} else {
+		sbi_set_timer(U64_MAX);
+	}
 
 	/* Register irq handler for riscv timer */
 	rc = vmm_host_irq_register(IRQ_S_TIMER, "riscv-timer",
