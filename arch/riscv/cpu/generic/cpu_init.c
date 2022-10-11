@@ -115,6 +115,7 @@ int riscv_isa_populate_string(unsigned long xlen,
 
 	SET_ISA_EXT_MAP("smaia", RISCV_ISA_EXT_SMAIA);
 	SET_ISA_EXT_MAP("ssaia", RISCV_ISA_EXT_SSAIA);
+	SET_ISA_EXT_MAP("sstc", RISCV_ISA_EXT_SSTC);
 #undef SET_ISA_EXT_MAP
 
 	return VMM_OK;
@@ -198,6 +199,7 @@ int riscv_isa_parse_string(const char *isa,
 
 		SET_ISA_EXT_MAP("smaia", RISCV_ISA_EXT_SMAIA);
 		SET_ISA_EXT_MAP("ssaia", RISCV_ISA_EXT_SSAIA);
+		SET_ISA_EXT_MAP("sstc", RISCV_ISA_EXT_SSTC);
 #undef SET_ISA_EXT_MAP
 	}
 
