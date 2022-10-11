@@ -494,6 +494,10 @@
 /* Counter Overflow CSR */
 #define CSR_SCOUNTOVF			0xda0
 
+/* Supervisor Time Compare (Sstc) */
+#define CSR_STIMECMP			0x14D
+#define CSR_STIMECMPH			0x15D
+
 /* ===== Hypervisor-level CSRs ===== */
 
 /* Hypervisor Trap Setup (H-extension) */
@@ -555,6 +559,10 @@
 #define CSR_HVIPRIO2H			0x657
 #define CSR_VSIEH			0x214
 #define CSR_VSIPH			0x254
+
+/* Virtual Supervisor Time Compare (Sstc) */
+#define CSR_VSTIMECMP			0x24D
+#define CSR_VSTIMECMPH			0x25D
 
 /* ===== Machine-level CSRs ===== */
 
