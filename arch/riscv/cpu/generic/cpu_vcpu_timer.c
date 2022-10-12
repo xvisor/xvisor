@@ -25,27 +25,32 @@
 #include <vmm_heap.h>
 #include <vmm_limits.h>
 #include <vmm_stdio.h>
+#include <vmm_timer.h>
 #include <vmm_vcpu_irq.h>
 #include <cpu_vcpu_timer.h>
 
 #include <riscv_encoding.h>
 
-static void riscv_timer_event_expired(struct vmm_timer_event *ev)
+struct cpu_vcpu_timer {
+	struct vmm_timer_event time_ev;
+};
+
+static void cpu_vcpu_timer_expired(struct vmm_timer_event *ev)
 {
 	struct vmm_vcpu *vcpu = ev->priv;
-	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);
+	struct cpu_vcpu_timer *t = riscv_timer_priv(vcpu);
 
-	BUG_ON(!tevent);
+	BUG_ON(!t);
 	vmm_vcpu_irq_assert(vcpu, IRQ_VS_TIMER, 0x0);
 }
 
-void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
+void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 {
 	u64 delta_ns;
-	struct riscv_timer_event *tevent = riscv_timer_priv(vcpu);
+	struct cpu_vcpu_timer *t = riscv_timer_priv(vcpu);
 
 	if (next_cycle == U64_MAX) {
-		vmm_timer_event_stop(&tevent->time_ev);
+		vmm_timer_event_stop(&t->time_ev);
 		vmm_vcpu_irq_clear(vcpu, IRQ_VS_TIMER);
 		return;
 	}
@@ -59,45 +64,41 @@ void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 	/* Start the timer event */
 	next_cycle -= riscv_guest_priv(vcpu->guest)->time_delta;
 	delta_ns = vmm_timer_delta_cycles_to_ns(next_cycle);
-	vmm_timer_event_start(&tevent->time_ev, delta_ns);
+	vmm_timer_event_start(&t->time_ev, delta_ns);
 }
 
-int riscv_timer_event_init(struct vmm_vcpu *vcpu, void **timer_event)
+int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer)
 {
-	struct riscv_timer_event *tevent;
+	struct cpu_vcpu_timer *t;
 
-	if (!vcpu || !timer_event)
+	if (!vcpu || !timer)
 		return VMM_EINVALID;
 
-	if (!(*timer_event)) {
-		*timer_event = vmm_zalloc(sizeof(struct riscv_timer_event));
-		if (!(*timer_event))
+	if (!(*timer)) {
+		*timer = vmm_zalloc(sizeof(struct cpu_vcpu_timer));
+		if (!(*timer))
 			return VMM_ENOMEM;
-		tevent = *timer_event;
-		INIT_TIMER_EVENT(&tevent->time_ev, riscv_timer_event_expired,
-				 vcpu);
+		t = *timer;
+		INIT_TIMER_EVENT(&t->time_ev, cpu_vcpu_timer_expired, vcpu);
 	} else {
-		tevent = *timer_event;
+		t = *timer;
 	}
 
-	vmm_timer_event_stop(&tevent->time_ev);
+	vmm_timer_event_stop(&t->time_ev);
 
 	return VMM_OK;
 }
 
-int riscv_timer_event_deinit(struct vmm_vcpu *vcpu, void **timer_event)
+int cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu, void **timer)
 {
-	struct riscv_timer_event *tevent;
+	struct cpu_vcpu_timer *t;
 
-	if (!vcpu || !timer_event)
+	if (!vcpu || !timer || !(*timer))
 		return VMM_EINVALID;
+	t = *timer;
 
-	if (!(*timer_event))
-		return VMM_EINVALID;
-	tevent = *timer_event;
-
-	vmm_timer_event_stop(&tevent->time_ev);
-	vmm_free(tevent);
+	vmm_timer_event_stop(&t->time_ev);
+	vmm_free(t);
 
 	return VMM_OK;
 }

@@ -25,15 +25,11 @@
 #define _CPU_VCPU_TIMER_H__
 
 #include <vmm_types.h>
-#include <vmm_manager.h>
-#include <vmm_timer.h>
 
-struct riscv_timer_event {
-	struct vmm_timer_event time_ev;
-};
+struct vmm_vcpu;
 
-void riscv_timer_event_start(struct vmm_vcpu *vcpu, u64 next_cycle);
-int riscv_timer_event_init(struct vmm_vcpu *vcpu, void **timer_event);
-int riscv_timer_event_deinit(struct vmm_vcpu *vcpu, void **timer_event);
+void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle);
+int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer);
+int cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu, void **timer);
 
 #endif

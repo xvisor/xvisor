@@ -51,10 +51,10 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 	switch (ext_id) {
 	case SBI_EXT_0_1_SET_TIMER:
 		if (riscv_priv(vcpu)->xlen == 32)
-			riscv_timer_event_start(vcpu,
+			cpu_vcpu_timer_start(vcpu,
 				((u64)args[1] << 32) | (u64)args[0]);
 		else
-			riscv_timer_event_start(vcpu, (u64)args[0]);
+			cpu_vcpu_timer_start(vcpu, (u64)args[0]);
 		break;
 	case SBI_EXT_0_1_CONSOLE_PUTCHAR:
 		send = (u8)args[0];

@@ -336,7 +336,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* Initialize FP state */
 	cpu_vcpu_fp_init(vcpu);
 
-	riscv_timer_event_init(vcpu, &riscv_timer_priv(vcpu));
+	/* Initialize timer */
+	cpu_vcpu_timer_init(vcpu, &riscv_timer_priv(vcpu));
 
 	return VMM_OK;
 
@@ -373,7 +374,7 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	}
 
 	/* Cleanup timer */
-	rc = riscv_timer_event_deinit(vcpu, &riscv_timer_priv(vcpu));
+	rc = cpu_vcpu_timer_deinit(vcpu, &riscv_timer_priv(vcpu));
 	if (rc)
 		return rc;
 

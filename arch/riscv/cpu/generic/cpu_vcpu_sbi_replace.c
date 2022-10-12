@@ -41,10 +41,10 @@ static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 		return SBI_ERR_NOT_SUPPORTED;
 
 	if (riscv_priv(vcpu)->xlen == 32)
-		riscv_timer_event_start(vcpu,
+		cpu_vcpu_timer_start(vcpu,
 				((u64)args[1] << 32) | (u64)args[0]);
 	else
-		riscv_timer_event_start(vcpu, (u64)args[0]);
+		cpu_vcpu_timer_start(vcpu, (u64)args[0]);
 
 	return 0;
 }
