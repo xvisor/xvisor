@@ -32,6 +32,7 @@
 #include <riscv_encoding.h>
 
 struct cpu_vcpu_timer {
+	u64 next_cycle;
 	struct vmm_timer_event time_ev;
 };
 
@@ -49,6 +50,10 @@ void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 	u64 delta_ns;
 	struct cpu_vcpu_timer *t = riscv_timer_priv(vcpu);
 
+	/* Save the next timer tick value */
+	t->next_cycle = next_cycle;
+
+	/* Stop the timer when next timer tick equals U64_MAX */
 	if (next_cycle == U64_MAX) {
 		vmm_timer_event_stop(&t->time_ev);
 		vmm_vcpu_irq_clear(vcpu, IRQ_VS_TIMER);
@@ -85,6 +90,15 @@ void cpu_vcpu_timer_delta_update(struct vmm_vcpu *vcpu, bool nested_virt)
 	csr_write(CSR_HTIMEDELTA, (u32)tdelta);
 	csr_write(CSR_HTIMEDELTAH, (u32)(tdelta >> 32));
 #endif
+}
+
+void cpu_vcpu_timer_save(struct vmm_vcpu *vcpu)
+{
+}
+
+void cpu_vcpu_timer_restore(struct vmm_vcpu *vcpu)
+{
+	cpu_vcpu_timer_delta_update(vcpu, riscv_nested_virt(vcpu));
 }
 
 int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer)

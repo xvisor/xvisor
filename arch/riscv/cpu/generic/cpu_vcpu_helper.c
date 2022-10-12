@@ -414,6 +414,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv->vsatp = csr_read(CSR_VSATP);
 			priv->scounteren = csr_read(CSR_SCOUNTEREN);
 			cpu_vcpu_fp_save(tvcpu, regs);
+			cpu_vcpu_timer_save(tvcpu);
 		}
 		clrx();
 	}
@@ -431,8 +432,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSTVAL, priv->vstval);
 		csr_write(CSR_VSATP, priv->vsatp);
 		csr_write(CSR_SCOUNTEREN, priv->scounteren);
+		cpu_vcpu_timer_restore(vcpu);
 		cpu_vcpu_fp_restore(vcpu, regs);
-		cpu_vcpu_timer_delta_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
 	} else {
