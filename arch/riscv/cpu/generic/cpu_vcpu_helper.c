@@ -54,7 +54,8 @@
 				 riscv_isa_extension_mask(f) | \
 				 riscv_isa_extension_mask(i) | \
 				 riscv_isa_extension_mask(m) | \
-				 riscv_isa_extension_mask(h))
+				 riscv_isa_extension_mask(h) | \
+				 riscv_isa_extension_mask(SSTC))
 
 static char *guest_fdt_find_serial_node(char *guest_name)
 {
@@ -323,6 +324,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	riscv_priv(vcpu)->hie = 0;
 	riscv_priv(vcpu)->hip = 0;
 	riscv_priv(vcpu)->hvip = 0;
+	riscv_priv(vcpu)->henvcfg = 0;
 	riscv_priv(vcpu)->vsstatus = 0;
 	riscv_priv(vcpu)->vstvec = 0;
 	riscv_priv(vcpu)->vsscratch = 0;
@@ -436,6 +438,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSTVAL, priv->vstval);
 		csr_write(CSR_VSATP, priv->vsatp);
 		csr_write(CSR_SCOUNTEREN, priv->scounteren);
+		cpu_vcpu_envcfg_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_timer_restore(vcpu);
 		cpu_vcpu_fp_restore(vcpu, regs);
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
@@ -451,6 +454,18 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 	if (vcpu->is_normal) {
 		cpu_vcpu_nested_take_vsirq(vcpu, regs);
 	}
+}
+
+void cpu_vcpu_envcfg_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	u64 henvcfg = (nested_virt) ? 0 : riscv_priv(vcpu)->henvcfg;
+
+#ifdef CONFIG_32BIT
+	csr_write(CSR_HENVCFG, (u32)henvcfg);
+	csr_write(CSR_HENVCFGH, (u32)(henvcfg >> 32));
+#else
+	csr_write(CSR_HENVCFG, henvcfg);
+#endif
 }
 
 void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)

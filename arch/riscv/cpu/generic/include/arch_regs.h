@@ -215,6 +215,7 @@ struct riscv_priv {
 	unsigned long hie;
 	unsigned long hip;
 	unsigned long hvip;
+	u64 henvcfg;
 	unsigned long vsstatus;
 	unsigned long vstvec;
 	unsigned long vsscratch;

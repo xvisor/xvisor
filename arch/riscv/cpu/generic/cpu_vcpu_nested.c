@@ -1501,6 +1501,9 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 	npriv->hcounteren = csr_swap(CSR_HCOUNTEREN, npriv->hcounteren);
 	npriv->hedeleg = csr_swap(CSR_HEDELEG, npriv->hedeleg);
 
+	/* Update environment configuration */
+	cpu_vcpu_envcfg_update(vcpu, virt);
+
 	/* Update interrupt delegation */
 	cpu_vcpu_irq_deleg_update(vcpu, virt);
 

@@ -26,6 +26,9 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Function to update environment configuration */
+void cpu_vcpu_envcfg_update(struct vmm_vcpu *vcpu, bool nested_virt);
+
 /** Function to update interrupt delegation */
 void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt);
 
