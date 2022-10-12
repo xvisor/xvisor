@@ -67,6 +67,26 @@ void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle)
 	vmm_timer_event_start(&t->time_ev, delta_ns);
 }
 
+void cpu_vcpu_timer_delta_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	u64 vtdelta, tdelta = riscv_guest_priv(vcpu->guest)->time_delta;
+
+	if (nested_virt) {
+		vtdelta = riscv_nested_priv(vcpu)->htimedelta;
+#ifndef CONFIG_64BIT
+		vtdelta |= ((u64)riscv_nested_priv(vcpu)->htimedeltah) << 32;
+#endif
+		tdelta += vtdelta;
+	}
+
+#ifdef CONFIG_64BIT
+	csr_write(CSR_HTIMEDELTA, tdelta);
+#else
+	csr_write(CSR_HTIMEDELTA, (u32)tdelta);
+	csr_write(CSR_HTIMEDELTAH, (u32)(tdelta >> 32));
+#endif
+}
+
 int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer)
 {
 	struct cpu_vcpu_timer *t;

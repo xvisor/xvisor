@@ -34,6 +34,7 @@
 #include <cpu_tlb.h>
 #include <cpu_vcpu_helper.h>
 #include <cpu_vcpu_nested.h>
+#include <cpu_vcpu_timer.h>
 #include <cpu_vcpu_trap.h>
 #include <riscv_csr.h>
 
@@ -1504,7 +1505,7 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 	cpu_vcpu_irq_deleg_update(vcpu, virt);
 
 	/* Update time delta */
-	cpu_vcpu_time_delta_update(vcpu, virt);
+	cpu_vcpu_timer_delta_update(vcpu, virt);
 
 	/* Update G-stage page table */
 	cpu_vcpu_gstage_update(vcpu, virt);

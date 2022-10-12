@@ -432,7 +432,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSATP, priv->vsatp);
 		csr_write(CSR_SCOUNTEREN, priv->scounteren);
 		cpu_vcpu_fp_restore(vcpu, regs);
-		cpu_vcpu_time_delta_update(vcpu, riscv_nested_virt(vcpu));
+		cpu_vcpu_timer_delta_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
 	} else {
@@ -467,26 +467,6 @@ void cpu_vcpu_irq_deleg_update(struct vmm_vcpu *vcpu, bool nested_virt)
 			csr_clear(CSR_HVICTL, HVICTL_VTI);
 		}
 	}
-}
-
-void cpu_vcpu_time_delta_update(struct vmm_vcpu *vcpu, bool nested_virt)
-{
-	u64 vtdelta, tdelta = riscv_guest_priv(vcpu->guest)->time_delta;
-
-	if (nested_virt) {
-		vtdelta = riscv_nested_priv(vcpu)->htimedelta;
-#ifndef CONFIG_64BIT
-		vtdelta |= ((u64)riscv_nested_priv(vcpu)->htimedeltah) << 32;
-#endif
-		tdelta += vtdelta;
-	}
-
-#ifdef CONFIG_64BIT
-	csr_write(CSR_HTIMEDELTA, tdelta);
-#else
-	csr_write(CSR_HTIMEDELTA, (u32)tdelta);
-	csr_write(CSR_HTIMEDELTAH, (u32)(tdelta >> 32));
-#endif
 }
 
 void cpu_vcpu_gstage_update(struct vmm_vcpu *vcpu, bool nested_virt)
