@@ -181,6 +181,29 @@ void sbi_reset(void)
 #define SBI_EXT_XVISOR			(SBI_EXT_FIRMWARE_START + 0x2)
 #define SBI_EXT_XVISOR_ISA_EXT		0x0
 
+/*
+ * Increse this to higher value as kernel support more ISA extensions.
+ */
+#define RISCV_ISA_EXT_MAX	64
+
+/* The base ID for multi-letter ISA extensions */
+#define RISCV_ISA_EXT_BASE 26
+
+/*
+ * This enum represent the logical ID for each multi-letter
+ * RISC-V ISA extension. The logical ID should start from
+ * RISCV_ISA_EXT_BASE and must not exceed RISCV_ISA_EXT_MAX.
+ * 0-25 range is reserved for single letter extensions while
+ * all the multi-letter extensions should define the next
+ * available logical extension id.
+ */
+enum riscv_isa_ext_id {
+	RISCV_ISA_EXT_SSAIA = RISCV_ISA_EXT_BASE,
+	RISCV_ISA_EXT_SMAIA,
+	RISCV_ISA_EXT_SSTC,
+	RISCV_ISA_EXT_ID_MAX = RISCV_ISA_EXT_MAX,
+};
+
 unsigned long sbi_xvisor_isa_string(char *out_isa, unsigned long max_len)
 {
 	struct sbiret ret;
@@ -190,6 +213,8 @@ unsigned long sbi_xvisor_isa_string(char *out_isa, unsigned long max_len)
 
 	if (!out_isa || (max_len - pos) < 5)
 		return pos;
+
+	basic_memset(out_isa, 0, max_len);
 
 #if __riscv_xlen == 64
 	basic_strcpy(&out_isa[pos], "rv64");
@@ -218,7 +243,19 @@ unsigned long sbi_xvisor_isa_string(char *out_isa, unsigned long max_len)
 
 		out_isa[pos++] = valid_isa_order[i];
 	}
-	out_isa[pos++] = '\0';
+
+#define SET_ISA_EXT_MAP(__name, __bit)					\
+	do {								\
+		ret = sbi_ecall(SBI_EXT_XVISOR, SBI_EXT_XVISOR_ISA_EXT,	\
+				__bit, 0, 0, 0, 0, 0);			\
+		if (!ret.error && ret.value) {				\
+			basic_strcat(&out_isa[pos], "_" __name);	\
+			pos += basic_strlen("_" __name);		\
+		}							\
+	} while (0)							\
+
+	SET_ISA_EXT_MAP("sstc", RISCV_ISA_EXT_SSTC);
+#undef SET_ISA_EXT_MAP
 
 	return pos;
 }
