@@ -287,6 +287,10 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		}
 		riscv_priv(vcpu)->isa[0] &= RISCV_ISA_ALLOWED;
 
+		/* VCPU ISA bitmap should be ANDed with Host ISA bitmap */
+		bitmap_and(riscv_priv(vcpu)->isa, riscv_priv(vcpu)->isa,
+			   riscv_isa_extension_host(), RISCV_ISA_EXT_MAX);
+
 		/* H-extension only available when AIA CSRs are available */
 		if (!riscv_isa_extension_available(NULL, SxAIA)) {
 			riscv_priv(vcpu)->isa[0] &=

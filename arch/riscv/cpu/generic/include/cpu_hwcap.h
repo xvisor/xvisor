@@ -75,14 +75,11 @@ struct vmm_devtree_node;
 int riscv_node_to_hartid(struct vmm_devtree_node *node, u32 *hart_id);
 
 /**
- * Get base extension word
+ * Get host ISA extension bitmap
  *
- * @isa_bitmap ISA bitmap to use
- * @returns base extension word as unsigned long value
- *
- * NOTE: If isa_bitmap is NULL then Host ISA bitmap will be used.
+ * @returns const pointer to host ISA extension bitmap
  */
-unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap);
+const unsigned long *riscv_isa_extension_host(void);
 
 #define riscv_isa_extension_mask(ext) BIT_MASK(RISCV_ISA_EXT_##ext)
 

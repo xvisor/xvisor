@@ -206,11 +206,9 @@ int riscv_isa_parse_string(const char *isa,
 	return VMM_OK;
 }
 
-unsigned long riscv_isa_extension_base(const unsigned long *isa_bitmap)
+const unsigned long *riscv_isa_extension_host(void)
 {
-	if (!isa_bitmap)
-		return riscv_isa[0];
-	return isa_bitmap[0];
+	return riscv_isa;
 }
 
 bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, int bit)
