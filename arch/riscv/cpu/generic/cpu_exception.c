@@ -79,9 +79,6 @@ done:
 		do_error(vmm_scheduler_current_vcpu(), regs,
 			 cause | SCAUSE_INTERRUPT_MASK,
 			 "interrupt handling failed", rc, TRUE);
-	} else {
-		cpu_vcpu_nested_take_vsirq(vmm_scheduler_current_vcpu(),
-					   regs);
 	}
 
 	vmm_scheduler_irq_exit(regs);
@@ -187,8 +184,6 @@ void do_handle_trap(arch_regs_t *regs, unsigned long cause)
 done:
 	if (rc) {
 		do_error(vcpu, regs, cause, msg, rc, panic);
-	} else {
-		cpu_vcpu_nested_take_vsirq(vcpu, regs);
 	}
 
 	vmm_scheduler_irq_exit(regs);
@@ -203,6 +198,8 @@ void do_handle_exception(arch_regs_t *regs)
 	} else {
 		do_handle_trap(regs, scause & ~SCAUSE_INTERRUPT_MASK);
 	}
+
+	cpu_vcpu_nested_take_vsirq(vmm_scheduler_current_vcpu(), regs);
 }
 
 int __cpuinit arch_cpu_irq_setup(void)

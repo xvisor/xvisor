@@ -451,9 +451,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
-	if (vcpu->is_normal) {
-		cpu_vcpu_nested_take_vsirq(vcpu, regs);
-	}
+	/* For now nothing to do here. */
 }
 
 void cpu_vcpu_envcfg_update(struct vmm_vcpu *vcpu, bool nested_virt)
