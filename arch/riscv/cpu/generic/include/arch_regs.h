@@ -173,6 +173,8 @@ struct riscv_priv_nested {
 	unsigned long htimedeltah;
 	unsigned long htval;
 	unsigned long htinst;
+	unsigned long henvcfg;
+	unsigned long henvcfgh;
 	unsigned long hgatp;
 	unsigned long vsstatus;
 	unsigned long vsie;

@@ -28,6 +28,11 @@
 
 struct vmm_vcpu;
 
+bool cpu_vcpu_timer_vs_irq(struct vmm_vcpu *vcpu);
+u64 cpu_vcpu_timer_vs_cycle(struct vmm_vcpu *vcpu);
+void cpu_vcpu_timer_vs_restart(struct vmm_vcpu *vcpu);
+void cpu_vcpu_timer_vs_start(struct vmm_vcpu *vcpu, u64 next_vs_cycle);
+
 void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle);
 void cpu_vcpu_timer_delta_update(struct vmm_vcpu *vcpu, bool nested_virt);
 void cpu_vcpu_timer_save(struct vmm_vcpu *vcpu);

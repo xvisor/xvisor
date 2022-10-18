@@ -566,6 +566,14 @@ static const struct csr_func csr_funcs[] = {
 		.rmw_func = cpu_vcpu_nested_smode_csr_rmw,
 	},
 	{
+		.csr_num  = CSR_STIMECMP,
+		.rmw_func = cpu_vcpu_nested_smode_csr_rmw,
+	},
+	{
+		.csr_num  = CSR_STIMECMPH,
+		.rmw_func = cpu_vcpu_nested_smode_csr_rmw,
+	},
+	{
 		.csr_num  = CSR_HSTATUS,
 		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
 	},
@@ -663,6 +671,14 @@ static const struct csr_func csr_funcs[] = {
 	},
 	{
 		.csr_num  = CSR_VSATP,
+		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
+	},
+	{
+		.csr_num  = CSR_VSTIMECMP,
+		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
+	},
+	{
+		.csr_num  = CSR_VSTIMECMPH,
 		.rmw_func = cpu_vcpu_nested_hext_csr_rmw,
 	},
 };

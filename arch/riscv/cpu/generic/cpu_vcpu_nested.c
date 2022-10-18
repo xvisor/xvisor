@@ -856,6 +856,8 @@ void cpu_vcpu_nested_reset(struct vmm_vcpu *vcpu)
 	npriv->htimedeltah = 0;
 	npriv->htval = 0;
 	npriv->htinst = 0;
+	npriv->henvcfg = 0;
+	npriv->henvcfgh = 0;
 	npriv->hgatp = 0;
 	npriv->vsstatus = 0;
 	npriv->vsie = 0;
@@ -923,9 +925,11 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			unsigned int csr_num, unsigned long *val,
 			unsigned long new_val, unsigned long wr_mask)
 {
+	u64 tmp64;
 	int csr_shift = 0;
 	bool read_only = FALSE;
-	unsigned long *csr, zero = 0, writeable_mask = 0;
+	unsigned long *csr, tmpcsr = 0, csr_rdor = 0;
+	unsigned long zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
 	riscv_stats_priv(vcpu)->nested_smode_csr_rmw++;
@@ -965,6 +969,7 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			return TRAP_RETURN_VIRTUAL_INSN;
 		}
 		csr = &npriv->hvip;
+		csr_rdor = cpu_vcpu_timer_vs_irq(vcpu) ? HVIP_VSTIP : 0;
 		csr_shift = 1;
 		writeable_mask = HVIP_VSSIP & npriv->hideleg;
 		break;
@@ -974,18 +979,48 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		}
 		csr = &zero;
 		break;
+	case CSR_STIMECMP:
+		if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+						   SSTC)) {
+			return TRAP_RETURN_ILLEGAL_INSN;
+		}
+#ifdef CONFIG_32BIT
+		if (!(npriv->henvcfgh & ENVCFGH_STCE)) {
+#else
+		if (!(npriv->henvcfg & ENVCFG_STCE)) {
+#endif
+			return TRAP_RETURN_VIRTUAL_INSN;
+		}
+		tmpcsr = cpu_vcpu_timer_vs_cycle(vcpu);
+		csr = &tmpcsr;
+		writeable_mask = -1UL;
+		break;
+#ifdef CONFIG_32BIT
+	case CSR_STIMECMPH:
+		if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+						   SSTC)) {
+			return TRAP_RETURN_ILLEGAL_INSN;
+		}
+		if (!(npriv->henvcfgh & ENVCFGH_STCE)) {
+			return TRAP_RETURN_VIRTUAL_INSN;
+		}
+		tmpcsr = cpu_vcpu_timer_vs_cycle(vcpu) >> 32;
+		csr = &tmpcsr;
+		writeable_mask = -1UL;
+		break;
+#endif
 	default:
 		return TRAP_RETURN_ILLEGAL_INSN;
 	}
 
 	if (val) {
-		*val = (csr_shift < 0) ?
-			(*csr) << -csr_shift : (*csr) >> csr_shift;
+		*val = (csr_shift < 0) ? (*csr | csr_rdor) << -csr_shift :
+					 (*csr | csr_rdor) >> csr_shift;
 	}
 
 	if (read_only) {
 		return TRAP_RETURN_ILLEGAL_INSN;
-	} else {
+	} else if (wr_mask) {
 		writeable_mask = (csr_shift < 0) ?
 				  writeable_mask >> -csr_shift :
 				  writeable_mask << csr_shift;
@@ -995,6 +1030,29 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			   new_val >> -csr_shift : new_val << csr_shift;
 		wr_mask &= writeable_mask;
 		*csr = (*csr & ~wr_mask) | (new_val & wr_mask);
+
+		switch (csr_num) {
+		case CSR_STIMECMP:
+#ifdef CONFIG_32BIT
+			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
+			tmp64 &= ~0xffffffffULL
+			tmp64 |= tmpcsr;
+#else
+			tmp64 = tmpcsr;
+#endif
+			cpu_vcpu_timer_vs_start(vcpu, tmp64);
+			break;
+#ifdef CONFIG_32BIT
+		case CSR_STIMECMPH:
+			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
+			tmp64 &= ~0xffffffff00000000ULL
+			tmp64 |= ((u64)tmpcsr) << 32;
+			cpu_vcpu_timer_vs_start(vcpu, tmp64);
+			break;
+#endif
+		default:
+			break;
+		}
 	}
 
 	return VMM_OK;
@@ -1004,10 +1062,12 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			unsigned int csr_num, unsigned long *val,
 			unsigned long new_val, unsigned long wr_mask)
 {
+	u64 tmp64;
 	int csr_shift = 0;
 	bool read_only = FALSE, nuke_swtlb = FALSE;
 	unsigned int csr_priv = (csr_num >> 8) & 0x3;
-	unsigned long *csr, mode, zero = 0, writeable_mask = 0;
+	unsigned long *csr, tmpcsr = 0, csr_rdor = 0;
+	unsigned long mode, zero = 0, writeable_mask = 0;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
 	riscv_stats_priv(vcpu)->nested_hext_csr_rmw++;
@@ -1082,6 +1142,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		break;
 	case CSR_HIP:
 		csr = &npriv->hvip;
+		csr_rdor = cpu_vcpu_timer_vs_irq(vcpu) ? HVIP_VSTIP : 0;
 		writeable_mask = HVIP_VSSIP;
 		break;
 	case CSR_HGEIP:
@@ -1157,11 +1218,19 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		}
 		break;
 	case CSR_HENVCFG:
-#ifndef CONFIG_64BIT
-	case CSR_HENVCFGH:
+		csr = &npriv->henvcfg;
+#ifdef CONFIG_32BIT
+		writeable_mask = 0;
+#else
+		writeable_mask = ENVCFG_STCE;
 #endif
-		csr = &zero;
 		break;
+#ifdef CONFIG_32BIT
+	case CSR_HENVCFGH:
+		csr = &npriv->henvcfgh;
+		writeable_mask = ENVCFGH_STCE;
+		break;
+#endif
 	case CSR_VSSTATUS:
 		csr = &npriv->vsstatus;
 		writeable_mask = SSTATUS_SIE | SSTATUS_SPIE | SSTATUS_UBE |
@@ -1170,6 +1239,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		break;
 	case CSR_VSIP:
 		csr = &npriv->hvip;
+		csr_rdor = cpu_vcpu_timer_vs_irq(vcpu) ? HVIP_VSTIP : 0;
 		csr_shift = 1;
 		writeable_mask = HVIP_VSSIP & npriv->hideleg;
 		break;
@@ -1237,6 +1307,26 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			new_val |= (mode << SATP_MODE_SHIFT) & SATP_MODE;
 		}
 		break;
+	case CSR_VSTIMECMP:
+		if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+						   SSTC)) {
+			return TRAP_RETURN_ILLEGAL_INSN;
+		}
+		tmpcsr = cpu_vcpu_timer_vs_cycle(vcpu);
+		csr = &tmpcsr;
+		writeable_mask = -1UL;
+		break;
+#ifdef CONFIG_32BIT
+	case CSR_VSTIMECMPH:
+		if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+						   SSTC)) {
+			return TRAP_RETURN_ILLEGAL_INSN;
+		}
+		tmpcsr = cpu_vcpu_timer_vs_cycle(vcpu) >> 32;
+		csr = &tmpcsr;
+		writeable_mask = -1UL;
+		break;
+#endif
 	case CSR_HVICTL:
 		csr = &npriv->hvictl;
 		writeable_mask = HVICTL_VTI | HVICTL_IID |
@@ -1247,13 +1337,13 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	}
 
 	if (val) {
-		*val = (csr_shift < 0) ?
-			(*csr) << -csr_shift : (*csr) >> csr_shift;
+		*val = (csr_shift < 0) ? (*csr | csr_rdor) << -csr_shift :
+					 (*csr | csr_rdor) >> csr_shift;
 	}
 
 	if (read_only) {
 		return TRAP_RETURN_ILLEGAL_INSN;
-	} else {
+	} else if (wr_mask) {
 		writeable_mask = (csr_shift < 0) ?
 				  writeable_mask >> -csr_shift :
 				  writeable_mask << csr_shift;
@@ -1263,6 +1353,43 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			   new_val >> -csr_shift : new_val << csr_shift;
 		wr_mask &= writeable_mask;
 		*csr = (*csr & ~wr_mask) | (new_val & wr_mask);
+
+		switch (csr_num) {
+		case CSR_VSTIMECMP:
+#ifdef CONFIG_32BIT
+			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
+			tmp64 &= ~0xffffffffULL
+			tmp64 |= tmpcsr;
+#else
+			tmp64 = tmpcsr;
+#endif
+			cpu_vcpu_timer_vs_start(vcpu, tmp64);
+			break;
+#ifdef CONFIG_32BIT
+		case CSR_VSTIMECMPH:
+			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
+			tmp64 &= ~0xffffffff00000000ULL
+			tmp64 |= ((u64)tmpcsr) << 32;
+			cpu_vcpu_timer_vs_start(vcpu, tmp64);
+			break;
+#endif
+		case CSR_HTIMEDELTA:
+			if (riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+							  SSTC)) {
+				cpu_vcpu_timer_vs_restart(vcpu);
+			}
+			break;
+#ifdef CONFIG_32BIT
+		case CSR_HTIMEDELTAH:
+			if (riscv_isa_extension_available(riscv_priv(vcpu)->isa,
+							  SSTC)) {
+				cpu_vcpu_timer_vs_restart(vcpu);
+			}
+			break;
+#endif
+		default:
+			break;
+		}
 	}
 
 	if (nuke_swtlb) {
@@ -1626,7 +1753,7 @@ void cpu_vcpu_nested_take_vsirq(struct vmm_vcpu *vcpu,
 
 	/* Determine virtual-VS mode interrupt number */
 	vsirq = 0;
-	irqs = npriv->hvip;
+	irqs = npriv->hvip | (cpu_vcpu_timer_vs_irq(vcpu) ? HVIP_VSTIP : 0);
 	irqs &= npriv->vsie << 1;
 	irqs &= npriv->hideleg;
 	if (irqs & MIP_VSEIP) {

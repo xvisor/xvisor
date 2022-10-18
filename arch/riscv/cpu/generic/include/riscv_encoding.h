@@ -371,6 +371,9 @@
 #define ENVCFG_CBIE_INV			_AC(0x3, UL)
 #define ENVCFG_FIOM			_AC(0x1, UL)
 
+#define ENVCFGH_STCE			(_AC(1, UL) << 31)
+#define ENVCFGH_PBMTE			(_AC(1, UL) << 30)
+
 /* ===== User-level CSRs ===== */
 
 /* User Trap Setup (N-extension) */
