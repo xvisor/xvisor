@@ -121,15 +121,15 @@ typedef u32 arch_pte_t;
 #endif
 
 struct arch_pgflags {
-	u8 rsw;
-	u8 dirty;
-	u8 accessed;
-	u8 global;
-	u8 user;
-	u8 execute;
-	u8 write;
-	u8 read;
-	u8 valid;
+	u16 rsw:2;
+	u16 dirty:1;
+	u16 accessed:1;
+	u16 global:1;
+	u16 user:1;
+	u16 execute:1;
+	u16 write:1;
+	u16 read:1;
+	u16 valid:1;
 };
 typedef struct arch_pgflags arch_pgflags_t;
 
