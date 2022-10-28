@@ -199,6 +199,9 @@ struct riscv_priv_stats {
 	u64 nested_load_guest_page_fault;
 	u64 nested_store_guest_page_fault;
 	u64 nested_fetch_guest_page_fault;
+	u64 nested_redir_load_guest_page_fault;
+	u64 nested_redir_store_guest_page_fault;
+	u64 nested_redir_fetch_guest_page_fault;
 	u64 nested_hfence_vvma;
 	u64 nested_hfence_gvma;
 	u64 nested_hlv;

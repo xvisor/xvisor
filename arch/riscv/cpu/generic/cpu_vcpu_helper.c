@@ -639,7 +639,7 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		if (!riscv_stats_priv(vcpu)->trap[i]) {
 			continue;
 		}
-		vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n", trap_names[i],
+		vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n", trap_names[i],
 			    riscv_stats_priv(vcpu)->trap[i]);
 		have_traps = TRUE;
 	}
@@ -648,43 +648,52 @@ void arch_vcpu_stat_dump(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 		vmm_cprintf(cdev, "\n");
 	}
 
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Enter",
 		    riscv_stats_priv(vcpu)->nested_enter);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Exit",
 		    riscv_stats_priv(vcpu)->nested_exit);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Virtual Interrupt",
 		    riscv_stats_priv(vcpu)->nested_vsirq);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested S-mode CSR Access",
 		    riscv_stats_priv(vcpu)->nested_smode_csr_rmw);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested HS-mode CSR Access",
 		    riscv_stats_priv(vcpu)->nested_hext_csr_rmw);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Load Guest Page Fault",
 		    riscv_stats_priv(vcpu)->nested_load_guest_page_fault);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Store Guest Page Fault",
 		    riscv_stats_priv(vcpu)->nested_store_guest_page_fault);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested Fetch Guest Page Fault",
 		    riscv_stats_priv(vcpu)->nested_fetch_guest_page_fault);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
+		    "Nested Redirect Load Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_redir_load_guest_page_fault);
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
+		    "Nested Redirect Store Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_redir_store_guest_page_fault);
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
+		    "Nested Redirect Fetch Guest Page Fault",
+		    riscv_stats_priv(vcpu)->nested_redir_fetch_guest_page_fault);
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested HFENCE.VVMA Instruction",
 		    riscv_stats_priv(vcpu)->nested_hfence_vvma);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested HFENCE.GVMA Instruction",
 		    riscv_stats_priv(vcpu)->nested_hfence_gvma);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested HLV Instruction",
 		    riscv_stats_priv(vcpu)->nested_hlv);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested HSV Instruction",
 		    riscv_stats_priv(vcpu)->nested_hsv);
-	vmm_cprintf(cdev, "%-32s: 0x%"PRIx64"\n",
+	vmm_cprintf(cdev, "%-40s: 0x%"PRIx64"\n",
 		    "Nested SBI Ecall",
 		    riscv_stats_priv(vcpu)->nested_sbi);
 }

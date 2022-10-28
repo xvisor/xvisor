@@ -1442,6 +1442,19 @@ int cpu_vcpu_nested_page_fault(struct vmm_vcpu *vcpu,
 				  csr_read(CSR_VSSTATUS), FALSE);
 	rc = nested_xlate_gstage(&xc, guest_gpa, guest_access);
 	if (rc == VMM_EFAULT) {
+		switch (xc.scause) {
+		case CAUSE_LOAD_GUEST_PAGE_FAULT:
+			riscv_stats_priv(vcpu)->nested_redir_load_guest_page_fault++;
+			break;
+		case CAUSE_STORE_GUEST_PAGE_FAULT:
+			riscv_stats_priv(vcpu)->nested_redir_store_guest_page_fault++;
+			break;
+		case CAUSE_FETCH_GUEST_PAGE_FAULT:
+			riscv_stats_priv(vcpu)->nested_redir_fetch_guest_page_fault++;
+			break;
+		default:
+			break;
+		}
 		out_trap->sepc = trap->sepc;
 		out_trap->scause = xc.scause;
 		out_trap->stval = trap->stval;
