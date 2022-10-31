@@ -1563,6 +1563,124 @@ int cpu_vcpu_nested_sync_csr(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 	return VMM_OK;
 }
 
+int cpu_vcpu_nested_sync_hfence(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+				unsigned long entry_num)
+{
+	unsigned long i, p, *entry, hgatp;
+	unsigned long ctrl, type, order, vmid, asid, pnum, pcount;
+	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
+	unsigned long current_vmid =
+			(npriv->hgatp & HGATP_VMID) >> HGATP_VMID_SHIFT;
+	unsigned long first = 0, last = SBI_NACL_SHMEM_HFENCE_ENTRY_MAX - 1;
+
+	/* Ensure entry number is valid */
+	if (entry_num != -1UL) {
+		if (entry_num >= SBI_NACL_SHMEM_HFENCE_ENTRY_MAX) {
+			return VMM_EINVALID;
+		}
+		first = last = entry_num;
+	}
+
+	/* If shared memory not available then fail */
+	if (!npriv->shmem) {
+		return VMM_ENOSYS;
+	}
+
+	/* Iterate over each HFENCE entry */
+	for (i = first; i <= last; i++) {
+		/* Read control word */
+		entry = npriv->shmem + SBI_NACL_SHMEM_HFENCE_ENTRY_CTRL(i);
+		ctrl = vmm_le_long_to_cpu(*entry);
+
+		/* Check and control pending bit */
+		if (!(ctrl & SBI_NACL_SHMEM_HFENCE_CTRL_PEND)) {
+			continue;
+		}
+		ctrl &= ~SBI_NACL_SHMEM_HFENCE_CTRL_PEND;
+		*entry = vmm_cpu_to_le_long(ctrl);
+
+		/* Extract remaining control word fields */
+		type = (ctrl >> SBI_NACL_SHMEM_HFENCE_CTRL_TYPE_SHIFT) &
+			SBI_NACL_SHMEM_HFENCE_CTRL_TYPE_MASK;
+		order = (ctrl >> SBI_NACL_SHMEM_HFENCE_CTRL_ORDER_SHIFT) &
+			SBI_NACL_SHMEM_HFENCE_CTRL_ORDER_MASK;
+		order += SBI_NACL_SHMEM_HFENCE_ORDER_BASE;
+		vmid = (ctrl >> SBI_NACL_SHMEM_HFENCE_CTRL_VMID_SHIFT) &
+			SBI_NACL_SHMEM_HFENCE_CTRL_VMID_MASK;
+		asid = ctrl & SBI_NACL_SHMEM_HFENCE_CTRL_ASID_MASK;
+
+		/* Read page address and page count */
+		entry = npriv->shmem + SBI_NACL_SHMEM_HFENCE_ENTRY_PNUM(i);
+		pnum = vmm_le_long_to_cpu(*entry);
+		entry = npriv->shmem + SBI_NACL_SHMEM_HFENCE_ENTRY_PCOUNT(i);
+		pcount = vmm_le_long_to_cpu(*entry);
+
+		/* Process the HFENCE entry */
+		switch (type) {
+		case SBI_NACL_SHMEM_HFENCE_TYPE_GVMA:
+			cpu_vcpu_nested_swtlb_flush(vcpu, pnum << order,
+						    pcount << order);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_GVMA_ALL:
+			cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_GVMA_VMID:
+			if (current_vmid != vmid) {
+				break;
+			}
+			cpu_vcpu_nested_swtlb_flush(vcpu, pnum << order,
+						    pcount << order);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_GVMA_VMID_ALL:
+			if (current_vmid != vmid) {
+				break;
+			}
+			cpu_vcpu_nested_swtlb_flush(vcpu, 0, 0);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_VVMA:
+			hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+			hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+			if ((PGTBL_PAGE_SIZE / sizeof(arch_pte_t)) < pcount) {
+				__hfence_vvma_all();
+			} else {
+				for (p = pnum; p < (pnum + pcount); p++) {
+					__hfence_vvma_va(p << order);
+				}
+			}
+			csr_write(CSR_HGATP, hgatp);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_VVMA_ALL:
+			hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+			hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+			__hfence_vvma_all();
+			csr_write(CSR_HGATP, hgatp);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_VVMA_ASID:
+			hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+			hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+			if ((PGTBL_PAGE_SIZE / sizeof(arch_pte_t)) < pcount) {
+				__hfence_vvma_asid(asid);
+			} else {
+				for (p = pnum; p < (pnum + pcount); p++) {
+					__hfence_vvma_asid_va(p << order, asid);
+				}
+			}
+			csr_write(CSR_HGATP, hgatp);
+			break;
+		case SBI_NACL_SHMEM_HFENCE_TYPE_VVMA_ASID_ALL:
+			hgatp = mmu_pgtbl_hw_tag(npriv->pgtbl);
+			hgatp = csr_swap(CSR_HGATP, hgatp << HGATP_VMID_SHIFT);
+			__hfence_vvma_asid(asid);
+			csr_write(CSR_HGATP, hgatp);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return VMM_OK;
+}
+
 void cpu_vcpu_nested_prep_sret(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 {
 	int i;
@@ -1576,6 +1694,9 @@ void cpu_vcpu_nested_prep_sret(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 	/* Synchronize all CSRs from shared memory */
 	cpu_vcpu_nested_sync_csr(vcpu, regs, -1UL);
+
+	/* Synchronize all HFENCEs from shared memory */
+	cpu_vcpu_nested_sync_hfence(vcpu, regs, -1UL);
 
 	/* Restore GPRs from shared memory scratch space */
 	for (i = 1; i <= SBI_NACL_SHMEM_SRET_X_LAST; i++) {

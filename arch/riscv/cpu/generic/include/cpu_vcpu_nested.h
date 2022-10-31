@@ -74,6 +74,10 @@ void cpu_vcpu_nested_update_shmem(struct vmm_vcpu *vcpu, unsigned int csr_num,
 int cpu_vcpu_nested_sync_csr(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 			     unsigned long csr_num);
 
+/** Synchronize nested HFENCEs in shared memory */
+int cpu_vcpu_nested_sync_hfence(struct vmm_vcpu *vcpu, arch_regs_t *regs,
+				unsigned long entry_num);
+
 /** Prepare synchronized SRET using shared memory */
 void cpu_vcpu_nested_prep_sret(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
