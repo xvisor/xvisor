@@ -1035,7 +1035,7 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		case CSR_STIMECMP:
 #ifdef CONFIG_32BIT
 			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
-			tmp64 &= ~0xffffffffULL
+			tmp64 &= ~0xffffffffULL;
 			tmp64 |= tmpcsr;
 #else
 			tmp64 = tmpcsr;
@@ -1045,7 +1045,7 @@ int cpu_vcpu_nested_smode_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 #ifdef CONFIG_32BIT
 		case CSR_STIMECMPH:
 			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
-			tmp64 &= ~0xffffffff00000000ULL
+			tmp64 &= ~0xffffffff00000000ULL;
 			tmp64 |= ((u64)tmpcsr) << 32;
 			cpu_vcpu_timer_vs_start(vcpu, tmp64);
 			break;
@@ -1358,7 +1358,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 		case CSR_VSTIMECMP:
 #ifdef CONFIG_32BIT
 			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
-			tmp64 &= ~0xffffffffULL
+			tmp64 &= ~0xffffffffULL;
 			tmp64 |= tmpcsr;
 #else
 			tmp64 = tmpcsr;
@@ -1368,7 +1368,7 @@ int cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu, arch_regs_t *regs,
 #ifdef CONFIG_32BIT
 		case CSR_VSTIMECMPH:
 			tmp64 = cpu_vcpu_timer_vs_cycle(vcpu);
-			tmp64 &= ~0xffffffff00000000ULL
+			tmp64 &= ~0xffffffff00000000ULL;
 			tmp64 |= ((u64)tmpcsr) << 32;
 			cpu_vcpu_timer_vs_start(vcpu, tmp64);
 			break;
