@@ -139,6 +139,10 @@ endif
 AS		=	$(CC)
 DTC		=	dtc
 
+# Check whether the compiler supports --no-warn-rwx-segments
+CC_SUPPORT_WARN_RWX_SEGMENTS := $(shell $(CC) -nostdlib -Wl,--no-warn-rwx-segments -x c /dev/null -o /dev/null 2>&1 | grep "\-no\-warn\-rwx\-segments" >/dev/null && echo n || echo y)
+
+# Setup compilation flags
 cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
 cppflags+=-include $(core_dir)/include/vmm_openconf.h
 cppflags+=-DCONFIG_MAJOR=$(MAJOR)
@@ -177,6 +181,9 @@ asflags+=$(libs-asflags-y)
 asflags+=$(cppflags)
 arflags=rcs
 ldflags=-g -Wall -nostdlib -Wl,--build-id=none
+ifeq ($(CC_SUPPORT_WARN_RWX_SEGMENTS),y)
+ldflags+=-Wl,--no-warn-rwx-segments
+endif
 ldflags+=$(board-ldflags)
 ldflags+=$(cpu-ldflags)
 ldflags+=$(libs-ldflags-y)
