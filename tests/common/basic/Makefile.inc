@@ -39,6 +39,13 @@ endif
 AS		=	$(CC)
 DTC		=	dtc
 
+# Check whether the compiler supports --no-warn-rwx-segments
+CC_SUPPORT_WARN_RWX_SEGMENTS := $(shell $(CC) -nostdlib -Wl,--no-warn-rwx-segments -x c /dev/null -o /dev/null 2>&1 | grep "\-no\-warn\-rwx\-segments" >/dev/null && echo n || echo y)
+
+ifeq ($(CC_SUPPORT_WARN_RWX_SEGMENTS),y)
+FW_LDFLAGS+=-Wl,--no-warn-rwx-segments
+endif
+
 FW_OBJ_DIR= $(ARCH_OBJ_DIR)
 FW_BASIC_DIR= $(ARCH_BASIC_DIR)
 FW_ARCH_DIR= $(ARCH_DIR)
