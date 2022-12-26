@@ -35,7 +35,7 @@ SECTIONS
 	/* Beginning of the code section */
 
 	.text :
- 	{
+	{
 		PROVIDE(_text_start = .);
 		*(.entry)
 		*(.text)
@@ -93,10 +93,9 @@ SECTIONS
 
 	.heap :
 	{
-		. = ALIGN(8);
 		PROVIDE(_heap_start = .);
 		*(.heap)
-                . = . + 4096;
+		. = . + 4096;
 		PROVIDE(_heap_end = .);
 	}
 

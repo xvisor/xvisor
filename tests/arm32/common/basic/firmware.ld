@@ -33,12 +33,14 @@ SECTIONS
 	PROVIDE(_reloc_region_start = .);
 
 	.text :
- 	{
+	{
 		*(.expvect)
 		*(.text)
 		. = ALIGN(16);
 		_etext = .;
 	}
+
+	. = ALIGN(4096);
 
 	.data :
 	{
@@ -47,6 +49,8 @@ SECTIONS
 		_edata = .;
 	}
 
+	. = ALIGN(4096);
+
 	.rodata :
 	{
 		*(.rodata .rodata.*)
@@ -54,7 +58,7 @@ SECTIONS
 		_erodata = .;
 	}
 
-	. = ALIGN(16);
+	. = ALIGN(4096);
 
 	PROVIDE(_reloc_region_end = .);
 
@@ -69,66 +73,68 @@ SECTIONS
 		PROVIDE(_bss_end = .);
 	}
 
+	. = ALIGN(4096);
+
 	.heap :
 	{
 		PROVIDE(_heap_start = .);
 		*(.heap)
-                . = . + 8192;
+		. = . + 8192;
 		. = ALIGN(4);
 		PROVIDE(_heap_end = .);
 	}
 
-	. = ALIGN(16);
+	. = ALIGN(4096);
 
 	PROVIDE(_zero_region_end = .);
 
- 	.svc_stack :
-        {
-                PROVIDE(_svc_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_svc_stack_end = .);
-        }
+	.svc_stack :
+	{
+		PROVIDE(_svc_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_svc_stack_end = .);
+	}
 
- 	.abt_stack :
-        {
-                PROVIDE(_abt_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_abt_stack_end = .);
-        }
+	.abt_stack :
+	{
+		PROVIDE(_abt_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_abt_stack_end = .);
+	}
 
- 	.und_stack :
-        {
-                PROVIDE(_und_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_und_stack_end = .);
-        }
+	.und_stack :
+	{
+		PROVIDE(_und_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_und_stack_end = .);
+	}
 
- 	.irq_stack :
-        {
-                PROVIDE(_irq_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_irq_stack_end = .);
-        }
+	.irq_stack :
+	{
+		PROVIDE(_irq_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_irq_stack_end = .);
+	}
 
- 	.fiq_stack :
-        {
-                PROVIDE(_fiq_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(4);
-                PROVIDE(_fiq_stack_end = .);
-        }
+	.fiq_stack :
+	{
+		PROVIDE(_fiq_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(4);
+		PROVIDE(_fiq_stack_end = .);
+	}
 
- 	.usr_stack :
-        {
-                PROVIDE(_usr_stack_start = .);
-                . = . + USR_STACK_SIZE ;
-                . = ALIGN(4);
-                PROVIDE(_usr_stack_end = .);
-        }
+	.usr_stack :
+	{
+		PROVIDE(_usr_stack_start = .);
+		. = . + USR_STACK_SIZE ;
+		. = ALIGN(4);
+		PROVIDE(_usr_stack_end = .);
+	}
 
 	PROVIDE(_code_end = .);
 }

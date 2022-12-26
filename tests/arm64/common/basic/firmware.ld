@@ -33,27 +33,32 @@ SECTIONS
 	PROVIDE(_reloc_region_start = .);
 
 	.text :
- 	{
+	{
 		*(.entry)
 		*(.text)
+		. = ALIGN(8);
 		_etext = .;
 	}
 
+	. = ALIGN(4096);
+
 	.data :
 	{
-		. = ALIGN(8);
 		*(.data)
+		. = ALIGN(8);
 		_edata = .;
 	}
 
+	. = ALIGN(4096);
+
 	.rodata :
 	{
-		. = ALIGN(8);
 		*(.rodata .rodata.*)
+		. = ALIGN(8);
 		_erodata = .;
 	}
 
-	. = ALIGN(8);
+	. = ALIGN(4096);
 
 	PROVIDE(_reloc_region_end = .);
 
@@ -61,41 +66,43 @@ SECTIONS
 
 	.bss :
 	{
-		. = ALIGN(8);
 		PROVIDE(_bss_start = .);
 		*(.bss)
+		. = ALIGN(8);
 		_ebss = .;
 		PROVIDE(_bss_end = .);
 	}
 
+	. = ALIGN(4096);
+
 	.heap :
 	{
-		. = ALIGN(8);
 		PROVIDE(_heap_start = .);
 		*(.heap)
-                . = . + 4096;
+		. = . + 4096;
+		. = ALIGN(8);
 		PROVIDE(_heap_end = .);
 	}
 
-	. = ALIGN(8);
+	. = ALIGN(4096);
 
 	PROVIDE(_zero_region_end = .);
 
- 	.svc_stack :
-        {
-                PROVIDE(_svc_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(8);
-                PROVIDE(_svc_stack_end = .);
-        }
+	.svc_stack :
+	{
+		PROVIDE(_svc_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(8);
+		PROVIDE(_svc_stack_end = .);
+	}
 
- 	.usr_stack :
-        {
-                PROVIDE(_usr_stack_start = .);
-                . = . + 4096;
-                . = ALIGN(8);
-                PROVIDE(_usr_stack_end = .);
-        }
+	.usr_stack :
+	{
+		PROVIDE(_usr_stack_start = .);
+		. = . + 4096;
+		. = ALIGN(8);
+		PROVIDE(_usr_stack_end = .);
+	}
 
 	PROVIDE(_code_end = .);
 }
