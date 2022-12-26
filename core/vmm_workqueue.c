@@ -423,7 +423,7 @@ static int workqueue_startup(struct vmm_cpuhp_notify *cpuhp, u32 cpu)
 	vmm_snprintf(syswq_name, sizeof(syswq_name), "syswq/%d", cpu);
 	wqctrl.syswq[cpu] = vmm_workqueue_create(syswq_name,
 						 VMM_THREAD_DEF_PRIORITY);
-	if (!wqctrl.syswq) {
+	if (!wqctrl.syswq[cpu]) {
 		return VMM_EFAIL;
 	}
 
