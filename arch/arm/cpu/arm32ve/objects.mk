@@ -41,7 +41,8 @@ ifeq ($(CONFIG_ARM32VE_STACKTRACE), y)
 cpu-cflags += -fno-omit-frame-pointer -mapcs -mno-sched-prolog
 endif
 cpu-asflags += -marm $(arch-y) $(tune-y)
-cpu-ldflags += -msoft-float
+cpu-ldflags += -msoft-float -z noexecstack
+cpu-mergeflags += -z noexecstack
 
 cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_proc.o

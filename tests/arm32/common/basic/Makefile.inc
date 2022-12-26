@@ -34,7 +34,7 @@ ARCH_CPPFLAGS+=-DTEXT_START=$(board_text_start) -DUSR_STACK_SIZE=$(board_usr_sta
 ARCH_CFLAGS=$(board_cflags) -msoft-float -marm
 ARCH_ASFLAGS=$(board_asflags) -msoft-float -marm
 ARCH_LDSCRIPT=$(obj_dir)/firmware.lnk
-ARCH_LDFLAGS=$(board_ldflags)
+ARCH_LDFLAGS=-z noexecstack $(board_ldflags)
 
 ifeq ($(board_arch),v5)
 ARCH_CPPFLAGS+=-DARM_ARCH_v5
