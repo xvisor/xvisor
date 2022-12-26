@@ -22,7 +22,7 @@ BUILD_OUTPUT_PATH=`pwd`/build
 BUILD_INSTALL_PATH=`pwd`/install
 BUILD_XVISOR_SOURCE_PATH=`pwd`
 BUILD_TARBALL_PATH=`pwd`/tarball
-BUILD_LINUX_VERSION="5.15.3"
+BUILD_LINUX_VERSION="6.1.1"
 BUILD_BUSYBOX_VERSION="1.33.1"
 
 while getopts "d:hj:l:i:o:p:" o; do
