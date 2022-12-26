@@ -334,7 +334,7 @@ static int mmu_pgtbl_attach(struct mmu_pgtbl *parent,
 
 	if (arch_mmu_pte_is_valid(&pte[index], parent->stage, parent->level)) {
 		vmm_spin_unlock_irqrestore_lite(&parent->tbl_lock, flags);
-		return VMM_EFAIL;
+		return VMM_EEXIST;
 	}
 
 	arch_mmu_pte_set_table(&pte[index], parent->stage, parent->level,
@@ -526,11 +526,13 @@ struct mmu_pgtbl *mmu_pgtbl_get_child(struct mmu_pgtbl *parent,
 	}
 
 	if ((rc = mmu_pgtbl_attach(parent, map_ia, child))) {
-		vmm_printf("%s: failed to attach child for address "
-			   "0x%"PRIPADDR" in page table at "
-			   "0x%"PRIPADDR" stage=%d level=%d\n",
-			   __func__, map_ia, parent->tbl_pa,
-			   parent->stage, parent->level);
+		if (rc != VMM_EEXIST) {
+			vmm_printf("%s: failed to attach child for address "
+				   "0x%"PRIPADDR" in page table at "
+				   "0x%"PRIPADDR" stage=%d level=%d\n",
+				   __func__, map_ia, parent->tbl_pa,
+				   parent->stage, parent->level);
+		}
 		mmu_pgtbl_free(child);
 		child = NULL;
 	}
