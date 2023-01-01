@@ -392,6 +392,10 @@ export ARCH=${BUILD_LINUX_ARCH}
 export CROSS_COMPILE=${BUILD_BUSYBOX_CROSS_COMPILE}
 if [ ! -f ${BUILD_BUSYBOX_OUTPUT_PATH}/.config ]; then
 	cp -f ${BUILD_BUSYBOX_OLDCONFIG_PATH} ${BUILD_BUSYBOX_OUTPUT_PATH}/.config
+	if [ "${BUILD_GUEST_TYPE}" == "virt32" ]; then
+		sed -i 's/CONFIG_EXTRA_CFLAGS=""/CONFIG_EXTRA_CFLAGS="-mabi=ilp32d -march=rv32imafdc"/g' ${BUILD_BUSYBOX_OUTPUT_PATH}/.config
+		sed -i 's/CONFIG_EXTRA_LDFLAGS=""/CONFIG_EXTRA_LDFLAGS="-mabi=ilp32d -march=rv32imafdc"/g' ${BUILD_BUSYBOX_OUTPUT_PATH}/.config
+	fi
 	make -C ${BUILD_BUSYBOX_OUTPUT_PATH} oldconfig
 fi
 if [ ! -f ${BUILD_BUSYBOX_OUTPUT_PATH}/_install/bin/busybox ]; then
