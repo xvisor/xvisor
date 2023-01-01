@@ -1,0 +1,62 @@
+			Xvisor v0.3.2
+	(Last Commit: -------------------------------------)
+		(Release Date: 01-Jan-2023)
+
+In this release, we have new features, improvements, and drivers which
+mainly target RISC-V and x86 ports.
+
+New Features:
+ - Added vmm_host_irqdomain_xlate_twocells() API
+ - Added vmm_smp_map_cpuid() API
+ - Improved defterm polling in vmm_scanchars()
+ - Added alloc() and free() in vmm_host_irqdomain operations
+ - Allow irqchip drivers to mark chained interrupts
+ - Added custom action APIs in device resource management
+ - Added vmm_scheduler_irq_regs() API
+ - Added endianness helper macros for long data type
+
+New Commands:
+ - Added "host poke" sub-command for "host" command
+ - Added "memory iodump8" sub-command for "memory" command
+ - Added "memory iodump16" sub-command for "memory" command
+ - Added "memory iodump32" sub-command for "memory" command
+
+New Drivers:
+ - Added AIA support in the RISC-V INTC driver
+ - Added RISC-V Advanced PLIC (APLIC) driver
+ - Added RISC-V incoming MSI controller (IMSIC) driver
+ - Added Sstc support in the RISC-V timer driver
+
+New Emulators:
+ - No change
+
+New Boards:
+ - No change
+
+All Ports:
+ - Generic arch mechanism to get guest page table mapping
+ - Generic arch attributes and hardware tag for each page table
+
+ARM Ports:
+ - No change
+
+ARM32ve Port:
+ - No change
+
+ARM64 Port:
+ - No change
+
+RISC-V Port:
+ - Linux style RISC-V flat image header
+ - Nested virtualization support
+ - Sv57 support for Host
+ - Sv57x4 support for Guest/VM
+ - Gather and print stats for normal VCPU
+ - Implement SBI v1.0 for Guest/VM
+ - Sstc nested virtualization support
+
+x86 Port:
+ - Framebuffer support for early prints
+ - Direct ljmp instruction decoding
+ - Emulate PAM registers for Guest/VM
+ - Sub-system level logging facility
