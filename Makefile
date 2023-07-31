@@ -241,7 +241,7 @@ compile_ld = $(V)mkdir -p `dirname $(1)`; \
 	     $(CC) $(3) $(ldflags) -Wl,-T$(2) -o $(1)
 compile_nm = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (nm)        $(subst $(build_dir)/,,$(1))"; \
-	     $(NM) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$[adt]\)' > $(1)
+	     $(NM) -n $(2) | grep -v '\( [aNUw] \)\|\(__crc_\)\|\( \$$[adt]\)' > $(1)
 compile_objcopy = $(V)mkdir -p `dirname $(1)`; \
 	     echo " (objcopy)   $(subst $(build_dir)/,,$(1))"; \
 	     $(OBJCOPY) -O binary $(2) $(1)
