@@ -140,7 +140,7 @@ AS		=	$(CC)
 DTC		=	dtc
 
 # Check whether the compiler supports --no-warn-rwx-segments
-CC_SUPPORT_WARN_RWX_SEGMENTS := $(shell $(CC) -nostdlib -Wl,--no-warn-rwx-segments -x c /dev/null -o /dev/null 2>&1 | grep "\-no\-warn\-rwx\-segments" >/dev/null && echo n || echo y)
+CC_SUPPORT_WARN_RWX_SEGMENTS := $(shell $(CC) -nostdlib -Wl,--no-warn-rwx-segments -x c /dev/null -o /dev/null 2>&1 | grep -- "--no-warn-rwx-segments" >/dev/null && echo n || echo y)
 
 # Setup compilation flags
 cppflags=-include $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)
