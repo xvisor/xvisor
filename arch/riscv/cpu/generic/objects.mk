@@ -67,6 +67,11 @@ cpu-cflags += -fno-strict-aliasing -O2
 cpu-asflags += $(arch-cflags-y) -march=$(march-nonld-isa-y)
 cpu-ldflags += $(arch-ldflags-y) -march=$(march-ld-isa-y)
 
+cpu-cflags += -fno-pie
+cpu-asflags += -fno-pie
+cpu-ldflags += -static
+cpu-mergeflags += -static
+
 cpu-objs-y+= cpu_entry.o
 cpu-objs-y+= cpu_proc.o
 cpu-objs-y+= cpu_tlb.o
