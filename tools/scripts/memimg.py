@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#! /usr/bin/env python3
 #/**
 # Copyright (c) 2011 Anup Patel.
 # All rights reserved.
