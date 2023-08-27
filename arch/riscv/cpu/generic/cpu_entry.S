@@ -245,6 +245,7 @@ _start_secondary_nopen_mmu_on:
 	REG_L	a0, (a6)
 	jalr	a0
 
+	.align 2
 _start_hang:
 	wfi
 	j	_start_hang
