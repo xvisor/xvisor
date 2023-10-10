@@ -276,6 +276,25 @@ int arch_std_defterm_putc(u8 ch)
 	return VMM_OK;
 }
 
+int __init arch_std_defterm_init(void)
+{
+	init_vga_console();
+
+#if defined(CONFIG_VTEMU)
+	defterm_fifo = fifo_alloc(sizeof(u8), 128);
+	if (!defterm_fifo) {
+		return VMM_ENOMEM;
+	}
+	INIT_COMPLETION(&defterm_fifo_cmpl);
+
+	defterm_key_flags = 0;
+	defterm_key_handler_registered = FALSE;
+#endif
+
+	return VMM_OK;
+}
+
+
 #if defined(CONFIG_VTEMU)
 static int defterm_key_event(struct input_handler *ihnd,
 			     struct input_dev *idev,
@@ -360,24 +379,6 @@ int arch_std_defterm_getc(u8 *ch)
 	return VMM_EFAIL;
 }
 
-int __init arch_std_defterm_init(void)
-{
-	init_vga_console();
-
-#if defined(CONFIG_VTEMU)
-	defterm_fifo = fifo_alloc(sizeof(u8), 128);
-	if (!defterm_fifo) {
-		return VMM_ENOMEM;
-	}
-	INIT_COMPLETION(&defterm_fifo_cmpl);
-
-	defterm_key_flags = 0;
-	defterm_key_handler_registered = FALSE;
-#endif
-
-	return VMM_OK;
-}
-
 static struct defterm_ops vga_ops = {
 	.putc = arch_std_defterm_putc,
 	.getc = arch_std_defterm_getc,
@@ -391,11 +392,11 @@ struct defterm_ops *get_vga_defterm_ops(void *data)
 #else
 static struct defterm_ops vga_ops = {
 	.putc = arch_std_defterm_putc,
-	.getc = NULL;
+	.getc = NULL,
 	.init = arch_std_defterm_init
 };
-struct defterm_ops *get_vga_defterm_ops(void)
+struct defterm_ops *get_vga_defterm_ops(void *data)
 {
-	return &vga_ops
+	return &vga_ops;
 }
 #endif
