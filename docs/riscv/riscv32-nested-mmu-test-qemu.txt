@@ -4,7 +4,7 @@ This section of readme explains how to build & run Xvisor RISC-V 32bit
 nested MMU test-suite on Virt machine emulated by QEMU RISC-V.
 
 Please follow the steps below for nested MMU test-suite on QEMU virt
-machine (v5.1 or higher):
+machine (v8 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -32,9 +32,9 @@ machine (v5.1 or higher):
   # cd <xvisor_source_directory>
 
   [9. Run nested MMU test-suite]
-  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin -append 'vmm.bootcmd="wboxtest run_groups 1 nested_mmu"'
+  # qemu-system-riscv32 -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin -append 'vmm.bootcmd="wboxtest run_groups 1 nested_mmu"'
   OR
-  # qemu-system-riscv32 -cpu rv32,x-h=true -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin
+  # qemu-system-riscv32 -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin
   XVisor# wboxtest run_groups 1 nested_mmu
 
   (Note: replace all <> brackets based on your workspace)

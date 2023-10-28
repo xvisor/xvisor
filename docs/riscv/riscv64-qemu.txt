@@ -5,7 +5,7 @@ Virt machine emulated by QEMU RISC-V.
 
 Please follow the steps below to build & run Linux kernel with Busybox RootFS
 on Virt64 (paravirtualized RISC-V 64bit) Guest with Xvisor RISC-V 64bit running
-on QEMU virt machine (v5.1 or higher):
+on QEMU virt machine (v8 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -63,7 +63,7 @@ on QEMU virt machine (v5.1 or higher):
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [14. Launch QEMU]
-  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append 'vmm.bootcmd="vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt"'
+  # qemu-system-riscv64 -M virt -m 512M -nographic -bios <opensbi_source_directory>/build/platform/generic/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append 'vmm.bootcmd="vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt"'
 
   [15. Kick Guest0 to start Basic Firmware]
   XVisor# guest kick guest0

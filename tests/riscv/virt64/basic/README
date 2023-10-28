@@ -4,7 +4,7 @@ The basic firmware currently sets up PIC, Timer, and UART and emulates
 a dummy terminal which reponds to various commands.
 
 Please follow the steps below to build & run Basic Firmware on Virt64
-Guest with Xvisor running on QEMU (v3.1.50 or higher):
+Guest with Xvisor running on QEMU (v8 or higher):
 
   [1. Build environment for Xvisor]
   # CROSS_COMPILE=riscv64-unknown-linux-gnu-
@@ -34,7 +34,7 @@ Guest with Xvisor running on QEMU (v3.1.50 or higher):
   # genext2fs -B 1024 -b 32768 -d ./build/disk ./build/disk.img
 
   [7. Launch QEMU]
-  # qemu-system-riscv64 -cpu rv64,x-h=true -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
+  # qemu-system-riscv64 -M virt -m 512M -display none -serial stdio -bios <opensbi_build_directory>/platform/qemu/virt/firmware/fw_jump.bin -kernel ./build/vmm.bin -initrd ./build/disk.img -append "vmm.bootcmd=\"vfs mount initrd /;vfs run /boot.xscript;vfs cat /system/banner.txt\""
 
   [8. Kick Guest0 for starting Basic Firmware]
   XVisor# guest kick guest0
