@@ -28,7 +28,7 @@
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_fp.h>
 
-void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu)
+void cpu_vcpu_fp_reset(struct vmm_vcpu *vcpu)
 {
 	riscv_regs(vcpu)->sstatus &= ~SSTATUS_FS;
 	if (riscv_isa_extension_available(riscv_priv(vcpu)->isa, f) ||

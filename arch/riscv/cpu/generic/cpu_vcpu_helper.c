@@ -345,8 +345,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* Reset nested state */
 	cpu_vcpu_nested_reset(vcpu);
 
-	/* Initialize FP state */
-	cpu_vcpu_fp_init(vcpu);
+	/* Reset FP state */
+	cpu_vcpu_fp_reset(vcpu);
 
 	/* Reset timer */
 	cpu_vcpu_timer_reset(vcpu);

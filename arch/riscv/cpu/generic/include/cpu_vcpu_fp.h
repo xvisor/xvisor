@@ -27,8 +27,8 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
-/** Function to initialize FP state */
-void cpu_vcpu_fp_init(struct vmm_vcpu *vcpu);
+/** Function to reset FP state */
+void cpu_vcpu_fp_reset(struct vmm_vcpu *vcpu);
 
 /** Function to save FP registers */
 void cpu_vcpu_fp_save(struct vmm_vcpu *vcpu, arch_regs_t *regs);
