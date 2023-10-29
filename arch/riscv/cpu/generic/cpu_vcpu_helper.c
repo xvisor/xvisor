@@ -303,6 +303,12 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		if (rc) {
 			goto fail_free_isa;
 		}
+
+		/* Initialize timer state */
+		rc = cpu_vcpu_timer_init(vcpu);
+		if (rc) {
+			goto fail_free_nested;
+		}
 	}
 
 	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
@@ -342,11 +348,13 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* Initialize FP state */
 	cpu_vcpu_fp_init(vcpu);
 
-	/* Initialize timer */
-	cpu_vcpu_timer_init(vcpu, &riscv_timer_priv(vcpu));
+	/* Reset timer */
+	cpu_vcpu_timer_reset(vcpu);
 
 	return VMM_OK;
 
+fail_free_nested:
+	cpu_vcpu_nested_deinit(vcpu);
 fail_free_isa:
 	vmm_free(riscv_priv(vcpu)->isa);
 	riscv_priv(vcpu)->isa = NULL;
@@ -359,7 +367,6 @@ fail:
 
 int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 {
-	int rc;
 	virtual_addr_t sp_exec;
 
 	/* Free-up exception stack for Orphan VCPU */
@@ -380,9 +387,7 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	}
 
 	/* Cleanup timer */
-	rc = cpu_vcpu_timer_deinit(vcpu, &riscv_timer_priv(vcpu));
-	if (rc)
-		return rc;
+	cpu_vcpu_timer_deinit(vcpu);
 
 	/* Cleanup nested state */
 	cpu_vcpu_nested_deinit(vcpu);

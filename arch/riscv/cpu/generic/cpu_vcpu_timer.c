@@ -297,26 +297,9 @@ void cpu_vcpu_timer_restore(struct vmm_vcpu *vcpu)
 	}
 }
 
-int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer)
+void cpu_vcpu_timer_reset(struct vmm_vcpu *vcpu)
 {
-	struct cpu_vcpu_timer *t;
-
-	if (!vcpu || !timer)
-		return VMM_EINVALID;
-
-	if (!(*timer)) {
-		*timer = vmm_zalloc(sizeof(struct cpu_vcpu_timer));
-		if (!(*timer))
-			return VMM_ENOMEM;
-		t = *timer;
-		INIT_TIMER_EVENT(&t->vs_time_ev,
-				 cpu_vcpu_timer_vs_expired, vcpu);
-		INIT_TIMER_EVENT(&t->time_nested_ev,
-				 cpu_vcpu_timer_nested_expired, vcpu);
-		INIT_TIMER_EVENT(&t->time_ev, cpu_vcpu_timer_expired, vcpu);
-	} else {
-		t = *timer;
-	}
+	struct cpu_vcpu_timer *t = riscv_timer_priv(vcpu);
 
 	t->vs_next_cycle = U64_MAX;
 	vmm_timer_event_stop(&t->vs_time_ev);
@@ -328,22 +311,40 @@ int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer)
 	if (riscv_isa_extension_available(riscv_priv(vcpu)->isa, SSTC)) {
 		riscv_priv(vcpu)->henvcfg |= ENVCFG_STCE;
 	}
+}
+
+int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu)
+{
+	struct cpu_vcpu_timer *t;
+
+	if (!vcpu)
+		return VMM_EINVALID;
+
+	t = vmm_zalloc(sizeof(struct cpu_vcpu_timer));
+	if (!t)
+		return VMM_ENOMEM;
+
+	riscv_timer_priv(vcpu) = t;
+
+	INIT_TIMER_EVENT(&t->vs_time_ev,
+			 cpu_vcpu_timer_vs_expired, vcpu);
+	INIT_TIMER_EVENT(&t->time_nested_ev,
+			 cpu_vcpu_timer_nested_expired, vcpu);
+	INIT_TIMER_EVENT(&t->time_ev, cpu_vcpu_timer_expired, vcpu);
 
 	return VMM_OK;
 }
 
-int cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu, void **timer)
+void cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu)
 {
 	struct cpu_vcpu_timer *t;
 
-	if (!vcpu || !timer || !(*timer))
-		return VMM_EINVALID;
-	t = *timer;
+	if (!vcpu)
+		return;
+	t = riscv_timer_priv(vcpu);
 
 	vmm_timer_event_stop(&t->vs_time_ev);
 	vmm_timer_event_stop(&t->time_nested_ev);
 	vmm_timer_event_stop(&t->time_ev);
 	vmm_free(t);
-
-	return VMM_OK;
 }

@@ -37,7 +37,8 @@ void cpu_vcpu_timer_start(struct vmm_vcpu *vcpu, u64 next_cycle);
 void cpu_vcpu_timer_delta_update(struct vmm_vcpu *vcpu, bool nested_virt);
 void cpu_vcpu_timer_save(struct vmm_vcpu *vcpu);
 void cpu_vcpu_timer_restore(struct vmm_vcpu *vcpu);
-int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu, void **timer);
-int cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu, void **timer);
+void cpu_vcpu_timer_reset(struct vmm_vcpu *vcpu);
+int cpu_vcpu_timer_init(struct vmm_vcpu *vcpu);
+void cpu_vcpu_timer_deinit(struct vmm_vcpu *vcpu);
 
 #endif
