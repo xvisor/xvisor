@@ -28,7 +28,7 @@
 struct vmm_vcpu;
 struct cpu_vcpu_trap;
 
-#define CPU_VCPU_SBI_VERSION_MAJOR		1
+#define CPU_VCPU_SBI_VERSION_MAJOR		2
 #define CPU_VCPU_SBI_VERSION_MINOR		0
 #define CPU_VCPU_SBI_IMPID			2
 
