@@ -57,6 +57,7 @@ static int vcpu_sbi_xvisor_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_xvisor = {
+	.name = "xvisor",
 	.extid_start = SBI_EXT_XVISOR,
 	.extid_end = SBI_EXT_XVISOR,
 	.handle = vcpu_sbi_xvisor_ecall,

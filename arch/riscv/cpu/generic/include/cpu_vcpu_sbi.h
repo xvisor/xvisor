@@ -39,6 +39,7 @@ struct cpu_vcpu_sbi_return {
 };
 
 struct cpu_vcpu_sbi_extension {
+	const char name[16];
 	unsigned long extid_start;
 	unsigned long extid_end;
 	int (*handle)(struct vmm_vcpu *vcpu, unsigned long ext_id,

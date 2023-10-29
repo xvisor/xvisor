@@ -25,6 +25,7 @@
 #include <vmm_heap.h>
 #include <vmm_macros.h>
 #include <vmm_manager.h>
+#include <vmm_stdio.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_trap.h>
 #include <riscv_sbi.h>
@@ -137,6 +138,7 @@ int cpu_vcpu_sbi_init(struct vmm_vcpu *vcpu)
 {
 	const struct cpu_vcpu_sbi_extension *ext;
 	struct cpu_vcpu_sbi *s;
+	char aname[32];
 	int i;
 
 	s = vmm_zalloc(sizeof(*s));
@@ -157,6 +159,15 @@ int cpu_vcpu_sbi_init(struct vmm_vcpu *vcpu)
 
 		if (ext->probe && !ext->probe(vcpu))
 			continue;
+
+		/* Non-base extensions can be disabled via DT */
+		if (SBI_EXT_BASE < ext->extid_start ||
+		    ext->extid_end < SBI_EXT_BASE) {
+			vmm_snprintf(aname, sizeof(aname),
+				     "xvisor,disable-sbi-%s", ext->name);
+			if (vmm_devtree_getattr(vcpu->node, aname))
+				continue;
+		}
 
 		s->sbi_exts[i] = ext;
 	}

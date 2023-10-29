@@ -69,6 +69,7 @@ static int vcpu_sbi_base_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_base = {
+	.name = "base",
 	.extid_start = SBI_EXT_BASE,
 	.extid_end = SBI_EXT_BASE,
 	.handle = vcpu_sbi_base_ecall,

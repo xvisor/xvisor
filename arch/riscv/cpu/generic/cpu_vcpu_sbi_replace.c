@@ -50,6 +50,7 @@ static int vcpu_sbi_time_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_time = {
+	.name = "time",
 	.extid_start = SBI_EXT_TIME,
 	.extid_end = SBI_EXT_TIME,
 	.handle = vcpu_sbi_time_ecall,
@@ -156,6 +157,7 @@ static int vcpu_sbi_rfence_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_rfence = {
+	.name = "rfence",
 	.extid_start = SBI_EXT_RFENCE,
 	.extid_end = SBI_EXT_RFENCE,
 	.handle = vcpu_sbi_rfence_ecall,
@@ -189,6 +191,7 @@ static int vcpu_sbi_ipi_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_ipi = {
+	.name = "ipi",
 	.extid_start = SBI_EXT_IPI,
 	.extid_end = SBI_EXT_IPI,
 	.handle = vcpu_sbi_ipi_ecall,
@@ -234,6 +237,7 @@ static int vcpu_sbi_srst_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_srst = {
+	.name = "srst",
 	.extid_start = SBI_EXT_SRST,
 	.extid_end = SBI_EXT_SRST,
 	.handle = vcpu_sbi_srst_ecall,

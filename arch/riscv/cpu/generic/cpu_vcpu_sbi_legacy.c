@@ -134,6 +134,7 @@ static int vcpu_sbi_legacy_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 }
 
 const struct cpu_vcpu_sbi_extension vcpu_sbi_legacy = {
+	.name = "legacy",
 	.extid_start = SBI_EXT_0_1_SET_TIMER,
 	.extid_end = SBI_EXT_0_1_SHUTDOWN,
 	.handle = vcpu_sbi_legacy_ecall,
