@@ -58,7 +58,8 @@ static int vcpu_sbi_base_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
 		out->value = hret.value;
 		break;
 	case SBI_EXT_BASE_PROBE_EXT:
-		out->value = (cpu_vcpu_sbi_find_extension(args[0])) ? 1 : 0;
+		out->value = (cpu_vcpu_sbi_find_extension(vcpu, args[0])) ?
+				1 : 0;
 		break;
 	default:
 		ret = SBI_ERR_NOT_SUPPORTED;

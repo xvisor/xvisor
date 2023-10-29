@@ -39,6 +39,7 @@
 #include <cpu_tlb.h>
 #include <cpu_sbi.h>
 #include <cpu_vcpu_fp.h>
+#include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_nested.h>
 #include <cpu_vcpu_helper.h>
@@ -309,6 +310,15 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 		if (rc) {
 			goto fail_free_nested;
 		}
+
+		/*
+		 * Initialize SBI state
+		 * NOTE: This must be the last thing to initialize.
+		 */
+		rc = cpu_vcpu_sbi_init(vcpu);
+		if (rc) {
+			goto fail_free_timer;
+		}
 	}
 
 	/* Set a0 to VCPU sub-id (i.e. virtual HARTID) */
@@ -353,6 +363,8 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	return VMM_OK;
 
+fail_free_timer:
+	cpu_vcpu_timer_deinit(vcpu);
 fail_free_nested:
 	cpu_vcpu_nested_deinit(vcpu);
 fail_free_isa:
@@ -385,6 +397,9 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 	if (!vcpu->is_normal) {
 		return VMM_OK;
 	}
+
+	/* Cleanup SBI */
+	cpu_vcpu_sbi_deinit(vcpu);
 
 	/* Cleanup timer */
 	cpu_vcpu_timer_deinit(vcpu);

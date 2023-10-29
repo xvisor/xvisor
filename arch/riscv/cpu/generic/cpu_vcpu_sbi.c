@@ -22,6 +22,7 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_macros.h>
 #include <vmm_manager.h>
 #include <cpu_vcpu_sbi.h>
@@ -37,7 +38,7 @@ extern const struct cpu_vcpu_sbi_extension vcpu_sbi_srst;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_legacy;
 extern const struct cpu_vcpu_sbi_extension vcpu_sbi_xvisor;
 
-static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
+static const struct cpu_vcpu_sbi_extension *sbi_exts[] = {
 	&vcpu_sbi_time,
 	&vcpu_sbi_rfence,
 	&vcpu_sbi_ipi,
@@ -48,15 +49,23 @@ static const struct cpu_vcpu_sbi_extension *vcpu_sbi[] = {
 	&vcpu_sbi_xvisor,
 };
 
+struct cpu_vcpu_sbi {
+	const struct cpu_vcpu_sbi_extension **sbi_exts;
+};
+
 const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
+						struct vmm_vcpu *vcpu,
 						unsigned long ext_id)
 {
 	int i;
+	struct cpu_vcpu_sbi *s = riscv_sbi_priv(vcpu);
 
-	for (i = 0; i < array_size(vcpu_sbi); i++) {
-		if (ext_id >= vcpu_sbi[i]->extid_start &&
-		    ext_id <= vcpu_sbi[i]->extid_end)
-			return vcpu_sbi[i];
+	for (i = 0; i < array_size(sbi_exts); i++) {
+		if (!s->sbi_exts[i])
+			continue;
+		if (ext_id >= s->sbi_exts[i]->extid_start &&
+		    ext_id <= s->sbi_exts[i]->extid_end)
+			return sbi_exts[i];
 	}
 
 	return NULL;
@@ -94,7 +103,7 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	args[4] = regs->a4;
 	args[5] = regs->a5;
 
-	ext = cpu_vcpu_sbi_find_extension(extension_id);
+	ext = cpu_vcpu_sbi_find_extension(vcpu, extension_id);
 	if (ext && ext->handle) {
 		ret = ext->handle(vcpu, extension_id, func_id, args, &out);
 		if (extension_id >= SBI_EXT_0_1_SET_TIMER &&
@@ -122,6 +131,45 @@ int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong cause,
 	}
 
 	return 0;
+}
+
+int cpu_vcpu_sbi_init(struct vmm_vcpu *vcpu)
+{
+	const struct cpu_vcpu_sbi_extension *ext;
+	struct cpu_vcpu_sbi *s;
+	int i;
+
+	s = vmm_zalloc(sizeof(*s));
+	if (!s)
+		return VMM_ENOMEM;
+
+	s->sbi_exts = vmm_calloc(array_size(sbi_exts),
+			sizeof(struct cpu_vcpu_sbi_extension *));
+	if (!s->sbi_exts) {
+		vmm_free(s);
+		return VMM_ENOMEM;
+	}
+
+	riscv_sbi_priv(vcpu) = s;
+
+	for (i = 0; i < array_size(sbi_exts); i++) {
+		ext = sbi_exts[i];
+
+		if (ext->probe && !ext->probe(vcpu))
+			continue;
+
+		s->sbi_exts[i] = ext;
+	}
+
+	return 0;
+}
+
+void cpu_vcpu_sbi_deinit(struct vmm_vcpu *vcpu)
+{
+	struct cpu_vcpu_sbi *s = riscv_sbi_priv(vcpu);
+
+	vmm_free(s->sbi_exts);
+	vmm_free(s);
 }
 
 int cpu_vcpu_sbi_xlate_error(int xvisor_error)

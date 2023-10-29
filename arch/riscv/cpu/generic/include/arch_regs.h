@@ -232,6 +232,8 @@ struct riscv_priv {
 	union riscv_priv_fp fp;
 	/* Opaque pointer to timer data */
 	void *timer_priv;
+	/* Opaque pointer to SBI data */
+	void *sbi_priv;
 };
 
 struct riscv_guest_priv {
@@ -250,6 +252,7 @@ struct riscv_guest_priv {
 #define riscv_nested_virt(vcpu)		(riscv_nested_priv(vcpu)->virt)
 #define riscv_fp_priv(vcpu)		(&riscv_priv(vcpu)->fp)
 #define riscv_timer_priv(vcpu)		(riscv_priv(vcpu)->timer_priv)
+#define riscv_sbi_priv(vcpu)		(riscv_priv(vcpu)->sbi_priv)
 #define riscv_guest_priv(guest)		((struct riscv_guest_priv *)((guest)->arch_priv))
 #define riscv_guest_serial(guest)	(riscv_guest_priv(guest)->guest_serial)
 

@@ -44,13 +44,19 @@ struct cpu_vcpu_sbi_extension {
 	int (*handle)(struct vmm_vcpu *vcpu, unsigned long ext_id,
 		      unsigned long func_id, unsigned long *args,
 		      struct cpu_vcpu_sbi_return *out);
+	unsigned long (*probe)(struct vmm_vcpu *vcpu);
 };
 
 const struct cpu_vcpu_sbi_extension *cpu_vcpu_sbi_find_extension(
+						struct vmm_vcpu *vcpu,
 						unsigned long ext_id);
 
 int cpu_vcpu_sbi_ecall(struct vmm_vcpu *vcpu, ulong mcause,
 		       arch_regs_t *regs);
+
+int cpu_vcpu_sbi_init(struct vmm_vcpu *vcpu);
+
+void cpu_vcpu_sbi_deinit(struct vmm_vcpu *vcpu);
 
 int cpu_vcpu_sbi_xlate_error(int xvisor_error);
 
