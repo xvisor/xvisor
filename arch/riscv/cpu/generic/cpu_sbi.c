@@ -24,6 +24,7 @@
 #include <vmm_error.h>
 #include <vmm_compiler.h>
 #include <vmm_cpumask.h>
+#include <vmm_host_aspace.h>
 #include <vmm_smp.h>
 #include <vmm_stdio.h>
 #include <vmm_main.h>
@@ -98,18 +99,45 @@ void sbi_cpumask_to_hartmask(const struct vmm_cpumask *cmask,
 	}
 }
 
+static bool sbi_dbcn_avail;
+static u8 sbi_dbcn_read_char;
+static physical_addr_t sbi_dbcn_read_pa;
+
 void sbi_console_putchar(int ch)
 {
-	sbi_ecall(SBI_EXT_0_1_CONSOLE_PUTCHAR, 0, ch, 0, 0, 0, 0, 0);
+	if (!sbi_dbcn_avail) {
+		sbi_ecall(SBI_EXT_0_1_CONSOLE_PUTCHAR, 0, ch, 0, 0, 0, 0, 0);
+		return;
+	}
+
+	sbi_ecall(SBI_EXT_DBCN, SBI_EXT_DBCN_CONSOLE_WRITE_BYTE, ch,
+		  0, 0, 0, 0, 0);
 }
 
 int sbi_console_getchar(void)
 {
 	struct sbiret ret;
 
-	ret = sbi_ecall(SBI_EXT_0_1_CONSOLE_GETCHAR, 0, 0, 0, 0, 0, 0, 0);
+	if (!sbi_dbcn_avail) {
+		ret = sbi_ecall(SBI_EXT_0_1_CONSOLE_GETCHAR,
+				0, 0, 0, 0, 0, 0, 0);
+		return ret.error;
+	}
 
-	return ret.error;
+	sbi_dbcn_read_char = 0;
+	ret = sbi_ecall(SBI_EXT_DBCN, SBI_EXT_DBCN_CONSOLE_READ,
+#ifdef CONFIG_64BIT
+			sbi_dbcn_read_pa, 0,
+#else
+			(u64)sbi_dbcn_read_pa, ((u64)sbi_dbcn_read_pa) >> 32,
+#endif
+			0, 0, 0, 0);
+	if (ret.error)
+		return sbi_err_map_xvisor_errno(ret.error);
+	if (!ret.value)
+		return VMM_ENOENT;
+
+	return sbi_dbcn_read_char;
 }
 
 int sbi_shutdown(void)
@@ -470,8 +498,8 @@ static int sbi_defterm_getc(u8 *ch)
 
 static int sbi_defterm_init(struct vmm_devtree_node *node)
 {
-	/* Nothing to do here. */
-	return VMM_OK;
+	return vmm_host_va2pa((virtual_addr_t)&sbi_dbcn_read_char,
+			      &sbi_dbcn_read_pa);
 }
 
 static struct defterm_ops sbi_defterm_ops = {
@@ -534,6 +562,11 @@ int __init sbi_init(void)
 			vmm_register_system_shutdown(sbi_srst_shutdown);
 			vmm_register_system_reset(sbi_srst_reset);
 			vmm_init_printf("SBI SRST extension detected\n");
+		}
+		if (sbi_spec_version == SBI_SPEC_MK_VERSION(2, 0) &&
+		    sbi_probe_extension(SBI_EXT_DBCN) > 0) {
+			sbi_dbcn_avail = TRUE;
+			vmm_init_printf("SBI DBCN extension detected\n");
 		}
 	} else {
 		vmm_register_system_shutdown(sbi_shutdown);
