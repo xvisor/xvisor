@@ -253,6 +253,10 @@ enum sbi_pmu_ctr_type {
 #define SBI_EXT_FIRMWARE_START			0x0A000000
 #define SBI_EXT_FIRMWARE_END			0x0AFFFFFF
 
+#define SBI_SPEC_MK_VERSION(__major, __minor)	\
+((((__major) & SBI_SPEC_VERSION_MAJOR_MASK) <<	\
+ SBI_SPEC_VERSION_MAJOR_SHIFT) | (__minor))
+
 /* SBI return error codes */
 #define SBI_SUCCESS				0
 #define SBI_ERR_FAILED				-1
