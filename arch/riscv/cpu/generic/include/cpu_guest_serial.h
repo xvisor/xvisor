@@ -27,8 +27,10 @@
 #include <vio/vmm_vserial.h>
 #include <vmm_notifier.h>
 
+struct vmm_guest;
+
 struct riscv_guest_serial {
-	char name[VMM_FIELD_NAME_SIZE];
+	struct vmm_guest *guest;
 	struct vmm_notifier_block vser_client;
 	struct vmm_vserial *vserial;
 };
