@@ -22,10 +22,13 @@
  */
 
 #include <vmm_error.h>
+#include <vmm_guest_aspace.h>
 #include <vmm_macros.h>
 #include <vmm_manager.h>
 #include <vmm_stdio.h>
 #include <vmm_vcpu_irq.h>
+#include <vio/vmm_vserial.h>
+#include <cpu_guest_serial.h>
 #include <cpu_sbi.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_timer.h>
@@ -241,4 +244,71 @@ const struct cpu_vcpu_sbi_extension vcpu_sbi_srst = {
 	.extid_start = SBI_EXT_SRST,
 	.extid_end = SBI_EXT_SRST,
 	.handle = vcpu_sbi_srst_ecall,
+};
+
+#define DBCN_BUF_SIZE			256
+
+static int vcpu_sbi_dbcn_ecall(struct vmm_vcpu *vcpu, unsigned long ext_id,
+			       unsigned long func_id, unsigned long *args,
+			       struct cpu_vcpu_sbi_return *out)
+{
+	struct riscv_guest_serial *gs = riscv_guest_serial(vcpu->guest);
+	int ret = SBI_SUCCESS;
+	u8 buf[DBCN_BUF_SIZE];
+	unsigned long len;
+
+	switch (func_id) {
+	case SBI_EXT_DBCN_CONSOLE_WRITE:
+	case SBI_EXT_DBCN_CONSOLE_READ:
+		/*
+		 * On RV32, the M-mode can only access the first 4GB of
+		 * the physical address space because M-mode does not have
+		 * MMU to access full 34-bit physical address space.
+		 *
+		 * Based on above, we simply fail if the upper 32bits of
+		 * the physical address (i.e. a2 register) is non-zero on
+		 * RV32.
+		 *
+		 * Analogously, we fail if the upper 64bit of the
+		 * physical address (i.e. a2 register) is non-zero on
+		 * RV64.
+		 */
+		if (args[2]) {
+			ret = SBI_ERR_FAILED;
+			break;
+		}
+
+		len = (DBCN_BUF_SIZE < args[0]) ? DBCN_BUF_SIZE : args[0];
+		if (func_id == SBI_EXT_DBCN_CONSOLE_WRITE) {
+			len = vmm_guest_memory_read(vcpu->guest, args[1],
+						    buf, len, TRUE);
+			out->value = vmm_vserial_receive(gs->vserial, buf, len);
+		} else {
+			/*
+			 * We don't support read operation because Guest
+			 * always has a proper console with read/write
+			 * support.
+			 */
+			ret = SBI_ERR_DENIED;
+		}
+		break;
+	case SBI_EXT_DBCN_CONSOLE_WRITE_BYTE:
+		buf[0] = (u8)args[0];
+		if (!vmm_vserial_receive(gs->vserial, buf, 1))
+			ret = SBI_ERR_FAILED;
+		out->value = 0;
+		break;
+	default:
+		ret = SBI_ERR_NOT_SUPPORTED;
+		break;
+	}
+
+	return ret;
+}
+
+const struct cpu_vcpu_sbi_extension vcpu_sbi_dbcn = {
+	.name = "dbcn",
+	.extid_start = SBI_EXT_DBCN,
+	.extid_end = SBI_EXT_DBCN,
+	.handle = vcpu_sbi_dbcn_ecall,
 };
