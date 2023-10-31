@@ -328,15 +328,23 @@ static int cmd_vserial_bind(struct vmm_chardev *cdev, const char *name)
 					goto send_ch_continue;
 				}
 			}
+		} else {
+			vmm_scheduler_yield();
 		}
 		continue;
 send_ch_continue:
-		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
+		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) {
+			vmm_scheduler_yield();
+		}
 		continue;
 send_eflush_continue:
 		ch = '\e';
-		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) ;
-		while (!vmm_vserial_send(vser, (u8 *)&ecmd, ecount)) ;
+		while (!vmm_vserial_send(vser, (u8 *)&ch, 1)) {
+			vmm_scheduler_yield();
+		}
+		while (!vmm_vserial_send(vser, (u8 *)&ecmd, ecount)) {
+			vmm_scheduler_yield();
+		}
 		eactive = FALSE;
 		eattrib[0] = 0;
 		eacount = 0;
