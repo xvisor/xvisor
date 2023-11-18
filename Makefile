@@ -443,10 +443,11 @@ $(build_dir)/%.xo: $(build_dir)/%.o
 
 # Include built-in and module objects dependency files
 # Dependency files should only be included after default Makefile rule
-# They should not be included for any "xxxconfig" or "xxxclean" rule
-all-deps-1 = $(if $(findstring config,$(MAKECMDGOALS)),,$(deps-y))
-all-deps-2 = $(if $(findstring clean,$(MAKECMDGOALS)),,$(all-deps-1))
--include $(all-deps-2)
+# They should not be included for any "xxxconfig", "xxxclean", or "cscope" rule
+NO_DEP_TARGETS := %config %clean cscope
+ifeq ($(filter $(NO_DEP_TARGETS),$(MAKECMDGOALS)),)
+ -include $(deps-y)
+endif
 
 # Rule for "make clean"
 .PHONY: clean
