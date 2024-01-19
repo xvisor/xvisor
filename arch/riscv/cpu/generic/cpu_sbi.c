@@ -125,13 +125,13 @@ int sbi_console_getchar(void)
 	}
 
 	sbi_dbcn_read_char = 0;
-	ret = sbi_ecall(SBI_EXT_DBCN, SBI_EXT_DBCN_CONSOLE_READ,
+	ret = sbi_ecall(SBI_EXT_DBCN, SBI_EXT_DBCN_CONSOLE_READ, 1,
 #ifdef CONFIG_64BIT
 			sbi_dbcn_read_pa, 0,
 #else
 			(u64)sbi_dbcn_read_pa, ((u64)sbi_dbcn_read_pa) >> 32,
 #endif
-			0, 0, 0, 0);
+			0, 0, 0);
 	if (ret.error)
 		return sbi_err_map_xvisor_errno(ret.error);
 	if (!ret.value)
