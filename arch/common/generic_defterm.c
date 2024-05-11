@@ -628,6 +628,56 @@ static struct defterm_ops zynq_uart_ops = {
 
 #endif
 
+#if defined(CONFIG_SERIAL_XLNX_UARTLITE)
+
+#include <drv/serial/xlnx-uartlite.h>
+
+struct xlnx_uartlite_priv uart_port;
+
+static int xlnx_uartlite_defterm_getc(u8 *ch)
+{
+	if (!xlnx_uartlite_lowlevel_can_getc(uart_port.regs)) {
+		return VMM_EFAIL;
+	}
+	*ch = xlnx_uartlite_lowlevel_getc(uart_port.regs);
+	return VMM_OK;
+}
+
+static int xlnx_uartlite_defterm_putc(u8 ch)
+{
+	if (!xlnx_uartlite_lowlevel_can_putc(uart_port.regs)) {
+		return VMM_EFAIL;
+	}
+
+	xlnx_uartlite_lowlevel_putc(uart_port.regs, ch);
+	return VMM_OK;
+}
+
+static int __init xlnx_uartlite_defterm_init(struct vmm_devtree_node *node)
+{
+	int rc;
+
+	rc = vmm_devtree_regmap(node, (virtual_addr_t*)&uart_port.regs, 0);
+	if (rc) {
+		return rc;
+	}
+
+	xlnx_uartlite_lowlevel_init(&uart_port);
+
+	return VMM_OK;
+}
+
+static struct defterm_ops xlnx_uartlite_ops = {
+	.putc = xlnx_uartlite_defterm_putc,
+	.getc = xlnx_uartlite_defterm_getc,
+	.init = xlnx_uartlite_defterm_init
+};
+#else
+
+#define xlnx_uartlite_ops unknown_ops
+
+#endif
+
 static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "arm,pl011", .data = &pl011_ops },
 	{ .compatible = "ns8250", .data = &uart8250_ops },
@@ -649,6 +699,8 @@ static struct vmm_devtree_nodeid defterm_devid_table[] = {
 	{ .compatible = "brcm,bcm283x-mu", .data = &bcm283x_mu_ops },
 	{ .compatible = "cdns,uart-r1p12", .data = &zynq_uart_ops },
 	{ .compatible = "xlnx,xuartps", .data = &zynq_uart_ops },
+	{ .compatible = "xlnx,opb-uartlite-1.00.b", .data = &xlnx_uartlite_ops },
+	{ .compatible = "xlnx,xps-uartlite-1.00.a", .data = &xlnx_uartlite_ops },
 	{ /* end of list */ },
 };
 

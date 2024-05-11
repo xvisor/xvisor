@@ -177,6 +177,21 @@ void __init arch_defterm_early_putc(u8 ch)
 	vmm_writeb(ch, (void *)&reg->tx_rx_fifo);
 }
 
+#elif defined(CONFIG_ARCH_GENERIC_DEFTERM_EARLY_XLNX_UARTLITE)
+
+#include <drv/serial/xlnx-uartlite.h>
+
+void __init arch_defterm_early_putc(u8 ch)
+{
+	struct xlnx_uartlite *reg = (struct xlnx_uartlite *)early_base;
+
+	/* Wait until FIFO is not full */
+	while (vmm_readl(&reg->stat_reg) & UARTLITE_STAT_TX_FIFO_FULL) ;
+
+	/* Send the character */
+	vmm_writel(ch, (void *)&reg->tx_fifo);
+}
+
 #else
 
 void __init arch_defterm_early_putc(u8 ch)
