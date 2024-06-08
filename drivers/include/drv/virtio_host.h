@@ -417,7 +417,7 @@ static inline bool __virtio_host_test_bit(
 	/* Did you forget to fix assumptions on max features? */
 	BUG_ON(fbit >= 64);
 
-	return vdev->features & BIT_ULL(fbit);
+	return !!(vdev->features & BIT_ULL(fbit));
 }
 
 /**
