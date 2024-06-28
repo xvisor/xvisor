@@ -22,7 +22,7 @@
 # */
 
 board-asflags+=
-board-ldflags+=
+board-ldflags+= -z noexecstack
 
 board-objs-y+= brd_main.o
 board-objs-y+= brd_defterm.o

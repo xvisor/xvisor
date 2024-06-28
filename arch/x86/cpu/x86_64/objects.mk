@@ -32,6 +32,8 @@ cpu-cflags += -no-pie
 cpu-cppflags += -no-pie
 endif
 
+cpu-mergeflags += -z noexecstack
+
 cpu-objs-y+= start.o
 
 #These commented out files are what we will need to
