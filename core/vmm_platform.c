@@ -62,7 +62,8 @@ static struct vmm_msi_domain *platform_get_msi_domain(struct vmm_device *dev,
 					VMM_MSI_DOMAIN_PLATFORM);
 		}
 		vmm_devtree_dref_node(msi_np);
-		return d;
+		if (d)
+			return d;
 	}
 
 	/* Check for the complex msi-parent version */
