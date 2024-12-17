@@ -374,6 +374,18 @@
 #define ENVCFGH_STCE			(_AC(1, UL) << 31)
 #define ENVCFGH_PBMTE			(_AC(1, UL) << 30)
 
+/* Smstateen bits */
+#define SMSTATEEN0_AIA_IMSIC_SHIFT	58
+#define SMSTATEEN0_AIA_IMSIC		(_ULL(1) << SMSTATEEN0_AIA_IMSIC_SHIFT)
+#define SMSTATEEN0_AIA_SHIFT		59
+#define SMSTATEEN0_AIA			(_ULL(1) << SMSTATEEN0_AIA_SHIFT)
+#define SMSTATEEN0_CSRIND_SHIFT		60
+#define SMSTATEEN0_CSRIND		(_ULL(1) << SMSTATEEN0_CSRIND_SHIFT)
+#define SMSTATEEN0_HSENVCFG_SHIFT	62
+#define SMSTATEEN0_HSENVCFG		(_ULL(1) << SMSTATEEN0_HSENVCFG_SHIFT)
+#define SMSTATEEN0_SSTATEEN0_SHIFT	63
+#define SMSTATEEN0_SSTATEEN0		(_ULL(1) << SMSTATEEN0_SSTATEEN0_SHIFT)
+
 /* ===== User-level CSRs ===== */
 
 /* User Trap Setup (N-extension) */
@@ -494,6 +506,9 @@
 /* Supervisor Configuration */
 #define CSR_SENVCFG			0x10a
 
+/* Supervisor stateen CSRs */
+#define CSR_SSTATEEN0			0x10c
+
 /* Counter Overflow CSR */
 #define CSR_SCOUNTOVF			0xda0
 
@@ -528,6 +543,10 @@
 /* Hypervisor Configuration (H-extension) */
 #define CSR_HENVCFG			0x60a
 #define CSR_HENVCFGH			0x61a
+
+/* Hypervisor stateen CSRs */
+#define CSR_HSTATEEN0			0x60c
+#define CSR_HSTATEEN0H			0x61c
 
 /* Virtual Supervisor Registers (H-extension) */
 #define CSR_VSSTATUS			0x200
