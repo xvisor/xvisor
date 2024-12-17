@@ -326,6 +326,16 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 	/* By default, make CY, TM, and IR counters accessible in VU mode */
 	riscv_priv(vcpu)->scounteren = 7;
 
+	/* Initialize stateen configuration */
+	riscv_priv(vcpu)->hstateen0 = SMSTATEEN0_HSENVCFG;
+	if (riscv_isa_extension_available(riscv_priv(vcpu)->isa, SMSTATEEN))
+		riscv_priv(vcpu)->hstateen0 |= SMSTATEEN0_SSTATEEN0;
+	if (riscv_isa_extension_available(riscv_priv(vcpu)->isa, SSAIA)) {
+		riscv_priv(vcpu)->hstateen0 |= SMSTATEEN0_CSRIND;
+		riscv_priv(vcpu)->hstateen0 |= SMSTATEEN0_AIA;
+		riscv_priv(vcpu)->hstateen0 |= SMSTATEEN0_AIA_IMSIC;
+	}
+
 	/* Reset nested state */
 	cpu_vcpu_nested_reset(vcpu);
 
@@ -413,6 +423,8 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			priv->vstval = csr_read(CSR_VSTVAL);
 			priv->vsatp = csr_read(CSR_VSATP);
 			priv->scounteren = csr_read(CSR_SCOUNTEREN);
+			if (riscv_isa_extension_available(priv->isa, SMSTATEEN))
+				priv->sstateen0 = csr_read(CSR_SSTATEEN0);
 			cpu_vcpu_fp_save(tvcpu, regs);
 			cpu_vcpu_timer_save(tvcpu);
 		}
@@ -432,6 +444,9 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		csr_write(CSR_VSTVAL, priv->vstval);
 		csr_write(CSR_VSATP, priv->vsatp);
 		csr_write(CSR_SCOUNTEREN, priv->scounteren);
+		if (riscv_isa_extension_available(priv->isa, SMSTATEEN))
+			csr_write(CSR_SSTATEEN0, priv->sstateen0);
+		cpu_vcpu_stateen_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_envcfg_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_timer_restore(vcpu);
 		cpu_vcpu_fp_restore(vcpu, regs);
@@ -446,6 +461,22 @@ void arch_vcpu_post_switch(struct vmm_vcpu *vcpu,
 			   arch_regs_t *regs)
 {
 	/* For now nothing to do here. */
+}
+
+void cpu_vcpu_stateen_update(struct vmm_vcpu *vcpu, bool nested_virt)
+{
+	u64 hstateen0;
+
+	if (!riscv_isa_extension_available(NULL, SMSTATEEN))
+		return;
+
+	hstateen0 = (nested_virt) ? 0 : riscv_priv(vcpu)->hstateen0;
+#ifdef CONFIG_32BIT
+	csr_write(CSR_HSTATEEN0, (u32)hstateen0);
+	csr_write(CSR_HSTATEEN0H, (u32)(hstateen0 >> 32));
+#else
+	csr_write(CSR_HSTATEEN0, hstateen0);
+#endif
 }
 
 void cpu_vcpu_envcfg_update(struct vmm_vcpu *vcpu, bool nested_virt)

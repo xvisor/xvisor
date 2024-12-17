@@ -26,6 +26,9 @@
 #include <vmm_types.h>
 #include <vmm_manager.h>
 
+/** Function to update stateen configuration */
+void cpu_vcpu_stateen_update(struct vmm_vcpu *vcpu, bool nested_virt);
+
 /** Function to update environment configuration */
 void cpu_vcpu_envcfg_update(struct vmm_vcpu *vcpu, bool nested_virt);
 

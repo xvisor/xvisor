@@ -229,6 +229,9 @@ struct riscv_priv {
 	unsigned long vstval;
 	unsigned long vsatp;
 	unsigned long scounteren;
+	/* Sstateen state */
+	u64 hstateen0;
+	unsigned long sstateen0;
 	/* Nested state */
 	struct riscv_priv_nested nested;
 	/* FP state */
