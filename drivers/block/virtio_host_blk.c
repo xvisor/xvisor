@@ -604,6 +604,12 @@ static int virtio_host_blk_probe(struct virtio_host_device *vdev)
 	}
 	vblk->bdev->rq = vmm_blockrq_to_rq(vblk->brq);
 
+	/* Save VirtIO host block pointer in VirtIO device */
+	vblk->vdev->priv = vblk;
+
+	/* Make VirtIO device ready */
+	virtio_host_device_ready(vblk->vdev);
+
 	/* Register block device instance */
 	rc = vmm_blockdev_register(vblk->bdev);
 	if (rc) {
@@ -611,12 +617,6 @@ static int virtio_host_blk_probe(struct virtio_host_device *vdev)
 			   "failed to register block device\n");
 		goto fail_free_brq;
 	}
-
-	/* Save VirtIO host block pointer in VirtIO device */
-	vblk->vdev->priv = vblk;
-
-	/* Make VirtIO device ready */
-	virtio_host_device_ready(vblk->vdev);
 
 	/* Read serial number */
 	virtio_host_blk_read_serial(vblk);
