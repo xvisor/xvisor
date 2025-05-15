@@ -1082,6 +1082,12 @@ done:
 		nr_handlers++;
 	}
 
+	if (nr_handlers == 0) {
+		vmm_lerror(node->name, "Found no suitable handler\n");
+		rc = VMM_ENODEV;
+		goto out_ids_cleanup;
+	}
+
 	/* Initialize IPI domain */
 	rc = imsic_ipi_domain_init(priv);
 	if (rc) {
