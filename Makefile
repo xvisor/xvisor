@@ -166,7 +166,7 @@ cppflags+=-I$(libs_dir)/include
 cppflags+=$(cpu-cppflags)
 cppflags+=$(board-cppflags)
 cppflags+=$(libs-cppflags-y)
-cflags=-g -Wall -nostdlib --sysroot=$(drivers_dir)/include -fno-builtin -fno-stack-protector -D__VMM__
+cflags=-std=gnu11 -g -Wall -nostdlib --sysroot=$(drivers_dir)/include -fno-builtin -fno-stack-protector -D__VMM__
 cflags+=$(board-cflags)
 cflags+=$(cpu-cflags)
 cflags+=$(libs-cflags-y)
