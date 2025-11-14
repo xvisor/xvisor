@@ -247,9 +247,9 @@ bool vmm_init_done(void)
 
 static void system_postinit_work(struct vmm_work *work)
 {
-	const char *str;
 	u32 c, freed;
-	struct vmm_devtree_node *node, *node1;
+	const char *str, *str1;
+	struct vmm_devtree_node *node, *node1, *node2;
 
 	/* Print status of present host CPUs */
 	for_each_present_cpu(c) {
@@ -285,6 +285,19 @@ static void system_postinit_work(struct vmm_work *work)
 		if (node1) {
 			console_param_process(node1->name);
 			vmm_devtree_dref_node(node1);
+		} else {
+			node1 = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+						    VMM_DEVTREE_ALIASES_NODE_NAME);
+			if (node1) {
+				if (vmm_devtree_read_string(node1, str, &str1) == VMM_OK) {
+					node2 = vmm_devtree_getnode(str1);
+					if (node2) {
+						console_param_process(node2->name);
+						vmm_devtree_dref_node(node2);
+					}
+				}
+				vmm_devtree_dref_node(node1);
+			}
 		}
 	}
 
