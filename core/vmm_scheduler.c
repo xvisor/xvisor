@@ -856,6 +856,9 @@ void vmm_scheduler_irq_exit(arch_regs_t *regs)
 	if ((vmm_manager_vcpu_get_state(vcpu) != VMM_VCPU_STATE_RUNNING) ||
 	    schedp->yield_on_irq_exit) {
 		vmm_scheduler_switch(schedp, schedp->irq_regs);
+		
+		/* vcpu has switched! */
+		vcpu = schedp->current_vcpu;
 		schedp->yield_on_irq_exit = FALSE;
 	}
 
