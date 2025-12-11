@@ -23,9 +23,9 @@
 
 FW_CROSS_COMPILE=$(CROSS_COMPILE)
 FW_CPPFLAGS=$(ARCH_CPPFLAGS) -I. -I$(ARCH_BASIC_DIR) -I$(ARCH_DIR)
-FW_CFLAGS=$(ARCH_CFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -std=gnu11
-FW_ASFLAGS=$(ARCH_ASFLAGS) $(FW_CPPFLAGS) -g -Wall -Werror -nostdlib -D__ASSEMBLY__
-FW_LDFLAGS=$(ARCH_LDFLAGS) $(FW_CFLAGS) -Wl,--build-id=none -Wl,-T$(ARCH_LDSCRIPT)
+FW_CFLAGS=$(ARCH_CFLAGS) $(FW_CPPFLAGS) -fno-pic -g -Wall -Werror -nostdlib -std=gnu11
+FW_ASFLAGS=$(ARCH_ASFLAGS) $(FW_CPPFLAGS) -fno-pic -g -Wall -Werror -nostdlib -D__ASSEMBLY__
+FW_LDFLAGS=$(ARCH_LDFLAGS) $(FW_CFLAGS) -Wl,--no-pie -Wl,--build-id=none -Wl,-T$(ARCH_LDSCRIPT)
 
 ifdef CROSS_COMPILE
 CC		=	$(CROSS_COMPILE)gcc
