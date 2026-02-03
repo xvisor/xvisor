@@ -42,4 +42,8 @@ void __cpu_vcpu_fp_d_save(struct riscv_priv_fp_d *d);
 /* Restore FP 'D' context */
 void __cpu_vcpu_fp_d_restore(struct riscv_priv_fp_d *d);
 
+struct riscv_priv_rvv;
+void __cpu_vcpu_rvv_save(struct riscv_priv_rvv *rvv);
+void __cpu_vcpu_rvv_restore(struct riscv_priv_rvv *rvv);
+
 #endif

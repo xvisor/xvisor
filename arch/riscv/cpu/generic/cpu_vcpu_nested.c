@@ -1226,7 +1226,7 @@ static int __cpu_vcpu_nested_hext_csr_rmw(struct vmm_vcpu *vcpu,
 		csr = &npriv->vsstatus;
 		writeable_mask = SSTATUS_SIE | SSTATUS_SPIE | SSTATUS_UBE |
 				 SSTATUS_SPP | SSTATUS_SUM | SSTATUS_MXR |
-				 SSTATUS_FS | SSTATUS_UXL;
+				 SSTATUS_FS | SSTATUS_VS | SSTATUS_UXL;
 		break;
 	case CSR_VSIP:
 		csr = &npriv->hvip;
@@ -1964,6 +1964,7 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 			      bool spvp, bool gva)
 {
 	unsigned long tmp;
+    unsigned long status = SSTATUS_FS | SSTATUS_VS;
 	bool virt_on2off = FALSE;
 	struct riscv_priv_nested *npriv = riscv_nested_priv(vcpu);
 
@@ -2018,10 +2019,10 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 		 *    (i.e. virtual-HS mode sstatus.FS)
 		 */
 		npriv->vsstatus = csr_swap(CSR_VSSTATUS, npriv->vsstatus);
-		tmp = regs->sstatus & SSTATUS_FS;
-		regs->sstatus &= ~SSTATUS_FS;
-		regs->sstatus |= (npriv->vsstatus & SSTATUS_FS);
-		npriv->vsstatus &= ~SSTATUS_FS;
+		tmp = regs->sstatus & status;
+		regs->sstatus &= ~status;
+		regs->sstatus |= (npriv->vsstatus & status);
+		npriv->vsstatus &= ~status;
 		npriv->vsstatus |= tmp;
 	} else {
 		/* Nested virtualization state changing from ON to OFF */
@@ -2036,10 +2037,10 @@ void cpu_vcpu_nested_set_virt(struct vmm_vcpu *vcpu, struct arch_regs *regs,
 		 *    with vsstatus in nested virtualization context (i.e.
 		 *    virtual-HS mode sstatus)
 		 */
-		tmp = regs->sstatus & SSTATUS_FS;
-		regs->sstatus &= ~SSTATUS_FS;
-		regs->sstatus |= (npriv->vsstatus & SSTATUS_FS);
-		npriv->vsstatus &= ~SSTATUS_FS;
+		tmp = regs->sstatus & status;
+		regs->sstatus &= ~status;
+		regs->sstatus |= (npriv->vsstatus & status);
+		npriv->vsstatus &= ~status;
 		npriv->vsstatus |= tmp;
 		npriv->vsstatus = csr_swap(CSR_VSSTATUS, npriv->vsstatus);
 

@@ -103,6 +103,12 @@ _start_real:
 	 */
 	li t0, SSTATUS_FS
 	csrc CSR_SSTATUS, t0
+	/*
+	 * Disable RVV to detect illegal usage of
+	 * vector instructions in kernel space
+	 */
+	li t0, SSTATUS_VS
+	csrc CSR_SSTATUS, t0
 
 #ifdef CONFIG_SMP
 	/* Pick one HART to run the main boot sequence */
