@@ -39,6 +39,7 @@
 #include <cpu_tlb.h>
 #include <cpu_sbi.h>
 #include <cpu_vcpu_fp.h>
+#include <cpu_vcpu_rvv.h>
 #include <cpu_vcpu_sbi.h>
 #include <cpu_vcpu_trap.h>
 #include <cpu_vcpu_nested.h>
@@ -56,6 +57,7 @@
 				 riscv_isa_extension_mask(i) | \
 				 riscv_isa_extension_mask(m) | \
 				 riscv_isa_extension_mask(h) | \
+				 riscv_isa_extension_mask(v) | \
 				 riscv_isa_extension_mask(SSTC))
 
 static int guest_vserial_notification(struct vmm_notifier_block *nb,
@@ -341,6 +343,7 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 
 	/* Reset FP state */
 	cpu_vcpu_fp_reset(vcpu);
+	cpu_vcpu_rvv_reset(vcpu);
 
 	/* Reset timer */
 	cpu_vcpu_timer_reset(vcpu);
@@ -426,6 +429,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 			if (riscv_isa_extension_available(priv->isa, SMSTATEEN))
 				priv->sstateen0 = csr_read(CSR_SSTATEEN0);
 			cpu_vcpu_fp_save(tvcpu, regs);
+			cpu_vcpu_rvv_save(tvcpu, regs);
 			cpu_vcpu_timer_save(tvcpu);
 		}
 		clrx();
@@ -450,6 +454,7 @@ void arch_vcpu_switch(struct vmm_vcpu *tvcpu,
 		cpu_vcpu_envcfg_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_timer_restore(vcpu);
 		cpu_vcpu_fp_restore(vcpu, regs);
+        cpu_vcpu_rvv_restore(vcpu, regs);
 		cpu_vcpu_gstage_update(vcpu, riscv_nested_virt(vcpu));
 		cpu_vcpu_irq_deleg_update(vcpu, riscv_nested_virt(vcpu));
 	} else {
@@ -618,6 +623,7 @@ void cpu_vcpu_dump_private_regs(struct vmm_chardev *cdev,
 	cpu_vcpu_nested_dump_regs(cdev, vcpu);
 
 	cpu_vcpu_fp_dump_regs(cdev, vcpu);
+	cpu_vcpu_rvv_dump_regs(cdev, vcpu);
 }
 
 void cpu_vcpu_dump_exception_regs(struct vmm_chardev *cdev,

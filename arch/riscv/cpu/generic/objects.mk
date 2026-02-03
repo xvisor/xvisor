@@ -43,7 +43,13 @@ endif
 ifeq ($(CONFIG_RISCV_ISA_C),y)
 	arch-c-y = c
 endif
+ifeq ($(CONFIG_RISCV_ISA_V),y)
+	arch-v-y = v
+endif
 
+# It can happen that vector instructions are inserted before the vector context is initialized
+# so disable any form of auto-vectorization, otherwise there would be illegal instruction exceptions
+arch-cflags-y += -fno-tree-vectorize -fno-tree-loop-vectorize -fno-tree-slp-vectorize
 arch-cflags-y += -fno-omit-frame-pointer -fno-optimize-sibling-calls
 arch-cflags-y += -mno-save-restore -mstrict-align
 
@@ -58,8 +64,8 @@ endif
 have_zicsr_zifenci := $(shell $(CC) -nostdlib -march=$(march-y)$(arch-a-y)$(arch-c-y)_zicsr_zifencei -x c /dev/null -o /dev/null 2>&1 | grep "zicsr\|zifencei" > /dev/null && echo n || echo y)
 march-zicsr-zifenci-$(have_zicsr_zifenci) = _zicsr_zifencei
 
-march-nonld-isa-y = $(march-y)$(arch-a-y)fd$(arch-c-y)$(march-zicsr-zifenci-y)
-march-ld-isa-y = $(march-y)$(arch-a-y)$(arch-c-y)
+march-nonld-isa-y = $(march-y)$(arch-a-y)fd$(arch-c-y)$(arch-v-y)$(march-zicsr-zifenci-y)
+march-ld-isa-y = $(march-y)$(arch-a-y)$(arch-c-y)$(arch-v-y)
 
 cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-cflags-y) -march=$(march-nonld-isa-y)
@@ -93,6 +99,7 @@ cpu-objs-$(CONFIG_SMP)+=cpu_sbi_ipi.o
 cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_nested.o
 cpu-objs-y+= cpu_vcpu_fp.o
+cpu-objs-y+= cpu_vcpu_rvv.o
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_sbi.o
 cpu-objs-y+= cpu_vcpu_sbi_base.o
