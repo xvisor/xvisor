@@ -45,11 +45,12 @@ ifeq ($(CONFIG_RISCV_ISA_C),y)
 endif
 ifeq ($(CONFIG_RISCV_ISA_V),y)
 	arch-v-y = v
+	# It can happen that vector instructions are inserted before the vector context is initialized
+	# so disable any form of auto-vectorization, otherwise there would be illegal instruction exceptions
+	arch-cflags-y += -fno-tree-vectorize -fno-tree-loop-vectorize -fno-tree-slp-vectorize
+	arch-cflags-y += -DRVV_ENABLED
 endif
 
-# It can happen that vector instructions are inserted before the vector context is initialized
-# so disable any form of auto-vectorization, otherwise there would be illegal instruction exceptions
-arch-cflags-y += -fno-tree-vectorize -fno-tree-loop-vectorize -fno-tree-slp-vectorize
 arch-cflags-y += -fno-omit-frame-pointer -fno-optimize-sibling-calls
 arch-cflags-y += -mno-save-restore -mstrict-align
 
@@ -100,6 +101,9 @@ cpu-objs-y+= cpu_vcpu_helper.o
 cpu-objs-y+= cpu_vcpu_nested.o
 cpu-objs-y+= cpu_vcpu_fp.o
 cpu-objs-y+= cpu_vcpu_rvv.o
+ifeq ($(CONFIG_RISCV_ISA_V),y)
+	cpu-objs-y+= cpu_vcpu_switch_rvv.o
+endif
 cpu-objs-y+= cpu_vcpu_irq.o
 cpu-objs-y+= cpu_vcpu_sbi.o
 cpu-objs-y+= cpu_vcpu_sbi_base.o

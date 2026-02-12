@@ -28,6 +28,17 @@
 #include <cpu_vcpu_switch.h>
 #include <cpu_vcpu_rvv.h>
 
+
+// create dummy functions when RVV is enabled as the real ones
+// will not compile and because the riscv_isa_extension_available(isa, v)
+// will always return false, no context switch happens anyways
+//
+// this way we don't have to "pollute" other code with ifdefs
+#ifndef RVV_ENABLED
+void __cpu_vcpu_rvv_save(struct riscv_priv_rvv *rvv){}
+void __cpu_vcpu_rvv_restore(struct riscv_priv_rvv *rvv){}
+#endif
+
 void cpu_vcpu_rvv_reset(struct vmm_vcpu *vcpu)
 {
 	riscv_regs(vcpu)->sstatus &= ~SSTATUS_VS;

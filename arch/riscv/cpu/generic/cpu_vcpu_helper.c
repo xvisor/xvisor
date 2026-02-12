@@ -50,6 +50,12 @@
 #include <riscv_lrsc.h>
 #include <riscv_timex.h>
 
+#ifdef RVV_ENABLED
+#define RISCV_ISA_EXTENSION_MASK_V riscv_isa_extension_mask(v)
+#else
+#define RISCV_ISA_EXTENSION_MASK_V 0ul
+#endif
+
 #define RISCV_ISA_ALLOWED	(riscv_isa_extension_mask(a) | \
 				 riscv_isa_extension_mask(c) | \
 				 riscv_isa_extension_mask(d) | \
@@ -57,7 +63,7 @@
 				 riscv_isa_extension_mask(i) | \
 				 riscv_isa_extension_mask(m) | \
 				 riscv_isa_extension_mask(h) | \
-				 riscv_isa_extension_mask(v) | \
+				 RISCV_ISA_EXTENSION_MASK_V  | \
 				 riscv_isa_extension_mask(SSTC))
 
 static int guest_vserial_notification(struct vmm_notifier_block *nb,
