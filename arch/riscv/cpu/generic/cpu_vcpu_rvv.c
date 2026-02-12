@@ -90,9 +90,7 @@ void cpu_vcpu_rvv_restore(struct vmm_vcpu *vcpu, arch_regs_t *regs)
 
 void cpu_vcpu_rvv_dump_regs(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 {
-	int i;
 	struct riscv_priv *priv = riscv_priv(vcpu);
-	vmm_cprintf(cdev, "rvv dump regs\n");
 
 	if (!riscv_isa_extension_available(priv->isa, v))
 		return;
@@ -102,7 +100,12 @@ void cpu_vcpu_rvv_dump_regs(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 	vmm_cprintf(cdev, "           vl    =0x%016lx\n", priv->rvv.vl);
 	vmm_cprintf(cdev, "           vstart=0x%016lx\n", priv->rvv.vstart);
 	vmm_cprintf(cdev, "           vcsr  =0x%016lx\n", priv->rvv.vcsr);
-	for (i = 0; i < array_size(priv->rvv.v); i += 2) {
-		vmm_cprintf(cdev, "            v0=0x%016lx%016lx\n", priv->rvv.v[i], priv->rvv.v[i+1]);
-	}
+    for (unsigned int vregn = 0; vregn < 32; vregn++){
+        vmm_cprintf(cdev, "            v%02d=0x", vregn);
+        for (unsigned int i = 0; i < RVV_VREG_LEN_U64; i++) {
+            unsigned int arr_idx = vregn * RVV_VREG_LEN_U64 + i;
+            vmm_cprintf(cdev, "%016lx", priv->rvv.v[arr_idx]);
+        }
+        vmm_cprintf(cdev, "\n");
+    }
 }
