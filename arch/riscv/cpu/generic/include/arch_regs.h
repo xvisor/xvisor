@@ -161,12 +161,12 @@ union riscv_priv_fp {
 #define RVV_VREG_LEN_U64 (RVV_VLEN / 64)
 
 struct riscv_priv_rvv {
-    u64 vtype;
-    u64 vl;
-    u64 vxrm;
-    u64 vxsat;
-    u64 vstart;
-    u64 vcsr;
+    unsigned long vtype;
+    unsigned long vl;
+    unsigned long vxrm;
+    unsigned long vxsat;
+    unsigned long vstart;
+    unsigned long vcsr;
     u64 v[32*RVV_VREG_LEN_U64];
 };
 
