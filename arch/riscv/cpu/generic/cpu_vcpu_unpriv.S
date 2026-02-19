@@ -82,19 +82,14 @@ __cpu_vcpu_unpriv_read_insn:
 
 	/*
 	 * Read instruction (only t2, t3, t4, t5 and t6 registers available)
-	 *
-	 * HLVX.HU instruction
-	 * 0110010 00011 rs1 100 rd 1110011
 	 */
 	add	t5, a0, zero
-	/* HLVX.HU a0, (t5) */
-	.word	0x643f4573
+	hlvx.hu a0, (t5)
 	andi	t6, a0, 3
 	addi	t6, t6, -3
 	bne	t6, zero, 2f
 	addi	t5, t5, 2
-	/* HLVX.HU t6, (t5) */
-	.word	0x643f4ff3
+	hlvx.hu t6, (t5)
 	sll	t6, t6, 16
 	add	a0, a0, t6
 2:
@@ -113,19 +108,11 @@ __cpu_vcpu_unpriv_read_ulong:
 
 	/*
 	 * Read instruction (only t2, t3, t4, t5 and t6 registers available)
-	 *
-	 * HLV.D instruction
-	 * 0110110 00000 rs1 100 rd 1110011
-	 *
-	 * HLV.W instruction
-	 * 0110100 00000 rs1 100 rd 1110011
 	 */
 #ifdef CONFIG_64BIT
-	/* HLV.D a0, (a0) */
-	.word	0x6c054573
+	hlv.d a0, (a0)
 #else
-	/* HLV.W a0, (a0) */
-	.word	0x68054573
+	hlv.w a0, (a0)
 #endif
 
 	/* Cleanup unprivilege access */
