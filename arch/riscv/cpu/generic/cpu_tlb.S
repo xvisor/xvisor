@@ -34,56 +34,34 @@
 	 * rs1!=zero and rs2==zero ==> HFENCE.GVMA rs1
 	 * rs1==zero and rs2==zero ==> HFENCE.GVMA
 	 *
-	 * Instruction encoding of HFENCE.GVMA is:
-	 * 0110001 rs2(5) rs1(5) 000 00000 1110011
 	 */
 
 	.align 3
 	.global __hfence_gvma_vmid_gpa
 __hfence_gvma_vmid_gpa:
-	/*
-	 * rs1 = a0 (GPA)
-	 * rs2 = a1 (VMID)
-	 * HFENCE.GVMA a0, a1
-	 * 0110001 01011 01010 000 00000 1110011
-	 */
-	.word 0x62b50073
+	/* rs1 = a0 (GPA), rs2 = a1 (VMID) */
+	hfence.gvma a0, a1
 	ret
 
 	.align 3
 	.global __hfence_gvma_vmid
 __hfence_gvma_vmid:
-	/*
-	 * rs1 = zero
-	 * rs2 = a0 (VMID)
-	 * HFENCE.GVMA zero, a0
-	 * 0110001 01010 00000 000 00000 1110011
-	 */
-	.word 0x62a00073
+	/* rs1 = zero, rs2 = a0 (VMID) */
+	hfence.gvma zero, a0
 	ret
 
 	.align 3
 	.global __hfence_gvma_gpa
 __hfence_gvma_gpa:
-	/*
-	 * rs1 = a0 (GPA)
-	 * rs2 = zero
-	 * HFENCE.GVMA a0
-	 * 0110001 00000 01010 000 00000 1110011
-	 */
-	.word 0x62050073
+	/* rs1 = a0 (GPA), rs2 = zero */
+	hfence.gvma a0, zero
 	ret
 
 	.align 3
 	.global __hfence_gvma_all
 __hfence_gvma_all:
-	/*
-	 * rs1 = zero
-	 * rs2 = zero
-	 * HFENCE.GVMA
-	 * 0110001 00000 00000 000 00000 1110011
-	 */
-	.word 0x62000073
+	/* rs1 = zero, rs2 = zero */
+	hfence.gvma zero, zero
 	ret
 
 	/*
@@ -97,54 +75,32 @@ __hfence_gvma_all:
 	 * rs1!=zero and rs2==zero ==> HFENCE.VVMA rs1
 	 * rs1==zero and rs2==zero ==> HFENCE.VVMA
 	 *
-	 * Instruction encoding of HFENCE.VVMA is:
-	 * 0010001 rs2(5) rs1(5) 000 00000 1110011
 	 */
 
 	.align 3
 	.global __hfence_vvma_asid_va
 __hfence_vvma_asid_va:
-	/*
-	 * rs1 = a0 (VA)
-	 * rs2 = a1 (ASID)
-	 * HFENCE.VVMA a0, a1
-	 * 0010001 01011 01010 000 00000 1110011
-	 */
-	.word 0x22b50073
+	/* rs1 = a0 (VA), rs2 = a1 (ASID) */
+	hfence.vvma a0, a1
 	ret
 
 	.align 3
 	.global __hfence_vvma_asid
 __hfence_vvma_asid:
-	/*
-	 * rs1 = zero
-	 * rs2 = a0 (ASID)
-	 * HFENCE.VVMA zero, a0
-	 * 0010001 01010 00000 000 00000 1110011
-	 */
-	.word 0x22a00073
+	/* rs1 = zero, rs2 = a0 (ASID) */
+	hfence.vvma zero, a0
 	ret
 
 	.align 3
 	.global __hfence_vvma_va
 __hfence_vvma_va:
-	/*
-	 * rs1 = a0 (VA)
-	 * rs2 = zero
-	 * HFENCE.VVMA zero, a0
-	 * 0010001 00000 01010 000 00000 1110011
-	 */
-	.word 0x22050073
+	/* rs1 = a0 (VA), rs2 = zero */
+	hfence.vvma a0, zero
 	ret
 
 	.align 3
 	.global __hfence_vvma_all
 __hfence_vvma_all:
-	/*
-	 * rs1 = zero
-	 * rs2 = zero
-	 * HFENCE.VVMA
-	 * 0010001 00000 00000 000 00000 1110011
-	 */
-	.word 0x22000073
+	/* rs1 = zero, rs2 = zero */
+	hfence.vvma zero, zero
 	ret

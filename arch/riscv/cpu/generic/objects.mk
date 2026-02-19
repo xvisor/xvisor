@@ -28,12 +28,12 @@
 
 ifeq ($(CONFIG_64BIT),y)
 arch-cflags-y += -mabi=lp64
-march-y = rv64im
+march-y = rv64imh
 cpu-mergeflags += -melf64lriscv
 else
 arch-ldflags-y += -mabi=ilp32 -lgcc
 arch-cflags-y += -mabi=ilp32
-march-y = rv32im
+march-y = rv32imh
 cpu-mergeflags += -melf32lriscv
 endif
 

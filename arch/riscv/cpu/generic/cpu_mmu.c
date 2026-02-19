@@ -456,61 +456,37 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 		 * t2 is register 7
 		 */
 		if (flags & MMU_TEST_WIDTH_8BIT) {
-			/*
-			 * HSV.B rs2, (rs1) instruction
-			 * 0110001 rs2 rs1 100 00000 1110011
-			 */
 			asm volatile("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t0, %[tmp], zero\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
-				/*
-				 * HSV.B t0, (t2)
-				 * 0110001 00101 00111 100 00000 1110011
-				 */
-				".word 0x6253c073\n"
+				"hsv.b t0, (t2)\n"
 				".option pop"
 			: [tinfo] "+&r"(tinfo)
 			: [tmp] "r"(tmp), [addr] "r"(addr)
 			: "t0", "t1", "t2", "memory");
 		} else if (flags & MMU_TEST_WIDTH_16BIT) {
-			/*
-			 * HSV.H rs2, (rs1) instruction
-			 * 0110011 rs2 rs1 100 00000 1110011
-			 */
 			asm volatile ("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t0, %[tmp], zero\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
-				/*
-				 * HSV.H t0, (t2)
-				 * 0110011 00101 00111 100 00000 1110011
-				 */
-				".word 0x6653c073\n"
+				"hsv.h t0, (t2)\n"
 				".option pop"
 			: [tinfo] "+&r"(tinfo)
 			: [tmp] "r"(tmp), [addr] "r"(addr)
 			: "t0", "t1", "t2", "memory");
 		} else if (flags & MMU_TEST_WIDTH_32BIT) {
-			/*
-			 * HSV.W rs2, (rs1) instruction
-			 * 0110101 rs2 rs1 100 00000 1110011
-			 */
 			asm volatile ("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t0, %[tmp], zero\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
-				/*
-				 * HSV.W t0, (t2)
-				 * 0110101 00101 00111 100 00000 1110011
-				 */
-				".word 0x6a53c073\n"
+				"hsv.w t0, (t2)\n"
 				".option pop"
 			: [tinfo] "+&r"(tinfo)
 			: [tmp] "r"(tmp), [addr] "r"(addr)
@@ -520,70 +496,39 @@ int arch_mmu_test_nested_pgtbl(physical_addr_t s2_tbl_pa,
 		}
 	} else {
 		if (flags & MMU_TEST_WIDTH_8BIT) {
-			/*
-			 * HLV.BU rd, (rs1) instruction
-			 * 0110000 00001 rs1 100 rd 1110011
-			 */
 			asm volatile ("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
-				/*
-				 * HLV.BU t0, (t2)
-				 * 0110000 00001 00111 100 00101 1110011
-				 */
-				".word 0x6013c2f3\n"
+				"hlv.bu t0, (t2)\n"
 				"add %[tmp], t0, zero\n"
 				".option pop"
 			: [tinfo] "+&r"(tinfo), [tmp] "=&r" (tmp)
 			: [addr] "r"(addr)
 			: "t0", "t1", "t2", "memory");
 		} else if (flags & MMU_TEST_WIDTH_16BIT) {
-			/*
-			 * HLV.HU rd, (rs1) instruction
-			 * 0110010 00001 rs1 100 rd 1110011
-			 */
 			asm volatile ("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
-				/*
-				 * HLV.HU t0, (t2)
-				 * 0110010 00001 00111 100 00101 1110011
-				 */
-				".word 0x6413c2f3\n"
+				"hlv.hu t0, (t2)\n"
 				"add %[tmp], t0, zero\n"
 				".option pop"
 			: [tinfo] "+&r"(tinfo), [tmp] "=&r" (tmp)
 			: [addr] "r"(addr)
 			: "t0", "t1", "t2", "memory");
 		} else if (flags & MMU_TEST_WIDTH_32BIT) {
-			/*
-			 * HLV.WU rd, (rs1) instruction
-			 * 0110100 00001 rs1 100 rd 1110011
-			 *
-			 * HLV.W rd, (rs1) instruction
-			 * 0110100 00000 rs1 100 rd 1110011
-			 */
 			asm volatile ("\n"
 				".option push\n"
 				".option norvc\n"
 				"add t1, %[tinfo], zero\n"
 				"add t2, %[addr], zero\n"
 #ifdef CONFIG_64BIT
-				/*
-				 * HLV.WU t0, (t2)
-				 * 0110100 00001 00111 100 00101 1110011
-				 */
-				".word 0x6813c2f3\n"
+				"hlv.wu t0, (t2)\n"
 #else
-				/*
-				 * HLV.W t0, (t2)
-				 * 0110100 00000 00111 100 00101 1110011
-				 */
-				".word 0x6803c2f3\n"
+				"hlv.w t0, (t2)\n"
 #endif
 				"add %[tmp], t0, zero\n"
 				".option pop"
