@@ -153,13 +153,6 @@ union riscv_priv_fp {
 	struct riscv_priv_fp_f f;
 	struct riscv_priv_fp_d d;
 };
-
-#ifndef RVV_VLEN
-#define RVV_VLEN (128)
-#endif
-
-#define RVV_VREG_LEN_U64 (RVV_VLEN / 64)
-
 struct riscv_priv_rvv {
     unsigned long vtype;
     unsigned long vl;
@@ -167,7 +160,9 @@ struct riscv_priv_rvv {
     unsigned long vxsat;
     unsigned long vstart;
     unsigned long vcsr;
-    u64 v[32*RVV_VREG_LEN_U64];
+	unsigned long vlenb;
+	/* Dynamically allocated, size = 32 * vlenb */
+    u8* v;
 };
 
 struct riscv_priv_nested {

@@ -293,6 +293,12 @@ int arch_vcpu_init(struct vmm_vcpu *vcpu)
 			goto fail_free_nested;
 		}
 
+		/* Initialize RVV state */
+		rc = cpu_vcpu_rvv_init(vcpu);
+		if (rc) {
+			goto fail_free_nested;
+		}
+
 		/*
 		 * Initialize SBI state
 		 * NOTE: This must be the last thing to initialize.
@@ -393,6 +399,9 @@ int arch_vcpu_deinit(struct vmm_vcpu *vcpu)
 
 	/* Cleanup SBI */
 	cpu_vcpu_sbi_deinit(vcpu);
+
+	/* Cleanup RVV state */
+	cpu_vcpu_rvv_deinit(vcpu);
 
 	/* Cleanup timer */
 	cpu_vcpu_timer_deinit(vcpu);
