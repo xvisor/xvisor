@@ -418,6 +418,17 @@
 #define CSR_FRM				0x002
 #define CSR_FCSR			0x003
 
+/* User Vector CSRs */
+#define CSR_VSTART          0x008
+#define CSR_VXSAT           0x009
+#define CSR_VXRM            0x00a
+#define CSR_VCSR            0x00f
+
+/* Vector Read-only State */
+#define CSR_VL              0xc20
+#define CSR_VTYPE           0xc21
+#define CSR_VLENB           0xc22
+
 /* User Counters/Timers */
 #define CSR_CYCLE			0xc00
 #define CSR_TIME			0xc01

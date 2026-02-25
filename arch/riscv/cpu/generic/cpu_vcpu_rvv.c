@@ -21,6 +21,8 @@
  * @brief source of VCPU RVV functions
  */
 
+#include <vmm_error.h>
+#include <vmm_heap.h>
 #include <vmm_stdio.h>
 #include <libs/stringlib.h>
 
@@ -41,12 +43,25 @@ void __cpu_vcpu_rvv_restore(struct riscv_priv_rvv *rvv){}
 
 void cpu_vcpu_rvv_reset(struct vmm_vcpu *vcpu)
 {
+    struct riscv_priv_rvv *rvv = &riscv_priv(vcpu)->rvv;
+
 	riscv_regs(vcpu)->sstatus &= ~SSTATUS_VS;
 	if (riscv_isa_extension_available(riscv_priv(vcpu)->isa, v))
 		riscv_regs(vcpu)->sstatus |= SSTATUS_VS_INITIAL;
 	else
 		riscv_regs(vcpu)->sstatus |= SSTATUS_VS_OFF;
-	memset(&riscv_priv(vcpu)->rvv, 0, sizeof(riscv_priv(vcpu)->rvv));
+
+	/* Zero only CSR fields, preserve vlenb and v pointer */
+    rvv->vtype  = 0;
+    rvv->vl     = 0;
+    rvv->vxrm   = 0;
+    rvv->vxsat  = 0;
+    rvv->vstart = 0;
+    rvv->vcsr   = 0;
+
+    /* Zero vector registers if allocated */
+    if (rvv->v)
+        memset(rvv->v, 0, 32 * rvv->vlenb);
 }
 
 static inline void cpu_vcpu_rvv_clean(arch_regs_t *regs)
@@ -69,6 +84,34 @@ static inline void cpu_vcpu_rvv_force_restore(struct vmm_vcpu *vcpu)
 
 	if (riscv_isa_extension_available(isa, v))
 		__cpu_vcpu_rvv_restore(&riscv_priv(vcpu)->rvv);
+}
+
+int cpu_vcpu_rvv_init(struct vmm_vcpu *vcpu)
+{
+    struct riscv_priv_rvv *rvv = &riscv_priv(vcpu)->rvv;
+
+    if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa, v))
+        return VMM_OK;
+
+    /* Read actual hardware vlenb */
+    rvv->vlenb = csr_read(CSR_VLENB);
+
+    /* Allocate 32 * vlenb bytes for vector registers */
+    rvv->v = vmm_zalloc(32 * rvv->vlenb);
+    if (!rvv->v)
+        return VMM_ENOMEM;
+
+    return VMM_OK;
+}
+
+void cpu_vcpu_rvv_deinit(struct vmm_vcpu *vcpu)
+{
+    struct riscv_priv_rvv *rvv = &riscv_priv(vcpu)->rvv;
+
+    if (rvv->v) {
+        vmm_free(rvv->v);
+        rvv->v = NULL;
+    }
 }
 
 void cpu_vcpu_rvv_save(struct vmm_vcpu *vcpu, arch_regs_t *regs)
@@ -105,18 +148,22 @@ void cpu_vcpu_rvv_dump_regs(struct vmm_chardev *cdev, struct vmm_vcpu *vcpu)
 
 	if (!riscv_isa_extension_available(priv->isa, v))
 		return;
+	if (!priv->rvv.v)
+		return;
 
 	vmm_cprintf(cdev, "\n");
-	vmm_cprintf(cdev, "           vtype =0x%016lx\n", priv->rvv.vtype);
-	vmm_cprintf(cdev, "           vl    =0x%016lx\n", priv->rvv.vl);
-	vmm_cprintf(cdev, "           vstart=0x%016lx\n", priv->rvv.vstart);
-	vmm_cprintf(cdev, "           vcsr  =0x%016lx\n", priv->rvv.vcsr);
-    for (unsigned int vregn = 0; vregn < 32; vregn++){
-        vmm_cprintf(cdev, "            v%02d=0x", vregn);
-        for (unsigned int i = 0; i < RVV_VREG_LEN_U64; i++) {
-            unsigned int arr_idx = vregn * RVV_VREG_LEN_U64 + i;
-            vmm_cprintf(cdev, "%016lx", priv->rvv.v[arr_idx]);
-        }
-        vmm_cprintf(cdev, "\n");
-    }
+	vmm_cprintf(cdev, "           vtype =0x%"PRIADDR"\n", priv->rvv.vtype);
+	vmm_cprintf(cdev, "           vl    =0x%"PRIADDR"\n", priv->rvv.vl);
+	vmm_cprintf(cdev, "           vstart=0x%"PRIADDR"\n", priv->rvv.vstart);
+	vmm_cprintf(cdev, "           vcsr  =0x%"PRIADDR"\n", priv->rvv.vcsr);
+	vmm_cprintf(cdev, "           vlenb =0x%"PRIADDR"\n", priv->rvv.vlenb);
+
+	for (unsigned int vregn = 0; vregn < 32; vregn++) {
+		vmm_cprintf(cdev, "            v%02d=0x", vregn);
+		u8 *vreg = priv->rvv.v + vregn * priv->rvv.vlenb;
+		for (unsigned int i = 0; i < priv->rvv.vlenb; i++) {
+			vmm_cprintf(cdev, "%02x", vreg[i]);
+		}
+		vmm_cprintf(cdev, "\n");
+	}
 }

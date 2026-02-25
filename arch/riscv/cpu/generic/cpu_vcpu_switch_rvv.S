@@ -57,7 +57,14 @@ __cpu_vcpu_rvv_save:
     csrr t2, vcsr
     REG_S t2, (t1)
 
+    /* Skip vlenb, it is read-only, initialized once in cpu_vcpu_rvv_init,
+    * and never changes. Advance past it and dereference v to obtain
+    * the address of the dynamically allocated vector register buffer.
+    */
+
     addi t1, t1, SZREG
+    addi t1, t1, SZREG
+    REG_L t1, (t1)
 
     csrr t3, vlenb
     slli t2, t3, 3
@@ -103,7 +110,14 @@ __cpu_vcpu_rvv_restore:
     REG_L t2, (t1)
     csrw vcsr, t2
 
+    /* Skip vlenb, it is read-only, initialized once in cpu_vcpu_rvv_init,
+    * and never changes. Advance past it and dereference v to obtain
+    * the address of the dynamically allocated vector register buffer.
+    */
+
     addi t1, t1, SZREG
+    addi t1, t1, SZREG
+    REG_L t1, (t1)
 
     csrr t3, vlenb
     slli t2, t3, 3

@@ -30,6 +30,12 @@
 /** Function to reset RVV state */
 void cpu_vcpu_rvv_reset(struct vmm_vcpu *vcpu);
 
+/** Function to initialize RVV state */
+int cpu_vcpu_rvv_init(struct vmm_vcpu *vcpu);
+
+/** Function to deinitialize RVV state */
+void cpu_vcpu_rvv_deinit(struct vmm_vcpu *vcpu);
+
 /** Function to save RVV state */
 void cpu_vcpu_rvv_save(struct vmm_vcpu *vcpu, arch_regs_t *regs);
 
