@@ -319,12 +319,12 @@ void __attribute__ ((section(".entry")))
 	}
 
 skip_sv48_test:
-	/* Cleanup and disable MMU */
+	/* Disable MMU and cleanup */
+	csr_write(CSR_SATP, 0);
+	__sfence_vma_all();
 	for (i = 0; i < PGTBL_ROOT_ENTCNT; i++) {
 		pgtbl[i] = 0x0ULL;
 	}
-	csr_write(CSR_SATP, 0);
-	__sfence_vma_all();
 #endif
 }
 
