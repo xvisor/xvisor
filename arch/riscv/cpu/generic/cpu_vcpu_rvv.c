@@ -89,12 +89,20 @@ static inline void cpu_vcpu_rvv_force_restore(struct vmm_vcpu *vcpu)
 int cpu_vcpu_rvv_init(struct vmm_vcpu *vcpu)
 {
     struct riscv_priv_rvv *rvv = &riscv_priv(vcpu)->rvv;
+    unsigned long sstatus;
 
     if (!riscv_isa_extension_available(riscv_priv(vcpu)->isa, v))
         return VMM_OK;
 
+    /* Temporarily enable vector unit */
+    sstatus = csr_read(CSR_SSTATUS);
+    csr_set(CSR_SSTATUS, SSTATUS_VS);
+
     /* Read actual hardware vlenb */
     rvv->vlenb = csr_read(CSR_VLENB);
+
+    /* Disable vector unit */
+    csr_write(CSR_SSTATUS, sstatus);
 
     /* Allocate 32 * vlenb bytes for vector registers */
     rvv->v = vmm_zalloc(32 * rvv->vlenb);
