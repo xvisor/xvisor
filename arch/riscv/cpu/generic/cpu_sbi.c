@@ -563,7 +563,7 @@ int __init sbi_init(void)
 			vmm_register_system_reset(sbi_srst_reset);
 			vmm_init_printf("SBI SRST extension detected\n");
 		}
-		if (sbi_spec_version == SBI_SPEC_MK_VERSION(2, 0) &&
+		if (sbi_spec_version >= SBI_SPEC_MK_VERSION(2, 0) &&
 		    sbi_probe_extension(SBI_EXT_DBCN) > 0) {
 			sbi_dbcn_avail = TRUE;
 			vmm_init_printf("SBI DBCN extension detected\n");
