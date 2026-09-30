@@ -28,12 +28,12 @@
 
 ifeq ($(CONFIG_64BIT),y)
 arch-cflags-y += -mabi=lp64
-march-y = rv64imh
+march-y = rv64im
 cpu-mergeflags += -melf64lriscv
 else
 arch-ldflags-y += -mabi=ilp32 -lgcc
 arch-cflags-y += -mabi=ilp32
-march-y = rv32imh
+march-y = rv32im
 cpu-mergeflags += -melf32lriscv
 endif
 
@@ -62,11 +62,11 @@ ifeq ($(CONFIG_CMODEL_MEDANY),y)
 endif
 
 # Check whether the assembler and the compiler support the Zicsr and Zifencei extensions
-have_zicsr_zifenci := $(shell $(CC) -nostdlib -march=$(march-y)$(arch-a-y)$(arch-c-y)_zicsr_zifencei -x c /dev/null -o /dev/null 2>&1 | grep "zicsr\|zifencei" > /dev/null && echo n || echo y)
+have_zicsr_zifenci := $(shell $(CC) -nostdlib -march=$(march-y)$(arch-a-y)$(arch-c-y)h_zicsr_zifencei -x c /dev/null -o /dev/null 2>&1 | grep "zicsr\|zifencei" > /dev/null && echo n || echo y)
 march-zicsr-zifenci-$(have_zicsr_zifenci) = _zicsr_zifencei
 
-march-nonld-isa-y = $(march-y)$(arch-a-y)fd$(arch-c-y)$(arch-v-y)$(march-zicsr-zifenci-y)
-march-ld-isa-y = $(march-y)$(arch-a-y)$(arch-c-y)$(arch-v-y)
+march-nonld-isa-y = $(march-y)$(arch-a-y)fd$(arch-c-y)$(arch-v-y)h$(march-zicsr-zifenci-y)
+march-ld-isa-y = $(march-y)$(arch-a-y)$(arch-c-y)$(arch-v-y)h
 
 cpu-cppflags+=-DTEXT_START=0x10000000
 cpu-cflags += $(arch-cflags-y) -march=$(march-nonld-isa-y)
