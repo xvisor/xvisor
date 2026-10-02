@@ -481,6 +481,8 @@ ifeq ($(install_dir),$(CURDIR)/install)
 	$(V)rm -rf $(install_dir)
 endif
 	$(V)$(MAKE) -C $(src_dir)/tools/openconf clean
+	$(if $(V), @echo " (rm)        $(CURDIR)/cscope*")
+	$(V)rm -f $(CURDIR)/cscope*
 
 # Include config file rules
 -include $(CONFIG_FILE).cmd
@@ -512,3 +514,18 @@ savedefconfig:
 	$(V)$(MAKE) -C tools/openconf defconfig
 	./tools/openconf/conf -D $(src_dir)/arch/$(ARCH)/configs/$@ $(OPENCONF_INPUT)
 	./tools/openconf/conf -s $(OPENCONF_INPUT)
+
+.PHONY: cscope
+SUPPORTED_ARCHS := arm x86 riscv
+IGNORED_ARCHS := $(if $(CONFIG_ARCH),$(filter-out $(CONFIG_ARCH),$(SUPPORTED_ARCHS)),)
+cscope:
+	$(V)find $(CURDIR) \
+		$(foreach IGNORED_ARCH,$(IGNORED_ARCHS),-not -path '$(CURDIR)/*/$(IGNORED_ARCH)/*') \
+		$(if $(findstring arm,$(IGNORED_ARCHS)),-not -path '$(CURDIR)/*/arm32/*' -not -path '$(CURDIR)/*/arm64/*',) \
+		-name "*.[chS]" -print > $(CURDIR)/cscope.files
+ifneq ("$(wildcard $(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER))","")
+	$(V)echo "$(OPENCONF_TMPDIR)/$(OPENCONF_AUTOHEADER)" >> $(CURDIR)/cscope.files
+else
+	$(warning cscope will be partially complete, please consider trying again after "make menuconfig".)
+endif
+	$(V)cscope -bkq -i $(CURDIR)/cscope.files -f $(CURDIR)/cscope.out
